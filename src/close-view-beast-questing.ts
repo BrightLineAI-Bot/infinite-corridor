@@ -8,7 +8,7 @@
 // the barrage gallops. Nothing here changes timing, damage, reach or targeting.
 import { ATTACK_MODULES, BOSS_PACE, QB_MOVES } from "./monster-pack.ts";
 import {
-  defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
+  defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
@@ -43,6 +43,21 @@ const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(QB_RIG.poses).m
 
 // ------------------------------------------------------------------------------------------------ skeleton
 const R = QB_RIG, TAIL = 6;
+// The right wing spread, in model space (f forward, r right, u up); the left mirrors it. Bind pose = spread.
+const WING = Object.freeze({ shoulder: [.24, .12, .99], elbow: [.13, .44, 1.13], wrist: [.31, .8, 1.22], tip0: [.08, 1.3, 1.16], tip1: [-.3, 1.08, .96], tip2: [-.5, .66, .86] });
+// wing bone directions (model frame, right side), spread and folded, and the membrane's facing (the hint) in each
+const WING_BONES = Object.freeze([ // [bone, from, to, folded direction, folded membrane facing (r: - inward, + outward)]
+  ['wing', 'shoulder', 'elbow', [-.95, .16, .04], -1], ['wingMid', 'elbow', 'wrist', [.97, -.02, .1], 1],
+  ['wingTip', 'wrist', 'tip0', [-.97, -.03, -.02], -1], ['wingF1', 'wrist', 'tip1', [-.93, -.04, -.28], -1], ['wingF2', 'wrist', 'tip2', [-.85, -.05, -.48], -1]]);
+// an orthonormal frame (rows: aimed axis, the hint's remainder, their cross) into out[9]
+function wingFrame(out, dx, dy, dz, hx, hy, hz) {
+  let l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l; const d = hx * dx + hy * dy + hz * dz; hx -= d * dx; hy -= d * dy; hz -= d * dz; l = Math.hypot(hx, hy, hz) || 1; hx /= l; hy /= l; hz /= l;
+  out[0] = dx; out[1] = dy; out[2] = dz; out[3] = hx; out[4] = hy; out[5] = hz; out[6] = dy * hz - dz * hy; out[7] = dz * hx - dx * hz; out[8] = dx * hy - dy * hx; return out;
+}
+const WING_SIDES = Object.freeze([['L', -1], ['R', 1]]);
+const WING_BIND = WING_BONES.map(([, a, b]) => [WING[b][0] - WING[a][0], WING[b][1] - WING[a][1], WING[b][2] - WING[a][2]]);
+const WING_BF_R = WING_BIND.map((v) => wingFrame(new Float64Array(9), v[0], v[1], v[2], 0, 0, 1)), WING_BF_L = WING_BIND.map((v) => wingFrame(new Float64Array(9), v[0], -v[1], v[2], 0, 0, 1));
+const WF = new Float64Array(9), WT = new Float64Array(9), RM = new Float64Array(9);
 export const QB_SKELETON = defineSkeleton([
   { name: 'root', parent: null, at: [0, 0, 0] },
   { name: 'pelvis', parent: 'root', at: [-.42, 0, R.hip] },
@@ -55,10 +70,14 @@ export const QB_SKELETON = defineSkeleton([
   { name: 'armR', parent: 'chest', at: [0, R.halfWidth, -.06] }, { name: 'foreR', parent: 'armR', at: [0, 0, -R.humerus] }, { name: 'metaFR', parent: 'foreR', at: [0, 0, -R.radius] }, { name: 'pawFR', parent: 'metaFR', at: [0, 0, -R.foreMeta] },
   { name: 'neck', parent: 'chest', at: [.1, 0, .16] }, { name: 'neck2', parent: 'neck', at: [.17, 0, .1] }, { name: 'head', parent: 'neck2', at: [.14, 0, .05] },
   { name: 'jaw', parent: 'head', at: [.05, 0, -.07] },
-  // each wing a three-bone chain from the shoulder back along the body: it drapes like a cape and ripples (Tim, 2026-11-11:
-  // wings "like Gore Magala ... flowing, almost like a cape")
-  { name: 'wingL', parent: 'chest', at: [-.12, -.12, .15] }, { name: 'wingMidL', parent: 'wingL', at: [-.3, -.05, .02] }, { name: 'wingTipL', parent: 'wingMidL', at: [-.3, -.03, -.03] },
-  { name: 'wingR', parent: 'chest', at: [-.12, .12, .15] }, { name: 'wingMidR', parent: 'wingR', at: [-.3, .05, .02] }, { name: 'wingTipR', parent: 'wingMidR', at: [-.3, .03, -.03] },
+  // each wing: an arm (wing), a forearm (wingMid) and three long fingers from the wrist (wingTip leading, wingF1, wingF2), bound
+  // spread (WING below); the membrane runs between the fingers and from the last finger back to the flank (Tim, 2026-11-11:
+  // "they should still be able to unfurl and fly ... a membrane that connects them to the back"). Folded, the arm lies back
+  // along the top of the back, the forearm forward beside it and the fingers back over the flank, the membrane draped like a cape.
+  ...['L', 'R'].flatMap((tag) => { const s = tag === 'L' ? -1 : 1, d = (a, b) => [WING[b][0] - WING[a][0], s * (WING[b][1] - WING[a][1]), WING[b][2] - WING[a][2]];
+    return [{ name: 'wing' + tag, parent: 'chest', at: [-.12, s * .12, .15] }, { name: 'wingMid' + tag, parent: 'wing' + tag, at: d('shoulder', 'elbow') },
+      { name: 'wingTip' + tag, parent: 'wingMid' + tag, at: d('elbow', 'wrist') }, { name: 'wingF1' + tag, parent: 'wingMid' + tag, at: d('elbow', 'wrist') },
+      { name: 'wingF2' + tag, parent: 'wingMid' + tag, at: d('elbow', 'wrist') }]; }),
 ]);
 const BI = QB_SKELETON.index;
 const E_EYE = 1, E_FIRE = 2, E_MOUTH = 3, E_CRACK = 4;
@@ -117,7 +136,7 @@ function buildQbMesh(tier) {
     const tip = [p[0] + back[0] * len + n[0] * len * .55, p[1] + back[1] * len + n[1] * len * .55, p[2] + back[2] * len + n[2] * len * .55];
     const q = [a, b, tip].map((x) => at(bone, x)); B.bone(bone).color(tone); B.poly(q); B.poly([q[2], q[1], q[0]]); };
   const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
-  { const dens = low ? .15 : full ? 1 : .55;
+  { const dens = low ? .1 : full ? 1 : .55;
     for (let k = 1; k < BODY.length - 5; k++) {
       const [f, u, rx, rz, ba, bb, wb] = BODY[k], prev = BODY[k + 1], next = BODY[k - 1], tb = norm([next[0] - prev[0], 0, next[1] - prev[1]]); // toward the tail
       const ruff = k >= 9 && k <= 13 ? 1 : 0, haunch = k >= 2 && k <= 4 ? 1 : 0, n = Math.round((7 + 5 * ruff + 3 * haunch) * dens);
@@ -168,30 +187,47 @@ function buildQbMesh(tier) {
   // horns: thick at the brow, swept back over the skull and turning up at the tips, ridged
   for (const s of [-1, 1]) { const pts = low ? [[.86, s * .05, 1.2], [.64, s * .085, 1.31], [.44, s * .085, 1.43], [.42, s * .08, 1.5]] : [[.86, s * .05, 1.2], [.76, s * .07, 1.27], [.64, s * .085, 1.31], [.52, s * .09, 1.36], [.44, s * .085, 1.43], [.42, s * .08, 1.5]];
     B.color(C.horn).loft({ seg: low ? 5 : 7, sections: pts.map((p, i) => ({ at: p, rx: .036 * (1 - i / pts.length) + .003, rz: .03 * (1 - i / pts.length) + .003, bones: ['head', 'head', 0] })), tone: (i) => i > 3 ? C.bone : i > 1 ? C.boneDark : C.horn }); }
-  // The wings: two great membranes draped from the shoulders back along the body like a cape (Gore Magala's flowing wings rather
-  // than a bat's), a thick leading edge along the wing bones, the membrane falling over the flank toward the haunch, darker
-  // at the root and reddening toward a tattered trailing edge. Each row blends between the shoulder, mid and tip bones.
+  // The wings: an arm, a forearm and three long fingers; membranes stretched between the fingers, and the broad one from the last
+  // finger back to the flank and down to the haunch, so the wing is joined to the body along its whole length. Bound spread
+  // (WING); folded, it lies over the back like a cape. Dark at the root, wine-red toward the scalloped trailing edges.
+  const bodyAt = (f) => { let k = 0; while (k < BODY.length - 2 && BODY[k + 1][0] < f) k++;
+    const A = BODY[k], Bq = BODY[k + 1], q = Math.max(0, Math.min(1, (f - A[0]) / (Bq[0] - A[0] || 1))), m = (n) => A[n] + (Bq[n] - A[n]) * q, row = q < .5 ? A : Bq;
+    return { u: m(1), rx: m(2), rz: m(3), bone: (row[6] || 0) >= .5 ? row[5] : row[4] }; };
+  const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  const memTone = (edge, root) => lerpHex(lerpHex(C.membrane, C.membraneEdge, edge * .85), C.dark, root * .35);
   for (const s of [-1, 1]) {
-    const tag = s < 0 ? 'L' : 'R', chain = ['wing' + tag, 'wingMid' + tag, 'wingTip' + tag], b0 = BI[chain[0]] * 3, b2 = BI[chain[2]] * 3;
-    const root = [bw[b0], bw[b0 + 1], bw[b0 + 2]], tipP = [bw[b2], bw[b2 + 1], bw[b2 + 2]];
-    const rows = low ? 4 : full ? 7 : 5, cols = low ? 3 : full ? 6 : 4, grid = [], rowBones = [];
-    for (let r = 0; r < rows; r++) {
-      const v = r / (rows - 1), ext = v * 1.32; // the last rows run well past the tip bone, down over the haunch
-      const lead = [root[0] + (tipP[0] - root[0]) * ext, root[1] + (tipP[1] - root[1]) * ext, root[2] + (tipP[2] - root[2]) * ext + .04 * Math.sin(Math.PI * v)];
-      const row = [];
-      for (let c = 0; c < cols; c++) {
-        // the membrane falls over the flank in soft folds (a ripple across it) and ends in tatters
-        const u = c / (cols - 1), drop = (.14 + .34 * v) * u, fold = .022 * Math.sin(u * Math.PI * 2.2 + v * 3) * u, ragged = c === cols - 1 ? (r % 2 ? .09 : -.03) * (.4 + v) : 0;
-        row.push([lead[0] - .06 * u - .1 * u * v - (c === cols - 1 && r % 2 ? .04 : 0), lead[1] + s * (.05 + .1 * u * (1 - .3 * v) + fold), lead[2] - drop - ragged]);
-      }
-      grid.push(row);
-      const seg = v * 2, k = Math.min(1, Math.floor(seg)), w = Math.min(1, seg - k);
-      rowBones.push([chain[k], chain[Math.min(2, k + 1)], k === 1 && v >= 1 ? 0 : w]);
-    }
-    B.sheet({ grid, rowBones, tone: (r, c) => lerpHex(lerpHex(C.membrane, C.membraneEdge, c / (cols - 1) * .8), C.dark, (1 - r / (rows - 1)) * .25) });
-    // the leading edge: a thick arm along the wing bones, with a bone hook at the wrist
-    B.color(C.wingBone).loft({ seg: low ? 5 : 6, sections: grid.map((row, r) => ({ at: row[0], rx: .024 * (1 - r / rows * .6), rz: .02 * (1 - r / rows * .6), bones: rowBones[r] })) });
-    if (!low) B.bone(chain[1]).color(C.bone).lathe({ at: at(chain[1], grid[Math.round((rows - 1) / 2)][0]), F: [.2, s * .2, .9], rings: [[0, .013], [.07, 0]], seg: 4, caps: false });
+    const tag = s < 0 ? 'L' : 'R', Wp = (n) => [WING[n][0], s * WING[n][1], WING[n][2]], wr = Wp('wrist'), el = Wp('elbow'), sh = Wp('shoulder');
+    const tips = [Wp('tip0'), Wp('tip1'), Wp('tip2')], fb = ['wingTip' + tag, 'wingF1' + tag, 'wingF2' + tag];
+    // between the fingers: fans from the wrist, the outer edge scalloped in between the fingertips
+    const radial = low ? 2 : full ? 5 : 3, across = low ? 3 : full ? 4 : 3;
+    for (let f = 0; f < 2; f++) { const grid = [];
+      for (let r = 0; r < radial; r++) { const t = .06 + .94 * r / (radial - 1), row = [];
+        for (let c = 0; c < across; c++) { const u = c / (across - 1), out = lerp3(tips[f], tips[f + 1], u), k = t * (1 - .24 * Math.sin(Math.PI * u) * t * t);
+          row.push(lerp3(wr, out, k)); }
+        grid.push(row); }
+      B.sheet({ grid, vertBones: (r, c) => [fb[f], fb[f + 1], c / (across - 1)], tone: (r, c) => memTone(r / (radial - 1), 1 - r / (radial - 1)) }); }
+    // from the last finger and the arm back to the flank: u runs from the finger (0) to the body (1), t from the arm (0) to the
+    // trailing edge (1). The body edge follows the flank from the shoulder to the haunch.
+    const nu = low ? 3 : full ? 6 : 4, nt = low ? 3 : full ? 7 : 4, haunchF = -.52, grid = [], bones = [];
+    const front = (u) => u < .5 ? lerp3(wr, el, u * 2) : lerp3(el, sh, u * 2 - 1);
+    const flank = (t) => { const f = sh[0] + (haunchF - sh[0]) * t, b = bodyAt(f); return [f, s * b.rx * .78, b.u + b.rz * .6]; };
+    for (let r = 0; r < nu; r++) { const u = r / (nu - 1), row = [], brow = [];
+      for (let c = 0; c < nt; c++) { const t = c / (nt - 1), back = lerp3(tips[2], flank(1), u), sag = .2 * Math.sin(Math.PI * u) * t * t;
+        let p = lerp3(front(u), back, t * (1 - sag)); const fl = flank(t), w = u * u * u * u;
+        p = c === 0 ? front(u) : r === nu - 1 ? fl : [p[0] + (fl[0] - p[0]) * w, p[1] + (fl[1] - p[1]) * w, p[2] + (fl[2] - p[2]) * w];
+        row.push(p);
+        const body = bodyAt(p[0]).bone;
+        brow.push(u < .45 ? [fb[2], 'wingMid' + tag, clamp01(1 - t * 3.5)] : [u < .75 ? 'wing' + tag : 'wing' + tag, body, smooth((u - .45) / .55)]); }
+      grid.push(row); bones.push(brow); }
+    B.sheet({ grid, vertBones: (r, c) => bones[r][c], tone: (r, c) => memTone(c / (nt - 1) * (1 - r / (nu - 1) * .5), r / (nu - 1)) });
+    // the bones: a heavy arm and forearm, long fingers tapering to points, a hooked thumb claw at the wrist
+    const segs = low ? 4 : 6;
+    B.color(C.wingBone).loft({ seg: segs, sections: [[sh, .04, ['wing' + tag, 'wing' + tag, 0]], [lerp3(sh, el, .5), .032, ['wing' + tag, 'wing' + tag, 0]], [el, .03, ['wing' + tag, 'wingMid' + tag, .5]],
+      [lerp3(el, wr, .5), .024, ['wingMid' + tag, 'wingMid' + tag, 0]], [wr, .026, ['wingMid' + tag, 'wingMid' + tag, 0]]].filter((_, i) => !low || i % 2 === 0).map(([p, r0, bn]) => ({ at: p, rx: r0, rz: r0 * .85, bones: bn })) });
+    for (let f = 0; f < 3; f++) { if (low && f === 1) continue;
+      B.color(C.wingBone).loft({ seg: low ? 3 : 4, sections: [[wr, .018], [lerp3(wr, tips[f], .5), .012], [tips[f], .003]].filter((_, i) => !low || i !== 1).map(([p, r0]) => ({ at: p, rx: r0, rz: r0, bones: [fb[f], fb[f], 0] })) }); }
+    if (!low) { B.bone('wingMid' + tag).color(C.bone).lathe({ at: at('wingMid' + tag, wr), F: [.8, s * .1, .5], rings: [[0, .016], [.08, 0]], seg: 4, caps: false });
+      B.bone(fb[0]).color(C.bone).lathe({ at: at(fb[0], tips[0]), F: [-.3, s * .9, -.2], rings: [[0, .008], [.05, 0]], seg: 4, caps: false }); }
   }
   // legs: lean digitigrade limbs grown out of the body, muscled at the top; three claws on each paw
   // (Tim, 2026-11-11: the legs were "almost comically small"): heavy limbs, a big muscled thigh and forearm, stout lower legs
@@ -344,21 +380,26 @@ export function sampleQb(tr, e, env) {
   setEuler(P, BI.neck2, W[2] * .35 + look * .3, -W[1] * .35, 0); resolveBone(P, BI.neck2);
   setEuler(P, BI.head, W[2] * .25 + look * .3, -W[1] * .2 + (reduce ? 0 : .02 * wobble(t * .9, 4)), W[2] * .2); resolveBone(P, BI.head);
   setEuler(P, BI.jaw, 0, .5 * W[7] * (1 + (reduce ? 0 : .08 * Math.sin(t * 30))), 0); resolveBone(P, BI.jaw);
-  // the wings: draped like a cape over the flanks, rippling (a wave runs root to tip), streaming back in the gallop and the
-  // charge, flaring wide and high when it rears, rises or dives
-  for (const [tag, s] of [['L', -1], ['R', 1]]) {
-    const sp = W[5], flow = reduce ? 0 : 1, stream = tr.gallop * moving;
-    for (let i = 0; i < 3; i++) {
-      const b = BI[(i === 0 ? 'wing' : i === 1 ? 'wingMid' : 'wingTip') + tag], wave = flow * Math.sin(t * (2 + 2.5 * stream) - i * 1.1 + (s > 0 ? .4 : 0)) * (.05 + .05 * i) * (1 + stream);
-      // + roll on the right wing (and - on the left) lifts the hanging membrane outward and up: spread it opens like a cape
-      // thrown wide, at speed it lifts and streams back behind the shoulders
-      // spread: the wing arm swings out wide and up and the membrane opens beside it like a great curtain; at speed the arm
-      // sweeps back and the membrane lifts and streams
-      const yawO = i === 0 ? s * (.05 + 1.25 * sp) - s * .2 * stream : s * (-.25 * sp + .04 * i * (1 - sp)) - s * .08 * stream, pitch = i === 0 ? -.05 - .45 * sp - .08 * stream : .04 + .08 * i + .1 * sp + .05 * stream;
-      setEuler(P, b, yawO, pitch + wave * .5, s * (i === 0 ? .45 * sp + .45 * stream : .15 * sp + .2 * stream) + s * wave);
-      resolveBone(P, b);
-    }
-  }
+  // the wings: each bone is turned from its spread (bind) direction to a direction blended between folded and spread in the
+  // chest's frame. Folded they lie over the back and breathe; spread they open wide, and in the air (or rearing up) they beat.
+  { const ci = BI.chest * 9, sc = Math.hypot(P.wr[ci], P.wr[ci + 1], P.wr[ci + 2]) || 1, sp = clamp01(W[5]), stream = tr.gallop * moving;
+    const flap = reduce ? 0 : clamp01((sp - .55) / .45) * (air > .15 || W[0] > .25 ? 1 : .35), open = Math.max(sp, .22 * stream);
+    for (const [tag, s] of WING_SIDES) for (let b = 0; b < WING_BONES.length; b++) {
+      const [name, , , fold, face] = WING_BONES[b], bd = WING_BIND[b], beat = flap * (.62 * Math.sin(t * 9.5 - b * .5) + .1), ripple = reduce ? 0 : (1 - open) * .05 * Math.sin(t * 1.8 + b * .9 + s);
+      // the direction (model frame, right side), lifted about the body's long axis by the beat
+      let dx = fold[0] + (bd[0] - fold[0]) * open, dy = fold[1] + (bd[1] - fold[1]) * open, dz = fold[2] + (bd[2] - fold[2]) * open - .12 * stream * (b > 1 ? 1 : 0);
+      const th = (b === 0 ? beat : beat * 1.25) + ripple, c = Math.cos(th), sn = Math.sin(th), y2 = dy * c - dz * sn; dz = dy * sn + dz * c; dy = y2;
+      // the membrane faces: up when spread, outward over the flank when folded
+      let hx = 0, hy = face * .95 * (1 - open), hz = .3 + .7 * open; // so the membrane hangs down the flank when folded const hy2 = hy * c - hz * sn; hz = hy * sn + hz * c; hy = hy2;
+      wingFrame(WF, dx, s * dy, dz, 0, s * hy, hz);
+      // world = chest frame * model frame
+      for (let k = 0; k < 3; k++) { const vx = WF[k * 3], vy = WF[k * 3 + 1], vz = WF[k * 3 + 2];
+        WT[k * 3] = (P.wr[ci] * vx + P.wr[ci + 3] * vy + P.wr[ci + 6] * vz) / sc; WT[k * 3 + 1] = (P.wr[ci + 1] * vx + P.wr[ci + 4] * vy + P.wr[ci + 7] * vz) / sc; WT[k * 3 + 2] = (P.wr[ci + 2] * vx + P.wr[ci + 5] * vy + P.wr[ci + 8] * vz) / sc; }
+      // R = target frame * bind frame^T (bind frames per side)
+      const BF = s < 0 ? WING_BF_L[b] : WING_BF_R[b];
+      for (let col = 0; col < 3; col++) for (let row = 0; row < 3; row++) RM[col * 3 + row] = WT[row] * BF[col] + WT[3 + row] * BF[3 + col] + WT[6 + row] * BF[6 + col];
+      const bi = BI[name + tag]; setWorldAxes(P, bi, RM[0], RM[1], RM[2], RM[3], RM[4], RM[5], RM[6], RM[7], RM[8]); resolveBone(P, bi);
+    } }
   for (let k = 0; k < 4; k++) {
     const L = LEGS[k], top = BI[L.top], can = (L.hind ? G.hindMeta : G.foreMeta) * S, pawH = (G.paw + .012) * S;
     resolveBone(P, top); H[0] = P.wp[top * 3]; H[1] = P.wp[top * 3 + 1]; H[2] = P.wp[top * 3 + 2];

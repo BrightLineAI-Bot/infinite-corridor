@@ -313,14 +313,16 @@ export function meshBuilder(skeleton, detail = 1) {
   };
   const rgb = (hex) => hex == null ? color : [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
   // A sheet (release 892: the Questing Beast's cape-like wings): a two-sided membrane through a grid of model-space points
-  // grid[r][c] = [f, r, u]; each row r is blended between two bones (rowBones[r] = [a, b, w]); tone(r, c) colours it. Normals
+  // grid[r][c] = [f, r, u]; each row r is blended between two bones (rowBones[r] = [a, b, w]), or each vertex (vertBones(r, c));
+  // tone(r, c) colours it. Normals
   // come from the grid; the back face is a mirrored copy, so both sides light.
   B.sheet = (o) => {
     const G = o.grid, rows = G.length, cols = G[0].length, idx = (n) => skeleton.index[n];
     for (const side of [1, -1]) {
       const ids = [];
-      for (let r = 0; r < rows; r++) { const row = [], [ba, bb, w] = o.rowBones[r];
+      for (let r = 0; r < rows; r++) { const row = [];
         for (let c = 0; c < cols; c++) {
+          const [ba, bb, w] = o.vertBones ? o.vertBones(r, c) : o.rowBones[r]; // per vertex when given (the Questing Beast's wing membranes)
           const p = G[r][c], pr = G[Math.min(rows - 1, r + 1)][c], pl = G[Math.max(0, r - 1)][c], pc = G[r][Math.min(cols - 1, c + 1)], pd = G[r][Math.max(0, c - 1)];
           const n = cross3(sub3(pr, pl), sub3(pc, pd)), l = Math.hypot(...n) || 1;
           row.push(vertBlend(p[0], p[1], p[2], side * n[0] / l, side * n[1] / l, side * n[2] / l, idx(ba), idx(bb ?? ba), w || 0, ...rgb(o.tone ? o.tone(r, c) : null)));
