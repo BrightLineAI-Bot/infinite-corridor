@@ -13,7 +13,8 @@ import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountL
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { drawPentagonSigilIcon } from "./renderer.ts";
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors } from "./game.ts";
@@ -293,7 +294,7 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     act?.classList.toggle("selected", save.aimMode === "act");
@@ -507,7 +508,7 @@ function render(ctx, game, w, h, now) {
 const screenCtx = () => ctx;
 // Release 874: the Oculus's dais, on the screen or (in Close View) on the floor texture, placed like the aperture marks.
 function drawOculus(layer, now) {
-  const o = game.oculus; if (!o || o.map !== game.map || (!layer && closeViewShowing(game))) return;
+  const o = game.oculus; if (!o || o.map !== game.map || (!layer && closeViewShowing(game)) || (layer && closeViewDrawsProps())) return; /* 2026-11-11: the GPU scene stands it up as a blue dais (close-view.ts CLOSE_VIEW_PROPS) */
   const c = layer ? layer.ctx : screenCtx(), W = layer ? layer.w : globalThis.innerWidth, H = layer ? layer.h : globalThis.innerHeight, s = Math.round(Math.max(28, Math.min(44, W / 12))), p = game.player;
   drawOculusDais(c, o, now, (x) => W / 2 + (x - p.x) * s, (y) => H / 2 + (y - p.y) * s, s, !!(game.presentation?.reduceMotion || game.presentation?.safeMode));
 }
@@ -519,8 +520,9 @@ function drawApertureVisuals(layer = null) {
     sy = (y) => innerHeight / 2 + (y - game.player.y) * s,
     t = performance.now() / 600;
   ctx.save();
+  const solid = !!layer && closeViewDrawsProps(); /* 2026-11-11: in the GPU scene the crystals float as models (close-view.ts CLOSE_VIEW_PROPS) */
   for (const o of game.map.objects)
-    if (perceived(o, save) && o.visualTier) {
+    if (perceived(o, save) && o.visualTier && !(solid && CLOSE_VIEW_PROPS.objects[o.kind])) {
       const x = sx(o.x + 0.5),
         y = sy(o.y + 0.5);
       // Release 479 (Tim: "the crystals that the rift... the guardians spawn... they're the same crystalline, it's kind of
@@ -1428,7 +1430,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:896,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:905,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1444,7 +1446,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Camera"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View: third-person camera indoors (prototype, this journey)",cv,"Off by default. Turn it on and step inside the Pentagon, a great building or a keep: a low camera follows behind the Wayfarer and turns with them; use the left joystick to walk the way the view looks. Drag the open screen outside the joystick to turn the view (or use the crescent, below); the bullseye at the right edge locks on. Hold the stick back toward the camera and swipe down on the right for a quick turnaround. Use Overworld Close View for courts, roofs and the rest of the game."));
     const worldCv=document.createElement("input");
     worldCv.type="checkbox";worldCv.checked=save.overworldCloseView===true;
-    worldCv.onchange=()=>{save.overworldCloseView=worldCv.checked;persist();game.message=worldCv.checked?"Overworld Close View on.":"Overworld Close View off.";};
+    worldCv.onchange=()=>{save.overworldCloseView=worldCv.checked;persist();game.message=worldCv.checked?(closeViewPlaceAllowed(game)?"Overworld Close View on.":"Overworld Close View on. The view is occluded here; it returns when you leave."/* 2026-11-11: ordinary dungeons and crossings refuse it */):"Overworld Close View off.";};
     grid.append(settingRow("Overworld Close View",worldCv,"Off by default. Uses the third-person camera outside the existing indoor areas, including the overworld, courts and roofs. Some outdoor heights are shown as a flat surface in this experimental view. If the device cannot draw it, the overhead camera takes over."));
     const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));/* release 793: the camera control, its sensitivity */const cc=document.createElement("select");for(const[id,label]of[["drag","Drag anywhere (default)"],["crescent","Pan crescent"]]){const o=document.createElement("option");o.value=id;o.textContent=label;cc.append(o)}cc.value=save.closeViewCamera==="crescent"?"crescent":"drag";cc.onchange=()=>{save.closeViewCamera=cc.value;persist()};grid.append(settingRow("Camera control",cc,"Drag anywhere: drag the open screen outside the left joystick to turn the view. Start inside the joystick to move. Each finger keeps its role until you lift it, and buttons keep their own touches. Quick turnaround: hold the stick back toward the camera and swipe down on the right, and the view swings round behind you. Pan crescent: slide along the arc round the action buttons instead."));const sv=document.createElement("input");sv.type="range";sv.min=String(CLOSE_VIEW.drag.sensitivity[0]);sv.max=String(CLOSE_VIEW.drag.sensitivity[1]);sv.step="0.1";sv.value=String(save.closeViewSensitivity||1);sv.oninput=()=>{save.closeViewSensitivity=Number(sv.value);persist()};grid.append(settingRow("Camera sensitivity",sv,"How far the view turns for a drag (or a slide along the crescent). 1 is the default."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last turn the view (a drag, or the crescent), it slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
@@ -1452,7 +1454,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:896,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 896\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:905,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 905\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1464,7 +1466,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:896,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:905,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2145,7 +2147,7 @@ function openPack(tab) {
       : inventoryView.sort === "power" ? b.item.power-a.item.power : itemScore(b.item)-itemScore(a.item));
   { const bar = document.createElement("div"); bar.className = "inventory-tools";
     if (!gearPick) bar.append(uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }));
-    else { const n = gearPick.size, iron = [...gearPick].reduce((t, q) => t + Math.max(1, ITEM_TIERS.indexOf(itemTier(q)) + 1), 0), go = uiButton(`Salvage selected (${n}) · ${iron} iron`, () => { const r = salvageInventoryItems(save, [...gearPick]); gearPick = null; game.message = `Salvaged ${r.count} piece${r.count === 1 ? "" : "s"} for ${r.iron} cinder iron.`; persist(); openPack(); }); go.disabled = !n;
+    else { const n = gearPick.size, iron = [...gearPick].reduce((t, q) => t + (SMITHY.salvage.iron[itemTier(q)] ?? 1), 0) /* the same table salvage pays from */, go = uiButton(`Salvage selected (${n}) · ${iron} iron`, () => { const r = salvageInventoryItems(save, [...gearPick]); gearPick = null; game.message = `Salvaged ${r.count} piece${r.count === 1 ? "" : "s"} for ${r.iron} cinder iron.`; persist(); openPack(); }); go.disabled = !n;
       const tip = document.createElement("span"); tip.className = "options-note"; tip.textContent = "Tap a piece to leave it out (or put it back).";
       bar.append(go, uiButton("Select all", () => { gearPick = new Set(visibleItems.map((q) => q.item)); openPack(); }), uiButton("Cancel", () => { gearPick = null; openPack(); }), tip); }
     body.append(bar); }
@@ -2264,7 +2266,7 @@ Object.assign(CODEX.creatures,{vesperwing:['Vesperwing — The Ashen Meridian','
 for(const id of ROOF_KINDS){const d=MONSTER_PACK[id];CODEX.creatures[id]=[`${d.name} — ${d.epithet}`,`${d.lore} ${d.attacks.map(a=>ATTACK_MODULES[a]?.text).filter(Boolean).join(' ')} ${ROOF_DWELLERS.codex}`]} // the Pentagon roofs' dwellers (roof-dwellers.ts)
 for(const[id,line]of Object.entries(PENTAGON_LORE.vent))if(CODEX.creatures[id])CODEX.creatures[id]=[CODEX.creatures[id][0],`${CODEX.creatures[id][1]} ${line}`]; // vent-life of the keeps and Pentagons (narrative bible, section 1)
 const ELITE_PORTRAITS={vesperwing:[0,0],gravitantBell:[1,0],mireApostle:[2,0],knifeChoir:[3,0]};
-function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);drawWaymarkIcon(ctx,signal,82)}return canvas}
+function trailMark(kind){const canvas=document.createElement("canvas"),signal={ring:"beacon",chevron:"crossing",triangle:"danger",spiral:"event",pentagon:"pentagon"}[kind];canvas.width=canvas.height=96;const ctx=canvas.getContext("2d");canvas.className=`trail-symbol ${kind}`;canvas.setAttribute("role","img");canvas.setAttribute("aria-label",`${signal} floor mark pointing right`);if(ctx){ctx.translate(48,48);if(kind==="pentagon"){ctx.translate(-18,0);drawPentagonSigilIcon(ctx,82)}else drawWaymarkIcon(ctx,signal,82)}return canvas} // waymark guides: the Pentagon sigil drawn as on the ground, at the same tile size
 const TRAIT_MARKS={plated:["◆","armor"],feral:["▲","damage"],swift:["»","speed"],vital:["●","vitality"],keen:["✦","precision"],farcasting:["⌁","range"],orbital:["◎","orbit"]};
 function traitBadge(id){const meta=CREATURE_TRAITS[id]||{name:id,text:"Unknown trait."},mark=TRAIT_MARKS[id]||["·","unknown"],badge=document.createElement("span");badge.className=`trait-badge trait-${id}`;badge.textContent=`${mark[0]} ${meta.name}`;badge.title=`${mark[1]} — ${meta.text}`;return badge}
 function openCreatureViewer(id,name,coords,elite){const dialog=$("#creatureViewer"),canvas=$("#creatureViewerCanvas"),context=canvas.getContext("2d"),image=new Image(),[column,row]=coords;$("#creatureViewerTitle").textContent=name;context.clearRect(0,0,canvas.width,canvas.height);image.onload=()=>{const columns=4,rows=elite?1:2,sw=image.naturalWidth/columns,sh=image.naturalHeight/rows,side=Math.min(sw,sh),sx=column*sw+(sw-side)/2,sy=row*sh+(sh-side)/2;context.imageSmoothingEnabled=false;context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(image,sx,sy,side,side,0,0,canvas.width,canvas.height)};image.src=elite?"./assets/elite-bestiary-atlas-v1-wide.png":"./assets/bestiary-atlas-v1.png";if(!dialog.open)dialog.showModal()}
@@ -2292,9 +2294,10 @@ function openJournal(mode = "chronicle") {
     }
     const entries=mode==="glossary"?STAT_GLOSSARY.map((entry,i)=>[`term-${i}`,entry]):mode==="rules"?[
       ["ring",["Open ring — Wayglass","Cyan marks lead toward an activated recovery point and Atlas destination. The open side of the ring faces the route."]],
-      ["chevron",["Open chevron — Crossing","Amber marks lead toward a dungeon entrance or buried route. The vertex where the two lines meet points toward the crossing."]],
-      ["triangle",["Hollow triangle — Major danger","Red marks lead toward a world boss or exceptional threat. The corner filled with a red wedge faces the route."]],
-      ["spiral",["Open spiral — Unusual site","Violet marks lead toward a shrine, ruin, or strange discovery. The open end of the spiral faces the route."]],
+      ["chevron",["Open chevron — Skyway","Amber marks lead toward a skyway: floating discs that climb to a door in the open air, the crossing into the Skylands. Follow them and you reach one, often some eight to ten sections on. The vertex where the two lines meet points toward the crossing."]],
+      ["triangle",["Hollow triangle — World boss","Red marks lead toward a world boss: ground a world beast you have woken will claim when you arrive, or one that already holds its ground. The corner filled with a red wedge faces the route."]],
+      ["spiral",["Open spiral — Watcher's Shrine","Violet marks lead toward a Watcher's Shrine, the pristine tomb that folds the Corridor and carries you somewhere else. The open end of the spiral faces the route."]],
+      ["pentagon",["Five-sided sigil — Pentagon","Gold sigils cut into the ground point toward a Pentagon not yet complete. The long point is the way; read one to learn how far."]],
       ["guidance-arrow",["Violet compass arrow — Guidance","Tracks the active quest, Viewport hunt, or Corridor objective. It changes as that objective advances and never replaces a manual waypoint."]],
       ["manual-arrow",["Cyan compass arrow — Manual waypoint","Tracks the explored Atlas section you selected. It remains until you clear or replace it, even while guidance is active."]],
       ...ATLAS_SYMBOLS.map(symbol=>[`atlas-${symbol.kind}`,[symbol.label,symbol.description]]),
@@ -2313,7 +2316,7 @@ function openJournal(mode = "chronicle") {
     if(!entries.length){const empty=document.createElement("p");empty.textContent="No entries recorded yet. Encounter them in the world to unlock this section.";out.append(empty);}
     for(const [id,entry] of entries){
       const article=document.createElement("article"),title=document.createElement("h3"),text=document.createElement("p");article.className="item codex-card";title.textContent=entry[0];text.textContent=entry[1];
-      if(mode==="rules"&&["ring","chevron","triangle","spiral"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge)}
+      if(mode==="rules"&&["ring","chevron","triangle","spiral","pentagon"].includes(id)){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(trailMark(id));article.classList.add("symbol-card");article.prepend(badge)}
       else if(mode==="rules"&&id.startsWith("atlas-")){const badge=document.createElement("span");badge.className="symbol-badge";badge.append(atlasMark(id.slice(6)));article.classList.add("symbol-card");article.prepend(badge)}
       if(mode==="creatures"&&isPackKind(id)){const portrait=document.createElement("canvas");portrait.width=portrait.height=128;portrait.className="creature-portrait pack-portrait";portrait.setAttribute("role","img");portrait.setAttribute("aria-label",`${entry[0]} field illustration`);const pc=portrait.getContext("2d");if(pc)drawPackPortrait(pc,id,128,1200);article.prepend(portrait)}
       const portraitData=mode==="creatures"&&(ELITE_PORTRAITS[id]||CREATURE_PORTRAITS[id]);
@@ -2442,7 +2445,9 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     if (!button) continue;
     const cooling = state.remaining > 0,
       fraction = cooling ? Math.min(1, state.remaining / state.duration) : 0,
-      label = cooling
+      label = action === "tool" && state.rounds /* tool-forms.ts ROUNDS: the round count stays up through the short shot cooldown */
+      ? state.rounds
+      : cooling
       ? `${state.remaining.toFixed(state.remaining < 1 ? 1 : 0)}s`
       : action === "potion"
         ? `×${state.count}`
@@ -2455,6 +2460,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"class:cooling",cooling);
     hudSet(button,"class:unavailable",state.available === false);
     hudSet(button,"data-cooldown",label);
+    if (action === "tool") hudSet(button,"class:empowered",state.empowered === true && !!state.rounds); /* gold count while empowered rounds are held */
     hudSet(button,"aria-label",`${action} ${label}`);
   }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour
@@ -2514,8 +2520,8 @@ function warmCompassSignals() {
   whenIdle(function step(deadline) {
     try {
       if (compassWarmKey() !== key) { compassWarming = false; return; } // moved on: the next frame starts again from there
-      let done = warmWayfindingSignals(save.seed, game.rx, game.ry, save.worldGeneration, 1);
-      while (!done && deadline && !deadline.didTimeout && deadline.timeRemaining() > 4) done = warmWayfindingSignals(save.seed, game.rx, game.ry, save.worldGeneration, 1);
+      let done = warmWayfindingSignals(save.seed, game.rx, game.ry, save.worldGeneration, 1, save);
+      while (!done && deadline && !deadline.didTimeout && deadline.timeRemaining() > 4) done = warmWayfindingSignals(save.seed, game.rx, game.ry, save.worldGeneration, 1, save);
       if (done) { compassWarmFor = key; compassWarming = false; }
       else whenIdle(step);
     } catch (error) { compassWarmFor = key; compassWarming = false; console.warn("Compass warm-up failed", error); }

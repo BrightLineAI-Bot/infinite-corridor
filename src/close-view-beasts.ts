@@ -5,6 +5,7 @@ import { BEAST_SLOT } from "./close-view-beast-rig.ts";
 import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.ts";
 import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.ts";
 import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.ts";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.ts";
 import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
@@ -13,6 +14,7 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   lightningGiant: Object.freeze({ mesh: giantMesh, createTrack: createGiantTrack, sample: sampleGiant, get scale() { return GIANT_RIG.closeViewScale; } }),
   briarStag: Object.freeze({ mesh: stagMesh, createTrack: createStagTrack, sample: sampleStag, get scale() { return STAG_RIG.closeViewScale; } }),
   mountainTurtle: Object.freeze({ mesh: turtleMesh, createTrack: createTurtleTrack, sample: sampleTurtle, get scale() { return TURTLE_RIG.closeViewScale; } }),
+  questingBeast: Object.freeze({ mesh: qbMesh, createTrack: createQbTrack, sample: sampleQb, get scale() { return QB_RIG.closeViewScale; } }),
   nanobotKnight: Object.freeze({ mesh: knightMesh, createTrack: createKnightTrack, sample: sampleKnight, get scale() { return KNIGHT_RIG.closeViewScale; } }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
