@@ -24,14 +24,16 @@ export const GIANT_RIG = Object.freeze({
   // Tim, 2026-11-11: "he should be 100% larger", then "50%", then "maybe 25%". Close View draws the Giant a quarter larger than
   // its standard-view size (presentation only: its body radius, reach, hit areas and timings are the game's and do not change).
   closeViewScale: 1.25,
+  // Signature shapes held at the standard view's emphasis: the helm with its jet plumage and the shoulder coil (pass 1).
+  headScale: 1.14, pylonScale: 1.35,
   hip: .56, thigh: .265, shin: .265, ankle: .06, hipWidth: .14, upperArm: .21, foreArm: .2, club: .62,
-  stride: .62, stance: .6, footLift: .12, bob: .022, sway: .028, settle: 4,
+  stride: .62, stance: .6, stepAt: .085, stepTime: .42, footLift: .12, bob: .034, sway: .03, twistGain: 1.25, impactMs: 420, settle: 4,
   turnRate: 3.2, attackTurnRate: 9, blendMs: 150, deathMs: 2600, landMs: 420, hitMs: 360,
   breathe: Object.freeze({ rate: 1.15, chest: .006, lift: .004 }),
   // Club key poses in the chest frame: grip offset from the shoulder (f, r, u), the club's direction (f, r, u), and the body:
   // chest twist (yaw, + to its right), chest pitch (+ forward), pelvis drop (crouch), pelvis shift forward, lean (whole-body pitch).
   poses: Object.freeze({
-    idle: { grip: [.17, .06, -.3], dir: [.55, .2, -.81], twist: 0, pitch: .04, crouch: .015, shift: 0, lean: 0 },
+    idle: { grip: [.2, .03, -.29], dir: [.62, .06, -.78], twist: -.05, pitch: .06, crouch: .02, shift: .01, lean: 0 },
     arcsLoad: { grip: [.06, .1, -.24], dir: [.35, .25, -.9], twist: .18, pitch: .1, crouch: .05, shift: -.02, lean: 0 },
     arcs: { grip: [.38, .02, -.08], dir: [.97, -.05, -.22], twist: -.12, pitch: .12, crouch: .06, shift: .04, lean: .06 },
     pointLoad: { grip: [.12, .08, -.06], dir: [.35, .1, .93], twist: .22, pitch: -.04, crouch: .03, shift: -.03, lean: 0 },
@@ -42,8 +44,8 @@ export const GIANT_RIG = Object.freeze({
     swingBackLoad: { grip: [.2, -.16, -.05], dir: [.1, -.92, .38], twist: -.72, pitch: .1, crouch: .08, shift: .02, lean: .02 },
     swingCut2: { grip: [.34, .06, -.1], dir: [.95, .1, -.28], twist: -.05, pitch: .16, crouch: .09, shift: .05, lean: .05 },
     swingBack: { grip: [.08, .22, -.15], dir: [-.25, .9, -.35], twist: .6, pitch: .14, crouch: .09, shift: .02, lean: .03 },
-    slamRaise: { grip: [.05, .02, .36], dir: [-.3, .04, .95], twist: .1, pitch: -.18, crouch: -.02, shift: -.05, lean: -.04 },
-    slamDown: { grip: [.36, .02, -.17], dir: [.62, 0, -.78], twist: -.04, pitch: .34, crouch: .13, shift: .07, lean: .1 },
+    slamRaise: { grip: [.05, .02, .37], dir: [-.38, .04, .93], twist: .12, pitch: -.27, crouch: -.035, shift: -.06, lean: -.06 },
+    slamDown: { grip: [.36, .02, -.17], dir: [.62, 0, -.78], twist: -.04, pitch: .4, crouch: .18, shift: .08, lean: .12 },
     raise: { grip: [.04, .03, .38], dir: [.06, .04, 1], twist: .05, pitch: -.14, crouch: 0, shift: -.03, lean: -.03 },
     menace: { grip: [0, .06, .35], dir: [-.42, .12, .9], twist: .2, pitch: -.06, crouch: .04, shift: -.02, lean: 0 },
     chest: { grip: [.06, .2, -.28], dir: [.25, .62, -.74], twist: .08, pitch: -.12, crouch: .05, shift: -.03, lean: -.05 },
@@ -116,99 +118,120 @@ function buildGiantMesh(tier) {
   const C = palette();
   const d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(GIANT_SKELETON, d);
   const U = [0, 0, 1], F = [1, 0, 0], DOWN = [0, 0, -1];
-  // Legs: armoured thigh, knee cap, shin with guard and calf hydraulics, heavy wedge foot with toe plate and heel.
+  // Legs (pass 1, 2026-11-11: heavier, layered): a hip ball, an armoured thigh with front and outer plates, a wedge knee
+  // cap, a calf-heavy shin with an angled guard and twin calf pistons, an ankle ball, and a broad wedge foot with split toes
+  // and a heel spur, so each step lands on a slab of iron.
   for (const side of ['L', 'R']) {
     const s = side === 'R' ? 1 : -1;
-    B.bone('thigh' + side).color(C.metal).box({ at: [0, 0, -.115], size: [.105, .085, .125], bevel: .25, taper: -.12 });
-    if (!low) B.color(C.plate).box({ at: [.065, s * .02, -.1], size: [.04, .07, .095], bevel: 0, F: [1, 0, -.15] });
-    B.bone('shin' + side).color(C.plate).box({ at: [.055, 0, .005], size: [.06, .07, .055], bevel: 0, taper: .2 }); // knee cap
-    B.color(C.metal).box({ at: [0, 0, -.12], size: [.085, .075, .12], bevel: .25, taper: -.15 });
-    if (!low) B.color(C.plate).box({ at: [.075, 0, -.1], size: [.022, .052, .1], bevel: 0, taper: .15 }); // shin guard
-    if (!low) {
-      B.color(C.hydraulic).lathe({ at: [-.07, 0, -.04], F: DOWN, rings: [[0, .024], [.1, .024]], seg: 6 });
-      B.color(C.rod).lathe({ at: [-.07, 0, -.14], F: DOWN, rings: [[0, .011], [.07, .011]], seg: 5, caps: false });
+    B.bone('thigh' + side); if (!low) B.color(C.dark).ellipsoid({ at: [0, 0, 0], radius: [.075, .075, .07], rings: 4, seg: 8 });
+    B.color(C.metal).box({ at: [0, 0, -.125], size: [.12, .1, .13], bevel: .22, taper: .18 });
+    B.color(C.plate).box({ at: [.09, 0, -.11], size: [.035, .085, .11], bevel: .25, F: [1, 0, -.12], taper: .1 }); // front plate
+    if (!low) B.color(C.plate).box({ at: [0, s * .1, -.1], size: [.08, .025, .09], bevel: .25, taper: .15 }); // outer plate
+    if (!low) B.color(C.trim, E_COIL).box({ at: [.126, 0, -.05], size: [.004, .06, .006], bevel: 0 });
+    B.bone('shin' + side); if (!low) B.color(C.dark).ellipsoid({ at: [0, 0, 0], radius: [.06, .07, .06], rings: 3, seg: 7 }); // knee joint
+    B.color(C.plate).slab({ at: [.06, 0, 0], F: [1, 0, 0], U: [0, 0, 1], points: [[-.02, -.06], [.06, -.03], [.07, .03], [.02, .07], [-.03, .05]], thick: .12, bevel: .01 }); // wedge knee cap
+    B.color(C.metal).box({ at: [-.005, 0, -.11], size: [.1, .085, .125], bevel: .22, taper: -.28 });
+    B.color(C.plate).box({ at: [.08, 0, -.1], size: [.03, .07, .11], bevel: .25, F: [1, 0, .1], taper: -.2 }); // shin guard
+    if (!low) for (const r of [-.035, .035]) {
+      B.color(C.hydraulic).lathe({ at: [-.09, r, -.03], F: DOWN, rings: [[0, .022], [.11, .022]], seg: 6 });
+      B.color(C.rod).lathe({ at: [-.09, r, -.14], F: DOWN, rings: [[0, .011], [.08, .011]], seg: 5, caps: false });
     }
-    if (full) B.color(C.trim, E_COIL).box({ at: [.1, 0, -.02], size: [.006, .05, .007], bevel: 0 });
-    if (!low) B.bone('foot' + side).color(C.dark).ellipsoid({ at: [0, 0, .005], radius: [.05, .05, .05], rings: 3, seg: 6 }); // ankle
-    B.bone('foot' + side).color(C.dark).box({ at: [.035, 0, -.03], size: [.14, .085, .032], bevel: .3, taper: .25, skew: -.02 });
-    B.color(C.plate).box({ at: [.16, 0, -.042], size: [.045, .075, .022], bevel: 0, taper: .3 }); // toe plate
-    if (!low) B.color(C.dark).box({ at: [-.085, 0, -.035], size: [.035, .07, .028], bevel: 0 }); // heel
+    if (!low) B.color(C.trim, E_COIL).box({ at: [.112, 0, -.03], size: [.004, .045, .006], bevel: 0 });
+    B.bone('foot' + side).color(C.dark).ellipsoid({ at: [0, 0, .005], radius: [.055, .06, .05], rings: 3, seg: 7 }); // ankle
+    B.color(C.dark).box({ at: [.03, 0, -.032], size: [.15, .1, .035], bevel: .3, taper: .3, skew: -.02 });
+    for (const r of low ? [0] : [-.045, .045]) B.color(C.plate).box({ at: [.17, r, -.045], size: [.05, low ? .085 : .04, .023], bevel: .3, taper: .35, F: [1, r * 2, 0] }); // toes
+    B.color(C.metal).box({ at: [-.1, 0, -.04], size: [.04, .075, .03], bevel: .3, taper: .3 }); // heel spur
   }
-  // Pelvis and the hip skirt (tassets over both thigh roots).
-  B.bone('pelvis').color(C.dark).box({ at: [0, 0, 0], size: [.15, .2, .07], bevel: .25 });
-  if (!low) for (const s of [-1, 1]) B.color(C.dark).box({ at: [.07, s * .11, -.07], size: [.06, .085, .075], bevel: 0, U: [.35, 0, 1], F: [1, 0, -.35] });
-  if (!low) B.color(C.metal).box({ at: [-.1, 0, -.05], size: [.04, .16, .07], bevel: 0, F: [1, 0, .3] });
-  // Waist: two segmented collars.
-  B.bone('spine').color(C.dark).box({ at: [0, 0, .0], size: [.13, .16, .035], bevel: 0 });
-  if (!low) { B.color(C.edge).box({ at: [0, 0, .045], size: [.12, .15, .012], bevel: 0 }); B.color(C.dark).box({ at: [0, 0, .08], size: [.14, .17, .035], bevel: 0 }); }
-  // Chest: a barrel torso, breastplate around the glowing core, a back pack, collar, trim seams and rivets.
-  B.bone('chest').color(C.metal).box({ at: [0, 0, .07], size: [.2, .28, .13], bevel: .28, taper: -.1 });
-  B.color(C.plate).box({ at: [.12, 0, .06], size: [.1, .22, .11], bevel: .3, taper: .12, skew: .01 });
-  B.color(C.dark).lathe({ at: [.21, .0, .055], F, rings: [[-.01, .09], [.02, .088], [.025, .07]], seg: 10, smooth: false, caps: false });
-  B.color(C.core, E_CORE).ellipsoid({ at: [.235, 0, .055], radius: [.022, .068, .068], rings: 3 });
-  if (!low) B.color(C.hot, E_CORE).ellipsoid({ at: [.252, 0, .055], radius: [.012, .036, .036], rings: 2, seg: 6 });
-  if (!low) for (const s of [-1, 1]) B.color(C.trim, E_COIL).box({ at: [.2, s * .16, .06], size: [.012, .045, .008], bevel: 0, F: [1, s * .5, 0] });
-  B.color(C.dark).box({ at: [-.17, 0, .08], size: [.07, .19, .11], bevel: 0, taper: .1 }); // back pack
-  if (full) for (const z of [.04, .09, .14]) B.color(C.edge).box({ at: [-.24, 0, z], size: [.006, .15, .01], bevel: 0 }); // vents
-  B.color(C.dark).box({ at: [0, 0, .2], size: [.15, .18, .04], bevel: 0, taper: .1 }); // raised collar
-  if (full) for (const [f, r, u] of [[.2, -.17, .13], [.2, .19, .13], [.21, -.19, -.01], [.21, .2, -.01]]) B.color(C.rivet).box({ at: [f, r, u], size: [.012, .012, .012], bevel: 0 });
-  // Head: a heavy dome with a jutting brow, a visor slit (lit), a jaw guard, the crown cap with its lit channel, and the four
-  // coil jets fanned back from the crown.
-  B.bone('head').color(C.metal).ellipsoid({ at: [.01, 0, .115], radius: [.155, .14, .13], rings: 4, seg: 9, F: U, U: [1, 0, 0] });
-  if (!low) B.color(C.plate).box({ at: [.13, 0, .145], size: [.04, .125, .022], bevel: 0, F: [1, 0, -.2] }); // brow
-  B.color(C.visor).box({ at: [.145, 0, .1], size: [.025, .105, .028], bevel: 0 });
-  B.color(C.core, E_CORE).box({ at: [.168, 0, .1], size: [.006, .085, .009], bevel: 0 });
-  B.color(C.dark).box({ at: [.115, 0, .035], size: [.05, .095, .04], bevel: 0, taper: .2 }); // jaw guard
-  B.color(C.metal).box({ at: [-.02, 0, .225], size: [.12, .1, .035], bevel: .35, taper: .25 }); // crown cap
-  if (!low) B.color(C.trim, E_COIL).box({ at: [-.01, 0, .262], size: [.1, .012, .006], bevel: 0, F: [1, 0, -.15] }); // lit channel
+  // Pelvis: a broad girdle, a front plate, side tassets and a back plate over both thigh roots.
+  B.bone('pelvis').color(C.dark).box({ at: [0, 0, .005], size: [.16, .22, .075], bevel: .25, taper: -.1 });
+  B.color(C.metal).box({ at: [.15, 0, -.03], size: [.03, .1, .07], bevel: .3, F: [1, 0, -.3], taper: .3 });
+  for (const s of [-1, 1]) B.color(C.metal).box({ at: [.02, s * .2, -.05], size: [.09, .03, .08], bevel: .3, U: [0, s * .35, 1], taper: .2 });
+  if (!low) B.color(C.metal).box({ at: [-.13, 0, -.04], size: [.03, .15, .07], bevel: .3, F: [1, 0, .3] });
+  // Waist: three segmented collars, the abdomen's armour stepping in under the chest.
+  B.bone('spine').color(C.edge).lathe({ at: [0, 0, -.03], F: U, U: [1, 0, 0], rings: [[0, .13], [.12, .13]], rs: 1.25, seg: 8, smooth: false });
+  B.color(C.dark).lathe({ at: [0, 0, -.005], F: U, U: [1, 0, 0], rings: [[0, .15], [.035, .15]], rs: 1.2, seg: 8, smooth: false });
+  if (!low) B.color(C.dark).lathe({ at: [0, 0, .055], F: U, U: [1, 0, 0], rings: [[0, .15], [.035, .155]], rs: 1.2, seg: 8, smooth: false });
+  // Chest: the barrel torso, an overhanging upper plate, a V breastplate round the core housing, side plates, the back pack
+  // with its vents, the collar.
+  B.bone('chest').color(C.metal).box({ at: [0, 0, .07], size: [.21, .3, .14], bevel: .28, taper: -.12 });
+  B.color(C.plate).box({ at: [.02, 0, .19], size: [.2, .32, .04], bevel: 0, taper: .1 }); // upper plate
+  for (const s of [-1, 1]) B.color(C.plate).box({ at: [.15, s * .12, .06], size: [.07, .11, .1], bevel: .3, U: [0, 0, 1], F: [1, s * .35, 0], taper: .1 }); // V breastplate
+  if (!low) for (const s of [-1, 1]) B.color(C.metal).box({ at: [.02, s * .3, .05], size: [.12, .03, .09], bevel: .3, taper: .2 }); // side plates
+  B.color(C.dark).lathe({ at: [.21, 0, .055], F, rings: [[-.02, .1], [.025, .098], [.032, .075]], seg: 12, smooth: false, caps: false });
+  B.color(C.core, E_CORE).ellipsoid({ at: [.235, 0, .055], radius: [.022, .072, .072], rings: 3, seg: 10 });
+  if (!low) B.color(C.hot, E_CORE).ellipsoid({ at: [.252, 0, .055], radius: [.012, .038, .038], rings: 2, seg: 8 });
+  if (!low) for (const s of [-1, 1]) B.color(C.trim, E_COIL).box({ at: [.205, s * .15, .11], size: [.008, .055, .007], bevel: 0, F: [1, s * .35, 0] });
+  B.color(C.dark).box({ at: [-.18, 0, .08], size: [.08, .2, .12], bevel: .25, taper: .1 }); // back pack
+  if (!low) for (const z of [.03, .08, .13]) B.color(C.core, E_COIL).box({ at: [-.262, 0, z], size: [.004, .13, .008], bevel: 0 }); // vents, lit
+  B.color(C.dark).box({ at: [0, 0, .225], size: [.15, .19, .035], bevel: 0, taper: .1 }); // raised collar
+  if (full) for (const [f, r, u] of [[.2, -.2, .14], [.2, .2, .14], [.21, -.24, -.01], [.21, .24, -.01], [.0, -.31, .1], [.0, .31, .1]]) B.color(C.rivet).box({ at: [f, r, u], size: [.012, .012, .012], bevel: 0 });
+  // Head: a heavy dome over a squared base, a jutting brow, the lit visor slit, cheek plates and jaw guard, the crown cap
+  // with its lit channel, and the four coil jets fanned back from the crown like plumage.
+  B.bone('head').color(C.metal).ellipsoid({ at: [.0, 0, .13], radius: [.15, .135, .12], rings: 4, seg: 10, F: U, U: [1, 0, 0] });
+  B.color(C.metal).box({ at: [.01, 0, .07], size: [.14, .13, .07], bevel: .3, taper: .1 });
+  B.color(C.plate).box({ at: [.135, 0, .14], size: [.045, .13, .022], bevel: .3, F: [1, 0, -.25] }); // brow
+  B.color(C.visor).box({ at: [.15, 0, .1], size: [.02, .11, .03], bevel: 0 });
+  B.color(C.core, E_CORE).box({ at: [.171, 0, .1], size: [.005, .09, .009], bevel: 0 });
+  for (const s of low ? [] : [-1, 1]) B.color(C.plate).box({ at: [.1, s * .12, .06], size: [.06, .02, .05], bevel: .3, F: [1, s * .3, 0] }); // cheeks
+  B.color(C.dark).box({ at: [.12, 0, .03], size: [.05, .09, .04], bevel: .3, taper: .25 }); // jaw guard
+  if (!low) for (const r of [-.04, 0, .04]) B.color(C.edge).box({ at: [.168, r, .03], size: [.004, .008, .025], bevel: 0 }); // jaw vents
+  B.color(C.metal).box({ at: [-.02, 0, .235], size: [.12, .1, .035], bevel: .35, taper: .25 }); // crown cap
+  if (!low) B.color(C.trim, E_COIL).box({ at: [-.01, 0, .272], size: [.1, .012, .006], bevel: 0, F: [1, 0, -.15] }); // lit channel
   JETS.forEach(([x0, y0, a, len, r], n) => {
     if (low && n < 2) return;
     const dir = jetDir(a), at = [x0, 0, y0], Fj = dir, tip = len + r * .3;
-    B.color(C.hydraulic).lathe({ at, F: Fj, rings: [[0, r], [len * .82, r * .9]], seg: 6, smooth: false, caps: false });
-    if (!low) for (let k = 0; k < 2; k++) { const f = len * (.2 + .35 * k); B.color(k % 2 ? C.copperDark : C.copper).lathe({ at, F: Fj, rings: [[f, r * 1.1], [f + len * .18, r * 1.1]], seg: 6, caps: false }); }
-    B.color(C.metal).lathe({ at, F: Fj, rings: [[len * .78, r * .95], [tip, r * 1.4]], seg: 6, smooth: false, caps: false });
-    B.color(C.hot, E_BURST).lathe({ at, F: Fj, rings: [[tip - .002, r * 1.3], [tip, 0]], seg: 6, caps: false });
+    if (!low) B.color(C.dark).ellipsoid({ at, radius: [r * 1.25, r * 1.25, r * 1.25], rings: 2, seg: 6 });
+    B.color(C.hydraulic).lathe({ at, F: Fj, rings: [[0, r], [len * .82, r * .9]], seg: 7, smooth: false, caps: false });
+    if (!low) for (let k = 0; k < 2; k++) { const f = len * (.18 + .3 * k); B.color(k % 2 ? C.copperDark : C.copper).lathe({ at, F: Fj, rings: [[f, r * 1.12], [f + len * .14, r * 1.12]], seg: 7, caps: false }); }
+    B.color(C.metal).lathe({ at, F: Fj, rings: [[len * .78, r * .95], [tip, r * 1.45]], seg: 7, smooth: false, caps: false });
+    B.color(C.hot, E_BURST).lathe({ at, F: Fj, rings: [[tip - .002, r * 1.35], [tip, 0]], seg: 7, caps: false });
   });
   // The bursts: a lightning-bolt glyph of energy out of each nozzle, crossed so it reads from every side.
   JETS.forEach(([, , a, , r, burst], n) => {
     if (low && n < 2) return;
     const dir = jetDir(a), w = r * 1.5, L = burst, glyph = [[0, -w * .55], [L * .5, -w * .15], [L * .44, -w * .85], [L, 0], [L * .52, w * .2], [L * .58, w * .9], [0, w * .55]];
     B.bone('jet' + n).color(C.hot, E_BURST);
-    // two flat crossed planes (the emissive shader lights both faces the same)
     const Pa = B.frame({ F: dir, U: [0, 1, 0] }), Pb = B.frame({ F: dir, U: [-dir[2], 0, dir[0]] });
     B.poly(glyph.map(([a, b]) => Pa(a, 0, b))); B.poly(glyph.map(([a, b]) => Pb(a, 0, b)));
   });
-  // The club arm: pauldron with its blue rim, armoured upper arm, elbow, gauntlet and fist.
-  B.bone('shoulderR').color(C.plate).ellipsoid({ at: [-.005, .035, .03], radius: [.15, .13, .1], rings: 4, F: U, U: [1, 0, 0] });
-  B.color(C.trim, E_COIL).lathe({ at: [-.005, .035, -.035], F: U, rings: [[0, .145], [.012, .14]], seg: 10, rs: 1, us: .87, caps: false });
-  if (full) for (const [f, r] of [[-.08, .05], [.02, .1], [.1, .07]]) B.color(C.rivet).box({ at: [f, r, .1], size: [.012, .012, .012], bevel: 0 });
-  B.bone('upperArmR').color(C.metal).box({ at: [0, 0, -.1], size: [.07, .065, .1], bevel: .3 });
-  B.bone('foreArmR').color(C.plate).ellipsoid({ at: [0, 0, 0], radius: [.065, .065, .065], rings: 4 });
-  B.color(C.metal).box({ at: [0, 0, -.1], size: [.085, .08, .105], bevel: .28, taper: .12 });
-  if (!low) B.color(C.dark).box({ at: [.07, 0, -.11], size: [.02, .055, .08], bevel: 0 });
-  B.bone('handR').color(C.dark).box({ at: [0, 0, -.02], size: [.078, .072, .055], bevel: 0, taper: .1 });
-  if (!low) for (const r of [-.035, 0, .035]) B.color(C.edge).box({ at: [.075, r, -.02], size: [.006, .006, .04], bevel: 0 }); // knuckles
-  // The Tesla mace along +f: steel haft with grip wraps, a lower flange, the flanged capacitor head wound in copper, two
-  // vents and the capacitor cap.
-  B.bone('club').color(C.haft).lathe({ at: [0, 0, 0], F, rings: [[-.09, .034], [.37, .037]], seg: 8 });
-  if (!low) for (const f of [-.05, .02, .09]) B.color(0x2a2f35).lathe({ at: [0, 0, 0], F, rings: [[f, .041], [f + .025, .041]], seg: 8, caps: false });
-  B.color(C.dark).lathe({ at: [0, 0, 0], F, rings: [[.33, .045], [.37, .13], [.385, .085]], seg: 8, smooth: false });
-  B.color(C.metal).lathe({ at: [0, 0, 0], F, rings: [[.38, .1], [.42, .125], [.57, .118], [.605, .075], [.615, .03]], seg: 8, smooth: false });
-  if (!low) for (const f of [.44, .485, .53]) {
-    B.color(f === .485 ? C.copper : C.copperDark).lathe({ at: [0, 0, 0], F, rings: [[f, .127], [f + .028, .127]], seg: 8, caps: false });
-  }
-  for (const s of [-1, 1]) B.color(C.core, E_COIL).box({ at: [.555, s * .06, .1], size: [.018, .016, .01], bevel: 0 });
-  B.color(C.hot, E_COIL).ellipsoid({ at: [.615, 0, 0], radius: [.032, .045, .045], rings: 3 });
+  // The club arm: a layered pauldron (three overlapping shells over the shoulder ball, a blue rim on the lowest), an
+  // armoured upper arm with a bicep plate, the elbow, a flared gauntlet and a heavy fist round the haft.
+  B.bone('shoulderR').color(C.dark).ellipsoid({ at: [0, 0, 0], radius: [.08, .08, .08], rings: 4, seg: 8 });
+  const shell = (u, out, w, h, tone) => B.color(tone).box({ at: [-.005, .045 + out, u], size: [w, .1, h], bevel: .35, U: [0, .55, 1], taper: .25 });
+  shell(.08, 0, .15, .035, C.plate); shell(.035, .035, .145, .032, C.metal); if (!low) shell(-.01, .065, .135, .03, C.plate);
+  if (!low) B.color(C.trim, E_COIL).box({ at: [-.005, .16, -.035], size: [.13, .006, .006], bevel: 0, U: [0, .55, 1] });
+  if (full) for (const [f, r] of [[-.08, .05], [.02, .07], [.1, .05]]) B.color(C.rivet).box({ at: [f, r, .118], size: [.012, .012, .012], bevel: 0 });
+  B.bone('upperArmR').color(C.metal).box({ at: [0, 0, -.11], size: [.075, .07, .1], bevel: .3, taper: -.1 });
+  if (!low) B.color(C.plate).box({ at: [.06, 0, -.1], size: [.025, .06, .08], bevel: .3 });
+  B.bone('foreArmR').color(C.dark).ellipsoid({ at: [0, 0, 0], radius: [.068, .068, .068], rings: 4, seg: 8 });
+  B.color(C.metal).box({ at: [0, 0, -.1], size: [.09, .085, .105], bevel: .28, taper: -.18 }); // gauntlet, flaring to the wrist
+  B.color(C.plate).box({ at: [.075, 0, -.1], size: [.025, .07, .09], bevel: .3, taper: -.15 });
+  if (!low) B.color(C.trim, E_COIL).box({ at: [.102, 0, -.17], size: [.004, .055, .006], bevel: 0 });
+  B.bone('handR').color(C.dark).box({ at: [.01, 0, -.025], size: [.08, .078, .06], bevel: .3, taper: .1 });
+  if (!low) for (const r of [-.04, 0, .04]) B.color(C.metal).box({ at: [.07, r, -.03], size: [.018, .016, .045], bevel: 0 }); // finger plates
+  // The Tesla mace along +f: steel haft with grip wraps and a pommel, a lower flange, the capacitor head with six radial
+  // flanges and copper windings between them, two lit vents and the capacitor cap.
+  B.bone('club').color(C.haft).lathe({ at: [0, 0, 0], F, rings: [[-.1, .034], [.37, .038]], seg: 8 });
+  if (!low) B.color(C.dark).lathe({ at: [0, 0, 0], F, rings: [[-.14, .02], [-.12, .05], [-.1, .042]], seg: 8, smooth: false });
+  if (!low) for (const f of [-.06, .0, .06]) B.color(0x2a2f35).lathe({ at: [0, 0, 0], F, rings: [[f, .042], [f + .03, .042]], seg: 8, caps: false });
+  B.color(C.dark).lathe({ at: [0, 0, 0], F, rings: [[.32, .045], [.37, .14], [.385, .09]], seg: 10, smooth: false });
+  B.color(C.metal).lathe({ at: [0, 0, 0], F, rings: [[.38, .105], [.42, .13], [.57, .122], [.605, .08], [.62, .03]], seg: 10, smooth: false });
+  for (let k = 0; k < (low ? 0 : 6); k++) { const a = k / (low ? 3 : 6) * Math.PI * 2 + .26; B.color(C.plate).box({ at: [.49, Math.cos(a) * .135, Math.sin(a) * .135], size: [.085, .012, .03], bevel: .3, U: [0, Math.cos(a), Math.sin(a)], taper: .35 }); }
+  if (!low) for (const f of [.44, .5]) B.color(f === .44 ? C.copper : C.copperDark).lathe({ at: [0, 0, 0], F, rings: [[f, .132], [f + .03, .132]], seg: 10, caps: false });
+  for (const s of [-1, 1]) B.color(C.core, E_COIL).box({ at: [.57, s * .07, .095], size: [.016, .016, .01], bevel: 0 });
+  B.color(C.hot, E_COIL).ellipsoid({ at: [.62, 0, 0], radius: [.035, .05, .05], rings: 3, seg: 8 });
   // The coil pylon on the club shoulder (leaning back): a vented mount, a core rod, copper windings and a steel toroid.
   const lean = [-.22, 0, .975];
   B.bone('pylon').color(C.dark).box({ at: [0, 0, .02], size: [.06, .06, .025], bevel: 0, taper: .2 });
   B.color(C.farTone).lathe({ at: [0, 0, .04], F: lean, rings: [[0, .024], [.17, .02]], seg: 6 });
   for (let i = 0; i < (low ? 0 : 5); i++) B.color(i % 2 ? C.copperDark : C.copper).lathe({ at: [0, 0, .04], F: lean, rings: [[.03 + i * .028, .04 - i * .003], [.05 + i * .028, .04 - i * .003]], seg: 7, caps: false });
   B.color(C.steel).lathe({ at: [-.045, 0, .23], F: lean, rings: [[-.014, .03], [0, .062], [.014, .03]], seg: 9 });
-  // The lost arm's socket: a ring housing with severed cable stubs, a steady glow inside.
-  B.bone('socketL').color(C.farTone).lathe({ at: [0, -.01, 0], F: [0, -1, 0], rings: [[-.02, .075], [.04, .095], [.06, .07]], seg: 10, smooth: false, caps: false });
+  // The lost arm's socket: the torn remains of its pauldron (a jagged shell), a ring housing, severed cable stubs and
+  // a steady glow inside.
+  B.bone('socketL').color(C.metal).slab({ at: [-.01, -.03, .06], F: [1, 0, 0], U: [0, -.5, 1], points: [[-.13, -.02], [-.08, .05], [0, .07], [.07, .05], [.12, .01], [.09, -.02], [.05, .02], [.02, -.04], [-.03, .0], [-.07, -.05]], thick: .09, bevel: .008 });
+  B.color(C.farTone).lathe({ at: [0, -.01, 0], F: [0, -1, 0], rings: [[-.02, .08], [.045, .105], [.065, .078]], seg: 12, smooth: false, caps: false });
   B.color(C.core, E_CORE).lathe({ at: [0, -.01, 0], F: [0, -1, 0], rings: [[.05, .06], [.056, 0]], seg: 10, caps: false });
-  if (!low) for (const [a, l] of [[2.5, .06], [3.2, .045], [3.9, .055]]) {
+  if (!low) for (const [a, l] of [[2.3, .07], [2.9, .05], [3.4, .065], [4.0, .05]]) {
     const c = Math.cos(a), sn = Math.sin(a);
     B.color(C.copperDark).lathe({ at: [c * .06, -.07, -sn * .065], F: [c * .3, -1, -sn * .3 - .3], rings: [[0, .012], [l, .009]], seg: 4 });
   }
@@ -258,15 +281,15 @@ function phaseOf(pack, id) {
 // The movement and attack the body acts out this frame: fills V (the pose vector) and returns facts the rest of the pose
 // uses (the aim to face, the share of a strike, the glows). Pure in (e, its pack state, the time); `tr` carries only the
 // moments of impulses it has already seen.
-const ACT = { aimX: 0, aimY: 0, aim: false, coil: 0, core: 0, plume: 0, bolts: 0, still: false, contact: 0, phase: '', tremble: 0, airTuck: 0, brace: 0 };
+const ACT = { watch: false, aimX: 0, aimY: 0, aim: false, coil: 0, core: 0, plume: 0, bolts: 0, still: false, contact: 0, phase: '', tremble: 0, airTuck: 0, brace: 0 };
 function act(e, tr, now, target) {
   const pack = e.pack, id = pack?.attack, ph = pack?.phase, d = pack?.data || {}, g = e.giantPose;
-  ACT.aim = false; ACT.coil = 0; ACT.core = 0; ACT.plume = e.giantThrust ? 1 : 0; ACT.bolts = 0; ACT.still = false; ACT.contact = 0; ACT.phase = id ? `${id}:${ph}` : 'move'; ACT.tremble = 0; ACT.airTuck = 0; ACT.brace = 0;
+  ACT.aim = false; ACT.watch = false; ACT.coil = 0; ACT.core = 0; ACT.plume = e.giantThrust ? 1 : 0; ACT.bolts = 0; ACT.still = false; ACT.contact = 0; ACT.phase = id ? `${id}:${ph}` : 'move'; ACT.tremble = 0; ACT.airTuck = 0; ACT.brace = 0;
   const aimAt = (x, y) => { const dx = x - e.x, dy = y - e.y, l = Math.hypot(dx, dy); if (l > .01) { ACT.aimX = dx / l; ACT.aimY = dy / l; ACT.aim = true; } };
   const aimDir = (a) => { if (a && Number.isFinite(a.x) && Number.isFinite(a.y) && Math.hypot(a.x, a.y) > .01) { const l = Math.hypot(a.x, a.y); ACT.aimX = a.x / l; ACT.aimY = a.y / l; ACT.aim = true; } };
   const x = id ? phaseOf(pack, id) : 0;
   if (!id) {
-    setVec(V, 'idle');
+    setVec(V, 'idle'); ACT.watch = true; // standing, it keeps the Wayfarer in front of it (walking, it faces where it goes)
     if (e.giantThrust) { lerpInto(V, 'chargeLow', 1); ACT.still = true; ACT.brace = 1; } // a traversal burst
     return;
   }
@@ -364,6 +387,7 @@ export function sampleGiant(tr, e, env) {
   let want = tr.yaw;
   if (ACT.aim) want = Math.atan2(ACT.aimY, ACT.aimX);
   else if (Number.isFinite(dx) && Math.hypot(dx, dy) > .004 * Math.max(1, dt * 60)) want = Math.atan2(dy, dx);
+  else if (ACT.watch && env.target && !dead) { const tx = env.target.x - e.x, ty = env.target.y - e.y; if (Math.hypot(tx, ty) > .3) want = Math.atan2(ty, tx); }
   else if (!Number.isFinite(want)) want = e.facingX < 0 ? Math.PI : 0;
   if (!Number.isFinite(tr.yaw)) tr.yaw = want;
   if (!dead) { const delta = Math.atan2(Math.sin(want - tr.yaw), Math.cos(want - tr.yaw)), rate = e.pack?.attack ? G.attackTurnRate : G.turnRate * (e.giantCharged > 0 ? 1.4 : 1); tr.yaw += Math.max(-1, Math.min(1, dt * rate)) * delta; }
@@ -387,10 +411,20 @@ export function sampleGiant(tr, e, env) {
   W2[8] += .11 * land; W2[7] += .12 * land;
   const stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0));
   if (stun > 0) { const dz = POSE_VEC.dazed; for (let k = 0; k < K; k++) W2[k] += (dz[k] - W2[k]) * stun; normDir(W2); }
+  // a blow landing shudders through the whole machine (pass 2): the rising edge of each contact
+  if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = /Slam|Menace|slamFall/.test(ACT.phase) || e.giantPose === 'slamDown' ? 1 : .55; }
+  tr.contactWas = ACT.contact;
+  const impT = (now - tr.impactAt) / 1000, impact = impT < G.impactMs / 1000 ? kick(impT, 26, 9) * (tr.impactK || .5) : 0;
+  W2[8] += .03 * Math.abs(impact); W2[7] += .05 * impact;
+  W2[6] *= G.twistGain;
   if (ACT.tremble && !reduce) { const q = Math.sin(t * 61) * .5 + Math.sin(t * 43) * .5; W2[7] += .012 * q * ACT.tremble; W2[6] += .01 * q * ACT.tremble; }
   // gait: planted feet driven by the distance it actually travelled
   const still = ACT.still || !!e.giantThrust || air > .05 || dead || !!e.marine || e.fleeFade != null;
-  stepGait(tr.gait, env.x, env.y, yaw, now, { stride: G.stride * S, stance: G.stance, settle: G.settle, still, snapDistance: 3 * S });
+  // the stance the feet step into while it stands or strikes: the club-side foot back for a cocked blow, forward after it,
+  // wide and braced for the charge (pass 2: they step there, never slide)
+  { const lead = ACT.brace ? .14 * ACT.brace : W2[6] > .25 ? .07 : W2[6] < -.25 ? -.06 : 0, spread = .15 + .03 * Math.min(1, Math.abs(W2[6]) + ACT.brace);
+    tr.gait.fore[0] = (ACT.brace ? .13 * ACT.brace : lead ? -lead * .8 : 0) * S; tr.gait.fore[1] = -lead * S; tr.gait.side[0] = -spread * S; tr.gait.side[1] = spread * S; }
+  stepGait(tr.gait, env.x, env.y, yaw, now, { stride: G.stride * S, stance: G.stance, settle: G.settle, still, snapDistance: 3 * S, stepAt: G.stepAt * S, stepTime: G.stepTime });
   const moving = tr.gait.moving, cyc = tr.gait.phase * Math.PI * 2;
   // root: position, yaw, scale; death topples it like a felled tower (pivot at the feet), away from its killer
   resetPose(P);
@@ -411,13 +445,14 @@ export function sampleGiant(tr, e, env) {
   // pelvis: crouch, weight forward, the gait's bob (down at each plant) and sway over the stance foot, breathing
   const breathe = reduce ? 0 : Math.sin(t * Math.PI * 2 * G.breathe.rate / 2.4);
   const bob = moving * G.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = moving * G.sway * Math.sin(cyc);
-  setOffset(P, BI.pelvis, W2[9], sway * (reduce ? .5 : 1), -W2[8] - bob + breathe * G.breathe.lift * .5);
-  setEuler(P, BI.pelvis, (reduce ? 0 : moving * .06 * Math.sin(cyc)), W2[10] + (ACT.brace ? .05 * ACT.brace : 0), -sway * .8);
+  const settleShift = reduce || dead ? 0 : (1 - moving) * .014 * wobble(t * .32, 5); // standing, it shifts its weight now and then
+  setOffset(P, BI.pelvis, W2[9], sway * (reduce ? .5 : 1) + W2[6] * .028 + settleShift, -W2[8] - bob + breathe * G.breathe.lift * .5);
+  setEuler(P, BI.pelvis, W2[6] * .22 + (reduce ? 0 : moving * .06 * Math.sin(cyc)), W2[10] + (ACT.brace ? .05 * ACT.brace : 0), -sway * .8 - settleShift * 1.5);
   resolveBone(P, BI.pelvis);
   // legs (resolved below, after the upper body: they hang from the pelvis already resolved)
   // spine and chest: twist toward the blow, lean, counter-rotate the stride, breathe
-  setEuler(P, BI.spine, W2[6] * .4 - (reduce ? 0 : moving * .05 * Math.sin(cyc)), W2[7] * .4, sway * .6); resolveBone(P, BI.spine);
-  setEuler(P, BI.chest, W2[6] * .6, W2[7] * .6, 0); setOffset(P, BI.chest, 0, 0, breathe * G.breathe.lift);
+  setEuler(P, BI.spine, W2[6] * .32 - (reduce ? 0 : moving * .07 * Math.sin(cyc)), W2[7] * .4, sway * .6); resolveBone(P, BI.spine);
+  setEuler(P, BI.chest, W2[6] * .46, W2[7] * .6, sway * 1.1 + settleShift * 2); // the shoulders roll against the stride setOffset(P, BI.chest, 0, 0, breathe * G.breathe.lift);
   P.scl[BI.chest] = 1 + breathe * G.breathe.chest * .4; resolveBone(P, BI.chest);
   // head: looks where it will strike (or at the Wayfarer), steadied against the stride, within a machine's neck
   setEuler(P, BI.neck, 0, -W2[7] * .3 + bob * 2, 0); resolveBone(P, BI.neck);
@@ -425,7 +460,7 @@ export function sampleGiant(tr, e, env) {
   if (env.target && !dead) { const lx = env.target.x - e.x, ly = env.target.y - e.y, ang = Math.atan2(ly, lx) - yaw - W2[6]; lookYaw = Math.max(-.7, Math.min(.7, Math.atan2(Math.sin(ang), Math.cos(ang)))) * (ACT.contact ? .3 : .75); }
   if (stun > 0) lookPitch = .35 * stun + (reduce ? 0 : .12 * Math.sin(t * 3.1) * stun);
   if (dead) lookPitch = .4 * span(death, .1, .4);
-  setEuler(P, BI.head, lookYaw, lookPitch - .08 * hit + (reduce ? 0 : .015 * wobble(t * .5, 3)), 0); resolveBone(P, BI.head);
+  P.scl[BI.head] = G.headScale; setEuler(P, BI.head, lookYaw, lookPitch - .08 * hit + (reduce ? 0 : .015 * wobble(t * .5, 3)), 0); resolveBone(P, BI.head);
   // jets: each burst pulses on its own beat (scale along its length)
   for (let n = 0; n < 4; n++) { const i = BI['jet' + n]; P.scl[i] = dead ? Math.max(0, 1 - death * 2.5) : reduce ? .85 : .75 + .25 * Math.sin(t * 13 + n * 2.1) + .2 * Math.min(1, ACT.coil * .3); resolveBone(P, i); }
   // club arm: two-bone IK from the shoulder to the grip, elbow out and down; the club aims along its direction
@@ -452,7 +487,7 @@ export function sampleGiant(tr, e, env) {
   P.scl[BI.clubArc] = boltsOn && (ACT.bolts || flick % 3 === 0) ? .8 + .4 * ((flick * 7) % 5) / 5 : 0;
   setEuler(P, BI.clubArc, (flick % 4) * 1.57, (flick % 3 - 1) * .5, 0); resolveBone(P, BI.clubArc);
   // pylon and its spark (the 2D sprite's stray arc when sin(t*7) > .85, always while charged or arcing)
-  resolveBone(P, BI.pylon);
+  P.scl[BI.pylon] = G.pylonScale; resolveBone(P, BI.pylon);
   P.scl[BI.pylonArc] = !reduce && !dead && (e.giantCharged > 0 || ACT.bolts || e.giantPose === 'arcs' || Math.sin(t * 7 + .29) > .85) ? 1 : 0;
   setEuler(P, BI.pylonArc, (flick % 5) * 1.26, 0, 0); resolveBone(P, BI.pylonArc);
   // the socket and its eruption: scaled in while it boosts (or during the charge's flare), flickering
@@ -469,14 +504,11 @@ export function sampleGiant(tr, e, env) {
     resolveBone(P, ti); const hi = ti * 3; H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2];
     let fx = tr.gait.out[side * 4], fy = tr.gait.out[side * 4 + 1], lift = tr.gait.out[side * 4 + 2];
     let fz = env.z + G.ankle * S + lift * G.footLift * S;
-    if (still || dead) {
-      // braced stance: the club-side foot back for the swing and the charge, the other forward; or tucked in the air
-      const lead = ACT.brace ? (side ? -1.4 : 1.2) * .12 : (W2[6] > .3 ? (side ? -.07 : .06) : W2[6] < -.3 ? (side ? .06 : -.05) : 0);
-      const spread = .15 + .03 * Math.min(1, Math.abs(W2[6]) + ACT.brace);
-      const hx = x + (fwdX * lead - fwdY * sgn * spread) * S, hy = y + (fwdY * lead + fwdX * sgn * spread) * S;
-      if (air > .05 || e.marine || e.fleeFade != null) { fx = hx; fy = hy; fz = rootZ + (G.ankle + .02 + .12 * ACT.airTuck * (side ? 1 : .7)) * S; }
-      else if (tr.gait.out[side * 4 + 3] && !ACT.brace && Math.hypot(fx - hx, fy - hy) < .1 * S) { /* stay planted */ }
-      else { fx = hx; fy = hy; }
+    if (air > .05 || e.marine || e.fleeFade != null || e.giantThrust) {
+      // boosting (the feet skid, braced), in the air (tucked) or riding its cloud: the feet follow the body
+      const lead = e.giantThrust ? (side ? -.17 : .15) : 0, spread = .17;
+      fx = x + (fwdX * lead - fwdY * sgn * spread) * S; fy = y + (fwdY * lead + fwdX * sgn * spread) * S;
+      if (air > .05 || e.marine || e.fleeFade != null) fz = rootZ + (G.ankle + .02 + .12 * ACT.airTuck * (side ? 1 : .7)) * S;
     }
     T[0] = fx; T[1] = fy; T[2] = fz;
     if (dead) boneLocalToWorld(P, 'root', -.02, sgn * .16, G.ankle, T); // toppling: the legs go down with the body

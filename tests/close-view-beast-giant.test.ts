@@ -181,3 +181,21 @@ test('reduced motion: no ambient flourish or loose lightning, the attacks still 
   for (const n of ['spark0', 'clubArc', 'pylonArc']) { const i = GIANT_SKELETON.index[n] * 9; assert.equal(tr.pose.wr[i], 0, `${n} hidden`); }
   e.giantCharged = 5; sampleGiant(tr, e, env(e, 5000, { reduce: true })); assert.equal(tr.pose.wr[GIANT_SKELETON.index.spark0 * 9], 0);
 });
+
+test('turning on the spot: feet are lifted and stepped, never slid while planted', () => {
+  const e = createCombatant('lightningGiant', 10, 10, true, []), tr = createGiantTrack(); let now = 1000, steps = 0;
+  const target = (deg) => ({ x: e.x + Math.cos(deg * Math.PI / 180) * 6, y: e.y + Math.sin(deg * Math.PI / 180) * 6 });
+  for (let i = 0; i < 30; i++) sampleGiant(tr, e, env(e, now += 16, { target: target(0) }));
+  const last = [giantBone(tr, 'footL'), giantBone(tr, 'footR')];
+  for (let i = 0; i < 150; i++) {
+    sampleGiant(tr, e, env(e, now += 16, { target: target(120) }));
+    for (let s = 0; s < 2; s++) {
+      const p = giantBone(tr, s ? 'footR' : 'footL'), moved = Math.hypot(p[0] - last[s][0], p[1] - last[s][1]);
+      if (tr.frame.feet[s * 2] === 1) assert.ok(moved < 1e-3, 'a planted foot holds');
+      else if (moved > 1e-3) steps++;
+      last[s] = p;
+    }
+  }
+  assert.ok(steps > 10, 'the feet stepped round');
+  assert.ok(Math.abs(Math.atan2(Math.sin(tr.yaw - 2.094), Math.cos(tr.yaw - 2.094))) < .05, 'it turned to face');
+});

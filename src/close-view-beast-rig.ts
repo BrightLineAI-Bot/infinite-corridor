@@ -19,7 +19,9 @@
 export const BEAST_SLOT = Object.freeze({
   maxBeasts: 2, // Briar Stag and the Stalker may share a section; a third beast keeps its billboard
   maxBones: 40, // 120 vec4 vertex uniforms, well inside WebGL2's guaranteed 256
-  triangles: Object.freeze({ full: 2400, balanced: 1500, low: 700 }),
+  // GPU-skinned from static buffers, so a triangle costs vertex shading only (no per-frame CPU write): Tim asked for AAA
+  // fidelity (2026-11-11), and the first budget (2400/1500/700) held the Giant back.
+  triangles: Object.freeze({ full: 4000, balanced: 2400, low: 1000 }),
   emitChannels: 4,
 });
 
@@ -175,7 +177,10 @@ export function createGait(feet) {
     state: new Float64Array(n * 8), out: new Float64Array(n * 4) /* x, y, lift (0..1), planted */ };
 }
 // stride: body travel per full cycle (both feet once); stance: share of the cycle a foot is down.
-export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle = 4, still = false, snapDistance = 2 } = {}) {
+// Standing, a foot that has drifted more than `stepAt` from its rest spot (the body turned or shuffled) is not slid home:
+// it is lifted and stepped there over `stepTime` seconds, one foot at a time (pass 2, 2026-11-11: a heavy body turns on
+// its feet). State slot 6 holds that step's progress (-1: none).
+export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle = 4, still = false, snapDistance = 2, stepAt = Infinity, stepTime = .4 } = {}) {
   const dt = Number.isFinite(G.at) ? Math.min(.1, Math.max(0, (nowMs - G.at) / 1000)) : 0;
   const jump = !Number.isFinite(G.x) || Math.hypot(x - G.x, y - G.y) > snapDistance;
   const travelled = jump ? 0 : Math.hypot(x - G.x, y - G.y);
@@ -188,12 +193,23 @@ export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle 
     const s = G.state, o = k * 8, side = G.side[k], fore = G.fore[k];
     const homeX = x + cf * fore - sf * side, homeY = y + sf * fore + cf * side; // the foot's rest spot under the hip
     const p = (((G.phase + G.offsets[k]) % 1) + 1) % 1, planted = p < stance;
-    if (jump || !Number.isFinite(s[o])) { s[o] = homeX; s[o + 1] = homeY; s[o + 7] = 1; }
-    let fx, fy, lift = 0;
+    if (jump || !Number.isFinite(s[o])) { s[o] = homeX; s[o + 1] = homeY; s[o + 7] = 1; s[o + 6] = -1; }
+    let fx, fy, lift = 0, stepLift = 0, stepped = false;
     if (G.moving < .02 || still) {
-      // standing: feet settle home (a small shuffle when the body turned or drifted)
-      const k2 = dt > 0 ? Math.min(1, dt * 6) : 0; s[o] += (homeX - s[o]) * k2; s[o + 1] += (homeY - s[o + 1]) * k2; fx = s[o]; fy = s[o + 1]; s[o + 7] = 1;
+      if (s[o + 7] === 0) { s[o + 2] = G.out[k * 4]; s[o + 3] = G.out[k * 4 + 1]; s[o + 6] = .35; } // stopped mid-swing: finish the step
+      s[o + 7] = 1;
+      if (s[o + 6] >= 0) { // a step in place under way
+        stepped = true;
+        s[o + 6] = Math.min(1, s[o + 6] + dt / stepTime); const e = smooth(s[o + 6]);
+        s[o + 4] = homeX; s[o + 5] = homeY; fx = mix(s[o + 2], homeX, e); fy = mix(s[o + 3], homeY, e); stepLift = Math.sin(Math.PI * e) * .6;
+        if (s[o + 6] >= 1) { s[o] = homeX; s[o + 1] = homeY; s[o + 6] = -1; }
+      } else if (Number.isFinite(stepAt) && Math.hypot(homeX - s[o], homeY - s[o + 1]) > stepAt && !gaitStepping(G, k)) {
+        s[o + 2] = s[o]; s[o + 3] = s[o + 1]; s[o + 6] = 0; fx = s[o]; fy = s[o + 1];
+      } else if (!Number.isFinite(stepAt)) { // no stepping asked for: settle home
+        const k2 = dt > 0 ? Math.min(1, dt * 6) : 0; s[o] += (homeX - s[o]) * k2; s[o + 1] += (homeY - s[o + 1]) * k2; fx = s[o]; fy = s[o + 1];
+      } else { fx = s[o]; fy = s[o + 1]; } // planted: it stays exactly where it stands
     } else if (planted) {
+      s[o + 6] = -1;
       if (s[o + 7] !== 1) { s[o] = s[o + 4]; s[o + 1] = s[o + 5]; s[o + 7] = 1; } // touchdown: plant where the swing was heading
       fx = s[o]; fy = s[o + 1];
     } else {
@@ -203,10 +219,13 @@ export function stepGait(G, x, y, yaw, nowMs, { stride = 1, stance = .6, settle 
       s[o + 4] = homeX + cf * reach * G.moving; s[o + 5] = homeY + sf * reach * G.moving;
       fx = mix(s[o + 2], s[o + 4], e); fy = mix(s[o + 3], s[o + 5], e); lift = Math.sin(Math.PI * q);
     }
-    G.out[k * 4] = fx; G.out[k * 4 + 1] = fy; G.out[k * 4 + 2] = lift * G.moving; G.out[k * 4 + 3] = planted || G.moving < .02 ? 1 : 0;
+    const stepping = stepped || (s[o + 6] >= 0 && (G.moving < .02 || still));
+    G.out[k * 4] = fx; G.out[k * 4 + 1] = fy; G.out[k * 4 + 2] = stepping ? stepLift : lift * G.moving; G.out[k * 4 + 3] = stepping ? 0 : planted || G.moving < .02 ? 1 : 0;
   }
   return G;
 }
+
+function gaitStepping(G, except) { for (let k = 0; k < G.n; k++) if (k !== except && G.state[k * 8 + 6] >= 0) return true; return false; }
 
 // ------------------------------------------------------------------------------------------------ the mesh builder
 // Parts are authored in a bone's local frame (f, r, u; relative to the bone origin) and stored in bind space. Each
@@ -245,7 +264,7 @@ export function meshBuilder(skeleton, detail = 1) {
   // `taper` narrows the top face (r and f) by a share; `skew` slides the top face forward.
   B.box = (o) => {
     const P = frame(o), hf = o.size[0], hr = o.size[1], hu = o.size[2], bv = Math.min(o.bevel ?? .12, .45) * Math.min(hf, hr, hu), tp = 1 - (o.taper || 0), sk = o.skew || 0;
-    if (detail < .9 || bv <= 0) { // plain box (chamfered edges only at full detail)
+    if (detail < .9 || bv <= 0 || Math.min(hf, hr, hu) < .03) { // plain box (chamfered edges only at full detail, on parts big enough to show them)
       const c = (sf, sr, su) => P(sf * hf * (su > 0 ? tp : 1) + (su > 0 ? sk : 0), sr * hr * (su > 0 ? tp : 1), su * hu);
       const q = (a, b, cc, d) => B.poly([a, b, cc, d]);
       q(c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), c(1, -1, 1)); q(c(-1, 1, -1), c(-1, -1, -1), c(-1, -1, 1), c(-1, 1, 1));
