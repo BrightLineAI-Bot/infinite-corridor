@@ -16,7 +16,7 @@ export const QB_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
   hip: .84, femur: .3, tibia: .32, hindMeta: .2, humerus: .28, radius: .3, foreMeta: .17, paw: .04, halfWidth: .12,
   walk: Object.freeze({ stride: .62, stance: .6 }), gallop: Object.freeze({ stride: 1.9, stance: .36 }), gallopSpeed: 3,
-  settle: 7, stepAt: .09, stepTime: .22, standTurnRate: 3.5, standTurnMax: 2.4, turnRate: QB_MOVES.turnRate * .6, attackTurnRate: 12,
+  settle: 7, stepAt: .09, stepTime: .22, standTurnRate: 3.5, standTurnMax: 2.4, get turnRate() { return QB_MOVES.turnRate * .6; }, attackTurnRate: 12,
   footLift: .16, bob: .022, blendMs: 110, deathMs: 2300, landMs: 450, hitMs: 300, impactMs: 360,
   // rear (+ body up about the hind hips), head (+ raises), swing (head turned, + right), crouch (body down), lean (+ nose down),
   // wings (0 folded .. 1 spread), paw (the striking forepaw raised and cocked back: + right paw, - left), open (jaw)
@@ -71,7 +71,7 @@ const WALK_PHASE = [0, .25, .5, .75], GALLOP_PHASE = [0, .58, .12, .7];
 // ------------------------------------------------------------------------------------------------ the body
 // The standard view's palette ["#4a4650", "#141218", "#ff4a3a", "#f2ece0"], with the near-black lifted so a lit 3D body reads.
 const C = Object.freeze({ hide: 0x575261, hideLight: 0x777082, dark: 0x302c36, belly: 0x36313c, ember: 0xff4a3a, emberHot: 0xffb59a, core: 0xfff1d8,
-  bone: 0xf2ece0, boneDark: 0x8c8478, horn: 0x2a2530, claw: 0x0e0d10, membrane: 0x221d27, membraneEdge: 0x4e222b, wingBone: 0x2e2a34, scale: 0x3a3542, plate: 0x433d4c });
+  bone: 0xf2ece0, boneDark: 0x8c8478, horn: 0x2a2530, claw: 0x0e0d10, membrane: 0x221d27, membraneEdge: 0x4e222b, wingBone: 0x2e2a34, scale: 0x3a3542, plate: 0x433d4c, fur: 0x6a6375, furDark: 0x3a3541, furLight: 0x938b9f, earIn: 0x5a3038 });
 function buildQbMesh(tier) {
   const d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(QB_SKELETON, d), bw = QB_SKELETON.bindWorld;
   const lerpHex = (a, b, t) => { t = clamp01(t); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
@@ -83,9 +83,10 @@ function buildQbMesh(tier) {
     [-.3, .84, .165, .195, 'pelvis', 'spine', .3], [-.16, .86, .135, .155, 'pelvis', 'spine', .65], [-.02, .86, .132, .16, 'spine'], [.12, .85, .158, .2, 'spine', 'chest', .4],
     [.24, .83, .175, .23, 'chest'], [.34, .83, .17, .235, 'chest'], [.43, .88, .135, .18, 'chest', 'neck', .4], [.5, .96, .1, .125, 'neck'],
     [.58, 1.03, .078, .095, 'neck', 'neck2', .5], [.66, 1.09, .068, .08, 'neck2'], [.74, 1.13, .066, .078, 'neck2', 'head', .6], [.8, 1.15, .068, .08, 'head'],
-    [.87, 1.15, .06, .068, 'head'], [.94, 1.13, .048, .055, 'head'], [1.0, 1.11, .036, .042, 'head'], [1.06, 1.09, .024, .03, 'head'], [1.1, 1.075, 0, 0, 'head']];
+    [.87, 1.15, .058, .066, 'head'], [.94, 1.135, .043, .052, 'head'], [1.0, 1.115, .033, .04, 'head'], [1.06, 1.1, .026, .031, 'head'], [1.11, 1.085, .018, .022, 'head'], [1.145, 1.075, 0, 0, 'head']];
   const shade = (i, k, st) => { const rib = i >= 5 && i <= 7 && Math.abs(st) < .5 && k % 3 === 0 ? .35 : 0; // ribs over the lean flank
-    let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .3) / .7) * .8); c = lerpHex(c, C.dark, rib);
+    const mot = ((((i * 2654435761) ^ (k * 40503)) >>> 0) % 100) / 100; // mottled fur
+    let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .3) / .7) * .8); c = lerpHex(c, C.dark, rib + (mot < .3 ? .35 : 0)); if (mot > .85) c = lerpHex(c, C.furLight, .4);
     // banded ventral plates under the throat and belly
     return st < -.25 ? lerpHex(lerpHex(c, C.belly, Math.min(1, (-.25 - st) / .4)), i % 2 ? C.plate : C.dark, st < -.6 ? .45 : 0) : c; };
   B.color(C.hide).loft({ seg: low ? 8 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: shade, caps: false });
@@ -103,21 +104,41 @@ function buildQbMesh(tier) {
     mass('pelvis', [-.44, s * .13, .9], [.15, .038, .11], [1, 0, -.3]); // glute
     mass('pelvis', [-.38, s * .145, .76], [.12, .04, .13], [.3, 0, -.95], [.95, 0, .3], C.hide); // haunch over the thigh root
     if (!low) { const [th, fa] = s < 0 ? ['thighL', 'foreL'] : ['thighR', 'foreR'];
-      B.bone(th).color(C.hide).ellipsoid({ at: [.03, 0, -.12], radius: [.07, .055, .12], rings: 4, seg: 8 }); // thigh
-      B.bone(fa).color(C.hide).ellipsoid({ at: [.0, 0, -.09], radius: [.045, .04, .1], rings: 4, seg: 8 }); // forearm
+      B.bone(th).color(C.hide).ellipsoid({ at: [.04, 0, -.11], radius: [.1, .08, .14], rings: 4, seg: 8 }); // thigh
+      B.bone(fa).color(C.hide).ellipsoid({ at: [.01, 0, -.08], radius: [.07, .06, .11], rings: 4, seg: 8 }); // forearm
       mass('neck', [.52, s * .055, .99], [.1, .035, .045], [.6, 0, .8], [-.8, 0, .6], C.hide); } // neck cord
   }
-  // Scales: rows of small overlapping dark plates along the back between the spines and down the upper flanks, pointing back.
-  if (!low) { const rowsS = full ? [[.15, .9], [.35, .78], [.55, .62]] : [[.25, .85], [.5, .65]], n = full ? 12 : 9;
-    for (const [band, out] of rowsS) for (let q = 0; q < n; q++) for (const s of [-1, 1]) {
-      const f = .38 - q * (1.0 / (n - 1)) + (band > .3 ? .03 : 0); let k = 1; while (k < BODY.length - 2 && BODY[k + 1][0] < f) k++;
-      const [, u, rx, rz] = BODY[k], th = Math.PI / 2 - band * 1.25, cy = Math.cos(th) * rx * s * 1.02, cz = u + Math.sin(th) * rz * 1.02;
-      const bone = f < -.25 ? 'pelvis' : f < .12 ? 'spine' : 'chest', nrm = [0, Math.cos(th) * s, Math.sin(th)], sz = .022 * out + .008;
-      const c = [f, cy, cz], tip = [f - sz * 1.6, cy + nrm[1] * .008, cz + nrm[2] * .008], l = [f, cy - nrm[2] * sz * s * 0 + (Math.abs(nrm[1]) < .5 ? sz : 0) * s, cz + (Math.abs(nrm[1]) >= .5 ? sz : 0)];
-      const l2 = [2 * c[0] - l[0], 2 * c[1] - l[1], 2 * c[2] - l[2]], up = [c[0] - sz * .4 + nrm[0] * .012, c[1] + nrm[1] * .012, c[2] + nrm[2] * .012];
-      B.bone(bone).color(q % 3 === 0 ? C.dark : C.scale); const P = (x) => at(bone, x);
-      B.poly([P(l), P(up), P(tip)]); B.poly([P(up), P(l2), P(tip)]); B.poly([P(l), P(l2), P(up)]);
-    } }
+  // Fur (Tim, 2026-11-11: "too smooth ... like a smooth baby ... he's more furry ... almost like a jackal with wings and horns"):
+  // layered tufts laid back along the body, each a two-sided tapered card on the hide's surface and bound to the bone beneath:
+  // a shaggy ruff round the neck and shoulders, shag along the back and haunch, tufts on the upper legs and down the tail.
+  const tuft = (bone, p, n, back, len, w, tone) => {
+    const side = norm([n[1] * back[2] - n[2] * back[1], n[2] * back[0] - n[0] * back[2], n[0] * back[1] - n[1] * back[0]]);
+    const a = [p[0] + side[0] * w, p[1] + side[1] * w, p[2] + side[2] * w], b = [p[0] - side[0] * w, p[1] - side[1] * w, p[2] - side[2] * w];
+    const tip = [p[0] + back[0] * len + n[0] * len * .55, p[1] + back[1] * len + n[1] * len * .55, p[2] + back[2] * len + n[2] * len * .55];
+    const q = [a, b, tip].map((x) => at(bone, x)); B.bone(bone).color(tone); B.poly(q); B.poly([q[2], q[1], q[0]]); };
+  const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  { const dens = low ? .15 : full ? 1 : .55;
+    for (let k = 1; k < BODY.length - 5; k++) {
+      const [f, u, rx, rz, ba, bb, wb] = BODY[k], prev = BODY[k + 1], next = BODY[k - 1], tb = norm([next[0] - prev[0], 0, next[1] - prev[1]]); // toward the tail
+      const ruff = k >= 9 && k <= 13 ? 1 : 0, haunch = k >= 2 && k <= 4 ? 1 : 0, n = Math.round((7 + 5 * ruff + 3 * haunch) * dens);
+      for (let q = 0; q < n; q++) for (const s of [-1, 1]) {
+        const h = ((((k * 73856093) ^ (q * 19349663) ^ (s > 0 ? 83492791 : 0)) >>> 0) % 1000) / 1000, th = (.05 + .9 * ((q + h * .7) / n)) * Math.PI / 2 * (ruff ? 1.25 : 1.05);
+        const ct = Math.cos(th) * s, st = Math.sin(th), p = [f + (h - .5) * .05, ct * rx * .99, u + st * rz * .99], nn = norm([0, ct / rx, st / rz]);
+        const back = norm([tb[0] - nn[0] * .2, -nn[1] * .15 + tb[1], tb[2] - .35 - nn[2] * .2]), len = (ruff ? .13 : haunch ? .095 : .08) * (.8 + .5 * h);
+        tuft(wb >= .5 ? bb : ba, p, nn, back, len, ruff ? .024 : .018, h < .35 ? C.furDark : h > .8 ? C.furLight : C.fur);
+      }
+    }
+    // the legs' upper tufts (on the thigh and upper arm) and a shaggy tail
+    for (const L of LEGS) { const t = BI[L.top] * 3, x0 = bw[t], y0 = bw[t + 1], z0 = bw[t + 2];
+      for (let q = 0; q < Math.round(8 * dens); q++) { const h = ((q * 2654435761) >>> 0) % 1000 / 1000, a = q / 8 * Math.PI * 2, z = z0 - .06 - .14 * h, r = L.hind ? .085 : .07;
+        const nn = [Math.cos(a) * .8, Math.sin(a), 0], p = [x0 + Math.cos(a) * r * .8, y0 + Math.sin(a) * r, z];
+        tuft(L.top, p, norm(nn), [-.25, 0, -1], .075 + .03 * h, .017, h < .4 ? C.furDark : C.fur); } }
+    for (let i = 0; i < TAIL - 1; i++) { const b = 'tail' + i, bi = BI[b] * 3; for (let q = 0; q < Math.round(4 * dens); q++) for (const s of [-1, 1]) {
+      const p = [bw[bi] - .05 * q, bw[bi + 1] + s * .035, bw[bi + 2] + .02], nn = norm([0, s, .6]); tuft(b, p, nn, [-1, 0, -.15], .09, .016, q % 2 ? C.furDark : C.fur); } }
+  }
+  // jackal ears: tall and pointed, behind the horns
+  for (const s of [-1, 1]) { B.bone('head').color(C.fur).lathe({ at: at('head', [.79, s * .055, 1.2]), F: [-.25, s * .35, .9], U: [1, 0, 0], rings: [[0, .03], [.08, .022], [.15, 0]], rs: .4, seg: low ? 4 : 6 });
+    if (!low) B.color(C.earIn).lathe({ at: at('head', [.8, s * .062, 1.21]), F: [-.25, s * .35, .9], U: [1, 0, 0], rings: [[0, .018], [.07, .012], [.12, 0]], rs: .25, seg: 4, caps: false }); }
   // spines down the back, longest over the shoulders (on the bone beneath each)
   { const n = low ? 6 : full ? 15 : 11; for (let i = 0; i < n; i++) { const f = i / (n - 1), x = .44 - f * 1.0, h = (.2 - Math.abs(f - .25) * .16) * (i % 2 ? .75 : 1);
       let q = 1; while (q < BODY.length - 2 && BODY[q + 1][0] < x) q++; const top = BODY[q][1] + BODY[q][3] - .01, bone = x < -.25 ? 'pelvis' : x < .12 ? 'spine' : 'chest';
@@ -168,15 +189,16 @@ function buildQbMesh(tier) {
     if (!low) B.bone(chain[1]).color(C.bone).lathe({ at: at(chain[1], grid[Math.round((rows - 1) / 2)][0]), F: [.2, s * .2, .9], rings: [[0, .013], [.07, 0]], seg: 4, caps: false });
   }
   // legs: lean digitigrade limbs grown out of the body, muscled at the top; three claws on each paw
-  const HIND = [[.86, .055, .09, 'p'], [.78, .08, .125, 'p', 't', .5], [.68, .075, .115, 't'], [.56, .05, .068, 't', 'm', .5], [.42, .04, .05, 'm'], [.26, .028, .034, 'm', 'l', .5], [.18, .022, .026, 'l'], [.06, .02, .024, 'l'], [.04, .022, .026, 'l']];
-  const FORE = [[.84, .055, .09, 'p'], [.74, .072, .11, 'p', 't', .5], [.64, .064, .092, 't'], [.54, .045, .058, 't', 'm', .5], [.4, .036, .044, 'm'], [.24, .026, .032, 'm', 'l', .5], [.17, .021, .025, 'l'], [.06, .02, .024, 'l'], [.04, .022, .026, 'l']];
+  // (Tim, 2026-11-11: the legs were "almost comically small"): heavy limbs, a big muscled thigh and forearm, stout lower legs
+  const HIND = [[.86, .07, .11, 'p'], [.78, .12, .17, 'p', 't', .5], [.68, .115, .16, 't'], [.58, .08, .105, 't', 'm', .5], [.44, .062, .075, 'm'], [.28, .045, .052, 'm', 'l', .5], [.18, .037, .042, 'l'], [.07, .034, .04, 'l'], [.04, .036, .042, 'l']];
+  const FORE = [[.84, .065, .1, 'p'], [.74, .105, .15, 'p', 't', .5], [.64, .1, .135, 't'], [.54, .07, .088, 't', 'm', .5], [.4, .058, .068, 'm'], [.24, .042, .048, 'm', 'l', .5], [.17, .035, .04, 'l'], [.07, .033, .038, 'l'], [.04, .035, .04, 'l']];
   for (const L of LEGS) {
     const top = BI[L.top] * 3, x = bw[top], y = bw[top + 1], parent = L.hind ? 'pelvis' : 'chest', name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
     const base = L.hind ? bw[BI.pelvis * 3 + 2] - .84 : bw[BI.chest * 3 + 2] - .84;
     B.color(C.hide).loft({ seg: low ? 6 : 10, up: [1, 0, 0], sections: (L.hind ? HIND : FORE).filter((_, i) => !low || i % 2 === 1 || i === 0 || i === 8).map(([u, rx, rz, a, b, w]) => ({ at: [x, y, u + base], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
       tone: (i, k, st) => i >= 6 ? C.dark : i < 3 ? shade(L.hind ? 3 : 8, k, st) : C.hide });
-    B.bone(L.paw).color(C.dark).ellipsoid({ at: [.02, 0, -.012], radius: [.05, .04, .022], rings: 3, seg: 7 });
-    for (const c of low ? [0] : [-1, 0, 1]) B.color(C.claw).lathe({ at: [.05, c * .022, -.012], F: [1, c * .25, -.6], rings: [[0, .009], [.05, 0]], seg: 4, caps: false });
+    B.bone(L.paw).color(C.dark).ellipsoid({ at: [.03, 0, -.01], radius: [.075, .058, .03], rings: 3, seg: 8 });
+    for (const c of low ? [0] : [-1, 0, 1]) B.color(C.claw).lathe({ at: [.09, c * .032, -.012], F: [1, c * .25, -.6], rings: [[0, .014], [.075, 0]], seg: 4, caps: false });
   }
   return B.done();
 }

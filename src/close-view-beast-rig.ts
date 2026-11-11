@@ -21,7 +21,8 @@ export const BEAST_SLOT = Object.freeze({
   maxBones: 40, // 120 vec4 vertex uniforms, well inside WebGL2's guaranteed 256
   // GPU-skinned from static buffers, so a triangle costs vertex shading only (no per-frame CPU write): Tim asked for AAA
   // fidelity (2026-11-11), and the first budget (2400/1500/700) held the Giant back.
-  triangles: Object.freeze({ full: 4000, balanced: 2400, low: 1000 }),
+  // Raised again for the Questing Beast's fur (Tim, 2026-11-11: "I understand that's going to add ... cost to the budget").
+  triangles: Object.freeze({ full: 5000, balanced: 3000, low: 1200 }),
   emitChannels: 4,
 });
 
