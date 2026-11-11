@@ -259,6 +259,7 @@ export function ensureBeastGap(save) {
   const g = save.beastGap && typeof save.beastGap === "object" ? save.beastGap : {}, n = Number(g.fresh);
   const recent = (Array.isArray(g.recent) ? g.recent : []).filter((k, i, a) => typeof k === "string" && a.indexOf(k) === i).slice(-ENCOUNTER.newSections);
   save.beastGap = { ...g, fresh: Number.isFinite(n) ? Math.max(0, Math.min(ENCOUNTER.newSections, Math.floor(n))) : ENCOUNTER.newSections, recent };
+  if (save.beastGap.passed !== true) delete save.beastGap.passed; // sightings (2026-11-11): a passer seen since the last meeting (additive)
   return save.beastGap;
 }
 // Called once per overworld section load (`key` is "rx,ry"), before any beast is placed.
@@ -271,7 +272,7 @@ export function noteSectionVisit(save, key) {
 // Release 447: a Bloodmoss meal (meals.ts) shortens the buffer and raises every section chance while it lasts.
 export const encounterReady = (save) => ensureBeastGap(save).fresh >= Math.ceil(ENCOUNTER.newSections * mealLure(save).gap);
 export const encounterChance = (save) => ENCOUNTER.chanceScale * mealLure(save).chance;
-export function encounterMet(save) { ensureBeastGap(save).fresh = 0; }
+export function encounterMet(save) { const g = ensureBeastGap(save); g.fresh = 0; delete g.passed; } // sightings (2026-11-11): a meeting lets a passer be seen again
 export const RETREAT = { search: 8, fallback: 6, speed: 2.1, inset: 1.5, fade: 1.4, lose: 3, legSeconds: 30, homeLinger: 120, wormLinger: 240 }; // release 653: legSeconds 14 → 30 (a section takes about 13 s to cross); wormLinger: an unfollowed Worm retreat ends
 // Release 605 (Tim, 2026-10-31: "when the world bosses are in retreat [you] should be able to follow them across multiple tiles.
 // Right now, you can only see them in one tile... They should be going to a place where they can retreat"): a retreat is no
@@ -549,6 +550,7 @@ export function worldBeastFor(save, map, rx, ry) {
   if (map.settlement || map.tiles?.length !== 1024) { const id = WORLD_BEAST_IDS.find((k) => { const a = save.worldBeasts[k].active; return a?.retreat && !a.dungeon && a.rx === rx && a.ry === ry; }); return id ? fleeSpawn(save, id, rx, ry) : null; } // release 241: fleeing, it passes through a settlement too
   const qb = save.questingBeast?.active, held = qb && qb.rx === rx && qb.ry === ry;
   let here = WORLD_BEAST_IDS.find((id) => { const a = save.worldBeasts[id].active; return a && !a.dungeon && !astralReservedCompanion(save,id) && a.rx === rx && a.ry === ry; }), claimed = false;
+  const passed = save.beastGap?.passed === true; // sightings (2026-11-11): kept if a claim here finds no ground
   for (const id of WORLD_BEAST_IDS) { // cooldowns run down as sections are entered, and a free beast may claim this one
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
     if (q.active) continue;
@@ -565,7 +567,7 @@ export function worldBeastFor(save, map, rx, ry) {
   // Release 261: only ground it could retreat from (placementRegions); a beast already met keeps whatever ground it had.
   const regions = placementRegions(map, here), sound = open.filter((t) => regions.ok[t.y * 32 + t.x]), pool = sound.length || q.active.tries ? (sound.length ? sound : open) : [];
   const at = pool.sort(byHash((a) => `wb:${here}:${q.cycle}:${a.x},${a.y}`))[0];
-  if (!at) { if (!q.active.tries) { q.active = null; if (claimed) ensureBeastGap(save).fresh = ENCOUNTER.newSections; } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
+  if (!at) { if (!q.active.tries) { q.active = null; if (claimed) { const g = ensureBeastGap(save); g.fresh = ENCOUNTER.newSections; if (passed) g.passed = true; } } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
 // Passing beasts (release 569; Tim, 2026-10-29: "it would be great to be able to just be wandering through the world and see
@@ -574,11 +576,23 @@ export function worldBeastFor(save, map, rx, ry) {
 // has unlocked crosses the section from one edge to the opposite one, bound for its home ground: untargetable, harmless,
 // never saved with the section, gone at the far edge. Which beast, which way and whether one passes are fixed by the seed,
 // the section and how many sections have been explored. The Atlas is not told; it is just something seen.
-export const PASSING = { chance: .045, minDepth: 6, speed: 1.7 };
+// Sightings (Tim, 2026-11-11: "the world bosses seem to be in constant retreat now... almost every other time I see a world boss
+// it's in retreat"): measured over 7,200 wandered sections, 41% of world-beast sightings were passers (266 against 343 fights), at
+// Aperture tier 3 more passers than fights, because a passer was rolled on every section with no beast of its own, with no regard to
+// the buffer between meetings or to the beasts themselves. Now a passer is something seen between hunts, never crowding them out
+// (the same walk: 81% of sightings are fights, 14% passers, against 55% and 41% before; the chance goes from .045 to .02):
+// - `ready`: only while the encounter buffer is full (encounterReady), so never in the sections after a meeting;
+// - `once`: at most one between two meetings (save.beastGap.passed, set by passingSeen, cleared by encounterMet);
+// - only a beast that is free: not holding, hunting or retreating anywhere, and not cooling down after its last hunt (it cannot be
+//   seen in two places, nor walk by just after it died).
+// Which beast, which way and whether one passes are still fixed by the seed, the section and the explored count.
+export const PASSING = { chance: .02, minDepth: 6, speed: 1.7, ready: true, once: true };
 export function passingBeastFor(save, map, rx, ry, explored = 0) {
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < PASSING.minDepth) return null;
+  if (PASSING.ready && !encounterReady(save) || PASSING.once && ensureBeastGap(save).passed) return null; // sightings (2026-11-11)
   const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
-  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && !(save.worldBeasts?.[id]?.active?.rx === rx && save.worldBeasts?.[id]?.active?.ry === ry));
+  const free = (id) => { const q = save.worldBeasts?.[id]; return !q?.active && !(Number(q?.cooldown) > 0); }; // sightings (2026-11-11)
+  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && free(id));
   if (!ids.length) return null;
   const id = ids[(h >>> 10) % ids.length]; if (!beastRoamsAt(id, rx, ry)) return null; // BEAST_HOMELANDS: inside his `beyond`, where the Doom Chaser would have passed nothing does (every other section's passer is as it was)
   const B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;
@@ -587,6 +601,8 @@ export function passingBeastFor(save, map, rx, ry, explored = 0) {
   const path = retreatPath(map, a, b, mode) || [{ x: b.x, y: b.y }];
   return { id: `passing-beast:${id}:${rx}:${ry}:${explored}`, kind: B.kind, x: a.x, y: a.y, passingBeast: id, fleeTo: { x: b.x, y: b.y, side: b.side }, fleePath: path, fleeSpeed: PASSING.speed, traits: [] };
 }
+// Sightings (2026-11-11): a passer was shown (game.ts loadArea): no other passes until the next meeting (encounterMet).
+export function passingSeen(save) { if (PASSING.once) ensureBeastGap(save).passed = true; }
 export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
