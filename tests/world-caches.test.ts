@@ -48,7 +48,7 @@ test('the tables: every loot item can be given, rarity rises from corpse to thro
 test('a dungeon floor is given the same caches on two fresh loads; old crossings and excluded runs get none', () => {
   const a = game(), b = game(); enterDungeon(a, 3, -6); enterDungeon(b, 3, -6);
   assert.ok(caches(a).length >= 2); assert.deepEqual(plain(caches(a)), plain(caches(b)), 'deterministic');
-  for (const run of ['skyland:S:1,1:m0:t0:r1', 'far-array:S:1', 'the-deep:S:4:4:f3', 'hunt-instance:x', 'arena:v1:S:9,9', 'dungeon:S:g1:1:1:x:aperture-annex']) assert.equal(cacheDungeonAllowed(run, a.map), false, run);
+  for (const run of ['skyland:S:1,1:m0:t0:r1', 'far-array:S:1', 'the-deep:S:4:4:f3', 'hunt-instance:x', 'arena:v1:S:9,9', 'dungeon:S:g1:1:1:x:aperture-annex', 'pentagon:S:40:40:v10:f9']) assert.equal(cacheDungeonAllowed(run, a.map), false, run);
   assert.equal(cacheDungeonAllowed(a.save.session.activeDungeonId, a.map), true);
   const id = a.save.session.activeDungeonId, h = a.save.consequences.dungeons[id];
   assert.equal(h.cacheVersion, 1); assert.ok(Array.isArray(h.caches[id]) && h.caches[id].every(validCachePin), 'where they lie is kept');

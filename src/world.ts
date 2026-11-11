@@ -258,8 +258,9 @@ export const WORLD_CACHES={
   rare:[['maxPotion',1,10],['highPotion',2,12],['crossingSigil',1,14],['returnEmber',2,10],['clearrootAmpoule',2,8],['marks',200,12],['seed:fossilized',1,5],['seed:opal',1,5],['seed:pumice',1,4],['seed:crimson',1,4]],
  },
  items:{restorativeDraught:'Restorative Draught',highPotion:'High Potion',maxPotion:'Max Potion',ironbarkTonic:'Ironbark Tonic',lumenPhial:'Lumen Phial',clearrootAmpoule:'Clearroot Ampoule',crossingSigil:'Crossing Sigil',returnEmber:'Return Ember',marks:'marks'},
- // Dungeons never given caches: arenas and runs made afresh (Skylands, hunts, the Far Array, the Deep's floors, annexes).
- skipIds:/^(arena:|hunt-|elite-portal:|displacement:|skyland:|far-array:|the-deep:|proving)|aperture-annex/,
+ // Dungeons never given caches: arenas and runs made afresh (Skylands, hunts, the Far Array, the Deep's floors, annexes), and
+ // the Pentagons, whose chambers are laid out around their own levers, relics and shortcut links.
+ skipIds:/^(arena:|hunt-|elite-portal:|displacement:|skyland:|far-array:|the-deep:|pentagon|proving)|aperture-annex/,
 };
 export const cacheFlag=(key,i)=>`world-cache:${key}:${i}`;
 export const cacheLeverFlag=(key,i)=>`world-cache-lever:${key}:${i}`;
