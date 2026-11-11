@@ -112,7 +112,7 @@ export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
 
 export const PLAYER_FORM_HANDS = Object.freeze({
   playerIronFists: Object.freeze({ x:.22,y:-.35,z:.76,px:0,pz:1.20 }),
-  playerRobot: Object.freeze({ x:.29,y:-.63,z:.70,px:-.04,pz:1.17 }),
+  playerRobot: Object.freeze({ x:.24,y:-.73,z:.54,px:0,pz:.96 }),
   playerPowerSuit: Object.freeze({ x:.14,y:-.27,z:.82,px:0,pz:1.18 }),
   playerEmberForm: Object.freeze({ x:.24,y:-.46,z:.84,px:0,pz:1.48 }),
 });

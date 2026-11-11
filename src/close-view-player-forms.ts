@@ -1,6 +1,6 @@
 // Authored Close View geometry for player states whose ordinary renderer changes the whole silhouette.
 // This module is deliberately data-only: callers decide when the real equipment/runtime state selects a key.
-import { bevel, block, curvedTube, ellipsoid, membrane, part, ringLoft, verticalLoft, taper } from './close-view-mesh.ts';
+import { bevel, block, curvedTube, ellipsoid, membrane, part, prism, ringLoft, verticalLoft, taper } from './close-view-mesh.ts';
 
 const coat = 0x303934, hem = 0x28312e, leather = 0x302b29, amber = 0xf3a55c;
 const iron = 0x34383d, ironEdge = 0x171a1d, worn = 0x747a80, glass = 0x31505b;
@@ -29,19 +29,35 @@ for (const side of [-1, 1]) ironFists.push(
   part(bevel,.22,side*.35,.76,.17,.14,.18,iron,side*2,0,1.2,-.08,true),
 );
 
-// The unempowered robot is a crude walk-in cockpit, not a swollen humanoid. Its dominant forward
-// viewport sits inside a battered hull collar; short plated struts keep the weight low and clumsy.
+// The unempowered robot, in 3D, follows the standard view's robot (drawSubmersible ashore): a
+// polished silver pod with one big framed viewport the Wayfarer looks out of, two back boosters,
+// bent robotic arms ending in three-fingered manipulators, and short legs on broad foot pads.
+// Deliberately bulky and a little absurd, but built from clean, smooth-shaded solids (Tim,
+// 2026-11-11: the old one "looks like a failed Blender experiment, a globule").
+const podSilver = 0xc3cad2, podDark = 0x3a4048, podArm = 0x8e969f, podLeg = 0x7d858e, podFoot = 0x4b525a, podGlass = 0x1d5163;
+// Spherical cap facing +X (apex at u=1), smooth normals from the unit sphere.
+const capFan = (sides, angle) => { const rim = Array.from({ length: sides }, (_, i) => { const a = (i + .5) * Math.PI * 2 / sides; return [Math.cos(angle), Math.sin(angle) * Math.cos(a), Math.sin(angle) * Math.sin(a)]; }); return rim.map((p, i) => [[1, 0, 0], p, rim[(i + 1) % sides]]); };
+// One three-sided claw finger from a wrist point toward a tip (4 triangles).
+const claw = (w, t, r) => { const d = [t[0]-w[0], t[1]-w[1], t[2]-w[2]], l = Math.hypot(...d) || 1, u = Math.abs(d[2] / l) < .9 ? [0, 0, 1] : [1, 0, 0];
+  let a = [d[1]*u[2]-d[2]*u[1], d[2]*u[0]-d[0]*u[2], d[0]*u[1]-d[1]*u[0]]; const al = Math.hypot(...a) || 1; a = a.map(q => q / al); const b = [d[1]*a[2]-d[2]*a[1], d[2]*a[0]-d[0]*a[2], d[0]*a[1]-d[1]*a[0]].map(q => q / l);
+  const base = [0, 1, 2].map(k => { const q = k * Math.PI * 2 / 3; return [w[0] + (a[0]*Math.cos(q) + b[0]*Math.sin(q)) * r, w[1] + (a[1]*Math.cos(q) + b[1]*Math.sin(q)) * r, w[2] + (a[2]*Math.cos(q) + b[2]*Math.sin(q)) * r]; });
+  return [[base[0], base[1], t], [base[1], base[2], t], [base[2], base[0], t], [base[0], base[2], base[1]]]; };
+// The pod matches the standard view's proportions: a hull about a tile across riding on stubby legs.
+const PC = .96, PR = .52;
 const robot = [
-  part(ellipsoid(8, 2),-.04,0,1.02,.51,.45,.44,hullGreen,0,-.04,1.02,0,true),
-  part(ellipsoid(8, 2),.31,0,1.19,.33,.36,.31,ironEdge,0,.31,1.19,0,true),
-  part(ellipsoid(7, 2),.43,0,1.20,.20,.29,.21,0x79acb3,0,.43,1.20,0,true),
-  part(ringLoft([[-.30,.29,-.20],[-.40,.27,.01],[-.31,.20,.22]],4),-.04,0,1.02,1,1,1,hullRust,0,-.04,1.02,0,true),
+  part(ellipsoid(10, 3), 0, 0, PC, PR, PR, PR + .01, podSilver, 0, 0, PC, 0, true),
+  part(ringLoft([[0, .35, 0], [.15, .312, 0]], 8), .40, 0, PC, 1, 1, 1, podDark),
+  part(capFan(8, .3047), -.424, 0, PC, 1, 1, 1, podGlass, 0, -.424, PC, 0, true),
+  part([[[.562, .02, PC + .20], [.560, .13, PC + .17], [.556, .21, PC + .10]], [[.562, .02, PC + .20], [.556, .21, PC + .10], [.563, .11, PC + .13]]], 0, 0, 0, 1, 1, 1, 0xd8f6ff),
 ];
 for (const side of [-1, 1]) robot.push(
-  part(curvedTube([[-.06,side*.35,1.13,.11],[-.01,side*.54,.94,.095],[.22,side*.62,.73,.065]],3),0,0,0,1,1,1,ironEdge,side*2,-.04,1.17),
-  part(bevel,.29,side*.63,.70,.13,.12,.11,worn,side*2,-.04,1.17,0,true),
-  part(curvedTube([[-.05,side*.21,.66,.11],[-.01,side*.22,.36,.09],[.08,side*.23,.11,.065]],3),0,0,0,1,1,1,iron,side,-.03,.68),
-  block(.15,side*.23,.08,.17,.11,.07,hullRust,side,-.03,.68),
+  part([[[.582, side * .055, PC + .05], [.580, side * .12, PC + .05], [.580, side * .12, PC + .015]], [[.582, side * .055, PC + .05], [.580, side * .12, PC + .015], [.582, side * .055, PC + .015]]], 0, 0, 0, 1, 1, 1, amber),
+  part(prism(4), -.38, side * .25, PC + .17, .095, .095, .24, 0x8f979f),
+  part(curvedTube([[0, side * .46, PC + .02, .095], [.07, side * .68, PC - .19, .078], [.18, side * .73, PC - .38, .064]], 4), 0, 0, 0, 1, 1, 1, podArm, side * 2, 0, PC),
+  part(ellipsoid(4, 1), .18, side * .73, PC - .40, .07, .07, .055, podDark, side * 2, 0, PC, 0, true),
+  ...[-.6, 0, .6].map(f => part(claw([.19, side * .73, PC - .42], [.28 + .045 * Math.cos(f), side * (.73 + .09 * Math.sin(f)), PC - .60], .033), 0, 0, 0, 1, 1, 1, podDark, side * 2, 0, PC)),
+  part(curvedTube([[0, side * .19, .52, .10], [.02, side * .20, .12, .085]], 4), 0, 0, 0, 1, 1, 1, podLeg, side, 0, .48),
+  block(.05, side * .20, .045, .18, .12, .045, podFoot, side, 0, .48),
 );
 
 // Readiness fallback only. The normal path skins the approved imported adult and the bounded overlay
