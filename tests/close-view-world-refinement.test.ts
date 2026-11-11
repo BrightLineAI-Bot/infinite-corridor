@@ -165,8 +165,8 @@ import { outdoorRelief, outdoorTerrainMesh, outdoorSurfaceZ, outdoorPit } from '
 import { LIFT_PER_LEVEL } from '../src/landscape.ts';
 test('the test tile\'s plateau stands at its levels, its stair slopes, its canyon is a hole with walls', () => {
   const g: any = createLabFixture({ lab: 'test-tile', scenario: '', now: 1000 }).game, before = JSON.stringify(g.map.tiles), R: any = outdoorRelief(g.map);
-  assert.ok(Math.abs(outdoorSurfaceZ(R, 26.5, 4.5) - 2 * LIFT_PER_LEVEL) < 1e-6, 'the core at level 2');
-  assert.ok(Math.abs(outdoorSurfaceZ(R, 24.5, 2.5) - LIFT_PER_LEVEL) < 1e-6, 'the ring at level 1');
+  assert.ok(Math.abs(outdoorSurfaceZ(R, 26.5, 4.5) - 2 * OUTDOOR.terrain.level) < 1e-6, 'the core at level 2');
+  assert.ok(Math.abs(outdoorSurfaceZ(R, 24.5, 2.5) - OUTDOOR.terrain.level) < 1e-6, 'the ring at level 1');
   const s0 = outdoorSurfaceZ(R, 24.05, 4.5), s1 = outdoorSurfaceZ(R, 24.95, 4.5); assert.ok(s1 > s0 + .05, `the stair climbs (${s0} to ${s1})`);
   const canyon = g.map.tiles.find((t: any) => t.kind === 'canyon'); assert.ok(outdoorPit(canyon)); assert.ok(R.top[canyon.y * R.w + canyon.x] <= -OUTDOOR.terrain.pitDepth + 1e-6, 'the canyon is a hole');
   const m = outdoorTerrainMesh(g.map, R); checkSolids(m.data, m.verts, 'heightfield', 3, -OUTDOOR.terrain.pitDepth); assert.equal(JSON.stringify(g.map.tiles), before, 'the map is untouched');

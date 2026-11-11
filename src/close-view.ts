@@ -52,6 +52,118 @@ const surfaceZ = (map, x, y) => map && map === RELIEF.map ? outdoorSurfaceZ(RELI
 // Higher-fidelity monster art plugs in at drawBillboard: today it replays the top-down sprite closure; a phase-2 creature
 // would register a `closeViewArt(ctx, e, view)` drawer (see CLOSE_VIEW_HOOKS.art) that draws itself from the camera's angle.
 //
+// The Deep's own look in Close View (Tim, 2026-11-11, in THE DEEP · FLOOR 1: the standard view is "beautiful and
+// picturesque" (a mossy floor, teal mushrooms, dark cracked stone, purple specks) and Close View showed the walls as "plain brown
+// brick blocks... garish, low-res, obviously out of place"; "the dungeon themes need to extend to the Close View walls").
+// One theme for each environment a Deep floor is laid in (the-deep.ts THE_DEEP.themes, underlands.ts UNDER_THEMES), its palette
+// taken from that environment's standard-view tiles (landscape-render.ts), and `deepStone` for a floor with none.
+// wall.kind 7 is the Deep's living rock (close-view-gl.ts): boulders split by cracks, moss (wall.dampRGB), glowing spots (glow)
+// and spore flecks (deco2), by `cave`: [moss, glowing spots, flecks, glow strength, glowing cracks, boulder scale]; ceiling.kind
+// 5 is that rock overhead. `arch.none`: no masonry arch over a cave's passages. `features`: a blocked tile of the environment
+// (a glowcap, an ice spire, a crystal spire, a temple pillar...) stands as what it is instead of as a block of wall (`form`:
+// cap, shard, column, knot, pipe, slab; pool: nothing, the floor shows it). `growth`: small glowing caps or shards at the foot
+// of the wall under each of the theme's glowing lights (light hue 5: the theme's own `glow`, no flame or bracket). `ownWalls`:
+// every wall tile takes the theme's material (a star hive's "hiveWall" tiles are not the compounds' chitin).
+// Colours are 0..255. A theme is a hash-free function of the floor's environment: never stored, never per frame.
+const frozen = (o) => { for (const v of Object.values(o)) if (v && typeof v === "object" && !Object.isFrozen(v)) frozen(v); return Object.freeze(o); };
+const deepTheme = (label, t) => frozen({ label, ownWalls: true, arch: { spring: 1.8, radius: 0, band: .2, none: true }, pilaster: 0, plinth: [0, 0], cornice: [0, 0], vignette: .56, decor: {}, props: {}, ...t });
+const caveWall = (rgb, mortar, moss, topFall = .32) => ({ kind: 7, rgb, mortar, stone: [.3, .7, .04, .8], damp: [0, 0], dampRGB: moss, topFall });
+const caveFloor = (rgb) => ({ kind: 6, rgb, joint: rgb.map((v) => Math.round(v * .35)), rug: rgb, size: .6, wear: .25, wet: .25, sewer: false });
+const caveCeiling = (rgb) => ({ kind: 5, rgb, bay: 2, rib: .1, dark: .8 });
+const glowLights = (share, strength = 1.4) => ({ share, spacing: 4, reach: 3.8, strength, hue: 5, ghost: 0, candles: 0 });
+export const CLOSE_VIEW_DEEP = frozen({
+  version: 1,
+  byEnv: { fungal: "deepFungal", chasm: "deepChasm", lavaBog: "deepLava", river: "deepRiver", frozen: "deepFrozen", boneCrypt: "deepCrypt", starHive: "deepStarHive", geode: "deepGeode", mosaic: "deepMosaic", rootwood: "deepRootwood", brass: "deepBrass" },
+  none: "deepStone",
+  // feature and growth sizes (tiles): a giant cap's stem and cap; a shard cluster's count, height and lean; a column's radius
+  shapes: { cap: { stem: [.12, .09], height: [.9, 1.35], cap: [.46, .36, .12], capH: [.12, .16] }, shard: { n: 4, height: [.7, 1.5], r: [.1, .17], lean: .22 },
+    column: { r: .34, sides: 8 }, knot: { r: [.3, .17], flares: 4 }, pipe: { r: .13, at: [.3, .66] }, slab: { half: [.38, .44], height: .72 },
+    growth: { n: 3, cap: [.07, .13], height: [.12, .34], shard: [.18, .42] } },
+  themes: {
+    deepFungal: deepTheme("The Deep: a fungal hollow (mossy dark stone, glowing caps, drifting spores)", {
+      wall: caveWall([52, 62, 50], [8, 11, 8], [64, 108, 70], .3), floor: caveFloor([42, 51, 38]), ceiling: caveCeiling([30, 38, 32]),
+      light: { torch: [236, 220, 180], reach: 5.6, strength: 1.6, height: 1.15, ambient: [8, 12, 11], sources: glowLights(.14, 1.5) },
+      fog: { rgb: [4, 8, 7], near: 2.6, far: 12.5, haze: [.1, .7], hazeRGB: [12, 26, 22] }, grade: [.95, 1.04, 1, 1.08], vignette: .55,
+      deco1: [44, 76, 50], deco2: [196, 155, 232], glow: [111, 216, 184], cave: [.6, .1, .7, .9, 0, 1.5],
+      features: { glowcap: { form: "cap", rgb: [111, 216, 184], stem: [215, 207, 184], under: [62, 156, 132], glow: .5 } },
+      growth: { form: "cap", rgb: [111, 216, 184], stem: [200, 192, 170], under: [62, 156, 132], glow: .6 }, props: { rubble: .03 } }),
+    deepChasm: deepTheme("The Deep: a chasm's ledges (grey-violet rock over the drop)", {
+      wall: caveWall([64, 60, 70], [10, 9, 12], [86, 82, 96]), floor: caveFloor([63, 58, 64]), ceiling: caveCeiling([36, 34, 40]),
+      light: { torch: [236, 214, 180], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 9, 12], sources: glowLights(.06, 1.2) },
+      fog: { rgb: [6, 6, 8], near: 2.6, far: 12, haze: [.09, .8], hazeRGB: [16, 15, 20] }, grade: [.97, .98, 1.04, 1.1],
+      deco1: [50, 46, 56], deco2: [150, 140, 180], glow: [150, 140, 210], cave: [.12, .03, .25, .5, 0, 1.3],
+      growth: { form: "shard", rgb: [150, 140, 210], glow: .5 }, props: { rubble: .07 } }),
+    deepLava: deepTheme("The Deep: a lava bog (scorched rock with glowing seams)", {
+      wall: caveWall([72, 60, 54], [26, 10, 4], [92, 86, 82]), floor: caveFloor([90, 81, 76]), ceiling: caveCeiling([40, 32, 28]),
+      light: { torch: [255, 196, 140], reach: 5.6, strength: 1.6, height: 1.15, ambient: [12, 8, 6], sources: glowLights(.1, 1.5) },
+      fog: { rgb: [10, 6, 4], near: 2.6, far: 12, haze: [.12, .6], hazeRGB: [26, 12, 6] }, grade: [1.06, .97, .9, 1.1],
+      deco1: [60, 40, 30], deco2: [255, 138, 58], glow: [255, 120, 50], cave: [.2, .05, .4, .9, .8, 1.4],
+      growth: { form: "shard", rgb: [255, 120, 50], glow: .7 }, props: { rubble: .06 } }),
+    deepRiver: deepTheme("The Deep: an underground river (wet coursed stone, a green tide line)", {
+      wall: { kind: 0, rgb: [56, 70, 72], mortar: [12, 16, 17], stone: [.3, .7, .05, .7], damp: [1, .8], dampRGB: [100, 160, 140], topFall: .32 },
+      floor: { kind: 0, rgb: [60, 70, 72], joint: [15, 18, 19], rug: [40, 48, 50], size: .6, wear: .4, wet: .5, sewer: false }, ceiling: { kind: 0, rgb: [40, 50, 52], bay: 2, rib: .09, dark: .8 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, plinth: [.18, .06],
+      light: { torch: [240, 214, 170], reach: 5.6, strength: 1.6, height: 1.15, ambient: [8, 11, 12], sources: { share: .08, spacing: 5, reach: 3.8, strength: 1.3, hue: 1, ghost: 0, candles: 0 } },
+      fog: { rgb: [5, 8, 9], near: 2.6, far: 12, haze: [.12, .6], hazeRGB: [12, 20, 22] }, grade: [.94, 1, 1.04, 1.1],
+      deco1: [40, 60, 56], deco2: [120, 170, 150], glow: [90, 220, 190], decor: { roots: .06 }, props: { rubble: .04, web: .25 } }),
+    deepFrozen: deepTheme("The Deep: a frozen grotto (blue ice, frost on every ledge)", {
+      wall: caveWall([112, 150, 178], [36, 62, 84], [214, 232, 246], .45), floor: caveFloor([180, 196, 210]), ceiling: caveCeiling([70, 92, 112]),
+      light: { torch: [230, 236, 255], reach: 5.6, strength: 1.5, height: 1.15, ambient: [11, 13, 16], sources: glowLights(.08, 1.2) },
+      fog: { rgb: [8, 11, 15], near: 2.8, far: 12.5, haze: [.1, .8], hazeRGB: [24, 30, 38] }, grade: [.94, 1, 1.08, 1.08],
+      deco1: [90, 120, 150], deco2: [236, 248, 255], glow: [170, 220, 255], cave: [.4, .03, .5, .5, 0, 1.2],
+      features: { iceSpire: { form: "shard", rgb: [196, 228, 246], glow: .25 } }, growth: { form: "shard", rgb: [190, 226, 250], glow: .4 } }),
+    deepCrypt: deepTheme("The Deep: a bone crypt (old coursed stone, skull niches, sarcophagi)", {
+      wall: { kind: 0, rgb: [72, 64, 56], mortar: [18, 15, 12], stone: [.27, .62, .05, .9], damp: [.7, .6], dampRGB: [120, 128, 116], topFall: .3 },
+      floor: { kind: 0, rgb: [74, 66, 57], joint: [16, 14, 12], rug: [60, 30, 26], size: .58, wear: .6, wet: .2, sewer: false }, ceiling: { kind: 0, rgb: [52, 46, 40], bay: 2, rib: .09, dark: .85 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, pilaster: 4, plinth: [.2, .07], cornice: [.16, .08], vignette: .6,
+      light: { torch: [255, 182, 124], reach: 5.4, strength: 1.7, height: 1.15, ambient: [10, 9, 10], sources: { share: .08, spacing: 5, reach: 4, strength: 1.5, hue: 0, ghost: .3, candles: .35 } },
+      fog: { rgb: [6, 5, 5], near: 2.4, far: 11.5, haze: [.1, .7], hazeRGB: [16, 14, 13] }, grade: [1, .96, .9, 1.14],
+      deco1: [60, 30, 26], deco2: [207, 195, 173], glow: [255, 150, 80], decor: { niche: .22, roots: .04 }, props: { bones: .1, urn: .05, coffin: .03, web: .45 },
+      features: { sarcophagus: { form: "slab", rgb: [128, 116, 100] } } }),
+    deepStarHive: deepTheme("The Deep: a star hive (violet alien rock, crystal spires, glowing pools)", {
+      wall: caveWall([64, 46, 90], [16, 10, 26], [92, 62, 138], .3), floor: caveFloor([43, 29, 64]), ceiling: caveCeiling([38, 26, 54]),
+      light: { torch: [226, 206, 255], reach: 5.6, strength: 1.6, height: 1.15, ambient: [10, 8, 14], sources: glowLights(.12, 1.4) },
+      fog: { rgb: [7, 5, 10], near: 2.6, far: 12, haze: [.1, .7], hazeRGB: [20, 12, 30] }, grade: [.98, .94, 1.08, 1.1],
+      deco1: [58, 40, 94], deco2: [95, 247, 209], glow: [192, 139, 255], cave: [.45, .08, .4, .85, 0, 1.6],
+      features: { crystalSpire: { form: "shard", rgb: [192, 139, 255], glow: .55 }, alienPool: { form: "pool" } }, growth: { form: "shard", rgb: [192, 139, 255], glow: .6 } }),
+    deepGeode: deepTheme("The Deep: a geode (dark rock studded with violet crystal)", {
+      wall: caveWall([62, 56, 78], [12, 10, 18], [86, 74, 110]), floor: caveFloor([58, 51, 70]), ceiling: caveCeiling([40, 36, 52]),
+      light: { torch: [230, 220, 255], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 8, 13], sources: glowLights(.12, 1.4) },
+      fog: { rgb: [6, 5, 9], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [16, 13, 24] }, grade: [.98, .95, 1.06, 1.1],
+      deco1: [77, 58, 120], deco2: [183, 160, 232], glow: [154, 122, 208], cave: [.1, .16, .5, .95, 0, 1.4],
+      features: { geodeCluster: { form: "shard", rgb: [180, 140, 240], glow: .55 } }, growth: { form: "shard", rgb: [180, 140, 240], glow: .6 } }),
+    deepMosaic: deepTheme("The Deep: a buried temple (sandstone, a teal and gold frieze, pillars)", {
+      wall: { kind: 0, rgb: [138, 122, 92], mortar: [44, 36, 24], stone: [.3, .75, .04, .5], damp: [.4, .35], dampRGB: [150, 150, 130], topFall: .45 },
+      floor: { kind: 0, rgb: [120, 104, 80], joint: [40, 34, 24], rug: [47, 111, 115], size: .7, wear: .3, wet: .1, sewer: false }, ceiling: { kind: 0, rgb: [96, 86, 66], bay: 3, rib: .11, dark: .75 },
+      arch: { spring: 1.72, radius: .5, band: .15 }, pilaster: 3, plinth: [.22, .07], cornice: [.18, .09], vignette: .5,
+      light: { torch: [255, 200, 140], reach: 5.8, strength: 1.5, height: 1.15, ambient: [12, 11, 9], sources: { share: .1, spacing: 5, reach: 4.4, strength: 1.5, hue: 0, ghost: 0, candles: .2 } },
+      fog: { rgb: [8, 7, 5], near: 2.8, far: 12.5, haze: [.07, .8], hazeRGB: [22, 19, 14] }, grade: [1.04, 1, .92, 1.08],
+      deco1: [47, 111, 115], deco2: [226, 194, 106], glow: [255, 200, 120], decor: { banner: .1, niche: .03 }, props: { urn: .06, rubble: .03, web: .2 },
+      features: { templePillar: { form: "column", rgb: [185, 171, 138] } } }),
+    deepRootwood: deepTheme("The Deep: a root hollow (packed earth and great roots)", {
+      wall: { kind: 1, rgb: [60, 44, 28], mortar: [20, 15, 10], stone: [.3, .7, .05, .9], damp: [.5, .4], dampRGB: [120, 150, 90], topFall: .3 },
+      floor: caveFloor([59, 52, 36]), ceiling: { kind: 1, rgb: [50, 36, 24], bay: 1, rib: .1, dark: .8 },
+      light: { torch: [255, 176, 110], reach: 5.4, strength: 1.6, height: 1.15, ambient: [9, 9, 7], sources: { share: .08, spacing: 5, reach: 3.8, strength: 1.4, hue: 1, ghost: 0, candles: .25 } },
+      fog: { rgb: [6, 6, 4], near: 2.4, far: 11.5, haze: [.12, .6], hazeRGB: [16, 16, 10] }, grade: [1.04, 1, .86, 1.1],
+      deco1: [60, 44, 28], deco2: [138, 164, 90], glow: [150, 230, 120], decor: { roots: .5 }, props: { rubble: .04, web: .4 },
+      features: { rootKnot: { form: "knot", rgb: [110, 76, 44] } } }),
+    deepBrass: deepTheme("The Deep: a brass works (riveted panels, pipes, failing lamps)", {
+      wall: { kind: 3, rgb: [138, 106, 52], mortar: [42, 30, 14], stone: [.34, .8, .04, .4], damp: [.5, .4], dampRGB: [150, 140, 110], topFall: .4 },
+      floor: { kind: 10, rgb: [110, 90, 56], joint: [30, 22, 10], rug: [70, 54, 26], size: .6, wear: .5, wet: .2, sewer: false }, ceiling: { kind: 3, rgb: [70, 56, 30], bay: 2, rib: .1, dark: .7 },
+      arch: { spring: 2.05, radius: 0, band: .35 }, pilaster: 4, plinth: [.14, .05], cornice: [.12, .06],
+      light: { torch: [255, 206, 150], reach: 5.6, strength: 1.5, height: 1.15, ambient: [11, 10, 8], sources: { share: .1, spacing: 5, reach: 4.2, strength: 1.4, hue: 3, ghost: 0, candles: 0 } },
+      fog: { rgb: [7, 6, 4], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [20, 16, 10] }, grade: [1.04, 1, .9, 1.1],
+      deco1: [70, 54, 26], deco2: [216, 184, 120], glow: [255, 190, 110], decor: { vent: .12 }, props: { rubble: .04, chain: .03, web: .15 },
+      features: { brassPipe: { form: "pipe", rgb: [224, 188, 120] } } }),
+    deepStone: deepTheme("The Deep: raw rock (cracked stone, a little moss, faint glow)", {
+      wall: caveWall([68, 66, 62], [12, 11, 10], [58, 76, 60]), floor: caveFloor([64, 62, 58]), ceiling: caveCeiling([38, 36, 34]),
+      light: { torch: [240, 214, 170], reach: 5.6, strength: 1.6, height: 1.15, ambient: [9, 10, 11], sources: glowLights(.06, 1.3) },
+      fog: { rgb: [6, 7, 7], near: 2.6, far: 12, haze: [.08, .8], hazeRGB: [15, 17, 17] }, grade: [.98, 1, 1, 1.1],
+      deco1: [50, 50, 46], deco2: [150, 140, 170], glow: [120, 200, 180], cave: [.28, .03, .25, .6, 0, 1.4],
+      growth: { form: "cap", rgb: [120, 200, 180], stem: [180, 176, 160], under: [60, 120, 104], glow: .5 }, props: { rubble: .05 } }),
+  },
+});
+
 // Every number is in CLOSE_VIEW. Distances are in tiles; angles in degrees.
 export const CLOSE_VIEW = Object.freeze({
   version: 5, // 5 (2026-11-06, release 794): atmosphere: a theme per building kind (CLOSE_VIEW.themes), procedural stone, placed light, fog and haze, a camera that never looks through a wall; 4 (2026-11-06, release 793): the GPU scene (CLOSE_VIEW.gl; close-view-gl.ts): a floor that holds still, a ceiling, detailed walls, pits with depth, lava, smooth motion; 3 (2026-11-06, release 790): the walls' surface (CLOSE_VIEW.grit) and the bullseye lock; 2 (2026-11-06, Tim: "the walls kind of moved or weren't stable... a more stable view"): the stability pass
@@ -59,7 +171,7 @@ export const CLOSE_VIEW = Object.freeze({
     minDistance: 1, // the boom's usual shortest... (a wall closer than this pulls it in further: the camera is never inside a wall)
     closest: .3, // ...and its absolute shortest
     crane: .75, // ...and for each tile it is pulled in, it rises this much (never above the walls' tops less `craneClear`), so
-    craneClear: .25, // the Wayfarer stays a figure in the view, not a wall of cloth
+    craneClear: .2, // the Wayfarer stays a figure in the view, not a wall of cloth (was .25 before the 2026-11-11 height pass)
     nearFade: Object.freeze([1.6, .55]), // (version 5, the GPU scene: never fainter than atmosphere.nearFade) // nearer than this (camera depth), the Wayfarer is drawn this faint, so the way ahead shows
     center: .5, // the aim point's place on screen, as a share of the height from the top
     boomPad: .32, // the camera keeps this far off a wall
@@ -86,6 +198,14 @@ export const CLOSE_VIEW = Object.freeze({
     // Keep the visible body in frame after collision shortens the boom. The 1.45-tile
     // bound encloses the Wayfarer's .82-scale, 1.68-tile hood, including its walking bob.
     framing: Object.freeze({ bodyHeight: 1.45, margin: .05, pitchMin: -1.2, pitchMax: 1.35 }),
+    // Outdoors over the heightfield (2026-11-11): the line from the Wayfarer's chest to the camera must clear the ground behind
+    // them. Rather than only cutting the boom where a ledge rises into that line, the crane first rises, up to `riseMax` tiles
+    // over the preset's outdoorHeight, so the camera looks down over the ledge; only a ledge too tall and too close for that
+    // shortens the boom, and then to the longest length the risen crane can see over. The rise is taken at once (it grows
+    // smoothly as the Wayfarer backs toward a ledge) and let down on the crane's spring.
+    // `horizonRoom`: outdoors the crane is held low enough that the Wayfarer's feet and this many degrees of sky above the
+    // horizon both fit the screen's height (outdoorCrane; it binds only in a short landscape view).
+    outdoor: Object.freeze({ riseMax: 2.2, horizonRoom: 4, minHeight: 1.2 }), // minHeight: never lower than this however short the view
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -101,9 +221,16 @@ export const CLOSE_VIEW = Object.freeze({
     // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
     // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
     // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
-    standard: Object.freeze({ label: "Standard", height: 1.9, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
-    close: Object.freeze({ label: "Close (tight, low)", height: 1.55, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
+    // version 4 (Tim, 2026-11-11: "higher camera in general", after the overworld's levels became 1.2 tiles tall and a cliff at
+    // the Wayfarer's back pulled the camera in to their shoulder): indoors each preset is raised toward the cap (was close 1.55,
+    // standard 1.9, wide 2.15; the walls' tops less craneClear, 2.2, and the arch and hall caps still bound it). Outdoors (the
+    // overworld, courts and roofs: no ceiling) the crane stands at `outdoorHeight`, high enough that a level or two of ledge
+    // behind the Wayfarer is looked down over (CLOSE_VIEW.camera.outdoor) rather than cutting the boom. The look point is kept:
+    // the pitch outdoors is about 20-24 degrees, so in portrait the horizon still sits in the upper third of the screen and the
+    // Wayfarer's feet at about two thirds of the way down.
+    standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
+    close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
@@ -427,6 +554,7 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([5, 7, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .8]), hazeRGB: Object.freeze([12, 16, 15]) }),
       grade: Object.freeze([.92, 1.02, .98, 1.1]), vignette: .56, deco1: Object.freeze([30, 34, 32]), deco2: Object.freeze([90, 96, 80]), glow: Object.freeze([150, 220, 160]),
       decor: Object.freeze({ vent: .1 }), props: Object.freeze({ rubble: .06, chain: .02, web: .25 }) }),
+    ...CLOSE_VIEW_DEEP.themes, // 2026-11-11: the Deep (CLOSE_VIEW_DEEP)
   }),
   // The atmosphere's budget and feel (version 5). `lights`: placed sources lit a frame at most (the nearest in reach; per tier
   // in quality.*.lights); `flicker`: their gentle breathing (amount, period ms), held still with reduced motion; `flame`: a
@@ -509,13 +637,45 @@ export function closeViewThemeId(b) {
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
 const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
-const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+// 2026-11-11: a floor of the Deep takes its environment's theme (CLOSE_VIEW_DEEP; `none` for a floor laid without one); another
+// dungeon laid in one of those environments (a Proving Ground fixture) takes it too. Buildings keep theirs.
+export function closeViewDeepThemeId(map) {
+  const D = CLOSE_VIEW_DEEP, env = D.byEnv[map?.theme];
+  if (Number(map?.deepFloor) > 0) return env || D.none;
+  return !map?.building && env ? env : null;
+}
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewDeepThemeId(map) || closeViewThemeId(map?.building);
 export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
 const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
+// Where Close View may be used (Tim, 2026-11-11: "Close View is for closer exploration and souls-like combat when
+// you want it"): the overworld, every building interior (keeps, castles, compounds, great buildings, hives, arcologies, the
+// Pentagon and its arenas, a keep's Cube labyrinth), the Stillworks, seed realms, the Skylands (and a great tree's canopy),
+// the Deep's endless descent (the Listener's Descent too), and the Proving Ground's scratch fixtures. Dive sites and grottoes,
+// and ordinary dungeons and crossings (their annexes, the Threefold Deep, the Starfield Deep Annex, hunts and portals), are
+// refused: there the Oculus answers with `occluded`, the same words show once as you walk in with Close View on
+// (closeViewOccludedOnEntry), and both save switches are left exactly as they were, so Close View comes back on leaving.
+export const CLOSE_VIEW_PLACES = Object.freeze({ version: 1, occluded: "The view is occluded.",
+  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: true, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: true, sky: true, lab: true, underwater: false, crossing: false }) });
+// What kind of place the Game stands in, for the table above. Pure.
+export function closeViewPlace(g) {
+  if (!g || g.area !== "dungeon") return "overworld";
+  const m = g.map && typeof g.map === "object" ? g.map : {}, b = m.building && typeof m.building === "object" ? m.building : null;
+  if (m.stillworks) return "stillworks";
+  if (m.seedRealm) return "seedRealm";
+  if (Number(m.deepFloor) > 0) return "deep"; // the-deep.ts: a floor of a Deep Shaft or the Listener's Descent
+  if (b) return b.pentagon || m.pentArena ? "pentagon" : b.labyrinth ? "cube" : b.style === "hive" ? "hive" : b.style === "apartment" ? "arcology" : "keep";
+  if (m.skyCloud || m.canopy) return "sky"; // Skylands, a great tree's canopy
+  if (m.underwater) return "underwater"; // dive sites and grottoes (Tim, 2026-11-11: no Close View there)
+  if (String(m.id || "").startsWith("proving:")) return "lab";
+  return "crossing";
+}
+export const closeViewPlaceAllowed = (g) => CLOSE_VIEW_PLACES.allowed[closeViewPlace(g)] === true;
+// On entering a place (Game.loadArea, once per entry): the HUD's words when Close View is on and this place refuses it, else null.
+export const closeViewOccludedOnEntry = (g) => g?.area === "dungeon" && (g.save?.overworldCloseView === true || g.save?.closeView === true) && !closeViewPlaceAllowed(g) ? CLOSE_VIEW_PLACES.occluded : null;
 export function overworldCloseViewApplies(g) {
-  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g)) return false;
+  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g) || !closeViewPlaceAllowed(g)) return false;
   const map = g.map, count = map?.tiles?.length, width = Number(map?.width) || (g.area === "dungeon" ? 24 : 32);
   const height = Number(map?.height) || count / width;
   return Number.isSafeInteger(count) && count > 0 && count <= 16384
@@ -1248,7 +1408,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
   const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
-  const Cp = closeViewPreset(g), camH = lerp(E.height, Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
+  const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, Cp.distance, mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
   const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
@@ -1277,6 +1437,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Tx = Math.round(W / 2 - p.x * s), Ty = Math.round(H / 2 - p.y * s), gox = Math.round(Tx * ts) - Tx * ts, goy = Math.round(Ty * ts) - Ty * ts, dxL = (Tx - (W / 2 - p.x * s)) * ts, dyL = (Ty - (H / 2 - p.y * s)) * ts;
   gc.setTransform(ts, 0, 0, ts, gox, goy); gc.imageSmoothingEnabled = false; captured = null; capturedPlayer = null; capturing = true; bareFloor = useGL && !flatWorld; worldCapture = flatWorld;
   try { baseRender(gc, g, W, H, now);
+    if (useGL && flatWorld && themeOf(g.map)?.features) featureFloor(g, gc, s, ts, gox, goy, Tx, Ty, R); // 2026-11-11
     if (shots) {
       shots.now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
       // Effect producers hand over exact source references and body-only closures. Even a cap-overflow body
@@ -1294,6 +1455,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     }
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
+  if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1353,12 +1515,20 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
   }
-  const playerZ = surfaceZ(g.map, footX(p), footY(p)) +
-    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  const playerZ = RELIEF.map === g.map && LEAP.map === g.map ? LEAP.base + Math.max(0, capturedPlayer?.lift || 0) // over the heightfield the camera follows the Wayfarer's footing, not each jump's arc
+    : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
   const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
   let terrainCameraZ = Math.min(playerZ + craneUp, cap(CAM.cx, CAM.cy));
+  if (outdoor && RELIEF.map === g.map) { // look down over a ledge behind (CLOSE_VIEW.camera.outdoor): the crane rises before the boom is cut
+    const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), L0 = Math.hypot(dx, dy), steps = Math.max(1, Math.ceil(L0 / .08)), top = camH + C.outdoor.riseMax;
+    let m = 0, keep = L0, need = 0;
+    for (let i = 1; i <= steps; i++) { const s = L0 * i / steps, rise = surfaceZ(g.map, footX(p) + dx * i / steps, footY(p) + dy * i / steps) + .12 - playerZ;
+      const mm = Math.max(m, (rise - .6) / s), req = Math.max(.6 + mm * s, rise, need); if (req > top) { keep = L0 * (i - 1) / steps; break; } m = mm; need = req; }
+    if (keep < L0 - 1e-6) { const k = keep / L0; CAM.cx = footX(p) + dx * k; CAM.cy = footY(p) + dy * k; CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0; }
+    need += .02; if (need > CAM.crane) { CAM.crane = need; CAM.craneV = 0; } terrainCameraZ = playerZ + Math.max(craneUp, need); // a hair over the line, so the check below agrees
+  }
   if (interiorTerrain(g.map) || hasStoneBuilds(g.map) || RELIEF.map === g.map) { // the camera's line to the Wayfarer never dips under the ground
     const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
     for (let i = 1; i <= steps; i++) {
@@ -1819,6 +1989,20 @@ function flatPass(g, draws, gc, s, ts, gox, goy, Tx, Ty) {
   closeViewStats.flat = drawn;
 }
 export const closeViewFlatObject = flatObject; // for tests
+// 2026-11-11: where a feature of the Deep stands as itself (CLOSE_VIEW_DEEP features: a giant cap, a crystal spire), the
+// ground texture under it shows a neighbouring floor tile instead of the tile's own top-down art (a mushroom painted flat
+// under the standing one). Within the view's reach only; one canvas copy a feature tile, nothing allocated.
+const FEATURE_FLOOR_STEPS = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+function featureFloor(g, gc, s, ts, gox, goy, Tx, Ty, R) {
+  const map = g.map, FT = themeOf(map).features, w = Math.max(1, Number(map.width) || 32), h = Math.floor(map.tiles.length / w), px = Math.floor(g.player.x), py = Math.floor(g.player.y), k = s * ts;
+  gc.save(); gc.setTransform(1, 0, 0, 1, 0, 0); gc.imageSmoothingEnabled = false;
+  const r = Math.ceil(R) + 1;
+  for (let y = Math.max(0, py - r); y <= Math.min(h - 1, py + r); y++) for (let x = Math.max(0, px - r); x <= Math.min(w - 1, px + r); x++) {
+    const f = FT[map.tiles[y * w + x]?.kind]; if (!f || f.form === "pool") continue;
+    for (const [dx, dy] of FEATURE_FLOOR_STEPS) { const nx = x + dx, ny = y + dy, t = nx >= 0 && ny >= 0 && nx < w && ny < h ? map.tiles[ny * w + nx] : null; if (!t || t.blocked || closeViewHazardCode(t)) continue;
+      gc.drawImage(GROUND.canvas, Math.round((Tx + nx * s) * ts + gox), Math.round((Ty + ny * s) * ts + goy), Math.round(k), Math.round(k), Math.round((Tx + x * s) * ts + gox), Math.round((Ty + y * s) * ts + goy), Math.round(k), Math.round(k)); break; } }
+  gc.restore();
+}
 
 // Pure admission/geometry seam used by the GPU frame and focused regression tests. Echo ribbons are raised through
 // the air; unlike the 2D fallback they never enter the floor overlay. The callback receives one depth-tested kind-11
@@ -1833,7 +2017,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?OUTDOOR.terrain.level:LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -1854,10 +2038,11 @@ const THEME_GL = new Map(); // theme id -> its colours as 0..1 arrays (made once
 function themeGL(th) {
   let t = THEME_GL.get(th); if (t) return t; const W = th.wall, Fl = th.floor, L = th.light;
   t = { wall: rgb01(W.rgb), mortar: rgb01(W.mortar), damp: rgb01(W.dampRGB), floor: rgb01(Fl.rgb), joint: rgb01(Fl.joint), rug: rgb01(Fl.rug), ceil: rgb01(th.ceiling.rgb), deco1: rgb01(th.deco1), deco2: rgb01(th.deco2), glow: rgb01(th.glow || [255, 150, 80]),
-    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB) };
+    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
+    caveA: Float32Array.from((th.cave || []).slice(0, 4).concat([0, 0, 0, 0]).slice(0, 4)), caveB: Float32Array.from([th.cave?.[4] || 0, th.cave?.[5] || 1.5, 0, 0]) }; // 2026-11-11: the Deep's living rock
   THEME_GL.set(th, t); return t;
 }
-const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp
+const HUE_RGB = [[1, .62, .32], [.3, .95, .8], [.55, .72, 1], [1, .78, .42]]; // a placed light's colour by hue: warm, bioluminescent, ghost-light, a failing lamp (hue 5, 2026-11-11: the theme's own glow)
 const SIGIL_COLORS = [[.22, .19, .3], [.65, .53, .82], [.92, .78, .99]];
 const SIGIL_INLAY = Float32Array.from(SIGIL_COLORS.flat());
 const NO_BACKDROP = { kind: 0, colors: new Float32Array(9) };
@@ -1875,13 +2060,15 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
       gl.uniform4f(U.u_pit, Pt.hole, Pt.chasm, Pt.dark, Pt.lip); gl.uniform3fv(U.u_stone, stone); gl.uniform3fv(U.u_lip, lip); gl.uniform3fv(U.u_safe, safe); gl.uniform3fv(U.u_chasm, chasm);
       const breath = UNI.reduce ? 1 : 1 - R.pulseDepth * (.5 + .5 * Math.sin(UNI.now / R.pulse * Math.PI * 2)); gl.uniform4f(U.u_safeP, R.near, R.full, R.alpha * breath, UNI.safeOn ? 1 : 0);
       gl.uniform4f(U.u_lava, Lv.scale, Lv.flow, Lv.light, q.lavaLight && lavaTiles > 0 ? 3 / Lv.reach : 0); gl.uniform3fv(U.u_lavaA, lavaA); gl.uniform3fv(U.u_lavaB, lavaB); gl.uniform3fv(U.u_lavaC, lavaC);
+      gl.uniform4fv(U.u_cave, tg.caveA); gl.uniform4fv(U.u_caveB, tg.caveB); gl.uniform3fv(U.u_caveGlow, tg.glow); gl.uniform3fv(U.u_caveFleck, tg.deco2); // 2026-11-11
       gl.uniform4f(U.u_floorP, Fl.kind, Fl.size, Fl.wear, Fl.sewer ? 1 : 0); gl.uniform3fv(U.u_floorRGB, tg.floor); gl.uniform3fv(U.u_floorJ, tg.joint); gl.uniform3fv(U.u_rug, tg.rug); gl.uniform4f(U.u_floorQ, q.bump ? 1 : 0, Fl.wet, q.relief ? 1 : 0, UNI.worldCapture ? 1 : 0); },
     wall(gl, U, F) { const q = UNI.q, th = UNI.th, tg = UNI.tg, Wl = th.wall, A = th.arch;
       gl.uniform4f(U.u_detail, q.detail ? 1 : 0, q.detailNear, q.detailFar, GRIT.light); gl.uniform1fv(U.u_gritA, gritA); gl.uniform4f(U.u_shimmer, un.shimmer || 0, un.period || 1, UNI.reduce ? 1 : 0, GRIT.size[0] / (GRIT.size[0] * GRIT.instances * 9));
       gl.uniform4f(U.u_stoneP, Wl.stone[0], Wl.stone[1], q.relief ? Wl.stone[2] : Wl.stone[2] * .5, Wl.stone[3]); gl.uniform4f(U.u_wallP, Wl.damp[0], Wl.damp[1], q.bump ? 1 : 0, Wl.topFall);
-      gl.uniform3fv(U.u_mortar, tg.mortar); gl.uniform3fv(U.u_damp, tg.damp); gl.uniform3fv(U.u_deco1, tg.deco1); gl.uniform3fv(U.u_deco2, tg.deco2); gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); gl.uniform3fv(U.u_glowRGB, tg.glow); },
+      gl.uniform3fv(U.u_mortar, tg.mortar); gl.uniform3fv(U.u_damp, tg.damp); gl.uniform3fv(U.u_deco1, tg.deco1); gl.uniform3fv(U.u_deco2, tg.deco2); gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); gl.uniform3fv(U.u_glowRGB, tg.glow);
+      gl.uniform4fv(U.u_cave, tg.caveA); gl.uniform4fv(U.u_caveB, tg.caveB); gl.uniform3fv(U.u_caveGlow, tg.glow); gl.uniform3fv(U.u_caveFleck, tg.deco2); }, // 2026-11-11
     arch(gl, U) { const A = UNI.th.arch; gl.uniform4f(U.u_arch, A.spring, A.radius, A.band, 0); },
-    decal(gl, U) { gl.uniform3fv(U.u_ring, ring); gl.uniform3fv(U.u_glow, ring); } }; })();
+    decal(gl, U) { gl.uniform3fv(U.u_ring, ring); gl.uniform3fv(U.u_glow, ring); if (UNI.tg) gl.uniform3fv(U.u_hue5, UNI.tg.glow); } }; })();
 function gritAtlas() { // every variant's painted instances side by side, once
   const [TW, TH] = GRIT.size, c = makeCanvas(), x = c?.getContext?.("2d"); if (!x) return null; c.width = TW * GRIT.instances * 9; c.height = TH; x.clearRect(0, 0, c.width, c.height);
   for (let v = 1; v < Math.min(9, GRIT.variants.length); v++) for (let k = 0; k < GRIT.instances; k++) { const t = gritTexture(v, k); if (t) x.drawImage(t, (v * GRIT.instances + k) * TW, 0); }
@@ -1907,6 +2094,14 @@ const HALL_VIEW = Object.freeze({ minHeight: 6, maxHeight: 14, tierHeight: .65, 
 const BACKDROPS = new Map(PENTAGON_BACKDROPS.map(({ id, palette }, i) => [
   id, { kind: i + 1, colors: Float32Array.from(palette.flatMap((hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255))) },
 ]));
+// The preset's outdoor crane height, no higher than lets the Wayfarer's feet and the horizon (with `horizonRoom` degrees of sky)
+// share the screen's height: in portrait the full outdoorHeight; in a short landscape view about the old height (the horizon
+// matters more there than the extra height).
+function outdoorCrane(Cp, w, h) {
+  const C = CLOSE_VIEW.camera, F = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+  const span = 2 * Math.atan(h * (.5 - C.framing.margin) / F) - C.outdoor.horizonRoom * DEG;
+  return Math.max(C.outdoor.minHeight, Math.min(Cp.outdoorHeight, Cp.distance * Math.tan(Math.max(.05, Math.min(1.4, span)))));
+}
 function hallHeight(map) {
   if (interiorTerrain(map)) return interiorCeilingHeight(map);
   const height = map.hall?.ceilingHeight;
@@ -2088,11 +2283,44 @@ function buildStatic(map, geo, th) {
     }
   }
   const arch = new Uint8Array(w * h), capped = new Uint8Array(w * h), D = th.decor || {}, Pr = th.props || {}, PL = th.plinth, CO = th.cornice, PIL = th.pilaster;
+  // 2026-11-11 (CLOSE_VIEW_DEEP): a tile that is one of the theme's features stands as itself, built once below (featured), and
+  // the Deep's glowing lights grow a small cluster at the wall's foot (growths). Neither exists for any other theme.
+  const FT = th.features || null, featureOf = (x, y) => (FT && x >= 0 && y >= 0 && x < w && y < h && FT[tiles[y * w + x]?.kind]) || null, featured = FT ? new Uint8Array(w * h) : null, growths = [];
+  const featureCol = (rgb) => rgb.map((v) => v / 255);
+  // a tapered n-sided post from (r0, z0) to (r1, z1), its top leaning by (lx, ly); cap 1: a top, 2: an underside. Its normals are
+  // short (.6): the wall pass then never culls a face of it by its side (a tapered face is not one plane with the wall's normal).
+  const frustum = (cx, cy, r0, r1, z0, z1, n, rot, col, deco, hsh, tx, ty, cap = 0, lx = 0, ly = 0) => {
+    for (let k = 0; k < n; k++) { const a0 = rot + k * 2 * Math.PI / n, a1 = rot + (k + 1) * 2 * Math.PI / n, am = (a0 + a1) / 2, fx = Math.cos(am) * .6, fy = Math.sin(am) * .6;
+      const P = [[cx + Math.cos(a0) * r0, cy + Math.sin(a0) * r0, z0, 0], [cx + Math.cos(a1) * r0, cy + Math.sin(a1) * r0, z0, 1], [cx + lx + Math.cos(a1) * r1, cy + ly + Math.sin(a1) * r1, z1, 1], [cx + lx + Math.cos(a0) * r1, cy + ly + Math.sin(a0) * r1, z1, 0]];
+      for (const i of [0, 1, 2, 0, 2, 3]) { const [X, Y, Z, u] = P[i]; V(X, Y, Z, (k + u) * .35, u, Z, z1, fx, fy, 12, 0, col, deco, 0, 0, hsh, tx, ty); } }
+    for (const [on, z, r, ox, oy, part] of [[cap & 1, z1, r1, lx, ly, 12], [cap & 2, z0, r0, 0, 0, 12.25]]) { if (!on || !(r > 0)) continue;
+      for (let k = 1; k < n - 1; k++) for (const j of [0, k, k + 1]) { const a = rot + j * 2 * Math.PI / n, X = cx + ox + Math.cos(a) * r, Y = cy + oy + Math.sin(a) * r; V(X, Y, z, X + Y, .5, z, z, 0, 0, part, 0, col, deco, 0, 0, hsh, tx, ty); } } };
+  const SH = CLOSE_VIEW_DEEP.shapes;
+  // a giant cap (a glowcap); a cluster of crystal shards; a temple's column; a great root; brass pipes; a sarcophagus
+  const buildFeature = (f, x, y) => { const hsh = (x * 31 + y * 17) % 997, r = (k) => rnd(x, y, 0, 60 + k), cx = x + .5, cy = y + .5, col = featureCol(f.rgb || [128, 128, 128]), glow = f.glow || 0;
+    if (f.form === "cap") { const S = SH.cap, hh = S.height[0] + (S.height[1] - S.height[0]) * r(0), lean = (r(1) - .5) * .12, rot = r(2) * 6.283, ch = S.capH[0] + (S.capH[1] - S.capH[0]) * r(3), stem = featureCol(f.stem || f.rgb), under = featureCol(f.under || f.rgb);
+      frustum(cx, cy, S.stem[0], S.stem[1], 0, hh, 7, rot, stem, glow * .15, hsh, x, y, 0, lean, lean * .5);
+      frustum(cx + lean, cy + lean * .5, S.cap[0], S.cap[1], hh, hh + ch * .45, 9, rot, col, glow, hsh, x, y, 2);
+      frustum(cx + lean, cy + lean * .5, S.cap[1], S.cap[2], hh + ch * .45, hh + ch, 9, rot, col, glow, hsh, x, y, 1);
+      frustum(cx + lean, cy + lean * .5, S.cap[0] * .96, S.stem[1] * 1.2, hh - .005, hh + .02, 9, rot, under, glow * .5, hsh, x, y, 0); }
+    else if (f.form === "shard") { const S = SH.shard; for (let k = 0; k < S.n; k++) { const a = r(10 + k) * 6.283, d = k ? .12 + r(20 + k) * .2 : 0, hh = (S.height[0] + (S.height[1] - S.height[0]) * r(30 + k)) * (k ? .7 : 1), rr = S.r[0] + (S.r[1] - S.r[0]) * r(40 + k), ox = Math.cos(a) * d, oy = Math.sin(a) * d;
+        frustum(cx + ox, cy + oy, rr, rr * .55, 0, hh * .82, 5, a, col, glow, hsh, x, y, 0, ox * S.lean * 2, oy * S.lean * 2); frustum(cx + ox * (1 + S.lean * 2), cy + oy * (1 + S.lean * 2), rr * .55, 0, hh * .82, hh, 5, a, col, glow * 1.2, hsh, x, y, 0); } }
+    else if (f.form === "column") { const S = SH.column; frustum(cx, cy, S.r * 1.25, S.r * 1.25, 0, .16, S.sides, 0, col, 0, hsh, x, y, 1); frustum(cx, cy, S.r, S.r * .94, .16, H - .2, S.sides, 0, col, 0, hsh, x, y, 0); frustum(cx, cy, S.r * 1.2, S.r * 1.3, H - .2, H, S.sides, 0, col, 0, hsh, x, y, 2); }
+    else if (f.form === "knot") { const S = SH.knot, rot = r(0) * 6.283; frustum(cx, cy, S.r[0], S.r[1], 0, H * .55, 7, rot, col, 0, hsh, x, y, 0, (r(1) - .5) * .16, (r(2) - .5) * .16); frustum(cx + (r(1) - .5) * .16, cy + (r(2) - .5) * .16, S.r[1], S.r[0] * .9, H * .55, H, 7, rot, col, 0, hsh, x, y, 0);
+      for (let k = 0; k < S.flares; k++) { const a = rot + k * 6.283 / S.flares + r(3 + k) * .5; frustum(cx + Math.cos(a) * .18, cy + Math.sin(a) * .18, .1, .04, 0, .32, 5, a, col, 0, hsh, x, y, 0, Math.cos(a) * .22, Math.sin(a) * .22); } }
+    else if (f.form === "pipe") { const S = SH.pipe, v = ((x + y) & 1) === 0; for (const at of S.at) { const px = v ? x + at : cx, py = v ? cy : y + at; frustum(px, py, S.r, S.r, 0, H, 8, 0, col, .04, hsh, x, y, 0); for (const z of [.5, 1.5]) frustum(px, py, S.r * 1.25, S.r * 1.25, z, z + .08, 8, 0, col.map((c) => c * .55), 0, hsh, x, y, 3); } }
+    else if (f.form === "slab") { const S = SH.slab, ax = (x + y) & 1 ? S.half[0] : S.half[1], ay = (x + y) & 1 ? S.half[1] : S.half[0]; box(cx, cy, ax, ay, 0, S.height, 7, 0, col, hsh, x, y); box(cx, cy, ax + .04, ay + .04, S.height, S.height + .1, 7, 0, col.map((c) => c * .85), hsh, x, y); } };
+  // the theme's glowing growth at a wall's foot: small caps or shards (CLOSE_VIEW_DEEP.shapes.growth), never on a tile's centre line
+  const buildGrowth = (gx, gy, nx, ny, k0, tx, ty) => { const G = th.growth, S = SH.growth, col = featureCol(G.rgb), stem = featureCol(G.stem || G.rgb), under = featureCol(G.under || G.rgb), hsh = (tx * 31 + ty * 17) % 997;
+    for (let k = 0; k < S.n; k++) { const r = (j) => rnd(tx, ty, k0 + k, 70 + j), along = (r(0) - .5) * .5, out = .06 + r(1) * .16, X = gx + (ny !== 0 ? along : 0) + nx * out, Y = gy + (nx !== 0 ? along : 0) + ny * out, sz = 1 - k * .22;
+      if (G.form === "cap") { const hh = (S.height[0] + (S.height[1] - S.height[0]) * r(2)) * sz, cr = (S.cap[0] + (S.cap[1] - S.cap[0]) * r(3)) * sz; frustum(X, Y, cr * .28, cr * .22, 0, hh, 5, 0, stem, G.glow * .2, hsh, tx, ty); frustum(X, Y, cr, cr * .35, hh, hh + cr * .55, 7, r(4) * 6.283, col, G.glow, hsh, tx, ty, 3); }
+      else { const hh = (S.shard[0] + (S.shard[1] - S.shard[0]) * r(2)) * sz, rr = .035 + .03 * r(3); frustum(X, Y, rr, 0, 0, hh, 4, r(4) * 6.283, col, G.glow, hsh, tx, ty, 0, nx * .06 + (r(5) - .5) * .08, ny * .06 + (r(6) - .5) * .08); } } };
   const iron = [.09, .085, .08], wax = [.72, .66, .52], clay = [.36, .27, .2], wood = [.2, .13, .08];
   const stillworks = stillworksCloseView(map);
   const arenaStone = [.105, .12, .16], pillarStone = [.16, .19, .25], lattice = [.37, .56, .67];
   for (let i = 0; i < geo.count; i++) { const o = i * 10, x0 = Fc[o], y0 = Fc[o + 1], x1 = Fc[o + 2], y1 = Fc[o + 3], nx = Fc[o + 4], ny = Fc[o + 5], tx = Fc[o + 6], ty = Fc[o + 7], st = Fc[o + 8], tier = tiles[ty * w + tx]?.tier === true, low = Fc[o + 9] || tier;
-    const door = st === STYLE_INDEX.door, mat = door ? 5 : MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
+    if (FT && featureOf(tx, ty)) { featured[ty * w + tx] = 1; continue; } // 2026-11-11: built as itself below
+    const door = st === STYLE_INDEX.door, mat = door ? 5 : !th.ownWalls && MAT_OF_STYLE[st] >= 0 ? MAT_OF_STYLE[st] : th.wall.kind, col = door ? STYLE_RGB[st] : mat === th.wall.kind ? tg.wall : MAT_RGB[mat], top = tier ? HALL_VIEW.tierHeight : low ? RB : H;
     const a0 = ny !== 0 ? x0 : y0, a1 = ny !== 0 ? x1 : y1, grit = (geo.detail[i] || 0) * 4 + (geo.detailInst[i] & 15) * 2 + (geo.detailInst[i] & 16 ? 1 : 0), cb = geo.corner[i] & 3, ab = geo.ao[i] & 3, bits = cb + ab * 4, side = nx > 0 ? 1 : nx < 0 ? 3 : ny > 0 ? 2 : 0, hsh = ((tx * 73 + ty * 151 + side * 37) % 997 + 997) % 997;
     const dx = x1 - x0, dy = y1 - y0, fx = tx + nx, fy = ty + ny, front = free(fx, fy), exterior = tx - nx < 0 || ty - ny < 0 || tx - nx >= w || ty - ny >= h, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
     if (stillworks) {
@@ -2131,7 +2359,8 @@ function buildStatic(map, geo, th) {
     // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
     let lit = false;
     if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
-      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 5 ? .42 : hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue === 5 && th.growth) growths.push(mx, my, nx, ny, side, tx, ty); // 2026-11-11: the light is a cluster of glowing growth at the wall's foot
         if (hue !== 1 && hue < 4) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
     // candles in an inside corner, on the floor
     if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
@@ -2157,7 +2386,7 @@ function buildStatic(map, geo, th) {
   // arches over doorways: a passage one tile wide through a wall between two rooms takes an arch at each end, with its soffit
   const A = th.arch, stoneMat = th.wall.kind === 1 ? 1 : th.wall.kind, acol = th.wall.kind === 1 ? wood : tg.wall, round = A.radius > .01;
   const roomy = (x, y, ew) => ew ? !solid(x - 1, y) || !solid(x + 1, y) : !solid(x, y - 1) || !solid(x, y + 1);
-  for (let y = 0; !stillworks && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue;
+  for (let y = 0; !stillworks && !A.none && y < h; y++) for (let x = 0; x < w; x++) { if (solid(x, y) || closeViewHazardCode(tiles[y * w + x])) continue; // A.none (the Deep's caves): no masonry arches
     const direction = interiorTerrain(map) ? interiorArchAt(map, x, y) : null;
     const ns = interiorTerrain(map) ? direction === "ns"
       : solid(x - 1, y) && solid(x + 1, y) && !solid(x, y - 1) && !solid(x, y + 1) && roomy(x, y - 1, true) && roomy(x, y + 1, true);
@@ -2173,7 +2402,14 @@ function buildStatic(map, geo, th) {
       for (const q of [a, b, c2, a, c2, d2]) V(q[0], q[1], q[2], 0, q[3], q[2], H, 0, 0, 5, stoneMat, acol, 0, 0, 0, hsh, x, y); } }
   // Tile-sized beam sections use the same discovery mask as their ceiling plane. At a
   // crossing the short sections butt against the long one and share no bottom faces.
-  if (!stillworks && !map.hall?.open) {
+  // 2026-11-11: the features and growths (CLOSE_VIEW_DEEP), and the faces of the walls beside a feature (a wall face is only
+  // made where a wall meets open floor, and a feature tile counts as wall in the shared geometry).
+  if (FT) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!featured[y * w + x]) continue; const f = featureOf(x, y); buildFeature(f, x, y);
+    for (const [nx, ny] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const X = x + nx, Y = y + ny; if (X < 0 || Y < 0 || X >= w || Y >= h || !isWall(tiles[Y * w + X]) || featureOf(X, Y)) continue;
+      const ax = nx > 0 ? x + 1 : nx < 0 ? x : ny > 0 ? x + 1 : x, ay = ny > 0 ? y + 1 : ny < 0 ? y : nx > 0 ? y : y + 1, bx = nx > 0 ? x + 1 : nx < 0 ? x : ny > 0 ? x : x + 1, by = ny > 0 ? y + 1 : ny < 0 ? y : nx > 0 ? y + 1 : y;
+      quad(ax, ay, bx, by, 0, H, ny !== 0 ? ax : ay, ny !== 0 ? bx : by, -nx, -ny, 0, th.wall.kind, tg.wall, 0, 0, 0, (X * 73 + Y * 151) % 997, X, Y); } }
+  for (let i = 0; i < growths.length; i += 7) buildGrowth(growths[i], growths[i + 1], growths[i + 2], growths[i + 3], growths[i + 4] * 7, growths[i + 5], growths[i + 6]);
+  if (!stillworks && !map.hall?.open && th.ceiling.kind !== 5) { // the Deep's rock overhead (kind 5) has no beams
     const { data: mask } = closeViewMask(map);
     const covered = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -2399,6 +2635,29 @@ function shotMuzzleWeight(g, shot) {
   return closeViewMuzzleWeight(age, S.settle);
 }
 const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
+// Tim, 2026-11-11, in the Deep: props drawn as solid models in the GPU scene (close-view-models.ts
+// CLOSE_VIEW_PROP_MODELS), after the creatures and outside their cap: at most `cap` a frame, nearest first. Aperture crystals (the
+// overlay's Veiled Inscription and Deep Lattice Relic, violet; the Unseen Crossing, cyan) float `hover` tiles up, bobbing `bob`
+// tiles over `bobSec` seconds and turning once in `turnSec` (held still under Reduced Motion), sized by their tier (`scale`). The
+// Oculus's dais is always the standard view's blue, turning once in `dais.turnSec`, opening and fading as its 2D mark does
+// (`open`, `fade`: oculus.ts OCULUS). The Ember Door and the Deep Stair stand as lit stones. The nearest glowing prop also lights
+// the place round it (`light`: reach, strength; `glow`: its colour), taking one of the placed-light slots.
+export const CLOSE_VIEW_PROPS = Object.freeze({ version: 1, cap: 6,
+  crystal: Object.freeze({ hover: .78, bob: .07, bobSec: 2.6, turnSec: 9, scale: Object.freeze([1, 1, 1.12, 1.3]) }),
+  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep" }),
+  dais: Object.freeze({ turnSec: 4, open: .25, fade: .8 }),
+  light: Object.freeze({ reach: 2.2, strength: .8, height: .7 }),
+  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]) }) });
+// A prop's pose this frame: how high it floats above the floor (lift), its turn (yaw) and its size (scale). Pure.
+export function closeViewPropPose(kind, o, now, reduce = false) {
+  const P = CLOSE_VIEW_PROPS, t = reduce ? 0 : (Number(now) || 0) / 1000, seed = (((Number(o?.x) || 0) * 7 + (Number(o?.y) || 0) * 13) % 17 + 17) % 17, TAU = Math.PI * 2;
+  if (kind === "apertureCrystal" || kind === "apertureRift") { const C = P.crystal;
+    return { lift: C.hover + (reduce ? 0 : C.bob * Math.sin((t / C.bobSec + seed / 17) * TAU)), yaw: seed / 17 * TAU + t / C.turnSec * TAU, scale: C.scale[Math.max(0, Math.min(3, Math.floor(Number(o?.visualTier) || 0)))] }; }
+  if (kind === "oculusDais") return { lift: 0, yaw: t / P.dais.turnSec * TAU, scale: 1 };
+  return { lift: 0, yaw: seed * Math.PI / 2, scale: 1 };
+}
+// Whether this frame's GPU scene draws the props as models: main.ts then leaves their flat marks off the floor texture.
+export const closeViewDrawsProps = () => capturing && closeViewStats.gl === 1;
 const MODEL_SHADOW = Object.freeze({ width: .28, length: .8, max: 1.5, alpha: .36 });
 const MODEL_TIMING = Object.freeze({ deathMs: 430, attackMs: 260, toolMs: 180, hitSec: .18, contactHoldMs: 44, recoilTiles: .1, walkRadians: 5.4, castMs: ACTION_MOTION.castMs, turnRate: 12, strideSpeed: 4, windupMs: 450 });
 const PLAYER_VISUAL_KIND = Object.freeze({
@@ -2420,7 +2679,7 @@ export function closeViewPrimaryWeaponKind(item) {
 }
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array((MODEL_LIMIT.full * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), // + the imported hero's suit reservation
+  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11) and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
@@ -2920,6 +3179,21 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(itemKind[it]===1&&d?.nativeAux)admitAux(it,d);
     else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
+  // 2026-11-11: the props (CLOSE_VIEW_PROPS), outside the creature cap; the Oculus's dais first, then the nearest objects.
+  const PR = CLOSE_VIEW_PROPS; let props = 0; state.glintOn = false;
+  const prop = (kind, X, Y, o, alpha = 1, grow = 1) => {
+    if (props >= PR.cap) return false; const pose = closeViewPropPose(kind, o, now, reduce), Z = interiorSurfaceHeight(g.map, X, Y);
+    const next = writeCloseViewModel(state.vertices, offset, { kind, x: X, y: Y, z: Z + pose.lift, yaw: pose.yaw, phase: 0, pace: 0, amount: 0, pose: 'idle', alpha, reduceMotion: reduce, scale: pose.scale * grow });
+    if (next === offset) return false; offset = next; props++;
+    const G = PR.glow[kind]; if (G && !state.glintOn) { const q = state.glint; q[0] = X; q[1] = Y; q[2] = Z + Math.max(pose.lift, PR.light.height); q[3] = G[0]; q[4] = G[1]; q[5] = G[2]; q[6] = alpha; state.glintOn = true; }
+    return true; };
+  const oc = g.oculus;
+  if (oc && oc.map === g.map && Number.isFinite(oc.x) && Number.isFinite(oc.y)) { const D = PR.dais, age = (now - oc.born) / 1000, left = (oc.until - now) / 1000, alpha = Math.max(0, Math.min(1, left / D.fade)), grow = reduce ? 1 : Math.max(.25, Math.min(1, age / D.open));
+    if (alpha > 0) prop('oculusDais', oc.x + .5, oc.y + .5, oc, alpha, grow); }
+  for (let oi = n - 1; oi >= 0 && props < PR.cap; oi--) { const it = order[oi]; if (itemKind[it] !== 1 || state.admitted.has(it)) continue;
+    const o = draws[itemRef[it]]?.object, kind = o && PR.objects[o.kind]; if (!kind || !Number.isFinite(Number(o.x)) || !Number.isFinite(Number(o.y))) continue;
+    if (prop(kind, Number(o.x) + .5, Number(o.y) + .5, o)) state.admitted.add(it); }
+  state.props = closeViewGLStats.props = props;
   for (const [who, track] of state.tracks) {
     if (who.kind === 'voidWalker' && who.dead) { state.tracks.delete(who); continue; }
     if (who.dead && who.hp <= 0 && !who.noRewards) {
@@ -3036,6 +3310,33 @@ export function roofHidden(r, px, py, cx, cy, pad = .4) {
   if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
   return t0 <= t1;
 }
+// The Wayfarer's leaps and drops over the overworld's taller levels (OUTDOOR.terrain version 3). Gameplay is unchanged: one
+// jump a level, the tile under the feet decides the footing. What is drawn: the footing (`base`) rises toward the ledge the
+// jump is carrying them onto (the ground where their motion will put them when the jump ends), so the arc clears the ledge
+// before the feet cross onto it, never popping up; the arc itself is scaled from the ordinary jump's (JUMP.arc tiles at its
+// peak) to `arcPeak` of a level; stepping or jumping off a ledge, the footing falls under `gravity` until it meets the
+// ground. A difference of `snap` or less (a ramp's slope, a pebble of noise) is followed at once. Presentation only: it
+// writes the frame's captured Wayfarer card's jumpLift (a fresh object each frame), never the game.
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, gravity: 28, snap: .18, rise: 16, reset: 2.5 });
+const LEAP = { map: null, base: 0, v: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0 };
+export function presentLeap(g, now, d) {
+  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null);
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = ground; LEAP.v = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; }
+  const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
+  if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
+  LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0); let arc = 0;
+  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), ahead = surfaceZ(g.map, fx + LEAP.vx * left, fy + LEAP.vy * left), target = Math.max(ground, ahead);
+    if (target > LEAP.base) LEAP.base += (target - LEAP.base) * Math.min(1, dt * K.rise); // rising toward the ledge it is carrying them onto
+    arc = lift / K.arcFrom * K.arcPeak * OUTDOOR.terrain.level; }
+  if (ground >= LEAP.base) { if (!jumping || ground - LEAP.base <= K.snap) LEAP.base = ground; LEAP.v = 0; } // stepped up without a leap (a ramp, a lift): on it at once
+  else if (LEAP.base - ground <= K.snap && !jumping) { LEAP.base = ground; LEAP.v = 0; }
+  else if (!jumping) { LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge: a fall
+  const z = Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  return z;
+}
+export const closeViewLeap = () => ({ base: LEAP.base, v: LEAP.v }); // for tests
 const PROP_Z = { map: null }; // the floor whose props are being built (propZ reads its heights; no closure a frame)
 const propZ = (x, y) => interiorSurfaceHeight(PROP_Z.map, x, y);
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
@@ -3088,18 +3389,21 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const K = Math.min(8, Q.lights ?? At.lights), L = st.lights, px = F.px, py = F.py;
   const spellLight=K>0?nearestPlacedSpellLight(g.effects,g.map,px,py,F.reach,seen):null;
   const torchLights=nearbyDoorTorches(g,px,py,F.reach,seen,Math.min(2,K-(spellLight?1:0)));
-  const staticLimit=K-(spellLight?1:0)-torchLights.length;let nk = 0;
+  const glintSlot=MODEL_STATE.glintOn&&models&&K>2?1:0; // 2026-11-11: one slot for the nearest glowing prop
+  const staticLimit=K-(spellLight?1:0)-torchLights.length-glintSlot;let nk = 0;
   for (let i = 0; i < st.nLights; i++) { const o = i * LIGHT_FLOATS, d = Math.hypot(L[o] - px, L[o + 1] - py); if (d > F.reach + L[o + 3]) continue; if (seen && !seen(Math.floor(L[o]), Math.floor(L[o + 1]))) continue;
     if (nk < staticLimit) { PICK.idx[nk] = i; PICK.d[nk] = d; nk++; } else if(staticLimit>0) { let wi = 0; for (let j = 1; j < nk; j++) if (PICK.d[j] > PICK.d[wi]) wi = j; if (d < PICK.d[wi]) { PICK.idx[wi] = i; PICK.d[wi] = d; } } }
   for (let i = 1; i < nk; i++) { const di = PICK.d[i], ii = PICK.idx[i]; let j = i - 1; while (j >= 0 && PICK.d[j] > di) { PICK.d[j + 1] = PICK.d[j]; PICK.idx[j + 1] = PICK.idx[j]; j--; } PICK.d[j + 1] = di; PICK.idx[j + 1] = ii; } // nearest first (the shader's highlights take the first two)
   const famp = At.flicker[0], fper = At.flicker[1];
-  for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, hue = HUE_RGB[L[o + 5]] || HUE_RGB[0], ph = L[o + 6], fail = L[o + 5] === 3;
+  for (let j = 0; j < nk; j++) { const o = PICK.idx[j] * LIGHT_FLOATS, hue = L[o + 5] === 5 ? tg.glow : HUE_RGB[L[o + 5]] || HUE_RGB[0], ph = L[o + 6], fail = L[o + 5] === 3;
     const fl = reduce ? 1 : 1 + famp * (fail ? 2.2 : 1) * (Math.sin(now / fper + ph) * .6 + Math.sin(now / (fper * .37) + ph * 2.1) * .4) - (fail && Math.sin(now / 1700 + ph * 3) > .93 ? .6 : 0);
     F.lp[j * 4] = L[o]; F.lp[j * 4 + 1] = L[o + 1]; F.lp[j * 4 + 2] = L[o + 2]; F.lp[j * 4 + 3] = L[o + 3]; F.lc[j * 4] = hue[0]; F.lc[j * 4 + 1] = hue[1]; F.lc[j * 4 + 2] = hue[2]; F.lc[j * 4 + 3] = L[o + 4] * Math.max(0, fl); }
   F.nl = nk;
   // Append after static lights: PICK, first-two highlights, halos and motes keep
   // their original static indices. No additional cards or rendering passes.
   if(spellLight&&writePlacedSpellLight(F,spellLight,g.map,nk))F.nl++;
+  // 2026-11-11: the nearest glowing prop (a floating crystal, the Oculus's dais, a lit way stone) lights the place round it
+  if(glintSlot&&F.nl<K){const q=MODEL_STATE.glint,i=F.nl++*4,L2=CLOSE_VIEW_PROPS.light;F.lp[i]=q[0];F.lp[i+1]=q[1];F.lp[i+2]=q[2];F.lp[i+3]=L2.reach;F.lc[i]=q[3];F.lc[i+1]=q[4];F.lc[i+2]=q[5];F.lc[i+3]=L2.strength*q[6];}
   for(const torch of torchLights){
     const i=F.nl++*4;
     F.lp[i]=torch.x;F.lp[i+1]=torch.y;F.lp[i+2]=surfaceZ(g.map,torch.x,torch.y)+.82;F.lp[i+3]=1.8;
