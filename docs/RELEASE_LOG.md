@@ -21,7 +21,8 @@ Main is at r881 (`fc5a0d9d5e61`); production serves `r881-fc5a0d9d5e61`. The nex
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 900 | Claude | claude/cv-terrain-height | Close View overworld levels 1.2 tiles tall (pits deeper, Great Tree steps taller), jumps that rise to the ledge and drops that fall; a higher camera everywhere that rises over ledges behind you | In flight. |
+| 901 | Claude | claude/varied-skies | Close View sky moods (sunrise, day, sunset, night, overcast, storm) chosen per 3x3 block of sections, blended with each region's sky; more vivid alien, fen, waste and fire skies | In flight. |
+| 900 | Claude | claude/cv-terrain-height | Close View overworld levels 1.2 tiles tall (pits deeper, Great Tree steps taller), jumps that rise to the ledge and drops that fall; a higher camera everywhere that rises over ledges behind you | Merged as `f2cca46394f3` (#567). |
 | 899 | Claude | claude/adventure-creatures-2 | Eight creatures for Lamplit City, Alien Capital, Frost Citadel and Ember Foundry (prototype-only until those themes are enabled); a buried Sinkmaw's dimple in Close View | Merged as `190dd6ae6a5c` (#566). |
 | 898 | Claude | claude/cv-mountain-turtle | Close View Mountain Turtle: weathered ziggurat shell, stone-drum neck, all attacks on their clocks, ice shield and tornado | Merged as `6d24fa3ed89f` (#564). |
 | 897 | Claude | claude/adventure-worlds | New Pentagons (v11): five themed districts of winding, looping areas, Waystone hub (rest, respawn, travel), mural grand halls, Watcher-sigil floor mosaics, adventure creatures; older Pentagons unchanged | Merged as `3a8b3254e22d` (#565). |
