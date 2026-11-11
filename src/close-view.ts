@@ -1294,6 +1294,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     }
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
+  if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1353,8 +1354,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
     if (k < 1) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
   }
-  const playerZ = surfaceZ(g.map, footX(p), footY(p)) +
-    Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
+  const playerZ = RELIEF.map === g.map && LEAP.map === g.map ? LEAP.base + Math.max(0, capturedPlayer?.lift || 0) // over the heightfield the camera follows the Wayfarer's footing, not each jump's arc
+    : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
   const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
@@ -1833,7 +1834,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*LIFT_PER_LEVEL:surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?OUTDOOR.terrain.level:LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -3036,6 +3037,33 @@ export function roofHidden(r, px, py, cx, cy, pad = .4) {
   if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
   return t0 <= t1;
 }
+// The Wayfarer's leaps and drops over the overworld's taller levels (OUTDOOR.terrain version 3). Gameplay is unchanged: one
+// jump a level, the tile under the feet decides the footing. What is drawn: the footing (`base`) rises toward the ledge the
+// jump is carrying them onto (the ground where their motion will put them when the jump ends), so the arc clears the ledge
+// before the feet cross onto it, never popping up; the arc itself is scaled from the ordinary jump's (JUMP.arc tiles at its
+// peak) to `arcPeak` of a level; stepping or jumping off a ledge, the footing falls under `gravity` until it meets the
+// ground. A difference of `snap` or less (a ramp's slope, a pebble of noise) is followed at once. Presentation only: it
+// writes the frame's captured Wayfarer card's jumpLift (a fresh object each frame), never the game.
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, gravity: 28, snap: .18, rise: 16, reset: 2.5 });
+const LEAP = { map: null, base: 0, v: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0 };
+export function presentLeap(g, now, d) {
+  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null);
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = ground; LEAP.v = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; }
+  const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
+  if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
+  LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0); let arc = 0;
+  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), ahead = surfaceZ(g.map, fx + LEAP.vx * left, fy + LEAP.vy * left), target = Math.max(ground, ahead);
+    if (target > LEAP.base) LEAP.base += (target - LEAP.base) * Math.min(1, dt * K.rise); // rising toward the ledge it is carrying them onto
+    arc = lift / K.arcFrom * K.arcPeak * OUTDOOR.terrain.level; }
+  if (ground >= LEAP.base) { if (!jumping || ground - LEAP.base <= K.snap) LEAP.base = ground; LEAP.v = 0; } // stepped up without a leap (a ramp, a lift): on it at once
+  else if (LEAP.base - ground <= K.snap && !jumping) { LEAP.base = ground; LEAP.v = 0; }
+  else if (!jumping) { LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge: a fall
+  const z = Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  return z;
+}
+export const closeViewLeap = () => ({ base: LEAP.base, v: LEAP.v }); // for tests
 const PROP_Z = { map: null }; // the floor whose props are being built (propZ reads its heights; no closure a frame)
 const propZ = (x, y) => interiorSurfaceHeight(PROP_Z.map, x, y);
 function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor) {
