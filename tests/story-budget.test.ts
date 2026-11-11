@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hashSeed } from '../src/random.ts';
+import { regionVersionFor } from '../src/lore.ts'; // arcana regions live (2026-11-11): a crossing never generated pins to the region version
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, pinDungeonLayout } from '../src/game.ts';
 import { THREADS, THREAD_ORDER, THREAD_RULES, THREAD_BANDS, STORY_BUDGET, budgetFor, threadIn, inBand, sharedThreads, sharedRate, storyVersionOf, storyVersionFor, addThreadRelic, readThreadRelic, threadFound, threadsDone } from '../src/threads.ts';
@@ -81,7 +82,7 @@ test('a crossing seen under release 772 keeps exactly what it offered; only a cr
     const o = addThreadRelic(map(), loaded, id); assert.deepEqual(o, before[i], 'the same piece, in the same place, read or waiting as before'); assert.equal(o?.thread ?? null, r772('SEEN772', id)); }
   assert.equal(addThreadRelic(map(), loaded, seen[1]).state, 'read');
   for (const id of fresh) { assert.equal(storyVersionOf(loaded, id), 0, 'not pinned yet'); const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, STORY_BUDGET.version);
-    assert.equal(addThreadRelic(map(), loaded, id)?.thread ?? null, threadIn('SEEN772', id, STORY_BUDGET.version)); }
+    assert.equal(addThreadRelic(map(), loaded, id)?.thread ?? null, threadIn('SEEN772', id, STORY_BUDGET.version, regionVersionFor(false))); }
   // A pin never moves: a crossing pinned to the budget keeps its version after it is visited, saved and loaded.
   for (const id of fresh) { loaded.consequences.dungeons[id].visits = 3; pinDungeonLayout(loaded, id); }
   const again = migrateSave(JSON.parse(JSON.stringify(loaded)));
@@ -96,7 +97,7 @@ test('entering a new crossing in the game pins it to the budget; one already gen
     if (version === 0) s.consequences.dungeons[id] = { discovered: true, bypassed: false, visits: 1, abandoned: 0, guardianDefeated: false, resolved: false, visitOpen: false, layoutVersion: 1, generatorVersion: 5 };
     s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: Number(x), ry: Number(y), x: 16, y: 16 };
     const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[id].storyVersion, version);
-    const o = g.map.objects.find((q) => q.kind === 'threadRelic'); assert.ok(o, 'laid in the crossing'); assert.equal(o.thread, threadIn('GAMEBUD', id, version)); }
+    const o = g.map.objects.find((q) => q.kind === 'threadRelic'); assert.ok(o, 'laid in the crossing'); assert.equal(o.thread, threadIn('GAMEBUD', id, version, version ? regionVersionFor(false) : 0)); }
 });
 
 test('every later thread shares slots in each stretch it lists, at an even share, and can be read to its ending under the budget', () => {
