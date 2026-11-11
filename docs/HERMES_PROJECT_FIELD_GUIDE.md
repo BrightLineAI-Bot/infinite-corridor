@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 888 — Close View Wayfarer passes: everyday kit, a living body, readable jumps
+
+Tim, 2026-11-11: several Wayfarer passes in Close View (animations, timing, look, phone budget); "the character should be alive"; stronger melee and pickup poses; the loose-gear look as the everyday Wayfarer. Tim approved updating the pinned triangle-count and pose tests to the new numbers.
+
+**CODE:** `src/close-view-hero.ts`: standard kit (132 triangles, own 136-triangle reservation, `input.wayfarerKit`), suit armor as 124 solid-plate triangles (`HERO_EQUIPMENT_MAX_TRIANGLES` 220) plus the 97-triangle suit kit, rebuilt robot pod (226 triangles), pose tables `AIR_POSE`, `LAND_POSE`, `HURT_FLINCH`, idle breathing/glances, cast gesture led by the free shoulder and head (no held-arm ancestor moves), crouching pickup and chest-open crouch that eases with the lid. `src/close-view.ts`: the acceleration lean is stored on the actor track and updated only when time passes and no dodge starts or ends. Imported tool recipes take Wayfarer materials at bake time.
+
+**BOUNDARY:** Presentation only: no save, simulation, timing or contact change (contact hashes unchanged). Held grips stay exact through casts; every actor stays inside its 256-triangle slot. Reduced motion freezes idle breathing and shrinks flinches. Native fallback recipes and their pinned bytes are unchanged. Phone frame cost is unmeasured.
+
 ## Release 887 — The compass turns with the Wayfarer in Close View
 
 Tim, 2026-11-11: the compass should turn with the Wayfarer's facing, not the camera; then, for the standard view: "keep it north up... north up is just standard for the map." Tim's direction covers updating the Close View half of the r869 compass test.

@@ -4,10 +4,10 @@ import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./veh
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.ts';
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
@@ -2303,7 +2303,7 @@ export function closeViewPrimaryWeaponKind(item) {
 }
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
+  vertices: new Float32Array((MODEL_LIMIT.full * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), // + the imported hero's suit reservation
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
@@ -2514,6 +2514,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
+    // Presentation lean (+ accelerating, - stopping). Held between renders: a same-time re-render
+    // (no elapsed time) cannot invent a stop, and an imported dodge keeps the lean it started from
+    // (the roll clip blends over it), so accepted phase zero reproduces the previous pose exactly.
+    if (!Number.isFinite(track.lean) || elapsed > 0 && !importedDodge && !leavingImportedDodge) track.lean = Math.max(-1, Math.min(1, (speed - track.pace) * 1.6));
     if (stunned || watched) track.pace = 0;
     else if(!importedDodge&&!leavingImportedDodge)track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if(leavingImportedDodge)track.dodgeUntil=null;
@@ -2630,6 +2634,15 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
+        input.wayfarerKit = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit'; // the standard kit, or the suit's helmet and pack
+        input.accel = ordinary ? track.lean : 0;
+        input.turn = ordinary && (pose === 'idle' || pose === 'walk') ? turn : 0;
+        input.hurtFront = NaN; input.hurtSide = NaN;
+        if (ordinary && hurtPhase !== null) { // flinch away from the nearest live foe (presentation only)
+          let best = 9, fx = 0, fy = 0; for (const e of g.enemies || []) { if (!(e?.hp > 0)) continue; const ex = e.x - who.x, ey = e.y - who.y, dd = ex * ex + ey * ey; if (dd < best && dd > 1e-6) { best = dd; fx = ex; fy = ey; } }
+          if (best < 9) { const l = Math.sqrt(best), c = Math.cos(actor.yaw), sn = Math.sin(actor.yaw); input.hurtFront = (fx * c + fy * sn) / l; input.hurtSide = (-fx * sn + fy * c) / l; }
+        }
+        input.landing = ordinary && (pose === 'idle' || pose === 'walk') ? (ordinaryLandingPresentation(g, now) ?? NaN) : NaN; // touchdown absorb, only with no other action
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
@@ -2679,7 +2692,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
               sampleCleaverTrail(state.cleaverTrail, player.attackVisual, grip, now, actor.alpha);
             }
           }
-          offset = equipped;
+          offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
