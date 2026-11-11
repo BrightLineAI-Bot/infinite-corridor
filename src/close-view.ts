@@ -4,10 +4,10 @@ import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./veh
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation } from './close-view-player-presentation.ts';
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
@@ -210,6 +210,15 @@ export const CLOSE_VIEW = Object.freeze({
     warm: "rgba(255,168,92,0.09)", // the torch's warm cast round the Wayfarer
   }),
   actors: Object.freeze({ back: Object.freeze({ hood: "#79877b", seam: "#5d695f", rect: Object.freeze([-.14, -.71, .28, .18]) }), atlas: 1600 /* device pixels of atlas height below the ground texture; a sprite takes at most a third of it (version 5: the nearest, atmosphere.sprite.nearShare) */, cutAlpha: .4, halfWidth: 1.05, height: 2.35, below: .55, fade: .9, sprite: 1, maxSprite: 1.6 }), // sprite box in tiles (times the creature's scale)
+  // Solid creatures (Tim, 2026-11-11: "the monsters are still pretty ephemeral and spectral... a little bit see-through. Make
+  // them firm and concrete, so they come into view easily and stay in view"). A creature was faded by the distance fog across
+  // the whole view (from `fog.near`, about 3 tiles from the camera) and eased in from nothing; the GPU drew that as a 4x4
+  // screen-door dither, so anything a few tiles off showed the floor through it. Now a creature is fully solid in view, and
+  // only in the last `edge` tiles before the fog's far end does it thin out, crisply, where it leaves the view. What makes a
+  // creature see-through is its design alone: `spectral` kinds (by their presentation profile's `spectral` flag) and
+  // designed states (phasing, a departing fade) keep their own opacity (actor-presentation.ts); `spectralAlpha` is the
+  // standing opacity of a spectral kind (the GPU adds a cold rim light so it still reads).
+  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8 }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -267,7 +276,8 @@ export const CLOSE_VIEW = Object.freeze({
     ao: Object.freeze({ width: .3, alpha: .5, px: 32 }) }),
   // How creatures read from the close camera (version 3, Tim: "monsters phasing in and out of view depending on where the
   // camera is... the way the monsters' attacks are"). `fade`: a creature's opacity eases toward what its light, fog and the
-  // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
+  // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0 (no longer: a creature's
+  // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
   // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.ts's hitFlash,
@@ -314,11 +324,11 @@ export const CLOSE_VIEW = Object.freeze({
   // keeps and castles are cold dressed stone (`livedInShare` of them lived in: warmer, tapestries, some lights burning with
   // ghost-light); hives are chitin and resin with a dim bioluminescence; arcologies are an old machine's failing panels.
   // Every choice is a hash of the building and its floor: never stored, never per frame.
-  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels; stone: course height, block length,
+  // wall.kind: 0 coursed stone, 1 packed dirt and timber, 2 chitin, 3 machine panels, 6 a starship's clean panels; stone: course height, block length,
   // bevel, roughness (tiles); damp: height of the wet foot (tiles) and how wet; topFall: how bright the wall's top stays.
   // floor.kind: the shader's floorMat for an ordinary floor (0 flagstones, 6 dirt, 7 resin, 10 plating; a rug, planks or
   // mosaic keep their own); size: a flagstone's course; sewer: a channel down the middle of passages.
-  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits; dark: how far up into
+  // ceiling.kind: 0 a ribbed vault (bays of `bay` tiles), 1 timber beams, 2 organic ribs, 3 conduits, 4 a starship's clean panels; dark: how far up into
   // the dark the vault's webs go. arch: an arch over each doorway (spring height, radius: 0 a flat lintel; band: voussoirs).
   // pilaster: one every this many tiles along a straight wall (0 none); plinth, cornice: height, depth (tiles).
   // light: the carried light (colour, reach, strength, height) and the ambient; sources: placed lights on `share` of the wall
@@ -389,6 +399,19 @@ export const CLOSE_VIEW = Object.freeze({
       fog: Object.freeze({ rgb: Object.freeze([6, 8, 7]), near: 2.6, far: 12, haze: Object.freeze([.08, .7]), hazeRGB: Object.freeze([15, 18, 15]) }),
       grade: Object.freeze([.98, 1.02, .95, 1.1]), vignette: .5, deco1: Object.freeze([42, 46, 40]), deco2: Object.freeze([112, 110, 86]), glow: Object.freeze([170, 205, 140]),
       decor: Object.freeze({ vent: .07, roots: .05 }), props: Object.freeze({ rubble: .03, chain: .02, web: .15 }) }),
+    // Seed realms (seed-realms.ts, Tim 2026-11-11: "more sci-fi, instead of like a dirty old asylum or laboratory"): the Drifting
+    // Ship's own look. wall.kind 6: clean brushed composite panels with crisp seams, a light strip at head height and a kick strip
+    // (close-view-gl.ts); its lights are strips (hue 4: cool, no flame, no bracket); no damp, grit, webs or rubble.
+    starship: Object.freeze({ label: "Starship: clean composite panels and light strips",
+      wall: Object.freeze({ kind: 6, rgb: Object.freeze([120, 130, 142]), mortar: Object.freeze([16, 20, 26]), stone: Object.freeze([.34, .8, .02, .2]), damp: Object.freeze([0, 0]), dampRGB: Object.freeze([150, 160, 170]), topFall: .55 }),
+      floor: Object.freeze({ kind: 10, rgb: Object.freeze([78, 86, 96]), joint: Object.freeze([20, 24, 30]), rug: Object.freeze([40, 48, 60]), size: .6, wear: .1, wet: .35, sewer: false }),
+      ceiling: Object.freeze({ kind: 4, rgb: Object.freeze([62, 70, 80]), bay: 3, rib: .08, dark: .5 }),
+      arch: Object.freeze({ spring: 2.05, radius: 0, band: .2 }), pilaster: 0, plinth: Object.freeze([0, 0]), cornice: Object.freeze([0, 0]),
+      light: Object.freeze({ torch: Object.freeze([205, 225, 255]), reach: 6, strength: 1.7, height: 1.15, ambient: Object.freeze([12, 14, 18]),
+        sources: Object.freeze({ share: .14, spacing: 4, reach: 4.6, strength: 1.5, hue: 4, ghost: 0, candles: 0 }) }),
+      fog: Object.freeze({ rgb: Object.freeze([4, 6, 10]), near: 3, far: 13, haze: Object.freeze([.04, .8]), hazeRGB: Object.freeze([10, 14, 22]) }),
+      grade: Object.freeze([.94, 1, 1.08, 1.08]), vignette: .5, deco1: Object.freeze([40, 48, 60]), deco2: Object.freeze([120, 160, 200]), glow: Object.freeze([140, 210, 255]),
+      decor: Object.freeze({}), props: Object.freeze({}) }),
     arcology: Object.freeze({ label: "Arcology: an old machine, failing",
       wall: Object.freeze({ kind: 3, rgb: Object.freeze([70, 76, 74]), mortar: Object.freeze([14, 15, 15]), stone: Object.freeze([.34, .8, .04, .4]), damp: Object.freeze([.6, .45]), dampRGB: Object.freeze([152, 158, 142]), topFall: .4 }),
       floor: Object.freeze({ kind: 10, rgb: Object.freeze([60, 64, 62]), joint: Object.freeze([12, 13, 13]), rug: Object.freeze([40, 40, 46]), size: .6, wear: .5, wet: .2, sewer: false }),
@@ -480,8 +503,10 @@ export function closeViewThemeId(b) {
 }
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
-export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
-const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = closeViewThemeId(map?.building); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
+const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
+const mapThemeId = (map) => SEED_REALM_THEMES[map?.seedRealm?.realm] || closeViewThemeId(map?.building);
+export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return { id, ...CLOSE_VIEW.themes[id] }; }
+const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
 export function overworldCloseViewApplies(g) {
@@ -1446,7 +1471,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
-    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(d, lit, fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
+    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(d, lit, d.enemy ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused);
@@ -1553,6 +1578,18 @@ let matched = null; // the creature scaleFor last matched (or null): boardFoe ke
 // Environment visibility only: intrinsic capture/native alpha owns spectral and phase effects.
 // Lighting belongs to the shader/art, so a nearby foe never becomes transparent in darkness
 // or merely because it stands between the eye and the Wayfarer. Distant fog still retires it.
+// A creature's share of the fog for its opacity: none until the last `creatures.edge` tiles of the view, then to 1 at its
+// far end (never earlier than the fog's near edge). Its colour still takes the full fog in the shader.
+export function closeViewCreatureFog(depth, fogNear, fogFar) {
+  const far = Number.isFinite(fogFar) ? fogFar : CLOSE_VIEW.fog.far, from = Math.max(Number.isFinite(fogNear) ? fogNear : 0, far - CLOSE_VIEW.creatures.edge);
+  if (!(depth > from)) return 0; return depth >= far ? 1 : (depth - from) / Math.max(1e-6, far - from);
+}
+// A creature's designed opacity in Close View (1 for every solid creature): its presentation state times the standing
+// opacity of a spectral kind. Environment visibility (closeViewActorEnvironmentAlpha) multiplies this.
+export function closeViewCreatureIntrinsicAlpha(foe) {
+  const p = foe ? actorPresentation(foe) : null; if (!p) return 1;
+  return Math.max(0, Math.min(1, (p.alpha ?? 1) * (p.spectral ? CLOSE_VIEW.creatures.spectralAlpha : 1)));
+}
 export function closeViewActorEnvironmentAlpha(capture, lit, fog, foreground = false) {
   const visibility = 1 - Math.max(0, Math.min(1, Number.isFinite(fog) ? fog : 0));
   if (capture?.enemy) return visibility;
@@ -1688,8 +1725,10 @@ function occludeBillboards(n, faces, paused = false) {
     if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe);
       // A first paused render (including a restored scene) has no prior fade to freeze. Initialize
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
-      if (!st) { st = { a: paused ? boardB[j] : 0, o: occ }; FOE_FADE.set(foe, st); }
-      st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
+      // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
+      // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
+      if (!st) { st = { o: occ }; FOE_FADE.set(foe, st); }
+      st.o += (occ - st.o) * k; boardOcc[j] = st.o; } }
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
@@ -1806,6 +1845,7 @@ const UNI = (() => { const Pt = CLOSE_VIEW.pits, Lv = CLOSE_VIEW.lava, Cu = CLOS
   return { q: null, reduce: false, now: 0, safeOn: false, th: null, tg: null, hall: null, backdrop: NO_BACKDROP, inlay: SIGIL_INLAY,
     env(gl, U, F, lavaTiles) { const q = UNI.q, th = UNI.th, tg = UNI.tg, C = th.ceiling, Fl = th.floor;
       gl.uniform4f(U.u_ceil, F.ceilH, q.ceiling && !UNI.openArena ? 1 : 0, UNI.hall ? HALL_VIEW.ceilingBay : C.bay, q.ceilingDetail ? 1 : 0); gl.uniform3fv(U.u_ceilRGB, tg.ceil); gl.uniform4f(U.u_ceilK, C.kind, C.rib, C.dark, 0);
+      gl.uniform4f(U.u_space, UNI.space ? 1 : 0, 1, q.relief ? 1 : 0, 0); // seed realms: the cosmos through the ship's glass
       gl.uniform4f(U.u_hall, UNI.backdrop.kind, UNI.hall?.open ? 1 : 0, UNI.openArena ? 2 : UNI.hall?.sky ? 1 : 0, HALL_VIEW.shaftDepth);
       gl.uniform3fv(U.u_backdrop, UNI.backdrop.colors);
       gl.uniform3fv(U.u_inlayColors, UNI.inlay);
@@ -1852,15 +1892,16 @@ function hallHeight(map) {
     : CLOSE_VIEW.walls.height;
 }
 export const closeViewStaticStats = { builds: 0 };
+const STATIC_OUT = { a: new Float32Array(1 << 16), n: 0 }; // buildStatic's scratch vertex buffer, grown by doubling and kept between floors
 function buildStatic(map, geo, th) {
   closeViewStaticStats.builds++;
-  const out = [], lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = hallHeight(map), RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
+  const out = STATIC_OUT, lights = [], flames = [], cards = [], w = geo.w, h = geo.h, tiles = map.tiles, Fc = geo.faces, H = hallHeight(map), RB = CLOSE_VIEW.walls.rubble, tg = themeGL(th), src = th.light.sources;
   const solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || isWall(tiles[y * w + x]);
   const busy = new Uint8Array(w * h); for (const o of map.objects || []) { const ox = Math.floor(Number(o.x) + .5), oy = Math.floor(Number(o.y) + .5); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const x = ox + i, y = oy + j; if (x >= 0 && y >= 0 && x < w && y < h && (i === 0 && j === 0 || o.kind === "buildingStair" || o.kind === "exit" || o.kind === "dungeon")) busy[y * w + x] = 1; } }
   const free = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !solid(x, y) && !busy[y * w + x] && !closeViewHazardCode(tiles[y * w + x]) && !tiles[y * w + x].doorway;
   const salt = strHash(`${map.building?.base || map.name || ""}:${map.building?.floor ?? ""}:${map.building?.node ?? ""}:${w}x${h}`);
   const rnd = (a, b, c, k) => hash32(salt ^ hash32((a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (k * 2654435761))) / 4294967296;
-  const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty, lift = true) => { out.push(X, Y, Z + (lift ? interiorGeometryHeight(map, tx, ty, X, Y) : 0), along, u, z, top, nx, ny, part, mat, c[0], c[1], c[2], deco, grit, bits, hsh, tx, ty); };
+  out.n = 0; const V = (X, Y, Z, along, u, z, top, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty, lift = true) => { let a = out.a, o = out.n; if (o + 20 > a.length) { const b = new Float32Array(a.length * 2); b.set(a); out.a = a = b; } a[o] = X; a[o + 1] = Y; a[o + 2] = Z + (lift ? interiorGeometryHeight(map, tx, ty, X, Y) : 0); a[o + 3] = along; a[o + 4] = u; a[o + 5] = z; a[o + 6] = top; a[o + 7] = nx; a[o + 8] = ny; a[o + 9] = part; a[o + 10] = mat; a[o + 11] = c[0]; a[o + 12] = c[1]; a[o + 13] = c[2]; a[o + 14] = deco; a[o + 15] = grit; a[o + 16] = bits; a[o + 17] = hsh; a[o + 18] = tx; a[o + 19] = ty; out.n = o + 20; }; // feel pass 1 (pre-warm): written straight into one reused Float32Array (the same float32 rounding Float32Array.from gave the array of pushes it replaces), not pushed into a growing array
   // a vertical quad from a to b, z0 to z1 (along a0 to a1 on the run; u 0 to 1 across)
   const quad = (ax, ay, bx, by, z0, z1, a0, a1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty) => {
     V(ax, ay, z0, a0, 0, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z0, a1, 1, z0, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty); V(bx, by, z1, a1, 1, z1, z1, nx, ny, part, mat, c, deco, grit, bits, hsh, tx, ty);
@@ -2067,8 +2108,8 @@ function buildStatic(map, geo, th) {
     // a placed light: a sconce on the wall (on a bracket), a pod in a hive's wall, a lamp in a machine's
     let lit = false;
     if (rnd(tx, ty, side, 1) < src.share && deco !== 3) { const lx = mx + nx * .2, ly = my + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - lx, lights[k + 1] - ly) >= src.spacing;
-      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
-        if (hue !== 1) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
+      if (ok) { const hue = rnd(tx, ty, side, 2) < src.ghost ? 2 : src.hue, lz = hue === 1 ? .7 + rnd(tx, ty, side, 3) * .6 : mat === 3 || mat === 6 ? 1.95 : 1.55; lights.push(lx, ly, lz, src.reach, src.strength, hue, rnd(tx, ty, side, 4) * 6.283, 0); lit = true;
+        if (hue !== 1 && hue < 4) { flames.push(lx, ly, lz + .1, 1, hue, rnd(tx, ty, side, 5) * 6.283); const bhx = ny !== 0 ? .035 : .1, bhy = ny !== 0 ? .1 : .035; box(mx + nx * .1, my + ny * .1, bhx, bhy, lz - .12, lz - .04, 6, 0, iron, hsh, fx, fy); box(lx, ly, .04, .04, lz - .04, lz + .02, 6, 0, iron, hsh, fx, fy); } } }
     // candles in an inside corner, on the floor
     if ((ab & 1) && src.candles > 0 && rnd(tx, ty, side, 6) < src.candles) { const ux = Math.sign(dx), uy = Math.sign(dy), cx = x0 + ux * .2 + nx * .2, cy = y0 + uy * .2 + ny * .2; let ok = true; for (let k = 0; k < lights.length && ok; k += LIGHT_FLOATS) ok = Math.hypot(lights[k] - cx, lights[k + 1] - cy) >= src.spacing * .5;
       if (ok) { lights.push(cx, cy, .35, src.reach * .7, src.strength * .7, 0, rnd(tx, ty, side, 7) * 6.283, 1);
@@ -2196,7 +2237,7 @@ function buildStatic(map, geo, th) {
     for(let i=0;i<lights.length;i+=LIGHT_FLOATS) lights[i+2]+=interiorSurfaceHeight(map,lights[i],lights[i+1]);
     for(let i=0;i<flames.length;i+=FLAME_FLOATS) flames[i+2]+=interiorSurfaceHeight(map,flames[i],flames[i+1]);
   }
-  return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: Float32Array.from(out), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.length / WALL_FLOATS };
+  return { inlay, arch, archCap: th.arch.spring + Math.max(0, th.arch.radius) * .55 - .08, w, data: out.a.slice(0, out.n), lights: Float32Array.from(lights), flames: Float32Array.from(flames), cards: Float32Array.from(cards), nLights: lights.length / LIGHT_FLOATS, nFlames: flames.length / FLAME_FLOATS, nCards: cards.length / CARD_FLOATS, verts: out.n / WALL_FLOATS };
 }
 // How high the camera may be at (x, y): under (or by) a doorway's arch, below its soffit; elsewhere, anywhere.
 function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map));
@@ -2207,6 +2248,21 @@ function archCapAt(map, x, y) { const st = STATIC.get(wallGeometry(map));
 function staticFor(map, geo, th) { let st = STATIC.get(geo); if (!st || st.th !== th) { st = buildStatic(map, geo, th); st.th = th; STATIC.set(geo, st); } return st; }
 // For tests and the lab: the floor's built things (counts, and the lights and props as plain lists).
 export function closeViewStatic(map) { const geo = wallGeometry(map), st = staticFor(map, geo, themeOf(map)); return { theme: closeViewThemeId(map?.building), verts: st.verts, lights: st.nLights, flames: st.nFlames, cards: st.nCards, data: st.data, lightList: st.lights, cardList: st.cards }; }
+// Feel pass 1 (pre-warm): a floor's walls (wallGeometry, then the static buffer) were built on the first Close View frame that
+// drew it, in the same frame as the floor's own load: 15-126 ms of CPU on a desktop, several times that on a phone, at the one
+// moment the player is moving through a door. closeViewPrewarmDue says the next Close View frame would build them; the host
+// (main.ts) then holds the last frame on screen and builds them in a task of their own (prewarmCloseView), so the load and the
+// build land in separate frames. The build is the very one the frame would have made (staticFor, cached per floor), so what is
+// drawn is byte-identical. A frame that comes before the task has run builds as before.
+export function closeViewPrewarmDue(g) {
+  if (!g?.map?.tiles || !g.player || CLOSE_VIEW_HOOKS.gl === false || qualityOf(g).gl !== true || !closeViewApplies(g)) return false;
+  const extended = overworldCloseViewApplies(g); if (extended && openWorldScene(g) && !interiorTerrain(g.map) && !g.map.building) return false; // renderCloseView's plainWorld: no static buffer
+  const geo = wallCache.get(g.map), st = geo && geo.tiles === g.map.tiles ? STATIC.get(geo) : null;
+  return !(st && st.th === themeOf(g.map));
+}
+export function prewarmCloseView(g) { if (!closeViewPrewarmDue(g)) return false; staticFor(g.map, wallGeometry(g.map), themeOf(g.map)); return true; }
+// The GPU context and its programs, made ahead of the first Close View frame (the host calls it once, idle, with Close View on).
+export function prewarmCloseViewGL() { if (CLOSE_VIEW_HOOKS.gl === false) return false; try { return closeViewGLReady(makeCanvas); } catch { return false; } }
 
 // The light reaching a point, as one number (a creature's card, a prop's): the shader's falloff, from the carried light and the
 // frame's placed lights.
@@ -2307,7 +2363,7 @@ export function closeViewPrimaryWeaponKind(item) {
 }
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array(MODEL_LIMIT.full * MODEL_MAX_VERTICES * MODEL_FLOATS),
+  vertices: new Float32Array((MODEL_LIMIT.full * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), // + the imported hero's suit reservation
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
@@ -2518,6 +2574,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
+    // Presentation lean (+ accelerating, - stopping). Held between renders: a same-time re-render
+    // (no elapsed time) cannot invent a stop, and an imported dodge keeps the lean it started from
+    // (the roll clip blends over it), so accepted phase zero reproduces the previous pose exactly.
+    if (!Number.isFinite(track.lean) || elapsed > 0 && !importedDodge && !leavingImportedDodge) track.lean = Math.max(-1, Math.min(1, (speed - track.pace) * 1.6));
     if (stunned || watched) track.pace = 0;
     else if(!importedDodge&&!leavingImportedDodge)track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if(leavingImportedDodge)track.dodgeUntil=null;
@@ -2614,7 +2674,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
-      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (presentation?.alpha ?? 1) * (who === player ? 1 : boardB[it]))),
+      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
@@ -2634,6 +2694,15 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
+        input.wayfarerKit = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit'; // the standard kit, or the suit's helmet and pack
+        input.accel = ordinary ? track.lean : 0;
+        input.turn = ordinary && (pose === 'idle' || pose === 'walk') ? turn : 0;
+        input.hurtFront = NaN; input.hurtSide = NaN;
+        if (ordinary && hurtPhase !== null) { // flinch away from the nearest live foe (presentation only)
+          let best = 9, fx = 0, fy = 0; for (const e of g.enemies || []) { if (!(e?.hp > 0)) continue; const ex = e.x - who.x, ey = e.y - who.y, dd = ex * ex + ey * ey; if (dd < best && dd > 1e-6) { best = dd; fx = ex; fy = ey; } }
+          if (best < 9) { const l = Math.sqrt(best), c = Math.cos(actor.yaw), sn = Math.sin(actor.yaw); input.hurtFront = (fx * c + fy * sn) / l; input.hurtSide = (-fx * sn + fy * c) / l; }
+        }
+        input.landing = ordinary && (pose === 'idle' || pose === 'walk') ? (ordinaryLandingPresentation(g, now) ?? NaN) : NaN; // touchdown absorb, only with no other action
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
@@ -2683,7 +2752,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
               sampleCleaverTrail(state.cleaverTrail, player.attackVisual, grip, now, actor.alpha);
             }
           }
-          offset = equipped;
+          offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
@@ -2805,6 +2874,26 @@ const PICK = { idx: new Int32Array(8), d: new Float32Array(8) };
 export function closeViewCompassRotation(dx,dy,yaw=-Math.PI/2){
   return Math.round((Math.atan2(dy,dx)-yaw)*180/Math.PI);
 }
+// Tim (2026-11-11): in Close View the compass turns with the way the Wayfarer faces, not with the camera (ahead is the top of
+// the dial); the standard view keeps it north-up, like the map.
+// `rate`: how fast (per second) the dial eases toward a new facing; a change smaller than `deadband` degrees while the dial
+// is at rest is ignored (so a body's small sway never makes it shimmer); once turning it settles to within `settle` degrees.
+export const COMPASS_FACING = Object.freeze({ rate: 10, deadband: 4, settle: .5, maxStep: .1 });
+// The Wayfarer's body yaw as Close View draws it, or NaN while an attack, cast, dodge or stagger turns the body for a moment
+// (the compass then keeps the way they were going). Callers check closeViewShowing first.
+export function closeViewBodyFacingYaw(){ return CAM.valid && !CAM.bodyTransient && Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : NaN; }
+// One HUD frame of the compass's facing frame. `frame` ({yaw, turning, ready}) is kept by the caller and changed in place;
+// `target` is the facing yaw (radians, world: 0 east, -PI/2 north). Reduced motion snaps instead of easing. Returns frame.yaw.
+export function compassFacingStep(frame, target, dt, reduce = false) {
+  if (!Number.isFinite(target)) return frame.yaw;
+  if (!frame.ready || !Number.isFinite(frame.yaw)) { frame.yaw = target; frame.turning = false; frame.ready = true; return frame.yaw; }
+  const F = COMPASS_FACING, diff = wrap(target - frame.yaw), size = Math.abs(diff) / DEG;
+  if (!frame.turning && size < F.deadband) return frame.yaw;
+  if (reduce || size < F.settle) { frame.yaw = target; frame.turning = false; return frame.yaw; }
+  frame.turning = true;
+  frame.yaw = wrap(frame.yaw + diff * Math.min(1, F.rate * Math.min(F.maxStep, Math.max(0, Number(dt) || 0))));
+  return frame.yaw;
+}
 export function closeViewDoorTorchPosition(map, door) {
   const w=map.width||32,h=map.height||Math.floor(map.tiles.length/w);
   const free=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&!map.tiles[y*w+x]?.blocked;
@@ -2846,7 +2935,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
-  UNI.hall = g.map.hall?.tall ? g.map.hall : null;
+  UNI.hall = g.map.hall?.tall ? g.map.hall : null; UNI.space = g.map?.seedRealm?.realm === "ship";
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
@@ -2926,7 +3015,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
-    const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
+    const statusAlpha = residual && foe ? closeViewCreatureIntrinsicAlpha(foe) : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
@@ -2964,7 +3053,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     break;
   }
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeWindingUp(foe)) continue;
-    const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])) * (MODEL_STATE.admitted.has(it) ? actorPresentation(foe)?.alpha ?? 1 : 1), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
+    const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])) * (MODEL_STATE.admitted.has(it) ? closeViewCreatureIntrinsicAlpha(foe) : 1), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
     room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);
     DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }
   { const fw = At.flame[0], fh = At.flame[1], halo = At.flame[2], Fl = st.flames;
@@ -2983,7 +3072,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (itemKind[it] !== 1 || !(foe?.hitFlash > 0) || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const X = boardWX[it], Y = boardWY[it];
     if (!sightTo(g.map, CAM.cx, CAM.cy, X, Y)) continue;
-    const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec) * (MODEL_STATE.admitted.has(it) ? actorPresentation(foe)?.alpha ?? 1 : 1), scale = boardScale[it];
+    const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec) * (MODEL_STATE.admitted.has(it) ? closeViewCreatureIntrinsicAlpha(foe) : 1), scale = boardScale[it];
     const z = impact.height * scale, size = impact.radius + (1 - a) * impact.spread, front = impact.front * scale;
     card(X - CAM.fx * front, Y - CAM.fy * front, z - size, z + size, size, 11, a * impact.alpha, impact.color, 0);
     impacts++;

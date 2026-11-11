@@ -83,7 +83,7 @@ export const DIG_GATES = {
   },
 };
 export const isInteriorArea = (areaKey) => typeof areaKey === "string" && DIG_GATES.interiors.test(areaKey);
-const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:)/;
+const TEMPORARY = /^(hunt-instance:|hunt-arena:|elite-portal:|proving:|displacement:|arena:|far-array:|dive:|skyland:|seedrealm:)/; // seed realms: never kept
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // save.digging: { shovel: uses left (0 = none), iron: iron-shovel uses left (release 379), dug: { areaKey: ["x,y", …] }, spots: { "rx,ry": true } }; save.materials.stone.

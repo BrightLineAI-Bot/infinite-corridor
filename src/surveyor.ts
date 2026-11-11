@@ -51,7 +51,7 @@ export function surveyorCrossing(seed, dungeonId, region = 0) {
 // Lays the crossing's link on open floor away from the entry. Returns the object or null.
 export function addSurveyorLink(map, save, dungeonId) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "surveyorLink")) return null;
-  if (!surveyorCrossing(save?.seed, dungeonId, regionVersionOf(save, dungeonId))) return null;
+  if (!surveyorCrossing(save?.seed, dungeonId, regionVersionOf(save, dungeonId)) && !starterLink(save, dungeonId)) return null; // 2026-11-11: or the Cairn Keeper's errand
   const s = ensureSurveyor(save); if (Object.values(s.where).includes(dungeonId) || nextLink(s) === undefined) return null;
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= SURVEYOR.minFromEntry && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)));
@@ -117,3 +117,46 @@ export function visitSurveyorStatue(save, o) {
   const s = ensureSurveyor(save), first = !s.statueSeen; s.statueSeen = true; if (o) o.state = "seen";
   return { ok: true, first, message: SURVEYOR_STATUE_LINES.join(" ") };
 }
+
+// The Cairn Keeper (2026-11-11; Tim: a first quest from the Refuge: "you meet someone who sets you on a thread, the first
+// dungeon gives the first item... and the Journal guidance leads on"). At Ember Refuge, beside the cairn where Abel Corwin
+// drove his first peg, an old woman keeps the stones. Speaking with her sets the errand (save.arcana.starter = "set"): the first
+// ordinary crossing entered after it holds the chain's first link, wherever it lies, while no link is found. She unlocks nothing
+// (Tim, 2026-11-11: what was free stays free for now); once the link is taken her next words point the way the rest went (the
+// chain's home). On every journey she stands there; on one that has found a link she only talks.
+export const CAIRN_KEEPER = { id: "cairn-keeper", name: "Maud Fennick", role: "Cairn Keeper", near: { x: 4, y: 9 } };
+export const CAIRN_LINES = {
+  first: [
+    "\"That cairn is where Abel Corwin drove his first peg. He measured from here to the black stone, and every day it was longer, and he never once said he was wrong.\"",
+    "\"He went out with a chain of a hundred links and dropped them one to a crossing, so somebody could measure him. Go into the first crossing you come to. One will be lying there. Don't bring it back to me. Keep it.\"",
+  ],
+  waiting: "\"The first crossing you go into. It'll be on the floor, worn bright on one side, where his thumb was.\"",
+  after: (where) => `"So it was there. The rest went the way he did: ${where}. He never came back for them. You might."`,
+  idle: [
+    "\"I count the stones every morning. There's always the same number. I count them anyway.\"",
+    "\"People ask what the cairn marks. The start, I tell them. Of what, they say. Of measuring.\"",
+    "\"Everything out there is a little longer than it was. Walk it anyway. Legs don't know.\"",
+  ],
+};
+// Stands her at the Refuge (section 0,0), by the cairn at its west edge: open ground nearest `near` (off the first screen, so
+// the Refuge as it is first seen is unchanged). Returns the object or null.
+export function addCairnKeeper(map, rx, ry) {
+  if (rx !== 0 || ry !== 0 || !map?.tiles?.length || map.objects?.some((o) => o.id === CAIRN_KEEPER.id)) return null;
+  const w = map.width || 32, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`)), N = CAIRN_KEEPER.near;
+  const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.buildingId && t.x > 2 && t.y > 2 && t.x < w - 3 && t.y < w - 3 && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|canyon|void|shallows|dock|Wall|wall/.test(String(t.kind)) && !/Wall|Door/.test(String(t.structure || "")));
+  if (!open.length) return null;
+  const t = open.reduce((a, b) => (Math.hypot(b.x - N.x, b.y - N.y) < Math.hypot(a.x - N.x, a.y - N.y) ? b : a));
+  const o = { id: CAIRN_KEEPER.id, kind: "villager", name: CAIRN_KEEPER.name, role: CAIRN_KEEPER.role, line: "", x: t.x, y: t.y, state: "calm", actions: ["speak"], settlement: "ember-refuge", cairnKeeper: true };
+  (map.objects ||= []).push(o); return o;
+}
+// Speaking with her. `where` is the chain's home in words. Returns { ok, message, started }.
+export function speakCairnKeeper(save, o, where = "out past the black stone") {
+  const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})), found = ensureSurveyor(save).links.length;
+  if (!found && a.starter !== "set") { a.starter = "set"; if (o) o.line = CAIRN_LINES.first[1]; return { ok: true, started: true, message: CAIRN_LINES.first.join(" ") }; }
+  if (!found) return { ok: true, message: CAIRN_LINES.waiting };
+  if (a.starter === "set") { a.starter = "done"; return { ok: true, message: CAIRN_LINES.after(where) }; }
+  a.talks = (Math.floor(Number(a.talks)) || 0) + 1;
+  return { ok: true, message: a.talks % 2 ? CAIRN_LINES.after(where) : CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
+}
+// The errand's first link: while it is set and no link is found, any ordinary crossing holds one.
+const starterLink = (save, dungeonId) => save?.arcana?.starter === "set" && ORDINARY.test(String(dungeonId || "")) && !ensureSurveyor(save).links.length;

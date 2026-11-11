@@ -15,9 +15,9 @@ function sampled(extra={}){const state=createHeroPoseState(asset),frame=createHe
 
 test('powered armor uses the untouched adult body and resets every reusable-frame flag',()=>{
   const state=createHeroPoseState(asset),frame=createHeroFrame(asset);
-  assert.equal(frame.suitPositionsNormals.length,60*3*6);assert.equal(frame.powerSuit,false);assert.equal(frame.suitVertexCount,0);
+  assert.equal(frame.suitPositionsNormals.length,124*3*6);assert.equal(frame.powerSuit,false);assert.equal(frame.suitVertexCount,0);
   assert.equal(sampleCloseViewHero(asset,state,{...base,powerSuit:false},frame),true);const body=Float32Array.from(frame.positionsNormals);
-  assert.equal(sampleCloseViewHero(asset,state,{...base,powerSuit:true},frame),true);assert.deepEqual(frame.positionsNormals,body,'armor cannot modify the 3170-triangle source body');assert.equal(frame.powerSuit,true);assert.equal(frame.suitVertexCount,180);assert.ok(frame.suitPositionsNormals.every(Number.isFinite));
+  assert.equal(sampleCloseViewHero(asset,state,{...base,powerSuit:true},frame),true);assert.deepEqual(frame.positionsNormals,body,'armor cannot modify the 3170-triangle source body');assert.equal(frame.powerSuit,true);assert.equal(frame.suitVertexCount,372);assert.ok(frame.suitPositionsNormals.every(Number.isFinite));
   assert.equal(sampleCloseViewHero(asset,state,{...base,powerSuit:false},frame),true);assert.equal(frame.powerSuit,false);assert.equal(frame.suitVertexCount,0,'normal/context restore cannot leak suit state');assert.deepEqual(frame.positionsNormals,body);
 });
 
@@ -34,13 +34,13 @@ test('all accepted body phases keep the fitted armor skinned and bounded',()=>{
     ['boost',{liftZ:.22}],['knockdown',{action:{kind:'hit',profile:'knockdown',phase:.7,durationMs:1000}}],
   ];
   let idle;
-  for(const [name,extra] of cases){const {frame}=sampled({powerSuit:true,...extra});assert.equal(frame.suitVertexCount,180,name);const a=frame.suitPositionsNormals;for(let i=0;i<a.length;i+=6){assert.ok(Number.isFinite(a[i])&&Number.isFinite(a[i+1])&&Number.isFinite(a[i+2]),name);assert.ok(Math.abs(Math.hypot(a[i+3],a[i+4],a[i+5])-1)<1e-5,name);}if(name==='idle')idle=Float32Array.from(a);else assert.notDeepEqual(a,idle,name+' follows the rig/world transform');}
+  for(const [name,extra] of cases){const {frame}=sampled({powerSuit:true,...extra});assert.equal(frame.suitVertexCount,372,name);const a=frame.suitPositionsNormals;for(let i=0;i<a.length;i+=6){assert.ok(Number.isFinite(a[i])&&Number.isFinite(a[i+1])&&Number.isFinite(a[i+2]),name);assert.ok(Math.abs(Math.hypot(a[i+3],a[i+4],a[i+5])-1)<1e-5,name);}if(name==='idle')idle=Float32Array.from(a);else assert.notDeepEqual(a,idle,name+' follows the rig/world transform');}
 });
 
 test('armor and held gear share one atomic bounded equipment reservation',()=>{
-  assert.equal(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES,60);assert.equal(HERO_EQUIPMENT_MAX_TRIANGLES,156);
+  assert.equal(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES,124);assert.equal(HERO_EQUIPMENT_MAX_TRIANGLES,220);
   const {frame}=sampled({powerSuit:true}),gear={profile:'emitter',rightSocket:frame.rightSocket,alpha:.8,tint:base.tint,hitFlash:.25};
-  const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.equal(end/MODEL_FLOATS/3,86);assert.ok(end/30<=156);assert.ok(out.slice(0,end).every(Number.isFinite));for(let i=9;i<60*3*MODEL_FLOATS;i+=MODEL_FLOATS)assert.ok(Math.abs(out[i]-.8)<1e-6,'armor alpha composes');const plain=new Float32Array(out.length),plainEnd=writeCloseViewHeroEquipment(plain,0,{...gear,tint:[1,1,1],hitFlash:0},frame);assert.equal(plainEnd,end);assert.notDeepEqual(Array.from(out.slice(6,60*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),Array.from(plain.slice(6,60*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),'real poison tint and hit flash compose on armor color');
+  const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.equal(end/MODEL_FLOATS/3,150);assert.ok(end/30<=220);assert.ok(out.slice(0,end).every(Number.isFinite));for(let i=9;i<124*3*MODEL_FLOATS;i+=MODEL_FLOATS)assert.ok(Math.abs(out[i]-.8)<1e-6,'armor alpha composes');const plain=new Float32Array(out.length),plainEnd=writeCloseViewHeroEquipment(plain,0,{...gear,tint:[1,1,1],hitFlash:0},frame);assert.equal(plainEnd,end);assert.notDeepEqual(Array.from(out.slice(6,124*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),Array.from(plain.slice(6,124*3*MODEL_FLOATS)).filter((_,i)=>i%MODEL_FLOATS<3),'real poison tint and hit flash compose on armor color');
   const short=new Float32Array(end-1);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0,'preflight is atomic');assert.ok(short.every(v=>v===0));
 });
 
@@ -48,7 +48,7 @@ test('integrated bilateral fists and named tools preserve the fixed armor equipm
   const {frame}=sampled({powerSuit:true});
   for(const profile of ['fist','fistCharge','rift-bombard','great-sweep','blunderbuss','lumen-spindle','cinder-pike','verge-cleaver']){
     const gear={profile,rightSocket:frame.rightSocket,leftSocket:frame.leftSocket,alpha:1,tint:[1,1,1]},out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS);
-    const end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.ok(end>60*3*MODEL_FLOATS,profile+' retains armor and gear');assert.ok(end/30<=156,profile+' keeps the existing budget');assert.ok(out.slice(0,end).every(Number.isFinite));
+    const end=writeCloseViewHeroEquipment(out,0,gear,frame);assert.ok(end>124*3*MODEL_FLOATS,profile+' retains armor and gear');assert.ok(end/30<=220,profile+' keeps the existing budget');assert.ok(out.slice(0,end).every(Number.isFinite));
     const short=new Float32Array(end-1);assert.equal(writeCloseViewHeroEquipment(short,0,gear,frame),0,profile+' rejects one-float-short storage');assert.ok(short.every(v=>v===0),profile+' preflight cannot partly write armor');
   }
 });
@@ -61,7 +61,7 @@ test('unknown cast recipes remain neutral on the powered suit while approved spe
   }
   for(const action of [{kind:'cast',profile:'fan-release',phase:.5,durationMs:360},{kind:'melee',profile:'hammer',phase:.5,durationMs:570}]){
     const armored=sampled({powerSuit:true,action}).frame,normal=sampled({powerSuit:false,action}).frame;
-    assert.deepEqual(armored.positionsNormals,normal.positionsNormals,'armor cannot change the integrated action body');assert.notDeepEqual(armored.suitPositionsNormals,neutral.suitPositionsNormals);assert.equal(armored.suitVertexCount,180);
+    assert.deepEqual(armored.positionsNormals,normal.positionsNormals,'armor cannot change the integrated action body');assert.notDeepEqual(armored.suitPositionsNormals,neutral.suitPositionsNormals);assert.equal(armored.suitVertexCount,372);
   }
 });
 

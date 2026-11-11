@@ -736,7 +736,7 @@ export function labFogLook(map, ox, oy, stored = undefined) {
   const F = labFogOf(map, stored); if (!F) return null;
   const { W, H, seen, sight } = F, T = map.tiles; ox = Math.max(0, Math.min(W - 1, ox | 0)); oy = Math.max(0, Math.min(H - 1, oy | 0));
   const at = oy * W + ox; if (at === F.at) return F;
-  F.at = at; F.looks++; sight.fill(0); const R = LAB_FOG.radius, n = Math.floor(R), R2 = R * R; let grew = false;
+  F.at = at; F.looks++; sight.fill(0); const R = Number(map.lightRadius) > 0 ? Number(map.lightRadius) : LAB_FOG.radius /* 2026-11-11: a longer light (lore.ts lightRadius), set by game.ts */, n = Math.floor(R), R2 = R * R; let grew = false;
   for (let ty = Math.max(0, oy - n); ty <= Math.min(H - 1, oy + n); ty++) for (let tx = Math.max(0, ox - n); tx <= Math.min(W - 1, ox + n); tx++) {
     const dx = tx - ox, dy = ty - oy; if (dx * dx + dy * dy > R2) continue;
     if (!clearLine(T, W, ox, oy, tx, ty) && !clearLine(T, W, tx, ty, ox, oy)) continue; // either way along the line (symmetric)
