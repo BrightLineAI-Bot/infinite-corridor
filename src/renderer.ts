@@ -343,8 +343,10 @@ function hallInlay(ctx, t, x, y, s) { const px = x * s, py = y * s; ctx.fillStyl
 // Release 289: a tile of the Watcher's sigil (watcher.ts): pale violet inlaid stone, the eye's pupil brightest; in arenas a
 // border and tesserae of small tiles around it; on a shrine, the raised platforms (their faces are the landscape's own).
 const SIGIL_INLAY = { lid: ["#b8b0d855", "#e6e0ff66"], ring: ["#b8b0d855", "#e6e0ff66"], eye: ["#a79ed066", "#e6e0ff55"], pupil: ["#d8d0ff99", "#ffffffaa"], orbit: ["#9f96c855", "#d8d2f855"], tools: ["#a79ed055", "#e6e0ff55"], border: ["#c9a15c44", "#e2c04f55"], tessera: ["#6d5f8a33", "#b8b0d833"] };
+const tintCache = new Map(), SIGIL_TINT_ALPHA = { tessera: ["1c", "30"], border: ["55", "88"], pupil: ["cc", "ff"] }; // Pentagon v11: a mosaic in its theme's light (adventures.ts mosaics)
+const sigilColours = (t) => { if (!t.sigilTint) return SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring; const k = `${t.sigilTint}:${t.sigil}`; let c = tintCache.get(k); if (!c) { const [a, b] = SIGIL_TINT_ALPHA[t.sigil] || ["88", "cc"]; c = [`${t.sigilTint}${a}`, `${t.sigilTint}${b}`]; if (tintCache.size < 64) tintCache.set(k, c); } return c; };
 function sigilInlay(ctx, t, x, y, s) {
-  const [fill, edge] = SIGIL_INLAY[t.sigil] || SIGIL_INLAY.ring, px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
+  const [fill, edge] = sigilColours(t), px = x * s, py = y * s - (t.landscape ? landscapeTileLift(t, s) : 0), d = Number.isFinite(t.detail) ? t.detail : h(x, y);
   if (t.sigil === "tessera") { for (let k = 0; k < 4; k++) { ctx.fillStyle = (d + k) % 3 ? fill : edge; ctx.fillRect(px + s * (.08 + (k % 2) * .44), py + s * (.08 + Math.floor(k / 2) * .44), s * .38, s * .38); } return; }
   ctx.fillStyle = fill; ctx.fillRect(px + s * .06, py + s * .06, s * .88, s * .88);
   ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, s * .04); ctx.strokeRect(px + s * .1, py + s * .1, s * .8, s * .8);
@@ -2009,6 +2011,21 @@ function drawPentRubble(ctx, o, s) {
   for (const [dx, dy, r, c] of [[.3, .66, .17, "#6b6152"], [.62, .7, .2, "#5a5144"], [.46, .5, .15, "#7d7262"], [.72, .52, .1, "#4c453a"], [.22, .48, .09, "#82776a"]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + s * (dx - r), y + s * (dy + r * .6)); ctx.lineTo(x + s * (dx - r * .5), y + s * (dy - r)); ctx.lineTo(x + s * (dx + r * .7), y + s * (dy - r * .7)); ctx.lineTo(x + s * (dx + r), y + s * (dy + r * .6)); ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }
+// Pentagon v11 (adventures.ts): a Waystone, a waist-high standing stone in a ring of light (brighter once rested at: the light is the
+// ward's theme light), and a vista's mark, a small lit arrow pointing out over the drop. Cached gradients are not needed: one each a map.
+function drawWaystone(ctx, o, s, now, light = "#d8a85a") {
+  const cx = (o.x + .5) * s, y = o.y * s, pulse = .5 + .5 * Math.sin(now / 700); ctx.save();
+  ctx.globalAlpha = .35 + .25 * pulse; ctx.strokeStyle = light; ctx.lineWidth = Math.max(1.5, s * .06); ctx.beginPath(); ctx.ellipse(cx, y + s * .8, s * .62, s * .24, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.fillStyle = "#00000066"; ctx.beginPath(); ctx.ellipse(cx, y + s * .82, s * .3, s * .1, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#7d776a"; ctx.beginPath(); ctx.moveTo(cx - s * .2, y + s * .82); ctx.lineTo(cx - s * .16, y + s * .08); ctx.quadraticCurveTo(cx, y - s * .06, cx + s * .16, y + s * .1); ctx.lineTo(cx + s * .22, y + s * .82); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#5c574d"; ctx.fillRect(cx + s * .04, y + s * .14, s * .14, s * .66);
+  ctx.globalAlpha = .55 + .45 * pulse; ctx.fillStyle = light; ctx.beginPath(); ctx.arc(cx - s * .02, y + s * .36, s * .07, 0, 7); ctx.fill(); ctx.fillRect(cx - s * .04, y + s * .46, s * .04, s * .2); ctx.restore();
+}
+function drawVistaMark(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 600); ctx.save();
+  ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .22, y + s * .62, s * .44, s * .2); ctx.globalAlpha = lit ? .6 + .4 * glow : .5; ctx.strokeStyle = "#e8d8a0"; ctx.lineWidth = Math.max(1.5, s * .07);
+  ctx.beginPath(); ctx.moveTo(cx - s * .2, y + s * .48); ctx.lineTo(cx, y + s * .2); ctx.lineTo(cx + s * .2, y + s * .48); ctx.stroke(); ctx.restore();
+}
 function drawPentRelic(ctx, o, s, now) {
   const cx = (o.x + .5) * s, y = o.y * s, lit = o.state !== "read", glow = .5 + .5 * Math.sin(now / 520); ctx.save();
   ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(cx, y + s * .86, s * .32, s * .1, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#3f3a33"; ctx.fillRect(cx - s * .26, y + s * .66, s * .52, s * .18); // the plinth
@@ -2603,6 +2620,8 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "pentInscription") drawPentInscription(ctx, o, s, now); // the marks in its walls
           else if (o.kind === "pentMural") drawPentMural(ctx, o, s, now); // release 795: where a grand hall's mural is read
           else if (o.kind === "pentLever") drawPentLever(ctx, o, s, now); // its levers (v2)
+          else if (o.kind === "pentWaystone") drawWaystone(ctx, o, s, now, g.map?.building?.adventure?.palette?.light); // Pentagon v11: a Waystone (adventures.ts)
+          else if (o.kind === "advVista") drawVistaMark(ctx, o, s, now); // and a vista's view
           else if (o.kind === "towerLever") {} // TOWER_SEAL: drawn on the tower's top with its roof (greatBlocks)
           else if (o.kind === "labGate") { if (o.state !== "open") drawBars(ctx, o, s); } // a room maze's barred door (labyrinths.ts ROOM_MAZES)
           else if (o.kind === "pentSigil") drawPentSeal(ctx, o, s, now); // and the Fivefold Seal
