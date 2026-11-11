@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 890 — The Wayfarer deals 10% less damage
+
+Tim, 2026-11-11: Wayfarer damage −10% across the board. Tim's answers: update the tests with the new numbers; the early scripted Stillworks Tyrant fight is now a loss; healing stays the same; damage text shows the new numbers, rounded to whole numbers.
+
+**CODE:** `WAYFARER_DAMAGE.scale` (0.9) and `wayfarerDamage(n)` in `src/combat.ts`: `max(1, round(n × scale))`, and 0 for a hit that would have rounded to nothing. Applied once where a hit meets a foe's health: `updateProjectiles` and `updateEffects` (optional trailing `landed` parameter, defaulting to unchanged), `glyphWorld().damage`, the melee swing and melee NPC collateral, `orreryStrike`, `cloneSwing`, and `tickGlyphStatus(…, scale)` for burns. `onHit` and `glyphHit` still receive the unscaled hit, so burns, bursts, Leech and Shadow Boxing heals are computed from it and scaled once on landing. Damage text (character-sheet melee and spell bonus, "+N spell damage", spell power, Imbue's "N a hit" and cast message, the Resonance line) goes through `wayfarerDamage`.
+
+**BOUNDARY:** Only damage credited to the Wayfarer is scaled. Enemy health and damage, regional threat, damage taken, healing, stuns, knockback and enemy-on-enemy damage are unchanged. Save schema stays 14; no generator changes. Item power, resistance and reach text are not damage and are unchanged. Tests pin the scripted early Stillworks build as a loss with the Tyrant near 20%.
+
 ## Release 889 — Close View camera farther back; targeting pass 2
 
 Tim, 2026-11-11: Close View camera farther back (also in wide), targeting still not there; then "5 tiles is probably fine... we can bring it back in if we need." Tim approved updating the pinned Pentagon-entry pitch in tests/close-view-tight-corner.test.ts. A boss camera that widens for big bosses may follow once he has played this.
