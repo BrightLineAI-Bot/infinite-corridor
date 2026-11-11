@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { BELLS, bellIn, addBell, ringBell, bellsRung } from '../src/bells.ts';
+import { regionVersionFor } from '../src/lore.ts'; // arcana regions live (2026-11-11)
 
 const seed = 'PIECES577';
 const bellCrossings = (lo, hi) => { const out = []; for (let rx = -hi; rx <= hi; rx++) for (let ry = -hi; ry <= hi; ry++) { const d = Math.abs(rx) + Math.abs(ry); if (d < lo || d > hi) continue; const id = `dungeon:${seed}:g1:${rx}:${ry}:room`; if (bellIn(seed, id)) out.push({ id, rx, ry }); } return out; };
@@ -29,7 +30,7 @@ test('a crossing that rang a bell keeps it: one crossing, one bell', () => {
 });
 
 test('the Journal does not track the bells or the chain; entering and ringing leave no notes', () => {
-  const s = freshSave(); s.seed = seed; const c = bellCrossings(4, 10)[0];
+  const s = freshSave(); s.seed = seed; const c = bellCrossings(4, 10).find((q) => bellIn(seed, q.id, '', regionVersionFor(false)));
   s.session.activeDungeonId = c.id; s.session.dungeonReturn = { rx: c.rx, ry: c.ry, x: 16, y: 16 };
   const g = new Game(s, 0); g.loadArea('dungeon', false); const o = g.map.objects.find((q) => q.kind === 'crackedBell');
   g.enemies = []; Object.assign(g.player, { x: o.x, y: o.y + .2 }); assert.ok(g.interact('ring', o.id).ok);

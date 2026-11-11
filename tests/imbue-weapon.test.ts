@@ -74,7 +74,7 @@ test('it applies only while active, and expires after its duration', () => {
   const plain = swing(1100);
   assert.equal(g.castSpell('imbue-weapon'), true);
   const per = g.imbueBonus(1200); assert.ok(per > 100, `per hit ${per}`);
-  const imbued = swing(1200); assert.equal(imbued - plain, Math.round(per), `${plain} -> ${imbued}`);
+  const imbued = swing(1200); assert.ok(Math.abs(imbued - plain - Math.round(per) * .9) <= 1, `${plain} -> ${imbued}`); // the imbued share lands at WAYFARER_DAMAGE.scale
   assert.ok((g.imbueSparks || []).some((q) => q.at === 1200), 'a hit flash where it landed');
   assert.ok(g.spellBuffLeft('imbue-weapon', 1200) > .98, 'the button fills');
   const end = 1000 + IMBUE.seconds * 1000 + 50; assert.equal(g.imbueBonus(end), 0); assert.equal(swing(end), plain, 'gone after it runs out');
@@ -90,7 +90,7 @@ test('Iron Fists punches and the Hammerfall and Great Sweep blows carry it too',
   for (const [opts, act] of [[{ fists: true }, (g, t) => g.fistPunch(2, 0, t)], [{ tool: 'Great Sweep' }, (g, t) => { g.toolReadyAt = 0; g.fireSecondary(t, { x: 1, y: 0 }); }], [{ tool: 'Hammerfall' }, (g, t) => { g.toolReadyAt = 0; g.fireSecondary(t, { x: 1, y: 0 }); }]]) {
     const hit = (imbue) => { const g = arena(build('focus', opts)); let t = 1000; g.update(.05, idle, t); if (imbue) g.castSpell('imbue-weapon'); act(g, t + 50); for (let i = 0; i < 20; i++) g.update(.05, idle, (t += 50)); return { d: HP - g.enemies[0].hp, per: g.imbueBonus(1100) }; };
     const a = hit(false), b = hit(true);
-    assert.ok(a.d > 0 && b.d - a.d >= Math.round(b.per) - 1, `${JSON.stringify(opts)}: ${a.d} -> ${b.d} (per ${b.per})`);
+    assert.ok(a.d > 0 && b.d - a.d >= Math.round(b.per * .9) - 1, `${JSON.stringify(opts)}: ${a.d} -> ${b.d} (per ${b.per})`);
   }
 });
 
