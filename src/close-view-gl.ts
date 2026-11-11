@@ -641,9 +641,9 @@ void main() {
   float n = fbm(q * vec2(1.7, 2.6)), strata = aline(fract(v_pos.z * 2.3 + n * 0.55) - 0.5, 0.07);
   vec3 c = v_col * (0.5 + 0.38 * n) * (1.0 - 0.22 * strata) + vec3(0.02, 0.018, 0.015);
   if (v_kind > 2.5) c = mix(v_col * 0.18, vec3(0.015, 0.016, 0.022), 0.7); // a pit's floor, lost in the dark
-  float below = max(0.0, -v_pos.z); if (v_kind > 1.5) c = mix(c * 0.62, vec3(0.05, 0.045, 0.05), 0.25) * exp(-below * 1.5); // a pit's walls: darker stone, lost in the dark as they go down
+  float below = max(0.0, -v_pos.z), fall = exp(-below * 0.75); // a pit's walls: lit stone at the lip, lost in the dark as they go down
   vec3 Nb = u_finish.z > 0.5 ? bump(N, v_pos, (n - strata * 0.4) * 0.05) : N; vec3 dif, spe; lightsAt(v_pos, Nb, 0.0, dif, spe);
-  vec3 col = c * dif;
+  vec3 col = v_kind > 1.5 ? c * (dif * 0.55 + u_amb * 0.6 + 0.12) * fall * (0.75 + 0.25 * smoothstep(-0.25, 0.0, v_pos.z)) : c * dif;
   outColor = vec4(finish(atmos(col, v_pos, v_depth, dif)), 1.0);
 }`;
 
