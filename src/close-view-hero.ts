@@ -397,11 +397,12 @@ function castPose(state,pose,profile,p,sourceLeft=true){
   const commit=p<=.08?smoothstep(p/.08):p<.62?1:1-smoothstep((p-.62)/.38);if(!(commit>0))return;
   build(state.asset,state,pose);const g=state.global,s=(sourceLeft?12:22)*16,grip=(sourceLeft?6:16)*16,t=state.primaryTarget,follow=Math.sin(Math.PI*clamp((p-.08)/.54)),side=sourceLeft?1:-1;
   // Immediate spell release remains authoritative. Only the free arm follows through,
-  // then retracts; its shoulder and neck counterbalance never move the held grip.
+  // then retracts; its shoulder and neck counterbalance never move the held grip. The 2026-11-11
+  // cast gesture leads with the free shoulder and the head only: the chest is a held-arm ancestor.
   const tail=1-p,flow=16*p*p*tail*tail;
   const x=g[s+12]+(spec[0]+spec[5]*flow)*side,y=g[s+13]+spec[1]+follow*.035+spec[6]*flow,z=g[s+14]+spec[2]+follow*.045+spec[7]*flow;
   t[0]=g[grip+12]+(x-g[grip+12])*commit;t[1]=g[grip+13]+(y-g[grip+13])*commit;t[2]=g[grip+14]+(z-g[grip+14])*commit;
-  rotateX(pose,sourceLeft?13:23,-.05*flow*commit);rotateY(pose,27,-side*.10*flow*commit);rotateX(pose,27,.05*flow*commit);rotateZ(pose,sourceLeft?13:23,-side*.07*flow*commit);rotateY(pose,4,-side*.025*flow*commit);
+  rotateX(pose,sourceLeft?13:23,-.05*flow*commit);rotateY(pose,sourceLeft?13:23,-side*.10*flow*commit);rotateZ(pose,sourceLeft?13:23,-side*.07*flow*commit);rotateY(pose,4,-side*.045*flow*commit);rotateX(pose,4,.03*flow*commit);
   solveArm(state,pose,sourceLeft,t,spec[3]*commit*side,spec[4]*commit);
 }
 
@@ -754,7 +755,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
         rotateX(state.pose,4,(chestOpening ? .28-.12*lift : .21)*reach);
         // A real crouch and reach (Tim, 2026-11-11): knees bend with the soles planted, the waist
         // folds, and the free hand goes down to the floor; a chest only needs half the depth.
-        const c=reach*(chestOpening?.5:1);plantedCrouch(asset,state,state.pose,c,(chestOpening?PICKUP_POSE.chestDrop:PICKUP_POSE.drop));
+        const c=reach*(chestOpening?.5*(1-.5*lift):1);plantedCrouch(asset,state,state.pose,c,(chestOpening?PICKUP_POSE.chestDrop:PICKUP_POSE.drop));
         rotateX(state.pose,27,PICKUP_POSE.bend*c);rotateX(state.pose,24,PICKUP_POSE.upper*c);
         if(heldPrimary!=='cinder-pike'&&!chestOpening)rotateX(state.pose,roles.free==='leftSocket'?12:22,-PICKUP_POSE.reach*c);
       }

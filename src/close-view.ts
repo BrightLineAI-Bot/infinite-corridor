@@ -2458,7 +2458,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
     else if (!leavingImportedDodge&&!stunned && dist < 3) track.phase = (track.phase + dist * MODEL_TIMING.walkRadians) % (Math.PI * 2);
     const speed = !stunned && !watched && elapsed > 0 && dist < 3 ? Math.min(1, dist / elapsed / MODEL_TIMING.strideSpeed) : 0;
-    const paceDelta = speed - track.pace; // presentation lean: + accelerating, - stopping
+    // Presentation lean (+ accelerating, - stopping). Held between renders: a same-time re-render
+    // (no elapsed time) cannot invent a stop, and an imported dodge keeps the lean it started from
+    // (the roll clip blends over it), so accepted phase zero reproduces the previous pose exactly.
+    if (!Number.isFinite(track.lean) || elapsed > 0 && !importedDodge && !leavingImportedDodge) track.lean = Math.max(-1, Math.min(1, (speed - track.pace) * 1.6));
     if (stunned || watched) track.pace = 0;
     else if(!importedDodge&&!leavingImportedDodge)track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if(leavingImportedDodge)track.dodgeUntil=null;
@@ -2576,7 +2579,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
         input.wayfarerKit = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit'; // the standard kit, or the suit's helmet and pack
-        input.accel = ordinary && !importedDodge ? Math.max(-1, Math.min(1, paceDelta * 1.6)) : 0;
+        input.accel = ordinary ? track.lean : 0;
         input.turn = ordinary && (pose === 'idle' || pose === 'walk') ? turn : 0;
         input.hurtFront = NaN; input.hurtSide = NaN;
         if (ordinary && hurtPhase !== null) { // flinch away from the nearest live foe (presentation only)
