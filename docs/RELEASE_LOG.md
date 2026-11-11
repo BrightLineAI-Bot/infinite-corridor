@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r873 (`d4a0b43a1879`); r874 is in flight; production serves `r873-d4a0b43a1879`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r874 (`00abe1a858bf`); production serves `r874-00abe1a858bf`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 874 | Claude | claude/oculus-utility-button | Oculus utility button (Oculus/Build/Robot-Drone per preset), slot C with three spells, compass top right | In flight. |
+| 874 | Claude | claude/oculus-utility-button | Oculus utility button (Oculus/Build/Robot-Drone per preset), slot C with three spells, compass top right | Merged as `00abe1a858bf` (#539). Published in r874. |
 | 873 | Claude | claude/interior-platform-reach | Interior terrain v2: jump platforms never create one-way pockets or sealed guards | Merged as `d4a0b43a1879` (#537). Published in r873. |
 | 872 | Claude | claude/overworld-close-view-fidelity / #536 | Overworld Close View sky, ground, water and standing solids | Merged as `62f86eace9c7`. Published in r873. |
 | 871 | Claude | claude/cleaver-salvage-flow / #533 | Verge Cleaver three quick grounded cuts | Merged as `5bdd583a2065`; Preview r871-5bdd583a2065. Published in r873. |
@@ -232,6 +232,7 @@ Main is at r873 (`d4a0b43a1879`); r874 is in flight; production serves `r873-d4a
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 874 | r874-00abe1a858bf | 2026-11-11 | Fable review (873→874): no blockers; 3,528 tests pass; ten pre-874 save shapes migrate with A/B intact, Build and the robot never lost, idempotent; dais never saved. Live identity verified. |
 | 873 | r873-d4a0b43a1879 | 2026-11-10 | Includes r870–r872. Fable review (869→873): no blockers; 3,516 tests pass, 26,862 pinned floors and 500 save-pinned floors regenerate identically, 60,000 default loot rolls identical, saved four-cut Cleaver records resume exactly. Live identity verified. |
 | 869 | r869-d6c8a8f181d1 | 2026-11-10 | Includes r867 and r868. Astra review (866→869) found no blockers. Merged CI 42837647783 and Preview 42837647733 passed. Browser Companion verified the blue arrival torch and Cube waypoint selection. Frozen WebGL evidence 42842391961 verified true north and the overworld target bearing through camera turns. The first Publish timed out waiting for Pages. Publish 42857232512 succeeded. Public identity and Options → System matched, with no recent errors. |
 | 866 | r866-2a08d6b00273 | 2026-11-10 | Astra review (865→866): no blockers. Preview 42810368434 and Rending Hands witness 42813314967 passed. Publish 42814014175 updated the root artifact; its public Pages wait and retry 42816425923 timed out. The subsequent Pages deployment for r867 Preview served the retained r866 root, whose public identity matched the exact commit and tree. |
