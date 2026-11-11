@@ -21,7 +21,7 @@ import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spell
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 573
 import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
-import { CREATURE_TRAITS } from "./combat.ts";
+import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.ts";
 import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.ts";
@@ -451,7 +451,7 @@ function apertureStatsCard() {
   card.append(h, text);
   if (tier > 3) {
     const r = tier - 3, detail = document.createElement("p");
-    detail.textContent = `Resonance ${r}: +${r * 6} maximum health, +${r * 2} melee and +${r * 2} spell damage. Aperture encounters grow stronger and more frequent with each band.`;
+    detail.textContent = `Resonance ${r}: +${r * 6} maximum health, +${wayfarerDamage(r * 2)} melee and +${wayfarerDamage(r * 2)} spell damage. Aperture encounters grow stronger and more frequent with each band.`;
     card.append(detail);
   }
   if (tier >= 1) {
@@ -1906,8 +1906,8 @@ function openPack(tab) {
     `${save.maxHp} maximum health`,
     `${save.maxStamina} maximum stamina`,
     `${Math.round(derived.damageReduction * 100)}% damage resistance`,
-    `+${derived.meleeBonus} melee bonus`,
-    `+${derived.magicBonus} spell/projectile bonus`,
+    `+${wayfarerDamage(derived.meleeBonus)} melee bonus`, // Tim 2026-11-11: damage text shows what lands (WAYFARER_DAMAGE), in whole numbers
+    `+${wayfarerDamage(derived.magicBonus)} spell/projectile bonus`,
     `+${Math.round(derived.attackReach*100)}% melee and projectile reach`,
   ]) {
     const span = document.createElement("span");
@@ -2924,9 +2924,9 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const sockets=(save.spellGlyphs?.[show.id]||[]).filter(Boolean).map(g=>`${GLYPHS[g].sigil} ${GLYPHS[g].name}`);
   {const tags=el('div','arc-tags');tags.append(elemBadge(CASTABLES[`spell:${show.id}`]?.attr||'fire'),kindTag('Active spell',true));detail.append(el('strong','',show.name),tags)}
   if(show.text)detail.append(el('p','',show.text)); // release 365
-  detail.append(el('p','',show.essence?`${game.spellCooldownFor(show).toFixed(1).replace(/\.0$/,'')}s cooldown · lasts ${ESSENCE_WALK.seconds}s · while it lasts, a spell still recovering casts anyway for stamina (${ESSENCE_WALK.cost.base} + ${ESSENCE_WALK.cost.perSecond} a second of its cooldown, ${ESSENCE_WALK.cost.min}–${ESSENCE_WALK.cost.max}) and its cooldown runs on as it was; a ready spell casts as usual; a recast refreshes the window. Aegis costs ${ESSENCE_WALK.costs.aegis}, and spent down too far for another it is locked for its whole cooldown. Not the disciplines. ${presetCastables().filter(c=>c.kind==='spell'&&!essenceExempt(c.id)).map(c=>`${SPELLS[c.id].name}: ${game.essencePrice(c.id)} stamina`).join(' · ')||'Slot a spell to see its cost.'}`:show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${Math.round(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${show.damage} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
+  detail.append(el('p','',show.essence?`${game.spellCooldownFor(show).toFixed(1).replace(/\.0$/,'')}s cooldown · lasts ${ESSENCE_WALK.seconds}s · while it lasts, a spell still recovering casts anyway for stamina (${ESSENCE_WALK.cost.base} + ${ESSENCE_WALK.cost.perSecond} a second of its cooldown, ${ESSENCE_WALK.cost.min}–${ESSENCE_WALK.cost.max}) and its cooldown runs on as it was; a ready spell casts as usual; a recast refreshes the window. Aegis costs ${ESSENCE_WALK.costs.aegis}, and spent down too far for another it is locked for its whole cooldown. Not the disciplines. ${presetCastables().filter(c=>c.kind==='spell'&&!essenceExempt(c.id)).map(c=>`${SPELLS[c.id].name}: ${game.essencePrice(c.id)} stamina`).join(' · ')||'Slot a spell to see its cost.'}`:show.imbue?`${show.cooldown}s cooldown · lasts ${IMBUE.seconds}s · adds magic damage to every melee hit from your Focus alone: now +${wayfarerDamage(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit (before glyphs and spell-damage bonuses). Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.brawler?`${show.cooldown}s cooldown · a brawler spell: its damage follows your melee damage, and it aims like a swing. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`:show.id==='shadow-clone'?`${show.cooldown}s cooldown · lasts ${show.lifetime}s · hold to send it up to ${show.maxRange} tiles away · copies your blows at half damage.`:`${show.cooldown}s cooldown · power ${wayfarerDamage(show.damage)} · reach ${show.maxRange} · radius ${show.radius}. Glyphs: ${sockets.length?sockets.join(', '):'none set (Glyphs tab)'}.`));
   // What changes your spells: Focus, the Pairing, and the few constellation nodes that reach them (NODE_EFFECTS.spells).
-  {const boosts=[`Focus ${save.stats?.Focus||1}: +${characterStats(save).magicBonus} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
+  {const boosts=[`Focus ${save.stats?.Focus||1}: +${wayfarerDamage(characterStats(save).magicBonus)} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
    const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
   if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365

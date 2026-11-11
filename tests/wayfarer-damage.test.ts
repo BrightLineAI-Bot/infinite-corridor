@@ -2,9 +2,10 @@
 // (WAYFARER_DAMAGE.scale) on every blow credited to the Wayfarer, applied where it meets a foe's health. Each source is
 // measured twice in the same arena, once with the scale at 1 (the old damage) and once as shipped.
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
-import { Game, updateProjectiles, updateEffects, regionalScale } from '../src/game.ts';
+import { Game, updateProjectiles, updateEffects, regionalScale, characterStats } from '../src/game.ts';
 import { createCombatant, WAYFARER_DAMAGE, wayfarerDamage } from '../src/combat.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { primaryProfile } from '../src/items.ts';
@@ -116,4 +117,20 @@ test('the gold damage numbers show the scaled blow', () => {
       const n = (g.damageFloaters || []).filter((f) => f.kind === 'dealt'); assert.equal(n.length, 1); assert.equal(n[0].text, String(lost)); shown.push(Number(n[0].text)); } finally { WAYFARER_DAMAGE.scale = SHIPPED; }
   }
   assert.equal(shown[1], wayfarerDamage(shown[0]));
+});
+
+// Tim (2026-11-11): "They should show the new numbers", whole numbers, rounded as wayfarerDamage rounds, in the same wording.
+test('the character sheet and spell text show the scaled damage, whole, as a plain hit lands it', () => {
+  const src = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8'), game = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
+  for (const shown of ['`+${wayfarerDamage(derived.meleeBonus)} melee bonus`', '`+${wayfarerDamage(derived.magicBonus)} spell/projectile bonus`', '+${wayfarerDamage(characterStats(save).magicBonus)} spell damage`',
+    'now +${wayfarerDamage(imbueAmount(save.stats?.Focus,characterStats(save).magicBonus))} a hit', 'power ${wayfarerDamage(show.damage)} · reach', '+${wayfarerDamage(r * 2)} melee and +${wayfarerDamage(r * 2)} spell damage'])
+    assert.ok(src.includes(shown), `main.ts shows ${shown}`);
+  assert.ok(!/\+\$\{derived\.(meleeBonus|magicBonus)\}/.test(src) && !src.includes('+${characterStats(save).magicBonus} spell damage'), 'no unscaled damage line is left');
+  assert.ok(game.includes('const n = wayfarerDamage(this.imbueBonus(now)); this.message = n > 0 ? `Imbue Weapon: your melee hits carry ${n} magic damage.`'));
+  // The numbers: whole, and exactly what a plain hit of that size takes from a foe.
+  const s = freshSave(); s.level = 30; s.stats = { ...s.stats, Might: 34, Focus: 36 }; const st = characterStats(s);
+  for (const n of [st.meleeBonus, st.magicBonus, 7, 2, 107.4, 1]) { const shown = wayfarerDamage(n); assert.ok(Number.isInteger(shown), `${n} -> ${shown}`); assert.equal(shown, Math.max(1, Math.round(n * .9))); }
+  const { g, e } = arena(); g.enemies[0].hp = 5000; const raw = 50; g.brawlerEffect({ id: 'sheet', lifetime: .3, radius: 2, pulse: 99 }, e.x + .5, e.y + .45, raw); step(g, 100, 1000);
+  assert.equal(5000 - e.hp, wayfarerDamage(raw), 'what the sheet says is what lands');
+  const imbue = arena(); imbue.s.stats.Focus = 30; imbue.g.castSpell('imbue-weapon'); assert.match(imbue.g.message, new RegExp(`carry ${wayfarerDamage(imbue.g.imbueBonus(imbue.g.lastUpdateNow || 0))} magic damage`));
 });

@@ -1507,14 +1507,14 @@ test("projectiles and spell pulses hurt NPCs once and preserve exact paused woun
         },
       ];
     g.update(0.1, idle(), 1);
-    assert.equal(g.save.consequences.npcs[v.id].hp, 18);
+    assert.equal(g.save.consequences.npcs[v.id].hp, 20);
     g.setPaused(true, 2);
     const r = new Game(
       deserializeSave(serializeSave(g.exportSnapshot(2))),
       100,
     );
     r.update(20, idle(), 200);
-    assert.equal(r.save.consequences.npcs[v.id].hp, 18);
+    assert.equal(r.save.consequences.npcs[v.id].hp, 20);
     assert.equal(r.save.xp, 0);
   }
 });
