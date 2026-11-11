@@ -91,14 +91,14 @@ export const CLOSE_VIEW = Object.freeze({
     // version 2: each a little higher (Tim: "a slight default height increase is fine if it helps you read the room"), still
     // under the walls' tops, so a room's floor and its edges read; the pitch follows from the height and the aim point
     // version 3 (Tim, 2026-11-11: "needs to be farther out, a little bit farther back... I'm in the wide view and it still needs
-    // to be even farther back"): every preset pulled back and raised (was close 2 / 1.35, standard 2.7 / 1.6, wide 3.4 / 1.85,
-    // distance / height), wide the farthest, still under the walls' tops less craneClear; the aim point moved further ahead
+    // to be even farther back"; then wide at 5 tiles: "we can bring it back in if we need"): every preset pulled back and
+    // raised (was close 2 / 1.35, standard 2.7 / 1.6, wide 3.4 / 1.85, distance / height), wide the farthest, still under the walls' tops less craneClear; the aim point moved further ahead
     // and lower so the pitch shows more of the floor beyond the Wayfarer, who stays framed low of centre. Walls still pull the
     // boom in (CLOSE_VIEW.camera), so tight corridors keep the old close framing. `fogPush`: tiles the depth fog is pushed out
     // with the longer boom, so the Wayfarer and the ground just past them are no foggier than at the old distance.
     standard: Object.freeze({ label: "Standard", height: 1.9, distance: 3.5, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
     close: Object.freeze({ label: "Close (tight, low)", height: 1.55, distance: 2.6, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
-    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 4.6, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.2 }), // Remnant / ESO
+    wide: Object.freeze({ label: "Wide (further back)", height: 2.15, distance: 5, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
   defaultPreset: "standard",
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length

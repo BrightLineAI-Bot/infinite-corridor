@@ -43,6 +43,7 @@ test('every Close View preset sits farther back than before, the wide one farthe
     assert.ok(P[id].fogPush >= 0 && P[id].fogPush < P[id].distance - d + .01, `${id}: the fog moves out no further than the camera did`);
   }
   assert.ok(P.wide.distance > P.standard.distance && P.standard.distance > P.close.distance, 'wide is the farthest, close the nearest');
+  assert.equal(P.wide.distance, 5, 'Tim, 2026-11-11: wide at 5 tiles'); assert.ok(Math.abs(P.wide.fogPush - (P.wide.distance - before.wide[0])) < 1e-9, 'its fog moves out as far as it did');
   assert.equal(C.defaultPreset, 'standard');
 });
 
