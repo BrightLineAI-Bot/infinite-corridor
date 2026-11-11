@@ -188,6 +188,15 @@ export const CLOSE_VIEW = Object.freeze({
     warm: "rgba(255,168,92,0.09)", // the torch's warm cast round the Wayfarer
   }),
   actors: Object.freeze({ back: Object.freeze({ hood: "#79877b", seam: "#5d695f", rect: Object.freeze([-.14, -.71, .28, .18]) }), atlas: 1600 /* device pixels of atlas height below the ground texture; a sprite takes at most a third of it (version 5: the nearest, atmosphere.sprite.nearShare) */, cutAlpha: .4, halfWidth: 1.05, height: 2.35, below: .55, fade: .9, sprite: 1, maxSprite: 1.6 }), // sprite box in tiles (times the creature's scale)
+  // Solid creatures (Tim, 2026-11-11: "the monsters are still pretty ephemeral and spectral... a little bit see-through. Make
+  // them firm and concrete, so they come into view easily and stay in view"). A creature was faded by the distance fog across
+  // the whole view (from `fog.near`, about 3 tiles from the camera) and eased in from nothing; the GPU drew that as a 4x4
+  // screen-door dither, so anything a few tiles off showed the floor through it. Now a creature is fully solid in view, and
+  // only in the last `edge` tiles before the fog's far end does it thin out, crisply, where it leaves the view. What makes a
+  // creature see-through is its design alone: `spectral` kinds (by their presentation profile's `spectral` flag) and
+  // designed states (phasing, a departing fade) keep their own opacity (actor-presentation.ts); `spectralAlpha` is the
+  // standing opacity of a spectral kind (the GPU adds a cold rim light so it still reads).
+  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8 }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -245,7 +254,8 @@ export const CLOSE_VIEW = Object.freeze({
     ao: Object.freeze({ width: .3, alpha: .5, px: 32 }) }),
   // How creatures read from the close camera (version 3, Tim: "monsters phasing in and out of view depending on where the
   // camera is... the way the monsters' attacks are"). `fade`: a creature's opacity eases toward what its light, fog and the
-  // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0. `ghost`: seen through a wall that
+  // cut-away ask at this rate (per second), so nothing pops; it comes into sight from 0 (no longer: a creature's
+  // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
   // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.ts's hitFlash,
@@ -1400,7 +1410,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
-    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(d, lit, fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
+    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(d, lit, d.enemy ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused);
@@ -1507,6 +1517,18 @@ let matched = null; // the creature scaleFor last matched (or null): boardFoe ke
 // Environment visibility only: intrinsic capture/native alpha owns spectral and phase effects.
 // Lighting belongs to the shader/art, so a nearby foe never becomes transparent in darkness
 // or merely because it stands between the eye and the Wayfarer. Distant fog still retires it.
+// A creature's share of the fog for its opacity: none until the last `creatures.edge` tiles of the view, then to 1 at its
+// far end (never earlier than the fog's near edge). Its colour still takes the full fog in the shader.
+export function closeViewCreatureFog(depth, fogNear, fogFar) {
+  const far = Number.isFinite(fogFar) ? fogFar : CLOSE_VIEW.fog.far, from = Math.max(Number.isFinite(fogNear) ? fogNear : 0, far - CLOSE_VIEW.creatures.edge);
+  if (!(depth > from)) return 0; return depth >= far ? 1 : (depth - from) / Math.max(1e-6, far - from);
+}
+// A creature's designed opacity in Close View (1 for every solid creature): its presentation state times the standing
+// opacity of a spectral kind. Environment visibility (closeViewActorEnvironmentAlpha) multiplies this.
+export function closeViewCreatureIntrinsicAlpha(foe) {
+  const p = foe ? actorPresentation(foe) : null; if (!p) return 1;
+  return Math.max(0, Math.min(1, (p.alpha ?? 1) * (p.spectral ? CLOSE_VIEW.creatures.spectralAlpha : 1)));
+}
 export function closeViewActorEnvironmentAlpha(capture, lit, fog, foreground = false) {
   const visibility = 1 - Math.max(0, Math.min(1, Number.isFinite(fog) ? fog : 0));
   if (capture?.enemy) return visibility;
@@ -1631,8 +1653,10 @@ function occludeBillboards(n, faces, paused = false) {
     if (foe && typeof foe === "object") { let st = FOE_FADE.get(foe);
       // A first paused render (including a restored scene) has no prior fade to freeze. Initialize
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
-      if (!st) { st = { a: paused ? boardB[j] : 0, o: occ }; FOE_FADE.set(foe, st); }
-      st.a += (boardB[j] - st.a) * k; st.o += (occ - st.o) * k; boardB[j] = st.a; boardOcc[j] = st.o; } }
+      // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
+      // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
+      if (!st) { st = { o: occ }; FOE_FADE.set(foe, st); }
+      st.o += (occ - st.o) * k; boardOcc[j] = st.o; } }
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
@@ -2520,7 +2544,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
-      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (presentation?.alpha ?? 1) * (who === player ? 1 : boardB[it]))),
+      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: interiorSurfaceHeight(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0 };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
@@ -2831,7 +2855,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
     const residual = MODEL_STATE.admitted.has(it);
-    const statusAlpha = residual && foe ? actorPresentation(foe)?.alpha ?? 1 : 1;
+    const statusAlpha = residual && foe ? closeViewCreatureIntrinsicAlpha(foe) : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
@@ -2869,7 +2893,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     break;
   }
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeWindingUp(foe)) continue;
-    const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])) * (MODEL_STATE.admitted.has(it) ? actorPresentation(foe)?.alpha ?? 1 : 1), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
+    const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])) * (MODEL_STATE.admitted.has(it) ? closeViewCreatureIntrinsicAlpha(foe) : 1), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
     room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);
     DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }
   { const fw = At.flame[0], fh = At.flame[1], halo = At.flame[2], Fl = st.flames;
@@ -2888,7 +2912,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (itemKind[it] !== 1 || !(foe?.hitFlash > 0) || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const X = boardWX[it], Y = boardWY[it];
     if (!sightTo(g.map, CAM.cx, CAM.cy, X, Y)) continue;
-    const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec) * (MODEL_STATE.admitted.has(it) ? actorPresentation(foe)?.alpha ?? 1 : 1), scale = boardScale[it];
+    const a = Math.min(1, foe.hitFlash / MODEL_TIMING.hitSec) * (MODEL_STATE.admitted.has(it) ? closeViewCreatureIntrinsicAlpha(foe) : 1), scale = boardScale[it];
     const z = impact.height * scale, size = impact.radius + (1 - a) * impact.spread, front = impact.front * scale;
     card(X - CAM.fx * front, Y - CAM.fy * front, z - size, z + size, size, 11, a * impact.alpha, impact.color, 0);
     impacts++;

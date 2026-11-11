@@ -564,6 +564,13 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
   c *= a; if (c.a < 0.004) discard; outColor = c; }`;
 
 // Native models share the environment's camera, lights and fog.
+// Solid creatures (Tim, 2026-11-11: "firm and concrete, so they come into view easily"): a body takes the fog `fogLate` tiles
+// later than the walls behind it (still wholly fogged at the far end), so a creature a few tiles off stands out from the
+// stone instead of sinking into it. A body drawn below full opacity (a spectral kind, or a designed phase or departure;
+// close-view.ts closeViewCreatureIntrinsicAlpha) is screen-door dithered as before and also takes a cold rim light
+// (`spectralRim`, up to `spectralGlow` at `ghostFull` of the way to transparent) so a ghost still reads at a glance.
+export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4 });
+const glf = (v) => Number(v).toFixed(4);
 const MODEL_VS = VS_COMMON + `
 in vec3 a_pos; in vec3 a_nrm; in vec3 a_col; in float a_alpha;
 out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_depth; out float v_alpha;
@@ -588,7 +595,12 @@ void main() {
   lightsAt(v_pos, normal, 14.0, dif, spe);
   float rim = 1.0 - max(0.0, dot(normal, toEye));
   vec3 color = v_col * max(dif, vec3(0.28)) + spe * 0.25 + vec3(0.19, 0.15, 0.11) * rim * rim;
-  outColor = vec4(finish(atmos(color, v_pos, v_depth, dif)), 1.0);
+  float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
+  color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
+  float late = u_fogP.x + ${glf(CLOSE_VIEW_ACTOR_LOOK.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
+  float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
+  color = mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8));
+  outColor = vec4(finish(mix(color, u_fog, f)), 1.0);
 }`;
 
 // ---------------------------------------------------------------------------------------------- the open world's solids
