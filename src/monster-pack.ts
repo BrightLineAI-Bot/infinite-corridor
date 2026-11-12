@@ -478,6 +478,15 @@ export const MONSTER_PACK = {
     attacks: ["stagGore", "stagCharge", "stagRoots", "stagThorns", "stagLeap", "stagCage", "stagStomp", "stagHunt", "stagGrove", "stagMend", "stagBirds", "stagMire"], bossAttacks: [],
     palette: ["#5a4632", "#1c140c", "#9cff6a", "#e6ffd0"], render: "briarStag", tags: ["beast", "elder", "forest", "thorn"],
     lore: "A stag as big as a cart-horse, its hide bark and its crown a thicket of antler and bramble hung with pale blossom. It hooks and tosses with that crown, rushes in lines that leave brambles behind it, sends roots running through the ground and closes them round you in rings, shakes thorns from its antlers, and leaps over the canopy to come down on you. When it bellows, its crown burns green and the forest rises wherever it runs.",
+  },
+  // STAND-IN (wild-stego art branch only): a minimal Wild Stegosaurus entry so its art can be drawn and tested. The gameplay
+  // branch's real `wildStego` entry (stats, attacks, AI, the STEGO table) replaces this one at merge; keep theirs.
+  wildStego: {
+    id: "wildStego", prototypeOnly: true, noEcho: true, unique: true, name: "The Wild Stegosaurus", epithet: "Hunger on Four Legs",
+    stats: [480, 24, 0], form: { scale: 1.7 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: [], bossAttacks: [],
+    palette: ["#2f6fd6", "#163a7a", "#a9dcff", "#6f9fe6"], render: "wildStego", tags: ["beast", "elder"],
+    lore: "Stand-in entry for the art branch.",
   },  crimsonTyrant: {
     id: "crimsonTyrant", name: "The Crimson Tyrant", epithet: "The Fire That Wants the World", unique: true,
     stats: [420, 20, 0], form: { scale: 2.6 }, sizeClass: "huge", movement: "hover", brain: "duelist",
