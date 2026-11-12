@@ -185,6 +185,15 @@ export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 
   } finally { ctx.restore(); } // the clip never outlives the golem, whatever happens while drawing it
 }
 
+// Mirage of Blades in Close View: presentation only. The projectile (game.ts mirageThrow) owns its path, speed,
+// hits and life; this reads its position and age. `lift` is the flying height above the floor (chest height),
+// `spin` its turn rate (MIRAGE.spin, as the standard view's rotor), `shadow` the floor shadow's radius.
+export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1 });
+export function mirageBladePresentation(p) {
+  if (!p?.mirage || p.dead || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  const age = Number.isFinite(p.age) ? Math.max(0, p.age) : 0, scale = MIRAGE_BLADE_VIEW.scale * (Number.isFinite(p.scale) && p.scale > 0 ? Math.min(3, p.scale) : 1);
+  return { kind: 'mirageBlade', x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
+}
 export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;
   const captured=g&&clock>=g.start&&capture?.captureActor?.({source:g,x:g.x,y:g.y+.32,height:1.5,
@@ -206,6 +215,12 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   for (const p of game.projectiles) {
     if (p.dead) continue;
     if (p.mirage) { const [x, y] = toScreen(p), k = MIRAGE.size * (p.scale || 1), spin = (p.age || 0) * MIRAGE.spin; // release 649: a rotor of steel
+      // Close View (Tim, 2026-11-12): the blade flies through the air as a spinning 3D blade at chest height
+      // (mirageBladePresentation); the floor keeps only its shadow. Elsewhere the flat rotor below, as before.
+      if (capture?.captureActor?.({ source: p, x: p.x, y: p.y, lift: MIRAGE_BLADE_VIEW.lift, height: MIRAGE_BLADE_VIEW.lift + .4,
+        draw: (c, unit) => { c.save(); c.translate(p.x * unit, p.y * unit); c.scale(k, k); sweepBlade(c, 0, 0, spin, unit, p.blade || 0, p.age || 0); c.restore(); },
+        sample: () => mirageBladePresentation(p) })) {
+        ctx.fillStyle = "#0000002e"; ctx.beginPath(); ctx.ellipse(x, y, s * MIRAGE_BLADE_VIEW.shadow * (p.scale || 1), s * MIRAGE_BLADE_VIEW.shadow * .45 * (p.scale || 1), 0, 0, 7); ctx.fill(); continue; }
       ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.arc(0, 0, s * .38, 0, 7); ctx.stroke(); sweepBlade(ctx, 0, 0, spin, s, p.blade || 0, p.age || 0); ctx.restore(); }
     else if (p.fireBomb && !capture?.has?.(p)) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();

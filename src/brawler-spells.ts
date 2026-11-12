@@ -1,4 +1,5 @@
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.ts';
+import { PRIMARY_PROFILES, primaryProfile } from './items.ts';
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
 // down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are
@@ -197,6 +198,51 @@ function drawFallingHammer(ctx, x, y, s, delay) {
   ctx.fillStyle = '#8a6a3e'; ctx.fillRect(x - s * .06, hy - h - s * .8, s * .12, s * .8);
 }
 
+// Jump attacks (Tim, 2026-11-12: "All the weapons should have a jump attack. If you hit the weapon button when you're in the
+// air, you slam down to the ground. And if you have Shadow Boxing running, you do a charge dive towards the nearest enemy and
+// an explosion on impact"). game.ts runs them (tryPlunge, plungeSteer, plungeLand); drawBrawler below draws the rings.
+// PLUNGE: Attack in the air (a jump, not mounted, in the robot, the drone, a boat, a glide or the water) drops the Wayfarer to
+//   the ground below in `dropMs` (never longer than the jump had left) with no steering; on landing a slam hits every foe in the
+//   weapon's `radius` for `share` × a normal hit (Game.plungeHit: the same weapon, melee bonus and multipliers a swing uses) and
+//   staggers them `stun` s (a quarter of that for bosses and elites, as Hammerfall). One per jump; after it, `recoverMs` with no
+//   attack, no jump and no walking (a dodge is never held back). The landing is the jump's own: falls, sky-hop gaps and roof
+//   decks settle exactly as they would have, so fall damage is never negated. A plunge in progress is not saved: on reload the
+//   jump that is left lands as an ordinary jump (no slam).
+// PLUNGE_PROFILES: keyed by the weapon's PRIMARY_PROFILES key (items.ts); a weapon not listed (a new one) uses `default`.
+// PLUNGE_DIVE: with Shadow Boxing running, the air attack is a charging dive to the locked foe (else the nearest auto-aim foe
+//   within `range` tiles): the Wayfarer flies to it at `speed` tiles a second through the collision mover (walls and lethal
+//   ground stop it, as Shadow Boxing's carries do; never more than `maxMs`), lands `stop` tiles from it, slams as the weapon
+//   does and bursts: a second blast of `burstShare` × a normal hit in `burstRadius`, staggering `burstStun` s. Shadow Boxing's
+//   damage and heal ride on both blows, its guard on blows taken. No foe in range: the ordinary plunge.
+export const PLUNGE = { dropMs: 160, recoverMs: 340, slamLife: .3 };
+export const PLUNGE_PROFILES = {
+  default: { radius: 1.5, share: 1.4, stun: .35 },
+  "salvage-blade": { radius: 1.5, share: 1.4, stun: .35 },
+  "primary-verge-cleaver": { radius: 1.8, share: 1.6, stun: .45 },
+  "primary-cinder-pike": { radius: 1.4, share: 1.3, stun: .3 },
+  "primary-iron-fists": { radius: 1.6, share: 1.5, stun: .4 },
+};
+export const PLUNGE_DIVE = { range: 7, speed: 16, maxMs: 520, stop: .85, burstRadius: 1.6, burstShare: .9, burstStun: .4, burstLife: .35 };
+// The profile for a weapon kind (a PRIMARY_PROFILES key), falling back to `default`.
+export const plungeProfile = (kind) => Object.prototype.hasOwnProperty.call(PLUNGE_PROFILES, kind) ? PLUNGE_PROFILES[kind] : PLUNGE_PROFILES.default;
+// The weapon kind (PRIMARY_PROFILES key) of an equipped primary, as primaryProfile resolves it.
+export function plungeKind(item) { const q = primaryProfile(item); for (const k in PRIMARY_PROFILES) if (PRIMARY_PROFILES[k] === q) return k; return "default"; }
+function drawPlunge(ctx, fx, x, y, R) {
+  if (fx.kind === "plunge-slam") { // a dust ring thrown out from the landing
+    const k = Math.max(0, Math.min(1, fx.life / PLUNGE.slamLife)); ctx.globalAlpha = k;
+    ctx.fillStyle = "#c9b08a55"; ctx.beginPath(); ctx.arc(x, y, R * (1.05 - .35 * k), 0, 7); ctx.fill();
+    ctx.strokeStyle = "#f2e2c2"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R * (1.15 - .45 * k), 0, 7); ctx.stroke();
+    ctx.strokeStyle = "#8a7354"; ctx.lineWidth = 2; for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 + .3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .35, y + Math.sin(a) * R * .35); ctx.lineTo(x + Math.cos(a) * R * (1 - .3 * k), y + Math.sin(a) * R * (1 - .3 * k)); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  } else if (fx.kind === "plunge-burst") { // Shadow Boxing's violet burst
+    const k = Math.max(0, Math.min(1, fx.life / PLUNGE_DIVE.burstLife)); ctx.globalAlpha = k;
+    ctx.fillStyle = "#9b5cff55"; ctx.beginPath(); ctx.arc(x, y, R * (1.1 - .5 * k), 0, 7); ctx.fill();
+    ctx.strokeStyle = "#e6d2ff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, R * (1.2 - .5 * k), 0, 7); ctx.stroke();
+    ctx.strokeStyle = "#7a3cff"; ctx.lineWidth = 3; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .25, y + Math.sin(a) * R * .25); ctx.lineTo(x + Math.cos(a) * R * (1.2 - .4 * k), y + Math.sin(a) * R * (1.2 - .4 * k)); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+}
+
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   for (const fx of game.effects) {
@@ -227,7 +273,7 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
       const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.fillStyle = "#ffb05a55"; ctx.beginPath(); ctx.arc(x, y, R * (1.1 - .3 * k), 0, 7); ctx.fill();
       ctx.strokeStyle = "#ffe0b0"; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .4, y + Math.sin(a) * R * .4); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
       ctx.globalAlpha = 1;
-    }
+    } else if (fx.kind === "plunge-slam" || fx.kind === "plunge-burst") drawPlunge(ctx, fx, x, y, R); // jump attacks
   }
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills
