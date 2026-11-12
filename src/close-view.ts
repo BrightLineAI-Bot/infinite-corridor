@@ -2827,7 +2827,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe) || draws[itemRef[it]]?.enemy !== foe) continue;
-    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier))) continue;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
     BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
@@ -2842,7 +2842,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     if (track.seen === now) continue;
     if (foe.dead && B.count < BEAST_SLOT.maxBeasts && track.seen != null && now - track.seen < 4000) {
       const spec = CLOSE_VIEW_BEASTS[foe.kind]; BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
-      const frame = spec.mesh(tier) && prepareCloseViewBeastMesh(spec.mesh(tier)) ? spec.sample(track, foe, BEAST_ENV) : null;
+      const frame = spec.mesh(tier, foe) && prepareCloseViewBeastMesh(spec.mesh(tier, foe)) ? spec.sample(track, foe, BEAST_ENV) : null;
       if (frame) { B.items[B.count++] = frame; continue; }
     }
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
