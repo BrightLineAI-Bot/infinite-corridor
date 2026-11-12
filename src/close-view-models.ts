@@ -8,6 +8,7 @@ import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
@@ -81,6 +82,35 @@ const emitterGear = [
 ];
 const playerTool = [...player.slice(0, -2), ...scaledHeld(emitterGear, closeViewHeldScale('emitter'), 0, -.25, .783, [.355, -.25, .783])];
 const playerUnarmed = player.slice(0, -2);
+// The Shadow Clone as a wraith (Tim, 2026-11-12: "a boxy version of the character, it should be more of a wraith... I
+// like the spectral-ness, maybe make it a little more visible... it needs a visual rework so it looks like a spectre").
+// The Wayfarer's hood and sleeves on a hooded shroud: a void where the face is, framed by a lit violet edge with two
+// lit eyes and a faint rune at the heart (0xc58cff, an entry of close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive), a robe
+// that flares from the waist (the cape group, so it sways), a torn hem and five trailing wisps (groups 50-54, which
+// drift) in place of legs. Its own colours; writeCloseViewModel's old `shadow` recolour leaves it alone. Within the
+// 256-triangle model budget (MODEL_MAX_VERTICES).
+const wraithShroud = 0x1d1428, wraithRobe = 0x2a1e3d, wraithWisp = 0x3b2a5c, wraithVoid = 0x050309, wraithGlow = 0xc58cff;
+const playerWraith = [
+  part(hoodShell, 0, 0, 0, 1, 1, 1, wraithShroud),
+  part(hoodLining, 0, 0, 0, 1, 1, 1, wraithGlow),
+  part(hoodFace, 0, 0, 0, 1, 1, 1, wraithVoid),
+  part(verticalLoft([[0,.15,-.10],[.01,.20,.04],[-.02,.17,.22],[-.04,.11,.31]], 6), 0, 0, 1.0, 1, 1, 1, wraithShroud, 0, 0, 1.0, 0, true),
+  part(verticalLoft([[-.01,.155,.10],[0,.175,-.10],[-.03,.225,-.34],[-.06,.28,-.56]], 7), 0, 0, .92, 1, 1, 1, wraithRobe, 3, 0, .98, 0, true),
+  part(frontPatch, .168, 0, 1.17, 1, .018, .055, wraithGlow),
+];
+for (const side of [-1, 1]) playerWraith.push(
+  part(frontPatch, .108, side * .046, 1.462, 1, .024, .012, wraithGlow),
+  part(bevel, -.014, side * .25, .984, .078, .088, .211, wraithShroud, side * 2, 0, 1.19, -.14, true),
+  part(membrane([[-.06, side * .25, .80], [.07, side * .27, .79], [-.02, side * .29, .66]]), 0, 0, 0, 1, 1, 1, wraithWisp, side * 2, 0, 1.19, -.14),
+);
+for (let i = 0; i < 8; i++) { // the torn hem: ragged points below the robe's edge, turning with it
+  const a = (i + .5) * Math.PI / 4, c = Math.cos(a), sn = Math.sin(a), r = .27, w = .11, d = i % 2 ? .12 : .19;
+  playerWraith.push(part(membrane([[c * r - .06 - sn * w * .5, sn * r + c * w * .5, .38], [c * r - .06 + sn * w * .5, sn * r - c * w * .5, .38], [c * (r + .03) - .10, sn * (r + .03), .38 - d]]), 0, 0, 0, 1, 1, 1, wraithRobe, 3, 0, .98));
+}
+for (let i = 0; i < 5; i++) { // wisps instead of legs: they trail back and down to points near the floor
+  const a = Math.PI * (.55 + .225 * i), x = Math.cos(a) * .2, y = Math.sin(a) * .22, back = .16 + .05 * (i % 2);
+  playerWraith.push(part(curvedTube([[x, y, .42, .07], [x - back * .55, y * 1.08, .24, .04], [x - back * 1.5, y * 1.16, .05, .006]], 3), 0, 0, 0, 1, 1, 1, wraithWisp, 50 + i, x, .42));
+}
 // Compact original shovel: an ash shaft, iron collar and broad low-poly blade.
 // It shares the existing actor/equipment stream and the canonical right-hand grip.
 const shovelGear=[
@@ -507,7 +537,7 @@ const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
 export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -843,7 +873,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const turn = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach;
+    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
+    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0); // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
@@ -1020,7 +1051,7 @@ export function writeCloseViewModel(out, offset, actor) {
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
       if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
       if(actor.paletteMap){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=actor.paletteMap[rgb];if(Number.isInteger(mapped)){sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}}
-      if(actor.shadow){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
+      if(actor.shadow&&kind!=='playerShadow'){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;

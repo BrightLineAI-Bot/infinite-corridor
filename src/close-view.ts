@@ -10,6 +10,7 @@ import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatur
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
@@ -2825,7 +2826,7 @@ export function closeViewPrimaryWeaponKind(item) {
 }
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11) and the imported hero's suit reservation
+  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
@@ -2837,7 +2838,10 @@ const MODEL_STATE = {
   // The posed player's held-tool muzzle this frame (imported socket or native recipe point).
   muzzle:new Float32Array(3),muzzleReady:false,nativeMuzzle:new Float32Array(4),
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
+  // Shadow Boxing's drawn charge (close-view-shadow-forms.ts) and one pooled actor for the native body's afterimages.
+  shadowDash: createShadowDash(), shadowGhost: {},
 };
+export const closeViewShadowDash = () => MODEL_STATE.shadowDash; // for tests: the drawn charge (read only)
 
 // Each sample is the rendered blade's inner and outer points plus its logical time.
 // Three samples give at most two quads, with no extra rig samples or draw pass.
@@ -3017,7 +3021,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
   }
   closeViewGLStats.modelFallbacks = Object.create(null);
-  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; state.heroPose = null; state.cleaverTrail.count = 0; }
+  if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; state.heroPose = null; state.cleaverTrail.count = 0; resetShadowDash(state.shadowDash); }
   if (!reduce && player.meleeUntil > now) {
     for (let it = 0; it < n; it++) {
       const foe = itemKind[it] === 1 && boardFoe[it], prior = foe && state.tracks.get(foe);
@@ -3148,6 +3152,17 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (charge != null && !bodyHit) amount = charge;
     if (stunned && !defeat) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     if (defeat) amount = defeat.amount;
+    // Shadow Boxing (Tim, 2026-11-12): gameplay has already carried the Wayfarer to the foe this frame; the drawn hero
+    // charges there along the dash line instead, and its swing is re-timed to land on arrival. Presentation only.
+    let dashDX = 0, dashDY = 0, wraith = 0;
+    if (who === player) {
+      const SD = state.shadowDash, swingMs = visualAttack ? Number(visualRecord?.durationMs) || ACTION_MOTION.meleeMs : tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs;
+      const sinceMs = Math.max(0, now - track.at), fresh = attack && amount * swingMs <= sinceMs + CLOSE_VIEW_SHADOW_FORMS.dash.freshMs;
+      const boxing = now < (g.boxingUntil || 0) && !stunned && !defeat && !importedDodge && !g.save.boat?.aboard && !g.mountRide?.();
+      stepShadowDash(SD, now, who.x, who.y, track.x, track.y, sinceMs, boxing, fresh, reduce);
+      if (attack && SD.active) amount = shadowStrikePhase(SD, now, amount, swingMs, meleeAction ? meleeAction.contactMs / meleeAction.durationMs : .18);
+      dashDX = SD.x - who.x; dashDY = SD.y - who.y; wraith = SD.wraith;
+    }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
     const held = visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
@@ -3163,7 +3178,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     // stomp (and its normal native fallback) has empty held gear in this pass.
     const formKind = who === player && form ? playerFormModelKey(form, visualProfile==='hammer'?'hammer':held) : null;
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
-      x: boardWX[it] - recoil * Math.cos(track.yaw), y: boardWY[it] - recoil * Math.sin(track.yaw), z: surfaceZ(g.map, who.x + .5, who.y + .75) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
+      x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
@@ -3179,7 +3194,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
-      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
+      alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 - (1 - (reduce ? CLOSE_VIEW_SHADOW_FORMS.wraith.reducedAlpha : CLOSE_VIEW_SHADOW_FORMS.wraith.alpha)) * wraith : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
+      shadow: who === player && wraith > .5, charge: who === player ? state.shadowDash.charge : 0,
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
@@ -3195,7 +3211,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         const input = state.heroInput, action = state.heroAction;
         input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
         input.x = actor.x; input.y = actor.y;
-        input.groundZ = surfaceZ(g.map, who.x + .5, who.y + .75);
+        input.groundZ = surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY); input.charge = state.shadowDash.charge;
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
@@ -3214,6 +3230,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
+        if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
         action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         action.primaryStage = primaryStage; action.jumpAir = null;
@@ -3270,12 +3287,20 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             const orbit=spellProfile==='orbit-launch'&&castRecord?.spellKind==='orbit-volley'&&castRecord?.variant==='launch'&&validOrbit(g,g.orbit?.flight);
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
+          { const SD = state.shadowDash, fr = state.heroFrame, z0 = input.groundZ; fr.ghostCount = 0; // afterimages: the same pose, back along the dash
+            if (!reduce) for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, q = fr.ghostCount * 4, gx = SD.trail[o], gy = SD.trail[o + 1];
+              fr.ghosts[q] = gx - SD.x; fr.ghosts[q + 1] = gy - SD.y; fr.ghosts[q + 2] = surfaceZ(g.map, gx + .5, gy + .75) - z0; fr.ghosts[q + 3] = SD.trail[o + 2] * (d.alpha ?? 1); fr.ghostCount++; } }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;state.playerRepresentation='imported';
         }
       }
     }
     if (!imported && !append(actor)) return;
+    if (who === player && !imported && !reduce && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
+      const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = true;
+      for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, gx = SD.trail[o], gy = SD.trail[o + 1];
+        ghost.x = actor.x + gx - SD.x; ghost.y = actor.y + gy - SD.y; ghost.z = actor.z + surfaceZ(g.map, gx + .5, gy + .75) - surfaceZ(g.map, SD.x + .5, SD.y + .75); ghost.alpha = SD.trail[o + 2] * (d.alpha ?? 1);
+        offset = writeCloseViewModel(state.vertices, offset, ghost); } }
     if(who===player&&!imported){state.playerRepresentation='native';if(state.nativeMuzzle[3]===1&&actor.alpha>0){state.muzzle[0]=state.nativeMuzzle[0];state.muzzle[1]=state.nativeMuzzle[1];state.muzzle[2]=state.nativeMuzzle[2];state.muzzleReady=true;}}
     if (who === player) CAM.bodyRevision++;
     Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor });
@@ -3296,6 +3321,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const dx=x-track.x,dy=y-track.y,dist=Math.hypot(dx,dy),elapsed=Math.max(0,Math.min(.1,(now-track.at)/1000));
     if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
     const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
+    if(a.kind==='playerShadow'&&Number.isFinite(source?.until)){a.alpha=shadowCloneAlpha(source.until,now,reduce);if(!reduce&&!Number.isFinite(a.phase))a.phase=track.phase+now/450;} // the wraith clone: stronger, its wisps drifting (close-view-shadow-forms.ts)
     const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
@@ -3613,7 +3639,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
     BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
-    if (foe || isPlayer) { if (MODEL_STATE.admitted.has(it)) shadow(X, Y, sc, statusAlpha); const r = Cs.radius * sc; flatD(X, Y - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * statusAlpha, 0);
+    if (foe || isPlayer) { const SD = MODEL_STATE.shadowDash, dash = isPlayer && MODEL_STATE.admitted.has(it) && SD.active, SX = dash ? X + SD.x - g.player.x : X, SY = dash ? Y + SD.y - g.player.y : Y, SA = dash ? 1 - .6 * SD.wraith : statusAlpha; // a charging wraith's shadow goes with it
+      if (MODEL_STATE.admitted.has(it)) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   GLB.nBoard = bv;
   // outdoors: a soft shadow under each standing tree near the Wayfarer, cast a little away from the sun
