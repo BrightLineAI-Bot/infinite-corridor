@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 923 — Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
+
+Tim (2026-11-12): all weapons should have a jump attack that slams down, and with Shadow Boxing a charging dive to the nearest enemy with an explosion.
+
+**CODE:** `src/brawler-spells.ts`: `PLUNGE` {dropMs 160, recoverMs 340, slamLife .3}; `PLUNGE_PROFILES` by primary profile key with `default` (blade 1.5/1.4/.35, cleaver 1.8/1.6/.45, pike 1.4/1.3/.3, fists 1.6/1.5/.4: radius/share/stun; the Fourfold Daggers use `default`); `PLUNGE_DIVE` {range 7, speed 16, maxMs 520, stop .85, burst 1.6 tiles at .9 share, .4 s stun}; `plungeProfile`, `plungeKind`, `drawBrawler` rings. `src/game.ts`: `airAttack`, `plungeDiveTarget`, `plungeSteer`, `plungeLand`, `plungeBase` (meleePower or fistPower, so the 918 stat lineup applies), `plungeBlocked`; runtime `plunge`, `plungeSpent`, `plungeRecoverUntil` in the resume clocks; `jumpLift`'s plunge branch. Close View reuses the Hammerfall `hammer` pose. Tests: `jump-attacks` (18).
+
+**BOUNDARY:** A plunge never moves the Wayfarer itself: it shortens the jump, and the jump's own landing settles falls, sky-hop gaps and roof decks, so fall damage stands. The dive moves only through the collision mover (walls, lethal ground and canStep stop it). One plunge per jump; the recovery never holds back a dodge. Runtime only: on reload the rest of the jump lands without a slam. Not available mounted, in the robot or drone, aboard, gliding, swimming or with the secondary weapon. No save change.
+
 ## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
 
 Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
