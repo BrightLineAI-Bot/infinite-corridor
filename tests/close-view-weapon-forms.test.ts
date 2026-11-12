@@ -63,7 +63,8 @@ test('every reworked weapon stays inside the held-gear, equipment and 256-triang
     const frame = held(p), out = new Float32Array(256 * 3 * MODEL_FLOATS), roles = closeViewHandRoles(p);
     assert.equal(writeCloseViewHeroEquipment(out, 0, { profile: p, primaryStage: null, [roles.grip]: frame[roles.grip], [roles.free]: frame[roles.free] }, frame) / MODEL_FLOATS / 3, n);
   }
-  assert.deepEqual(WEAPONS.map(p => tris(gear(p))), [58, 58, 96, 92, 96]);
+  // Salvage Blade reskin (Tim, 2026-11-12): 54 triangles, inside its old 58.
+  assert.deepEqual(WEAPONS.map(p => tris(gear(p))), [54, 54, 96, 92, 96]);
   // The native fallback Cleaver keeps its 40-triangle weapon inside the same 254-triangle actor.
   assert.equal(modelTriangleCount('playerVergeCleaver') - modelTriangleCount('playerUnarmed'), 40);
   assert.ok(modelTriangleCount('playerVergeCleaver') <= MODEL_MAX_VERTICES / 3);
@@ -146,18 +147,18 @@ test('the Rift Bombard reads as a hip-held grenade launcher with its muzzle on t
   assert.ok(Math.hypot(...gap) < .02, `support handle end reaches the support hand (${gap})`);
 });
 
-test('Blunderbuss and Salvage Blade keep their accepted silhouettes with light polish only', () => {
+test('Blunderbuss keeps its accepted silhouette; the reskinned Salvage Blade keeps its hold beneath the guard', () => {
   const b = gear('blunderbuss'), kb = .82 * closeViewHeldScale('blunderbuss');
   let far = -Infinity; for (let i = 0; i < b.length; i += MODEL_FLOATS) far = Math.max(far, b[i]);
   assert.ok(Math.abs(far - (1.535 - .79) * kb) < 1e-6, 'blunderbuss muzzle plane unchanged');
   // The round grip is slimmer than the old .055 x .06 block and lies on the socket axis.
   for (let i = 0; i < b.length; i += MODEL_FLOATS) if (isColor(b, i, 0x5a4330) && b[i] < (.98 - .79) * kb) assert.ok(Math.hypot(b[i + 1], b[i + 2]) <= .026 * kb + 1e-6);
-  // Salvage Blade: the first 24 triangles are the accepted bronze guard and blade; both profiles share it.
-  const s = gear('salvage-blade'), accepted = 24 * 3 * MODEL_FLOATS;
+  // Salvage Blade (reskinned 2026-11-12): the first 12 triangles are the bronze spike blade; both profiles share it.
+  const s = gear('salvage-blade'), blade = 12 * 3 * MODEL_FLOATS;
   assert.deepEqual(gear('melee'), s);
-  for (let i = 0; i < accepted; i += MODEL_FLOATS) assert.ok(isColor(s, i, 0xbf9a64));
+  for (let i = 0; i < blade; i += MODEL_FLOATS) assert.ok(isColor(s, i, 0xbf9a64));
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, k = .82;
-  let low = Infinity; for (let i = accepted; i < s.length; i += MODEL_FLOATS) low = Math.min(low, s[i]);
+  let low = Infinity; for (let i = 0; i < s.length; i += MODEL_FLOATS) low = Math.min(low, s[i]);
   assert.ok(Math.abs(low - (F.pommel[0] - .79) * k) < 1e-6, 'pommel below the fist');
   const frame = held('salvage-blade'), fist = fistBox(frame, 'rightSocket');
   assert.ok((F.pommel[2] - .79) * k < fist.lo[0] + .03, 'the grip shows below the fist');
