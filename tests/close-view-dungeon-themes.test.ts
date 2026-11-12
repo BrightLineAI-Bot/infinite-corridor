@@ -127,7 +127,8 @@ test('the Deep\'s themes are dark, bounded data with known materials and forms',
 });
 
 test('existing themes build byte-identical static geometry; a Deep floor builds its rock, features and growths once, bounded', () => {
-  const pins: any = { keep: 'df5937df0c6a8da2', 'lived-in': '51b46f7c28517157', hive: 'a4a32159df938d92', arcology: 'ca7144a07a0c76b7', cellar: '7b69ab280a95c4fe', heart: '08cf0f375a845582', 'grand-hall': 'fc394ff7b4f2f8be' };
+  // keep re-pinned for world caches (Tim, 2026-11-11): its floor now holds a cache, and the dressing stands clear of it
+  const pins: any = { keep: '3f5c58f30fa80c7e', 'lived-in': '51b46f7c28517157', hive: 'a4a32159df938d92', arcology: 'ca7144a07a0c76b7', cellar: '7b69ab280a95c4fe', heart: '08cf0f375a845582', 'grand-hall': 'fc394ff7b4f2f8be' };
   for (const [sc, want] of Object.entries(pins)) { resetCloseViewCamera(); const g = createLabFixture({ lab: 'close-view', scenario: sc, now: 1000 }).game; const st = CV.closeViewStatic(g.map);
     const h = createHash('sha256'); h.update(Buffer.from(st.data.buffer, st.data.byteOffset, st.data.byteLength)); h.update(Buffer.from(st.lightList.buffer)); h.update(Buffer.from(st.cardList.buffer));
     assert.equal(h.digest('hex').slice(0, 16), want, `${sc}: the release 884 geometry`); }
