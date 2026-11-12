@@ -207,8 +207,21 @@ export const OUTDOOR = f({
   // drawn while the Wayfarer is inside, nor while the camera is over it or it stands between them (close-view.ts), so
   // the inside reads as the ordinary view shows it. Colours by the house's family or district style: wall, roof, trim
   // (the ordinary view's palette); mat: the walls' material (as the solids').
+  //
+  // Version 3 (Tim, 2026-11-12: "The shacks are a little bit too short... the Wayfarer is just taller than the doors...
+  // maybe one point five times as tall... just the vertical dimensions"): `tall` scales the vertical numbers above at build
+  // time, never the footprint, the wall thickness or the eaves' reach. wall: the walls' height (1.15 -> 1.725); roof: the
+  // pitch, ridge and flat slab (so the gable keeps its shape, half again as tall); door: the lintel (.92 -> 1.58), a little
+  // more than the walls so the Wayfarer (1.38 tall, close-view.ts heroInput.height) passes under it with a head to spare
+  // and the lintel stays a band as deep as the wall is thick. Presentation only: tiles and collision are unchanged.
+  // The roof (Tim, 2026-11-12: "the roofs don't disappear until you get inside of them") is drawn while the Wayfarer is
+  // outside, beside a wall or standing in the doorway, and fades out over `fade.ms` once their feet are inside the walls (a
+  // house tile that is not its door, or `fade.doorDepth` of a tile past the door's edge); it fades back in as they leave.
+  // It is also left out while the camera itself is inside the house (else the view is from inside a closed box). Behind a
+  // roof the Wayfarer shows as the existing silhouette (CLOSE_VIEW.atmosphere.silhouette). Reduced motion: no fade.
   buildings: f({
     wall: f({ h: 1.15, t: .14, lintel: .92 }), pitch: .42, ridge: 1.05, eave: .12, flat: .14, max: 12, perTile: 240,
+    tall: f({ wall: 1.5, roof: 1.5, door: 1.72 }), fade: f({ ms: 240, doorDepth: .5 }),
     looks: f({
       timber: f({ wall: "#6a5a44", roof: "#3a3128", trim: "#8f7658", mat: 7 }), masonry: f({ wall: "#6f6a5e", roof: "#34332e", trim: "#8b8170", mat: 1 }),
       ruinedGatehouse: f({ wall: "#6d6152", roof: "#302d29", trim: "#9a8168", mat: 1 }), cyberRelay: f({ wall: "#22424a", roof: "#152b31", trim: "#42b8b2", mat: 8 }),
@@ -575,11 +588,23 @@ export function outdoorProps(map, zAt = null, seen = null) {
 }
 
 // ---------------------------------------------------------------------------------------------- the buildings
+// The houses' drawn heights (OUTDOOR.buildings, scaled by `tall`): wall, lintel (the top of a door's opening), roof pitch a
+// tile, ridge cap and flat slab. One frozen object, made once.
+const HEIGHTS = (() => { const B = OUTDOOR.buildings, K = B.tall; return f({ wall: B.wall.h * K.wall, lintel: B.wall.lintel * K.door, pitch: B.pitch * K.roof, ridge: B.ridge * K.roof, flat: B.flat * K.roof }); })();
+export const outdoorBuildingHeights = () => HEIGHTS;
+// Is the Wayfarer, feet at (px, py), inside the house `id` (OUTDOOR.buildings.fade): on one of its tiles that is not its door,
+// or on its door tile more than `doorDepth` past the door's edge. Standing in the doorway or beside a wall is outside. Pure.
+export function outdoorInsideHouse(map, id, px, py) {
+  const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w)), x = Math.floor(px), y = Math.floor(py);
+  if (!(x >= 0 && y >= 0 && x < w && y < h)) return false; const t = tiles[y * w + x]; if (!t || t.buildingId !== id || !OUTDOOR.buildings.structures.test(String(t.structure || ""))) return false;
+  if (!/Door$/.test(String(t.structure))) return true; const dd = OUTDOOR.buildings.fade.doorDepth;
+  switch (t.doorSide) { case "south": return y + 1 - py > dd; case "north": return py - y > dd; case "east": return x + 1 - px > dd; case "west": return px - x > dd; default: return true; }
+}
 // The houses of a section (shelters and hamlets: tiles whose `structure` is a shack's or a district's wall, inside or door,
 // grouped by buildingId). Returns { data, verts, walls (vertices of walls, first), roofs: [{ id, start, count, x0, y0, x1, y1 }] }:
 // the walls of every house first, then each house's roof as its own run, so a roof can be left out while the rest is drawn.
 // Pure.
-export function outdoorBuildings(map, R = null) { // R: the relief (each wall stands on its tile's level, a roof on its house's first)
+export function outdoorBuildings(map, R = null, D = HEIGHTS) { // R: the relief (each wall stands on its tile's level, a roof on its house's first); D: the heights (tests compare others)
   const B = OUTDOOR.buildings, w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w));
   const houses = new Map();
   for (let i = 0; i < w * h; i++) { const t = tiles[i]; if (!t?.buildingId || !B.structures.test(String(t.structure || ""))) continue; let H = houses.get(t.buildingId);
@@ -591,7 +616,7 @@ export function outdoorBuildings(map, R = null) { // R: the relief (each wall st
   const V = new Float32Array((cells * B.perTile + houses.size * 36) * OUTDOOR_FLOATS); let n = 0; const roofs = [];
   const lookOf = (H) => { const o = objs.get(H.id); return B.looks[o?.family] || B.looks[o?.districtStyle] || B.looks[H.look] || B.looks.other; };
   const inHouse = (H, x, y) => x >= 0 && y >= 0 && x < w && y < h && tiles[y * w + x]?.buildingId === H.id;
-  const T = B.wall.t, Hw = B.wall.h, side = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
+  const T = B.wall.t, Hw = D.wall, side = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
   // the walls: a slab along each wall side, inside its tile; a lintel over a door
   for (const H of houses.values()) { const L = lookOf(H), wc = hex01(L.wall), tc = hex01(L.trim);
     for (const i of H.cells) { const t = tiles[i], x = i % w, y = Math.floor(i / w), w0 = n;
@@ -599,19 +624,19 @@ export function outdoorBuildings(map, R = null) { // R: the relief (each wall st
         const xa = dx > 0 ? x + 1 - T : x, xb = dx < 0 ? x + T : x + 1, ya = dy > 0 ? y + 1 - T : y, yb = dy < 0 ? y + T : y + 1;
         n = hexa(V, n, [[xa, ya, z0], [xb, ya, z0], [xb, yb, z0], [xa, yb, z0], [xa, ya, z1], [xb, ya, z1], [xb, yb, z1], [xa, yb, z1]], col, L.mat, top); };
       for (const sd of t.wallSides || []) { const d = side[sd]; if (d) slab(d[0], d[1], 0, Hw, wc, tc); }
-      if (t.doorSide && side[t.doorSide]) { const d = side[t.doorSide]; slab(d[0], d[1], B.wall.lintel, Hw, tc, tc); }
+      if (t.doorSide && side[t.doorSide]) { const d = side[t.doorSide]; slab(d[0], d[1], D.lintel, Hw, tc, tc); }
       const dz = R ? Math.max(0, R.top[i]) : 0; if (dz) for (let v = w0; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz; }
     }
   const walls = n;
   // the roofs: one run a house. Gable: the height over (X, Y) falls from the ridge (the long axis' middle line) to the eaves.
   for (const H of houses.values()) { const L = lookOf(H), rc = hex01(L.roof), tc = hex01(L.trim), o = objs.get(H.id), start = n;
     const flat = o?.roofProfile === "flat" || o?.roofProfile === "stepped", alongX = H.x1 - H.x0 >= H.y1 - H.y0, half = (alongX ? H.y1 - H.y0 : H.x1 - H.x0) / 2, mid = alongX ? (H.y0 + H.y1) / 2 : (H.x0 + H.x1) / 2;
-    const zr = (X, Y) => flat ? Hw + B.flat : Hw + Math.min(B.ridge, Math.max(0, half - Math.abs((alongX ? Y : X) - mid)) * B.pitch);
+    const zr = (X, Y) => flat ? Hw + D.flat : Hw + Math.min(D.ridge, Math.max(0, half - Math.abs((alongX ? Y : X) - mid)) * D.pitch);
     const e = B.eave;
     for (const i of H.cells) { const x = i % w, y = Math.floor(i / w);
       // the roof over this tile, reaching `e` past its edges where the house ends (the eaves overhang)
       const ox0 = inHouse(H, x - 1, y) ? 0 : e, ox1 = inHouse(H, x + 1, y) ? 0 : e, oy0 = inHouse(H, x, y - 1) ? 0 : e, oy1 = inHouse(H, x, y + 1) ? 0 : e;
-      const xa = x - ox0, xb = x + 1 + ox1, ya = y - oy0, yb = y + 1 + oy1, za = (X, Y) => zr(Math.min(Math.max(X, H.x0), H.x1), Math.min(Math.max(Y, H.y0), H.y1)) - (X < H.x0 || X > H.x1 || Y < H.y0 || Y > H.y1 ? e * B.pitch : 0);
+      const xa = x - ox0, xb = x + 1 + ox1, ya = y - oy0, yb = y + 1 + oy1, za = (X, Y) => zr(Math.min(Math.max(X, H.x0), H.x1), Math.min(Math.max(Y, H.y0), H.y1)) - (X < H.x0 || X > H.x1 || Y < H.y0 || Y > H.y1 ? e * D.pitch : 0);
       // a gable crossing this tile is split at the ridge so both slopes stay planar
       const r = mid, segs = []; if (!flat && (alongX ? (ya < r && yb > r) : (xa < r && xb > r))) { if (alongX) segs.push([xa, xb, ya, r], [xa, xb, r, yb]); else segs.push([xa, r, ya, yb], [r, xb, ya, yb]); } else segs.push([xa, xb, ya, yb]);
       for (const [p0, p1, q0, q1] of segs) { centre((p0 + p1) / 2, (q0 + q1) / 2, -1); n = pushQuad(V, n, [p0, q0, za(p0, q0)], [p1, q0, za(p1, q0)], [p1, q1, za(p1, q1)], [p0, q1, za(p0, q1)], rc, 7); }
@@ -622,7 +647,7 @@ export function outdoorBuildings(map, R = null) { // R: the relief (each wall st
         centre(x + .5, y + .5, Hw * .5); for (let k = 0; k < pts.length - 1; k++) { const P0 = pts[k], P1 = pts[k + 1], z0 = zr(P0[0], P0[1]), z1 = zr(P1[0], P1[1]); if (z0 - Hw < .01 && z1 - Hw < .01) continue;
           const fc = flat ? tc : hex01(L.wall), a0 = [P0[0], P0[1], Hw], a1 = [P1[0], P1[1], Hw];
           n = z0 - Hw < .01 ? pushTri(V, n, a0, a1, [P1[0], P1[1], z1], fc, L.mat) : z1 - Hw < .01 ? pushTri(V, n, a0, a1, [P0[0], P0[1], z0], fc, L.mat) : pushQuad(V, n, a0, a1, [P1[0], P1[1], z1], [P0[0], P0[1], z0], fc, L.mat); } } }
-    if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(B.ridge, half * B.pitch); // the ridge beam
+    if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(D.ridge, half * D.pitch); // the ridge beam
       FRAME.x = alongX ? (len[0] + len[1]) / 2 : mid; FRAME.y = alongX ? mid : (len[0] + len[1]) / 2; FRAME.z = z - .03; FRAME.c = alongX ? 1 : 0; FRAME.s = alongX ? 0 : 1; n = pbox(V, n, 0, 0, 0, (len[1] - len[0]) / 2, .05, .08, tc, 5); }
     const dz = R ? Math.max(0, R.top[H.cells[0]]) : 0; if (dz) for (let v = start; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz;
     roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1 }); }

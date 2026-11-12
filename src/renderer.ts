@@ -20,7 +20,7 @@ import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrin
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
 import { TREES } from "./trees.ts";
-import { AFFIXES, dronePos, affixNames } from "./affixes.ts";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
@@ -2749,6 +2749,7 @@ export function render(ctx, g, w, h, now) {
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         enemy: e,
+        alpha: phaseShielded(e) ? PHASE_SHIELD.alpha : undefined, // a linked-invulnerable creature the Wayfarer can walk through is ghosted (Close View reads it too)
         nativeWindup: nativeWindupDuration(e),
         nativeActionShape: nativeActionShape(e),
         // (the Stalker's skinned body in Close View: its marks, eruptions and shots lie on the floor)

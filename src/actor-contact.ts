@@ -1,5 +1,6 @@
 import { enemyBodyRadius } from "./combat.ts";
 import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
+import { phaseShielded } from "./affixes.ts";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.
@@ -33,6 +34,7 @@ export function ordinaryContactEnemy(e) {
   return !!e && Number.isFinite(e.x) && Number.isFinite(e.y) && !e.dead && !(e.hp <= 0)
     && (!e.flying || materialGraveLantern(e)) && !e.aloft && !e.phasing && !e.phases && !e.hidden && !e.mist
     && !e.ambient && !e.passiveBehavior && e.foundryRole !== "passive" && !e.friendly && !e.astralCompanionOf && !e.astralAllyOf
+    && !phaseShielded(e) /* a linked-invulnerable creature: the Wayfarer passes through it (affixes.ts PHASE_SHIELD) */
     && !e.retreating && !e.passingBeast && !e.playing && !e.blobRemnant && e.kind !== "npc"
     && !(e.skirmishId && !e.skirmishProvoked) && !e.worldBeast && !e.questingBeast && !e.stalker
     && !e.gatePredator && !e.seaKind && !e.astralOwner && !e.astralMount && !SPECIAL.has(e.kind) && !AIRBORNE_LEGACY.has(e.kind)

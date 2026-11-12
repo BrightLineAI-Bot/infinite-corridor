@@ -30,6 +30,18 @@ export const AFFIX_IDS = Object.keys(AFFIXES);
 export const AFFIX_TUNING = { reach: 11, maxHazards: 30, burst: .25 };
 export const AURA = { radius: 5, reduce: .3, damage: 1.2 };
 export const SHAMAN = { chance: .2, kind: "sparkWarden", distance: [5, 7], radius: 11, hp: 1.6, speed: .3 };
+// Phase-shielded (Tim, 2026-11-12: "when they have the invulnerable tether, you should be able to walk through them... They can't take
+// hits from you, but they can still deal out damage"). While a creature cannot be harmed because another creature it is linked to
+// lives (a shaman's ward; the Listener hiding behind the callers it summoned), the Wayfarer passes through its body: neither blocks
+// the other's movement. It still attacks, moves and pathfinds, takes no hits, and blocks nothing else differently. When the link
+// breaks, a Wayfarer caught inside it is eased out (`release`): first the Wayfarer steps straight away from it, then the creature
+// steps away from the Wayfarer, then the nearest open spot on the `rings` (tiles) that a straight walk reaches. All runtime: `warded` and
+// `untargetable` were already on the creature records; nothing new is saved. `alpha`: how solid it is drawn in both views.
+export const PHASE_SHIELD = { wayfarerPasses: true, alpha: .5, release: { margin: .03, rings: [.5, .9, 1.4, 2], angles: 12, sample: .2 } };
+export function phaseShielded(e) {
+  return !!e && PHASE_SHIELD.wayfarerPasses && !e.dead && !(e.hp <= 0)
+    && (e.warded === true || e.farArrayBoss === "listener" && e.untargetable === true && !e.morph?.sunk);
+}
 
 // `n` different affixes for `key` (the same key always gives the same).
 export function rollAffixes(key, n) { return [...AFFIX_IDS].sort(byHash((a) => `${key}:affix:${a}`)).slice(0, n); }
