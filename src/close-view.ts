@@ -22,7 +22,8 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ } from "./close-view-outdoor.ts";
+import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -219,7 +220,21 @@ export const CLOSE_VIEW = Object.freeze({
     // is `tau` seconds (`reducedTau` with Reduced Motion), never more than `maxLag` tiles from it (a little over one level, so a
     // single level eases all the way and a long fall keeps them on screen); `snap` tiles or more away (a teleport, a new floor) it is there at once. Tim, 2026-11-12: "when you transition
     // between levels or elevations, sometimes it just does a cut that's too quick... disorienting... smooth that out more."
-    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, snap: 3 }),
+    // `deckLag` (roof decks, roof-decks.ts): while the Wayfarer stands on a roof deck, or hops over one, the lag may grow to this
+    // instead, so landing on a tall gable from the bank beside it (its ridge is up to wall + ridge, 1.725 + 1.575 = 3.3 tiles,
+    // over the house's ground; the bank is a level, 1.2, up) is eased all the way, never cut by the cap. It stays under `snap`.
+    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, deckLag: 2.2, snap: 3 }),
+    // A section crossing (Tim, 2026-11-12: "The camera does a weird change when you transition between sections. The camera
+    // should just point straight ahead so the Wayfarer is facing the new section."). On arriving in the open overworld from
+    // another map the view was chosen afresh: the yaw from the four-way facing, or, when the way ahead held a tree or a rock
+    // within the boom and a tile, a sweep of eight headings that could turn it to look along the edge; and the crane, the
+    // shoulder and the rig started from the indoor defaults and eased out, so the eye sank and slid sideways for a second.
+    // `snap`: arriving in the open overworld from a map the camera was drawing (a crossing, Wayglass travel, a dungeon's exit)
+    // the camera is put straight behind the Wayfarer, its springs (follow point, height anchor, terrain rise and pull-in, boom,
+    // crane, shoulder, rig, lens) set to their targets on the first frame, the eight-way sweep skipped, any quick turn,
+    // recentre or user tilt let go. `faceTravel`: a crossing (the next section along one axis, the Wayfarer within `edge`
+    // tiles of the edge they came in by) looks along the crossing; other arrivals look the way the Wayfarer faces.
+    crossing: Object.freeze({ snap: true, faceTravel: true, edge: 1.5 }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -707,6 +722,8 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
+  // the map the camera last chose a view for (its area and section), and a pending snap of every spring (CLOSE_VIEW.camera.crossing)
+  area: "", secX: 0, secY: 0, snapNext: false,
   // the calm pass (CLOSE_VIEW.camera.outdoor and .vertical): the open overworld's map (its edges are open ground) and boom;
   // the eased height anchor; the terrain rise and the share of the boom the terrain keeps, with their let-out holds
   edgeMap: null, outdoorBoom: false, zA: NaN, zAV: 0, tRise: 0, tRiseV: 0, tRiseFor: 0, tKeep: 1, tKeepV: 0, tKeepFor: 0, shown: 2.6,
@@ -908,12 +925,17 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 function ensureCam(g) {
   cameraScene(g);
   if (CAM.map === g.map) return;
+  // An arrival in the open overworld from a map the camera was drawing (CLOSE_VIEW.camera.crossing): read before the reset
+  const X = CLOSE_VIEW.camera.crossing, arrival = !!X.snap && CAM.map !== null && CAM.valid && CAM.outdoorBoom, travel = arrival && X.faceTravel ? crossingYaw(g) : NaN;
+  CAM.area = g.area; CAM.secX = g.rx; CAM.secY = g.ry; CAM.snapNext = arrival;
+  if (arrival) { CAM.qtT0 = -1; CAM.recentre = NaN; CAM.pitchUser = 0; CAM.basisFollow = false; }
   CAM.focal = 1; CAM.focalV = 0;
   CAM.zA = NaN; CAM.zAV = CAM.tRise = CAM.tRiseV = CAM.tRiseFor = CAM.tKeepV = CAM.tKeepFor = 0; CAM.tKeep = 1;
   CAM.map = g.map; CAM.drawn = false; CAM.dist = CAM.shown = boomReach(g); CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const entry = g.map.entry, arena = stillworksCloseView(g.map) && entry && Math.hypot(g.player.x - entry.x, g.player.y - entry.y) <= 1.25 ? g.map.stillworks : null;
-  const facing = arena ? Math.atan2(arena.cy - footY(g.player), arena.cx - footX(g.player)) : FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
+  if (Number.isFinite(travel)) CAM.bodyYaw = CAM.bodyDesiredYaw = travel;
+  const facing = arena ? Math.atan2(arena.cy - footY(g.player), arena.cx - footX(g.player)) : Number.isFinite(travel) ? travel : FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
   CAM.rigActive = false; CAM.rigIndex = CAM.rigPending = CAM.rigHold = CAM.rigOffset = CAM.rigOffsetV = 0; CAM.centeredRear = false; CAM.recentre = NaN;
   const preset = closeViewPreset(g), evaluate = (angle) => {
     const fx = Math.cos(angle), fy = Math.sin(angle), forward = Math.min(6, open(angle));
@@ -926,7 +948,7 @@ function ensureCam(g) {
     return { score: forward * (.15 + reach / boomReach(g)), forward, reach, index };
   };
   let yaw = facing, best = evaluate(facing), fallback = best.reach >= CLOSE_VIEW.camera.minDistance ? { ...best, yaw: facing, facingDelta: 0 } : null;
-  if (!arena && (best.forward < boomReach(g) + 1 || best.reach < boomReach(g) * .55))
+  if (!arena && !arrival && (best.forward < boomReach(g) + 1 || best.reach < boomReach(g) * .55))
     for (let i = 0; i < 8; i++) {
       const a = wrap(i * Math.PI / 4), candidate = evaluate(a), facingDelta = Math.abs(wrap(a - facing));
       if (candidate.reach >= CLOSE_VIEW.camera.minDistance && (!fallback || candidate.score > fallback.score + .01 || (Math.abs(candidate.score - fallback.score) <= .01 && facingDelta < fallback.facingDelta))) fallback = { ...candidate, yaw: a, facingDelta };
@@ -938,6 +960,15 @@ function ensureCam(g) {
   if (best.reach < CLOSE_VIEW.camera.minDistance && fallback) { best = fallback; yaw = fallback.yaw; }
   CAM.rigIndex = CAM.rigPending = best.index; CAM.rigOffset = RIG_OFFSETS[best.index] * preset.shoulder;
   CAM.yaw = CAM.inputYaw = yaw;
+}
+// A section crossing (CLOSE_VIEW.camera.crossing): the overworld before and after, the next section along one axis, and the
+// Wayfarer within `edge` tiles of the edge they came in by. Returns the travel's yaw (north, -y, is -pi/2), else NaN.
+function crossingYaw(g) {
+  const dx = g.rx - CAM.secX, dy = g.ry - CAM.secY, p = g.player, map = g.map, e = CLOSE_VIEW.camera.crossing.edge;
+  if (g.area !== "overworld" || CAM.area !== "overworld" || !Number.isInteger(dx) || !Number.isInteger(dy) || Math.abs(dx) + Math.abs(dy) !== 1 || !p || !map) return NaN;
+  const w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w));
+  const at = dx > 0 ? p.x <= e : dx < 0 ? p.x + 1 >= w - e : dy > 0 ? p.y <= e : p.y + 1 >= h - e;
+  return at ? Math.atan2(dy, dx) : NaN;
 }
 function wallAt(map, x, y) { const w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w)), tx = Math.floor(x), ty = Math.floor(y); return tx < 0 || ty < 0 || tx >= w || ty >= h || isWall(map.tiles[ty * w + tx]); }
 // The camera's own wall test: as wallAt, except that off an open overworld section's edge is open ground (the next section
@@ -1387,6 +1418,55 @@ function terrainFloorRay(map, x, y) {
   }
   return null;
 }
+// ------------------------------------------------------------------------------------------------ roof decks and the aimed Rift Step
+// The roof deck the Wayfarer stands on (roof-decks.ts via Game.standingDeck), or null.
+function ownRoofDeck(g) { const d = g?.area === "overworld" ? g.standingDeck?.() : null; return d ? roofDeckById(g.map, d.id) : null; }
+// The drawn height of a roof deck's surface at (x, y), or -Infinity where there is none.
+function deckSurfaceZ(map, x, y) { const d = roofDeckAt(map, x, y); return d ? outdoorRoofZ(d, x, y, map === RELIEF.map ? RELIEF.R : null) : -Infinity; }
+// On a roof the feet stand on its drawn surface; a hop from a roof keeps them at least at the roof's height until it lands; off a
+// roof (a hop that ends over the ground, or a step off its edge) the footing falls from there as off any ledge (presentLeap's
+// gravity). Writes the frame's captured Wayfarer card's lift and jumpLift (a fresh object each frame), never the game.
+const DECK_Z = { map: null, z: NaN };
+const HERO_FEET = { z: NaN }; // the last frame's drawn feet height (renderCloseView), for tests
+export const closeViewHeroFeetZ = () => HERO_FEET.z;
+function deckFeetLift(g, d) {
+  if (g?.area !== "overworld" || !d) { DECK_Z.map = null; return; } const p = g.player, fx = footX(p), fy = footY(p), own = ownRoofDeck(g), ground = surfaceZ(g.map, fx, fy);
+  const hopping = !own && g.deckHop && g.skyAir != null, under = hopping ? roofDeckAt(g.map, fx, fy) : null, deck = own || (under && under.level <= g.skyAir + 1e-6 ? under : null);
+  const R = g.map === RELIEF.map ? RELIEF.R : null, z = deck ? outdoorRoofZ(deck, fx, fy, R) : hopping && DECK_Z.map === g.map ? DECK_Z.z : NaN;
+  if (Number.isFinite(z)) { DECK_Z.map = g.map; DECK_Z.z = z; if (z - ground > (Number(d.lift) || 0)) d.lift = z - ground;
+    if (own) { if (LEAP.map === g.map) { LEAP.base = ground; LEAP.v = 0; } d.jumpLift = 0; } // standing on the roof: it is the footing (no leap's fall from the bank left under it)
+    return; }
+  if (DECK_Z.map === g.map && DECK_Z.z > ground && LEAP.map === g.map && !g.droneLift && !g.glide) { LEAP.base = Math.max(LEAP.base, DECK_Z.z); LEAP.v = 0; d.jumpLift = Math.max(Number(d.jumpLift) || 0, LEAP.base - ground - Math.max(0, Number(d.lift) || 0)); } // down off the roof: from its height
+  DECK_Z.map = null;
+}
+// The point of the world under a screen point (its ground or a roof deck's surface), for the aimed Rift Step's tap: { x, y, z } or
+// null. A bounded march (as terrainFloorRay: 640 steps, then 14 halvings), only on a tap; null through a wall or past the far end.
+export function closeViewSurfacePick(g, w, h, x, y) {
+  if (!closeViewShowing(g) || !CAM.valid || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1) return null;
+  const map = g.map, b = (x - CAM.ppx) / CAM.F, a = (CAM.ppy - y) / CAM.F, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b, dz = -CAM.sinP + a * CAM.cosP;
+  const top = (X, Y) => Math.max(surfaceZ(map, X, Y), deckSurfaceZ(map, X, Y)), under = (t) => CAM.hc + dz * t <= top(CAM.cx + dx * t, CAM.cy + dy * t);
+  let previous = 0;
+  for (let i = 1; i <= 640; i++) { const t = i * .025, X = CAM.cx + dx * t, Y = CAM.cy + dy * t; if (wallAt(map, X, Y)) return null;
+    if (under(t)) { let lo = previous, hi = t; for (let k = 0; k < 14; k++) { const mid = (lo + hi) * .5; if (under(mid)) hi = mid; else lo = mid; }
+      const X1 = CAM.cx + dx * hi, Y1 = CAM.cy + dy * hi; return { x: X1, y: Y1, z: top(X1, Y1) }; }
+    previous = t; }
+  return null;
+}
+export const RIFT_RING = Object.freeze({ armed: "#b48cff", ok: "#c9a8ff", bad: "#ff5a5a", width: 2, points: 28, mark: .45 });
+// A ring of radius r round (X, Y) at height Z, projected (no allocation: PROJ is reused).
+function worldRing(ctx, X, Y, Z, r) { const n = RIFT_RING.points; let open = false; ctx.beginPath();
+  for (let i = 0; i <= n; i++) { const a = i / n * 6.2832, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
+  ctx.stroke(); }
+// The aimed Rift Step (constellation.ts RIFT_AIM): while armed, its reach round the feet; after the tap, a ring on the point (red
+// when the step was refused) that fades.
+function riftAimRing(ctx, g) {
+  const armed = !!g?.riftAimArmed?.(), m = g?.riftAimMark; if (!armed && !m) return; const p = g.player, C = RIFT_RING;
+  ctx.save(); ctx.lineWidth = C.width;
+  if (armed) { const fx = footX(p), fy = footY(p), z = surfaceZ(g.map, fx, fy) + Math.max(0, capturedPlayer?.lift || 0), r = Number(g.riftReach?.()) || 0;
+    if (r > 0) { ctx.globalAlpha = .55; ctx.strokeStyle = C.armed; ctx.setLineDash?.([6, 6]); worldRing(ctx, fx, fy, z, r); ctx.setLineDash?.([]); } }
+  if (m && m.life > 0) { const z = Number.isFinite(m.z) ? m.z : Math.max(surfaceZ(g.map, m.x, m.y), deckSurfaceZ(g.map, m.x, m.y)); ctx.globalAlpha = Math.max(0, Math.min(1, m.life / (m.max || 1))); ctx.strokeStyle = m.ok ? C.ok : C.bad; worldRing(ctx, m.x, m.y, z, C.mark); }
+  ctx.restore();
+}
 export function closeViewProject(X, Y, Z = 0) { const q = CAM.valid ? project(X, Y, Z) : null; return q ? { sx: q.sx, sy: q.sy, depth: q.depth } : null; }
 // Where world (0, 0) lies in the ground texture, in device pixels, for the Wayfarer at (px, py), a texture W CSS px wide at scale
 // ts (as renderCloseView lays it): always whole pixels, so a world point always reads the same texel.
@@ -1492,6 +1572,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
+  if (capturedPlayer) deckFeetLift(g, capturedPlayer); // roof decks: on (or hopping over) a roof, the feet on its drawn surface
+  HERO_FEET.z = capturedPlayer ? surfaceZ(g.map, footX(p), footY(p)) + closeViewActorLift(capturedPlayer) : NaN; // where the Wayfarer's feet are drawn (tests)
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1525,10 +1607,14 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (offsetWant) { ax += rx * CAM.rigOffset; ay += ry * CAM.rigOffset; want = offsetWant; }
   // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
   // wall is cut at once, the only snap there is
+  // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
+  const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
-  spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
+  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane); if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
+    spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
   const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
+  if (snap) { CAM.focal = lerp(1, C.tightFocal, focalRelief); CAM.focalV = 0; }
   spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
   const F = baseF * CAM.focal;
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
@@ -1536,6 +1622,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (camWall(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
   // An open endpoint alone does not clear a concave corner between the shoulder and the player.
   if (sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0;
+  if (snap) { CAM.shoulderRoom = CAM.shoulder = room; CAM.shoulderV = 0; }
   if (room <= CAM.shoulderRoom) { CAM.shoulderRoom = room; CAM.shoulderClearFor = 0; }
   else { CAM.shoulderClearFor += dt; if (CAM.shoulderClearFor >= C.shoulderRecover) CAM.shoulderRoom = room; }
   spring(CAM, "shoulder", "shoulderV", CAM.shoulderRoom, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
@@ -1557,7 +1644,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // a ledge or a drop is followed, not cut to. The framing below still fits the Wayfarer's true height.
   { const V = C.vertical, tau = reduce ? V.reducedTau : V.tau, lag = CAM.zA - playerZ;
     if (!CAM.valid || followSnapped || !Number.isFinite(lag) || Math.abs(lag) >= V.snap || !(tau > 0)) { CAM.zA = playerZ; CAM.zAV = 0; }
-    else { spring(CAM, "zA", "zAV", playerZ, 2 / tau, dt); const d = CAM.zA - playerZ; if (Math.abs(d) > V.maxLag) { CAM.zA = playerZ + Math.sign(d) * V.maxLag; CAM.zAV = 0; } } }
+    else { spring(CAM, "zA", "zAV", playerZ, 2 / tau, dt); const d = CAM.zA - playerZ, cap = DECK_Z.map === g.map ? Math.max(V.maxLag, V.deckLag) : V.maxLag; if (Math.abs(d) > cap) { CAM.zA = playerZ + Math.sign(d) * cap; CAM.zAV = 0; } } } // on or over a roof deck (deckFeetLift): the roof's own lag
   const anchorZ = CAM.zA;
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
@@ -1628,7 +1715,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
     : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
-  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true;
+  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true; CAM.snapNext = false;
   const cosP = CAM.cosP, sinP = CAM.sinP, hc = CAM.hc, ppx = CAM.ppx, ppy = CAM.ppy;
   // the background: the dark beyond the light, and the vault above
   if (!useGL) { ctx.fillStyle = FOG_CSS; ctx.fillRect(0, 0, w, h); }
@@ -1769,6 +1856,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (Q.ao) vaultShade(ctx, w, h, ppy); }
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
+  riftAimRing(ctx, g); // RIFT_AIM: the armed step's reach and the tapped point
   // 6. the torch's warm cast and the vignette, both cached
   if (Q.warm && pq && !useGL) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(pSx, pSy - .6 * pk); ctx.fillStyle = SCREEN.warm; const r0 = Math.min(w, h) * .55; ctx.fillRect(-r0, -r0, 2 * r0, 2 * r0); ctx.restore(); } // only the glow's own square
@@ -3354,12 +3442,12 @@ function nearbyDoorTorches(g,px,py,reach,seen,limit){
 // A roof's opacity eases toward 0 while it is hidden (roofHidden) and back to 1 over OUTDOOR.buildings.fade.ms; a new scene
 // or reduced motion sets it at once (a prop changing keeps the houses, and the fade). No allocation: ROOF_FADE's arrays are made once.
 const ROOF_FADE = { key: null, at: 0, a: new Float32Array(32) };
-function roofRuns(F, scene, map, px, py, cx, cy, now, reduce) {
+function roofRuns(F, scene, map, px, py, cx, cy, now, reduce, keep = null) { // keep: the roof deck stood on (roof-decks.ts): never hidden, never faded
   const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt, A = ROOF_FADE.a, fresh = ROOF_FADE.key !== scene.houses || reduce;
   const step = fresh ? 1 : Math.max(0, Math.min(250, now - ROOF_FADE.at)) / Math.max(1, OUTDOOR.buildings.fade.ms); ROOF_FADE.key = scene.houses; ROOF_FADE.at = now;
   let partial = 0, nf = 0;
-  for (let i = 0; i < roofs.length && i < A.length; i++) { const goal = roofHidden(map, roofs[i], px, py, cx, cy) ? 0 : 1;
-    A[i] = fresh ? goal : goal > A[i] ? Math.min(goal, A[i] + step) : Math.max(goal, A[i] - step); if (A[i] < 1) partial |= 1 << i; }
+  for (let i = 0; i < roofs.length && i < A.length; i++) { const goal = roofs[i].id !== keep && roofHidden(map, roofs[i], px, py, cx, cy) ? 0 : 1;
+    A[i] = fresh || roofs[i].id === keep ? goal : goal > A[i] ? Math.min(goal, A[i] + step) : Math.max(goal, A[i] - step); if (A[i] < 1) partial |= 1 << i; }
   if (!partial) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
   for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (partial & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a;
       if (A[i] > 0 && nf < 16) { F.fades[nf * 3] = r0; F.fades[nf * 3 + 1] = r.count; F.fades[nf * 3 + 2] = A[i]; nf++; } } else end = r1; }
@@ -3449,7 +3537,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
   // a house's roof fades out while the Wayfarer is inside it (or the camera is), and stays drawn while they are outside it
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
-  F.nRuns = 0; F.nFades = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, g.map, F.px, F.py, CAM.cx, CAM.cy, now, reduce);
+  F.nRuns = 0; F.nFades = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, g.map, F.px, F.py, CAM.cx, CAM.cy, now, reduce, ownRoofDeck(g)?.id ?? null);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
