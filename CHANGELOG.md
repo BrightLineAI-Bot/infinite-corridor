@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 925: The Spark Coil drops again and becomes the Carbine at +6: a charged beam carbine that scales with Finesse (the Lumen Spindle's Lumen Carbine passive is retired and the Spindle is plain again). New Lattice tool form Continuous Assault: a charged Carbine beam calls three tracking sky lasers onto its target.
 - Release 924: The Gaunt: hooded, stick-thin duelists (Gaunt Duelist with a sword, Gaunt Cutthroat with two knives, Gaunt Longarm with a polearm) that circle, feint, hop between levels and hop out after they strike; about 1.6-2x the health of ordinary foes; in new crossings from Resonant, Old Keep floors and Pentagon chambers; full Close View bodies.
 - Release 923: Jump attacks: press Attack in the air with any melee weapon to plunge and slam the ground around you (wider with the Verge Cleaver, tighter with the Cinder Pike). With Shadow Boxing running it is a charging dive to your foe that bursts on impact. Falls still hurt.
 - Release 922: Close View: Shadow Boxing now charges to the foe as a translucent violet wraith with afterimages and lands the blow on arrival (instead of popping), and the Shadow Clone is a hooded spectre with glowing eyes, a swaying torn robe and wisps for legs, easier to see. Gameplay is unchanged.
