@@ -77,7 +77,7 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
@@ -2445,7 +2445,8 @@ export class Game {
     this.reticle = null;
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
-    this.loadArea(this.area, false);
+    this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
+    this.loadArea(this.area, false); this._resumeDeck = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3273,7 +3274,8 @@ export class Game {
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
-      playerRelocated = !resumeLiftPosition && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3560,7 +3562,7 @@ export class Game {
       return ground + this.discAir * LIFT_PER_LEVEL;
     if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
       return ground + this.skyLevel * LIFT_PER_LEVEL;
-    if (!body.jumping && this.standingDeck() && roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
+    if (!body.jumping && this.standingDeck() && (roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id || roofDeckUnderBox(this.map, x, y, Infinity, this.roofDeck.id))) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
     if (carrier?.raft) {
       const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
         pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
@@ -3671,7 +3673,13 @@ export class Game {
   }
   // The roof deck stood on as saved (playerRuntime.roofDeck), after the area loads: kept only when that deck is still under the
   // feet at that level (roof-decks.ts validRoofDeck); otherwise the Wayfarer stands on the ground there, unhurt.
-  restoreRoofDeck(q) { const d = this.area === "overworld" && this.decksApply() ? validRoofDeck(this.map, normalizeRoofDeck(q), this.player.x + .5, this.player.y + .75) : null; this.setRoofDeck(d); return !!d; }
+  // A roof's edge saved (the feet just past it, the box still over its walls) is kept too (deckEdgeHold), so a reload never wedges them.
+  resumeDeckEdge(w) { const q = normalizeRoofDeck(this._resumeDeck), d = q ? roofDeckById(this.map, q.id) : null, p = this.player; // the box over that roof's walls, nothing else stopping it
+    return !!d && this.decksApply() && d.level === q.level && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, w, p.x, p.y, false, false, false, true, d.level); }
+  restoreRoofDeck(q) { const saved = normalizeRoofDeck(q), ok = this.area === "overworld" && this.decksApply(), p = this.player;
+    let d = ok ? validRoofDeck(this.map, saved, p.x + .5, p.y + .75) : null;
+    if (!d && ok && saved) { const e = this.deckEdgeHold(p.x, p.y, saved.level); d = e && e.id === saved.id && e.level === saved.level ? e : null; }
+    this.setRoofDeck(d); return !!d; }
   // The jump in the air as saved (resumeRuntime `jumpAir`), after the area loads (loadArea clears the sky-hop height).
   restoreJumpAir(j, now) {
     if (!j || typeof j !== "object" || !(this.jumpUntil > now)) return; const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null;
@@ -3787,8 +3795,18 @@ export class Game {
     const d = roofDeckAt(this.map, p.x + .5, p.y + .75);
     if (d && p.jumping && this.skyAir != null && !this.droneLift && !this.mechBoosting && d.level > this.skyAir + 1e-6 && d.level <= this.skyAir + 1 + 1e-6) { this.jumpUntil = now; p.jumping = false; this.deckHop = true; } // onto a roof one level up: on it
     if (p.jumping) return null;
-    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, on = d && from != null && d.level <= from + (wasOn ? 0 : 1) + 1e-6 ? d : null;
+    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, reach = from == null ? null : from + (wasOn ? 0 : 1);
+    const on = d && reach != null && d.level <= reach + 1e-6 ? d : reach != null ? this.deckEdgeHold(p.x, p.y, reach) : null; // the edge: still over its walls
     this.setRoofDeck(on); return on;
+  }
+  // The roof's edge (pre-publish review of 915: walking or jumping off a roof wedged the Wayfarer in its wall): the deck, at or under
+  // maxLevel, whose walls the collision box at (x, y) still stands over once the feet have left its roof, or null. Only a deck whose
+  // walls are all that stop the box (footprintOpen without and with its deckReach) holds: the Wayfarer stays up on that roof's edge
+  // until the whole box is clear of the walls, and only then drops (one fall, from the roof's height, where they come down).
+  deckEdgeHold(x, y, maxLevel) {
+    if (!this.decksApply() || !Number.isFinite(maxLevel)) return null; const d = roofDeckUnderBox(this.map, x, y, maxLevel); if (!d) return null;
+    const w = mapWidth(this.map, this.area);
+    return !footprintOpen(this.map, w, x, y, true, false, false, true) && footprintOpen(this.map, w, x, y, true, false, false, true, d.level) ? d : null;
   }
   // Is (x, y) over a roof higher than z that the glide is not already over? (a glide never climbs onto a roof above it)
   deckWallAt(x, y, z, from = null) { const d = roofDeckAt(this.map, x + .5, y + .75); return !!d && d !== from && d.level > z + 1e-6; }
@@ -4744,6 +4762,7 @@ export class Game {
     if (!drone && m.active && !m.empowered && (Number(this.save.materials?.cinderIron) || 0) >= MECH_POWER.burn) { this.message = setEmpowered(this.save, true).message; this.cancelConsumeVisual('form-change'); this.sync(); return true; } // release 383: robot → empowered → stowed
     if (m.active && !drone && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; } // release 639
     if (m.active) { if (m.empowered) setEmpowered(this.save, false); m.active = false; if(!drone)this.cancelConsumeVisual('form-change'); this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
+    if (!drone && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks: the robot never uses them
     if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; if(!drone)this.cancelConsumeVisual('form-change'); this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
   }
@@ -4800,7 +4819,7 @@ export class Game {
         if (this.glide && !gliderForbiddenAt(this.map, width, p.x, p.y) && elevationAt(this.map, width, p.x, p.y) > z0 + 1e-6) { const z = this.glide; this.returnFrom(from, G.noClimb); this.glide = z; if (out[0]) z.vx = 0; else z.vy = 0; z.seamHold = { rx: from.rx, ry: from.ry, dx: out[0], dy: out[1], at: keep }; } }
       return "crossed"; }
     p.x = nx; p.y = ny; p.walkPhase = 0;
-    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : null; // roof decks: a glide comes down onto a roof it is over
+    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : decks && !deckUnder ? this.deckEdgeHold(p.x, p.y, z0) : null; // roof decks: a glide comes down onto a roof it is over (or onto its edge, over its walls)
     const ground = Math.max(elevationAt(this.map, width, p.x, p.y), onDeck ? onDeck.level : -Infinity), here = tileUnder(this.map, width, p.x, p.y);
     if (g.z > ground + .05) { if (g.pinned && g.z > ground + G.skim + .01) g.pinned = false; return "flying"; }
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
@@ -6268,6 +6287,7 @@ export class Game {
     if (this.swimming) return "Get out of the water first.";
     if (this.mechUp() || this.droneUp()) return "Stow the robot or the drone first.";
     if (this.glide) return "Land first.";
+    if (this.standingDeck()) return "Climb down from the roof first: there is no room for a mount up here."; // roof decks: mounts never use them
     if (footprintInsideStructure(this.map, mapWidth(this.map, this.area), p.x, p.y)) return "There is no room for a mount indoors.";
     return null;
   }
@@ -7396,6 +7416,7 @@ export class Game {
     if (!aboard(this.save) && frameForm(this.save) !== want) {
       const out = m?.active === true;
       if (out && this.droneLift) { this.message = "The drone is carrying you: land before the frame changes form."; return false; }
+      if (out && want === "robot" && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks
       if (out && frameForm(this.save) === "robot" && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; }
       const r = setMechMode(this.save, want); if (!r.ok) { this.message = r.message; return false; }
       if (out) { this.cancelConsumeVisual('form-change'); this.sync(); this.message = want === "drone" ? "The robot folds away; the frame turns to the drone." : "The drone docks; the frame turns to the robot."; return true; }
