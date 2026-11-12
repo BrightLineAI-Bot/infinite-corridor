@@ -42,13 +42,13 @@ export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike
 // Geometry identity only: these immediate tools do not join delayed startup,
 // action motion, muzzle ownership or native form recipe membership.
 export function simpleToolAppearanceKind(weapon) {
-  return weapon?.name==='Spark Coil'?'spark-coil':weapon?.name==='Needle Caster'?'needle-caster':null;
+  return weapon?.name==='Spark Coil'?'spark-coil':weapon?.name==='Needle Caster'?'needle-caster':weapon?.name==='Carbine'?'carbine':null; // the Carbine: a Spark Coil at +CARBINE_RANK (items.ts)
 }
 export function importedEmitterAppearance(record, weapon, active = false) {
   if(!active)return simpleToolAppearanceKind(weapon)||'emitter';
   const appearance=record?.toolAppearance;
   return record?.profile==='emitter'&&record.toolKind==null&&appearance&&typeof appearance==='object'&&!Array.isArray(appearance)&&
-    appearance.v===1&&(appearance.kind==='spark-coil'||appearance.kind==='needle-caster')?appearance.kind:'emitter';
+    appearance.v===1&&(appearance.kind==='spark-coil'||appearance.kind==='needle-caster'||appearance.kind==='carbine')?appearance.kind:'emitter';
 }
 export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
 export const TOOL_ACTION_TIMING = Object.freeze({

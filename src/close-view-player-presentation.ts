@@ -19,6 +19,7 @@ export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   emitter: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'spark-coil': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'needle-caster': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
+  carbine: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }), // the Spark Coil's upgraded form: compact, one-handed
   'lumen-spindle': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'rift-bombard': Object.freeze({ hand: 'right', scale: .78, grip: 'rifle' }),
   blunderbuss: Object.freeze({ hand: 'right', scale: .8, grip: 'rifle' }),

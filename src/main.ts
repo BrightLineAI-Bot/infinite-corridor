@@ -53,8 +53,8 @@ function uiButton(label, click) {
   return b;
 }
 export function itemIconDescriptor(item, slot = item?.slot || "empty") {
-  const name=String(item?.name||""),property=String(item?.property||"empty"),h=hashSeed(`${item?.id||name}:${property}:${item?.power||0}`),family=slot==="primary"?(name.includes("Pike")?"pike":name.includes("Cleaver")?"cleaver":"sword"):slot==="secondary"?(name.includes("Bombard")?"bombard":name.includes("Spindle")?"spindle":"caster"):slot==="armor"?(name.includes("Mantle")?"mantle":"coat"):slot==="charm"?"charm":"empty",
-    accent=name.match(/Cinder|Ember|Kiln/i)?"#e47a48":name.match(/Glass|Needle/i)?"#72d7df":name.match(/Lumen|Rift|Quiet/i)?"#b28cda":({reach:"#7cc8b5",impact:"#d89a52",focus:"#a98bd4",quick:"#75cad8",blast:"#d56755",guard:"#d2ad68",stamina:"#7fbd8c",discovery:"#b28cda",steady:"#b8b1a2"}[property]||"#9e9b90");
+  const name=String(item?.name||""),property=String(item?.property||"empty"),h=hashSeed(`${item?.id||name}:${property}:${item?.power||0}`),family=slot==="primary"?(name.includes("Pike")?"pike":name.includes("Cleaver")?"cleaver":"sword"):slot==="secondary"?(name.includes("Bombard")?"bombard":name.includes("Spindle")?"spindle":name.includes("Carbine")?"carbine"/* the Spark Coil at +6 */:"caster"):slot==="armor"?(name.includes("Mantle")?"mantle":"coat"):slot==="charm"?"charm":"empty",
+    accent=name.match(/Carbine/i)?"#7fe7ff":name.match(/Cinder|Ember|Kiln/i)?"#e47a48":name.match(/Glass|Needle/i)?"#72d7df":name.match(/Lumen|Rift|Quiet/i)?"#b28cda":({reach:"#7cc8b5",impact:"#d89a52",focus:"#a98bd4",quick:"#75cad8",blast:"#d56755",guard:"#d2ad68",stamina:"#7fbd8c",discovery:"#b28cda",steady:"#b8b1a2"}[property]||"#9e9b90");
   return{family,accent,rune:h%6,power:Math.max(0,Number(item?.power)||0),variant:(h>>>4)%4};
 }
 function gearIcon(item,slot){
@@ -64,6 +64,7 @@ function gearIcon(item,slot){
   else if(q.family==="cleaver"){x.beginPath();x.moveTo(-19,23);x.lineTo(3,-5);x.stroke();x.beginPath();x.moveTo(2,-5);x.lineTo(7,-25);x.lineTo(23,-16);x.lineTo(12,1);x.closePath();x.fill();x.stroke();}
   else if(q.family==="caster"){x.beginPath();x.moveTo(-22,-5);x.lineTo(13,-5);x.lineTo(23,2);x.lineTo(8,7);x.lineTo(-20,7);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-2,8);x.lineTo(-7,20);x.stroke();}
   else if(q.family==="spindle"){x.beginPath();x.arc(-5,1,18,-1.1,1.15);x.stroke();x.beginPath();x.arc(8,-2,13,2.15,4.25);x.stroke();x.beginPath();x.arc(0,0,5,0,7);x.fill();}
+  else if(q.family==="carbine"){x.beginPath();x.moveTo(-24,-3);x.lineTo(-6,-7);x.lineTo(24,-7);x.lineTo(24,-2);x.lineTo(-4,-1);x.lineTo(-8,4);x.lineTo(-22,6);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-9,0);x.lineTo(-13,16);x.stroke();for(const cx of[4,9,14]){x.beginPath();x.moveTo(cx,-10);x.lineTo(cx-2,1);x.stroke();}}/* the Carbine: a long barrel with a coil */
   else if(q.family==="bombard"){x.beginPath();x.arc(0,4,17,0,7);x.fill();x.stroke();x.beginPath();x.moveTo(8,-13);x.quadraticCurveTo(18,-24,23,-13);x.stroke();}
   else if(q.family==="mantle"||q.family==="coat"){x.beginPath();x.moveTo(-9,-21);x.lineTo(-22,-11);x.lineTo(-16,23);x.lineTo(0,16);x.lineTo(16,23);x.lineTo(22,-11);x.lineTo(9,-21);x.quadraticCurveTo(0,-12,-9,-21);x.closePath();x.fill();x.stroke();if(q.family==="coat"){x.beginPath();x.moveTo(0,-9);x.lineTo(0,17);x.stroke();}}
   else if(q.family==="charm"){x.beginPath();x.arc(0,0,20,0,7);x.stroke();x.rotate(q.variant*.18);x.beginPath();x.moveTo(0,-21);x.lineTo(6,-6);x.lineTo(21,0);x.lineTo(6,6);x.lineTo(0,21);x.lineTo(-6,6);x.lineTo(-21,0);x.lineTo(-6,-6);x.closePath();x.fill();x.stroke();}
@@ -1958,7 +1959,7 @@ function openPack(tab) {
   if (packTab === "wayfarer") try{
   const statHelp = {
     Might: "+2 melee damage per rank.",
-    Finesse: "+3 maximum stamina per rank.",
+    Finesse: "+3 maximum stamina and +1 stamina bonus (the Carbine) per rank.",
     Focus: "+1 projectile damage and about +2.3 spell damage per rank.",
     Vigor: "+8 maximum health per rank.",
     Resolve: "+2% damage resistance per rank up to 45% in all; past 45% every rank (and more armor) still adds, with diminishing returns toward a 75% cap.",
@@ -2215,7 +2216,7 @@ const STAT_GLOSSARY=[
   ["Aerial Step","A short traversal discipline that permits movement across lethal water or pits. It cannot cross blocked walls or gates and returns the Wayfarer to stable ground if it expires over danger."],
   ["Might","Each rank adds 2 melee damage."],
   ["Focus","Each rank adds 1 projectile damage and about 2.3 spell damage (spells hit for their base, the magic bonus and Focus, then a little more)."],
-  ["Finesse","Each rank adds 3 maximum stamina."],
+  ["Finesse","Each rank adds 3 maximum stamina and 1 to the stamina bonus, which stamina tools (the Carbine) add to every shot."],
   ["Vigor","Each rank adds 8 maximum health."],
   ["Resolve","Each rank adds 2% damage resistance until resistance reaches 45%; past 45% each rank still adds, with diminishing returns toward the 75% cap."],
   ["Resistance","Reduces incoming damage. Armor, charms, Resolve, and Ward affixes add up in full to 45%; beyond that their total keeps raising it with diminishing returns, toward a hard cap of 75%."],
