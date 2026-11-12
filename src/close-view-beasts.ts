@@ -13,19 +13,10 @@ import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-be
 import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.ts";
 import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.ts";
 import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.ts";
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.ts";
-=======
 import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.ts";
->>>>>>> claude/cv-stalker
-=======
 import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.ts";
->>>>>>> claude/cv-gloomvast
-=======
 import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.ts";
->>>>>>> claude/cv-listener
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -47,20 +38,18 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   morphingBlob: Object.freeze({ mesh: blobMesh, createTrack: createBlobTrack, sample: sampleBlob, get scale() { return BLOB_RIG.closeViewScale; } }),
   // the Void Walker on land (its skiff at sea keeps the billboard)
   voidWalker: Object.freeze({ mesh: walkerMesh, createTrack: createWalkerTrack, sample: sampleWalker, get scale() { return WALKER_RIG.closeViewScale; }, eligible: (e) => !e.marine }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   // the Astral Worm in every form it fights in, morphing on the game's own clock; ridden by a Walker it keeps the billboard
   // (the saddle, pillar and rider's lift are drawn against it). Its Mirages are a separate kind and stay billboards.
   astralWorm: Object.freeze({ mesh: astralMesh, createTrack: createAstralTrack, sample: sampleAstral, get scale() { return ASTRAL_CV_RIG.closeViewScale; }, eligible: (e, scene) => !astralRidden(e, scene) }),
-=======
   // the Stalker as the cat or the ape; the pool, the mist, the tide and its copies and decoys keep the billboard
   stalker: Object.freeze({ mesh: stalkerMesh, createTrack: createStalkerTrack, sample: sampleStalker, get scale() { return STALKER_RIG.closeViewScale; }, eligible: stalkerBodyEligible }),
->>>>>>> claude/cv-stalker
-=======
   // the Pentagon finale's haunt; in its Dark (veiled among its cold lights) it keeps the standard view's cold-light billboard
   gloomvast: Object.freeze({ mesh: gloomvastMesh, createTrack: createGloomvastTrack, sample: sampleGloomvast, get scale() { return GLOOMVAST_RIG.closeViewScale; }, eligible: (e) => !e.gloomVeil && !e.gloomDark }),
->>>>>>> claude/cv-gloomvast
+  // the Listener: the robed figure (open form) and the Morphling (walled form), its mesh chosen by the foe's form. Its
+  // reflections and worms keep their billboards (up to eight of each, and nearest-first admission would hand them the
+  // Listener's own slot), as does a walled Listener before its Morphling has taken shape (the standard view's banded robe).
+  listener: Object.freeze({ mesh: listenerMesh, createTrack: createListenerTrack, sample: sampleListener, get scale() { return LISTENER_RIG.closeViewScale; },
+    eligible: (e) => !e.mirrorClone && !e.morphWorm && (e.listenerPhase !== 'walled' || !!e.morphScaled) }),
 });
 // The Stalker's skinned body covers the cat and the ape. Its pool (a silver puddle, a mouth rising out of the floor), its mist (wisps
 // wheeling round the Wayfarer) and the tide (it is the first wave) are flat or vapour art the standard view owns; the small copies and
@@ -68,19 +57,10 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
 export function stalkerBodyEligible(e) {
   return !e.stalkerKin && !e.stalkerDecoy && e.stalkForm !== 'pool' && e.stalkForm !== 'mist' && e.stalkAct?.kind !== 'tide';
 }
-// Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
+// Forms the body covers (`mesh(tier, foe)`: a beast with more than one body picks the one this foe shows). Hidden, veiled, illusory,
+// ridden or mounted states keep the billboard (their art owns them).
 // `scene` (optional: the game) lets a filter look at the other actors (a Worm with a rider on it).
 export function closeViewBeastEligible(e, scene = null) {
-=======
-  // the Listener: the robed figure (open form) and the Morphling (walled form), its mesh chosen by the foe's form. Its
-  // reflections and worms keep their billboards (up to eight of each, and nearest-first admission would hand them the
-  // Listener's own slot), as does a walled Listener before its Morphling has taken shape (the standard view's banded robe).
-  listener: Object.freeze({ mesh: listenerMesh, createTrack: createListenerTrack, sample: sampleListener, get scale() { return LISTENER_RIG.closeViewScale; },
-    eligible: (e) => !e.mirrorClone && !e.morphWorm && (e.listenerPhase !== 'walled' || !!e.morphScaled) }),
-});
-// Forms the body covers (`mesh(tier, foe)`: a beast with more than one body picks the one this foe shows). Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
-export function closeViewBeastEligible(e) {
->>>>>>> claude/cv-listener
   return !!e && Object.hasOwn(CLOSE_VIEW_BEASTS, e.kind) && !e.dead && e.hp > 0 && !e.hidden && !e.gloomVeil && !e.illusion
     && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm && CLOSE_VIEW_BEASTS[e.kind].eligible?.(e, scene) !== false;
 }

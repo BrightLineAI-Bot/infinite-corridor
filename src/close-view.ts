@@ -2826,13 +2826,8 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
   for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
-<<<<<<< HEAD
     if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
-    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier))) continue;
-=======
-    if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe) || draws[itemRef[it]]?.enemy !== foe) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
->>>>>>> claude/cv-listener
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
     BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
