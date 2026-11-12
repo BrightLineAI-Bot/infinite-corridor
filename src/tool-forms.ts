@@ -69,11 +69,12 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 // - The beam is a bolt flying `speed` tiles/s for `range` tiles (times the tool's reach), so it crosses the whole lock range
 //   (game.ts TARGET_LOCK.range, past the Close View lock's) in a fifth of a second. Projectiles step every .2 tiles, so a beam
 //   never skips a foe. It strikes one foe (plus any pierce from glyphs) and ends: a sniper's shot.
-// - A tap deals (`base` + `bonus` × the `scale` bonus) × the matching armor line × the tool's glyph damage. `base` and `bonus`
-//   re-derive release 916's "2.7 × one Lumen Spindle shot" as the tool's own numbers: 2.7 × the Spindle's 11 is 29.7 → 30,
-//   and its stat bonus counts 2.7 times, so a Finesse build's Carbine hits as a Focus build's Lumen Carbine did. `scale`
-//   names a TOOL_SCALES row: "stamina" takes Finesse (characterStats().staminaBonus) and armor's blow damage, and deals
-//   physical damage.
+// - A tap deals (`base` + `bonus` × the tool bonus) × armor's spell damage (× the magic buff) × the tool's glyph damage.
+//   `base` and `bonus` re-derive release 916's "2.7 × one Lumen Spindle shot" as the tool's own numbers: 2.7 × the Spindle's
+//   11 is 29.7 → 30, and the tool bonus counts 2.7 times. The tool bonus is release 918's single scaling table: items.ts
+//   TOOL_SCALING.carbine "stamina" (Finesse; Tim: "this will be a stamina weapon"), read by game.ts toolBonus on the magic
+//   `channel` (1 a rank, the channel of the Spark Coil it grew from and of the Lumen Carbine), so a Finesse build's Carbine
+//   hits as a Focus build's Lumen Carbine did. A magic shot: the damage type stays the Spark Coil's.
 // - A beam every `cadence` s (shortened like any tool: glyphs, armor's attack speed, Wellspring Ground). The Spindle: .36 s.
 // - Tap: the beam fires on release (or at once, from auto attack). Hold past `charge.grace` s: a charge glows at the muzzle,
 //   full at `charge.full` s, and the release fires a stronger beam: `charge.min` to `charge.max` × a tap, passing through up
@@ -87,7 +88,7 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 // - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
 // Runtime only (game.carbine); no save state beyond the item itself.
 export const CARBINE = {
-  scale: "stamina", // a TOOL_SCALES row (Tim, 2026-11-12: "this will be a stamina weapon")
+  channel: "magic", // game.ts toolBonus channel; the stat is items.ts TOOL_SCALING.carbine ("stamina")
   base: 30, bonus: 2.7,
   range: 16, speed: 80, cadence: 1.05,
   tap: { rounds: 1 },
@@ -96,13 +97,6 @@ export const CARBINE = {
   trace: { life: .22, max: 6, width: .07 },
   colors: { beam: "#7fe7ff", core: "#eafcff", glow: 0x7fe7ff },
   messages: { full: "The Carbine releases a full charge!", release: "The Carbine releases." },
-};
-// How each tool scale reads the Wayfarer (game.ts characterStats) and armor: the hook the weapon/tool scaling table can fold
-// in. `bonus` is a characterStats field, `armor` an armor-glyph line, `buff` the magic buff's multiplier (magic only).
-export const TOOL_SCALES = {
-  might: { bonus: "meleeBonus", armor: "attackDamage", damageType: "physical" },
-  magic: { bonus: "magicBonus", armor: "spellDamage", damageType: "magic", buff: 1.4 },
-  stamina: { bonus: "staminaBonus", armor: "attackDamage", damageType: "physical" },
 };
 // How full a charge held `held` s is: 0 below the grace, 1 at `full` and past it.
 export const carbineFill = (held) => { const C = CARBINE.charge, h = Number(held) || 0; return h < C.grace ? 0 : Math.max(0, Math.min(1, (h - C.grace) / (C.full - C.grace))); };
@@ -118,11 +112,10 @@ export function carbineAffordedHold(held, paid) {
   if (!carbineCharged(held) || k <= max) return Number(held) || 0;
   return max <= 0 ? 0 : C.grace + max * (C.full - C.grace);
 }
-// A tap's damage before glyphs and the charge: (base + bonus × the scale's stat bonus) × its armor line (× the magic buff for a
-// magic scale). `derived` is characterStats(save), `armor` the armor-glyph bonus.
-export function carbineBase(derived, armor, magicBuff = false) {
-  const S = TOOL_SCALES[CARBINE.scale] || TOOL_SCALES.stamina, stat = Number(derived?.[S.bonus]) || 0, line = Number(armor?.[S.armor]) || 0;
-  return (CARBINE.base + CARBINE.bonus * stat) * (1 + line) * (S.buff && magicBuff ? S.buff : 1);
+// A tap's damage before glyphs and the charge: (base + bonus × `toolBonus`, game.ts toolBonus(CARBINE.channel)) × armor's
+// spell damage (`spellDamage`) × the magic buff's 1.4 while it runs, as any magic shot.
+export function carbineBase(toolBonus, spellDamage = 0, magicBuff = false) {
+  return (CARBINE.base + CARBINE.bonus * (Number(toolBonus) || 0)) * (1 + (Number(spellDamage) || 0)) * (magicBuff ? 1.4 : 1);
 }
 
 // Continuous Assault (Tim, 2026-11-12: "there can be a passive for the Carbine called Continuous Assault: when you charge up
@@ -134,7 +127,7 @@ export function carbineBase(derived, armor, magicBuff = false) {
 //   strike from above (an effect with a delay, then one blow), each tracking its foe until it lands (sliding at up to `track`
 //   tiles/s). A foe that falls first hands the laser to the nearest foe within `seek` of it, else it lands where it is.
 // - Each lands a blow on every foe within `radius` tiles for `share` × the charged beam's damage (so it grows with Finesse,
-//   the charge, glyph damage and an empowered round), physical, carrying no glyph procs (like Sunburst shards).
+//   the charge, glyph damage and an empowered round), carrying no glyph procs (like Sunburst shards).
 // - Bounded: one volley per charged release (not its Echo, clone or fan copies); at most `maxLive` lasers at once, held in a
 //   fixed pool (game.carbine.lances) that is reused, never grown; a volley past that calls only the room left.
 // - Drawn (tool-forms.ts drawCarbine): a dashed cyan ring where each will land, then a beam from the top of the screen down

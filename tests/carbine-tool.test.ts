@@ -6,13 +6,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, TARGET_LOCK, characterStats, STAMINA_BONUS } from '../src/game.ts';
+import { Game, TARGET_LOCK, characterStats, scaledBonus } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
-import { normalizeItemUpgrade, RANGED_WEAPONS, rangedWeapon, generateItem, isValidItem, itemMechanicalStats, BLUNDERBUSS_RANK, CARBINE_RANK, SPARK_COIL_LOOT, ITEM_TABLE } from '../src/items.ts';
+import { normalizeItemUpgrade, RANGED_WEAPONS, rangedWeapon, generateItem, isValidItem, itemMechanicalStats, TOOL_SCALING, toolScaling, SCALING_STATS, BLUNDERBUSS_RANK, CARBINE_RANK, SPARK_COIL_LOOT, ITEM_TABLE } from '../src/items.ts';
 import { ensureLattice, RETIRED_PASSIVES } from '../src/transit-lattice.ts';
 import { TOOL_FORMS, TOOL_FORM_KEYS } from '../src/lattice-fields.ts';
 import { toggleLatticePassive } from '../src/constellation.ts';
-import { CARBINE, TOOL_SCALES, carbineFill, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineBase, drawCarbine, roundsLabel, usesRounds } from '../src/tool-forms.ts';
+import { CARBINE, carbineFill, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineBase, drawCarbine, roundsLabel, usesRounds } from '../src/tool-forms.ts';
 import { CLOSE_VIEW } from '../src/close-view.ts';
 import { closeViewHeldMuzzleLocal, closeViewHeldMuzzlePoint, writeCloseViewHeroGear, writeCloseViewHeroEquipment, CLOSE_VIEW_HERO_WEAPON_FORM, CARBINE_COLOURS, HERO_EQUIPMENT_MAX_TRIANGLES, MODEL_FLOATS } from '../src/close-view-models.ts';
 import { CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from '../src/close-view-player-forms.ts';
@@ -70,7 +70,7 @@ test('below the rank it is still the Spark Coil; at the rank (the Blunderbuss ra
   const st = itemMechanicalStats(top); assert.equal(st.cooldown, CARBINE.cadence); assert.equal(st.projectileRange, CARBINE.range); assert.equal(st.damage, CARBINE.base);
   assert.ok(usesRounds(rangedWeapon(top)) && usesRounds(rangedWeapon(low)));
   const { g } = arena({ foes: [[18, 9.1]] }); assert.equal(g.carbineOn(), true); assert.equal(g.fireSecondary(1000, { x: 1, y: 0 }), true);
-  const beam = g.projectiles[0]; assert.ok(beam.carbine && beam.path === 'straight' && beam.damageType === 'physical' && beam.glyphHost === 'tool');
+  const beam = g.projectiles[0]; assert.ok(beam.carbine && beam.path === 'straight' && beam.damageType === 'magic' && beam.glyphHost === 'tool');
   assert.deepEqual(g.player.attackVisual.toolAppearance, { v: 1, kind: 'carbine' }); assert.equal(g.player.attackVisual.toolKind, undefined);
 });
 
@@ -119,19 +119,20 @@ test('charge: 1.3× to 2.4× a tap between grace .2 s and full 1.25 s, then the 
   assert.ok(roundsLabel(s, rangedWeapon(coil())), 'the HUD shows the rounds');
 });
 
-test('Stamina scaling: Finesse raises the beam (the stamina bonus), Focus and Might do not; the same power as the Lumen Carbine', () => {
-  assert.equal(CARBINE.scale, 'stamina'); assert.deepEqual(TOOL_SCALES.stamina, { bonus: 'staminaBonus', armor: 'attackDamage', damageType: 'physical' });
-  assert.equal(STAMINA_BONUS.stat, 'Finesse');
+test('Stamina scaling through release 918\'s table: Finesse raises the beam, Focus and Might do not; the Lumen Carbine\'s power', () => {
+  assert.equal(TOOL_SCALING.carbine, 'stamina'); assert.equal(SCALING_STATS.stamina, 'Finesse'); assert.equal(TOOL_SCALING['spark-coil'], 'magic');
+  assert.equal(toolScaling(coil()), 'stamina', 'a Spark Coil at the rank is the Carbine: stamina'); assert.equal(toolScaling(coil(2)), 'magic', 'below it, a magic coil');
+  assert.equal(CARBINE.channel, 'magic');
   const tap = (o) => { const { g } = arena(o); g.fireSecondary(1000, { x: 1, y: 0 }); return g.projectiles[0].damage; };
   const low = tap({ finesse: 10 }), high = tap({ finesse: 60 }), focus = tap({ finesse: 10, focus: 60 }), might = tap({ finesse: 10, might: 60 });
   assert.ok(high > low * 1.5, `Finesse 10 → 60: ${low} → ${high}`); assert.equal(focus, low); assert.equal(might, low);
-  // staminaBonus reads Finesse exactly as magicBonus reads Focus.
+  // The tool bonus (scaledBonus on the magic channel) reads Finesse exactly as magicBonus reads Focus.
   const a = freshSave(); a.stats.Finesse = 40; a.equipment.secondary = coil(); const b = freshSave(); b.stats.Focus = 40; b.equipment.secondary = coil();
-  assert.equal(characterStats(a).staminaBonus, characterStats(b).magicBonus); assert.ok(characterStats(b).staminaBonus < characterStats(b).magicBonus);
-  // Base: 2.7 × the Spindle's 11 (29.7 → 30), the stat bonus counted 2.7 times: the Lumen Carbine's tap, re-derived.
+  assert.equal(new Game(a, 0).toolBonus(CARBINE.channel), characterStats(b).magicBonus); assert.equal(scaledBonus(a, 'stamina', 'magic'), new Game(a, 0).toolBonus('magic'));
+  // Base: 2.7 × the Spindle's 11 (29.7 → 30), the tool bonus counted 2.7 times: the Lumen Carbine's tap, re-derived.
   assert.equal(CARBINE.base, Math.round(RANGED_WEAPONS['secondary-lumen-spindle'].damage * 2.7)); assert.equal(CARBINE.bonus, 2.7);
-  const d = characterStats(a), lumen = Math.round((11 + d.staminaBonus) * 2.7), now = carbineBase(d, {}); assert.ok(Math.abs(now - lumen) <= 1, `${now} vs Lumen Carbine ${lumen}`);
-  assert.ok(Math.abs(carbineBase(d, { attackDamage: .2 }) - now * 1.2) < 1e-9, "armor's blow damage");
+  const bonus = new Game(a, 0).toolBonus(CARBINE.channel), lumen = Math.round((11 + bonus) * 2.7), now = carbineBase(bonus); assert.ok(Math.abs(now - lumen) <= 1, `${now} vs Lumen Carbine ${lumen}`);
+  assert.ok(Math.abs(carbineBase(bonus, .2) - now * 1.2) < 1e-9, "armor's spell damage"); assert.ok(Math.abs(carbineBase(bonus, 0, true) - now * 1.4) < 1e-9, 'the magic buff');
 });
 
 test('the Lumen Spindle is plain again: a boomerang shot every .36 s, no beam', () => {
