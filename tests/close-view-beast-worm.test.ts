@@ -1,4 +1,4 @@
-// The Ashen Moth (and the Grove Moth) in Close View (src/close-view-beast-worm.ts on the shared beast rig).
+// The Tremor Worm in Close View (src/close-view-beast-worm.ts on the shared beast rig).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BEAST_SLOT } from '../src/close-view-beast-rig.ts';
@@ -38,7 +38,9 @@ test('the mesh: bounded per tier, valid, cached; registered for when it is up', 
     assert.strictEqual(wormMesh(tier), m);
   }
   const e = createCombatant('tremorWorm', 1, 1, true, []); assert.equal(CLOSE_VIEW_BEASTS.tremorWorm.scale, 1.25); assert.ok(closeViewBeastEligible(e));
-  e.untargetable = true; assert.ok(!closeViewBeastEligible(e), 'about to burst up: the mound'); e.untargetable = false; e.hidden = true; assert.ok(!closeViewBeastEligible(e), 'under the ground: the mound');
+  e.untargetable = true; e.pack = { ...(e.pack || {}), attack: 'wormRise', phase: 'erupt', data: {} }; assert.ok(!closeViewBeastEligible(e), 'about to burst up: the mound');
+  e.pack = { ...e.pack, attack: null, phase: 'idle', worm: { mode: 'emerge', t: .3 } }; assert.ok(closeViewBeastEligible(e), 'coming up after a trip under the ground: its body, as the standard view draws it');
+  e.untargetable = false; e.hidden = true; assert.ok(!closeViewBeastEligible(e), 'under the ground: the mound');
 });
 
 test('it stands at the game\'s lift: half out, all the way up', () => {
@@ -80,4 +82,40 @@ test('death; reduced motion', () => {
   assert.ok(n < 1000 && g == null, 'it sinks and is gone');
   const r = createWormTrack(), e2 = createCombatant('tremorWorm', 10, 10, true, []); sampleWorm(r, e2, env(e2, 1000, { reduce: true }));
   const a = Array.from(sampleWorm(r, e2, env(e2, 1016, { reduce: true })).skin); assert.deepEqual(Array.from(sampleWorm(r, e2, env(e2, 4000, { reduce: true })).skin), a);
+});
+
+test('the lip tentacles: four bones each, writhing on a travelling wave, suckers in the mesh', () => {
+  for (let i = 0; i < 6; i++) for (const b of ['tent', 'tentB', 'tentC', 'tentD']) assert.ok(WORM_SKELETON.index[b + i] >= 0, b + i);
+  const e = createCombatant('tremorWorm', 10, 10, true, []), tr = createWormTrack(); e.wormLift = 1;
+  const local = (now) => { sampleWorm(tr, e, env(e, now)); const h = wormBone(tr, 'head'), d = wormBone(tr, 'tentD0'), c = wormBone(tr, 'tentB0'); return [d[0] - h[0], d[1] - h[1], d[2] - h[2], c[0] - h[0], c[1] - h[1], c[2] - h[2]]; };
+  for (let k = 0; k < 20; k++) local(1000 + k * 16);
+  const a = local(1400), b = local(1700);
+  const tipMove = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), rootMove = Math.hypot(a[3] - b[3], a[4] - b[4], a[5] - b[5]);
+  assert.ok(tipMove > rootMove * 1.5 && tipMove > .05, `the tip writhes more than the root (${tipMove.toFixed(3)} vs ${rootMove.toFixed(3)})`);
+});
+
+test('the lash snaps out to the ground along the lanes, then recoils', () => {
+  let near = Infinity, tipAt = null, after = Infinity, lashT = null;
+  fight('wormMaw', 5, (f, e, tr, now) => {
+    if (e.pack.data?.lashed && lashT == null) lashT = now;
+    if (lashT == null || now - lashT > 900) return;
+    const d = wormBone(tr, 'tentD0');
+    if (now - lashT < 240) { if (d[2] < near) { near = d[2]; tipAt = [d[0] - f.x, d[1] - f.y, Math.atan2(e.pack.data.aim?.y ?? 0, e.pack.data.aim?.x ?? 1)]; } }
+    else if (now - lashT > 700) after = Math.min(after, d[2]);
+  });
+  assert.ok(lashT != null, 'it lashed');
+  const S = (1.7) * WORM_RIG.closeViewScale, ahead = tipAt[0] * Math.cos(tipAt[2]) + tipAt[1] * Math.sin(tipAt[2]);
+  assert.ok(near < .6 * S && ahead > 1.5, `the tip strikes the ground ahead (${near.toFixed(2)} high, ${ahead.toFixed(2)} ahead)`);
+  assert.ok(after > near + 1, `and recoils (${after.toFixed(2)})`);
+});
+
+test('coming up: it rises out of the hole on the emergence clock and throws the ground off', () => {
+  const e = createCombatant('tremorWorm', 10, 10, true, []), tr = createWormTrack(); let now = 1000; e.wormLift = .5;
+  const at = (t) => { e.pack = { ...(e.pack || {}), attack: null, phase: 'idle', data: {}, worm: { mode: 'emerge', t } }; const f = sampleWorm(tr, e, env(e, now += 16)); return [wormBone(tr, 'head')[2] / f.scale, f.skin[WORM_SKELETON.index.spray * 12]]; };
+  const early = at(.6), late = at(.1);
+  e.pack.worm = { mode: 'surfaced', t: 3 }; for (let k = 0; k < 20; k++) sampleWorm(tr, e, env(e, now += 16));
+  const up = wormBone(tr, 'head')[2] / scaleOf(e);
+  assert.ok(early[0] < late[0] && late[0] < up + 1e-6, `it rises (${early[0].toFixed(2)}, ${late[0].toFixed(2)}, ${up.toFixed(2)})`);
+  assert.ok(Math.abs(early[1]) > .05, 'the thrown earth shows as it breaks out');
+  assert.ok(Math.abs(tr.pose.skin[WORM_SKELETON.index.spray * 12]) < .01, 'and is gone once it is up');
 });

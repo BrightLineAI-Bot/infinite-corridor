@@ -88,3 +88,40 @@ test('death; reduced motion', () => {
   const r = createDragonTrack('crimsonTyrant'), e2 = createCombatant('crimsonTyrant', 10, 10, true, []); sampleDragon(r, e2, env(e2, 1000, { reduce: true }));
   const a = Array.from(sampleDragon(r, e2, env(e2, 1016, { reduce: true })).skin); assert.deepEqual(Array.from(sampleDragon(r, e2, env(e2, 4000, { reduce: true })).skin), a);
 });
+
+// ---- the rework after Tim's review (2026-11-12): wings spread and beating in every flying move, the rearing roar, the aerial slam
+const span = (tr) => { const a = dragonBone(tr, 'wingTipL'), b = dragonBone(tr, 'wingTipR'); return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
+const Sof = (kind) => scaleOf(createCombatant(kind, 0, 0, true, []));
+
+test('in every flying move the wings are spread wide, and they beat', () => {
+  for (const [kind, id] of [['crimsonTyrant', 'dragonStrafe'], ['crimsonTyrant', 'dragonSupernova'], ['crimsonTyrant', 'dragonDive'], ['doomChaser', 'doomWaves'], ['doomChaser', 'doomFall'], ['doomChaser', 'doomEclipse']]) {
+    const S = Sof(kind); let n = 0, least = Infinity, lo = Infinity, hi = -Infinity;
+    fight(kind, id, 9, (f, e, tr) => { const d = e.pack?.data || {}; if (!(e.dragonAir > .5) || d.stage === 'fall' || d.mode === 'drop') return;
+      n++; least = Math.min(least, span(tr) / S); const z = (dragonBone(tr, 'wingTipR')[2] - dragonBone(tr, 'chest')[2]) / S; lo = Math.min(lo, z); hi = Math.max(hi, z); });
+    assert.ok(n > 20, `${kind} ${id}: aloft (${n})`); assert.ok(least > .9, `${kind} ${id}: spread (${least.toFixed(2)})`); assert.ok(hi - lo > .6, `${kind} ${id}: beating (${(hi - lo).toFixed(2)})`);
+  }
+});
+
+test('the roar: it rears up with its wings outspread; on the move it carries them half open', () => {
+  const S = Sof('doomChaser'); let reared = 0, spread = 0;
+  fight('doomChaser', 'doomRoar', 4, (f, e, tr) => { if (e.dragonPose !== 'roar') return; reared = Math.max(reared, (dragonBone(tr, 'chest')[2] - dragonBone(tr, 'pelvis')[2]) / S); spread = Math.max(spread, span(tr) / S); });
+  assert.ok(reared > .25, `reared (${reared.toFixed(2)})`); assert.ok(spread > 1.5, `wings out (${spread.toFixed(2)})`);
+  const e = createCombatant('crimsonTyrant', 4, 10, true, []), tr = createDragonTrack('crimsonTyrant'); let now = 1000;
+  for (let i = 0; i < 30; i++) sampleDragon(tr, e, env(e, now += 16)); const rest = span(tr);
+  for (let i = 0; i < 60; i++) { e.x += 1.5 / 60; sampleDragon(tr, e, env(e, now += 1000 / 60)); }
+  assert.ok(span(tr) > rest * 1.15, `half open on the move (${(span(tr) / Sof('crimsonTyrant')).toFixed(2)} vs ${(rest / Sof('crimsonTyrant')).toFixed(2)})`);
+});
+
+test('the aerial slam: it hangs upright on spread wings, dives nose first, and lands with its wings flung up', () => {
+  for (const [kind, id, stageOf] of [['crimsonTyrant', 'dragonDive', (d) => d.stage], ['doomChaser', 'doomFall', (d) => ({ track: 'hang', drop: 'fall', done: 'done' })[d.mode]]]) {
+    const S = Sof(kind), seen = { hang: 0, fall: 0, done: 0 }; let upright = 0, nose = Infinity, flung = -Infinity, contact = false;
+    fight(kind, id, 9, (f, e, tr) => { if (e.pack?.attack !== id) return; const st = stageOf(e.pack.data || {}); if (!(st in seen)) return; seen[st]++;
+      const c = dragonBone(tr, 'chest'), p = dragonBone(tr, 'pelvis'), h = dragonBone(tr, 'head');
+      if (st === 'hang' && seen.hang > 20) upright = Math.max(upright, (c[2] - p[2]) / S);
+      if (st === 'fall' && seen.fall > 12) nose = Math.min(nose, (h[2] - p[2]) / S);
+      if (st === 'done' && seen.done > 3 && seen.done < 20) { flung = Math.max(flung, (dragonBone(tr, 'wingTipR')[2] - c[2]) / S); if (f.contact) contact = true; } });
+    assert.ok(seen.hang && seen.fall && seen.done, `${kind}: every stage (${JSON.stringify(seen)})`);
+    assert.ok(upright > .25, `${kind}: hangs upright (${upright.toFixed(2)})`); assert.ok(nose < 0, `${kind}: nose first (${nose.toFixed(2)})`);
+    assert.ok(flung > 1, `${kind}: wings flung up (${flung.toFixed(2)})`); assert.ok(contact, `${kind}: it lands`);
+  }
+});
