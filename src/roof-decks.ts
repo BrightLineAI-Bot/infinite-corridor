@@ -72,6 +72,20 @@ export function roofDeckAt(map, fx, fy) {
   if (tx < 0 || ty < 0 || tx >= X.width || ty >= Math.floor(X.cells.length / X.width)) return null;
   return roofDeckOfTile(map, ty * X.width + tx);
 }
+// The Wayfarer's collision box over a position (x, y), as game.ts footprintOpen reads it: x + .24..x + .76, y + .5..y + .88.
+export const DECK_FOOT_BOX = Object.freeze({ left: .24, right: .76, top: .5, bottom: .88 });
+// A deck with a house tile under the collision box at (x, y): deck `id` when given (null when none of its tiles is under the box),
+// else the highest one at or under `maxLevel`. At most four tiles, no allocation. The edge of a roof (game.ts deckEdgeHold): the feet
+// have left the roof but the box still stands over its walls.
+export function roofDeckUnderBox(map, x, y, maxLevel = Infinity, id = null) {
+  const X = roofDeckIndex(map); if (!X.cells || !Number.isFinite(x) || !Number.isFinite(y)) return null; const B = DECK_FOOT_BOX, h = Math.floor(X.cells.length / X.width);
+  let best = null;
+  for (let ty = Math.floor(y + B.top); ty <= Math.floor(y + B.bottom - 1e-6); ty++) for (let tx = Math.floor(x + B.left); tx <= Math.floor(x + B.right - 1e-6); tx++) {
+    if (tx < 0 || ty < 0 || tx >= X.width || ty >= h) continue; const d = roofDeckOfTile(map, ty * X.width + tx); if (!d) continue;
+    if (id != null) { if (d.id === id) return d; continue; }
+    if (d.level <= maxLevel + 1e-6 && (!best || d.level > best.level)) best = d; }
+  return best;
+}
 export function roofDeckById(map, id) { return id == null ? null : roofDeckIndex(map).byId.get(id) || null; }
 // The level of the deck over tile index i, or Infinity (footprintOpen: walls of a deck at or under `deckReach` do not stop).
 export function roofDeckLevelOfTile(map, i) { const d = roofDeckOfTile(map, i); return d ? d.level : Infinity; }

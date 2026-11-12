@@ -68,7 +68,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, LUMEN_CARBINE, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -77,7 +77,7 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
@@ -2445,7 +2445,8 @@ export class Game {
     this.reticle = null;
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
-    this.loadArea(this.area, false);
+    this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
+    this.loadArea(this.area, false); this._resumeDeck = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3273,7 +3274,8 @@ export class Game {
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
-      playerRelocated = !resumeLiftPosition && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3560,7 +3562,7 @@ export class Game {
       return ground + this.discAir * LIFT_PER_LEVEL;
     if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
       return ground + this.skyLevel * LIFT_PER_LEVEL;
-    if (!body.jumping && this.standingDeck() && roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
+    if (!body.jumping && this.standingDeck() && (roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id || roofDeckUnderBox(this.map, x, y, Infinity, this.roofDeck.id))) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
     if (carrier?.raft) {
       const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
         pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
@@ -3671,7 +3673,13 @@ export class Game {
   }
   // The roof deck stood on as saved (playerRuntime.roofDeck), after the area loads: kept only when that deck is still under the
   // feet at that level (roof-decks.ts validRoofDeck); otherwise the Wayfarer stands on the ground there, unhurt.
-  restoreRoofDeck(q) { const d = this.area === "overworld" && this.decksApply() ? validRoofDeck(this.map, normalizeRoofDeck(q), this.player.x + .5, this.player.y + .75) : null; this.setRoofDeck(d); return !!d; }
+  // A roof's edge saved (the feet just past it, the box still over its walls) is kept too (deckEdgeHold), so a reload never wedges them.
+  resumeDeckEdge(w) { const q = normalizeRoofDeck(this._resumeDeck), d = q ? roofDeckById(this.map, q.id) : null, p = this.player; // the box over that roof's walls, nothing else stopping it
+    return !!d && this.decksApply() && d.level === q.level && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, w, p.x, p.y, false, false, false, true, d.level); }
+  restoreRoofDeck(q) { const saved = normalizeRoofDeck(q), ok = this.area === "overworld" && this.decksApply(), p = this.player;
+    let d = ok ? validRoofDeck(this.map, saved, p.x + .5, p.y + .75) : null;
+    if (!d && ok && saved) { const e = this.deckEdgeHold(p.x, p.y, saved.level); d = e && e.id === saved.id && e.level === saved.level ? e : null; }
+    this.setRoofDeck(d); return !!d; }
   // The jump in the air as saved (resumeRuntime `jumpAir`), after the area loads (loadArea clears the sky-hop height).
   restoreJumpAir(j, now) {
     if (!j || typeof j !== "object" || !(this.jumpUntil > now)) return; const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null;
@@ -3787,8 +3795,18 @@ export class Game {
     const d = roofDeckAt(this.map, p.x + .5, p.y + .75);
     if (d && p.jumping && this.skyAir != null && !this.droneLift && !this.mechBoosting && d.level > this.skyAir + 1e-6 && d.level <= this.skyAir + 1 + 1e-6) { this.jumpUntil = now; p.jumping = false; this.deckHop = true; } // onto a roof one level up: on it
     if (p.jumping) return null;
-    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, on = d && from != null && d.level <= from + (wasOn ? 0 : 1) + 1e-6 ? d : null;
+    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, reach = from == null ? null : from + (wasOn ? 0 : 1);
+    const on = d && reach != null && d.level <= reach + 1e-6 ? d : reach != null ? this.deckEdgeHold(p.x, p.y, reach) : null; // the edge: still over its walls
     this.setRoofDeck(on); return on;
+  }
+  // The roof's edge (pre-publish review of 915: walking or jumping off a roof wedged the Wayfarer in its wall): the deck, at or under
+  // maxLevel, whose walls the collision box at (x, y) still stands over once the feet have left its roof, or null. Only a deck whose
+  // walls are all that stop the box (footprintOpen without and with its deckReach) holds: the Wayfarer stays up on that roof's edge
+  // until the whole box is clear of the walls, and only then drops (one fall, from the roof's height, where they come down).
+  deckEdgeHold(x, y, maxLevel) {
+    if (!this.decksApply() || !Number.isFinite(maxLevel)) return null; const d = roofDeckUnderBox(this.map, x, y, maxLevel); if (!d) return null;
+    const w = mapWidth(this.map, this.area);
+    return !footprintOpen(this.map, w, x, y, true, false, false, true) && footprintOpen(this.map, w, x, y, true, false, false, true, d.level) ? d : null;
   }
   // Is (x, y) over a roof higher than z that the glide is not already over? (a glide never climbs onto a roof above it)
   deckWallAt(x, y, z, from = null) { const d = roofDeckAt(this.map, x + .5, y + .75); return !!d && d !== from && d.level > z + 1e-6; }
@@ -4744,6 +4762,7 @@ export class Game {
     if (!drone && m.active && !m.empowered && (Number(this.save.materials?.cinderIron) || 0) >= MECH_POWER.burn) { this.message = setEmpowered(this.save, true).message; this.cancelConsumeVisual('form-change'); this.sync(); return true; } // release 383: robot → empowered → stowed
     if (m.active && !drone && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; } // release 639
     if (m.active) { if (m.empowered) setEmpowered(this.save, false); m.active = false; if(!drone)this.cancelConsumeVisual('form-change'); this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
+    if (!drone && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks: the robot never uses them
     if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; if(!drone)this.cancelConsumeVisual('form-change'); this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
   }
@@ -4800,7 +4819,7 @@ export class Game {
         if (this.glide && !gliderForbiddenAt(this.map, width, p.x, p.y) && elevationAt(this.map, width, p.x, p.y) > z0 + 1e-6) { const z = this.glide; this.returnFrom(from, G.noClimb); this.glide = z; if (out[0]) z.vx = 0; else z.vy = 0; z.seamHold = { rx: from.rx, ry: from.ry, dx: out[0], dy: out[1], at: keep }; } }
       return "crossed"; }
     p.x = nx; p.y = ny; p.walkPhase = 0;
-    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : null; // roof decks: a glide comes down onto a roof it is over
+    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : decks && !deckUnder ? this.deckEdgeHold(p.x, p.y, z0) : null; // roof decks: a glide comes down onto a roof it is over (or onto its edge, over its walls)
     const ground = Math.max(elevationAt(this.map, width, p.x, p.y), onDeck ? onDeck.level : -Infinity), here = tileUnder(this.map, width, p.x, p.y);
     if (g.z > ground + .05) { if (g.pinned && g.z > ground + G.skim + .01) g.pinned = false; return "flying"; }
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
@@ -6268,6 +6287,7 @@ export class Game {
     if (this.swimming) return "Get out of the water first.";
     if (this.mechUp() || this.droneUp()) return "Stow the robot or the drone first.";
     if (this.glide) return "Land first.";
+    if (this.standingDeck()) return "Climb down from the roof first: there is no room for a mount up here."; // roof decks: mounts never use them
     if (footprintInsideStructure(this.map, mapWidth(this.map, this.area), p.x, p.y)) return "There is no room for a mount indoors.";
     return null;
   }
@@ -7252,6 +7272,7 @@ export class Game {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
+    if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts LUMEN_CARBINE: the Lumen Spindle as a beam carbine
     if (this.isOrrery()) { const accepted=orreryPress(this, now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts: the Aether Orrery's own tap, halo and charge
     if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
@@ -7356,6 +7377,72 @@ export class Game {
     }
     return n;
   }
+  // The Lumen Carbine (tool-forms.ts LUMEN_CARBINE): a Lattice tool form that turns the Lumen Spindle into a beam carbine.
+  carbineOn() { const w = rangedWeapon(this.save.equipment?.secondary); return !!w && !w.brawlerTool && w.name === LUMEN_CARBINE.tool && fieldOn(this.save, LUMEN_CARBINE.key); }
+  // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow }.
+  carbineState() { return (this.carbine ||= { charge: null, traces: Array.from({ length: LUMEN_CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "" })) }); }
+  // The Spindle raised in the hands (the same tool visual fireSecondary stamps), continuing from the pose it is in.
+  carbinePose(now, d) {
+    const prior = normalizeAttackVisual(this.player.attackVisual), deadline = attackVisualDeadline(this.player, prior), kind = "lumen-spindle";
+    const priorPose = prior?.toolKind === kind && prior.toolMotion?.v === 1 && !prior.presentationCancelled && deadline > now ? sampleToolActionMotion(prior, prior.durationMs - (deadline - now)) : null;
+    const ms = TOOL_ACTION_TIMING[kind]?.durationMs || ACTION_MOTION.toolMs, v = stampAttackVisual(this.player, "emitter", ms, d); this.player.attackUntil = now + ACTION_MOTION.toolMs;
+    if (!v) return; const appearance = simpleToolAppearanceKind(rangedWeapon(this.save.equipment.secondary)); if (appearance) v.toolAppearance = { v: 1, kind: appearance };
+    const primary = this.save.equipment.primary?.id, baseKind = priorPose ? prior.toolMotion.baseKind : primary === "primary-cinder-pike" ? "cinder-pike" : primary === "primary-verge-cleaver" ? "verge-cleaver" : "salvage-blade";
+    v.toolKind = kind; v.toolMotion = { v: 1, entry: priorPose ? [priorPose.yaw, priorPose.side, priorPose.up, priorPose.forward, priorPose.weight] : [0, 0, 0, 0, 0], direction: 1, baseKind }; this.player.actionVisualUntil = now + ms;
+  }
+  carbineAim(direction) {
+    if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (this.player.x + .5), q.y - (this.player.y + .45), this.player.facing); }
+    return projectileDirection(direction?.x ?? this.save.lastAim?.x ?? 0, direction?.y ?? this.save.lastAim?.y ?? 0, this.player.facing);
+  }
+  // A press: with a held button (`action`), the charge starts and the beam fires on release (tickCarbine); without one (auto
+  // attack), a tap beam fires at once. Refused while the last beam recovers, with no room for a shot, or with no round to fire.
+  carbinePress(now, direction, action = null) {
+    const K = this.carbineState(); if (K.charge) return false;
+    if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
+    if (this.projectiles.filter((p) => !p.dead && !p.shard).length >= (this.area === "dungeon" ? 32 : 64)) return false;
+    const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
+    const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
+    if (!action) return this.carbineFire(now, d, 0);
+    K.charge = { held: 0, action, dir: { x: d.x, y: d.y } }; this.carbinePose(now, d); return true;
+  }
+  // The beam after a hold of `held` s (0: a tap). Takes its rounds, then fires as full a beam as they paid for.
+  carbineFire(now, d, held) {
+    const C = LUMEN_CARBINE, weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool"), echoes = glyphs.count("echo"); if (!weapon) return false;
+    const want = carbineRounds(held), round = this.takeRound(echoes); if (!round) return false;
+    let paid = 1; while (paid < want && spendRound(this.save, echoes)) paid++;
+    if (paid < want) { held = carbineAffordedHold(held, paid); this.message = paid > 1 ? `Rounds ran short: a part charge (${paid} of ${want}).` : "Rounds ran short: the charge fires as a single beam."; }
+    const derived = characterStats(this.save), magic = C.scale !== "physical", reach = 1 + derived.attackReach, k = carbineFill(held);
+    const ag = armorGlyphBonus(this.save), base = (weapon.damage + (magic ? derived.magicBonus : derived.meleeBonus)) * (magic ? 1 + ag.spellDamage : 1 + ag.attackDamage) * (magic && this.magicBuffRemaining > 0 ? 1.4 : 1);
+    const ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
+    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: C.range * reach / C.speed, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: magic ? "magic" : "physical", path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k };
+    if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; }
+    if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const A = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + A.damage))); shot.scale = A.scale; shot.grow = A.grow; } // release 515: Charged Air
+    this.projectiles.push(shot); this.carbineTrace(shot, k);
+    this.player.attackReadyAt = now + C.cadence * 1000 * glyphs.mods.cooldown * (1 - ag.attackSpeed);
+    this.carbinePose(now, d);
+    if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d, sx = at.x + .5 + cd.x * .35, sy = at.y + .45 + cd.y * .35; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: sx, y: sy, bx: sx, by: sy, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // the clone's copy (release 365)
+    const plan = echoPlan(glyphs); echoEvent(this, "shot", now, { shot });
+    if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-beam fan
+    if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // Echo glyphs: copies of the beam
+    if (paid === want && carbineCharged(held)) this.message = k >= 1 ? "The Carbine releases a full charge!" : "The Carbine releases.";
+    return true;
+  }
+  // The afterglow follows a beam while it flies and fades once it ends (fixed slots: a free one, else the oldest is reused).
+  carbineTrace(shot, k) {
+    const T = this.carbineState().traces; let slot = T[0]; for (const q of T) { if (q.life <= 0) { slot = q; break; } if (q.life < slot.life) slot = q; }
+    Object.assign(slot, { shot, x0: shot.bx, y0: shot.by, x1: shot.x, y1: shot.y, k, life: LUMEN_CARBINE.trace.life, where: this.orreryWhere() });
+  }
+  // A frame: the charge grows while its button is held and fires on release; the afterglow follows its beam, then fades.
+  tickCarbine(dt, now, held) {
+    const K = this.carbine, C = LUMEN_CARBINE; if (!K) return;
+    let where = null; for (const q of K.traces) { if (q.life <= 0) continue; where ??= this.orreryWhere(); if (q.where !== where) { q.life = 0; q.shot = null; continue; } if (q.shot && !q.shot.dead && this.projectiles.includes(q.shot)) { q.x1 = q.shot.x; q.y1 = q.shot.y; } else { q.shot = null; q.life = Math.max(0, q.life - dt); } }
+    const c = K.charge; if (!c) return;
+    if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
+    { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
+    if (held) { c.held = Math.min(c.held + dt, C.charge.full + C.charge.grace); if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
+    K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
+    this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
+  }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
     const t = slotTool(this.save, slot);
@@ -7396,6 +7483,7 @@ export class Game {
     if (!aboard(this.save) && frameForm(this.save) !== want) {
       const out = m?.active === true;
       if (out && this.droneLift) { this.message = "The drone is carrying you: land before the frame changes form."; return false; }
+      if (out && want === "robot" && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks
       if (out && frameForm(this.save) === "robot" && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; }
       const r = setMechMode(this.save, want); if (!r.ok) { this.message = r.message; return false; }
       if (out) { this.cancelConsumeVisual('form-change'); this.sync(); this.message = want === "drone" ? "The robot folds away; the frame turns to the drone." : "The drone docks; the frame turns to the robot."; return true; }
@@ -9197,13 +9285,14 @@ export class Game {
       this.save.toolMode = true;
       let toolAccepted=false;const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) toolAccepted=this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
+        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(this.carbineOn()?LUMEN_CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Lumen Carbine looks as far as its beam reaches
       toolAccepted=this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } if(toolAccepted)this.cancelPendingMeleeContact('tool'); }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
+    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Lumen Carbine: its charge and afterglow
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
