@@ -34,6 +34,7 @@ import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
+import { roofDeckById } from "./roof-decks.ts"; // roof decks: the roof stood on keeps its roof drawn
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
@@ -1786,7 +1787,12 @@ function shelterSigil(ctx,cx,cy,r,glyph){
   else{for(let q=0;q<3;q++){const a=-Math.PI/2+q*Math.PI*2/3;ctx.moveTo(cx+Math.cos(a)*r+r*.18,cy+Math.sin(a)*r);ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,r*.18,0,7)}ctx.moveTo(cx,cy-r*.34);ctx.lineTo(cx+r*.3,cy+r*.18);ctx.lineTo(cx-r*.3,cy+r*.18);ctx.closePath()}
   ctx.stroke();
 }
+// The house whose roof is cut away to show its inside (the one the Wayfarer is in), or null; never while they stand on a roof deck.
+export function roofCutawayFor(g, mw = 32) { return g.area === "overworld" && g.standingDeck?.() ? null : structureOccupancy(g.map.tiles, mw, g.player.x, g.player.y); }
+// Roof decks (roof-decks.ts): while the Wayfarer stands on a roof, no house is "inside": every roof stays drawn (set each frame).
+let onRoofDeck = false;
 function insideShelter(o,p,map){
+  if(onRoofDeck)return false;
   const b=o.bounds||{x:o.x-2,y:o.y-2,w:5,h:4},cx=p.x+.5,cy=p.y+.7,inset=.22;
   if(map)return structureOccupancy(map,32,p.x,p.y,o.id)===o.id;
   return cx>b.x+inset&&cx<b.x+b.w-inset&&cy>b.y+inset&&cy<b.y+b.h-inset;
@@ -1821,6 +1827,16 @@ function shack(ctx,o,s,p,map){
 // Roof report (2026-11-04): is the Wayfarer standing on a roof (structure "buildingRoof")? The tile under the feet, as landscape.ts tileUnder
 // and movement read it (x + .5, y + .75), so the drawing, the roof's cutaway and a fall all agree on where they are.
 export const roofTileUnder = (tiles, w, p) => !!p && tiles?.[Math.floor(p.y + .75) * w + Math.floor(p.x + .5)]?.structure === "buildingRoof";
+// Roof decks: the roof's edge traced faintly (where a step off is a drop) and a soft shadow under the Wayfarer's feet on it.
+export const ROOF_DECK_CUE = Object.freeze({ edge: "#f2e6c8", edgeAlpha: .45, width: .05, shadow: "#00000055", shadowW: .22, shadowH: .07 });
+function drawRoofDeckCue(ctx, g, mw, s) {
+  const d = roofDeckById(g.map, g.roofDeck?.id); if (!d) return; const C = ROOF_DECK_CUE, p = g.player, raise = liftAt(g.map, mw, p.x, p.y);
+  ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = C.edgeAlpha; ctx.strokeStyle = C.edge; ctx.lineWidth = Math.max(1, s * C.width); ctx.beginPath();
+  for (const i of d.cells) { const x = i % mw, y = Math.floor(i / mw), at = (dx, dy) => roofDeckById(g.map, g.map.tiles[(y + dy) * mw + x + dx]?.buildingId) === d;
+    if (!at(-1, 0)) { ctx.moveTo(x * s, y * s); ctx.lineTo(x * s, (y + 1) * s); } if (!at(1, 0)) { ctx.moveTo((x + 1) * s, y * s); ctx.lineTo((x + 1) * s, (y + 1) * s); }
+    if (!at(0, -1)) { ctx.moveTo(x * s, y * s); ctx.lineTo((x + 1) * s, y * s); } if (!at(0, 1)) { ctx.moveTo(x * s, (y + 1) * s); ctx.lineTo((x + 1) * s, (y + 1) * s); } }
+  ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = C.shadow; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s, s * C.shadowW, s * C.shadowH, 0, 0, 7); ctx.fill(); ctx.restore();
+}
 export const standingOnRoof = (g, w) => g.area === "overworld" && roofTileUnder(g.map?.tiles, w, g.player); // (or lifted off it by the drone, or gliding from it)
 // ... and on the ground just north of a building's block, where its roof and facade, drawn after the creatures, hide them?
 export const behindRoof = (tiles, w, p) => { const x = Math.floor(p.x + .5), y = Math.floor(p.y + .75); for (let dy = 1; dy <= 4; dy++) { const t = tiles?.[(y + dy) * w + x]; if (t?.greatBuilding) return true; } return false; };
@@ -2260,7 +2276,7 @@ function paintBuildingTile(ctx, t, x, y, s, d, map, w) {
   const n = at(0, -1); if (n?.blocked && n.kind !== "rubbleFloor") { ctx.fillStyle = "#00000040"; ctx.fillRect(px, py, s + 1, s * .22); }
 }
 function architecturalBuilding(ctx,o,s,p,map){
-  const meta=structureRenderMeta(o),b=o.bounds,inside=structureOccupancy(map,32,p.x,p.y,o.id)===o.id,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
+  const meta=structureRenderMeta(o),b=o.bounds,inside=!onRoofDeck&&structureOccupancy(map,32,p.x,p.y,o.id)===o.id,colors={city:["#393a3f","#858188"],arcology:["#18333b","#58a0a6"],cloister:["#3b2d35","#9a737f"],fortress:["#302b27","#9b8268"]}[o.districtStyle]||["#333","#888"],accent={copper:"#b37954",ivory:"#d5c8a7",oxide:"#9a6457",violet:"#9278a8"}[o.accent]||colors[1],cells=meta.cells,set=meta.set;
   ctx.save();if(inside){ctx.strokeStyle=accent+"77";ctx.lineWidth=2;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}ctx.restore();return}
   ctx.fillStyle=colors[0];ctx.beginPath();for(const c of cells)ctx.rect(c.x*s,c.y*s,s+1,s+1);ctx.fill();ctx.globalAlpha=.28;ctx.fillStyle=colors[1];for(const c of cells)if(((c.x+c.y+o.signGlyph)&3)===0)ctx.fillRect(c.x*s+s*.12,c.y*s+s*.12,s*.76,s*.12);ctx.globalAlpha=1;
   const x=b.x*s,y=b.y*s,w=b.w*s,h=b.h*s;ctx.strokeStyle=accent;ctx.lineWidth=3;for(const c of cells){if(!set.has(`${c.x-1},${c.y}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo(c.x*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x+1},${c.y}`)){ctx.beginPath();ctx.moveTo((c.x+1)*s,c.y*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s,c.y*s);ctx.lineTo((c.x+1)*s,c.y*s);ctx.stroke()}if(!set.has(`${c.x},${c.y+1}`)){ctx.beginPath();ctx.moveTo(c.x*s,(c.y+1)*s);ctx.lineTo((c.x+1)*s,(c.y+1)*s);ctx.stroke()}}if((o.shape==='rect'||o.shape==='keep')&&(o.roofProfile==='gable'||o.roofProfile==='spire')){ctx.beginPath();ctx.moveTo(x+s*.18,y+h*.48);ctx.lineTo(x+w*.5,y+(o.roofProfile==='spire'?s*.12:h*.2));ctx.lineTo(x+w-s*.18,y+h*.48);ctx.stroke()}else if(o.districtStyle==='fortress'){ctx.fillStyle=accent+"bb";for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)&&(c.x+c.y)%2===0)ctx.fillRect(c.x*s+s*.12,c.y*s-s*.12,s*.42,s*.3)}else{ctx.strokeStyle=accent+"66";ctx.lineWidth=1;for(const c of cells)if(!set.has(`${c.x},${c.y-1}`)){ctx.beginPath();ctx.moveTo(c.x*s+s*.12,c.y*s+s*.25);ctx.lineTo((c.x+1)*s-s*.12,c.y*s+s*.25);ctx.stroke()}}
@@ -2429,7 +2445,9 @@ export function render(ctx, g, w, h, now) {
   if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
   renderCacheStats.visibleTiles=(r-l)*(b-t);
   renderCacheStats.visibleObjects=0;
-  const activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y),activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
+  onRoofDeck=g.area==="overworld"&&!!g.standingDeck?.(); // roof decks: on a roof the house is not entered (no cutaway)
+  let activeBuildingId=structureOccupancy(g.map.tiles,mw,p.x,p.y);if(onRoofDeck)activeBuildingId=null; // as roofCutawayFor: on a roof deck nothing is cut away
+  const activeShelter=objectLists.shelters.find(o=>o.id===activeBuildingId&&renderableObject(g,o));
   setLandscapeClock(now);
   const flatCapture = worldCapture || (g.map?.interiorTerrain?.version === 1 || g.map?.building) && closeViewCapturing();
   // STANDARD_VIEW_FLOOR (Tim, 2026-11-11: in the Pentagons "the character seems to be kind of like floating above the ground"):
@@ -2445,7 +2463,7 @@ export function render(ctx, g, w, h, now) {
   const supportLevel = interior ? interiorSurfaceLevel(g.map, p.x + .5, p.y + .75) : 0;
   const hopLift = interior && g.skyAir != null && jumping
     ? Math.max(flatFloor ? 0 : supportLevel, g.skyAir - (flatFloor ? supportLevel : 0)) * LIFT_PER_LEVEL
-    : g.area === "overworld" && g.skyAir != null && jumping
+    : g.area === "overworld" && g.skyAir != null && jumping && !g.deckHop /* roof decks: a hop on or onto a roof is drawn as an ordinary jump */
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
   const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
@@ -2944,7 +2962,8 @@ export function render(ctx, g, w, h, now) {
   // Tim's roof report (2026-11-04: "two versions of the character... it looked like it stood at an edge"): standing on a great
   // building's or compound's roof (the tile under the feet, as movement reads it), the Wayfarer is drawn once, after the roofs,
   // lifted to the roof's drawn height; never in this pass, where the roof drawn later covered it.
-  const roofUnder = standingOnRoof(g, mw);
+  const roofDeckDrawn = onRoofDeck && !closeViewCapturing(); // roof decks: on a roof, the Wayfarer is drawn after the roofs, as on a great building's
+  const roofUnder = standingOnRoof(g, mw) || roofDeckDrawn;
   if(captureDrone){
     const source=g.droneAt,clock=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),carry=!!g.mechBoosting;
     const x=carry?p.x:source.x,y=carry?p.y:source.y,rawY=y-(carry?.97:0),lift=(playerDraw.lift||0)+(playerDraw.jumpLift||0),sample=()=>{const a=playerDroneVisualAnchor(p,source,{carrying:carry,lift,now:clock,quiet});return a?{kind:'corridorDrone',x:a.x,y:a.y,supportX:p.x+.5,supportY:p.y+.75,lift:a.z,pose:'idle',phase:0,pace:0,amount:0,carrying:carry,yaw:a.yaw}:null;};
@@ -3055,7 +3074,7 @@ export function render(ctx, g, w, h, now) {
   if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
   if(shelterRaise)ctx.restore();
   if(roofUnder){ // roof report 2026-11-04: on a roof, the Wayfarer stands over it, at the roof's height (the one draw), and the roof's lethal edges near them are marked over it
-    drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");
+    if(roofDeckDrawn)drawRoofDeckCue(ctx,g,mw,s); else drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");
     if (!worldCapture) { const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); } }
   else if(!worldCapture&&g.area==="overworld"&&g.map?.greatBuilding&&behindRoof(g.map.tiles,mw,p)){ // roof report 2026-11-04: walking behind a building's facade, a faint Wayfarer shows through it
     const raise=groundLift(p.x,p.y)+(playerDraw.lift||0);ctx.save();ctx.globalAlpha=GIANT_TREE.ghost;if(raise)ctx.translate(0,-raise*s);playerDraw.fn();ctx.restore(); }

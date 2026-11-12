@@ -14,6 +14,7 @@ import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stag
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { drawPentagonSigilIcon } from "./renderer.ts";
+import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
@@ -256,6 +257,7 @@ setTimeout(() => {
         e.detail.clientX - r.left,
         e.detail.clientY - r.top,
       );
+    if (game.riftAimArmed?.()) { const at = closeViewSurfacePick(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top); game.placeRiftAim(at ? at.x : q.x, at ? at.y : q.y, undefined, at ? at.z : null); persist(); return; } // RIFT_AIM: the tap after arming Rift Step picks its point (the ground or a roof under the finger)
     const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
     if (!hit && game.placeShadowClone?.(q.x, q.y)) { persist(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
     if (hit) { game.lockTarget(hit.id); return; }
