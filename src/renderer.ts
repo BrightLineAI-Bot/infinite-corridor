@@ -26,6 +26,7 @@ import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
@@ -2800,7 +2801,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
@@ -3188,6 +3189,8 @@ export function render(ctx, g, w, h, now) {
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, w, h);
   }
+  // The Spinosaurus's bite landing (spino-render.ts): a great bite mark over the screen while the game's g.spinoBiteMark (1 fresh .. 0) lasts.
+  if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),

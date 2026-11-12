@@ -18,6 +18,7 @@ import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RI
 import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.ts";
 import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.ts";
 import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.ts";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -55,6 +56,8 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   // Listener's own slot), as does a walled Listener before its Morphling has taken shape (the standard view's banded robe).
   listener: Object.freeze({ mesh: listenerMesh, createTrack: createListenerTrack, sample: sampleListener, get scale() { return LISTENER_RIG.closeViewScale; },
     eligible: (e) => !e.mirrorClone && !e.morphWorm && (e.listenerPhase !== 'walled' || !!e.morphScaled) }),
+  // the Spinosaurus: its hide, then (spinoFossil, through the shed) its bones, the mesh chosen by the foe as the Listener's
+  spinoRex: Object.freeze({ mesh: spinoMesh, createTrack: createSpinoTrack, sample: sampleSpino, get scale() { return SPINO_RIG.closeViewScale; } }),
 });
 // The Stalker's skinned body covers the cat and the ape. Its pool (a silver puddle, a mouth rising out of the floor), its mist (wisps
 // wheeling round the Wayfarer) and the tide (it is the first wave) are flat or vapour art the standard view owns; the small copies and

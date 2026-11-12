@@ -472,6 +472,16 @@ export const MONSTER_PACK = {
     palette: ["#5d6670", "#1d2229", "#7fd6ff", "#eafaff"], render: "lightningGiant", tags: ["construct", "elder", "lightning"],
     lore: "A robot as tall as a house, with a club of iron and copper and Tesla coils on its shoulders. Lightning arcs from it to whatever it hunts. It knocks you flat with a shock, swings and slams its club, and when it calls the sky down onto itself it runs hot and fast while bolts fall all around it.",
   },
+  // STAND-IN (art branch claude/spino-art): just enough for the Spinosaurus's standard-view and Close View art to render and be
+  // tested. Fixture-only (prototypeOnly, no attacks), so nothing spawns it. The gameplay branch's real `spinoRex` entry (stats,
+  // attacks, AI, the SPINO table) replaces this one at merge; keep theirs.
+  spinoRex: {
+    id: "spinoRex", prototypeOnly: true, noEcho: true, unique: true, name: "The Spinosaurus", epithet: "The Hunter of Hunters",
+    stats: [500, 25, 0], form: { scale: 2 }, sizeClass: "large", movement: "walk", brain: "duelist",
+    attacks: [], bossAttacks: [],
+    palette: ["#f2a35e", "#c4561a", "#ffc61a", "#f6c48e"], render: "spinoRex", tags: ["beast", "elder"],
+    lore: "A hunter on two legs, longer than a hall, a sail of spines along its back and a crocodile's jaws full of teeth.",
+  },
   briarStag: {
     id: "briarStag", name: "The Briar Stag", epithet: "The Forest That Charges", unique: true,
     stats: [320, 17, 0], form: { scale: 1.75 }, sizeClass: "large", movement: "walk", brain: "duelist",
