@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 917 — Release 917 — Rift Step off a roof lands on its edge, never in the wall
+
+The pre-publish review of 916 found that the roof-edge hold added for walking, jumping, the glider and the drone did not cover blinks: a plain or aimed Rift Step from a roof could end with the feet just past the roof and the collision box over the house's walls, and the Wayfarer landed on the ground wedged in the wall (383 of 36,038 plain steps off roofs in its sweep).
+
+**CODE:** `blinkFooting` (src/game.ts) first asks `deckEdgeHold(x, y, top)`: when the box at the step's end still stands over the walls of a roof at or under the step's reach, the step lands on that roof (`{ level, deck }`) and the ordinary walk-off rule takes it down once the box clears the walls. The ground footing is then tested with no deck reach, so a house's walls always stop a ground landing. tests/rift-roof-edge.test.ts replays the review's plain and aimed repros (seed ROOF, section -2,0, shack--2-0).
+
+**BOUNDARY:** Blinks only; walking, jumping, glide and drone movement and every creature's collision are unchanged. No save change (the roof stood on is already saved as `roofDeck`). A step that clears the walls still lands on the ground and falls by the usual rule.
+
 ## Release 916 — Verge Cleaver slashes, Salvage Blade reskin, Lumen Carbine
 
 Tim, 2026-11-12: the Verge Cleaver's attack "just kind of flails... scrap it and start over, just do some standard sword slashes... the reskin of it looks amazing"; "do a reskin of the Salvage Blade so it looks a little cooler... I like that you hold it beneath the guard, almost like a long spike" (text and stats untouched: Tim has a rework coming); and an energy rifle, "one powerful shot then another... charge it up... like a sniper", made "a passive for the Lumen Spindle... it'll have to scale with magic".
