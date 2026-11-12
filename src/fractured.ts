@@ -168,7 +168,7 @@ export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; re
 // least `minDistance` tiles off, on open, safe floor the Wayfarer can walk to. Never on a guarded floor (a guardian, boss,
 // trial, vault or finale), never in Fractured mode (its waves own the pace), never past `liveCap` creatures alive on the floor
 // nor `perVisit` respawned in one visit. A respawned creature gives `reward.xp` of the experience and `reward.marks` marks,
-// drops an item `reward.drop` of the time and nothing else: no lasting flags, keys, relics, glyphs, Echoes, Sigils, Tesseracts
+// drops an item `reward.drop` of the time (`reward.dropByPlace` per kind: a Pentagon's every time) and nothing else: no lasting flags, keys, relics, glyphs, Echoes, Sigils, Tesseracts
 // or quest kills. Rolls are a hash of the seed, the floor and the floor's respawn counter `n`.
 export const RESPAWN = {
   places: { keep: true, arcology: true, pentagon: true, cube: true }, // which kinds of building respawn
@@ -185,7 +185,11 @@ export const RESPAWN = {
   objectClear: 2, // tiles kept clear round every object (doors, stairs, ladders, chests, exits, keys, relics, rests)
   maxTiles: 6000, // a floor larger than this is never searched
   corpse: 2, // s a fallen respawned creature lies before it is cleared away
-  reward: { xp: .5, marks: 1, drop: .2 },
+  // `drop`: the share of respawned kills that drop an item (the ordinary creature's own drop table, ordinaryMonsterGearDrop);
+  // `dropByPlace` overrides it per kind of building. Tim, 2026-11-12, on creatures coming back in Pentagons: "yes, like other
+  // games, so we'll just have loot in our game": a Pentagon's respawned creatures drop as freshly laid ones of their sort do
+  // (1, every kill). Still never more than `perVisit` respawned creatures in a visit, and nothing lasting.
+  reward: { xp: .5, marks: 1, drop: .2, dropByPlace: { pentagon: 1 } },
   messages: { stir: "Something stirs on this floor again." },
 };
 const STYLE_ID = /^(?:building|compound):.+:(-?\d+):(-?\d+):(keep|apartment|hive):/;
@@ -198,6 +202,11 @@ export function respawnPlace(id) {
   else if (s.startsWith("castle:")) kind = "keep";
   else { const lab = s.match(LAB_ID); if (lab) kind = lab[4] && lab[3] !== "shell" ? "cube" : RESPAWN.styles[lab[3]] || null; else { const m = s.match(STYLE_ID); if (m) kind = RESPAWN.styles[m[3]] || null; } }
   return kind && P[kind] ? kind : null;
+}
+// The item-drop share of a respawned creature's kill on a floor of `place` (respawnPlace): RESPAWN.reward.dropByPlace, else .drop.
+export function respawnDropRate(place) {
+  const R = RESPAWN.reward, by = place != null && Object.hasOwn(R.dropByPlace || {}, place) ? Number(R.dropByPlace[place]) : NaN;
+  return Math.max(0, Math.min(1, Number.isFinite(by) ? by : Number(R.drop) || 0));
 }
 // A floor that never respawns: arenas, finales, vaults, trials, a boss's floor, any floor laid with a guardian.
 export function respawnFloorOk(map) {
