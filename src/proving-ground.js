@@ -1,16 +1,16 @@
-import { currentDungeonDoors } from './game.js?v=r910-8a0a850f5b5a';
-import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r910-8a0a850f5b5a";
-import { serializeSave, deserializeSave } from './save-codec.js?v=r910-8a0a850f5b5a';
-import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r910-8a0a850f5b5a';
-import { drawRangedEffects } from "./combat-visuals.js?v=r910-8a0a850f5b5a";
-import { drawOculusDais } from "./oculus.js?v=r910-8a0a850f5b5a"; // release 874
-import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r910-8a0a850f5b5a"; // release 874: the lab's utility button
-import { createInput } from "./input.js?v=r910-8a0a850f5b5a";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r910-8a0a850f5b5a";
-import { CLOSE_VIEW_HOOKS, closeViewDrawsProps, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r910-8a0a850f5b5a"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r910-8a0a850f5b5a";
-import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r910-8a0a850f5b5a"; // feel pass 1: fixed steps and interpolated drawing, as in the game
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r910-8a0a850f5b5a"; // release 791: Enter Proving Ground from Options
+import { currentDungeonDoors } from './game.js?v=r911-37269cec64fc';
+import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r911-37269cec64fc";
+import { serializeSave, deserializeSave } from './save-codec.js?v=r911-37269cec64fc';
+import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r911-37269cec64fc';
+import { drawRangedEffects } from "./combat-visuals.js?v=r911-37269cec64fc";
+import { drawOculusDais } from "./oculus.js?v=r911-37269cec64fc"; // release 874
+import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r911-37269cec64fc"; // release 874: the lab's utility button
+import { createInput } from "./input.js?v=r911-37269cec64fc";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r911-37269cec64fc";
+import { CLOSE_VIEW_HOOKS, closeViewDrawsProps, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r911-37269cec64fc"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r911-37269cec64fc";
+import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r911-37269cec64fc"; // feel pass 1: fixed steps and interpolated drawing, as in the game
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r911-37269cec64fc"; // release 791: Enter Proving Ground from Options
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";

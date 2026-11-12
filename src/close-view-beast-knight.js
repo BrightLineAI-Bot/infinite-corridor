@@ -9,12 +9,12 @@
 //
 // Body units are the standard view's (a tile times the actor's scale). monster-pack.ts reaches close-view.ts, which loads this
 // module before monster-pack.ts has finished loading, so its tables are read lazily (never at module load).
-import { ATTACK_MODULES, BOSS_PACE, KNIGHT } from "./monster-pack.js?v=r910-8a0a850f5b5a";
+import { ATTACK_MODULES, BOSS_PACE, KNIGHT } from "./monster-pack.js?v=r911-37269cec64fc";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r910-8a0a850f5b5a";
-import { KNIGHT_BODY } from "./close-view-beast-knight-body.js?v=r910-8a0a850f5b5a";
+} from "./close-view-beast-rig.js?v=r911-37269cec64fc";
+import { KNIGHT_BODY } from "./close-view-beast-knight-body.js?v=r911-37269cec64fc";
 
 function knightJoints() {
   const J = KNIGHT_BODY.joints, d = (a, b) => Math.hypot(J[a][0] - J[b][0], J[a][1] - J[b][1], J[a][2] - J[b][2]);

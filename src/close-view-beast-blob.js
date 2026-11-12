@@ -4,7 +4,7 @@
 // is enraged, bubbles rising and bursting, tendrils lashing out along their lanes) as one skinned body on the shared beast rig.
 // Its outline wobbles on eight lobes; it shivers as it winds up, surges along the engulf's lane, lifts on the leap and lands
 // in a splash; it grows as the game grows it (`e.scale`). Nothing here changes timing, damage, reach or targeting.
-import { defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, meshBuilder, clamp01, smooth, span, kick } from "./close-view-beast-rig.js?v=r910-8a0a850f5b5a";
+import { defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, meshBuilder, clamp01, smooth, span, kick } from "./close-view-beast-rig.js?v=r911-37269cec64fc";
 
 const LOBES = 8, TENDRILS = 3, TSEG = 3, BUBBLES = 3;
 export const BLOB_RIG = Object.freeze({

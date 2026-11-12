@@ -1,6 +1,6 @@
 // The Briar Stag's body and effects (release 705). Drawing only: nothing here changes combat state.
 // q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster). `now` (ms) drives the gait and flicker.
-import { STAG, DANGER } from "./monster-pack.js?v=r910-8a0a850f5b5a";
+import { STAG, DANGER } from "./monster-pack.js?v=r911-37269cec64fc";
 
 const TAU = Math.PI * 2;
 export const STAG_ART = {

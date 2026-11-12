@@ -6,12 +6,12 @@
 // tailL/R, spin, roll, nova, colonize, roar ...), `dragonAir` lifts it, `dragonSpin` turns it, `dragonCharge` lights its mouth;
 // the blows land as the game resolves them. Nothing here changes timing, damage, reach or targeting.
 // The art tables are read lazily (monster-pack.ts reaches close-view.ts, which loads this module first).
-import { DRAGON_ART } from "./crimson-dragon-render.js?v=r910-8a0a850f5b5a";
-import { DOOM_ART } from "./doom-chaser-render.js?v=r910-8a0a850f5b5a";
+import { DRAGON_ART } from "./crimson-dragon-render.js?v=r911-37269cec64fc";
+import { DOOM_ART } from "./doom-chaser-render.js?v=r911-37269cec64fc";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r910-8a0a850f5b5a";
+} from "./close-view-beast-rig.js?v=r911-37269cec64fc";
 
 export const DRAGON_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)

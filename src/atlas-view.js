@@ -2,11 +2,11 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r910-8a0a850f5b5a";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r910-8a0a850f5b5a";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r910-8a0a850f5b5a";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r910-8a0a850f5b5a";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r910-8a0a850f5b5a";
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r911-37269cec64fc";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r911-37269cec64fc";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r911-37269cec64fc";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r911-37269cec64fc";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r911-37269cec64fc";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -145,6 +145,45 @@ function pentagonDoorRows(save, map, previous = null, knownRooms = null) {
     const direction = o.kind === "exit" ? "OUT" : o.kind === "pentShortcut" ? "SHORTCUT" : o.dir === "up" ? "UP" : o.dir === "down" ? "DOWN" : "DOOR";
     return { id: o.id, x: o.x, y: o.y, kind: o.kind, direction, back, blocked, target: destination?.name || (o.kind === "exit" ? "Outside" : "Unexplored"), tag: `${back ? "BACK · " : ""}${direction}${blocked ? " · LOCKED" : ""}` };
   });
+}
+
+// The compass points only at an objective (Tim, 2026-11-12: "I don't think the compass should point at anything unless you
+// have an objective, like if he gives you a quest... Otherwise you can just wander."). Pure: main.ts navigationTargets passes
+// what it already has (the Journal pin, the compass pick, the far quest, the section's waymark objects) and draws what comes back.
+// In order: a quest pinned in the Journal; the tracked hunt; a far quest; an objective the Wayfarer chose by tapping the compass;
+// then a quest that sends them to a kind of place with no fixed section, by the section's own waymarks (COMPASS_QUEST_CUES). With
+// none of these the compass has no needle: no nearest crossing, signal or landmark by default (releases 153-886 aimed at one).
+export const COMPASS_HUNT_LIVE = Object.freeze(["accepted", "tracking", "target-located"]);
+export const COMPASS_QUEST_CUES = Object.freeze({
+  leads: Object.freeze(["crossing", "danger", "event"]), // the relay leads (Viewport tracking hunt): "follow the wayfinding marks toward the buried crossings", as since release 153
+  errand: Object.freeze(["crossing"]),                    // the Cairn Keeper's errand: "go into any crossing"
+});
+// Which quest-without-a-section is open, if any: the relay leads first, then the Cairn Keeper's errand.
+export function compassQuest(save) {
+  const f = save?.narrative?.facts || {};
+  if (f["leads.active"] && !f["leads.complete"]) return "leads";
+  if (save?.arcana?.starter === "set" && !(save?.lore?.surveyor?.links || []).length) return "errand";
+  return null;
+}
+// A waymark that leads to a crossing: a buried-crossing mark on ground seen before the guides, or a red mark that leads to a
+// crossing (waymark guides, before any world beast wakes). An amber mark on guided ground leads to a skyway, not a crossing.
+const crossingCue = (q) => q.guide ? !!q.crossing : q.signalKind === "crossing";
+export function compassQuestCue(quest, cues) {
+  const kinds = COMPASS_QUEST_CUES[quest]; if (!kinds) return null;
+  const list = (cues || []).filter((q) => q?.kind === "wayfindingCue");
+  if (quest === "errand") return list.find(crossingCue) || null;
+  for (const kind of kinds) { const cue = list.find((q) => q.signalKind === kind); if (cue) return cue; }
+  return null;
+}
+export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [] } = {}) {
+  const hunt = save?.viewport?.contracts?.[save?.viewport?.activeHuntId];
+  if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
+  if (hunt && COMPASS_HUNT_LIVE.includes(hunt.status) && Number.isInteger(hunt.target?.rx) && Number.isInteger(hunt.target?.ry)) return { area: "overworld", rx: hunt.target.rx, ry: hunt.target.ry, kind: "guidance", name: hunt.title || "Viewport guidance" };
+  if (farQuest) return { area: "overworld", rx: farQuest.rx, ry: farQuest.ry, kind: "guidance", name: farQuest.name };
+  if (area !== "overworld") return null;
+  if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
+  const cue = compassQuestCue(compassQuest(save), cues);
+  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : null;
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
