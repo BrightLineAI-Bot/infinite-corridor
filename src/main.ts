@@ -53,13 +53,14 @@ function uiButton(label, click) {
   return b;
 }
 export function itemIconDescriptor(item, slot = item?.slot || "empty") {
-  const name=String(item?.name||""),property=String(item?.property||"empty"),h=hashSeed(`${item?.id||name}:${property}:${item?.power||0}`),family=slot==="primary"?(name.includes("Pike")?"pike":name.includes("Cleaver")?"cleaver":"sword"):slot==="secondary"?(name.includes("Bombard")?"bombard":name.includes("Spindle")?"spindle":"caster"):slot==="armor"?(name.includes("Mantle")?"mantle":"coat"):slot==="charm"?"charm":"empty",
+  const name=String(item?.name||""),property=String(item?.property||"empty"),h=hashSeed(`${item?.id||name}:${property}:${item?.power||0}`),family=slot==="primary"?(name.includes("Dagger")?"daggers":name.includes("Pike")?"pike":name.includes("Cleaver")?"cleaver":"sword"):slot==="secondary"?(name.includes("Bombard")?"bombard":name.includes("Spindle")?"spindle":"caster"):slot==="armor"?(name.includes("Mantle")?"mantle":"coat"):slot==="charm"?"charm":"empty",
     accent=name.match(/Cinder|Ember|Kiln/i)?"#e47a48":name.match(/Glass|Needle/i)?"#72d7df":name.match(/Lumen|Rift|Quiet/i)?"#b28cda":({reach:"#7cc8b5",impact:"#d89a52",focus:"#a98bd4",quick:"#75cad8",blast:"#d56755",guard:"#d2ad68",stamina:"#7fbd8c",discovery:"#b28cda",steady:"#b8b1a2"}[property]||"#9e9b90");
   return{family,accent,rune:h%6,power:Math.max(0,Number(item?.power)||0),variant:(h>>>4)%4};
 }
 function gearIcon(item,slot){
   const q=itemIconDescriptor(item,slot),c=document.createElement("canvas");c.width=c.height=72;const x=c.getContext("2d");c.className="gear-icon";c.dataset.family=q.family;c.dataset.accent=q.accent;c.setAttribute("role","img");c.setAttribute("aria-label",item?`${item.name} equipment icon`:`Empty ${slot} slot`);if(!x)return c;x.translate(36,36);x.lineCap="round";x.lineJoin="round";x.fillStyle="#11171b";x.strokeStyle="#665f52";x.lineWidth=2;x.beginPath();x.arc(0,0,31,0,7);x.fill();x.stroke();x.shadowColor=q.accent;x.shadowBlur=8;x.strokeStyle=q.accent;x.fillStyle=q.accent+"55";x.lineWidth=4;
   if(q.family==="sword"){x.beginPath();x.moveTo(-14,18);x.lineTo(15,-20);x.lineTo(20,-23);x.lineTo(18,-16);x.lineTo(-9,22);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-17,11);x.lineTo(-6,20);x.stroke();}
+  else if(q.family==="daggers"){for(const k of[1,-1]){x.beginPath();x.moveTo(-17*k,20);x.lineTo(12*k,-15);x.lineTo(16*k,-21);x.lineTo(15*k,-11);x.lineTo(-12*k,22);x.closePath();x.fill();x.stroke();}} // the Fourfold Daggers: two short blades crossed
   else if(q.family==="pike"){x.beginPath();x.moveTo(-19,23);x.lineTo(13,-17);x.stroke();x.beginPath();x.moveTo(13,-17);x.lineTo(23,-25);x.lineTo(19,-11);x.closePath();x.fill();x.stroke();}
   else if(q.family==="cleaver"){x.beginPath();x.moveTo(-19,23);x.lineTo(3,-5);x.stroke();x.beginPath();x.moveTo(2,-5);x.lineTo(7,-25);x.lineTo(23,-16);x.lineTo(12,1);x.closePath();x.fill();x.stroke();}
   else if(q.family==="caster"){x.beginPath();x.moveTo(-22,-5);x.lineTo(13,-5);x.lineTo(23,2);x.lineTo(8,7);x.lineTo(-20,7);x.closePath();x.fill();x.stroke();x.beginPath();x.moveTo(-2,8);x.lineTo(-7,20);x.stroke();}
@@ -167,7 +168,7 @@ import {
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS, freshSave } from "./types.ts";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen } from "./items.ts";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
 import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
@@ -1937,6 +1938,7 @@ function openPack(tab) {
     `${Math.round(derived.damageReduction * 100)}% damage resistance`,
     `+${wayfarerDamage(derived.meleeBonus)} melee bonus`, // Tim 2026-11-11: damage text shows what lands (WAYFARER_DAMAGE), in whole numbers
     `+${wayfarerDamage(derived.magicBonus)} spell/projectile bonus`,
+    `+${wayfarerDamage(derived.weaponBonus)} ${save.equipment?.primary?.name || "weapon"} bonus (scales with ${SCALING_LABELS[scalingOf(save.equipment?.primary)] || "Might"})`, // Tim 2026-11-12
     `+${Math.round(derived.attackReach*100)}% melee and projectile reach`,
   ]) {
     const span = document.createElement("span");
@@ -1957,9 +1959,9 @@ function openPack(tab) {
   }catch(error){packSectionFailed("Seeds",error)}
   if (packTab === "wayfarer") try{
   const statHelp = {
-    Might: "+2 melee damage per rank.",
-    Finesse: "+3 maximum stamina per rank.",
-    Focus: "+1 projectile damage and about +2.3 spell damage per rank.",
+    Might: `+2 damage per rank with Might gear: ${scaledGearNames("might").join(", ")}.`, // Tim 2026-11-12 (items.ts WEAPON_SCALING / TOOL_SCALING)
+    Finesse: `+3 maximum stamina per rank, and +2 damage per rank with stamina gear: ${scaledGearNames("stamina").join(", ")}.`,
+    Focus: `About +2.3 spell damage per rank, +1 to magic shots and +2 to Focus weapons: ${scaledGearNames("magic").join(", ")}.`,
     Vigor: "+8 maximum health per rank.",
     Resolve: "+2% damage resistance per rank up to 45% in all; past 45% every rank (and more armor) still adds, with diminishing returns toward a 75% cap.",
   };
@@ -2023,8 +2025,9 @@ function openPack(tab) {
           : slot === "primary"
             ? `power ${item?.power || 0}; contributes to melee damage`
             : `power ${item?.power || 0}; contributes to projectile and spell damage`,
+      scaling = scalingOf(item), // Tim 2026-11-12 (items.ts WEAPON_SCALING / TOOL_SCALING)
       affixes = describeAffixes(item),
-      effect = `${item ? itemTier(item).toUpperCase() + " · " : ""}${baseEffect}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
+      effect = `${item ? itemTier(item).toUpperCase() + " · " : ""}${baseEffect}${scaling ? ` · scales with ${SCALING_LABELS[scaling]}` : ""}${affixes.length ? " · " + affixes.join(" · ") : ""}`;
     const label=document.createElement("small"),name=document.createElement("strong"),detail=document.createElement("span");label.textContent=slot.toUpperCase();name.textContent=item?`${item.name} +${item.upgradeRank||0}`:"Empty slot";detail.textContent=effect;card.append(gearIcon(item,slot),label,name,detail);
     gear.append(card);
   }
@@ -2213,9 +2216,9 @@ const STAT_GLOSSARY=[
   ["Upgrade rank","A preserved +rank on one item. It raises Power without rerolling identity, tier, affixes, set membership, or special behavior."],
   ["Aperture band","Dormant, Stirring, Open, and Resonant thresholds unlock disciplines and add deterministic possibilities to future eligible encounters without scaling every creature."],
   ["Aerial Step","A short traversal discipline that permits movement across lethal water or pits. It cannot cross blocked walls or gates and returns the Wayfarer to stable ground if it expires over danger."],
-  ["Might","Each rank adds 2 melee damage."],
-  ["Focus","Each rank adds 1 projectile damage and about 2.3 spell damage (spells hit for their base, the magic bonus and Focus, then a little more)."],
-  ["Finesse","Each rank adds 3 maximum stamina."],
+  ["Might",`Each rank adds 2 damage to the weapons and tools that scale with Might: ${scaledGearNames("might").join(", ")}.`],
+  ["Focus",`Each rank adds about 2.3 spell damage (spells hit for their base, the magic bonus and Focus, then a little more), 1 to magic shots, and 2 to blows of the weapons and tools that scale with Focus: ${scaledGearNames("magic").join(", ")}.`],
+  ["Finesse",`The stamina stat. Each rank adds 3 maximum stamina and 2 damage to the weapons and tools that scale with it: ${scaledGearNames("stamina").join(", ")}.`],
   ["Vigor","Each rank adds 8 maximum health."],
   ["Resolve","Each rank adds 2% damage resistance until resistance reaches 45%; past 45% each rank still adds, with diminishing returns toward the 75% cap."],
   ["Resistance","Reduces incoming damage. Armor, charms, Resolve, and Ward affixes add up in full to 45%; beyond that their total keeps raising it with diminishing returns, toward a hard cap of 75%."],

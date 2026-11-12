@@ -21,7 +21,7 @@ export const FIELD_PASSIVES = {
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.
 export const TOOL_FORMS = {
-  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical (Might)." },
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical, and scales with Finesse like the Blunderbuss." /* Tim 2026-11-12: the Blunderbuss scales with the stamina stat */ },
   "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
   "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s (less with faster tool recovery). Still physical (Might)." }, // release 535
   "lumen-sunburst": { name: "Sunburst Ricochet", text: `A Lumen Spindle shot that strikes a wall ricochets off it, cutting on through foes, and breaks into a sunburst of ${SUNBURST.shards} small shards, each striking a foe once for ${Math.round(SUNBURST.share * 100)}% of the shot. Up to ${SUNBURST.ricochets} ricochets a shot; one that ricocheted on its way out comes back the same way and bursts again. Still magic (Focus).` }, // tool-forms.ts SUNBURST

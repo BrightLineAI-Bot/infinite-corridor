@@ -1464,7 +1464,7 @@ test("melee collateral can kill a neutral resident without enemy rewards", () =>
   g.map.tiles.fill({ blocked: false });
   Object.assign(g.player, { x: v.x - 1, y: v.y });
   g.save.lastAim = { x: 1, y: 0 };
-  g.save.stats.Might = 30;
+  g.save.stats.Focus = 30; // Tim 2026-11-12: the Salvage Blade scales with Focus (items.ts WEAPON_SCALING)
   g.primaryAttack(1);
   assert.equal(g.save.consequences.npcs[v.id].status, "dead");
   assert.equal(g.save.consequences.npcs[v.id].intent, "collateral");
