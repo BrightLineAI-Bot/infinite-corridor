@@ -35,6 +35,8 @@ const POSES = {
   // release 710 (the Doom Chaser): walking on its wings, a lunging bite, hanging under its black sun
   wingWalk: { head: -.15, wing: .9, rear: -.08, jaw: .4 }, wingL: { head: -.25, wing: 1, rear: -.15, jaw: .6 }, wingR: { head: -.2, wing: .75, rear: -.05, jaw: .6 },
   bite: { head: -.3, wing: .3, rear: -.12, jaw: 1 }, eclipse: { head: .4, wing: 1, rear: .1, jaw: .8 },
+  // Skyfall (monster-pack.ts dragonDive): hanging on spread wings, folding them to fall, wings flung up as it lands
+  hang: { head: -.25, wing: 1, rear: .2, jaw: .5 }, dive: { head: -.4, wing: .45, rear: -.3, jaw: .8 }, diveLand: { head: -.3, wing: 1, rear: -.15, jaw: .9 },
 };
 
 export function drawCrimsonTyrant(ctx, q, now = 0) { drawDragonBody(ctx, q, now, DRAGON_ART); }

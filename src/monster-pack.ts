@@ -187,6 +187,9 @@ export const ATTACK_MODULES = {
   dragonTailSwipe: { id: "dragonTailSwipe", name: "Tail Lash", range: [0, 5], cooldown: 4.5, windup: .45, active: 1.2, recover: .45, damage: 1.1, tags: ["melee", "combo"], text: "Its tail lashes one way and then back the other." },
   dragonRoll: { id: "dragonRoll", name: "Rolling Crush", range: [0, 3.6], cooldown: 7, windup: .5, active: 1.6, recover: .6, damage: 1.3, tags: ["charge"], text: "Close in, it throws itself down and rolls across you, then back." },
   dragonFlameWave: { id: "dragonFlameWave", name: "Flame Wave", range: [0, 9], cooldown: 8, windup: .7, recover: .6, damage: 1, tags: ["ground", "fire"], text: "A wave of flame rolls out from it, all the way round or in a wide wedge toward you, and the ground it crosses stays burning for a while." },
+  // Tim (2026-11-12): "a slam attack where they just slam down on you from the air": it climbs, hangs on spread wings while its
+  // ring hunts you, then folds them and falls. Numbers in DRAGON.dive.
+  dragonDive: { id: "dragonDive", name: "Skyfall", range: [3, 13], cooldown: 11, windup: .5, active: 2.8, recover: .9, damage: 1.5, tags: ["charge", "fire", "flying"], text: "It springs into the air and hangs there on spread wings while a ring of shadow follows you; then it folds them and falls on you, and the ground bursts into flame where it lands." },
   dragonSupernova: { id: "dragonSupernova", name: "Sunfall", range: [0, 99], cooldown: 32, windup: .9, active: 4.2, recover: 1.4, damage: 1, hurtBelow: .8, tags: ["fire", "flying"], text: "It climbs into the sky and draws the heat of everything round it into itself, then bursts like a falling sun. Get out of its reach, shelter in a pen, or meet it with the Aegis: nothing else lives through it." },
   // The Doom Chaser's kit (release 710; Tim, 2026-11-03: "The second dragon... a sweeping laser beam that just like makes eruptions
   // everywhere... flies in the air and launches waves of dark energy... all of his attacks can be black... slam attacks... a similar
@@ -484,14 +487,14 @@ export const MONSTER_PACK = {
   },  crimsonTyrant: {
     id: "crimsonTyrant", name: "The Crimson Tyrant", epithet: "The Fire That Wants the World", unique: true,
     stats: [420, 20, 0], form: { scale: 2.6 }, sizeClass: "huge", movement: "hover", brain: "duelist",
-    attacks: ["dragonStrafe", "dragonSlam", "dragonWingBack", "dragonRain", "dragonBlast", "dragonClawSpin", "dragonTailSpin", "dragonTailSwipe", "dragonRoll", "dragonFlameWave", "dragonSupernova", "dragonColonize"], bossAttacks: [],
+    attacks: ["dragonStrafe", "dragonSlam", "dragonWingBack", "dragonRain", "dragonBlast", "dragonClawSpin", "dragonTailSpin", "dragonTailSwipe", "dragonRoll", "dragonFlameWave", "dragonSupernova", "dragonColonize", "dragonDive"], bossAttacks: [],
     palette: ["#a8221a", "#3a0a08", "#ffb04a", "#ffe8c0"], render: "crimsonTyrant", tags: ["beast", "elder", "fire", "dragon", "flying"],
     lore: "A dragon as long as a street, red as a forge, horned and winged, its tail never still. It burns the air, the ground and anything that stands on it; it slams, lashes, whirls and rolls; it rains fire and hurls great balls of it; and given time it claims a place for its own, turning the floor to lava a stretch at a time until there is nothing else. Then it bursts like a falling sun.",
   },
   doomChaser: { // release 710
     id: "doomChaser", name: "The Doom Chaser", epithet: "The Dark That Follows", unique: true,
     stats: [420, 20, 0], form: { scale: 2.5 }, sizeClass: "huge", movement: "hover", brain: "duelist",
-    attacks: ["doomBeam", "doomWaves", "doomBreath", "doomWingSlam", "doomPounce", "doomScales", "doomTar", "doomFall", "doomJaws", "doomOrbs", "doomEclipse", "doomRoar"], bossAttacks: [],
+    attacks: ["doomBeam", "doomWaves", "doomBreath", "doomWingSlam", "doomPounce", "doomScales", "doomTar", "doomFall", "doomJaws", "doomOrbs", "doomEclipse", "doomRoar", "dragonDive"], bossAttacks: [],
     palette: ["#1c1a24", "#08070c", "#a060ff", "#f0dcff"], render: "doomChaser", tags: ["beast", "elder", "dark", "dragon", "flying"],
     lore: "A black dragon as long as a street, its scales like burnt glass, violet fire showing through the cracks between them. It sweeps the ground with a beam of black light that leaves the earth erupting behind it, throws waves of darkness from the air, walks on its wings and slams them down, spits tar that catches fire, sheds scales that burst, and falls on you out of the sky. Its blows sow a frenzy in you; strike it hard enough and you throw the frenzy off, or it bursts inside you.",
   },
@@ -1124,10 +1127,15 @@ export const DRAGON = {
   tailSwipe: { swipes: 2, reach: 4.2, arc: 130, gap: .45 },
   roll: { speed: 7, leg: .7, hit: .7 },
   wave: { ring: .5, radius: 7.5, arc: 120, speed: 11, linger: 3.2, tick: .6, bite: .35 },
+  // Skyfall (dragonDive): rise s up to height (body units, as dragonAir), hang s while its ring follows you at track tiles/s, fall s;
+  // radius: the ring it lands in (tiles from its centre). The blow lands only at the impact.
+  // ring: the jumpable shockwave that runs out from its landing (tiles), doing ringShare of the blow (Tim 2026-11-12, as the stag's leap)
+  // stop: it hangs this far short of you (it lands beside you, your tile still deep in its ring, never on top of you).
+  dive: { rise: .7, height: 2.4, hang: 1.4, track: 5.5, fall: .38, radius: 2.6, stop: .9, ring: 5, ringShare: .6 },
   nova: { rise: .9, gather: 3.3, radius: 11, height: 3, lethal: 4 },
   // Tim (2026-11-03): "the dragons... should make lava on the floor persistent for some time... casting a spell makes a lava pool beneath
   // your spell": its fireballs (every other rain fireball, every Great Flame) and its slams leave a pool that burns `life` s, then crusts.
-  pool: { life: 6, rain: .85, rainEvery: 2, blast: 1.5, slam: 1.3, bite: .3 }, // lethal: × the Wayfarer's health, through any guard; only out of reach, a pen or the Aegis survive it
+  pool: { life: 6, rain: .85, rainEvery: 2, blast: 1.5, slam: 1.3, dive: 1.6, bite: .3 }, // lethal: × the Wayfarer's health, through any guard; only out of reach, a pen or the Aegis survive it
 };
 // The Doom Chaser (release 710). Balance as data. Lengths in tiles, times in seconds.
 export const DOOM = {
@@ -1540,6 +1548,7 @@ const START = {
   dragonRoll(e, s, w) { s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, DRAGON.roll.speed * DRAGON.roll.leg), width: bodyRadius(e) }; e.dragonPose = "crouch"; },
   dragonFlameWave(e, s) { const ring = hashSeed(`${e.id}:${s.seq}:wave`) % 100 < DRAGON.wave.ring * 100; s.data.ring = ring; s.tele = ring ? { type: "ring", radius: DRAGON.wave.radius } : { type: "arc", aim: s.data.aim, radius: DRAGON.wave.radius, arc: DRAGON.wave.arc }; e.dragonPose = "breath"; },
   dragonSupernova(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; },
+  dragonDive(e, s) { s.tele = { type: "brace" }; e.dragonPose = "crouch"; },
   doomBeam(e, s, w) { const base = Math.atan2(s.data.aim.y, s.data.aim.x), dir = hashSeed(`${e.id}:${s.seq}:beam`) % 2 ? 1 : -1, from = base - dir * DOOM.beam.sweep / 2; Object.assign(s.data, { from, to: base + dir * DOOM.beam.sweep / 2, angle: from, tick: 0, erupt: 0, n: 0, wind: s.t }); s.tele = { type: "beam", angle: from, length: rayLength(w, e, { x: Math.cos(from), y: Math.sin(from) }, DOOM.beam.reach), charging: true }; e.dragonPose = "charge"; },
   doomWaves(e, s) { s.tele = { type: "brace" }; e.dragonPose = "rise"; s.data.sent = 0; },
   doomBreath(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: DOOM.breath.reach, arc: DOOM.breath.arc + DOOM.breath.sweep * 180 / Math.PI }; e.dragonPose = "charge"; Object.assign(s.data, { tick: 0, pools: 0 }); },
@@ -1951,6 +1960,29 @@ const RUN = {
     const D = DRAGON.wave, d = s.data;
     w.addEffect({ kind: "dragonScorch", owner: e.id, x: e.x, y: e.y, angle: Math.atan2(d.aim.y, d.aim.x), arc: d.ring ? 360 : D.arc, reach: D.radius, radius: 0, arming: 0, life: D.radius / D.speed + D.linger, total: D.radius / D.speed + D.linger, damage: damageOf(e, "dragonFlameWave"), bite: Math.max(1, Math.ceil(e.damage * D.bite)) });
     e.dragonPose = "breath"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.dragonFlameWave.recover);
+  },
+  dragonDive(e, s, w) {
+    const A = ATTACK_MODULES.dragonDive, d = s.data, D = DRAGON.dive;
+    if (s.phase === "windup") { if (s.t <= 0) { d.stage = "rise"; d.left = D.rise; e.aloft = true; e.untargetable = true; e.dragonPose = "rise"; toPhase(s, "active", A.active); } return; }
+    if (s.phase !== "active") return;
+    const p = center(w.player); d.left -= w.dt;
+    if (d.stage === "rise") { const k = 1 - Math.max(0, d.left) / D.rise; e.dragonAir = D.height * (1 - (1 - k) * (1 - k)); if (d.left <= 0) { d.stage = "hang"; d.left = D.hang; e.dragonPose = "hang"; s.tele = { type: "circle", x: e.x, y: e.y, radius: D.radius }; } return; }
+    if (d.stage === "hang") { // its ring follows you
+      e.dragonAir = D.height; const dist = distance(p, e), step = Math.min(dist - D.stop, D.track * w.dt); if (step > .01) { w.move(e, (p.x - e.x) / dist * step, (p.y - e.y) / dist * step, { phase: true }); e.facingX = p.x >= e.x ? 1 : -1; }
+      s.tele = { type: "circle", x: e.x, y: e.y, radius: D.radius };
+      if (d.left <= 0) { d.stage = "fall"; d.left = D.fall; e.dragonPose = "dive"; } return; }
+    if (d.stage === "fall") {
+      const k = Math.max(0, d.left) / D.fall; e.dragonAir = D.height * k * k; s.tele = { type: "circle", x: e.x, y: e.y, radius: D.radius };
+      if (d.left > 0) return;
+      d.stage = "done"; e.dragonAir = 0; e.aloft = false; e.untargetable = false; e.dragonPose = "diveLand"; s.tele = null; const dmg = damageOf(e, "dragonDive");
+      if (distance(p, e) <= D.radius + .2) w.hurt(e, dmg, { jumpable: false, source: "dragonDive" });
+      w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: D.ring, arming: 0, life: .8, damage: Math.ceil(dmg * D.ringShare), jumpable: true, stone: true });
+      w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: D.radius + .6, arming: 0, life: .7, damage: 0 });
+      w.addEffect({ kind: "dragonBurst", owner: e.id, x: e.x, y: e.y, radius: D.radius, arming: 0, life: .5, total: .5, damage: 0 });
+      dragonPool(e.id, w, e.x, e.y, DRAGON.pool.dive, Math.max(1, Math.ceil(e.damage * DRAGON.pool.bite)));
+      toPhase(s, "recover", A.recover); return;
+    }
+    if (s.t <= 0) { e.aloft = false; e.untargetable = false; e.dragonAir = 0; s.tele = null; e.dragonPose = "land"; toPhase(s, "recover", A.recover); }
   },
   dragonSupernova(e, s, w) {
     const A = ATTACK_MODULES.dragonSupernova, D = DRAGON.nova;
@@ -4156,7 +4188,7 @@ export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
   const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
   // Release 275: the Gate Revenant is held with the Stage 1 world beasts (stages.ts), from tier 13 until three Listeners.
-  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)) });
+  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)) });
   const hit = ref.perHit, guard = ref.guard;
   const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
   e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + ref.level * t.referenceLevelHp) * t.beastShare));

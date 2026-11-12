@@ -1,3 +1,4 @@
+import { FOURFOLD_DAGGERS } from "./items.ts"; // the Fourfold Daggers' X of cuts
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -2932,7 +2933,10 @@ export function render(ctx, g, w, h, now) {
         ctx.strokeStyle = "#c6a36a";
         ctx.lineWidth = profile.shape === "thrust" ? 4 : 5;
         ctx.beginPath();
-        if (profile.shape === "thrust") {
+        if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
+          const D = FOURFOLD_DAGGERS, t = (D.angle * Math.PI) / 180, nx = -Math.sin(a), ny = Math.cos(a), r = s * profile.range;
+          for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
+        } else if (profile.shape === "thrust") {
           ctx.moveTo(cx, cy);
           ctx.lineTo(
             cx + Math.cos(a) * s * profile.range,
