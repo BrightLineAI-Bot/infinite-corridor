@@ -51,7 +51,7 @@ test('it rises, hangs while its ring follows you, then falls; untargetable only 
   }));
   assert.deepEqual(stages, ['rise', 'hang', 'fall', 'done']);
   assert.ok(ring.length > 20 && ring.every((r) => r < 1e-9), 'the ring is under it');
-  assert.ok(Math.hypot(w.player.x - e.x, w.player.y - e.y) < .5, `it came over you (${e.x.toFixed(2)}, ${e.y.toFixed(2)})`);
+  { const gap = Math.hypot(w.player.x - e.x, w.player.y - e.y); assert.ok(gap < DRAGON.dive.stop + .4 && gap > DRAGON.dive.stop - .4, `it came down beside you, you deep in its ring (${gap.toFixed(2)})`); assert.ok(gap < DRAGON.dive.radius); }
   assert.ok(!e.untargetable && !e.aloft && !(e.dragonAir > 0), 'down and targetable again');
 });
 

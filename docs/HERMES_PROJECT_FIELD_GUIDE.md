@@ -25,6 +25,8 @@ Tim, 2026-11-12:
   - Range 3–13, cooldown 11 s, damage ×1.5.
   - Rise .7 s to 2.4, hang 1.4 s tracking at 5.5 tiles/s, fall .38 s, landing radius 2.6.
   - It is untargetable while aloft and lands one unjumpable hit on impact.
+  - It hangs `DRAGON.dive.stop` (.9) tiles short of the Wayfarer, so it lands beside them, never on them.
+  - `tunePentagonArenaBeast` (game.ts) drops `dragonDive` from the Stillworks finale Tyrant: that duel is a tuned set piece (the early build loses; from mid on, the Wayfarer wins), and its duel tests hold.
   - The Doom Chaser keeps `doomFall` unchanged, now animated as hang, dive and landing.
 - **`close-view-beast-worm.ts`**
   - The shared `buildTendril` and `TENTACLE_LOOK`.

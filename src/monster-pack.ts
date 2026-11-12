@@ -1104,7 +1104,8 @@ export const DRAGON = {
   wave: { ring: .5, radius: 7.5, arc: 120, speed: 11, linger: 3.2, tick: .6, bite: .35 },
   // Skyfall (dragonDive): rise s up to height (body units, as dragonAir), hang s while its ring follows you at track tiles/s, fall s;
   // radius: the ring it lands in (tiles from its centre). The blow lands only at the impact.
-  dive: { rise: .7, height: 2.4, hang: 1.4, track: 5.5, fall: .38, radius: 2.6 },
+  // stop: it hangs this far short of you (it lands beside you, your tile still deep in its ring, never on top of you).
+  dive: { rise: .7, height: 2.4, hang: 1.4, track: 5.5, fall: .38, radius: 2.6, stop: .9 },
   nova: { rise: .9, gather: 3.3, radius: 11, height: 3, lethal: 4 },
   // Tim (2026-11-03): "the dragons... should make lava on the floor persistent for some time... casting a spell makes a lava pool beneath
   // your spell": its fireballs (every other rain fireball, every Great Flame) and its slams leave a pool that burns `life` s, then crusts.
@@ -1941,7 +1942,7 @@ const RUN = {
     const p = center(w.player); d.left -= w.dt;
     if (d.stage === "rise") { const k = 1 - Math.max(0, d.left) / D.rise; e.dragonAir = D.height * (1 - (1 - k) * (1 - k)); if (d.left <= 0) { d.stage = "hang"; d.left = D.hang; e.dragonPose = "hang"; s.tele = { type: "circle", x: e.x, y: e.y, radius: D.radius }; } return; }
     if (d.stage === "hang") { // its ring follows you
-      e.dragonAir = D.height; const dist = distance(p, e), step = Math.min(dist, D.track * w.dt); if (step > .01) { w.move(e, (p.x - e.x) / dist * step, (p.y - e.y) / dist * step, { phase: true }); e.facingX = p.x >= e.x ? 1 : -1; }
+      e.dragonAir = D.height; const dist = distance(p, e), step = Math.min(dist - D.stop, D.track * w.dt); if (step > .01) { w.move(e, (p.x - e.x) / dist * step, (p.y - e.y) / dist * step, { phase: true }); e.facingX = p.x >= e.x ? 1 : -1; }
       s.tele = { type: "circle", x: e.x, y: e.y, radius: D.radius };
       if (d.left <= 0) { d.stage = "fall"; d.left = D.fall; e.dragonPose = "dive"; } return; }
     if (d.stage === "fall") {
