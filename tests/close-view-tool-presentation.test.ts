@@ -54,7 +54,11 @@ test('actual source sockets give four smooth accepted poses over unchanged locom
   assert.ok(heights['lumen-spindle']>heights['rift-bombard']+.1,'the Spindle is held distinctly raised to shoot');
   // Right-hand tools now raise from the free-side hip, and the Blunderbuss shoulders like a rifle; the
   // left-hand sweep still out-travels the low hip-held Rift Bombard.
-  assert.ok(travel['great-sweep']>travel['rift-bombard'],'the heavy sweep out-travels the low-held Bombard');
+  // The Great Sweep is one full turn (Tim, 2026-11-12), so its hand passes back near the start at
+  // mid-action; compare its peak travel through the turn.
+  const sweepGrip=closeViewHandRoles('great-sweep').grip,sweepStart=hero('great-sweep',0).frame[sweepGrip];
+  const sweepPeak=Math.max(...[.25,.4,.5,.6].map(p=>{const m=hero('great-sweep',p).frame[sweepGrip];return Math.hypot(m[12]-sweepStart[12],m[13]-sweepStart[13],m[14]-sweepStart[14]);}));
+  assert.ok(sweepPeak>travel['rift-bombard'],'the heavy sweep out-travels the low-held Bombard');
   assert.ok(travel.blunderbuss>travel['rift-bombard']+.15,'the Blunderbuss is raised to the shoulder, the Bombard held low');
 });
 
