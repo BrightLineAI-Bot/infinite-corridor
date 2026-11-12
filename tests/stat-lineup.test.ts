@@ -7,11 +7,11 @@ import { Game, characterStats, scaledBonus } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
 import { WEAPON_SCALING, TOOL_SCALING, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling, scalingOf, scaledGearNames } from '../src/items.ts';
 
-const PROP = { 'Iron Fists': 'brawler', 'Salvage Blade': 'steady', 'Verge Cleaver': 'impact', 'Cinder Pike': 'reach', 'Fourfold Daggers': 'paired', 'Lumen Spindle': 'focus', 'Needle Caster': 'quick', Blunderbuss: 'quick', 'Rift Bombard': 'blast', 'Great Sweep': 'brawler', Hammerfall: 'brawler', 'Aether Orrery': 'orrery', 'Spark Coil': 'focus' };
+const PROP = { 'Iron Fists': 'brawler', 'Salvage Blade': 'steady', 'Verge Cleaver': 'impact', 'Cinder Pike': 'reach', 'Fourfold Daggers': 'paired', 'Lumen Spindle': 'focus', 'Needle Caster': 'quick', Blunderbuss: 'quick', 'Rift Bombard': 'blast', 'Great Sweep': 'brawler', Hammerfall: 'brawler', 'Aether Orrery': 'orrery', 'Spark Coil': 'focus', Carbine: 'focus' };
 const item = (name, slot, power = 15) => ({ id: `${slot}-sl-${name.replace(/ /g, '')}`, name, slot, power: power + (name === 'Blunderbuss' ? 6 : 0), basePower: power, upgradeRank: name === 'Blunderbuss' ? 6 : 0, property: PROP[name], tier: 'rare', affixes: [] });
 const LINEUP = {
   weapons: { 'Iron Fists': 'might', 'Verge Cleaver': 'might', 'Cinder Pike': 'stamina', 'Fourfold Daggers': 'stamina', 'Salvage Blade': 'magic' },
-  tools: { 'Aether Orrery': 'magic', 'Lumen Spindle': 'magic', 'Needle Caster': 'stamina', Blunderbuss: 'stamina', 'Great Sweep': 'might', 'Rift Bombard': 'might' },
+  tools: { 'Aether Orrery': 'magic', 'Lumen Spindle': 'magic', 'Needle Caster': 'stamina', Blunderbuss: 'stamina', Carbine: 'stamina' /* 2026-11-12: the Spark Coil at +6 */, 'Great Sweep': 'might', 'Rift Bombard': 'might' },
 };
 // Reference builds at level 15 (14 points): heavy builds put 10 into one stat and 4 into Vigor.
 const BUILDS = { might: { Might: 11, Finesse: 1, Focus: 1, Vigor: 5, Resolve: 1 }, magic: { Might: 1, Finesse: 1, Focus: 11, Vigor: 5, Resolve: 1 }, stamina: { Might: 1, Finesse: 11, Focus: 1, Vigor: 5, Resolve: 1 }, balanced: { Might: 4, Finesse: 4, Focus: 4, Vigor: 6, Resolve: 1 } };
@@ -58,7 +58,9 @@ test('Tim\'s lineup: every listed weapon and tool reads its stat from one table'
   for (const [name, stat] of Object.entries(LINEUP.tools)) assert.equal(toolScaling(item(name, 'secondary')), stat, name);
   assert.equal(toolScaling({ name: 'Needle Caster', slot: 'secondary', upgradeRank: 6, power: 12 }), 'stamina', 'a Needle Caster at +6 (the Blunderbuss) too');
   assert.equal(scalingOf(item('Rift Bombard', 'secondary')), 'might'); assert.equal(scalingOf(null), null);
-  assert.deepEqual(scaledGearNames('stamina'), ['Cinder Pike', 'Fourfold Daggers', 'Needle Caster', 'Blunderbuss']);
+  assert.equal(toolScaling({ id: 'spark-coil', name: 'Spark Coil', slot: 'secondary', upgradeRank: 6, power: 9 }), 'stamina', 'a Spark Coil at +6 (the Carbine) is stamina');
+  assert.equal(toolScaling({ id: 'spark-coil', name: 'Spark Coil', slot: 'secondary', upgradeRank: 5, power: 8 }), 'magic', 'below the rank it is still a magic Spark Coil');
+  assert.deepEqual(scaledGearNames('stamina'), ['Cinder Pike', 'Fourfold Daggers', 'Needle Caster', 'Blunderbuss', 'Carbine']);
   assert.deepEqual(scaledGearNames('magic'), ['Salvage Blade', 'Aether Orrery', 'Lumen Spindle', 'Spark Coil']);
 });
 

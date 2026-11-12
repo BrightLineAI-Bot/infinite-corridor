@@ -184,6 +184,12 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]),
     blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, shoulder: .87, width: .052, thick: .018, tip: 1.40 }),
     guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5 }),
+  // Carbine (the Spark Coil's upgraded form, 2026-11-12): a compact carbine with a long barrel. The bore axis rides just above
+  // the fist (-X is up); a short stock behind the grip, a gunmetal receiver, the barrel, a cyan coil wound round its root with a
+  // collar ahead of it, and a muzzle with a lit face at `muzzle[1]` (the shot's origin, TOOL_MUZZLE_LOCAL.carbine).
+  carbine: Object.freeze({ axisX: .15, grip: Object.freeze([.72, .86]), gripRadius: .023, stock: Object.freeze([.56, .72]), receiver: Object.freeze([.86, 1.10]),
+    barrel: Object.freeze([1.10, 1.64]), barrelRadius: Object.freeze([.020, .017]), coil: Object.freeze([1.14, 1.36]), coilRadius: .040, collar: Object.freeze([1.36, 1.39]), collarRadius: .044,
+    muzzle: Object.freeze([1.62, 1.69]), muzzleRadius: .026, bore: .014 }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -299,6 +305,24 @@ const riftBombard = (() => {
     heldTube([[S[0], S[1], S[3], .019], [S[0], S[2], S[3], .017]], 4, C.grip, { ref: [0, 0, 1] }),
   ]);
 })();
+// The Carbine's colours: gunmetal body, leather grip, and the coil and muzzle face lit cyan (0x7fe7ff is a lit actor colour,
+// close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive, so they glow in the dark like the beam they fire).
+export const CARBINE_COLOURS = Object.freeze({ body: 0x3a4246, grip: 0x5a4330, coil: 0x7fe7ff });
+const heroCarbine = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.carbine, C = CARBINE_COLOURS, X = F.axisX, Y = -.25;
+  const face = [], z = F.muzzle[1] + .001, n = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.bore * 1.4, Y + Math.sin(a) * F.bore * 1.4, z]; });
+  for (let i = 1; i < 5; i++) face.push([n[0], n[i], n[i + 1]]);
+  return Object.freeze([
+    heldTube([[.17, Y, F.grip[0], F.gripRadius], [.17, Y, F.grip[1], F.gripRadius * 1.05]], 6, C.grip),
+    block(.17, Y, (F.stock[0] + F.stock[1]) / 2, .028, .024, (F.stock[1] - F.stock[0]) / 2, C.body, -2, 0, 1.19),
+    block((X + .17) / 2, Y, (F.receiver[0] + F.receiver[1]) / 2, .05, .036, (F.receiver[1] - F.receiver[0]) / 2, C.body, -2, 0, 1.19),
+    heldTube([[X, Y, F.barrel[0], F.barrelRadius[0]], [X, Y, F.barrel[1], F.barrelRadius[1]]], 6, C.body),
+    heldTube([[X, Y, F.coil[0], F.coilRadius], [X, Y, F.coil[1], F.coilRadius]], 6, C.coil, { flat: true, phase: 0 }),
+    heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, C.body),
+    heldTube([[X, Y, F.muzzle[0], F.muzzleRadius], [X, Y, F.muzzle[1], F.muzzleRadius]], 6, C.body, { caps: 1 }),
+    heldFacets(face, C.coil, () => [0, 0, 1]),
+  ]);
+})();
 // Closed forged blade: the sharp outer ring retains the original broken outline;
 // inset front/back faces provide readable thickness without changing length or reach.
 const brokenGreatswordOutline = [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]];
@@ -387,7 +411,7 @@ const needleCaster = [
 // Recipe-space muzzle tips (the grip is (.17,-.25,.79); the barrel/shaft runs along +Z, except the
 // generic emitter, which points along recipe +X). Every Close View shot from a held tool starts here.
 const TOOL_MUZZLE_LOCAL=Object.freeze({'rift-bombard':Object.freeze([CLOSE_VIEW_HERO_WEAPON_FORM.bombard.axisX,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575]),
-  'spark-coil':Object.freeze([.17,-.25,1.30]),'needle-caster':Object.freeze([.17,-.25,1.41]),emitter:Object.freeze([.355,-.25,.783])});
+  'spark-coil':Object.freeze([.17,-.25,1.30]),carbine:Object.freeze([CLOSE_VIEW_HERO_WEAPON_FORM.carbine.axisX,-.25,CLOSE_VIEW_HERO_WEAPON_FORM.carbine.muzzle[1]]),'needle-caster':Object.freeze([.17,-.25,1.41]),emitter:Object.freeze([.355,-.25,.783])});
 const PHASED_TOOL_EMISSION=new Set(['rift-bombard','blunderbuss','lumen-spindle']);
 export const closeViewHeldMuzzleLocal=(profile)=>Object.hasOwn(TOOL_MUZZLE_LOCAL,profile)?TOOL_MUZZLE_LOCAL[profile]:null;
 // Uses the exact recipe grip, normalized socket axes and the .82 x held-scale conversion of
@@ -610,7 +634,7 @@ const heroSalvageBlade = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.

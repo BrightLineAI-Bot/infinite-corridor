@@ -68,7 +68,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, LUMEN_CARBINE, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -7354,7 +7354,7 @@ export class Game {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
-    if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts LUMEN_CARBINE: the Lumen Spindle as a beam carbine
+    if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts CARBINE: the Spark Coil at +CARBINE_RANK, a beam carbine
     if (this.isOrrery()) { const accepted=orreryPress(this, now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts: the Aether Orrery's own tap, halo and charge
     if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
@@ -7459,18 +7459,18 @@ export class Game {
     }
     return n;
   }
-  // The Lumen Carbine (tool-forms.ts LUMEN_CARBINE): a Lattice tool form that turns the Lumen Spindle into a beam carbine.
-  carbineOn() { const w = rangedWeapon(this.save.equipment?.secondary); return !!w && !w.brawlerTool && w.name === LUMEN_CARBINE.tool && fieldOn(this.save, LUMEN_CARBINE.key); }
-  // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow }.
-  carbineState() { return (this.carbine ||= { charge: null, traces: Array.from({ length: LUMEN_CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "" })) }); }
-  // The Spindle raised in the hands (the same tool visual fireSecondary stamps), continuing from the pose it is in.
+  // The Carbine (tool-forms.ts CARBINE): the Spark Coil's upgraded form (items.ts CARBINE_RANK), a charged beam carbine.
+  carbineOn() { return !!rangedWeapon(this.save.equipment?.secondary)?.carbine; }
+  // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow (a trace also holds
+  // a charged beam's pending Continuous Assault volley), lances: Continuous Assault's fixed pool of strike effects }.
+  carbineState() {
+    return (this.carbine ||= { charge: null, traces: Array.from({ length: CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "", assault: 0 })),
+      lances: Array.from({ length: CONTINUOUS_ASSAULT.maxLive }, () => ({ id: "", kind: "assault-lance", x: 0, y: 0, life: 0, radius: 0, pulse: 99, untilPulse: 0, damage: 0, pulseIndex: 0, hits: {}, delay: 0, glyphHost: null, damageType: "physical", track: "" })) });
+  }
+  // The Carbine raised (the simple-tool emitter visual with the carbine appearance), held `poseMs` so a charge restamps rarely.
   carbinePose(now, d) {
-    const prior = normalizeAttackVisual(this.player.attackVisual), deadline = attackVisualDeadline(this.player, prior), kind = "lumen-spindle";
-    const priorPose = prior?.toolKind === kind && prior.toolMotion?.v === 1 && !prior.presentationCancelled && deadline > now ? sampleToolActionMotion(prior, prior.durationMs - (deadline - now)) : null;
-    const ms = TOOL_ACTION_TIMING[kind]?.durationMs || ACTION_MOTION.toolMs, v = stampAttackVisual(this.player, "emitter", ms, d); this.player.attackUntil = now + ACTION_MOTION.toolMs;
-    if (!v) return; const appearance = simpleToolAppearanceKind(rangedWeapon(this.save.equipment.secondary)); if (appearance) v.toolAppearance = { v: 1, kind: appearance };
-    const primary = this.save.equipment.primary?.id, baseKind = priorPose ? prior.toolMotion.baseKind : primary === "primary-cinder-pike" ? "cinder-pike" : primary === "primary-verge-cleaver" ? "verge-cleaver" : "salvage-blade";
-    v.toolKind = kind; v.toolMotion = { v: 1, entry: priorPose ? [priorPose.yaw, priorPose.side, priorPose.up, priorPose.forward, priorPose.weight] : [0, 0, 0, 0, 0], direction: 1, baseKind }; this.player.actionVisualUntil = now + ms;
+    const v = stampAttackVisual(this.player, "emitter", CARBINE.poseMs, d); this.player.attackUntil = now + ACTION_MOTION.toolMs;
+    if (!v) return; v.toolAppearance = { v: 1, kind: "carbine" }; this.player.actionVisualUntil = now + CARBINE.poseMs;
   }
   carbineAim(direction) {
     if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (this.player.x + .5), q.y - (this.player.y + .45), this.player.facing); }
@@ -7487,37 +7487,75 @@ export class Game {
     if (!action) return this.carbineFire(now, d, 0);
     K.charge = { held: 0, action, dir: { x: d.x, y: d.y } }; this.carbinePose(now, d); return true;
   }
-  // The beam after a hold of `held` s (0: a tap). Takes its rounds, then fires as full a beam as they paid for.
+  // The beam after a hold of `held` s (0: a tap). Takes its rounds, then fires as full a beam as they paid for. Its damage is
+  // carbineBase (CARBINE.base + CARBINE.bonus × toolBonus: items.ts TOOL_SCALING.carbine, Finesse; × armor's spell damage) × the tool's glyph damage × the charge.
   carbineFire(now, d, held) {
-    const C = LUMEN_CARBINE, weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool"), echoes = glyphs.count("echo"); if (!weapon) return false;
+    const C = CARBINE, weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool"), echoes = glyphs.count("echo"); if (!weapon?.carbine) return false;
     const want = carbineRounds(held), round = this.takeRound(echoes); if (!round) return false;
     let paid = 1; while (paid < want && spendRound(this.save, echoes)) paid++;
     if (paid < want) { held = carbineAffordedHold(held, paid); this.message = paid > 1 ? `Rounds ran short: a part charge (${paid} of ${want}).` : "Rounds ran short: the charge fires as a single beam."; }
-    const derived = characterStats(this.save), magic = C.scale !== "physical", reach = 1 + derived.attackReach, k = carbineFill(held);
-    const ag = armorGlyphBonus(this.save), base = (weapon.damage + (magic ? derived.magicBonus : derived.meleeBonus)) * (magic ? 1 + ag.spellDamage : 1 + ag.attackDamage) * (magic && this.magicBuffRemaining > 0 ? 1.4 : 1);
-    const ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
-    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: C.range * reach / C.speed, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: magic ? "magic" : "physical", path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k };
+    const derived = characterStats(this.save), reach = 1 + derived.attackReach, k = carbineFill(held), ag = armorGlyphBonus(this.save);
+    const base = carbineBase(this.toolBonus(C.channel, derived), ag.spellDamage, this.magicBuffRemaining > 0), ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
+    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: C.range * reach / C.speed, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: weapon.damageType, path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k };
     if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; }
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const A = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + A.damage))); shot.scale = A.scale; shot.grow = A.grow; } // release 515: Charged Air
-    this.projectiles.push(shot); this.carbineTrace(shot, k);
+    this.projectiles.push(shot); const trace = this.carbineTrace(shot, k);
     this.player.attackReadyAt = now + C.cadence * 1000 * glyphs.mods.cooldown * (1 - ag.attackSpeed);
     this.carbinePose(now, d);
     if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d, sx = at.x + .5 + cd.x * .35, sy = at.y + .45 + cd.y * .35; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: sx, y: sy, bx: sx, by: sy, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // the clone's copy (release 365)
     const plan = echoPlan(glyphs); echoEvent(this, "shot", now, { shot });
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-beam fan
     if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // Echo glyphs: copies of the beam
-    if (paid === want && carbineCharged(held)) this.message = k >= 1 ? "The Carbine releases a full charge!" : "The Carbine releases.";
+    // Continuous Assault: set on this beam alone, after its copies were made, so only it calls a volley.
+    if (fieldOn(this.save, CONTINUOUS_ASSAULT.key) && assaultCharged(held)) { shot.assault = true; trace.assault = shot.damage; }
+    if (paid === want && carbineCharged(held)) this.message = k >= 1 ? C.messages.full : C.messages.release;
     return true;
   }
   // The afterglow follows a beam while it flies and fades once it ends (fixed slots: a free one, else the oldest is reused).
   carbineTrace(shot, k) {
     const T = this.carbineState().traces; let slot = T[0]; for (const q of T) { if (q.life <= 0) { slot = q; break; } if (q.life < slot.life) slot = q; }
-    Object.assign(slot, { shot, x0: shot.bx, y0: shot.by, x1: shot.x, y1: shot.y, k, life: LUMEN_CARBINE.trace.life, where: this.orreryWhere() });
+    slot.shot = shot; slot.x0 = shot.bx; slot.y0 = shot.by; slot.x1 = shot.x; slot.y1 = shot.y; slot.k = k; slot.life = CARBINE.trace.life; slot.where = this.orreryWhere(); slot.assault = 0;
+    return slot;
   }
-  // A frame: the charge grows while its button is held and fires on release; the afterglow follows its beam, then fades.
+  // Continuous Assault: the nearest foe a laser may take, within CONTINUOUS_ASSAULT.seek of (x, y). No allocation.
+  assaultFoe(x, y) {
+    let best = null, bd = CONTINUOUS_ASSAULT.seek;
+    for (const e of this.enemies) { if (e.dead || e.untargetable || e.kind === "npc" || e.ambient || e.passiveBehavior || !(e.hp > 0)) continue; const d = Math.hypot(e.x + .5 - x, e.y + .45 - y); if (d <= bd) { bd = d; best = e; } }
+    return best;
+  }
+  // A charged beam struck its first foe (the projectile hit hook): the volley comes down on it.
+  assaultHit(shot, e) {
+    const T = this.carbine?.traces; if (!T || !shot?.assault || e?.kind === "npc") return 0;
+    for (const q of T) if (q.shot === shot && q.assault > 0) { const damage = q.assault; q.assault = 0; shot.assault = false; return this.assaultVolley(e.x + .5, e.y + .45, e, damage); }
+    return 0;
+  }
+  // Calls up to CONTINUOUS_ASSAULT.count lasers on `foe` (or the foe nearest (x, y), else that point) from the fixed pool:
+  // Hammerfall's pattern, an effect with a delay and then one blow (updateEffects). A pool slot is free once it has left the
+  // effects list; at most `maxLive` lasers are ever live. Returns how many came.
+  assaultVolley(x, y, foe, damage) {
+    const A = CONTINUOUS_ASSAULT, K = this.carbineState(); foe ||= this.assaultFoe(x, y); if (foe) { x = foe.x + .5; y = foe.y + .45; }
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !(damage > 0)) return 0;
+    let live = 0; for (const fx of this.effects) if (fx.kind === "assault-lance" && fx.life > 0) live++;
+    let n = 0;
+    for (const L of K.lances) {
+      if (n >= A.count || live >= A.maxLive) break;
+      if (this.effects.includes(L)) continue;
+      for (const key in L.hits) delete L.hits[key];
+      L.id = `lance-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`; L.x = x; L.y = y; L.delay = A.lead + A.gap * n; L.life = A.life; L.radius = A.radius;
+      L.pulse = 99; L.untilPulse = 0; L.pulseIndex = 0; L.damage = Math.max(1, Math.round(damage * A.share)); L.track = foe ? foe.id : "";
+      this.effects.push(L); n++; live++;
+    }
+    return n;
+  }
+  // A frame: the charge grows while its button is held and fires on release; the afterglow follows its beam, then fades; a beam
+  // that ended without striking calls its volley where it ended; and every waiting laser tracks its foe.
   tickCarbine(dt, now, held) {
-    const K = this.carbine, C = LUMEN_CARBINE; if (!K) return;
-    let where = null; for (const q of K.traces) { if (q.life <= 0) continue; where ??= this.orreryWhere(); if (q.where !== where) { q.life = 0; q.shot = null; continue; } if (q.shot && !q.shot.dead && this.projectiles.includes(q.shot)) { q.x1 = q.shot.x; q.y1 = q.shot.y; } else { q.shot = null; q.life = Math.max(0, q.life - dt); } }
+    const K = this.carbine, C = CARBINE; if (!K) return;
+    let where = null; for (const q of K.traces) { if (q.life <= 0) continue; where ??= this.orreryWhere(); if (q.where !== where) { q.life = 0; q.shot = null; q.assault = 0; continue; } if (q.shot && !q.shot.dead && this.projectiles.includes(q.shot)) { q.x1 = q.shot.x; q.y1 = q.shot.y; } else { q.shot = null; q.life = Math.max(0, q.life - dt); if (q.assault > 0) { const damage = q.assault; q.assault = 0; this.assaultVolley(q.x1, q.y1, null, damage); } } }
+    { const A = CONTINUOUS_ASSAULT; for (const L of this.effects) { if (L.kind !== "assault-lance" || !(L.delay > 0) || !L.track) continue; // tracking (no allocation)
+      let foe = null; for (const e of this.enemies) if (e.id === L.track) { foe = e; break; }
+      if (!foe || foe.dead || !(foe.hp > 0)) { foe = this.assaultFoe(L.x, L.y); L.track = foe ? foe.id : ""; if (!foe) continue; }
+      const dx = foe.x + .5 - L.x, dy = foe.y + .45 - L.y, m = Math.hypot(dx, dy), step = A.track * dt; if (m <= step) { L.x = foe.x + .5; L.y = foe.y + .45; } else if (m > 0) { L.x += dx / m * step; L.y += dy / m * step; } } }
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
@@ -9458,14 +9496,14 @@ export class Game {
       this.save.toolMode = true;
       let toolAccepted=false;const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) toolAccepted=this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(this.carbineOn()?LUMEN_CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Lumen Carbine looks as far as its beam reaches
+        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(weapon.carbine?CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Carbine looks as far as its beam reaches
       toolAccepted=this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } if(toolAccepted)this.cancelPendingMeleeContact('tool'); }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
-    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Lumen Carbine: its charge and afterglow
+    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
@@ -9804,7 +9842,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet

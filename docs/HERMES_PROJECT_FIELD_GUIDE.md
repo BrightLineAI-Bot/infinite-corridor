@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 925 — Release 925 — the Spark Coil drops again and becomes the Carbine at +6; Continuous Assault
+
+Tim (2026-11-12): make the Carbine its own weapon carrying the Spindle passive's beam, scaling with Stamina, with a Continuous Assault passive (three lasers from the sky that track into the enemy, like Hammerfall); then: turn the Spark Coil into it, the coil drops again and past +6 it becomes the Carbine, like the Needle Caster and the Blunderbuss. Later: magic damage is fine since it scales with Finesse.
+
+**CODE:** `src/items.ts`: `CARBINE_RANK` (= `BLUNDERBUSS_RANK`); `rangedWeapon`/`normalizeItemUpgrade` rename a Spark Coil at the rank to Carbine with the `secondary-carbine` profile (magic damage), keeping its id; `SPARK_COIL_LOOT` {share .25, stream `spark-coil-loot:v1`}; `TOOL_SCALING.carbine = 'stamina'`. `src/tool-forms.ts`: `CARBINE` (base 30 + 2.7 x the tool bonus, range 16, speed 80, cadence 1.05, charge .2/1.25/1.3-2.4x/pierce 2/rounds 3), `carbineBase`; `CONTINUOUS_ASSAULT` {threshold .5, count 3, lead .2, gap .2, share .5, radius 1, seek 3, track 12, maxLive 9}, `drawAssault`. `src/game.ts`: carbine fire through `toolBonus`, `assaultVolley`/`assaultHit`, tracking in `tickCarbine`, pooled `game.carbine.lances`. `src/lattice-fields.ts` `TOOL_FORMS['continuous-assault']`; `src/transit-lattice.ts` `RETIRED_PASSIVES` (`field:lumen-carbine`). Close View `heroCarbine` (92 tris, cyan coil). Tests: `carbine-tool` (12), `continuous-assault` (8).
+
+**BOUNDARY:** Save: schema 14, nothing new; the renamed item keeps its id and `field:lumen-carbine` is dropped on load with its slot freed. Item drops: only the Spark Coil stream changes an item's name and property (id, power, tier, affixes unchanged). Charge, traces and lasers are runtime only and bounded (projectile caps, 6 trace slots, 9 laser slots). On an equal Finesse/Focus build the Carbine matches the old Lumen Carbine.
+
 ## Release 924 — Release 924 — the Gaunt: hooded duelists
 
 Tim (2026-11-12): new enemies on the RPG character model, skeletal thin limbs, big heads, chunky hands, hooded faces, swords/daggers/polearms, hopping, smarter and more aggressive AI, more health, slightly taller than the Wayfarer.
