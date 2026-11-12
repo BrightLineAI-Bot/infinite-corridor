@@ -22,7 +22,8 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ } from "./close-view-outdoor.ts";
+import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -1352,6 +1353,51 @@ function terrainFloorRay(map, x, y) {
   }
   return null;
 }
+// ------------------------------------------------------------------------------------------------ roof decks and the aimed Rift Step
+// The roof deck the Wayfarer stands on (roof-decks.ts via Game.standingDeck), or null.
+function ownRoofDeck(g) { const d = g?.area === "overworld" ? g.standingDeck?.() : null; return d ? roofDeckById(g.map, d.id) : null; }
+// The drawn height of a roof deck's surface at (x, y), or -Infinity where there is none.
+function deckSurfaceZ(map, x, y) { const d = roofDeckAt(map, x, y); return d ? outdoorRoofZ(d, x, y, map === RELIEF.map ? RELIEF.R : null) : -Infinity; }
+// On a roof the feet stand on its drawn surface; a hop from a roof keeps them at least at the roof's height until it lands; off a
+// roof (a hop that ends over the ground, or a step off its edge) the footing falls from there as off any ledge (presentLeap's
+// gravity). Writes the frame's captured Wayfarer card's lift and jumpLift (a fresh object each frame), never the game.
+const DECK_Z = { map: null, z: NaN };
+function deckFeetLift(g, d) {
+  if (g?.area !== "overworld" || !d) { DECK_Z.map = null; return; } const p = g.player, fx = footX(p), fy = footY(p), own = ownRoofDeck(g), ground = surfaceZ(g.map, fx, fy);
+  const hopping = !own && g.deckHop && g.skyAir != null, under = hopping ? roofDeckAt(g.map, fx, fy) : null, deck = own || (under && under.level <= g.skyAir + 1e-6 ? under : null);
+  const R = g.map === RELIEF.map ? RELIEF.R : null, z = deck ? outdoorRoofZ(deck, fx, fy, R) : hopping && DECK_Z.map === g.map ? DECK_Z.z : NaN;
+  if (Number.isFinite(z)) { DECK_Z.map = g.map; DECK_Z.z = z; if (z - ground > (Number(d.lift) || 0)) d.lift = z - ground; return; }
+  if (DECK_Z.map === g.map && DECK_Z.z > ground && LEAP.map === g.map && !g.droneLift && !g.glide) { LEAP.base = Math.max(LEAP.base, DECK_Z.z); LEAP.v = 0; d.jumpLift = Math.max(Number(d.jumpLift) || 0, LEAP.base - ground - Math.max(0, Number(d.lift) || 0)); } // down off the roof: from its height
+  DECK_Z.map = null;
+}
+// The point of the world under a screen point (its ground or a roof deck's surface), for the aimed Rift Step's tap: { x, y, z } or
+// null. A bounded march (as terrainFloorRay: 640 steps, then 14 halvings), only on a tap; null through a wall or past the far end.
+export function closeViewSurfacePick(g, w, h, x, y) {
+  if (!closeViewShowing(g) || !CAM.valid || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1) return null;
+  const map = g.map, b = (x - CAM.ppx) / CAM.F, a = (CAM.ppy - y) / CAM.F, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b, dz = -CAM.sinP + a * CAM.cosP;
+  const top = (X, Y) => Math.max(surfaceZ(map, X, Y), deckSurfaceZ(map, X, Y)), under = (t) => CAM.hc + dz * t <= top(CAM.cx + dx * t, CAM.cy + dy * t);
+  let previous = 0;
+  for (let i = 1; i <= 640; i++) { const t = i * .025, X = CAM.cx + dx * t, Y = CAM.cy + dy * t; if (wallAt(map, X, Y)) return null;
+    if (under(t)) { let lo = previous, hi = t; for (let k = 0; k < 14; k++) { const mid = (lo + hi) * .5; if (under(mid)) hi = mid; else lo = mid; }
+      const X1 = CAM.cx + dx * hi, Y1 = CAM.cy + dy * hi; return { x: X1, y: Y1, z: top(X1, Y1) }; }
+    previous = t; }
+  return null;
+}
+export const RIFT_RING = Object.freeze({ armed: "#b48cff", ok: "#c9a8ff", bad: "#ff5a5a", width: 2, points: 28, mark: .45 });
+// A ring of radius r round (X, Y) at height Z, projected (no allocation: PROJ is reused).
+function worldRing(ctx, X, Y, Z, r) { const n = RIFT_RING.points; let open = false; ctx.beginPath();
+  for (let i = 0; i <= n; i++) { const a = i / n * 6.2832, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
+  ctx.stroke(); }
+// The aimed Rift Step (constellation.ts RIFT_AIM): while armed, its reach round the feet; after the tap, a ring on the point (red
+// when the step was refused) that fades.
+function riftAimRing(ctx, g) {
+  const armed = !!g?.riftAimArmed?.(), m = g?.riftAimMark; if (!armed && !m) return; const p = g.player, C = RIFT_RING;
+  ctx.save(); ctx.lineWidth = C.width;
+  if (armed) { const fx = footX(p), fy = footY(p), z = surfaceZ(g.map, fx, fy) + Math.max(0, capturedPlayer?.lift || 0), r = Number(g.riftReach?.()) || 0;
+    if (r > 0) { ctx.globalAlpha = .55; ctx.strokeStyle = C.armed; ctx.setLineDash?.([6, 6]); worldRing(ctx, fx, fy, z, r); ctx.setLineDash?.([]); } }
+  if (m && m.life > 0) { const z = Number.isFinite(m.z) ? m.z : Math.max(surfaceZ(g.map, m.x, m.y), deckSurfaceZ(g.map, m.x, m.y)); ctx.globalAlpha = Math.max(0, Math.min(1, m.life / (m.max || 1))); ctx.strokeStyle = m.ok ? C.ok : C.bad; worldRing(ctx, m.x, m.y, z, C.mark); }
+  ctx.restore();
+}
 export function closeViewProject(X, Y, Z = 0) { const q = CAM.valid ? project(X, Y, Z) : null; return q ? { sx: q.sx, sy: q.sy, depth: q.depth } : null; }
 // Where world (0, 0) lies in the ground texture, in device pixels, for the Wayfarer at (px, py), a texture W CSS px wide at scale
 // ts (as renderCloseView lays it): always whole pixels, so a world point always reads the same texel.
@@ -1456,6 +1502,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     for (const layer of CLOSE_VIEW_HOOKS.groundLayers) { gc.setTransform(ts, 0, 0, ts, gox + dxL, goy + dyL); layer(gc, W, H, shots); } } finally { capturing = worldCapture = false; }
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
+  if (capturedPlayer) deckFeetLift(g, capturedPlayer); // roof decks: on (or hopping over) a roof, the feet on its drawn surface
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1712,6 +1759,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (Q.ao) vaultShade(ctx, w, h, ppy); }
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
+  riftAimRing(ctx, g); // RIFT_AIM: the armed step's reach and the tapped point
   // 6. the torch's warm cast and the vignette, both cached
   if (Q.warm && pq && !useGL) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(pSx, pSy - .6 * pk); ctx.fillStyle = SCREEN.warm; const r0 = Math.min(w, h) * .55; ctx.fillRect(-r0, -r0, 2 * r0, 2 * r0); ctx.restore(); } // only the glow's own square
@@ -3293,9 +3341,9 @@ function nearbyDoorTorches(g,px,py,reach,seen,limit){
   return list.slice(0,limit);
 }
 // Which roofs to leave out this frame (OUTDOOR.buildings): writes the solids' runs to draw into F.runs (nRuns 0: draw it all).
-function roofRuns(F, scene, px, py, cx, cy) {
+function roofRuns(F, scene, px, py, cx, cy, keep = null) { // keep: the roof deck stood on (roof-decks.ts), never left out
   const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt; let hidden = 0;
-  for (let i = 0; i < roofs.length; i++) { const r = roofs[i], pad = .4; if (roofHidden(r, px, py, cx, cy, pad)) hidden |= 1 << i; }
+  for (let i = 0; i < roofs.length; i++) { const r = roofs[i], pad = .4; if (r.id !== keep && roofHidden(r, px, py, cx, cy, pad)) hidden |= 1 << i; }
   if (!hidden) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
   for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (hidden & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a; } else end = r1; }
   if (end > a && k < 16) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; }
@@ -3380,7 +3428,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
   // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
-  F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
+  F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy, ownRoofDeck(g)?.id ?? null);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;

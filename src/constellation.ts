@@ -238,32 +238,81 @@ export function tickConstellation(game, dt, now) {
   if (activeIs(s, "force-channel") && nodeOn(s, "overflow")) { game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25); for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (k.startsWith("spell:")) s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * .25); }
   game._cLastHp = p.hp;
 }
-// Rift Step: an instant blink along the move (or aim) direction, stopping before walls, hazards and climbs.
-export function riftStep(game, now) {
-  const s = game.save, st = s.magicSkills, rank = skillRank(s, "rift-step"), p = game.player, world = game.glyphWorld(now);
-  if (!rank) { game.message = "Rift Step has not been learned."; return false; }
+// Rift Step aimed in Close View (Tim, 2026-11-12: "Rift Step aimed at a point, which can kill you by falling"): the Rift Step
+// button arms the aim for `window` seconds; the next tap picks the point and the step goes there (game.ts armRiftAim and
+// placeRiftAim, main.ts worldtap). The point must lie within the step's reach (flat distance), no more than `rise` levels above
+// where the Wayfarer stands (`longStepRise` more with Long Step), on ground or a roof they can stand on, with no wall and no
+// forbidden air (vehicle-gates.ts droneForbiddenAt) on the way (at most `samples` points tested). An invalid point is refused
+// without a cast (the target ring shows red for `mark` seconds). Every Rift Step, aimed or not, falls by the ordinary rule.
+export const RIFT_AIM = { rise: 2, longStepRise: 1, window: 4, samples: 40, mark: .7 };
+// The charges, rank and glyph mods of a step about to be taken, or null (with the message why).
+function riftReady(game) {
+  const s = game.save, st = s.magicSkills, rank = skillRank(s, "rift-step");
+  if (!rank) { game.message = "Rift Step has not been learned."; return null; }
   if (st.riftAnchor) delete st.riftAnchor; // release 259: no recall; a recall point left by an older release is dropped
   const gm = skillGlyphMods(s, "rift-step"), charges = (nodeOn(s, "fold") ? 2 : 1) + gm.charges; // release 297: glyphs (Echo: a charge)
   st.riftCharges = Math.min(charges, st.riftCharges ?? charges);
-  if (st.riftCharges < 1) { game.message = `Rift Step recovers in ${Math.ceil(st.cooldowns["rift-step"] || 0)}s.`; return false; }
-  const d = p.lastMoveVector || s.lastAim || { x: 0, y: 1 }, m = Math.hypot(d.x, d.y) || 1, dx = d.x / m, dy = d.y / m, reach = RIFT.reach + rank + (nodeOn(s, "anchor") ? RIFT.longStep : 0) + gm.reach;
-  const startElev = game.elevationHere ? game.elevationHere(p.x, p.y) : 0, from = { x: p.x, y: p.y };
-  let best = null;
-  for (let t = .25; t <= reach + 1e-6; t += .25) {
-    const x = from.x + dx * t, y = from.y + dy * t;
-    if (!world.canStand(x, y)) break;
-    if (game.elevationHere && game.elevationHere(x, y) > startElev) break; // never blink up a ledge
-    best = { x, y };
-  }
-  if (!best) { game.message = "There is no room to step through."; return false; }
+  if (st.riftCharges < 1) { game.message = `Rift Step recovers in ${Math.ceil(st.cooldowns["rift-step"] || 0)}s.`; return null; }
+  return { rank, gm, reach: RIFT.reach + rank + (nodeOn(s, "anchor") ? RIFT.longStep : 0) + gm.reach };
+}
+export function riftStepReady(game) { return !!riftReady(game); }
+// The step's reach in tiles (no side effects), for the aim ring.
+export function riftReachOf(save) { const rank = skillRank(save, "rift-step"); return rank ? RIFT.reach + rank + (nodeOn(save, "anchor") ? RIFT.longStep : 0) + skillGlyphMods(save, "rift-step").reach : 0; }
+// The height a step leaves from: the roof stood on, a hop's held height, or the ground (levels).
+function riftFrom(game) {
+  const p = game.player, ground = game.elevationHere ? game.elevationHere(p.x, p.y) : 0, level = game.playerLevel ? game.playerLevel() : ground;
+  return Math.max(Number.isFinite(level) ? level : ground, game.skyAir != null && game.jumpUntil > (game.lastUpdateNow || 0) ? game.skyAir : -Infinity);
+}
+// Where the step stands at (x, y) arriving from `level` (game.blinkFooting: roofs too), or the plain rule without it.
+function riftFooting(game, world, x, y, level, rise = 0) {
+  if (game.blinkFooting) return game.blinkFooting(x, y, level, rise);
+  if (!world.canStand(x, y)) return null; const e = game.elevationHere ? game.elevationHere(x, y) : 0; return e <= level + rise ? { level: e, deck: null } : null;
+}
+// The step itself, once its end is chosen: wake, visuals, the move, the fall (game.landBlink), the charge and the cooldown.
+function riftCommit(game, now, R, from, best, fromLevel) {
+  const s = game.save, st = s.magicSkills, p = game.player, world = game.glyphWorld(now), len = Math.hypot(best.x - from.x, best.y - from.y), dx = len ? (best.x - from.x) / len : 0, dy = len ? (best.y - from.y) / len : 0;
   if (altOn(s, "anchor")) { const A = ALT_PASSIVES.anchor; world.blast(from.x + .5, from.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); } // release 359: Rift Echo
-  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= Math.hypot(best.x - from.x, best.y - from.y); t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
+  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= len; t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + (altOn(s, "rift-wake") ? ALT_PASSIVES["rift-wake"].guardMs : 150));
-  st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, rank, gm));
+  st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
-  game.message = "Rift Step."; game.sync();
+  game.message = "Rift Step.";
+  // Tim (2026-11-12): every Rift Step falls. A glide or the drone's lift carries on in the air; anything else lands where it arrived.
+  if (best.footing && game.landBlink && !game.glide && !game.droneLift) game.landBlink(best.footing, fromLevel, now);
+  game.sync();
   return true;
+}
+// Rift Step: an instant blink along the move (or aim) direction, stopping before walls, hazards and climbs. On a roof it goes on
+// over the roof (and off its edge, a fall); it never rises.
+export function riftStep(game, now) {
+  const s = game.save, p = game.player, world = game.glyphWorld(now), R = riftReady(game); if (!R) return false;
+  const d = p.lastMoveVector || s.lastAim || { x: 0, y: 1 }, m = Math.hypot(d.x, d.y) || 1, dx = d.x / m, dy = d.y / m;
+  const startLevel = riftFrom(game), from = { x: p.x, y: p.y };
+  let best = null;
+  for (let t = .25; t <= R.reach + 1e-6; t += .25) {
+    const x = from.x + dx * t, y = from.y + dy * t, footing = riftFooting(game, world, x, y, startLevel); // never blink up a ledge (or onto a higher roof)
+    if (!footing) break;
+    best = { x, y, footing };
+  }
+  if (!best) { game.message = "There is no room to step through."; return false; }
+  return riftCommit(game, now, R, from, best, startLevel);
+}
+// The aimed step to a point (the feet's point, as a tap gives it). False, and nothing spent, when the point is not one it can reach.
+export function riftAimCheck(game, target, now = game.lastUpdateNow || 0) {
+  const s = game.save, p = game.player, world = game.glyphWorld(now), R = riftReady(game); if (!R) return { ok: false, why: "charges" };
+  const tx = Number(target?.x), ty = Number(target?.y); if (!Number.isFinite(tx) || !Number.isFinite(ty)) return { ok: false, why: "point" };
+  const fx = p.x + .5, fy = p.y + .75, dist = Math.hypot(tx - fx, ty - fy);
+  if (dist > R.reach + 1e-6) return { ok: false, why: "reach", reach: R.reach };
+  const startLevel = riftFrom(game), rise = RIFT_AIM.rise + (nodeOn(s, "anchor") ? RIFT_AIM.longStepRise : 0), best = { x: tx - .5, y: ty - .75 };
+  const footing = riftFooting(game, world, best.x, best.y, startLevel, rise); if (!footing) return { ok: false, why: "footing" };
+  if (game.blinkPathClear && !game.blinkPathClear(p.x, p.y, best.x, best.y, RIFT_AIM.samples, Math.max(startLevel, footing.level))) return { ok: false, why: "path" };
+  best.footing = footing; return { ok: true, R, best, startLevel, level: footing.level };
+}
+export function riftStepTo(game, now, target) {
+  const c = riftAimCheck(game, target, now);
+  if (!c.ok) { if (c.why !== "charges") game.message = c.why === "reach" ? `Rift Step reaches ${c.reach} tiles.` : c.why === "path" ? "Something on the way turns the step aside." : "Rift Step cannot stand there."; return false; }
+  return riftCommit(game, now, c.R, { x: game.player.x, y: game.player.y }, c.best, c.startLevel);
 }
 export function tickRiftCharges(save) {
   const st = save.magicSkills; if (!st || !skillRank(save, "rift-step")) return;
