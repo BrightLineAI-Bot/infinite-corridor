@@ -168,7 +168,7 @@ export function wardenAttacks(seed, key) { const A = FRACTURE_WARDEN.attacks; re
 // least `minDistance` tiles off, on open, safe floor the Wayfarer can walk to. Never on a guarded floor (a guardian, boss,
 // trial, vault or finale), never in Fractured mode (its waves own the pace), never past `liveCap` creatures alive on the floor
 // nor `perVisit` respawned in one visit. A respawned creature gives `reward.xp` of the experience and `reward.marks` marks,
-// drops an item `reward.drop` of the time (`reward.dropByPlace` per kind: a Pentagon's every time) and nothing else: no lasting flags, keys, relics, glyphs, Echoes, Sigils, Tesseracts
+// drops an item `reward.drop` of the time (`reward.dropByPlace` may override it per kind) and nothing else: no lasting flags, keys, relics, glyphs, Echoes, Sigils, Tesseracts
 // or quest kills. Rolls are a hash of the seed, the floor and the floor's respawn counter `n`.
 export const RESPAWN = {
   places: { keep: true, arcology: true, pentagon: true, cube: true }, // which kinds of building respawn
@@ -188,8 +188,10 @@ export const RESPAWN = {
   // `drop`: the share of respawned kills that drop an item (the ordinary creature's own drop table, ordinaryMonsterGearDrop);
   // `dropByPlace` overrides it per kind of building. Tim, 2026-11-12, on creatures coming back in Pentagons: "yes, like other
   // games, so we'll just have loot in our game": a Pentagon's respawned creatures drop as freshly laid ones of their sort do
-  // (1, every kill). Still never more than `perVisit` respawned creatures in a visit, and nothing lasting.
-  reward: { xp: .5, marks: 1, drop: .2, dropByPlace: { pentagon: 1 } },
+  // (1, every kill). Tim, later the same day, for every respawning building: "full experience, normal loot, and one mark"
+  // ("it's not really a quick way to level up... most power comes from passives, Tesseracts, glyphs and the Aperture").
+  // Still never more than `perVisit` respawned creatures in a visit, and nothing lasting.
+  reward: { xp: 1, marks: 1, drop: 1, dropByPlace: {} },
   messages: { stir: "Something stirs on this floor again." },
 };
 const STYLE_ID = /^(?:building|compound):.+:(-?\d+):(-?\d+):(keep|apartment|hive):/;

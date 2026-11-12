@@ -21,10 +21,9 @@ const room = (g) => { g.save.inventory = []; g.save.level = 1; g.save.xp = 0; };
 const killGuards = (g) => { const d0 = g.save.dropCounter, m0 = g.save.currency; let n = 0; for (const e of g.enemies) if (e.buildingGuard && !e.dead && !e.boss && !e.pentBoss) { n++; e.hp = 0; e.dead = true; g.defeatEnemy(e); } g.update(.05, input, 1000); g.snapshotArea(); return { n, drops: g.save.dropCounter - d0, marks: g.save.currency - m0 }; };
 const play = (g, secs, from = 1000) => { for (let i = 0; i < secs; i++) g.tickRespawns(1, from + i * 1000); return from + secs * 1000; };
 
-test('the drop rate of a respawned kill is a data table: a Pentagon pays as a fresh creature (1), other buildings keep RESPAWN.reward.drop', () => {
-  assert.equal(RESPAWN.reward.dropByPlace.pentagon, 1);
-  assert.equal(respawnDropRate('pentagon'), 1);
-  for (const place of ['keep', 'arcology', 'cube', null, undefined, 'nowhere']) assert.equal(respawnDropRate(place), RESPAWN.reward.drop, String(place));
+test('the drop rate of a respawned kill is a data table: every respawning building pays as a fresh creature (1), with full experience and one mark', () => {
+  assert.equal(RESPAWN.reward.drop, 1); assert.equal(RESPAWN.reward.xp, 1); assert.equal(RESPAWN.reward.marks, 1);
+  for (const place of ['pentagon', 'keep', 'arcology', 'cube', null, undefined, 'nowhere']) assert.equal(respawnDropRate(place), 1, String(place));
   assert.ok(RESPAWN.perVisit > 0 && RESPAWN.perVisit <= 36, 'the per-visit cap on respawned creatures stays');
   const keep = RESPAWN.reward.dropByPlace; try { RESPAWN.reward.dropByPlace = { pentagon: 7 }; assert.equal(respawnDropRate('pentagon'), 1, 'clamped to a share'); } finally { RESPAWN.reward.dropByPlace = keep; }
 });
@@ -60,10 +59,10 @@ test('building respawns in a Pentagon chamber drop an item on every kill, from t
   const c = g.enemies.find((e) => e.id === 'respawn-loot-0'), had = g.save.dropCounter; g.defeatEnemy(c); assert.equal(g.save.dropCounter, had, 'paid once');
 });
 
-test('keeps, arcologies and cubes keep their seldom drop share (unchanged)', () => {
+test('keeps drop on every respawned kill too (Tim: normal loot everywhere)', () => {
   const s = freshSave(); s.seed = 'GREAT1'; const at = { area: 'overworld', rx: 9, ry: 2, x: 16, y: 16 }; Object.assign(s.session, at); Object.assign(s.position, at);
   const g = new Game(s, 0); g.installSystems?.(); s.session.activeDungeonId = 'building:GREAT1:9:2:keep:4:f2'; s.session.dungeonReturn = { rx: 9, ry: 2, x: 16, y: 16 }; g.loadArea('dungeon', false);
   assert.equal(g.respawnFloor(), 'keep'); let drops = 0; const n = 200;
   for (let i = 0; i < n; i++) { const c = g.respawnCreature({ id: `respawn-k-${i}`, kind: 'ashling', x: g.player.x, y: g.player.y, traits: [], respawned: true }); g.enemies.push(c); room(g); const had = g.save.dropCounter; g.defeatEnemy(Object.assign(c, { hp: 0, dead: true })); if (g.save.dropCounter !== had) drops++; }
-  assert.ok(drops > n * RESPAWN.reward.drop * .5 && drops < n * RESPAWN.reward.drop * 1.6, `${drops} of ${n}`);
+  assert.equal(drops, n, `${drops} of ${n}`);
 });
