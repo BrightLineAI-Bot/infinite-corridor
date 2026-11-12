@@ -220,7 +220,10 @@ export const CLOSE_VIEW = Object.freeze({
     // is `tau` seconds (`reducedTau` with Reduced Motion), never more than `maxLag` tiles from it (a little over one level, so a
     // single level eases all the way and a long fall keeps them on screen); `snap` tiles or more away (a teleport, a new floor) it is there at once. Tim, 2026-11-12: "when you transition
     // between levels or elevations, sometimes it just does a cut that's too quick... disorienting... smooth that out more."
-    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, snap: 3 }),
+    // `deckLag` (roof decks, roof-decks.ts): while the Wayfarer stands on a roof deck, or hops over one, the lag may grow to this
+    // instead, so landing on a tall gable from the bank beside it (its ridge is up to wall + ridge, 1.725 + 1.575 = 3.3 tiles,
+    // over the house's ground; the bank is a level, 1.2, up) is eased all the way, never cut by the cap. It stays under `snap`.
+    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, deckLag: 2.2, snap: 3 }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -1397,11 +1400,15 @@ function deckSurfaceZ(map, x, y) { const d = roofDeckAt(map, x, y); return d ? o
 // roof (a hop that ends over the ground, or a step off its edge) the footing falls from there as off any ledge (presentLeap's
 // gravity). Writes the frame's captured Wayfarer card's lift and jumpLift (a fresh object each frame), never the game.
 const DECK_Z = { map: null, z: NaN };
+const HERO_FEET = { z: NaN }; // the last frame's drawn feet height (renderCloseView), for tests
+export const closeViewHeroFeetZ = () => HERO_FEET.z;
 function deckFeetLift(g, d) {
   if (g?.area !== "overworld" || !d) { DECK_Z.map = null; return; } const p = g.player, fx = footX(p), fy = footY(p), own = ownRoofDeck(g), ground = surfaceZ(g.map, fx, fy);
   const hopping = !own && g.deckHop && g.skyAir != null, under = hopping ? roofDeckAt(g.map, fx, fy) : null, deck = own || (under && under.level <= g.skyAir + 1e-6 ? under : null);
   const R = g.map === RELIEF.map ? RELIEF.R : null, z = deck ? outdoorRoofZ(deck, fx, fy, R) : hopping && DECK_Z.map === g.map ? DECK_Z.z : NaN;
-  if (Number.isFinite(z)) { DECK_Z.map = g.map; DECK_Z.z = z; if (z - ground > (Number(d.lift) || 0)) d.lift = z - ground; return; }
+  if (Number.isFinite(z)) { DECK_Z.map = g.map; DECK_Z.z = z; if (z - ground > (Number(d.lift) || 0)) d.lift = z - ground;
+    if (own) { if (LEAP.map === g.map) { LEAP.base = ground; LEAP.v = 0; } d.jumpLift = 0; } // standing on the roof: it is the footing (no leap's fall from the bank left under it)
+    return; }
   if (DECK_Z.map === g.map && DECK_Z.z > ground && LEAP.map === g.map && !g.droneLift && !g.glide) { LEAP.base = Math.max(LEAP.base, DECK_Z.z); LEAP.v = 0; d.jumpLift = Math.max(Number(d.jumpLift) || 0, LEAP.base - ground - Math.max(0, Number(d.lift) || 0)); } // down off the roof: from its height
   DECK_Z.map = null;
 }
@@ -1539,6 +1546,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   flatPass(g, captured, gc, s, ts, gox, goy, Tx, Ty);
   if (capturedPlayer && RELIEF.map === g.map) presentLeap(g, now, capturedPlayer); // the taller levels: a jump that reaches the ledge, a drop that falls
   if (capturedPlayer) deckFeetLift(g, capturedPlayer); // roof decks: on (or hopping over) a roof, the feet on its drawn surface
+  HERO_FEET.z = capturedPlayer ? surfaceZ(g.map, footX(p), footY(p)) + closeViewActorLift(capturedPlayer) : NaN; // where the Wayfarer's feet are drawn (tests)
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
   const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
@@ -1604,7 +1612,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // a ledge or a drop is followed, not cut to. The framing below still fits the Wayfarer's true height.
   { const V = C.vertical, tau = reduce ? V.reducedTau : V.tau, lag = CAM.zA - playerZ;
     if (!CAM.valid || followSnapped || !Number.isFinite(lag) || Math.abs(lag) >= V.snap || !(tau > 0)) { CAM.zA = playerZ; CAM.zAV = 0; }
-    else { spring(CAM, "zA", "zAV", playerZ, 2 / tau, dt); const d = CAM.zA - playerZ; if (Math.abs(d) > V.maxLag) { CAM.zA = playerZ + Math.sign(d) * V.maxLag; CAM.zAV = 0; } } }
+    else { spring(CAM, "zA", "zAV", playerZ, 2 / tau, dt); const d = CAM.zA - playerZ, cap = DECK_Z.map === g.map ? Math.max(V.maxLag, V.deckLag) : V.maxLag; if (Math.abs(d) > cap) { CAM.zA = playerZ + Math.sign(d) * cap; CAM.zAV = 0; } } } // on or over a roof deck (deckFeetLift): the roof's own lag
   const anchorZ = CAM.zA;
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.

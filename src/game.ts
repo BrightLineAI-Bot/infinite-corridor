@@ -77,7 +77,7 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
-import { roofDeckAt, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT } from "./items.ts";
@@ -4889,7 +4889,7 @@ export class Game {
     const L = this.droneLift, D = DRONE_LIFT, m = this.save.mech, p = this.player;
     if (!this.droneLiftAllowed() || !this.droneUp() || !m) { this.endDroneLift(now); return; }
     const deck = this.area === "overworld" && this.decksApply() ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null; // roof decks: a roof the lift is over (and high enough to be over the walls) is its ground
-    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), top = Math.min(L.base + D.max, this.interiorLiftCeiling()), thrust = held && !this.mechSpent && m.fuel > 0;
+    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), top = Math.min(L.base + D.max, this.interiorLiftCeiling(), this.droneRoofCap(L.z) ?? Infinity), thrust = held && !this.mechSpent && m.fuel > 0;
     if (thrust) { m.fuel = Math.max(0, m.fuel - D.burn * dt); this.mechBoosting = true; if (m.fuel <= 0) { this.mechSpent = true; this.message = D.empty; } }
     L.vz = Math.min(D.rise, L.vz + ((thrust ? D.thrust : 0) - D.gravity) * dt); L.z += L.vz * dt;
     if (L.z >= top) { L.z = top; if (thrust || interiorTerrain(this.map)) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
@@ -4912,6 +4912,16 @@ export class Game {
     this.endDroneLift(now, ground); this.mechBoosting = false; this.mechSpent = true;
     if (m) m.active = false; this.droneAt = null;
     this.message = zone.message; journalOnce(this.save, `drone-fizzle:${zone.id}`, zone.message, "The drone"); return true;
+  }
+  // The drone under a roof (DRONE_LIFT.roofed): the highest level a lift at height z may reach while the Wayfarer is inside a
+  // shack, hut or district house (structureOccupancy), or null under open sky: outside, on a roof deck, or already over the
+  // walls (a deck's walls stop nobody at its level less one: footprintOpen's deckReach). Inside, the cap is `roofHeadroom` over
+  // the floor, under the walls' reach, so the lift can neither rise through the roof nor carry them out over the walls.
+  droneRoofCap(z) {
+    if (this.area !== "overworld" || this.standingDeck()) return null;
+    const p = this.player, w = mapWidth(this.map, this.area), id = structureOccupancy(this.map.tiles, w, p.x, p.y); if (!id) return null;
+    const deck = roofDeckById(this.map, id); if (deck && Math.floor(z + 1e-6) + 1 >= deck.level) return null; // over its walls already
+    return (deck ? deck.base : elevationAt(this.map, w, p.x, p.y)) + DRONE_LIFT.roofHeadroom;
   }
   droneUp() { const m = this.save.mech; return m?.active === true && m.mode === "drone" && !aboard(this.save); }
   droneHeal(message) {
@@ -9241,7 +9251,7 @@ export class Game {
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
       if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.message = GLIDE.open; }
-      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } // release 647: the drone's booster
+      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); if (this.droneRoofCap(z) != null) this.message = DRONE_LIFT.roofed; /* under a roof: no lift */ else { this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
       else {
