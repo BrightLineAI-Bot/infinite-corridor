@@ -15,15 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r909 (`0dafb093063d`); production serves `r907-a00159304000` (published 2026-11-11 after a Fable review of r896 to r907). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r910 (`8a0a850f5b5a`); production serves `r910-8a0a850f5b5a` (published 2026-11-12 after a Fable review of r907 to r910). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 910 | Claude | claude/cv-void-walker | Close View Void Walker on a converted RPG Character Pack body with its hood, night-sky face, split coat; casts, dashes and teleport on their clocks; skiff keeps the billboard | In flight. |
-| 909 | Claude | claude/cv-morphing-blob | Close View Crimson Tyrant and Doom Chaser, Ashen Moth (and Grove Moth), Tremor Worm, Psychic Crystal, Morphing Blob on the shared beast rig; all attacks on their clocks; QB folded-wing hint fix | Merged as `0dafb093063d` (#576). |
-| 908 | Claude | claude/cv-nanobot-knight | Close View Nanobot Knight on a converted RPG Character Pack human body (slender, 1.75 x the Wayfarer), plate, cone helm, greatsword, cannon, swarm cape; all attacks on their clocks | Merged as `077da6310291` (#574). |
+| 911 | Claude | claude/compass-objective | The compass points only when there is an objective; before any world beast has woken, red waymarks lead to the nearest crossing not yet entered; respawned creatures give full experience, normal loot and one mark | In flight. |
+| 910 | Claude | claude/cv-void-walker | Close View Void Walker on a converted RPG Character Pack body with its hood, night-sky face, split coat; casts, dashes and teleport on their clocks; skiff keeps the billboard | Merged as `8a0a850f5b5a` (#577). Published as r910-8a0a850f5b5a (2026-11-12). |
+| 909 | Claude | claude/cv-morphing-blob | Close View Crimson Tyrant and Doom Chaser, Ashen Moth (and Grove Moth), Tremor Worm, Psychic Crystal, Morphing Blob on the shared beast rig; all attacks on their clocks; QB folded-wing hint fix | Merged as `0dafb093063d` (#576). Published in r910 (2026-11-12). |
+| 908 | Claude | claude/cv-nanobot-knight | Close View Nanobot Knight on a converted RPG Character Pack human body (slender, 1.75 x the Wayfarer), plate, cone helm, greatsword, cannon, swarm cape; all attacks on their clocks | Merged as `077da6310291` (#574). Published in r910 (2026-11-12). |
 | 907 | Claude | claude/world-caches | Data-driven world caches on new ground: corpses, thrones, lever-barred alcoves in crossings; corpses, ledges and climb tops in sections; tiered loot incl. rare travel seeds | Merged as `a00159304000` (#575). Published as r907-a00159304000 (2026-11-11). |
 | 906 | Claude | claude/weapon-visuals | Close View weapon models only: proportioned Verge Cleaver hilt, the Rift Bombard as a black-and-blue hip-held grenade launcher, light polish on the Blunderbuss and Salvage Blade | Merged as `edc5b9bbd14c` (#573). Published in r907. |
 | 905 | Claude | claude/cv-questing-beast | Close View Questing Beast: furred jackal-like body, real folding wings with a body membrane, all attacks on their clocks; beast budget 5000/3000/1200 | Merged as `303e02e3e709` (#571). Published in r907. |
@@ -268,6 +269,8 @@ Main is at r909 (`0dafb093063d`); production serves `r907-a00159304000` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 910 | r910-8a0a850f5b5a | 2026-11-12 | Fable review (907→910, releases 908–910, Close View beasts): no blockers; build clean; all nine new beast kinds within their triangle, bone and buffer budgets; a combat stress run threw nothing; render-only, no save change. Note: first sight of a new beast builds its mesh synchronously (about 20–30 ms). |
+| 907 | r907-a00159304000 | 2026-11-11 | Fable review (896→907, releases 897–907): no blockers; 3,863 tests pass; r896 journeys regenerate identically and 24 r896 saves resume exactly; Pentagon v11 sweep clean. Notes: tool rounds change every save; skyway search may name a guide host seen before 904. |
 | 896 | r896-d66b426b1554 | 2026-11-11 | Fable review (886→896, releases 887–896): no blockers; 3,746 tests pass; dist parses and loads; generation identical over 12 seeds and every floor kind; only new persisted data is the respawn record. Notes: respawn item drops measured ~28% vs 0.2 table; flat Aperture marks hidden even past the 6-prop cap; Close View now refused in ordinary dungeons on resume; standard-view interior lights unmeasured on phones. Live identity and Options → System verified. Published in r907. |
 | 886 | r886-174ffb69bb4d | 2026-11-11 | Fable review (881→886, releases 882–886): no blockers; CI 3,636/3,636 on the candidate; dist parses and starts offline; r881 saves migrate (only `session.seedRealm` and `save.arcana` added); existing journeys generate identically apart from the Cairn Keeper at Ember Refuge. Notes: only player, enemies and projectiles are interpolated by the sim clock; leaving a seed realm by sigil leaves `activeDungeonId` naming it; tomb menu with a seed is a visible change; phone timing unmeasured. Live identity and Options → System verified. |
 | 881 | r881-fc5a0d9d5e61 | 2026-11-11 | Fable review (875→881, releases 876–881): no blockers; 3,597 tests pass; dist parses; r875 saves migrate identically apart from the new `lantern`/`seedPouch` keys; existing journeys generate identically; arcana regions off. Notes: seed finds shift later placements on new ground after pickup; an Opal passage skips the underwater gate; Fossilized planning untested on phones; a passer is consumed by a resume. Live identity verified. |
