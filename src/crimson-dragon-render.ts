@@ -16,7 +16,14 @@ export const DRAGON_EFFECT_KINDS = new Set(["fireLine", "dragonMeteor", "dragonC
 export const DRAGON_GAIT = { stride: 2.4, reach: .16, lift: .07 };
 // The default build (the Doom Chaser's, heavy): each dragon's art table may override any of it (`build`).
 export const DRAGON_BUILD = { bodyLen: 1, bodyH: 1, legLen: 1, legW: 1, neckLen: 1, neckW: 1, tailSegs: 12, tailStep: .1, tailW: .4, tailTip: .05, tailBend: .085, tailWave: 0, tailStart: .55, headScale: 1.3, snout: 1, lean: false };
-const smoothing = new WeakMap();
+// Render memory keyed by the creature's id, not the object: the renderer paints a fresh copy of each foe every frame
+// ({ ...e }), so a WeakMap keyed by the object never saw the same key twice and the walk cycle and easing restarted every
+// frame. Bounded (oldest dropped first); an actor with no id (a preview) falls back to the object itself.
+function renderMemory(cap = 32) {
+  const m = new Map();
+  return { get: (e) => m.get(e?.id ?? e), set: (e, v) => { const k = e?.id ?? e; if (!m.has(k) && m.size >= cap) m.delete(m.keys().next().value); m.set(k, v); } };
+}
+const smoothing = renderMemory();
 function eased(e, key, target, now, rate) {
   const st = smoothing.get(e) || {}; smoothing.set(e, st);
   const prev = st[key], last = st["@" + key], dt = last == null ? 0 : Math.min(.1, Math.max(0, (now - last) / 1000)); st["@" + key] = now;
