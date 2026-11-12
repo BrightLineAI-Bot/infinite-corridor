@@ -6,6 +6,60 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 919 — Close View beasts: second passes on the dragons and the Tremor Worm
+
+Tim, 2026-11-12:
+- On the dragons: "their back halves are kind of boxy and weird ... their wings should be pretty large and dragon like ... move around with their wings outspread ... when they're doing their flying attacks their wings should be outspread ... a slam attack where they just slam down on you from the air".
+- On the worm: "just a little bit more of a visual pass and also we have to make sure that we get his tentacles looking good".
+
+**CODE:**
+- **`close-view-beast-dragon.ts`**
+  - One loft from tail tip to nose, with sections in `DRAGON_RIG.mesh`.
+  - Limbs are lofted in joint units from inside the trunk.
+  - Five-fingered wings: two extra fingers are skinned between the finger bones, and the membrane is scalloped by each art table's `scallop`.
+  - Wing animation reads `DRAGON_RIG.flight` (beat, finger lag, upstroke fold, heave).
+  - `hang`, `dive` and `diveLand` poses, also added to the standard view's pose table in `crimson-dragon-render.ts`.
+  - The Doom Chaser's cracks are on emissive channel 4.
+- **Skyfall (`dragonDive`)** is the one gameplay addition, for both dragons (Tim, 2026-11-12: "a doom chaser can get skyfall too").
+  - It lives in `monster-pack.ts`: `ATTACK_MODULES.dragonDive`, with numbers in `DRAGON.dive` and `DRAGON.pool.dive`, plus its start and run handlers.
+  - Range 3–13, cooldown 11 s, damage ×1.5.
+  - Rise .7 s to 2.4, hang 1.4 s tracking at 5.5 tiles/s, fall .38 s, landing radius 2.6.
+  - It is untargetable while aloft and lands one unjumpable hit on impact.
+  - Its landing sends out a jumpable `shock` ring of radius `DRAGON.dive.ring` (5) for `ringShare` (.6) of the blow, as the stag's leap does.
+  - It hangs `DRAGON.dive.stop` (.9) tiles short of the Wayfarer, so it lands beside them, never on them.
+  - `tunePentagonArenaBeast` (game.ts) drops `dragonDive` from the Stillworks finale Tyrant: that duel is a tuned set piece (the early build loses; from mid on, the Wayfarer wins), and its duel tests hold.
+  - The Doom Chaser keeps its own `doomFall` as well, unchanged, now animated as hang, dive and landing.
+- **`close-view-beast-worm.ts`**
+  - The shared `buildTendril` and `TENTACLE_LOOK`.
+  - Four-bone lip tentacles posed by `poseTentacles`. The lash reads `lashed` and `dirs` once and runs its own snap, hold and recoil (`WORM_RIG`).
+  - A `gullet` tooth ring, and a `spray` bone for thrown earth.
+  - Shingled plates and a broken-slab hole.
+  - `wormBodyEligible` keeps the mound only while the worm is hidden or during a Rise's eruption.
+- **`close-view-beast-tentacle.ts`:** the `wormTentacle` body, with one mesh per tier and `tentacleMode`, posed from the game's rising, fire, laser, grab and swipe state.
+- **`BEAST_SLOT.minion`** (6 bodies, 12 bones, 760/480/190 triangles) with the roster flag `minion: true`. This gives small minions their own count in `admitBeasts`, so they never take a beast slot. `tierMinions` admits 6 on full and balanced and none on low, where the tentacles keep their billboards (Tim, 2026-11-12).
+- **Tests:**
+  - `tests/dragon-skyfall.test.ts` (new);
+  - `tests/close-view-beast-tentacle.test.ts` (new);
+  - `tests/close-view-beast-dragon.test.ts` and `-worm` (extended);
+  - `tests/crimson-tyrant-709.test.ts` and `tests/doom-chaser-710.test.ts` (move counts 12 → 13).
+
+**BOUNDARY:**
+- Skyfall is the only gameplay change. Every other change is render only.
+- The minion allowance as a whole costs less than one beast per tier.
+- Core triangles:
+
+| Body | Full | Balanced | Low |
+|---|---|---|---|
+| Crimson Tyrant | 4078 | 2556 | 1108 |
+| Doom Chaser | 4222 | 2652 | 1108 |
+| Tremor Worm | 4912 | 2344 | 967 |
+| Field tentacle (each, at most) | 749 | 452 | 187 |
+
+**POLISH:**
+- Dragons: 4+ passes. The faceted glutes and thighs were replaced by one smooth hide, the flank wing sheet became a cape on the back, and shoulder-blade boxes were removed.
+- Worm: 5 passes. The neck gap is closed by a skirt.
+- Field tentacles: 3 passes.
+
 ## Release 918 — Release 918 — one stat per weapon and tool; the Fourfold Daggers
 
 Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new paired-dagger weapon: two narrow crossing cuts per press, and a cancel before the second cut starts leaves only the first.

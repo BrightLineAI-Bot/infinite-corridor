@@ -32,9 +32,9 @@ function step(w, seconds, each = () => {}) { for (let t = 0; t < seconds; t += w
 function until(w, e, id, max = 8) { for (let t = 0; t < max && e.pack.attack !== id; t += w.dt) step(w, w.dt); assert.equal(e.pack.attack, id, `${id} starts`); }
 const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 
-test('registry: a huge flying world boss, twelve moves, its own poise, Echo and Aperture tier; bigger than the Astral Worm', () => {
+test('registry: a huge flying world boss, thirteen moves, its own poise, Echo and Aperture tier; bigger than the Astral Worm', () => {
   const B = WORLD_BEASTS.crimsonTyrant, def = MONSTER_PACK.crimsonTyrant;
-  assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(def.attacks.length, 12); for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
+  assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(def.attacks.length, 13); for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.crimsonTyrant); assert.ok(BOSS_POISE.crimsonTyrant); assert.equal(BEAST_APERTURE.crimsonTyrant, 8); assert.ok(PLACEMENT.bigBeasts.includes('crimsonTyrant'));
   assert.ok(createCombatant('crimsonTyrant', 0, 0, true, []).scale > 2 * createCombatant('astralWorm', 0, 0, true, []).scale);
 });

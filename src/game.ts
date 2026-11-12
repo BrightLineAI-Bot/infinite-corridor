@@ -578,6 +578,9 @@ export function tunePentagonArenaBeast(c, id, save, stats, regional) {
   const row = pentagonArenaRow(id), v = row && pentagonArenaVitals(row, save, stats, regional); if (!v) return c;
   Object.assign(c, { pentFinaleBeast: id, boss: true, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true,
     threatRing: regional?.ring ?? 0, xpMultiplier: Math.max(1, Number(regional?.xpMultiplier) || 1), packName: row.name || (row.beast && WORLD_BEASTS[row.beast]?.name) || MONSTER_PACK[c.kind]?.name || c.packName, pentArenaTuning: PENTAGON_ARENA.version });
+  // Skyfall (dragonDive, release 919) is the roaming Crimson Tyrant's: the Stillworks duel is a tuned set piece (Tim 2026-11-11: the early
+  // fight is a loss, from mid on a win), so the finale Tyrant keeps the moves that balance was set on.
+  if (Array.isArray(c.packAttacks)) c.packAttacks = c.packAttacks.filter((a) => a !== "dragonDive");
   delete c.worldBeast; delete c.minimumAttackWindup; return c;
 }
 function pentagonArenaIn(save, id) {
