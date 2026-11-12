@@ -139,3 +139,30 @@ test('its marks, eruptions, chomping puddles and shots are drawn on the floor', 
   assert.ok(calls.fill > 12 && calls.stroke > 3, `${calls.fill} fills, ${calls.stroke} strokes`);
   const before = calls.fill; drawStalkerCloseViewFloor(ctx, { ...e, dead: true }, 32, 1000); assert.equal(calls.fill, before, 'nothing once it is dead');
 });
+
+test('one hide: the trunk, the neck, the tail and every limb are skinned across their joints, not rigid parts meeting at a seam', () => {
+  const I = STALKER_SKELETON.index;
+  for (const tier of ['full', 'balanced', 'low']) {
+    const m = stalkerMesh(tier), pairs = new Set();
+    for (let v = 0; v < m.vertexCount; v++) { const a = m.skin[v * 4], b = m.skin[v * 4 + 2], w = m.skin[v * 4 + 3]; if (a !== b && w > .05 && w < .95) pairs.add(`${a}:${b}`); }
+    const joined = (a, b) => pairs.has(`${I[a]}:${I[b]}`) || pairs.has(`${I[b]}:${I[a]}`);
+    for (const [a, b] of [['cBody', 'cSpine'], ['cSpine', 'cChest'], ['cChest', 'cHead'], ['cBody', 'cTail1'], ['cTail1', 'cTail2']]) assert.ok(joined(a, b), `${tier}: ${a} into ${b}`);
+    for (const k of [0, 1, 2]) for (const s of ['L', 'R']) {
+      assert.ok(joined(['cChest', 'cSpine', 'cBody'][k], `cThigh${k}${s}`), `${tier}: leg ${k}${s} grows out of the trunk`);
+      assert.ok(joined(`cThigh${k}${s}`, `cShin${k}${s}`), `${tier}: knee ${k}${s}`);
+    }
+    for (const s of ['L', 'R']) for (const [a, b] of [['aChest', 'aArm' + s], ['aArm' + s, 'aFore' + s], ['aFore' + s, 'aFist' + s], ['aHips', 'aThigh' + s], ['aThigh' + s, 'aShin' + s], ['aChest', 'aWing' + s]])
+      assert.ok(joined(a, b), `${tier}: ${a} into ${b}`);
+  }
+});
+
+test('the gaits carry weight: the cat\'s prowl rolls through haunch and shoulders, the ape\'s hump rolls onto the planted knuckles; still under Reduced Motion', () => {
+  const I = STALKER_SKELETON.index;
+  // the bone's right axis' height (its roll in the world)
+  const rollOf = (tr, n) => tr.pose.wr[I[n] * 9 + 5] / scaleOf(tr, n);
+  for (const [form, n, speed] of [['cat', 'cChest', 3.3], ['ape', 'aChest', 2.2]]) for (const reduce of [false, true]) {
+    const e = actor({ stalkForm: form }), tr = createStalkerTrack(); let now = 1000, lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < 150; i++) { now += 16; e.x += speed / 60; sampleStalker(tr, e, env(e, now, { reduce, target: { x: e.x + 6, y: 20.82 } })); if (i > 40) { const r = rollOf(tr, n); lo = Math.min(lo, r); hi = Math.max(hi, r); } }
+    if (reduce) assert.ok(hi - lo < 1e-9, `${form} still`); else assert.ok(hi - lo > .05, `${form} rolls ${(hi - lo).toFixed(3)}`);
+  }
+});

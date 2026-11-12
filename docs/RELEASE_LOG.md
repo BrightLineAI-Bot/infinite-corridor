@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r911 (`37269cec64fc`); production serves `r911-37269cec64fc` (published 2026-11-12 after a Fable review of r910 to r911). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r912 (`f0117e40ae61`); production serves `r912-f0117e40ae61` (published 2026-11-12 after a Fable review of r911 to r912). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 912 | Claude | claude/cv-last-four | Close View Astral Worm (all forms), Stalker (cat and ape; marks on the floor), Gloomvast (luminous gas), Listener (robed figure and Morphling); all on their clocks | In flight. |
+| 913 | Claude | claude/cv-beast-rework | Close View second passes: Astral Worm (one-bodied griffin, a bite that is the head, jointed mandibles and veined wings), Stalker (cohesive cat and ape, weighted gaits) | In flight. |
+| 912 | Claude | claude/cv-last-four | Close View Astral Worm (all forms), Stalker (cat and ape; marks on the floor), Gloomvast (luminous gas), Listener (robed figure and Morphling); all on their clocks | Merged as `f0117e40ae61` (#579). Published as r912-f0117e40ae61 (2026-11-12). |
 | 911 | Claude | claude/compass-objective | The compass points only when there is an objective; before any world beast has woken, red waymarks lead to the nearest crossing not yet entered; respawned creatures give full experience, normal loot and one mark | Merged as `37269cec64fc` (#578). Published as r911-37269cec64fc (2026-11-12). |
 | 910 | Claude | claude/cv-void-walker | Close View Void Walker on a converted RPG Character Pack body with its hood, night-sky face, split coat; casts, dashes and teleport on their clocks; skiff keeps the billboard | Merged as `8a0a850f5b5a` (#577). Published as r910-8a0a850f5b5a (2026-11-12). |
 | 909 | Claude | claude/cv-morphing-blob | Close View Crimson Tyrant and Doom Chaser, Ashen Moth (and Grove Moth), Tremor Worm, Psychic Crystal, Morphing Blob on the shared beast rig; all attacks on their clocks; QB folded-wing hint fix | Merged as `0dafb093063d` (#576). Published in r910 (2026-11-12). |
@@ -270,6 +271,7 @@ Main is at r911 (`37269cec64fc`); production serves `r911-37269cec64fc` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 912 | r912-f0117e40ae61 | 2026-11-12 | Fable review (911→912): no blockers. Published by the publishing session. |
 | 911 | r911-37269cec64fc | 2026-11-12 | Fable review (910→911): no blockers. Published by the publishing session. |
 | 910 | r910-8a0a850f5b5a | 2026-11-12 | Fable review (907→910, releases 908–910, Close View beasts): no blockers; build clean; all nine new beast kinds within their triangle, bone and buffer budgets; a combat stress run threw nothing; render-only, no save change. Note: first sight of a new beast builds its mesh synchronously (about 20–30 ms). |
 | 907 | r907-a00159304000 | 2026-11-11 | Fable review (896→907, releases 897–907): no blockers; 3,863 tests pass; r896 journeys regenerate identically and 24 r896 saves resume exactly; Pentagon v11 sweep clean. Notes: tool rounds change every save; skyway search may name a guide host seen before 904. |

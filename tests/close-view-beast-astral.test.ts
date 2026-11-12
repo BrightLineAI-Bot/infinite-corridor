@@ -32,6 +32,10 @@ function fight(only, seconds, each, { player = { x: 30, y: 20 } } = {}) {
   }
 }
 const finite = (a) => { for (const v of a) if (!Number.isFinite(v)) return false; return true; };
+// the angle between two bones' forward axes (the jaw against the upper head: the bite's gape)
+const axisOf = (tr, name) => { const i = ASTRAL_SKELETON.index[name] * 9, W = tr.pose.wr, l = Math.hypot(W[i], W[i + 1], W[i + 2]); return [W[i] / l, W[i + 1] / l, W[i + 2] / l]; };
+const angleBetween = (tr, a, b) => { const p = axisOf(tr, a), q = axisOf(tr, b); return Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]))); };
+const gapeOf = (tr) => angleBetween(tr, 's0', 'jaw');
 const scaleOfBone = (tr, name) => { const i = ASTRAL_SKELETON.index[name] * 9, W = tr.pose.wr; return Math.hypot(W[i], W[i + 1], W[i + 2]); };
 
 test('the mesh: bounded per tier, valid, cached; registered, with the ridden Worm on its billboard', () => {
@@ -103,9 +107,9 @@ test('the griffin stands on its paws, crouches and leaps on the pounce clock; th
   fight('griffin', 3, (f, e, tr) => { const s = e.astral; if (s?.move === 'griffin' && s.elapsed > .45 && s.elapsed < .5) { const i = ASTRAL_SKELETON.index.hlR, P = tr.pose; const z = P.wp[i * 3 + 2] - P.wr[i * 9 + 8] * .31; low = Math.min(low, z / f.scale); } });
   assert.ok(Math.abs(low) < .08, `paws on the ground (${low.toFixed(3)})`);
   let gape = 0, shut = Infinity;
-  fight('bite', 4, (f, e, tr) => { const s = e.astral; if (s?.move !== 'bite' || s.elapsed < ASTRAL.windup) return; const d = (astralBone(tr, 'maw')[2] - astralBone(tr, 'jaw')[2]) / f.scale, p = (s.elapsed - ASTRAL.windup) % ASTRAL.biteGap;
+  fight('bite', 4, (f, e, tr) => { const s = e.astral; if (s?.move !== 'bite' || s.elapsed < ASTRAL.windup) return; const d = gapeOf(tr), p = (s.elapsed - ASTRAL.windup) % ASTRAL.biteGap;
     if (p < ASTRAL.biteActive) shut = Math.min(shut, d); else if (p > ASTRAL.biteGap * .8) gape = Math.max(gape, d); });
-  assert.ok(gape > shut + .2, `gape ${gape.toFixed(2)}, shut ${shut.toFixed(2)}`);
+  assert.ok(gape > shut + .6, `gape ${gape.toFixed(2)}, shut ${shut.toFixed(2)}`);
   let spikes = 0;
   fight('pool', 3, (f, e, tr) => { if (e.astral?.move === 'pool' && e.astral.elapsed > ASTRAL.windup + .1) spikes = Math.max(spikes, scaleOfBone(tr, 'spikes') / f.scale); });
   assert.ok(spikes > .9, 'the pool\'s spikes erupt');
@@ -127,4 +131,55 @@ test('death; reduced motion; no astral state yet', () => {
     sampleAstral(r, e2, env(e2, 1000, { reduce: true }));
     const a = Array.from(sampleAstral(r, e2, env(e2, 1016, { reduce: true })).skin); assert.deepEqual(Array.from(sampleAstral(r, e2, env(e2, 4000, { reduce: true })).skin), a, form);
   }
+});
+
+test('the bite is the head itself: the jaw gapes from the hinge over the gap and slams shut on the game\'s active window', () => {
+  // the mesh: the lower half of the head bead, its gum and its teeth ride the jaw; the upper half and its teeth the head
+  const m = astralMesh('full'), jaw = ASTRAL_SKELETON.index.jaw, head = ASTRAL_SKELETON.index.s0, tooth = [0xbf / 255, 0xb5 / 255, 0xa6 / 255];
+  let jawTeeth = 0, headTeeth = 0, jawSkin = 0;
+  for (let v = 0; v < m.vertexCount; v++) {
+    const isTooth = Math.abs(m.colors[v * 3] - tooth[0]) < 1e-3 && Math.abs(m.colors[v * 3 + 1] - tooth[1]) < 1e-3 && Math.abs(m.colors[v * 3 + 2] - tooth[2]) < 1e-3;
+    const onJaw = m.skin[v * 4] === jaw || (m.skin[v * 4 + 2] === jaw && m.skin[v * 4 + 3] > .5);
+    if (v < m.coreIndices && onJaw) jawSkin++;
+    if (isTooth && onJaw) jawTeeth++; else if (isTooth && m.skin[v * 4] === head) headTeeth++;
+  }
+  assert.ok(jawSkin > 60 && jawTeeth > 10 && headTeeth > 10, `jaw ${jawSkin}, teeth ${jawTeeth}/${headTeeth}`);
+  // the clock: wide at the end of each gap, slammed shut early in the active window and clenched to its end, open again by
+  // the end of the gap; and it opens through the windup
+  const atEnd = [], early = [], clenched = [], windup = [];
+  fight('bite', 4, (f, e, tr) => { const s = e.astral; if (s?.move !== 'bite' || s.clock - s.morphStart < ASTRAL.morphTime) return;
+    if (s.elapsed < ASTRAL.windup) { windup.push([s.elapsed, gapeOf(tr)]); return; }
+    const p = (s.elapsed - ASTRAL.windup) % ASTRAL.biteGap;
+    if (p > ASTRAL.biteGap - .05) atEnd.push(gapeOf(tr));
+    else if (p < ASTRAL.biteActive * ASTRAL_CV_RIG.biteSnap * .5) early.push(gapeOf(tr));
+    else if (p > ASTRAL.biteActive * ASTRAL_CV_RIG.biteSnap && p < ASTRAL.biteActive) clenched.push(gapeOf(tr)); });
+  assert.ok(atEnd.length && atEnd.every((g) => g > .8 * ASTRAL_CV_RIG.biteOpen), `wide before the snap: ${atEnd.map((g) => g.toFixed(2))}`);
+  assert.ok(clenched.length && clenched.every((g) => g < .05), `shut through the active window: ${clenched.map((g) => g.toFixed(2))}`);
+  assert.ok(early.length && early.every((g) => g > .05), 'it is snapping shut, not already shut, as the window opens');
+  // (the windup's first share is the morph into the bite form, so it is read from the morph's end)
+  const w0 = windup.filter(([t]) => t < ASTRAL.morphTime + .05), w1 = windup.filter(([t]) => t > ASTRAL.windup - .05);
+  assert.ok(w1.length && w0.length && Math.min(...w1.map((x) => x[1])) > Math.max(...w0.map((x) => x[1])) + .25, 'it gapes through the windup');
+  // outside the bite the head is a bead again, its mouth all but shut
+  let worm = 0; fight('rings', 3, (f, e, tr) => { if (e.astral?.form === 'worm' && e.astral.clock - e.astral.morphStart > ASTRAL.morphTime && !e.astral.move) worm = Math.max(worm, gapeOf(tr)); });
+  assert.ok(worm < .2, `the worm's mouth (${worm.toFixed(2)})`);
+});
+
+test('the flier\'s mandibles work, held wide on the beam; the hidden beam waits in the mouth', () => {
+  let lo = Infinity, hi = -Infinity, beamLo = Infinity, idle = 0, waits = 0;
+  fight('flight', 4, (f, e, tr) => { const s = e.astral; if (s?.form !== 'flight' || s.clock - s.morphStart < ASTRAL.morphTime) return;
+    const spread = angleBetween(tr, 'mandL', 'mandR');
+    if (s.move === 'flight' && s.elapsed >= ASTRAL.windup) beamLo = Math.min(beamLo, spread); else { lo = Math.min(lo, spread); hi = Math.max(hi, spread); }
+    if (!(f.emitA[3] > 0)) { idle++; const a = astralBone(tr, 'beamFoot'), b = astralBone(tr, 'jaw'); if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 1e-6) waits++; } }, { player: { x: 20, y: 20 } });
+  assert.ok(hi - lo > .5, `they open and snap (${lo.toFixed(2)}..${hi.toFixed(2)})`);
+  assert.ok(beamLo > hi - .05, `wide on the beam (${beamLo.toFixed(2)})`);
+  assert.ok(idle > 10 && waits === idle, 'the beam is drawn up into the mouth while it is off');
+});
+
+test('the griffin is one body: its trunk, head, wings and tail grow in on the morph; the beads gather small inside', () => {
+  const seen = [];
+  fight('griffin', 3, (f, e, tr) => { const s = e.astral; if (!s) return; seen.push([s.form, (s.clock - s.morphStart) / ASTRAL.morphTime, scaleOfBone(tr, 'gchest') / f.scale, scaleOfBone(tr, 'ghead') / f.scale, scaleOfBone(tr, 'tail1') / f.scale, scaleOfBone(tr, 's3') / f.scale]); });
+  const grown = seen.filter(([form, k]) => form === 'griffin' && k > 1.05), growing = seen.filter(([form, k]) => form === 'griffin' && k > .3 && k < .7), worm = seen.filter(([form, k]) => form === 'worm' && k > 1.05);
+  assert.ok(grown.length && grown.every(([, , c, h, t, b]) => c > .97 && h > .97 && t > .97 && b < .8), 'grown: the trunk, the head and the tail at full size, the beads gathered small');
+  assert.ok(growing.length && growing.every(([, , c, h]) => c > .1 && c < .9 && h > .1 && h < .9), 'growing in once, on the morph clock (not squared through the chain)');
+  assert.ok(worm.length && worm.every(([, , c, h, t, b]) => c < .01 && h < .01 && t < .01 && b > .95), 'drawn back into the worm');
 });
