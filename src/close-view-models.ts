@@ -149,8 +149,11 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   // sits ahead of it where the support hand closes; the muzzle face stays at the established 1.585.
   bombard: Object.freeze({ axisX: .055, barrelRadius: .074, bore: .060, collar: Object.freeze([1.505, 1.585]), collarRadius: .088,
     drum: Object.freeze([.87, 1.20]), drumRadius: .132, grip: Object.freeze([.035, .845, .262, .735]), gripRadius: .033, support: Object.freeze([.075, -.350, -.440, .965]) }),
-  // Salvage Blade: the accepted blade and guard, plus a short grip and pommel below the fist.
-  salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]) }),
+  // Salvage Blade: held beneath the guard like a long spike. Grip and pommel are unchanged (the hold);
+  // the reskin (Tim, 2026-11-12) is a diamond spike blade, a diamond bevelled guard plate and a wrapped grip.
+  salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]),
+    blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, shoulder: .87, width: .052, thick: .018, tip: 1.40 }),
+    guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5 }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -198,7 +201,7 @@ function heldFacets(tris, color, away) {
   return heldPart(tris.map(t => { let n = v3.cross(v3.sub(t[1], t[0]), v3.sub(t[2], t[0])); const c = [0, 1, 2].map(k => (t[0][k] + t[1][k] + t[2][k]) / 3);
     if (v3.dot(n, away(c)) < 0) { t = [t[0], t[2], t[1]]; n = n.map(x => -x); } return t.map(p => [p, n]); }), color);
 }
-const WAYFARER_GUNMETAL = 0x3a4246, WAYFARER_LEATHER = 0x5a4330, WAYFARER_WALNUT = 0x5b4130, RIFT_SEAM = 0xc58cff;
+const WAYFARER_GUNMETAL = 0x3a4246, WAYFARER_LEATHER = 0x5a4330, RIFT_SEAM = 0xc58cff;
 
 // Verge Cleaver for the imported hero: 96 triangles. The blade keeps the accepted silhouette and
 // colours (warm forged flats, a bright verge edge, the long straight edge line to a clipped point);
@@ -532,16 +535,36 @@ function wayfarerToolMaterials(parts) {
   const map = new Map([...WAYFARER_TOOL_COLORS].map(([from, to]) => [key(from), [(to >> 16) / 255, ((to >> 8) & 255) / 255, (to & 255) / 255]]));
   return Object.freeze(parts.map(p => { const mesh = Float32Array.from(p.mesh); for (let i = 0; i < mesh.length; i += MESH_FLOATS) { const to = map.get([mesh[i + 6], mesh[i + 7], mesh[i + 8]].join()); if (to) { mesh[i + 6] = to[0]; mesh[i + 7] = to[1]; mesh[i + 8] = to[2]; } } return { ...p, mesh }; }));
 }
-// Salvage Blade (Tim: fine as is): the accepted guard and blade, unchanged, plus a short walnut grip
-// and brass pommel showing below the fist and a bright edge line down both sides of the blade.
+// Salvage Blade for the imported hero: 54 triangles, inside the old 58. Tim, 2026-11-12: keep the hold
+// beneath the guard, "almost like a long nail or a long spike", and make it look cooler. A bronze
+// diamond spike swells from the guard to a shoulder, then tapers straight to a needle point (12); a
+// bright verge line rides both edges (4) and a dark fuller runs up both ridges (2); a clean diamond
+// gunmetal guard plate, the nail head, bevelled toward the blade (20); the unchanged grip, wrapped in
+// leather with twisted facets (12); and a pointed brass pommel cap (4). Same palette as the other
+// held weapons.
 const heroSalvageBlade = (() => {
-  const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, X = .17, Y = -.25;
-  const edges = [];
-  for (const side of [-1, 1]) edges.push([[.155, Y + side * .046, .80], [.155, Y + side * .040, .80], [.155, Y + side * .0085, 1.40]]);
-  return Object.freeze([...player.slice(-2),
-    heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], .026], [X, Y, F.pommel[2], .019]], 6, brass),
-    heldTube([[X, Y, F.grip[0], F.gripRadius], [X, Y, F.grip[1], F.gripRadius]], 6, WAYFARER_WALNUT),
-    part(membrane(edges[0]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19), part(membrane(edges[1]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19)]);
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, B = F.blade, G = F.guard, X = .17, Y = -.25, XB = B.axisX;
+  // Diamond rings: thickness along recipe X (the ridges), width along recipe Y (the edges).
+  const ring = (z, w, t) => [[XB + t, Y, z], [XB, Y + w, z], [XB - t, Y, z], [XB, Y - w, z]], tip = [XB, Y, B.tip];
+  const a = ring(B.base, B.baseWidth, B.baseThick), b = ring(B.shoulder, B.width, B.thick), blade = [];
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; blade.push([a[i], a[j], b[j]], [a[i], b[j], b[i]], [b[i], b[j], tip]); }
+  const fromAxis = c => [c[0] - XB, c[1] - Y, 0];
+  // Edge lines in the blade's mid-plane, just proud of each edge from the shoulder to the point.
+  const edges = [-1, 1].map(side => [[XB, Y + side * (B.width + .003), B.shoulder], [XB, Y + side * (B.width - .006), B.shoulder], [XB, Y + side * .0012, B.tip + .004]]);
+  // Fuller: a dark sliver along each ridge, floating just above it.
+  const fuller = [-1, 1].map(side => { const r = z => side * (B.thick * (B.tip - z) / (B.tip - B.shoulder) + .0016); return [[XB + r(.90), Y - .006, .90], [XB + r(.90), Y + .006, .90], [XB + r(1.30), Y, 1.30]]; });
+  // Wrapped grip: the same radius and length, its top ring turned so the facets spiral like a wrap.
+  const wrap = [], n = 6, R = F.gripRadius, ringAt = (z, turn) => Array.from({ length: n }, (_, i) => { const q = (i + .5 + turn) * 2 * Math.PI / n; return [X + R * Math.cos(q), Y + R * Math.sin(q), z]; });
+  const lo = ringAt(F.grip[0], 0), hi = ringAt(F.grip[1], F.wrapTwist);
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; wrap.push([lo[i], lo[j], hi[j]], [lo[i], hi[j], hi[i]]); }
+  return Object.freeze([
+    heldFacets(blade, bronze, fromAxis),
+    part(membrane(edges[0]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19), part(membrane(edges[1]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19),
+    heldFacets(fuller, WAYFARER_GUNMETAL, c => [c[0] - XB, 0, 0]),
+    heldTube([[XB, Y, G.z[0], G.corner[0], G.corner[1]], [XB, Y, G.z[1], G.corner[0], G.corner[1]], [XB, Y, G.z[2], G.corner[0] * G.bevel, G.corner[1] * G.bevel]], 4, WAYFARER_GUNMETAL, { caps: 3, flat: true, phase: 0 }),
+    heldFacets(wrap, WAYFARER_LEATHER, c => [c[0] - X, c[1] - Y, 0]),
+    heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
+  ]);
 })();
 const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
