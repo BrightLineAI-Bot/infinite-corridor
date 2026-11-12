@@ -6,6 +6,23 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 909 — Close View beasts: the dragons, the Ashen Moth, the Tremor Worm, the Psychic Crystal, the Morphing Blob
+
+Tim, 2026-11-11: "Do their visual passes and continue the monster manifest"; "Finish the n monsters".
+
+**CODE:** Five new modules on the shared beast rig (`close-view-beast-rig.ts`), each with a `*_RIG` presentation table, a skeleton, three tiers of mesh within `BEAST_SLOT`, a track and a sampler that follows the game's own state. None of them sets any gameplay state.
+- `src/close-view-beast-dragon.ts` (`crimsonTyrant`, `doomChaser`) is one 40-bone dragon. It is built from the Questing Beast's body, lowered onto short thick legs, with each dragon's bulk taken from its art table's build and its colours from `DRAGON_ART` and `DOOM_ART`. Its poses are the game's `dragonPose` names, including the Doom Chaser's wing-walk, bite and eclipse. `dragonAir` lifts it, `dragonSpin` turns it and `dragonCharge` lights its mouth.
+- `src/close-view-beast-moth.ts` (`ashenMoth`, `groveMoth`) has 23 bones. Its fore- and hind-wings are sheets with flexing outer halves, and its spread, flap rate, pitch and lift come from the standard view's `mothPose` table. The cocoon and the kindled flames sit in the optional section.
+- `src/close-view-beast-worm.ts` (`tremorWorm`) is a ten-ring column whose base is sunk so that `wormLift` of it stands above ground. Its bends and sweep follow the attack data (the sweep's `swing`, the slam's `slammed`), and its lip tentacles lash along the maw's lanes. A roster `eligible` filter keeps the standard view's mound while it is `untargetable`. `close-view-beasts.ts` gains the `eligible` hook.
+- `src/close-view-beast-crystal.ts` (`psychicCrystal`) is made of flat-shaded facets with an emissive core belt. Its three aura shells share channel 4 and are chosen by size. It falls on the game's `crystalFall`.
+- `src/close-view-beast-blob.ts` (`morphingBlob`) is a mound sheet skinned round eight wobbling lobe bones, with its crown carried by the core. Its eyes have lime and orange irises chosen by size, its three-segment tendrils follow the lash's lanes and length, and it rises on the game's `hopLift`.
+
+The Questing Beast's folded-wing membrane hint now turns with the beat (an inline comment had swallowed that line). The dragon module is precached in both service workers. Tests: `tests/close-view-beast-dragon.test.ts`, `-moth`, `-worm`, `-crystal`, `-blob`.
+
+**BOUNDARY:** Render only. No gameplay, save, generator or balance change. Under the ground the Tremor Worm keeps its standard-view mound. The beasts' `form.scale` values are unchanged.
+
+**POLISH:** (1) Dragons: rebuilt from a lanky horned hound into a low, heavy dragon, then given bigger wings, swept horns and a tail sweep that arcs instead of hooking. (2) Moth: the fore-wings broadened into true moth wings, round eye-spots, a tent fold and a bigger body. (3) Worm: a rounder head over a recessed, glowing maw, and slender tendrils. (4) Crystal: a faceted core belt in place of a core showing through, and the aura moved to the two-sided channel. (5) Blob: from an onion dome to a wide mound, with the crown riding the core and the eyes moving with the front lobes.
+
 ## Release 908 — Close View beasts: the Nanobot Knight on a human body
 
 Tim, 2026-11-11: of the first Knight, "more slim, less chunky ... built more like Artorias"; then "not so boxy ... he needs to look like a human ... use one of the models from the RPG creator ... 1.75 times the size of the Wayfarer"; "not chibi ... slightly longer and slender ... and taller"; "even more slim and more tall ... his torso more elongated"; "ten to twenty percent more elongated ... his waist pretty slender"; "I like his cone head ... the feather pointing off the top"; "reduce the particles in the cape ... to increase his fidelity".
