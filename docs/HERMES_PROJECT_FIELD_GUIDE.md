@@ -6,6 +6,22 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 918 — Release 918 — one stat per weapon and tool; the Fourfold Daggers
+
+Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new paired-dagger weapon: two narrow crossing cuts per press, and a cancel before the second cut starts leaves only the first.
+
+**CODE:** `src/items.ts`: `SCALING_STATS` {might: Might, magic: Focus, stamina: Finesse}, `SCALING_STRENGTH` {melee 2, magic 1}, `WEAPON_SCALING`/`TOOL_SCALING` (the single source), `scalingOf`; `FOURFOLD_DAGGERS` (two cuts 80 ms apart, 0.55 share each, 10-degree cones from hands 0.3 tiles apart angled 25 degrees across the facing, range 1.6) and the `daggers` primary profile; a separate seeded loot stream `fourfold-daggers-loot:v1` (20% of non-Fists, non-Salvage weapons). `src/game.ts`: `scaledBonus(save, stat, channel)` swaps the channel's own stat term for the gear's stat at the same strength; `weaponBonus()`/`toolBonus()`/`spellPower(spell, scaling)` route every blow; `characterStats().weaponBonus` feeds boss tuning (far-array, monster-pack, world-beasts, skylands); `daggerCutHits`, a `daggerCut` runtime timer for the second cut, dropped by `cancelPendingMeleeContact`; level-12 milestone. `src/main.ts`: gear card and character sheet name the stat; dagger icon. `src/renderer.ts`: crossing cut strokes.
+
+**BOUNDARY:** Damage types never change with the stat. A save with every stat at 1, and balanced builds, deal identical damage; a matched build equals the old Might build. Saves stay additive at schema 14 (the daggers are ordinary items). The second cut is runtime only. Close View draws the daggers with the Salvage Blade model until their own model lands.
+
+## Release 917 — Release 917 — Rift Step off a roof lands on its edge, never in the wall
+
+The pre-publish review of 916 found that the roof-edge hold added for walking, jumping, the glider and the drone did not cover blinks: a plain or aimed Rift Step from a roof could end with the feet just past the roof and the collision box over the house's walls, and the Wayfarer landed on the ground wedged in the wall (383 of 36,038 plain steps off roofs in its sweep).
+
+**CODE:** `blinkFooting` (src/game.ts) first asks `deckEdgeHold(x, y, top)`: when the box at the step's end still stands over the walls of a roof at or under the step's reach, the step lands on that roof (`{ level, deck }`) and the ordinary walk-off rule takes it down once the box clears the walls. The ground footing is then tested with no deck reach, so a house's walls always stop a ground landing. tests/rift-roof-edge.test.ts replays the review's plain and aimed repros (seed ROOF, section -2,0, shack--2-0).
+
+**BOUNDARY:** Blinks only; walking, jumping, glide and drone movement and every creature's collision are unchanged. No save change (the roof stood on is already saved as `roofDeck`). A step that clears the walls still lands on the ground and falls by the usual rule.
+
 ## Release 916 — Verge Cleaver slashes, Salvage Blade reskin, Lumen Carbine
 
 Tim, 2026-11-12: the Verge Cleaver's attack "just kind of flails... scrap it and start over, just do some standard sword slashes... the reskin of it looks amazing"; "do a reskin of the Salvage Blade so it looks a little cooler... I like that you hold it beneath the guard, almost like a long spike" (text and stats untouched: Tim has a rework coming); and an energy rifle, "one powerful shot then another... charge it up... like a sniper", made "a passive for the Lumen Spindle... it'll have to scale with magic".
