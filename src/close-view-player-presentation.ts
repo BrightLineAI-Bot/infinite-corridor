@@ -288,13 +288,30 @@ export function ordinaryJumpPresentation(game, now, lift, baseMs) {
   return {v:1,elapsedMs,remainingMs,durationMs,lift,rise:Math.min(1,elapsedMs/(baseMs*.5)),fall:Math.max(0,1-remainingMs/(baseMs*.5))};
 }
 
+// Read-only falling pose (game.ts FALL, Tim 2026-11-12: falls with real airtime): a fall from FALL.pose levels or more, on foot and
+// out of a jump, is drawn with the ordinary air pose held at its hang (arms out, knees softly tucked), the legs reaching down over the
+// last FALL_REACH_MS before the ground under them; the ends connect to the ground pose. The clocks are the fall's own (game.fall.t,
+// stepped only by the game, so a pause holds them). Null otherwise.
+export const FALL_REACH_MS = 350;
+export function ordinaryFallPresentation(game, now, lift) {
+  const g=game,p=g?.player,f=g?.fall,clock=g?.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now;
+  if(!p||!f||!(p.hp>0)||!Number.isFinite(clock)||clock<(g.jumpUntil||0)||!g.fallPoseDue?.())return null;
+  if(g.droneLift||g.mechBoosting||g.glide||g.swimming||g.save?.boat?.aboard||g.mountRide?.()||g.mechUp?.())return null;
+  const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
+  if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
+  const elapsedMs=Math.max(0,(Number(f.t)||0)*1000),remainingMs=Math.max(0,Number(g.fallRemainingMs?.())||0),durationMs=Math.max(1,elapsedMs+remainingMs);
+  return {v:1,elapsedMs,remainingMs,durationMs,lift:Math.max(0,Number(lift)||0),rise:1,fall:unit(.3+.7*(1-remainingMs/FALL_REACH_MS)),falling:true};
+}
+
 // Read-only touchdown handoff: the short absorb after an ordinary jump, read from the jump's own
 // finished clock (jumpUntil). No new timer or state; null outside the window or in any other mode.
 export const ORDINARY_LANDING_MS = 220;
 export function ordinaryLandingPresentation(game, now) {
   const g=game,p=g?.player,clock=g?.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now;
-  if(!p||!(p.hp>0)||!Number.isFinite(clock)||!Number.isFinite(g.jumpUntil)||!Number.isFinite(g.jumpStart)||!(g.jumpStart<g.jumpUntil))return null;
-  const age=clock-g.jumpUntil;if(!(age>=0&&age<ORDINARY_LANDING_MS))return null;
+  const fell=g?.fallLanded&&Number.isFinite(g.fallLanded.at)&&g.fallLanded.drop>=1?clock-g.fallLanded.at:NaN; // FALL: a landing from a fall absorbs too
+  const jumped=p&&Number.isFinite(g.jumpUntil)&&Number.isFinite(g.jumpStart)&&g.jumpStart<g.jumpUntil?clock-g.jumpUntil:NaN;
+  if(!p||!(p.hp>0)||!Number.isFinite(clock)||!Number.isFinite(jumped)&&!Number.isFinite(fell))return null;
+  const age=Number.isFinite(fell)&&fell>=0&&!(jumped>=0&&jumped<fell)?fell:jumped;if(!(age>=0&&age<ORDINARY_LANDING_MS))return null;
   if(g.droneLift||g.mechBoosting||g.glide||g.swimming||g.save?.boat?.aboard||g.mountRide?.()||g.mechUp?.()||g.droneUp?.())return null;
   const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
   if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;

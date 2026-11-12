@@ -85,13 +85,13 @@ test('the drone and the glider come down onto a roof', () => {
 test('walking off a roof is a fall by the ordinary rule; the drop by the door is never lethal, for every kind of house', () => {
   const { g } = at(SHACK), d = roofDeckById(g.map, SHACK.id), p = g.player, { y } = westApproach(g, d), x1 = eastEdge(g, d, y);
   open(g, x1 + 1, y, d.base); open(g, x1 + 2, y, d.base); stand(g, x1 - 1, y); g.setRoofDeck(d);
-  driver(g).walk(1, 0, 900); assert.equal(g.roofDeck, null, 'off the roof'); assert.equal(p.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp), '2 levels: 15%');
+  { const drv = driver(g); drv.walk(1, 0, 900); drv.idle(800); } assert.equal(g.roofDeck, null, 'off the roof'); assert.equal(g.fall, null, 'landed (fall physics: the drop has airtime)'); assert.equal(p.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp), '2 levels: 15%');
   let checked = 0;
   for (const [sec, ids] of [[SHACK, [SHACK.id]], [HUTS, [HUTS.a, HUTS.b]], [DISTRICT, [DISTRICT.low, DISTRICT.high]]]) for (const id of ids) {
     const { g } = at(sec), deck = roofDeckById(g.map, id), out = tile(g, deck.door.x, deck.door.y), drop = deck.level - (out.elev || 0);
     assert.ok(drop <= ROOF_DECKS.safeDrop && Number.isFinite(fallDamage(drop, g.save.maxHp)), `${id}: the door side drops ${drop}`);
     const dir = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] }[deck.door.side];
-    stand(g, deck.door.x - dir[0], deck.door.y - dir[1]); g.setRoofDeck(deck); driver(g).walk(dir[0], dir[1], 700);
+    stand(g, deck.door.x - dir[0], deck.door.y - dir[1]); g.setRoofDeck(deck); { const drv = driver(g); drv.walk(dir[0], dir[1], 700); for (let i = 0; i < 40 && g.fall; i++) drv.step(0, 0); } // fall physics: then it lands
     assert.equal(g.roofDeck, null, `${id}: down by the door`); assert.equal(g.player.hp, g.save.maxHp - fallDamage(drop, g.save.maxHp), `${id}: hurt, alive`); checked++;
   }
   assert.equal(checked, 5);
@@ -151,14 +151,14 @@ test('Rift Step falls: off a roof it hurts by the ordinary rule, and from four l
   const { g } = rifter(SHACK), d = roofDeckById(g.map, SHACK.id), { y } = westApproach(g, d), x1 = eastEdge(g, d, y);
   for (let x = x1 + 1; x <= Math.min(31, x1 + 8); x++) open(g, x, y, d.base);
   stand(g, x1 - 1, y); g.setRoofDeck(d); g.player.lastMoveVector = { x: 1, y: 0 }; g.lastUpdateNow = 1000;
-  assert.equal(riftStep(g, 1000), true); assert.ok(g.player.x > x1, 'off the roof'); assert.equal(g.roofDeck, null); assert.equal(g.player.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp));
+  assert.equal(riftStep(g, 1000), true); assert.ok(g.player.x > x1, 'off the roof'); assert.equal(g.roofDeck, null); assert.ok(g.fall, 'in the air (fall physics: the drop has airtime)'); driver(g).idle(1000); assert.equal(g.fall, null); assert.equal(g.player.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp));
   // the direction step keeps to a roof it does not leave
   const k = rifter(SHACK).g, sx = westApproach(k, d).x0 + 1; stand(k, sx, y); k.setRoofDeck(d); k.player.lastMoveVector = { x: 1, y: 0 }; k.lastUpdateNow = 1000;
   assert.ok(sx + .5 + k.riftReach() < x1 + 1, 'the roof is wider than the step'); assert.equal(riftStep(k, 1000), true); assert.ok(k.player.x > sx + 1, 'it stepped');
   assert.equal(k.roofDeck?.id, d.id, 'still on the roof'); assert.equal(k.player.hp, k.save.maxHp);
   // a cliff four levels high: the blink off it is death
   const c = rifter(SHACK).g; for (let x = 2; x <= 12; x++) open(c, x, 30, x <= 4 ? 4 : 0); stand(c, 3, 30); c.player.lastMoveVector = { x: 1, y: 0 }; c.lastUpdateNow = 1000;
-  assert.equal(riftStep(c, 1000), true); assert.equal(c.player.hp, 0, 'four levels down'); assert.equal(c._fatalFallPending, true);
+  assert.equal(riftStep(c, 1000), true); const d0 = c.save.worldFlags.deaths || 0; { const drv = driver(c); for (let i = 0; i < 40 && c.fall; i++) drv.step(0, 0); } assert.ok(c.player.hp === 0 || (c.save.worldFlags.deaths || 0) > d0, 'four levels down'); assert.equal(c._fatalFall, true);
 });
 
 test('the aimed step: within reach, at most two levels up (three with Long Step), clear of forbidden air; a bad point is refused without a cast', () => {

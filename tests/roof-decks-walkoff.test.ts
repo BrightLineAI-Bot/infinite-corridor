@@ -76,7 +76,7 @@ test('walking off every side of every kind of roof, at 60 and 20 frames a second
     const { g } = at(sec), d = roofDeckById(g.map, sec.id), s = side(g, d, name); if (!s) { skipped.add(`${sec.id} ${name}`); continue; } openYard(g, s, d.base);
     stand(g, s.ex - s.dx, s.ey - s.dy); if (!roofDeckAt(g.map, g.player.x + .5, g.player.y + .75)) stand(g, s.ex, s.ey); g.setRoofDeck(d);
     const drive = driver(g, dt), p = g.player; let edge = false;
-    for (let i = 0; i < 2000 / dt && g.roofDeck; i++) { drive.step(s.dx, s.dy); if (g.roofDeck && !roofDeckAt(g.map, p.x + .5, p.y + .75)) edge = true; }
+    for (let i = 0; i < 2000 / dt && (g.roofDeck || g.fall); i++) { drive.step(s.dx, s.dy); if (g.roofDeck && !roofDeckAt(g.map, p.x + .5, p.y + .75)) edge = true; } // fall physics (game.ts FALL): on until the fall off it lands
     held += edge; const why = `${sec.kind} ${sec.id} ${name} ${Math.round(1000 / dt)}fps`;
     assertFree(g, d, why); assert.equal(p.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp), `${why}: one fall of ${d.level - d.base} levels`);
     assertCanMove(g, d, s, dt, why); runs++;
@@ -89,10 +89,10 @@ test('jumping off every side of every kind of roof, landing anywhere from the ro
   for (const sec of cases()) for (const dt of [1000 / 60, 50]) for (const hold of [0, 60, 120, 200, 300, 520]) {
     const name = sec.name, { g } = at(sec), d = roofDeckById(g.map, sec.id), s = side(g, d, name); openYard(g, s, d.base);
     stand(g, s.ex, s.ey); g.setRoofDeck(d); const drive = driver(g, dt), p = g.player, why = `${sec.id} ${name} ${Math.round(1000 / dt)}fps stick ${hold}ms`;
-    drive.step(s.dx, s.dy, true); drive.walk(s.dx, s.dy, hold); drive.walk(0, 0, 800);
+    drive.step(s.dx, s.dy, true); drive.walk(s.dx, s.dy, hold); drive.walk(0, 0, 1400); // fall physics: the jump, then the fall's airtime
     assert.equal(p.jumping, false, `${why}: landed`); assert.equal(p.hp > 0, true);
     if (g.roofDeck) { if (!roofDeckAt(g.map, p.x + .5, p.y + .75)) edgeLandings++; assert.equal(p.hp, g.save.maxHp, `${why}: on the roof, unhurt`);
-      for (let i = 0; i < 2000 / dt && g.roofDeck; i++) drive.step(s.dx, s.dy); } // then on off it
+      for (let i = 0; i < 2000 / dt && (g.roofDeck || g.fall); i++) drive.step(s.dx, s.dy); } // then on off it (and down: fall physics)
     assertFree(g, d, why); assert.equal(p.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp), `${why}: one fall`);
     if (hold === 0 || hold === 200) assertCanMove(g, d, s, dt, why); runs++;
   }
@@ -108,7 +108,7 @@ test('the deck sweep over seeds ROOF and DECKS: no wedges, and every fall is the
     for (const d0 of all) for (const [dx, dy] of DIRS) {
       const { g } = at({ seed, rx, ry }), d = roofDeckById(g.map, d0.id), c = d.cells[Math.floor(d.cells.length / 2)], p = g.player;
       stand(g, c % W, Math.floor(c / W)); g.setRoofDeck(d); const drive = driver(g, dt); total++;
-      for (let i = 0; i < 8000 / dt && g.roofDeck && p.hp > 0; i++) drive.step(dx, dy);
+      for (let i = 0; i < 8000 / dt && (g.roofDeck || g.fall) && p.hp > 0; i++) drive.step(dx, dy); // fall physics: until the fall off it lands
       if (g.roofDeck) continue; left++; // the way was barred (a higher roof, the map's edge): still up there, nothing to check
       const drop = d.level - elevationAt(g.map, W, p.x, p.y), want = drop > 1 ? fallDamage(drop, g.save.maxHp) : 0;
       if (p.hp <= 0) { if (want !== Infinity) bad.push(`${d.id} ${dx},${dy}: died of a ${drop}-level drop`); continue; }
@@ -129,7 +129,7 @@ test('a save on the roof edge resumes exactly there, still up, and the walk off 
     g.exportSnapshot(drive.now()); const saved = migrateSave(structuredClone(s)); assert.deepEqual(saved.session.playerRuntime.roofDeck, { id: d.id, level: d.level });
     const r = new Game(structuredClone(saved), drive.now() + 100); r.enemies = []; openYard(r, sd, d.base);
     assert.equal(r.player.x, p.x); assert.equal(r.player.y, p.y); assert.equal(r.roofDeck?.id, d.id, 'still on the edge'); assert.equal(r.playerLevel(), d.level);
-    const rd = driver(r, dt, drive.now() + 100); for (let i = 0; i < 2000 / dt && r.roofDeck; i++) rd.step(1, 0);
+    const rd = driver(r, dt, drive.now() + 100); for (let i = 0; i < 2000 / dt && (r.roofDeck || r.fall); i++) rd.step(1, 0); // fall physics: until it lands
     assertFree(r, d, 'resumed'); assert.equal(r.player.hp, r.save.maxHp - fallDamage(d.level - d.base, r.save.maxHp), 'one fall');
   }
 });
@@ -143,13 +143,13 @@ test('the drone and the glider coming down over a roof edge land on the roof, ne
       g.droneLift = { base: d.base, z: d.level + .4, vz: 0 }; g.jumpUntil = 1100; g.skyAir = d.level; const drive = driver(g, dt);
       for (let i = 0; i < 4000 / dt && (g.droneLift || g.player.jumping); i++) drive.step(0, 0); drive.walk(0, 0, 200);
       assert.equal(g.droneLift, null, 'landed'); assert.equal(g.roofDeck?.id, d.id, 'on the roof edge'); assert.equal(g.player.hp, g.save.maxHp);
-      for (let i = 0; i < 2000 / dt && g.roofDeck; i++) drive.step(1, 0); assertFree(g, d, 'drone'); assert.equal(g.player.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp)); assertCanMove(g, d, sd, dt, 'drone'); }
+      for (let i = 0; i < 2000 / dt && (g.roofDeck || g.fall); i++) drive.step(1, 0); assertFree(g, d, 'drone'); assert.equal(g.player.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp)); assertCanMove(g, d, sd, dt, 'drone'); }
     // the glider
     { const { g } = at(SHACK, (s) => { s.glider = true; }), d = roofDeckById(g.map, SHACK.id), sd = side(g, d, 'east'); openYard(g, sd, d.base);
       g.player.x = sd.ex + .55; g.player.y = sd.ey - .25; g.glide = { z: d.level + .3, vx: 0, vy: 0, open: true, told: false }; const drive = driver(g, dt);
       for (let i = 0; i < 3000 / dt && g.glide; i++) drive.step(0, 0);
       assert.equal(g.glide, null, 'landed'); assert.equal(g.roofDeck?.id, d.id, 'on the roof edge, not pinned over the wall'); assert.equal(g.player.hp, g.save.maxHp);
-      for (let i = 0; i < 2000 / dt && g.roofDeck; i++) drive.step(1, 0); assertFree(g, d, 'glider'); assertCanMove(g, d, sd, dt, 'glider'); }
+      for (let i = 0; i < 2000 / dt && (g.roofDeck || g.fall); i++) drive.step(1, 0); assertFree(g, d, 'glider'); assertCanMove(g, d, sd, dt, 'glider'); }
   }
 });
 
@@ -172,7 +172,7 @@ test('a roof tile taken away under the Wayfarer (dug or scarred): they drop once
     else { stand(g, sd.ex, sd.ey); for (let i = 0; i < 200 && !(g.roofDeck && !roofDeckAt(g.map, p.x + .5, p.y + .75)); i++) drive.step(1, 0); gone = sd.ey * W + sd.ex; }
     assert.equal(g.roofDeck?.id, d.id, `${where}: up`);
     const t = g.map.tiles[gone]; Object.assign(t, { kind: 'ash', blocked: false, elev: d.base, slope: false, structure: undefined, buildingId: undefined, wallSides: undefined, encSides: undefined });
-    drive.walk(0, 0, 200); const why = `${where} ${Math.round(1000 / dt)}fps`;
+    drive.walk(0, 0, 800); const why = `${where} ${Math.round(1000 / dt)}fps`; // fall physics: the drop has airtime
     assert.equal(g.roofDeck, null, `${why}: down`); assert.equal(p.hp, g.save.maxHp - fallDamage(d.level - d.base, g.save.maxHp), `${why}: one fall`);
     assert.equal(footprintOpen(g.map, W, p.x, p.y), true, `${why}: not in a wall`);
     const x0 = p.x, y0 = p.y; let moved = 0; for (const [mx, my] of DIRS) { drive.walk(mx, my, 600); moved = Math.max(moved, Math.hypot(p.x - x0, p.y - y0)); }
