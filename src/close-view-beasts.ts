@@ -1,6 +1,6 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
-// BEAST_SLOT.maxBeasts keeps its standard-view billboard exactly as before.
+// BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
 import { BEAST_SLOT } from "./close-view-beast-rig.ts";
 import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.ts";
 import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.ts";
@@ -10,6 +10,7 @@ import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close
 import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.ts";
 import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.ts";
 import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.ts";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.ts";
 import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.ts";
 import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.ts";
 import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.ts";
@@ -33,7 +34,11 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   ashenMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
   groveMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
   // up out of its hole only: under the ground, or about to burst up, it keeps the standard view's heaving mound
-  tremorWorm: Object.freeze({ mesh: wormMesh, createTrack: createWormTrack, sample: sampleWorm, eligible: (e) => !e.untargetable, get scale() { return WORM_RIG.closeViewScale; } }),
+  // (coming up out of the ground on its emergence clock it is untargetable but drawn whole, as the standard view draws it)
+  tremorWorm: Object.freeze({ mesh: wormMesh, createTrack: createWormTrack, sample: sampleWorm, eligible: wormBodyEligible, get scale() { return WORM_RIG.closeViewScale; } }),
+  // its field tentacles (Close View worm pass 2): small minions in the separate minion allowance (BEAST_SLOT.minion), so the six of them
+  // never take the worm's own slot; under the ground (hidden) they keep the billboard, which draws nothing then
+  wormTentacle: Object.freeze({ mesh: tentacleMesh, createTrack: createTentacleTrack, sample: sampleTentacle, minion: true, get scale() { return TENTACLE_RIG.closeViewScale; } }),
   psychicCrystal: Object.freeze({ mesh: crystalMesh, createTrack: createCrystalTrack, sample: sampleCrystal, get scale() { return CRYSTAL_RIG.closeViewScale; } }),
   morphingBlob: Object.freeze({ mesh: blobMesh, createTrack: createBlobTrack, sample: sampleBlob, get scale() { return BLOB_RIG.closeViewScale; } }),
   // the Void Walker on land (its skiff at sea keeps the billboard)
@@ -57,6 +62,12 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
 export function stalkerBodyEligible(e) {
   return !e.stalkerKin && !e.stalkerDecoy && e.stalkForm !== 'pool' && e.stalkForm !== 'mist' && e.stalkAct?.kind !== 'tide';
 }
+// The Tremor Worm keeps the standard view's heaving mound exactly where the standard view draws it: under the ground (hidden,
+// excluded below) and about to burst up on a Rise (untargetable during the Rise). Coming up after a trip under the ground (the
+// emergence clock) the standard view draws its body rising, so the Close View does too.
+export function wormBodyEligible(e) { return !(e.untargetable && e.pack?.attack === 'wormRise'); }
+// Which allowance a body uses: 'minion' (BEAST_SLOT.minion: small, up to maxMinions) or 'beast' (BEAST_SLOT.maxBeasts).
+export function closeViewBeastAllowance(kind) { return CLOSE_VIEW_BEASTS[kind]?.minion ? 'minion' : 'beast'; }
 // Forms the body covers (`mesh(tier, foe)`: a beast with more than one body picks the one this foe shows). Hidden, veiled, illusory,
 // ridden or mounted states keep the billboard (their art owns them).
 // `scene` (optional: the game) lets a filter look at the other actors (a Worm with a rider on it).

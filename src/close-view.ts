@@ -2966,14 +2966,18 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
 // each admitted beast's billboard is suppressed (its floor effects and telegraphs stay where they are drawn now). A slain
 // beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
 const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+// Close View worm pass 2: small minions (the Tremor Worm's field tentacles: `minion` in the roster) count against their own allowance
+// (BEAST_SLOT.minion.maxMinions), so they never crowd a beast out of its slot; the frame's total stays bounded by both.
 function admitBeasts(g, draws, n, Q, now, reduce) {
-  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low';
+  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low', maxB = BEAST_SLOT.maxBeasts, maxM = BEAST_SLOT.minion.maxMinions;
   B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
-  for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
+  let big = 0, small = 0;
+  for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM); oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
-    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (spec.minion ? small >= maxM : big >= maxB) continue;
+    if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
     BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
@@ -2982,14 +2986,15 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     // A beast stands solid through most of the distance fade ordinary creatures take (pass 3, 2026-11-11: a boss the height of
     // a house that thins at mid range loses its scale); it still fades out at the fog's edge.
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); track.seen = now;
-    B.items[B.count++] = frame; MODEL_STATE.admitted.add(it);
+    B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); if (spec.minion) small++; else big++;
   }
   for (const [foe, track] of B.tracks) {
     if (track.seen === now) continue;
-    if (foe.dead && B.count < BEAST_SLOT.maxBeasts && track.seen != null && now - track.seen < 4000) {
-      const spec = CLOSE_VIEW_BEASTS[foe.kind]; BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind];
+    if (foe.dead && (spec?.minion ? small < maxM : big < maxB) && track.seen != null && now - track.seen < 4000) {
+      BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
       const frame = spec.mesh(tier, foe) && prepareCloseViewBeastMesh(spec.mesh(tier, foe)) ? spec.sample(track, foe, BEAST_ENV) : null;
-      if (frame) { B.items[B.count++] = frame; continue; }
+      if (frame) { B.items[B.count++] = frame; if (spec.minion) small++; else big++; continue; }
     }
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
