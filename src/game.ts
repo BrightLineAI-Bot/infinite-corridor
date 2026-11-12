@@ -157,6 +157,7 @@ import { addBell, ringBell, BELL_GLIMPSES } from "./bells.ts";
 import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.ts"; // release 595
 import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.ts"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
 import { addMargin, readMargin } from "./margins.ts";
+import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.ts"; // release 505; 551: part two
 import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
@@ -321,6 +322,8 @@ export function pinDungeonLayout(save, id) {
   if (history.watcherVersion === undefined) history.watcherVersion = visited() ? 0 : WATCHER.version;
   // World caches (world.ts WORLD_CACHES): a corpse, a throne or a barred alcove only in crossings first entered from now on.
   if (history.cacheVersion === undefined) history.cacheVersion = visited() ? 0 : WORLD_CACHES.version;
+  // The Gaunt (duelists.ts): their bands are laid only on floors of dungeons first entered from DUELISTS.version.
+  if (history.duelistVersion === undefined) history.duelistVersion = visited() ? 0 : DUELISTS.version;
   // Relay Network: decided once, before the first visit; crossings entered before this release never gain a relay.
   if ((isPentagonFinaleId(id) || isPentagonArenaId(id)) && history.relayNode === undefined) history.relayNode = false; // the Pentagon's finale (its arena and its walkway) holds no relay node, decided before the first visit pins one
   relayNodeDecision(save, id, history, `dungeon:${save.seed}:g${save.worldGeneration}`);
@@ -3138,10 +3141,11 @@ export class Game {
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"&&!this.map.seedRealm/* seed realms: no world beasts */){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
+    if (area === "dungeon") this.placeDuelists(); // the Gaunt (duelists.ts): new ground only, over the floor as generated (before the wardens, which keep off their tiles)
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     { const here = this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
-      const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q)), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
+      const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q) && !q.duelist /* the Gaunt are never copied into a pack */), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
       this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && q.kind !== 'npc').length)); } }
     this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 731: the haunts
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
@@ -3202,7 +3206,7 @@ export class Game {
       const B = area === "dungeon" ? this.map.building : null, risen = !!B?.adventure && !B.trial && (Number(this.save.consequences?.dungeons?.[`${B.base}:f1`]?.advRespawn) || 0) > (Number(s.advRespawn) || 0); // Pentagon v11: a Waystone rest since this chamber was left
       this.enemies = this.enemies.map((e) => {
         const restored = by.get(e.id);
-        if (!restored) return e.fractured ? this.scaleToRegion(e) : e; // balance pack (tim.md 1): a Fractured pack new to known ground
+        if (!restored) return e.fractured || e.duelist ? this.scaleToRegion(e) : e; // balance pack (tim.md 1): a Fractured pack new to known ground (and a band of the Gaunt, never unscaled)
         if (refill && restored.dead && fracturedOrdinary(restored)) return this.scaleToRegion(e); // and a refill
         if (risen && restored.dead && e.buildingGuard && !e.boss && !e.pentBoss && !e.buildingGuardian && !e.packGuardian && fracturedOrdinary(e)) return e; // its ordinary creatures stand again (as generated)
         const merged = {
@@ -5162,6 +5166,31 @@ export class Game {
     this.message = `A ${S.name}, lying here in the open. Strange place for one. (${n} held.) ${S.text}`;
     this.sync(); return { ok: true, message: this.message, seed: o.seed };
   }
+  // The Gaunt (duelists.ts; Tim, 2026-11-12). Where this floor's band may come from: an ordinary crossing (its ladder tier decides),
+  // an Old Keep's floor or a Pentagon's chamber, and only in a dungeon whose history pinned DUELISTS.version (first entered from
+  // then on). Never the Deep, a run, an arena, a seed realm, the Skylands, an annex, a hunt, a castle, compound or labyrinth, the
+  // Missing Crossing, a building trial, or a Pentagon's finale.
+  duelistPlace() {
+    const M = this.map, id = String(this.areaId()), h = this.save.consequences?.dungeons?.[id];
+    if (this.area !== "dungeon" || !M?.tiles?.length || h?.duelistVersion !== DUELISTS.version) return null;
+    if (M.seedRealm || M.skyland || M.arena || M.pentFinale || M.pentArena || M.deepDungeon || M.recipe === "deep-v1" || M.annexFloor || M.building?.trial || isArrayRun(id) || /^(hunt-instance:|elite-portal:|proving:|displacement:)/.test(id) || id.includes("aperture-annex")) return null;
+    if (isPentagonId(id)) return { place: "pentagon", tier: 0 };
+    if (M.building) return M.building.style === "keep" ? { place: "keepHall", tier: 0 } : null;
+    if (isBuildingId(id) || isCastleId(id) || isCompoundId(id) || isLabyrinthId(id) || id === dungeonId(this.save.seed, this.save.worldGeneration) || !h.monsterPack) return null;
+    return { place: "crossing", tier: Number(h.ladder?.tier) || 0 };
+  }
+  // Laid at load over the floor as it was generated (the generator's output is untouched), rolled from the seed and the floor, so a
+  // floor always holds the same band; once laid they live and die like the floor's other creatures (its saved state).
+  placeDuelists() {
+    const M = this.map; if (M?.duelistsPlaced || M?.enemySpawns?.some((q) => q.duelist)) return [];
+    const where = this.duelistPlace(); if (!where) return [];
+    M.duelistsPlaced = true;
+    const key = this.areaStateId(), plan = duelistPlan(this.save.seed, key, where.place, where.tier); if (!plan) return [];
+    const w = mapWidth(M, "dungeon"), arrivals = [M.entry, ...Object.values(M.building?.entries || {})];
+    const out = duelistSpawns(M, w, this.save.seed, key, plan, { open: (x, y) => footprintOpen(M, w, x, y) && !footprintHazard(M, w, x, y), level: (x, y) => elevationAt(M, w, x, y), arrivals });
+    M.enemySpawns.push(...out);
+    return out;
+  }
   // World caches (world.ts WORLD_CACHES). Laid at load over the place as it stands, on ground first seen (or a crossing first
   // entered) from WORLD_CACHES.version; their state comes from worldFlags, so a find taken or a lever pulled stays so.
   placeCaches() {
@@ -6518,6 +6547,7 @@ export class Game {
       if (e.id) c.id = e.id;
       if(e.kind === "astralWorm")c.astralSeed=hashSeed(`${this.save.seed}:${c.id}:astral-v1`);
       if (e.packGuardian) c.packGuardian = true;
+      if (e.duelist) c.duelist = true; // the Gaunt (duelists.ts): one of a placed band
       if (e.seedRealmHeart) c.seedRealmHeart = true; // seed realms: its fall completes the realm
       if (e.realmThreat) { c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * (Number(e.realmThreat.hp) || 1))); c.damage = Math.max(1, Math.round(c.damage * (Number(e.realmThreat.damage) || 1))); } // SEED_REALMS.threat
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
