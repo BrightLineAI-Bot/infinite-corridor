@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 922: Close View: Shadow Boxing now charges to the foe as a translucent violet wraith with afterimages and lands the blow on arrival (instead of popping), and the Shadow Clone is a hooded spectre with glowing eyes, a swaying torn robe and wisps for legs, easier to see. Gameplay is unchanged.
 - Release 921: Close View: the Great Sweep stays drawn in a hip carry after you use it (until another weapon or tool, a spell, a drink or a pickup puts it away), its attack is one full 360-degree spin, and Mirage of Blades now shows spinning broken greatswords flying at chest height. Gameplay is unchanged.
 - Release 920: World regions: the Lunar Wastes (landscape 25). Far barren regions, 40+ sections out, can become an airless surface of pale regolith and dark basalt maria: terraced craters up to about 14 tiles across, with a raised rim and steps one level at a time down to a floor up to four levels deep (sometimes shadow ice, a central peak, a cache or a monolith); ejecta rays, boulders and winding rilles (the deep ones lethal, crossed by natural bridges). In Close View, a starry black sky with a great pale planet. Explored ground is unchanged.
 - Release 919: Second passes on the Close View dragons and the Tremor Worm after Tim's review.

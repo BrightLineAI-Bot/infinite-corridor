@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
+
+Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
+
+**CODE:** New `src/close-view-shadow-forms.ts`: the data table (charge 120 + 14 ms per tile, eased; lean; wraith alpha .58 and tint; up to 5 afterimages fading over 170 ms; reduced-motion fade), the dash stepper, strike re-timing (wind-up fills the charge, contact on arrival, swing ends on gameplay's clock) and clone alpha (.86). `src/close-view.ts`: drawn hero follows the dash line, afterimages, ground shadow, `closeViewShadowDash()` accessor. `src/close-view-hero.ts` and `close-view-hero-gl.ts`: charge lean, afterimage fields, `u_offset` uniform (body pass only). `src/close-view-models.ts`: the 248-tri spectre clone with 0xc58cff emissive, native lean, recolour exemption. Tests: `close-view-shadow-forms` (9).
+
+**BOUNDARY:** Presentation only: gameplay still moves the player in one update and the twin un-rendered game ends identically; damage, timing and hits are unchanged. No per-frame allocation (one pooled actor, fixed afterimage slots). Reduced motion: no travel or trail, a simple fade. The camera follows the logical position. The standard view is unchanged.
+
 ## Release 921 — Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
 
 Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon or tool is used, a full sweeping animation, a 360-degree sweep for its standard form, and Mirage of Blades as rendered blades travelling through the air.

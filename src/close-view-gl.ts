@@ -1105,7 +1105,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   if(hasModels || hasHero || hasBeasts) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }
-    if(hasHero) { drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil); calls++; }
+    if(hasHero) calls += drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil);
     if(hasBeasts) calls += drawBeastsGL(gl,S.beast,beasts,0,cam,light,F.sil);
     gl.depthMask(false); gl.enable(gl.BLEND);
   }

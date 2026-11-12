@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r920 (`57cd89998a05`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r921 (`db81724eed2d`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 921 | Claude | claude/cv-great-sweep-hold | Close View only: the Great Sweep stays out in a hip carry after use until another weapon or tool attack (or a spell, drink, hands-on reach); its use is one full 360-degree turn; Mirage of Blades blades are flying spinning 3D blades | In flight. |
+| 922 | Claude | claude/cv-shadow-forms | Close View only: Shadow Boxing's multi-tile carry is drawn as a 120-180 ms violet wraith charge with up to 5 afterimages and the blow landing on arrival; the Shadow Clone becomes a 248-triangle hooded spectre, more opaque | In flight. |
+| 921 | Claude | claude/cv-great-sweep-hold | Close View only: the Great Sweep stays out in a hip carry after use until another weapon or tool attack (or a spell, drink, hands-on reach); its use is one full 360-degree turn; Mirage of Blades blades are flying spinning 3D blades | Merged as `db81724eed2d` (#588). |
 | 920 | Claude | claude/region-lunar | New region on new ground only (40+ sections out): Lunar Wastes with terraced craters you can walk down into and climb out of, rilles, boulders, monoliths, crater-floor caches; Close View airless starry sky with a great planet | Merged as `57cd89998a05` (#587). |
 | 919 | Claude | claude/cv-dragon-worm-rework | Close View dragons pass 2 (smooth rear, big beating wings, roar) + Skyfall aerial slam with a jumpable shockwave (both dragons); Tremor Worm pass 2 (living lip tentacles, plates, maw, hole) + field tentacle bodies with a minion allowance | Merged as `d94286bed89f` (#586). |
 | 918 | Claude | claude/stat-lineup-daggers | Every weapon and tool scales with one stat from one table (Might, Focus/magic, Finesse/stamina); new Fourfold Daggers: two crossing cuts per press, cancel before the second keeps only the first; level 12 milestone and 20% of weapon loot | Merged as `5b82123aa683` (#585). |
