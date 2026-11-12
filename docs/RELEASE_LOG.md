@@ -15,13 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r915 (`8e160cc9bc37`); production serves `r914-c1265a9326d1` (published 2026-11-12 after a Fable review of r912 to r914). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r917 (`b9f5feabade1`); production serves `r914-c1265a9326d1` (published 2026-11-12 after a Fable review of r912 to r914). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 916 | Claude | claude/cleaver-carbine | Close View: the Verge Cleaver's quick attack becomes three clean sword slashes (presentation only); Salvage Blade reskinned (visual only); new Transit Lattice tool form Lumen Carbine turns the Lumen Spindle into a charge beam carbine scaling with Magic | In flight. |
+| 919 | Claude | claude/cv-dragon-worm-rework | Close View dragons pass 2 (smooth rear, big beating wings, roar) + Skyfall aerial slam with a jumpable shockwave (both dragons); Tremor Worm pass 2 (living lip tentacles, plates, maw, hole) + field tentacle bodies with a minion allowance | In flight. |
+| 918 | Claude | claude/stat-lineup-daggers | Every weapon and tool scales with one stat from one table (Might, Focus/magic, Finesse/stamina); new Fourfold Daggers: two crossing cuts per press, cancel before the second keeps only the first; level 12 milestone and 20% of weapon loot | In flight. |
+| 917 | Claude | claude/rift-roof-edge | Fix from the r916 pre-publish review: a Rift Step off a roof whose end point leaves the box over the house's walls lands on the roof's edge instead of wedged in the wall | Merged as `b9f5feabade1` (#584). |
+| 916 | Claude | claude/cleaver-carbine | Close View: the Verge Cleaver's quick attack becomes three clean sword slashes (presentation only); Salvage Blade reskinned (visual only); new Transit Lattice tool form Lumen Carbine turns the Lumen Spindle into a charge beam carbine scaling with Magic | Merged as `c0b640bd803f` (#583). Its pre-publish review found the Rift Step roof-edge blocker fixed in 917. |
 | 915 | Claude | claude/roof-decks-915 | Standable roofs on overworld shacks, huts and district houses (reached from one level below, a neighbouring roof, drone or glider); aimed Rift Step in Close View; Rift Step now takes fall damage; the drone won't lift through a roof from inside; Close View camera snaps behind the Wayfarer facing the new section on a crossing | Merged as `8e160cc9bc37` (#582). |
 | 914 | Claude | claude/cv-refinements | Close View overworld camera (terrain pull-in only when the chest line is blocked, no section-edge pull-in, a tile further out, eased height follow, realistic jump apex); houses 1.5x taller with roofs kept until the Wayfarer is inside; the Wayfarer passes through shaman-warded creatures and the hiding Listener | Merged as `c1265a9326d1` (#581). Published as r914-c1265a9326d1 (2026-11-12). |
 | 913 | Claude | claude/cv-beast-rework | Close View second passes: Astral Worm (one-bodied griffin, a bite that is the head, jointed mandibles and veined wings), Stalker (cohesive cat and ape, weighted gaits) | Merged as `730e3668c9ab` (#580). Published in r914 (2026-11-12). |
