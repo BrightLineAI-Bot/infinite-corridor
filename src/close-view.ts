@@ -2826,7 +2826,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
   for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
-    if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe) || draws[itemRef[it]]?.enemy !== foe) continue;
+    if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
