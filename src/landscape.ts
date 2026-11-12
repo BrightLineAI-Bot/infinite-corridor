@@ -70,7 +70,7 @@ const RECKONING_WALKABLE = ["ruleSlate", "ruleCell", "ruleNode"];
 const GLACIER_WALKABLE = ["glacierIce", "firn", "moraine", "meltPool", "snowBridge"];
 // The Lunar Wastes (version 25): the walkable kinds (applyLunar); `lunarBoulder`, `craterMount`, `lunarMonolith` and `fallenMonolith` are blocked and a
 // deep rille is lethal `abyss` (`rille` set).
-const LUNAR_WALKABLE = ["regolith", "mareBasalt", "craterBowl", "lunarRim", "ejectaRay", "rilleFloor", "rilleBridge"];
+const LUNAR_WALKABLE = ["regolith", "mareBasalt", "craterBowl", "shadowIce", "lunarRim", "ejectaRay", "rilleFloor", "rilleBridge"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
@@ -904,98 +904,117 @@ function applyGlacier(map, seed, rx, ry, mask, hamlet, walls = false) {
 }
 // The Lunar Wastes (landscape version 25; the daily world-regions work, Tim 2026-10-29: "find ways to make the map have
 // interesting features... beautiful collections of regions... rich and vibrant, as I explore it, without decreasing
-// performance"; his list: "a lunar / alien-planet surface"). Bare ground in a lunar waste is laid as an airless surface, every
+// performance"; his list: "a lunar / alien-planet surface"; 2026-11-12: "craters that you could actually go down into... they
+// don't have to be huge, but they can be pretty large"). Bare ground in a lunar waste is laid as an airless surface, every
 // pattern read from world coordinates so it runs on unbroken over section borders. One fbm field (`height`) sets the ground:
 // dark basalt maria (`mareBasalt`, level 0) where it is low, pale `regolith` (level 1) above, the highlands (level 2) above
-// `high`. Craters of three sizes (`craters`, oldest and largest first; one a hashed `cell` of world tiles, with `chance`) are
-// laid in order, a younger crater cutting into an older one: a sunken floor one level below the ground at the crater's centre
-// (`craterBowl`; for `profile.wall` tiles in from the rim, at most `wallShare` of the radius, the inner wall stands at that ground), a raised rim one level above it
-// (`lunarRim`, `profile.crest` in to `profile.lip` out), a pale ejecta apron out to `apron` of the radius (`ejectaRay`, its
-// level kept) and, for a large crater with `peak` chance, one blocked central peak (`craterMount`). The largest throw ejecta
-// rays (`rays` of them, bright `ejectaRay` ground) out to `ray.reach` radii, narrowing as they go. Rilles: long winding
-// trenches where `rille.field` noise rises, laid along the half-level line of `rille.scale` noise, `rille.half` tiles either
-// side of it (the line's own gradient keeps the width even); where the field rises past `deep` a rille is lethal (`abyss`,
-// marked `rille`; the brink guard stops a walk into one, as at every chasm) and spanned where `bridge` noise rises by natural
-// rock bridges (`rilleBridge`), else a walkable trench one level down (`rilleFloor`). Boulders (`lunarBoulder`, blocked) lie
-// scattered, thicker on the ejecta (at most `boulder.max`). The same raster sweeps as Terrace Springs cap every tile at one
-// level above its lowest walkable neighbour (protected ground stays 0), so every step is one jump. Then nothing may be cut off:
-// every tile the plaza reached both ways before the rilles, boulders, peaks and monolith must still be reached both ways (the
-// real rule: climb one, drop any, lethal ground excluded, thin walls counted on new ground); where one is lost, the shortest
-// run of new hazard from reached ground to it is turned back (a rille to a natural bridge, a boulder, peak or monolith to
-// ground), `repairs` times at most, and if that is not enough every hazard is undone. Nothing lies next to protected ground.
-// `monolith.chance` of sections hold a black monolith (`lunarMonolith`, blocked, drawn `rise` levels above its ground), now and then fallen
-// (`fallen`: `fallenMonolith`, `fallenRise`) at the end of a gouge it ploughed (`gouge` tiles of crater floor); `cache.chance` of sections with a high rim
-// hold a cache on one the plaza reaches. Hamlet sections keep the colours but stay flat (no relief, hazards or cache).
-// Generation only: drawn into the static ground cache; no weather, nothing animated.
+// `high`. Craters of three sizes (`craters`, oldest and largest first; one a hashed `cell` of world tiles, with `chance`; up to
+// about 14 tiles across) are laid in order, a younger crater cutting into an older one. Each is a bowl you can walk down into
+// and climb out of: its floor (`craterBowl`, or `shadowIce` on a cold crater's floor, `ice` chance) lies `depth` levels below
+// the ground at its centre (never below level 0), its rim (`lunarRim`, `profile.crest` in to `profile.lip` out) always `depth`
+// + 1 above the floor, and between them terraces step down one level every `profile.terrace` tiles (narrower in a small crater,
+// so its floor keeps `minFloor`); outside the rim the slope steps down a level a terrace until it meets the ground (it only
+// raises), a pale ejecta apron out to `apron` of the radius (`ejectaRay`) and, with `peak` chance, one blocked central peak on
+// the floor (`craterMount`). The largest throw ejecta rays (`rays` of them, bright `ejectaRay` ground) out to `ray.reach` radii,
+// narrowing as they go. Rilles: long winding trenches where `rille.field` noise rises, laid along the half-level line of
+// `rille.scale` noise, `rille.half` tiles either side of it (the line's own gradient keeps the width even); where the field
+// rises past `deep` a rille is lethal (`abyss`, marked `rille`; the brink guard stops a walk into one, as at every chasm) and
+// spanned where `bridge` noise rises by natural rock bridges (`rilleBridge`), else a walkable trench one level down
+// (`rilleFloor`). Boulders (`lunarBoulder`, blocked) lie scattered, thicker on the ejecta (at most `boulder.max`). The same
+// raster sweeps as Terrace Springs cap every tile at one level above its lowest walkable neighbour (protected ground stays 0),
+// so every two walkable neighbours differ by one level at most: every terrace is one jump up and one step down, and a crater
+// floor joined to its rim by open ground is always reached both ways. Then nothing may be cut off: every tile the plaza reached
+// both ways before the rilles, boulders, peaks and monolith (crater floors included) must still be reached both ways (the real
+// rule: climb one, drop any, lethal ground excluded, thin walls counted on new ground); where one is lost, the shortest run of
+// new hazard from reached ground to it is turned back (a rille to a natural bridge, a boulder, peak or monolith to ground),
+// `repairs` times at most, and if that is not enough every hazard is undone. Nothing lies next to protected ground.
+// `monolith.chance` of sections hold a black monolith (`lunarMonolith`, blocked, drawn `rise` levels above its ground; with
+// `inCrater` chance down on a deep crater's floor), now and then fallen (`fallen`: `fallenMonolith`, `fallenRise`) at the end
+// of a gouge it ploughed (`gouge` tiles of crater floor); `cache.chance` of sections hold a cache the plaza reaches, down on a
+// deep crater's floor where there is one (`deepName`), else on a high rim. Hamlet sections keep the colours but stay flat (no
+// relief, hazards or cache). Generation only: drawn into the static ground cache; no weather, nothing animated.
 export const LUNAR = {
-  height: { scale: 26, mare: .45, high: .6 }, levels: 3,
+  height: { scale: 26, mare: .45, high: .6 },
   craters: [
-    { cell: 46, chance: .75, r: [6.5, 10], peak: 1, rays: [5, 9] },
-    { cell: 17, chance: .55, r: [3, 5], peak: .6, rays: null },
-    { cell: 8, chance: .4, r: [1.8, 2.8], peak: 0, rays: null },
+    { cell: 40, chance: .8, r: [5.3, 7.2], depth: [3, 4], peak: .7, ice: .5, rays: [5, 9] },
+    { cell: 17, chance: .55, r: [3.3, 4.6], depth: [2, 2], peak: .4, ice: .25, rays: null },
+    { cell: 8, chance: .4, r: [2.3, 3], depth: [1, 1], peak: 0, ice: 0, rays: null },
   ],
-  profile: { wall: 1.25, wallShare: .45, crest: .4, lip: .65, apron: .32 },
+  profile: { terrace: 1, crest: .45, lip: .55, apron: .35, minFloor: .8 },
+  ice: .7, // of a cold crater's floor tiles, this share is shadow ice
   ray: { reach: 3.3, width: .75, min: .3 },
   boulder: { chance: .012, apron: .05, max: 14 },
   rille: { scale: 16, half: .85, field: { scale: 40, above: .55 }, deep: .61, bridge: { scale: 3.5, above: .68 } },
   repairs: 48,
-  monolith: { chance: .2, rise: 3, fallen: .45, fallenRise: 1, gouge: 4 },
-  cache: { chance: .3, minLevel: 2, name: "A cache half-buried in the regolith" },
+  monolith: { chance: .2, rise: 3, fallen: .45, fallenRise: 1, gouge: 4, inCrater: .5 },
+  cache: { chance: .3, minLevel: 2, name: "A cache half-buried in the regolith", deepName: "A cache at the bottom of the crater" },
 };
-const LUNAR_MARGIN = 48; // tiles beyond a section from which craters are gathered: one whose rays reach in (34 tiles at most), and the older craters under its centre (11 more)
+const LUNAR_MARGIN = 48; // tiles beyond a section from which craters are gathered: one whose rays or apron reach in (25 tiles at most), and the older craters under its centre (13 more)
 const lunarBase = (seed, gx, gy) => { const H = LUNAR.height, h = fbm(`${seed}:lunar:height`, gx / H.scale, gy / H.scale); return h < H.mare ? 0 : h < H.high ? 1 : 2; };
-// One crater's effect at a global tile (the tile's middle): its level and kind, unchanged where it does not reach.
+// One crater's effect at a global tile (the tile's middle): its level and kind, unchanged where it does not reach. Inside the
+// crest the bowl steps down one level every `tw` tiles (a terrace) to the floor (`rf` tiles round the centre); the crest is the
+// rim; outside it the outer slope steps down one level a `profile.terrace` tiles until it meets the ground (it only raises).
 function craterOn(c, px, py, at) {
   const dx = px - c.x, dy = py - c.y; if (Math.abs(dx) > c.reach || Math.abs(dy) > c.reach) return;
   const P = LUNAR.profile, d = Math.hypot(dx, dy);
-  if (d < c.r - Math.min(P.wall, c.r * P.wallShare)) { at.level = c.floor; at.kind = "craterBowl"; at.peak = c.peak && Math.floor(c.x) === Math.floor(px) && Math.floor(c.y) === Math.floor(py); }
-  else if (d < c.r - P.crest) { at.level = c.base; at.kind = "craterBowl"; at.peak = false; }
-  else if (d <= c.r + P.lip) { at.level = c.crest; at.kind = "lunarRim"; at.peak = false; }
-  else if (d <= c.r * (1 + P.apron)) { at.kind = "ejectaRay"; at.apron = true; }
-  else if (c.rays && d <= c.r * LUNAR.ray.reach) {
-    const R = LUNAR.ray, w = R.width * (1 - (d - c.r) / (c.r * (R.reach - 1))) + R.min, th = Math.atan2(dy, dx);
-    for (const a of c.rays) { let q = Math.abs(th - a) % (2 * Math.PI); if (q > Math.PI) q = 2 * Math.PI - q; if (q < Math.PI / 2 && d * Math.sin(q) < w) { at.kind = "ejectaRay"; break; } }
+  if (d < c.r - P.crest) {
+    const step = Math.max(0, Math.ceil((d - c.rf) / c.tw)), floor = step === 0, ix = Math.floor(px), iy = Math.floor(py);
+    at.level = Math.min(c.rim - 1, c.floor + step); at.floor = floor ? c.depth : 0; at.apron = false;
+    at.kind = floor && c.ice && ((Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663) ^ c.iceKey) >>> 0) % 1000 < LUNAR.ice * 1000 ? "shadowIce" : "craterBowl";
+    at.peak = floor && c.peak && Math.floor(c.x) === ix && Math.floor(c.y) === iy;
+  } else if (d <= c.r + P.lip) { at.level = c.rim; at.kind = "lunarRim"; at.peak = false; at.floor = 0; at.apron = false; }
+  else {
+    const out = c.rim - Math.ceil((d - c.r - P.lip) / P.terrace); if (out > at.level) { at.level = out; at.kind = "ejectaRay"; at.apron = true; at.peak = false; at.floor = 0; }
+    if (d <= c.r * (1 + P.apron)) { at.kind = "ejectaRay"; at.apron = true; at.peak = false; at.floor = 0; }
+    else if (c.rays && d <= c.r * LUNAR.ray.reach) {
+      const R = LUNAR.ray, w = R.width * (1 - (d - c.r) / (c.r * (R.reach - 1))) + R.min, th = Math.atan2(dy, dx);
+      for (const a of c.rays) { let q = Math.abs(th - a) % (2 * Math.PI); if (q > Math.PI) q = 2 * Math.PI - q; if (q < Math.PI / 2 && d * Math.sin(q) < w) { at.kind = "ejectaRay"; at.peak = false; at.floor = 0; break; } }
+    }
   }
 }
 // The craters that reach a section, oldest first (largest scale first, then by cell), each with its levels from the ground at
-// its centre as the older craters left it. Pure: the same crater has the same numbers from every section.
+// its centre as the older craters left it: the floor `depth` levels below that ground (never below level 0), the rim always
+// `depth` + 1 above the floor (MAX_LEVEL at most), so the descent from the rim is the table's whatever the ground. Pure: the
+// same crater has the same numbers from every section.
 export function lunarCraters(seed, rx, ry) {
-  const L = LUNAR, all = [], x0 = rx * 32 - LUNAR_MARGIN, y0 = ry * 32 - LUNAR_MARGIN, x1 = rx * 32 + 32 + LUNAR_MARGIN, y1 = ry * 32 + 32 + LUNAR_MARGIN;
+  const L = LUNAR, P = L.profile, all = [], x0 = rx * 32 - LUNAR_MARGIN, y0 = ry * 32 - LUNAR_MARGIN, x1 = rx * 32 + 32 + LUNAR_MARGIN, y1 = ry * 32 + 32 + LUNAR_MARGIN;
   L.craters.forEach((S, k) => {
     for (let cy = Math.floor(y0 / S.cell); cy <= Math.floor(y1 / S.cell); cy++) for (let cx = Math.floor(x0 / S.cell); cx <= Math.floor(x1 / S.cell); cx++) {
       const h = (n) => (hashSeed(`${seed}:lunar:crater:v1:${k}:${cx}:${cy}:${n}`) % 10007) / 10007; if (h("on") >= S.chance) continue;
       const r = S.r[0] + h("r") * (S.r[1] - S.r[0]), nr = S.rays ? S.rays[0] + Math.floor(h("n") * (S.rays[1] - S.rays[0] + 1)) : 0, spin = h("spin") * 2 * Math.PI;
-      all.push({ k, x: (cx + h("x")) * S.cell, y: (cy + h("y")) * S.cell, r, peak: h("peak") < S.peak, reach: Math.ceil(r * (S.rays ? L.ray.reach : 1 + L.profile.apron)) + 1,
+      const depth = S.depth[0] + Math.min(S.depth[1] - S.depth[0], Math.floor(h("depth") * (S.depth[1] - S.depth[0] + 1))), tw = Math.min(P.terrace, (r - P.crest - P.minFloor) / depth);
+      all.push({ k, x: (cx + h("x")) * S.cell, y: (cy + h("y")) * S.cell, r, depth, tw, rf: r - P.crest - depth * tw, peak: h("peak") < S.peak, ice: h("ice") < S.ice, iceKey: hashSeed(`${seed}:lunar:ice:${k}:${cx}:${cy}`),
+        reach: Math.ceil(Math.max(r * (S.rays ? L.ray.reach : 1 + P.apron), r + P.lip + (depth + 1) * P.terrace)) + 1,
         rays: nr ? Array.from({ length: nr }, (_, i) => spin + (i + (h(`ray${i}`) - .5) * .7) / nr * 2 * Math.PI) : null });
     }
   });
-  for (let i = 0; i < all.length; i++) { const c = all[i], at = { level: lunarBase(seed, Math.floor(c.x), Math.floor(c.y)), kind: "", peak: false };
+  for (let i = 0; i < all.length; i++) { const c = all[i], at = { level: lunarBase(seed, Math.floor(c.x), Math.floor(c.y)), kind: "", peak: false, floor: 0, apron: false };
     for (let j = 0; j < i; j++) craterOn(all[j], c.x, c.y, at);
-    c.base = at.level; c.floor = Math.max(0, at.level - 1); c.crest = Math.min(L.levels, at.level + 1); }
+    c.base = at.level; c.floor = Math.max(0, at.level - c.depth); c.rim = Math.min(MAX_LEVEL, c.floor + c.depth + 1); }
   return all.filter((c) => c.x + c.reach >= rx * 32 - 1 && c.x - c.reach <= rx * 32 + 33 && c.y + c.reach >= ry * 32 - 1 && c.y - c.reach <= ry * 32 + 33); // a tile beyond each edge too, so neighbours read their shared edge alike
 }
 // The surface at a global tile: its natural level (before the sweeps), kind, and whether a rille (1: a trench, 2: lethal), a
 // natural bridge over it, a central peak or a boulder lies there. Pure; a few noise reads.
 export function lunarAt(seed, craters, gx, gy, boulderKey = hashSeed(`${seed}:lunar:boulder`)) {
-  const L = LUNAR, R = L.rille, base = lunarBase(seed, gx, gy), at = { level: base, kind: base === 0 ? "mareBasalt" : "regolith", peak: false, apron: false, rille: 0, bridge: false, boulder: false };
+  const L = LUNAR, R = L.rille, base = lunarBase(seed, gx, gy), at = { level: base, kind: base === 0 ? "mareBasalt" : "regolith", peak: false, apron: false, floor: 0, rille: 0, bridge: false, boulder: false };
   for (const c of craters) craterOn(c, gx + .5, gy + .5, at);
   const f = valueNoise(`${seed}:lunar:rille-field`, gx / R.field.scale, gy / R.field.scale);
   if (f > R.field.above) {
     const key = `${seed}:lunar:rille`, u = valueNoise(key, gx / R.scale, gy / R.scale) - .5, ux = valueNoise(key, (gx + 1) / R.scale, gy / R.scale) - valueNoise(key, (gx - 1) / R.scale, gy / R.scale), uy = valueNoise(key, gx / R.scale, (gy + 1) / R.scale) - valueNoise(key, gx / R.scale, (gy - 1) / R.scale);
-    if (Math.abs(u) < R.half * Math.hypot(ux, uy) / 2) { at.rille = f > R.deep ? 2 : 1; at.peak = false; at.kind = "rilleFloor"; at.level = Math.max(0, at.level - 1); at.bridge = at.rille === 2 && valueNoise(`${seed}:lunar:bridge`, gx / R.bridge.scale, gy / R.bridge.scale) > R.bridge.above; }
+    if (Math.abs(u) < R.half * Math.hypot(ux, uy) / 2) { at.rille = f > R.deep ? 2 : 1; at.peak = false; at.floor = 0; at.kind = "rilleFloor"; at.level = Math.max(0, at.level - 1); at.bridge = at.rille === 2 && valueNoise(`${seed}:lunar:bridge`, gx / R.bridge.scale, gy / R.bridge.scale) > R.bridge.above; }
   }
   if (!at.rille && !at.peak) at.boulder = ((Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663) ^ boulderKey) >>> 0) % 10007 / 10007 < (at.apron ? L.boulder.apron : L.boulder.chance);
   return at;
 }
 function applyLunar(map, seed, rx, ry, mask, hamlet, walls = false) {
-  const L = LUNAR, lv = new Int8Array(1024).fill(-1), natural = [], mine = [], boulderKey = hashSeed(`${seed}:lunar:boulder`); let touched = 0, craters = null; // lv: each lunar tile's level (-1: not one)
+  const L = LUNAR, lv = new Int8Array(1024).fill(-1), deep = new Int8Array(1024), natural = [], mine = [], boulderKey = hashSeed(`${seed}:lunar:boulder`); let touched = 0, craters = null; // lv: each lunar tile's level (-1: not one); deep: the depth of the crater whose floor it is
   for (const t of map.tiles) {
     if (t.structure || t.buildingId || t.blocked || t.landscape || !BARE_GROUND.has(t.kind)) continue;
     const gx = rx * 32 + t.x, gy = ry * 32 + t.y; if (regionTile(seed, gx, gy, 25).type !== "regolith") continue;
     craters ||= lunarCraters(seed, rx, ry);
     const i = idx(t.x, t.y), a = lunarAt(seed, craters, gx, gy, boulderKey);
     Object.assign(t, { kind: a.kind, landscape: "regolith", elev: 0, detail: terraceDetail(gx, gy) }); touched++;
-    lv[i] = hamlet || mask[i] ? 0 : a.level;
+    lv[i] = hamlet || mask[i] ? 0 : a.level; deep[i] = a.floor;
     if (!mask[i]) { mine.push(t); natural.push(a); }
   }
   if (!touched) return 0;
@@ -1022,9 +1041,10 @@ function applyLunar(map, seed, rx, ry, mask, hamlet, walls = false) {
     else if (a.boulder) stones.push(t);
   }
   for (const t of stones.sort((p, q) => (h(`b${p.x},${p.y}`) % 9973) - (h(`b${q.x},${q.y}`) % 9973)).slice(0, L.boulder.max)) block(t, "lunarBoulder");
-  let monolith = null;
+  let monolith = null; const deepFloor = (t) => deep[idx(t.x, t.y)] >= 2 && (t.kind === "craterBowl" || t.kind === "shadowIce") && !t.rille;
   if ((h("monolith") % 1000) / 1000 < L.monolith.chance) {
-    const spots = mine.filter((t) => !hazard.has(idx(t.x, t.y)) && !t.blocked && (t.kind === "regolith" || t.kind === "mareBasalt" || t.kind === "ejectaRay") && t.x >= 4 && t.y >= 4 && t.x <= 27 && t.y <= 27 && clear(t));
+    const open = (t) => !hazard.has(idx(t.x, t.y)) && !t.blocked && t.x >= 4 && t.y >= 4 && t.x <= 27 && t.y <= 27 && clear(t), pit = mine.filter((t) => open(t) && deepFloor(t)); // now and then down on a deep crater's floor
+    const spots = pit.length && (h("monolith-pit") % 1000) / 1000 < L.monolith.inCrater ? pit : mine.filter((t) => open(t) && (t.kind === "regolith" || t.kind === "mareBasalt" || t.kind === "ejectaRay"));
     if (spots.length) {
       const t = spots[h("monolith-at") % spots.length], fallen = (h("monolith-fallen") % 1000) / 1000 < L.monolith.fallen; block(t, fallen ? "fallenMonolith" : "lunarMonolith", fallen ? L.monolith.fallenRise : L.monolith.rise); monolith = { x: t.x, y: t.y, fallen };
       if (fallen) { const [dx, dy] = N4[h("monolith-way") % 4]; for (let s = 1; s <= L.monolith.gouge; s++) { const g = map.tiles[idx(t.x + dx * s, t.y + dy * s)]; if (g?.landscape === "regolith" && !g.blocked && !g.rille && g.kind !== "rilleBridge") g.kind = "craterBowl"; } } // the furrow it ploughed (its ground only: no level changes)
@@ -1052,8 +1072,9 @@ function applyLunar(map, seed, rx, ry, mask, hamlet, walls = false) {
   const peaks = kinds("craterMount"), rocks = kinds("lunarBoulder"); if (peaks.length) map.craterPeaks = peaks; if (rocks.length) map.boulders = rocks.length;
   if (monolith && map.tiles[idx(monolith.x, monolith.y)].blocked) map.monolith = monolith;
   if ((h("cache") % 1000) / 1000 < L.cache.chance) {
-    const seen = both(), top = mine.filter((t) => t.elev >= L.cache.minLevel && t.kind === "lunarRim" && !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !busy.has(idx(t.x, t.y)));
-    if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `lunar-cache-${rx}-${ry}`, kind: "chest", name: L.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); }
+    const seen = both(), ok = (t) => !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !busy.has(idx(t.x, t.y)); // first worth the descent: down on a deep crater's floor; else up on a high rim
+    const pit = mine.filter((t) => ok(t) && deepFloor(t)), top = pit.length ? pit : mine.filter((t) => ok(t) && t.elev >= L.cache.minLevel && t.kind === "lunarRim");
+    if (top.length) { const at = top[h("cache-at") % top.length]; map.objects.push({ id: `lunar-cache-${rx}-${ry}`, kind: "chest", name: pit.length ? L.cache.deepName : L.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest", ...(pit.length ? { craterFloor: true } : {}) }); }
   }
   return touched;
 }

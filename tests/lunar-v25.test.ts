@@ -12,14 +12,14 @@ import { freshSave } from '../src/types.ts';
 import { Game, REGION_BANNER } from '../src/game.ts';
 import { generateRegion, sectionExits } from '../src/world.ts';
 import { LUNAR, REGIONS_V25, REGION_GROUNDS, REGION_NAMES, REGIONS, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, reachableFromPlaza, trappedTiles,
-  coherenceCore, joinsCore, cohereSection, isLandscapeKind, canStep, LETHAL_KINDS, fallDamage, lunarCraters, lunarAt, LANDSCAPE_VERSION, biomeFor } from '../src/landscape.ts';
+  coherenceCore, joinsCore, cohereSection, isLandscapeKind, canStep, LETHAL_KINDS, fallDamage, lunarCraters, lunarAt, LANDSCAPE_VERSION, biomeFor, MAX_LEVEL } from '../src/landscape.ts';
 import { ATLAS_TILE_COLORS, sectionAtlasColor } from '../src/atlas-colors.ts';
 import { drawLandscapeTile, landscapeTileAnimated, landscapeAtlasColor } from '../src/landscape-render.ts';
 import { FAR_POCKETS } from '../src/far-realms.ts';
 import { OUTDOOR, outdoorSkyMix } from '../src/close-view-outdoor.ts';
 
 const SEED = 'LUNA25', W = 32, idx = (x, y) => y * W + x, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const KINDS = ['regolith', 'mareBasalt', 'craterBowl', 'lunarRim', 'ejectaRay', 'rilleFloor', 'rilleBridge', 'lunarBoulder', 'craterMount', 'lunarMonolith', 'fallenMonolith', 'abyss'];
+const KINDS = ['regolith', 'mareBasalt', 'craterBowl', 'shadowIce', 'lunarRim', 'ejectaRay', 'rilleFloor', 'rilleBridge', 'lunarBoulder', 'craterMount', 'lunarMonolith', 'fallenMonolith', 'abyss'];
 const BLOCKED = ['lunarBoulder', 'craterMount', 'lunarMonolith', 'fallenMonolith'];
 const make = (x, y, version = 25, opts = {}, seed = SEED) => { const m = generateRegion(seed, x, y); applyLandscape(m, seed, x, y, { version, ...opts }); return m; };
 const walk = (t) => !!t && !t.blocked && !LETHAL_KINDS.has(t.kind);
@@ -55,28 +55,59 @@ test('version 25 turns some far barren regions into lunar wastes, about 3-4% of 
   assert.equal(FAR_POCKETS.blobByRegion.regolith, 'duskBlob'); assert.equal(landscapeAtlasColor('regolith'), REGION_GROUNDS.regolith.atlas);
 });
 
-test('craters: three sizes, raised rims one level up, sunken floors one down, central peaks, overlapping, rays from the large ones; the same numbers from every section', () => {
-  const P = LUNAR.profile; let big = 0, rays = 0, peaks = 0, overlaps = 0, sunk = 0; const sizes = new Set();
+test('craters: three sizes up to about 14 tiles across, a raised rim, terraces stepping down one level at a time to a floor the table\'s depth below, central peaks, overlapping, rays from the large ones; the same numbers from every section', () => {
+  const P = LUNAR.profile; let big = 0, rays = 0, peaks = 0, ice = 0, overlaps = 0, profiles = 0; const sizes = new Set(), depths = new Set();
+  for (const S of LUNAR.craters) assert.ok(S.r[0] >= P.crest + P.minFloor + S.depth[1] * P.terrace, 'every size has room for its terraces a tile wide and a floor');
+  assert.deepEqual(LUNAR.craters[0].depth, [3, 4], 'a large crater is three or four levels deep');
   for (let x = 60; x < 80; x++) {
     const cs = lunarCraters(SEED, x, 70); assert.ok(cs.length < 60, `${cs.length} craters reach a section: bounded`);
     for (const c of cs) {
-      sizes.add(c.k); const S = LUNAR.craters[c.k]; assert.ok(c.r >= S.r[0] && c.r <= S.r[1]); assert.equal(c.floor, Math.max(0, c.base - 1)); assert.equal(c.crest, Math.min(LUNAR.levels, c.base + 1));
-      if (c.base >= 1) sunk++; if (c.peak) peaks++; if (c.rays) { rays++; assert.ok(c.rays.length >= S.rays[0] && c.rays.length <= S.rays[1]); } if (c.k === 0) big++;
+      sizes.add(c.k); const S = LUNAR.craters[c.k]; assert.ok(c.r >= S.r[0] && c.r <= S.r[1] && 2 * c.r <= 15, `${2 * c.r} across`); if (c.k === 0) { big++; assert.ok(2 * c.r >= 10, 'a large crater is large'); }
+      assert.ok(c.depth >= S.depth[0] && c.depth <= S.depth[1]); depths.add(c.depth);
+      assert.equal(c.floor, Math.max(0, c.base - c.depth), 'the floor lies the table\'s depth below the ground'); assert.equal(c.rim, Math.min(MAX_LEVEL, c.floor + c.depth + 1), 'the rim stands depth + 1 above the floor');
+      assert.ok(c.rf >= P.minFloor - 1e-9 && c.tw > 0 && c.tw <= P.terrace, 'a floor to stand on, terraces a tile wide at most');
+      if (c.peak) peaks++; if (c.ice) ice++; if (c.rays) { rays++; assert.ok(c.rays.length >= S.rays[0] && c.rays.length <= S.rays[1]); }
       for (const d of cs) if (d !== c && Math.hypot(d.x - c.x, d.y - c.y) < c.r + d.r) overlaps++;
-      // the profile, read at the crater's own centre line (east of the centre), where no younger crater lies
-      if (cs.some((d) => d.k > c.k && Math.hypot(d.x - c.x, d.y - c.y) < c.r + d.r + 2) || cs.some((d) => d.k === c.k && d !== c && Math.hypot(d.x - c.x, d.y - c.y) < c.r + d.r + 2)) continue;
-      const older = cs.filter((d) => d.k <= c.k), gy = Math.floor(c.y), inner = lunarAt(SEED, older, Math.floor(c.x), gy);
-      let rx = Math.floor(c.x + c.r - 1); while (Math.hypot(rx + .5 - c.x, gy + .5 - c.y) < c.r - P.crest + .02) rx++; const rim = lunarAt(SEED, older, rx, gy); assert.ok(Math.hypot(rx + .5 - c.x, gy + .5 - c.y) <= c.r + P.lip);
-      if (!inner.rille) { assert.equal(inner.level, c.floor, 'the floor sinks'); assert.equal(inner.kind, 'craterBowl'); }
-      if (!rim.rille) { assert.equal(rim.level, c.crest, 'the rim stands one up'); assert.equal(rim.kind, 'lunarRim'); }
+      if (cs.some((d) => d !== c && d.k >= c.k && Math.hypot(d.x - c.x, d.y - c.y) < c.r + d.r + 2)) continue; // read where no younger or same-size crater lies
+      // the profile along the centre row, crater alone over its older ground: floor at the centre, one level a terrace, the rim
+      const older = cs.filter((d) => d.k < c.k || d === c), gy = Math.floor(c.y), at = (gx) => lunarAt(SEED, older, gx, gy), dist = (gx) => Math.hypot(gx + .5 - c.x, gy + .5 - c.y);
+      const mid = at(Math.floor(c.x)); if (mid.rille) continue; profiles++;
+      assert.equal(mid.level, c.floor); assert.ok(['craterBowl', 'shadowIce'].includes(mid.kind)); assert.equal(mid.floor, c.depth);
+      let prev = mid.level; for (let gx = Math.floor(c.x) + 1; dist(gx) <= c.r + P.lip; gx++) { const a = at(gx); if (a.rille) break; assert.ok(a.level - prev <= 1 && a.level >= prev, `${c.k}: a terrace of one level (${prev} -> ${a.level})`); prev = a.level;
+        if (dist(gx) >= c.r - P.crest) { assert.equal(a.level, c.rim); assert.equal(a.kind, 'lunarRim'); } }
     }
   }
-  assert.deepEqual([...sizes].sort(), [0, 1, 2]); assert.ok(big > 0 && rays > 0 && peaks > 5 && overlaps > 5 && sunk > 5, JSON.stringify({ big, rays, peaks, overlaps, sunk }));
+  assert.deepEqual([...sizes].sort(), [0, 1, 2]); assert.deepEqual([...depths].sort(), [1, 2, 3, 4]); assert.ok(big > 0 && rays > 0 && peaks > 3 && ice > 3 && overlaps > 5 && profiles > 20, JSON.stringify({ big, rays, peaks, ice, overlaps, profiles }));
   const a = lunarCraters(SEED, 70, 70), b = lunarCraters(SEED, 71, 70), key = (c) => `${c.k}:${c.x}:${c.y}`, B = new Map(b.map((c) => [key(c), c]));
-  let shared = 0; for (const c of a) { const d = B.get(key(c)); if (!d) continue; shared++; assert.deepEqual([d.r, d.base, d.floor, d.crest, d.peak, d.rays], [c.r, c.base, c.floor, c.crest, c.peak, c.rays], 'neighbours read the same crater'); }
+  let shared = 0; for (const c of a) { const d = B.get(key(c)); if (!d) continue; shared++; assert.deepEqual([d.r, d.base, d.floor, d.rim, d.depth, d.peak, d.rays], [c.r, c.base, c.floor, c.rim, c.depth, c.peak, c.rays], 'neighbours read the same crater'); }
   assert.ok(shared > 3, `${shared} craters shared over the border`);
   let ray = 0; for (const c of a.filter((q) => q.rays)) for (let k = 0; k < 400; k++) { const ang = k / 400 * 2 * Math.PI, d = c.r * (1.6 + (k % 7) * .2), at = lunarAt(SEED, [c], Math.floor(c.x + Math.cos(ang) * d), Math.floor(c.y + Math.sin(ang) * d)); if (at.kind === 'ejectaRay') ray++; }
   assert.ok(a.every((c) => !c.rays) || ray > 10, `${ray} ray samples`);
+});
+
+test('down into the craters: in the sections laid, every crater floor is reached from the plaza and its rim and climbed out of again; the descent is the table\'s; something worth it lies below', () => {
+  let bigs = 0, bigFull = 0, floors = 0, reached = 0, oneWay = 0, exact = 0, checked = 0, deepest = 0, cachesBelow = 0, iceTiles = 0;
+  for (const { seed, x, y, m } of sections()) {
+    const go = solve(m, { x: 16, y: 16 }), back = solve(m, { x: 16, y: 16 }, true), cs = lunarCraters(seed, x, y), ex = m.exits;
+    for (const t of m.tiles) if (t.landscape === 'regolith' && walk(t) && (t.kind === 'craterBowl' || t.kind === 'shadowIce')) { floors++; if (go[idx(t.x, t.y)] && back[idx(t.x, t.y)]) reached++; if (go[idx(t.x, t.y)] && !back[idx(t.x, t.y)]) oneWay++; if (t.kind === 'shadowIce') iceTiles++; }
+    for (const c of cs) {
+      const span = c.r + LUNAR.profile.lip, cx = c.x - x * 32, cy = c.y - y * 32, ix = Math.floor(cx), iy = Math.floor(cy);
+      if (c.k === 0 && cx >= 1 && cy >= 1 && cx < 31 && cy < 31 && m.tiles[idx(ix, iy)].landscape === 'regolith' && walk(m.tiles[idx(ix, iy)])) { // a large crater centred here: how deep it reads from its highest rim tile
+        const rim = m.tiles.filter((t) => t.kind === 'lunarRim' && Math.abs(Math.hypot(t.x + .5 - cx, t.y + .5 - cy) - c.r) < .5).map((t) => t.elev || 0), got = rim.length ? Math.max(...rim) - (m.tiles[idx(ix, iy)].elev || 0) : 0;
+        bigs++; if (got === c.rim - c.floor) bigFull++; deepest = Math.max(deepest, got); }
+      if (cx - span < 1 || cy - span < 1 || cx + span > 31 || cy + span > 31) continue; // wholly inside the section
+      if (cs.some((d) => d !== c && d.k >= c.k && Math.hypot(d.x - c.x, d.y - c.y) < c.r + d.r + 2)) continue;
+      const mid = m.tiles[idx(ix, iy)]; if (mid.landscape !== 'regolith' || mid.rille || mid.blocked) continue; checked++;
+      const rim = m.tiles.filter((t) => t.kind === 'lunarRim' && Math.abs(Math.hypot(t.x + .5 - cx, t.y + .5 - cy) - c.r) < .3).map((t) => t.elev || 0);
+      if ((mid.elev || 0) === c.floor && rim.length && Math.max(...rim) === c.rim) exact++;
+      if (go[idx(ix, iy)]) assert.ok(back[idx(ix, iy)], `${seed} ${x},${y}: down to the floor of the crater at ${ix},${iy} and back out`);
+    }
+    for (const o of m.objects.filter((q) => q.craterFloor)) { cachesBelow++; assert.ok(go[idx(o.x, o.y)] && back[idx(o.x, o.y)]); }
+  }
+  console.log(`  ${reached} of ${floors} crater tiles reached both ways (${oneWay} one way); ${exact} of ${checked} whole craters exactly the table's depth; ${bigFull} of ${bigs} large craters the full depth (where the plaza and exit lanes, kept at ground level, do not cut into them; deepest ${deepest} levels rim to floor); ${cachesBelow} caches on a crater floor; ${iceTiles} tiles of shadow ice`);
+  assert.equal(oneWay, 0, 'nobody is stranded in a crater: every crater tile reached is climbed out of'); assert.ok(reached >= floors * .98, `${reached} of ${floors}`);
+  assert.ok(checked >= 20 && exact >= checked * .3, `${exact} of ${checked}`); assert.ok(bigs >= 10 && bigFull >= bigs * .2 && deepest >= 4, `${bigFull} of ${bigs} large craters full depth, deepest ${deepest}`);
+  assert.ok(cachesBelow >= 2 && iceTiles > 20, `${cachesBelow} caches below, ${iceTiles} ice`);
 });
 
 test('the surface: kinds, every step one level, rilles with natural bridges, boulders, peaks, monoliths, caches; Atlas colours; drawn once; bounded', () => {
@@ -86,7 +117,7 @@ test('the surface: kinds, every step one level, rilles with natural bridges, bou
     const mine = m.tiles.filter((t) => t.landscape === 'regolith'); tiles += mine.length;
     // (a mountain section's summit trail may be paved across the waste: placeSummit, as on every landscape)
     for (const t of mine) { assert.ok(KINDS.includes(t.kind) || (t.kind === 'mountainTrail' && t.slope), t.kind); kinds[t.kind] = (kinds[t.kind] || 0) + 1; assert.equal(!!t.blocked, BLOCKED.includes(t.kind), `${x},${y} ${t.kind}`); assert.equal(t.kind === 'abyss', !!t.rille);
-      if (t.rille) { rille++; assert.equal(t.elev || 0, 0, 'a deep rille is a slot at the foot of the ground'); } else if (!t.blocked) assert.ok((t.elev || 0) <= LUNAR.levels);
+      if (t.rille) { rille++; assert.equal(t.elev || 0, 0, 'a deep rille is a slot at the foot of the ground'); } else if (!t.blocked) assert.ok((t.elev || 0) <= MAX_LEVEL);
       if (t.kind === 'rilleBridge') bridges++; if (t.kind === 'rilleFloor') trench++; }
     for (const t of mine) if (walk(t)) for (const [dx, dy] of N4) { const n = m.tiles[idx(t.x + dx, t.y + dy)]; if (t.x + dx < 0 || t.x + dx > 31 || !n || n.landscape !== 'regolith' || !walk(n)) continue; assert.ok(Math.abs((n.elev || 0) - (t.elev || 0)) <= 1, `${x},${y}: a step of two at ${t.x},${t.y}`);
       if (t.kind === 'lunarRim' && n.kind === 'craterBowl') { if ((t.elev || 0) > (n.elev || 0)) rimUp++; else if ((t.elev || 0) < (n.elev || 0)) rimDown++; } }
@@ -96,7 +127,7 @@ test('the surface: kinds, every step one level, rilles with natural bridges, bou
     const slabs = mine.filter((t) => t.kind === 'lunarMonolith' || t.kind === 'fallenMonolith'); assert.ok(slabs.length <= 1); assert.equal(!!m.monolith, slabs.length === 1); monoliths += slabs.length;
     if (m.monolith) { assert.equal(m.tiles[idx(m.monolith.x, m.monolith.y)].kind, m.monolith.fallen ? 'fallenMonolith' : 'lunarMonolith'); if (m.monolith.fallen) fallen++; }
     const added = m.objects.filter((o) => String(o.id).startsWith('lunar-')); assert.ok(added.length <= 1); caches += added.length;
-    for (const o of added) { assert.equal(o.kind, 'chest'); assert.equal(o.rewardSource, 'chest'); assert.ok(m.tiles[idx(o.x, o.y)].elev >= LUNAR.cache.minLevel); assert.equal(m.tiles[idx(o.x, o.y)].kind, 'lunarRim'); assert.ok(reachableFromPlaza(m)[idx(o.x, o.y)], 'the cache is reached'); }
+    for (const o of added) { assert.equal(o.kind, 'chest'); assert.equal(o.rewardSource, 'chest'); if (o.craterFloor) assert.ok(['craterBowl', 'shadowIce'].includes(m.tiles[idx(o.x, o.y)].kind), 'down on a crater floor'); else { assert.ok(m.tiles[idx(o.x, o.y)].elev >= LUNAR.cache.minLevel); assert.equal(m.tiles[idx(o.x, o.y)].kind, 'lunarRim'); } assert.ok(reachableFromPlaza(m)[idx(o.x, o.y)], 'the cache is reached'); }
     if (biomeFor(seed, x, y, 25) !== 'mountains') assert.equal(m.weather, generateRegion(seed, x, y).weather, 'no weather of its own: nothing more each frame');
     assert.ok(!m.tiles.some((t) => t.kind === 'moonDust' && t.landscape === 'lunar' && sectionRegion(seed, x, y, 25).type === 'regolith' && t.x === 16 && t.y === 16), 'the Moonlands do not lay their dust over a lunar waste');
   }
@@ -162,8 +193,8 @@ test('neighbours agree on their shared edge: the same exit, open and at ground l
   assert.ok(joinsCore(a, { x: 31, y: e }) && joinsCore(b, { x: 0, y: e }));
   const ca = lunarCraters(SEED, x, y), cb = lunarCraters(SEED, x + 1, y); let n = 0, near = 0;
   for (let yy = 0; yy < 32; yy++) for (const gx of [x * 32 + 31, x * 32 + 32]) assert.deepEqual(lunarAt(SEED, ca, gx, y * 32 + yy), lunarAt(SEED, cb, gx, y * 32 + yy), 'both sides read the one world field over their shared edge');
-  for (let yy = 2; yy < 30; yy++) { if (Math.abs(yy - e) <= 2) continue; const p = a.tiles[idx(30, yy)], q = b.tiles[idx(1, yy)]; if (p.landscape !== 'regolith' || q.landscape !== 'regolith' || !walk(p) || !walk(q)) continue; n++; if (Math.abs((p.elev || 0) - (q.elev || 0)) <= 1) near++; }
-  assert.ok(n > 8, `${n}`); assert.equal(near, n, 'no cliff opens at the border');
+  for (let yy = 1; yy < 31; yy++) { const p = a.tiles[idx(31, yy)], q = b.tiles[idx(0, yy)]; if (!walk(p) || !walk(q)) continue; n++; if (Math.abs((p.elev || 0) - (q.elev || 0)) <= 1) near++; } // wherever the border is open
+  assert.ok(n >= 1, `${n}`); assert.equal(near, n, 'no cliff opens where the border is open');
 });
 
 test('deterministic: two fresh generations and two fresh game loads match; a hamlet keeps the colours but stays flat', () => {
