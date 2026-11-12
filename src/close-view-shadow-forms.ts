@@ -23,8 +23,8 @@ export const CLOSE_VIEW_SHADOW_FORMS = Object.freeze({
     lean: .42,          // forward lean (radians) at full charge, imported hero spine
     nativeLean: .30,    // the same for the native fallback body
   }),
-  wraith: Object.freeze({ alpha: .52, tint: Object.freeze([.56, .42, .98]), reducedAlpha: .45 }),
-  trail: Object.freeze({ max: 5, spacing: .16, alpha: .44, fadeMs: 170, tint: Object.freeze([.40, .28, .86]) }),
+  wraith: Object.freeze({ alpha: .58, tint: Object.freeze([.70, .56, 1.12]), reducedAlpha: .5 }),
+  trail: Object.freeze({ max: 5, spacing: .16, alpha: .5, fadeMs: 170, tint: Object.freeze([.58, .44, 1.15]) }),
   clone: Object.freeze({ alpha: .86, pulse: .04, pulseHz: 6, fadeMs: 1500 }),
 });
 
