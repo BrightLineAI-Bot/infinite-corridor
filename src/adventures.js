@@ -15,7 +15,7 @@
 // - layAdventureArea: an area's floor plan: plazas joined by winding paths with loops, every door reachable on foot;
 // - adventureCycles / edgeDisjointRoutes / solveAdventurePlan: the proofs the tests (and later callers) use.
 // The Pentagon's version 11 (pentagon.ts) is the first user: its districts, Waystone hub and themed chambers come from here.
-import { hashSeed, rng, byHash } from "./random.js?v=r907-a00159304000";
+import { hashSeed, rng, byHash } from "./random.js?v=r910-8a0a850f5b5a";
 
 // Generation is version-pinned through the Pentagon version that uses it (pentagon.ts; atlas `pentVersion`). `live`: whether
 // genuinely new Pentagons adopt it (game.ts recoverPentagonVersion); a Pentagon already pinned keeps its version either way.

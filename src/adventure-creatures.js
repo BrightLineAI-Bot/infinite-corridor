@@ -11,7 +11,7 @@
 // `prototypeOnly`, so no crossing, dungeon, guardian pool, Echo list or hybrid roll ever draws them: only an adventure's theme table (a
 // separate generator, keyed by ADVENTURE_CREATURES) or the Proving Ground places them. Each spawned one takes regional scaling through
 // the one helper (Game.scaleToRegion), as every other creature does.
-import { hashSeed } from "./random.js?v=r907-a00159304000";
+import { hashSeed } from "./random.js?v=r910-8a0a850f5b5a";
 
 export const ADVENTURE_CREATURE_VERSION = 1;
 
