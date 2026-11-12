@@ -12,6 +12,7 @@ import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlob
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
+import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
 import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.ts";
@@ -512,11 +513,11 @@ const BODY = {
   ...ADVENTURE_BODIES, // adventure creatures (adventure-creature-render.ts): drawn once, then stamped
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
+  wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
   doomChaser(ctx, q) { drawDoomChaser(ctx, q, q.t * 1000); }, // release 710
-  wildStego(ctx, q) { drawWildStegoPlaceholder(ctx, q); }, /* the Wild Stegosaurus: a placeholder until its own drawing */
   gloomwisp(ctx, q) { cachedHaunt(ctx, q, drawGloomwisp, HAUNT_SPRITE.wisp); }, // release 731 (733: drawn once, then stamped)
   gloomgorge(ctx, q) { cachedHaunt(ctx, q, drawGloomgorge, HAUNT_SPRITE.gorge); },
   roofGargoyle(ctx, q) { cachedRoof(ctx, q, drawRoofGargoyle, ROOF_SPRITE.gargoyle); }, // the Pentagon roofs (roof-dwellers.ts): drawn once, then stamped
