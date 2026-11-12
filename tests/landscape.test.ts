@@ -124,7 +124,7 @@ test('falls: one level is safe, two hurt, three hurt badly, four or more are fat
   g.enemies.forEach((e) => { e.dead = true; });
   const ledge = (drop) => m.tiles.find((t) => !t.blocked && !t.slope && t.kind !== 'skyBridge' && t.x < 29 && (t.elev || 0) >= drop && [1, 2].every((k) => !at(t.x + k, t.y).blocked && !at(t.x + k, t.y).slope && at(t.x + k, t.y).kind !== 'lava' && (t.elev || 0) - (at(t.x + k, t.y).elev || 0) === drop));
   const walkOff = (t) => { Object.assign(g.player, { x: t.x, y: t.y - .25, hp: g.save.maxHp, invulnerableUntil: 0 }); g.jumpUntil = 0; const hp0 = g.player.hp, input = { state: { x: 1, y: 0 }, consume: () => false, reset() {} };
-    const deaths0 = g.save.worldFlags.deaths || 0; let low = hp0; for (let i = 0; i < 40; i++) { g.update(1 / 60, input, 90000 + i * 16.7); low = Math.min(low, g.player.hp); }
+    const deaths0 = g.save.worldFlags.deaths || 0, still = { state: { x: 0, y: 0 }, consume: () => false, reset() {} }; let low = hp0; for (let i = 0; i < 40 || g.fall && i < 240; i++) { g.update(1 / 60, i < 40 ? input : still, 90000 + i * 16.7); low = Math.min(low, g.player.hp); } // fall physics (game.ts FALL): the fall has airtime; it is counted where it lands
     return { lost: hp0 - low, dead: (g.save.worldFlags.deaths || 0) > deaths0 }; }; // death respawns within the same frame, so count deaths
   const two = ledge(2);
   if (two) { const r = walkOff(two); assert.ok(r.lost > 0 && !r.dead, `two levels hurt (${r.lost})`); }

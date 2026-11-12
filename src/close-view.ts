@@ -7,7 +7,7 @@ import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
@@ -224,7 +224,10 @@ export const CLOSE_VIEW = Object.freeze({
     // `deckLag` (roof decks, roof-decks.ts): while the Wayfarer stands on a roof deck, or hops over one, the lag may grow to this
     // instead, so landing on a tall gable from the bank beside it (its ridge is up to wall + ridge, 1.725 + 1.575 = 3.3 tiles,
     // over the house's ground; the bank is a level, 1.2, up) is eased all the way, never cut by the cap. It stays under `snap`.
-    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, deckLag: 2.2, snap: 3 }),
+    // `jumpTau` (the jump-up hitch, Tim 2026-11-12): through a jump and `jumpHold` ms after it the height follows on this shorter lag,
+    // so a jump up onto a ledge has the camera arrive with the landing; with `tau` it was still a fifth of a tile short at the
+    // touchdown and kept rising half a second after it, and on screen the Wayfarer sank after landing.
+    vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, deckLag: 2.2, snap: 3, jumpTau: .1, jumpHold: 250 }),
     // A section crossing (Tim, 2026-11-12: "The camera does a weird change when you transition between sections. The camera
     // should just point straight ahead so the Wayfarer is facing the new section."). On arriving in the open overworld from
     // another map the view was chosen afresh: the yaw from the four-way facing, or, when the way ahead held a tree or a rock
@@ -1437,7 +1440,7 @@ function deckFeetLift(g, d) {
   if (Number.isFinite(z)) { DECK_Z.map = g.map; DECK_Z.z = z; if (z - ground > (Number(d.lift) || 0)) d.lift = z - ground;
     if (own) { if (LEAP.map === g.map) { LEAP.base = ground; LEAP.v = 0; } d.jumpLift = 0; } // standing on the roof: it is the footing (no leap's fall from the bank left under it)
     return; }
-  if (DECK_Z.map === g.map && DECK_Z.z > ground && LEAP.map === g.map && !g.droneLift && !g.glide) { LEAP.base = Math.max(LEAP.base, DECK_Z.z); LEAP.v = 0; d.jumpLift = Math.max(Number(d.jumpLift) || 0, LEAP.base - ground - Math.max(0, Number(d.lift) || 0)); } // down off the roof: from its height
+  if (DECK_Z.map === g.map && DECK_Z.z > ground && LEAP.map === g.map && !g.droneLift && !g.glide && !g.fall) { LEAP.base = Math.max(LEAP.base, DECK_Z.z); LEAP.v = 0; d.jumpLift = Math.max(Number(d.jumpLift) || 0, LEAP.base - ground - Math.max(0, Number(d.lift) || 0)); } // down off the roof: from its height
   DECK_Z.map = null;
 }
 // The point of the world under a screen point (its ground or a roof deck's surface), for the aimed Rift Step's tap: { x, y, z } or
@@ -1483,7 +1486,7 @@ export const closeViewCapturing = () => capturing;
 // the ground texture holds only what lies on the floor (telegraphs, traps, marks), over the floor the shader builds.
 export const closeViewBareFloor = () => capturing && bareFloor;
 export const closeViewWorldCapture = () => capturing && worldCapture;
-export const closeViewActorLift = (draw, native = false) => Math.max(0,
+export const closeViewActorLift = (draw, native = false) => Math.max(draw?.climb ? -Infinity : 0, // climb: presentLeap's feet still rising onto a lip they crossed
   (draw?.lift || 0) + (draw?.jumpLift || 0) + (native ? draw?.nativeLift || 0 : 0));
 export function closeViewTake(draws, playerDraw) { captured = draws; capturedPlayer = playerDraw; }
 
@@ -1643,7 +1646,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
   // The calm pass (CLOSE_VIEW.camera.vertical): the camera's height rides an eased anchor after the footing, so a step up,
   // a ledge or a drop is followed, not cut to. The framing below still fits the Wayfarer's true height.
-  { const V = C.vertical, tau = reduce ? V.reducedTau : V.tau, lag = CAM.zA - playerZ;
+  { const V = C.vertical, leapClock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, leaping = RELIEF.map === g.map && !g.fall && DECK_Z.map !== g.map && leapClock < (g.jumpUntil || 0) + V.jumpHold, tau = reduce ? V.reducedTau : leaping ? Math.min(V.tau, V.jumpTau) : V.tau, lag = CAM.zA - playerZ;
     if (!CAM.valid || followSnapped || !Number.isFinite(lag) || Math.abs(lag) >= V.snap || !(tau > 0)) { CAM.zA = playerZ; CAM.zAV = 0; }
     else { spring(CAM, "zA", "zAV", playerZ, 2 / tau, dt); const d = CAM.zA - playerZ, cap = DECK_Z.map === g.map ? Math.max(V.maxLag, V.deckLag) : V.maxLag; if (Math.abs(d) > cap) { CAM.zA = playerZ + Math.sign(d) * cap; CAM.zAV = 0; } } } // on or over a roof deck (deckFeetLift): the roof's own lag
   const anchorZ = CAM.zA;
@@ -3054,7 +3057,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const fisting = who === player && (visualProfile === 'fist' || playerAction?.legacy && !!g.fistsEquipped?.());
     const castRecord=who===player?player.castVisual:null;
     const cast = who === player && player.castUntil > now && (!castRecord||castRecord.cancelled!==true);
-    const jump = who === player && g.jumpUntil > now || !!monsterAction?.leapActive;
+    const fallAir = who === player ? ordinaryFallPresentation(g, now, closeViewActorLift(d)) : null; // FALL: the falling pose (game.ts FALL.pose)
+    const jump = who === player && g.jumpUntil > now || !!fallAir || !!monsterAction?.leapActive;
     const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
@@ -3182,6 +3186,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       alpha: Math.max(0, Math.min(1, (d.alpha ?? 1) * (who === player ? 1 : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
+    if (pose === 'jump' && !actor.jumpAir && fallAir) actor.jumpAir = fallAir; // FALL: the falling pose (the jump's hang, legs reaching down near the ground)
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
@@ -3235,7 +3240,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         else if (attack) { action.kind = visualProfile?.startsWith('orrery-') ? 'cast' : acceptedTool==='great-sweep' ? 'melee' : tool || visualProfile === 'mirage' ? 'ranged' : 'melee'; if (action.kind === 'melee' && (['cinder-pike','verge-cleaver'].includes(action.profile) || action.profile === 'fist' || action.profile === 'hammer')) { if (Number.isFinite(visualRecord?.poseMs)) action.poseMs = visualRecord.poseMs; if (action.profile === 'fist') { action.fistStep = visualRecord?.fistStep; action.fistLead = visualRecord?.fistLead; action.fistCharge = visualRecord?.fistCharge; } if (Number.isFinite(visualRecord?.facingYaw)) action.yaw=closeViewPlayerFacingYaw(g,now,actor.yaw,{phase:amount,importedReady:true}); } }
         else if (charge != null) { action.kind = 'melee'; action.profile = 'fistCharge'; action.phase = charge; action.poseMs=now-(g.presentationPausedMs||0); action.fistStep = g.fistCharge.step || 1; action.fistLead = actor.fistLead; action.fistCharge = charge; }
         else if (cast) { action.kind = 'cast'; action.profile=castRecord?.profile||'cast'; action.durationMs = castRecord?.durationMs||MODEL_TIMING.castMs; }
-        else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs); }
+        else if (jump) { action.kind = 'jump'; action.durationMs = g.jumpDur || 420; action.jumpAir = ordinaryJumpPresentation(g, now, d.jumpLift, d.jumpBaseMs) ?? fallAir; }
         else if(drink?.active){action.kind='drink';action.profile=drink.itemKind;action.phase=drink.phase;action.durationMs=drink.durationMs;}
         else if(pickupPhase!==null){action.kind='interact';action.profile=placingStone?'stone-place':shovelProfile||(openingChest?'chest-open':'cache-pickup');action.phase=pickupPhase;action.durationMs=player.cachePickupVisual.durationMs;}
         action.meleeAction = action.kind === 'melee' && attack ? meleeAction : null;
@@ -3474,24 +3479,54 @@ export const closeViewRoofOpacity = (i) => ROOF_FADE.a[i]; // for tests
 // the level's top, 1.72 levels over the ground it left. Now what the footing has already climbed this jump comes out of the
 // arc, never below `apexMargin` of a level: the peak is at most the higher of the flat arc and the step plus that margin (a
 // level and .15 for the tallest step one jump clears). Jump physics, reach and what can be climbed are unchanged.
-export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, apexMargin: .15, gravity: 28, snap: .18, rise: 16, reset: 2.5 });
-const LEAP = { map: null, base: 0, from: 0, air: false, v: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0 };
+// The jump-up hitch (Tim, 2026-11-12: "when you jump up onto something, the character's movement isn't steady or stable at the
+// moment of landing... a weird little hitch"). Traced frame by frame at 60 and 30 Hz (tests/jump-landing-smooth.test.ts): the footing
+// was eased toward the ledge by `base += (target - base) * min(1, dt * rise)` (a first-frame leap of a third of a level at 60 Hz and
+// over half at 30 Hz), the target was the ground where the jump would end if the stick were held to its end (let go, or turned, and
+// the footing stood a whole level over where the Wayfarer landed, then dropped it after the landing), and the drawn feet were held to
+// `max(ground, ...)`, so a jump made against the ledge (the feet cross onto it on the jump's first frame) popped a whole level up in
+// one frame. Now the footing rides a critically damped spring (rate `rise` per second, the same at any frame rate) toward the ground
+// the jump reaches within `ahead` seconds (never past its end) and comes back down if that changes; the drawn feet follow it and are
+// never snapped up (for a moment a jump that crosses the lip early climbs it, knees tucked, instead of popping). In the air under the
+// fall model (game.ts FALL) the feet are drawn at the fall's height: they leave from the height they were drawn at (a roof is drawn
+// taller than its levels) and meet the fall's own height by the landing.
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, apexMargin: .15, gravity: 28, snap: .18, rise: 20, ahead: 1, samples: 6, soft: .1, reset: 2.5 });
+const tileElevAt = (map, x, y) => { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y) * w + Math.floor(x)]; return t ? Number(t.elev) || 0 : 0; }; // a level, by the tile (the feet's point)
+const LEAP = { map: null, base: 0, from: 0, fromElev: 0, air: false, settle: false, z: 0, v: 0, bv: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0, fall: false, fOff: 0, fH: 1 };
+// The arc over the footing: the ordinary jump's lift scaled to `arcPeak` of a level, less what the footing has already climbed this jump,
+// never under `apexMargin` (the higher of the two, smoothly: a hard max put a kink in the rise).
+function leapArc(K, L, lift, climbed) { const a = K.apexMargin * L, b = K.arcPeak * L - climbed, k = K.soft * L; return Math.min(1, lift / K.arcFrom) * (a + b + Math.sqrt((a - b) * (a - b) + k * k)) / 2; }
 export function presentLeap(g, now, d) {
-  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
-  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null);
-  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = LEAP.from = ground; LEAP.air = false; LEAP.v = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; }
+  const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, L = OUTDOOR.terrain.level;
+  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null && !g.fall && (g.deckHop || !(clock < (g.jumpUntil || 0))));
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = LEAP.from = LEAP.z = ground; LEAP.air = LEAP.settle = false; LEAP.v = LEAP.bv = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; LEAP.fall = false; }
   const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
   if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
   LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
-  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0); let arc = 0;
-  if (jumping && !LEAP.air) LEAP.from = LEAP.base; LEAP.air = jumping; // the footing this jump left
-  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), ahead = surfaceZ(g.map, fx + LEAP.vx * left, fy + LEAP.vy * left), target = Math.max(ground, ahead);
-    if (target > LEAP.base) LEAP.base += (target - LEAP.base) * Math.min(1, dt * K.rise); // rising toward the ledge it is carrying them onto
-    const L = OUTDOOR.terrain.level; arc = Math.min(1, lift / K.arcFrom) * Math.max(K.apexMargin * L, K.arcPeak * L - Math.max(0, LEAP.base - LEAP.from)); }
-  if (ground >= LEAP.base) { if (!jumping || ground - LEAP.base <= K.snap) LEAP.base = ground; LEAP.v = 0; } // stepped up without a leap (a ramp, a lift): on it at once
-  else if (LEAP.base - ground <= K.snap && !jumping) { LEAP.base = ground; LEAP.v = 0; }
-  else if (!jumping) { LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge: a fall
-  const z = Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0), f = g.fall && Number.isFinite(g.fall.z) ? g.fall : null; let arc = 0;
+  if (f) { // FALL: the fall's height, from where the feet were drawn when it began
+    const under = Math.floor(ground / L + 1e-6), air = Math.max(0, f.z - under);
+    if (!LEAP.fall) { LEAP.fall = true; LEAP.fOff = (jumping || !Number.isFinite(HERO_FEET.z) ? LEAP.base : HERO_FEET.z) - f.z * L; LEAP.fH = Math.max(.25, air); } // from where the feet were drawn (a roof's drawn top)
+    LEAP.base = f.z * L + LEAP.fOff * Math.max(0, Math.min(1, air / LEAP.fH));
+    if (jumping) { arc = leapArc(K, L, lift, 0); LEAP.from = LEAP.base; } // a jump that holds its height over lower ground: its own arc
+    LEAP.air = jumping; LEAP.v = Math.max(0, -(Number(f.vz) || 0) * L); LEAP.bv = 0;
+    const z = Math.max(ground, LEAP.base + arc); d.lift = 0; d.jumpLift = Math.max(0, z - ground); LEAP.z = z; LEAP.settle = false; return z;
+  }
+  LEAP.fall = false;
+  if (jumping && !LEAP.air) { LEAP.from = LEAP.base; LEAP.bv = 0; LEAP.fromElev = Math.max(Number.isFinite(g.jumpFrom) ? g.jumpFrom : tileElevAt(g.map, fx, fy), g.skyAir ?? -Infinity); } // the footing this jump left
+  if (!jumping && LEAP.air && LEAP.z > Math.max(ground, LEAP.base) + 1e-6) { LEAP.base = LEAP.z; LEAP.v = 0; LEAP.settle = true; } // a jump ended early (a hop that lands on arrival): what was left of its arc settles under gravity, never cut
+  LEAP.air = jumping;
+  if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), look = Math.min(left, K.ahead); let ahead = -Infinity;
+    for (let i = 1; i <= K.samples; i++) { const k = look * i / K.samples, X = fx + LEAP.vx * k, Y = fy + LEAP.vy * k; if (tileElevAt(g.map, X, Y) <= LEAP.fromElev + 1) ahead = Math.max(ahead, surfaceZ(g.map, X, Y)); } // the highest footing on the way that one jump reaches (a level up; a branch tip is narrow)
+    const target = Math.max(ground, g.skyAir != null ? LEAP.from : -Infinity, ahead); // a sky hop holds its platform's height over the gap
+    if (g.skyAir != null) d.lift = 0; // a sky hop (a great tree's branches, a skyway): drawn here at the drawn height of the platform it left, not the flat view's
+    if (dt > 0) spring(LEAP, "base", "bv", target, K.rise, dt); // toward the ledge it is carrying them onto, and back if not
+    arc = leapArc(K, L, lift, Math.max(0, LEAP.base - LEAP.from)); }
+  else if (ground >= LEAP.base || LEAP.base - ground <= K.snap && !LEAP.settle) { LEAP.base = ground; LEAP.v = 0; LEAP.bv = 0; LEAP.settle = false; } // on foot: stepped up (a ramp, a lift) on it at once; a pebble of noise followed
+  else { LEAP.bv = 0; LEAP.v += K.gravity * dt; LEAP.base = Math.max(ground, LEAP.base - LEAP.v * dt); if (LEAP.base <= ground) LEAP.v = 0; } // off a ledge (a step too short to be a fall): a drop
+  const z = jumping ? LEAP.base + arc : Math.max(ground, LEAP.base + arc); d.jumpLift = Math.max(0, z - ground - Math.max(0, Number(d.lift) || 0));
+  LEAP.z = z; if (LEAP.base <= ground) LEAP.settle = false;
+  if (z < ground) { d.lift = z - ground; d.climb = true; } // still rising onto a lip the feet crossed early: drawn under it a moment (the jump's arc pose climbing), never popped up
   return z;
 }
 export const closeViewLeap = () => ({ base: LEAP.base, from: LEAP.from, v: LEAP.v }); // for tests

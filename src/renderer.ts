@@ -2420,6 +2420,32 @@ function drawScreenOverlay(ctx, w, h) {
 // The standard view's floor (renderer.ts render): `flatInterior`, a versioned interior heightfield (landscape.ts interiorTerrain)
 // is painted flat here, so its actors are drawn on the flat floor rather than lifted by levels nobody sees.
 export const STANDARD_VIEW_FLOOR = { flatInterior: true };
+// The standard view's step (Tim, 2026-11-12: "when you jump up onto something, the character's movement isn't steady or stable at
+// the moment of landing"). The view draws the Wayfarer, and centres the world, at the height of the tile under their feet, so the
+// frame the feet crossed onto a ledge (mid-jump, or on the first frame of a jump made against it) the whole world jumped a level
+// on screen and the Wayfarer popped a level against the ledge. Now that change of height is taken up by an offset that keeps the
+// drawn footing where it was and then lets it go: over what is left of the jump (so it arrives as the jump lands), or, on foot,
+// up at `rise` per second and down under `gravity` (tiles per second squared), like a short drop. Falls (game.ts FALL), hops,
+// glides and the drone draw their own heights. Presentation only; one shared record, no allocation; a teleport (more than
+// `reset` tiles in a frame), a new map or a pause never eases.
+export const STANDARD_STEP = Object.freeze({ rise: 3, gravity: 9.5, reset: 1.5, max: 3 });
+const STEP = { map: null, ground: 0, off: 0, v: 0, t: NaN, x: NaN, y: NaN, air: false, arc: 0 };
+export function standardStepEase(g, ground, jumping, now, bypass = false, arc = 0) {
+  const K = STANDARD_STEP, p = g.player, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (bypass || STEP.map !== g.map || !Number.isFinite(STEP.t) || Math.hypot(p.x - STEP.x, p.y - STEP.y) > K.reset || !Number.isFinite(ground)) { STEP.map = g.map; STEP.ground = Number.isFinite(ground) ? ground : 0; STEP.off = 0; STEP.v = 0; STEP.t = clock; STEP.x = p.x; STEP.y = p.y; STEP.air = jumping; STEP.arc = arc; return 0; }
+  const dt = Math.max(0, Math.min(.1, (clock - STEP.t) / 1000)); STEP.t = clock; STEP.x = p.x; STEP.y = p.y;
+  if (STEP.air && !jumping && STEP.arc > arc) { STEP.off += STEP.arc - arc; STEP.v = 0; } // a jump that ended early (a hop landing on arrival): what was left of its arc settles, never cut
+  STEP.air = jumping; STEP.arc = arc;
+  if (ground !== STEP.ground) { STEP.off -= ground - STEP.ground; STEP.ground = ground; if (Math.abs(STEP.off) > K.max) { STEP.off = 0; STEP.v = 0; } }
+  if (dt > 0 && STEP.off !== 0) {
+    if (jumping) { const left = Math.max(0, ((g.jumpUntil || 0) - clock) / 1000), r = left + dt; STEP.off *= r > 0 ? left / r : 0; STEP.v = 0; } // let go over what is left of the jump
+    else if (STEP.off < 0) { STEP.off = Math.min(0, STEP.off + K.rise * dt); STEP.v = 0; } // stepped up on foot (or landed early from a hop below its next branch): up at `rise`
+    else { STEP.v += K.gravity * dt; STEP.off = Math.max(0, STEP.off - STEP.v * dt); if (STEP.off <= 0) STEP.v = 0; } // stepped down: a short drop
+  }
+  if (Math.abs(STEP.off) < 1e-4) { STEP.off = 0; STEP.v = 0; }
+  return STEP.off;
+}
+export const standardStep = () => ({ off: STEP.off, ground: STEP.ground }); // for tests
 export function render(ctx, g, w, h, now) {
   if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
@@ -2467,7 +2493,9 @@ export function render(ctx, g, w, h, now) {
     : g.area === "overworld" && g.skyAir != null && jumping && !g.deckHop /* roof decks: a hop on or onto a roof is drawn as an ordinary jump */
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
-  const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : hopLift ?? groundLift(p.x, p.y); // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
+  const fallLift = g.fall && g.area === "overworld" && Number.isFinite(g.fall.z) ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1)) : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it
+  const stepLift = standardStepEase(g, hopLift ?? groundLift(p.x, p.y), jumping, now, worldCapture || closeViewCapturing() || fallLift != null || !!g.glide || !!g.droneLift || g.area !== "overworld" || !!g.save?.boat?.aboard, lift / s); // a step up or down a level (or a hop's landing on the next branch) is eased, never cut (standardStepEase)
+  const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : fallLift ?? (hopLift ?? groundLift(p.x, p.y)) + stepLift; // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
@@ -2847,7 +2875,7 @@ export function render(ctx, g, w, h, now) {
     jumpLift: jumpLift(g, g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
     y: onDisc && !worldCapture ? onDisc.y - .75 + onDisc.r + .001 : p.y, x: p.x, lift: g.droneLift && interior
       ? Math.max(0, g.droneLift.z - supportLevel) * LIFT_PER_LEVEL
-      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 && !worldCapture ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : 0, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
+      : g.droneLift && g.area === "overworld" ? Math.max(0, g.droneLift.z - (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) * LIFT_PER_LEVEL * tileLiftScale(tileUnder(g.map, mw, p.x, p.y)) : g.glide && g.area === "overworld" ? Math.max(0, discLift(g.glide.z) * CANOPY_LIFT - groundLift(p.x, p.y)) : fallLift != null ? fallLift - groundLift(p.x, p.y) : /* release 647: the drone's booster lifts the Wayfarer */ hopLift != null ? Math.max(0, hopLift - groundLift(p.x, p.y)) + stepLift : /* a sky hop stays at its platform's height over the gap */ g.skyLevel > 0 && !worldCapture ? discLift(g.skyLevel) : g.raftZ ? discLift(g.raftZ) : stepLift, // 635: a glide's height alpha: g.raftZ < -.3 ? Math.max(.25, .65 + g.raftZ * .2) : 1, // release 615: riding a raft above or beneath the level
     fn: () => {
       if (g.glide && g.area === "overworld" && g.glide.open !== false) drawLeafGlider(ctx, p, s, now); // release 635; 641: only while open
       if (jumping) {

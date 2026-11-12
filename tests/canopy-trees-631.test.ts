@@ -46,7 +46,7 @@ test('a fall off the great tree is a fall: high enough, it kills', () => {
   const hi = g.map.tiles.filter((t) => t.kind === 'canopyBranch' && t.elev >= 8).find((t) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([a, b]) => { const n = at(g.map, t.x + a, t.y + b); return n && !n.blocked && !n.canopy; }));
   const [dx, dy] = [[0, -1], [-1, 0], [1, 0], [0, 1]].find(([a, b]) => { const n = at(g.map, hi.x + a, hi.y + b); return n && !n.blocked && !n.canopy; });
   Object.assign(g.player, { x: hi.x, y: hi.y - .25 }); const before = s.worldFlags.deaths || 0; let t = 1000;
-  for (let i = 0; i < 40 && (s.worldFlags.deaths || 0) === before; i++) { t += 50; g.update(.05, { state: { x: dx, y: dy }, consume: () => false, held: () => false }, t); }
+  for (let i = 0; i < 120 && (s.worldFlags.deaths || 0) === before; i++) { t += 50; g.update(.05, { state: { x: dx, y: dy }, consume: () => false, held: () => false }, t); } // fall physics (game.ts FALL): a fall from the crown has real airtime now, about 4 s from 32 levels
   assert.equal((s.worldFlags.deaths || 0) - before, 1, 'a long fall');
 });
 

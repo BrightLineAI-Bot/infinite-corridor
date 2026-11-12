@@ -107,7 +107,7 @@ test('the drone: a lift past the crown cannot open the glider and its fall is th
     Object.assign(g.player, { x: spot.x, y: spot.y - .25 }); fly(g, 3, () => ({}), 500); g.droneLift = { base: 0, z: top + 3, vz: 0 }; g.jumpUntil = 1e9; let t = fly(g, 4, () => ({ hold: true }), 1000);
     t = fly(g, 1, () => ({ jump: true, hold: true }), t); assert.equal(g.glide, null, 'Jump in a lift does not open the glider'); assert.equal(g.crownFoot, null);
     const n0 = deaths(g); g.endDroneLift(t); t = fly(g, 3, () => ({}), t); assert.equal(g.glide, null, 'stowed high, the lift ends in a fall, not a freefall'); assert.equal(g.glideHome, null);
-    t = fly(g, 6, () => ({}), t); assert.equal(deaths(g) - n0, 1, 'the fall kills'); assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [0, 0, 16, 16], 'the ordinary recovery'); }
+    assert.ok(g.fall, 'a fall with real airtime (fall physics, game.ts FALL)'); t = fly(g, 200, () => ({ until: () => deaths(g) > n0 }), t); assert.equal(deaths(g) - n0, 1, 'the fall kills'); assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [0, 0, 16, 16], 'the ordinary recovery'); }
   { const g = atTree(1), tree = [g.rx, g.ry], top = g.map.canopy.top, rest = restOf(g); droneOut(g); refuge(g); const e = crownEdge(g); assert.ok(e);
     Object.assign(g.player, { x: e.t.x, y: e.t.y - .25 }); g.droneLift = { base: 0, z: top + .4, vz: 0 }; g.jumpUntil = 1e9; g.crownFoot = null;
     let t = fly(g, 60, () => ({ until: () => !g.droneLift }), 1000); t = fly(g, 3, () => ({}), t); assert.ok(g.player.hp > 0 && onCrown(g), 'set down on the crown'); assert.deepEqual(g.crownFoot, { rx: tree[0], ry: tree[1] });
