@@ -1,6 +1,6 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { canopyGateDestination } from './trees.ts';
-import { ACTOR_CONTACT, actorContactContext } from "./actor-contact.ts";
+import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
 import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -70,7 +70,7 @@ import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, 
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
-import { tickAffixes, rollAffixes } from "./affixes.ts";
+import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
@@ -6025,6 +6025,44 @@ export class Game {
       },
       shock: (source, radius, damage) => addPackEffect(this.packEffects ||= [], { kind: "shock", owner: source.id, x: source.x, y: source.y, radius, arming: .35, life: .8, damage, jumpable: true }, now) });
   }
+  // PHASE_SHIELD (affixes.ts): the Wayfarer passes through a creature while a link keeps it from harm. Each frame notes which
+  // creatures are phase-shielded (a WeakSet: runtime only, nothing saved, nothing kept for creatures that are gone); one that was and
+  // no longer is (its shaman fell, the Listener's callers are gone) is solid again, and a Wayfarer inside it is eased out.
+  phaseShieldStep() {
+    const seen = (this._phaseShielded ||= new WeakSet());
+    for (const e of this.enemies) {
+      if (phaseShielded(e)) { seen.add(e); continue; }
+      if (!seen.has(e)) continue;
+      seen.delete(e); this.releasePhaseOverlap(e);
+    }
+  }
+  // Never through a wall, onto a lethal tile or into another body: the Wayfarer steps straight out (the swept mover), else the
+  // creature steps away, else the nearest open spot on PHASE_SHIELD.release.rings that a straight walk reaches. If none is found the
+  // ordinary contact rule still lets the Wayfarer walk out (an overlap can separate, never deepen). Returns true once clear.
+  releasePhaseOverlap(e) {
+    const p = this.player, R = PHASE_SHIELD.release;
+    if (!e || e.dead || !(p?.hp > 0) || !ordinaryContactEnemy(e) || !ordinaryContactPlayer(this)) return false;
+    const clear = ACTOR_CONTACT.playerRadius + enemyBodyRadius(e), gap = () => Math.hypot(p.x - e.x, p.y - e.y);
+    if (gap() >= clear - ACTOR_CONTACT.epsilon) return true;
+    const w = mapWidth(this.map, this.area), d0 = gap();
+    if (d0 > 1e-6) {
+      const ux = (p.x - e.x) / d0, uy = (p.y - e.y) / d0, need = clear + R.margin - d0;
+      this.moveGrounded(p, ux * need, uy * need); if (gap() >= clear - ACTOR_CONTACT.epsilon) return true;
+      const more = clear + R.margin - gap(), d1 = gap() || 1;
+      this.moveGrounded(e, (e.x - p.x) / d1 * more, (e.y - p.y) / d1 * more); if (gap() >= clear - ACTOR_CONTACT.epsilon) return true;
+    }
+    const sx = p.x, sy = p.y, open = (x, y) => footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y);
+    for (const r of R.rings) for (let k = 0; k < R.angles; k++) {
+      const a = k * Math.PI * 2 / R.angles, x = sx + Math.cos(a) * r, y = sy + Math.sin(a) * r;
+      if (Math.hypot(x - e.x, y - e.y) < clear + R.margin || !open(x, y)) continue;
+      let walk = true; for (let t = R.sample; t < r && walk; t += R.sample) walk = open(sx + Math.cos(a) * t, sy + Math.sin(a) * t);
+      if (!walk) continue;
+      let free = true; for (const q of this.enemies) if (q !== e && ordinaryContactEnemy(q) && Math.hypot(x - q.x, y - q.y) < ACTOR_CONTACT.playerRadius + enemyBodyRadius(q)) { free = false; break; }
+      if (!free) continue;
+      p.x = x; p.y = y; return true;
+    }
+    return false;
+  }
   // The Listener's turn (release 138): call guardians in at its health thresholds, hide behind them from gate 3, and
   // (in its "both" form) change from mirror to walled at half health. Returns true while it is hidden (skip its AI).
   updateListener(e, now) {
@@ -9083,6 +9121,7 @@ export class Game {
     this.roofStep(dt); // the Pentagon roofs' dwellers wake, pursue and go back to sleep
     this.curseTick(now); // release 737: haunt curses wear off
     this.gloomTick(now); // the Gloomvast: a fallen one's Dark ends, spent decoys go
+    this.phaseShieldStep(); // a linked-invulnerable creature the Wayfarer walked into turns solid again: ease them apart
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
       tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
