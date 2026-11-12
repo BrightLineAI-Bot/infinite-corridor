@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 924 — Release 924 — the Gaunt: hooded duelists
+
+Tim (2026-11-12): new enemies on the RPG character model, skeletal thin limbs, big heads, chunky hands, hooded faces, swords/daggers/polearms, hopping, smarter and more aggressive AI, more health, slightly taller than the Wayfarer.
+
+**CODE:** New `src/duelists.ts` `DUELISTS` (version 1: reference hp 36, factors 1.8/1.65/1.95, AI bands, separation, hop 1.4/2.1/2.7 tiles at most one level, after-attack rules, 30% feints, four attacks with windups of at least .4 s, spawn places) and pure helpers `duelistPlan`, `duelistSpawns`, `hopClear`, `findHop`, `hopArc`. `src/monster-pack.ts`: `gauntDuelist`/`gauntCutthroat`/`gauntLongarm` (prototypeOnly, noEcho), the `fencer` brain, `duelCombo`/`duelTwinCuts`/`duelThrust`/`duelSweep`; hop steps before the stun gates. `src/game.ts`: `pinDungeonLayout` pins `duelistVersion`; `placeDuelists` before the Margin Wardens; Fractured packs skip them. New `src/duelist-render.ts` (cached pose sprites), `src/close-view-beast-duelist.ts` and generated `close-view-beast-duelist-body.ts` (from `docs/asset-sources/hooded-duelist/convert-duelist.mjs`); `DUELIST_SLOT` (3) admitted beside world beasts and 919's minions. Tests: `hooded-duelists` (18).
+
+**BOUNDARY:** Only dungeon histories first entered from duelist version 1 get bands; generator output and older floors are byte-identical. At most 3 per floor, never in the Deep, Far Array, arenas, Skylands, annexes, hunts or castles. Additive save field `duelistVersion` (schema 14). Close View adds at most 3 skinned duelists (1600/1250/950 tris by tier) on their own slots; a fourth uses its billboard. Not measured on a device.
+
 ## Release 923 — Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
 
 Tim (2026-11-12): all weapons should have a jump attack that slams down, and with Shadow Boxing a charging dive to the nearest enemy with an explosion.

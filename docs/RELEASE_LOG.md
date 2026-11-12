@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r922 (`88cb413bc619`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r923 (`8e814be226dc`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 923 | Claude | claude/jump-attacks | Attack in the air with any melee weapon plunges and slams the ground (per-weapon radius/share/stagger); with Shadow Boxing running it is a charging dive to the locked or nearest foe with a burst; one per jump, 340 ms recovery, falls still hurt | In flight. |
+| 924 | Claude | claude/hooded-duelists | New ordinary-creature family (Gaunt Duelist sword, Cutthroat daggers, Longarm polearm): fencer AI that circles, feints, hops one level and hops out after striking; 1.6-2x ordinary health; new crossings from Resonant, Old Keep floors and Pentagon chambers (pinned duelistVersion); skinned Close View bodies from the Rogue rig | In flight. |
+| 923 | Claude | claude/jump-attacks | Attack in the air with any melee weapon plunges and slams the ground (per-weapon radius/share/stagger); with Shadow Boxing running it is a charging dive to the locked or nearest foe with a burst; one per jump, 340 ms recovery, falls still hurt | Merged as `8e814be226dc` (#590). |
 | 922 | Claude | claude/cv-shadow-forms | Close View only: Shadow Boxing's multi-tile carry is drawn as a 120-180 ms violet wraith charge with up to 5 afterimages and the blow landing on arrival; the Shadow Clone becomes a 248-triangle hooded spectre, more opaque | Merged as `88cb413bc619` (#589). |
 | 921 | Claude | claude/cv-great-sweep-hold | Close View only: the Great Sweep stays out in a hip carry after use until another weapon or tool attack (or a spell, drink, hands-on reach); its use is one full 360-degree turn; Mirage of Blades blades are flying spinning 3D blades | Merged as `db81724eed2d` (#588). |
 | 920 | Claude | claude/region-lunar | New region on new ground only (40+ sections out): Lunar Wastes with terraced craters you can walk down into and climb out of, rilles, boulders, monoliths, crater-floor caches; Close View airless starry sky with a great planet | Merged as `57cd89998a05` (#587). |
