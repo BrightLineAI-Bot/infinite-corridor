@@ -6,6 +6,44 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 914 — Close View refinements: calmer camera, taller houses, roofs until inside; walk through shielded creatures
+
+Tim, 2026-11-12, after playing Close View: the camera moves in and out too much over terrain and zooms at section edges ("terrain should only affect it if it extends above the player's chest"), could sit about a tile further out, cuts too quickly between elevations, and the jump looks comically high; shacks are too short ("maybe 1.5 times as tall, just the vertical") and their roofs vanish on approach ("don't disappear until you get inside"); shaman-protected invulnerable enemies can trap you in a corner ("you should be able to phase through them").
+
+**CODE:** `src/close-view.ts`: `CLOSE_VIEW.camera.outdoor` (chest 1.05, clear .12, samples 16, riseRate 7, pullIn 6, letOut 2, hold .4, edgeOpen) drives a chest-line occlusion test (16 fixed samples, ledge-aware) that raises the crane then shortens the boom on eased springs; a camera-only wall test treats off-section ground as open outdoors; presets gain `outdoorDistance` (3.6 / 4.5 / 6); `CLOSE_VIEW.camera.vertical` (tau .32, reducedTau .1, maxLag 1.3, snap 3) eases the height follow; `CLOSE_VIEW_LEAP.apexMargin` .15 subtracts the footing rise from the arc. `src/close-view-outdoor.ts`: `OUTDOOR.buildings.tall` { wall 1.5, roof 1.5, door 1.72 }, `outdoorBuildingHeights`, `outdoorInsideHouse`; `roofHidden` hides a roof only with the Wayfarer inside (or the camera inside the walls), faded over `OUTDOOR.buildings.fade.ms` 240 with a dithered roof pass (`src/close-view-gl.ts`). `src/affixes.ts` `PHASE_SHIELD` (wayfarerPasses, alpha .5, release) and `phaseShielded`; `src/actor-contact.ts` `ordinaryContactEnemy` skips them; `src/game.ts` `phaseShieldStep`/`releasePhaseOverlap`; `src/renderer.ts` ghosts them in both views. Tests: `close-view-camera-calm` (6), `close-view-tall-houses` (4), `phase-shielded` (5); `close-view-camera-targeting` and `close-view-world-refinement` re-pinned for the longer outdoor boom, the chest line and the new roof rule.
+
+**BOUNDARY:** Presentation only for the camera, jump and houses: jump physics, reach, tiles, collision and the standard view are unchanged. Phasing is runtime only (reads `warded`/`untargetable`, already saved); creature-to-creature contact, attacks, AI and immunity are unchanged; plain `untargetable` stays solid. No save or generation change; schema 14. No new per-frame allocations; one extra draw per roof only while it fades.
+
+## Release 913 — Close View beasts: second passes on the Astral Worm and the Stalker
+
+Tim, 2026-11-12, on 912:
+- the Astral Worm's griffin is "too blocky, too disjointed ... make it more cohesive";
+- its bite looks like "a red ring ... pasted onto the front of the worm instead of a gaping maw ... that can chomp and bite";
+- the dragonfly's "mandibles need to be more pronounced and the wings ... better defined";
+- the Stalker's cat legs look like "a bunch of pieces instead of a coherent body";
+- more passes on the ape.
+
+**CODE:**
+- `close-view-beast-astral.ts`:
+  - The griffin trunk is a loft over new `gchest` and `ghaunch` spine bones, blending into `ghead`. Every griffin bone binds at its rest place, so blended parts cannot tear, and the beads gather small inside the body as it grows in.
+  - The head bead is a split surface: its upper half is on `s0` and its lower half on `jaw`, hinged at `ASTRAL_CV_RIG.head.hinge`, with gums, teeth, a tongue and palates sealed by throat rows. The gape follows the bite clock and slams shut over `biteSnap` × `biteActive`.
+  - The flier has jointed, hooked mandibles that spread and snap and are held wide on the beam, and two pairs of differently shaped veined wings.
+  - The `maw` and `beamTop` bones were freed for the griffin spine. The beam now rises from the open mouth.
+- `close-view-beast-stalker.ts`:
+  - The cat is one loft from rump to skull (`CAT_TRUNK`), skinned across the spine bones. Each leg is one loft from inside the trunk through hip and knee to the paw (`CAT_LEG_FORE`/`MID`/`HIND`), and the tail blends out of the hips.
+  - The ape's arms, legs and wing roots are single lofts blended through each joint.
+  - Gait weight (cat `roll`/`rock`/`tailSwing`; ape `weightRoll`/`Yaw`/`Shift`/`Sink`) lives in `STALKER_RIG` and is gated off under Reduced Motion.
+- Tests: extended `tests/close-view-beast-astral.test.ts` (bite clock, flier, griffin morph) and `tests/close-view-beast-stalker.test.ts` (one hide across every joint, weighted gaits).
+
+**BOUNDARY:** Render only. No gameplay, save or balance change, and both beasts keep their billboard rules. Core triangles:
+
+| Beast | Full | Balanced | Low |
+|---|---|---|---|
+| Astral Worm | 4916 | 2974 | 1164 |
+| Stalker | 4872 | 2924 | 1182 |
+
+**POLISH:** about a dozen render, look and fix passes on the Astral Worm and about eleven on the Stalker; the before and after renders are in the session.
+
 ## Release 912 — Close View beasts: the Astral Worm, the Stalker, the Gloomvast and the Listener
 
 Tim, 2026-11-12: "Lets build them". These are the last four of the world-beast manifest. Each was built by its own agent on its own branch from a shared brief, with several Playwright look-and-fix passes, and then merged here.
