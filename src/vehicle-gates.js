@@ -6,8 +6,8 @@
 // "infinite tier 3 and beyond... after you've unlocked the second gate with the listener... take the submersible on land";
 // "whenever you have unlocked the... fourth or fifth gate... a drone". Gates are the Gate's climbs (far-array.ts; release 704:
 // the Gate at tier g climbs after g more Listener kills, so the second Gate opens on the third kill). Pure rules; boats.ts, diving.ts and game.ts ask these.
-import { apertureTier } from "./world.js?v=r914-c1265a9326d1";
-import { listenerKills } from "./stages.js?v=r914-c1265a9326d1";
+import { apertureTier } from "./world.js?v=r917-b9f5feabade1";
+import { listenerKills } from "./stages.js?v=r917-b9f5feabade1";
 
 export const VEHICLE_GATES = { diveTier: 12, subTier: 12, underwaterTier: 13, mechTier: 13, mechGates: 2, droneGates: 4 }; // Gates opened (far-array.ts: the Gate at tier g climbs after g more Listener kills)
 const TIER_NAMES = { 12: "Infinite II", 13: "Infinite III" };
@@ -172,7 +172,10 @@ export function ensureDroneLiftRuntime(save) {
   runtime.droneLift = { ...q, base: Number(q.base), z: Number(q.z), vz: Number(q.vz) };
   return save;
 }
-export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, engage: "The drone grips your shoulders and its booster roars. Hold Jump to climb, feather it to hold, let go to fall.", empty: "The booster sputters out of lift!", none: "The drone has no lift left: land and let it recharge." };
+// `roofed` / `roofHeadroom` (2026-11-12, with roof decks): inside a shack, hut or district house (world.ts structureOccupancy) the
+// booster will not start ("roofed" says why); a lift carried in through a doorway rises no more than `roofHeadroom` of a level over
+// the floor there, under the walls' reach, so it can neither pass through the roof nor out over the walls (game.ts droneRoofCap).
+export const DRONE_LIFT = { thrust: 30, rise: 4, max: 5, gravity: 14, burn: 1, roofHeadroom: .75, roofed: "A roof is over you: the drone needs open sky to lift you.", engage: "The drone grips your shoulders and its booster roars. Hold Jump to climb, feather it to hold, let go to fall.", empty: "The booster sputters out of lift!", none: "The drone has no lift left: land and let it recharge." };
 // The drone fizzle (Tim, 2026-11-04: "If you try to fly the drone across some area of the Pentagon that would break the whole map, the
 // drone just isn't able to fly there. You can start flying there, but your drone will explode or fizzle out, noticeably, so you
 // know: something is wrong with the Corridor here; the rules are different here. Then you fall and die. The drone works wherever

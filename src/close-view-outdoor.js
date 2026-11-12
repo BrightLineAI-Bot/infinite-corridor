@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r914-c1265a9326d1";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r914-c1265a9326d1";
-import { hashSeed } from "./random.js?v=r914-c1265a9326d1";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r917-b9f5feabade1";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r917-b9f5feabade1";
+import { hashSeed } from "./random.js?v=r917-b9f5feabade1";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -674,4 +674,15 @@ export function propScene(map, zAt = null, seen = null) { // seen: what the fog 
   if (!map || typeof map !== "object") return null; const psig = outdoorPropSignature(map, seen); let sc = PROP_SCENES.get(map);
   if (sc && sc.psig === psig) return sc; const props = outdoorProps(map, zAt, seen);
   sc = { psig, props, solids: props, key: {} }; PROP_SCENES.set(map, sc); return sc;
+}
+
+// Roof decks (roof-decks.ts): the drawn height of a house's roof over the point (X, Y), as outdoorBuildings lays it (the walls'
+// height, then the gable's rise from the eaves or the flat roof's slab, all scaled by `tall`), on the relief's top at the house's first tile. `deck` is
+// a roof-decks.ts deck ({ x0, y0, x1, y1, roofProfile, cells }). Pure.
+export function outdoorRoofZ(deck, X, Y, R = null) {
+  if (!deck) return 0; const D = HEIGHTS, Hw = D.wall, flat = deck.roofProfile === "flat" || deck.roofProfile === "stepped"; // the tall (scaled) heights, as drawn
+  const alongX = deck.x1 - deck.x0 >= deck.y1 - deck.y0, half = (alongX ? deck.y1 - deck.y0 : deck.x1 - deck.x0) / 2, mid = alongX ? (deck.y0 + deck.y1) / 2 : (deck.x0 + deck.x1) / 2;
+  const x = Math.min(Math.max(X, deck.x0), deck.x1), y = Math.min(Math.max(Y, deck.y0), deck.y1);
+  const roof = flat ? Hw + D.flat : Hw + Math.min(D.ridge, Math.max(0, half - Math.abs((alongX ? y : x) - mid)) * D.pitch);
+  return roof + (R && deck.cells?.length ? Math.max(0, R.top[deck.cells[0]] || 0) : 0);
 }

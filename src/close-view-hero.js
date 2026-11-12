@@ -1,8 +1,8 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r914-c1265a9326d1';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r917-b9f5feabade1';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r914-c1265a9326d1';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r914-c1265a9326d1';
+import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r917-b9f5feabade1';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, cleaverSlashBlade, cleaverSlashAngle, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r917-b9f5feabade1';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -298,7 +298,10 @@ function hammerPose(asset,state,pose,p) {
   }
   state.clip='derived-hammerfall-stomp';state.clipTime=p;
 }
-function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;const qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
+// Grip frame from yaw/pitch: Ry(yaw - 90deg) * Rz(pitch); socket +X is the held item axis.
+function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const q=state.primaryScratch,half=(frameYaw-Math.PI/2)/2,qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;return solveArmFrame(state,pose,left,target);}
+// Solves the arm so the grip reaches `target` with the source-space grip orientation held in primaryScratch[20..23].
+function solveArmFrame(state,pose,left,target){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
 // Presentation stages never own hit events. All three return to the same carry pose.
 const PRIMARY_CUTS = Object.freeze([
   Object.freeze({ yawA:.55, yawB:1.15, pitchA:.22, pitchB:.58, side:.10, twist:.18 }),
@@ -498,7 +501,7 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
@@ -543,7 +546,7 @@ function fistLayer(pose,step,lead,amount){const opening=lead==='left'?'left':'ri
 function sourceTime(p, duration) { return duration * (p < .18 ? p / .18 * .35 : .35 + (p - .18) / .82 * .65); }
 function fistSourceTime(p,duration){return duration*(p<.08?.35+.05*smoothstep(p/.08):.4+.35*smoothstep((p-.08)/.92));}
 function fistReadyPose(asset,state,pose,charge,lead){const w=clamp(charge);if(!(w>0))return;fistPose(asset,state,asset.clips.Punch.duration*.2,lead);blend(pose,state.other,.58*w);}
-function weightedMeleePose(asset,state,pose,motion) {
+function weightedMeleePose(asset,state,pose,motion,reducedMotion=false) {
   const w=motion.weight,d=motion.drive;if(!(w>0))return;
   if(motion.kind==='iron-fists') {
     const left=motion.lead<0,openingLeft=motion.openingLead<0,source=fistSourceTime(motion.progress,asset.clips.Punch.duration);
@@ -566,13 +569,8 @@ function weightedMeleePose(asset,state,pose,motion) {
     state.clip=motion.move==='dash'?'derived-weighted-dash-punch':motion.move==='jab'?'derived-weighted-opposite-jab':'derived-weighted-rising-uppercut';state.clipTime=motion.progress;
     return;
   }
-  if(motion.kind==='verge-cleaver'&&motion.actionVersion===2){
-    // The first cut inherits the source dagger's fast crouch/load; continuations
-    // keep its lower-body weight while the accepted descriptor owns distinct arms.
-    const source=sourceTime(motion.progress,asset.clips.Dagger_Attack.duration);
-    clipPose(asset,asset.clips.Dagger_Attack,source,state.other);
-    blend(pose,state.other,Math.min(1,w*(motion.cutIndex===1?.82:.52)));
-  }
+  // Quick (v2) Cleaver actions are the three authored slashes; v1 four-cut records keep their cut below.
+  if(motion.kind==='verge-cleaver'&&motion.actionVersion===2){cleaverSlashPose(asset,state,pose,motion,reducedMotion);return;}
   const A=CLEAVER_ARM,m=A.sign;
   rotateY(pose,27,m*motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
   rotateX(pose,m>0?30:32,-.18*d);rotateX(pose,m>0?32:30,.10*d);build(asset,state,pose);state.other.set(pose);
@@ -580,7 +578,45 @@ function weightedMeleePose(asset,state,pose,motion) {
   // Displayed left hand: a low rusty-gladius carry, then the accepted alternating diagonals.
   t[0]=g[s+12]+m*(.10+motion.side);t[1]=g[s+13]-.18+.18*motion.rise;t[2]=g[s+14]+.28+.16*motion.drive;
   state.primaryGripResidual=solveArm(state,state.other,A.left,t,m*motion.yaw,motion.pitch);blend(pose,state.other,w);
-  state.clip=(motion.actionVersion===2?'derived-quick-cleaver-cut-':'derived-weighted-cleaver-')+motion.cutIndex;state.clipTime=motion.progress;
+  state.clip='derived-weighted-cleaver-'+motion.cutIndex;state.clipTime=motion.progress;
+}
+// Verge Cleaver slashes (CLOSE_VIEW_CLEAVER_SLASHES). cleaverFourPose has already solved the hip
+// carry (guard), so the current grip is the guard: the hand target and grip frame blend from it to
+// the authored arc and back by the slash weight. The arc is anchored at the pre-twist shoulder,
+// so the body load never bends the blade path. No allocation: scratch lives on the pose state.
+const CLEAVER_SLASH_CLIPS = Object.freeze(CLOSE_VIEW_CLEAVER_SLASHES.map(s => 'derived-cleaver-slash-' + s.name));
+function cleaverSlashPose(asset,state,pose,motion,reducedMotion){
+  const slash=sampleCleaverSlash(motion.cutIndex,motion.progress,motion.contact,state.slash),w=slash.weight,spec=slash.spec;
+  state.clip=CLEAVER_SLASH_CLIPS[CLOSE_VIEW_CLEAVER_SLASHES.indexOf(spec)];state.clipTime=motion.progress;state.primaryStep=motion.cutIndex;
+  if(!(w>0))return;
+  const A=CLEAVER_ARM,m=A.sign,g=state.global,F=state.slashFrame,M=state.slashMatrix,b=state.slashBlade,t=state.primaryTarget,q=state.primaryScratch;
+  build(asset,state,pose);
+  const s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,grip=A.grip*16;
+  const reach=Math.hypot(g[e+12]-g[s+12],g[e+13]-g[s+13],g[e+14]-g[s+14])+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  matrixQuat(F,0,g,grip);
+  // Guard blade direction in the character frame; wind-up and recovery turn in the slash plane from it.
+  const ax=Math.hypot(g[grip],g[grip+1],g[grip+2])||1,guard=cleaverSlashAngle(spec,m*g[grip]/ax,g[grip+1]/ax,g[grip+2]/ax);
+  // The grip frame is the slash-plane frame times the guard's small offset from it, which fades
+  // out by the weight; the large turn is always the in-plane angle, so it never flips or spins.
+  slashPlaneFrame(spec,guard,m,b,M,F,8);qinv(F,12,F,8);qmul(F,12,F,12,F,0);F[16]=F[17]=F[18]=0;F[19]=1;quaternion(F,12,F,12,F,16,w);
+  slashPlaneFrame(spec,guard+(slash.angle-guard)*w,m,b,M,F,4);
+  const dx=M[0],dy=M[1],dz=M[2];
+  const P=spec.pivot,r=reach*spec.hand;
+  for(let k=0;k<3;k++){const carry=g[grip+12+k],hand=g[s+12+k]+reach*(k===0?m*P[0]:P[k])+r*(k===0?dx:k===1?dy:dz);t[k]=carry+(hand-carry)*w;}
+  const body=reducedMotion?CLOSE_VIEW_CLEAVER_SLASH_TIMING.reducedBody:1,swing=clamp(slash.swing);
+  const twist=(spec.twist[0]+(spec.twist[1]-spec.twist[0])*swing)*w*body,lean=(spec.lean[0]+(spec.lean[1]-spec.lean[0])*swing)*w*body;
+  rotateY(pose,28,m*twist*.35);rotateY(pose,27,m*twist*.65);rotateY(pose,4,-m*twist*.5);
+  rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-spec.guard*w*body);
+  qmul(q,20,F,4,F,12);
+  state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+}
+// Source-space grip quaternion (written at F[o..o+3]) for the blade at a slash angle; M keeps the axes.
+// Character side +1 is the sword hand: source x = m * side. The frame keeps blade (+X) and edge (+Y).
+function slashPlaneFrame(spec,angle,m,b,M,F,o){
+  cleaverSlashBlade(spec,angle,b);
+  const dx=m*b[0],dy=b[1],dz=b[2],ex=m*b[3],ey=b[4],ez=b[5];
+  M[0]=dx;M[1]=dy;M[2]=dz;M[4]=ex;M[5]=ey;M[6]=ez;M[8]=dy*ez-dz*ey;M[9]=dz*ex-dx*ez;M[10]=dx*ey-dy*ex;
+  matrixQuat(F,o,M,0);
 }
 // Descriptor-owned counter-load and settling around the canonical contact pose.
 // Endpoints and contact are exact zeros: no new clock, root travel, leg solver or grip pass.
@@ -699,8 +735,8 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(meleeMotion){
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,meleeMotion.actionVersion===1?{kind:'cleaver-four',step:meleeMotion.cutIndex}:input.primaryCarryStage?.kind==='cleaver-four'?input.primaryCarryStage:{kind:'cleaver-four',step:1});
     else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
-    weightedMeleePose(asset,state,state.pose,meleeMotion);
-    weightedMeleeLoad(state.pose,meleeMotion);
+    weightedMeleePose(asset,state,state.pose,meleeMotion,input.reducedMotion);
+    if(!(meleeMotion.kind==='verge-cleaver'&&meleeMotion.actionVersion===2))weightedMeleeLoad(state.pose,meleeMotion);
   }
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='cleaver-three')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:1});

@@ -1,22 +1,22 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r914-c1265a9326d1";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r914-c1265a9326d1";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r914-c1265a9326d1";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r914-c1265a9326d1";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r914-c1265a9326d1";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r914-c1265a9326d1";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r914-c1265a9326d1";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r914-c1265a9326d1";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r914-c1265a9326d1";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r914-c1265a9326d1";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r914-c1265a9326d1";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r914-c1265a9326d1";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r914-c1265a9326d1";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r914-c1265a9326d1";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r914-c1265a9326d1";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r914-c1265a9326d1";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r917-b9f5feabade1";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r917-b9f5feabade1";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r917-b9f5feabade1";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r917-b9f5feabade1";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r917-b9f5feabade1";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r917-b9f5feabade1";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r917-b9f5feabade1";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r917-b9f5feabade1";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r917-b9f5feabade1";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r917-b9f5feabade1";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r917-b9f5feabade1";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r917-b9f5feabade1";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r917-b9f5feabade1";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r917-b9f5feabade1";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r917-b9f5feabade1";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r917-b9f5feabade1";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
