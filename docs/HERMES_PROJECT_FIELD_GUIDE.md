@@ -20,14 +20,15 @@ Tim, 2026-11-12:
   - Wing animation reads `DRAGON_RIG.flight` (beat, finger lag, upstroke fold, heave).
   - `hang`, `dive` and `diveLand` poses, also added to the standard view's pose table in `crimson-dragon-render.ts`.
   - The Doom Chaser's cracks are on emissive channel 4.
-- **Skyfall (`dragonDive`)** is the one gameplay addition, for the Crimson Tyrant only.
+- **Skyfall (`dragonDive`)** is the one gameplay addition, for both dragons (Tim, 2026-11-12: "a doom chaser can get skyfall too").
   - It lives in `monster-pack.ts`: `ATTACK_MODULES.dragonDive`, with numbers in `DRAGON.dive` and `DRAGON.pool.dive`, plus its start and run handlers.
   - Range 3–13, cooldown 11 s, damage ×1.5.
   - Rise .7 s to 2.4, hang 1.4 s tracking at 5.5 tiles/s, fall .38 s, landing radius 2.6.
   - It is untargetable while aloft and lands one unjumpable hit on impact.
+  - Its landing sends out a jumpable `shock` ring of radius `DRAGON.dive.ring` (5) for `ringShare` (.6) of the blow, as the stag's leap does.
   - It hangs `DRAGON.dive.stop` (.9) tiles short of the Wayfarer, so it lands beside them, never on them.
   - `tunePentagonArenaBeast` (game.ts) drops `dragonDive` from the Stillworks finale Tyrant: that duel is a tuned set piece (the early build loses; from mid on, the Wayfarer wins), and its duel tests hold.
-  - The Doom Chaser keeps `doomFall` unchanged, now animated as hang, dive and landing.
+  - The Doom Chaser keeps its own `doomFall` as well, unchanged, now animated as hang, dive and landing.
 - **`close-view-beast-worm.ts`**
   - The shared `buildTendril` and `TENTACLE_LOOK`.
   - Four-bone lip tentacles posed by `poseTentacles`. The lash reads `lashed` and `dirs` once and runs its own snap, hold and recoil (`WORM_RIG`).
@@ -40,7 +41,7 @@ Tim, 2026-11-12:
   - `tests/dragon-skyfall.test.ts` (new);
   - `tests/close-view-beast-tentacle.test.ts` (new);
   - `tests/close-view-beast-dragon.test.ts` and `-worm` (extended);
-  - `tests/crimson-tyrant-709.test.ts` (move count 12 → 13).
+  - `tests/crimson-tyrant-709.test.ts` and `tests/doom-chaser-710.test.ts` (move counts 12 → 13).
 
 **BOUNDARY:**
 - Skyfall is the only gameplay change. Every other change is render only.

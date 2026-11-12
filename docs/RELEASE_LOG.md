@@ -21,7 +21,7 @@ Main is at r917 (`b9f5feabade1`); production serves `r914-c1265a9326d1` (publish
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 919 | Claude | claude/cv-dragon-worm-rework | Close View dragons pass 2 (smooth rear, big beating wings, roar) + Skyfall aerial slam (Crimson Tyrant); Tremor Worm pass 2 (living lip tentacles, plates, maw, hole) + field tentacle bodies with a minion allowance | In flight. |
+| 919 | Claude | claude/cv-dragon-worm-rework | Close View dragons pass 2 (smooth rear, big beating wings, roar) + Skyfall aerial slam with a jumpable shockwave (both dragons); Tremor Worm pass 2 (living lip tentacles, plates, maw, hole) + field tentacle bodies with a minion allowance | In flight. |
 | 918 | Claude | claude/stat-lineup-daggers | Every weapon and tool scales with one stat from one table (Might, Focus/magic, Finesse/stamina); new Fourfold Daggers: two crossing cuts per press, cancel before the second keeps only the first; level 12 milestone and 20% of weapon loot | In flight. |
 | 917 | Claude | claude/rift-roof-edge | Fix from the r916 pre-publish review: a Rift Step off a roof whose end point leaves the box over the house's walls lands on the roof's edge instead of wedged in the wall | Merged as `b9f5feabade1` (#584). |
 | 916 | Claude | claude/cleaver-carbine | Close View: the Verge Cleaver's quick attack becomes three clean sword slashes (presentation only); Salvage Blade reskinned (visual only); new Transit Lattice tool form Lumen Carbine turns the Lumen Spindle into a charge beam carbine scaling with Magic | Merged as `c0b640bd803f` (#583). Its pre-publish review found the Rift Step roof-edge blocker fixed in 917. |

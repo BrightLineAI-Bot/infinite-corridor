@@ -35,7 +35,8 @@ const ofDive = (w) => w.hurts.filter((h) => h.source === 'dragonDive');
 test('the Tyrant has Skyfall; its numbers live in the DRAGON table and sit on the existing damage scale', () => {
   const A = ATTACK_MODULES.dragonDive, D = DRAGON.dive;
   assert.ok(MONSTER_PACK.crimsonTyrant.attacks.includes('dragonDive'));
-  assert.ok(MONSTER_PACK.doomChaser.attacks.includes('doomFall'), 'the Doom Chaser already falls on you (doomFall)');
+  assert.ok(MONSTER_PACK.doomChaser.attacks.includes('dragonDive'), 'the Doom Chaser has Skyfall too (Tim, 2026-11-12)');
+  assert.ok(MONSTER_PACK.doomChaser.attacks.includes('doomFall'), 'and keeps its own Falling Dark');
   assert.ok(A.tags.includes('flying') && A.cooldown >= 10, 'not spammed');
   assert.ok(A.damage >= ATTACK_MODULES.dragonSlam.damage && A.damage <= ATTACK_MODULES.doomFall.damage, `${A.damage}`);
   assert.ok(D.rise + D.hang + D.fall <= A.active, 'its stages fit in its active time');
@@ -76,4 +77,14 @@ test('deterministic; Reduced Motion changes nothing in the fight and nothing bre
   dive(w, e, (e) => { if (held || e.pack?.data?.stage !== 'hang') return; const tr = createDragonTrack('crimsonTyrant'), S = e.scale * DRAGON_RIG.closeViewScale, at = (now) => Array.from(sampleDragon(tr, e, { x: e.x, y: e.y, z: 0, scale: S, now, reduce: true, tier: 'full', target: w.player, dead: false }).skin);
     at(1000); const a = at(1016); held = [a, at(3000)]; });
   assert.ok(held); assert.deepEqual(held[1], held[0]);
+});
+
+test('its landing sends out a jumpable shockwave (Tim, 2026-11-12, as the stag leap); the Doom Chaser falls the same way', () => {
+  for (const kind of ['crimsonTyrant', 'doomChaser']) {
+    const w = world(), e = createCombatant(kind, 24, 20, true, []); Object.assign(e, { id: kind + '-dive', aggro: true, hp: 5e5, maxHp: 1e6, damage: 40 });
+    e.packAttacks = ['dragonDive']; e.packBossAttacks = []; w.enemies.push(e);
+    let shock = null; assert.ok(dive(w, e, () => { shock ||= w.fx.find((f) => f.kind === 'shock' && f.owner === e.id) || null; }), `${kind}: it dove`);
+    assert.ok(shock, `${kind}: a shockwave`); assert.equal(shock.jumpable, true); assert.equal(shock.radius, DRAGON.dive.ring);
+    const blow = ofDive(w).find((h) => !h.jumpable); assert.ok(blow, `${kind}: the blow at impact`); assert.ok(shock.damage < blow.amount, 'the ring hurts less than the blow');
+  }
 });
