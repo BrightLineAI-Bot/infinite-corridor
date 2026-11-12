@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r924 (`28c5cff94f1e`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r925 (`2f045fa3b10c`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 925 | Claude | claude/carbine-tool | Spark Coil back in tool drops (own seeded stream, share .25); at +6 (BLUNDERBUSS_RANK) it is renamed Carbine and fires the charged beam, scaling with Finesse (magic damage); the Lumen Spindle's Lumen Carbine tool form is retired (dropped from saves); new Lattice tool form Continuous Assault: a charged Carbine beam calls three tracking sky lasers | In flight. |
+| 926 | Claude | claude/fall-physics | Open-world falls get airtime under gravity 14 levels/s^2 to terminal 9 with the old damage per height; Jump catches a fall with the drone or glider; Rift Step works mid-fall (keeps momentum); a plunge over a drop falls and slams on landing; jump-up landings onto ledges, roofs and branches no longer pop in Close View or the standard view; the Close View drone lift and glider are drawn at the terrain level height | In flight. |
+| 925 | Claude | claude/carbine-tool | Spark Coil back in tool drops (own seeded stream, share .25); at +6 (BLUNDERBUSS_RANK) it is renamed Carbine and fires the charged beam, scaling with Finesse (magic damage); the Lumen Spindle's Lumen Carbine tool form is retired (dropped from saves); new Lattice tool form Continuous Assault: a charged Carbine beam calls three tracking sky lasers | Merged as `2f045fa3b10c` (#592). |
 | 924 | Claude | claude/hooded-duelists | New ordinary-creature family (Gaunt Duelist sword, Cutthroat daggers, Longarm polearm): fencer AI that circles, feints, hops one level and hops out after striking; 1.6-2x ordinary health; new crossings from Resonant, Old Keep floors and Pentagon chambers (pinned duelistVersion); skinned Close View bodies from the Rogue rig | Merged as `28c5cff94f1e` (#591). |
 | 923 | Claude | claude/jump-attacks | Attack in the air with any melee weapon plunges and slams the ground (per-weapon radius/share/stagger); with Shadow Boxing running it is a charging dive to the locked or nearest foe with a burst; one per jump, 340 ms recovery, falls still hurt | Merged as `8e814be226dc` (#590). |
 | 922 | Claude | claude/cv-shadow-forms | Close View only: Shadow Boxing's multi-tile carry is drawn as a 120-180 ms violet wraith charge with up to 5 afterimages and the blow landing on arrival; the Shadow Clone becomes a 248-triangle hooded spectre, more opaque | Merged as `88cb413bc619` (#589). |
