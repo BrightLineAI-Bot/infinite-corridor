@@ -3,7 +3,8 @@ export const HERO_VERTEX_BODY = `
 in vec3 a_pos; in vec3 a_nrm; in vec2 a_uv; in float a_layer; in float a_class;
 out vec3 v_pos; out vec3 v_nrm; out vec2 v_uv; out float v_depth;
 flat out int v_layer; flat out int v_class;
-void main() { float d; gl_Position=project(a_pos,d); v_depth=d; v_pos=a_pos; v_nrm=a_nrm; v_uv=a_uv; v_layer=int(a_layer+.5); v_class=int(a_class+.5); }
+uniform vec3 u_offset; // zero for the hero; a Shadow Boxing afterimage's place relative to it
+void main() { float d; vec3 p=a_pos+u_offset; gl_Position=project(p,d); v_depth=d; v_pos=p; v_nrm=a_nrm; v_uv=a_uv; v_layer=int(a_layer+.5); v_class=int(a_class+.5); }
 `;
 export const HERO_FRAGMENT_BODY = `
 precision highp sampler2DArray;
@@ -92,8 +93,13 @@ export function uploadHeroFrame(gl,s,frame) {
   if(!frame?.ready||!s?.ready||s.asset!==frame.asset) return false;
   gl.bindBuffer(gl.ARRAY_BUFFER,s.dynamic);gl.bufferSubData(gl.ARRAY_BUFFER,0,frame.positionsNormals);return true;
 }
+// Returns the number of indexed draws. Afterimages (frame.ghosts, at most the pooled trail) are the same uploaded pose
+// drawn again in the body pass only, offset and fainter, never as wall silhouettes.
 export function drawHeroGL(gl,s,frame,pass,cam,light,silhouette) {
   const p=s.program,u=p.U;gl.useProgram(p.p);gl.bindVertexArray(s.vao);cam(p);light(p);
-  gl.uniform1i(u.u_hero,3);gl.uniform1f(u.u_pass,pass);gl.uniform1f(u.u_alpha,frame.alpha);gl.uniform1f(u.u_powerSuit,frame.powerSuit?1:0);gl.uniform3fv(u.u_tint,frame.tint);gl.uniform1f(u.u_hit,frame.hitFlash);gl.uniform3fv(u.u_sil,silhouette);
-  gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D_ARRAY,s.texture);gl.drawElements(gl.TRIANGLES,frame.indexCount,gl.UNSIGNED_SHORT,0);gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1i(u.u_hero,3);gl.uniform1f(u.u_pass,pass);gl.uniform1f(u.u_alpha,frame.alpha);gl.uniform1f(u.u_powerSuit,frame.powerSuit?1:0);gl.uniform3fv(u.u_tint,frame.tint);gl.uniform1f(u.u_hit,frame.hitFlash);gl.uniform3fv(u.u_sil,silhouette);gl.uniform3f(u.u_offset,0,0,0);
+  gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D_ARRAY,s.texture);gl.drawElements(gl.TRIANGLES,frame.indexCount,gl.UNSIGNED_SHORT,0);
+  let draws=1;const n=pass>.5?0:Math.min(frame.ghostCount|0,(frame.ghosts?.length|0)>>2);
+  if(n>0){gl.uniform3fv(u.u_tint,frame.ghostTint);gl.uniform1f(u.u_hit,0);for(let i=0;i<n;i++){const o=i*4;gl.uniform3f(u.u_offset,frame.ghosts[o],frame.ghosts[o+1],frame.ghosts[o+2]);gl.uniform1f(u.u_alpha,frame.ghosts[o+3]);gl.drawElements(gl.TRIANGLES,frame.indexCount,gl.UNSIGNED_SHORT,0);draws++;}gl.uniform3f(u.u_offset,0,0,0);}
+  gl.activeTexture(gl.TEXTURE0);return draws;
 }

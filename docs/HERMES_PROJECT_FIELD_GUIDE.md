@@ -6,6 +6,84 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
+
+Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
+
+**CODE:** New `src/close-view-shadow-forms.ts`: the data table (charge 120 + 14 ms per tile, eased; lean; wraith alpha .58 and tint; up to 5 afterimages fading over 170 ms; reduced-motion fade), the dash stepper, strike re-timing (wind-up fills the charge, contact on arrival, swing ends on gameplay's clock) and clone alpha (.86). `src/close-view.ts`: drawn hero follows the dash line, afterimages, ground shadow, `closeViewShadowDash()` accessor. `src/close-view-hero.ts` and `close-view-hero-gl.ts`: charge lean, afterimage fields, `u_offset` uniform (body pass only). `src/close-view-models.ts`: the 248-tri spectre clone with 0xc58cff emissive, native lean, recolour exemption. Tests: `close-view-shadow-forms` (9).
+
+**BOUNDARY:** Presentation only: gameplay still moves the player in one update and the twin un-rendered game ends identically; damage, timing and hits are unchanged. No per-frame allocation (one pooled actor, fixed afterimage slots). Reduced motion: no travel or trail, a simple fade. The camera follows the logical position. The standard view is unchanged.
+
+## Release 921 — Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
+
+Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon or tool is used, a full sweeping animation, a 360-degree sweep for its standard form, and Mirage of Blades as rendered blades travelling through the air.
+
+**CODE:** `src/close-view-player-presentation.ts`: `CLOSE_VIEW_GREAT_SWEEP` (pivot, plane, from/out/to, spin windup -18 then turn 360, swingMs 300, followMs 120, carry pose) and `sampleGreatSweep` (no allocation), `greatSweepBlade` on the shared `cleaverSlashBlade` plane maths. `src/close-view-hero.ts`: sweep and carry poses, body spin on the rendered model only. `src/action-motion.ts`: held-tool check and put-away helper. `src/game.ts`: `heldTool: true` on the Great Sweep's saved attack record (additive), `reconcileHeldTool` puts it away. `src/close-view.ts`: draws the held sweep after the attack. `src/close-view-models.ts`: `mirageBlade` (50 tris); `src/tool-forms.ts`: its 3D capture with a floor shadow. Tests: `close-view-great-sweep-hold` (6).
+
+**BOUNDARY:** Presentation only: damage, cooldown, reach, timing and hit area are unchanged, and the camera and game facing never turn with the spin. The held state is one additive field on an already-saved record (schema 14); older records load as not held. Mirage blades are capped at 3 by gameplay and allocate nothing per frame. The standard view is unchanged.
+
+## Release 920 — Release 920 — the Lunar Wastes (landscape 25)
+
+Tim (2026-11-12) asked for a lunar region with craters you can actually go down into in Close View, and pretty large ones.
+
+**CODE:** `src/landscape.ts`: `LANDSCAPE_VERSION` 25; `REGIONS_V25` (Moonlands 0.45, desert 0.17, wild/ashfields/glasslands/emberlands 0.6 to `regolith`, `minRing` 40), rolled on its own hash after version 24 in `regionAt`/`regionTile`; `REGIONS.lean.regolith`, `REGION_GROUNDS.regolith` (#9eabc2), names incl. the `maria` Mare names; `LUNAR_WALKABLE`; blocked kinds `lunarBoulder`, `craterMount`, `lunarMonolith`, `fallenMonolith`. The `LUNAR` table, `lunarCraters` (three world-grid sizes, oldest first, the same from every section), `craterOn` (terraced bowl, rim, outer slope, apron, rays, shadow ice, peak), `lunarAt` (ground, craters, even-width rilles, bridges, boulders), `applyLunar` (one-level step sweeps, deep rilles as `abyss` + `rille`, repair passes, a cache on a deep floor first); `applyMoonlands` skips lunar ground from 25. `src/landscape-render.ts` `LUNA` paints and never-animated rilles; `src/atlas-colors.ts`; `REGION_BANNER.kinds.regolith`; `blobByRegion.regolith`. Close View: `OUTDOOR.skies.airless` (stars, `planet`, `moodMix` .15), `skyOf.regolith`, surfaces and outcrops; the planet disc in the `close-view-gl.ts` sky via the unused `u_sun.w`. Tests: `lunar-v25` (13).
+
+**BOUNDARY:** Sections pinned to versions 1-24 never change (26 fingerprints from main and a 5,388-map whole-map comparison). Every walkable step in the waste is one level; every crater floor reached is climbed out of again; every land exit and cache joins the plaza both ways; neighbours agree on their shared edge. Deep rilles are lethal by design (brink guard, bridges). Crater depth is kept in full only away from the plaza, exit lanes and border. No physics, weather, animation or save change (schema 14). Not measured on a device.
+
+## Release 919 — Close View beasts: second passes on the dragons and the Tremor Worm
+
+Tim, 2026-11-12:
+- On the dragons: "their back halves are kind of boxy and weird ... their wings should be pretty large and dragon like ... move around with their wings outspread ... when they're doing their flying attacks their wings should be outspread ... a slam attack where they just slam down on you from the air".
+- On the worm: "just a little bit more of a visual pass and also we have to make sure that we get his tentacles looking good".
+
+**CODE:**
+- **`close-view-beast-dragon.ts`**
+  - One loft from tail tip to nose, with sections in `DRAGON_RIG.mesh`.
+  - Limbs are lofted in joint units from inside the trunk.
+  - Five-fingered wings: two extra fingers are skinned between the finger bones, and the membrane is scalloped by each art table's `scallop`.
+  - Wing animation reads `DRAGON_RIG.flight` (beat, finger lag, upstroke fold, heave).
+  - `hang`, `dive` and `diveLand` poses, also added to the standard view's pose table in `crimson-dragon-render.ts`.
+  - The Doom Chaser's cracks are on emissive channel 4.
+- **Skyfall (`dragonDive`)** is the one gameplay addition, for both dragons (Tim, 2026-11-12: "a doom chaser can get skyfall too").
+  - It lives in `monster-pack.ts`: `ATTACK_MODULES.dragonDive`, with numbers in `DRAGON.dive` and `DRAGON.pool.dive`, plus its start and run handlers.
+  - Range 3–13, cooldown 11 s, damage ×1.5.
+  - Rise .7 s to 2.4, hang 1.4 s tracking at 5.5 tiles/s, fall .38 s, landing radius 2.6.
+  - It is untargetable while aloft and lands one unjumpable hit on impact.
+  - Its landing sends out a jumpable `shock` ring of radius `DRAGON.dive.ring` (5) for `ringShare` (.6) of the blow, as the stag's leap does.
+  - It hangs `DRAGON.dive.stop` (.9) tiles short of the Wayfarer, so it lands beside them, never on them.
+  - `tunePentagonArenaBeast` (game.ts) drops `dragonDive` from the Stillworks finale Tyrant: that duel is a tuned set piece (the early build loses; from mid on, the Wayfarer wins), and its duel tests hold.
+  - The Doom Chaser keeps its own `doomFall` as well, unchanged, now animated as hang, dive and landing.
+- **`close-view-beast-worm.ts`**
+  - The shared `buildTendril` and `TENTACLE_LOOK`.
+  - Four-bone lip tentacles posed by `poseTentacles`. The lash reads `lashed` and `dirs` once and runs its own snap, hold and recoil (`WORM_RIG`).
+  - A `gullet` tooth ring, and a `spray` bone for thrown earth.
+  - Shingled plates and a broken-slab hole.
+  - `wormBodyEligible` keeps the mound only while the worm is hidden or during a Rise's eruption.
+- **`close-view-beast-tentacle.ts`:** the `wormTentacle` body, with one mesh per tier and `tentacleMode`, posed from the game's rising, fire, laser, grab and swipe state.
+- **`BEAST_SLOT.minion`** (6 bodies, 12 bones, 760/480/190 triangles) with the roster flag `minion: true`. This gives small minions their own count in `admitBeasts`, so they never take a beast slot. `tierMinions` admits 6 on full and balanced and none on low, where the tentacles keep their billboards (Tim, 2026-11-12).
+- **Tests:**
+  - `tests/dragon-skyfall.test.ts` (new);
+  - `tests/close-view-beast-tentacle.test.ts` (new);
+  - `tests/close-view-beast-dragon.test.ts` and `-worm` (extended);
+  - `tests/crimson-tyrant-709.test.ts` and `tests/doom-chaser-710.test.ts` (move counts 12 → 13).
+
+**BOUNDARY:**
+- Skyfall is the only gameplay change. Every other change is render only.
+- The minion allowance as a whole costs less than one beast per tier.
+- Core triangles:
+
+| Body | Full | Balanced | Low |
+|---|---|---|---|
+| Crimson Tyrant | 4078 | 2556 | 1108 |
+| Doom Chaser | 4222 | 2652 | 1108 |
+| Tremor Worm | 4912 | 2344 | 967 |
+| Field tentacle (each, at most) | 749 | 452 | 187 |
+
+**POLISH:**
+- Dragons: 4+ passes. The faceted glutes and thighs were replaced by one smooth hide, the flank wing sheet became a cape on the back, and shoulder-blade boxes were removed.
+- Worm: 5 passes. The neck gap is closed by a skirt.
+- Field tentacles: 3 passes.
+
 ## Release 918 — Release 918 — one stat per weapon and tool; the Fourfold Daggers
 
 Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new paired-dagger weapon: two narrow crossing cuts per press, and a cancel before the second cut starts leaves only the first.

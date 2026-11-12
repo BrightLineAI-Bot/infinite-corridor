@@ -15,14 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r917 (`b9f5feabade1`); production serves `r914-c1265a9326d1` (published 2026-11-12 after a Fable review of r912 to r914). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r921 (`db81724eed2d`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 918 | Claude | claude/stat-lineup-daggers | Every weapon and tool scales with one stat from one table (Might, Focus/magic, Finesse/stamina); new Fourfold Daggers: two crossing cuts per press, cancel before the second keeps only the first; level 12 milestone and 20% of weapon loot | In flight. |
-| 917 | Claude | claude/rift-roof-edge | Fix from the r916 pre-publish review: a Rift Step off a roof whose end point leaves the box over the house's walls lands on the roof's edge instead of wedged in the wall | Merged as `b9f5feabade1` (#584). |
+| 922 | Claude | claude/cv-shadow-forms | Close View only: Shadow Boxing's multi-tile carry is drawn as a 120-180 ms violet wraith charge with up to 5 afterimages and the blow landing on arrival; the Shadow Clone becomes a 248-triangle hooded spectre, more opaque | In flight. |
+| 921 | Claude | claude/cv-great-sweep-hold | Close View only: the Great Sweep stays out in a hip carry after use until another weapon or tool attack (or a spell, drink, hands-on reach); its use is one full 360-degree turn; Mirage of Blades blades are flying spinning 3D blades | Merged as `db81724eed2d` (#588). |
+| 920 | Claude | claude/region-lunar | New region on new ground only (40+ sections out): Lunar Wastes with terraced craters you can walk down into and climb out of, rilles, boulders, monoliths, crater-floor caches; Close View airless starry sky with a great planet | Merged as `57cd89998a05` (#587). |
+| 919 | Claude | claude/cv-dragon-worm-rework | Close View dragons pass 2 (smooth rear, big beating wings, roar) + Skyfall aerial slam with a jumpable shockwave (both dragons); Tremor Worm pass 2 (living lip tentacles, plates, maw, hole) + field tentacle bodies with a minion allowance | Merged as `d94286bed89f` (#586). |
+| 918 | Claude | claude/stat-lineup-daggers | Every weapon and tool scales with one stat from one table (Might, Focus/magic, Finesse/stamina); new Fourfold Daggers: two crossing cuts per press, cancel before the second keeps only the first; level 12 milestone and 20% of weapon loot | Merged as `5b82123aa683` (#585). |
+| 917 | Claude | claude/rift-roof-edge | Fix from the r916 pre-publish review: a Rift Step off a roof whose end point leaves the box over the house's walls lands on the roof's edge instead of wedged in the wall | Merged as `b9f5feabade1` (#584). Published as r917-b9f5feabade1 (2026-11-12), covering 915-917, after a Fable review of r914 to r917. |
 | 916 | Claude | claude/cleaver-carbine | Close View: the Verge Cleaver's quick attack becomes three clean sword slashes (presentation only); Salvage Blade reskinned (visual only); new Transit Lattice tool form Lumen Carbine turns the Lumen Spindle into a charge beam carbine scaling with Magic | Merged as `c0b640bd803f` (#583). Its pre-publish review found the Rift Step roof-edge blocker fixed in 917. |
 | 915 | Claude | claude/roof-decks-915 | Standable roofs on overworld shacks, huts and district houses (reached from one level below, a neighbouring roof, drone or glider); aimed Rift Step in Close View; Rift Step now takes fall damage; the drone won't lift through a roof from inside; Close View camera snaps behind the Wayfarer facing the new section on a crossing | Merged as `8e160cc9bc37` (#582). |
 | 914 | Claude | claude/cv-refinements | Close View overworld camera (terrain pull-in only when the chest line is blocked, no section-edge pull-in, a tile further out, eased height follow, realistic jump apex); houses 1.5x taller with roofs kept until the Wayfarer is inside; the Wayfarer passes through shaman-warded creatures and the hiding Listener | Merged as `c1265a9326d1` (#581). Published as r914-c1265a9326d1 (2026-11-12). |
