@@ -68,7 +68,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, LUMEN_CARBINE, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -77,10 +77,10 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
-import { generateItem, BRAWLER_LOOT } from "./items.ts";
+import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -578,6 +578,9 @@ export function tunePentagonArenaBeast(c, id, save, stats, regional) {
   const row = pentagonArenaRow(id), v = row && pentagonArenaVitals(row, save, stats, regional); if (!v) return c;
   Object.assign(c, { pentFinaleBeast: id, boss: true, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true,
     threatRing: regional?.ring ?? 0, xpMultiplier: Math.max(1, Number(regional?.xpMultiplier) || 1), packName: row.name || (row.beast && WORLD_BEASTS[row.beast]?.name) || MONSTER_PACK[c.kind]?.name || c.packName, pentArenaTuning: PENTAGON_ARENA.version });
+  // Skyfall (dragonDive, release 919) is the roaming Crimson Tyrant's: the Stillworks duel is a tuned set piece (Tim 2026-11-11: the early
+  // fight is a loss, from mid on a win), so the finale Tyrant keeps the moves that balance was set on.
+  if (Array.isArray(c.packAttacks)) c.packAttacks = c.packAttacks.filter((a) => a !== "dragonDive");
   delete c.worldBeast; delete c.minimumAttackWindup; return c;
 }
 function pentagonArenaIn(save, id) {
@@ -746,6 +749,7 @@ export function ordinaryMonsterGearDrop(e) {
 const MILESTONE_GEAR = [
   [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
   [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
+  [FOURFOLD_DAGGERS.milestone.level, { id: "milestone-fourfold-daggers", name: FOURFOLD_DAGGERS.name, slot: "primary", power: FOURFOLD_DAGGERS.milestone.power, property: FOURFOLD_DAGGERS.property }], // Tim 2026-11-12 (items.ts FOURFOLD_DAGGERS)
 ];
 export function grantMilestoneGear(save) {
   save.inventory ||= [];
@@ -945,6 +949,8 @@ export function characterStats(save) {
     stats = save.stats || {},
     vigor = Math.max(1, Number(stats.Vigor) || 1),
     finesse = Math.max(1, Number(stats.Finesse) || 1),
+    might = Math.max(1, Number(stats.Might) || 1),
+    focus = Math.max(1, Number(stats.Focus) || 1),
     resolve = Math.max(1, Number(stats.Resolve) || 1),
     armorPower = Math.max(0, Number(save.equipment?.armor?.power) || 0),
     charmPower = Math.max(0, Number(save.equipment?.charm?.power) || 0),
@@ -966,21 +972,35 @@ export function characterStats(save) {
         affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save) + pairingMods(save).guard + boons.guard + ag.defense,
     ),
     meleeBonus: Math.round(( // release 335: armor Volatile now scales the whole melee hit (meleeHit), not this bonus
-      Math.max(1, Number(stats.Might) || 1) * 2 +
+      might * SCALING_STRENGTH.melee + // items.ts SCALING_STRENGTH (2 a rank)
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
       affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0) + resonance * APERTURE_RESONANCE.melee + boons.melee)),
     magicBonus: Math.round(( // release 335: armor Ignite now scales whole spells and magic shots
-      Math.max(1, Number(stats.Focus) || 1) +
+      focus * SCALING_STRENGTH.magic + // items.ts SCALING_STRENGTH (1 a rank)
       Math.floor((level - 1) * 0.45) +
       Math.floor((Number(secondary?.power) || 0) * 0.55) +
       affixValue(secondary, "attack")+(active?.id==='force-channel'?rank*3:0) + resonance * APERTURE_RESONANCE.magic + boons.magic)),
+    // Tim (2026-11-12): the melee bonus as the equipped weapon reads it (its scaling stat in place of Might; scaledBonus).
+    // The boss references (world beasts, the Far Array, Gate Revenants, the Skylands) tune to this blow.
+    get weaponBonus() { return scaledBonus(save, weaponScaling(primary), "melee", this); },
     attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0)+(ag.reach||0)/* release 461: Long Arm */,
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed+boons.speed+ag.move,
     armorPower,
     charmPower,
   };
+}
+// Tim (2026-11-12, final): every weapon and tool scales with one stat (items.ts WEAPON_SCALING / TOOL_SCALING): Might, Focus
+// ("magic") or Finesse, the stamina stat ("stamina"). The bonus of a blow's channel (the melee bonus for a physical blow, the
+// magic bonus for a magic one) keeps everything but its own stat term, which becomes the scaling stat's ranks times the
+// channel's strength (SCALING_STRENGTH: 2 a rank on the melee channel, 1 on the magic one). So Finesse adds 2 a rank to a
+// stamina weapon's blow exactly as Might adds to a Might weapon's, and a weapon on its native stat reads the old bonus.
+export const statRank = (save, stat) => Math.max(1, Number(save?.stats?.[stat]) || 1);
+export function scaledBonus(save, scaling, channel = "melee", derived = characterStats(save)) {
+  const magic = channel === "magic", base = magic ? derived.magicBonus : derived.meleeBonus, k = SCALING_STRENGTH[magic ? "magic" : "melee"];
+  if (!SCALING_STATS[scaling]) return base;
+  return base + (statRank(save, SCALING_STATS[scaling]) - statRank(save, magic ? "Focus" : "Might")) * k;
 }
 export function syncCharacterStats(save) {
   const oldHp = Math.max(0, Number(save.maxHp) || 60),
@@ -1732,6 +1752,26 @@ export function primaryAttackHits(
   }
   return hits;
 }
+// The Fourfold Daggers (items.ts FOURFOLD_DAGGERS): the foes one cut (`cut` 0, the first hand; 1, the other) reaches. The
+// cut leaves from a hand `offset` tiles to one side and runs `angle`° across the facing, a cone of half-width `half`° out to
+// the profile's range, so the two cuts cross like an X just ahead. A foe within `inner` tiles and ahead is in both. Walls
+// block as they do a swing. Bounded: one pass over the foes, no allocation beyond the result.
+export function daggerCutHits(player, enemies, map, width, profile, direction, cut = 0, D = FOURFOLD_DAGGERS) {
+  const d = projectileDirection(direction?.x, direction?.y, player.facing), side = cut ? -1 : 1, nx = -d.y * side, ny = d.x * side,
+    a = (D.angle * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a), ax = d.x * c - nx * sn, ay = d.y * c - ny * sn,
+    px = player.x + .5, py = player.y + .45, ox = px + nx * D.offset, oy = py + ny * D.offset, half = (D.half * Math.PI) / 180, hits = [];
+  for (const e of enemies) {
+    if (e.dead) continue;
+    const ex = e.x + .5, ey = e.y + .45, fx = ex - px, fy = ey - py, near = Math.hypot(fx, fy), pad = Math.max(0, enemyBodyRadius(e) - .38);
+    let inside = near <= D.inner + pad && fx * d.x + fy * d.y > 0;
+    if (!inside) { const vx = ex - ox, vy = ey - oy, r = Math.hypot(vx, vy); inside = r > 0 && r <= profile.range + pad && Math.acos(Math.max(-1, Math.min(1, (vx * ax + vy * ay) / r))) <= half; }
+    if (!inside) continue;
+    let clear = true; const steps = Math.ceil(near * 4);
+    for (let i = 1; i < steps; i++) if (!tileOpen(map, width, px + (fx * i) / steps, py + (fy * i) / steps)) { clear = false; break; }
+    if (clear) hits.push(e);
+  }
+  return hits;
+}
 // Release 469 (Tim: "the targeting seems a little bit long... I'll be moving past enemies and the targeting won't hit them... I
 // don't know where it's aiming"): a foe already within the swing's reach (`core`) always comes before one auto aim would
 // have to reach for, whichever way you face; among those, the nearer and the one ahead first. Returns { e, d } or null.
@@ -2445,7 +2485,8 @@ export class Game {
     this.reticle = null;
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
-    this.loadArea(this.area, false);
+    this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
+    this.loadArea(this.area, false); this._resumeDeck = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3273,7 +3314,8 @@ export class Game {
     this._walkerRoutes = new WeakMap(); this._walkerLandingGraph = null;
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
-      playerRelocated = !resumeLiftPosition && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3560,7 +3602,7 @@ export class Game {
       return ground + this.discAir * LIFT_PER_LEVEL;
     if (this.skyLevel > 0 && discAt(this.map, x + .5, y + .75, { level: this.skyLevel }))
       return ground + this.skyLevel * LIFT_PER_LEVEL;
-    if (!body.jumping && this.standingDeck() && roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
+    if (!body.jumping && this.standingDeck() && (roofDeckAt(this.map, x + .5, y + .75)?.id === this.roofDeck.id || roofDeckUnderBox(this.map, x, y, Infinity, this.roofDeck.id))) return Math.max(ground, this.roofDeck.level * LIFT_PER_LEVEL); // roof decks: up on the roof, over whoever is inside
     if (carrier?.raft) {
       const px = Math.max(0, Math.min(1, Number(phase?.x) || 0)), py = Math.max(0, Math.min(1, Number(phase?.y) || 0)),
         pt = Math.max(0, Math.min(1, Number(phase?.t) || 0)), a = carrier.old, b = carrier.current,
@@ -3671,7 +3713,13 @@ export class Game {
   }
   // The roof deck stood on as saved (playerRuntime.roofDeck), after the area loads: kept only when that deck is still under the
   // feet at that level (roof-decks.ts validRoofDeck); otherwise the Wayfarer stands on the ground there, unhurt.
-  restoreRoofDeck(q) { const d = this.area === "overworld" && this.decksApply() ? validRoofDeck(this.map, normalizeRoofDeck(q), this.player.x + .5, this.player.y + .75) : null; this.setRoofDeck(d); return !!d; }
+  // A roof's edge saved (the feet just past it, the box still over its walls) is kept too (deckEdgeHold), so a reload never wedges them.
+  resumeDeckEdge(w) { const q = normalizeRoofDeck(this._resumeDeck), d = q ? roofDeckById(this.map, q.id) : null, p = this.player; // the box over that roof's walls, nothing else stopping it
+    return !!d && this.decksApply() && d.level === q.level && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, w, p.x, p.y, false, false, false, true, d.level); }
+  restoreRoofDeck(q) { const saved = normalizeRoofDeck(q), ok = this.area === "overworld" && this.decksApply(), p = this.player;
+    let d = ok ? validRoofDeck(this.map, saved, p.x + .5, p.y + .75) : null;
+    if (!d && ok && saved) { const e = this.deckEdgeHold(p.x, p.y, saved.level); d = e && e.id === saved.id && e.level === saved.level ? e : null; }
+    this.setRoofDeck(d); return !!d; }
   // The jump in the air as saved (resumeRuntime `jumpAir`), after the area loads (loadArea clears the sky-hop height).
   restoreJumpAir(j, now) {
     if (!j || typeof j !== "object" || !(this.jumpUntil > now)) return; const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null;
@@ -3787,8 +3835,18 @@ export class Game {
     const d = roofDeckAt(this.map, p.x + .5, p.y + .75);
     if (d && p.jumping && this.skyAir != null && !this.droneLift && !this.mechBoosting && d.level > this.skyAir + 1e-6 && d.level <= this.skyAir + 1 + 1e-6) { this.jumpUntil = now; p.jumping = false; this.deckHop = true; } // onto a roof one level up: on it
     if (p.jumping) return null;
-    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, on = d && from != null && d.level <= from + (wasOn ? 0 : 1) + 1e-6 ? d : null;
+    const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, reach = from == null ? null : from + (wasOn ? 0 : 1);
+    const on = d && reach != null && d.level <= reach + 1e-6 ? d : reach != null ? this.deckEdgeHold(p.x, p.y, reach) : null; // the edge: still over its walls
     this.setRoofDeck(on); return on;
+  }
+  // The roof's edge (pre-publish review of 915: walking or jumping off a roof wedged the Wayfarer in its wall): the deck, at or under
+  // maxLevel, whose walls the collision box at (x, y) still stands over once the feet have left its roof, or null. Only a deck whose
+  // walls are all that stop the box (footprintOpen without and with its deckReach) holds: the Wayfarer stays up on that roof's edge
+  // until the whole box is clear of the walls, and only then drops (one fall, from the roof's height, where they come down).
+  deckEdgeHold(x, y, maxLevel) {
+    if (!this.decksApply() || !Number.isFinite(maxLevel)) return null; const d = roofDeckUnderBox(this.map, x, y, maxLevel); if (!d) return null;
+    const w = mapWidth(this.map, this.area);
+    return !footprintOpen(this.map, w, x, y, true, false, false, true) && footprintOpen(this.map, w, x, y, true, false, false, true, d.level) ? d : null;
   }
   // Is (x, y) over a roof higher than z that the glide is not already over? (a glide never climbs onto a roof above it)
   deckWallAt(x, y, z, from = null) { const d = roofDeckAt(this.map, x + .5, y + .75); return !!d && d !== from && d.level > z + 1e-6; }
@@ -3797,7 +3855,8 @@ export class Game {
   blinkFooting(x, y, fromLevel, rise = 0) {
     const w = mapWidth(this.map, this.area), top = fromLevel + rise + 1e-6, d = this.decksApply() ? roofDeckAt(this.map, x + .5, y + .75) : null;
     if (d && d.level <= top) return footprintOpen(this.map, w, x, y, false, false, false, false, d.level) ? { level: d.level, deck: d } : null;
-    if (!footprintOpen(this.map, w, x, y, false, false, false, false, d || this.standingDeck() ? Math.floor(top) : null) || footprintHazard(this.map, w, x, y)) return null;
+    const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
+    if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
     const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
   }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
@@ -3846,6 +3905,7 @@ export class Game {
         if(g!==priorStrike&&g&&p){const list=(this.glyphVisuals||=[]),first=list.findIndex(v=>v.kind==='primaryEcho');if(list.filter(v=>v.kind==='primaryEcho').length>=PRIMARY_ECHO_VISUAL.cap&&first>=0)list.splice(first,1);
           list.push({kind:'primaryEcho',life:PRIMARY_ECHO_VISUAL.life,max:PRIMARY_ECHO_VISUAL.life,actual:{x:g.x,y:g.y,dx:g.dx,dy:g.dy,range:p.range,arc:p.arc,shape:p.shape},memory:t.echoVisual||null});}
       }
+      else if (t.kind === "daggerCut") { if (this.primaryStrike && this.player.hp > 0 && t.areaId === this.areaId() && isFourfoldDaggers(this.save.equipment.primary)) this.recordPrimaryConsequences(this.primaryStrike(now, null, { daggerCut: 1, aim: t.aim, share: t.share, echoed: t.echoed }) || []); } // the Fourfold Daggers' second cut
       else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
     }
     this.glyphVisuals = (this.glyphVisuals || []).filter((v) => (v.life -= dt) > 0);
@@ -4744,6 +4804,7 @@ export class Game {
     if (!drone && m.active && !m.empowered && (Number(this.save.materials?.cinderIron) || 0) >= MECH_POWER.burn) { this.message = setEmpowered(this.save, true).message; this.cancelConsumeVisual('form-change'); this.sync(); return true; } // release 383: robot → empowered → stowed
     if (m.active && !drone && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; } // release 639
     if (m.active) { if (m.empowered) setEmpowered(this.save, false); m.active = false; if(!drone)this.cancelConsumeVisual('form-change'); this.message = drone ? "The drone docks into its frame." : "The robot folds away."; this.sync(); return true; }
+    if (!drone && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks: the robot never uses them
     if (!drone && m.cooldown > 0) { this.message = `The robot's plating is still knitting: ${Math.ceil(m.cooldown)}s.`; return false; }
     m.active = true; if(!drone)this.cancelConsumeVisual('form-change'); this.droneAt = null; this.message = drone ? "The drone lifts off beside you. It fires on what comes near; hold Jump in the air and it carries you." : "The robot unfolds around you. Hold Jump in the air to boost."; this.sync(); return true;
   }
@@ -4800,7 +4861,7 @@ export class Game {
         if (this.glide && !gliderForbiddenAt(this.map, width, p.x, p.y) && elevationAt(this.map, width, p.x, p.y) > z0 + 1e-6) { const z = this.glide; this.returnFrom(from, G.noClimb); this.glide = z; if (out[0]) z.vx = 0; else z.vy = 0; z.seamHold = { rx: from.rx, ry: from.ry, dx: out[0], dy: out[1], at: keep }; } }
       return "crossed"; }
     p.x = nx; p.y = ny; p.walkPhase = 0;
-    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : null; // roof decks: a glide comes down onto a roof it is over
+    const deckUnder = decks ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null, onDeck = deckUnder && deckUnder.level <= z0 + 1e-6 ? deckUnder : decks && !deckUnder ? this.deckEdgeHold(p.x, p.y, z0) : null; // roof decks: a glide comes down onto a roof it is over (or onto its edge, over its walls)
     const ground = Math.max(elevationAt(this.map, width, p.x, p.y), onDeck ? onDeck.level : -Infinity), here = tileUnder(this.map, width, p.x, p.y);
     if (g.z > ground + .05) { if (g.pinned && g.z > ground + G.skim + .01) g.pinned = false; return "flying"; }
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
@@ -6268,6 +6329,7 @@ export class Game {
     if (this.swimming) return "Get out of the water first.";
     if (this.mechUp() || this.droneUp()) return "Stow the robot or the drone first.";
     if (this.glide) return "Land first.";
+    if (this.standingDeck()) return "Climb down from the roof first: there is no room for a mount up here."; // roof decks: mounts never use them
     if (footprintInsideStructure(this.map, mapWidth(this.map, this.area), p.x, p.y)) return "There is no room for a mount indoors.";
     return null;
   }
@@ -7109,12 +7171,15 @@ export class Game {
     }else{
       const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
       for(const c of q.payload.echoCopies||[])this.effects.push({...fx,id:`${q.id}-echo-${c.index||1}`,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(fx.damage*c.share)),imbue:(fx.imbue||0)*c.share,echo:true,toolUseNewborn:true});
-      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-characterStats(this.save).meleeBonus},q.aim,now);
+      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-this.weaponBonus()},q.aim,now);
     }
     const v=this.player.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id&&v.toolUse.phase==='startup'&&!v.presentationCancelled){v.toolUse={...v.toolUse,phase:'released',releaseOffsetMs:q.startupMs};if(base&&q.payload.family==='shot')v.toolShotId=base.id;this.player.actionVisualUntil=now+(v.durationMs-q.startupMs);}
     return{released:true,cancelled:false};
   }
-  cancelPendingMeleeContact(_reason='cancelled'){const q=this.pendingMeleeContact;if(!q)return false;this.pendingMeleeContact=null;if(q.payload?.kind==='fist'&&this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed)&&this.fistCombo.landed.length)this.fistCombo.landed[this.fistCombo.landed.length-1]=false;const v=this.player?.attackVisual;if(v?.meleeAction?.v===1||v?.meleeAction?.v===2)v.presentationCancelled=true;return true;}
+  // Tim 2026-11-12: a cancel (dodge, a tool, a cast, a stun, a switch, leaving) before the Fourfold Daggers' second cut starts
+  // drops that cut; the first has already landed at the press, and a second cut already struck stays struck.
+  dropDaggerCut(){const list=this.glyphTimers;if(!list?.length)return false;const kept=list.filter(t=>t.kind!=='daggerCut');if(kept.length===list.length)return false;this.glyphTimers=kept;return true;}
+  cancelPendingMeleeContact(_reason='cancelled'){const droppedCut=this.dropDaggerCut(),q=this.pendingMeleeContact;if(!q)return droppedCut;this.pendingMeleeContact=null;if(q.payload?.kind==='fist'&&this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed)&&this.fistCombo.landed.length)this.fistCombo.landed[this.fistCombo.landed.length-1]=false;const v=this.player?.attackVisual;if(v?.meleeAction?.v===1||v?.meleeAction?.v===2)v.presentationCancelled=true;return true;}
   releasePendingMeleeContact(now=this.lastUpdateNow||0){
     const q=this.pendingMeleeContact;if(!q||q.v!==1||now<q.releaseAt||this.paused)return{released:false,cancelled:false};
     if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')){this.cancelPendingMeleeContact('invalid-owner');return{released:false,cancelled:true};}
@@ -7149,7 +7214,7 @@ export class Game {
     const bufferedFist=this.fistsEquipped();this.clearAttackBuffer();this.attackAction=bufferedToolTap&&bufferedFist?(held?'attack':null):"attack";this._fistInputUpdate=bufferedFist;try{this.primaryAttack(now);}finally{this._fistInputUpdate=false;this.attackAction=null;}return true;
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
-    const committed=echo?.committed||null,isEcho=!!echo&&!committed;
+    const committed=echo?.committed||null,followCut=echo?.daggerCut===1/* the Fourfold Daggers' second cut (tickGlyphs) */,isEcho=!!echo&&!committed&&(!followCut||echo.echoed===true);
     if(!echo){this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary()||this.pendingMeleeContact?.v===1)return[];}
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
@@ -7167,15 +7232,16 @@ export class Game {
       geometry = meleeAttackGeometry(
         this.player,
         profile,
-        this.player.meleeAim || this.save.lastAim,
-      );
+        followCut ? echo.aim : this.player.meleeAim || this.save.lastAim,
+      ),
+      daggers = !committed && profile.shape === "daggers"; // items.ts FOURFOLD_DAGGERS: two cuts a press, each `share` of a hit
     this.player.meleeStrike = { ...geometry };
     const priorAttackVisual = this.player.attackVisual;
     const attackVisual = !echo && stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
     if (attackVisual) {
       const primary = this.save.equipment.primary;
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
-        : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : "salvage-blade";
+        : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(primary) ? FOURFOLD_DAGGERS.closeView.placeholder /* Close View roster hook: the daggers wear the Salvage Blade until their own model lands */ : "salvage-blade";
       const logicalNow = now - (this.presentationPausedMs || 0);
       const newCleaverMotion=attackVisual.weaponKind==='verge-cleaver'&&this.attackAction==='attack'&&this.closeViewActionEligible();
       const primaryStep = attackVisual.weaponKind === 'verge-cleaver'
@@ -7193,30 +7259,32 @@ export class Game {
     if (cleaverAccepted && this.ordinaryCloseViewBody()) {
       attackVisual.cleaverChoreography = acceptCleaverChoreography(priorAttackVisual, this.consumeLogicalNow(now));
     }
-    if(cleaverAccepted){const quick=attackVisual.primaryMotion?.v===3,T=quick?CLOSE_VIEW_MELEE_TIMING.cleaverQuick:CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:quick?2:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:stats.meleeBonus,attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:this.save.equipment.primary?.awakened===true,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
-    const hits = primaryAttackHits(
+    if(cleaverAccepted){const quick=attackVisual.primaryMotion?.v===3,T=quick?CLOSE_VIEW_MELEE_TIMING.cleaverQuick:CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:quick?2:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:this.save.equipment.primary?.awakened===true,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
+    const hits = (daggers ? daggerCutHits : primaryAttackHits)(
       this.player,
       [...this.enemies.filter(e=>!e.untargetable&&this.bodyReach(e)), ...this.npcTargets()], // Tim (2026-11-04): the Wayfarer's swing does not reach a creature far below or above (ELEVATION_REACH)
       this.map,
       mapWidth(this.map, this.area),
       profile,
       { x: geometry.dx, y: geometry.dy },
+      followCut ? 1 : 0,
     );
-    const pounce = isEcho || !hits.some((q) => q.kind !== "npc") ? 1 : pounceBonus(this, now);
+    const cutShare = daggers ? FOURFOLD_DAGGERS.share : 1;
+    const pounce = isEcho || followCut || !hits.some((q) => q.kind !== "npc") ? 1 : pounceBonus(this, now);
     for (const e of hits) {
       if (e.kind === "npc") {
         recordNpcDamage(
           this.save,
           e,
-          wayfarerDamage(profile.damage + characterStats(this.save).meleeBonus),
+          wayfarerDamage((profile.damage + this.weaponBonus()) * cutShare),
           "melee",
           "collateral",
         );
         continue;
       }
       alertEnemy(e);
-      const boxing = committed?committed.boxing:(now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null), base = (profile.damage + (committed?Number(committed.meleeBonus)||0:characterStats(this.save).meleeBonus)) * (1 + (committed?Number(committed.attackDamage)||0:armorGlyphBonus(this.save).attackDamage)) * (isEcho ? echo.share : 1) * pounce * (1 + (boxing?.damage || 0)) * ((committed?committed.spellblade:this.spellbladeOn(now)) ? 1 + FIELD_PASSIVES.spellblade.damage : 1), /* release 515: Spellblade */ /* release 485: Shadow Boxing */ /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: isEcho }, now); // release 245: plain steel scatters the Nanobot Knight
-      const imbued = scattered ? 0 : Math.round((committed?Number(committed.imbue)||0:this.imbueBonus(now)) * (isEcho ? echo.share : 1)), hpBefore = Math.max(0,e.hp); // Imbue Weapon: the magic share of the hit
+      const boxing = committed?committed.boxing:(now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null), base = (profile.damage + (committed?Number(committed.meleeBonus)||0:this.weaponBonus())) * (1 + (committed?Number(committed.attackDamage)||0:armorGlyphBonus(this.save).attackDamage)) * (isEcho ? echo.share : 1) * cutShare * pounce * (1 + (boxing?.damage || 0)) * ((committed?committed.spellblade:this.spellbladeOn(now)) ? 1 + FIELD_PASSIVES.spellblade.damage : 1), /* release 515: Spellblade */ /* release 485: Shadow Boxing */ /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: isEcho }, now); // release 245: plain steel scatters the Nanobot Knight
+      const imbued = scattered ? 0 : Math.round((committed?Number(committed.imbue)||0:this.imbueBonus(now)) * (isEcho ? echo.share : 1) * cutShare), hpBefore = Math.max(0,e.hp); // Imbue Weapon: the magic share of the hit
       e.hp -= wayfarerDamage(dealt + imbued); // Tim 2026-11-11 (WAYFARER_DAMAGE); Shadow Boxing's heal and the glyphs keep `dealt`
       if (imbued > 0) imbueSpark(this, e.x + .5, e.y + .45, now);
       if (!isEcho) this.frenzyBlow(e); // balance pack (C10): a swing is a blow
@@ -7224,8 +7292,8 @@ export class Game {
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
       if (dealt > 0) this.tesseractHitHeal("melee", now); // a Tesseract's health on a melee hit
       e.hitFlash = scattered ? 0 : 0.18;
-      e.recoil = scattered ? 0 : 0.2;
-      if (!scattered) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? 0.12 : 0.22);
+      e.recoil = scattered ? 0 : daggers ? FOURFOLD_DAGGERS.recoil : 0.2;
+      if (!scattered) e.hitStun = Math.max(e.hitStun || 0, daggers ? FOURFOLD_DAGGERS.stun[e.boss || e.eliteId ? "boss" : "ordinary"] : e.boss || e.eliteId ? 0.12 : 0.22); // the daggers: a slight stagger a cut (the stagger governor still holds)
       if (e.hp <= 0) {
         e.dead = true;
         this.defeatEnemy(e);
@@ -7234,11 +7302,12 @@ export class Game {
       onConstellationMelee(this, e, now);
       if (!isEcho && !scattered) this.bellToll(e, dealt + imbued, now); // 2026-11-11: Bell Toll
     }
-    if (!isEcho) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now); // release 365: the Shadow Clone swings too
+    if (daggers && !followCut) (this.glyphTimers ||= []).push({ at: now + FOURFOLD_DAGGERS.gapMs, kind: "daggerCut", aim: { x: geometry.dx, y: geometry.dy }, share: isEcho ? echo.share : 1, echoed: isEcho, areaId: this.areaId() }); // the second cut ("//")
+    if (!isEcho && !followCut) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now); // release 365: the Shadow Clone swings too
     // Awakened primary: every third swing releases a piercing crescent that carries the weapon's glyphs.
-    if (!isEcho && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
-      this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + (committed?committed.meleeBonus:characterStats(this.save).meleeBonus)) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
-    const plan = !isEcho && echoPlan(glyphs);
+    if (!isEcho && !followCut && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
+      this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
+    const plan = !isEcho && !followCut && echoPlan(glyphs);
     if (plan) {
       const memory=committed?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:'verge-cleaver',primaryMotion:structuredClone(committed.primaryMotion),support:committed.support}:attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
       (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share, echoVisual:memory });
@@ -7252,6 +7321,7 @@ export class Game {
     if (this.penned(now)) return false;
     { const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) return this.brawlerTool(bt, now, direction); } // release 493: a tap uses Hammerfall or Great Sweep
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
+    if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts LUMEN_CARBINE: the Lumen Spindle as a beam carbine
     if (this.isOrrery()) { const accepted=orreryPress(this, now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts: the Aether Orrery's own tap, halo and charge
     if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
@@ -7302,9 +7372,9 @@ export class Game {
       speed: weapon.speed,
       life: weapon.path==="grenade"&&aimedDistance!==null?Math.max(.08,Math.min(projectileLifetime,aimedDistance/weapon.speed)):projectileLifetime,
       damage: Math.round(
-        // Release 529 (Tim: "make the needle caster scale with your might... a projectile that scales with [might]"): a physical
-        // shot (the Needle Caster) adds the melee bonus (Might) and armor's blow bonus; magic shots keep Focus and spell damage.
-        (weapon.damage + (weapon.damageType === "physical" ? derived.meleeBonus : derived.magicBonus)) * (weapon.damageType === "magic" ? 1 + armorGlyphBonus(this.save).spellDamage : 1 + armorGlyphBonus(this.save).attackDamage) * // release 335: armor Ignite on magic shots only
+        // Release 529: a physical shot adds the melee bonus and armor's blow bonus; magic shots the magic bonus and spell damage.
+        // Tim 2026-11-12: the bonus reads the tool's own scaling stat (items.ts TOOL_SCALING; the Needle Caster is Finesse now).
+        (weapon.damage + this.toolBonus(weapon.damageType === "physical" ? "melee" : "magic", derived)) * (weapon.damageType === "magic" ? 1 + armorGlyphBonus(this.save).spellDamage : 1 + armorGlyphBonus(this.save).attackDamage) * // release 335: armor Ignite on magic shots only
           (weapon.damageType === "magic" && this.magicBuffRemaining > 0
             ? 1.4
             : 1),
@@ -7356,6 +7426,72 @@ export class Game {
     }
     return n;
   }
+  // The Lumen Carbine (tool-forms.ts LUMEN_CARBINE): a Lattice tool form that turns the Lumen Spindle into a beam carbine.
+  carbineOn() { const w = rangedWeapon(this.save.equipment?.secondary); return !!w && !w.brawlerTool && w.name === LUMEN_CARBINE.tool && fieldOn(this.save, LUMEN_CARBINE.key); }
+  // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow }.
+  carbineState() { return (this.carbine ||= { charge: null, traces: Array.from({ length: LUMEN_CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "" })) }); }
+  // The Spindle raised in the hands (the same tool visual fireSecondary stamps), continuing from the pose it is in.
+  carbinePose(now, d) {
+    const prior = normalizeAttackVisual(this.player.attackVisual), deadline = attackVisualDeadline(this.player, prior), kind = "lumen-spindle";
+    const priorPose = prior?.toolKind === kind && prior.toolMotion?.v === 1 && !prior.presentationCancelled && deadline > now ? sampleToolActionMotion(prior, prior.durationMs - (deadline - now)) : null;
+    const ms = TOOL_ACTION_TIMING[kind]?.durationMs || ACTION_MOTION.toolMs, v = stampAttackVisual(this.player, "emitter", ms, d); this.player.attackUntil = now + ACTION_MOTION.toolMs;
+    if (!v) return; const appearance = simpleToolAppearanceKind(rangedWeapon(this.save.equipment.secondary)); if (appearance) v.toolAppearance = { v: 1, kind: appearance };
+    const primary = this.save.equipment.primary?.id, baseKind = priorPose ? prior.toolMotion.baseKind : primary === "primary-cinder-pike" ? "cinder-pike" : primary === "primary-verge-cleaver" ? "verge-cleaver" : "salvage-blade";
+    v.toolKind = kind; v.toolMotion = { v: 1, entry: priorPose ? [priorPose.yaw, priorPose.side, priorPose.up, priorPose.forward, priorPose.weight] : [0, 0, 0, 0, 0], direction: 1, baseKind }; this.player.actionVisualUntil = now + ms;
+  }
+  carbineAim(direction) {
+    if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (this.player.x + .5), q.y - (this.player.y + .45), this.player.facing); }
+    return projectileDirection(direction?.x ?? this.save.lastAim?.x ?? 0, direction?.y ?? this.save.lastAim?.y ?? 0, this.player.facing);
+  }
+  // A press: with a held button (`action`), the charge starts and the beam fires on release (tickCarbine); without one (auto
+  // attack), a tap beam fires at once. Refused while the last beam recovers, with no room for a shot, or with no round to fire.
+  carbinePress(now, direction, action = null) {
+    const K = this.carbineState(); if (K.charge) return false;
+    if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
+    if (this.projectiles.filter((p) => !p.dead && !p.shard).length >= (this.area === "dungeon" ? 32 : 64)) return false;
+    const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
+    const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
+    if (!action) return this.carbineFire(now, d, 0);
+    K.charge = { held: 0, action, dir: { x: d.x, y: d.y } }; this.carbinePose(now, d); return true;
+  }
+  // The beam after a hold of `held` s (0: a tap). Takes its rounds, then fires as full a beam as they paid for.
+  carbineFire(now, d, held) {
+    const C = LUMEN_CARBINE, weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool"), echoes = glyphs.count("echo"); if (!weapon) return false;
+    const want = carbineRounds(held), round = this.takeRound(echoes); if (!round) return false;
+    let paid = 1; while (paid < want && spendRound(this.save, echoes)) paid++;
+    if (paid < want) { held = carbineAffordedHold(held, paid); this.message = paid > 1 ? `Rounds ran short: a part charge (${paid} of ${want}).` : "Rounds ran short: the charge fires as a single beam."; }
+    const derived = characterStats(this.save), magic = C.scale !== "physical", reach = 1 + derived.attackReach, k = carbineFill(held);
+    const ag = armorGlyphBonus(this.save), base = (weapon.damage + (magic ? derived.magicBonus : derived.meleeBonus)) * (magic ? 1 + ag.spellDamage : 1 + ag.attackDamage) * (magic && this.magicBuffRemaining > 0 ? 1.4 : 1);
+    const ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
+    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: C.range * reach / C.speed, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: magic ? "magic" : "physical", path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k };
+    if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; }
+    if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const A = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + A.damage))); shot.scale = A.scale; shot.grow = A.grow; } // release 515: Charged Air
+    this.projectiles.push(shot); this.carbineTrace(shot, k);
+    this.player.attackReadyAt = now + C.cadence * 1000 * glyphs.mods.cooldown * (1 - ag.attackSpeed);
+    this.carbinePose(now, d);
+    if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d, sx = at.x + .5 + cd.x * .35, sy = at.y + .45 + cd.y * .35; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: sx, y: sy, bx: sx, by: sy, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // the clone's copy (release 365)
+    const plan = echoPlan(glyphs); echoEvent(this, "shot", now, { shot });
+    if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-beam fan
+    if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // Echo glyphs: copies of the beam
+    if (paid === want && carbineCharged(held)) this.message = k >= 1 ? "The Carbine releases a full charge!" : "The Carbine releases.";
+    return true;
+  }
+  // The afterglow follows a beam while it flies and fades once it ends (fixed slots: a free one, else the oldest is reused).
+  carbineTrace(shot, k) {
+    const T = this.carbineState().traces; let slot = T[0]; for (const q of T) { if (q.life <= 0) { slot = q; break; } if (q.life < slot.life) slot = q; }
+    Object.assign(slot, { shot, x0: shot.bx, y0: shot.by, x1: shot.x, y1: shot.y, k, life: LUMEN_CARBINE.trace.life, where: this.orreryWhere() });
+  }
+  // A frame: the charge grows while its button is held and fires on release; the afterglow follows its beam, then fades.
+  tickCarbine(dt, now, held) {
+    const K = this.carbine, C = LUMEN_CARBINE; if (!K) return;
+    let where = null; for (const q of K.traces) { if (q.life <= 0) continue; where ??= this.orreryWhere(); if (q.where !== where) { q.life = 0; q.shot = null; continue; } if (q.shot && !q.shot.dead && this.projectiles.includes(q.shot)) { q.x1 = q.shot.x; q.y1 = q.shot.y; } else { q.shot = null; q.life = Math.max(0, q.life - dt); } }
+    const c = K.charge; if (!c) return;
+    if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
+    { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
+    if (held) { c.held = Math.min(c.held + dt, C.charge.full + C.charge.grace); if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
+    K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
+    this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
+  }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   castSlot(slot, now = this.lastUpdateNow || 0) {
     const t = slotTool(this.save, slot);
@@ -7396,6 +7532,7 @@ export class Game {
     if (!aboard(this.save) && frameForm(this.save) !== want) {
       const out = m?.active === true;
       if (out && this.droneLift) { this.message = "The drone is carrying you: land before the frame changes form."; return false; }
+      if (out && want === "robot" && this.standingDeck()) { this.message = "Climb down from the roof first: there is no room for the robot up here."; return false; } // roof decks
       if (out && frameForm(this.save) === "robot" && this.wading() && !canSwim(this.save)) { this.message = "No footing here: wade the robot ashore before folding it away."; return false; }
       const r = setMechMode(this.save, want); if (!r.ok) { this.message = r.message; return false; }
       if (out) { this.cancelConsumeVisual('form-change'); this.sync(); this.message = want === "drone" ? "The robot folds away; the frame turns to the drone." : "The drone docks; the frame turns to the robot."; return true; }
@@ -7495,7 +7632,9 @@ export class Game {
   }
   // Balance pack (C7): a spell's power before its glyph, Pairing and armor multipliers (SPELL_POWER): Focus counts beyond the
   // flat magic bonus, so a Focus build casts about as hard as a Might build swings.
-  spellPower(spell) { const S = SPELL_POWER, focus = Math.max(1, Number(this.save.stats?.Focus) || 1); return ((Number(spell.damage) || 0) * S.base + (Number(characterStats(this.save).magicBonus) || 0) + S.focus * (focus - 1)) * S.scale; }
+  spellPower(spell, scaling = "magic") { const S = SPELL_POWER, focus = statRank(this.save, SCALING_STATS[scaling] || "Focus"); return ((Number(spell.damage) || 0) * S.base + (Number(scaledBonus(this.save, scaling, "magic")) || 0) + S.focus * (focus - 1)) * S.scale; } // a magic tool may name its scaling stat (TOOL_SCALING); spells are Focus
+  weaponBonus() { return scaledBonus(this.save, weaponScaling(this.save.equipment.primary), "melee"); } // Tim 2026-11-12 (items.ts WEAPON_SCALING)
+  toolBonus(channel = "melee", derived = characterStats(this.save)) { return scaledBonus(this.save, toolScaling(this.save.equipment.secondary), channel, derived); } // items.ts TOOL_SCALING
   // Release 547 (tool-forms.ts FIRE_BURST): a fan of cinder shells toward the lock, else the nearest foe in reach, else the way
   // you face; each bursts (the projectile detonation) where it lands or on the first foe it meets.
   castFireBurst(spell, cds, key, now = this.lastUpdateNow || 0) {
@@ -7572,7 +7711,7 @@ export class Game {
     const n = imbueAmount(this.save.stats?.Focus, characterStats(this.save).magicBonus) * this.glyphLoadout("spell", "imbue-weapon").mods.damage * (1 + armorGlyphBonus(this.save).spellDamage);
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
-  meleePower() { const glyphs = hostLoadout(this.save, "melee"); return (primaryProfile(this.save.equipment.primary).damage * glyphs.mods.damage + characterStats(this.save).meleeBonus) * (1 + armorGlyphBonus(this.save).attackDamage); }
+  meleePower() { const glyphs = hostLoadout(this.save, "melee"); return (primaryProfile(this.save.equipment.primary).damage * glyphs.mods.damage + this.weaponBonus()) * (1 + armorGlyphBonus(this.save).attackDamage); }
   // Where a brawler spell goes: the swing's own aim (the lock, else auto aim within `reach`, else the way you face). Returns
   // { d: unit direction, foe }.
   brawlerAim(reach) {
@@ -7600,7 +7739,7 @@ export class Game {
   // foe (glyph damage; glyph procs and the frenzy blow only when `full`).
   isOrrery() { return !!rangedWeapon(this.save.equipment?.secondary)?.orrery; }
   orreryWhere() { return `${this.area}:${this.areaId()}`; }
-  orreryPower() { return this.spellPower({ damage: ORRERY.base }) * hostLoadout(this.save, "tool").mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage); }
+  orreryPower() { return this.spellPower({ damage: ORRERY.base }, toolScaling(this.save.equipment.secondary) || "magic") * hostLoadout(this.save, "tool").mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage); }
   bodyRadius(e) { return enemyBodyRadius(e); }
   orreryStrike(e, amount, now = this.lastUpdateNow || 0, full = false) {
     if (!e || e.dead || e.untargetable || e.hidden || e.kind === "npc") return 0;
@@ -7613,7 +7752,7 @@ export class Game {
   }
   // Release 493: Hammerfall and Great Sweep as tools (BRAWLER numbers). A tool's power: (Iron-Fists-style base + its power
   // × perPower + the melee bonus) × the tool glyph mods × every melee-damage multiplier.
-  toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  toolPower() { const item = this.save.equipment.secondary, glyphs = hostLoadout(this.save, "tool"); return (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.toolBonus("melee")) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
     if(!this._toolInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
@@ -7634,7 +7773,7 @@ export class Game {
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
       this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
-      this.pendingToolUse={v:1,id,toolKind:kind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),payload:{v:1,family:'sweep',effect,pellets:0,spread:0,awakenedFan:false,echoCopies,cloneEligible:this.shadowCloneActive(now)&&!this.shadowClone.charging,cloneProfile:{...BRAWLER_ECHO.cloneArc,damage:primaryProfile(this.save.equipment.primary).damage+characterStats(this.save).meleeBonus}}};this.message='Great Sweep!';this.cancelConsumeVisual('tool');return true;
+      this.pendingToolUse={v:1,id,toolKind:kind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),payload:{v:1,family:'sweep',effect,pellets:0,spread:0,awakenedFan:false,echoCopies,cloneEligible:this.shadowCloneActive(now)&&!this.shadowClone.charging,cloneProfile:{...BRAWLER_ECHO.cloneArc,damage:primaryProfile(this.save.equipment.primary).damage+this.weaponBonus()}}};this.message='Great Sweep!';this.cancelConsumeVisual('tool');return true;
     }
     let visualAim = null;
     const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
@@ -8770,7 +8909,7 @@ export class Game {
   // its window is open; the dash punch starts a combo and charges while the button (`action`) is held. A world tap (no
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
-  fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + characterStats(this.save).meleeBonus) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
@@ -8917,7 +9056,7 @@ export class Game {
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return;
     const at = clonePosition(this.player, this.shadowClone), body = { ...this.player, x: at.x, y: at.y }; dir = this.cloneAimFrom(at) || dir;
     const hits = primaryAttackHits(body, this.enemies.filter((e) => !e.untargetable), this.map, mapWidth(this.map, this.area), profile, dir);
-    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + characterStats(this.save).meleeBonus) * SHADOW_CLONE.share))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } }
+    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * SHADOW_CLONE.share))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } }
     this.shadowClone.swingUntil = now + 240; this.shadowClone.swingDir = { x: dir.x, y: dir.y };
   }
   // Release 309 (Tim: "we can click on a monster... and then that'll just be the targeting... our blasts and attacks and swings
@@ -9208,13 +9347,14 @@ export class Game {
       this.save.toolMode = true;
       let toolAccepted=false;const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) toolAccepted=this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,weapon.speed*weapon.lifetime*(1+characterStats(this.save).attackReach)*AUTO_AIM.rangedScale)); // release 343; 347: a locked target first
+        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(this.carbineOn()?LUMEN_CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Lumen Carbine looks as far as its beam reaches
       toolAccepted=this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } if(toolAccepted)this.cancelPendingMeleeContact('tool'); }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
+    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Lumen Carbine: its charge and afterglow
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)

@@ -13,6 +13,7 @@ import { fistCharge } from './brawler-spells.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
+import { LUMEN_CARBINE, carbineCharged, carbineFill } from "./tool-forms.ts"; // the Lumen Carbine's beam and charge glow
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
 import { knockdownPose } from "./lightning-giant-render.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
@@ -2708,7 +2709,7 @@ const falloff = (d, R) => { const x = d / R, k = Math.max(0, 1 - x * x); return 
 const lumOf = (c) => (c[0] + c[1] + c[2]) / 3;
 function lightLevel(F, X, Y, Z) { let l = lumOf(F.amb) + lumOf(F.torch) * F.torchP[1] * falloff(Math.hypot(X - F.px, Y - F.py, Z - F.torchP[2]), F.torchP[0]);
   for (let i = 0; i < F.nl; i++) l += (F.lc[i * 4] + F.lc[i * 4 + 1] + F.lc[i * 4 + 2]) / 3 * F.lc[i * 4 + 3] * falloff(Math.hypot(X - F.lp[i * 4], Y - F.lp[i * 4 + 1], Z - F.lp[i * 4 + 2]), F.lp[i * 4 + 3]); return l; }
-const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14, height: .66,
+const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14, beamRange: LUMEN_CARBINE.range + 2, beamTrail: LUMEN_CARBINE.range + 1, height: .66,
   minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058, trailAlpha: .46, headAlpha: .95 });
 const CONTACT_GLINT = Object.freeze({ max: 8, height: .84, radius: .08, spread: .17, front: .28, alpha: .9, color: 0xffbd7e });
 const PROJECTED_SHOTS = new Set();
@@ -2730,7 +2731,7 @@ export function selectProjectedShots(g, q, reduce = false) {
   for (const p of g.projectiles || []) {
     if (PROJECTED_SHOTS.size === limit) break;
     if (!p.dead && standardProjectile(p) && (p.path !== "grenade" || !!readProjectileVisualFlight(p.visualFlight)) &&
-        Math.hypot(p.x - g.player.x, p.y - g.player.y) < SHOT_DRAW.maxRange &&
+        Math.hypot(p.x - g.player.x, p.y - g.player.y) < (p.carbine === true ? SHOT_DRAW.beamRange : SHOT_DRAW.maxRange) &&
         dungeonPointDiscovered(g.map, p)) admit("projectile", p, reduce ? 6 : 12);
   }
   for (const p of g.projectiles || []) {
@@ -2965,14 +2966,19 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
 // each admitted beast's billboard is suppressed (its floor effects and telegraphs stay where they are drawn now). A slain
 // beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
 const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+// Close View worm pass 2: small minions (the Tremor Worm's field tentacles: `minion` in the roster) count against their own allowance
+// (BEAST_SLOT.minion.maxMinions), so they never crowd a beast out of its slot; the frame's total stays bounded by both.
 function admitBeasts(g, draws, n, Q, now, reduce) {
-  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low';
+  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low', maxB = BEAST_SLOT.maxBeasts, maxM = BEAST_SLOT.minion.tierMinions?.[tier] ?? BEAST_SLOT.minion.maxMinions;
+  // (Tim 2026-11-12: on the lowest setting the field tentacles keep their billboards: tierMinions.low is 0)
   B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
-  for (let oi = n - 1; oi >= 0 && B.count < BEAST_SLOT.maxBeasts; oi--) {
+  let big = 0, small = 0;
+  for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM); oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
-    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (spec.minion ? small >= maxM : big >= maxB) continue;
+    if (!prepareCloseViewBeastMesh(spec.mesh(tier, foe))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
     BEAST_ENV.x = boardWX[it]; BEAST_ENV.y = boardWY[it]; BEAST_ENV.z = surfaceZ(g.map, foe.x + .5, foe.y + .75); BEAST_ENV.scale = Math.max(.6, Number(foe.scale) || 1) * (spec.scale || 1);
@@ -2981,14 +2987,15 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     // A beast stands solid through most of the distance fade ordinary creatures take (pass 3, 2026-11-11: a boss the height of
     // a house that thins at mid range loses its scale); it still fades out at the fog's edge.
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); track.seen = now;
-    B.items[B.count++] = frame; MODEL_STATE.admitted.add(it);
+    B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); if (spec.minion) small++; else big++;
   }
   for (const [foe, track] of B.tracks) {
     if (track.seen === now) continue;
-    if (foe.dead && B.count < BEAST_SLOT.maxBeasts && track.seen != null && now - track.seen < 4000) {
-      const spec = CLOSE_VIEW_BEASTS[foe.kind]; BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
+    const spec = CLOSE_VIEW_BEASTS[foe.kind];
+    if (foe.dead && (spec?.minion ? small < maxM : big < maxB) && track.seen != null && now - track.seen < 4000) {
+      BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
       const frame = spec.mesh(tier, foe) && prepareCloseViewBeastMesh(spec.mesh(tier, foe)) ? spec.sample(track, foe, BEAST_ENV) : null;
-      if (frame) { B.items[B.count++] = frame; continue; }
+      if (frame) { B.items[B.count++] = frame; if (spec.minion) small++; else big++; continue; }
     }
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
@@ -3703,6 +3710,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
     if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
+  { const c = g.carbine?.charge; if (c && MODEL_STATE.muzzleReady && carbineCharged(c.held)) { const k = carbineFill(c.held), m = MODEL_STATE.muzzle, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55), r = (.045 + .07 * k) * pulse;
+    card(m[0], m[1], m[2] - r * 1.9, m[2] + r * 1.9, r * 1.9, 11, .3 + .3 * k, LUMEN_CARBINE.colors.glow, 0, true); card(m[0], m[1], m[2] - r * .7, m[2] + r * .7, r * .7, 11, .95, 0xeafcff, 0, true); } } // the Lumen Carbine's charge
   // Spells arbitrate the same single release lane after final-pose sampling. Fire may link only its
   // immutable accepted central source; Orbit deliberately has no connector.
   if(!MODEL_STATE.toolEmissionReady&&MODEL_STATE.spellEmissionReady&&MODEL_STATE.spellRelease){const release=MODEL_STATE.spellRelease,at=MODEL_STATE.spellEmission,releaseNow=g.paused&&finite(g.pauseStarted)?g.pauseStarted:now,duration=release.durationMs||MODEL_TIMING.castMs,age=Math.max(0,duration-Math.max(0,(g.player.castUntil||0)-releaseNow));
@@ -3724,8 +3733,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (!reduce) {
       const d = Math.hypot(shot.dx, shot.dy);
       if (d > 1e-4) {
-        const trailTime = Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
-        const length = Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
+        const beam = !fire && shot.carbine === true && finite(shot.bx) && finite(shot.by); // the Lumen Carbine: a beam from where it left the muzzle
+        const trailTime = beam ? Math.max(0, shot.age || 0) : Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
+        const length = beam ? Math.min(SHOT_DRAW.beamTrail, Math.hypot(shot.x - shot.bx, shot.y - shot.by)) : Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
         const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,surfaceZ(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);

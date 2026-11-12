@@ -6,6 +6,84 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 919 — Close View beasts: second passes on the dragons and the Tremor Worm
+
+Tim, 2026-11-12:
+- On the dragons: "their back halves are kind of boxy and weird ... their wings should be pretty large and dragon like ... move around with their wings outspread ... when they're doing their flying attacks their wings should be outspread ... a slam attack where they just slam down on you from the air".
+- On the worm: "just a little bit more of a visual pass and also we have to make sure that we get his tentacles looking good".
+
+**CODE:**
+- **`close-view-beast-dragon.ts`**
+  - One loft from tail tip to nose, with sections in `DRAGON_RIG.mesh`.
+  - Limbs are lofted in joint units from inside the trunk.
+  - Five-fingered wings: two extra fingers are skinned between the finger bones, and the membrane is scalloped by each art table's `scallop`.
+  - Wing animation reads `DRAGON_RIG.flight` (beat, finger lag, upstroke fold, heave).
+  - `hang`, `dive` and `diveLand` poses, also added to the standard view's pose table in `crimson-dragon-render.ts`.
+  - The Doom Chaser's cracks are on emissive channel 4.
+- **Skyfall (`dragonDive`)** is the one gameplay addition, for both dragons (Tim, 2026-11-12: "a doom chaser can get skyfall too").
+  - It lives in `monster-pack.ts`: `ATTACK_MODULES.dragonDive`, with numbers in `DRAGON.dive` and `DRAGON.pool.dive`, plus its start and run handlers.
+  - Range 3–13, cooldown 11 s, damage ×1.5.
+  - Rise .7 s to 2.4, hang 1.4 s tracking at 5.5 tiles/s, fall .38 s, landing radius 2.6.
+  - It is untargetable while aloft and lands one unjumpable hit on impact.
+  - Its landing sends out a jumpable `shock` ring of radius `DRAGON.dive.ring` (5) for `ringShare` (.6) of the blow, as the stag's leap does.
+  - It hangs `DRAGON.dive.stop` (.9) tiles short of the Wayfarer, so it lands beside them, never on them.
+  - `tunePentagonArenaBeast` (game.ts) drops `dragonDive` from the Stillworks finale Tyrant: that duel is a tuned set piece (the early build loses; from mid on, the Wayfarer wins), and its duel tests hold.
+  - The Doom Chaser keeps its own `doomFall` as well, unchanged, now animated as hang, dive and landing.
+- **`close-view-beast-worm.ts`**
+  - The shared `buildTendril` and `TENTACLE_LOOK`.
+  - Four-bone lip tentacles posed by `poseTentacles`. The lash reads `lashed` and `dirs` once and runs its own snap, hold and recoil (`WORM_RIG`).
+  - A `gullet` tooth ring, and a `spray` bone for thrown earth.
+  - Shingled plates and a broken-slab hole.
+  - `wormBodyEligible` keeps the mound only while the worm is hidden or during a Rise's eruption.
+- **`close-view-beast-tentacle.ts`:** the `wormTentacle` body, with one mesh per tier and `tentacleMode`, posed from the game's rising, fire, laser, grab and swipe state.
+- **`BEAST_SLOT.minion`** (6 bodies, 12 bones, 760/480/190 triangles) with the roster flag `minion: true`. This gives small minions their own count in `admitBeasts`, so they never take a beast slot. `tierMinions` admits 6 on full and balanced and none on low, where the tentacles keep their billboards (Tim, 2026-11-12).
+- **Tests:**
+  - `tests/dragon-skyfall.test.ts` (new);
+  - `tests/close-view-beast-tentacle.test.ts` (new);
+  - `tests/close-view-beast-dragon.test.ts` and `-worm` (extended);
+  - `tests/crimson-tyrant-709.test.ts` and `tests/doom-chaser-710.test.ts` (move counts 12 → 13).
+
+**BOUNDARY:**
+- Skyfall is the only gameplay change. Every other change is render only.
+- The minion allowance as a whole costs less than one beast per tier.
+- Core triangles:
+
+| Body | Full | Balanced | Low |
+|---|---|---|---|
+| Crimson Tyrant | 4078 | 2556 | 1108 |
+| Doom Chaser | 4222 | 2652 | 1108 |
+| Tremor Worm | 4912 | 2344 | 967 |
+| Field tentacle (each, at most) | 749 | 452 | 187 |
+
+**POLISH:**
+- Dragons: 4+ passes. The faceted glutes and thighs were replaced by one smooth hide, the flank wing sheet became a cape on the back, and shoulder-blade boxes were removed.
+- Worm: 5 passes. The neck gap is closed by a skirt.
+- Field tentacles: 3 passes.
+
+## Release 918 — Release 918 — one stat per weapon and tool; the Fourfold Daggers
+
+Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new paired-dagger weapon: two narrow crossing cuts per press, and a cancel before the second cut starts leaves only the first.
+
+**CODE:** `src/items.ts`: `SCALING_STATS` {might: Might, magic: Focus, stamina: Finesse}, `SCALING_STRENGTH` {melee 2, magic 1}, `WEAPON_SCALING`/`TOOL_SCALING` (the single source), `scalingOf`; `FOURFOLD_DAGGERS` (two cuts 80 ms apart, 0.55 share each, 10-degree cones from hands 0.3 tiles apart angled 25 degrees across the facing, range 1.6) and the `daggers` primary profile; a separate seeded loot stream `fourfold-daggers-loot:v1` (20% of non-Fists, non-Salvage weapons). `src/game.ts`: `scaledBonus(save, stat, channel)` swaps the channel's own stat term for the gear's stat at the same strength; `weaponBonus()`/`toolBonus()`/`spellPower(spell, scaling)` route every blow; `characterStats().weaponBonus` feeds boss tuning (far-array, monster-pack, world-beasts, skylands); `daggerCutHits`, a `daggerCut` runtime timer for the second cut, dropped by `cancelPendingMeleeContact`; level-12 milestone. `src/main.ts`: gear card and character sheet name the stat; dagger icon. `src/renderer.ts`: crossing cut strokes.
+
+**BOUNDARY:** Damage types never change with the stat. A save with every stat at 1, and balanced builds, deal identical damage; a matched build equals the old Might build. Saves stay additive at schema 14 (the daggers are ordinary items). The second cut is runtime only. Close View draws the daggers with the Salvage Blade model until their own model lands.
+
+## Release 917 — Release 917 — Rift Step off a roof lands on its edge, never in the wall
+
+The pre-publish review of 916 found that the roof-edge hold added for walking, jumping, the glider and the drone did not cover blinks: a plain or aimed Rift Step from a roof could end with the feet just past the roof and the collision box over the house's walls, and the Wayfarer landed on the ground wedged in the wall (383 of 36,038 plain steps off roofs in its sweep).
+
+**CODE:** `blinkFooting` (src/game.ts) first asks `deckEdgeHold(x, y, top)`: when the box at the step's end still stands over the walls of a roof at or under the step's reach, the step lands on that roof (`{ level, deck }`) and the ordinary walk-off rule takes it down once the box clears the walls. The ground footing is then tested with no deck reach, so a house's walls always stop a ground landing. tests/rift-roof-edge.test.ts replays the review's plain and aimed repros (seed ROOF, section -2,0, shack--2-0).
+
+**BOUNDARY:** Blinks only; walking, jumping, glide and drone movement and every creature's collision are unchanged. No save change (the roof stood on is already saved as `roofDeck`). A step that clears the walls still lands on the ground and falls by the usual rule.
+
+## Release 916 — Verge Cleaver slashes, Salvage Blade reskin, Lumen Carbine
+
+Tim, 2026-11-12: the Verge Cleaver's attack "just kind of flails... scrap it and start over, just do some standard sword slashes... the reskin of it looks amazing"; "do a reskin of the Salvage Blade so it looks a little cooler... I like that you hold it beneath the guard, almost like a long spike" (text and stats untouched: Tim has a rework coming); and an energy rifle, "one powerful shot then another... charge it up... like a sniper", made "a passive for the Lumen Spindle... it'll have to scale with magic".
+
+**CODE:** `src/close-view-player-presentation.ts`: `CLOSE_VIEW_CLEAVER_SLASHES` (diagonal -105->+72, return -100->+78, overhead -150->+52 degrees in one swing plane about a pivot before the chest) and `CLOSE_VIEW_CLEAVER_SLASH_TIMING` on `CLOSE_VIEW_MELEE_TIMING.cleaverQuick` (260 ms, contact 75 ms); `sampleCleaverSlash`, `cleaverSlashBlade`, `cleaverSlashAngle`. `src/close-view-hero.ts`: v2 actions use the slashes (`solveArmFrame`); the Dagger_Attack blend and quick-cut arm solve for v2 are removed (the rig has no sword clips); legacy v1 four-cut and the native fallback unchanged. `src/close-view-models.ts`: Salvage Blade 54 tris (bronze diamond spike, edge lines, fuller, diamond gunmetal guard, wrapped grip, brass pommel); grip and socket matrices unchanged. `src/tool-forms.ts` `LUMEN_CARBINE` {scale magic, range 16, speed 80, cadence 1.05, tap share 2.7 / 1 round, charge grace .2 full 1.25 min 1.3 max 2.4 pierce 2 rounds 3} and pure rules plus `drawCarbine`; `src/lattice-fields.ts` `TOOL_FORMS["lumen-carbine"]`; `src/game.ts` `carbinePress`/`carbineFire`/`tickCarbine` (runtime `game.carbine`); `src/close-view.ts` beam trail and muzzle charge glow; `src/combat-visuals.ts` cyan bolts. Tests: `close-view-cleaver-slashes` (5), `lumen-spindle-rifle` (11); `close-view-weapon-forms` (Salvage 54 tris, new silhouette) and `tool-forms-533` (six tool forms) re-pinned.
+
+**BOUNDARY:** Cleaver and Salvage are presentation only: gameplay timing, damage, reach, hit frames, names, text and stats unchanged; the standard view unchanged for them. The carbine changes the Spindle only when the passive is set (save key in existing `save.lattice.passives`; schema 14); charge and afterglow are runtime only. No new module, model or shader change; bounded by the projectile caps and 6 afterglow slots.
+
 ## Release 915 — Roof decks: stand on shacks, huts and houses; aimed Rift Step in Close View; section crossings face the way you travel
 
 Tim, 2026-11-12: "you should be able to get on top of the shacks if you can get to the right height... in close view you should really be able to explore the whole three-dimensional space based on what you can do... Rift Step up into the air, the drone to fly up... see a target and set it, then Rift Step to it; it could kill you"; and "the camera does a weird change when you transition between sections; it should just point straight ahead so the Wayfarer is facing the new section".

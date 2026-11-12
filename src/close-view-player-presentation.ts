@@ -96,6 +96,74 @@ export function sampleMeleeActionPose(action, progress = 0, variant = 1, fistLea
     yaw:(cleaver||quickCleaver)?diagonal*(.30-.62*travel):0,rise:quickCleaver?.18+.12*travel:cleaver?(up?travel:1-travel):0,
     side:(cleaver||quickCleaver)?diagonal*(.13-.27*travel):0,twist:(cleaver||quickCleaver)?diagonal*(.22-.44*travel)*weight:lead*(action.move==='uppercut'?.30:.18)*weight});
 }
+// Verge Cleaver slashes (Tim, 2026-11-12: "scrap it and start over, just do some standard sword
+// slashes"). Presentation only: the accepted quick action (CLOSE_VIEW_MELEE_TIMING.cleaverQuick)
+// owns the clock and its contact; nothing here moves a hit. Each step is a short wind-up from the
+// hip carry (guard), one fast swing around a pivot in front of the chest that crosses the strike
+// zone at contact, a follow-through and a recovery back to guard.
+// Character frame: [side, up, forward], side +1 toward the sword hand. Lengths are in arm reaches
+// from the sword shoulder. The blade turns in one plane: at angle 0 (contact) it points along
+// `ref`; positive angles move it along `travel`. The flat stays in the swing plane, so an edge leads;
+// `edge` picks which (both are bright bevels) to match the hand at guard: no wrist roll. Angles in degrees.
+// `twist` (chest toward the sword side, radians) and `lean` (forward) run from the wind-up to the
+// end of the follow-through.
+export const CLOSE_VIEW_CLEAVER_SLASH_TIMING = Object.freeze({
+  windup: .45, // wind-up ends at this fraction of the contact time
+  follow: .30, // follow-through ends this fraction of the post-contact time after contact
+  reducedBody: .55, // reduced motion keeps the blade arc, with less body motion
+});
+export const CLOSE_VIEW_CLEAVER_SLASHES = Object.freeze([
+  // 1: diagonal forehand, high on the sword side down across the body.
+  Object.freeze({ name: 'diagonal', pivot: Object.freeze([-.30, -.30, .38]), hand: .48,
+    ref: Object.freeze([-.10, .08, 1]), travel: Object.freeze([-.72, -.69, 0]), from: -105, to: 72, edge: -1,
+    twist: Object.freeze([.30, -.30]), lean: Object.freeze([-.02, .10]), guard: .30 }),
+  // 2: return backhand, from the far side across to the sword side, level and a little downward.
+  Object.freeze({ name: 'return', pivot: Object.freeze([-.30, -.24, .36]), hand: .46,
+    ref: Object.freeze([-.06, .02, 1]), travel: Object.freeze([1, -.22, 0]), from: -100, to: 78, edge: -1,
+    twist: Object.freeze([-.32, .30]), lean: Object.freeze([.02, .08]), guard: .24 }),
+  // 3: overhead finisher, raised behind the head and brought straight down the centre line.
+  Object.freeze({ name: 'overhead', pivot: Object.freeze([-.40, -.06, .30]), hand: .50,
+    ref: Object.freeze([-.08, .10, 1]), travel: Object.freeze([0, -1, .05]), from: -150, to: 52, edge: -1,
+    twist: Object.freeze([.08, -.10]), lean: Object.freeze([-.12, .24]), guard: .36 }),
+]);
+// Clock sampler for one slash step at accepted action progress p (0..1) with the accepted contact
+// fraction. Writes into `out` (no allocation): weight (guard 0 .. slash 1), angle (radians, 0 at
+// contact), swing (0 at the wind-up pose .. 1 at the end of the follow-through), phase. While the
+// weight is below 1 (wind-up, recovery) the renderer turns the blade in the slash plane from the
+// guard angle toward `angle` by the weight, so it is raised through the front and never spun round.
+export function sampleCleaverSlash(step, progress, contact, out = {}) {
+  const spec = CLOSE_VIEW_CLEAVER_SLASHES[Math.max(1, Math.min(3, Math.trunc(Number(step)) || 1)) - 1], T = CLOSE_VIEW_CLEAVER_SLASH_TIMING;
+  const p = unit(progress), c = Math.max(.02, Math.min(.98, Number.isFinite(contact) ? contact : .3));
+  const windEnd = c * T.windup, followEnd = c + (1 - c) * T.follow, rad = Math.PI / 180;
+  let angle, weight, phase;
+  if (p < windEnd) { weight = cutSmooth(p / windEnd); angle = spec.from * rad; phase = 'windup'; }
+  else if (p < c) { const u = (p - windEnd) / (c - windEnd); weight = 1; angle = spec.from * rad * (1 - u * u); phase = 'swing'; }
+  else if (p < followEnd) { const v = 1 - (p - c) / (followEnd - c); weight = 1; angle = spec.to * rad * (1 - v * v); phase = 'follow-through'; }
+  else { weight = p >= 1 ? 0 : 1 - cutSmooth((p - followEnd) / (1 - followEnd)); angle = spec.to * rad; phase = 'recovery'; }
+  out.spec = spec; out.weight = weight; out.angle = angle; out.phase = phase;
+  out.swing = (angle - spec.from * rad) / ((spec.to - spec.from) * rad);
+  out.windEnd = windEnd; out.contact = c; out.followEnd = followEnd;
+  return out;
+}
+// The in-plane angle of a character-frame blade direction (the guard), kept inside [from, to].
+export function cleaverSlashAngle(spec, x, y, z) {
+  const r = spec.ref, t = spec.travel, rl = Math.hypot(r[0], r[1], r[2]) || 1;
+  const rx = r[0] / rl, ry = r[1] / rl, rz = r[2] / rl, along = t[0] * rx + t[1] * ry + t[2] * rz;
+  const tx = t[0] - along * rx, ty = t[1] - along * ry, tz = t[2] - along * rz, rad = Math.PI / 180;
+  const a = Math.atan2((x * tx + y * ty + z * tz) / (Math.hypot(tx, ty, tz) || 1), x * rx + y * ry + z * rz);
+  return Number.isFinite(a) ? Math.max(spec.from * rad, Math.min(spec.to * rad, a)) : 0;
+}
+// Blade direction and leading edge (unit vectors, character frame) at a slash angle.
+// `out` holds six numbers: direction [0..2], edge [3..5].
+export function cleaverSlashBlade(spec, angle, out = new Float64Array(6)) {
+  const r = spec.ref, t = spec.travel, rl = Math.hypot(r[0], r[1], r[2]) || 1;
+  const rx = r[0] / rl, ry = r[1] / rl, rz = r[2] / rl, along = t[0] * rx + t[1] * ry + t[2] * rz;
+  let tx = t[0] - along * rx, ty = t[1] - along * ry, tz = t[2] - along * rz; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+  const c = Math.cos(angle), s = Math.sin(angle), e = spec.edge < 0 ? -1 : 1;
+  out[0] = rx * c + tx * s; out[1] = ry * c + ty * s; out[2] = rz * c + tz * s;
+  out[3] = e * (tx * c - rx * s); out[4] = e * (ty * c - ry * s); out[5] = e * (tz * c - rz * s);
+  return out;
+}
 // Great Sweep (Tim, 2026-11-12: "he takes the Great Sweep out and does a full sweeping animation when
 // you attack with it... and then he just keeps holding the Great Sweep until you attack with something
 // else"; later the same day: "when he uses the tool in its standard form it should be a 360° sweep
@@ -149,17 +217,10 @@ export function sampleGreatSweep(elapsedMs, startupMs = TOOL_USE_STARTUP_MS['gre
   out.startupMs = st; out.swingEndMs = swingEnd; out.followEndMs = followEnd; out.durationMs = D;
   return out;
 }
-// Blade direction and leading edge (unit vectors, character frame) at an arc angle.
+// Blade direction and leading edge (unit vectors, character frame) at a Great Sweep plane angle:
+// the same one-plane math as the Cleaver slashes (cleaverSlashBlade), on the Great Sweep's plane.
 // `out` holds six numbers: direction [0..2], edge [3..5].
-export function greatSweepBlade(angle, out = new Float64Array(6)) {
-  const S = CLOSE_VIEW_GREAT_SWEEP, r = S.ref, t = S.travel, rl = Math.hypot(r[0], r[1], r[2]) || 1;
-  const rx = r[0] / rl, ry = r[1] / rl, rz = r[2] / rl, along = t[0] * rx + t[1] * ry + t[2] * rz;
-  let tx = t[0] - along * rx, ty = t[1] - along * ry, tz = t[2] - along * rz; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
-  const c = Math.cos(angle), s = Math.sin(angle), e = S.edge < 0 ? -1 : 1;
-  out[0] = rx * c + tx * s; out[1] = ry * c + ty * s; out[2] = rz * c + tz * s;
-  out[3] = e * (tx * c - rx * s); out[4] = e * (ty * c - ry * s); out[5] = e * (tz * c - rz * s);
-  return out;
-}
+export function greatSweepBlade(angle, out = new Float64Array(6)) { return cleaverSlashBlade(CLOSE_VIEW_GREAT_SWEEP, angle, out); }
 // Character-frame blade tip at an arc angle, in arm reaches from the sweep shoulder, for a blade
 // `length` reaches long past the hand. The tip runs on one circle about the pivot.
 export function greatSweepTip(angle, length, out = new Float64Array(3)) {

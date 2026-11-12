@@ -313,7 +313,7 @@ export const SKY_BASE = { // health: hits of the Wayfarer's weapon (+ per level)
 // A Skyland foe's base health and damage for `role`, from the Wayfarer (`stats` is game.ts characterStats).
 export function skyVitals(role, save, stats = {}) {
   const B = SKY_BASE[role]; if (!B) return null;
-  const level = Math.max(1, Number(save?.level) || 1), w = save?.equipment?.[save?.activeWeaponSlot], perHit = Math.max(4, (Number(w?.power) || 6) + (Number(stats.meleeBonus) || 0));
+  const level = Math.max(1, Number(save?.level) || 1), w = save?.equipment?.[save?.activeWeaponSlot], perHit = Math.max(4, (Number(w?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0));
   const maxHp = Math.max(30, Number(save?.maxHp) || 60), guard = Math.min(.75, Math.max(0, Number(stats.damageReduction) || 0));
   return { hp: Math.round(perHit * B.hitsToKill + B.hpPerLevel * level), damage: Math.max(2, Math.round(maxHp * B.damageShare / (1 - guard))) };
 }
