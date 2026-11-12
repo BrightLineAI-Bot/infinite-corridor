@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r907 (`a00159304000`); production serves `r907-a00159304000` (published 2026-11-11 after a Fable review of r896 to r907). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r908 (`077da6310291`); production serves `r907-a00159304000` (published 2026-11-11 after a Fable review of r896 to r907). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 908 | Claude | claude/cv-nanobot-knight | Close View Nanobot Knight on a converted RPG Character Pack human body (slender, 1.75 x the Wayfarer), plate, cone helm, greatsword, cannon, swarm cape; all attacks on their clocks | In flight. |
+| 909 | Claude | claude/cv-morphing-blob | Close View Crimson Tyrant and Doom Chaser, Ashen Moth (and Grove Moth), Tremor Worm, Psychic Crystal, Morphing Blob on the shared beast rig; all attacks on their clocks; QB folded-wing hint fix | In flight. |
+| 908 | Claude | claude/cv-nanobot-knight | Close View Nanobot Knight on a converted RPG Character Pack human body (slender, 1.75 x the Wayfarer), plate, cone helm, greatsword, cannon, swarm cape; all attacks on their clocks | Merged as `077da6310291` (#574). |
 | 907 | Claude | claude/world-caches | Data-driven world caches on new ground: corpses, thrones, lever-barred alcoves in crossings; corpses, ledges and climb tops in sections; tiered loot incl. rare travel seeds | Merged as `a00159304000` (#575). Published as r907-a00159304000 (2026-11-11). |
 | 906 | Claude | claude/weapon-visuals | Close View weapon models only: proportioned Verge Cleaver hilt, the Rift Bombard as a black-and-blue hip-held grenade launcher, light polish on the Blunderbuss and Salvage Blade | Merged as `edc5b9bbd14c` (#573). Published in r907. |
 | 905 | Claude | claude/cv-questing-beast | Close View Questing Beast: furred jackal-like body, real folding wings with a body membrane, all attacks on their clocks; beast budget 5000/3000/1200 | Merged as `303e02e3e709` (#571). Published in r907. |
