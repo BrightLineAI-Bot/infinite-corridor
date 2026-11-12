@@ -92,3 +92,9 @@ test('death; reduced motion', () => {
   const r = createTentacleTrack(), e2 = createCombatant('wormTentacle', 10, 10, false, []); sampleTentacle(r, e2, env(e2, 1000, { reduce: true }));
   const a = Array.from(sampleTentacle(r, e2, env(e2, 1016, { reduce: true })).skin); assert.deepEqual(Array.from(sampleTentacle(r, e2, env(e2, 4000, { reduce: true })).skin), a);
 });
+
+test('on the lowest setting the field tentacles keep their billboards (Tim, 2026-11-12); full and balanced admit them', () => {
+  assert.equal(BEAST_SLOT.minion.tierMinions.low, 0);
+  assert.ok(BEAST_SLOT.minion.tierMinions.full >= 1 && BEAST_SLOT.minion.tierMinions.balanced >= 1);
+  assert.ok(BEAST_SLOT.minion.tierMinions.full <= BEAST_SLOT.minion.maxMinions && BEAST_SLOT.minion.tierMinions.balanced <= BEAST_SLOT.minion.maxMinions);
+});

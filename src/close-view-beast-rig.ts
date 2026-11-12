@@ -27,7 +27,7 @@ export const BEAST_SLOT = Object.freeze({
   // Small minions with a body of their own (the Tremor Worm's field tentacles, Close View worm pass 2): a separate allowance, so up to six
   // of them never take a beast's slot (they rise round the Wayfarer, nearer than the worm, and admission is nearest first).
   // Each is a small mesh on a short chain, so the whole allowance costs less than one beast at every tier.
-  minion: Object.freeze({ maxMinions: 6, maxBones: 12, triangles: Object.freeze({ full: 760, balanced: 480, low: 190 }) }),
+  minion: Object.freeze({ maxMinions: 6, tierMinions: Object.freeze({ full: 6, balanced: 6, low: 0 }), maxBones: 12, triangles: Object.freeze({ full: 760, balanced: 480, low: 190 }) }),
 });
 
 // ------------------------------------------------------------------------------------------------ the skeleton

@@ -2969,7 +2969,8 @@ const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0,
 // Close View worm pass 2: small minions (the Tremor Worm's field tentacles: `minion` in the roster) count against their own allowance
 // (BEAST_SLOT.minion.maxMinions), so they never crowd a beast out of its slot; the frame's total stays bounded by both.
 function admitBeasts(g, draws, n, Q, now, reduce) {
-  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low', maxB = BEAST_SLOT.maxBeasts, maxM = BEAST_SLOT.minion.maxMinions;
+  const B = MODEL_STATE.beasts, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low', maxB = BEAST_SLOT.maxBeasts, maxM = BEAST_SLOT.minion.tierMinions?.[tier] ?? BEAST_SLOT.minion.maxMinions;
+  // (Tim 2026-11-12: on the lowest setting the field tentacles keep their billboards: tierMinions.low is 0)
   B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
   let big = 0, small = 0;

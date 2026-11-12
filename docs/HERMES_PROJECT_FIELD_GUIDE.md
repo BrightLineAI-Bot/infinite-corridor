@@ -35,7 +35,7 @@ Tim, 2026-11-12:
   - Shingled plates and a broken-slab hole.
   - `wormBodyEligible` keeps the mound only while the worm is hidden or during a Rise's eruption.
 - **`close-view-beast-tentacle.ts`:** the `wormTentacle` body, with one mesh per tier and `tentacleMode`, posed from the game's rising, fire, laser, grab and swipe state.
-- **`BEAST_SLOT.minion`** (6 bodies, 12 bones, 760/480/190 triangles) with the roster flag `minion: true`. This gives small minions their own count in `admitBeasts`, so they never take a beast slot.
+- **`BEAST_SLOT.minion`** (6 bodies, 12 bones, 760/480/190 triangles) with the roster flag `minion: true`. This gives small minions their own count in `admitBeasts`, so they never take a beast slot. `tierMinions` admits 6 on full and balanced and none on low, where the tentacles keep their billboards (Tim, 2026-11-12).
 - **Tests:**
   - `tests/dragon-skyfall.test.ts` (new);
   - `tests/close-view-beast-tentacle.test.ts` (new);
