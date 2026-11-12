@@ -69,6 +69,16 @@ for (const weapon of Object.keys(WEAPONS)) {
   });
 }
 
+test('the Fourfold Daggers (release 918) plunge on the default profile, through the 918 weapon bonus', () => {
+  const item = { id: 'primary-fd-loot', name: 'Fourfold Daggers', slot: 'primary', power: 10, basePower: 10, upgradeRank: 0, property: 'paired', tier: 'rare', affixes: [] };
+  assert.equal(plungeKind(item), 'primary-fourfold-daggers'); assert.equal(plungeProfile(plungeKind(item)), PLUNGE_PROFILES.default);
+  const { g } = arena([['foe', 11, 10]]); g.save.equipment.primary = item; const d = driver(g);
+  assert.ok(Math.abs(g.plungeBase() - g.meleePower()) < 1e-9, 'a dagger plunge is built on meleePower (weaponBonus inside)');
+  d.step(['jump']); d.step(); d.step(['attack']); assert.ok(g.plunge); assert.equal(g.plunge.kind, 'primary-fourfold-daggers');
+  d.idle(300); assert.equal(g.plunge, null); assert.ok(lost(g, 'foe') > 0, 'the slam lands');
+  assert.ok(g.effects.some((e) => e.kind === 'plunge-slam' && Math.abs(e.radius - PLUNGE_PROFILES.default.radius) < 1e-9));
+});
+
 test('the slam deals the weapon share of a normal hit, scaling with the melee bonus as a swing does', () => {
   for (const weapon of ['salvage-blade', 'primary-verge-cleaver', 'primary-iron-fists']) {
     const { g } = arena([['foe', 11, 10]], weapon), d = driver(g); d.step(['jump']); d.step();
@@ -79,9 +89,11 @@ test('the slam deals the weapon share of a normal hit, scaling with the melee bo
     if (weapon === 'salvage-blade') assert.ok(Math.abs(base - g.meleePower()) < 1e-9, 'a blade plunge is built on a swing');
     void fx;
   }
-  // A stronger character hits harder (meleeBonus is part of meleePower)
-  const weak = arena([]).g, strong = arena([], 'salvage-blade', (s) => { s.stats.Might = (Number(s.stats.Might) || 1) + 40; }).g;
-  strong.refreshDerivedStats?.(); assert.ok(strong.plungeBase() > weak.plungeBase(), `${strong.plungeBase()} > ${weak.plungeBase()}`);
+  // A stronger character hits harder, by the weapon's own scaling stat (release 918 WEAPON_SCALING through weaponBonus)
+  for (const [weapon, stat] of [['primary-verge-cleaver', 'Might'], ['salvage-blade', 'Focus']]) {
+    const weak = arena([], weapon).g, strong = arena([], weapon, (s) => { s.stats[stat] = (Number(s.stats[stat]) || 1) + 40; }).g;
+    assert.ok(strong.plungeBase() > weak.plungeBase(), `${weapon} with ${stat}: ${strong.plungeBase()} > ${weak.plungeBase()}`);
+  }
 });
 
 test('one plunge per jump, a landing recovery, and no plunge on the ground', () => {
