@@ -3,7 +3,7 @@
 // - the world's common standing things (rocks, chests, caches, shrines, waystones, standing stones, ways down) are solids,
 //   built once a section or floor and rebuilt only when one of them changes (a chest opened, a rock broken);
 // - houses (shelters, hamlets) stand up from their own tiles with walls, door lintels and roofs, each roof its own run so it
-//   can be left out while the Wayfarer is inside, the camera is over it, or it stands between them;
+//   can be left out while the Wayfarer is inside (2026-11-12: only then, or with the camera inside; it fades);
 // - the open ground keeps the ordinary art's features but not its tile lines; water has a curved shore, depth and foam;
 // - the cards no longer carry the ordinary view's long names (a town filled the view with giant clipped words);
 // - the standard view shows the sconces and candles Close View places in an interior.
@@ -16,7 +16,7 @@ import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { render } from '../src/renderer.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { OUTDOOR, OUTDOOR_FLOATS, outdoorProps, outdoorPropObject, outdoorPropSignature, outdoorBuildings, outdoorScene, outdoorMesh, outdoorSky, propScene } from '../src/close-view-outdoor.ts';
+import { OUTDOOR, OUTDOOR_FLOATS, outdoorBuildingHeights, outdoorProps, outdoorPropObject, outdoorPropSignature, outdoorBuildings, outdoorScene, outdoorMesh, outdoorSky, propScene } from '../src/close-view-outdoor.ts';
 import { CLOSE_VIEW_HOOKS, roofHidden, drawCloseViewLightsStd, closeViewStatic, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { resetCloseViewGL, closeViewGLStats } from '../src/close-view-gl.ts';
 
@@ -84,20 +84,23 @@ test('houses stand up from their own tiles: walls on each wall side, a lintel ov
     let at = b.walls; for (const r of b.roofs) { assert.equal(r.start, at, 'roofs follow the walls, one after another'); assert.ok(r.count > 0); at += r.count; assert.ok(r.x1 > r.x0 && r.y1 > r.y0); }
     assert.equal(at, b.verts);
     // the walls stand on the wall sides: every wall vertex lies within a wall's thickness of a tile edge that has a wall
-    for (let v = 0; v < b.walls; v++) { const z = b.data[v * OUTDOOR_FLOATS + 2]; assert.ok(z <= OUTDOOR.buildings.wall.h + 1e-6, 'walls no higher than the wall height'); }
+    for (let v = 0; v < b.walls; v++) { const z = b.data[v * OUTDOOR_FLOATS + 2]; assert.ok(z <= outdoorBuildingHeights().wall + 1e-6, 'walls no higher than the wall height'); }
     houses += b.roofs.length;
   }
   assert.ok(houses >= 6, `hamlets and shelters have houses (${houses})`);
   assert.equal(outdoorBuildings(section(0, 3).map).verts, 0, 'no houses, nothing built');
 });
 
-test('a roof is left out while the Wayfarer is inside, the camera is over it, or it stands between them', () => {
-  const r = { x0: 10, y0: 10, x1: 14, y1: 13 };
-  assert.equal(roofHidden(r, 12, 11.5, 12, 16), true, 'inside');
-  assert.equal(roofHidden(r, 12, 15, 12, 12.9), true, 'the camera over it');
-  assert.equal(roofHidden(r, 12, 9, 12, 15), true, 'between the camera and the Wayfarer');
-  assert.equal(roofHidden(r, 12, 15, 12, 17.5), false, 'in front of it, looking at it');
-  assert.equal(roofHidden(r, 4, 4, 4, 7), false, 'elsewhere');
+test('a roof is left out while the Wayfarer is inside, or the camera is; never because it stands between them', () => {
+  // Tim, 2026-11-12 ( "the roofs don't disappear until you get inside of them"): a 4 x 3 house at (10, 10), its door south
+  const map: any = { width: 32, height: 32, tiles: [] }; for (let i = 0; i < 1024; i++) map.tiles.push({ x: i % 32, y: Math.floor(i / 32), kind: 'grass' });
+  for (let y = 10; y < 13; y++) for (let x = 10; x < 14; x++) { const door = x === 12 && y === 12; map.tiles[y * 32 + x] = { x, y, kind: 'grass', buildingId: 'h', structure: door ? 'shackDoor' : x === 10 || x === 13 || y === 10 || y === 12 ? 'shackWall' : 'shackInterior', doorSide: door ? 'south' : undefined }; }
+  const r = { id: 'h', x0: 10, y0: 10, x1: 14, y1: 13 };
+  assert.equal(roofHidden(map, r, 12, 11.5, 12, 16), true, 'inside');
+  assert.equal(roofHidden(map, r, 12, 15, 12, 12.4), true, 'the camera within its walls');
+  assert.equal(roofHidden(map, r, 12, 9, 12, 15), false, 'between the camera and the Wayfarer: drawn (the silhouette shows them)');
+  assert.equal(roofHidden(map, r, 12, 15, 12, 17.5), false, 'in front of it, looking at it');
+  assert.equal(roofHidden(map, r, 4, 4, 4, 7), false, 'elsewhere');
 });
 
 // A WebGL2 stand-in that records the solids' draws (the GPU itself is not available here).
@@ -127,7 +130,8 @@ test('in a GPU frame the house the Wayfarer stands in is drawn without its roof,
   const total = scene.solids.verts; assert.ok(gl.draws.some((d: number[]) => d[0] === 0 && d[1] === total), 'the solids in one call');
   // inside the hut: no draw covers its roof's run
   const cell = g.map.tiles.find((t: any) => t.buildingId === hut.id && /Interior/.test(t.structure)); g.player.x = cell.x; g.player.y = cell.y - .2;
-  gl.draws.length = 0; for (let i = 0; i < 3; i++) render(screen, g, 390, 844, (T += 16));
+  gl.draws.length = 0; for (let i = 0; i < 24; i++) render(screen, g, 390, 844, (T += 16)); // 2026-11-12: past the roof's fade (OUTDOOR.buildings.fade.ms)
+  assert.ok(24 * 16 > OUTDOOR.buildings.fade.ms); gl.draws.length = 0; render(screen, g, 390, 844, (T += 16));
   const r0 = scene.solids.housesAt + hut.start, r1 = r0 + hut.count;
   assert.ok(!gl.draws.some((d: number[]) => d[0] < r1 && d[0] + d[1] > r0), 'its roof is left out');
   assert.ok(gl.draws.some((d: number[]) => d[0] === 0 && d[1] >= scene.solids.housesAt), 'the rest is still drawn');

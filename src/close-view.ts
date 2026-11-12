@@ -22,7 +22,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING } from "./close-view-outdoor.ts";
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -3292,24 +3292,30 @@ function nearbyDoorTorches(g,px,py,reach,seen,limit){
   list.sort((a,b)=>a.dist-b.dist);
   return list.slice(0,limit);
 }
-// Which roofs to leave out this frame (OUTDOOR.buildings): writes the solids' runs to draw into F.runs (nRuns 0: draw it all).
-function roofRuns(F, scene, px, py, cx, cy) {
-  const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt; let hidden = 0;
-  for (let i = 0; i < roofs.length; i++) { const r = roofs[i], pad = .4; if (roofHidden(r, px, py, cx, cy, pad)) hidden |= 1 << i; }
-  if (!hidden) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
-  for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (hidden & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a; } else end = r1; }
+// Which roofs to draw this frame (OUTDOOR.buildings): writes the solids' runs to draw whole into F.runs (nRuns 0: draw it all)
+// and each roof part way through its fade into F.fades (start, count, opacity; nFades of them), drawn dithered on its own.
+// A roof's opacity eases toward 0 while it is hidden (roofHidden) and back to 1 over OUTDOOR.buildings.fade.ms; a new scene
+// or reduced motion sets it at once (a prop changing keeps the houses, and the fade). No allocation: ROOF_FADE's arrays are made once.
+const ROOF_FADE = { key: null, at: 0, a: new Float32Array(32) };
+function roofRuns(F, scene, map, px, py, cx, cy, now, reduce) {
+  const roofs = scene.houses.roofs, base = scene.solids.roofStart, at = scene.solids.housesAt, A = ROOF_FADE.a, fresh = ROOF_FADE.key !== scene.houses || reduce;
+  const step = fresh ? 1 : Math.max(0, Math.min(250, now - ROOF_FADE.at)) / Math.max(1, OUTDOOR.buildings.fade.ms); ROOF_FADE.key = scene.houses; ROOF_FADE.at = now;
+  let partial = 0, nf = 0;
+  for (let i = 0; i < roofs.length && i < A.length; i++) { const goal = roofHidden(map, roofs[i], px, py, cx, cy) ? 0 : 1;
+    A[i] = fresh ? goal : goal > A[i] ? Math.min(goal, A[i] + step) : Math.max(goal, A[i] - step); if (A[i] < 1) partial |= 1 << i; }
+  if (!partial) return; let k = 0, a = 0, end = base; F.runs[0] = 0;
+  for (let i = 0; i < roofs.length && k < 15; i++) { const r = roofs[i], r0 = at + r.start, r1 = r0 + r.count; if (partial & (1 << i)) { if (end > a) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; } a = r1; end = a;
+      if (A[i] > 0 && nf < 16) { F.fades[nf * 3] = r0; F.fades[nf * 3 + 1] = r.count; F.fades[nf * 3 + 2] = A[i]; nf++; } } else end = r1; }
   if (end > a && k < 16) { F.runs[k * 2] = a; F.runs[k * 2 + 1] = end - a; k++; }
-  F.nRuns = Math.max(1, k); if (!k) { F.runs[0] = 0; F.runs[1] = 0; } }
-export function roofHidden(r, px, py, cx, cy, pad = .4) {
-  const x0 = r.x0 - pad, y0 = r.y0 - pad, x1 = r.x1 + pad, y1 = r.y1 + pad;
-  if (px > r.x0 && px < r.x1 && py > r.y0 && py < r.y1) return true; // inside it
-  if (cx > x0 && cx < x1 && cy > y0 && cy < y1) return true; // the camera over it
-  // between them: the segment from the camera to the Wayfarer's feet crosses its box (a slab test)
-  const dx = px - cx, dy = py - cy; let t0 = 0, t1 = 1;
-  if (Math.abs(dx) < 1e-9) { if (cx < x0 || cx > x1) return false; } else { const a = (x0 - cx) / dx, b = (x1 - cx) / dx; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
-  if (Math.abs(dy) < 1e-9) { if (cy < y0 || cy > y1) return false; } else { const a = (y0 - cy) / dy, b = (y1 - cy) / dy; t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b)); }
-  return t0 <= t1;
+  F.nRuns = Math.max(1, k); F.nFades = nf; if (!k) { F.runs[0] = 0; F.runs[1] = 0; } }
+// A roof is hidden only while the Wayfarer's feet are inside its house (outdoorInsideHouse: past the doorway, not beside a
+// wall), or while the camera itself is inside the house's walls. Tim, 2026-11-12: "the roofs don't disappear until you get
+// inside of them". Walking up to it, standing at its wall or in its door, it stays; behind it the silhouette shows the Wayfarer.
+export function roofHidden(map, r, px, py, cx, cy) {
+  if (outdoorInsideHouse(map, r.id, px, py)) return true; // inside it
+  return cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1 && outdoorInsideHouse(map, r.id, cx, cy); // the camera within its walls
 }
+export const closeViewRoofOpacity = (i) => ROOF_FADE.a[i]; // for tests
 // The Wayfarer's leaps and drops over the overworld's taller levels (OUTDOOR.terrain version 3). Gameplay is unchanged: one
 // jump a level, the tile under the feet decides the footing. What is drawn: the footing (`base`) rises toward the ledge the
 // jump is carrying them onto (the ground where their motion will put them when the jump ends), so the arc clears the ledge
@@ -3378,9 +3384,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const flash = reduce ? 0 : outdoorLightning(now, sk.lightning || 0); F.mood[0] = sk.stars || 0; F.mood[1] = sk.cloudDark || 0; F.mood[2] = sk.moon || 0; F.mood[3] = flash;
     if (sk.cloud) { F.moodC[0] = sk.cloud[0]; F.moodC[1] = sk.cloud[1]; F.moodC[2] = sk.cloud[2]; } else F.moodC.fill(1); F.moodC[3] = flash > 0 ? LIGHTNING.az : 0;
     if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
-  // a house's roof is left out while the Wayfarer is inside it, the camera is over it, or it stands between them
+  // a house's roof fades out while the Wayfarer is inside it (or the camera is), and stays drawn while they are outside it
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
-  F.nRuns = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, F.px, F.py, CAM.cx, CAM.cy);
+  F.nRuns = 0; F.nFades = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, g.map, F.px, F.py, CAM.cx, CAM.cy, now, reduce);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) F.props = 1; }
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
