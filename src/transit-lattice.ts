@@ -27,9 +27,13 @@ export const coordinatesFor = (kill) => piecesNeeded(kill) + 1;
 export const coordinatesForGate = (gate) => piecesToUnlock(gate) + 1;
 const gatesUnlocked = (save) => Math.max(1, Math.floor(Number(save?.farArray?.gate) || 1)) - 1;
 
+// Passives that no longer exist, dropped from `passives` wherever a save is read (freshSave, migrateSave): the slot they held is
+// free again. Setting a passive costs nothing, so there is nothing to refund. 2026-11-12: the Lumen Carbine passive became the
+// Carbine, the Spark Coil's upgraded form (tool-forms.ts CARBINE; items.ts CARBINE_RANK).
+export const RETIRED_PASSIVES = Object.freeze(["field:lumen-carbine"]);
 export function ensureLattice(save) {
   const l = save.lattice && typeof save.lattice === "object" ? save.lattice : {}, int = (v, max = Infinity) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
-  const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i);
+  const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i && !RETIRED_PASSIVES.includes(q));
   const extra = { ...(l.extra && typeof l.extra === "object" ? l.extra : {}), passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
   save.lattice = { ...l, coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
   save.lattice.gatesPaid = int(l.gatesPaid); // 2026-11-05: Gates already paid for (grantCoordinates)

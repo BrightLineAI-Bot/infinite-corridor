@@ -157,6 +157,7 @@ test('the fall numbers: a balcony 1 level down is free, 2 levels costs 15% of ma
   const tileAt = () => g.map.tiles[Math.floor(g.player.y + .75) * 32 + Math.floor(g.player.x + .5)];
   assert.ok(tileAt().pentRoof); const dx = Math.sign(out.x - door.x), dy = Math.sign(out.y - door.y); let t = 3000;
   for (let i = 0; i < 40 && !tileAt()?.pentBalcony; i++) g.update(.05, idle(dx, dy), t += 50);
+  for (let i = 0; i < 60 && g.fall; i++) g.update(.05, idle(0, 0), t += 50); // fall physics (game.ts FALL): the drop has airtime; it lands, then counts
   assert.ok(tileAt()?.pentBalcony, 'onto the balcony'); assert.equal(g.save.worldFlags?.deaths || 0, 0); const drop = R0 - b.elev; assert.equal(hp - g.player.hp, fallDamage(drop, g.save.maxHp), `a drop of ${drop}`);
 });
 
