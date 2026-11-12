@@ -3815,7 +3815,8 @@ export class Game {
   blinkFooting(x, y, fromLevel, rise = 0) {
     const w = mapWidth(this.map, this.area), top = fromLevel + rise + 1e-6, d = this.decksApply() ? roofDeckAt(this.map, x + .5, y + .75) : null;
     if (d && d.level <= top) return footprintOpen(this.map, w, x, y, false, false, false, false, d.level) ? { level: d.level, deck: d } : null;
-    if (!footprintOpen(this.map, w, x, y, false, false, false, false, d || this.standingDeck() ? Math.floor(top) : null) || footprintHazard(this.map, w, x, y)) return null;
+    const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
+    if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
     const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
   }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
