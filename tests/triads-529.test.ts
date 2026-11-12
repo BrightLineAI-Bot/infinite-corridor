@@ -39,10 +39,12 @@ test('armor resonates only through triads, and they add past the usual caps; soc
   assert.deepEqual(resonancesOf(['ignite', 'echo']), ['ember-choir']);
 });
 
-test('the Needle Caster scales with Might; the Lumen Spindle with Focus', async () => {
+// Tim 2026-11-12 (items.ts TOOL_SCALING): the Needle Caster scales with Finesse, the stamina stat (it was Might from 529).
+test('the Needle Caster scales with Finesse (the stamina stat); the Lumen Spindle with Focus', async () => {
   const { Game } = await import('../src/game.ts');
   const fire = (name, property, stats) => { const s = freshSave(); s.stats = { ...s.stats, ...stats }; s.equipment.secondary = { id: 't', name, slot: 'secondary', property, power: 5, tier: 'common', affixes: [] }; const g = new Game(s, 0); g.area = 'dungeon'; g.enemies = []; g.fireSecondary(1000, { x: 1, y: 0 }); return g.projectiles.find((p) => String(p.id).startsWith('shot-')).damage; };
-  assert.ok(fire('Needle Caster', 'quick', { Might: 30 }) > fire('Needle Caster', 'quick', { Might: 1 }) + 40, 'Might');
+  assert.ok(fire('Needle Caster', 'quick', { Finesse: 30 }) > fire('Needle Caster', 'quick', { Finesse: 1 }) + 40, 'Finesse');
+  assert.equal(fire('Needle Caster', 'quick', { Might: 30 }), fire('Needle Caster', 'quick', { Might: 1 }), 'not Might');
   assert.equal(fire('Needle Caster', 'quick', { Focus: 30 }), fire('Needle Caster', 'quick', { Focus: 1 }), 'not Focus');
   assert.ok(fire('Lumen Spindle', 'focus', { Focus: 30 }) > fire('Lumen Spindle', 'focus', { Focus: 1 }), 'the Spindle keeps Focus');
 });

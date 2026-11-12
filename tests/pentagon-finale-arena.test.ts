@@ -131,7 +131,7 @@ test('tuning: below ring 100 the biggest ordinary blow takes about 40% of a refe
     const c = tunePentagonArenaBeast(createCombatant(id, 0, 0, true, []), id, g.save, st, beastRegionalThreat(regionalThreat(40, 0)));
     const top = id === 'astralWorm' ? 1 : Math.max(...MONSTER_PACK[id].attacks.map((a) => ATTACK_MODULES[a]?.damage ?? 0)), big = Math.ceil(c.damage * top * BOSS_PACE.damage * red), share = big / g.save.maxHp;
     rows.push(`${name} ${id} ${Math.round(share * 100)}%`); assert.ok(share >= .3 && (share <= .56 || name === "early" && share < 1) /* an early Wayfarer meets the damage floor: still two blows */, `${name} ${id}: a big blow ${Math.round(share * 100)}%`); assert.ok(Math.ceil(1 / share) >= 2 && Math.ceil(1 / share) <= 4);
-    const perHit = (Number(g.save.equipment.primary.power) || 6) + (Number(st.meleeBonus) || 0), hits = c.maxHp / perHit; assert.ok(hits > 40 && hits < 260, `${name} ${id}: ${Math.round(hits)} blows to kill`);
+    const perHit = (Number(g.save.equipment.primary.power) || 6) + (Number(st.weaponBonus) || 0) /* Tim 2026-11-12: the beast tunes to the weapon's own bonus (the Salvage Blade reads Focus) */, hits = c.maxHp / perHit; assert.ok(hits > 40 && hits < 260, `${name} ${id}: ${Math.round(hits)} blows to kill`);
     for (const ring of [120, 160, 220]) { const q = beastRegionalThreat(regionalThreat(ring, 0)), f = tunePentagonArenaBeast(createCombatant(id, 0, 0, true, []), id, g.save, st, q), w = tuneWorldBeast(createCombatant(id, 0, 0, true, []), g.save, id, st);
       assert.ok(f.damage >= Math.round(w.damage * q.damageMultiplier) * .99 || f.damage >= pentagonArenaVitals(row, g.save, st, null).damage, `${name} ${id} ring ${ring}: never softer`); }
   }
