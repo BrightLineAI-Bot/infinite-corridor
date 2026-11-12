@@ -12,6 +12,7 @@ import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -47,6 +48,9 @@ export const BRAINS = {
   vantage: { id: "vantage", name: "Keeps the high ground", preferred: [4.5, 7], retreat: 3 },
   loop: { id: "loop", name: "Flies a patrol loop", preferred: [3.4, 5.4] },
   patrol: { id: "patrol", name: "Walks its beat, lamp first", preferred: [1.2, 2.6], cone: true }, // roused only near, or inside its lamp's cone (ADV.lamp)
+  // The Gaunt (duelists.ts): closes in, circles (flipping direction now and then), keeps off its kin, hops to reposition and after it
+  // attacks; its own band is DUELISTS.ai[kind].preferred.
+  fencer: { id: "fencer", name: "Circles, feints and hops in", preferred: [1.5, 2.6] },
 };
 
 // Telegraphed abilities. Times are seconds; `damage` multiplies the creature's damage;
@@ -274,6 +278,8 @@ export const ATTACK_MODULES = {
   demonCleave: { id: "demonCleave", name: "Horned Cleave", range: [0, 2.6], cooldown: 2.6, windup: .62, recover: .75, damage: 1.45, los: true, tags: ["melee"], text: "Both arms come down together in a wide, heavy arc." },
   stoneSlam: { id: "stoneSlam", name: "Ground Slam", range: [0, 2.4], cooldown: 3.6, windup: .85, recover: 1, damage: 1.5, jumpable: true, tags: ["melee", "ground"], text: "Raises both fists and pounds the roof round its feet. Jump it, or do not be close." },
   chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
+  // The Gaunt's blades (duelists.ts DUELISTS.attacks holds every number). Melee: under ELEVATION_REACH they never carry between heights.
+  ...Object.fromEntries(Object.entries(DUELISTS.attacks).map(([id, A]) => [id, { id, name: A.name, range: [...A.range], cooldown: A.cooldown, windup: A.windup, active: A.active, recover: A.recover, damage: A.damage, los: true, ...(A.jumpable ? { jumpable: true } : {}), tags: ["melee", "blade"], text: A.text }])),
 };
 
 // The ten creatures. `stats` uses the same [hp, damage, range] shape as the base combatant table.
@@ -787,6 +793,24 @@ export const MONSTER_PACK = {
     attacks: ["slagPour", "heavySweep"], bossAttacks: ["firefall"],
     palette: ["#4a3a32", "#1a120e", "#ff7a20", "#ffe0a0"], render: "slagwright", tags: ["construct", "fire", "foundry"],
     lore: "A foundry hand of riveted plate with a ladle as long as a man. It works the high catwalks, and what it pours runs down to everyone below." },
+  // The Gaunt (duelists.ts; Tim, 2026-11-12): hooded, stick-thin duelists a head taller than most, with heavy hands and no face under
+  // the cowl. Placed only by Game.placeDuelists (ground first entered from DUELISTS.version) and the Proving Ground; their kits are
+  // their own (no hybrid, no Echo, never a guardian).
+  gauntDuelist: { id: "gauntDuelist", prototypeOnly: true, duelistKin: true, noEcho: true, name: "Gaunt Duelist", epithet: "The Cowl That Fences",
+    stats: duelistStats("gauntDuelist"), form: { scale: DUELISTS.scale }, sizeClass: "medium", movement: "walk", brain: "fencer",
+    attacks: [...DUELISTS.kits.gauntDuelist], bossAttacks: [],
+    palette: ["#9a948a", "#26262b", "#ff5a4a", "#7a2a2a"], render: "gauntDuelist", tags: ["humanoid", "blade"],
+    lore: "Wrapped in ash-grey bands, thin as a drawn wire, its face lost in a charcoal cowl. It circles, waits, and cuts three times before you have answered once." },
+  gauntCutthroat: { id: "gauntCutthroat", prototypeOnly: true, duelistKin: true, noEcho: true, name: "Gaunt Cutthroat", epithet: "Two Knives, No Face",
+    stats: duelistStats("gauntCutthroat"), form: { scale: DUELISTS.scale }, sizeClass: "medium", movement: "skitter", brain: "fencer",
+    attacks: [...DUELISTS.kits.gauntCutthroat], bossAttacks: [],
+    palette: ["#8e877c", "#222226", "#ff5a4a", "#6e2626"], render: "gauntCutthroat", tags: ["humanoid", "blade"],
+    lore: "It never stands still: in, two cuts, and out again before the blood shows. The knives are the only part of it that catches the light." },
+  gauntLongarm: { id: "gauntLongarm", prototypeOnly: true, duelistKin: true, noEcho: true, name: "Gaunt Longarm", epithet: "It Keeps You at the Blade's End",
+    stats: duelistStats("gauntLongarm"), form: { scale: DUELISTS.scale }, sizeClass: "medium", movement: "walk", brain: "fencer",
+    attacks: [...DUELISTS.kits.gauntLongarm], bossAttacks: [],
+    palette: ["#a8a092", "#28272c", "#ff5a4a", "#5e2228"], render: "gauntLongarm", tags: ["humanoid", "blade"],
+    lore: "A cowled pole of a thing with a polearm longer than itself. It wants you one blade's length away, and it will hop back to keep you there." },
 };
 
 // Unreleased fixture-only entries are explicitly addressable, but not part of the player catalog,
@@ -866,7 +890,7 @@ export function validateMonster(def) {
 // monster (only modules their movement can perform), so encounters keep surprising.
 export function packVariant(kind, identity) {
   const def = MONSTER_PACK[kind];
-  if (!def || kind === "voidWalker" || def.roofKin || def.adventureKin) return { hybridAttack: null, donor: null }; // the roof dwellers (and the adventure creatures) keep their own kits
+  if (!def || kind === "voidWalker" || def.roofKin || def.adventureKin || def.duelistKin) return { hybridAttack: null, donor: null }; // the roof dwellers (and the adventure creatures, and the Gaunt) keep their own kits
   const n = hashSeed(`pack-variant:v${MONSTER_PACK_VERSION}:${kind}:${identity}`);
   if (n % 100 >= 22) return { hybridAttack: null, donor: null };
   const move = MOVEMENT_MODES[def.movement], own = new Set([...def.attacks, ...(def.bossAttacks || [])]);
@@ -911,6 +935,7 @@ export function resetPackRuntime(enemy) {
   enemy.pack = { ...freshPackState(), cd: { ...cd } };
   // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
   if (enemy.kind === "graveLantern") enemy.hopLift = 0;
+  if (MONSTER_PACK[enemy.kind]?.duelistKin) { enemy.hopLift = 0; enemy.aloft = false; enemy.duelPose = null; } // the Gaunt: a hop or a cut never resumes mid-air
   if (MONSTER_PACK[enemy.kind]?.adventureKin) { enemy.hopLift = 0; enemy.advCling = null; enemy.advPerched = false; enemy.advPose = null; } // a leap, a cling or a kite's height never resumes mid-air (its loop and home do; a Lurker by a wall clings again: advInit)
   if (enemy.kind === "psychicCrystal") enemy.crystalFall = 0; // release 259: a poise break does not survive a reload
   if (enemy.kind === "gloomvast") { enemy.gloomReel = 0; enemy.gloomFade = 0; enemy.poiseBreak = 0; if (!(enemy.gloomDark?.left > 0)) { enemy.gloomDark = null; enemy.gloomVeil = false; enemy.brain = MONSTER_PACK.gloomvast.brain; enemy.packAttacks = [...MONSTER_PACK.gloomvast.attacks, ...(enemy.hybridAttack ? [enemy.hybridAttack] : [])]; } else enemy.gloomDark.laid = false; } // the Gloomvast's Dark carries over a reload (Game.gloomResume lays its decoys again); nothing else of it does
@@ -1497,7 +1522,7 @@ function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
-  e.voidDashing = false; e.voidCharging = false; e.advPose = null;
+  e.voidDashing = false; e.voidCharging = false; e.advPose = null; e.duelPose = null;
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
@@ -3364,6 +3389,132 @@ Object.assign(RUN, {
 });
 
 // Brains: where to stand between attacks.
+// ---------------------------------------------------------------- the Gaunt (duelists.ts; Tim, 2026-11-12)
+// Hooded duelists. Between attacks they close in on a slant, circle the Wayfarer (flipping direction on a hashed clock), give ground
+// when crowded, keep off their kin (duelSeparation) and hop: onto the Wayfarer's level when it is one above or below, out of a corner
+// they cannot walk out of, to a new angle now and then, and back or aside after an attack. A hop in flight always lands, even under a
+// blow; a new hop or attack never starts while the creature is stunned (the ordinary hit-stun, windup-hold and stagger governor apply
+// before any of this runs). Every number is DUELISTS. The vector is written into one scratch object (no allocation a frame).
+const DUEL_V = { x: 0, y: 0, speed: 0 }, DUEL_PUSH = { x: 0, y: 0 };
+const duelAi = (e) => DUELISTS.ai[e.kind] || DUELISTS.ai.gauntDuelist;
+const duelFlipTime = (e, n) => { const F = duelAi(e).flip; return F[0] + (hashSeed(`${e.id}:duel-flip:${n}`) % 1000) / 1000 * (F[1] - F[0]); };
+// The hop in flight: from its start to its landing in DUELISTS.hop.time, lifted along hopArc; aloft while it lasts.
+function duelHopStep(e, s, w) {
+  const h = s.duelHop; if (!h) return false;
+  h.t += w.dt; const k = Math.min(1, h.t / DUELISTS.hop.time);
+  e.x = h.from.x + (h.to.x - h.from.x) * k; e.y = h.from.y + (h.to.y - h.from.y) * k; e.hopLift = hopArc(k, h.climb); e.aloft = k < 1;
+  if (Math.abs(h.to.x - h.from.x) > .05) e.facingX = h.mode === "back" ? (w.player.x >= e.x ? 1 : -1) : h.to.x > h.from.x ? 1 : -1;
+  if (k >= 1) { e.x = h.to.x; e.y = h.to.y; e.hopLift = 0; e.aloft = false; s.duelHop = null; s.duelLanded = Number(w.now) || 0; s.gap = Math.max(s.gap || 0, DUELISTS.hop.time * .5); }
+  return true;
+}
+function duelHop(e, s, w, p, mode) {
+  s.duelCd = DUELISTS.hop.cooldown; s.duelTries = (s.duelTries || 0) + 1;
+  const to = findHop(e, w, p, mode, s.seq * 7 + s.duelTries, duelAi(e).preferred); if (!to) return false;
+  s.duelHop = { from: { x: e.x, y: e.y }, to, t: 0, climb: Math.max(0, levelAt(w, to) - levelAt(w, e)), mode }; s.duelHops = (s.duelHops || 0) + 1;
+  return true;
+}
+// Each frame it is free to act (not attacking, not stunned): after an attack, a hop out or aside; the Wayfarer a level away, a hop to
+// them; stuck, a hop out; and now and then, circling, a hop to a new angle. True when it hopped.
+function duelTick(e, s, w, p, d) {
+  const A = duelAi(e), H = DUELISTS.hop;
+  s.duelCd = Math.max(0, (s.duelCd || 0) - w.dt);
+  if (s.attack) return false;
+  if (s.duelSeen !== s.seq) { // an attack has just ended
+    s.duelSeen = s.seq;
+    if (s.seq > 0) {
+      const R = DUELISTS.after[e.kind] || DUELISTS.after.gauntDuelist, roll = hashSeed(`${e.id}:after:${s.seq}`) % 100;
+      let mode = roll < R.back ? "back" : roll < R.back + R.side ? "side" : null; if (mode === "back" && R.near != null && d > R.near) mode = null;
+      if (mode && duelHop(e, s, w, p, mode)) return true;
+    }
+  }
+  if (s.duelCd > 0) return false;
+  const lv = levelAt(w, e), lp = levelAt(w, p);
+  if (lv !== lp && Math.abs(lv - lp) <= H.maxRise && d <= H.reach[H.reach.length - 1] + A.preferred[1]) return duelHop(e, s, w, p, "close"); // the Wayfarer a level away
+  if ((s.duelStuck || 0) > .6 && d > A.preferred[1]) { s.duelStuck = 0; return duelHop(e, s, w, p, "close"); } // walled in on foot
+  s.duelEvery = (s.duelEvery ?? H.every) - w.dt;
+  if (s.duelEvery <= 0) { s.duelEvery = H.every; s.duelRoll = (s.duelRoll || 0) + 1; if (hashSeed(`${e.id}:reposition:${s.duelRoll}`) % 100 < H.chance) return duelHop(e, s, w, p, d > A.preferred[1] + H.closeFrom ? "close" : "circle"); } // a hop in from afar, or to a new angle
+  return false;
+}
+// Where it walks: in on a slant from beyond its band, round the Wayfarer inside it (easing to the band's middle), away when crowded
+// (`backOff`), straight in when it has lost the line; plus the push off its kin.
+function duelVector(e, s, w, p, d) {
+  const A = duelAi(e), near = A.preferred[0], far = A.preferred[1], to = unit(p.x - e.x, p.y - e.y);
+  if (!s.orbitDir) s.orbitDir = 1;
+  s.duelFlip = (s.duelFlip ?? duelFlipTime(e, 0)) - w.dt;
+  if (s.duelFlip <= 0) { s.orbitDir = -s.orbitDir; s.duelFlips = (s.duelFlips || 0) + 1; s.duelFlip = duelFlipTime(e, s.duelFlips); }
+  const sx = -to.y * s.orbitDir, sy = to.x * s.orbitDir; let x, y, speed;
+  if (!w.los(e, w.player)) { x = to.x; y = to.y; speed = A.approach; }
+  else if (d < A.backOff) { x = -to.x + sx * .5; y = -to.y + sy * .5; speed = A.retreat; }
+  else if (d > far) { x = to.x + sx * .35; y = to.y + sy * .35; speed = A.approach; }
+  else { const radial = (d - (near + far) / 2) * .8; x = sx + to.x * radial; y = sy + to.y * radial; speed = A.strafe; }
+  const push = duelSeparation(e, w.enemies, DUEL_PUSH); x += push.x; y += push.y;
+  DUEL_V.x = x; DUEL_V.y = y; DUEL_V.speed = speed; return DUEL_V;
+}
+// The feint: some swings are held a little longer than the rest (the telegraph shows the whole time).
+function duelFeint(e, s) { if (hashSeed(`${e.id}:feint:${s.seq}`) % 100 < DUELISTS.feint.chance) { s.t += DUELISTS.feint.delay * (s.paced ? BOSS_PACE.windup : 1); s.data.feint = true; } }
+// One blade blow at the Wayfarer if `hit` (they must be in sight): the ordinary damage path (guard, dodge frames, reductions).
+function duelBlow(e, w, id, hit, jumpable = false) { if (hit && w.los(e, w.player)) w.hurt(e, damageOf(e, id), { jumpable, source: id }); }
+Object.assign(START, {
+  duelCombo(e, s) { const A = DUELISTS.attacks.duelCombo; s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + A.radius, arc: A.arc }; s.data.cut = 0; e.duelPose = "load"; duelFeint(e, s); },
+  duelTwinCuts(e, s, w) {
+    const A = DUELISTS.attacks.duelTwinCuts, p = s.data.target, room = rayLength(w, e, s.data.aim, A.dash.length);
+    s.data.dash = Math.max(0, Math.min(room, Math.hypot(p.x - e.x, p.y - e.y) - A.dash.stop)); s.data.cut = 0;
+    s.tele = { type: "lane", aim: s.data.aim, length: s.data.dash + bodyRadius(e) + A.radius, width: .55 }; e.duelPose = "crouch"; duelFeint(e, s);
+  },
+  duelThrust(e, s) { const A = DUELISTS.attacks.duelThrust; s.tele = { type: "rect", aim: s.data.aim, length: A.length, width: A.width }; e.duelPose = "aim"; duelFeint(e, s); },
+  duelSweep(e, s) { const A = DUELISTS.attacks.duelSweep; s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + A.radius, arc: A.arc }; e.duelPose = "wind"; duelFeint(e, s); },
+});
+Object.assign(RUN, {
+  // Three cuts, each a short step along the aim; each can land.
+  duelCombo(e, s, w) {
+    const A = DUELISTS.attacks.duelCombo, a = s.data.aim;
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", A.active); e.duelPose = "cut"; } return; }
+    if (s.phase !== "active") return;
+    const at = A.active - Math.max(0, s.t);
+    while (s.data.cut < A.cuts.length && at >= A.cuts[s.data.cut]) {
+      w.move(e, a.x * A.step, a.y * A.step);
+      duelBlow(e, w, "duelCombo", inArc(e, center(w.player), a, bodyRadius(e) + A.radius + .3, A.arc));
+      s.data.cut++; s.data.cutAt = Number(w.now) || 0;
+    }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  // The dart in along the lane it showed, then two quick cuts.
+  duelTwinCuts(e, s, w) {
+    const A = DUELISTS.attacks.duelTwinCuts, a = s.data.aim;
+    if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", A.active); s.data.ran = 0; e.duelPose = "dart"; } return; }
+    if (s.phase !== "active") return;
+    const at = A.active - Math.max(0, s.t);
+    if (s.data.ran < s.data.dash) { const want = Math.min(s.data.dash, s.data.dash * Math.min(1, at / A.dash.time)), step = want - s.data.ran; if (step > 0 && !w.move(e, a.x * step, a.y * step)) s.data.dash = s.data.ran; else s.data.ran = want; }
+    if (at >= A.dash.time && s.tele?.type === "lane") { s.tele = { type: "arc", aim: a, radius: bodyRadius(e) + A.radius, arc: A.arc }; e.duelPose = "cut"; }
+    while (s.data.cut < A.cuts.length && at >= A.cuts[s.data.cut]) {
+      duelBlow(e, w, "duelTwinCuts", inArc(e, center(w.player), a, bodyRadius(e) + A.radius + .3, A.arc));
+      s.data.cut++; s.data.cutAt = Number(w.now) || 0;
+    }
+    if (s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  // The thrust down its line at the windup's end, held out for `active`.
+  duelThrust(e, s, w) {
+    const A = DUELISTS.attacks.duelThrust, a = s.data.aim;
+    if (s.phase === "windup") {
+      if (s.t > 0) return;
+      const p = center(w.player), dx = p.x - e.x, dy = p.y - e.y, f = dx * a.x + dy * a.y, l = Math.abs(dx * a.y - dy * a.x);
+      duelBlow(e, w, "duelThrust", f >= -.2 && f <= A.length + .3 && l <= A.width + .35); s.data.cut = 1;
+      s.tele = null; e.duelPose = "thrust"; toPhase(s, "active", A.active); return;
+    }
+    if (s.phase === "active" && s.t <= 0) toPhase(s, "recover", A.recover);
+  },
+  // The sweep round its front at the windup's end; low, so a jump clears it.
+  duelSweep(e, s, w) {
+    const A = DUELISTS.attacks.duelSweep;
+    if (s.phase === "windup") {
+      if (s.t > 0) return;
+      duelBlow(e, w, "duelSweep", inArc(e, center(w.player), s.data.aim, bodyRadius(e) + A.radius + .3, A.arc), !!A.jumpable); s.data.cut = 1;
+      s.tele = null; e.duelPose = "swept"; toPhase(s, "active", A.active); return;
+    }
+    if (s.phase === "active" && s.t <= 0) toPhase(s, "recover", A.recover);
+  },
+});
+
 function brainVector(e, s, w, def) {
   const p = center(w.player), brain = BRAINS[e.brain || def.brain] || BRAINS.duelist, [near, far] = brain.preferred, d = distance(p, e), to = unit(p.x - e.x, p.y - e.y), side = { x: -to.y * s.orbitDir, y: to.x * s.orbitDir };
   if (brain.id === "vantage" && e.advHome && Math.hypot(e.x - e.advHome.x, e.y - e.advHome.y) > ADV.vantage.leash) return { ...unit(e.advHome.x - e.x, e.advHome.y - e.y), speed: .9 }; // back to its high ground
@@ -3815,8 +3966,10 @@ export function updatePackMonster(e, w) {
   // Release 259: a dungeon Crystal that has lost the Wayfarer for a while goes back to its patrol.
   if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (def.adventureKin && advTick(e, s, w, p, d)) return;
+  if (def.duelistKin && duelHopStep(e, s, w)) return; // the Gaunt: a hop in flight always lands
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && s.phase === "windup" && !e.untargetable && windupHeld(e, s.data ||= {}, dt)) return; // release 561: held, never cancelled
+  if (def.duelistKin && duelTick(e, s, w, p, d)) return; // the Gaunt: hops in, out, aside and up (never while stunned)
   if (!e.illusion) passiveStillness(e, s, w);
   if (e.kind === "morphingBlob") blobPassive(e, s, w, p, d);
   if (e.kind === "lightningGiant") { giantPassive(e, w); if (giantTraverse(e, s, w)) return; }
@@ -3843,9 +3996,10 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : def.duelistKin ? duelVector(e, s, w, p, d) : brainVector(e, s, w, def), v =e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * dt;
   const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   if (!moved && !move.phases) w.detour?.(e, speed);
+  if (def.duelistKin) s.duelStuck = moved ? 0 : (s.duelStuck || 0) + dt; // the Gaunt: walled in on foot for a while, it hops (duelTick)
   e.facingX = (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
   if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
