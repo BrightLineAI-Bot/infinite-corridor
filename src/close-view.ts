@@ -3,7 +3,7 @@ import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
-import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
@@ -3171,7 +3171,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
-    const held = visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
+    const held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
     const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;
     let cleaverFrame=null;
     if(ordinary&&held==='verge-cleaver'&&now>=(player.dodgeUntil||0)&&(pose==='attack'||pose==='idle'||pose==='walk')){
@@ -3232,7 +3233,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.landing = ordinary && (pose === 'idle' || pose === 'walk') ? (ordinaryLandingPresentation(g, now) ?? NaN) : NaN; // touchdown absorb, only with no other action
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
-        input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
+        input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
+        input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
@@ -3551,11 +3553,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
-  F.outdoor = 0; F.sunC.fill(0);
+  F.outdoor = 0; F.sunC.fill(0); F.sun[3] = 0;
   const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
-    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sunC.set(sk.sunC); F.torchP[1] *= sk.torch ?? OUTDOOR.torch;
+    F.fog.set(sk.horizon); F.haze.set(sk.haze); F.amb.set(sk.ambient); F.sun[0] = sk.sun[0]; F.sun[1] = sk.sun[1]; F.sun[2] = sk.sun[2]; F.sun[3] = sk.planet || 0; F.sunC.set(sk.sunC); F.torchP[1] *= sk.torch ?? OUTDOOR.torch;
     F.grade[0] = sk.grade[0]; F.grade[1] = sk.grade[1]; F.grade[2] = sk.grade[2]; F.grade[3] = 1 / sk.grade[3]; F.finish[0] = Q.vignette ? OUTDOOR.vignette : OUTDOOR.vignette * .6;
     F.outdoorP[1] = half - OUTDOOR.blend.inner; F.outdoorP[2] = half - OUTDOOR.blend.outer; F.outdoorP[3] = Q.detail ? 1 : 0;
     F.skyZ[0] = sk.zenith[0]; F.skyZ[1] = sk.zenith[1]; F.skyZ[2] = sk.zenith[2]; F.skyZ[3] = sk.clouds; F.skyH[0] = sk.horizon[0]; F.skyH[1] = sk.horizon[1]; F.skyH[2] = sk.horizon[2]; F.skyH[3] = sk.ridgeH;

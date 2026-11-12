@@ -321,6 +321,20 @@ const greatSweep = [
   block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
   part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
 ];
+// Mirage of Blades in Close View (Tim, 2026-11-12: "we should have rendered projectiles that travel through
+// the air"): one flying broken greatsword, laid flat as a rotor about its middle (model +X along the blade,
+// +Y its width, +Z up through its thickness), with a stub of grip and guard at the back end. The actor's
+// yaw is its spin (mirageBladePresentation in tool-forms.ts). 50 triangles, baked once.
+export const MIRAGE_BLADE_FORM = Object.freeze({ length: .50, width: .21, thick: 1, grip: Object.freeze([-1.02, -1.34]) });
+const mirageBlade = (() => {
+  const F = MIRAGE_BLADE_FORM, flat = tris => tris.map(t => t.map(([x, y, z]) => [z, y, x]));
+  return Object.freeze([
+    part(flat(brokenGreatswordBlade.face), 0, 0, 0, F.length, F.width, F.thick, 0x8a8a92),
+    part(flat(brokenGreatswordBlade.edge), 0, 0, 0, F.length, F.width, F.thick, 0xd8d4c6),
+    block(F.length * -.98, 0, 0, .035, .19, .03, 0x6f6458),
+    block((F.grip[0] + F.grip[1]) / 2 * F.length, 0, 0, (F.grip[0] - F.grip[1]) / 2 * F.length, .028, .028, 0x5a4330),
+  ]);
+})();
 // Six-sided continuous barrel with a recessed bore and a narrow brass lip. Meshes
 // are baked once; the muzzle remains at the established local Z=1.535 anchor.
 const blunderbussBore = { shell: [], lip: [], inner: [], cap: [] };
@@ -537,7 +551,7 @@ const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
 export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),

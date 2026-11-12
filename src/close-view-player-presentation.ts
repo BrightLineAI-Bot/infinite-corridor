@@ -1,4 +1,5 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
+import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.ts';
 const RIGHT_HAND = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
 const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 // Close View held gear, presentation only (Tim, 2026-11-11: every sword in the left hand,
@@ -161,6 +162,70 @@ export function cleaverSlashBlade(spec, angle, out = new Float64Array(6)) {
   const c = Math.cos(angle), s = Math.sin(angle), e = spec.edge < 0 ? -1 : 1;
   out[0] = rx * c + tx * s; out[1] = ry * c + ty * s; out[2] = rz * c + tz * s;
   out[3] = e * (tx * c - rx * s); out[4] = e * (ty * c - ry * s); out[5] = e * (tz * c - rz * s);
+  return out;
+}
+// Great Sweep (Tim, 2026-11-12: "he takes the Great Sweep out and does a full sweeping animation when
+// you attack with it... and then he just keeps holding the Great Sweep until you attack with something
+// else"; later the same day: "when he uses the tool in its standard form it should be a 360° sweep
+// around you"). Presentation only: the accepted tool action (TOOL_ACTION_TIMING / TOOL_USE_STARTUP_MS)
+// owns the clock and the hit; nothing here moves a hit. The hit is a circle all round the Wayfarer for
+// the effect's life (BRAWLER['great-sweep']: radius 2.4, lifetime .3 s), so the use is one full turn:
+// a short wind-up with the blade drawn back behind the sweep shoulder and the body turned against the
+// turn, then the Wayfarer spins once round with the blade held level and straight out to the sweep
+// side while the effect lives, a short follow-through across the front, and back to the carry.
+// The blade lives in one swing plane around a pivot in front of the chest. Character frame:
+// [side, up, forward], side +1 toward the sweep hand. Lengths are in arm reaches from the sweep
+// shoulder. At angle 0 the blade points along `ref`; positive angles move it along `travel`. The flat
+// lies in the plane and the edge leads (`edge`), so the wrist never rolls. In-plane angles: `from`
+// (wind-up), `out` (held through the turn), `to` (follow-through end), degrees. `spin` is the body's
+// own turn about the vertical, degrees: `windup` against the turn, then `turn` (one revolution) across
+// the arc; positive spin carries the blade the same way as positive plane angles, so the tip only ever
+// moves one way round. `twist` (chest leading into the turn, radians) and `lean` (forward) peak mid-turn
+// and are zero at its ends; `guard` lifts the free arm. Data, so a later change can make the hit follow it.
+export const CLOSE_VIEW_GREAT_SWEEP = Object.freeze({
+  pivot: Object.freeze([-.34, -.30, .30]), hand: .50,
+  ref: Object.freeze([0, -.06, 1]), travel: Object.freeze([-1, -.04, 0]), from: -112, out: -95, to: -55, edge: 1,
+  spin: Object.freeze({ windup: -18, turn: 360 }),
+  // The turn runs from the release (startup) for the sweep effect's life (BRAWLER['great-sweep'].lifetime),
+  // the follow-through for `followMs`, then the carry returns by the end of the accepted action.
+  swingMs: 300, followMs: 120,
+  twist: -.26, lean: .10, guard: .30, reducedBody: .55,
+  // Held carry between uses: the hand low at the sweep hip and the long blade out forward and down, its
+  // flat toward the camera behind and above. `hand` is from the shoulder, `blade` and `edge` directions.
+  carry: Object.freeze({ hand: Object.freeze([.16, -.74, .22]), blade: Object.freeze([.58, -.40, .71]), edge: Object.freeze([0, .86, .51]) }),
+});
+// Clock sampler for one Great Sweep use at accepted elapsed ms. `startupMs` is the accepted release
+// offset (the stored toolUse startup, or the nominal TOOL_USE_STARTUP_MS for a record without one) and
+// `durationMs` the accepted action length; a record shorter than the table scales the arc with it.
+// Writes into `out` (no allocation): weight (carry 0 .. arc 1), angle (radians in the plane), spin
+// (body turn, radians; a whole turn is the same facing), sweep (the blade's heading round the body,
+// spin + angle, radians, never decreasing through a use), swing (0 at the wind-up .. 1 at the end of
+// the turn) and phase. The weight is 0 at both ends: the carry.
+export function sampleGreatSweep(elapsedMs, startupMs = TOOL_USE_STARTUP_MS['great-sweep'], durationMs = TOOL_ACTION_TIMING['great-sweep'].durationMs, out = {}) {
+  const S = CLOSE_VIEW_GREAT_SWEEP, T = TOOL_ACTION_TIMING['great-sweep'], rad = Math.PI / 180;
+  const D = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : T.durationMs, k = Math.min(1, D / T.durationMs);
+  const st = Math.max(1e-3, Math.min(D * .5, Number.isFinite(startupMs) && startupMs > 0 ? startupMs : TOOL_USE_STARTUP_MS['great-sweep'] * k));
+  const e = Math.max(0, Math.min(D, Number.isFinite(elapsedMs) ? elapsedMs : 0));
+  const swingEnd = Math.min(D, st + S.swingMs * k), followEnd = Math.min(D, swingEnd + S.followMs * k);
+  let weight, angle, spin, swing, phase;
+  if (e >= D) { weight = 0; angle = S.to; spin = 0; swing = 1; phase = 'carry'; }
+  else if (e < st) { const u = cutSmooth(e / st); weight = u; angle = S.from; spin = S.spin.windup * u; swing = 0; phase = 'windup'; }
+  else if (e < swingEnd) { const u = cutSmooth((e - st) / (swingEnd - st)); weight = 1; angle = S.from + (S.out - S.from) * Math.min(1, u * 3); spin = S.spin.windup + (S.spin.turn - S.spin.windup) * u; swing = u; phase = 'swing'; }
+  else if (e < followEnd) { weight = 1; angle = S.out + (S.to - S.out) * cutSmooth((e - swingEnd) / Math.max(1e-3, followEnd - swingEnd)); spin = S.spin.turn; swing = 1; phase = 'follow-through'; }
+  else { weight = 1 - cutSmooth((e - followEnd) / Math.max(1e-3, D - followEnd)); angle = S.to; spin = S.spin.turn; swing = 1; phase = 'recovery'; }
+  out.weight = weight; out.angle = angle * rad; out.spin = spin * rad; out.sweep = (spin + angle) * rad; out.swing = swing; out.phase = phase;
+  out.startupMs = st; out.swingEndMs = swingEnd; out.followEndMs = followEnd; out.durationMs = D;
+  return out;
+}
+// Blade direction and leading edge (unit vectors, character frame) at a Great Sweep plane angle:
+// the same one-plane math as the Cleaver slashes (cleaverSlashBlade), on the Great Sweep's plane.
+// `out` holds six numbers: direction [0..2], edge [3..5].
+export function greatSweepBlade(angle, out = new Float64Array(6)) { return cleaverSlashBlade(CLOSE_VIEW_GREAT_SWEEP, angle, out); }
+// Character-frame blade tip at an arc angle, in arm reaches from the sweep shoulder, for a blade
+// `length` reaches long past the hand. The tip runs on one circle about the pivot.
+export function greatSweepTip(angle, length, out = new Float64Array(3)) {
+  const S = CLOSE_VIEW_GREAT_SWEEP, b = greatSweepBlade(angle), r = S.hand + Math.max(0, Number(length) || 0);
+  for (let k = 0; k < 3; k++) out[k] = S.pivot[k] + r * b[k];
   return out;
 }
 export function cleaverCutMotion(stage, phase = 0) {
