@@ -3,7 +3,7 @@ import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
-import { importedEmitterAppearance, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
@@ -3156,7 +3156,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (defeat) amount = defeat.amount;
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
-    const held = visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
+    const held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
     const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;
     let cleaverFrame=null;
     if(ordinary&&held==='verge-cleaver'&&now>=(player.dodgeUntil||0)&&(pose==='attack'||pose==='idle'||pose==='walk')){
@@ -3216,7 +3217,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.landing = ordinary && (pose === 'idle' || pose === 'walk') ? (ordinaryLandingPresentation(g, now) ?? NaN) : NaN; // touchdown absorb, only with no other action
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
-        input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
+        input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
+        input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
         input.alpha = actor.alpha; input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
