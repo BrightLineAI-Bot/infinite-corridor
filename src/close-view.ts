@@ -220,6 +220,17 @@ export const CLOSE_VIEW = Object.freeze({
     // single level eases all the way and a long fall keeps them on screen); `snap` tiles or more away (a teleport, a new floor) it is there at once. Tim, 2026-11-12: "when you transition
     // between levels or elevations, sometimes it just does a cut that's too quick... disorienting... smooth that out more."
     vertical: Object.freeze({ tau: .32, reducedTau: .1, maxLag: 1.3, snap: 3 }),
+    // A section crossing (Tim, 2026-11-12: "The camera does a weird change when you transition between sections. The camera
+    // should just point straight ahead so the Wayfarer is facing the new section."). On arriving in the open overworld from
+    // another map the view was chosen afresh: the yaw from the four-way facing, or, when the way ahead held a tree or a rock
+    // within the boom and a tile, a sweep of eight headings that could turn it to look along the edge; and the crane, the
+    // shoulder and the rig started from the indoor defaults and eased out, so the eye sank and slid sideways for a second.
+    // `snap`: arriving in the open overworld from a map the camera was drawing (a crossing, Wayglass travel, a dungeon's exit)
+    // the camera is put straight behind the Wayfarer, its springs (follow point, height anchor, terrain rise and pull-in, boom,
+    // crane, shoulder, rig, lens) set to their targets on the first frame, the eight-way sweep skipped, any quick turn,
+    // recentre or user tilt let go. `faceTravel`: a crossing (the next section along one axis, the Wayfarer within `edge`
+    // tiles of the edge they came in by) looks along the crossing; other arrivals look the way the Wayfarer faces.
+    crossing: Object.freeze({ snap: true, faceTravel: true, edge: 1.5 }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -707,6 +718,8 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
+  // the map the camera last chose a view for (its area and section), and a pending snap of every spring (CLOSE_VIEW.camera.crossing)
+  area: "", secX: 0, secY: 0, snapNext: false,
   // the calm pass (CLOSE_VIEW.camera.outdoor and .vertical): the open overworld's map (its edges are open ground) and boom;
   // the eased height anchor; the terrain rise and the share of the boom the terrain keeps, with their let-out holds
   edgeMap: null, outdoorBoom: false, zA: NaN, zAV: 0, tRise: 0, tRiseV: 0, tRiseFor: 0, tKeep: 1, tKeepV: 0, tKeepFor: 0, shown: 2.6,
@@ -908,12 +921,17 @@ const footX = (p) => p.x + .5, footY = (p) => p.y + .75;
 function ensureCam(g) {
   cameraScene(g);
   if (CAM.map === g.map) return;
+  // An arrival in the open overworld from a map the camera was drawing (CLOSE_VIEW.camera.crossing): read before the reset
+  const X = CLOSE_VIEW.camera.crossing, arrival = !!X.snap && CAM.map !== null && CAM.valid && CAM.outdoorBoom, travel = arrival && X.faceTravel ? crossingYaw(g) : NaN;
+  CAM.area = g.area; CAM.secX = g.rx; CAM.secY = g.ry; CAM.snapNext = arrival;
+  if (arrival) { CAM.qtT0 = -1; CAM.recentre = NaN; CAM.pitchUser = 0; CAM.basisFollow = false; }
   CAM.focal = 1; CAM.focalV = 0;
   CAM.zA = NaN; CAM.zAV = CAM.tRise = CAM.tRiseV = CAM.tRiseFor = CAM.tKeepV = CAM.tKeepFor = 0; CAM.tKeep = 1;
   CAM.map = g.map; CAM.drawn = false; CAM.dist = CAM.shown = boomReach(g); CAM.shoulder = 0; CAM.distV = CAM.shoulderV = CAM.craneV = 0; CAM.crane = closeViewPreset(g).height; CAM.turnHeld = 0; CAM.yawV = 0; CAM.headX = CAM.headY = 0; CAM.bodyYaw = CAM.bodyDesiredYaw = FACING_YAW[g.player.facing] ?? NaN; CAM.bodyTransient = false; CAM.bodyRevision = CAM.targetRevision = 0; CAM.targetRecentre = false; CAM.lostFor = 0; CAM.lastX = g.player.x; CAM.lastY = g.player.y; CAM.lastNow = 0; CAM.fpx = CAM.fpy = NaN; CAM.fvx = CAM.fvy = 0; CAM.shoulderRoom = CAM.shoulderClearFor = 0; CAM.pausedAt = NaN;
   CAM.pausedTotal = Number(g.presentationPausedMs) || 0;
   const entry = g.map.entry, arena = stillworksCloseView(g.map) && entry && Math.hypot(g.player.x - entry.x, g.player.y - entry.y) <= 1.25 ? g.map.stillworks : null;
-  const facing = arena ? Math.atan2(arena.cy - footY(g.player), arena.cx - footX(g.player)) : FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
+  if (Number.isFinite(travel)) CAM.bodyYaw = CAM.bodyDesiredYaw = travel;
+  const facing = arena ? Math.atan2(arena.cy - footY(g.player), arena.cx - footX(g.player)) : Number.isFinite(travel) ? travel : FACING_YAW[g.player.facing] ?? -Math.PI / 2, open = (a) => { let t = 0; while (t < 12 && !wallAt(g.map, footX(g.player) + Math.cos(a) * (t + .5), footY(g.player) + Math.sin(a) * (t + .5))) t += .5; return t; };
   CAM.rigActive = false; CAM.rigIndex = CAM.rigPending = CAM.rigHold = CAM.rigOffset = CAM.rigOffsetV = 0; CAM.centeredRear = false; CAM.recentre = NaN;
   const preset = closeViewPreset(g), evaluate = (angle) => {
     const fx = Math.cos(angle), fy = Math.sin(angle), forward = Math.min(6, open(angle));
@@ -926,7 +944,7 @@ function ensureCam(g) {
     return { score: forward * (.15 + reach / boomReach(g)), forward, reach, index };
   };
   let yaw = facing, best = evaluate(facing), fallback = best.reach >= CLOSE_VIEW.camera.minDistance ? { ...best, yaw: facing, facingDelta: 0 } : null;
-  if (!arena && (best.forward < boomReach(g) + 1 || best.reach < boomReach(g) * .55))
+  if (!arena && !arrival && (best.forward < boomReach(g) + 1 || best.reach < boomReach(g) * .55))
     for (let i = 0; i < 8; i++) {
       const a = wrap(i * Math.PI / 4), candidate = evaluate(a), facingDelta = Math.abs(wrap(a - facing));
       if (candidate.reach >= CLOSE_VIEW.camera.minDistance && (!fallback || candidate.score > fallback.score + .01 || (Math.abs(candidate.score - fallback.score) <= .01 && facingDelta < fallback.facingDelta))) fallback = { ...candidate, yaw: a, facingDelta };
@@ -938,6 +956,15 @@ function ensureCam(g) {
   if (best.reach < CLOSE_VIEW.camera.minDistance && fallback) { best = fallback; yaw = fallback.yaw; }
   CAM.rigIndex = CAM.rigPending = best.index; CAM.rigOffset = RIG_OFFSETS[best.index] * preset.shoulder;
   CAM.yaw = CAM.inputYaw = yaw;
+}
+// A section crossing (CLOSE_VIEW.camera.crossing): the overworld before and after, the next section along one axis, and the
+// Wayfarer within `edge` tiles of the edge they came in by. Returns the travel's yaw (north, -y, is -pi/2), else NaN.
+function crossingYaw(g) {
+  const dx = g.rx - CAM.secX, dy = g.ry - CAM.secY, p = g.player, map = g.map, e = CLOSE_VIEW.camera.crossing.edge;
+  if (g.area !== "overworld" || CAM.area !== "overworld" || !Number.isInteger(dx) || !Number.isInteger(dy) || Math.abs(dx) + Math.abs(dy) !== 1 || !p || !map) return NaN;
+  const w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w));
+  const at = dx > 0 ? p.x <= e : dx < 0 ? p.x + 1 >= w - e : dy > 0 ? p.y <= e : p.y + 1 >= h - e;
+  return at ? Math.atan2(dy, dx) : NaN;
 }
 function wallAt(map, x, y) { const w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w)), tx = Math.floor(x), ty = Math.floor(y); return tx < 0 || ty < 0 || tx >= w || ty >= h || isWall(map.tiles[ty * w + tx]); }
 // The camera's own wall test: as wallAt, except that off an open overworld section's edge is open ground (the next section
@@ -1525,10 +1552,14 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (offsetWant) { ax += rx * CAM.rigOffset; ay += ry * CAM.rigOffset; want = offsetWant; }
   // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
   // wall is cut at once, the only snap there is
+  // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
+  const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
-  spring(CAM, "crane", "craneV", Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane), C.letOut * 1.5, dt);
+  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane); if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
+    spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
   const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
+  if (snap) { CAM.focal = lerp(1, C.tightFocal, focalRelief); CAM.focalV = 0; }
   spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
   const F = baseF * CAM.focal;
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
@@ -1536,6 +1567,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (camWall(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
   // An open endpoint alone does not clear a concave corner between the shoulder and the player.
   if (sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0;
+  if (snap) { CAM.shoulderRoom = CAM.shoulder = room; CAM.shoulderV = 0; }
   if (room <= CAM.shoulderRoom) { CAM.shoulderRoom = room; CAM.shoulderClearFor = 0; }
   else { CAM.shoulderClearFor += dt; if (CAM.shoulderClearFor >= C.shoulderRecover) CAM.shoulderRoom = room; }
   spring(CAM, "shoulder", "shoulderV", CAM.shoulderRoom, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
@@ -1628,7 +1660,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
     : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (footAngle + headAngle) / 2));
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
-  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true;
+  CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true; CAM.snapNext = false;
   const cosP = CAM.cosP, sinP = CAM.sinP, hc = CAM.hc, ppx = CAM.ppx, ppy = CAM.ppy;
   // the background: the dark beyond the light, and the vault above
   if (!useGL) { ctx.fillStyle = FOG_CSS; ctx.fillRect(0, 0, w, h); }
