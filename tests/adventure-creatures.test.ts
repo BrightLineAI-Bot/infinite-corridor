@@ -41,9 +41,9 @@ function only(e, id) { e.packAttacks = [id]; e.pack = freshPackState(); e.pack.g
 const telegraphed = (w, e) => !!e.pack?.tele || w.effects.some((f) => f.owner === e.id && f.damage > 0 && (f.arming > 0 || f.kind === 'thornDart'));
 
 test('six original creatures, two for each of the first three themes, kept out of every existing roster', () => {
-  assert.deepEqual(ADVENTURE_THEME_IDS, ['tomb', 'verdantRuin', 'ashWaste']);
+  assert.deepEqual(ADVENTURE_THEME_IDS, ['tomb', 'verdantRuin', 'ashWaste', 'lamplitCity', 'alienCapital', 'frostCitadel', 'emberFoundry']); // the second set added four themes
   for (const t of ADVENTURE_THEME_IDS) assert.equal(ADVENTURE_CREATURES[t].length, 2, t);
-  assert.equal(ADVENTURE_KINDS.length, 6); assert.equal(new Set(ADVENTURE_KINDS).size, 6);
+  assert.equal(ADVENTURE_KINDS.length, 14); assert.equal(new Set(ADVENTURE_KINDS).size, 14);
   for (const kind of ADVENTURE_KINDS) {
     const d = MONSTER_PACK[kind]; assert.ok(d, kind); assert.deepEqual(validateMonster(d), [], kind);
     assert.ok(d.prototypeOnly && d.adventureKin && d.noEcho && !d.unique, kind); assert.ok(CREATURE_FORMS[kind], kind);
@@ -54,7 +54,7 @@ test('six original creatures, two for each of the first three themes, kept out o
     for (const id of [...d.attacks, ...d.bossAttacks]) { assert.ok(ATTACK_MODULES[id], id); if (!ATTACK_MODULES[id].passive) assert.ok(PACK_ACTION_FAMILIES[id], `${kind}/${id} has a Close View action family`); }
     assert.ok(isAdventureKind(kind));
   }
-  assert.equal(new Set(ADVENTURE_KINDS.map((k) => MONSTER_PACK[k].render)).size, 6, 'six distinct bodies');
+  assert.equal(new Set(ADVENTURE_KINDS.map((k) => MONSTER_PACK[k].render)).size, 14, 'fourteen distinct bodies');
   assert.ok(new Set(ADVENTURE_KINDS.map((k) => MONSTER_PACK[k].brain)).size >= 5 && new Set(ADVENTURE_KINDS.map((k) => MONSTER_PACK[k].movement)).size >= 5, 'varied brains and movement');
   // No existing creature can borrow an adventure module as a hybrid (they are not on any donor's list).
   const own = new Set(ADVENTURE_KINDS.flatMap((k) => MONSTER_PACK[k].attacks).filter((id) => !['clawSweep', 'bite', 'burrowAmbush'].includes(id)));
@@ -63,7 +63,7 @@ test('six original creatures, two for each of the first three themes, kept out o
 
 test('rosters resolve by theme id with forgiving spelling, and picks are deterministic and weighted', () => {
   assert.equal(adventureCreaturesFor('Verdant Ruin'), ADVENTURE_CREATURES.verdantRuin); assert.equal(adventureCreaturesFor('ash-waste'), ADVENTURE_CREATURES.ashWaste);
-  assert.equal(adventureCreaturesFor('tomb'), ADVENTURE_CREATURES.tomb); assert.deepEqual(adventureCreaturesFor('alienCapital'), []);
+  assert.equal(adventureCreaturesFor('tomb'), ADVENTURE_CREATURES.tomb); assert.deepEqual(adventureCreaturesFor('nowhere'), []);
   const counts = {}; for (let i = 0; i < 2000; i++) { const q = pickAdventureCreature('tomb', `room:${i}`); counts[q.kind] = (counts[q.kind] || 0) + 1; assert.equal(pickAdventureCreature('tomb', `room:${i}`), q); }
   assert.ok(Math.abs(counts.galleryLurker / 2000 - .6) < .05, JSON.stringify(counts));
 });
@@ -237,7 +237,7 @@ test('Close View: six solid authored bodies within budget, admitted natively, ar
     }
     assert.notDeepEqual([...write(kind, { phase: .4 })], [...write(kind, { phase: 2.4 })], `${kind} breathes`); assert.deepEqual([...write(kind, { phase: .4, reduceMotion: true })], [...write(kind, { phase: 2.4, reduceMotion: true })], `${kind} reduced motion holds still`);
   }
-  assert.equal(extents.size, 6, 'six distinct silhouettes');
+  assert.equal(extents.size, 14, 'fourteen distinct silhouettes');
   // Leaps read as airborne while they fly (every leap family), as the Leap Slam always did.
   const e = createCombatant('vinehookLeaper', 5, 5); e.pack = { ...freshPackState(), attack: 'vineVault', phase: 'active', t: .2 }; assert.equal(packActionPresentation(e, ATTACK_MODULES).airborne, true);
   const s = createCombatant('pallidCrawler', 5, 5); s.pack = { ...freshPackState(), attack: 'leapSlam', phase: 'active', t: .2 }; assert.equal(packActionPresentation(s, ATTACK_MODULES).airborne, true);

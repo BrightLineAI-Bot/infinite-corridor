@@ -124,34 +124,148 @@ const cinderPike = [
   part(taper,.17,-.25,2.19,.068,.052,.16,visor,-2,0,1.19),
   part(frontPatch,.17,-.25,2.04,1,.085,.03,ember,-2,0,1.19),
 ];
+// Native fallback Cleaver (Tim, 2026-11-11: the blade is fine, the hilt was oversized). Same five
+// parts and 40 triangles as before, in the same order: a slimmer, hand-length grip, a narrower guard
+// just above the hand, and the unchanged blade section carried down to meet it. The tip stays at 1.87.
 const vergeCleaver = [
-  block(.17,-.25,.91,.043,.052,.14,leather,-2,0,1.19),
-  block(.17,-.25,1.06,.125,.025,.025,bronze,-2,0,1.19),
-  part(taper,.17,-.25,1.48,.112,.009,.39,0x795c48,-2,0,1.19),
+  block(.17,-.25,.835,.027,.032,.075,leather,-2,0,1.19),
+  block(.17,-.25,.93,.118,.022,.02,bronze,-2,0,1.19),
+  part(taper,.17,-.25,1.40,.112,.009,.47,0x795c48,-2,0,1.19),
   // Narrow forged edge on both broad faces; keep the gladius outline, never an axe head.
-  part(membrane([[.063,-.260,1.12],[.072,-.260,1.12],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
-  part(membrane([[.063,-.240,1.12],[.17,-.240,1.86],[.072,-.240,1.12]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
+  part(membrane([[.063,-.260,1.00],[.072,-.260,1.00],[.17,-.260,1.86]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
+  part(membrane([[.063,-.240,1.00],[.17,-.240,1.86],[.072,-.240,1.00]]),0,0,0,1,1,1,0xaaa69a,-2,0,1.19),
 ];
+
+// Imported-hero held weapons, authored in absolute recipe space around the canonical (.17,-.25,.79)
+// grip with their own per-vertex normals, so round shafts shade smoothly at the same triangle cost.
+// Bake-time only: frozen meshes in the part format, read by writeCloseViewHeroGear like any recipe.
+// Every key dimension lives in this one table; the tests read it back against the measured hands.
+export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
+  // Verge Cleaver: a one-hand grip the length of the Wayfarer's fist (.114 world, .82 recipe scale),
+  // a forward-swept guard just above it, an ember stone, and the accepted blade carried down to it.
+  cleaver: Object.freeze({ pommel: Object.freeze([.672, .695, .718]), pommelRadius: .031, grip: Object.freeze([.718, .848]), gripRadius: .020,
+    guard: Object.freeze({ z: .865, tipZ: .910, span: .150, thick: .015 }), bladeBase: .875, tip: 1.87 }),
+  // Rift Bombard: a hip-held grenade launcher. The bore axis rides above the trigger fist; the drum
+  // sits ahead of it where the support hand closes; the muzzle face stays at the established 1.585.
+  bombard: Object.freeze({ axisX: .055, barrelRadius: .074, bore: .060, collar: Object.freeze([1.505, 1.585]), collarRadius: .088,
+    drum: Object.freeze([.87, 1.20]), drumRadius: .132, grip: Object.freeze([.035, .845, .262, .735]), gripRadius: .033, support: Object.freeze([.075, -.350, -.440, .965]) }),
+  // Salvage Blade: the accepted blade and guard, plus a short grip and pommel below the fist.
+  salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]) }),
+});
+const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
+// tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
+function heldPart(tris, color) {
+  const mesh = new Float32Array(tris.length * 3 * MESH_FLOATS), [r, g, b] = RGB(color);
+  let k = 0;
+  for (const tri of tris) for (const [p, n] of tri) {
+    const l = Math.hypot(n[0], n[1], n[2]) || 1;
+    mesh[k++] = p[0]; mesh[k++] = p[1]; mesh[k++] = p[2] - 1.19; mesh[k++] = n[0] / l; mesh[k++] = n[1] / l; mesh[k++] = n[2] / l; mesh[k++] = r; mesh[k++] = g; mesh[k++] = b;
+  }
+  return { mesh, swing: -2, px: 0, pz: 1.19 };
+}
+const v3 = { sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add: (a, b, s = 1) => [a[0] + b[0] * s, a[1] + b[1] * s, a[2] + b[2] * s],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  unit: a => { const l = Math.hypot(a[0], a[1], a[2]); return l > 1e-12 ? [a[0] / l, a[1] / l, a[2] / l] : [0, 0, 1]; } };
+// A smooth tube along an authored path of [x, y, z, radiusA, radiusB?] rings. radiusA lies along
+// `ref` (projected off the path), radiusB across it. A zero-radius ring is a point (a cone tip,
+// one triangle per side). caps: 1 closes the first ring, 2 the last, 3 both. Outward wound.
+// flat: faceted sides (each face takes its own normal), for a drum that should read as chambers.
+function heldTube(path, sides, color, { ref = [1, 0, 0], caps = 0, phase = .5, flat = false } = {}) {
+  const rings = path.map((q, r) => {
+    const t = v3.unit(v3.sub(path[Math.min(r + 1, path.length - 1)], path[Math.max(r - 1, 0)]).slice(0, 3));
+    const u = v3.unit(v3.add(ref, t, -v3.dot(ref, t))), v = v3.cross(t, u), ra = q[3], rb = q[4] ?? q[3];
+    return { t, ra, rb, p: Array.from({ length: sides }, (_, i) => { const a = (i + phase) * 2 * Math.PI / sides, c = Math.cos(a), s = Math.sin(a);
+      return { x: v3.add(v3.add(q, u, ra * c), v, rb * s), n: v3.unit(v3.add(v3.add([0, 0, 0], u, c / Math.max(ra, 1e-4)), v, s / Math.max(rb, 1e-4))) }; }) };
+  }), tris = [];
+  for (let r = 0; r + 1 < rings.length; r++) {
+    const A = rings[r], B = rings[r + 1], seg = Math.hypot(...v3.sub(path[r + 1], path[r]).slice(0, 3)) || 1, slope = -((B.ra + B.rb) - (A.ra + A.rb)) / 2 / seg;
+    const n = (ring, i) => v3.add(ring.p[i].n, ring.t, slope);
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      if (A.ra > 0 || A.rb > 0) tris.push([[A.p[i].x, n(A, i)], [A.p[j].x, n(A, j)], [B.p[j].x, n(B, j)]]);
+      if (B.ra > 0 || B.rb > 0) tris.push([[A.p[i].x, n(A, i)], [B.p[j].x, n(B, j)], [B.p[i].x, n(B, i)]]);
+    }
+  }
+  const cap = (ring, sign) => { const nn = v3.add([0, 0, 0], ring.t, sign); for (let i = 1; i + 1 < sides; i++) tris.push(sign > 0 ? [[ring.p[0].x, nn], [ring.p[i].x, nn], [ring.p[i + 1].x, nn]] : [[ring.p[0].x, nn], [ring.p[i + 1].x, nn], [ring.p[i].x, nn]]); };
+  if (caps & 1) cap(rings[0], -1);
+  if (caps & 2) cap(rings.at(-1), 1);
+  if (flat) for (const t of tris) { const n = v3.cross(v3.sub(t[1][0], t[0][0]), v3.sub(t[2][0], t[0][0])); for (const q of t) q[1] = n; }
+  return heldPart(tris, color);
+}
+// Flat-shaded faceted solid: every triangle takes its face normal, flipped to agree with `away`
+// (a function of the face centroid returning the outward hint), so authored winding cannot invert light.
+function heldFacets(tris, color, away) {
+  return heldPart(tris.map(t => { let n = v3.cross(v3.sub(t[1], t[0]), v3.sub(t[2], t[0])); const c = [0, 1, 2].map(k => (t[0][k] + t[1][k] + t[2][k]) / 3);
+    if (v3.dot(n, away(c)) < 0) { t = [t[0], t[2], t[1]]; n = n.map(x => -x); } return t.map(p => [p, n]); }), color);
+}
+const WAYFARER_GUNMETAL = 0x3a4246, WAYFARER_LEATHER = 0x5a4330, WAYFARER_WALNUT = 0x5b4130, RIFT_SEAM = 0xc58cff;
+
+// Verge Cleaver for the imported hero: 96 triangles. The blade keeps the accepted silhouette and
+// colours (warm forged flats, a bright verge edge, the long straight edge line to a clipped point);
+// it now runs down to a hand-sized hilt instead of starting above an oversized handle.
+const heroVergeCleaver = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.cleaver, X = .17, Y = -.25, G = F.guard;
+  // Blade levels [z, edge dx (verge side), spine dx]. Bevels are .017/.013 wide and the flats .010 thick.
+  const levels = [[F.bladeBase, -.090, .068], [1.12, -.107, .076], [1.62, -.035, .034], [F.tip, 0, 0]], bevel = [.017, .013], t = .010;
+  const edge = [], flat = [];
+  for (let l = 0; l + 1 < levels.length; l++) {
+    const ring = ([z, e, s], tip) => tip ? Array(6).fill([X, Y, z]) : [[X + e, Y, z], [X + e + bevel[0], Y + t, z], [X + s - bevel[1], Y + t, z], [X + s, Y, z], [X + s - bevel[1], Y - t, z], [X + e + bevel[0], Y - t, z]];
+    const a = ring(levels[l], false), b = ring(levels[l + 1], l + 2 === levels.length);
+    const quad = (list, i, j) => { if (l + 2 === levels.length) list.push([a[i], a[j], b[j]]); else list.push([a[i], a[j], b[j]], [a[i], b[j], b[i]]); };
+    quad(edge, 0, 1); quad(flat, 1, 2); quad(edge, 2, 3); quad(edge, 3, 4); quad(flat, 4, 5); quad(edge, 5, 0);
+  }
+  const outward = c => [0, c[1] - Y, 0];
+  // A dark fuller groove on both flats, just proud of them.
+  const fuller = [];
+  for (const side of [1, -1]) { const y = Y + side * (t + .0006); fuller.push([[X - .012, y, .93], [X + .010, y, .93], [X - .002, y, 1.46]], [[X - .012, y, .93], [X - .002, y, 1.46], [X - .016, y, 1.40]]); }
+  return Object.freeze([
+    heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], F.pommelRadius], [X, Y, F.pommel[2], F.pommelRadius * .68]], 6, brass),
+    heldTube([[X, Y, F.grip[0], F.gripRadius], [X, Y, F.grip[1], F.gripRadius]], 6, WAYFARER_LEATHER),
+    // Forward-swept quillons across the blade's width; flattened through its thickness.
+    heldTube([[X - G.span, Y, G.tipZ, .010, .008], [X - .055, Y, G.z, .019, G.thick], [X + .055, Y, G.z, .019, G.thick], [X + G.span, Y, G.tipZ, .010, .008]], 4, WAYFARER_GUNMETAL, { ref: [0, 0, 1] }),
+    part(ellipsoid(4, 1), X, Y, G.z, .024, .022, .024, ember, -2, 0, 1.19, 0, true),
+    heldFacets(edge, 0xaaa69a, outward),
+    heldFacets(flat, 0x795c48, outward),
+    heldFacets(fuller, WAYFARER_GUNMETAL, outward),
+  ]);
+})();
 
 // Future Close View tool silhouettes. These are recipe-only until the ordered tool-action pass
 // selects them from accepted production events. All begin at the canonical (.17,-.25,.79) grip.
-// Six chamber mouths sit on the cylinder face; the brass collar reuses the
-// previous nested-cylinder budget rather than adding another equipment pass.
-const bombardChambers=[];
-for(let i=0;i<6;i++){
-  const a=(i+.5)*Math.PI/3,cx=Math.cos(a)*.083,cy=Math.sin(a)*.083,r=.016,z=1.301;
-  bombardChambers.push([[cx-r,cy,z],[cx,cy-r,z],[cx+r,cy,z]],
-    [[cx-r,cy,z],[cx+r,cy,z],[cx,cy+r,z]]);
-}
-const riftBombard = [
-  block(.17,-.25,.91,.055,.065,.14,leather,-2,0,1.19),
-  part(bevel,.17,-.25,1.10,.15,.15,.20,iron,-2,0,1.19),
-  part(bombardChambers,.17,-.25,0,1,1,1,0x171a20,-2,0,1.19),
-  part(detailPrism,.17,-.25,1.37,.065,.065,.04,brass,-2,0,1.19),
-  block(.17,-.25,1.37,.045,.045,.13,iron,-2,0,1.19),
-  part(flare,.17,-.25,1.53,.085,.085,.055,coal,-2,0,1.19),
-  block(.08,-.25,.91,.13,.055,.055,iron,-2,0,1.19,.38),
-];
+// Rift Bombard (Tim, 2026-11-11: it should look like a grenade launcher, held low at the hip with
+// two hands): 96 triangles. Recipe +Z is the barrel, -X is up and +Y outward while it is fired.
+// A fat bore with a blue muzzle collar and a rift-lit throat, a revolving drum with lit faces where
+// the support hand closes, a raked black pistol grip through the trigger fist, a side handle for the
+// support hand and a top strap back over the fist.
+// Its palette (Tim, 2026-11-11: "blue accents... black and blue"): a black body and grips, a blue collar, a blue-lit throat and drum (glow is a lit actor colour, close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive).
+export const RIFT_BOMBARD_COLOURS = Object.freeze({ body: 0x17191e, grip: 0x101114, accent: 0x2f6fd8, glow: 0x5aa6ff });
+const riftBombard = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.bombard, C = RIFT_BOMBARD_COLOURS, X = F.axisX, Y = -.25, [g0x, g0z, g1x, g1z] = F.grip, S = F.support;
+  const drumWall = heldTube([[X, Y, F.drum[0], F.drumRadius], [X, Y, F.drum[1], F.drumRadius]], 6, C.body, { phase: 0, flat: true });
+  const drumFaces = [];
+  for (const z of F.drum) { const ring = Array.from({ length: 6 }, (_, i) => [X + Math.cos(i * Math.PI / 3) * F.drumRadius, Y + Math.sin(i * Math.PI / 3) * F.drumRadius, z]);
+    for (let i = 1; i < 5; i++) drumFaces.push([ring[0], ring[i], ring[i + 1]]); }
+  const annulus = [];
+  { const z = F.collar[1], o = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.collarRadius, Y + Math.sin(a) * F.collarRadius, z]; }),
+    n = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.bore, Y + Math.sin(a) * F.bore, z]; });
+    for (let i = 0; i < 6; i++) { const j = (i + 1) % 6; annulus.push([o[i], o[j], n[j]], [o[i], n[j], n[i]]); } }
+  const bore = [];
+  { const z = F.collar[1] - .004, n = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.bore, Y + Math.sin(a) * F.bore, z]; });
+    for (let i = 1; i < 5; i++) bore.push([n[0], n[i], n[i + 1]]); }
+  // The strap's underside clears the trigger fist (measured top at recipe x .046).
+  const strapZ = [.62, F.drum[0]], strap = block(.018, Y, (strapZ[0] + strapZ[1]) / 2, .028, .030, (strapZ[1] - strapZ[0]) / 2, C.body, -2, 0, 1.19);
+  return Object.freeze([
+    heldTube([[g1x, Y, g1z, F.gripRadius, F.gripRadius * .75], [g0x, Y, g0z, F.gripRadius * .85, F.gripRadius * .7]], 6, C.grip, { ref: [0, 0, 1], caps: 1 }),
+    strap,
+    drumWall,
+    heldFacets(drumFaces, C.glow, c => [0, 0, c[2] - (F.drum[0] + F.drum[1]) / 2]),
+    heldTube([[X, Y, F.drum[1] - .005, F.barrelRadius], [X, Y, F.collar[0] + .005, F.barrelRadius]], 6, C.body),
+    heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, C.accent),
+    heldFacets(annulus, C.accent, () => [0, 0, 1]),
+    heldFacets(bore, C.glow, () => [0, 0, 1]),
+    heldTube([[S[0], S[1], S[3], .019], [S[0], S[2], S[3], .017]], 4, C.grip, { ref: [0, 0, 1] }),
+  ]);
+})();
 // Closed forged blade: the sharp outer ring retains the original broken outline;
 // inset front/back faces provide readable thickness without changing length or reach.
 const brokenGreatswordOutline = [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]];
@@ -187,10 +301,13 @@ const blunderbussBore = { shell: [], lip: [], inner: [], cap: [] };
   }
   for(let i=1;i<5;i++)blunderbussBore.cap.push([deep[0],deep[i],deep[i+1]]);
 }
+// Polish (2026-11-11, Tim's favourite, kept): the boxy grip block becomes a slim round wrapped grip
+// whose open ends hide in the fist and receiver, and the flared barrel shades smoothly. Same bore,
+// muzzle and 92 triangles.
 const blunderbuss = [
-  block(.17,-.25,.91,.055,.06,.14,leather,-2,0,1.19),
+  heldTube([[.17,-.25,.73,.024],[.17,-.25,.99,.026]],6,leather),
   part(bevel,.17,-.25,1.10,.087,.065,.15,0x9b8059,-2,0,1.19),
-  part(blunderbussBore.shell,.17,-.25,0,1,1,1,iron,-2,0,1.19),
+  heldTube([[.17,-.25,1.20,.052],[.17,-.25,1.535,.082]],6,iron),
   part(blunderbussBore.lip,.17,-.25,0,1,1,1,brass,-2,0,1.19),
   part(blunderbussBore.inner,.17,-.25,0,1,1,1,0x29252a,-2,0,1.19),
   part(blunderbussBore.cap,.17,-.25,0,1,1,1,0x11151b,-2,0,1.19),
@@ -222,7 +339,7 @@ const needleCaster = [
 ];
 // Recipe-space muzzle tips (the grip is (.17,-.25,.79); the barrel/shaft runs along +Z, except the
 // generic emitter, which points along recipe +X). Every Close View shot from a held tool starts here.
-const TOOL_MUZZLE_LOCAL=Object.freeze({'rift-bombard':Object.freeze([.17,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575]),
+const TOOL_MUZZLE_LOCAL=Object.freeze({'rift-bombard':Object.freeze([CLOSE_VIEW_HERO_WEAPON_FORM.bombard.axisX,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575]),
   'spark-coil':Object.freeze([.17,-.25,1.30]),'needle-caster':Object.freeze([.17,-.25,1.41]),emitter:Object.freeze([.355,-.25,.783])});
 const PHASED_TOOL_EMISSION=new Set(['rift-bombard','blunderbuss','lumen-spindle']);
 export const closeViewHeldMuzzleLocal=(profile)=>Object.hasOwn(TOOL_MUZZLE_LOCAL,profile)?TOOL_MUZZLE_LOCAL[profile]:null;
@@ -367,9 +484,28 @@ for(const look of ['pilgrim','mercenary','minstrel','scholar','traveler','cartog
   companions['dungeonReciter:'+look]=parts;
 } // exact rule cells are the residual panel, never generic bars
 
+// Tim, 2026-11-11, in the Deep: what lies there and the Oculus stand in Close View as solid things, not as flat
+// marks or cards (close-view.ts CLOSE_VIEW_PROPS places them). Aperture crystals float and turn, lit from within; the Oculus's
+// dais is the standard view's blue; the Ember Door and the Deep Stair are stones with a lit face and a turning chevron. Their
+// glowing colours are entries of CLOSE_VIEW_ACTOR_LOOK.emissive (the violet 0xc58cff, the cyan 0x7fe7ff, ember 0xf3a55c, gold
+// 0xffd25a), so they are lit from within and resist the fog.
+const bipyramid=(n,up,down,upper)=>{const ring=[],faces=[];for(let i=0;i<n;i++){const a=(i+.5)*2*Math.PI/n;ring.push([Math.cos(a),Math.sin(a),0]);}for(let i=0;i<n;i++){const j=(i+1)%n;faces.push(upper?[ring[i],ring[j],[0,0,up]]:[ring[j],ring[i],[0,0,-down]]);}return faces;};
+const crystal=(lit,dark)=>{const parts=[part(bipyramid(6,.36,.3,true),0,0,0,.16,.16,1,lit),part(bipyramid(6,.36,.3,false),0,0,0,.16,.16,1,dark)];
+  for(let k=0;k<3;k++){const a=k*2*Math.PI/3,x=Math.cos(a)*.3,y=Math.sin(a)*.3,z=(k-1)*.09;parts.push(part(bipyramid(4,.09,.07,true),x,y,z,.045,.045,1,lit),part(bipyramid(4,.09,.07,false),x,y,z,.045,.045,1,dark));}
+  return parts;};
+const apertureCrystal=crystal(0xc58cff,0x6e3f9e),apertureRift=crystal(0x7fe7ff,0x1f6a72);
+const oculusDais=[part(prism(10),0,0,.04,.44,.44,.04,0x1c4a52),part(prism(10),0,0,.086,.34,.34,.008,0x7fe7ff),part(ellipsoid(6,2),0,0,.62,.05,.13,.24,0x7fe7ff,0,0,.62,0,true),part(ellipsoid(6,1),0,0,.62,.058,.05,.1,0x1c4a52,0,0,.62,0,true)];
+for(let i=0;i<8;i++){const a=i*Math.PI/4,c=Math.cos(a),s=Math.sin(a),w=.018,P=(r,d)=>[c*r-s*d,s*r+c*d,.098];oculusDais.push(part(membrane([P(.13,-w),P(.31,-w),P(.31,w),P(.13,w)]),0,0,0,1,1,1,0x123a40));}
+const wayStone=(glow,down)=>{const parts=[part(prism(4,.8),0,0,.23,.3*Math.SQRT2,.3*Math.SQRT2,.23,0x3e3c44),block(0,0,.48,.26,.26,.035,0x57555f)];
+  for(const [x,y,sx,sy] of [[.255,0,.006,.15],[-.255,0,.006,.15],[0,.255,.15,.006],[0,-.255,.15,.006]])parts.push(block(x,y,.24,sx,sy,.12,glow));
+  for(const side of [-1,1])parts.push(block(side*.1,0,.86,.13,.035,.035,glow,0,side*.1,.86,(down?1:-1)*side*-.785));
+  return parts;};
+const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
+export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
+
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
-  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS };
+  ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
 ]));
@@ -396,7 +532,18 @@ function wayfarerToolMaterials(parts) {
   const map = new Map([...WAYFARER_TOOL_COLORS].map(([from, to]) => [key(from), [(to >> 16) / 255, ((to >> 8) & 255) / 255, (to & 255) / 255]]));
   return Object.freeze(parts.map(p => { const mesh = Float32Array.from(p.mesh); for (let i = 0; i < mesh.length; i += MESH_FLOATS) { const to = map.get([mesh[i + 6], mesh[i + 7], mesh[i + 8]].join()); if (to) { mesh[i + 6] = to[0]; mesh[i + 7] = to[1]; mesh[i + 8] = to[2]; } } return { ...p, mesh }; }));
 }
-const HERO_GEAR = Object.freeze({melee:player.slice(-2),'salvage-blade':player.slice(-2),'cinder-pike':cinderPike,'verge-cleaver':vergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
+// Salvage Blade (Tim: fine as is): the accepted guard and blade, unchanged, plus a short walnut grip
+// and brass pommel showing below the fist and a bright edge line down both sides of the blade.
+const heroSalvageBlade = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, X = .17, Y = -.25;
+  const edges = [];
+  for (const side of [-1, 1]) edges.push([[.155, Y + side * .046, .80], [.155, Y + side * .040, .80], [.155, Y + side * .0085, 1.40]]);
+  return Object.freeze([...player.slice(-2),
+    heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], .026], [X, Y, F.pommel[2], .019]], 6, brass),
+    heldTube([[X, Y, F.grip[0], F.gripRadius], [X, Y, F.grip[1], F.gripRadius]], 6, WAYFARER_WALNUT),
+    part(membrane(edges[0]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19), part(membrane(edges[1]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19)]);
+})();
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.

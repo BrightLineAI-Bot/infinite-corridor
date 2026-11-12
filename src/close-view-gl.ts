@@ -132,6 +132,9 @@ uniform vec4 u_outdoor; uniform vec4 u_skyZ; uniform vec4 u_skyH; uniform vec4 u
 // the water must keep the ordinary art (rafts drawn on it); outY: deep water's darkening, shallow water's lift, the
 // shoreline's wander (tiles), the reflection's clouds (1 balanced and full)
 uniform vec4 u_outX; uniform vec4 u_outY;
+// the sky's mood (close-view-outdoor.ts OUTDOOR.moods): mood: stars, the clouds' dark undersides, the moon (1: its disc for the
+// sun's), a distant lightning flash now (0-1; 0 with reduced motion); moodC: the clouds' colour, the flash's azimuth (radians)
+uniform vec4 u_mood; uniform vec4 u_moodC;
 uvec4 maskAt(ivec2 T) { if (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y) return uvec4(0u, 0u, 0u, 1u); return texelFetch(u_mask, T, 0); }
 bool pitCode(uint g) { return g == 1u || g == 3u || g == 4u || g == 5u; }
 bool wallAt(ivec2 T) { return (maskAt(T).a & 1u) == 1u; }
@@ -227,6 +230,19 @@ vec3 floorMat(vec2 P, ivec2 T, uint mat, out float h, out float wet) {
   return c;
 }
 // The ceiling plane fills the bays between the structural ribs in the static mesh.
+uniform vec4 u_cave; uniform vec4 u_caveB; uniform vec3 u_caveGlow; uniform vec3 u_caveFleck; // 2026-11-11, the Deep's living rock: cave (moss, glowing spots, flecks, glow), caveB (glowing cracks, boulder scale, -, -)
+// The Deep's living rock (wall material 7, ceiling kind 5; close-view.ts CLOSE_VIEW_DEEP): boulders split by cracks, moss in
+// drifts, a few glowing growths and fine spore flecks. Returns the height (0 in a crack); the rest as shares (0..1).
+float caveRock(vec2 q, float k, out float crack, out float moss, out float spot, out float fleck) {
+  vec3 cl = cells(q * u_caveB.y + vec2(k * 0.37, k * 0.11));
+  crack = 1.0 - smoothstep(0.015, 0.05 + fwidth(cl.y) * 1.5, cl.y);
+  float n = fbm(q * 2.7 + cl.z * 4.0);
+  moss = smoothstep(0.5, 0.72, fbm(q * vec2(1.3, 2.2) + 3.7) + 0.25 * (n - 0.5)) * u_cave.x;
+  vec3 sp = cells(q * 4.2 + 17.0);
+  spot = (1.0 - smoothstep(0.07, 0.11, sp.x)) * step(1.0 - u_cave.y, sp.z);
+  fleck = u_finish.z > 0.5 ? step(1.0 - 0.025 * u_cave.z, hash12(floor(q * 34.0))) : 0.0;
+  return (1.0 - crack) * (0.45 + 0.55 * (1.0 - smoothstep(0.0, 0.7, cl.x))) * (0.8 + 0.3 * n);
+}
 vec3 ceilMat(vec2 P, out float h, out float dark) {
   float B = u_ceil.z, k = u_ceilK.x; vec3 c = u_ceilRGB; h = 0.0; dark = 0.0;
   if (k < 0.5) {
@@ -242,6 +258,10 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     c = mix(plank, c, max(beam, joist)); h = beam * 1.0 + joist * 0.5; dark = (1.0 - max(beam, joist)) * u_ceilK.z;
   } else if (k < 2.5) { float w = P.x * 2.2 + sin(P.y * 1.3 + sin(P.x * 0.6)) * 0.25, rb = abs(fract(w) - 0.5); float rib = (1.0 - smoothstep(0.05, 0.12, rb)) * (0.75 + 0.25 * sin(P.y * 9.0 + floor(w))); // vertebrae: ribs knuckled along their length
     vec3 v = cells(P * 2.5); c = mix(vec3(0.06, 0.045, 0.05) * (0.7 + 0.5 * v.z), vec3(0.16, 0.11, 0.1), rib); h = rib - (1.0 - smoothstep(0.02, 0.06, v.y)) * 0.3; dark = (1.0 - rib) * u_ceilK.z;
+  } else if (k > 4.5) { // the Deep's rock overhead (2026-11-11): rough lumps and cracks falling into the dark
+    float crack, moss, spot, fleck; h = caveRock(P * 1.5, 3.0, crack, moss, spot, fleck);
+    c = u_ceilRGB * (0.45 + 0.5 * h) * (0.8 + 0.3 * vnoise(P * 5.0)); c = mix(c, u_ceilRGB * 0.3, crack * 0.7);
+    dark = (0.25 + 0.45 * (1.0 - h)) * u_ceilK.z;
   } else if (k > 3.5) { // a starship's ceiling (seed realms): clean panels, a seam each tile, a light panel in each bay
     vec2 f = abs(fract(P) - 0.5), b = fract(P / B); float seam = smoothstep(0.47, 0.49, max(f.x, f.y));
     float lit = (1.0 - smoothstep(0.08, 0.1, abs(b.x - 0.5))) * (1.0 - smoothstep(0.3, 0.32, abs(b.y - 0.5)));
@@ -254,15 +274,28 @@ vec3 ceilMat(vec2 P, out float h, out float dark) {
     h = girder + rib * 0.5 + pipe * 0.7; dark = (1.0 - max(girder, max(pipe, rib))) * u_ceilK.z; }
   return c;
 }
-// the open sky: horizon to zenith, the sun and its glow, clouds drifting (still with reduced motion), the far ridge line
+// the open sky: horizon to zenith, the sun (or the moon) and its glow, stars, clouds drifting (still with reduced motion), a
+// distant lightning flash in a storm, the far ridge line
 vec3 outdoorSky(vec3 ray, bool full) {
   vec3 d = normalize(ray); float up = clamp(d.z, 0.0, 1.0), sd = max(dot(d, u_sun.xyz), 0.0);
-  vec3 c = mix(u_skyH.rgb, u_skyZ.rgb, pow(up, 0.5)) + u_sunC * (0.16 * pow(sd, 5.0) + 0.45 * pow(sd, 60.0) + 2.0 * smoothstep(0.9993, 0.9997, sd));
+  float disc = smoothstep(0.9993, 0.9997, sd);
+  vec3 c = mix(u_skyH.rgb, u_skyZ.rgb, pow(up, 0.5)) + u_sunC * (0.16 * pow(sd, 5.0) + 0.45 * pow(sd, 60.0) + 2.0 * disc * (1.0 - u_mood.z));
+  float cover = 0.0;
+  if (u_mood.x > 0.0 && d.z > 0.0) { vec2 sp = d.xy / (d.z + 0.35) * 70.0; vec2 cell = floor(sp); float h = hash12(cell); // stars: one hash a cell, fixed to the sky
+    vec2 o = vec2(hash12(cell + 7.1), hash12(cell + 3.3)) * 0.6 + 0.2; float r = length(fract(sp) - o);
+    float star = step(0.965, h) * smoothstep(0.16, 0.0, r) * (0.45 + 0.55 * fract(h * 37.0)) * (0.8 + 0.2 * sin(u_time * 0.002 + h * 60.0));
+    c += vec3(0.85, 0.9, 1.0) * star * u_mood.x * smoothstep(0.02, 0.3, d.z); }
+  if (u_mood.z > 0.5) { float m = smoothstep(0.99935, 0.99965, sd); c = mix(c, vec3(0.86, 0.88, 0.95) * (0.85 + 0.15 * vnoise(d.xy * 900.0)), m); } // the moon's disc
   if (!full) return c;
   if (u_skyZ.w > 0.0 && d.z > 0.0) { vec2 q = d.xy / (d.z + 0.16) * 0.9 + vec2(u_time * 0.000006, u_time * 0.0000025); // the low tier: one layer of noise, not three
-    float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08, cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
-    vec3 cc = mix(u_skyH.rgb, vec3(1.0), 0.5) * (0.82 + 0.3 * n) + u_sunC * 0.18 * pow(sd, 3.0);
+    float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08; cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
+    vec3 cc = mix(u_skyH.rgb, u_moodC.rgb, 0.5) * (0.82 + 0.3 * n) * (1.0 - u_mood.y * (1.0 - n) * 0.85) + u_sunC * 0.18 * pow(sd, 3.0);
     c = mix(c, cc, cover * smoothstep(0.0, 0.14, d.z) * 0.85); }
+  if (u_mood.w > 0.0) { float sa = mod(atan(d.y, d.x) - u_moodC.w + 3.14159265, 6.2831853) - 3.14159265, a = abs(sa); // distant lightning: the clouds lit from within near its bearing
+    float g = u_mood.w * exp(-a * a * 9.0) * exp(-max(d.z, 0.0) * 5.0);
+    c += vec3(0.62, 0.68, 0.9) * g * (0.35 + 1.1 * cover);
+    if (u_finish.z > 0.5 && u_mood.w > 0.55) { float off = (vnoise(vec2(d.z * 60.0, u_moodC.w * 10.0)) - 0.5) * 0.05 + (vnoise(vec2(d.z * 210.0, u_moodC.w * 3.0)) - 0.5) * 0.012; // its bolt (detail tiers)
+      c += vec3(0.9, 0.93, 1.0) * smoothstep(0.004, 0.0, abs(sa - off)) * step(0.0, d.z) * (1.0 - smoothstep(0.12, 0.2, d.z)) * u_mood.w; } }
   if (u_skyH.w > 0.0) { vec2 a = normalize(d.xy + vec2(1e-5)); float fw = 1.5 / u_F;
     float far = u_skyH.w * 0.62 * (0.4 + 0.6 * vnoise(a * 5.0 + 11.0)); // a paler, farther range behind
     c = mix(c, mix(u_ridge.rgb, u_skyH.rgb, 0.62), 1.0 - smoothstep(far - fw, far + fw, d.z));
@@ -484,7 +517,10 @@ void main() {
   }
   vec3 N0 = vec3(v_nrm.xy, 0.0); if (dot(N0, N0) < 0.25) N0 = vec3(0.0, 0.0, (part > 4.5 && part < 5.5) || fract(part) > 0.1 ? -1.0 : 1.0); // a flat face: up, or down (a soffit, a cornice's underside: part x.25)
   float h = 1.0, shin = 0.0, wet = 0.0; vec3 emit = vec3(0.0); vec2 id; float mortar = 0.0; vec2 q = vec2(along, z);
-  if (part >= 10.0) { // structural ceiling beams and their undersides
+  if (part > 11.5 && part < 12.5) { // 2026-11-11: a growth or a feature of the Deep (a cap, a shard, a column...): its own colour, lit from within by deco
+    N0 = normalize(N0); c = v_col * (0.82 + 0.3 * vnoise(vec2(along * 7.0, z * 9.0) + v_meta.w));
+    emit = v_col * deco * (u_shimmer.z > 0.5 ? 1.0 : 0.85 + 0.15 * sin(u_time * 0.0017 + v_meta.w)); shin = deco > 0.05 ? 20.0 : 0.0; wet = deco * 0.4;
+  } else if (part >= 10.0) { // structural ceiling beams and their undersides
     vec2 surface = abs(N0.z) > 0.5 ? v_world.xy : vec2(along, top - z);
     if (mat < 0.5) {
       h = ashlar(surface, u_stoneP.x * 0.62, u_stoneP.y, u_stoneP.z, u_stoneP.w, id, mortar);
@@ -502,6 +538,16 @@ void main() {
       c *= (0.78 + 0.34 * vnoise(surface * 12.0)) * (1.0 - seam * 0.46);
       h = 1.0 - seam * 0.65; shin = 18.0;
     }
+  } else if (mat > 6.5 && part < 3.5) { // 2026-11-11: the Deep's living rock (CLOSE_VIEW_DEEP): boulders and cracks, moss thickest low, glowing growths, spore flecks
+    vec2 cq = abs(N0.z) > 0.5 ? v_world.xy * 1.3 : q; float crack, moss, spot, fleck;
+    h = caveRock(cq, v_meta.w, crack, moss, spot, fleck); id = floor(cq); float n = vnoise(cq * 6.0), near = 1.0 - smoothstep(4.0, 9.0, v_depth);
+    c *= (0.7 + 0.5 * h) * (0.85 + 0.3 * n); c = mix(c, u_mortar, crack * 0.85);
+    moss *= 0.55 + 0.45 * (1.0 - smoothstep(0.3, 1.8, z)); c = mix(c, u_damp * (0.55 + 0.6 * n), moss);
+    float pulse = u_shimmer.z > 0.5 ? 1.0 : 0.8 + 0.2 * sin(u_time * 0.0013 + v_meta.w);
+    spot *= step(0.15, z) * (1.0 - smoothstep(1.7, 2.2, z)); c = mix(c, u_caveGlow * 0.5, spot); emit += u_caveGlow * spot * u_cave.w * pulse;
+    emit += u_caveGlow * crack * u_caveB.x * (0.6 + 0.4 * n) * (1.0 - smoothstep(0.6, 1.6, z)) * pulse; // a lava bog's seams glow near the foot
+    c = mix(c, u_caveFleck, fleck * near * 0.8); emit += u_caveFleck * fleck * near * 0.3;
+    h -= moss * 0.15; wet = 0.2 * (1.0 - moss);
   } else if (mat > 5.5 && part < 4.5) { // a starship's panels (seed realms): brushed composite, crisp seams, a light strip and a kick strip
     vec2 t = vec2(along, z * 0.8); vec2 tf = abs(fract(t) - 0.5); id = floor(t); float aa = fwidth(along) + 0.004;
     float seam = smoothstep(0.475 - aa, 0.49, max(tf.x, tf.y)), brushed = 0.92 + 0.07 * vnoise(vec2(along * 42.0, z * 1.5 + id.x * 3.1));
@@ -592,7 +638,7 @@ void main() {
   if (part < 0.5) { float bits = v_meta.z, ab = floor(bits / 4.0);
     if (mod(ab, 2.0) > 0.5) c *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.35, u)); if (ab > 1.5) c *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.35, 1.0 - u)); }
   c *= 1.0 - 0.5 * (1.0 - smoothstep(0.0, 0.12, z));
-  vec3 N = u_wallP.z > 0.5 && mat < 4.5 ? bump(N0, v_world, h * 0.022) : N0;
+  vec3 N = u_wallP.z > 0.5 && (mat < 4.5 || mat > 6.5) ? bump(N0, v_world, h * 0.022) : N0;
   vec3 dif, spe; lightsAt(v_world, N, shin > 0.0 ? shin : (wet > 0.05 ? 20.0 : 0.0), dif, spe);
   vec3 col = c * dif + spe * max(wet, shin > 0.0 ? 0.5 : 0.0) * 0.4 + emit;
   col *= mix(1.0, u_wallP.w, smoothstep(1.2, 2.4, z)); // high up the wall it falls into the dark
@@ -750,8 +796,8 @@ const DECAL_FS = `#version 300 es
 precision highp float;
 precision highp int;
 uniform vec3 u_ring; uniform vec3 u_glow; uniform float u_time; uniform vec3 u_fog; uniform vec4 u_fogP; in vec2 v_loc; in vec4 v_meta; in float v_depth; in vec2 v_world; flat in highp uint v_rgb; out vec4 outColor;
-uniform highp usampler2D u_mask; uniform ivec2 u_mapSize;
-vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : p < 3.5 ? vec3(1.0, 0.75, 0.35) : vec3(0.62, 0.86, 1.0); } // warm, bioluminescent, ghost-light, a failing lamp, a starship's light strip
+uniform highp usampler2D u_mask; uniform ivec2 u_mapSize; uniform vec3 u_hue5; // 2026-11-11: hue 5, the theme's own glow (the Deep's growths)
+vec3 hue(float p) { return p < 0.5 ? vec3(1.0, 0.55, 0.22) : p < 1.5 ? vec3(0.3, 0.95, 0.8) : p < 2.5 ? vec3(0.55, 0.72, 1.0) : p < 3.5 ? vec3(1.0, 0.75, 0.35) : p < 4.5 ? vec3(0.62, 0.86, 1.0) : u_hue5; } // warm, bioluminescent, ghost-light, a failing lamp, a starship's light strip
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0), keep = 1.0 - fogK; vec3 lit = vec3(v_meta.w);
   if (k < 0.5) { a = v_meta.y * (1.0 - smoothstep(0.35, 1.0, r)); outColor = vec4(0.0, 0.0, 0.0, a); return; }
@@ -802,7 +848,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0 };
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
 // Coarse observational history only; never expose driver logs or probe hardware.
 const GPU_DIAGNOSTICS={attempted:false,contextLost:false,lastFailure:'none',frameFailure:'none',lastHeroFailure:'none'};
 export function closeViewGLDiagnostics(){return {
@@ -909,7 +955,7 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
     const vis = !seen || (t.blocked && seen.wall ? seen.wall(x, y) : seen(x, y)), code = vis ? closeViewHazardCode(t) : 0, mat = closeViewFloorMaterial(t);
     const sky = skylights.length && skylights.some((f) => Math.abs(f.x - x) <= 1 && Math.abs(f.y - y) <= 1);
     const space = t.realm === "ship" && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk)), bay = t.realm === "ship" && (t.catwalk || (t.chasm && !t.bored)); // seed realms: the cosmos below (space), and above an open bay and its catwalks (bay)
-    data[o] = (open || bay ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0) | (space ? 8 : 0) | (bay ? 16 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && map.hall && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
+    data[o] = (open || bay ? 0 : 1) | (vis ? 0 : 2) | (sky ? 4 : 0) | (space ? 8 : 0) | (bay ? 16 : 0); data[o + 1] = code; data[o + 2] = (code === 1 && safe && safe[k] === 1 ? 1 : 0) | ((remap ? remap[mat] ?? mat : mat) << 1); const inlay = !t.blocked && (map.hall || map.building?.adventure) && vis ? (t.sigil === "pupil" ? 4 : t.sigil ? 3 : t.inlay === 2 ? 2 : t.inlay === 1 ? 1 : 0) : 0;
     data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }
@@ -968,7 +1014,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1,
   // outdoors (close-view-outdoor.ts); sunC stays black and outdoor 0 indoors
-  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), props: 0,
+  outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), mood: new Float32Array(4), moodC: new Float32Array(4), props: 0,
   // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
   runs: new Int32Array(2 * 16), nRuns: 0, relief: 0 };
 export function drawSceneGL(ground, U, models = null, hero = null, beasts = null) {
@@ -1002,7 +1048,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   // 1b. outdoors: the outcrops and trees, one static buffer, opaque, with depth
   const outdoor = F.outdoor > 0 && !!S.prop && S.outdoorKey !== null;
   const outdoorU = (P) => { const u = P.U; gl.uniform1i(u.u_ground, 0); gl.uniform1i(u.u_mask, 1); gl.uniform4f(u.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(u.u_tex, ground.width, ground.height); gl.uniform2i(u.u_mapSize, S.maskW, S.maskH);
-    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY);
+    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC);
     gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
   // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
   if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(S.terr.p); cam(S.terr); light(S.terr); outdoorU(S.terr);

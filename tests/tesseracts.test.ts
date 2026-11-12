@@ -53,10 +53,10 @@ test('a labyrinth\'s vault gives a Labyrinth Tesseract glyph, once', () => {
   assert.equal(s.tesseracts.owned.length, 1); assert.equal(s.tesseracts.owned[0].grade, 'labyrinth'); assert.equal(grantTesseract(s, `${base}:vault`, 'labyrinth'), null);
 });
 
-// Pentagon finding (2026-11-05): the gold cue points only to labyrinths now; Pentagons have their own sigils (pentagon-finding.test.ts).
-test('the hunt: a gold ground cue points toward the nearest unexplored labyrinth', () => {
+// Pentagon finding (2026-11-05): the gold cue pointed only to labyrinths; Pentagons have their own sigils (pentagon-finding.test.ts).
+// Waymark guides (Tim, 2026-11-11: "remove the smaller one with the line"): the gold cue is gone; the wonderTarget search remains.
+test('the hunt: no gold ground cue is laid any more; the labyrinth search it used still finds one', () => {
   const s = save(); s.seed = 'TIM1'; const g = new Game(s, 0); let found = null; for (let cx = -64; cx <= 64 && !found; cx += 8) for (let cy = -64; cy <= 64 && !found; cy += 8) if (g.pentagonHere(cx, cy)) found = { cx, cy };
-  let cue = null; for (let k = 4; k <= 12 && !cue; k++) { g.rx = found.cx; g.ry = found.cy + k; g.loadArea('overworld', false); cue = g.map.objects.find((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder'); }
-  assert.ok(cue, 'a wonder cue'); assert.deepEqual([cue.dirX, cue.dirY], [Math.sign(cue.targetRx - g.rx), Math.sign(cue.targetRy - g.ry)]);
-  assert.equal(cue.name, 'a labyrinth'); assert.ok(Math.abs(cue.targetRx - g.rx) + Math.abs(cue.targetRy - g.ry) <= 6); void pentagonPlan;
+  let target = null; for (let k = 4; k <= 12; k++) { g.rx = found.cx; g.ry = found.cy + k; g.loadArea('overworld', false); assert.ok(!g.map.objects.some((o) => o.kind === 'wayfindingCue' && o.signalKind === 'wonder'), `${g.rx},${g.ry}: no wonder cue`); target ||= g.wonderTarget(); }
+  assert.ok(target, 'a labyrinth near'); assert.equal(target.name, 'a labyrinth'); void pentagonPlan;
 });

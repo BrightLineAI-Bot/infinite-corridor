@@ -94,7 +94,7 @@ function trees(v) {
 const mix = (list) => { const n = { spire: 0, compact: 0, grove: 0 }; for (const { m } of list) n[m.canopy.form]++; return n; };
 
 test('landscape 19: the tables; version 18 keeps its own', () => {
-  assert.equal(LANDSCAPE_VERSION, 23); assert.equal(TREES_V19.version, 19); assert.equal(TREES_V18.version, 18);
+  assert.equal(LANDSCAPE_VERSION, 24); assert.equal(TREES_V19.version, 19); assert.equal(TREES_V18.version, 18);
   assert.deepEqual(TREES_V18.specs.spire.reach, [4, 7], 'version 18 as it shipped'); assert.deepEqual(TREES.tries, { spire: 80, grove: 240 }); assert.equal(TREES.greaterTries, 120); assert.equal(TREES_V14.layouts, 60);
   const S = TREES_V19.specs; assert.deepEqual(S.spire.reach, TREES.spire.reach, 'the spire reach of versions 13 to 17'); assert.ok(S.tall.reach[0] >= TREES_V18.specs.spire.reach[0], 'tall spires first');
   assert.equal(S.spire.least[4][1], 4, 'a four-sided tree\'s second side keeps four tiles'); assert.equal(S.greater.least[4][1], 4);
@@ -143,7 +143,7 @@ test('older ground regenerates byte for byte: version 18 sections fingerprinted 
 
 test('in the game: new ground grows version 19 trees and pins landscape 19; ground first seen at 18 keeps its version 18 tree', () => {
   const [x, y] = [184, 16], fresh = freshSave(); fresh.seed = SEED; const g = new Game(fresh, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
-  assert.equal(fresh.atlas[`${x},${y}`].landscapeVersion, 23); assert.equal(g.map.canopy.version, 21); assert.equal(g.map.canopy.form, 'spire');
+  assert.equal(fresh.atlas[`${x},${y}`].landscapeVersion, 24); assert.equal(g.map.canopy.version, 21); assert.equal(g.map.canopy.form, 'spire');
   const old = freshSave(); old.seed = SEED; old.atlas = { [`${x},${y}`]: { ...fresh.atlas[`${x},${y}`], landscapeVersion: 18 } }; const g18 = new Game(old, 0); g18.rx = x; g18.ry = y; g18.loadArea('overworld');
   assert.equal(g18.map.canopy.version, 18); assert.deepEqual(g18.map.canopy, section(SEED, x, y, 18).canopy, 'the version 18 tree, as it was');
 });

@@ -22,7 +22,7 @@ test('actual imported and native Cleaver tips cut up/down/up/down with anatomica
     const a=sampled(step,.12),b=sampled(step,.40),ga=gearOf(a.frame,stage(step)),gb=gearOf(b.frame,stage(step)),ta=tipOf(a.frame,ga),tb=tipOf(b.frame,gb),sign=step%2?1:-1;
     assert.ok((tb.point[2]-ta.point[2])*sign>1,'actual blade tip crosses vertically, not just a hit effect');
     const native=p=>{const out=new Float32Array(7680),end=writeCloseViewModel(out,0,{kind:'playerVergeCleaver',x:0,y:0,z:0,yaw:0,phase:0,pace:0,pose:'attack',amount:p,primaryStage:stage(step)});return {out,end};},na=native(.12),nb=native(.4);
-    assert.ok((nb.out[nb.end-gb.length+tb.index+2]-na.out[na.end-ga.length+ta.index+2])*sign>.5,'native fallback has the same signed cut');
+    const nativeTip=n=>n.out[n.end-5*10+2];/* the native recipe ends with the edge membrane [base, tip, base]: its second vertex is the blade tip */assert.ok((nativeTip(nb)-nativeTip(na))*sign>.5,'native fallback has the same signed cut');
     const carry=sampled(step,0);assert.ok(carry.frame.leftSocket[13]>.15,'rear screen-right is positive world lateral');assert.ok(-carry.frame.leftSocket[13]<-.15,'front screen-left is anatomical right');assert.ok(carry.state.primaryGripResidual<.01);
     assert.equal(na.end/30,modelTriangleCount('playerVergeCleaver'));
   }
