@@ -6149,7 +6149,8 @@ export class Game {
       const more = clear + R.margin - gap(), d1 = gap() || 1;
       this.moveGrounded(e, (e.x - p.x) / d1 * more, (e.y - p.y) / d1 * more); if (gap() >= clear - ACTOR_CONTACT.epsilon) return true;
     }
-    const sx = p.x, sy = p.y, open = (x, y) => footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y);
+    // the ring fallback keeps the Wayfarer on its own level: never up or down a ledge (release 914 review)
+    const sx = p.x, sy = p.y, lv = elevationAt(this.map, w, sx, sy), open = (x, y) => footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y) && elevationAt(this.map, w, x, y) === lv;
     for (const r of R.rings) for (let k = 0; k < R.angles; k++) {
       const a = k * Math.PI * 2 / R.angles, x = sx + Math.cos(a) * r, y = sy + Math.sin(a) * r;
       if (Math.hypot(x - e.x, y - e.y) < clear + R.margin || !open(x, y)) continue;

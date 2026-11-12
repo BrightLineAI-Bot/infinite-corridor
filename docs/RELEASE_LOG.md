@@ -15,15 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r914 (`c1265a9326d1`); production serves `r912-f0117e40ae61` (published 2026-11-12 after a Fable review of r911 to r912). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r914 (`c1265a9326d1`); production serves `r914-c1265a9326d1` (published 2026-11-12 after a Fable review of r912 to r914). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 915 | Claude | claude/roof-decks-915 | Standable roofs on overworld shacks, huts and district houses (reached from one level below, a neighbouring roof, drone or glider); aimed Rift Step in Close View; Rift Step now takes fall damage; the drone won't lift through a roof from inside; Close View camera snaps behind the Wayfarer facing the new section on a crossing | In flight. |
-| 914 | Claude | claude/cv-refinements | Close View overworld camera (terrain pull-in only when the chest line is blocked, no section-edge pull-in, a tile further out, eased height follow, realistic jump apex); houses 1.5x taller with roofs kept until the Wayfarer is inside; the Wayfarer passes through shaman-warded creatures and the hiding Listener | Merged as `c1265a9326d1` (#581). |
-| 913 | Claude | claude/cv-beast-rework | Close View second passes: Astral Worm (one-bodied griffin, a bite that is the head, jointed mandibles and veined wings), Stalker (cohesive cat and ape, weighted gaits) | Merged as `730e3668c9ab` (#580). |
+| 914 | Claude | claude/cv-refinements | Close View overworld camera (terrain pull-in only when the chest line is blocked, no section-edge pull-in, a tile further out, eased height follow, realistic jump apex); houses 1.5x taller with roofs kept until the Wayfarer is inside; the Wayfarer passes through shaman-warded creatures and the hiding Listener | Merged as `c1265a9326d1` (#581). Published as r914-c1265a9326d1 (2026-11-12). |
+| 913 | Claude | claude/cv-beast-rework | Close View second passes: Astral Worm (one-bodied griffin, a bite that is the head, jointed mandibles and veined wings), Stalker (cohesive cat and ape, weighted gaits) | Merged as `730e3668c9ab` (#580). Published in r914 (2026-11-12). |
 | 912 | Claude | claude/cv-last-four | Close View Astral Worm (all forms), Stalker (cat and ape; marks on the floor), Gloomvast (luminous gas), Listener (robed figure and Morphling); all on their clocks | Merged as `f0117e40ae61` (#579). Published as r912-f0117e40ae61 (2026-11-12). |
 | 911 | Claude | claude/compass-objective | The compass points only when there is an objective; before any world beast has woken, red waymarks lead to the nearest crossing not yet entered; respawned creatures give full experience, normal loot and one mark | Merged as `37269cec64fc` (#578). Published as r911-37269cec64fc (2026-11-12). |
 | 910 | Claude | claude/cv-void-walker | Close View Void Walker on a converted RPG Character Pack body with its hood, night-sky face, split coat; casts, dashes and teleport on their clocks; skiff keeps the billboard | Merged as `8a0a850f5b5a` (#577). Published as r910-8a0a850f5b5a (2026-11-12). |
@@ -273,6 +273,7 @@ Main is at r914 (`c1265a9326d1`); production serves `r912-f0117e40ae61` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 914 | r914-c1265a9326d1 | 2026-11-12 | Fable review (912→914, releases 913–914): no blockers; build clean; phase release refuses walls and lethal tiles (probe beside lava and abyss); dithered roof program falls back safely; camera occlusion fixed at 16 samples. Note: the phase ring fallback ignores elevation (fixed in 915). |
 | 912 | r912-f0117e40ae61 | 2026-11-12 | Fable review (911→912): no blockers. Published by the publishing session. |
 | 911 | r911-37269cec64fc | 2026-11-12 | Fable review (910→911): no blockers. Published by the publishing session. |
 | 910 | r910-8a0a850f5b5a | 2026-11-12 | Fable review (907→910, releases 908–910, Close View beasts): no blockers; build clean; all nine new beast kinds within their triangle, bone and buffer budgets; a combat stress run threw nothing; render-only, no save change. Note: first sight of a new beast builds its mesh synchronously (about 20–30 ms). |
