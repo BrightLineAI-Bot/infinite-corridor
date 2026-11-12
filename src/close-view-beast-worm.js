@@ -7,7 +7,7 @@
 // or about to burst up) it keeps the standard view's heaving mound. Nothing here changes timing, damage, reach or targeting.
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, meshBuilder, clamp01, smooth, span, kick, wobble,
-} from "./close-view-beast-rig.js?v=r912-f0117e40ae61";
+} from "./close-view-beast-rig.js?v=r914-c1265a9326d1";
 
 const SEGS = 10, TENTS = 6;
 export const WORM_RIG = Object.freeze({

@@ -7,27 +7,36 @@
 // - the ape: a white silverback leaning forward on its knuckles, a great hump, a silver saddle, dark chest and face under a heavy
 //   brow, cyan eyes, short thick legs, and bat wings with three finger bones, folded like a cape, spread in flight, wrapped round
 //   it like a cloak when it perches (drawApe, drawApeArm).
+// Each body is one hide (Tim's review of 912: "a bunch of pieces instead of a coherent body"): the cat's trunk runs from rump to
+// skull skinned across its spine bones, its six legs grow out of it through shoulder and haunch masses, and its tail flows from
+// the hips; the ape's arms roll out of the hump through the deltoid, its legs out of the rump, its wings out of the shoulder
+// blades. Their gaits carry weight: the cat's prowl rolls haunch against shoulders under a level head, the ape's hump rolls
+// and sinks onto the planted knuckles.
 // What grows out of its back is on the same skeleton: the turret, the appendage (sword, three spikes, the tendril into the ground),
 // the two great liquid blades that cross in an X, the gorilla's launched fists on stretching arms, the energized sphere and the
 // liquid shield (stalker.ts sets every one of them; this module reads them). The pool, the mist, the tide and the copies and decoys
 // keep the standard view's billboard (close-view-beasts.ts `eligible`); the hidden states (lying in wait, the fog's veil, the
 // mirage) already do (`hidden`). Its marks, eruptions, chomping puddles and flying shots lie on the floor (drawStalkerCloseViewFloor),
 // where Close View draws an admitted beast's ground work. Nothing here changes timing, damage, reach or targeting.
-import { STALKER } from "./stalker.js?v=r912-f0117e40ae61";
-import { drawStalkerMarks } from "./stalker-render.js?v=r912-f0117e40ae61";
+import { STALKER } from "./stalker.js?v=r914-c1265a9326d1";
+import { drawStalkerMarks } from "./stalker-render.js?v=r914-c1265a9326d1";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone, boneLocalToWorld,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r912-f0117e40ae61";
+} from "./close-view-beast-rig.js?v=r914-c1265a9326d1";
 
 export const STALKER_RIG = Object.freeze({
   closeViewScale: 1.25, // as every Close View beast (presentation only)
   turnRate: 7, attackTurnRate: 14, blendMs: 130, morphMs: 260, deathMs: 2000, hitMs: 260, strikeMs: 170,
-  cat: Object.freeze({ thigh: .15, shin: .16, paw: .035, stride: .95, stance: .55, footLift: .1, bob: .018, settle: 6,
+  cat: Object.freeze({ thigh: .16, shin: .16, paw: .035, stride: .95, stance: .55, footLift: .1, bob: .018, settle: 6,
     // leg hips (f, r) by pair: fore, middle, hind; the hind knee bends forward
-    legs: Object.freeze([[.3, .12], [0, .13], [-.34, .13]]), crouch: .12 }),
-  ape: Object.freeze({ upper: .32, fore: .28, thigh: .18, shin: .16, foot: .045, fist: .07, stride: .85, stance: .6, footLift: .09, bob: .03, settle: 5,
-    shoulder: Object.freeze([.26, .25, .68]), hip: Object.freeze([-.22, .16, .38]), crouch: .1 }),
+    legs: Object.freeze([[.3, .085], [0, .08], [-.34, .09]]), splay: 1.05, crouch: .12,
+    // the prowl's roll (haunch and shoulders opposed), its fore-and-aft rock, and the tail's swing against the stride (radians)
+    roll: .045, rock: .025, tailSwing: .14 }),
+  ape: Object.freeze({ upper: .34, fore: .3, thigh: .18, shin: .16, foot: .045, fist: .07, stride: .85, stance: .6, footLift: .09, bob: .03, settle: 5,
+    shoulder: Object.freeze([.26, .25, .68]), hip: Object.freeze([-.22, .16, .38]), crouch: .1,
+    // the knuckle walk's weight on the planted arm: roll and yaw of the hump (radians), its sideways slide (model units), its sink
+    weightRoll: .09, weightYaw: .06, weightShift: .035, weightSink: .07 }),
   // where the back moves rise from (body-local, on the cat's spine and the ape's chest), and the fist's height above its ground
   backCat: Object.freeze([-.02, 0, .15]), backApe: Object.freeze([-.18, 0, .2]), fistHeight: .3,
   bladeLength: 1, swordLength: 1, spikeLength: 1, // authored lengths (model units); the game's lengths set the bone scale
@@ -69,7 +78,7 @@ const E_EYE = 1, E_GLOW = 2, E_AURA = 3, E_SHIELD = 4;
 
 // ------------------------------------------------------------------------------------------------ the bodies
 const hexOf = (c) => parseInt(String(c).slice(1), 16);
-// stalker-render.js?v=r912-f0117e40ae61's colours, as numbers
+// stalker-render.js?v=r914-c1265a9326d1's colours, as numbers
 const C = Object.freeze({ fur: hexOf("#f1f3f6"), sheen: hexOf("#fbfcfd"), shade: hexOf("#c9d1dc"), leg: hexOf("#e9edf2"), paw: hexOf("#eef1f5"), silver: hexOf("#d8e2ee"),
   earIn: hexOf("#b9c2cf"), nose: hexOf("#8b7a84"), brow: hexOf("#9aa4b4"), eye: hexOf("#9feeff"), chevron: hexOf("#96dcff"), lip: hexOf("#7f8898"),
   saddle: hexOf("#c7d0dc"), skin: hexOf("#5d6573"), face: hexOf("#4f5664"), apeBrow: hexOf("#3d434e"), muzzle: hexOf("#3a404a"), fist: hexOf("#59606c"), edge: hexOf("#7e8898"),
@@ -79,35 +88,46 @@ const C = Object.freeze({ fur: hexOf("#f1f3f6"), sheen: hexOf("#fbfcfd"), shade:
 function lerpHex(a, b, t) { t = clamp01(t); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); }
 const bw = (name) => { const i = BI[name] * 3, w = STALKER_SKELETON.bindWorld; return [w[i], w[i + 1], w[i + 2]]; };
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-// A limb along -u from a bone's origin (bind space), blended into the next bone over its last section.
-function limbLoft(B, top, low, from, to, r0, r1, seg, color, tone, lean = false) {
-  const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2];
-  const sections = lean ? [{ at: from, rx: r0, rz: r0 * 1.1, bones: [top, top, 0] }, { at: mid, rx: (r0 + r1) / 2 * 1.05, rz: (r0 + r1) / 2, bones: [top, top, 0] }, { at: to, rx: r1, rz: r1, bones: [top, low, .5] }]
-    : [{ at: add(from, [0, 0, .02]), rx: r0 * .8, rz: r0 * .8, bones: [top, top, 0] }, { at: from, rx: r0, rz: r0 * 1.1, bones: [top, top, 0] },
-      { at: mid, rx: (r0 + r1) / 2 * 1.05, rz: (r0 + r1) / 2, bones: [top, top, 0] }, { at: to, rx: r1, rz: r1, bones: [top, low, .5] },
-      { at: add(to, [0, 0, -.025]), rx: r1 * .8, rz: r1 * .8, bones: [low, low, 0] }];
-  B.color(color).loft({ seg, minSeg: lean ? 3 : 4, tone, caps: !lean, sections });
+// The cat's one hide: a trunk from rump to the back of the skull, each section skinned across the body bones by where it lies
+// (no seams where the spine bends), legs that grow out of it and a tail that flows from the hips.
+// [f, u, half width, half height]: a round haunch, a tucked waist, a deep chest, the neck rising into the head.
+const CAT_TRUNK = Object.freeze([[-.63, .385, .035, .035], [-.6, .385, .08, .085], [-.54, .385, .118, .122], [-.45, .385, .138, .142], [-.34, .38, .136, .138],
+  [-.22, .365, .12, .118], [-.1, .355, .108, .104], [.02, .355, .11, .106], [.13, .365, .122, .122], [.24, .375, .135, .142], [.33, .39, .132, .14],
+  [.41, .415, .112, .118], [.48, .445, .09, .096], [.54, .475, .074, .08], [.6, .5, .062, .066], [.64, .51, .04, .044]]);
+// Bones along the trunk: [f of the bone's origin, name]; a point between two is skinned linearly across them.
+const CAT_SPINE = Object.freeze([[-.32, 'cBody'], [0, 'cSpine'], [.3, 'cChest'], [.58, 'cHead']]);
+function spineBones(f) {
+  if (f <= CAT_SPINE[0][0]) return [CAT_SPINE[0][1], CAT_SPINE[0][1], 0];
+  for (let i = 0; i < CAT_SPINE.length - 1; i++) { const [f0, a] = CAT_SPINE[i], [f1, b] = CAT_SPINE[i + 1]; if (f <= f1) return [a, b, (f - f0) / (f1 - f0)]; }
+  return [CAT_SPINE[CAT_SPINE.length - 1][1], CAT_SPINE[CAT_SPINE.length - 1][1], 0];
 }
+// The trunk's half width and centre at f (for what lies on its flank).
+function trunkAt(f) {
+  const T = CAT_TRUNK; let i = 0; while (i < T.length - 2 && T[i + 1][0] < f) i++;
+  const k = clamp01((f - T[i][0]) / (T[i + 1][0] - T[i][0])), m = (j) => T[i][j] + (T[i + 1][j] - T[i][j]) * k;
+  return { u: m(1), rx: m(2), rz: m(3) };
+}
+// A leg, top to paw: [distance down from the hip (negative above it, inside the trunk), inward pull toward the spine (share of the
+// hip's offset), half width across, half depth fore and aft, weight on the upper leg, weight on the lower leg]; the hind haunch
+// and the fore shoulder differ in mass.
+const CAT_LEG_FORE = Object.freeze([[-.15, .55, .03, .07, 0, 0], [-.1, .35, .058, .1, 0, 0], [-.045, .12, .068, .1, .2, 0], [0, 0, .066, .088, .5, 0],
+  [.05, 0, .056, .072, .9, 0], [.11, 0, .046, .056, 1, 0], [.16, 0, .038, .042, 1, .5], [.2, 0, .033, .036, 1, .9], [.27, 0, .029, .031, 1, 1],
+  [.31, 0, .026, .028, 1, 1]]);
+const CAT_LEG_MID = Object.freeze([[-.12, .55, .028, .055, 0, 0], [-.08, .35, .046, .075, 0, 0], [-.04, .12, .058, .085, .2, 0], [0, 0, .06, .08, .5, 0],
+  [.05, 0, .054, .068, .9, 0], [.11, 0, .045, .054, 1, 0], [.16, 0, .037, .041, 1, .5], [.2, 0, .032, .035, 1, .9], [.27, 0, .028, .03, 1, 1],
+  [.31, 0, .026, .028, 1, 1]]);
+const CAT_LEG_HIND = Object.freeze([[-.16, .55, .035, .08, 0, 0], [-.11, .35, .07, .13, 0, 0], [-.05, .12, .084, .13, .2, 0], [0, 0, .084, .115, .5, 0],
+  [.05, 0, .07, .09, .9, 0], [.11, 0, .052, .062, 1, 0], [.16, 0, .038, .044, 1, .5], [.2, 0, .032, .036, 1, .9], [.27, 0, .028, .03, 1, 1],
+  [.31, 0, .026, .028, 1, 1]]);
 function buildCat(B, low, full) {
-  const seg = low ? 8 : full ? 16 : 12;
-  // the body: deep chest, a dip behind the shoulders, a tucked waist, a round haunch; white above, a cool shade beneath
-  const BODY = [[-.58, .37, .05, .05, 'cBody'], [-.52, .38, .11, .12, 'cBody'], [-.4, .38, .14, .14, 'cBody'], [-.26, .37, .135, .13, 'cBody'],
-    [-.12, .355, .115, .105, 'cBody', 'cSpine', .5], [.02, .355, .115, .105, 'cSpine'], [.14, .37, .13, .12, 'cSpine', 'cChest', .5],
-    [.28, .385, .145, .14, 'cChest'], [.4, .4, .125, .125, 'cChest'], [.47, .43, .08, .085, 'cChest']];
-  B.color(C.fur).loft({ seg, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })),
-    tone: (i, k, st) => st < -.35 ? C.shade : st > .85 ? C.sheen : C.fur });
-  // the neck into the head, carried low and level
-  B.color(C.fur).loft({ seg: low ? 7 : 12, caps: false, sections: [{ at: [.36, 0, .42], rx: .11, rz: .12, bones: ['cChest', 'cChest', 0] },
-    { at: [.47, 0, .46], rx: .085, rz: .1, bones: ['cChest', 'cHead', .5] }, { at: [.56, 0, .49], rx: .07, rz: .085, bones: ['cHead', 'cHead', 0] }] });
-  // the haunch and shoulder muscle the legs hang from
-  for (const [, s] of SIDES) {
-    B.bone('cBody').color(C.fur).ellipsoid({ at: [-.03, s * .075, -.04], radius: [.16, .09, .13], rings: low ? 3 : 5, seg: low ? 6 : 10 });
-    B.bone('cChest').color(C.fur).ellipsoid({ at: [.02, s * .075, -.04], radius: [.12, .085, .13], rings: low ? 3 : 5, seg: low ? 6 : 10 });
-    // the blue chevrons on its flank (Tim: "I did like those blue chevrons")
-    if (!low) for (const [bone, f0, u0] of [['cBody', .02, .03], ['cSpine', -.1, .0], ['cSpine', .12, .01]]) {
-      const r = bone === 'cBody' ? .142 : .118;
-      for (const d of [1, -1]) B.bone(bone).color(C.chevron, E_GLOW).box({ at: [f0 + .022, s * r, u0 + d * .035], size: [.045, .006, .007], F: [.6, 0, -d * .8], U: [0, s, 0], bevel: 0 });
-    }
+  const seg = low ? 8 : full ? 14 : 12;
+  // the trunk: white above, a cool shade beneath, a sheen down the spine
+  B.color(C.fur).loft({ seg, sections: CAT_TRUNK.filter((_, i) => !low || i % 2 === 0 || i === CAT_TRUNK.length - 1).map(([f, u, rx, rz]) => ({ at: [f, 0, u], rx, rz, bones: spineBones(f) })),
+    tone: (i, k, st) => st < -.45 ? C.shade : st > .88 ? C.sheen : C.fur });
+  // the blue chevrons on its flank (Tim: "I did like those blue chevrons"), lying on the hide and skinned with it
+  if (!low) for (const [, s] of SIDES) for (const f0 of [-.3, -.1, .12]) {
+    const pts = [[f0, .04], [f0 + .045, 0], [f0, -.035]].map(([f, du]) => { const T = trunkAt(f); return [f, s * (T.rx * Math.sqrt(Math.max(0, 1 - (du / T.rz) ** 2)) + .004), T.u + du]; });
+    B.color(C.chevron, E_GLOW).loft({ seg: 4, minSeg: 4, caps: false, sections: pts.map((at) => ({ at, rx: .008, rz: .008, bones: spineBones(at[0]) })) });
   }
   // the head: a lean wedge, the brow sloping to a short deep muzzle, a chin, ears angled back, narrow cyan almond eyes
   B.bone('cHead').color(C.fur).ellipsoid({ at: [-.01, 0, .01], radius: [.13, .095, .085], rings: low ? 4 : 6, seg: low ? 7 : 12 });
@@ -125,21 +145,23 @@ function buildCat(B, low, full) {
     // the cheek ruff
     if (!low) B.bone('cHead').color(C.paw).lathe({ at: [-.06, s * .06, -.05], F: [-.7, s * .3, -.4], rings: [[0, .04], [.07, .012]], seg: 4, caps: false });
   }
-  // the tail: from the haunch, low, then an S up to a curled silver tip
-  const t1 = bw('cTail1'), t2 = bw('cTail2'), tip = [-1.1, 0, .62];
-  B.color(C.fur).loft({ seg: low ? 6 : 9, minSeg: 4, sections: [
-    { at: add(t1, [.06, 0, .0]), rx: .05, rz: .05, bones: ['cBody', 'cBody', 0] }, { at: t1, rx: .045, rz: .045, bones: ['cTail1', 'cTail1', 0] },
-    { at: [(t1[0] + t2[0]) / 2, 0, t2[2] + .02], rx: .042, rz: .042, bones: ['cTail1', 'cTail1', 0] }, { at: t2, rx: .04, rz: .04, bones: ['cTail1', 'cTail2', .5] },
-    { at: [-.98, 0, .34], rx: .038, rz: .038, bones: ['cTail2', 'cTail2', 0] }, { at: [-1.07, 0, .48], rx: .036, rz: .036, bones: ['cTail2', 'cTail2', 0] },
-    { at: tip, rx: .03, rz: .03, bones: ['cTail2', 'cTail2', 0] }] });
-  B.bone('cTail2').color(C.silver).ellipsoid({ at: rel(tip, t2), radius: [.045, .045, .045], rings: 3, seg: low ? 5 : 7 });
-  // six jointed legs: a muscled upper leg, a slim lower leg and a broad paw
+  // the tail: a thick rope of fur that flows out of the haunch, sags low, then rises in an S to a curled silver tip
+  const TAIL = [[-.5, .41, .06, 'cBody'], [-.56, .4, .058, 'cBody', 'cTail1', .5], [-.63, .375, .056, 'cTail1'], [-.71, .33, .054, 'cTail1'],
+    [-.79, .285, .053, 'cTail1', 'cTail2', .35], [-.87, .27, .052, 'cTail1', 'cTail2', .8], [-.95, .29, .052, 'cTail2'], [-1.02, .34, .052, 'cTail2'],
+    [-1.065, .41, .05, 'cTail2'], [-1.085, .48, .048, 'cTail2'], [-1.085, .55, .044, 'cTail2'], [-1.07, .6, .038, 'cTail2'], [-1.05, .635, .03, 'cTail2'],
+    [-1.035, .65, .018, 'cTail2']];
+  B.color(C.fur).loft({ seg: low ? 6 : full ? 8 : 7, minSeg: 5, up: [0, 1, 0], sections: TAIL.filter((_, i) => !low || i % 2 === 0 || i === 1 || i === TAIL.length - 1)
+    .map(([f, u, r, a, b, w]) => ({ at: [f, 0, u], rx: r, rz: r, bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => (i >= TAIL.length - 4 && !low ? C.silver : st < -.5 ? C.shade : C.fur) });
+  // six legs, each one limb of hide: it starts inside the trunk, swells into the shoulder or the haunch, blends through the hip,
+  // a muscled upper leg tapering to the knee, a slim lower leg to the wrist, then a broad soft paw with its toes
   for (let k = 0; k < 3; k++) for (const [tag, s] of SIDES) {
-    const th = `cThigh${k}${tag}`, sh = `cShin${k}${tag}`, hip = bw(th), knee = bw(sh), paw = add(knee, [0, 0, -CR.shin]), thick = k === 2 ? .095 : .08;
-    limbLoft(B, th, sh, hip, knee, thick, .045, low ? 5 : 8, C.fur, null, low);
-    B.color(C.leg).loft({ seg: low ? 5 : 7, minSeg: low ? 3 : 4, caps: !low, sections: [{ at: add(knee, [0, 0, .02]), rx: .043, rz: .043, bones: [sh, sh, 0] }, { at: add(paw, [0, 0, .04]), rx: .031, rz: .031, bones: [sh, sh, 0] },
-      { at: add(paw, [.005, 0, .015]), rx: .033, rz: .03, bones: [sh, sh, 0] }] });
-    B.bone(sh).color(C.paw).ellipsoid({ at: [.03, 0, -CR.shin + .005], radius: [.068, .045, .03], rings: 3, seg: low ? 6 : 8 });
+    const th = `cThigh${k}${tag}`, sh = `cShin${k}${tag}`, par = CAT_LEG_PARENT[k], hip = bw(th), table = k === 2 ? CAT_LEG_HIND : k === 1 ? CAT_LEG_MID : CAT_LEG_FORE;
+    const rows = table.filter((_, i) => !low || [0, 3, 6, 9].includes(i));
+    B.color(C.fur).loft({ seg: low ? 6 : 8, minSeg: low ? 4 : 5, caps: false, up: [1, 0, 0], sections: rows.map(([d, pull, rx, rz, w1, w2]) => ({
+      at: [hip[0] - (k === 2 && d < 0 ? .02 : 0), hip[1] * (1 - pull), hip[2] - d * (CR.thigh + CR.shin) / .32], rx, rz,
+      bones: w2 > 0 ? [th, sh, w2] : [par, th, w1] })), tone: (i, kk, st) => (i >= rows.length - 3 ? C.leg : C.fur) });
+    B.bone(sh).color(C.paw).ellipsoid({ at: [.025, 0, -CR.shin + .004], radius: [.062, .046, .03], rings: low ? 2 : 3, seg: low ? 6 : 8 });
+    if (full) for (const d of [-.022, 0, .022]) B.bone(sh).color(C.paw).ellipsoid({ at: [.072 - Math.abs(d) * .6, d, -CR.shin - .004], radius: [.022, .015, .016], rings: 2, seg: 4 });
   }
 }
 function buildApe(B, low, full) {
@@ -149,7 +171,6 @@ function buildApe(B, low, full) {
     [.04, .66, .29, .25, 'aChest'], [.18, .7, .31, .24, 'aChest'], [.32, .64, .25, .2, 'aChest'], [.42, .58, .14, .14, 'aChest'], [.46, .56, .06, .07, 'aChest']];
   B.color(C.fur).loft({ seg, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })),
     tone: (i, k, st) => (st > .55 && i < 5 ? (st > .9 ? C.silver : C.saddle) : st < -.5 ? C.shade : C.fur) });
-  B.bone('aChest').color(C.sheen).ellipsoid({ at: [.04, 0, .17], radius: [.17, .14, .05], rings: 3, seg: low ? 6 : 9 });
   B.bone('aChest').color(C.skin).ellipsoid({ at: [.18, 0, -.12], radius: [.08, .16, .16], rings: low ? 3 : 4, seg: low ? 6 : 9 });
   if (!low) for (const [, s] of SIDES) for (const d of [-.3, -.12]) B.bone(d < -.2 ? 'aHips' : 'aChest').color(C.chevron, E_GLOW)
     .box({ at: d < -.2 ? [.08, s * .19, .2] : [-.06, s * .22, .03], size: [.05, .006, .008], F: [.7, 0, -.7], U: [0, s, 0], bevel: 0 });
@@ -160,19 +181,27 @@ function buildApe(B, low, full) {
   B.bone('aHead').color(C.apeBrow).ellipsoid({ at: [.12, 0, .045], radius: [.035, .095, .022], rings: 2, seg: low ? 5 : 7 });
   B.bone('aHead').color(C.muzzle).ellipsoid({ at: [.14, 0, -.055], radius: [.05, .07, .04], rings: 3, seg: low ? 5 : 7 });
   for (const [, s] of SIDES) B.bone('aHead').color(C.eye, E_EYE).ellipsoid({ at: [.15, s * .045, .02], radius: [.012, .022, .011], rings: 2, seg: 5 });
-  // arms: long and thick, ending in dark knuckles; legs short and thick
-  for (const [tag] of SIDES) {
-    const up = 'aArm' + tag, fo = 'aFore' + tag, fi = 'aFist' + tag, sh = bw(up), el = bw(fo), wr = bw(fi);
-    B.bone(up).color(C.fur).ellipsoid({ at: [0, 0, -.02], radius: [.12, .12, .12], rings: low ? 3 : 5, seg: low ? 6 : 9 });
-    limbLoft(B, up, fo, sh, el, .1, .085, low ? 6 : 9, C.fur, null, low);
-    B.color(C.fur).loft({ seg: low ? 6 : 9, minSeg: 4, sections: [{ at: add(el, [0, 0, .01]), rx: .085, rz: .085, bones: [fo, fo, 0] }, { at: add(el, [0, 0, -.14]), rx: .075, rz: .075, bones: [fo, fo, 0] },
-      { at: add(wr, [0, 0, .02]), rx: .06, rz: .06, bones: [fo, fi, 1] }] });
-    B.bone(fi).color(C.fist).ellipsoid({ at: [0, 0, -.02], radius: [.085, .08, .07], rings: 3, seg: low ? 6 : 8 });
-    if (!low) for (const d of [-.035, 0, .035]) B.bone(fi).color(C.edge).box({ at: [.065, d, -.035], size: [.02, .014, .015], bevel: 0 });
-    const th = 'aThigh' + tag, sn = 'aShin' + tag, hip = bw(th), knee = bw(sn);
-    limbLoft(B, th, sn, hip, knee, .1, .08, low ? 6 : 8, C.fur, null, low);
-    B.color(C.fur).loft({ seg: low ? 6 : 8, minSeg: 4, sections: [{ at: add(knee, [0, 0, .01]), rx: .08, rz: .08, bones: [sn, sn, 0] }, { at: add(knee, [0, 0, -AR.shin + .04]), rx: .065, rz: .065, bones: [sn, sn, 0] }] });
-    B.bone(sn).color(C.fist).ellipsoid({ at: [.04, 0, -AR.shin + .005], radius: [.1, .06, .04], rings: 3, seg: low ? 6 : 8 });
+  // arms: one limb of hide each from the top of the hump: the trapezius and the great deltoid roll out of the chest into a thick
+  // upper arm, the elbow, a heavy forearm swelling below it, the wrist into dark knuckles; legs short and thick out of the rump
+  for (const [tag, s] of SIDES) {
+    const up = 'aArm' + tag, fo = 'aFore' + tag, fi = 'aFist' + tag, sh = bw(up), el = bw(fo), wr = bw(fi), ch = 'aChest';
+    const at = (base, f, r, u) => [base[0] + f, base[1] + s * r, base[2] + u];
+    const ARM = [[at(sh, -.08, -.15, .16), .07, .09, [ch, ch, 0]], [at(sh, -.04, -.09, .11), .12, .14, [ch, up, .15]], [at(sh, -.01, -.035, .05), .14, .15, [ch, up, .4]],
+      [at(sh, 0, 0, -.02), .13, .135, [ch, up, .75]], [at(sh, 0, 0, -.1), .115, .118, [up, up, 0]], [at(sh, 0, 0, -.2), .1, .1, [up, up, 0]],
+      [at(el, 0, 0, .04), .086, .09, [up, fo, .3]], [at(el, 0, 0, -.01), .085, .09, [up, fo, .65]], [at(el, 0, 0, -.07), .094, .1, [fo, fo, 0]],
+      [at(el, 0, 0, -.15), .088, .092, [fo, fo, 0]], [at(wr, 0, 0, .04), .066, .07, [fo, fi, .4]], [at(wr, 0, 0, -.01), .062, .066, [fo, fi, .9]]];
+    const arm = ARM.filter((_, i) => !low || [0, 2, 4, 6, 8, 11].includes(i));
+    B.color(C.fur).loft({ seg: low ? 7 : full ? 10 : 9, minSeg: 5, caps: false, up: [1, 0, 0], sections: arm.map(([p, rx, rz, bones]) => ({ at: p, rx, rz, bones })),
+      tone: (i, k, st) => (i >= arm.length - 2 ? lerpHex(C.fur, C.shade, .5) : C.fur) });
+    B.bone(fi).color(C.fist).ellipsoid({ at: [.01, 0, -.02], radius: [.088, .078, .07], rings: 3, seg: low ? 6 : 8 });
+    if (!low) for (const d of [-.035, 0, .035]) B.bone(fi).color(C.edge).ellipsoid({ at: [.07, d, -.045], radius: [.018, .016, .016], rings: 2, seg: 4 });
+    const th = 'aThigh' + tag, sn = 'aShin' + tag, hip = bw(th), knee = bw(sn), hp = 'aHips';
+    const LEG = [[at(hip, -.02, -.08, .12), .08, .1, [hp, hp, 0]], [at(hip, 0, -.03, .05), .12, .14, [hp, th, .3]], [at(hip, 0, 0, -.02), .12, .13, [hp, th, .7]],
+      [at(hip, .01, 0, -.1), .1, .11, [th, th, 0]], [at(knee, 0, 0, .02), .085, .09, [th, sn, .4]], [at(knee, 0, 0, -.04), .08, .084, [th, sn, .85]],
+      [at(knee, 0, 0, -AR.shin + .05), .065, .068, [sn, sn, 0]]];
+    const leg = LEG.filter((_, i) => !low || [0, 2, 4, 6].includes(i));
+    B.color(C.fur).loft({ seg: low ? 7 : full ? 11 : 8, minSeg: 5, caps: false, up: [1, 0, 0], sections: leg.map(([p, rx, rz, bones]) => ({ at: p, rx, rz, bones })) });
+    B.bone(sn).color(C.fist).ellipsoid({ at: [.04, 0, -AR.shin + .005], radius: [.1, .062, .042], rings: 3, seg: low ? 6 : 8 });
   }
   // the wings: authored spread (out along r from the shoulder blade): an arm bone to the wrist, three long fingers fanning from it,
   // the membrane scalloped between the tips and back to the body; skinned from the chest (its root edge) out to the wing bone
@@ -188,7 +217,11 @@ function buildApe(B, low, full) {
       grid.push(row); }
     B.sheet({ grid, vertBones: (r) => ['aChest', wb, smooth(span(r / (rows - 1), .05, .45))], tone: (r, c) => (r === rows - 1 ? lerpHex(C.wing, C.finger, .25) : c % 2 ? C.wingDark : C.wing) });
     const bone = (a, b, r0, r1) => B.color(C.finger).loft({ seg: 4, minSeg: 3, sections: [{ at: P(...a), rx: r0, rz: r0, bones: [wb, wb, 0] }, { at: P(...b), rx: r1, rz: r1, bones: [wb, wb, 0] }] });
-    bone([0, .02, .01], wrist, .03, .022); if (!low) for (const tp of tips) bone(wrist, tp, .016, .006);
+    // the wing's arm grows out of the shoulder blade: a furred root skinned from the chest into the wing bone, then the bare arm
+    B.color(C.finger).loft({ seg: low ? 5 : 7, minSeg: low ? 4 : 5, caps: !low, sections: [{ at: P(.05, -.08, -.04), rx: .075, rz: .075, bones: ['aChest', 'aChest', 0] },
+      { at: P(.02, .01, 0), rx: .06, rz: .06, bones: ['aChest', wb, .45] }, { at: P(-.03, .12, .07), rx: .036, rz: .036, bones: [wb, wb, 0] }, { at: P(...wrist), rx: .022, rz: .022, bones: [wb, wb, 0] }],
+      tone: (i) => (i < 2 ? C.fur : i === 2 ? lerpHex(C.fur, C.finger, .6) : C.finger) });
+    if (!low) for (const tp of tips) bone(wrist, tp, .016, .006);
     B.bone(wb).color(C.claw).lathe({ at: rel(P(...wrist), o), F: [.3, s * .2, 1], rings: [[0, .022], [.07, .003]], seg: 4 });
   }
 }
@@ -251,11 +284,11 @@ function catTargets(e, a, k, tr, now) {
   W.fill(0); const kind = a?.kind || 'prowl';
   W[3] = .1; W[4] = .2;
   if (e.stalkClimb || kind === 'climb') { W[11] = 1; W[4] = .3; return 'climb'; }
-  if (kind === 'wait' || kind === 'lurk') { if (e.stalkPerch) { W[0] = 1; W[9] = .8; W[2] = -.35; W[3] = -.3; return 'perch'; } W[6] = 1; W[2] = .35; W[3] = -.2; W[4] = .15; return 'sit'; }
+  if (kind === 'wait' || kind === 'lurk') { if (e.stalkPerch) { W[0] = 1; W[9] = .8; W[2] = -.35; W[3] = -.3; return 'perch'; } W[6] = 1; W[2] = .1; W[3] = -.2; W[4] = .15; return 'sit'; }
   if (kind === 'prowl' && e.stalkPerch) { W[0] = 1; W[9] = .8; W[2] = -.35; W[3] = -.3; return 'perch'; }
   if (kind === 'trapped') { W[0] = .8; W[2] = -.1; W[4] = 1; W[3] = .4; return 'trapped'; }
-  if (kind === 'pounceWarn') { W[0] = .9 * smooth(k * 3); W[1] = -.12; W[2] = -.15; W[3] = .45; W[4] = 1; return 'pounceWarn'; }
-  if (kind === 'pounce' || kind === 'hop') { W[5] = Math.sin(Math.PI * Math.min(1, k * 1.15)); W[1] = kind === 'hop' ? .25 * (1 - 2 * k) : .05; W[2] = .1; W[3] = .3; return kind; }
+  if (kind === 'pounceWarn') { W[0] = .9 * smooth(k * 3); W[1] = -.12; W[2] = -.15; W[3] = .8; W[4] = 1; return 'pounceWarn'; }
+  if (kind === 'pounce' || kind === 'hop') { W[5] = Math.sin(Math.PI * Math.min(1, k * 1.15)); W[1] = kind === 'hop' ? .25 * (1 - 2 * k) : .12 * (1 - 2 * k); W[2] = -.05; W[3] = .1; return kind; }
   if (kind === 'swipeWarn') { W[7] = smooth(k * 1.6); W[1] = .14 * smooth(k * 2); W[2] = .1; W[3] = .4; W[4] = .6; return 'swipeWarn'; }
   if (kind === 'spring') { W[9] = .7 * Math.sin(Math.PI * k); W[1] = .12; W[2] = .15; W[3] = .3; return 'spring'; }
   if (kind === 'flurryWarn') { W[0] = .5; W[7] = .55; W[8] = .55; W[1] = .08; W[4] = .8; W[3] = .4; return 'flurryWarn'; }
@@ -392,38 +425,42 @@ function hideForm(P, form) {
 function poseCat(tr, e, env, a, k, V, S, scale, cf, sf, t, reduce, still, lift, land, hit, strikeK, striking, deathK, melt, dt, now) {
   const P = tr.pose, kind = a?.kind || 'prowl', crouch = V[0], pitch0 = V[1], headUp = V[2], tailUp = V[3], lash = V[4], stretch = V[5], sit = V[6], pawN = V[7], pawF = V[8], tuck = V[9], meltV = V[10], climb = V[11];
   const G = tr.catGait;
-  for (let q = 0; q < 6; q++) { const L = CR.legs[q >> 1]; G.side[q] = (q & 1 ? 1 : -1) * L[1] * 1.15 * S; G.fore[q] = L[0] * S; }
+  for (let q = 0; q < 6; q++) { const L = CR.legs[q >> 1]; G.side[q] = (q & 1 ? 1 : -1) * L[1] * CR.splay * S; G.fore[q] = L[0] * S; }
   stepGait(G, env.x, env.y, tr.yaw, now, { stride: CR.stride * S * (kind === 'prowl' && !e.stalkCreep ? 1.25 : 1), stance: CR.stance, settle: CR.settle, still: still || stretch > .3, snapDistance: 2.5 * S, stepAt: .2 * S, stepTime: .22, maxStepping: 2 });
   const moving = G.moving, cyc = G.phase * Math.PI * 2;
   const breathe = reduce ? 0 : Math.sin(t * 2.4);
-  const bob = moving * CR.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = reduce ? 0 : Math.sin(t * (lash > .7 ? 11 : 2.3)) * (.15 + .5 * lash);
+  const bob = reduce ? 0 : moving * CR.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = reduce ? 0 : Math.sin(t * (lash > .7 ? 11 : 2.3)) * (.15 + .5 * lash);
   const shakeT = kind === 'trapped' && !reduce ? Math.sin(t * 22) * .03 : 0, lunge = kind === 'trapped' && !reduce ? Math.max(0, Math.sin(t * 3.1)) ** 6 : 0;
   const meltAll = Math.max(meltV, melt);
   // the body: crouched low, pitched, sitting back on its haunch, or upright on the climb
-  const sitPitch = .75 * sit, climbPitch = 1.15 * climb, deathRoll = 1.35 * deathK * (tr.hitSide || 1);
-  setOffset(P, BI.cBody, .02 * stretch + lunge * .12, shakeT, -CR.crouch * crouch - bob - .05 * land - .12 * sit + .12 * climb - .2 * deathK - .06 * tuck);
-  setEuler(P, BI.cBody, 0, -(pitch0 + sitPitch + climbPitch) + .06 * hit - .08 * stretch, .2 * hit * tr.hitSide + deathRoll);
+  const sitPitch = .55 * sit, climbPitch = 1.15 * climb, deathRoll = 1.35 * deathK * (tr.hitSide || 1);
+  setOffset(P, BI.cBody, .02 * stretch + lunge * .12, shakeT, -CR.crouch * crouch - bob - .05 * land - .24 * sit + .12 * climb - .2 * deathK - .06 * tuck);
+  // the prowl rolls through it: the haunch dips toward each hind paw as it lands and the shoulders answer the other way
+  const gRoll = reduce ? 0 : moving * CR.roll * Math.sin(cyc), gPitch = reduce ? 0 : moving * CR.rock * Math.sin(cyc * 2 + .6);
+  setEuler(P, BI.cBody, 0, -(pitch0 + sitPitch + climbPitch) + .06 * hit - .08 * stretch + gPitch, .2 * hit * tr.hitSide + deathRoll + gRoll);
   P.scl[BI.cBody] = scale; resolveBone(P, BI.cBody);
   // (melting for the tide or in death: the whole body flattens toward the ground; non-uniform scale is out, so the bones squash it)
   if (meltAll > 0) { P.off[BI.cBody * 3 + 2] -= .2 * meltAll; resolveBone(P, BI.cBody); }
   const wave = reduce ? 0 : moving * .05 * Math.sin(cyc);
   setEuler(P, BI.cSpine, wave * .6, .05 * crouch + .12 * stretch * -1 + .1 * sit, 0); P.scl[BI.cSpine] = 1 + breathe * .006; resolveBone(P, BI.cSpine);
-  setEuler(P, BI.cChest, wave * .4, -.05 * crouch + .06 * stretch - .3 * sit, 0); resolveBone(P, BI.cChest);
+  setEuler(P, BI.cChest, wave * .4, -.05 * crouch + .06 * stretch + .05 * sit - gPitch * 1.6, -gRoll * 2.2); resolveBone(P, BI.cChest);
   // the head: level and low, watching the Wayfarer; up on the sit, down on the perch
   let look = 0; if (env.target) { const lx = env.target.x - env.x, ly = env.target.y - env.y, aa = Math.atan2(ly, lx) - tr.yaw; look = Math.max(-.7, Math.min(.7, wrapA(aa))) * .7; }
-  setEuler(P, BI.cHead, look * (1 - climb), -headUp + .15 * crouch + .3 * sit + (pitch0 + sitPitch) * .6 + .35 * climb + .08 * deathK, (reduce ? 0 : .03 * wobble(t * .6, 3)) - .4 * deathK);
+  // (the head stays level through the prowl: it takes back the shoulders' roll and rock)
+  setEuler(P, BI.cHead, look * (1 - climb) - wave * .8, -headUp + .15 * crouch + .3 * sit + (pitch0 + sitPitch) * .6 + .35 * climb + .08 * deathK + gPitch * .6, (reduce ? 0 : .03 * wobble(t * .6, 3)) - .4 * deathK + gRoll * 1.2);
   resolveBone(P, BI.cHead);
   // the tail: low then an S up; lashing before the pounce; trailing straight in the leap
-  setEuler(P, BI.cTail1, sway * .6, .25 - tailUp * .5 + .2 * stretch + .4 * sit, sway * .2); resolveBone(P, BI.cTail1);
-  setEuler(P, BI.cTail2, sway, .3 - tailUp * .4 + .4 * stretch - .6 * sit + .5 * climb, 0); resolveBone(P, BI.cTail2);
+  const tSwing = reduce ? 0 : moving * CR.tailSwing * Math.sin(cyc - 1.2);
+  setEuler(P, BI.cTail1, sway * .6 + tSwing, .25 - tailUp * .5 + .2 * stretch + .4 * sit, sway * .2); resolveBone(P, BI.cTail1);
+  setEuler(P, BI.cTail2, sway - tSwing * 1.4, .3 - tailUp * 1 + .9 * stretch - .6 * sit + .5 * climb, 0); resolveBone(P, BI.cTail2);
   // six legs: planted by the gait; folded under on the perch; flung out in the leap; sitting, the hind pair folds under the haunch
   const pawH = CR.paw * S;
   for (let q = 0; q < 6; q++) {
     const pair = q >> 1, s = q & 1 ? 1 : -1, tag = s < 0 ? 'L' : 'R', top = BI[`cThigh${pair}${tag}`], mid = BI[`cShin${pair}${tag}`], L = CR.legs[pair];
     let fx = G.out[q * 4], fy = G.out[q * 4 + 1], fz = env.z + pawH + G.out[q * 4 + 2] * CR.footLift * S;
     // pose targets in the root's frame (f, r, u) for the off-ground poses, mixed toward them by how far the pose has gone
-    let off = 0, lf = L[0], lr = s * L[1] * 1.15, lu = CR.paw;
-    if (stretch > 0) { off = Math.max(off, stretch); lf += pair === 0 ? .32 : pair === 1 ? .1 : -.34; lu += pair === 1 ? .16 : .12; }
+    let off = 0, lf = L[0], lr = s * L[1] * CR.splay, lu = CR.paw;
+    if (stretch > 0) { off = Math.max(off, stretch); lf += pair === 0 ? .4 : pair === 1 ? .02 : -.48; lu += pair === 0 ? .14 : pair === 1 ? .15 : .2; }
     if (tuck > 0) { off = Math.max(off, tuck); lf += pair === 0 ? .08 : pair === 2 ? -.04 : 0; lu += .02; lr *= 1.1; }
     if (sit > 0) { off = Math.max(off, sit); lf = pair === 0 ? .26 : pair === 1 ? .06 : -.12; lr = s * (pair === 2 ? .17 : .1); }
     if (climb > 0) { off = Math.max(off, climb); const c = reduce ? 0 : Math.sin(t * 8 + q * 1.3 + (s > 0 ? Math.PI : 0)); lf = L[0] * .4 + .55 + .12 * c * (pair === 2 ? -1 : 1); lu = .25 + L[0] * 1.6 + .08 * c; }
@@ -431,18 +468,20 @@ function poseCat(tr, e, env, a, k, V, S, scale, cf, sf, t, reduce, still, lift, 
     if (deathK > 0) { off = Math.max(off, deathK); lf = L[0] * 1.2; lr = s * (.28 + .1 * pair); lu = .1; }
     // the near forepaw raised to swipe (and down across on the blow); both forepaws in the flurry, by turns
     const isFore = pair === 0, near = s > 0;
-    let raise = isFore ? (near ? pawN : pawF) : 0;
+    let raise = isFore ? (near ? pawN : pawF) : 0, paw = 0;
     if (isFore && kind === 'flurry' && e.stalkSlash) { const sk = 1 - clamp01(e.stalkSlash.t / .14); raise = ((tr.slash === 1) === near) ? 1 - sk : .4; }
     if (isFore && near && striking && tr.strike === 'swipe') raise = Math.max(0, 1 - strikeK * 1.2);
     if (raise > 0 || (isFore && striking && tr.strike === 'swipe' && near)) {
       off = 1; const sw = isFore && near && striking && tr.strike === 'swipe' ? strikeK : 0;
-      lf = .42 + .18 * raise + .15 * sw; lr = s * (.14 - .2 * sw); lu = .1 + .32 * raise;
+      lf = .44 + .06 * raise + .2 * sw; lr = s * (.12 - .2 * sw); lu = .1 + .28 * raise - .04 * sw; paw = Math.max(raise, 1 - sw);
     }
     if (pair === 2 && kind === 'trapped') { off = Math.max(off, lunge); }
     if (off > 0) { const p = boneLocalToWorld(P, 'root', lf, lr, lu, Q); fx += (p[0] - fx) * off; fy += (p[1] - fy) * off; fz += (p[2] - fz) * off; }
     if (meltAll > 0) fz = Math.min(fz, env.z + pawH + (1 - meltAll) * 1);
     T[0] = fx; T[1] = fy; T[2] = fz;
-    POLE[0] = cf * (pair === 2 ? 1 : -1); POLE[1] = sf * (pair === 2 ? 1 : -1); POLE[2] = climb * .5;
+    // (a raised forepaw: the elbow lifts forward and up, the paw curled below it)
+    const pf = (pair === 2 ? 1 : -1) * (1 - paw) + .4 * paw;
+    POLE[0] = cf * pf; POLE[1] = sf * pf; POLE[2] = climb * .5 + 1.4 * paw;
     poseLimb(P, top, mid, CR.thigh * S * scale, CR.shin * S * scale, T, POLE, cf, sf);
     tr.frame.feet[q * 2] = G.out[q * 4 + 3]; tr.frame.feet[q * 2 + 1] = G.out[q * 4 + 2];
   }
@@ -456,13 +495,18 @@ function poseApe(tr, e, env, a, k, V, S, scale, cf, sf, t, reduce, still, lift, 
   const gallop = kind === 'charge';
   stepGait(G, env.x, env.y, tr.yaw, now, { stride: AR.stride * S * (gallop ? 1.7 : 1), stance: AR.stance, settle: AR.settle, still: still || kind === 'leap', snapDistance: 3 * S, stepAt: .22 * S, stepTime: .26, maxStepping: 2 });
   const moving = G.moving, cyc = G.phase * Math.PI * 2, breathe = reduce ? 0 : Math.sin(t * 2);
-  const bob = moving * AR.bob * (.5 - .5 * Math.cos(cyc * 2)) * (gallop ? 2 : 1), roll = moving * .05 * Math.sin(cyc) * (gallop ? .4 : 1);
+  const bob = reduce ? 0 : moving * AR.bob * (.5 - .5 * Math.cos(cyc * 2)) * (gallop ? 2 : 1), roll = reduce ? 0 : moving * .05 * Math.sin(cyc) * (gallop ? .4 : 1);
   const shakeT = kind === 'trapped' && !reduce ? Math.sin(t * 20) * .03 : 0;
-  setOffset(P, BI.aHips, shakeT, 0, -AR.crouch * crouch - bob - .05 * land - .2 * deathK - .3 * melt + .04 * tuck);
-  setEuler(P, BI.aHips, 0, .1 * lean - .12 - .1 * tuck, roll + .2 * hit * tr.hitSide + 1.2 * deathK * (tr.hitSide || 1)); P.scl[BI.aHips] = scale; resolveBone(P, BI.aHips);
-  setEuler(P, BI.aChest, -roll * .5, .2 * lean - .02 + .25 * headDown - .15 * (raiseR + raiseL) * .5 - .1 * wrap, 0); P.scl[BI.aChest] = 1 + breathe * .01; resolveBone(P, BI.aChest);
+  // the knuckle walk's weight: as one arm swings, the hump rolls and slides onto the planted one and sinks into it; it rises
+  // again as the swinging fist lands (the hips answer the legs the same way, more softly)
+  const liftAL = reduce ? 0 : G.out[2], liftAR = reduce ? 0 : G.out[6], liftLL = reduce ? 0 : G.out[10], liftLR = reduce ? 0 : G.out[14];
+  const armShift = liftAR - liftAL, legShift = liftLR - liftLL, sink = Math.max(liftAL, liftAR);
+  setOffset(P, BI.aHips, shakeT, -AR.weightShift * (armShift * .4 + legShift * .6) * moving, -AR.crouch * crouch - bob - .05 * land - .2 * deathK - .3 * melt + .04 * tuck);
+  setEuler(P, BI.aHips, 0, .1 * lean - .12 - .1 * tuck, roll + AR.weightRoll * .5 * legShift * moving + .2 * hit * tr.hitSide + 1.2 * deathK * (tr.hitSide || 1)); P.scl[BI.aHips] = scale; resolveBone(P, BI.aHips);
+  setEuler(P, BI.aChest, -roll * .5 - AR.weightYaw * armShift * moving, .2 * lean - .02 + .25 * headDown - .15 * (raiseR + raiseL) * .5 - .1 * wrap + AR.weightSink * sink * moving,
+    AR.weightRoll * armShift * moving); P.scl[BI.aChest] = 1 + breathe * .01; resolveBone(P, BI.aChest);
   let look = 0; if (env.target) { const lx = env.target.x - env.x, ly = env.target.y - env.y, aa = Math.atan2(ly, lx) - tr.yaw; look = Math.max(-.6, Math.min(.6, wrapA(aa))) * .6; }
-  setEuler(P, BI.aHead, look, -headUp - .4 * lean + .25 + .3 * headDown + (reduce ? 0 : .03 * wobble(t * .5, 5)), -.5 * deathK); resolveBone(P, BI.aHead);
+  setEuler(P, BI.aHead, look + AR.weightYaw * armShift * moving, -headUp - .4 * lean + .25 + .3 * headDown - AR.weightSink * .7 * sink * moving + (reduce ? 0 : .03 * wobble(t * .5, 5)), -.5 * deathK - AR.weightRoll * .8 * armShift * moving); resolveBone(P, BI.aHead);
   // wings: folded like a cape, half open on the wind-up, spread and beating in the air, swept back in the charge, wrapped round
   // it like a cloak on the perch
   const beat = reduce ? 0 : Math.sin(t * 13) * spread;
