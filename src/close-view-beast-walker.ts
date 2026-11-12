@@ -72,13 +72,15 @@ function buildWalkerMesh(tier) {
   // the hood: a peak swept back off the crown and a lip over the brow, so the head reads as a drawn hood, not a helmet
   { const h = J0.head, top = 1.1;
     B.bone('head').color(C.cloth).lathe({ at: at('head', [h[0] - .055, 0, top - .04]), F: [-.85, 0, -.35], U: [0, 0, 1], rings: [[0, .06], [.06, .04], [.12, 0]], rs: 1, us: .8, seg: low ? 5 : 8 });
-    B.color(C.clothLit).box({ at: at('head', [h[0] + .075, 0, top - .05]), size: [.03, .07, .012], bevel: .3, F: [1, 0, -.2] }); }
+    B.color(C.clothLit).ellipsoid({ at: at('head', [h[0] + .092, 0, top - .046]), radius: [.026, .064, .013], rings: 3, seg: low ? 7 : 12, F: [1, 0, -.25], U: [.25, 0, 1] }); }
   // the face: a recessed panel of night sky in the hood's opening, the nebula slanting across it, a few pale stars (not eyes,
   // not a visor)
-  { const h = J0.head, fx = h[0] + .082, fz = h[2] + .1;
-    B.bone('head').color(C.face, E_FACE).box({ at: at('head', [fx, 0, fz]), size: [.008, .06, .07], bevel: .2 });
-    if (!low) { B.color(C.faceMid, E_FACE).box({ at: at('head', [fx + .006, -.008, fz + .008]), size: [.004, .045, .018], bevel: 0, F: [1, 0, 0], U: [0, .55, 1] });
-      for (const [y, z] of [[-.03, .025], [.022, .035], [.035, -.012], [-.01, -.03], [.0, .01]]) B.color(C.star, E_FACE).box({ at: at('head', [fx + .01, y, fz + z]), size: [.003, .005, .005], bevel: 0 }); } }
+  { const h = J0.head, fx = h[0] + .1, fz = h[2] + .1;
+    // the hood's opening: a dark rim round an oval of night sky, set back under the brow
+    B.bone('head').color(C.dark).ellipsoid({ at: at('head', [fx - .004, 0, fz]), radius: [.014, .046, .056], rings: 3, seg: low ? 8 : 14, F: [1, 0, 0], U: [0, 0, 1] });
+    B.bone('head').color(C.face, E_FACE).ellipsoid({ at: at('head', [fx + .002, 0, fz - .003]), radius: [.01, .038, .047], rings: 3, seg: low ? 8 : 14, F: [1, 0, 0], U: [0, 0, 1] });
+    if (!low) { B.color(C.faceMid, E_FACE).ellipsoid({ at: at('head', [fx + .007, -.004, fz + .004]), radius: [.003, .026, .008], rings: 2, seg: 8, F: [1, 0, 0], U: [0, .55, 1] });
+      for (const [y, z] of [[-.016, .02], [.014, .026], [.022, -.008], [-.008, -.022], [.002, .004]]) B.color(C.star, E_FACE).ellipsoid({ at: at('head', [fx + .01, y, fz + z]), radius: [.002, .0035, .0035], rings: 2, seg: 4 }); } }
   // the coat: flaring from the waist to mid-thigh with a violet hem, and two long tails behind to the boots (its short split coat)
   { const pz = J0.pelvis[2], px = J0.pelvis[0];
     B.bone('pelvis').color(C.coat).loft({ seg: low ? 8 : 14, up: [1, 0, 0], sections: [[pz + .06, .1, .075], [pz - .02, .118, .088], [pz - .1, .132, .1], [pz - .17, .142, .108]].map(([z, ry, rx]) => ({ at: [px, 0, z], rx: ry, rz: rx, bones: ['pelvis', 'pelvis', 0] })),
