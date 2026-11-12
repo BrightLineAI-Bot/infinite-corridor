@@ -1,8 +1,8 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
-import { sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -298,7 +298,9 @@ function hammerPose(asset,state,pose,p) {
   }
   state.clip='derived-hammerfall-stomp';state.clipTime=p;
 }
-function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);const half=(frameYaw-Math.PI/2)/2;const qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
+function solveArm(state,pose,left,target,frameYaw=0,framePitch=0){const q=state.primaryScratch,half=(frameYaw-Math.PI/2)/2,qs=Math.sin(half),qc=Math.cos(half),sp=Math.sin(framePitch/2),cp=Math.cos(framePitch/2);q[20]=qs*sp;q[21]=qs*cp;q[22]=qc*sp;q[23]=qc*cp;return solveArmFrame(state,pose,left,target);}
+// The same two-bone solve for a grip frame given directly: the source-space grip quaternion is read from primaryScratch[20..23].
+function solveArmFrame(state,pose,left,target){const upper=left?12:22,lower=left?11:21,wrist=left?7:18,thumb=left?9:20,grip=left?6:16,side=left?1:-1,q=state.primaryScratch,so=upper*16,eo=lower*16,wo=wrist*16,go=grip*16;build(state.asset,state,pose);matrixQuat(q,0,state.global,wo);matrixQuat(q,4,state.global,go);qinv(q,8,q,0);qmul(q,12,q,8,q,4);qinv(q,16,q,12);qmul(q,24,q,20,q,16);qrot(q,28,q,8,state.global[go+12]-state.global[wo+12],state.global[go+13]-state.global[wo+13],state.global[go+14]-state.global[wo+14]);qrot(q,32,q,24,q[28],q[29],q[30]);const tx=target[0]-q[32],ty=target[1]-q[33],tz=target[2]-q[34],sx=state.global[so+12],sy=state.global[so+13],sz=state.global[so+14],ex=state.global[eo+12],ey=state.global[eo+13],ez=state.global[eo+14],wx=state.global[wo+12],wy=state.global[wo+13],wz=state.global[wo+14],a=Math.hypot(ex-sx,ey-sy,ez-sz),b=Math.hypot(wx-ex,wy-ey,wz-ez),rx=tx-sx,ry=ty-sy,rz=tz-sz,raw=Math.hypot(rx,ry,rz)||1,d=Math.max(Math.abs(a-b)+1e-4,Math.min(a+b-1e-4,raw)),dx=rx/raw,dy=ry/raw,dz=rz/raw;let px=side,py=-.45,pz=0,pdot=px*dx+py*dy+pz*dz;px-=pdot*dx;py-=pdot*dy;pz-=pdot*dz;let pl=Math.hypot(px,py,pz);if(pl<1e-5){px=0;py=-dz;pz=dy;pl=Math.hypot(px,py,pz)||1;}px/=pl;py/=pl;pz/=pl;const along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),jx=sx+dx*along+px*height,jy=sy+dy*along+py*height,jz=sz+dz*along+pz*height;alignJoint(state,pose,upper,lower,jx,jy,jz);build(state.asset,state,pose);alignJoint(state,pose,lower,wrist,tx,ty,tz);build(state.asset,state,pose);matrixQuat(q,36,state.global,eo);qinv(q,40,q,36);qmul(q,44,q,40,q,24);const po=wrist*10+3,to=thumb*10+3;qinv(q,48,pose,po);qmul(q,52,q,44,q,48);qmul(q,56,q,52,pose,to);for(let k=0;k<4;k++){pose[po+k]=q[44+k];pose[to+k]=q[56+k];}build(state.asset,state,pose);return Math.hypot(state.global[go+12]-target[0],state.global[go+13]-target[1],state.global[go+14]-target[2]);}
 // Presentation stages never own hit events. All three return to the same carry pose.
 const PRIMARY_CUTS = Object.freeze([
   Object.freeze({ yawA:.55, yawB:1.15, pitchA:.22, pitchB:.58, side:.10, twist:.18 }),
@@ -459,6 +461,44 @@ function toolPose(state,pose,profile,p,weight,action){
 }
 // The free hand takes the barrel from below: a point along the drawn barrel (the exact recipe
 // conversion of writeCloseViewHeroGear, in source units), then the arm is solved to it last.
+// Great Sweep (CLOSE_VIEW_GREAT_SWEEP): the held carry, and each accepted use as one arc in a single
+// swing plane. The hand target and grip frame blend from the carry to the arc and back by the sampled
+// weight; through the arc the grip frame only turns in the plane, so the blade never spins or rolls.
+// Socket +X is the blade and socket Z its width (writeCloseViewHeroGear), so the edge is socket +Z.
+// The arc is anchored at the shoulder before the body load, so the twist never bends the blade path.
+// `sample` null is the carry alone. No allocation: scratch lives on the pose state.
+function greatSweepFrame(F,o,dx,dy,dz,ex,ey,ez){
+  const dl=Math.hypot(dx,dy,dz)||1;dx/=dl;dy/=dl;dz/=dl;const along=ex*dx+ey*dy+ez*dz;ex-=along*dx;ey-=along*dy;ez-=along*dz;
+  let el=Math.hypot(ex,ey,ez);if(el<1e-6){ex=-dz;ey=0;ez=dx;el=Math.hypot(ex,ey,ez)||1;}ex/=el;ey/=el;ez/=el;
+  F[32]=dx;F[33]=dy;F[34]=dz;F[36]=ey*dz-ez*dy;F[37]=ez*dx-ex*dz;F[38]=ex*dy-ey*dx;F[40]=ex;F[41]=ey;F[42]=ez;matrixQuat(F,o,F,32);
+}
+// The accepted record's clock: the stored startup is the release; a record without a receipt uses the
+// nominal startup. A cancelled or unknown receipt shows the carry.
+function greatSweepActionSample(action,p,out){
+  const duration=Number(action?.durationMs)>0?Number(action.durationMs):TOOL_ACTION_TIMING['great-sweep'].durationMs,q=toolUsePoseTime(action,p*duration);
+  if((action?.toolMotion&&action.toolMotion.v!==1)||q.phase==='cancelled'||q.phase==='unknown'){sampleGreatSweep(duration,NaN,duration,out);return out;}
+  return sampleGreatSweep(q.elapsedMs,q.phase==='legacy'?NaN:q.startupMs,duration,out);
+}
+function greatSweepPose(state,pose,sample,reducedMotion){
+  const S=CLOSE_VIEW_GREAT_SWEEP,C=S.carry,A=heldArm('great-sweep'),m=A.sign,w=sample?clamp(Number(sample.weight)||0):0,F=state.sweepScratch,q=state.primaryScratch,t=state.primaryTarget;
+  build(state.asset,state,pose);
+  const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,sx=g[s+12],sy=g[s+13],sz=g[s+14];
+  const reach=Math.hypot(g[e+12]-sx,g[e+13]-sy,g[e+14]-sz)+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  // Carry: low at the sweep hip; the floor bound keeps the long blade's hand clear of a deep crouch.
+  greatSweepFrame(F,0,m*C.blade[0],C.blade[1],C.blade[2],m*C.edge[0],C.edge[1],C.edge[2]);
+  t[0]=sx+reach*m*C.hand[0];t[1]=Math.max(sy+reach*C.hand[1],state.minY+state.referenceHeight*.42);t[2]=sz+reach*C.hand[2];
+  for(let k=0;k<4;k++)q[20+k]=F[k];
+  if(w>0){
+    const b=greatSweepBlade(sample.angle,state.sweepBlade),P=S.pivot,r=reach*S.hand;
+    greatSweepFrame(F,4,m*b[0],b[1],b[2],m*b[3],b[4],b[5]);quaternion(q,20,F,0,F,4,w);
+    const hx=sx+reach*m*P[0]+r*m*b[0],hy=sy+reach*P[1]+r*b[1],hz=sz+reach*P[2]+r*b[2];
+    t[0]+=(hx-t[0])*w;t[1]+=(hy-t[1])*w;t[2]+=(hz-t[2])*w;
+    const load=(reducedMotion?S.reducedBody:1)*w*Math.sin(Math.PI*clamp(Number(sample.swing)||0)),twist=S.twist*load,lean=S.lean*load;
+    rotateY(pose,28,m*twist*.35);rotateY(pose,27,m*twist*.65);rotateY(pose,4,-m*twist*.5);
+    rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-S.guard*w);
+  }
+  state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+}
 function rifleSupportHand(state,pose,profile,rifle,A,weight){
   build(state.asset,state,pose);
   const g=state.global,o=state.asset.meta.sockets[A.left?'left':'right'].node*16,ax=Math.hypot(g[o],g[o+1],g[o+2]),scale=state.worldScale>0?state.worldScale:1;
@@ -498,7 +538,7 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
@@ -668,7 +708,7 @@ function plantedCrouch(asset,state,pose,k,drop){
 const PICKUP_POSE = Object.freeze({ drop: .36, chestDrop: .17, bend: .46, upper: .22, reach: .30 });
 const DRINK_LIFE = Object.freeze({ tilt: .26, arch: .10, shoulder: .08 });
 export function sampleCloseViewHero(asset, state, input, out) {
-  out.ready = false;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
+  out.ready = false;state.sweepSpin=0;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
   // Input speed is tiles/second; the existing gait phase is already distance-driven radians.
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
@@ -708,6 +748,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(primaryAction)primaryPose(state,state.pose,primaryAction,p,action.primaryStep);
   else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);
   else state.primaryGripResidual=0;
+  let sweepPosed=false;
   if (action&&!meleeMotion) {
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
@@ -732,7 +773,8 @@ export function sampleCloseViewHero(asset, state, input, out) {
     } else if (kind === 'melee' && profile === 'hammer') {
       hammerPose(asset,state,state.pose,p);
     } else if (kind === 'melee' && profile === 'great-sweep') {
-      toolPose(state,state.pose,profile,p,weight,action);
+      greatSweepPose(state,state.pose,greatSweepActionSample(action,p,state.sweepSample),input.reducedMotion);sweepPosed=true;state.sweepSpin=state.sweepSample.spin;
+      state.clip='derived-great-sweep';state.clipTime=p;
     } else if(shovelDigging) {
       const dig=sampleShovelDigPose(p,input.reducedMotion,state);
       if(dig.weight>0){rotateX(state.pose,22,-1.08*dig.down+.34*dig.lever);rotateX(state.pose,21,-.48*dig.down-.30*dig.lever);rotateX(state.pose,18,.18*dig.down-.28*dig.lever);rotateX(state.pose,12,-.42*dig.down-.24*dig.lever);rotateX(state.pose,11,.22*dig.down);rotateX(state.pose,4,.34*dig.down-.16*dig.lever);}
@@ -788,9 +830,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if(state.clip!=='derived-ordinary-jump'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
+  // The Great Sweep stays drawn between uses (input.heldTool): the carry rides over walking, running,
+  // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
+  if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
-  const scale = input.height / state.referenceHeight, yaw = action && Number.isFinite(action.yaw) ? action.yaw : input.yaw, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
+  const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
   for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - state.minY, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
   socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, state.minY); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, state.minY);
