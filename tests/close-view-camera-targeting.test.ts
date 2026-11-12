@@ -178,7 +178,7 @@ function outside(id, x, y, yaw, w, h) {
 test('outdoors the camera stands high with the horizon in view; in a short landscape view it keeps the horizon', () => overworld(() => {
   for (const id of ['close', 'standard', 'wide']) {
     const o = outside(id, 19, 10, Math.PI, 390, 844);
-    assert.ok(Math.abs(o.c.distance - C.presets[id].distance) < .02, `${id}: full boom`); assert.ok(Math.abs(o.c.height - o.z - C.presets[id].outdoorHeight) < .02, `${id}: at its outdoor height (${(o.c.height - o.z).toFixed(2)})`);
+    assert.ok(Math.abs(o.c.distance - C.presets[id].outdoorDistance) < .02, `${id}: full boom (${o.c.distance.toFixed(2)})`); assert.ok(Math.abs(o.c.height - o.z - C.presets[id].outdoorHeight) < .02, `${id}: at its outdoor height (${(o.c.height - o.z).toFixed(2)})`);
     assert.ok(o.feet.sy > 844 * .55 && o.feet.sy < 844 * .72 && o.head.sy > 844 * .4, `${id}: the Wayfarer low of centre (${o.feet.sy.toFixed(0)})`);
     assert.ok(o.horizon && o.horizon.sy > 844 * .2 && o.horizon.sy < 844 * .45, `${id}: the horizon in the upper part of the screen (${o.horizon?.sy.toFixed(0)})`);
     for (const ahead of [2, 4, 8]) { const q = CV.closeViewProject(19.5 - ahead, 10.82, o.z + .7); assert.ok(q && q.sy > 0 && q.sy < o.feet.sy && q.sx > 0 && q.sx < 390, `${id}: a foe ${ahead} tiles ahead is framed above the Wayfarer for the lock`); }
@@ -190,10 +190,10 @@ test('outdoors the camera stands high with the horizon in view; in a short lands
 test('with its back to a two-level cliff the camera rises and looks down over it instead of pulling in, and holds still', () => overworld(() => {
   for (const id of ['close', 'standard', 'wide']) {
     const o = outside(id, 23, 4, Math.PI, 390, 844), P = C.presets[id];
-    assert.ok(o.c.distance > P.distance - .05, `${id}: the full boom (${o.c.distance.toFixed(2)})`);
+    assert.ok(o.c.distance > P.outdoorDistance - .15, `${id}: the full boom (or within the fixed samples' margin) (${o.c.distance.toFixed(2)})`);
     assert.ok(o.c.height - o.z > P.outdoorHeight + .2 && o.c.height - o.z <= P.outdoorHeight + C.camera.outdoor.riseMax + .03, `${id}: risen over the ledge (${(o.c.height - o.z).toFixed(2)})`);
     const R = outdoorRelief(o.g.map), px = 23.5, py = 4.75; // the line from the chest to the camera clears the ground
-    for (let i = 1; i <= 50; i++) { const k = i / 50; assert.ok(o.z + .6 + (o.c.height - o.z - .6) * k >= outdoorSurfaceZ(R, px + (o.c.x - px) * k, py + (o.c.y - py) * k) + .1, `${id}: clear at ${k}`); }
+    for (let i = 1; i <= 50; i++) { const k = i / 50, ch = C.camera.outdoor.chest; assert.ok(o.z + ch + (o.c.height - o.z - ch) * k >= outdoorSurfaceZ(R, px + (o.c.x - px) * k, py + (o.c.y - py) * k) + .1, `${id}: clear at ${k}`); }
     assert.ok(o.feet.sy > 844 * .55 && o.feet.sy < 844 * .75 && o.horizon.sy > 0, `${id}: framed, and the horizon still shows`);
     const d = o.seen.map((c) => c.distance), hh = o.seen.map((c) => c.height); assert.ok(Math.max(...d) - Math.min(...d) < .01 && Math.max(...hh) - Math.min(...hh) < .01, `${id}: no pumping`);
   }
