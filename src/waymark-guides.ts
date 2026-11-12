@@ -7,7 +7,10 @@
 //   - skyway  (amber chevron, signal `crossing`): a skyway, the floating-disc ascent to the Skylands (game.ts, skylands.ts);
 //   - shrine  (violet spiral, signal `event`):    a Watcher's Shrine, the overworld teleport shrine (watcher.ts);
 //   - lair    (red triangle, signal `danger`):    a world boss, a free world beast the Aperture has woken claims it on the
-//                                                  first visit (game.ts claimGuideLair).
+//                                                  first visit (game.ts claimGuideLair). Before the Aperture has woken any
+//                                                  free world beast (guideLairAwake), red marks lead instead to the nearest
+//                                                  crossing not yet entered (guideCrossing; Tim, 2026-11-12: they can "point to
+//                                                  dungeons or something until you get far enough").
 // A mark shows on a guided section only when a host it has not visited lies within `reach` sections, and it points at the
 // nearest one, so following marks of one kind always closes on a host (the nearest one gets nearer with each step).
 // Tim (2026-11-11): the destination should be about 8-10 sections away when the trail is picked up. Cells of 10 with hosts in
@@ -17,8 +20,8 @@
 import { hashSeed } from "./random.ts";
 import { openSeaQuick } from "./landscape.ts";
 import { hamletSection } from "./settlements.ts";
-import { pentagonCentre } from "./pentagon.ts";
-import { FAR_DOMAINS, farDomainCentre } from "./far-realms.ts";
+import { pentagonCentre, pentagonAt } from "./pentagon.ts";
+import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.ts";
 import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.ts";
 
 export const WAYMARK_GUIDES = {
@@ -32,6 +35,7 @@ export const WAYMARK_GUIDES = {
   seaMargin: .25,   // the quick open-sea test settles from 16 samples when they are this far from the sea share; else all 256
   domainClear: 2,   // sections round a far domain's heart that never host
   lairSkip: ["astralWorm", "voidWalker"], // beasts a lair never calls (as for passing beasts: the Worm's companion rules, the Walker's dungeon home)
+  lairEarly: "a crossing", // what a red mark leads to while no free world beast is woken: the nearest crossing not entered, within `reach` (save state only; no host moves)
   kinds: { // `origin` shifts each kind's lattice: with these the three bands never share a section (skyway x 3-6 y 3-6, shrine x and y 8-1, lair x 8-1 y 3-6, mod 10)
     skyway: { signal: "crossing", name: "a skyway", origin: [0, 0], minDepth: 6 },
     shrine: { signal: "event", name: "a Watcher's Shrine", origin: [5, 5], minDepth: 3 },
@@ -81,6 +85,39 @@ export function guideLairBeast(save, rx, ry) {
   const ids = WORLD_BEAST_IDS.filter((id) => !WAYMARK_GUIDES.lairSkip.includes(id) && free(id) && depth >= WORLD_BEASTS[id].minDepth && beastUnlocked(save, id) && beastRoamsAt(id, rx, ry));
   if (!ids.length) return null; const rested = ids.filter((id) => !(Number(save.worldBeasts?.[id]?.cooldown) > 0)), pool = rested.length ? rested : ids;
   return pool[hashSeed(`${save.seed}:waymark-lair:v${WAYMARK_GUIDES.version}:${rx}:${ry}`) % pool.length];
+}
+// Is there a world beast the Aperture has woken that is free (holding no ground, hunting nowhere) for a lair to call? The save-wide
+// half of guideLairBeast: while this is false no lair can call anything, so red marks lead to a crossing (guideCrossing) instead.
+export function guideLairAwake(save) {
+  return WORLD_BEAST_IDS.some((id) => !WAYMARK_GUIDES.lairSkip.includes(id) && !save?.worldBeasts?.[id]?.active && beastUnlocked(save, id));
+}
+// The sections holding a crossing the Wayfarer has entered (a dungeon history with a visit), read from the save's own ids
+// (`dungeon:<seed>:g<N>:<rx>:<ry>:...`). One pass over the dungeons entered; built only when a crossing is found.
+export function enteredCrossingSections(save) {
+  const out = new Set(), pre = `dungeon:${save?.seed}:g`;
+  for (const [id, h] of Object.entries(save?.consequences?.dungeons || {})) {
+    if (!(Number(h?.visits) > 0) || !id.startsWith(pre)) continue;
+    const m = /^\d+:(-?\d+):(-?\d+):/.exec(id.slice(pre.length)); if (m) out.add(`${Number(m[1])},${Number(m[2])}`);
+  }
+  return out;
+}
+// Where an early red mark on (rx, ry) leads: the nearest section within `reach` (Manhattan; ties north then west, as for
+// guideTarget) whose landmark crossing roll holds (`rolled(x, y)`: world.ts crossingRolled, a few hashes and no region built)
+// and whose crossing the Wayfarer has not entered. Ground a Pentagon may take over and a far domain's heart (both clear their
+// crossings) never count. Rings outward, stopping at the first hit: usually a section or two; at most `reach` rings.
+export function guideCrossing(save, rx, ry, rolled) {
+  const G = WAYMARK_GUIDES, seed = save?.seed; let entered = null;
+  for (let r = 1; r <= G.reach; r++) for (let oy = -r; oy <= r; oy++) {
+    const k = r - Math.abs(oy);
+    for (const ox of k ? [-k, k] : [0]) {
+      const x = rx + ox, y = ry + oy; if (!rolled(x, y)) continue;
+      const c = pentagonCentre(x, y); if (c && pentagonAt(seed, c.cx, c.cy, () => true)) continue;
+      if (farDomainAt(save, x, y, !!save?.atlas?.[`${x},${y}`])) continue;
+      if ((entered ||= enteredCrossingSections(save)).has(`${x},${y}`)) continue;
+      return { kind: "lair", rx: x, ry: y, d: r, name: G.lairEarly, crossing: true };
+    }
+  }
+  return null;
 }
 export const guideHostCacheSize = () => hosts.size;
 export function clearGuideHosts() { hosts.clear(); }
