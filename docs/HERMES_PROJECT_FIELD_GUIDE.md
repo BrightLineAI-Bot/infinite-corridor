@@ -6,6 +6,31 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 912 — Close View beasts: the Astral Worm, the Stalker, the Gloomvast and the Listener
+
+Tim, 2026-11-12: "Lets build them". These are the last four of the world-beast manifest. Each was built by its own agent on its own branch from a shared brief, with several Playwright look-and-fix passes, and then merged here.
+
+**CODE:**
+- `src/close-view-beast-astral.ts`: one 40-bone skeleton for every Astral form. Each form poses every bone in its parent's frame, and two forms are blended on the game's morph clock (`(clock - morphStart) / ASTRAL.morphTime`); unused parts are scaled to nothing at their roots. Poses come only from `e.astral`. The flight beam's foot bone sits on `astralBeamAnchors().ground`. The wings and the beam are in the optional section (channels 3 and 4).
+- `src/close-view-beast-stalker.ts`: the cat and the ape as two branches of one 40-bone skeleton, the inactive one scaled out and morphed over `STALKER_RIG.morphMs`. The turret, appendage, blades, fists, sphere and shield are placed each frame from the game's `stalk*` state, and poses follow the act clocks. `drawStalkerCloseViewFloor` (called from `renderer.ts` `nativeFloor` for the Stalker) draws its marks, eruptions, puddles and shots on the floor, because the admitted body hides its 2D drawing.
+- `src/close-view-beast-gloomvast.ts`: 34 bones. A dithered gas shell (channel 3) over a solid core, veils, corona and tendrils (channel 4), and a solid face, heart and talons. `GLOOMVAST_RIG.moves` holds per-attack keyframes on the pack clock.
+- `src/close-view-beast-listener.ts`: one 40-bone hierarchy with two bind fits (`CLOAK_FIT`, `MORPH_FIT`) chosen by `listenerPhase`, and two meshes. The robed figure follows the open kit's pack clocks; the Morphling follows `e.morph` (cables, jaw, sink, worms, spin, lunge, beams, orbs, barbs), timed on the render clock from when each move starts.
+- `close-view-beasts.ts`: `closeViewBeastEligible(e, scene)` passes the game to the roster filters (the Astral Worm's rider lives on the Walker).
+- `close-view.ts`: admission passes the game, and `spec.mesh(tier, foe)` lets a beast with two bodies prepare the one it draws.
+- Tests: `tests/close-view-beast-{astral,stalker,gloomvast,listener}.test.ts`.
+
+**BOUNDARY:** Render only. No gameplay, save, generator or balance change. `stalker.ts`, `stalker-render.ts`, the listener arena, mirror and morph logic, the Dark mask, the cold-light decoys and the Pentagon arena are untouched. These keep the billboard:
+- the Astral Worm while ridden, and its Mirages;
+- the Stalker's pool, mist, tide, copies and decoys;
+- the Gloomvast veiled in its Dark;
+- the Listener's reflections and worms, and a walled Listener before its Morphling takes shape.
+
+**POLISH:**
+- Astral Worm: griffin head pieces fixed, a lofted gum ring for the bite, the limbs spread out, a deeper crouch, and the snap clenching.
+- Stalker: the walk cycles and wing drape, the strike poses, and the stretching fists.
+- Gloomvast: the face reads through the gas, the heart glows in the shell, and it hovers higher so the tendrils clear the floor.
+- Listener: the hood without a peak, a violet face ring, the Morphling's arms wide with curling tendrils, ribbed hoses, the sink pool rebuilt as a mound, and the lunge arms streaming back.
+
 ## Release 911 — Compass only with an objective; early red waymarks lead to crossings; respawned creatures pay in full
 
 Tim, 2026-11-12: the compass shouldn't point at anything "unless you have an objective... otherwise you can just wander"; red marks can "point to dungeons or something" until the things they point to exist; on revived creatures, "so we'll just have loot in our game", then "full experience, normal loot, and one mark" (most power comes from passives, Tesseracts, glyphs and the Aperture).

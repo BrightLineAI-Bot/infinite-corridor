@@ -27,6 +27,7 @@ import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
@@ -2750,7 +2751,8 @@ export function render(ctx, g, w, h, now) {
         enemy: e,
         nativeWindup: nativeWindupDuration(e),
         nativeActionShape: nativeActionShape(e),
-        nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
+        // (the Stalker's skinned body in Close View: its marks, eruptions and shots lie on the floor)
+        nativeFloor: (time = now) => e.kind === "stalker" ? drawStalkerCloseViewFloor(ctx, e, s, time) : drawNativeCreatureFloor(ctx, g, e, s, time),
         nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
         nativePackEffects: (time = now) => drawNativePackEffects(ctx, e, s, time, g.presentation, actorPresentation(e) || {}),
         nativeEffects: hasNativePackEffects(e),
