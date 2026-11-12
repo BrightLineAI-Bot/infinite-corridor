@@ -4091,7 +4091,7 @@ function stegoTick(e, s, w, p, d) {
   if (s.cd.stegoTreeClub === undefined) s.cd.stegoTreeClub = S.tree.first;
   const hp = Number(e.hp) || 0;
   if (!Number.isFinite(e.stegoTailHp)) e.stegoTailHp = e.stegoTail === "cut" ? 0 : Math.max(1, Math.round((Number(e.maxHp) || 1) * S.tailHp));
-  if (Number.isFinite(s.stegoHp) && hp < s.stegoHp && e.stegoTail === "whole" && stegoTailHit(e, p)) { e.stegoTailHp -= s.stegoHp - hp; if (e.stegoTailHp <= 0) stegoSever(e, s, w); }
+  if (Number.isFinite(s.stegoHp) && hp < s.stegoHp && e.stegoTail === "whole" && stegoTailHit(e, w.wayfarer ? center(w.wayfarer) : p)) { /* w.wayfarer: the Stego Bait's lure world (game.ts) keeps where you strike from */ e.stegoTailHp -= s.stegoHp - hp; if (e.stegoTailHp <= 0) stegoSever(e, s, w); }
   s.stegoHp = hp;
   if (s.attack !== "stegoBreach") { const water = stegoOnWater(e, w), swim = !water ? 0 : !s.attack && d > S.water.surface && !s.stegoClimbing ? 1 : 2; if (swim === 1) e.untargetable = true; else if (e.stegoSwim === 1 && !s.evade) e.untargetable = false; e.stegoSwim = swim; }
   if (s.stegoStagger > 0) { s.stegoStagger -= dt; e.stegoPose = s.stegoStagger > 0 ? "stagger" : null; return s.stegoStagger > 0; }
@@ -4553,11 +4553,13 @@ function tickGateEffect(f, w) {
 // Release 748 (Tim, 2026-11-04): what lies on the ground (pools, trails, webs, tar, brambles) is met at the Wayfarer's feet; on a
 // mount that is the mount's feet (`w.feet`), while blows, shots, blasts and beams meet the rider where drawn (`w.player`).
 export const GROUND_EFFECTS = new Set(["web", "ooze", "lava", "flameTrail", "frostTrail", "flesh", "briar", "darkPool", "doomTar", "mire", "censerSmoke", "iceSlick", "slagPool", "lampFire"]);
-export function tickPackEffects(effects, w) {
-  if (!(w.dt > 0)) return effects;
-  const body = center(w.player), feet = w.feet ? center(w.feet()) : body, p = body;
+export function tickPackEffects(effects, world) {
+  if (!(world.dt > 0)) return effects;
+  const body0 = center(world.player), feet0 = world.feet ? center(world.feet()) : body0;
   // New effects wait until the next tick: an emitter cannot recursively simulate its own new outputs this frame.
   for (const f of [...effects]) {
+    // The Stego Bait (stego-bait.ts): a lured creature's effects meet the bait in the Wayfarer's place (game.ts stegoLureWorld).
+    const lured = world.lureWorldFor?.(f.owner) || null, w = lured || world, body = lured ? center(w.player) : body0, feet = lured ? body : feet0;
     const p = GROUND_EFFECTS.has(f.kind) ? feet : body; // release 748: a ground pool at the feet, everything else at the body
     if (tickGateEffect(f, w)) continue;
     if (tickVoidEffect(f, w, w.dt)) continue;

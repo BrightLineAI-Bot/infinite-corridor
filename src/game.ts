@@ -117,6 +117,7 @@ import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, genera
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
 import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
+import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
 import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
@@ -2516,6 +2517,7 @@ export class Game {
     this.restoreRoofDeck(s.playerRuntime.roofDeck); // roof decks: on the roof it was saved on, or (no longer there) on the ground without a fall
     this.restoreDroneLift(s.playerRuntime.droneLift, now); // release 647: after loading the area, which clears a lift
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
+    if (this.map) this.stegoBaitArrive(); // the Stego Bait: the tails lying here (the first load does not pass the loadArea wrapper)
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -2778,6 +2780,7 @@ export class Game {
             : tier,
         );
       this.applyBeastWounds();
+      this.stegoBaitArrive(); // the Stego Bait: tails lying here, and a bait laid elsewhere ends
     };
     const transition = this.transitionSection.bind(this);
     this.transitionSection = (dx, dy) => {
@@ -4490,6 +4493,7 @@ export class Game {
     if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
     if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
     if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.kind === "stegoTail") return this.pickStegoTail(o); // the Stego Bait (stego-bait.ts)
     if (o.kind === "worldCache") return this.takeWorldCache(o); // world caches
     if (o.kind === "cacheLever") return this.pullCacheLever(o);
     if (o.realmObject && this.area === "dungeon" && this.map?.seedRealm) return this.useRealmObject(o, action); // seed realms
@@ -5208,6 +5212,79 @@ export class Game {
     const at = open[hashSeed(`${this.save.seed}:seed-find-at:v${SEED_FINDS.version}:${key}`) % open.length], S = SEEDS[kind];
     const o = { id: `seed-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: kind, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
     M.objects.push(o); return o;
+  }
+  // ---------------------------------------------------------------------------------------- the Stego Bait (stego-bait.ts)
+  // The Wild Stegosaurus's tail has come away (monster-pack.ts, through packWorld.dropStegoTail): it lies on the nearest open
+  // ground (or water) to where it fell, recorded in save.stegoBait.drops so it is still there after a reload or a return.
+  layStegoTail(e, drop) {
+    if (!this.map || !e) return null;
+    const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area), ok = (x, y) => x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && footprintOpen(this.map, width, x, y, false, true);
+    let at = null;
+    for (let r = 0; r <= 3 && !at; r++) for (let i = 0; i < (r ? 8 : 1) && !at; i++) { const x = drop.x + (r ? Math.round(Math.cos(i * Math.PI / 4)) * r : 0), y = drop.y + (r ? Math.round(Math.sin(i * Math.PI / 4)) * r : 0); if (ok(x, y)) at = { x, y }; }
+    at ||= { x: this.player.x, y: this.player.y };
+    const tailId = `stego-tail:${e.id}`, area = this.areaStateId();
+    if (!recordStegoTail(this.save, tailId, area, Math.round(at.x * 100) / 100, Math.round(at.y * 100) / 100)) return null;
+    const d = this.save.stegoBait.drops.find((q) => q.id === tailId);
+    this.map.objects = this.map.objects.filter((q) => q.kind !== "stegoTail" || this.save.stegoBait.drops.some((k) => k.id === q.id)); // a tail pushed out of the record (STEGO_BAIT.drops) goes too
+    this.map.objects.push(stegoTailObject(d)); return d;
+  }
+  // Act on a severed tail (or walk over it: stegoBaitTick): one Stego Bait.
+  pickStegoTail(o) {
+    const r = takeStegoTail(this.save, o.id);
+    if (r.ok || r.message === "Nothing is left here.") this.map.objects = this.map.objects.filter((q) => q !== o);
+    this.message = r.message; this.sync(); return { ok: r.ok, message: this.message };
+  }
+  // On arrival in an area (loadArea): the tails lying here are laid again; a bait laid in another area has ended.
+  stegoBaitArrive() {
+    const S = ensureStegoBait(this.save), area = this.areaStateId(); this._stegoBaitMap = this.map;
+    if (S.placed && S.placed.area !== area) S.placed = null; // a bait belongs to the area it was laid in
+    for (const d of S.drops) if (d.area === area && !this.map.objects.some((q) => q.id === d.id)) this.map.objects.push(stegoTailObject(d));
+  }
+  // The placed bait when it lies in the area the Wayfarer is in (the renderer draws it), else null.
+  stegoBaitHere() { return this.map ? stegoBaitIn(this.save, this.areaStateId()) : null; }
+  // Uses one Stego Bait: laid STEGO_BAIT.ahead tiles in front of the Wayfarer (or where they stand) for STEGO.baitSeconds.
+  layStegoBait() {
+    const p = this.player, width = mapWidth(this.map, this.area), f = ({ left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] })[p.facing] || [0, 1];
+    const x = p.x + f[0] * STEGO_BAIT.ahead, y = p.y + f[1] * STEGO_BAIT.ahead, water = this.swimming || (this.area === "overworld" && aboard(this.save));
+    const ahead = x >= 0 && y >= 0 && x <= width - 1 && y <= mapHeight(this.map, this.area) - 1 && footprintOpen(this.map, width, x, y, false, water) && hasLineOfSight(p, { x, y }, this.map, width);
+    const r = placeStegoBait(this.save, this.areaStateId(), ahead ? x : p.x, ahead ? y : p.y, this.save.maxHp, STEGO.baitSeconds);
+    this.message = r.message; this.sync(); return r.ok;
+  }
+  // One bite on the placed bait from `source` (a lured creature's blow, shot or ground effect). True when it landed.
+  biteStegoBait(source, amount) {
+    if (source?.illusion) return false;
+    return biteStegoBait(this.save, (Number(amount) || 0) * (bossPaced(source) ? BOSS_PACE.damage : 1));
+  }
+  // The Stalker's world (stalkerWorld) with the bait as its Wayfarer: its blows and its mist land on the bait.
+  stegoLureStalker(base, lure) {
+    const game = this, no = () => false;
+    return Object.assign(Object.create(base), { player: lure.target, sheltered: false, door: null, playerVelocity: { x: 0, y: 0 }, displace: no, hurt: (e, amount) => game.biteStegoBait(e, amount), rot: (e, share) => game.biteStegoBait(e, (game.save.maxHp || 1) * share) });
+  }
+  // Once a frame, before the creatures move: the bait's clock, walking over a tail, and the lure. Returns the lure for this
+  // frame ({ target, has(e) }) or null. Nothing is allocated while no bait is down (the target and the id set are reused).
+  stegoBaitTick(dt) {
+    if (this._stegoBaitMap !== this.map) this.stegoBaitArrive(); // a load that did not pass the loadArea wrapper (the first, at start-up)
+    const S = this.save.stegoBait; if (!S) return null;
+    if (S.drops.length) { const area = this.areaStateId(), p = this.player;
+      for (const d of S.drops) if (d.area === area && Math.hypot(d.x - p.x, d.y - p.y) <= STEGO_BAIT.grab) { const o = this.map.objects.find((q) => q.id === d.id); if (o) { this.pickStegoTail(o); break; } } }
+    if (!S.placed) return null;
+    const end = tickStegoBait(this.save, dt); if (end) { this.message = STEGO_BAIT.say[end]; return null; }
+    const b = this.stegoBaitHere(); if (!b) return null;
+    const L = this._stegoLure ||= { target: { x: 0, y: 0, isBait: true, facing: "down", hp: 1, maxHp: 1 }, ids: new Set(), has(e) { return this.ids.has(e.id); } };
+    Object.assign(L.target, { x: b.x, y: b.y, hp: b.hp, maxHp: b.maxHp }); L.ids.clear();
+    for (const e of this.enemies) if (stegoBaitLures(e)) { L.ids.add(e.id); if (!e.aggro && Math.hypot(e.x - b.x, e.y - b.y) <= STEGO_BAIT.scent) e.aggro = true; }
+    return L;
+  }
+  // A world for lured pack creatures, the Revenants and the beasts' ground effects: `base` (packWorld) with the bait as its
+  // Wayfarer. Blows land on the bait; nothing reaches the Wayfarer (no pull, push, grab, stun, slow, burn, poison or curse).
+  stegoLureWorld(base, lure, now) {
+    const game = this, t = lure.target, no = () => false, none = () => {};
+    return Object.assign(Object.create(base), {
+      player: t, wayfarer: game.player, feet: () => t, playerVelocity: { x: 0, y: 0 }, playerSwinging: false,
+      hurt: (source, amount) => game.biteStegoBait(source, amount),
+      pull: no, push: no, grab: no, held: no, release: none, stun: none, shockHit: none, slow: none, ignite: none, poison: none, confuse: none, curse: none, frenzy: none,
+      deferAstralHeal: none, playerDeathFinal: no, sunfallShaded: null, say: base.say, lureWorldFor: null, now,
+    });
   }
   takeSeedFind(o) {
     const key = `${this.rx},${this.ry}`, flag = seedFindFlag("overworld", key), S = SEEDS[o.seed];
@@ -6068,6 +6145,7 @@ export class Game {
         const moved = game.moveGrounded(e, dx, dy, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       gateChase(e, step) {
+        const p = this.player; // the Wayfarer, or the Stego Bait for a lured Revenant (stegoLureWorld)
         const ai = ensureAI(e), blockedSight = !hasLineOfSight(e, p, map, width);
         if (ai.gateStep && Math.hypot(ai.gateStep[0]-e.x,ai.gateStep[1]-e.y)<.08) ai.gateStep=null;
         if (blockedSight && !(ai.gatePathRetry > now)) { ai.gatePathRetry=now+350; ai.gateStep=boundedChaseStep(e,p,map,width); }
@@ -6085,7 +6163,7 @@ export class Game {
       dungeonClock: game.dungeonClock || 0, // release 271: Gate Revenants stalk, then hunt
       walkable: game.area === "dungeon" ? (x, y) => { const k = Math.round(y) * width + Math.round(x); return x >= 0 && y >= 0 && x <= width - 1 && y <= height - 1 && game.playerFloor().has(k); } : null,
       roamWork: (n) => { game.performanceStats.pathfindingWork += n; },
-      detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, p, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
+      detour(e, speed) { if (game.astralRiderHeld(e)) return; const step = boundedChaseStep(e, this.player, map, width); if (step) { const px = step[0] - e.x, py = step[1] - e.y, m = Math.hypot(px, py) || 1; this.move(e, px / m * speed, py / m * speed); } },
       hurt: (source, amount, options) => !(sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) && game.packHurt(source, amount, options, now),
       grab(source) { if (now < (p.dodgeUntil || 0) || now <= (p.invulnerableUntil || 0)) return false; p.heldUntil = now + CRYSTAL.grabHold * 1000 + 100; p.heldBy = source.id; game.message = "It has you. Struggle: dodge, again and again!"; return true; }, // release 249
       held(source) { return now < (p.heldUntil || 0) && p.heldBy === source.id; },
@@ -6100,6 +6178,7 @@ export class Game {
       climbFree: game.area === "overworld" ? (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && !game.stalkerBarred(x, y) : null,
       uprootTree(o) { if (!isClubTree(o)) return false; o.state = "fallen"; o.stegoUprooted = true; (game.save.worldFlags ||= {})[`${o.id}:uproot`] = true; return true; },
       stegoTailCut(e) { const q = e.worldBeast && game.save.worldBeasts?.[e.worldBeast]?.active; if (q) q.tailCut = true; },
+      dropStegoTail: (e, drop) => game.layStegoTail(e, drop), // stego-bait.ts: the severed tail lies where it fell
       // The Stillworks' cover (pentagon-arena.ts PENTAGON_ARENA.cover, arena version 2): a pillar or standing lattice between the beast
       // and the Wayfarer turns the Sunfall. Only in an arena that has the pillars; everywhere else the Sunfall is as it was.
       sunfallShaded: map.stillworks?.cover ? (e) => { const shade = !hasLineOfSight({ x: e.x + .5, y: e.y + .5 }, { x: p.x + .5, y: p.y + .7 }, map, width, true); if (shade) game.message = PENTAGON_ARENA.messages.shaded; return shade; } : null,
@@ -9257,6 +9336,7 @@ export class Game {
     }
     if (type === "hullShield") { const r = deployHullShield(this.save); this.message = r.message; this.sync(); return r.ok; } // release 263
     if (type === "submersible") { const gate = subGate(this.save); if (!gate.ok) { this.message = gate.why; return false; } const r = fitSubmersible(this.save); this.message = r.message; this.sync(); return r.ok; } // release 311; 315: gated
+    if (type === STEGO_BAIT.item) return this.layStegoBait(); // the Stego Bait (stego-bait.ts): laid in front of you
     if (POTIONS[type]) { // release 339: the Restorative Draught, High Potion and Max Potion (potions.ts)
       if (this.player.hp >= this.save.maxHp) {
         this.message = "Health is already full.";
@@ -9768,6 +9848,10 @@ export class Game {
     else { const ag = armorGlyphBonus(this.save), drain = ag.staminaDrain > 0 && this.stagMireMoving ? (p.maxStamina || this.save.maxStamina) * ag.staminaDrain : 0; /* a Tesseract's cost: stamina drained while you move */ p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * (1 + ag.staminaRegen) * dt - drain * dt); if (drain) p.stamina = Math.max(0, p.stamina); }
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
+    // The Stego Bait (stego-bait.ts): while one is down here, every creature it lures sees it as the Wayfarer (lureWorld), and
+    // their ground effects strike it, not you (monster-pack.ts tickPackEffects asks lureWorldFor).
+    const lure=this.stegoBaitTick(dt),lureWorld=lure?this.stegoLureWorld(packWorld,lure,now):null;let stalkLure=null;
+    packWorld.lureWorldFor=lure?(owner)=>lure.ids.has(owner)?lureWorld:null:null;
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
@@ -9780,6 +9864,7 @@ export class Game {
       ink:(seconds)=>{this.inkUntil=now+seconds*1000;if(now>(this.inkMessageAt||0)){this.inkMessageAt=now+8000;this.message="Ink clouds the water — the Stormkraken hides in the dark."}}};
     tickTravelers(this.map,p,dt);
     const seaSummons=[];
+    const seaLure=lure?{...seaWorld,player:lure.target,hurt:(n,e)=>{this.biteStegoBait(e,n)},pull:()=>{}}:null;
     this.riderUp(); // release 748: creatures aim at, strike and blast the rider where drawn
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
@@ -9792,8 +9877,8 @@ export class Game {
       // displacement must neither relocate it nor freeze its retreat while the player rests inside.
       if(e.playing&&!e.dead){this.performanceStats.activeEnemies++;continue} // release 714: the Stag and the Stalker at play
       if(e.pentFinaleBeast&&!e.pentArenaAwake&&!e.dead){this.performanceStats.dormantEnemies++;continue} // the Stillworks' beast sleeps at the heart until it wakes (tickPentagonArena)
-      if(e.stalker||e.stalkerKin||e.stalkerDecoy){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateStalker(e,this.stalkerWorld(dt,now));continue} // release 678
-      if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy;e.gateWalkFor=GATE_REVENANT.walkAround}continue} // release 271: through walls, never into the black beyond (and, held at the edge, it walks around for a while)
+      if(e.stalker||e.stalkerKin||e.stalkerDecoy){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateStalker(e,lure?.has(e)?(stalkLure||=this.stegoLureStalker(this.stalkerWorld(dt,now),lure)):this.stalkerWorld(dt,now));continue} // release 678
+      if(e.gatePredator){this.performanceStats.activeEnemies++;const ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updateGatePredator(e,lure?.has(e)?lureWorld:packWorld);if(this.area==="dungeon"&&!this.roamerInBounds(e)){e.x=ox;e.y=oy;e.gateWalkFor=GATE_REVENANT.walkAround}continue} // release 271: through walls, never into the black beyond (and, held at the edge, it walks around for a while)
       if(e.packKind&&e.astralMount?.status==="mounted"&&e.astralMount.ridingAway){this.performanceStats.activeEnemies++;continue} // rides the retreating Worm home
       if(e.packKind&&e.worldBeast==="voidWalker"&&!this.astralRiderHeld(e)&&!e.retreating){
         const q=this.save.worldBeasts?.voidWalker?.active;
@@ -9807,17 +9892,18 @@ export class Game {
       }
       if(e.blobRemnant){e.remnantLeft-=dt;e.fleeFade=Math.max(0,Math.min(1,e.remnantLeft/BLOB_SPLIT.fade));if(e.remnantLeft<=0)e.remnantGone=true;continue} // release 259: the Blob's left-behind mass fades
       if(e.packKind&&e.astralMount?.status==="boarding"){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)tickAstralBoarding(e,dt,this.astralMountHost());continue}
-      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.retreating||e.fleeTo||e.passingBeast?null:packWorld.sanctuary/* release 609 (Codex play-test, issue 4): any harmless retreating or passing beast walks through a sanctuary, not only the Walker */;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}const roam=isDungeonRoamer(e,this.area)&&!e.retreating,ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,packWorld);if(roam&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}if(zone)enforceSanctuary(e,zone);continue}
-      if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,seaWorld,dt);continue}
+      if(e.packKind){refreshMarineBeast(e,this.map,width,this.area);this.performanceStats.activeEnemies++;const zone=this.astralRiderHeld(e)||e.retreating||e.fleeTo||e.passingBeast?null:packWorld.sanctuary/* release 609 (Codex play-test, issue 4): any harmless retreating or passing beast walks through a sanctuary, not only the Walker */;if(zone){enforceSanctuary(e,zone);if(Math.hypot(p.x-zone.x,p.y-zone.y)<zone.radius)continue}const roam=isDungeonRoamer(e,this.area)&&!e.retreating,ox=e.x,oy=e.y;if(!fellIntoHazard&&!e.dead)updatePackMonster(e,lure?.has(e)?lureWorld:packWorld);if(roam&&!this.roamerInBounds(e)){e.x=ox;e.y=oy}if(zone)enforceSanctuary(e,zone);continue}
+      if(e.seaKind){this.performanceStats.activeEnemies++;if(!fellIntoHazard&&!e.dead)updateSeaCreature(e,lure?.has(e)?seaLure:seaWorld,dt);continue}
       if(e.encounterGroup&&!this.activatedEncounterGroups.has(e.encounterGroup)){this.activatedEncounterGroups.add(e.encounterGroup);this.performanceStats.encounterActivations++}
       let simulationDt=dt;
       if(e.ambient){e.ambientAccumulator=(e.ambientAccumulator||0)+dt;if(e.ambientAccumulator<.125){this.performanceStats.dormantEnemies++;continue}simulationDt=Math.min(.25,e.ambientAccumulator);e.ambientAccumulator=0;this.performanceStats.ambientTicks++}
       this.performanceStats.activeEnemies++;
-      const pathRetryBefore=e.ai?.pathRetryAt||0;
+      const pathRetryBefore=e.ai?.pathRetryAt||0,lured=!!lure?.has(e); // the Stego Bait: a lured creature chases, strikes and shoots the bait
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
+        updateEnemyAI(e, lured ? lure.target : p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,lured?(shooter)=>{this.biteStegoBait(shooter,shooter.damage)}:(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
+        !(lured && (this.biteStegoBait(e, e.damage), true)) && // a lured blow lands on the bait, never on you
         now > (p.invulnerableUntil || 0) &&
         (!(now < this.jumpUntil) || e.kind === "sparkWarden" || !!this.mountRide()) && // Tim (2026-11-05): a mount's leap dodges nothing (on foot a jump still clears these blows; jumpable ground attacks pass under either)
         this.bodyReach(e) && // Tim (2026-11-04): a ground creature's blow does not reach the Wayfarer on a roof (ELEVATION_REACH)

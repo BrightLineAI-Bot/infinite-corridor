@@ -25,7 +25,8 @@ import { sectionRegion, regionName, REGIONS } from "./landscape.ts"; // release 
 import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY } from "./monster-pack.ts";
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
+import { STEGO_BAIT } from "./stego-bait.ts"; // the Stego Bait (Pack → Supplies)
 import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.ts";
 import { curseDef } from "./haunts.ts"; // release 737: the haunt curses on the HUD
 import { activeFarQuest } from "./far-realms.ts"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
@@ -187,6 +188,8 @@ const ITEM_ICONS = {
   lumenPhial: '<svg viewBox="0 0 24 24" aria-hidden="true"><g stroke="#ffe9a3" stroke-width="1.3" stroke-linecap="round"><path d="M12 1.2v2.2M4.2 6.2l1.6 1.2M19.8 6.2l-1.6 1.2M3 13.5h2M19 13.5h2"/></g><rect x="10" y="3.6" width="4" height="2.4" rx=".6" fill="#8a5a32"/><path d="M9.6 6h4.8v3.2c2.2 1.1 3.4 3.1 3.4 5.5 0 3.5-2.6 6.3-5.8 6.3s-5.8-2.8-5.8-6.3c0-2.4 1.2-4.4 3.4-5.5z" fill="#f5c542" stroke="#fff3c4" stroke-width="1"/><path d="M12 11.2l1 2.4 2.5.2-1.9 1.6.6 2.5-2.2-1.4-2.2 1.4.6-2.5-1.9-1.6 2.5-.2z" fill="#fffdf0"/></svg>',
   // Clearroot Ampoule: a sealed green ampoule, pale roots in it (poison cleared).
   clearrootAmpoule: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6c1 2.2 1.6 3.6 1.6 5.2v1.4c2.6 1.3 4.2 3.8 4.2 6.7 0 4-2.6 7.5-5.8 7.5s-5.8-3.5-5.8-7.5c0-2.9 1.6-5.4 4.2-6.7V6.8c0-1.6.6-3 1.6-5.2z" fill="#4f9a5a" stroke="#c9f2c4" stroke-width="1"/><path d="M12 10.5v8.8M12 14.2l-2.6 2.6M12 15.6l2.8 2.2M12 12.4l2 1.6M12 17.6l-1.8 2" stroke="#eafbe3" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
+  // Stego Bait: a blue spiked tail, cut (the beast's own colours: wild-stego-render.ts STEGO_ART).
+  stegoBait: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 13.2c4-3.2 10-4.4 17-2.2-6.4 1.6-12 3.2-17 5.8z" fill="#2f6fd6" stroke="#0c2556" stroke-width="1"/><path d="M15.6 10.6l2.4-5.2 .6 5.6zM18.2 11l3-4.4-.4 4.8zM16 13.4l2 4.8-3.2-4zM18.6 12.6l3 3.8-4-3.2z" fill="#d8eeff" stroke="#5d86c8" stroke-width=".6"/><ellipse cx="4" cy="14.6" rx="1.6" ry="2.4" fill="#c8455a" stroke="#7a1c2c" stroke-width=".7"/><circle cx="4" cy="14.6" r=".8" fill="#f2ead8"/></svg>',
   // Hull Shield: a skiff's hull under a shield (the hull takes no damage).
   // Release 311: a silver submersible with its great round window and a manipulator arm.
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
@@ -2064,9 +2067,11 @@ function openPack(tab) {
       "Empowers magic projectiles by 40% for 45 seconds.",
     ],
     ["clearrootAmpoule","Clearroot Ampoule","Immediately ends elite poison."],
+    [STEGO_BAIT.item, STEGO_BAIT.name, `${STEGO_BAIT.text} Lasts ${STEGO.baitSeconds} s; the bait can be eaten. Bosses and finale beasts pay it no heed.`], // the Stego Bait (stego-bait.ts)
     ["hullShield","Hull Shield","Deploy aboard your skiff: the hull takes no damage for 3 minutes. The Shipwright sells them."],
     ["submersible","Submersible Frame",`${subGate(save).ok ? "" : subGate(save).why + " "}Fit it aboard your skiff and it becomes a silver submersible robot: ${BOAT.sub.hull} more hull, 5% less damage to you, Dodge dives under, and (from Infinite III, with the Void Walker and a Listener beaten) dive buoys take you down with no rig or lens. Used on land (from Infinite III, with the second Gate open) it becomes a robot you wear: plating, a guard, and Hold Jump to boost. It stays up until you stow it. Press the button again for Empowered mode: it burns 1 cinder iron every 20s for 25% more damage, a stronger guard and twice the boost; a third press stows it. Plating that gives out is re-forged from ${MECH_POWER.replate} cinder iron while you carry that much. From the fourth Gate it can be a drone instead, flying beside you with homing rockets, mending you on command or when you are low, and carrying you while you hold Jump. Another frame mends its plating. Forge one from ${BOAT.sub.cinderIron} cinder iron (you have ${save.materials?.cinderIron || 0}).`],
   ]) {
+    if (type === STEGO_BAIT.item && !(save.consumables[type] > 0)) continue; // shown once one is carried
     const row = document.createElement("div"),
       title = document.createElement("strong"),
       text = document.createElement("p");
