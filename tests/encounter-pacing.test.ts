@@ -45,7 +45,7 @@ test('no new world beast or Questing Beast is claimed inside the buffer; an enco
 test('chances are scaled down from each beast\'s own rate', () => {
   assert.ok(ENCOUNTER.chanceScale > 0 && ENCOUNTER.chanceScale < 1);
   const total = WORLD_BEAST_IDS.reduce((n, id) => n + WORLD_BEASTS[id].chance * ENCOUNTER.chanceScale, 0);
-  assert.ok(total < .2, `combined per-section chance ${total.toFixed(3)}`);
+  assert.ok(total < .22 /* 2026-11-12: the Wild Stegosaurus joins the roll; the buffer between meetings still paces them */, `combined per-section chance ${total.toFixed(3)}`);
 });
 
 // A 32x32 section: open sea all round, with land drawn by `land(x, y)`.

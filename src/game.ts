@@ -116,6 +116,7 @@ import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addS
 import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.ts";
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
+import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
 import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
@@ -126,7 +127,7 @@ import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
-import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
+import { DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -539,6 +540,11 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (isPentagonId(id) && map?.building?.pentagon && map.building.vault) pentagonFinaleIn(save, id, map); // the finale: the vault's opened wall, once the Regent has fallen
   if (isPentagonFinaleId(id) && map) pentagonWalkBackIn(save, map); // a walkway reached through the arena leads back to it
   if (interior) addRoofExit(save, id, map, history); // release 746: the vault's roof exit, laid over the floor (never into its tiles)
+  // The Wild Stegosaurus (wild-stego.ts): a great building's floor or an adventure Pentagon's chamber first generated from now on may
+  // hold one in a big room. The version is pinned on the floor's own history; a floor generated before has none, and never gains one.
+  const stegoKind = isBuildingId(id) ? "building" : isPentagonId(id) ? "pentagon" : null;
+  if (fresh && stegoKind && history.stegoRooms === undefined) history.stegoRooms = STEGO_ROOMS.version;
+  if (stegoKind && history.stegoRooms && map) { const q = stegoRoomSpawn(save.seed, id, map, stegoKind, history.stegoRooms); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
   return map;
 }
 // The Pentagon's shortcut links in a chamber (pentagon.ts pentagonLinkEnds): laid in from version 6; over a Pentagon begun
@@ -574,6 +580,13 @@ export function pentagonArenaBeast(save, base) {
 // The finale beast's vitals (pentagon-arena.ts pentagonArenaVitals): the world beast's, measured against the Wayfarer as they stand,
 // times its row; `regional` is the beast ramp (ring 100 to 150), which takes over only where it is higher. No hunt, tries, retreat or
 // pursuit: it is not the roaming beast (`worldBeast` is never set), only its kin, and it keeps to the Stillworks.
+// The Wild Stegosaurus met in a big room (wild-stego.ts): tuned to the Wayfarer as the roaming beast is (its WORLD_BEASTS row), but no
+// hunt: no tries, no retreat, no bounty; it is an ordinary foe of that floor otherwise, and takes regional threat as the beasts do.
+export function tuneStegoRoom(c, save, stats) {
+  const B = WORLD_BEASTS.wildStego, v = beastProfileVitals(B, save, stats);
+  Object.assign(c, { stegoRoom: true, boss: false, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: B.name });
+  delete c.worldBeast; return c;
+}
 export function tunePentagonArenaBeast(c, id, save, stats, regional) {
   const row = pentagonArenaRow(id), v = row && pentagonArenaVitals(row, save, stats, regional); if (!v) return c;
   Object.assign(c, { pentFinaleBeast: id, boss: true, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true,
@@ -897,11 +910,11 @@ export function ordinaryThreat(ring) {
 }
 // Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
 // elites included, so they stay proportionally above the trash around them.
-export function wayfarerTuned(e) { return !!(e.worldBeast || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.stegoRoom || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
   if (e.pentFinaleBeast) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
-  const beast = !!(e.worldBeast || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
+  const beast = !!(e.worldBeast || e.stegoRoom || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
   e.maxHp = Math.round(e.maxHp * m.hpMultiplier * o.hp);
@@ -1259,7 +1272,7 @@ export function chaseSearch(sx,sy,gx,gy,map,width,radius=NAV.radius,marine=false
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
 // restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
 function refreshMarineBeast(entity, map, width, area) {
-  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle"].includes(entity?.kind)) return false; // release 257: the Giant crosses the sea on its cloud; release 261: the Turtle walks it on ice
+  if (!["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "wildStego"].includes(entity?.kind)) return false; // release 257: the Giant crosses the sea on its cloud; release 261: the Turtle walks it on ice
   const capable = area === "overworld";
   Object.defineProperty(entity, "_marineTraversal", { value: capable, writable: true, configurable: true, enumerable: false });
   entity.marine = capable && marineAt(map, width, entity.x, entity.y);
@@ -3182,7 +3195,7 @@ export class Game {
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     { const here = this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
       const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q)), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
-      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && q.kind !== 'npc').length)); } }
+      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && !q.stegoRoom && q.kind !== 'npc').length)); } }
     this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 731: the haunts
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
       if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
@@ -3252,7 +3265,7 @@ export class Game {
           ai: { ...ensureAI(e), ...restored.ai },
         };
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
@@ -4107,6 +4120,7 @@ export class Game {
   // health it has left), so whichever way it is loaded again (left behind, followed, reloaded) it comes back as hurt as it
   // was. Only the end of the hunt clears them (release 427: a death no longer heals it).
   applyBeastWounds() {
+    for (const e of this.enemies) if (e.kind === "wildStego" && e.worldBeast && this.save.worldBeasts?.[e.worldBeast]?.active?.tailCut) { e.stegoTail = "cut"; e.stegoTailHp = 0; } // its tail stays cut for the rest of this hunt
     for (const e of this.enemies) {
       const f = Number(this.save.worldBeasts?.[e.worldBeast]?.active?.wounds);
       if (!e.worldBeast || e.dead || e.retreating || !(f > 0 && f < 1)) continue;
@@ -6044,13 +6058,13 @@ export class Game {
       playerDeathFinal: () => game.astralPlayerFell(),
       deferAstralHeal: (owner,amount) => { if(amount>0&&(game._astralDrainCredits||=[]).length<32)game._astralDrainCredits.push({owner,amount}); },
       astralLos: (a,b) => hasLineOfSight(a,b,map,width,true,game.area === "overworld"),
-      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal", "lightningGiant", "mountainTurtle"].includes(a?.kind)),
+      los: (a, b, projectile = false) => hasLineOfSight(a, b, map, width, projectile, game.area === "overworld" && ["voidWalker", "psychicCrystal", "lightningGiant", "mountainTurtle", "wildStego"].includes(a?.kind)),
       move(e, dx, dy, opts = {}) {
         if (game.astralRiderHeld(e)) return false;
         const marine = refreshMarineBeast(e, map, width, game.area);
         if (e.kind === "voidWalker") { const moved = moveWalkerGround(e, dx, dy, map, width); refreshMarineBeast(e, map, width, game.area); return moved; }
         if (e.kind === "psychicCrystal" && isDungeonRoamer(e, game.area) && !opts.phase && e.aggro) { /* release 437 (Tim: "the psychic crystal keeps staying in the squares where I can't attack him"): fighting you it never settles in rock. Out in the open with you in sight it walks (release 401); inside rock it keeps moving through (it cannot attack from there: monster-pack holds its attacks while e.inRock), and out of sight it still phases to reach you */ const inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (!inRock && hasLineOfSight(e, p, map, width)) { const moved = moveAxis(e, dx, dy, map, width, true, null, marine); e.inRock = false; refreshMarineBeast(e, map, width, game.area); return moved; } const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; e.inRock = !footprintOpen(map, width, e.x, e.y, true, marine); if (e.inRock && !moved) { const out = nearestOpenFootprint(map, width, e); if (out) { const d = Math.hypot(out.x - e.x, out.y - e.y) || 1, st = Math.min(d, .08); e.x += (out.x - e.x) / d * st; e.y += (out.y - e.y) / d * st; } } return moved || e.inRock; }
-        if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant", "mountainTurtle"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; /* release 287: it drifts through stone, not through the Wayfarer's builds */ const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
+        if (isDungeonRoamer(e, game.area) || opts.phase && !["psychicCrystal", "lightningGiant", "mountainTurtle", "wildStego"].includes(e.kind)) { const nx = Math.max(0, Math.min(width - 1, e.x + dx)), ny = Math.max(0, Math.min(height - 1, e.y + dy)); if (game.builds?.length && tallBuildAt(map, width, nx, ny) && !tallBuildAt(map, width, e.x, e.y)) return false; /* release 287: it drifts through stone, not through the Wayfarer's builds */ const moved = nx !== e.x || ny !== e.y; e.x = nx; e.y = ny; return moved; }
         const moved = game.moveGrounded(e, dx, dy, !!e.flying, null, marine); refreshMarineBeast(e, map, width, game.area); return moved;
       },
       gateChase(e, step) {
@@ -6079,6 +6093,13 @@ export class Game {
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
       dragonDue: () => !map.pentArena && game.dragonDue(), /* the Stillworks is never claimed */ dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
       frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
+      // The Wild Stegosaurus (monster-pack.ts STEGO): a one-off blow at another creature (its kills pay nothing); its climb over rock and
+      // walls (the Stalker's rule: the open world only, never into a building, shelter or town); a tall thin tree torn out for a club (kept
+      // down as a felled tree is: its state and a world flag); its cut tail, kept on its hunt for the rest of that hunt.
+      hurtCreature(source, q, amount) { if (!q || q.dead || !(amount > 0)) return false; q.hp = Math.max(0, (Number(q.hp) || 0) - amount); q.hitFlash = .18; q.aggro = true; if (q.hp <= 0) { q.dead = true; q.noRewards = true; game.defeatEnemy(q); } return true; },
+      climbFree: game.area === "overworld" ? (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && !game.stalkerBarred(x, y) : null,
+      uprootTree(o) { if (!isClubTree(o)) return false; o.state = "fallen"; o.stegoUprooted = true; (game.save.worldFlags ||= {})[`${o.id}:uproot`] = true; return true; },
+      stegoTailCut(e) { const q = e.worldBeast && game.save.worldBeasts?.[e.worldBeast]?.active; if (q) q.tailCut = true; },
       // The Stillworks' cover (pentagon-arena.ts PENTAGON_ARENA.cover, arena version 2): a pillar or standing lattice between the beast
       // and the Wayfarer turns the Sunfall. Only in an arena that has the pillars; everywhere else the Sunfall is as it was.
       sunfallShaded: map.stillworks?.cover ? (e) => { const shade = !hasLineOfSight({ x: e.x + .5, y: e.y + .5 }, { x: p.x + .5, y: p.y + .7 }, map, width, true); if (shade) game.message = PENTAGON_ARENA.messages.shaded; return shade; } : null,
@@ -6640,6 +6661,7 @@ export class Game {
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = e.keyKeeper ? TOWER_SEAL.keeper.name : `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; /* TOWER_SEAL: the tower key's warden */ c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } if (e.pentBoss) { const B = e.pentBoss, g = e.buildingGuardian ? G : { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp / g.hp * B.hp)); c.damage = Math.max(1, Math.round(c.damage / g.damage * B.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.packName = B.name; c.pentBoss = true; c.affixes = rollAffixes(`${this.save.seed}:pentagon-boss:${c.id}`, B.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
       if (e.adventureCreature) { c.adventureCreature = e.adventureCreature; this.scaleToRegion(c); } // Pentagon v11: an adventure creature (adventure-creatures.ts) takes its region's threat
+      if (e.stegoRoom) tuneStegoRoom(c, this.save, characterStats(this.save)); // the Wild Stegosaurus in a big room (wild-stego.ts)
       if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
       if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
       else if (e.kind === GLOOM_FINALE.kind) this.gloomInit(c); // a Gloomvast an arena tuned itself (the Stillworks' roster): its vitals kept, its kit and Dark made ready
@@ -6664,7 +6686,7 @@ export class Game {
   extraDungeonSpawns() {
     const id = String(this.areaId()), h = dungeonHistory(this.save, id), map = this.map;
     if (map.arena || isArrayRun(id) || id.startsWith("hunt-") || h.resolved || h.combatClear?.completed) return [];
-    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon);
+    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon && !q.stegoRoom /* the Wild Stegosaurus in a big room: one, and the extras as they would be without it */);
     const n = Math.round(base.length * DUNGEON_BOOST.count), w = mapWidth(map, "dungeon"), out = [], taken = new Set(map.enemySpawns.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`));
     for (let i = 0; i < n * 3 && out.length < n; i++) {
       const k = hashSeed(`${this.save.seed}:dungeon-boost:v1:${id}:${map.levelId || ""}:${i}`), b = base[k % base.length], r = DUNGEON_BOOST.near;
