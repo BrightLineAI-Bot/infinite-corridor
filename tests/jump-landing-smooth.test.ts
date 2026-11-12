@@ -18,6 +18,7 @@ import { OUTDOOR, outdoorRelief, outdoorSurfaceZ } from '../src/close-view-outdo
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_LEAP, closeViewCamera, closeViewHeroFeetZ, closeViewPan, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { ordinaryFallPresentation, ordinaryLandingPresentation } from '../src/close-view-player-presentation.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
+import { DRONE, setMechMode } from '../src/vehicle-gates.ts';
 
 const L = OUTDOOR.terrain.level, V = CLOSE_VIEW.camera.vertical;
 class StubGL { constructor() { let next = 1; const c = new Map(); return new Proxy(this, { get: (o: any, k: any) => { if (k in o) return o[k]; if (typeof k === 'string' && /^[A-Z][A-Z0-9_]+$/.test(k)) { if (!c.has(k)) c.set(k, next++); return c.get(k); } return () => {}; } }); }
@@ -120,4 +121,27 @@ test('Close View: a long fall shows the falling pose, the feet follow the fall, 
   assert.ok(fell > 20, `a fall with airtime (${fell} frames)`); assert.ok(posed >= fell * .6, `the falling pose (${posed} of ${fell})`);
   assert.ok(most <= (FALL.terminal * L + 1) / 60, `the feet follow the fall (${most.toFixed(3)} a frame)`); assert.ok(camMost < .3, `the camera moves smoothly (${camMost.toFixed(3)} a frame)`);
   assert.ok(ordinaryLandingPresentation(g, s.now()) != null || landed >= 0, 'and lands');
+}));
+
+// Close View's drone lift and open glider: drawn at Close View's own level height (OUTDOOR.terrain.level, 1.2 tiles), as a fall is,
+// not at the flat view's LIFT_PER_LEVEL (.34): a lift five levels up was drawn 1.7 tiles up beside a five-level cliff six tiles tall.
+// Presentation only.
+test('Close View draws the drone lift and the glide at the terrain\'s level height, and joins them without a jump', () => withGPU(() => {
+  const s = tile(60, 10), g = s.g; const sv = g.save; sv.perception.aperture = 3255; sv.farArray = { listeners: 10, gate: 5 }; sv.consumables.submersible = 1;
+  setMechMode(sv, 'drone'); g.useConsumable('submersible', 0); sv.mech.fuel = DRONE.carry; assert.ok(g.droneUp());
+  const screen: any = ctx2d(); screen.canvas = { width: 390, height: 844 }; let T = s.now();
+  const step = (jump = false, hold = false) => { T += 1000 / 60; g.enemies = []; g.update(1 / 60, { state: { x: 0, y: 0 }, consume: (k: string) => k === 'jump' && jump, held: (k: string) => k === 'jump' && hold }, T); render(screen, g, 390, 844, T); };
+  for (let i = 0; i < 30; i++) step(); step(true); let prev = closeViewHeroFeetZ(), most = 0;
+  for (let i = 0; i < 90; i++) { step(i === 0, true); const f = closeViewHeroFeetZ(); most = Math.max(most, Math.abs(f - prev)); prev = f; }
+  assert.ok(g.droneLift && g.droneLift.z > 2, `up on the booster (${g.droneLift?.z})`);
+  const ground = outdoorSurfaceZ(s.R(), g.player.x + .5, g.player.y + .75), want = ground + g.droneLift.z * L;
+  assert.ok(Math.abs(closeViewHeroFeetZ() - want) < .1, `the lift at ${L} a level (${closeViewHeroFeetZ().toFixed(2)} vs ${want.toFixed(2)}; the flat view's ${(g.droneLift.z * LIFT_PER_LEVEL).toFixed(2)})`);
+  assert.ok(most < 12 / 60, `no jump on the way up (${most.toFixed(3)} a frame)`);
+  // let go: down again, and the feet meet the ground without a cut
+  for (let i = 0; i < 300 && g.droneLift; i++) { step(); const f = closeViewHeroFeetZ(); most = Math.max(most, Math.abs(f - prev)); prev = f; }
+  for (let i = 0; i < 30; i++) { step(); const f = closeViewHeroFeetZ(); most = Math.max(most, Math.abs(f - prev)); prev = f; }
+  assert.equal(g.droneLift, null); assert.ok(Math.abs(closeViewHeroFeetZ() - ground) < 1e-6, `down (${closeViewHeroFeetZ()} vs ${ground}, fall ${JSON.stringify(g.fall)}, skyAir ${g.skyAir}, glide ${!!g.glide}, x ${g.player.x})`); assert.ok(most < 15 / 60, `the descent is drawn at the lift's own speed (its free fall has no terminal speed), never cut (${most.toFixed(3)})`);
+  // the open glider at four levels over flat ground
+  sv.glider = true; g.glide = { z: 4, vx: 0, vy: 0, open: true, told: false }; for (let i = 0; i < 45; i++) step(); // set in the air from the ground here: the drawn height eases over to it (liftEase)
+  assert.ok(g.glide, 'gliding'); const gz = g.glide.z; assert.ok(Math.abs(closeViewHeroFeetZ() - (ground + gz * L)) < .12, `the glide at ${L} a level (${closeViewHeroFeetZ().toFixed(2)} vs ${(ground + gz * L).toFixed(2)})`);
 }));

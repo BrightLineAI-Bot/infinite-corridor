@@ -3524,29 +3524,32 @@ export const closeViewRoofOpacity = (i) => ROOF_FADE.a[i]; // for tests
 // never snapped up (for a moment a jump that crosses the lip early climbs it, knees tucked, instead of popping). In the air under the
 // fall model (game.ts FALL) the feet are drawn at the fall's height: they leave from the height they were drawn at (a roof is drawn
 // taller than its levels) and meet the fall's own height by the landing.
-export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, apexMargin: .15, gravity: 28, snap: .18, rise: 20, ahead: 1, samples: 6, soft: .1, reset: 2.5 });
+export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, apexMargin: .15, gravity: 28, snap: .18, rise: 20, ahead: 1, samples: 6, soft: .1, liftEase: 8, reset: 2.5 });
 const tileElevAt = (map, x, y) => { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y) * w + Math.floor(x)]; return t ? Number(t.elev) || 0 : 0; }; // a level, by the tile (the feet's point)
-const LEAP = { map: null, base: 0, from: 0, fromElev: 0, air: false, settle: false, z: 0, v: 0, bv: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0, fall: false, fOff: 0, fH: 1 };
+const LEAP = { map: null, fall: null, base: 0, from: 0, fromElev: 0, air: false, settle: false, z: 0, v: 0, bv: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0, fOff: 0, fH: 1 };
 // The arc over the footing: the ordinary jump's lift scaled to `arcPeak` of a level, less what the footing has already climbed this jump,
 // never under `apexMargin` (the higher of the two, smoothly: a hard max put a kink in the rise).
 function leapArc(K, L, lift, climbed) { const a = K.apexMargin * L, b = K.arcPeak * L - climbed, k = K.soft * L; return Math.min(1, lift / K.arcFrom) * (a + b + Math.sqrt((a - b) * (a - b) + k * k)) / 2; }
 export function presentLeap(g, now, d) {
   const K = CLOSE_VIEW_LEAP, p = g.player, fx = footX(p), fy = footY(p), ground = surfaceZ(g.map, fx, fy), clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, L = OUTDOOR.terrain.level;
-  const special = !!(g.droneLift || g.mechBoosting || g.glide || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null && !g.fall && (g.deckHop || !(clock < (g.jumpUntil || 0))));
-  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = LEAP.from = LEAP.z = ground; LEAP.air = LEAP.settle = false; LEAP.v = LEAP.bv = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; LEAP.fall = false; }
+  const lifted = g.area === "overworld" ? g.droneLift && Number.isFinite(g.droneLift.z) ? g.droneLift : g.glide && Number.isFinite(g.glide.z) ? g.glide : null : null; // the drone's lift and the glider: drawn at Close View's own level height, as a fall is
+  const special = !!(g.droneLift && !lifted || g.mechBoosting && !(lifted && lifted === g.droneLift) || g.glide && !lifted || g.swimming || g.save?.boat?.aboard || g.mountRide?.() || g.skyAir != null && !g.fall && (g.deckHop || !(clock < (g.jumpUntil || 0))));
+  if (LEAP.map !== g.map || !Number.isFinite(LEAP.x) || Math.hypot(fx - LEAP.x, fy - LEAP.y) > K.reset || special) { LEAP.base = LEAP.from = LEAP.z = ground; LEAP.air = LEAP.settle = false; LEAP.v = LEAP.bv = 0; LEAP.vx = LEAP.vy = 0; LEAP.t = clock; LEAP.fall = null; }
   const dt = Math.max(0, Math.min(.1, (clock - LEAP.t) / 1000));
   if (dt > 0) { const k = Math.min(1, dt * 12); LEAP.vx += ((fx - LEAP.x) / dt - LEAP.vx) * k; LEAP.vy += ((fy - LEAP.y) / dt - LEAP.vy) * k; }
   LEAP.map = g.map; LEAP.t = clock; LEAP.x = fx; LEAP.y = fy; if (special) return;
-  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0), f = g.fall && Number.isFinite(g.fall.z) ? g.fall : null; let arc = 0;
-  if (f) { // FALL: the fall's height, from where the feet were drawn when it began
-    const under = Math.floor(ground / L + 1e-6), air = Math.max(0, f.z - under);
-    if (!LEAP.fall) { LEAP.fall = true; LEAP.fOff = (jumping || !Number.isFinite(HERO_FEET.z) ? LEAP.base : HERO_FEET.z) - f.z * L; LEAP.fH = Math.max(.25, air); } // from where the feet were drawn (a roof's drawn top)
-    LEAP.base = f.z * L + LEAP.fOff * Math.max(0, Math.min(1, air / LEAP.fH));
-    if (jumping) { arc = leapArc(K, L, lift, 0); LEAP.from = LEAP.base; } // a jump that holds its height over lower ground: its own arc
-    LEAP.air = jumping; LEAP.v = Math.max(0, -(Number(f.vz) || 0) * L); LEAP.bv = 0;
+  const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0), f = g.fall && Number.isFinite(g.fall.z) ? g.fall : lifted; let arc = 0;
+  if (f) { // FALL (and the drone's lift, the glider): the height in the air, from where the feet were drawn when it began
+    const kind = f === g.fall ? "fall" : f === g.droneLift ? "drone" : "glide", air = Math.max(0, f.z - tileElevAt(g.map, fx, fy));
+    if (LEAP.fall !== kind) { const was = LEAP.fall; LEAP.fall = kind; LEAP.fOff = (!was && jumping && kind === "fall" || !Number.isFinite(HERO_FEET.z) ? LEAP.base : HERO_FEET.z) - f.z * L; LEAP.fH = Math.max(.25, air); } // from where the feet were drawn (a roof's drawn top, a caught fall)
+    if (kind === "fall") LEAP.base = f.z * L + LEAP.fOff * Math.max(0, Math.min(1, air / LEAP.fH)); // met by the landing
+    else { LEAP.fOff *= Math.exp(-K.liftEase * dt); LEAP.base = f.z * L + LEAP.fOff; } // the lift and the glide: let go over a moment
+    if (jumping && kind === "fall") { arc = leapArc(K, L, lift, 0); LEAP.from = LEAP.base; } // a jump that holds its height over lower ground: its own arc
+    LEAP.air = jumping && kind === "fall"; LEAP.v = Math.max(0, -(Number(f.vz) || 0) * L); LEAP.bv = 0;
     const z = Math.max(ground, LEAP.base + arc); d.lift = 0; d.jumpLift = Math.max(0, z - ground); LEAP.z = z; LEAP.settle = false; return z;
   }
-  LEAP.fall = false;
+  if (LEAP.fall && LEAP.fall !== "fall" && LEAP.z > ground + 1e-6) { LEAP.base = LEAP.z; LEAP.v = 0; LEAP.settle = true; } // a lift or glide set down above the ground drawn: settles, never cut
+  LEAP.fall = null;
   if (jumping && !LEAP.air) { LEAP.from = LEAP.base; LEAP.bv = 0; LEAP.fromElev = Math.max(Number.isFinite(g.jumpFrom) ? g.jumpFrom : tileElevAt(g.map, fx, fy), g.skyAir ?? -Infinity); } // the footing this jump left
   if (!jumping && LEAP.air && LEAP.z > Math.max(ground, LEAP.base) + 1e-6) { LEAP.base = LEAP.z; LEAP.v = 0; LEAP.settle = true; } // a jump ended early (a hop that lands on arrival): what was left of its arc settles under gravity, never cut
   LEAP.air = jumping;

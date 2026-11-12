@@ -11,6 +11,7 @@ import { learnRank, BRANCHES, riftStep } from '../src/constellation.ts';
 import { APERTURE_SKILLS } from '../src/items.ts';
 import { DRONE, DRONE_LIFT, setMechMode } from '../src/vehicle-gates.ts';
 import { render, standardStep } from '../src/renderer.ts';
+import { createCombatant } from '../src/combat.ts';
 
 const SEED = 'ROOF', W = 32, ROW = 30; let M = 100; // M: the Wayfarer's full health (the derived maximum)
 const inp = (x: number, y = 0, jump = false, hold = false) => { let j = jump; return { state: { x, y }, consume: (k: string) => k === 'jump' && j ? (j = false, true) : false, held: (k: string) => k === 'jump' && hold }; };
@@ -105,7 +106,7 @@ test('mid-fall catches: Jump with the drone up catches the fall (same fuel and r
   assert.equal(g.droneLift.vz >= 0 || g.droneLift.vz > -1, true, 'the catch stops the fall');
   for (let k = 0; k < 40; k++) d.step(0, 0, false, true); assert.ok(g.save.mech.fuel < fuel0, 'the same fuel');
   // let it down gently (feathered) and land: no damage, although the cliff was lethal
-  for (let k = 0; k < 600 && g.droneLift; k++) d.step(0, 0, false, (k % 4) !== 0 || g.droneLift.vz < -2.5);
+  for (let k = 0; k < 600 && g.droneLift; k++) d.step(0, 0, false, g.droneLift.vz < -1.5); // brake only while dropping faster than 1.5 levels a second
   assert.equal(g.droneLift, null); assert.ok(g.player.hp > 0 && deaths(g) === 0, 'alive');
   // no drone, no fuel: Jump does nothing but say so
   const k = wayfarer({ drone: true }); cliff(k, 3); const dk = drive(k); for (let j = 0; j < 120 && !k.fall; j++) dk.step(1); k.save.mech.fuel = 0; dk.step(0, 0, true); assert.ok(k.fall, 'still falling'); assert.equal(k.message, DRONE_LIFT.none);
@@ -150,7 +151,7 @@ test('Rift Step up into the air, the fall, and the drone catching it', () => {
   assert.equal(riftStep(g, 5000), true); assert.ok(g.fall && g.fall.z === 5, 'five levels up, over open ground');
   const d = drive(g); for (let j = 0; j < 12; j++) d.step(0); assert.ok(g.fall && g.fall.z < 5 && g.fall.vz < 0, 'falling');
   d.step(0, 0, true, true); assert.ok(g.droneLift && !g.fall, 'the drone has it');
-  for (let k = 0; k < 600 && g.droneLift; k++) d.step(0, 0, false, (k % 4) !== 0 || g.droneLift.vz < -2.5); assert.ok(g.player.hp > 0 && deaths(g) === 0, 'down alive (it would have been a five-level death)');
+  for (let k = 0; k < 600 && g.droneLift; k++) d.step(0, 0, false, g.droneLift.vz < -1.5); // brake only while dropping faster than 1.5 levels a second assert.ok(g.player.hp > 0 && deaths(g) === 0, 'down alive (it would have been a five-level death)');
 });
 
 test('pause holds a fall exactly; a save mid-fall resumes in the air and goes on frame for frame as it would have', () => {
@@ -210,4 +211,38 @@ test('the standard view draws a fall at its height and the camera follows it; a 
   for (let i = 0; i < 70; i++) { dk.step(i < 50 ? 1 : 0, 0, i === 2); render(ctx, k, 390, 844, dk.now()); const drawn = (k.playerLevel() === 1 && !(dk.now() < k.jumpUntil) ? LIFT : (k.map.tiles[Math.floor(k.player.y + .75) * W + Math.floor(k.player.x + .5)].elev || 0) * LIFT) + standardStep().off;
     if (Number.isFinite(last)) most = Math.max(most, Math.abs(drawn - last)); last = drawn; }
   assert.ok(most < LIFT * .4, `the footing eased (${most.toFixed(3)} a frame; a cut is ${LIFT})`); assert.equal(standardStep().off, 0, 'and arrived');
+});
+
+// Jump attacks (release 923) meet fall physics: a plunge that ends over a drop falls on, straight down at FALL.plunge, and slams
+// where the fall lands; its fall damage is the drop from the jump's height, never skipped; a fall alone cannot plunge.
+function presser(g: any, t0 = 5000) { let t = t0; return { step(press: string[] = [], x = 0) { const left = new Set(press); t += 1000 / 60; g.update(1 / 60, { state: { x, y: 0 }, consume: (k: string) => left.delete(k), held: () => false }, t); g.enemies = []; }, now: () => t }; }
+const armed = () => { const g = wayfarer(); g.save.equipment.primary = { id: 'salvage-blade', name: 'Salvage Blade', slot: 'primary', power: 1 }; return g; };
+function plungeOff(g: any, d: any) { for (let j = 0; j < 60 && !(g.player.x > 4.3); j++) d.step([], 1); d.step(['jump'], 1); for (let j = 0; j < 8; j++) d.step([], 1); }
+
+test('a plunge off a ledge falls on to the ground below and slams there, with the fall\'s full damage', () => {
+  const g = armed(); cliff(g, 3); const d = presser(g); plungeOff(g, d);
+  assert.ok(g.fall && g.jumpUntil > d.now(), 'a jump over the drop holds a fall');
+  d.step(['attack']); assert.ok(g.plunge, 'Plunge!'); assert.equal(g.fall.vz, -FALL.plunge, 'driven down');
+  let slamAt = -1, landedAt = -1, airborneSlam = false;
+  for (let k = 0; k < 120; k++) { d.step(['jump']); const slam = g.effects.some((e: any) => e.kind === 'plunge-slam'); if (g.fall && slam) airborneSlam = true;
+    if (!g.fall && landedAt < 0) landedAt = k; if (slamAt < 0 && slam) slamAt = k; if (landedAt >= 0 && k > landedAt + 3) break; }
+  assert.equal(airborneSlam, false, 'never in the air'); assert.ok(landedAt >= 0); assert.equal(slamAt, landedAt, 'the slam on the frame it lands');
+  assert.equal(g.glide, null); assert.equal(g.droneLift, null, 'Jump catches nothing while the plunge is committed');
+  assert.equal(M - g.player.hp, fallDamage(3, M), 'the three-level fall still costs its 40%');
+  // a fall alone (walked off, no jump) has no jump to plunge from
+  const k2 = armed(); cliff(k2, 3); const d2 = presser(k2); for (let j = 0; j < 120 && !k2.fall; j++) d2.step([], 1); d2.step(['attack']); assert.equal(k2.plunge ?? null, null, 'no plunge from a fall');
+  // from a lethal height the plunge is still death
+  const k3 = armed(); cliff(k3, 5); const d3 = presser(k3); plungeOff(k3, d3); d3.step(['attack']); assert.ok(k3.plunge);
+  for (let j = 0; j < 120 && k3.fall; j++) d3.step(); assert.ok(k3.player.hp <= 0 || deaths(k3) > 0 || k3._fatalFall, 'five levels: death');
+});
+
+test('the Shadow Boxing dive off a ledge holds its launch height (skyAir), falls from it where the dive ends, and bursts on landing', () => {
+  const g = armed(); cliff(g, 3); const foe = Object.assign(createCombatant('rootBrute', 7.5, ROW - .25), { id: 'foe', hp: 5000, maxHp: 5000, damage: 0, cooldown: 99 });
+  let t = 5000; const step = (press: string[] = [], x = 0) => { const left = new Set(press); t += 1000 / 60; g.enemies = [foe]; g.update(1 / 60, { state: { x, y: 0 }, consume: (k: string) => left.delete(k), held: () => false }, t); };
+  step(); g.castSpell('shadow-boxing'); assert.ok(g.boxingUntil > t, 'Shadow Boxing');
+  step(['jump']); step(); step(['attack']); assert.ok(g.plunge?.dive, 'a dive'); assert.equal(g.skyAir, 3, 'it holds the height it left from');
+  const hp0 = g.player.hp; let low = hp0, fell = false, burstInAir = false, landed = false;
+  for (let k = 0; k < 120 && !(landed && !g.plunge); k++) { step(); fell ||= !!g.fall; low = Math.min(low, g.player.hp); if (g.fall && g.effects.some((e: any) => e.kind === 'plunge-burst')) burstInAir = true; landed ||= !g.fall && !(t < g.jumpUntil); }
+  assert.ok(fell, 'a fall from the dive\'s height'); assert.equal(burstInAir, false); assert.ok(g.effects.some((e: any) => e.kind === 'plunge-burst'), 'the burst where it lands');
+  assert.equal(g.playerLevel(), 0); assert.equal(g.fallLanded?.drop, 3, 'the fall counted from the dive\'s launch height'); assert.ok(hp0 - low > 0 && low <= hp0 - fallDamage(3, M) + Math.ceil(M * .15), `charged (${hp0} -> ${low}; the burst's Shadow Boxing heal comes back the same frame)`);
 });

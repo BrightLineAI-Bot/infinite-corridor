@@ -2429,8 +2429,9 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // lands, by the same table as before (landscape.ts fallDamage: 1 level free, 2 = 15%, 3 = 40%, 4+ fatal), so balance is unchanged.
 // `stepDown`: a drop of at most this onto or off a slope is a walk down the ramp, not a fall. `jumpExit`: a jump that ends over lower
 // ground hands its descent on to the fall at this speed (the drawn arc's own landing speed), so the arc and the fall join without a
-// float. `pose`: a fall from this many levels or more shows the falling pose in Close View.
-export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
+// float. `plunge`: a jump attack (brawler-spells.ts PLUNGE) that ends over a drop is driven down at this speed and slams where the fall
+// lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
+export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
   const G = FALL.gravity, T = FALL.terminal, v0 = Math.min(T, Math.max(0, -Number(vz0) || 0)), h = Math.max(0, Number(drop) || 0);
@@ -7755,7 +7756,7 @@ export class Game {
     const dist = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
     const ms = foe ? Math.max(PLUNGE.dropMs, Math.min(PLUNGE_DIVE.maxMs, dist / PLUNGE_DIVE.speed * 1000 + 60)) : Math.min(this.jumpUntil - now, PLUNGE.dropMs);
     this.plunge = { start: now, until: now + ms, lift0: jumpLift(this, now), kind, area: this.area, areaId: this.areaId(), dive: foe ? { id: foe.id } : null };
-    this.plungeSpent = true; this.jumpUntil = now + ms;
+    this.plungeSpent = true; this.jumpUntil = now + ms; if (this.fall) this.fall.vz = Math.min(this.fall.vz, -FALL.plunge); // FALL: a jump already over a drop goes down at the plunge's speed
     if (foe) { // the dive holds the height it left from, so a drop on the way is a fall where it lands
       if (this.skyAir == null) this.skyAir = Number.isFinite(this.jumpFrom) ? this.jumpFrom : elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
       p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
@@ -7802,6 +7803,7 @@ export class Game {
   // a freefall or the drone on the way down ends it without a blow.
   plungeLand(now) {
     const q = this.plunge, p = this.player; if (!q || now < (this.jumpUntil || 0)) return false;
+    if (this.fall && this.fallApplies() && p.hp > 0 && q.area === this.area && q.areaId === this.areaId()) return false; // FALL: a plunge that ends over a drop falls on (straight down, FALL.plunge) and slams where it lands
     this.plunge = null;
     if (!(p.hp > 0) || this.glide || this.droneLift || q.area !== this.area || q.areaId !== this.areaId()) return false;
     const P = plungeProfile(q.kind), boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = this.plungeBase(now) * (1 + (boxing?.damage || 0));
@@ -9688,7 +9690,7 @@ export class Game {
         // FALL: over ground more than minDrop below them they are in the air, and fall (a jump holds its height until it ends and hands
         // the fall its descent); a slope is walked down. Damage waits for the landing.
         const slope = raw0 <= FALL.stepDown + 1e-6 && (!!tileUnder(this.map, width, p.x, p.y)?.slope || !!tileUnder(this.map, width, fromX, fromY)?.slope);
-        if (!instant && this.fallApplies() && bodyZ - height > FALL.minDrop + 1e-9 && !slope) { if (!this.fall) this.beginFall(bodyZ, p.jumping || jumpEnded ? -FALL.jumpExit : 0, fallStart, fallScale); return; }
+        if (!instant && this.fallApplies() && bodyZ - height > FALL.minDrop + 1e-9 && !slope && !(this.liftDrop && !held)) { /* not the drone's own touchdown: its speed is charged as the drop it equals (endDroneLift), on the ground */ if (!this.fall) this.beginFall(bodyZ, this.plunge ? -FALL.plunge : p.jumping || jumpEnded ? -FALL.jumpExit : 0, fallStart, fallScale); return; }
         if (this.fall) { if (fallNow && raw0 > FALL.minDrop) this.fallLanded = { at: now, drop: raw0, t: Number(this.fall.t) || 0 }; if (this.fall.why) fallWhy = `${this.fall.why} `; this.fall = null; }
         const distance = raw0, damage = fallDamage(distance, this.save.maxHp); // release 637: off the great tree a fall is a fall
         if (damage > 0) { hurt += damage; drop = Math.max(drop, Math.round(distance * 10) / 10); }
