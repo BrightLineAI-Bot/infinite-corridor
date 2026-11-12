@@ -286,6 +286,11 @@ vec3 outdoorSky(vec3 ray, bool full) {
     float star = step(0.965, h) * smoothstep(0.16, 0.0, r) * (0.45 + 0.55 * fract(h * 37.0)) * (0.8 + 0.2 * sin(u_time * 0.002 + h * 60.0));
     c += vec3(0.85, 0.9, 1.0) * star * u_mood.x * smoothstep(0.02, 0.3, d.z); }
   if (u_mood.z > 0.5) { float m = smoothstep(0.99935, 0.99965, sd); c = mix(c, vec3(0.86, 0.88, 0.95) * (0.85 + 0.15 * vnoise(d.xy * 900.0)), m); } // the moon's disc
+  if (u_sun.w > 0.0) { vec3 pd = normalize(vec3(0.36, 0.9, 0.24)); float pc = dot(d, pd); // an airless sky's great pale planet (u_sun.w: close-view-outdoor.ts sky planet), lit on the sun's side
+    c += vec3(0.38, 0.52, 0.8) * 0.22 * smoothstep(0.9845, 0.9895, pc) * (1.0 - smoothstep(0.9897, 0.9903, pc)) * u_sun.w;
+    if (pc > 0.9895) { vec3 q = (d - pd * pc) / 0.1445; float z = sqrt(max(0.0, 1.0 - dot(q, q))); vec3 n = q - pd * z; float lit = clamp(dot(n, u_sun.xyz) * 0.95 + 0.1, 0.0, 1.0);
+      vec3 pcol = vec3(0.64, 0.73, 0.86) * (0.86 + 0.14 * sin(q.z * 11.0 + vnoise(q.xy * 3.0 + 5.0) * 3.0)) * (0.9 + 0.1 * vnoise(q.xy * 9.0));
+      c = mix(c, pcol * (0.16 + lit), smoothstep(0.9897, 0.9903, pc) * u_sun.w); } } // its night side faintly lit, so the disc always reads
   if (!full) return c;
   if (u_skyZ.w > 0.0 && d.z > 0.0) { vec2 q = d.xy / (d.z + 0.16) * 0.9 + vec2(u_time * 0.000006, u_time * 0.0000025); // the low tier: one layer of noise, not three
     float n = u_finish.z > 0.5 ? fbm(q * 1.5) : vnoise(q * 1.5) * 0.85 + 0.08; cover = smoothstep(1.0 - u_skyZ.w * 0.7, 1.12 - u_skyZ.w * 0.45, n + 0.12);
@@ -1100,7 +1105,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   if(hasModels || hasHero || hasBeasts) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }
-    if(hasHero) { drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil); calls++; }
+    if(hasHero) calls += drawHeroGL(gl,S.hero,hero,0,cam,light,F.sil);
     if(hasBeasts) calls += drawBeastsGL(gl,S.beast,beasts,0,cam,light,F.sil);
     gl.depthMask(false); gl.enable(gl.BLEND);
   }

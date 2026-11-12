@@ -6,6 +6,38 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 923 — Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
+
+Tim (2026-11-12): all weapons should have a jump attack that slams down, and with Shadow Boxing a charging dive to the nearest enemy with an explosion.
+
+**CODE:** `src/brawler-spells.ts`: `PLUNGE` {dropMs 160, recoverMs 340, slamLife .3}; `PLUNGE_PROFILES` by primary profile key with `default` (blade 1.5/1.4/.35, cleaver 1.8/1.6/.45, pike 1.4/1.3/.3, fists 1.6/1.5/.4: radius/share/stun; the Fourfold Daggers use `default`); `PLUNGE_DIVE` {range 7, speed 16, maxMs 520, stop .85, burst 1.6 tiles at .9 share, .4 s stun}; `plungeProfile`, `plungeKind`, `drawBrawler` rings. `src/game.ts`: `airAttack`, `plungeDiveTarget`, `plungeSteer`, `plungeLand`, `plungeBase` (meleePower or fistPower, so the 918 stat lineup applies), `plungeBlocked`; runtime `plunge`, `plungeSpent`, `plungeRecoverUntil` in the resume clocks; `jumpLift`'s plunge branch. Close View reuses the Hammerfall `hammer` pose. Tests: `jump-attacks` (18).
+
+**BOUNDARY:** A plunge never moves the Wayfarer itself: it shortens the jump, and the jump's own landing settles falls, sky-hop gaps and roof decks, so fall damage stands. The dive moves only through the collision mover (walls, lethal ground and canStep stop it). One plunge per jump; the recovery never holds back a dodge. Runtime only: on reload the rest of the jump lands without a slam. Not available mounted, in the robot or drone, aboard, gliding, swimming or with the secondary weapon. No save change.
+
+## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
+
+Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
+
+**CODE:** New `src/close-view-shadow-forms.ts`: the data table (charge 120 + 14 ms per tile, eased; lean; wraith alpha .58 and tint; up to 5 afterimages fading over 170 ms; reduced-motion fade), the dash stepper, strike re-timing (wind-up fills the charge, contact on arrival, swing ends on gameplay's clock) and clone alpha (.86). `src/close-view.ts`: drawn hero follows the dash line, afterimages, ground shadow, `closeViewShadowDash()` accessor. `src/close-view-hero.ts` and `close-view-hero-gl.ts`: charge lean, afterimage fields, `u_offset` uniform (body pass only). `src/close-view-models.ts`: the 248-tri spectre clone with 0xc58cff emissive, native lean, recolour exemption. Tests: `close-view-shadow-forms` (9).
+
+**BOUNDARY:** Presentation only: gameplay still moves the player in one update and the twin un-rendered game ends identically; damage, timing and hits are unchanged. No per-frame allocation (one pooled actor, fixed afterimage slots). Reduced motion: no travel or trail, a simple fade. The camera follows the logical position. The standard view is unchanged.
+
+## Release 921 — Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
+
+Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon or tool is used, a full sweeping animation, a 360-degree sweep for its standard form, and Mirage of Blades as rendered blades travelling through the air.
+
+**CODE:** `src/close-view-player-presentation.ts`: `CLOSE_VIEW_GREAT_SWEEP` (pivot, plane, from/out/to, spin windup -18 then turn 360, swingMs 300, followMs 120, carry pose) and `sampleGreatSweep` (no allocation), `greatSweepBlade` on the shared `cleaverSlashBlade` plane maths. `src/close-view-hero.ts`: sweep and carry poses, body spin on the rendered model only. `src/action-motion.ts`: held-tool check and put-away helper. `src/game.ts`: `heldTool: true` on the Great Sweep's saved attack record (additive), `reconcileHeldTool` puts it away. `src/close-view.ts`: draws the held sweep after the attack. `src/close-view-models.ts`: `mirageBlade` (50 tris); `src/tool-forms.ts`: its 3D capture with a floor shadow. Tests: `close-view-great-sweep-hold` (6).
+
+**BOUNDARY:** Presentation only: damage, cooldown, reach, timing and hit area are unchanged, and the camera and game facing never turn with the spin. The held state is one additive field on an already-saved record (schema 14); older records load as not held. Mirage blades are capped at 3 by gameplay and allocate nothing per frame. The standard view is unchanged.
+
+## Release 920 — Release 920 — the Lunar Wastes (landscape 25)
+
+Tim (2026-11-12) asked for a lunar region with craters you can actually go down into in Close View, and pretty large ones.
+
+**CODE:** `src/landscape.ts`: `LANDSCAPE_VERSION` 25; `REGIONS_V25` (Moonlands 0.45, desert 0.17, wild/ashfields/glasslands/emberlands 0.6 to `regolith`, `minRing` 40), rolled on its own hash after version 24 in `regionAt`/`regionTile`; `REGIONS.lean.regolith`, `REGION_GROUNDS.regolith` (#9eabc2), names incl. the `maria` Mare names; `LUNAR_WALKABLE`; blocked kinds `lunarBoulder`, `craterMount`, `lunarMonolith`, `fallenMonolith`. The `LUNAR` table, `lunarCraters` (three world-grid sizes, oldest first, the same from every section), `craterOn` (terraced bowl, rim, outer slope, apron, rays, shadow ice, peak), `lunarAt` (ground, craters, even-width rilles, bridges, boulders), `applyLunar` (one-level step sweeps, deep rilles as `abyss` + `rille`, repair passes, a cache on a deep floor first); `applyMoonlands` skips lunar ground from 25. `src/landscape-render.ts` `LUNA` paints and never-animated rilles; `src/atlas-colors.ts`; `REGION_BANNER.kinds.regolith`; `blobByRegion.regolith`. Close View: `OUTDOOR.skies.airless` (stars, `planet`, `moodMix` .15), `skyOf.regolith`, surfaces and outcrops; the planet disc in the `close-view-gl.ts` sky via the unused `u_sun.w`. Tests: `lunar-v25` (13).
+
+**BOUNDARY:** Sections pinned to versions 1-24 never change (26 fingerprints from main and a 5,388-map whole-map comparison). Every walkable step in the waste is one level; every crater floor reached is climbed out of again; every land exit and cache joins the plaza both ways; neighbours agree on their shared edge. Deep rilles are lethal by design (brink guard, bridges). Crater depth is kept in full only away from the plaza, exit lanes and border. No physics, weather, animation or save change (schema 14). Not measured on a device.
+
 ## Release 919 — Close View beasts: second passes on the dragons and the Tremor Worm
 
 Tim, 2026-11-12:

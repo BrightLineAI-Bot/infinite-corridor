@@ -128,7 +128,7 @@ test('deterministic: two fresh generations and two fresh game loads match; a ham
   for (const { x, y, m } of sections().slice(0, 8)) assert.equal(fp(make(x, y)), fp(m), `${x},${y}`);
   const { x, y } = sections()[1], load = () => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return { g, s }; };
   const one = load(), two = load(); assert.equal(JSON.stringify(one.g.map.tiles), JSON.stringify(two.g.map.tiles)); assert.deepEqual(one.g.map.objects.map((o) => o.id), two.g.map.objects.map((o) => o.id));
-  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 24); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'glacier'));
+  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 25); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'glacier'));
   assert.equal(one.s.schemaVersion ?? 14, 14);
   const h = make(x, y, 24, { hamlet: true }); assert.ok(h.tiles.some((t) => t.landscape === 'glacier')); assert.ok(h.tiles.filter((t) => t.landscape === 'glacier').every((t) => !t.elev && t.kind !== 'serac' && !t.crevasse));
   assert.ok(!h.objects.some((o) => String(o.id).startsWith('glacier-')));
@@ -151,5 +151,5 @@ test('older ground regenerates byte for byte: sections fingerprinted on main (re
 test('in the game: ground first seen at version 23 keeps its version 23 ground; new ground pins 24', () => {
   const { x, y } = sections()[0], s = freshSave(); s.seed = SEED; s.atlas = { [`${x},${y}`]: { landscapeVersion: 23 } }; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
   assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 23); assert.ok(!g.map.tiles.some((t) => t.landscape === 'glacier'), 'no ice on version 23 ground');
-  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 24); assert.ok(h.map.tiles.some((q) => q.landscape === 'glacier'));
+  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 25); assert.ok(h.map.tiles.some((q) => q.landscape === 'glacier'));
 });

@@ -1,7 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { canopyGateDestination } from './trees.ts';
 import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
-import { simpleToolAppearanceKind, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
+import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
 import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.ts";
@@ -149,6 +149,7 @@ import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-mor
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -167,15 +168,15 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
 export const PLAYER_CLOCKS = ["castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt"];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */ };
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
-export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
   const p = game.player || {};
@@ -2164,7 +2165,7 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
-export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier" } }; // release 573; 579; 583
+export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier", regolith: "Lunar waste" } }; // release 573; 579; 583
 // Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
 // someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
 // way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
@@ -2423,6 +2424,7 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 export function jumpLift(g, now) {
   const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
   if (g.mechBoosting) return JUMP.arc;
+  { const q = g.plunge; if (q && q.until > q.start) return Math.max(0, Number(q.lift0) || 0) * Math.max(0, Math.min(1, (Math.min(until, q.until) - now) / (q.until - q.start))); } // jump attacks: the plunge drops straight from where it began
   const dur = Math.max(1, g.jumpDur || JUMP.base), start = Number.isFinite(g.jumpStart) && g.jumpStart <= now ? g.jumpStart : until - dur;
   const phase = Math.max(0, Math.min(.5, (now - start) / JUMP.base, (until - now) / JUMP.base));
   return Math.sin(phase * Math.PI) * JUMP.arc;
@@ -3694,6 +3696,7 @@ export class Game {
     this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
+    this.plunge = null; this.plungeSpent = false; this.plungeRecoverUntil = 0; // jump attacks
     this.endGloomDarks(); // the Gloomvast's Dark ends with a death or a journey by Wayglass
   }
   restoreRuntime(r, now) {
@@ -7720,6 +7723,84 @@ export class Game {
     if (f.perfect) { const V = ORBIT.vortex; this.effects.push({ ...burst, id: burst.id + "-vortex", kind: "gravity-well", radius: V.radius, life: V.life, pulse: V.pulse, untilPulse: V.pulse, damage: Math.max(1, Math.round(f.damage * V.share)), hits: {} }); }
     this.orbit = null;
   }
+  // Jump attacks (Tim, 2026-11-12; brawler-spells.ts PLUNGE, PLUNGE_PROFILES, PLUNGE_DIVE). `plunge` is { start, until, lift0,
+  // kind, area, areaId, dive: { id } | null } while the Wayfarer drops (runtime only: a reload lands the jump that is left as
+  // an ordinary jump, with no slam); `plungeSpent` holds one plunge per jump; `plungeRecoverUntil` is the landing recovery.
+  plungeBlocked() { return !!(this.mechUp() || this.droneUp() || this.droneLift || this.mechBoosting || this.mountRide() || aboard(this.save) || this.glide || this.swimming || this.map?.underwater || this.save.activeWeaponSlot === "secondary"); }
+  // Attack pressed: true when the press belongs to a jump attack (one starts, one is under way, or its recovery holds).
+  airAttack(now = this.lastUpdateNow || 0) {
+    const p = this.player;
+    if (this.plunge || now < (this.plungeRecoverUntil || 0)) return true;
+    if (!(now < (this.jumpUntil || 0)) || this.plungeSpent || !(p.hp > 0) || this.plungeBlocked()) return false;
+    if (this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.fistCharge) return false;
+    const kind = plungeKind(this.save.equipment?.primary), foe = now < (this.boxingUntil || 0) ? this.plungeDiveTarget() : null;
+    const dist = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
+    const ms = foe ? Math.max(PLUNGE.dropMs, Math.min(PLUNGE_DIVE.maxMs, dist / PLUNGE_DIVE.speed * 1000 + 60)) : Math.min(this.jumpUntil - now, PLUNGE.dropMs);
+    this.plunge = { start: now, until: now + ms, lift0: jumpLift(this, now), kind, area: this.area, areaId: this.areaId(), dive: foe ? { id: foe.id } : null };
+    this.plungeSpent = true; this.jumpUntil = now + ms;
+    if (foe) { // the dive holds the height it left from, so a drop on the way is a fall where it lands
+      if (this.skyAir == null) this.skyAir = Number.isFinite(this.jumpFrom) ? this.jumpFrom : elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
+      p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    }
+    this.clearAttackBuffer(); this.cancelPendingMeleeContact("plunge"); this.cancelConsumeVisual("attack"); cancelCastVisual(p);
+    const total = ms + PLUNGE.recoverMs; p.attackUntil = now + total; p.meleeUntil = now + total;
+    const visual = stampAttackVisual(p, "hammer", total, p.meleeAim || this.save.lastAim); // an overhead blow brought down (Close View's Hammerfall pose)
+    if (visual) { p.actionVisualUntil = now + total; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); if (prior) visual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
+    this.message = foe ? "Shadow dive!" : "Plunge!";
+    return true;
+  }
+  // The dive's foe: the lock if it is in range, else the nearest foe within PLUNGE_DIVE.range (no allocation).
+  plungeDiveTarget() {
+    const p = this.player, R = PLUNGE_DIVE.range, t = this.lockedTarget();
+    if (t && autoAimable(t) && Math.hypot(t.x - p.x, t.y - p.y) - Math.max(0, enemyBodyRadius(t) - .38) <= R) return t;
+    let best = null, bd = Infinity;
+    for (const e of this.enemies) { if (!autoAimable(e)) continue; const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= R && d < bd) { bd = d; best = e; } }
+    return best;
+  }
+  // Each frame before the move: the dive flies on toward its foe in quarter-tile steps through the collision mover (as Shadow
+  // Boxing's carries do); a wall, lethal ground or the foe's reach ends the jump there, and the move below lands it.
+  plungeSteer(dt, now) {
+    const q = this.plunge, p = this.player;
+    if (q && (q.area !== this.area || q.areaId !== this.areaId() || !(p.hp > 0))) { this.plunge = null; return; }
+    if (!q) { if (!(now < (this.jumpUntil || 0))) this.plungeSpent = false; return; }
+    const d = q.dive; if (!d || !(now < (this.jumpUntil || 0))) return;
+    let foe = null; for (const e of this.enemies) if (e.id === d.id) { foe = e; break; }
+    if (!foe || !autoAimable(foe)) { q.dive = null; return; } // gone: it comes down where it is
+    const w = mapWidth(this.map, this.area), stop = PLUNGE_DIVE.stop + Math.max(0, enemyBodyRadius(foe) - .38), air = p.airElev, jumping = p.jumping;
+    p.airElev = this.skyAir ?? undefined; p.jumping = true; p.isPlayer = true;
+    let budget = PLUNGE_DIVE.speed * dt, arrived = false;
+    for (let i = 0; i < 40 && budget > 1e-6; i++) {
+      const gx = foe.x - p.x, gy = foe.y - p.y, gap = Math.hypot(gx, gy);
+      if (gap <= stop) { arrived = true; break; }
+      const s = Math.min(.25, budget, gap - stop), nx = p.x + gx / gap * s, ny = p.y + gy / gap * s;
+      if (!footprintOpen(this.map, w, nx, ny, false, false, false, false, p.deckReach ?? null) || footprintHazard(this.map, w, nx, ny) || !canStep(p, this.map, w, p.x, p.y, nx, ny) || !this.moveGuardedCombatStep(nx, ny)) { arrived = true; break; }
+      budget -= s;
+    }
+    p.airElev = air; p.jumping = jumping;
+    const fx = foe.x - p.x, fy = foe.y - p.y; if (Math.abs(fx) > .15 || Math.abs(fy) > .15) p.facing = Math.abs(fx) > Math.abs(fy) ? (fx < 0 ? "left" : "right") : (fy < 0 ? "up" : "down");
+    if (arrived) { this.jumpUntil = now; q.until = Math.min(q.until, now); }
+  }
+  // After the move: once the jump has landed (its fall settled as any jump's), the slam; with a dive, the burst as well. A death,
+  // a freefall or the drone on the way down ends it without a blow.
+  plungeLand(now) {
+    const q = this.plunge, p = this.player; if (!q || now < (this.jumpUntil || 0)) return false;
+    this.plunge = null;
+    if (!(p.hp > 0) || this.glide || this.droneLift || q.area !== this.area || q.areaId !== this.areaId()) return false;
+    const P = plungeProfile(q.kind), boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = this.plungeBase(now) * (1 + (boxing?.damage || 0));
+    const cx = p.x + .5, cy = p.y + .45, imbue = this.imbueBonus(now), healShare = boxing?.heal || 0;
+    const blow = (kind, radius, share, stun, life) => { this.effects.push({ id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x: cx, y: cy, life, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(base * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun }); };
+    blow("plunge-slam", P.radius, P.share, P.stun, PLUNGE.slamLife);
+    if (q.dive) { const D = PLUNGE_DIVE; blow("plunge-burst", D.burstRadius, D.burstShare, D.burstStun, D.burstLife); }
+    this.plungeRecoverUntil = now + PLUNGE.recoverMs; p.attackReadyAt = Math.max(p.attackReadyAt || 0, this.plungeRecoverUntil);
+    if (this.fistsEquipped()) { this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; }
+    return true;
+  }
+  // A normal hit of the equipped weapon before the foe's defences (the melee glyphs apply as the blow lands): a swing's power
+  // (with Spellblade), or the Iron Fists' dash punch. Stat scaling a swing gains through meleePower or fistPower carries here.
+  plungeBase(now = this.lastUpdateNow || 0) {
+    if (this.fistsEquipped()) return this.fistPower() * IRON_FISTS.punches[0].share;
+    return this.meleePower() * (this.spellbladeOn(now) ? 1 + FIELD_PASSIVES.spellblade.damage : 1);
+  }
   // Release 485: Shadow Boxing carries the Wayfarer to the foe before a swing when it is out of reach (the lock, else the
   // nearest within `stick` tiles past the reach), in quarter-tile steps that stop at walls and lethal ground.
   shadowBoxStep(reach, now = this.lastUpdateNow || 0) {
@@ -7802,7 +7883,7 @@ export class Game {
     if(kind==='great-sweep'&&this.closeViewActionEligible()){
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
-      this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
+      this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
       this.pendingToolUse={v:1,id,toolKind:kind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),payload:{v:1,family:'sweep',effect,pellets:0,spread:0,awakenedFan:false,echoCopies,cloneEligible:this.shadowCloneActive(now)&&!this.shadowClone.charging,cloneProfile:{...BRAWLER_ECHO.cloneArc,damage:primaryProfile(this.save.equipment.primary).damage+this.weaponBonus()}}};this.message='Great Sweep!';this.cancelConsumeVisual('tool');return true;
     }
     let visualAim = null;
@@ -7824,7 +7905,7 @@ export class Game {
     const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", visualMs, visualAim);
     if (toolVisual && kind === "hammerfall") { Object.assign(toolVisual, { hammerEffectId: main.id, hammerDelayMs: B.delay * 1000, hammerRecoveryMs: B.lifetime * 1000 }); p.actionVisualUntil = now + hammerDurationMs; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); if (prior) toolVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
     if(kind==='hammerfall'&&this.closeViewActionEligible())this.hammerfallStartup={v:1,effectId:main.id,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root')};
-    if (toolVisual && kind === "great-sweep") { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = "great-sweep";toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};p.actionVisualUntil=now+visualMs; }
+    if (toolVisual && kind === "great-sweep") { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = "great-sweep";toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};p.actionVisualUntil=now+visualMs; }
     this.cancelConsumeVisual('tool');
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
@@ -9209,6 +9290,17 @@ export class Game {
         reason === 'form-change' || reason === 'equipment-switch' || reason === 'death' || reason === 'knockdown')
       this.retireCleaverChoreography();
   }
+  // Held Great Sweep (action-motion.ts heldToolKind): presentation only, checked once a frame. Another
+  // accepted attack replaces the record by itself; a spell, a Fists charge, the gear or body changing,
+  // or the Wayfarer falling puts it away. Walking, running, dodging and jumping keep it out.
+  reconcileHeldTool(now = this.lastUpdateNow || 0) {
+    const p = this.player; if (!heldToolKind(p)) return false;
+    const tool = rangedWeapon(this.save.equipment?.secondary)?.brawlerTool;
+    if (now < (p.castUntil || 0) || this.fistCharge || tool !== 'great-sweep' || fieldOn(this.save, 'nanoknives') || !(p.hp > 0) || this.fallen ||
+        this.mechUp() || this.mountRide() || aboard(this.save) || this.save.magicSkills?.active?.id === 'ember-form' && this.save.magicSkills.active.remaining > 0)
+      return stowHeldTool(p);
+    return false;
+  }
   retireCleaverChoreography() {
     const attack = this.player?.attackVisual, cue = attack?.cleaverChoreography;
     if (cue?.v === 1 && !cue.retired) attack.cleaverChoreography = { ...cue, retired: true };
@@ -9224,7 +9316,7 @@ export class Game {
       !!sampleConsumeVisual(p.consumeVisual,logicalNow,{area:this.area,areaId,levelId},{})?.active;
     const durationMs=cacheKind === 'chest' ? CHEST_OPEN_VISUAL_MS : cacheKind === 'shovelDig' || cacheKind === 'ironShovelDig' ? SHOVEL_DIG_VISUAL_MS : cacheKind === 'stonePlace' ? STONE_PLACE_VISUAL_MS : CACHE_PICKUP_VISUAL_MS;
     p.cachePickupVisual = { v: 1, kind: 'cachePickup', cacheKind, acceptedLogicalMs: logicalNow, durationMs, areaId, levelId, cancelled: busy, ...(busy?{cancelReason:'busy'}:{}) };
-    if (!busy) this.retireCleaverChoreography();
+    if (!busy) { this.retireCleaverChoreography(); stowHeldTool(p); } // a hands-on reach puts the held Great Sweep away
   }
   stampShovelDigVisual(cacheKind, now = this.lastUpdateNow || 0) {
     const logicalNow=this.consumeLogicalNow(now),areaId=this.areaId(),levelId=String(this.map?.levelId||'root');
@@ -9245,7 +9337,7 @@ export class Game {
     this._consumeVisualAcceptedHp=this.player.hp;
     const p=this.player,busy=acceptedNow<(this.jumpUntil||0)||this.mechUp()||this.swimming||acceptedNow<(p.actionVisualUntil||0)||acceptedNow<(p.attackUntil||0)||acceptedNow<(p.castUntil||0)||acceptedNow<(p.dodgeUntil||0)||acceptedNow<(p.stunnedUntil||0)||acceptedNow<(p.heldUntil||0)||!!this.fistCharge||!!this.pendingToolUse||!!this.pendingMeleeContact;
     if(busy)this.cancelConsumeVisual('busy');
-    else this.retireCleaverChoreography();
+    else { this.retireCleaverChoreography(); stowHeldTool(this.player); } // a drink takes the hands: the held Great Sweep is put away
   }
   useConsumable(type, now = 0) {
     if (this.cursed("items", now || this.lastUpdateNow || 0)) return false; // release 737: NO ITEMS (potions too)
@@ -9416,6 +9508,7 @@ export class Game {
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
       else { this.cancelConsumeVisual('dodge'); echoEvent(this, "dodge", now); onConstellationDodge(this); if (fieldOn(this.save, "drift-field")) { const q = this.player, cx = q.x + .5, cy = q.y + .45, f = this.ownSpellFx(true).filter((e) => Math.hypot(e.x - cx, e.y - cy) <= FIELD_PASSIVES["drift-field"].reach).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (f) this.driftField = { id: f.id, at: q.dodgeUntil || now }; } /* release 515: Drift Field */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
+    if (this.plunge || now < (this.plungeRecoverUntil || 0)) input.consume("jump"); // jump attacks: no jump (nor glider) while plunging or recovering
     if (input.consume("jump")) {
       // Release 641 (Tim: "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button"):
       // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
@@ -9462,6 +9555,7 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
+    if (!dodging && (this.plunge || now < (this.plungeRecoverUntil || 0))) { x = 0; y = 0; } this.plungeSteer(dt, now); // jump attacks: the plunge drops straight (a dodge is never held back); the dive flies on
     if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
@@ -9634,6 +9728,7 @@ export class Game {
       if(!fellIntoHazard)this.noteInternalDoorCrossings(fromX,fromY,p.x,p.y);
     }
     if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};
+    this.plungeLand(now); // jump attacks: the slam where the jump landed
     if(!fellIntoHazard&&this.area==="dungeon")this.updateDungeonDiscovery();
     const hpBeforeShelterHazard=p.hp;
     if(!fellIntoHazard&&this.area==='overworld'){
@@ -9651,14 +9746,17 @@ export class Game {
         this.defeatNotice={title:'UNCLASSIFIED LIFEFORM',detail:`${e.foundryName} · ${e.foundryRole} · journal record added`,kind:e.foundryRole==='passive'?'discovery':'danger'};
       }
     }
+    this.reconcileHeldTool(now);
     if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction);}finally{this._fistInputUpdate=false;}}}
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
+      const plunged = this.airAttack(now); // jump attacks (2026-11-12)
       const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
-      if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
+      if(plunged){/* the press is the jump attack's */}
+      else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
       else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
       else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
     }

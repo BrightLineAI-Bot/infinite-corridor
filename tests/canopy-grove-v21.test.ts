@@ -75,7 +75,7 @@ const GROVES = [['SURVEY19', 179, 18, 4], ['SURVEY19', 513, 27, 4], ['SURVEY19',
 const cache = new Map(), grove = (seed, x, y) => { const k = `${seed}:${x}:${y}`; if (!cache.has(k)) cache.set(k, section(seed, x, y, 22)); return cache.get(k); };
 
 test('landscape 22: the tables; a one-tile hop is made from anywhere on the tile, a two-tile one only from its middle', () => {
-  assert.equal(LANDSCAPE_VERSION, 24); assert.equal(TREES_V21.since, 22); assert.equal(TREES_V21.version, 21);
+  assert.equal(LANDSCAPE_VERSION, 25); assert.equal(TREES_V21.since, 22); assert.equal(TREES_V21.version, 21);
   for (const k of ['specs', 'readable', 'tries', 'greaterTries', 'forms', 'allTurns']) assert.deepEqual(TREES_V21[k], TREES_V20[k], `${k} as version 20`);
   assert.ok(BUDGET - 2 >= .5, 'one gap tile, from the launching tile\'s far edge, with margin'); assert.ok(BUDGET < TREES_V21.longGap + 1 && BUDGET >= TREES_V21.longGap + .5, `two gap tiles: ${(BUDGET - 3).toFixed(2)} from the far edge (the hop longGapAt keeps out)`);
   const C = TREES_V21.canopy; assert.ok(C.share > 0 && C.share <= .2, 'a share of tree sections, not most'); assert.ok(C.crowns[0] >= 2 && C.crowns[1] <= 4); assert.ok(C.bridge.min >= 2 && C.bridge.max <= 10 && C.bridge.gapEvery >= 3);
@@ -150,7 +150,7 @@ test('rarity: a hashed share of tree sections try a canopy grove (the data table
 test('deterministic: two fresh loads grow the same canopy grove, in the game too', () => {
   for (const [seed, x, y] of GROVES.slice(0, 6)) assert.equal(fp(section(seed, x, y, 22)), fp(grove(seed, x, y)), `${seed} ${x},${y}`);
   const load = () => { const s = freshSave(); s.seed = 'SURVEY19'; const g = new Game(s, 0); g.rx = 179; g.ry = 18; g.loadArea('overworld'); return { s, g }; };
-  const one = load(), two = load(); assert.equal(one.s.atlas['179,18'].landscapeVersion, 24); assert.equal(one.g.map.canopy.form, 'canopy'); assert.deepEqual(one.g.map.canopy, two.g.map.canopy);
+  const one = load(), two = load(); assert.equal(one.s.atlas['179,18'].landscapeVersion, 25); assert.equal(one.g.map.canopy.form, 'canopy'); assert.deepEqual(one.g.map.canopy, two.g.map.canopy);
   assert.equal(JSON.stringify(one.g.map.tiles), JSON.stringify(two.g.map.tiles));
 });
 
