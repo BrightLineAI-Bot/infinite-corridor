@@ -6,6 +6,22 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 910 — Close View beasts: the Void Walker in the world
+
+Tim, 2026-11-11: "Do their visual passes and continue the monster manifest"; "Finish the n monsters".
+
+**CODE:** `docs/asset-sources/void-walker/convert-walker.mjs` converts the Quaternius RPG Character Pack Rogue (CC0, the Wayfarer's source, provenance in `docs/asset-sources/wayfarer-rogue/`) for the beast rig. It keeps the hood, uses a head proportion of .74 so the figure is not chibi, targets 1.1 times the Wayfarer, and writes `src/close-view-beast-walker-body.ts`. `src/close-view-beast-walker.ts`:
+- `WALKER_RIG` holds the poses (idle, gather, cast, open, raise, dash, dazed) as two hand targets in the body's frame.
+- A 19-bone skeleton, including a `rend` bone.
+- The mesh: hood peak and brow; the recessed oval face of night sky with its nebula and stars (channel 1); the short split coat with its violet hem (channel 2), tails and clasp; and the teleport rend in the optional section.
+- `sampleWalker`: two-bone IK to the hand targets and to planted feet; the casts follow the attack phases (the rends gather and cast; the wraiths, rifts, constellation and horizons open; the supernova raises and dashes along the snapshot line); `voidTeleport` flickers it and opens the rend.
+
+Registered in `close-view-beasts.ts` with `eligible: (e) => !e.marine`, so the skiff at sea keeps its billboard. Tests: `tests/close-view-beast-walker.test.ts`.
+
+**BOUNDARY:** Render only. No gameplay, save, generator or balance change. The Pentagon Stillworks pilot (`stillworksWalkerRigPose`) is untouched and still owns the Stillworks finale. The Rogue source is the Wayfarer's, so no new asset was downloaded.
+
+**POLISH:** (1) The head proportion was reduced so it does not read as chibi. (2) A hood peak, coat and tails were added so it is not a mannequin. (3) The face changed from a square panel to an oval of night sky set back in the hood under a rounded brow. (4) The casts and dashes were re-checked on the new proportions.
+
 ## Release 909 — Close View beasts: the dragons, the Ashen Moth, the Tremor Worm, the Psychic Crystal, the Morphing Blob
 
 Tim, 2026-11-11: "Do their visual passes and continue the monster manifest"; "Finish the n monsters".
