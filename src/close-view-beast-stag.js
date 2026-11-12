@@ -8,12 +8,12 @@
 //
 // Body units u are the standard view's (a tile times the actor's scale). Read lazily: monster-pack.ts reaches close-view.ts,
 // which loads this module before briar-stag-render.ts and monster-pack.ts have finished loading.
-import { STAG_ART } from "./briar-stag-render.js?v=r911-37269cec64fc";
-import { ATTACK_MODULES, BOSS_PACE, STAG } from "./monster-pack.js?v=r911-37269cec64fc";
+import { STAG_ART } from "./briar-stag-render.js?v=r912-f0117e40ae61";
+import { ATTACK_MODULES, BOSS_PACE, STAG } from "./monster-pack.js?v=r912-f0117e40ae61";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r911-37269cec64fc";
+} from "./close-view-beast-rig.js?v=r912-f0117e40ae61";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const STAG_RIG = Object.freeze({

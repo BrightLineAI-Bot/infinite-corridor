@@ -9,9 +9,9 @@
 // blend (close-view.ts closeViewFrame) is the warp, with a short flash in the HUD; both are skipped under Reduced Motion.
 // The dais is presentation and a toggle only: no combat effect. It lives on the Game as runtime state (`game.oculus`), is
 // never saved, and is dropped on a change of map or when a pause outlasts it.
-import { buildSpot } from "./building.js?v=r911-37269cec64fc";
-import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_PLACES, closeViewPlaceAllowed, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r911-37269cec64fc";
-import { closeViewGLStats } from "./close-view-gl.js?v=r911-37269cec64fc";
+import { buildSpot } from "./building.js?v=r912-f0117e40ae61";
+import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_PLACES, closeViewPlaceAllowed, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r912-f0117e40ae61";
+import { closeViewGLStats } from "./close-view-gl.js?v=r912-f0117e40ae61";
 
 export const OCULUS = Object.freeze({
   seconds: 5, // the dais stands this long, then it is gone

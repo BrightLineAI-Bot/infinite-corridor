@@ -2,9 +2,9 @@
 // seen through glass, windows and the drop is one cached galaxy image and two cached ship silhouettes, drawn each frame only
 // through the cosmos tiles in view (drawRealmCosmos: one clip, at most three images); objects and the realms' own creatures are
 // plain canvas paths (the creatures through the pack sprite cache, monster-render.ts). Original art.
-import { hashSeed } from "./random.js?v=r911-37269cec64fc";
-import { dungeonTileVisibility } from "./dungeon-framework.js?v=r911-37269cec64fc";
-import { SEEDS } from "./skylands.js?v=r911-37269cec64fc";
+import { hashSeed } from "./random.js?v=r912-f0117e40ae61";
+import { dungeonTileVisibility } from "./dungeon-framework.js?v=r912-f0117e40ae61";
+import { SEEDS } from "./skylands.js?v=r912-f0117e40ae61";
 
 export const REALM_PAINT = {
   husk: { floor: ["#6f665c", "#675f55"], grit: "#00000026", path: ["#7a6f60", "#73685a"], tie: "#4a3a2a", rail: "#a6a29a", rock: ["#3d3631", "#37312c"], rockTop: "#4f4741", ore: ["#7fd8c4", "#ffd27a"], plank: "#6b5134", plankDark: "#3e2e1d", rim: "rgba(170,200,255,.45)" },

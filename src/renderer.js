@@ -1,42 +1,43 @@
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r911-37269cec64fc"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r911-37269cec64fc";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r911-37269cec64fc"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r911-37269cec64fc";
-import { astralBeamAnchors } from "./astral-worm.js?v=r911-37269cec64fc";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r911-37269cec64fc";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r911-37269cec64fc";
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r911-37269cec64fc';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r911-37269cec64fc";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r911-37269cec64fc";
-import { ruleRows } from "./elders.js?v=r911-37269cec64fc";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r911-37269cec64fc";
-import { BOAT } from "./boats.js?v=r911-37269cec64fc";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r911-37269cec64fc";
-import { isMarineTile } from "./world-beasts.js?v=r911-37269cec64fc";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r911-37269cec64fc"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r911-37269cec64fc";
-import { setTreeSeason } from "./landscape-render.js?v=r911-37269cec64fc";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r911-37269cec64fc";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r911-37269cec64fc";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r911-37269cec64fc";
-import { TREES } from "./trees.js?v=r911-37269cec64fc";
-import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r911-37269cec64fc";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r911-37269cec64fc";
-import { KIT_MOVES } from "./boss-kit.js?v=r911-37269cec64fc";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r911-37269cec64fc"; // release 587; travel seeds
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r911-37269cec64fc";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r911-37269cec64fc"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r911-37269cec64fc"; // release 678
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r911-37269cec64fc"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r911-37269cec64fc"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r911-37269cec64fc"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r911-37269cec64fc";
-import { drawRelayNode } from "./relay-network.js?v=r911-37269cec64fc";
-import { structureOccupancy } from "./world.js?v=r911-37269cec64fc";
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r911-37269cec64fc";
-import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r911-37269cec64fc"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r911-37269cec64fc";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r911-37269cec64fc"; // Close View: three hooks below, marked CLOSE VIEW
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r912-f0117e40ae61"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r912-f0117e40ae61";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r912-f0117e40ae61"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r912-f0117e40ae61";
+import { astralBeamAnchors } from "./astral-worm.js?v=r912-f0117e40ae61";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r912-f0117e40ae61";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r912-f0117e40ae61";
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r912-f0117e40ae61';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r912-f0117e40ae61";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r912-f0117e40ae61";
+import { ruleRows } from "./elders.js?v=r912-f0117e40ae61";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r912-f0117e40ae61";
+import { BOAT } from "./boats.js?v=r912-f0117e40ae61";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r912-f0117e40ae61";
+import { isMarineTile } from "./world-beasts.js?v=r912-f0117e40ae61";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r912-f0117e40ae61"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r912-f0117e40ae61";
+import { setTreeSeason } from "./landscape-render.js?v=r912-f0117e40ae61";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r912-f0117e40ae61";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r912-f0117e40ae61";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r912-f0117e40ae61";
+import { TREES } from "./trees.js?v=r912-f0117e40ae61";
+import { AFFIXES, dronePos, affixNames } from "./affixes.js?v=r912-f0117e40ae61";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r912-f0117e40ae61";
+import { KIT_MOVES } from "./boss-kit.js?v=r912-f0117e40ae61";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r912-f0117e40ae61"; // release 587; travel seeds
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r912-f0117e40ae61";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r912-f0117e40ae61"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r912-f0117e40ae61"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r912-f0117e40ae61";
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r912-f0117e40ae61"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r912-f0117e40ae61"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r912-f0117e40ae61"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r912-f0117e40ae61";
+import { drawRelayNode } from "./relay-network.js?v=r912-f0117e40ae61";
+import { structureOccupancy } from "./world.js?v=r912-f0117e40ae61";
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r912-f0117e40ae61";
+import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r912-f0117e40ae61"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r912-f0117e40ae61";
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r912-f0117e40ae61"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2750,7 +2751,8 @@ export function render(ctx, g, w, h, now) {
         enemy: e,
         nativeWindup: nativeWindupDuration(e),
         nativeActionShape: nativeActionShape(e),
-        nativeFloor: (time = now) => drawNativeCreatureFloor(ctx, g, e, s, time),
+        // (the Stalker's skinned body in Close View: its marks, eruptions and shots lie on the floor)
+        nativeFloor: (time = now) => e.kind === "stalker" ? drawStalkerCloseViewFloor(ctx, e, s, time) : drawNativeCreatureFloor(ctx, g, e, s, time),
         nativeDecorations: () => drawNativeCreatureDecorations(ctx, e, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, g.presentation),
         nativePackEffects: (time = now) => drawNativePackEffects(ctx, e, s, time, g.presentation, actorPresentation(e) || {}),
         nativeEffects: hasNativePackEffects(e),

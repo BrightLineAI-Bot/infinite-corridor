@@ -1,18 +1,22 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r911-37269cec64fc";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r911-37269cec64fc";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r911-37269cec64fc";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r911-37269cec64fc";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r911-37269cec64fc";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r911-37269cec64fc";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r911-37269cec64fc";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r911-37269cec64fc";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r911-37269cec64fc";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r911-37269cec64fc";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r911-37269cec64fc";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r911-37269cec64fc";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r912-f0117e40ae61";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r912-f0117e40ae61";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r912-f0117e40ae61";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r912-f0117e40ae61";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r912-f0117e40ae61";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r912-f0117e40ae61";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r912-f0117e40ae61";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r912-f0117e40ae61";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r912-f0117e40ae61";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r912-f0117e40ae61";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r912-f0117e40ae61";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r912-f0117e40ae61";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r912-f0117e40ae61";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r912-f0117e40ae61";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r912-f0117e40ae61";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r912-f0117e40ae61";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -34,10 +38,30 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   morphingBlob: Object.freeze({ mesh: blobMesh, createTrack: createBlobTrack, sample: sampleBlob, get scale() { return BLOB_RIG.closeViewScale; } }),
   // the Void Walker on land (its skiff at sea keeps the billboard)
   voidWalker: Object.freeze({ mesh: walkerMesh, createTrack: createWalkerTrack, sample: sampleWalker, get scale() { return WALKER_RIG.closeViewScale; }, eligible: (e) => !e.marine }),
+  // the Astral Worm in every form it fights in, morphing on the game's own clock; ridden by a Walker it keeps the billboard
+  // (the saddle, pillar and rider's lift are drawn against it). Its Mirages are a separate kind and stay billboards.
+  astralWorm: Object.freeze({ mesh: astralMesh, createTrack: createAstralTrack, sample: sampleAstral, get scale() { return ASTRAL_CV_RIG.closeViewScale; }, eligible: (e, scene) => !astralRidden(e, scene) }),
+  // the Stalker as the cat or the ape; the pool, the mist, the tide and its copies and decoys keep the billboard
+  stalker: Object.freeze({ mesh: stalkerMesh, createTrack: createStalkerTrack, sample: sampleStalker, get scale() { return STALKER_RIG.closeViewScale; }, eligible: stalkerBodyEligible }),
+  // the Pentagon finale's haunt; in its Dark (veiled among its cold lights) it keeps the standard view's cold-light billboard
+  gloomvast: Object.freeze({ mesh: gloomvastMesh, createTrack: createGloomvastTrack, sample: sampleGloomvast, get scale() { return GLOOMVAST_RIG.closeViewScale; }, eligible: (e) => !e.gloomVeil && !e.gloomDark }),
+  // the Listener: the robed figure (open form) and the Morphling (walled form), its mesh chosen by the foe's form. Its
+  // reflections and worms keep their billboards (up to eight of each, and nearest-first admission would hand them the
+  // Listener's own slot), as does a walled Listener before its Morphling has taken shape (the standard view's banded robe).
+  listener: Object.freeze({ mesh: listenerMesh, createTrack: createListenerTrack, sample: sampleListener, get scale() { return LISTENER_RIG.closeViewScale; },
+    eligible: (e) => !e.mirrorClone && !e.morphWorm && (e.listenerPhase !== 'walled' || !!e.morphScaled) }),
 });
-// Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
-export function closeViewBeastEligible(e) {
+// The Stalker's skinned body covers the cat and the ape. Its pool (a silver puddle, a mouth rising out of the floor), its mist (wisps
+// wheeling round the Wayfarer) and the tide (it is the first wave) are flat or vapour art the standard view owns; the small copies and
+// decoys keep their billboards too (and leave the beast slot to the Stalker itself).
+export function stalkerBodyEligible(e) {
+  return !e.stalkerKin && !e.stalkerDecoy && e.stalkForm !== 'pool' && e.stalkForm !== 'mist' && e.stalkAct?.kind !== 'tide';
+}
+// Forms the body covers (`mesh(tier, foe)`: a beast with more than one body picks the one this foe shows). Hidden, veiled, illusory,
+// ridden or mounted states keep the billboard (their art owns them).
+// `scene` (optional: the game) lets a filter look at the other actors (a Worm with a rider on it).
+export function closeViewBeastEligible(e, scene = null) {
   return !!e && Object.hasOwn(CLOSE_VIEW_BEASTS, e.kind) && !e.dead && e.hp > 0 && !e.hidden && !e.gloomVeil && !e.illusion
-    && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm && CLOSE_VIEW_BEASTS[e.kind].eligible?.(e) !== false;
+    && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm && CLOSE_VIEW_BEASTS[e.kind].eligible?.(e, scene) !== false;
 }
 export { BEAST_SLOT };

@@ -4,11 +4,11 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r911-37269cec64fc";
-import { SHADOW_CLONE } from "./late-spells.js?v=r911-37269cec64fc";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r911-37269cec64fc";
-import { drawOrbit } from "./orbit-volley.js?v=r911-37269cec64fc";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r911-37269cec64fc";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r912-f0117e40ae61";
+import { SHADOW_CLONE } from "./late-spells.js?v=r912-f0117e40ae61";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r912-f0117e40ae61";
+import { drawOrbit } from "./orbit-volley.js?v=r912-f0117e40ae61";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r912-f0117e40ae61";
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
