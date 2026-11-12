@@ -13,6 +13,7 @@ import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-be
 import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.ts";
 import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.ts";
 import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.ts";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.ts";
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -34,6 +35,8 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   morphingBlob: Object.freeze({ mesh: blobMesh, createTrack: createBlobTrack, sample: sampleBlob, get scale() { return BLOB_RIG.closeViewScale; } }),
   // the Void Walker on land (its skiff at sea keeps the billboard)
   voidWalker: Object.freeze({ mesh: walkerMesh, createTrack: createWalkerTrack, sample: sampleWalker, get scale() { return WALKER_RIG.closeViewScale; }, eligible: (e) => !e.marine }),
+  // the Pentagon finale's haunt; in its Dark (veiled among its cold lights) it keeps the standard view's cold-light billboard
+  gloomvast: Object.freeze({ mesh: gloomvastMesh, createTrack: createGloomvastTrack, sample: sampleGloomvast, get scale() { return GLOOMVAST_RIG.closeViewScale; }, eligible: (e) => !e.gloomVeil && !e.gloomDark }),
 });
 // Forms the body covers. Hidden, veiled, illusory, ridden or mounted states keep the billboard (their art owns them).
 export function closeViewBeastEligible(e) {
