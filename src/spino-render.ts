@@ -22,6 +22,11 @@ export const SPINO_ART = Object.freeze({
   bone: "#ece6d6", boneShade: "#c4beb0", boneDark: "#8f897e", joint: "#3a3430", socket: "#181412", ember: "#ff7a2a",
   dirt: "#6a4a2c", dirtLight: "#9a7a52", rock: "#5e544a", bite: "#b0101a", biteDark: "#3a0408",
   // shape, in body units (u: a tile times the actor's scale)
+  // the hind leg's outline (body units): how far the haunch reaches into the flank (the hip socket's depth below the spine; the haunch forward, back, up, how far the hamstring drops behind), the thigh's front and
+  // back (quadriceps, hamstring) half widths, the knee, the shin and the ankle
+  leg: Object.freeze({ hipDrop: .1, haunchF: .22, haunchB: .3, haunchUp: .2, hamDrop: .12, thighF: .17, thighB: .2, knee: .07, shin: .05, ankle: .034 }),
+  // the pelvis round the hip socket (hip-local: along the body, up from it): ilium blade, ischium down and back, pubis boot forward
+  pelvis: Object.freeze([.25, .05, .17, .12, -.06, .13, -.25, .09, -.29, .02, -.18, -.02, -.21, -.2, -.15, -.24, -.08, -.07, .02, -.07, .1, -.26, .23, -.31, .24, -.25, .14, -.2, .08, -.03]),
   hipH: .84, hipX: -.14, thigh: .36, shin: .34, meta: .15, upperArm: .2, foreArm: .18,
   trunk: Object.freeze([.22, .22, .13]), neck: Object.freeze([.12, .12, .11]), tailSeg: .16, tailN: 7, headLen: .48,
   sailH: .52, sailN: 11, headScale: 1.18, headDepth: 1.25, digHinge: .2, ploughHinge: .1, stride: .26, runStride: .4, settle: 6, ease: 10, chew: 9, shake: 34,
@@ -184,7 +189,7 @@ function claw(ctx, x, y, ang, len, w, fill, stroke, lw) {
   ctx.quadraticCurveTo(x + c * len * .5 - px * w * .2, y + s * len * .5 - py * w * .2, x - px * w, y - py * w); ctx.closePath();
   ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
 }
-// 2D two-bone IK: the joint between H and T, bending toward `side` (+1: the joint forward of the line)
+// 2D two-bone IK: the joint between H and T, on the side `side` picks (going down, -1 puts the joint forward of the line)
 function ik(hx, hy, tx, ty, L1, L2, side, out) {
   let dx = tx - hx, dy = ty - hy; const raw = Math.hypot(dx, dy) || 1e-6, d = Math.min(L1 + L2 - 1e-4, Math.max(Math.abs(L1 - L2) + 1e-4, raw));
   dx /= raw; dy /= raw; const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
@@ -267,9 +272,9 @@ export function drawSpino(ctx, q, now = 0) {
 }
 
 // the trunk-and-tail silhouette (a smooth curve through the offset points)
-function bodyPath(ctx, env) {
+function bodyPath(ctx, env, fresh = true) {
   const { X, Y } = env;
-  ctx.beginPath();
+  if (fresh) ctx.beginPath();
   const pt = (i, sgn, out) => { const d = sgn > 0 ? TOP[i] : -BOT[i]; out[0] = CX[i] + NX[i] * d; out[1] = CY[i] + NY[i] * d; return out; };
   pt(0, 1, TMP); ctx.moveTo(X(TMP[0]), Y(TMP[1]));
   for (let i = 1; i < CH_N; i++) { pt(i - 1, 1, TMP); pt(i, 1, TMP2); ctx.quadraticCurveTo(X(TMP[0]), Y(TMP[1]), X((TMP[0] + TMP2[0]) / 2), Y((TMP[1] + TMP2[1]) / 2)); }
@@ -293,10 +298,47 @@ function sailSpines(env) {
   return SAIL;
 }
 
+// the hip joint (where the femur sits in the pelvis) and the hip's own angle along the body (body units)
+function hipJoint(out) { along(HIP + .15, -SPINO_ART.leg.hipDrop, out); return out; }
+const hipAngle = () => Math.atan2(-NX[HIP], NY[HIP]);
+const LEGP = new Float64Array(64);
+// One continuous leg (Tim, 2026-11-12: the quarters read as "a chopped piece of material stuck onto the body"): the haunch, the
+// thigh and the shin are a single outline grown out of the flank. The haunch reaches up into the body and its fill fades out
+// there (so the flank's own colour and mottles carry on over the join, with no edge); the outline is drawn only where the leg
+// stands clear of the body, from the front of the thigh round the knee, down the shin and back up the hamstring.
+function legOutline(ctx, env, hx, hy, kx, ky, ax, ay, near, P) {
+  const { A, X, Y } = env;
+  let dx = kx - hx, dy = ky - hy, l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+  const f1x = -dy, f1y = dx, L1 = l;
+  let ex = ax - kx, ey = ay - ky; l = Math.hypot(ex, ey) || 1; ex /= l; ey /= l;
+  const f2x = -ey, f2y = ex, L2 = l;
+  // the body's own axis at the hip: the haunch spreads along it into the flank
+  const ha = hipAngle(), bx = Math.cos(ha), by = Math.sin(ha), ux = -by, uy = bx;
+  const T = (a, b) => [hx + dx * a * L1 + f1x * b, hy + dy * a * L1 + f1y * b];
+  const S = (a, b) => [kx + ex * a * L2 + f2x * b, ky + ey * a * L2 + f2y * b];
+  const Bd = (a, b) => [hx + bx * a + ux * b, hy + by * a + uy * b];
+  const W = A.leg, kn = W.knee, sh = W.shin, an = W.ankle;
+  // points, in order round the leg (x, y pairs): the haunch's front up in the flank, the thigh's front, the knee, the shin's
+  // front to the ankle, round its back, up the back of the shin, the hamstring, the haunch's back up into the flank
+  const pts = [
+    Bd(W.haunchF, W.haunchUp), T(.05, W.thighF), T(.45, W.thighF * 1.05), T(.74, W.thighF * .85), T(.92, kn * 1.2), T(1.02, kn * .6),
+    S(.12, sh), S(.6, (sh + an) / 2), S(1, an), S(1.08, 0), S(1, -an), S(.55, -(sh + an) / 2 - .005), S(.08, -kn * 1.1),
+    T(.94, -kn * 1.15), T(.78, -W.thighB * .8), T(.5, -W.thighB), T(.22, -W.thighB * 1.1), Bd(-W.haunchB, -W.hamDrop), Bd(-W.haunchB * .8, W.haunchUp),
+  ];
+  for (let i = 0; i < pts.length; i++) { P[i * 2] = pts[i][0]; P[i * 2 + 1] = pts[i][1]; }
+  return pts.length;
+}
+// a smooth closed curve through the points (midpoint quadratics), in canvas units
+function smoothPath(ctx, env, P, n, from = 0, to = n, closed = true) {
+  const { X, Y } = env, mx = (i) => (P[(i % n) * 2] + P[((i + 1) % n) * 2]) / 2, my = (i) => (P[(i % n) * 2 + 1] + P[((i + 1) % n) * 2 + 1]) / 2;
+  ctx.beginPath(); ctx.moveTo(X(mx(from)), Y(my(from)));
+  for (let i = from + 1; i <= (closed ? n + from : to); i++) ctx.quadraticCurveTo(X(P[(i % n) * 2]), Y(P[(i % n) * 2 + 1]), X(mx(i)), Y(my(i)));
+  if (closed) ctx.closePath();
+}
 function drawLeg(ctx, env, side, near, fossil) {
   const { A, u, lw, X, Y, V, walk, phase, run } = env;
   // the hip joint and the foot: planted through the stride, lifted on the swing; spread wide in a lunge, drawn up in the air
-  along(HIP + .15, -.04, TMP); const hx = TMP[0], hy = TMP[1];
+  hipJoint(TMP); const hx = TMP[0], hy = TMP[1];
   const ph = phase + (side > 0 ? 0 : Math.PI), stride = (run ? A.runStride : A.stride);
   const swing = Math.sin(ph) * walk * stride, lifted = Math.max(0, Math.cos(ph)) * walk * (run ? .16 : .09);
   let fx = hx + .06 + swing + (near ? .05 : -.1) + V[K.stride] * (near ? .32 : -.3), fy = lifted;
@@ -304,31 +346,66 @@ function drawLeg(ctx, env, side, near, fossil) {
   fy = Math.max(fy, 0) + (env.dying > 0 ? env.dying * .02 : 0);
   // ankle above and behind the foot (digitigrade), the knee forward
   const ax = fx - .1 - V[K.tuck] * .06, ay = fy + A.meta + V[K.tuck] * .04;
-  const kn = ik(hx, hy, ax, ay, A.thigh, A.shin, 1, TMP2), kx = kn[0], ky = kn[1];
-  const tone = near ? A.body : A.bodyDark;
+  const kn = ik(hx, hy, ax, ay, A.thigh, A.shin, -1, TMP2), kx = kn[0], ky = kn[1];
   if (fossil) {
+    // the femur's head sits in the pelvis's socket; femur, tibia and metatarsus as shaped bones with knuckled ends
     const bone = near ? A.bone : A.boneShade;
-    limb(ctx, [X(hx), Y(hy), X(kx), Y(ky)], u * .085, u * .06, bone, A.joint, lw * .8, .2);
-    limb(ctx, [X(kx), Y(ky), X(ax), Y(ay)], u * .05, u * .04, bone, A.joint, lw * .8);
-    limb(ctx, [X(ax), Y(ay), X(fx), Y(fy + .02)], u * .04, u * .03, bone, A.joint, lw * .8);
-    for (const [jx, jy, r] of [[kx, ky, .028], [ax, ay, .022]]) { ctx.fillStyle = A.joint; ctx.beginPath(); ctx.arc(X(jx), Y(jy), u * r, 0, TAU); ctx.fill(); }
+    boneShape(ctx, env, ax, ay, fx, fy + .02, .026, .016, .022, bone);
+    boneShape(ctx, env, kx, ky, ax, ay, .036, .02, .028, bone);
+    boneShape(ctx, env, hx, hy, kx, ky, .05, .03, .042, bone);
+    for (const [jx, jy, r] of [[kx, ky, .016], [ax, ay, .013]]) { ctx.fillStyle = A.joint; ctx.beginPath(); ctx.arc(X(jx), Y(jy), u * r, 0, TAU); ctx.fill(); }
   } else {
-    // a heavy drumstick of a thigh, a lean shin, the scaled foot
-    limb(ctx, [X(kx), Y(ky), X(ax), Y(ay)], u * .12, u * .075, tone, A.outline, lw);
-    // the thigh: a heavy muscled drumstick swelling out of the haunch and narrowing to the knee
-    { const ang = Math.atan2(ky - hy, kx - hx), ca = Math.cos(ang), sa = Math.sin(ang), px = -sa, py = ca, L = Math.hypot(kx - hx, ky - hy);
-      const P = (a, b) => [X(hx + ca * a * L + px * b), Y(hy + sa * a * L + py * b)];
-      ctx.beginPath(); ctx.moveTo(...P(-.15, .2)); ctx.bezierCurveTo(...P(.35, .26), ...P(.8, .1), ...P(1.02, .045)); ctx.bezierCurveTo(...P(1.08, 0), ...P(1.06, -.05), ...P(.98, -.06));
-      ctx.bezierCurveTo(...P(.7, -.12), ...P(.25, -.2), ...P(-.12, -.17)); ctx.closePath();
-      const g = ctx.createLinearGradient(...P(.3, .2), ...P(.3, -.18)); g.addColorStop(0, near ? A.bodyLight : A.body); g.addColorStop(.6, tone); g.addColorStop(1, near ? A.bodyDark : A.sailDark);
-      ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
-      if (near) { ctx.strokeStyle = "rgba(120,50,16,.4)"; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(...P(.1, .02)); ctx.quadraticCurveTo(...P(.5, -.04), ...P(.9, -.02)); ctx.stroke();
-        ctx.fillStyle = "rgba(168,72,30,.55)"; for (let i = 0; i < 4; i++) { const [mx, my] = P(.2 + i * .18, .08 - (i % 2) * .09); ctx.beginPath(); ctx.ellipse(mx, my, u * .028, u * .018, ang, 0, TAU); ctx.fill(); } } }
-    limb(ctx, [X(ax), Y(ay), X(fx), Y(fy + .03)], u * .065, u * .05, near ? A.bodyDark : A.sailDark, A.outline, lw);
-    if (near) { ctx.strokeStyle = "rgba(90,40,14,.35)"; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(X(hx - .05), Y(hy - .08)); ctx.quadraticCurveTo(X((hx + kx) / 2 - .06), Y((hy + ky) / 2), X(kx - .02), Y(ky + .03)); ctx.stroke(); }
+    const n = legOutline(ctx, env, hx, hy, kx, ky, ax, ay, near, LEGP);
+    // the scaled foot first, the leg's ankle over its top
+    limb(ctx, [X(ax), Y(ay), X(fx), Y(fy + .03)], u * .062, u * .048, near ? A.bodyDark : A.sailDark, A.outline, lw);
+    // the fill: the body's own hide, painted inside the leg's outline (so where the haunch overlaps the flank it is the flank)
+    ctx.save(); smoothPath(ctx, env, LEGP, n); ctx.clip(); paintHide(ctx, env);
+    // the muscle: light over the front of the thigh and a soft shadow behind and under it, both fading to nothing before the
+    // outline's top, so the mass swells out of the flank with no edge; down the shin the leg darkens toward the foot
+    const tx = hx + (kx - hx) * .55, ty = hy + (ky - hy) * .55, L = Math.hypot(kx - hx, ky - hy);
+    let gl = ctx.createRadialGradient(X(tx + .03), Y(ty + .03), u * .01, X(tx + .03), Y(ty + .03), u * L * .38);
+    gl.addColorStop(0, near ? "rgba(255,228,186,.3)" : "rgba(255,228,186,.1)"); gl.addColorStop(1, "rgba(255,228,186,0)");
+    ctx.fillStyle = gl; ctx.fillRect(X(hx - 1), Y(hy + 1), u * 2, u * 2);
+    gl = ctx.createRadialGradient(X(tx + .06), Y(ty + .07), u * L * .38, X(tx + .02), Y(ty + .03), u * L * .78);
+    gl.addColorStop(0, "rgba(90,34,10,0)"); gl.addColorStop(.6, "rgba(90,34,10,.22)"); gl.addColorStop(1, "rgba(90,34,10,0)");
+    ctx.fillStyle = gl; ctx.fillRect(X(hx - 1), Y(hy + 1), u * 2, u * 2);
+    gl = ctx.createLinearGradient(X(kx), Y(ky), X(ax), Y(ay)); gl.addColorStop(0, "rgba(120,48,14,0)"); gl.addColorStop(1, "rgba(120,48,14,.35)");
+    ctx.fillStyle = gl; ctx.fillRect(X(hx - 1), Y(hy + 1), u * 2, u * 2);
+    if (!near) { ctx.fillStyle = "rgba(60,20,6,.32)"; ctx.fillRect(X(hx - 1), Y(hy + 1), u * 2, u * 2); }
+    ctx.restore();
+    ctx.save();
+    if (near) { ctx.beginPath(); ctx.rect(X(-4), Y(4), u * 8, u * 8); bodyPath(ctx, env, false); ctx.clip("evenodd"); }
+    smoothPath(ctx, env, LEGP, n, 0, n - 2, false); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.stroke();
+    ctx.restore();
   }
   // three toes with claws, splayed forward
   for (let i = 0; i < 3; i++) { const a = -.15 + (i - 1) * .22 - V[K.tuck] * .6; claw(ctx, X(fx - .01), Y(fy + .025), -a, u * (.12 - Math.abs(i - 1) * .02), u * .022, i === 1 ? A.claw : A.boneShade, A.clawDark, lw * .6); }
+}
+// A bone with knuckled ends: a round head at each end (radii r0, r1) joined by a waisted shaft (half width ws), one outline.
+function boneShape(ctx, env, ax, ay, bx, by, r0, ws, r1, fill) {
+  const { A, X, Y, u, lw } = env;
+  let dx = bx - ax, dy = by - ay; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l; const px = -dy, py = dx, ang = Math.atan2(-dy, dx);
+  ctx.beginPath();
+  // round the far end of A (screen y is flipped: angles measured on screen)
+  ctx.arc(X(ax), Y(ay), u * r0, -ang + Math.PI / 2, -ang + Math.PI * 1.5);
+  ctx.quadraticCurveTo(X(ax + dx * l * .5 - px * ws), Y(ay + dy * l * .5 - py * ws), X(bx - px * r1), Y(by - py * r1));
+  ctx.arc(X(bx), Y(by), u * r1, -ang - Math.PI / 2, -ang + Math.PI / 2);
+  ctx.quadraticCurveTo(X(ax + dx * l * .5 + px * ws), Y(ay + dy * l * .5 + py * ws), X(ax + px * r0), Y(ay + py * r0));
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = A.joint; ctx.lineWidth = lw * .8; ctx.stroke();
+}
+// The pelvis as one bone round the hip socket: the ilium's blade along the back, the pubis's boot reaching down and forward,
+// the ischium down and back, a dark socket where the femur's head sits.
+function drawPelvis(ctx, env) {
+  const { A, X, Y, u, lw } = env, PL = A.pelvis;
+  hipJoint(TMP); const cx = TMP[0], cy = TMP[1], ha = hipAngle(), c = Math.cos(ha), sn = Math.sin(ha);
+  const Pt = (a, b) => [cx + c * a - sn * b, cy + sn * a + c * b];
+  const n = PL.length / 2; for (let i = 0; i < n; i++) { const q = Pt(PL[i * 2], PL[i * 2 + 1]); LEGP[i * 2] = q[0]; LEGP[i * 2 + 1] = q[1]; }
+  smoothPath(ctx, env, LEGP, n);
+  const g = ctx.createLinearGradient(X(cx), Y(cy + .14), X(cx), Y(cy - .24)); g.addColorStop(0, A.bone); g.addColorStop(1, A.boneShade);
+  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.joint; ctx.lineWidth = lw; ctx.stroke();
+  // the socket, and a ridge along the blade
+  ctx.fillStyle = A.joint; ctx.beginPath(); ctx.arc(X(cx), Y(cy), u * .045, 0, TAU); ctx.fill();
+  ctx.strokeStyle = A.boneDark; ctx.lineWidth = Math.max(1, lw * .7); ctx.beginPath(); const a0 = Pt(-.17, .09), a1 = Pt(.17, .09), am = Pt(0, .13); ctx.moveTo(X(a0[0]), Y(a0[1])); ctx.quadraticCurveTo(X(am[0]), Y(am[1]), X(a1[0]), Y(a1[1])); ctx.stroke();
 }
 
 function drawArm(ctx, env, side, near, fossil) {
@@ -364,6 +441,38 @@ function drawTailSwipe(ctx, env, near) {
   ctx.beginPath(); ctx.ellipse(X(CX[HIP]), Y(CY[HIP] - .1), u * 1.15, u * .3, 0, Math.PI * .55, Math.PI * 1.25); ctx.stroke();
 }
 
+// The hide inside whatever clip is set (the body's outline, or a hind leg's): the body's light-to-shade gradient, the paler belly,
+// the rust stripes and the mottles, all fixed to the spine chain. Painting a leg with the very same hide is what lets the haunch
+// grow out of the flank with no seam.
+function paintHide(ctx, env) {
+  const { A, u, X, Y } = env;
+  const g = ctx.createLinearGradient(0, Y(CY[HIP] + .25), 0, Y(CY[HIP] - .3)); g.addColorStop(0, A.bodyLight); g.addColorStop(.45, A.body); g.addColorStop(1, A.bodyDark);
+  ctx.fillStyle = g; ctx.fillRect(X(-4), Y(4), u * 8, u * 8);
+  // the paler belly: a band along the underside from the throat back under the tail
+  ctx.fillStyle = A.belly; ctx.beginPath();
+  for (let i = 2; i < CH_N; i++) { const o = -BOT[i] * .4; const px = CX[i] + NX[i] * o, py = CY[i] + NY[i] * o; if (i === 2) ctx.moveTo(X(px), Y(py)); else ctx.lineTo(X(px), Y(py)); }
+  for (let i = CH_N - 1; i >= 2; i--) { const o = -BOT[i] * 1.05; ctx.lineTo(X(CX[i] + NX[i] * o), Y(CY[i] + NY[i] * o)); }
+  ctx.closePath(); ctx.globalAlpha *= .85; ctx.fill(); ctx.globalAlpha /= .85;
+  // stripes across the back and down the tail (rust), each a tapering wedge from the dorsal edge
+  ctx.fillStyle = A.stripe;
+  for (let j = 0; j < 13; j++) {
+    const f = .6 + j * (NECK_END - 1.2) / 12, d = depthAt(f, true), w = .045 * (1 - j / 20);
+    along(f - .12, d * 1.05, TMP); along(f + .12, d * 1.05, TMP2); along(f + .02, d - (d + depthAt(f, false)) * (.45 + .1 * hash(j, 1)), TMP3);
+    ctx.globalAlpha *= .8; ctx.beginPath(); ctx.moveTo(X(TMP[0]), Y(TMP[1])); ctx.lineTo(X(TMP2[0]), Y(TMP2[1])); ctx.lineTo(X(TMP3[0] + w), Y(TMP3[1])); ctx.lineTo(X(TMP3[0] - w), Y(TMP3[1])); ctx.closePath(); ctx.fill(); ctx.globalAlpha /= .8;
+  }
+  // mottles: blotches of rust, orange and amber over the flanks (fixed to the chain, so they move with it)
+  for (let j = 0; j < 30; j++) {
+    const f = .4 + hash(j, 2) * (NECK_END - .8), d0 = depthAt(f, true), d1 = depthAt(f, false), o = -d1 * .2 + (d0 + d1 * .2) * hash(j, 3) * .9;
+    along(f, o, TMP); ctx.fillStyle = A.mottle[j % 3]; ctx.globalAlpha *= .75;
+    const r = (.022 + .03 * hash(j, 4)) * Math.min(1, (d0 + d1) / .25 + .3);
+    ctx.beginPath(); ctx.ellipse(X(TMP[0]), Y(TMP[1]), u * r * 1.5, u * r, hash(j, 5) * 2, 0, TAU); ctx.fill(); ctx.globalAlpha /= .75;
+  }
+  // light along the back, shadow along the belly's crease
+  ctx.strokeStyle = "rgba(255,236,200,.22)"; ctx.lineWidth = Math.max(1, u * .03); ctx.beginPath();
+  for (let i = 1; i < CH_N - 1; i++) { const o = TOP[i] * .7; const px = X(CX[i] + NX[i] * o), py = Y(CY[i] + NY[i] * o); if (i === 1) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+  ctx.stroke();
+}
+
 function drawFlesh(ctx, env, nearR) {
   const { A, u, lw, X, Y, V, t } = env;
   const swingNear = (V[K.tailSide] > 0) !== nearR;
@@ -394,37 +503,8 @@ function drawFlesh(ctx, env, nearR) {
   // dark bands across the sail, low down (the mottled hide carries up into it)
   ctx.fillStyle = "rgba(120,40,10,.35)";
   for (let i = 1; i < n - 1; i += 2) { const bx = S[i * 4], by = S[i * 4 + 1], tx = S[i * 4 + 2], ty = S[i * 4 + 3]; ctx.beginPath(); ctx.ellipse(X(bx + (tx - bx) * .3), Y(by + (ty - by) * .3), u * .035, u * .07, -Math.atan2(ty - by, tx - bx) + Math.PI / 2, 0, TAU); ctx.fill(); }
-  // the body: tail, trunk and neck in one outline
-  bodyPath(ctx, env);
-  {
-    const g = ctx.createLinearGradient(0, Y(CY[HIP] + .25), 0, Y(CY[HIP] - .3)); g.addColorStop(0, A.bodyLight); g.addColorStop(.45, A.body); g.addColorStop(1, A.bodyDark);
-    ctx.fillStyle = g; ctx.fill();
-  }
-  ctx.save(); bodyPath(ctx, env); ctx.clip();
-  // the paler belly: a band along the underside from the throat back under the tail
-  ctx.fillStyle = A.belly; ctx.beginPath();
-  for (let i = 2; i < CH_N; i++) { const o = -BOT[i] * .4; const px = CX[i] + NX[i] * o, py = CY[i] + NY[i] * o; if (i === 2) ctx.moveTo(X(px), Y(py)); else ctx.lineTo(X(px), Y(py)); }
-  for (let i = CH_N - 1; i >= 2; i--) { const o = -BOT[i] * 1.2; ctx.lineTo(X(CX[i] + NX[i] * o), Y(CY[i] + NY[i] * o)); }
-  ctx.closePath(); ctx.globalAlpha *= .85; ctx.fill(); ctx.globalAlpha /= .85;
-  // stripes across the back and down the tail (rust), each a tapering wedge from the dorsal edge
-  ctx.fillStyle = A.stripe;
-  for (let j = 0; j < 13; j++) {
-    const f = .6 + j * (NECK_END - 1.2) / 12, d = depthAt(f, true), w = .045 * (1 - j / 20);
-    along(f - .12, d * 1.05, TMP); along(f + .12, d * 1.05, TMP2); along(f + .02, d - (d + depthAt(f, false)) * (.45 + .1 * hash(j, 1)), TMP3);
-    ctx.globalAlpha *= .8; ctx.beginPath(); ctx.moveTo(X(TMP[0]), Y(TMP[1])); ctx.lineTo(X(TMP2[0]), Y(TMP2[1])); ctx.lineTo(X(TMP3[0] + w), Y(TMP3[1])); ctx.lineTo(X(TMP3[0] - w), Y(TMP3[1])); ctx.closePath(); ctx.fill(); ctx.globalAlpha /= .8;
-  }
-  // mottles: blotches of rust, orange and amber over the flanks (fixed to the chain, so they move with it)
-  for (let j = 0; j < 30; j++) {
-    const f = .4 + hash(j, 2) * (NECK_END - .8), d0 = depthAt(f, true), d1 = depthAt(f, false), o = -d1 * .2 + (d0 + d1 * .2) * hash(j, 3) * .9;
-    along(f, o, TMP); ctx.fillStyle = A.mottle[j % 3]; ctx.globalAlpha *= .75;
-    const r = (.022 + .03 * hash(j, 4)) * Math.min(1, (d0 + d1) / .25 + .3);
-    ctx.beginPath(); ctx.ellipse(X(TMP[0]), Y(TMP[1]), u * r * 1.5, u * r, hash(j, 5) * 2, 0, TAU); ctx.fill(); ctx.globalAlpha /= .75;
-  }
-  // light along the back, shadow along the belly's crease
-  ctx.strokeStyle = "rgba(255,236,200,.22)"; ctx.lineWidth = Math.max(1, u * .03); ctx.beginPath();
-  for (let i = 1; i < CH_N - 1; i++) { const o = TOP[i] * .7; const px = X(CX[i] + NX[i] * o), py = Y(CY[i] + NY[i] * o); if (i === 1) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
-  ctx.stroke();
-  ctx.restore();
+  // the body: tail, trunk and neck in one outline, its hide painted inside it
+  ctx.save(); bodyPath(ctx, env); ctx.clip(); paintHide(ctx, env); ctx.restore();
   bodyPath(ctx, env); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.stroke();
   // a low crest of small spines down the tail
   ctx.fillStyle = A.sailDark;
@@ -520,12 +600,8 @@ function drawBones(ctx, env, nearR) {
     if (f < HIP && i > 0) { along(f, -depthAt(f, false) * .7, TMP2); ctx.strokeStyle = A.boneShade; ctx.lineWidth = Math.max(1, u * .012); ctx.beginPath(); ctx.moveTo(X(TMP[0]), Y(TMP[1])); ctx.lineTo(X(TMP2[0] - .02), Y(TMP2[1])); ctx.stroke(); }
     if (f < HIP && i > 0) { along(f, depthAt(f, true) * .7, TMP2); ctx.strokeStyle = A.bone; ctx.beginPath(); ctx.moveTo(X(TMP[0]), Y(TMP[1])); ctx.lineTo(X(TMP2[0] - .02), Y(TMP2[1])); ctx.stroke(); }
   }
-  // the pelvis: a blade over the hip, the pubis's boot reaching down and forward, the ischium back
-  along(HIP + .1, .02, TMP);
-  ctx.fillStyle = A.bone; ctx.strokeStyle = A.joint; ctx.lineWidth = lw;
-  ctx.beginPath(); ctx.ellipse(X(TMP[0]), Y(TMP[1] + .03), u * .15, u * .07, -V[K.pitch], 0, TAU); ctx.fill(); ctx.stroke();
-  limb(ctx, [X(TMP[0] + .02), Y(TMP[1] - .02), X(TMP[0] + .1), Y(TMP[1] - .2)], u * .05, u * .03, A.boneShade, A.joint, lw * .8);
-  limb(ctx, [X(TMP[0] - .04), Y(TMP[1] - .02), X(TMP[0] - .16), Y(TMP[1] - .16)], u * .045, u * .025, A.boneShade, A.joint, lw * .8);
+  // the pelvis round the hip socket (the near femur's head is drawn into it next)
+  drawPelvis(ctx, env);
   // the rib spears: out to the sides (seen end on in profile, a star of points round the ribcage), then thrust to a point ahead
   drawRibSpears(ctx, env);
   drawHead(ctx, env, true);

@@ -85,7 +85,7 @@ const BODY = (() => {
   tb.forEach(([f, u, b], j) => { const k = (j + 1) / (TAIL + 1), top = .03 + .17 * Math.pow(k, .8), bot = .022 + .15 * k, i = TAIL - 1 - j;
     rows.push([f, u + (top - bot) / 2, (.016 + .08 * Math.pow(k, 1.1)), (top + bot) / 2, 'tail' + i, i > 0 ? 'tail' + (i - 1) : 'pelvis', i > 0 ? .25 : .3]); });
   void tailPts;
-  rows.push([-.26, .84 - .035, .15, .2, 'pelvis', 'tail0', .2], [-.14, .84 - .05, .2, .235, 'pelvis'], [-.02, .845 - .06, .215, .255, 'pelvis', 'spine', .5],
+  rows.push([-.26, .84 - .04, .165, .205, 'pelvis', 'tail0', .2], [-.14, .84 - .055, .215, .24, 'pelvis'], [-.02, .845 - .06, .222, .255, 'pelvis', 'spine', .5],
     [.08, .855 - .055, .22, .26, 'spine'], [.2, .855 - .05, .215, .255, 'spine', 'chest', .5], [.3, .85 - .04, .2, .235, 'chest'], [.38, .84 - .03, .16, .19, 'chest', 'neck0', .3]);
   // the neck rising to the skull
   rows.push([.45, .85, .125, .14, 'neck0'], [.5, .92, .105, .12, 'neck0', 'neck1', .5], [.56, .99, .09, .1, 'neck1'], [.63, 1.04, .08, .085, 'neck1', 'head', .5], [.67, 1.06, .07, .075, 'head']);
@@ -199,15 +199,17 @@ function buildSpinoMesh(tier, fossil) {
       if (!low) for (const q of [.35, .55]) B.bone(bn).color(C.boneShade).lathe({ at: [R.spear * q, 0, .02], F: [-.7, 0, .7], rings: [[0, .012], [.07, 0]], seg: 3, caps: false }); }
   }
   head(B, low, fossil);
-  // legs: the thigh a heavy drumstick grown out of the haunch, a lean shin, the metatarsus, three clawed toes forward
+  // legs: the thigh a heavy drumstick grown out of the haunch: its upper sections stay inside the flank (held to the pelvis), and
+  // it swells to its full girth only where it leaves the belly, so the join is under the body, in its shade, not a slab on its
+  // side (Tim, 2026-11-12); a lean shin, the metatarsus, three clawed toes forward
   for (const [tag, s] of [['L', -1], ['R', 1]]) {
     const top = bwOf('thigh' + tag), J = ['thigh', 'shin', 'meta', 'foot'].map((n) => bwOf(n + tag)[2]), hAt = (g) => g <= 0 ? J[0] - g * (J[0] - J[1]) : g >= 3 ? J[3] : J[Math.floor(g)] + (J[Math.floor(g) + 1] - J[Math.floor(g)]) * (g - Math.floor(g));
     const nm = (c) => c === 'p' ? 'pelvis' : c === 't' ? 'thigh' + tag : c === 'm' ? 'shin' + tag : 'meta' + tag;
     const prof = fossil
       ? [[0, .045, .05, 0, 't'], [.5, .035, .04, 0, 't'], [1, .04, .045, 0, 't', 'm', .5], [1.5, .028, .03, 0, 'm'], [2, .032, .034, 0, 'm', 'l', .5], [2.5, .022, .024, 0, 'l'], [3, .024, .026, 0, 'l']]
-      : [[-.2, .07, .12, -.02, 'p'], [.05, .13, .19, .0, 'p', 't', .5], [.3, .13, .19, .02, 't'], [.65, .1, .13, .02, 't'], [1, .06, .07, 0, 't', 'm', .5], [1.3, .055, .065, -.01, 'm'], [1.8, .042, .048, 0, 'm'], [2, .042, .045, 0, 'm', 'l', .5], [2.5, .036, .04, 0, 'l'], [3, .038, .042, 0, 'l']];
+      : [[-.25, .04, .08, -.02, 'p'], [.05, .06, .12, 0, 'p', 't', .35], [.35, .062, .13, .02, 't', 'p', .12], [.62, .1, .14, .02, 't'], [1, .06, .07, 0, 't', 'm', .5], [1.3, .055, .065, -.01, 'm'], [1.8, .042, .048, 0, 'm'], [2, .042, .045, 0, 'm', 'l', .5], [2.5, .036, .04, 0, 'l'], [3, .038, .042, 0, 'l']];
     const keep = low ? (fossil ? [0, 2, 4, 6] : [0, 1, 3, 4, 6, 7, 9]) : null;
-    B.color(fossil ? C.bone : C.body).loft({ seg: low ? 6 : fossil ? 6 : 12, up: [1, 0, 0], sections: prof.filter((_, i) => !keep || keep.includes(i)).map(([g, rx, rz, fw, a, b, w]) => ({ at: [top[0] + fw, top[1] + s * (g < .2 && !fossil ? .02 : 0), hAt(g)], rx, rz, bones: [nm(a), nm(b ?? a), w || 0] })),
+    B.color(fossil ? C.bone : C.body).loft({ seg: low ? 6 : fossil ? 6 : 12, up: [1, 0, 0], sections: prof.filter((_, i) => !keep || keep.includes(i)).map(([g, rx, rz, fw, a, b, w]) => ({ at: [top[0] + fw, top[1] + s * (fossil ? 0 : g < 0 ? -.03 : 0), hAt(g)], rx, rz, bones: [nm(a), nm(b ?? a), w || 0] })),
       tone: fossil ? undefined : (i, k) => { const g = prof[keep ? keep[i] : i][0]; return g >= 1.9 ? C.dark : g < .8 && hash(i + k * 3, 9 + s) > .7 ? C.m1 : lerpHex(C.body, C.dark, clamp01((g - .5) * .3)); } });
     if (fossil) for (const n of ['shin', 'meta']) B.bone(n + tag).color(C.joint).ellipsoid({ at: [0, 0, 0], radius: [.035, .035, .035], rings: 2, seg: 5 });
     const fb = 'foot' + tag;
