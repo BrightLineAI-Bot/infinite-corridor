@@ -235,7 +235,7 @@ function mapObjectLists(map) {
   const value = {
     objects,
     length: objects.length,
-    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"),
+    structures: objects.filter((o) => o.kind === "tallTower" || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"), // tall towers (tall-towers.ts) are drawn as great buildings are
     shelters: objects.filter((o) => o.kind === "shack" || o.kind === "greatBuilding"), // a great building has no inside on the overworld; listed so the Wayfarer stays in front of its facade
     animated: objects.filter((o) => ["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)),
   };
@@ -576,6 +576,7 @@ function drawCloudTile(ctx, t, x, y, s, tiles, w) {
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
+  if (TOWER_TILES.has(t?.kind)) { towerTile(ctx, t, x, y, s, map, w); return; } // tall towers: the shaft (tall-towers.ts)
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w, closeViewWorldCapture())) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
   if (t?.realm && drawRealmTile(ctx, t, x, y, s, map, w)) return; // seed realms (seed-realm-render.ts)
@@ -1886,6 +1887,66 @@ export const behindRoof = (tiles, w, p) => { const x = Math.floor(p.x + .5), y =
 // Great buildings (great-buildings.ts): a closed block seen from outside, a roof over a facade with a row of windows a floor
 // and the door; a keep in dressed stone under a parapet, an arcology in stained concrete with dead neon. A broken back shows
 // as a torn gap in the roof's far edge (or the facade, when the door faces north).
+// Tall towers (tall-towers.ts): the Upwell outside, a tall stone shaft seen from the south: its top (the footprint raised by its
+// drawn height) with a parapet and the lookout's lamp, a facade banded every few levels with arrow slits, and the door: at the
+// foot, or up the face over the ledge the floating steps lead to (the steps are tiles, drawn by the landscape). Faded while the
+// Wayfarer stands behind it.
+const TOWER_LOOK = { stone: ["#6c675e", "#5a554d", "#4a463f"], mortar: "#2c2a26", top: "#3c3934", lip: "#8a8478", slit: "#0b0b0d", door: "#1a1410", trim: "#a8916b", lamp: "#ffd98a", band: 3 };
+function tallTower(ctx, o, s, p) {
+  const b = o.bounds, C = TOWER_LOOK, H = o.faceH || 4, south = o.door?.side !== "north", inset = .3;
+  const x = (b.x + inset) * s, w = (b.w - inset * 2) * s, foot = (b.y + b.h) * s, faceY = foot - H * s, topY = (b.y - H) * s + s * .2, topH = (b.h - .4) * s;
+  const behind = p && p.x >= b.x - .7 && p.x < b.x + b.w - .3 && p.y >= b.y - H - .8 && p.y < b.y + b.h - .6;
+  ctx.save(); if (behind) ctx.globalAlpha = .42;
+  ctx.fillStyle = "#00000055"; ctx.fillRect(x + s * .2, foot - s * .06, w, s * .3); // its shadow
+  // the facade: stone in three tones, a band every few levels
+  const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, C.stone[2]); g.addColorStop(.35, C.stone[0]); g.addColorStop(1, C.stone[1]);
+  ctx.fillStyle = g; ctx.fillRect(x, faceY, w, H * s);
+  const lv = s * LIFT_PER_LEVEL, levels = o.levels || 8; ctx.strokeStyle = C.mortar; ctx.lineWidth = 1;
+  for (let k = 1; k <= levels; k++) { const y = foot - k * lv; ctx.globalAlpha = (behind ? .42 : 1) * (k % C.band === 0 ? .9 : .3); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke(); }
+  ctx.globalAlpha = behind ? .42 : 1;
+  ctx.fillStyle = C.slit; for (let k = 2; k < levels; k += 2) { const y = foot - (k + .5) * lv, sx = x + w * (k % 4 === 2 ? .3 : .68); ctx.fillRect(sx - s * .04, y - lv * .7, s * .08, lv * .9); }
+  // the top: its parapet and the lookout's lamp
+  ctx.fillStyle = C.top; ctx.fillRect(x, topY, w, topH); ctx.strokeStyle = C.lip; ctx.lineWidth = 2; ctx.strokeRect(x + 1, topY + 1, w - 2, topH - 2);
+  ctx.fillStyle = C.stone[1]; for (let q = 0; q < w; q += s * .4) if (((q / s * 2.5) | 0) % 2 === 0) { ctx.fillRect(x + q, topY - s * .18, s * .22, s * .2); ctx.fillRect(x + q, faceY - s * .18, s * .22, s * .2); }
+  const lx = x + w * .3, ly = topY + topH * .35; ctx.fillStyle = C.lamp + "55"; ctx.beginPath(); ctx.arc(lx, ly, s * .32, 0, 7); ctx.fill(); ctx.fillStyle = C.lamp; ctx.beginPath(); ctx.arc(lx, ly, s * .1, 0, 7); ctx.fill();
+  // the door (seen only when it faces south)
+  if (south) { const d = o.door.raised || 0, dx = (o.door.x + .5) * s, dw = s * .56, dh = s * .82, dy = foot - d * lv;
+    ctx.fillStyle = C.door; ctx.beginPath(); ctx.moveTo(dx - dw / 2, dy); ctx.lineTo(dx - dw / 2, dy - dh + dw / 2); ctx.arc(dx, dy - dh + dw / 2, dw / 2, Math.PI, 0); ctx.lineTo(dx + dw / 2, dy); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = C.trim; ctx.lineWidth = 2; ctx.stroke();
+    if (d) { ctx.fillStyle = C.stone[1]; ctx.fillRect(dx - s * .5, dy, s, s * .12); } // the sill the steps reach
+    else { ctx.fillStyle = "#00000044"; ctx.fillRect(dx - dw / 2, dy - s * .06, dw, s * .06); } }
+  ctx.restore();
+}
+// The shaft inside (tall-towers.ts generateTowerInterior), painted flat as every interior heightfield is in this view
+// (STANDARD_VIEW_FLOOR): the far floor dark, every ledge and platform lighter the higher it stands, with its level written on it
+// where a run of ledge begins, and an edge where it drops away. Close View draws the heights themselves.
+const TOWER_TILES = new Set(["towerFloor", "towerLedge", "towerSummit", "towerPlatform", "towerWall"]);
+const TOWER_LEVEL_TEXT = Array.from({ length: 32 }, (_, i) => String(i));
+function towerTile(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, py = y * s, d = Number.isFinite(t.detail) ? t.detail : 0, e = Number(t.elev) || 0;
+  if (t.kind === "towerWall") { ctx.fillStyle = d & 1 ? "#3a3632" : "#34302c"; ctx.fillRect(px, py, s + 1, s + 1); ctx.strokeStyle = "#1c1a17aa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py + s * .5); ctx.lineTo(px + s, py + s * .5); ctx.moveTo(px + s * (d & 1 ? .3 : .7), py); ctx.lineTo(px + s * (d & 1 ? .3 : .7), py + s * .5); ctx.stroke(); return; }
+  if (t.kind === "towerFloor") { ctx.fillStyle = d & 1 ? "#121114" : "#0e0d10"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#1d1b20"; ctx.fillRect(px + s * (.2 + (d % 3) * .15), py + s * .3, s * .18, s * .12); return; }
+  const k = Math.min(1, e / 15), c = Math.round(70 + k * 90);
+  ctx.fillStyle = t.kind === "towerSummit" ? `rgb(${c + 30},${c + 18},${c - 10})` : t.kind === "towerPlatform" ? `rgb(${c - 10},${c},${c + 22})` : `rgb(${c},${c - 4},${c - 12})`;
+  ctx.fillRect(px, py, s + 1, s + 1);
+  const W = w || 13, lower = (dx, dy) => { const q = tiles?.[(y + dy) * W + x + dx]; return q && !q.blocked && (Number(q.elev) || 0) < e; };
+  ctx.fillStyle = "#00000088"; if (lower(0, 1)) ctx.fillRect(px, py + s * .86, s, s * .14); if (lower(1, 0)) ctx.fillRect(px + s * .86, py, s * .14, s); if (lower(-1, 0)) ctx.fillRect(px, py, s * .08, s); if (lower(0, -1)) ctx.fillRect(px, py, s, s * .06);
+  if (closeViewCapturing()) return;
+  const before = tiles?.[y * W + x - 1], above = tiles?.[(y - 1) * W + x], run = (q) => q && !q.blocked && (Number(q.elev) || 0) === e;
+  if (!run(before) && !run(above) || t.kind === "towerPlatform") { ctx.fillStyle = "#f4ead2"; ctx.font = `bold ${Math.max(8, Math.round(s * .36))}px sans-serif`; ctx.textAlign = "center"; ctx.fillText(TOWER_LEVEL_TEXT[Math.min(31, e)], px + s * .5, py + s * .62); ctx.textAlign = "start"; }
+}
+// Release 661's column of floor dots, for an Upwell: a dot a level (the lip on top, gold; the floor at the bottom), the level the
+// Wayfarer stands at (or hangs at, on the drone) lit and ringed, the raised door's level ringed faintly, the drone's cap a tick.
+function drawTowerLevels(ctx, g, w, h) {
+  const C = g.map.tallTower, n = C.levels + 1, gap = Math.max(6, Math.min(12, (h * .6) / n)), x = w - 12, y0 = h / 2 - (n - 1) * gap / 2, here = Math.max(0, Math.min(C.levels, Math.round(g.playerLevel?.() ?? 0)));
+  ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (n - 1) * gap); ctx.stroke();
+  for (let i = 0; i < n; i++) { const lv = C.levels - i, y = y0 + i * gap, on = lv === here;
+    ctx.fillStyle = on ? "#ffe7a6" : lv === C.levels ? "#e2c04fcc" : lv < here ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, on ? 4 : lv === C.levels ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+    if (on) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); }
+    else if (C.door && lv === C.door) { ctx.strokeStyle = "#a8916b99"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.stroke(); }
+    if (lv === C.droneCeiling) { ctx.strokeStyle = "#8ad0ff88"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 5, y); ctx.stroke(); } }
+  ctx.restore();
+}
 function greatBuilding(ctx,o,s,p,map){
   const b=o.bounds,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north",faceH=o.faceH||Math.min(b.h-2.2,1+floors*.5);
   const C=keep&&biomechanicalKeep(o.appearance)?{roof:"#353e37",roofLine:"#788271",wall:"#454e45",wallDark:"#252e28",mortar:"#171e19",trim:"#a4a084",glass:"#141d16",lit:"#c5d69a"}:keep?{roof:"#3a3631",roofLine:"#5b544a",wall:"#5d564b",wallDark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860"}:{roof:"#3b3f44",roofLine:"#575d63",wall:"#6a6e72",wallDark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
@@ -2769,7 +2830,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
+          } else if (o.kind === "tallTower" || o.towerDoor || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
           else if (o.kind === "architecturalDistrict") { /* district title is carried by its buildings */ }
           else if (o.kind === "viewport") {
             actor(ctx, o.x, o.y, s, "viewport");
@@ -3133,7 +3194,7 @@ export function render(ctx, g, w, h, now) {
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"||o.kind==="tallTower"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):o.kind==="tallTower"?tallTower:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
@@ -3197,6 +3258,7 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
     L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
     ctx.restore(); }
+  if (g.area === "dungeon" && g.map?.tallTower) drawTowerLevels(ctx, g, w, h); // tall towers: the levels as the floors' dots, the lip on top
   drawStalkerMarker(ctx, g.stalkerMarker?.(), w, h, now); // release 678: the Stalker's silver marker at the screen edge
   // Release 666: the fracture meter, top centre while Fractured mode holds here: kills toward the Fracture Warden, then its health.
   { const m = g.fractureMeter?.(); if (m) { const bw = Math.min(180, w * .4), bx = (w - bw) / 2, by = 8, warden = m.warden, k = warden ? Math.max(0, warden.hp) / Math.max(1, warden.maxHp) : m.kills / Math.max(1, m.need);

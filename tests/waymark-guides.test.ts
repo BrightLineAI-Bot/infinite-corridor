@@ -211,7 +211,7 @@ const PINNED = [
   ["PIN1", 26, -4, 0, "f0a75a0cc96adccf"],
   ["PIN1", 25, -3, 0, "56ac7a55529297a5"],
   ["PIN1", -13, 15, 0, "ee1ccb78ea8d786a"],
-  ["PIN1", -14, 16, 0, "b7abbbed7a354a44"],
+  ["PIN1", -14, 16, 0, "cb3f23e0636d7307"], // tall towers (tall-towers.ts): this new ground now holds an Upwell (main: b7abbbed7a354a44)
   ["PIN1", 14, 24, 0, "7b9170eb50a377e2"],
   ["PIN1", 13, 25, 0, "3039fa3928dade38"],
   ["PIN1", 21, 10, 0, "da9026a75501d14e"],

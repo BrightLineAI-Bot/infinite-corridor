@@ -621,7 +621,11 @@ const wayStone=(glow,down)=>{const parts=[part(prism(4,.8),0,0,.23,.3*Math.SQRT2
   for(const side of [-1,1])parts.push(block(side*.1,0,.86,.13,.035,.035,glow,0,side*.1,.86,(down?1:-1)*side*-.785));
   return parts;};
 const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
-export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
+// Tall towers (tall-towers.ts): the lookout at an Upwell's lip, a stone post with a brass sighting glass and a lit lens; the Long Rope,
+// a timber bollard with its coil and the rope running down over the edge.
+const towerLookout=[part(prism(8),0,0,.36,.15,.15,.36,0x6c675e),block(0,0,.74,.21,.21,.03,0x8a8478),part(prism(6),0,0,.86,.045,.045,.1,0x5a4a30),block(.06,0,.99,.2,.05,.05,0xa8916b),block(.27,0,.99,.03,.065,.065,0x6f5a36),part(ellipsoid(6,2),.31,0,.99,.02,.05,.05,0xffd98a,0,0,0,0,true)];
+const towerRope=[block(0,0,.32,.07,.07,.32,0x5a4632),block(0,0,.66,.09,.09,.03,0x6b5640),part(prism(10),0,0,.4,.14,.14,.045,0xb89a6a),part(prism(10),0,0,.3,.13,.13,.045,0xa88a5a),block(.17,0,.14,.014,.014,.3,0xb89a6a),block(.24,0,-.05,.014,.014,.2,0xb89a6a)];
+export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep,towerLookout,towerRope});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
 const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, ...QUANDRIX_HAND_MODELS /* the Quandrix Staff's hands */, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
