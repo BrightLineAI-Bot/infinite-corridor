@@ -54,7 +54,7 @@ test('a cell without a host is all open sea, a town, a hamlet or Pentagon ground
     const [ox, oy] = G.kinds[kind].origin;
     for (let u = G.band[0]; u <= G.band[1]; u++) for (let v = G.band[0]; v <= G.band[1]; v++) { const rx = cx * G.cell + ox + u, ry = cy * G.cell + oy + v;
       assert.ok(!guideHostable(seed, kind, rx, ry), `${seed} ${kind} ${rx},${ry} could host`);
-      assert.ok(openSeaSection(seed, rx, ry) || hamletSection(seed, rx, ry) || !!pentagonCentre(rx, ry) || Math.abs(rx) + Math.abs(ry) < G.kinds[kind].minDepth || ['4,-2', '-5,3'].includes(`${rx},${ry}`), `${seed} ${kind} ${rx},${ry}: why no host?`); }
+      assert.ok(openSeaSection(seed, rx, ry, G.seaVersion) || hamletSection(seed, rx, ry) || !!pentagonCentre(rx, ry) || Math.abs(rx) + Math.abs(ry) < G.kinds[kind].minDepth || ['4,-2', '-5,3'].includes(`${rx},${ry}`), `${seed} ${kind} ${rx},${ry}: why no host?`); }
   }
   assert.ok(none / cells < .05, `${none} of ${cells} cells without a host`);
 });
