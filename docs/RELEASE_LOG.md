@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r947 (`4da3a989e6d9`); production serves `r946-4c6c4e323b38` (published 2026-11-13 after a Fable review of r946). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r948 (`c8651a95a1b1`); production serves `r948-c8651a95a1b1` (published 2026-11-13 after a Fable review of r947 to r948). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 948 | Claude | claude/no-select-hud | Page-wide user-select: none and no long-press callout for the game UI (buttons, HUD, action diamond, menus); text inputs and contenteditable stay selectable | In flight. |
+| 949 | Claude | claude/compass-north | The compass dial stays north-up in both views; the objective needle points at the map bearing; in Close View a small rim marker shows the way the Wayfarer faces (replaces the 2026-11-11 dial that turned with the facing) | In flight. |
+| 948 | Claude | claude/no-select-hud | Page-wide user-select: none and no long-press callout for the game UI (buttons, HUD, action diamond, menus); text inputs and contenteditable stay selectable | Merged as `c8651a95a1b1` (#615). |
 | 947 | Claude | claude/ki-slam-pause | r946 review note: kiSlamJump added to GAME_CLOCKS so a pause or app-background inside the Ki Blast leap no longer turns the slam into a plain plunge | Merged as `4da3a989e6d9` (#614). |
 | 946 | Claude | claude/look-everything | Look mode can frame anything Close View draws (characters, creatures, world beasts, props, trees, buildings, bodies, terrain): tap to pick in Look mode (never attacks/interacts/moves), big subjects framed whole from farther back, reach widens with zoom, a name line under the compass; plus r945 review notes (Ki Blast slam only in its own leap, a kick after losing the awakening is a plain cross, compass Enter after a cancelled hold) | Merged as `4c6c4e323b38` (#613). |
 | 945 | Claude | claude/fists-four-step | Iron Fists: right cross, left jab, right uppercut on one steady rhythm (0.21 s gate, 0.12 s buffer) with wind-up, blow, follow-through and guard; awakened adds the spinning roundhouse as step 4 (2.8, no knockback); Echo-gated charging incl. the kick at 2 Echoes with perfect windows; Ki Blast airborne uppercut then a ground slam; dodge/spell cancel. Verge Cleaver Close View: three wide level sweeps (forehand, backhand, wider finisher) and the outdoor four-cut sweeps level | Merged as `c3afa98a7637` (#612). |
