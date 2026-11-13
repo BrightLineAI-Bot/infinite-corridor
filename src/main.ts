@@ -672,16 +672,21 @@ function dungeonCompassPoints() {
 // north-up ("north up is just standard for the map"). compassFrame is updated once a HUD frame; nothing here allocates.
 const compassFrame = { yaw: NaN, turning: false, ready: false, map: null, at: NaN, target: NaN };
 const navCompassDial = (() => { const dial = document.createElement("span"); dial.className = "nav-dial"; dial.setAttribute("aria-hidden", "true"); dial.innerHTML = '<i class="nav-dial-n">N</i><i class="nav-dial-tick e"></i><i class="nav-dial-tick s"></i><i class="nav-dial-tick w"></i>'; navCompass.prepend(dial); return dial; })();
+// Tim (2026-11-13): the dial is always true north (N up), in both views; the needle points at the objective in that frame, and in
+// Close View a small marker on the rim shows the way the Wayfarer faces (replaces 2026-11-11's dial turning with the facing).
+const navCompassFacing = (() => { const m = document.createElement("span"); m.className = "nav-facing"; m.setAttribute("aria-hidden", "true"); navCompass.prepend(m); return m; })();
 function updateCompassFrame(now) {
   if (compassFrame.map !== game.map) { compassFrame.map = game.map; compassFrame.ready = false; compassFrame.target = NaN; }
   const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1000 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
-  /* Close View: the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
-  compassFrame.target = !close ? -Math.PI / 2 : Number.isFinite(body) ? body : Number.isFinite(compassFrame.target) ? compassFrame.target : -Math.PI / 2;
-  compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode));
-  hudSet(navCompassDial, "transform", `rotate(${closeViewCompassRotation(0, -1, compassFrame.yaw)}deg)`);
+  /* the facing marker (Close View only): the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
+  compassFrame.target = !close ? NaN : Number.isFinite(body) ? body : compassFrame.target;
+  if (Number.isFinite(compassFrame.target)) compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode)); else compassFrame.ready = false;
+  hudSet(navCompassDial, "transform", "rotate(0deg)"); // N is always up
+  hudSet(navCompassFacing, "class:on", close && compassFrame.ready);
+  if (close && compassFrame.ready) hudSet(navCompassFacing, "transform", `rotate(${closeViewCompassRotation(Math.cos(compassFrame.yaw), Math.sin(compassFrame.yaw))}deg)`);
 }
 function compassRotation(dx, dy) {
-  return closeViewCompassRotation(dx,dy,compassFrame.ready ? compassFrame.yaw : undefined);
+  return closeViewCompassRotation(dx, dy); // north-up: the needle points at the objective on the map's own bearing
 }
 function pointDungeonCompass(point) {
   updateNavigationArrow(navGuidanceArrow, null);
