@@ -10,7 +10,7 @@ import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.ts";
 import { drawOrbit } from "./orbit-volley.ts";
 import { drawToolForms, drawOrrery } from "./tool-forms.ts";
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
-export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? "#7fe7ff" /* the Lumen Carbine's beam (tool-forms.ts LUMEN_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? "#7fe7ff" /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -47,7 +47,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
+    if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;

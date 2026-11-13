@@ -6,6 +6,59 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 927 — Standard-view beast animation memory keyed by id
+
+This was found while building the Spinosaurus art (2026-11-12), and Tim asked for it to be fixed. The renderer paints a fresh copy of each foe every frame (`drawPackMonster(ctx, { ...e, ... })`). Four modules kept render memory in WeakMaps keyed by the object, so it never found the same key twice:
+- `briar-stag-render.ts` and `lightning-giant-render.ts`: the gait phase and the eased poses;
+- `crimson-dragon-render.ts` (the Crimson Tyrant and the Doom Chaser): the eased poses;
+- `ashen-moth-render.ts`: the eased poses.
+
+As a result, every walk cycle and pose easing restarted each frame.
+
+**CODE:** each module's `renderMemory()` keys a bounded Map (32 entries, oldest dropped first) by the creature's `id`, and falls back to the object when there is no id (previews). `tests/render-memory.test.ts` fails on the old code and passes on the new.
+
+**BOUNDARY:** render only, in the standard view. Close View is unaffected because it has its own tracks.
+
+## Release 926 — Release 926 — real falls (airtime, catches) and smooth jump-up landings
+
+Tim (2026-11-12): jumping up onto things has a weird unsteady motion; falls need real physics (fall speed, airtime by height, damage from it) now that Rift Step, roofs, the drone and the glider make vertical play common, and he wants to catch a Rift Step fall with the drone or glider.
+
+**CODE:** `src/game.ts`: `FALL` {gravity 14 (= DRONE_LIFT.gravity), terminal 9 (= GLIDE.drop), minDrop .5, stepDown 1, jumpExit 4, pose 1.5, plunge 9} with `fallAirtime`/`stepFall`; runtime `this.fall {z, vz, from, scale, t}` (`fallApplies`, `beginFall`, `fallPoseDue`, `fallRemainingMs`); falls stepped in movement, held during a jump, hazards judged on landing, landed on ground or a roof at or below the fall (`deckReach`); damage `fallDamage(from - landing)` unchanged; `landBlink` and `endDroneLift` start falls; Jump mid-fall catches with the drone or glider; the closed glide integrates `vz`; `plungeLand` waits for a fall and slams on touchdown. Saved as runtime `playerRuntime.fall` and `glide.vz` (additive, schema 14). `src/close-view.ts`: `presentLeap` critically damped footing (`CLOSE_VIEW_LEAP` {rise 20, ahead 1, samples 6, soft .1, liftEase 8}), `leapArc` smooth max, camera `vertical.jumpTau` .1 / `jumpHold` 250, drone lift and open glider at `z x OUTDOOR.terrain.level`. `src/close-view-player-presentation.ts` `ordinaryFallPresentation`. `src/renderer.ts` `STANDARD_STEP`/`standardStepEase`. Tests: `fall-physics`, `jump-landing-smooth`.
+
+**BOUNDARY:** Open world on foot only: dungeons, interiors, the robot, mounts and the skiff keep the instant rule (a robot or mount called mid-fall resolves the fall from where it began). The damage table is unchanged and lethal drops stay lethal; reload never saves you from a fall. Jump reach and timing are unchanged (the same inputs give the same position and hp). Rift Step mid-fall keeps the fall's speed and start height. Creatures unchanged. Additive runtime fields only (schema 14). Existing tests changed only to wait for a fall's airtime. Not tested on a device.
+
+## Release 925 — Release 925 — the Spark Coil drops again and becomes the Carbine at +6; Continuous Assault
+
+Tim (2026-11-12): make the Carbine its own weapon carrying the Spindle passive's beam, scaling with Stamina, with a Continuous Assault passive (three lasers from the sky that track into the enemy, like Hammerfall); then: turn the Spark Coil into it, the coil drops again and past +6 it becomes the Carbine, like the Needle Caster and the Blunderbuss. Later: magic damage is fine since it scales with Finesse.
+
+**CODE:** `src/items.ts`: `CARBINE_RANK` (= `BLUNDERBUSS_RANK`); `rangedWeapon`/`normalizeItemUpgrade` rename a Spark Coil at the rank to Carbine with the `secondary-carbine` profile (magic damage), keeping its id; `SPARK_COIL_LOOT` {share .25, stream `spark-coil-loot:v1`}; `TOOL_SCALING.carbine = 'stamina'`. `src/tool-forms.ts`: `CARBINE` (base 30 + 2.7 x the tool bonus, range 16, speed 80, cadence 1.05, charge .2/1.25/1.3-2.4x/pierce 2/rounds 3), `carbineBase`; `CONTINUOUS_ASSAULT` {threshold .5, count 3, lead .2, gap .2, share .5, radius 1, seek 3, track 12, maxLive 9}, `drawAssault`. `src/game.ts`: carbine fire through `toolBonus`, `assaultVolley`/`assaultHit`, tracking in `tickCarbine`, pooled `game.carbine.lances`. `src/lattice-fields.ts` `TOOL_FORMS['continuous-assault']`; `src/transit-lattice.ts` `RETIRED_PASSIVES` (`field:lumen-carbine`). Close View `heroCarbine` (92 tris, cyan coil). Tests: `carbine-tool` (12), `continuous-assault` (8).
+
+**BOUNDARY:** Save: schema 14, nothing new; the renamed item keeps its id and `field:lumen-carbine` is dropped on load with its slot freed. Item drops: only the Spark Coil stream changes an item's name and property (id, power, tier, affixes unchanged). Charge, traces and lasers are runtime only and bounded (projectile caps, 6 trace slots, 9 laser slots). On an equal Finesse/Focus build the Carbine matches the old Lumen Carbine.
+
+## Release 924 — Release 924 — the Gaunt: hooded duelists
+
+Tim (2026-11-12): new enemies on the RPG character model, skeletal thin limbs, big heads, chunky hands, hooded faces, swords/daggers/polearms, hopping, smarter and more aggressive AI, more health, slightly taller than the Wayfarer.
+
+**CODE:** New `src/duelists.ts` `DUELISTS` (version 1: reference hp 36, factors 1.8/1.65/1.95, AI bands, separation, hop 1.4/2.1/2.7 tiles at most one level, after-attack rules, 30% feints, four attacks with windups of at least .4 s, spawn places) and pure helpers `duelistPlan`, `duelistSpawns`, `hopClear`, `findHop`, `hopArc`. `src/monster-pack.ts`: `gauntDuelist`/`gauntCutthroat`/`gauntLongarm` (prototypeOnly, noEcho), the `fencer` brain, `duelCombo`/`duelTwinCuts`/`duelThrust`/`duelSweep`; hop steps before the stun gates. `src/game.ts`: `pinDungeonLayout` pins `duelistVersion`; `placeDuelists` before the Margin Wardens; Fractured packs skip them. New `src/duelist-render.ts` (cached pose sprites), `src/close-view-beast-duelist.ts` and generated `close-view-beast-duelist-body.ts` (from `docs/asset-sources/hooded-duelist/convert-duelist.mjs`); `DUELIST_SLOT` (3) admitted beside world beasts and 919's minions. Tests: `hooded-duelists` (18).
+
+**BOUNDARY:** Only dungeon histories first entered from duelist version 1 get bands; generator output and older floors are byte-identical. At most 3 per floor, never in the Deep, Far Array, arenas, Skylands, annexes, hunts or castles. Additive save field `duelistVersion` (schema 14). Close View adds at most 3 skinned duelists (1600/1250/950 tris by tier) on their own slots; a fourth uses its billboard. Not measured on a device.
+
+## Release 923 — Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
+
+Tim (2026-11-12): all weapons should have a jump attack that slams down, and with Shadow Boxing a charging dive to the nearest enemy with an explosion.
+
+**CODE:** `src/brawler-spells.ts`: `PLUNGE` {dropMs 160, recoverMs 340, slamLife .3}; `PLUNGE_PROFILES` by primary profile key with `default` (blade 1.5/1.4/.35, cleaver 1.8/1.6/.45, pike 1.4/1.3/.3, fists 1.6/1.5/.4: radius/share/stun; the Fourfold Daggers use `default`); `PLUNGE_DIVE` {range 7, speed 16, maxMs 520, stop .85, burst 1.6 tiles at .9 share, .4 s stun}; `plungeProfile`, `plungeKind`, `drawBrawler` rings. `src/game.ts`: `airAttack`, `plungeDiveTarget`, `plungeSteer`, `plungeLand`, `plungeBase` (meleePower or fistPower, so the 918 stat lineup applies), `plungeBlocked`; runtime `plunge`, `plungeSpent`, `plungeRecoverUntil` in the resume clocks; `jumpLift`'s plunge branch. Close View reuses the Hammerfall `hammer` pose. Tests: `jump-attacks` (18).
+
+**BOUNDARY:** A plunge never moves the Wayfarer itself: it shortens the jump, and the jump's own landing settles falls, sky-hop gaps and roof decks, so fall damage stands. The dive moves only through the collision mover (walls, lethal ground and canStep stop it). One plunge per jump; the recovery never holds back a dodge. Runtime only: on reload the rest of the jump lands without a slam. Not available mounted, in the robot or drone, aboard, gliding, swimming or with the secondary weapon. No save change.
+
+## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
+
+Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
+
+**CODE:** New `src/close-view-shadow-forms.ts`: the data table (charge 120 + 14 ms per tile, eased; lean; wraith alpha .58 and tint; up to 5 afterimages fading over 170 ms; reduced-motion fade), the dash stepper, strike re-timing (wind-up fills the charge, contact on arrival, swing ends on gameplay's clock) and clone alpha (.86). `src/close-view.ts`: drawn hero follows the dash line, afterimages, ground shadow, `closeViewShadowDash()` accessor. `src/close-view-hero.ts` and `close-view-hero-gl.ts`: charge lean, afterimage fields, `u_offset` uniform (body pass only). `src/close-view-models.ts`: the 248-tri spectre clone with 0xc58cff emissive, native lean, recolour exemption. Tests: `close-view-shadow-forms` (9).
+
+**BOUNDARY:** Presentation only: gameplay still moves the player in one update and the twin un-rendered game ends identically; damage, timing and hits are unchanged. No per-frame allocation (one pooled actor, fixed afterimage slots). Reduced motion: no travel or trail, a simple fade. The camera follows the logical position. The standard view is unchanged.
+
 ## Release 921 — Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
 
 Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon or tool is used, a full sweeping animation, a 360-degree sweep for its standard form, and Mirage of Blades as rendered blades travelling through the air.

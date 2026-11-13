@@ -47,6 +47,7 @@ for (const [what, find, re] of [['the Pentagon', pentagonWall, /fizzles out over
     let t = lift(g); const before = deaths(g); assert.equal(g.player.hp, full(g));
     t = fly(g, 40, () => ({ hold: true, x: 1, until: () => !!g.droneFizzleFx }), t);
     const fz = g.droneFizzleFx; assert.ok(fz, 'it fizzles at the wall'); assert.equal(fz.zone, what === 'the Pentagon' ? 'pentagon' : 'castle');
+    assert.ok(g.fall, 'then a fall, with real airtime (fall physics, game.ts FALL)'); t = fly(g, 40, () => ({ hold: true, x: 1, until: () => !g.fall }), t); assert.equal(g.fall, null, 'and it lands');
     assert.ok(Math.abs(fz.levels - DRONE_LIFT.max) < .01, `the burst shows where the drone was, ${fz.levels.toFixed(2)} levels up`); assert.ok(fz.until - fz.at === DRONE_FIZZLE.burst * 1000);
     assert.match(g.message, re); assert.match(g.message, /falls 5 levels/, 'and the fall that follows');
     assert.equal(g.save.mech.active, false, 'the drone is stowed'); assert.equal(g.droneLift, null, 'the lift is over'); assert.equal(g.player.hp, 0, 'a five-level fall');
@@ -64,7 +65,7 @@ test('short drops: a fizzle a level or so up is harmless; two levels hurt 15%, t
   for (const [z, n] of [[.4, 0], [1.05, 1], [2.05, 2], [3.05, 3]]) {
     const { g, at } = pentagonWall(); droneOut(g); place(g, at); const before = deaths(g);
     let t = fly(g, 1, () => ({ jump: true }), 1000); t = fly(g, 1, () => ({ jump: true, hold: true }), t); assert.ok(g.droneLift);
-    g.droneLift.z = g.droneLift.base + z; g.droneLift.vz = 0; t = fly(g, 20, () => ({ x: 1, hold: true, until: () => !!g.droneFizzleFx }), t);
+    g.droneLift.z = g.droneLift.base + z; g.droneLift.vz = 0; t = fly(g, 20, () => ({ x: 1, hold: true, until: () => !!g.droneFizzleFx }), t); t = fly(g, 40, () => ({ x: 1, hold: true, until: () => !g.fall }), t); // fall physics: the fall from it lands first
     assert.ok(g.droneFizzleFx, `fizzles at ${z} levels`); assert.equal(deaths(g), before, `${z} levels: not a death`); const lost = n > 1 ? fallDamage(n, full(g)) : 0; assert.equal(full(g) - g.player.hp, lost, `${z} levels up: ${lost} health lost`);
   }
   // Starting to fly right at the wall: the lift fails at once, a step off the ground.

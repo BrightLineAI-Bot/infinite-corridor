@@ -20,6 +20,12 @@ import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } f
 import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.ts";
 import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.ts";
 import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.ts";
+
+// The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
+// never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.
+export const DUELIST_SLOT = Object.freeze({ maxDuelists: 3, triangles: Object.freeze({ full: 1600, balanced: 1250, low: 950 }) });
+const duelistBody = (sample) => Object.freeze({ mesh: duelistMesh, createTrack: createDuelistTrack, sample, duelist: true, get scale() { return DUELIST_RIG.closeViewScale; } });
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -62,6 +68,10 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   wildStego: Object.freeze({ mesh: stegoMesh, createTrack: createStegoTrack, sample: sampleStego, get scale() { return STEGO_RIG.closeViewScale; } }),
   // the Spinosaurus: its hide, then (spinoFossil, through the shed) its bones, the mesh chosen by the foe as the Listener's
   spinoRex: Object.freeze({ mesh: spinoMesh, createTrack: createSpinoTrack, sample: sampleSpino, get scale() { return SPINO_RIG.closeViewScale; } }),
+  // the Gaunt: the converted Rogue body, slimmed, hooded and armed per kind (close-view-beast-duelist.ts); their own slots
+  gauntDuelist: duelistBody(sampleDuelist),
+  gauntCutthroat: duelistBody(sampleDuelist),
+  gauntLongarm: duelistBody(sampleDuelist),
 });
 // The Stalker's skinned body covers the cat and the ape. Its pool (a silver puddle, a mouth rising out of the floor), its mist (wisps
 // wheeling round the Wayfarer) and the tide (it is the first wave) are flat or vapour art the standard view owns; the small copies and

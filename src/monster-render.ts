@@ -3,6 +3,7 @@
 // no images, so it scales cleanly with the device pixel ratio.
 import { SEED_REALM_BODIES } from "./seed-realm-render.ts"; // seed realms
 import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.ts"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.ts"; // the Gaunt (duelists.ts)
 import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.ts";
 import { MORPH_FORM, beamAngle } from "./listener-morph.ts";
 
@@ -523,6 +524,7 @@ function drawSpinoEffect(ctx, f, s, now, presentation = {}) {
 const BODY = {
   ...SEED_REALM_BODIES, // seed realms (seed-realm-render.ts)
   ...ADVENTURE_BODIES, // adventure creatures (adventure-creature-render.ts): drawn once, then stamped
+  ...DUELIST_BODIES, // the Gaunt (duelist-render.ts): drawn once per pose, then stamped
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
@@ -1395,7 +1397,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);

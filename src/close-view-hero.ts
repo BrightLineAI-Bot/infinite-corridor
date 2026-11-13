@@ -1,6 +1,7 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
 import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
@@ -568,7 +569,9 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   clipPose(asset, asset.clips.Roll, .08, s.other); build(asset, s, s.other); const b = asset.meta.reference.bodyNode * 16; s.rollX = s.global[b + 12]; s.rollZ = s.global[b + 14];
   return s;
 }
-export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), powerSuit: false, suitPositionsNormals: new Float32Array(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES * 3 * 6), suitVertexCount: 0, kitPositionsNormals: new Float32Array(KIT_BUFFER_TRIANGLES * 3 * 6), kitVertexCount: 0, kitSet: '', ready: false }; }
+export function createHeroFrame(asset) { return { asset, positionsNormals: new Float32Array(asset.vertexCount * 6), vertexCount: asset.vertexCount, indexCount: asset.indexCount, alpha: 1, tint: new Float32Array([1, 1, 1]), hitFlash: 0, leftSocket: new Float32Array(16), rightSocket: new Float32Array(16), powerSuit: false, suitPositionsNormals: new Float32Array(CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES * 3 * 6), suitVertexCount: 0, kitPositionsNormals: new Float32Array(KIT_BUFFER_TRIANGLES * 3 * 6), kitVertexCount: 0, kitSet: '',
+  // Shadow Boxing afterimages: the same posed body drawn again, offset [dx, dy, dz, alpha] each (close-view-shadow-forms.ts).
+  ghosts: new Float32Array(CLOSE_VIEW_SHADOW_FORMS.trail.max * 4), ghostCount: 0, ghostTint: new Float32Array(CLOSE_VIEW_SHADOW_FORMS.trail.tint), ready: false }; }
 
 // Source action intervals/contact markers are visual only; no event is emitted here.
 export const HERO_CLIP_POLICY = Object.freeze({ melee: 'Dagger_Attack', hammer: 'Dagger_Attack2', punch: 'Punch', dodge: 'Roll', hit: 'RecieveHit', death: 'Death', interact: 'PickUp', contact: .18, sourceContact: .35 });
@@ -746,7 +749,7 @@ function plantedCrouch(asset,state,pose,k,drop){
 const PICKUP_POSE = Object.freeze({ drop: .36, chestDrop: .17, bend: .46, upper: .22, reach: .30 });
 const DRINK_LIFE = Object.freeze({ tilt: .26, arch: .10, shoulder: .08 });
 export function sampleCloseViewHero(asset, state, input, out) {
-  out.ready = false;state.sweepSpin=0;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
+  out.ready = false;out.ghostCount=0;state.sweepSpin=0;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
   // Input speed is tiles/second; the existing gait phase is already distance-driven radians.
   const speed = Math.max(0,Number(input.speed)||0), phase = ((Number(input.gaitPhase) || 0) / TAU % 1 + 1) % 1;
@@ -874,6 +877,9 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
+  // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
+  // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
+  {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);}}
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.

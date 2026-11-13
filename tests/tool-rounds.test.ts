@@ -24,7 +24,7 @@ const tool = (g) => g.projectiles.filter((p) => !p.dead && String(p.id).startsWi
 
 test('the rounds table: firing tools take rounds, brawler tools do not', () => {
   const takes = Object.values(RANGED_WEAPONS).filter(usesRounds).map((w) => w.name).sort();
-  assert.deepEqual(takes, ['Aether Orrery', 'Blunderbuss', 'Lumen Spindle', 'Needle Caster', 'Rift Bombard', 'Spark Coil']);
+  assert.deepEqual(takes, ['Aether Orrery', 'Blunderbuss', 'Carbine', 'Lumen Spindle', 'Needle Caster', 'Rift Bombard', 'Spark Coil'] /* 2026-11-12: the Carbine (the Spark Coil at +6) */);
   for (const n of ['Hammerfall', 'Great Sweep']) assert.equal(usesRounds(rangedWeapon({ name: n })), false, n);
   assert.equal(usesRounds(null), false);
   assert.deepEqual(ROUNDS.iron, { base: 2, perEcho: 1, echoCap: 2 });
