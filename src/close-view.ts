@@ -2779,6 +2779,13 @@ function buildStatic(map, geo, th) {
       const hazard = closeViewHazardCode(t), k = (y * w + x) * 4;
       // Pits have no supporting floor mesh. Their rims retain the existing hazard treatment.
       flat(x, y, x+1, y, x+1, y+1, x, y+1, 0, hazard && hazard !== 2 && hazard !== 4 ? 22 : 20, 0, tg.floor, 0, x, y);
+      // Tall towers (tall-towers.ts TALL_TOWERS.slab): a ledge or a floating platform is a slab `towerSlab` levels thick, hollow
+      // beneath: its underside, and the shaft's floor under it. Its sides below go only as deep as the slab.
+      const slab = t.towerSlab > 0 && map.tallTower ? t.towerSlab * LIFT_PER_LEVEL : 0, top0 = slab ? level(t, x + .5, y + .5) : 0;
+      if (slab && top0 > slab + 1e-6) {
+        for (const [X, Y] of [[x, y], [x + 1, y], [x + 1, y + 1], [x, y], [x + 1, y + 1], [x, y + 1]]) V(X, Y, 0, X + Y, 0, 0, 0, 0, 0, 20, 0, tg.floor, 0, 0, 0, 0, x, y, false);
+        for (const [X, Y] of [[x, y], [x + 1, y + 1], [x + 1, y], [x, y], [x, y + 1], [x + 1, y + 1]]) V(X, Y, top0 - slab, X + Y, 0, top0 - slab, top0 - slab, 0, 0, 21, 0, tg.ceil, 0, 0, 0, 0, x, y, false);
+      }
       if (!map.hall?.open && (mask[k] & 5) === 1 && !arch[y*w+x])
         flat(x, y, x+1, y, x+1, y+1, x, y+1, H, 21, 0, tg.ceil, 0, x, y);
       const sides = [[x,y,x+1,y,0,-1],[x+1,y+1,x,y+1,0,1],[x,y+1,x,y,-1,0],[x+1,y,x+1,y+1,1,0]];
@@ -2788,8 +2795,9 @@ function buildStatic(map, geo, th) {
         const n=tiles[yy*w+xx]; if(!n || n.blocked) continue;
         const a=level(t,ax,ay), b=level(t,bx,by), na=level(n,ax,ay), nb=level(n,bx,by);
         if(a<=na+1e-6 && b<=nb+1e-6) continue;
-        // Generated ramp strips have matching edge heights. A higher side exposes rock.
-        for(const [X,Y,Z,u] of [[ax,ay,Math.min(a,na),0],[bx,by,Math.min(b,nb),1],[bx,by,b,1],[ax,ay,Math.min(a,na),0],[bx,by,b,1],[ax,ay,a,0]])
+        // Generated ramp strips have matching edge heights. A higher side exposes rock. A tower's slab shows only its thickness.
+        const za=slab?Math.max(Math.min(a,na),a-slab):Math.min(a,na), zb=slab?Math.max(Math.min(b,nb),b-slab):Math.min(b,nb);
+        for(const [X,Y,Z,u] of [[ax,ay,za,0],[bx,by,zb,1],[bx,by,b,1],[ax,ay,za,0],[bx,by,b,1],[ax,ay,a,0]])
           V(X,Y,Z,X+Y,u,Z,Math.max(a,b),nx,ny,0,th.wall.kind,tg.wall,0,0,0,0,x,y,false);
         // Close the ceiling's matching vertical seam, so raised bays never leak into sky.
         if(!map.hall?.open && (mask[k]&5)===1 && (mask[(yy*w+xx)*4]&5)===1)
@@ -2948,10 +2956,10 @@ const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 // the place round it (`light`: reach, strength; `glow`: its colour), taking one of the placed-light slots.
 export const CLOSE_VIEW_PROPS = Object.freeze({ version: 1, cap: 6,
   crystal: Object.freeze({ hover: .78, bob: .07, bobSec: 2.6, turnSec: 9, scale: Object.freeze([1, 1, 1.12, 1.3]) }),
-  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep" }),
+  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep", towerLookout: "towerLookout", towerRope: "towerRope" }), // tall towers: the lookout and the Long Rope
   dais: Object.freeze({ turnSec: 4, open: .25, fade: .8 }),
   light: Object.freeze({ reach: 2.2, strength: .8, height: .7 }),
-  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]) }) });
+  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]), towerLookout: Object.freeze([1, .85, .54]) }) });
 // A prop's pose this frame: how high it floats above the floor (lift), its turn (yaw) and its size (scale). Pure.
 export function closeViewPropPose(kind, o, now, reduce = false) {
   const P = CLOSE_VIEW_PROPS, t = reduce ? 0 : (Number(now) || 0) / 1000, seed = (((Number(o?.x) || 0) * 7 + (Number(o?.y) || 0) * 13) % 17 + 17) % 17, TAU = Math.PI * 2;
