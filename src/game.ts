@@ -2467,6 +2467,7 @@ export class Game {
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
+    this._resonanceAperture = save.perception?.aperture; this._resonanceSeen = apertureResonance(save); // QA 926 (syncResonance)
     const s = save.session;
     this.area = s.area;
     this.rx = s.rx || 0;
@@ -3541,9 +3542,21 @@ export class Game {
     this.pauseStarted = v ? this.pauseStarted : null;
     this.save.session.paused = v;
   }
+  // QA 926: a new Aperture Resonance tier (gainAperture, from any caller) raises the derived maximum health at once, as a level-up
+  // does: the maximum and current health both rise by the difference (stamina likewise), so the HUD is right and a reload
+  // (syncCharacterStats on load) has nothing left to hand out. Checked once a frame and before a save, by a number compare only.
+  syncResonance() {
+    const a = this.save.perception?.aperture; if (a === this._resonanceAperture) return false; this._resonanceAperture = a;
+    const r = apertureResonance(this.save); if (r === this._resonanceSeen) return false; this._resonanceSeen = r;
+    const p = this.player, oldHp = Number(this.save.maxHp) || 0, oldStamina = Number(this.save.maxStamina) || 0; syncCharacterStats(this.save);
+    if (p.hp > 0) p.hp = Math.min(this.save.maxHp, p.hp + Math.max(0, this.save.maxHp - oldHp)); else p.hp = Math.min(p.hp, this.save.maxHp);
+    p.stamina = Math.min(this.save.maxStamina, p.stamina + Math.max(0, this.save.maxStamina - oldStamina)); p.maxStamina = this.save.maxStamina;
+    return true;
+  }
   exportSnapshot(now = 0) {
     const clock =
       this.paused && this.pauseStarted !== null ? this.pauseStarted : now;
+    this.syncResonance(); // QA 926
     this.reconcileHammerfallStartup();
     this.sync();
     this.snapshotArea(false); // a save in place, not a leaving
@@ -9524,6 +9537,7 @@ export class Game {
     this._hurtVisualWitness = null;
     if (this.paused) return;
     if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
+    this.syncResonance(); // QA 926: a new Resonance tier's health, as a level-up's
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
     if (this.fallen) { if (this.player.hurtVisual?.v === 1) this.player.hurtVisual = null; this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
