@@ -2628,7 +2628,7 @@ export class Game {
     this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), open: q.open !== false, ...(q.open === false && Number.isFinite(Number(q.fallFrom)) ? { fallFrom: Number(q.fallFrom) } : {}), ...(q.open === false && q.vz != null && Number.isFinite(Number(q.vz)) ? { vz: Math.max(-GLIDE.drop, Math.min(0, Number(q.vz))) } : {}), told: false } : null; } // release 635
-    { const q = s.playerRuntime.fall; this.fall = q && s.area === "overworld" && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0) } : null; } // FALL: exact resume in the air (checked against the ground once the section is loaded)
+    { const q = s.playerRuntime.fall; this.fall = q && (s.area === "overworld" || isTowerId(s.activeDungeonId)) /* tall towers fall as the open world does */ && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0) } : null; } // FALL: exact resume in the air (checked against the ground once the section is loaded)
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
@@ -3149,7 +3149,7 @@ export class Game {
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
     if (capture) this.snapshotArea();
-    if (area !== "overworld") { this.glide = null; this.glideHome = null; this.crownFoot = null; this.fall = null; } // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
+    if (area !== "overworld") { this.glide = null; this.glideHome = null; this.crownFoot = null; if (this._resumeNow == null) this.fall = null; } // tall towers: a fall saved in an Upwell resumes there (the constructor restored it) // release 641 (the pre-publish review of 623→639): a glide never follows you indoors
     this.affixHazards = []; // release 657
 
     if (this.droneLift && interiorTerrain(this.map)) { this.skyAir=null; this.liftDrop=false; this.jumpUntil=-1e9; this.mechBoosting=false; }
@@ -3702,7 +3702,7 @@ export class Game {
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
         droneLift: this.droneLift && this.droneLiftAllowed() ? { ...this.droneLift, base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air; schema-14 unknown fields survive while canonical values win
         glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null, ...(Number.isFinite(this.glide.vz) ? { vz: this.glide.vz } : {}) } : null,
-        fall: this.fall && this.area === "overworld" && this.fallApplies() ? { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0 } : null, // FALL: a fall resumes in the air // release 635: a glide resumes in the air
+        fall: this.fall && this.fallApplies() ? { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0 } : null, // FALL: a fall resumes in the air // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
         roofDeck: this.standingDeck() && this.area === "overworld" ? { id: this.roofDeck.id, level: this.roofDeck.level } : null, // roof decks (roof-decks.ts): the roof stood on (additive, schema 14)
@@ -3987,12 +3987,15 @@ export class Game {
   }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   // The Wayfarer's height in levels: the ground under them, or the drone's lift or a glide's height (ELEVATION_REACH).
-  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; if (this.area === "overworld" && this.fall && Number.isFinite(this.fall.z)) return this.fall.z; /* FALL: in the air */ const deck = this.standingDeck(); if (deck) return deck.level; if (this.wallCling?.lifted) return this.wallCling.z; /* Stegosaur's Grip: the hold's height */ if (this.deckHop && this.skyAir != null && this.area === "overworld") return this.skyAir; /* roof decks: on a roof, or hopping from or onto one */ return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
+  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; if (this.fall && this.fallArea() && Number.isFinite(this.fall.z)) return this.fall.z; /* FALL: in the air (the open world, or an Upwell) */ const deck = this.standingDeck(); if (deck) return deck.level; if (this.wallCling?.lifted) return this.wallCling.z; /* Stegosaur's Grip: the hold's height */ if (this.deckHop && this.skyAir != null && this.area === "overworld") return this.skyAir; /* roof decks: on a roof, or hopping from or onto one */ return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
   // ---------------------------------------------------------------- roof decks (roof-decks.ts; Tim, 2026-11-12)
   // `roofDeck` ({ id, level }) is the roof the Wayfarer stands on; `deckHop` marks a jump whose held height (`skyAir`) came from a
   // roof or is carrying them onto one. Decks apply on foot on the overworld's landscape: never mounted, in the robot or aboard.
   // FALL: does the fall model carry the Wayfarer here? The open world, on foot (the robot, a mount and the skiff keep their own rules).
-  fallApplies() { return this.area === "overworld" && !!this.map?.landscape && !this.mechUp?.() && !this.mountRide?.() && !aboard(this.save); }
+  // Tall towers (tall-towers.ts, 2026-11-13: "a constant threat of falling as you climb"): an Upwell's shaft falls as the open world
+  // does; every other interior keeps the instant rule.
+  fallArea() { return (this.area === "overworld" && !!this.map?.landscape) || (this.area === "dungeon" && !!this.map?.tallTower); }
+  fallApplies() { return this.fallArea() && !this.mechUp?.() && !this.mountRide?.() && !aboard(this.save); }
   // FALL: begin (or carry on) a fall at height z with vertical speed vz, its damage counted from `from`; `scale` is the drawn scale
   // of the ground it left (a great tree's levels are drawn taller). The jump, sky hop and roof hop it may end are settled by the caller.
   beginFall(z, vz = 0, from = z, scale = 1) {
@@ -4001,7 +4004,7 @@ export class Game {
   }
   // FALL, for Close View's falling pose: is this a fall from FALL.pose levels or more over the ground below, and how long until it lands
   // there (ms, at the fall's speed; the ground under the Wayfarer now)? Read only.
-  fallPoseDue() { const f = this.fall; return !!f && this.area === "overworld" && f.from - this.elevationHere(this.player.x, this.player.y) >= FALL.pose; }
+  fallPoseDue() { const f = this.fall; return !!f && this.fallArea() && f.from - this.elevationHere(this.player.x, this.player.y) >= FALL.pose; }
   fallRemainingMs() { const f = this.fall; return f ? fallAirtime(f.z - this.elevationHere(this.player.x, this.player.y), f.vz) * 1000 : 0; }
   decksApply() { return this.area === "overworld" && !!this.map?.landscape && !this.mountRide?.() && !this.mechUp?.() && !aboard(this.save) && roofDeckIndex(this.map).decks.length > 0; }
   standingDeck() { const d = this.roofDeck; if (!d) return null; if (this._deckMap !== this.map || this.area !== "overworld") { this.roofDeck = null; return null; } return d; }
@@ -5330,7 +5333,7 @@ export class Game {
     // Player-built stacks may stand above generated level five.
     const maxBase = this.map.tiles.reduce((n, t) => Math.max(n, Number(t?.elev) || 0), INTERIOR_TRAVERSAL.maxLevel);
     return q.base >= 0 && q.base <= maxBase && q.z >= ground - 1e-6 && q.z <= q.base + DRONE_LIFT.max + 1e-6
-      && q.z <= ceiling + 1e-6 && q.z <= Math.max(ground, this.towerDroneCap()) + 1e-6 && q.vz <= DRONE_LIFT.rise && Math.abs(q.vz) <= 100;
+      && q.z <= ceiling + 1e-6 && (q.z <= Math.max(ground, this.towerDroneCap()) + 1e-6 || q.vz < 0) /* tall towers: over the cap only while it sinks */ && q.vz <= DRONE_LIFT.rise && Math.abs(q.vz) <= 100;
   }
   restoreDroneLift(q, now) {
     this.droneLift = null;
@@ -5349,7 +5352,7 @@ export class Game {
     const L = this.droneLift, D = DRONE_LIFT, m = this.save.mech, p = this.player;
     if (!this.droneLiftAllowed() || !this.droneUp() || !m) { this.endDroneLift(now); return; }
     const deck = this.area === "overworld" && this.decksApply() ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null; // roof decks: a roof the lift is over (and high enough to be over the walls) is its ground
-    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), top = Math.min(L.base + D.max, this.interiorLiftCeiling(), this.droneRoofCap(L.z) ?? Infinity, this.towerDroneCap()), thrust = held && !this.mechSpent && m.fuel > 0;
+    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), cap = this.towerDroneCap(), stall = L.z > cap + 1e-9 /* tall towers: a fall caught over the cap gets no lift until it sinks to it */, top = Math.min(L.base + D.max, this.interiorLiftCeiling(), this.droneRoofCap(L.z) ?? Infinity, stall ? Infinity : cap), thrust = held && !stall && !this.mechSpent && m.fuel > 0;
     if (thrust) { m.fuel = Math.max(0, m.fuel - D.burn * dt); this.mechBoosting = true; if (m.fuel <= 0) { this.mechSpent = true; this.message = D.empty; } }
     L.vz = Math.min(D.rise, L.vz + ((thrust ? D.thrust : 0) - D.gravity) * dt); L.z += L.vz * dt;
     if (L.z >= top) { L.z = top; if (thrust || interiorTerrain(this.map)) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
@@ -10427,7 +10430,7 @@ export class Game {
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
-    const underKind = this.fall && this.area === "overworld" && this.fall.z > this.elevationHere(p.x, p.y) + FALL.minDrop ? null : tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind; // FALL: in the air, the ground's murk is not touched
+    const underKind = this.fall && this.fallArea() && this.fall.z > this.elevationHere(p.x, p.y) + FALL.minDrop ? null : tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind; // FALL: in the air, the ground's murk is not touched
     if (rotTick(this.save, underKind, dt) && now > (this.rotMessageAt || 0)) { this.rotMessageAt = now + 9000; this.message = underKind === "swampWater" || underKind === "mireWater" ? "The bog water rots you: maximum health falls until you rest." : "The blight rots you: maximum health falls until you rest."; }
     if (MIRE.rotKinds.includes(underKind) && ensureRot(this.save) >= rotCap(this.save)) {
       this.poisonSoak = (this.poisonSoak || 0) + dt;
