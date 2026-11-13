@@ -82,7 +82,7 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
@@ -2433,6 +2433,8 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 export function jumpLift(g, now) {
   const until = g?.jumpUntil || 0; if (!(now < until)) return 0;
   if (g.mechBoosting) return JUMP.arc;
+  // Stegosaur's Grip: holding a wall. Where the hold's height is drawn (the sky-hop height), no arc on top; on flat ground, the top.
+  if (g.wallCling) return g.wallCling.lifted ? 0 : JUMP.arc;
   const dur = Math.max(1, g.jumpDur || JUMP.base), start = Number.isFinite(g.jumpStart) && g.jumpStart <= now ? g.jumpStart : until - dur;
   const phase = Math.max(0, Math.min(.5, (now - start) / JUMP.base, (until - now) / JUMP.base));
   return Math.sin(phase * Math.PI) * JUMP.arc;
@@ -2513,6 +2515,8 @@ export class Game {
     { const q = s.playerRuntime.glideHome; this.glideHome = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) && [q.x, q.y].every(Number.isFinite) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null; } // TREE_GLIDE.home
     { const q = s.playerRuntime.crownFoot; this.crownFoot = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) ? { rx: q.rx, ry: q.ry } : null; } // TREE_GLIDE.home.reached
     this.restoreJumpAir(s.playerRuntime.jumpAir, now); // a jump resumes at the height it left from
+    // Stegosaur's Grip: still on the wall, or down on the ground beneath it.
+    this.restoreWallCling(s.playerRuntime.wallCling, s.playerRuntime.wallKick, now);
     this.restoreRoofDeck(s.playerRuntime.roofDeck); // roof decks: on the roof it was saved on, or (no longer there) on the ground without a fall
     this.restoreDroneLift(s.playerRuntime.droneLift, now); // release 647: after loading the area, which clears a lift
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
@@ -2990,6 +2994,8 @@ export class Game {
     applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
   }
   loadArea(area, capture = true) {
+    // Stegosaur's Grip: a hold belongs to the wall it was on (restoreWallCling puts a saved one back).
+    this.wallCling = null; this.wallKick = null;
     this.pentagonPrevious = null; // presentation-only: never infer a route after another arrival or reload.
     if (this.player?.consumeVisual) this.cancelConsumeVisual('area-transition');
     this.retireCleaverChoreography();
@@ -3591,6 +3597,9 @@ export class Game {
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
       jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, deckHop: this.deckHop === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
+      // Stegosaur's Grip: the wall held (kept on resume while it is still there: restoreWallCling) and a wall jump's kick in progress.
+      wallCling: this.wallCling ? this.savedWallCling() : null,
+      wallKick: this.wallKick && clock < (this.jumpUntil || 0) ? { x: this.wallKick.x, y: this.wallKick.y, firm: Math.max(0, this.wallKick.firm), anchor: this.wallKick.anchor } : null,
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
@@ -3700,6 +3709,8 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
+    // Stegosaur's Grip: the wall held and a kick in the air.
+    this.wallCling = null; this.wallKick = null;
     this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
@@ -3796,7 +3807,7 @@ export class Game {
   }
   elevationHere(x, y) { return elevationAt(this.map, mapWidth(this.map, this.area), x, y); }
   // The Wayfarer's height in levels: the ground under them, or the drone's lift or a glide's height (ELEVATION_REACH).
-  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; const deck = this.standingDeck(); if (deck) return deck.level; if (this.deckHop && this.skyAir != null && this.area === "overworld") return this.skyAir; /* roof decks: on a roof, or hopping from or onto one */ return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
+  playerLevel() { if (this.droneLiftAllowed() && this.droneLift && Number.isFinite(this.droneLift.z)) return this.droneLift.z; if (this.area === "overworld" && this.glide && Number.isFinite(this.glide.z)) return this.glide.z; const deck = this.standingDeck(); if (deck) return deck.level; if (this.wallCling?.lifted) return this.wallCling.z; /* Stegosaur's Grip: the hold's height */ if (this.deckHop && this.skyAir != null && this.area === "overworld") return this.skyAir; /* roof decks: on a roof, or hopping from or onto one */ return this.elevationHere(this.player.x, this.player.y + (this.player.riderShift || 0)); } // release 748: a mounted rider stands where the mount's feet are
   // ---------------------------------------------------------------- roof decks (roof-decks.ts; Tim, 2026-11-12)
   // `roofDeck` ({ id, level }) is the roof the Wayfarer stands on; `deckHop` marks a jump whose held height (`skyAir`) came from a
   // roof or is carrying them onto one. Decks apply on foot on the overworld's landscape: never mounted, in the robot or aboard.
@@ -3863,6 +3874,118 @@ export class Game {
   }
   // Is (x, y) over a roof higher than z that the glide is not already over? (a glide never climbs onto a roof above it)
   deckWallAt(x, y, z, from = null) { const d = roofDeckAt(this.map, x + .5, y + .75); return !!d && d !== from && d.level > z + 1e-6; }
+  // ---------------------------------------------------------------- Stegosaur's Grip (echoes.ts WALL_CLING; Tim, 2026-11-12)
+  // `wallCling` ({ z, nx, ny, anchor, base, wall, lifted, x, y }) is the wall held: (nx, ny) points into it (a cardinal), `wall` is
+  // the index of the tile held, `base` the height the jump held when it met the wall, `z` the hold's height (levels), `anchor` the
+  // ground the chain of holds began from (WALL_CLING.maxRise counts from it), (x, y) where the Wayfarer hangs. `lifted`: the height
+  // is real, held as the sky-hop height (skyAir), where the ground has levels and the drone may lift; elsewhere (flat dungeons, the
+  // older buildings) a hold has no height of its own and is drawn at a jump's top. `wallKick` ({ x, y, firm, anchor }): a jump off a
+  // wall in the air, `firm` ms of its straight kick left. Nothing moves the Wayfarer here: a hold keeps them where the collision
+  // mover stopped them, and a kick goes through the ordinary move (moveAxis, its lethal ground and its section edges).
+  wallClingReady(now) {
+    const p = this.player;
+    if (!hasEcho(this.save, "wildStego") || !(p.hp > 0) || (this.area !== "overworld" && this.area !== "dungeon")) return false;
+    // The drone out or the robot on: their own Jump and move win, and nothing clings.
+    if (this.mechUp() || this.droneUp() || this.glide || this.droneLift || this.mechBoosting || this.mountRide() || this.swimming || aboard(this.save) || this.map?.underwater || this.traversal || this.fallen) return false;
+    return !(now < (p.dodgeUntil || 0)) && !(now < (p.heldUntil || 0)) && !(now < (p.stunnedUntil || 0));
+  }
+  // Is tile t a surface a hold can take, for a body at height `base`? A solid tile (not water, lava, a drop or a star-void), a
+  // house's or enclosure's wall, or ground 2 or more levels higher. Never a Pentagon's tile or a sealed tower's air.
+  clingSurface(t, base) {
+    if (!t || t.pentagon || t.towerAir) return false;
+    if (t.blocked) return !LETHAL_KINDS.has(t.kind) && !DEEP_WATER.includes(t.kind) && !isMarineTile(t) && !/water|ocean|sea|pool|void|chasm|vent/i.test(String(t.kind || ""));
+    if (t.encSides?.length || (["shackWall", "districtWall"].includes(t.structure) && t.wallSides?.length)) return true;
+    if (LETHAL_KINDS.has(t.kind) || t.slope) return false;
+    return (t.elev || 0) >= Math.floor(base + 1e-6) + 2;
+  }
+  // The wall the box meets a little way along (nx, ny) from where it stands, for a body at height `base`: the index of the first
+  // surface tile on the box's leading edge, or -1 (nothing stops the box there, the map's edge, forbidden ground, or no surface).
+  clingWallAhead(nx, ny, base) {
+    const p = this.player, map = this.map, tiles = map?.tiles; if (!tiles?.length) return -1;
+    const w = mapWidth(map, this.area), h = Math.floor(tiles.length / w), R = WALL_CLING.reach, qx = p.x + nx * R, qy = p.y + ny * R;
+    if (droneForbiddenAt(map, w, p.x, p.y) || droneForbiddenAt(map, w, qx, qy) || gliderForbiddenAt(map, w, p.x, p.y) || gliderForbiddenAt(map, w, qx, qy)) return -1;
+    const probe = this._clingProbe ||= { isPlayer: true, jumping: true, airElev: undefined };
+    probe.airElev = this.skyAir != null || this.wallCling?.lifted ? base : undefined;
+    const reach = this.decksApply() ? Math.floor(base + 1e-6) + 1 : null;
+    if (footprintOpen(map, w, qx, qy, true, false, false, false, reach) && canStep(probe, map, w, p.x, p.y, qx, qy)) return -1;
+    const x0 = Math.floor(qx + .24), x1 = Math.floor(qx + .76 - 1e-6), y0 = Math.floor(qy + .5), y1 = Math.floor(qy + .88 - 1e-6);
+    const ax = nx > 0 ? x1 : x0, bx = nx < 0 ? x0 : x1, ay = ny > 0 ? y1 : y0, by = ny < 0 ? y0 : y1;
+    if (ax < 0 || ay < 0 || bx >= w || by >= h) return -1;
+    for (let ty = ay; ty <= by; ty++) for (let tx = ax; tx <= bx; tx++) if (this.clingSurface(tiles[ty * w + tx], base)) return ty * w + tx;
+    return -1;
+  }
+  // After this frame's move: a jump whose stick (or kick) pushed into a wall, and was stopped by it, takes hold. True when it did.
+  tryWallCling(x, y, dx, dy, fromX, fromY, now) {
+    const C = WALL_CLING, p = this.player, m = Math.hypot(x, y), alongX = Math.abs(x) >= Math.abs(y), main = alongX ? x : y;
+    if (m < C.push || Math.abs(main) < C.push || Math.abs(main) < C.aim * m || !this.wallClingReady(now)) return false;
+    const want = alongX ? dx : dy, got = alongX ? p.x - fromX : p.y - fromY;
+    if (!(Math.abs(want) > 1e-9) || Math.abs(got) > Math.abs(want) * .3) return false;
+    const nx = alongX ? Math.sign(main) : 0, ny = alongX ? 0 : Math.sign(main), w = mapWidth(this.map, this.area);
+    const lifted = this.droneLiftAllowed() && !!this.map?.landscape, ground = this.elevationHere(p.x, p.y), air = lifted ? Math.max(ground, this.skyAir ?? -Infinity) : ground;
+    // Inside a house a hold would carry the Wayfarer up through its roof: none there (as the drone's lift).
+    if (this.area === "overworld" && structureOccupancy(this.map.tiles, w, p.x, p.y)) return false;
+    const wall = this.clingWallAhead(nx, ny, air); if (wall < 0) return false;
+    const anchor = Number.isFinite(this.wallKick?.anchor) ? this.wallKick.anchor : Math.floor(air + 1e-6);
+    let z = lifted ? Math.max(air, Math.min(anchor + C.maxRise, Math.floor(air + 1e-6) + C.rise)) : air;
+    if (lifted && this.area === "dungeon") { const ceiling = this.interiorLiftCeiling(); if (air > ceiling + 1e-6) return false; if (z > ceiling + 1e-6) z = air; }
+    this.wallCling = { z, nx, ny, anchor, base: air, wall, lifted, x: p.x, y: p.y }; this._clingMap = this.map; this.wallKick = null;
+    if (lifted) { this.skyAir = z; this.skyAirScale = tileLiftScale(tileUnder(this.map, w, p.x, p.y)) || 1; }
+    this.deckHop = false; this.skyHopGap = false; this.keelLine = null;
+    this.jumpUntil = Math.max(this.jumpUntil || 0, now + C.hold);
+    p.facing = nx > 0 ? "right" : nx < 0 ? "left" : ny < 0 ? "up" : "down";
+    return true;
+  }
+  // Each frame before the move: a hold keeps the Wayfarer still while the stick is let go or held into the wall (no time limit), and
+  // lets go (the jump ends: a fall from the hold's height) when the stick points off it, on a dodge, a blow that moved them, the
+  // drone or robot called up, or the wall gone. A kick off a wall goes straight off it for `firm` ms, then while the stick is let go.
+  // Returns the stick to use (one reused object).
+  wallClingSteer(x, y, dt, now) {
+    const out = this._clingSteer ||= { x: 0, y: 0 }, C = WALL_CLING, p = this.player, c = this.wallCling, k = this.wallKick; out.x = x; out.y = y;
+    if (c) {
+      const m = Math.hypot(x, y), into = m > C.dead ? (x * c.nx + y * c.ny) / m : 1, still = Math.abs(p.x - c.x) < 1e-6 && Math.abs(p.y - c.y) < 1e-6;
+      if (this._clingMap === this.map && still && into >= C.letGo && this.wallClingReady(now) && this.clingWallAhead(c.nx, c.ny, c.base) === c.wall) {
+        this.jumpUntil = Math.max(this.jumpUntil || 0, now + C.hold); if (c.lifted) this.skyAir = c.z; out.x = 0; out.y = 0; return out;
+      }
+      this.wallCling = null; if (this._clingMap === this.map) this.jumpUntil = Math.min(this.jumpUntil || 0, now);
+      return out;
+    }
+    if (k) {
+      if (!(now < (this.jumpUntil || 0)) || this._clingMap !== this.map) { this.wallKick = null; return out; }
+      if (now < (p.dodgeUntil || 0)) return out;
+      k.firm -= dt * 1000;
+      if (k.firm > 0 || Math.hypot(x, y) <= C.dead) { out.x = k.x * C.kick.push; out.y = k.y * C.kick.push; }
+    }
+    return out;
+  }
+  // Jump on a wall: a new jump from the hold's height, kicking away from the wall.
+  wallJump(now) {
+    const c = this.wallCling, p = this.player; this.wallCling = null;
+    this.jumpFrom = c.lifted ? c.z : this.elevationHere(p.x, p.y); if (c.lifted) this.skyAir = c.z;
+    this.deckHop = false; this.skyHopGap = false; this.keelLine = null; this.liftDrop = false;
+    this.jumpDur = JUMP.base + skillRank(this.save, "quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur;
+    this.wallKick = { x: -c.nx, y: -c.ny, firm: WALL_CLING.kick.firm, anchor: c.anchor };
+    p.facing = c.nx > 0 ? "left" : c.nx < 0 ? "right" : c.ny < 0 ? "down" : "up"; p.lastMoveVector = { x: -c.nx, y: -c.ny };
+    this.cancelConsumeVisual('jump'); this.cancelAttackPresentation(now); cancelCastVisual(p);
+  }
+  savedWallCling() { const c = this.wallCling; return { z: c.z, nx: c.nx, ny: c.ny, anchor: c.anchor, base: c.base, wall: c.wall, lifted: c.lifted === true }; }
+  // The hold as saved (resumeRuntime `wallCling`), after the area loads: kept while the Echo is set, nothing else forbids it and the
+  // same wall is still beside the Wayfarer; otherwise they are set down on the ground under them, unhurt (the hold is dropped, not
+  // fallen from). A kick in the air (`wallKick`) resumes with what it had left.
+  restoreWallCling(q, k, now) {
+    this.wallCling = null; this.wallKick = null;
+    const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null, card = (a, b) => Number.isInteger(a) && Number.isInteger(b) && Math.abs(a) + Math.abs(b) === 1;
+    if (k && typeof k === "object" && now < (this.jumpUntil || 0) && card(n(k.x), n(k.y)) && n(k.firm) != null && n(k.anchor) != null) { this.wallKick = { x: n(k.x), y: n(k.y), firm: Math.max(0, Math.min(WALL_CLING.kick.firm, n(k.firm))), anchor: n(k.anchor) }; this._clingMap = this.map; }
+    if (!q || typeof q !== "object") return false;
+    const c = { z: n(q.z), nx: n(q.nx), ny: n(q.ny), anchor: n(q.anchor), base: n(q.base), wall: n(q.wall), lifted: q.lifted === true }, p = this.player;
+    const ok = [c.z, c.anchor, c.base, c.wall].every((v) => v != null) && card(c.nx, c.ny) && Number.isInteger(c.wall) && c.z >= c.base - 1e-6 && (c.lifted || c.z === c.base)
+      && c.z <= c.anchor + WALL_CLING.maxRise + 1e-6 && c.lifted === (this.droneLiftAllowed() && !!this.map?.landscape) && this.wallClingReady(now) && this.clingWallAhead(c.nx, c.ny, c.base) === c.wall;
+    if (!ok) { this.wallKick = null; this.jumpUntil = -1e9; this.skyAir = null; this.deckHop = false; this.liftDrop = false; this.skyHopGap = false; return false; }
+    c.x = p.x; c.y = p.y; this.wallCling = c; this._clingMap = this.map; this.wallKick = null;
+    this.jumpUntil = Math.max(this.jumpUntil || 0, now + WALL_CLING.hold); this.deckHop = false;
+    if (c.lifted) { this.skyAir = c.z; this.skyAirScale = tileLiftScale(tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)) || 1; }
+    p.facing = c.nx > 0 ? "right" : c.nx < 0 ? "left" : c.ny < 0 ? "up" : "down";
+    return true;
+  }
   // Where a blink (Rift Step) arriving from `fromLevel` stands at (x, y): { level, deck } or null when it cannot stand there. A roof
   // at or under fromLevel + rise is stood on (its walls do not stop it); otherwise the ground, at or under fromLevel + rise.
   blinkFooting(x, y, fromLevel, rise = 0) {
@@ -9412,7 +9535,9 @@ export class Game {
       // Release 641 (Tim: "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button"):
       // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0);
-      if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
+      // Stegosaur's Grip: Jump on a wall kicks off it (before the glider, which would otherwise open from a high hold).
+      if (this.wallCling) { if (!this.cursed("jump", now)) this.wallJump(now); }
+      else if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) g.fallFrom = g.z; this.message = g.open ? GLIDE.open : GLIDE.shut; }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.message = GLIDE.open; }
       else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); if (this.droneRoofCap(z) != null) this.message = DRONE_LIFT.roofed; /* under a roof: no lift */ else { this.droneLift = { base: Math.max(this.jumpFrom ?? below, below), z, vz: 0 }; this.mechSpent = false; this.message = DRONE_LIFT.engage; } } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
@@ -9454,6 +9579,8 @@ export class Game {
       x = p.dodgeX;
       y = p.dodgeY;
     }
+    // Stegosaur's Grip: a hold keeps the Wayfarer still (or lets go); a wall jump's kick goes straight off the wall.
+    if (this.wallCling || this.wallKick) { const st = this.wallClingSteer(x, y, dt, now); x = st.x; y = st.y; }
     if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
@@ -9589,6 +9716,8 @@ export class Game {
         else if (this.skyHopGap && u?.skyPlatform && landed >= this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; }
         else if (TREE_FOOTING.stepLands && this.map?.canopy && u?.canopy && u.skyPlatform && landed > this.skyAir && landed <= this.skyAir + 1) { this.jumpUntil = now; p.jumping = false; } // TREE_FOOTING.stepLands
       }
+      // Stegosaur's Grip: a jump pushed into a wall this frame, and stopped by it, takes hold of it where it is.
+      if (p.jumping && !this.wallCling) this.tryWallCling(x, y, dx, dy, fromX, fromY, now);
       if (!p.jumping) this.skyHopGap = false;
       const deckLand = this.settleRoofDeck(p, now, !!deckStart); // roof decks: on a roof, onto one, or off one
       if (deckLand) finishFall(deckLand.level);
@@ -9819,7 +9948,8 @@ export class Game {
         !e.dead &&
         updateEnemyAI(e, p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
         now > (p.invulnerableUntil || 0) &&
-        (!(now < this.jumpUntil) || e.kind === "sparkWarden" || !!this.mountRide()) && // Tim (2026-11-05): a mount's leap dodges nothing (on foot a jump still clears these blows; jumpable ground attacks pass under either)
+        // Stegosaur's Grip: holding a wall is not a leap; a body blow that reaches the height (bodyReach) lands.
+        (!(now < this.jumpUntil) || e.kind === "sparkWarden" || !!this.mountRide() || !!this.wallCling) && // Tim (2026-11-05): a mount's leap dodges nothing (on foot a jump still clears these blows; jumpable ground attacks pass under either)
         this.bodyReach(e) && // Tim (2026-11-04): a ground creature's blow does not reach the Wayfarer on a roof (ELEVATION_REACH)
         !((b) => b && strikeBuild(this, b))(buildBetween(this, e)) && // release 265: a build between takes the blow
         !enclosureShields(this, { x: e.x + .5, y: e.y + .6 }) // release 696: the enclosure's walls turn it

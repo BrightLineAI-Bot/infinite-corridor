@@ -75,6 +75,18 @@ export function drawNativePlayerDecorations(ctx, g, s, now) {
   ctx.restore();
 }
 const ELDER_ROWS = new WeakMap();
+// Stegosaur's Grip (echoes.ts WALL_CLING): the Wayfarer's arms raised onto the wall held, (nx, ny) pointing into it. At (x, y) the
+// drawn top-left of the Wayfarer's tile (already lifted), s pixels a tile. Two short arms and hands; no allocation.
+function drawClingGrip(ctx, x, y, s, nx, ny) {
+  const cx = (x + .5) * s, cy = (y + .36) * s, side = ny !== 0, reachX = nx * .3 * s, reachY = (ny < 0 ? -.34 : ny > 0 ? .08 : -.24) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let k = -1; k <= 1; k += 2) {
+    const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
+    ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
 function elderRuleRows(o){let rows=o.rows||ELDER_ROWS.get(o);if(!rows){rows=Array.from({length:16},(_,k)=>ruleRows(o.rule,33,26,Math.floor((o.phase||.5)*1e6)+7+k*7919).map(r=>r.slice(12,21))).flat();ELDER_ROWS.set(o,rows);}return rows;}
 const RECITER_NATIVE_LOOKS = new Set(['pilgrim','mercenary','minstrel','scholar','traveler','cartographer']);
 function hueRGB(h,s,l){h=((h%360)+360)%360/360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h*12)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));};return (f(0)<<16)|(f(8)<<8)|f(4);}
@@ -2907,6 +2919,8 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
+      // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
+      if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);

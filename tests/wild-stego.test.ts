@@ -1,6 +1,7 @@
 // The Wild Stegosaurus (Tim, 2026-11-12, for his kid: "threatening for sure"): a world beast of the land and the sea, met too in the
 // big rooms of keeps, arcologies and adventure Pentagons. Its moves, water, climbing, tail, infighting, tree club and spawning.
 import test from 'node:test';
+import { ECHOES } from '../src/echoes.ts';
 import assert from 'node:assert/strict';
 import { MONSTER_PACK, ATTACK_MODULES, STEGO, BOSS_POISE, PACK_KINDS, validateMonster, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, stegoPrey, stegoTailHit, isClubTree } from '../src/monster-pack.ts';
 import { WORLD_BEASTS, WORLD_BEAST_IDS, BEAST_APERTURE, PLACEMENT, PASSING, ensureWorldBeasts, worldBeastFor, passingBeastFor, tuneWorldBeast } from '../src/world-beasts.ts';
@@ -60,9 +61,9 @@ function arena(id, away = false) {
   return { w, e, tele };
 }
 
-test('registry: a huge unique world beast of land and sea, twelve moves, its own poise, pose defaults, no Echo (so no Echo is promised)', () => {
+test('registry: a huge unique world beast of land and sea, twelve moves, its own poise, pose defaults, and its Echo (Stegosaur\'s Grip)', () => {
   const def = MONSTER_PACK.wildStego, B = WORLD_BEASTS.wildStego;
-  assert.deepEqual(validateMonster(def), []); assert.ok(PACK_KINDS.includes('wildStego')); assert.equal(def.render, 'wildStego'); assert.ok(def.unique && def.noEcho);
+  assert.deepEqual(validateMonster(def), []); assert.ok(PACK_KINDS.includes('wildStego')); assert.equal(def.render, 'wildStego'); assert.ok(def.unique && !def.noEcho && ECHOES.wildStego);
   assert.equal(ATTACKS.length, 12); for (const id of ATTACKS) assert.ok(ATTACK_MODULES[id] && SETUP[id], id);
   assert.equal(WORLD_BEAST_IDS.at(-1), 'wildStego', 'listed last: every older beast rolls as it did'); assert.equal(B.kind, 'wildStego'); assert.ok(BEAST_APERTURE.wildStego); assert.ok(PLACEMENT.bigBeasts.includes('wildStego')); assert.ok(BOSS_POISE.wildStego);
   const e = createCombatant('wildStego', 0, 0, true, []); assert.ok(e.scale > 1.8); assert.deepEqual([e.stegoPose, e.stegoAir, e.stegoRoll, e.stegoSwim, e.stegoTail, e.stegoTree, e.stegoPlates, e.stegoClimb], [null, 0, 0, 0, 'whole', null, 1, 0]);
