@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r929 (`918c50ebeb43`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r930 (`7501a870d14e`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 930 | Claude | claude/cv-camera-occlusion | Close View presentation only: roofs stay drawn while airborne above them; a dithered cut through trees, rocks, terrain and big bodies between camera and Wayfarer; min boom 2.5 tiles and max pitch 60 on high or narrow ground and at section edges; ground past a section edge melts into haze; an aggroed dragon, giant or world beast within 8 tiles widens the view so both stay in frame | In flight. |
+| 931 | Claude | claude/qa-926-fixes-b | Fixes from the release 926 QA pass: pausing or reloading no longer relocates a Wayfarer who is falling, gliding, jumping, on the drone or at a roof edge; a Resonance tier raises max and current hp at once; death messages name the hazard; hot-spring healing and the section-edge hold resume exactly | In flight. |
+| 930 | Claude | claude/cv-camera-occlusion | Close View presentation only: roofs stay drawn while airborne above them; a dithered cut through trees, rocks, terrain and big bodies between camera and Wayfarer; min boom 2.5 tiles and max pitch 60 on high or narrow ground and at section edges; ground past a section edge melts into haze; an aggroed dragon, giant or world beast within 8 tiles widens the view so both stay in frame | Merged as `7501a870d14e` (#597). |
 | 929 | Claude | claude/dinosaurs | New world beasts: the Wild Stegosaurus (12 moves, climbing chase, severable tail giving Stego Bait; Echo: wall cling) and the Spinosaurus (10 moves, fossil phase at half health, command grab, bleed status, interloper in stego and stag fights; Echo: afterimage plunge slam); additive saves at schema 14, version-pinned big-room spawns | Merged as `918c50ebeb43` (#595). |
 | 928 | Claude | claude/glide-guard-fix | Fix from the r927 pre-publish review: an inline comment added in 926 swallowed the glide invulnerability assignment, so a Wayfarer gliding above GLIDE.safe took hits; restored, with a regression test | In flight. |
 | 927 | Claude | claude/render-state-by-id | Standard-view beast walk cycles and pose easing keyed by id (were reset every frame by the renderer's per-frame copies) | Merged as `85991ba9c562` (#594). |

@@ -64,6 +64,7 @@ import {
   abandonDungeon,
   journalOnce,
   gainAperture,
+  APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
@@ -2532,6 +2533,21 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
 export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", nothing: "Nothing to catch you.",
   roll: .22, rollLevels: 1, rollPose: 260, rolled: "Rolled!" }; // the landing roll (Tim, 2026-11-13): a dodge begun no more than `roll` s of the fall's own time before it lands counts the fall `rollLevels` less (2 levels free, 3 = 15%, 4 = 40%, 5+ still fatal); the first dodge of a fall is its one try; not a plunge's. `rollPose` ms of the dodge roll drawn on landing // nothing (Tim, 2026-11-13): Jump mid-fall with no drone to catch you; the glider is for great trees only
+// QA 926: how a death on lethal ground is named on waking ("<words> — recovered at ..."), by the tile it took the Wayfarer on:
+// its mark first (a glacier's crevasse or a lunar rille, both lethal `abyss`; a chasm's `canyon` open to the stars), then its kind,
+// then the water kinds; `other` for anything else lethal. Before, every hazard but the canyon said "Lost beneath the water".
+export const HAZARD_DEATH = {
+  marks: [{ mark: "crevasse", kind: "abyss", words: "Lost in a crevasse" }, { mark: "rille", kind: "abyss", words: "Lost in a lunar rille" }, { mark: "chasm", kind: "canyon", words: "Lost to the stars" }],
+  kinds: { lava: "Lost to the lava", abyss: "Lost to the abyss", canyon: "Lost to the canyon" },
+  water: "Lost beneath the water", other: "Lost to the land",
+};
+export function hazardDeathWords(kind, tile = null) {
+  const H = HAZARD_DEATH; if (tile && tile.kind === kind) for (const m of H.marks) if (m.kind === kind && tile[m.mark]) return m.words;
+  if (H.kinds[kind]) return H.kinds[kind];
+  return kind === "river" || kind === "dungeonWater" || DEEP_WATER.includes(kind) ? H.water : H.other;
+}
+// QA 926: the longest jump still in flight that a pause or reload treats as airborne (ms); a longer one is a damaged clock.
+export const AIRBORNE_HOLD = { jumpMs: 10000 };
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
   const G = FALL.gravity, T = FALL.terminal, v0 = Math.min(T, Math.max(0, -Number(vz0) || 0)), h = Math.max(0, Number(drop) || 0);
@@ -2564,6 +2580,7 @@ export class Game {
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
+    APERTURE_TIER_DUE.delete(save); // QA 926 (syncResonance): the load's settleProgression has applied every tier
     const s = save.session;
     this.area = s.area;
     this.rx = s.rx || 0;
@@ -2617,7 +2634,7 @@ export class Game {
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
     this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
-    this.loadArea(this.area, false); this._resumeDeck = null;
+    this._resumeNow = now; this.loadArea(this.area, false); this._resumeDeck = null; this._resumeNow = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3454,7 +3471,8 @@ export class Game {
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
       resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
-      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeAirborne = !capture && this.airborneHeld(this._resumeNow ?? this.lastUpdateNow ?? 0, this.save.session.playerRuntime), // QA 926: a fall, glide, jump or outdoor lift resumes where it was
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !resumeAirborne && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3595,8 +3613,23 @@ export class Game {
     this.hordeTimer = (this.hordeTimer || 0) + dt; if (this.hordeTimer < HORDE.respawn) return;
     this.hordeTimer = 0; if (this.spawnHordeRevenant(here.id)) this.message = "Another Gate Revenant tears through the crossing.";
   }
-  recoverPosition() {
+  // QA 926: a Wayfarer in the air is not stranded. A fall, a glide, a jump (or jump attack) in flight, a booster lift over open
+  // ground, or a fall already fatal is exact-resume state: where it lands is the uninterrupted game's (a river under a fall
+  // still drowns). `rt` is a saved playerRuntime when resuming (the outdoor lift is restored after the area loads); the jump's
+  // remaining time is bounded (AIRBORNE_HOLD) so a damaged clock never keeps a wedged Wayfarer from being recovered.
+  airborneHeld(now = this.lastUpdateNow || 0, rt = null) {
+    if (this.fall || this.glide || this.plunge || this._fatalFallPending === true) return true;
+    const left = (this.jumpUntil || 0) - now; if (left > 0 && left <= AIRBORNE_HOLD.jumpMs) return true;
+    if (this.droneLift && this.area === "overworld") return true;
+    const q = rt?.droneLift; return !!q && this.area === "overworld" && q.area !== "dungeon" && this.droneLiftAllowed() && ["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])));
+  }
+  // QA 926: standing on a roof deck at its edge (feet past it, the box still over its walls) is not stranded either; the same test
+  // a reload makes (resumeDeckEdge), so a pause never drops the Wayfarer off the roof.
+  deckEdgeHeld() { const d = this.standingDeck(), reach = d ? this.deckReach(false) : null, p = this.player;
+    return reach != null && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, mapWidth(this.map, this.area), p.x, p.y, false, false, false, true, reach); }
+  recoverPosition(now = this.lastUpdateNow || 0) {
     if(this.droneLift && interiorTerrain(this.map) && footprintOpen(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y,true))return false;
+    if (this.airborneHeld(now) || this.deckEdgeHeld()) return false; // QA 926
     // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
     if (this.area === "overworld" && aboard(this.save) && footprintSailable(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) return false;
     const moved = relocateIfStranded(
@@ -3615,7 +3648,7 @@ export class Game {
     if (v) { this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
     if (v && !this.paused) {
       this.pauseStarted = now;
-      this.recoverPosition();
+      this.recoverPosition(now);
       if (this.orrery) this.orrery.charge = null; // the Aether Orrery: a charge held into the pause is dropped, never released
     }
     if (!v && this.paused && this.pauseStarted !== null) {
@@ -3630,9 +3663,21 @@ export class Game {
     this.pauseStarted = v ? this.pauseStarted : null;
     this.save.session.paused = v;
   }
+  // QA 926: a new Aperture Resonance tier (gainAperture, from any caller) raises the derived maximum health at once, as a level-up
+  // does: the maximum and current health both rise by the difference (stamina likewise), so the HUD is right and a reload
+  // (syncCharacterStats on load) has nothing left to hand out. Checked once a frame and before a save: one WeakSet lookup, marked by
+  // gainAperture when a tier is crossed (APERTURE_TIER_DUE), so a lab or test that sets the Aperture by hand is left as set.
+  syncResonance() {
+    if (!APERTURE_TIER_DUE.has(this.save)) return false; APERTURE_TIER_DUE.delete(this.save);
+    const p = this.player, oldHp = Number(this.save.maxHp) || 0, oldStamina = Number(this.save.maxStamina) || 0; syncCharacterStats(this.save);
+    if (p.hp > 0) p.hp = Math.min(this.save.maxHp, p.hp + Math.max(0, this.save.maxHp - oldHp)); else p.hp = Math.min(p.hp, this.save.maxHp);
+    p.stamina = Math.min(this.save.maxStamina, p.stamina + Math.max(0, this.save.maxStamina - oldStamina)); p.maxStamina = this.save.maxStamina;
+    return true;
+  }
   exportSnapshot(now = 0) {
     const clock =
       this.paused && this.pauseStarted !== null ? this.pauseStarted : now;
+    this.syncResonance(); // QA 926
     this.reconcileHammerfallStartup();
     this.sync();
     this.snapshotArea(false); // a save in place, not a leaving
@@ -3715,6 +3760,8 @@ export class Game {
       swimming: this.swimming === true,
       swimKind: this.swimming === true ? this.swimKind ?? null : null,
       fatalFallPending: this._fatalFallPending === true,
+      edgeHold: this.edgeHold && this.area === "overworld" ? { dx: this.edgeHold.dx, dy: this.edgeHold.dy, elapsed: Math.max(0, clock - this.edgeHold.at) } : null, // QA 926: the edge just crossed (EDGE_HOLD) holds as long after a reload
+      springSoak: this.springSoak ? { ...this.springSoak } : null, // QA 926: the hot springs' play-second clocks (HOT_SPRINGS), so a reload resumes a soak exactly
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
       jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, deckHop: this.deckHop === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
@@ -3855,6 +3902,10 @@ export class Game {
     if (Number.isFinite(Number(r.raftZ))) this.raftZ = Number(r.raftZ);
     if (r.swimming === true) { this.swimming = true; if (typeof r.swimKind === "string") this.swimKind = r.swimKind; }
     if (r.fatalFallPending === true) this._fatalFallPending = true;
+    { const q = r.edgeHold, unit = (v) => v === -1 || v === 0 || v === 1; // QA 926: the edge just crossed (EDGE_HOLD; edgeHeld clears it once spent)
+      if (q && typeof q === "object" && unit(q.dx) && unit(q.dy) && Math.abs(q.dx) + Math.abs(q.dy) === 1 && Number.isFinite(Number(q.elapsed)) && Number(q.elapsed) >= 0 && Number(q.elapsed) <= EDGE_HOLD.ms) this.edgeHold = { dx: q.dx, dy: q.dy, at: now - Number(q.elapsed) }; }
+    { const q = r.springSoak, n = (v, hi) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(hi, Number(v))) : null; // QA 926: the hot springs' clocks (tickHotSprings)
+      if (q && typeof q === "object" && [q.calm, q.away, q.scanIn, q.wisp].every((v) => n(v, 1e9) != null)) this.springSoak = { calm: n(q.calm, 1e9), away: n(q.away, 1e9), told: q.told === true, scanIn: n(q.scanIn, HOT_SPRINGS.scan), foes: q.foes === true, wisp: n(q.wisp, HOT_SPRINGS.wisp) }; }
   }
   // The roof deck stood on as saved (playerRuntime.roofDeck), after the area loads: kept only when that deck is still under the
   // feet at that level (roof-decks.ts validRoofDeck); otherwise the Wayfarer stands on the ground there, unhurt.
@@ -5350,6 +5401,7 @@ export class Game {
   // Wayfarer wakes at the active checkpoint.
   resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
     const p = this.player, home = this.area === "overworld" ? this.glideHome : null; this.glideHome = null; // TREE_GLIDE.home: read before the carried states clear
+    const lostTo = fellIntoHazard ? hazardDeathWords(terrainHazard, tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)) : null; // QA 926 (HAZARD_DEATH): read where it happened
     // Release 423 (Tim: "the world bosses... keep their health when you die... it only resets after they die"): a living beast's
     // wounds are kept, as a share of its health, on its hunt record; it comes back that hurt (BEAST_KEEPS_WOUNDS).
     for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
@@ -5424,7 +5476,7 @@ export class Game {
     p.y = c.y;
     }
     p.invulnerableUntil = now + 2000;
-    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    this.message = `${lostTo || "Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     if (beastNote) this.message = `${beastNote} ${this.message}`;
 
   }
@@ -9893,6 +9945,7 @@ export class Game {
     this._hurtVisualWitness = null;
     if (this.paused) return;
     if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
+    this.syncResonance(); // QA 926: a new Resonance tier's health, as a level-up's
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
     if (this.fallen) { if (this.player.hurtVisual?.v === 1) this.player.hurtVisual = null; this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
