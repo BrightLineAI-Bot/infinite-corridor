@@ -4763,6 +4763,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    this.talkVisual = { id: o.id, at: this.lastUpdateNow || 0 }; // presentation only: Close View townsfolk gesture as they are spoken to (close-view-folk.ts)
     if (this.rite && this.area === "overworld") { const why = riteExit(o, action || validActions(o, this.save)[0]); if (why) { this.message = why; return { ok: false, message: why, riteSealed: true }; } } // RITE_LOCKDOWN: no door, gate or fold off the rite's ground
     if (o.towerSeal && o.kind === "dungeon" && !towerUnsealed(this.save, o.towerSeal)) { this.message = towerSealText(o.roofHatch ? TOWER_SEAL.messages.hatch : TOWER_SEAL.messages.sealed, o.towerSeal); return { ok: false, message: this.message, sealed: true }; } // TOWER_SEAL: the central tower's ways in want its key (or its lever)
     if (o.kind === "towerLever") return this.pullTowerLever(o); // and the lever at the top of its climb
