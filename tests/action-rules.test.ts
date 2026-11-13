@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, FALL, GLIDE, CANOPY_FALL_MS, JUMP } from '../src/game.ts';
 import { fallDamage } from '../src/landscape.ts';
-import { learnRank, BRANCHES, riftStep } from '../src/constellation.ts';
+import { learnRank, BRANCHES, riftStep, RIFT_AIM } from '../src/constellation.ts';
+import { ensureSlots } from '../src/spell-slots.ts';
 import { APERTURE_SKILLS } from '../src/items.ts';
 import { DRONE, DRONE_LIFT, setMechMode } from '../src/vehicle-gates.ts';
 
@@ -118,4 +119,31 @@ test('2. holding Jump from the ground starts the drone lift at the jump\'s peak;
   const n = wayfarer(); cliff(n, 0); const dn = drive(n); dn.step(0, 0, true, true); for (let i = 0; i < 40; i++) dn.step(0, 0, false, true); assert.equal(n.droneLift ?? null, null);
   // the double press still works (before the peak, with no hold)
   const q = wayfarer({ drone: true }); cliff(q, 0); const dq = drive(q); dq.step(0, 0, true); dq.step(0, 0, true, true); assert.ok(q.droneLift, 'second press');
+});
+
+// 1. Rift Step: one rule in both views. A tap of the button steps; holding it RIFT_AIM.hold arms the aim (the ring), and the next
+//    tap on the world takes the aimed step (placeRiftAim, riftStepTo) as before.
+const spellInput = (x: number, press: boolean, hold: boolean) => { let p = press; return { state: { x, y: 0 }, consume: (k: string) => k === 'spell' && p ? (p = false, true) : false, held: (k: string) => k === 'spell' && hold }; };
+function rifter(closeView: boolean) { const g = wayfarer({ rift: true }); cliff(g, 0); ensureSlots(g.save).a = 'skill:rift-step'; g.riftAimView = () => closeView; g.player.x = 6; g.player.lastMoveVector = { x: 1, y: 0 }; return g; }
+for (const view of [false, true]) {
+  test(`1. ${view ? 'Close View' : 'the standard view'}: a tap of Rift Step steps at once; a hold arms the aim; the aimed tap steps there`, () => {
+    // a tap: pressed and let go inside the frame (a key tap), or let go before the hold
+    for (const heldFrames of [0, 3]) {
+      const g = rifter(view); let t = 6000; const x0 = g.player.x; g.update(1 / 60, spellInput(0, true, heldFrames > 0), t += 1000 / 60);
+      for (let i = 0; i < heldFrames; i++) g.update(1 / 60, spellInput(0, false, true), t += 1000 / 60);
+      g.update(1 / 60, spellInput(0, false, false), t += 1000 / 60); assert.ok(g.player.x > x0 + 1, `stepped (held ${heldFrames} frames)`); assert.equal(g.riftAimArmed(), false, 'no aim');
+    }
+    // a hold: nothing before RIFT_AIM.hold, armed at it, and no step on the let-go
+    const g = rifter(view); let t = 6000; const x0 = g.player.x, charges = g.save.magicSkills.riftCharges; g.update(1 / 60, spellInput(0, true, true), t += 1000 / 60); let frames = 1;
+    while (!g.riftAimArmed() && frames < 60) { g.update(1 / 60, spellInput(0, false, true), t += 1000 / 60); frames++; }
+    assert.ok(g.riftAimArmed(), 'armed'); assert.ok(Math.abs(frames / 60 - RIFT_AIM.hold) <= 1.5 / 60, `armed after the hold (${(frames / 60).toFixed(3)} s)`); assert.equal(g.message, RIFT_AIM.armed);
+    g.update(1 / 60, spellInput(0, false, false), t += 1000 / 60); assert.equal(g.player.x, x0, 'the let-go after a hold does not step'); assert.ok(g.riftAimArmed());
+    assert.equal(g.placeRiftAim(x0 + .5 + 3, g.player.y + .75, t), true); assert.ok(Math.abs(g.player.x - (x0 + 3)) < .01, `stepped to the point (${g.player.x})`); assert.equal(g.riftAimMark.ok, true);
+    if (charges != null) assert.ok(g.save.magicSkills.riftCharges < charges, 'one charge spent');
+  });
+}
+test('1. a held Rift Step lapses as before, a tap while armed steps ahead and drops the aim, and a death clears a pending press', () => {
+  const g = rifter(false); let t = 6000; g.aimRiftStep(t); assert.ok(g.riftAimArmed()); const x0 = g.player.x;
+  g.update(1 / 60, spellInput(0, true, false), t += 1000 / 60); assert.ok(g.player.x > x0 + 1, 'a tap steps ahead'); assert.equal(g.riftAimArmed(), false);
+  const k = rifter(false); k.update(1 / 60, spellInput(0, true, true), 7000); assert.ok(k.riftPress); k.player.hp = 0; for (let i = 0; i < 4; i++) k.update(1 / 60, spellInput(0, false, true), 7000 + i * 17); assert.equal(k.riftPress ?? null, null);
 });

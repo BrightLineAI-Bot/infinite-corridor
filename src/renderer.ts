@@ -144,6 +144,16 @@ export function cameraTransform(
     y: h / 2 - g.player.y * tileSize,
   };
 }
+// The aimed Rift Step in the standard view (constellation.ts RIFT_AIM; Close View draws its own, close-view.ts riftAimRing): while armed,
+// a dashed ring of its reach round the feet; after the tap, a ring on the point (red when refused) that fades. No allocation.
+export const RIFT_RING_STD = { armed: "#b48cff", ok: "#c9a8ff", bad: "#ff5a5a", width: 2, mark: .45, dash: 6 };
+const RIFT_DASH = [RIFT_RING_STD.dash, RIFT_RING_STD.dash], NO_DASH = [];
+function drawRiftAimStd(ctx, g, s, groundLift) {
+  const p = g.player, C = RIFT_RING_STD, m = g.riftAimMark; ctx.save(); ctx.lineWidth = C.width;
+  if (g.riftAimArmed?.()) { const r = Number(g.riftReach?.()) || 0, fx = p.x + .5, fy = p.y + .75; if (r > 0) { ctx.globalAlpha = .55; ctx.strokeStyle = C.armed; ctx.setLineDash?.(RIFT_DASH); ctx.beginPath(); ctx.ellipse(fx * s, (fy - groundLift(p.x, p.y)) * s, r * s, r * s, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash?.(NO_DASH); } }
+  if (m && m.life > 0) { ctx.globalAlpha = Math.max(0, Math.min(1, m.life / (m.max || 1))); ctx.strokeStyle = m.ok ? C.ok : C.bad; ctx.beginPath(); ctx.ellipse(m.x * s, (m.y - groundLift(m.x - .5, m.y - .75)) * s, C.mark * s, C.mark * .6 * s, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
+}
 export function screenToWorld(g, w, h, x, y) {
   const c = cameraTransform(g, w, h);
   return { x: (x - c.x) / c.tileSize, y: (y - c.y) / c.tileSize };
@@ -3014,6 +3024,7 @@ export function render(ctx, g, w, h, now) {
     if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
+  if (!worldCapture && !closeViewCapturing() && (g.riftAimArmed?.() || g.riftAimMark)) drawRiftAimStd(ctx, g, s, groundLift); // RIFT_AIM (2026-11-13): the aim in the standard view too
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
   if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns

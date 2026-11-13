@@ -3043,7 +3043,7 @@ export class Game {
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -3724,7 +3724,7 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.riftPress = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.plunge = null; this.plungeSpent = false; this.plungeRecoverUntil = 0; // jump attacks
@@ -3861,13 +3861,13 @@ export class Game {
     return true;
   }
   // Rift Step aimed (constellation.ts RIFT_AIM): only while Close View shows the world (a tap there picks a point in it).
-  riftAimWanted() { return this.riftAimView ? !!this.riftAimView() : closeViewShowing(this); }
+  riftAimWanted() { return this.riftAimView ? !!this.riftAimView() : closeViewShowing(this); } // which view picks the point (main.ts worldtap: Close View's surface pick, else the standard view's tile); both aim since 2026-11-13
   riftAimArmed() { return !!this.riftAim && this.riftAim.left > 0; }
   riftReach() { return riftReachOf(this.save); }
   armRiftAim(now = this.lastUpdateNow || 0) {
     if (this.riftAimArmed()) { this.riftAim = null; const ok = riftStep(this, now); if (ok) this.riftFlashAt = now; return ok; } // pressed again: the plain step along the way you move
     if (!riftStepReady(this)) return false;
-    this.riftAim = { left: RIFT_AIM.window }; this.message = "Rift Step: tap where to step (press again to step ahead)."; return false; // armed, not cast
+    this.riftAim = { left: RIFT_AIM.window }; this.message = RIFT_AIM.armed; return false; // armed, not cast
   }
   // The tap after arming: the point (the feet's point) and its drawn height `z` for the ring. True when it took the tap (armed).
   placeRiftAim(x, y, now = this.lastUpdateNow || 0, z = null) {
@@ -7632,6 +7632,17 @@ export class Game {
     this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
+  // A slot button pressed (game.update). Rift Step answers on the press's end (Tim, 2026-11-13: one rule in both views): let go
+  // within RIFT_AIM.hold seconds and it is the plain step along the way you move; hold it that long and it arms the aim (the reach
+  // ring, then a tap on the world picks the point: placeRiftAim). A press already let go (a key tap inside one frame) steps at once.
+  // Everything else casts on the press, as before.
+  pressSlot(slot, action, input, now = this.lastUpdateNow || 0) {
+    const c = slotTool(this.save, slot) ? null : slotted(this.save, slot);
+    if (c?.kind === "skill" && c.id === "rift-step" && input?.held?.(action) === true) { this.riftPress = { slot, action, held: 0 }; return false; }
+    return this.castSlot(slot, now);
+  }
+  // Rift Step held (RIFT_AIM.hold): arm the aim through the slot's own checks (castSlot: an empty slot, a curse).
+  aimRiftStep(now = this.lastUpdateNow || 0, slot = null) { this._riftArm = true; try { return slot ? this.castSlot(slot, now) : this.activateApertureSkill("rift-step"); } finally { this._riftArm = false; } }
   castSlot(slot, now = this.lastUpdateNow || 0) {
     const t = slotTool(this.save, slot);
     if (t?.tool === "lantern") { const r = toggleLantern(this.save); this.message = r.message; return true; } // the Lantern (spell-slots.ts LANTERN): light or shutter it
@@ -9360,7 +9371,7 @@ export class Game {
     if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.recordCastVisual(id,before,'activate'); }
     return result;
   }
-  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this.riftAimWanted())return this.armRiftAim(now);/* Close View: the button arms the aim (RIFT_AIM) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -9598,9 +9609,10 @@ export class Game {
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
-    if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
-    if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
-    if (input.consume("spell3")) { this.clearAttackBuffer(); this.castSlot("c"); } // release 874: slot C
+    if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
+    if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
+    if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
+    if (this.riftPress) { const q = this.riftPress; if (input.held?.(q.action) === true) { q.held += dt; if (q.held >= RIFT_AIM.hold) { this.riftPress = null; this.aimRiftStep(now, q.slot); } } else { this.riftPress = null; this.castSlot(q.slot, now); } } // RIFT_AIM.hold: let go first, a step; held, the aim
     const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
     if (dodgePressed && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
