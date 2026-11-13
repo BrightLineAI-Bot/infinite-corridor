@@ -190,10 +190,11 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   carbine: Object.freeze({ axisX: .15, grip: Object.freeze([.72, .86]), gripRadius: .023, stock: Object.freeze([.56, .72]), receiver: Object.freeze([.86, 1.10]),
     barrel: Object.freeze([1.10, 1.64]), barrelRadius: Object.freeze([.020, .017]), coil: Object.freeze([1.14, 1.36]), coilRadius: .040, collar: Object.freeze([1.36, 1.39]), collarRadius: .044,
     muzzle: Object.freeze([1.62, 1.69]), muzzleRadius: .026, bore: .014 }),
-  // Quandrix Staff (2026-11-13): a long dark shaft through the fist with a wrapped grip, a short butt below the hand, a brass
-  // collar, three brass prongs and a lit arcane crystal between them at the head (the hands' colour).
-  staff: Object.freeze({ butt: .30, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([1.80, 1.86]), collarRadius: .03,
-    prongTip: 2.10, prongSpread: .055, crystal: Object.freeze([1.90, 2.04, 2.17]), crystalRadius: .045 }),
+  // Quandrix Staff (2026-11-13): a long dark shaft through the fist with a wrapped grip, a brass collar, three brass prongs and
+  // a lit arcane crystal between them at the head (the hands' colour). The head lies toward -Z (past the pommel side) and the
+  // short butt toward +Z: the primary hand carries a blade point down, so the staff is carried head up and casts butt first.
+  staff: Object.freeze({ butt: 1.24, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([-.18, -.24]), collarRadius: .03,
+    prongTip: -.48, prongSpread: .055, crystal: Object.freeze([-.28, -.42, -.55]), crystalRadius: .045 }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -337,11 +338,11 @@ const heroQuandrixStaff = (() => {
   const prongs = [0, 1, 2].map(i => { const a = i * 2 * Math.PI / 3 + Math.PI / 6, ox = Math.cos(a) * F.prongSpread, oy = Math.sin(a) * F.prongSpread;
     return heldTube([[X + ox * .45, Y + oy * .45, F.collar[1], .009], [X + ox, Y + oy, (F.collar[1] + F.prongTip) / 2, .007], [X + ox * .7, Y + oy * .7, F.prongTip, 0]], 4, C.metal, { ref: [0, 0, 1] }); });
   return Object.freeze([
-    heldTube([[X, Y, F.butt, 0], [X, Y, F.butt + .04, F.shaftRadius[0] * 1.2]], 4, C.metal),
-    heldTube([[X, Y, F.butt + .04, F.shaftRadius[0]], [X, Y, F.grip[0], F.shaftRadius[0]]], 6, C.shaft),
+    heldTube([[X, Y, F.butt - .04, F.shaftRadius[0] * 1.2], [X, Y, F.butt, 0]], 4, C.metal),
+    heldTube([[X, Y, F.grip[1], F.shaftRadius[0]], [X, Y, F.butt - .04, F.shaftRadius[0]]], 6, C.shaft),
     heldTube([[X, Y, F.grip[0], F.gripRadius], [X, Y, F.grip[1], F.gripRadius]], 6, C.wrap),
-    heldTube([[X, Y, F.grip[1], F.shaftRadius[0]], [X, Y, F.collar[0], F.shaftRadius[1]]], 6, C.shaft),
-    heldTube([[X, Y, F.collar[0], F.collarRadius * .8], [X, Y, F.collar[1], F.collarRadius]], 4, C.metal),
+    heldTube([[X, Y, F.collar[0], F.shaftRadius[1]], [X, Y, F.grip[0], F.shaftRadius[0]]], 6, C.shaft),
+    heldTube([[X, Y, F.collar[1], F.collarRadius], [X, Y, F.collar[0], F.collarRadius * .8]], 4, C.metal),
     ...prongs,
     heldFacets(crystal, C.crystal, c => [c[0] - X, c[1] - Y, c[2] - c1]),
   ]);

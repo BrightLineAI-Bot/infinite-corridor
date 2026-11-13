@@ -38,7 +38,7 @@ export const QUANDRIX = Object.freeze({
   // Foes that hold their ground (the Gravity Well's boss rule, widened to every heavy kind): never grabbed or pulled.
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
-  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62 }),
+  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff }),
   messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches." }),
@@ -222,6 +222,7 @@ export function quandrixHandPresentation(h) {
 }
 // An open palm, fingers splayed along its heading `a`, at (x, y) in pixels; `u` is a tile in pixels.
 function palm(ctx, x, y, a, u, C, alpha) {
+  u *= QUANDRIX.view.drawn; // drawn a little larger than its strike radius, to read at phone size
   ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = alpha;
   ctx.fillStyle = C.glow + "55"; ctx.beginPath(); ctx.arc(0, 0, u * .36, 0, 7); ctx.fill();
   ctx.fillStyle = C.glow; ctx.strokeStyle = C.core; ctx.lineWidth = Math.max(1, u * .03);
@@ -233,6 +234,7 @@ function palm(ctx, x, y, a, u, C, alpha) {
   ctx.restore();
 }
 function fist(ctx, x, y, a, u, C) {
+  u *= QUANDRIX.view.drawn;
   ctx.save(); ctx.translate(x, y); ctx.rotate(a);
   ctx.fillStyle = C.glow + "55"; ctx.beginPath(); ctx.arc(0, 0, u * .34, 0, 7); ctx.fill();
   ctx.fillStyle = C.glow; ctx.strokeStyle = C.deep; ctx.lineWidth = Math.max(1, u * .03);
