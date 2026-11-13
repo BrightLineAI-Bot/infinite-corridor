@@ -6,7 +6,7 @@ import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-vie
 import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.ts'; // adventure creatures
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 export { MESH_FLOATS } from './close-view-mesh.ts';
@@ -963,7 +963,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const cleaverLoad = actor.reduceMotion ? .55 : 1;
   const turn = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
+  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
     + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0); // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);

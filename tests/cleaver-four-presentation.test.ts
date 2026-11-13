@@ -17,12 +17,15 @@ function sampled(step,p,extra={}){const state=createHeroPoseState(asset),frame=c
 function gearOf(frame,primaryStage=stage(1)){const out=new Float32Array(7680),end=writeCloseViewHeroGear(out,0,{profile:'verge-cleaver',primaryStage,leftSocket:frame.leftSocket,rightSocket:frame.rightSocket});assert.ok(end>0);return out.slice(0,end);}
 function tipOf(frame,gear){const m=frame.leftSocket,len=Math.hypot(m[0],m[1],m[2]);let best=-Infinity,index=0;for(let i=0;i<gear.length;i+=10){const d=[0,1,2].reduce((sum,k)=>sum+(gear[i+k]-m[12+k])*m[k]/len,0);if(d>best){best=d;index=i;}}return {point:Array.from(gear.slice(index,index+3)),index};}
 
-test('actual imported and native Cleaver tips cut up/down/up/down with anatomical right carry',()=>{
+// Tim, 2026-11-13: the four cuts are level sweeps, across (steps 1 and 3) and back (2 and 4); they were up/down/up/down.
+test('actual imported and native Cleaver tips sweep level across/back/across/back with anatomical right carry',()=>{
   for(let step=1;step<=4;step++){
     const a=sampled(step,.12),b=sampled(step,.40),ga=gearOf(a.frame,stage(step)),gb=gearOf(b.frame,stage(step)),ta=tipOf(a.frame,ga),tb=tipOf(b.frame,gb),sign=step%2?1:-1;
-    assert.ok((tb.point[2]-ta.point[2])*sign>1,'actual blade tip crosses vertically, not just a hit effect');
+    assert.ok((tb.point[1]-ta.point[1])*sign>1,'actual blade tip crosses side to side, not just a hit effect');
+    assert.ok(Math.abs(tb.point[2]-ta.point[2])<.05,'actual blade tip stays level');
     const native=p=>{const out=new Float32Array(7680),end=writeCloseViewModel(out,0,{kind:'playerVergeCleaver',x:0,y:0,z:0,yaw:0,phase:0,pace:0,pose:'attack',amount:p,primaryStage:stage(step)});return {out,end};},na=native(.12),nb=native(.4);
-    const nativeTip=n=>n.out[n.end-5*10+2];/* the native recipe ends with the edge membrane [base, tip, base]: its second vertex is the blade tip */assert.ok((nativeTip(nb)-nativeTip(na))*sign>.5,'native fallback has the same signed cut');
+    const nativeTip=(n,k)=>n.out[n.end-5*10+k];/* the native recipe ends with the edge membrane [base, tip, base]: its second vertex is the blade tip */assert.ok((nativeTip(nb,1)-nativeTip(na,1))*sign>.5,'native fallback has the same signed sweep');
+    assert.ok(Math.abs(nativeTip(nb,2)-nativeTip(na,2))<.05,'native fallback sweeps level');
     const carry=sampled(step,0);assert.ok(carry.frame.leftSocket[13]>.15,'rear screen-right is positive world lateral');assert.ok(-carry.frame.leftSocket[13]<-.15,'front screen-left is anatomical right');assert.ok(carry.state.primaryGripResidual<.01);
     assert.equal(na.end/30,modelTriangleCount('playerVergeCleaver'));
   }

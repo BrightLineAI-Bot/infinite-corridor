@@ -244,7 +244,7 @@ function v25RegionType(seed, id, type) {
 // type in `chance` after the version 25 roll, may become a marrowworks on its own hash, with that type's chance, so every other
 // region keeps the type it had and the near world never shows one. The pool: the Carapace Wastes themselves, the Lumen Wilds'
 // strange-growth regions (the largest pool, about 8% of far sections) and the Obsidian Fields.
-export const REGIONS_V26 = { chance: { biomech: .8, alien: .22, obsidian: .4 }, to: "marrow", minRing: 36 };
+export const REGIONS_V26 = { chance: { biomech: .8, alien: .22, obsidian: .4 }, to: "marrow", minRing: 80 } // Tim 2026-11-13: farther out (was 36);
 function v26RegionType(seed, id, type) {
   const p = REGIONS_V26.chance[type]; if (!p) return type;
   const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy); if (Math.hypot(q.x, q.y) < REGIONS_V26.minRing) return type;

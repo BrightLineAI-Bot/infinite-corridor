@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r943 (`3f9c0b12fb78`); production serves `r941-b5036c167d5d` (published 2026-11-13 after a Fable review of r940 to r941). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r944 (`a657edbcd035`); production serves `r941-b5036c167d5d` (published 2026-11-13 after a Fable review of r940 to r941). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 944 | Claude | claude/daily-region-1113 | Daily world-regions step: a biomechanical region (original design) on new ground only, 36+ sections out, from far Carapace Wastes / strange-growth / Obsidian regions: vertebral causeways, chevron ribs to level 3, gutters with lethal sumps and sinew bridges, ichor pools, conduits, vents, rib tusks, ribcages with caches; Atlas colours, Close View sky | In flight. |
+| 945 | Claude | claude/fists-four-step | Iron Fists: right cross, left jab, right uppercut on one steady rhythm (0.21 s gate, 0.12 s buffer) with wind-up, blow, follow-through and guard; awakened adds the spinning roundhouse as step 4 (2.8, no knockback); Echo-gated charging incl. the kick at 2 Echoes with perfect windows; Ki Blast airborne uppercut then a ground slam; dodge/spell cancel. Verge Cleaver Close View: three wide level sweeps (forehand, backhand, wider finisher) and the outdoor four-cut sweeps level | In flight. |
+| 944 | Claude | claude/daily-region-1113 | Daily world-regions step: a biomechanical region (original design) on new ground only, 36+ sections out, from far Carapace Wastes / strange-growth / Obsidian regions: vertebral causeways, chevron ribs to level 3, gutters with lethal sumps and sinew bridges, ichor pools, conduits, vents, rib tusks, ribcages with caches; Atlas colours, Close View sky | Merged as `a657edbcd035` (#611). |
 | 943 | Claude | claude/look-zoom | Close View Look mode (hold the compass; pinch to zoom onto the Wayfarer or the character/creature/thing in front; drag to orbit; Attack, Dodge, spells and Tool end it, Action/Jump/walking keep it) plus the Verge Cleaver's second combo cut sweeping level (it was authored 12.4 degrees off) | Merged as `3f9c0b12fb78` (#610). |
 | 942 | Claude | claude/save-hide-fix | Follow-up to 941's autosave changes from its review: the save made as the game is hidden or closed skips the one-task deferral; every IndexedDB call drops the cached connection on failure and a hung open/transaction is aborted after 30 s; a failed open is never cached; flushSaves reports a failed write once | Merged as `f19bda103f46` (#609). |
 | 941 | Claude | claude/perf-spikes | From Tim's on-device probe: lay the next section's terrain ahead while near an edge, fix the region cache that slowed down over long sessions, faster generation lookups (byte-identical), one cached IndexedDB connection, no key read-back on delta saves, the write after the frame, cheaper snapshot copy; probe now times view, ground image, effects, viewport and other, plus terrain hits/misses | Merged as `b5036c167d5d` (#608). |

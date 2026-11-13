@@ -43,9 +43,9 @@ test('the brawler gear is given once at Infinite III, never twice; old tool fist
 test('three presses: dash punch, jab, uppercut; the uppercut is a finisher when all three land', () => {
   const { g } = arena([['foe', 13, 10]]); let t = 1000; tick(g, idle, t);
   const hp = () => g.enemies[0].hp, dealt = [];
-  for (let i = 0; i < 3; i++) { t += 50; const before = hp(); tick(g, press('attack'), t); t += 50; tick(g, idle, t); t += 50; tick(g, idle, t); dealt.push(before - hp()); }
+  for (let i = 0; i < 3; i++) { t += 150; const before = hp(); tick(g, press('attack'), t); t += 50; tick(g, idle, t); t += 50; tick(g, idle, t); dealt.push(before - hp()); } // 2026-11-13: 250 ms apart, past each step's gate
   assert.ok(dealt.every((d) => d > 0), `all three landed: ${dealt}`);
-  assert.equal(g.fistCombo, null, 'the combo is over');
+  assert.equal(g.fistCombo?.step, 3); assert.equal(g.fistNextStep(t), 1, 'the chain loops to the cross (2026-11-13: it ended here before)');
   assert.ok(dealt[2] > dealt[0] * 1.5, `the uppercut finisher hits hardest (${dealt})`);
 });
 
@@ -55,7 +55,7 @@ test('the combo resets when the window closes; the jab cannot be charged', () =>
   t += IRON_FISTS.window * 1000 + 100; tick(g, idle, t);
   t += 50; tick(g, pressHold('attack'), t); assert.ok(g.fistCharge, 'a fresh press starts a new dash punch (charging), not a jab');
   t += 50; tick(g, idle, t); assert.equal(g.fistCombo?.step, 1);
-  t += 50; tick(g, pressHold('attack'), t); assert.equal(g.fistCharge, null, 'the jab is thrown at once, even held'); assert.equal(g.fistCombo?.step, 2);
+  t += 250; tick(g, pressHold('attack'), t); assert.equal(g.fistCharge, null, 'the jab is thrown at once, even held'); assert.equal(g.fistCombo?.step, 2); // 2026-11-13: past the cross's gate
 });
 
 test('release 491: the dash punch rushes to a foe in range and stops beside it; charging keeps you in place and hits harder', () => {
