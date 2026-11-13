@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 927: In the standard view, the beasts' walk cycles and pose changes now play through as they should. The Briar Stag and the Lightning Giant stride with a running gait, and the stag, the giant, the dragons and the Ashen Moth ease between poses instead of snapping. Their animation memory had been restarting every frame.
 - Release 926: Falls have real physics: in the open world a drop is a fall with airtime (gravity 14 levels/s^2, terminal 9) and the same damage for its height; press Jump while falling to catch yourself with the drone or the glider; Rift Step works mid-fall; a jump attack over a drop falls and slams where it lands. Jumping up onto ledges, roofs and branches now lands smoothly in Close View and the standard view, and the drone and glider are drawn at the right height in Close View.
 - Release 925: The Spark Coil drops again and becomes the Carbine at +6: a charged beam carbine that scales with Finesse (the Lumen Spindle's Lumen Carbine passive is retired and the Spindle is plain again). New Lattice tool form Continuous Assault: a charged Carbine beam calls three tracking sky lasers onto its target.
 - Release 924: The Gaunt: hooded, stick-thin duelists (Gaunt Duelist with a sword, Gaunt Cutthroat with two knives, Gaunt Longarm with a polearm) that circle, feint, hop between levels and hop out after they strike; about 1.6-2x the health of ordinary foes; in new crossings from Resonant, Old Keep floors and Pentagon chambers; full Close View bodies.

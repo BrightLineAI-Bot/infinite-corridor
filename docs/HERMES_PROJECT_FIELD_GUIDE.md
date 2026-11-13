@@ -6,6 +6,19 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 927 — Standard-view beast animation memory keyed by id
+
+This was found while building the Spinosaurus art (2026-11-12), and Tim asked for it to be fixed. The renderer paints a fresh copy of each foe every frame (`drawPackMonster(ctx, { ...e, ... })`). Four modules kept render memory in WeakMaps keyed by the object, so it never found the same key twice:
+- `briar-stag-render.ts` and `lightning-giant-render.ts`: the gait phase and the eased poses;
+- `crimson-dragon-render.ts` (the Crimson Tyrant and the Doom Chaser): the eased poses;
+- `ashen-moth-render.ts`: the eased poses.
+
+As a result, every walk cycle and pose easing restarted each frame.
+
+**CODE:** each module's `renderMemory()` keys a bounded Map (32 entries, oldest dropped first) by the creature's `id`, and falls back to the object when there is no id (previews). `tests/render-memory.test.ts` fails on the old code and passes on the new.
+
+**BOUNDARY:** render only, in the standard view. Close View is unaffected because it has its own tracks.
+
 ## Release 926 — Release 926 — real falls (airtime, catches) and smooth jump-up landings
 
 Tim (2026-11-12): jumping up onto things has a weird unsteady motion; falls need real physics (fall speed, airtime by height, damage from it) now that Rift Step, roofs, the drone and the glider make vertical play common, and he wants to catch a Rift Step fall with the drone or glider.
