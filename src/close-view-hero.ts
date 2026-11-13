@@ -314,25 +314,46 @@ const PRIMARY_CUTS = Object.freeze([
   Object.freeze({ yawA:.08, yawB:-.45, pitchA:-.12, pitchB:-.55, side:-.04, twist:.06 }),
 ]);
 function rotateY(pose,node,angle){const o=node*10+3,s=Math.sin(angle/2),c=Math.cos(angle/2),x=pose[o],y=pose[o+1],z=pose[o+2],w=pose[o+3];pose[o]=x*c-z*s;pose[o+1]=y*c+w*s;pose[o+2]=z*c+x*s;pose[o+3]=w*c-y*s;}
+// The Cinder Pike's three thrusts (close-view-hero primaryPose). Per step: the shaft's yaw and pitch (radians, model space),
+// its height and the drive forward (shares of arm reach), a sideways offset, and how far the lunge opens. Presentation only:
+// the hit is the unchanged narrow forward cone (items.ts PRIMARY_PROFILES 'primary-cinder-pike').
+const PIKE_THRUST = Object.freeze([
+  Object.freeze({ yaw: .10, pitch: -.02, height: .06, base: .04, drive: .32, side: -.02, lunge: 1 }), // a level thrust at the waist
+  Object.freeze({ yaw: -.06, pitch: .05, height: .22, base: .02, drive: .28, side: -.09, lunge: .8 }), // high, across to the left
+  Object.freeze({ yaw: .22, pitch: -.08, height: -.10, base: .04, drive: .30, side: .07, lunge: 1.2 }), // low and deep, to the right
+]);
+// The lunge: the left foot steps `front` forward, the right `back` behind, the pelvis sinks `drop` (source units); the body
+// turns `turn`, the spine leans `lean`, the chest `chest`, the head looks up `look` (radians); `draw` pulls the shaft back.
+const PIKE_LUNGE = Object.freeze({ front: .17, back: .13, drop: .07, turn: -.16, lean: .16, chest: .08, look: .10, draw: .10 });
+// A lunge of weight k (0 leaves the pose alone): both soles stay flat on the ground, one ahead of the other.
+function lungeStance(state,pose,k,scale=1){
+  if(!(k>0))return;const L=PIKE_LUNGE,data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(state.asset,state,pose);
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);}
+  pose[33*10+1]-=L.drop*scale*k;
+  for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o];target[1]=data[o+1];target[2]=data[o+2]+(left?L.front:-L.back)*scale*k;solveLeg(state,pose,left,target,k,state.hammerLegSides[side]);}
+}
 function primaryPose(state,pose,profile,p,step=1){
   step=Number.isInteger(step)&&step>=1&&step<=3?step:1;
   const commit=p<.12?smoothstep(p/.12):p<=.40?1:1-smoothstep((p-.40)/.60);
   const travel=smoothstep((p-.12)/.28),cut=PRIMARY_CUTS[step-1],pike=profile==='cinder-pike';
   // Torso commitment and a free-arm counterbalance leave the independent source feet alone.
-  if(commit>0){rotateY(pose,27,(pike?(step===2?-.10:.10):cut.twist)*commit);rotateX(pose,24,(pike?.13:step===3?.15:.07)*commit);rotateX(pose,4,-.05*commit);if(!pike){rotateX(pose,12,-.28*commit);rotateZ(pose,12,-cut.twist*.4*commit);}}
+  if(commit>0){if(pike){const L=PIKE_LUNGE,T=PIKE_THRUST[step-1],k=commit*(.55+.45*smoothstep((p-.14)/.16));lungeStance(state,pose,commit,T.lunge);rotateY(pose,27,L.turn*commit);rotateX(pose,27,L.lean*k);rotateX(pose,24,L.chest*k);rotateX(pose,4,-L.look*k);}else{rotateY(pose,27,cut.twist*commit);rotateX(pose,24,(step===3?.15:.07)*commit);rotateX(pose,4,-.05*commit);rotateX(pose,12,-.28*commit);rotateZ(pose,12,-cut.twist*.4*commit);}}
   build(state.asset,state,pose);
   const t=state.primaryTarget,g=state.global,ls=12*16,le=11*16,lw=7*16,rs=22*16,re=21*16,rw=18*16,rg=16*16;
   const leftReach=Math.hypot(g[le+12]-g[ls+12],g[le+13]-g[ls+13],g[le+14]-g[ls+14])+Math.hypot(g[lw+12]-g[le+12],g[lw+13]-g[le+13],g[lw+14]-g[le+14]);
   const rightReach=Math.hypot(g[re+12]-g[rs+12],g[re+13]-g[rs+13],g[re+14]-g[rs+14])+Math.hypot(g[rw+12]-g[re+12],g[rw+13]-g[re+13],g[rw+14]-g[re+14]);
   const reach=Math.min(leftReach,rightReach),cx=(g[ls+12]+g[rs+12])/2,cy=(g[ls+13]+g[rs+13])/2,cz=(g[ls+14]+g[rs+14])/2;
   if(pike){
-    // A single raised diagonal shaft joins both hands across the torso. Every optional
-    // accepted thrust lowers that same frame, then returns to the same common carry.
-    const yaw=.60*(1-commit)+(step===2?-.06:step===3?.06:0)*commit;
-    const pitch=.60*(1-commit)+(step===2?-.08:step===3?.08:.04)*commit;
+    // A single raised diagonal shaft joins both hands across the torso (the carry). Each accepted
+    // thrust (Tim, 2026-11-13: "three thrusts... lunge stance... both hands on the shaft one in
+    // front of the other... leaning into a forward stab") levels the shaft forward at the waist,
+    // draws it back a little, then drives it out over the lunge and returns to the same carry.
+    const T=PIKE_THRUST[step-1],draw=p<.12?smoothstep(p/.12):1-smoothstep((p-.12)/.10),stab=smoothstep((p-.14)/.16)*(1-smoothstep((p-.44)/.40));
+    const yaw=.60*(1-commit)+T.yaw*commit;
+    const pitch=.60*(1-commit)+T.pitch*commit;
     const nx=Math.sin(yaw)*Math.cos(pitch),ny=Math.sin(pitch),nz=Math.cos(yaw)*Math.cos(pitch),half=reach*.23;
-    const x=cx+(step===2?-.025:step===3?.025:0)*commit;
-    const y=cy-reach*.36+(step===2?-.10:step===3?.10:0)*commit,z=cz+reach*.22+(step===2?.15:step===3?.17:.13)*commit;
+    const x=cx+T.side*commit;
+    const y=cy-reach*.36+T.height*reach*commit,z=cz+reach*.22+(T.base-PIKE_LUNGE.draw*draw+T.drive*stab)*reach*commit;
     t[0]=x-nx*half;t[1]=y-ny*half;t[2]=z-nz*half;const rr=solveArm(state,pose,false,t,yaw,pitch);
     t[0]=x+nx*half;t[1]=y+ny*half;t[2]=z+nz*half;const lr=solveArm(state,pose,true,t,yaw,pitch);
     state.primaryGripResidual=Math.max(rr,lr);state.clip='derived-polearm-thrust';
@@ -739,6 +760,34 @@ function alivePose(pose,idleSec,speed,input){
   const a=clamp(Number(input.accel)||0,-1,1);if(a&&!input.reducedMotion){rotateX(pose,27,LIFE.accel*a);rotateX(pose,4,-LIFE.accelHead*a);}
   const t=clamp(Number(input.turn)||0,-1,1)*still;if(t){rotateY(pose,27,LIFE.turnChest*t);rotateY(pose,4,LIFE.turnHead*t);rotateZ(pose,28,LIFE.turnHips*t);}
 }
+// Weapon arts (weapon-arts.ts; game.ts artVisual stamps `weaponArt` on the accepted record): one layered pose over the carry,
+// every layer scaled by an envelope that is zero at both ends of the record. Radians on the source's shoulders (12/22),
+// elbows (11/21), spine (27), chest (24) and head (4); `crouch` is a planted crouch's depth. Presentation only.
+const ART_POSE = Object.freeze({
+  'lava-slash': Object.freeze({ raise: 2.7, chop: 2.05, elbow: .45, arch: .14, bend: .52, chest: .2, crouch: .2, raiseEnd: .34, chopAt: .34, chopLen: .14 }),
+  'cinder-javelin': Object.freeze({ back: 2.5, throw: 1.25, aim: 1.15, twist: .5, follow: .4, arch: .1, lean: .26, windEnd: .44, throwAt: .44, throwLen: .14 }),
+  'ki-blast': Object.freeze({ push: 1.45, elbow: .22, close: .22, lean: .12, at: .22 }),
+  'blade-stream': Object.freeze({ spread: 1.15, whirl: .55, turns: 3, lean: .08 }),
+  transpose: Object.freeze({ raise: 2.2, plant: 1.9, free: .6, bend: .36, crouch: .24, raiseEnd: .3, plantAt: .3, plantLen: .18 }),
+  charge: Object.freeze({ lean: .12, turn: .22, draw: .5, crouch: .5, drop: .12 }),
+});
+function weaponArtPose(state,pose,art,p,reducedMotion){
+  const A=ART_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.22))*(reducedMotion?.7:1);if(!(env>0))return;
+  if(art==='lava-slash'){const up=smoothstep(p/A.raiseEnd),down=smoothstep((p-A.chopAt)/A.chopLen),arm=(-A.raise*up+A.chop*down)*env;
+    for(const [sh,el] of [[12,11],[22,21]]){rotateX(pose,sh,arm);rotateX(pose,el,-A.elbow*up*(1-down)*env);}
+    rotateX(pose,27,(-A.arch*up*(1-down)+A.bend*down)*env);rotateX(pose,24,A.chest*down*env);plantedCrouch(state.asset,state,pose,down*env,A.crouch);state.clip='derived-lava-slash';}
+  else if(art==='cinder-javelin'){const wind=smoothstep(p/A.windEnd),go=smoothstep((p-A.throwAt)/A.throwLen),back=wind*(1-go);
+    rotateX(pose,22,(-A.back*back-A.throw*go)*env);rotateX(pose,12,-A.aim*back*env);rotateY(pose,27,(A.twist*back-A.follow*go)*env);rotateX(pose,27,(-A.arch*back+A.lean*go)*env);state.clip='derived-cinder-javelin';}
+  else if(art==='ki-blast'){const k=smoothstep(p/A.at)*env;for(const [sh,el,side] of [[12,11,1],[22,21,-1]]){rotateX(pose,sh,-A.push*k);rotateZ(pose,sh,side*A.close*k);rotateX(pose,el,A.elbow*k);}rotateX(pose,27,A.lean*k);state.clip='derived-ki-blast';}
+  else if(art==='blade-stream'){const whirl=reducedMotion?0:Math.sin(p*Math.PI*2*A.turns)*A.whirl;rotateZ(pose,12,-A.spread*env);rotateZ(pose,22,A.spread*env);rotateY(pose,27,whirl*env);rotateX(pose,27,A.lean*env);state.clip='derived-blade-stream';}
+  else if(art==='transpose'){const up=smoothstep(p/A.raiseEnd),down=smoothstep((p-A.plantAt)/A.plantLen);rotateX(pose,22,(-A.raise*up+A.plant*down)*env);rotateX(pose,12,-A.free*down*env);rotateX(pose,27,A.bend*down*env);plantedCrouch(state.asset,state,pose,down*env,A.crouch);state.clip='derived-transpose';}
+  state.clipTime=p;
+}
+// Holding a charge (input.artCharge 0..1): the weapon drawn back, the body coiled and low. Zero leaves the pose alone.
+function weaponArtChargePose(state,pose,c,reducedMotion){
+  const A=ART_POSE.charge,k=smoothstep(c*2)*(reducedMotion?.7:1);if(!(k>0))return;
+  rotateY(pose,27,A.turn*k);rotateX(pose,27,A.lean*k);rotateX(pose,22,A.draw*k);plantedCrouch(state.asset,state,pose,k*A.crouch,A.drop);state.clip='derived-art-charge';state.clipTime=c;
+}
 // Planted crouch: the pelvis sinks while both soles stay where they are (flattening by k).
 function plantedCrouch(asset,state,pose,k,drop){
   if(!(k>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(asset,state,pose);
@@ -766,7 +815,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
-  const primaryAction=action?.kind==='melee'&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
+  const primaryAction=action?.kind==='melee'&&!action.weaponArt&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
     meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
@@ -875,6 +924,8 @@ export function sampleCloseViewHero(asset, state, input, out) {
   }
   // The Great Sweep stays drawn between uses (input.heldTool): the carry rides over walking, running,
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
+  if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
+  else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the

@@ -204,14 +204,14 @@ test('gladius carries low in one hand with a free arm, visible walking bob and a
   assert.ok(high-low>.025,'carry follows natural walking bob');assert.ok(modelTriangleCount('playerVergeCleaver')<=256);
 });
 
-test('three cuts and three thrusts remain distinct at 30/60fps with no source foot displacement',()=>{
+test('three cuts and three thrusts remain distinct at 30/60fps; the cuts keep the source feet, the thrusts lunge',()=>{
   const s=createHeroPoseState(asset),frames=Array.from({length:4},()=>createHeroFrame(asset));
   for(const profile of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
     let distinct=0,moved=0;
     for(let frame=1;frame<=Math.floor(.24*hz);frame++){
       const phase=frame/hz/.24,i={...input,nowMs:1200+phase*240,speed:.6,gaitPhase:.7,heldProfile:profile,...(profile==='verge-cleaver'?{primaryCarryStage:{kind:'legacy',step:1}}:{})};
       sampleCloseViewHero(asset,s,i,frames[0]);const feet=[...s.pose.slice(10,20),...s.pose.slice(360,370)];
-      for(let stage=1;stage<=3;stage++){sampleCloseViewHero(asset,s,{...i,action:{kind:'melee',profile,primaryStep:stage,phase,durationMs:240,poseMs:1200,yaw:0}},frames[stage]);assert.deepEqual([...s.pose.slice(10,20),...s.pose.slice(360,370)],feet);}
+      for(let stage=1;stage<=3;stage++){sampleCloseViewHero(asset,s,{...i,action:{kind:'melee',profile,primaryStep:stage,phase,durationMs:240,poseMs:1200,yaw:0}},frames[stage]);if(profile==='verge-cleaver')assert.deepEqual([...s.pose.slice(10,20),...s.pose.slice(360,370)],feet);else if(phase>.2&&phase<.4)assert.notDeepEqual([...s.pose.slice(10,20),...s.pose.slice(360,370)],feet,'2026-11-13: the Pike thrusts from a lunge (one foot forward, one back)');}
       const gap=(a,b)=>Math.hypot(...[12,13,14].map(k=>frames[a].rightSocket[k]-frames[b].rightSocket[k]));
       if(Math.min(gap(1,2),gap(1,3),gap(2,3))>.025)distinct++;
       if(Math.max(gap(0,1),gap(0,2),gap(0,3))>.08)moved++;

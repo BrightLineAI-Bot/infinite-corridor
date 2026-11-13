@@ -397,6 +397,8 @@ body {
   border-color: #c9a15c;
   filter: drop-shadow(0 0 5px #bb7b3f88);
 }
+/* weapon-arts.ts: the weapon's art is armed (three presses stored); a light glint on Attack */
+.buttons .attack.art-armed { box-shadow: inset 0 0 0 2px #fff2a8aa, 0 0 8px #fff2a866; }
 dialog {
   width: min(94vw, 720px);
   max-width: calc(

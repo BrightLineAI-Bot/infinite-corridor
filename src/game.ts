@@ -72,6 +72,7 @@ import {
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
@@ -693,6 +694,7 @@ export function placeDungeonIndoors(map, seed, rx, ry) {
 }
 export const DODGE_BURST = { chainRadius: .8 }; // release 481: a Chain armor glyph's second burst, as a share of the first burst's radius
 export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
+const ART_PROFILE = Object.freeze({ shape: "staff", range: 0, arc: 0 }); // weapon-arts.ts: an art draws its own swing (game.ts artVisual)
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
 export const autoAimable = (e) => !e.dead && !e.hidden && !e.untargetable && !e.ambient && !e.astralAllyOf && e.kind !== "npc";
 export function mapWidth(map, area = "overworld") { return Math.max(1, Number(map?.width) || (area === "dungeon" ? 24 : 32)); }
@@ -954,7 +956,7 @@ export function regionalScale(e, q) {
 // Release 383: the empowered robot adds MECH_POWER.damage to every blow, magic shot and spell, by the same path as the armor glyphs.
 // Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts; release 459 (marginalia.ts): so do
 // the marginalia of the crossing you are in.
-const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun; if (!save?.meal && !run) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); return out; };
+const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun, seal = transposeBonus(save); if (!save?.meal && !run && !seal) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); if (seal) { out.spellDamage = (out.spellDamage || 0) + seal.spellDamage; out.damageTaken = (out.damageTaken || 0) + seal.damageTaken; } /* weapon-arts.ts Transpose: standing in the seal */ return out; };
 // Roll-3 Tesseract lines (tesseracts.ts): more damage from every blow (damageTaken), and a health cost that stops at
 // TESSERACTS.harmFloor of maximum health (never kills; below the floor it costs nothing).
 const hurtScale = (save) => 1 + (armorGlyphBonus(save).damageTaken || 0);
@@ -7845,7 +7847,7 @@ export class Game {
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
     const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
-    if (!echo) { this.player.attackReadyAt = now + acceptedCooldown; this.cancelConsumeVisual('attack'); }
+    if (!echo) { this.player.attackReadyAt = now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
     this.player.attackUntil = now + ACTION_MOTION.meleeMs;
     this.player.meleeUntil = now + ACTION_MOTION.meleeMs;
@@ -7912,7 +7914,7 @@ export class Game {
       if (!isEcho) this.frenzyBlow(e); // balance pack (C10): a swing is a blow
       if (boxing && dealt > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + dealt * boxing.heal); // release 485: Shadow Boxing heals
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
-      if (dealt > 0) this.tesseractHitHeal("melee", now); // a Tesseract's health on a melee hit
+      if (dealt > 0) { this.tesseractHitHeal("melee", now); artMeleeHit(this); } // a Tesseract's health on a melee hit; weapon-arts.ts: Transpose's seal grows
       e.hitFlash = scattered ? 0 : 0.18;
       e.recoil = scattered ? 0 : daggers ? FOURFOLD_DAGGERS.recoil : 0.2;
       if (!scattered) e.hitStun = Math.max(e.hitStun || 0, daggers ? FOURFOLD_DAGGERS.stun[e.boss || e.eliteId ? "boss" : "ordinary"] : e.boss || e.eliteId ? 0.12 : 0.22); // the daggers: a slight stagger a cut (the stagger governor still holds)
@@ -8085,6 +8087,61 @@ export class Game {
     const v = stampAttackVisual(p, "melee", ACTION_MOTION.meleeMs, { x: dx, y: dy }); if (!v) return;
     v.weaponKind = "quandrix-staff"; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
     v.poseMs = prior?.now ?? Math.max(0, logicalNow); if (prior) v.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
+  }
+  // Weapon arts (weapon-arts.ts WEAPON_ARTS): the hooks its rules call. Runtime game.weaponArts, never saved.
+  weaponArtArmed() { return weaponArtArmed(this); } // the HUD's glint on Attack (main.ts)
+  artPower(now = this.lastUpdateNow || 0) { return this.plungeBase(now); } // a normal hit of the weapon (Spellblade included; the Iron Fists' dash punch)
+  artBlocked(now = this.lastUpdateNow || 0) { return !(this.player.hp > 0) || this.cursed("attack", now) || this.penned(now); }
+  artOpen(x, y) { return this.quandrixOpen(x, y); }
+  artAim(direction = null) { return this.quandrixAim(direction || this.player.meleeAim || this.save.lastAim); } // a manual aim, the lock, the stick, else auto aim
+  // One blow of an art: the weapon's own glyphs, through the Wayfarer's damage scale; a foe that holds its ground is never knocked.
+  artBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45, knock = 0) {
+    if (!e || e.dead || e.untargetable || !(amount > 0)) return 0;
+    alertEnemy(e); const glyphs = this.glyphLoadout("melee"), dealt = glyphDamage(glyphs, e, amount, { echo: false }, now), hpBefore = Math.max(0, e.hp);
+    e.hp -= wayfarerDamage(dealt); const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
+    e.hitFlash = .18; if (stun > 0) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? stun * .25 : stun);
+    if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); }
+    this.astralPlayerHit(e, actual); glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: false, origin: { x, y } });
+    if (actual > 0) this.tesseractHitHeal("melee", now);
+    if (knock > 0 && !e.dead && !artAnchored(e)) { const kx = e.x + .5 - x, ky = e.y + .45 - y, kd = Math.hypot(kx, ky); if (kd > 1e-6) this.moveGrounded(e, kx / kd * knock, ky / kd * knock); }
+    return actual;
+  }
+  // Lava Slash: a dash toward the lock (else the nearest foe within `reach`), stopping `stop` short, in quarter-tile steps that
+  // stop at walls and lethal ground; straight along the aim with no foe. Returns the heading.
+  artDash(now, reach, stop) {
+    const p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
+    const foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach)?.e;
+    let d = null, dist = reach;
+    if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
+    else d = this.artAim(null);
+    for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
+    p.meleeAim = { x: d.x, y: d.y };
+    return d;
+  }
+  // Ki Blast on the uppercut: an ordinary leap from where the Wayfarer stands (never from a roof, a mount, the water or in the air).
+  artLeap(now) {
+    if (now < (this.jumpUntil || 0) || this.cursed("jump", now) || this.swimming || this.mountRide?.() || this.wallCling || this.glide || this.fall || (this.decksApply?.() && this.standingDeck?.())) return false;
+    const p = this.player; this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
+    this.jumpDur = JUMP.base + skillRank(this.save, "quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur;
+    return true;
+  }
+  // The Iron Fists' waiting press: the punch it throws is the combo's next as the press is made (the jab or the uppercut while
+  // the window is open, else the dash punch), fixed there however long the charge is held. A tap throws it as ever; a release
+  // throws it with the blast. Returns the step.
+  artFistStep(now) { const c = this.fistCombo; return c && now <= c.until && c.step < IRON_FISTS.punches.length ? c.step + 1 : 1; }
+  artFistTap(now, dir, step = 1) { this._fistInputUpdate = true; try { return this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } }
+  artFistRelease(now, dir, step = 1) { this._fistInputUpdate = true; try { this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } return step; }
+  // The art's pose: an ordinary primary attack record carrying `weaponArt` (Close View: close-view-hero.ts weaponArtPose).
+  artVisual(now, d, art, ms) {
+    const p = this.player;
+    if (art === "ki-blast") { const v = p.attackVisual; if (v && v.profile === "fist") v.weaponArt = art; return; } // the punch's own record
+    p.attackUntil = now + ACTION_MOTION.meleeMs; p.meleeUntil = now + ACTION_MOTION.meleeMs; p.meleeStrike = null; this.attackProfile = ART_PROFILE;
+    this.cancelConsumeVisual("attack");
+    const v = stampAttackVisual(p, "melee", ms, d); if (!v) return;
+    v.weaponKind = art === "lava-slash" ? "verge-cleaver" : art === "cinder-javelin" ? "cinder-pike" : "salvage-blade"; v.weaponArt = art;
+    const logicalNow = now - (this.presentationPausedMs || 0); v.poseMs = Math.max(0, logicalNow);
+    if (d && Math.hypot(d.x, d.y) > 0) v.facingYaw = Math.atan2(d.y, d.x);
+    p.actionVisualUntil = now + ms;
   }
   // The Carbine (tool-forms.ts CARBINE): the Spark Coil's upgraded form (items.ts CARBINE_RANK), a charged beam carbine.
   carbineOn() { return !!rangedWeapon(this.save.equipment?.secondary)?.carbine; }
@@ -9703,6 +9760,7 @@ export class Game {
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
+    if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the punch waits for the let-go
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
     if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
     this.fistCombo = null;
@@ -9735,6 +9793,7 @@ export class Game {
     this.cancelConsumeVisual('attack');
     p.attackUntil = now + 240; p.meleeUntil = now + 240; p.fistVisualUntil = now + ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = Math.max(0, Math.min(1, Number(charge) || 0)); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); }
     if(delayed){const move=step===1?'dash':step===2?'jab':'uppercut',T=CLOSE_VIEW_MELEE_TIMING[move],contactMs=T.contactMs,id=`melee-${effect.id}`;if(visual){visual.durationMs=T.durationMs;visual.meleeAction={v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs};p.actionVisualUntil=now+T.durationMs;}this.pendingMeleeContact={v:1,id,action:{v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{...d},payload:{kind:'fist',effect:structuredClone(effect),step,landedBefore:[...before],cloneDamage:primaryProfile(this.save.equipment.primary).damage,cloneEligible:this.shadowCloneActive(now)}};}
+    noteArtPress(this); // weapon-arts.ts: each punch is a press
     this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
     return true;
   }
@@ -10149,6 +10208,7 @@ export class Game {
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
     if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
     if (this.quandrix) tickQuandrix(this, dt, now, !!input.held?.((this.quandrix.hold.on ? this.quandrix.hold.action : this.quandrix.press.action) || "attack")); // the Quandrix Staff: its hands, the Mage's Hand fist and the awakened slam
+    if (this.weaponArts) tickWeaponArts(this, dt, now, !!input.held?.(this.weaponArts.fist.on ? this.weaponArts.fist.action : "attack")); // weapon-arts.ts: arming, the charge, and what each art leaves in play
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)

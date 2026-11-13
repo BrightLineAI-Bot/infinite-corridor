@@ -306,6 +306,7 @@ setTimeout(() => {
       `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
+    attack?.classList.toggle("art-armed", !!game.weaponArtArmed?.()); // weapon-arts.ts: the weapon's art is armed (a light glint)
     act?.classList.toggle("selected", save.aimMode === "act");
     document.querySelector('[data-action="utility"]')?.classList.toggle("selected", save.aimMode === "build" && activeUtility(save) === "build"); // release 874: Build lives on the utility button
   }, 100);

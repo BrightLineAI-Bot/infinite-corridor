@@ -1,4 +1,5 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
 import { shakeOffset } from "./spino-rex.ts";
@@ -3014,12 +3015,11 @@ export function render(ctx, g, w, h, now) {
         else if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
           const D = FOURFOLD_DAGGERS, t = (D.angle * Math.PI) / 180, nx = -Math.sin(a), ny = Math.cos(a), r = s * profile.range;
           for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
-        } else if (profile.shape === "thrust") {
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(
-            cx + Math.cos(a) * s * profile.range,
-            cy + Math.sin(a) * s * profile.range,
-          );
+        } else if (profile.shape === "thrust") { // the Cinder Pike (2026-11-13: "a clear forward thrust"): the shaft drawn back, driven out to its reach along the aim, and pulled home; the hit is unchanged
+          const v = p.attackVisual, aim = v?.aim && Number.isFinite(v.aim.x) && Number.isFinite(v.aim.y) ? Math.atan2(v.aim.y, v.aim.x) : a, k = Math.max(0, Math.min(1, 1 - ((p.attackUntil || 0) - now) / ACTION_MOTION.meleeMs)), out = k < .15 ? -.25 * k / .15 : k < .45 ? -.25 + 1.25 * (k - .15) / .3 : 1 - .7 * (k - .45) / .55, R = s * profile.range, ux = Math.cos(aim), uy = Math.sin(aim);
+          const tip = R * (.55 + .45 * out), tail = tip - R * .95;
+          ctx.moveTo(cx + ux * tail, cy + uy * tail); ctx.lineTo(cx + ux * tip, cy + uy * tip);
+          ctx.moveTo(cx + ux * (tip + s * .22), cy + uy * (tip + s * .22)); ctx.lineTo(cx + ux * tip - uy * s * .08, cy + uy * tip + ux * s * .08); ctx.lineTo(cx + ux * tip + uy * s * .08, cy + uy * tip - ux * s * .08); ctx.closePath(); // the head
         } else {
           const half = (profile.arc * Math.PI) / 360;
           ctx.arc(cx, cy, s * profile.range, a - half, a + half);
