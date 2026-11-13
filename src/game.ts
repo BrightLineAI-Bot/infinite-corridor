@@ -2409,7 +2409,7 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
 // plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
 // gives the lift as a share of a tile (0..JUMP.arc).
-export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArrival: true }; // landOnArrival (release 759): a sky hop ends on the first platform past the gap. // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
+export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArrival: true, liftAt: .5 }; // liftAt (2026-11-13): Jump held from the ground starts the drone's lift this share of the base arc in (.5: the peak) // landOnArrival (release 759): a sky hop ends on the first platform past the gap. // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
 // Footing on a great tree's branches (Tim, 2026-11-05: "too hard to find your footing on the platforms"). On a canopy platform a
 // dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
 // straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
@@ -3724,7 +3724,7 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.plunge = null; this.plungeSpent = false; this.plungeRecoverUntil = 0; // jump attacks
@@ -4962,6 +4962,14 @@ export class Game {
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
   // above them. It ends on landing (or when the drone is stowed): the jump ends at once and the landing is settled by the ordinary
   // fall rule as a drop of v²/2g levels (fallDamage).
+  // The drone's lift from a jump (release 647; the second press, or JUMP.liftAt's held Jump): its fuel and roof rules. `held`: from a
+  // held Jump, which says nothing when there is no fuel or a roof (the jump is simply a jump).
+  droneJumpLift(now, held = false) {
+    const m = this.save.mech, width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), fall = this.fallApplies() ? this.fall : null, high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0, fall ? fall.z : 0);
+    if (!(m?.fuel > 0)) { if (!held) this.message = DRONE_LIFT.none; return false; }
+    const z = Math.max(high, below); if (this.droneRoofCap(z) != null) { if (!held) this.message = DRONE_LIFT.roofed; return false; } // under a roof: no lift
+    this.droneLift = { base: Math.max(this.jumpFrom ?? below, below, fall ? Math.floor(fall.z + 1e-6) - DRONE_LIFT.max : -Infinity), z, vz: 0 }; this.mechSpent = false; this.fall = null; this.message = DRONE_LIFT.engage; return true;
+  }
   droneLiftAllowed() { return this.area === "overworld" || (this.area === "dungeon" && interiorTerrain(this.map)); }
   // Lowest local roof over the footprint. Walls still stop moveAxis; this only
   // keeps an airborne body from travelling sideways through a descending roof.
@@ -9620,7 +9628,7 @@ export class Game {
         else this.message = FALL.nothing;
       }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop && this.treeLaunch(now)) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false, tree: true }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }
-      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); if (this.droneRoofCap(z) != null) this.message = DRONE_LIFT.roofed; /* under a roof: no lift */ else { this.droneLift = { base: Math.max(this.jumpFrom ?? below, below, fall ? Math.floor(fall.z + 1e-6) - DRONE_LIFT.max : -Infinity), z, vz: 0 }; this.mechSpent = false; this.fall = null; this.message = DRONE_LIFT.engage; } } } // release 647: the drone's booster
+      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) this.droneJumpLift(now, false); // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
       else {
@@ -9632,6 +9640,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        this.jumpHold = true; // JUMP.liftAt: Jump held from the ground hands over to the drone at the jump's peak
         if (deckFrom != null) { this.skyAir = deckFrom; this.skyAirScale = 1; this.deckHop = true; this.setRoofDeck(null); } // held over the roof (and over its edge) until it lands
         { const u = TREE_KEEL.on && this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, width0, p.x, p.y) : null; this.keelLine = u?.canopy && !u.blocked ? { x: u.x, y: u.y } : null; } // TREE_KEEL: a jump from a branch keeps to that branch's line
         this.cancelConsumeVisual('jump');
@@ -9639,6 +9648,10 @@ export class Game {
         cancelCastVisual(p);
       }
     }
+    // JUMP.liftAt (Tim, 2026-11-13: "jump in the air brings up the drone"): Jump held from the ground, without a let-go, starts the
+    // drone's lift once the jump peaks, under the double press's own rules (droneJumpLift). Letting go, or the jump ending, ends it.
+    if (this.jumpHold) { if (input.held?.("jump") !== true || !(now < (this.jumpUntil || 0)) || this.droneLift || this.glide || this.plunge) this.jumpHold = false;
+      else if (Number.isFinite(this.jumpStart) && now - this.jumpStart >= Math.min(this.jumpDur || JUMP.base, JUMP.base) * JUMP.liftAt) { this.jumpHold = false; if (this.droneLiftAllowed() && this.droneUp()) this.droneJumpLift(now, true); } }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if (this.droneLift) this.droneLiftStep(dt, now, input.held?.("jump") === true); // release 647

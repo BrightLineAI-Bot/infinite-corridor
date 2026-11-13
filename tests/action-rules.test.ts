@@ -6,11 +6,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, FALL, GLIDE, CANOPY_FALL_MS } from '../src/game.ts';
+import { Game, FALL, GLIDE, CANOPY_FALL_MS, JUMP } from '../src/game.ts';
 import { fallDamage } from '../src/landscape.ts';
 import { learnRank, BRANCHES, riftStep } from '../src/constellation.ts';
 import { APERTURE_SKILLS } from '../src/items.ts';
-import { DRONE, setMechMode } from '../src/vehicle-gates.ts';
+import { DRONE, DRONE_LIFT, setMechMode } from '../src/vehicle-gates.ts';
 
 const SEED = 'ROOF', W = 32, ROW = 30; let M = 100;
 const inp = (x: number, y = 0, jump = false, hold = false, dodge = false) => { let j = jump, d = dodge; return { state: { x, y }, consume: (k: string) => k === 'jump' && j ? (j = false, true) : k === 'dodge' && d ? (d = false, true) : false, held: (k: string) => k === 'jump' && hold }; };
@@ -100,4 +100,22 @@ test('4. the cap survives a save and reload mid-lift (exact resume), and an ordi
   const back: any = new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(d.now())))), d.now());
   assert.deepEqual([back.droneLift.z, back.droneLift.vz, back.droneLift.base, back.droneLift.cap], [L.z, L.vz, L.base, L.cap]); assert.deepEqual([back.player.x, back.player.y], [x, y]);
   const k = wayfarer({ drone: true }); cliff(k, 0); const dk = drive(k); dk.step(0, 0, true); dk.step(0, 0, true, true); assert.ok(k.droneLift); assert.equal(k.droneLift.cap, undefined, 'a lift from a jump keeps base + max');
+});
+
+// 2. Jump held from the ground brings up the drone at the jump's peak (JUMP.liftAt), under the double press's rules.
+test('2. holding Jump from the ground starts the drone lift at the jump\'s peak; a tap is a plain jump; the double press still works', () => {
+  const g = wayfarer({ drone: true }); cliff(g, 0); const d = drive(g); const t0 = d.step(0, 0, true, true); const start = g.jumpStart; assert.ok(Number.isFinite(start));
+  const peak = start + JUMP.base * JUMP.liftAt; let began = -1;
+  for (let i = 0; i < 40 && began < 0; i++) { const t = d.step(0, 0, false, true); if (g.droneLift) began = t; }
+  assert.ok(began >= peak && began < peak + 1000 / 60 + 1e-6, `the lift began at the peak (${began - start} ms in)`); assert.equal(g.message, DRONE_LIFT.engage);
+  for (let i = 0; i < 30; i++) d.step(0, 0, false, true); assert.ok(g.droneLift.z > 1, 'climbing while held'); assert.ok(t0 > 0);
+  // a tap, or a let-go before the peak: a plain jump
+  for (const holdFrames of [0, 5]) { const k = wayfarer({ drone: true }); cliff(k, 0); const dk = drive(k); dk.step(0, 0, true, holdFrames > 0); for (let i = 0; i < holdFrames; i++) dk.step(0, 0, false, true);
+    for (let i = 0; i < 60; i++) { dk.step(0); assert.equal(k.droneLift ?? null, null, `let go after ${holdFrames} frames: no lift`); } }
+  // held from the ground with no fuel: a plain jump, nothing said about the drone
+  const e = wayfarer({ drone: true }); cliff(e, 0); e.save.mech.fuel = 0; const de = drive(e); de.step(0, 0, true, true); for (let i = 0; i < 40; i++) { de.step(0, 0, false, true); assert.equal(e.droneLift ?? null, null); } assert.notEqual(e.message, DRONE_LIFT.none);
+  // without the drone up: a plain jump
+  const n = wayfarer(); cliff(n, 0); const dn = drive(n); dn.step(0, 0, true, true); for (let i = 0; i < 40; i++) dn.step(0, 0, false, true); assert.equal(n.droneLift ?? null, null);
+  // the double press still works (before the peak, with no hold)
+  const q = wayfarer({ drone: true }); cliff(q, 0); const dq = drive(q); dq.step(0, 0, true); dq.step(0, 0, true, true); assert.ok(q.droneLift, 'second press');
 });
