@@ -24,7 +24,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS } from "./close-view-outdoor.ts";
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.ts";
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
@@ -2315,7 +2315,7 @@ export function closeViewEchoRibbons(g, map, quality = "balanced", reduce = fals
     if (!valid(q)) return;
     const d=Math.hypot(q.dx,q.dy),dx=q.dx/d,dy=q.dy/d,n=K.segments,shape=q.shape==='thrust'?'thrust':'sweep',half=(Number(q.arc)||100)*Math.PI/360;
     const stage=memory?primaryVisualStage(q):null,step=stage?.step||(memory&&q.primaryMotion==null?Math.max(1,Math.min(3,Number(q.primaryStep)||1)):0),offset=stage?.kind==='cleaver-four'?(stage.direction>0?-.28:.28):step===1?-.28:step===2?.28:0,angle=Math.atan2(dy,dx),start=angle-half+offset,end=angle+half+offset;
-    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?OUTDOOR.terrain.level:LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
+    const ground=Number.isFinite(q.support)?q.support*(RELIEF.map===map?(RELIEF.R?.tower?.level?.[Math.floor(q.y)*(map.width||32)+Math.floor(q.x)]||OUTDOOR.terrain.level):LIFT_PER_LEVEL):surfaceZ(map,q.x,q.y), width=(shape==='thrust'?K.width.thrust:K.width.sweep)*(memory ? .7 : 1), spec=memory?K.memory:K.actual;
     const point = i => { const t=i/n,b=shape==='thrust'?angle:start+(end-start)*t,r=shape==='thrust'?.18+(q.range-.18)*t:q.range,x=q.x+Math.cos(b)*r,y=q.y+Math.sin(b)*r,z=ground+K.height[0]+(K.height[1]-K.height[0])*Math.sin(Math.PI*t),tx=shape==='thrust'?dx:-Math.sin(b),ty=shape==='thrust'?dy:Math.cos(b),w=width*(shape==='thrust'?(1-t*.82):(.72+.28*Math.sin(Math.PI*t))); return {x,y,z,nx:-ty*w,ny:tx*w}; };
     let a=point(0); for(let i=1;i<=n;i++){const b=point(i),alpha=Math.max(0,Math.min(1,fade))*spec.alpha; emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x+b.nx,b.y+b.ny,b.z,1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x+a.nx,a.y+a.ny,a.z,-1,-1,alpha,spec.color,1);emit(b.x-b.nx,b.y-b.ny,b.z,1,1,alpha,spec.color,1);emit(a.x-a.nx,a.y-a.ny,a.z,-1,1,alpha,spec.color,1);vertices+=6;a=b;} paths++;
   };
@@ -3683,7 +3683,7 @@ export const closeViewRoofOpacity = (i) => ROOF_FADE.a[i]; // for tests
 // taller than its levels) and meet the fall's own height by the landing.
 export const CLOSE_VIEW_LEAP = Object.freeze({ arcFrom: .42, arcPeak: .72, apexMargin: .15, gravity: 28, snap: .18, rise: 20, ahead: 1, samples: 6, soft: .1, liftEase: 8, reset: 2.5 });
 const tileElevAt = (map, x, y) => { const w = Math.max(1, Number(map?.width) || 32), t = map?.tiles?.[Math.floor(y) * w + Math.floor(x)]; return t ? Number(t.elev) || 0 : 0; }; // a level, by the tile (the feet's point)
-const LEAP = { map: null, fall: null, base: 0, from: 0, fromElev: 0, air: false, settle: false, z: 0, v: 0, bv: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0, fOff: 0, fH: 1 };
+const LEAP = { map: null, fall: null, base: 0, from: 0, fromElev: 0, air: false, settle: false, z: 0, v: 0, bv: 0, t: NaN, x: NaN, y: NaN, vx: 0, vy: 0, fOff: 0, fH: 1, fL: 1.2, fZ: 1 };
 // The arc over the footing: the ordinary jump's lift scaled to `arcPeak` of a level, less what the footing has already climbed this jump,
 // never under `apexMargin` (the higher of the two, smoothly: a hard max put a kink in the rise).
 function leapArc(K, L, lift, climbed) { const a = K.apexMargin * L, b = K.arcPeak * L - climbed, k = K.soft * L; return Math.min(1, lift / K.arcFrom) * (a + b + Math.sqrt((a - b) * (a - b) + k * k)) / 2; }
@@ -3698,9 +3698,11 @@ export function presentLeap(g, now, d) {
   const jumping = clock < (g.jumpUntil || 0), lift = Math.max(0, Number(d.jumpLift) || 0), f = g.fall && Number.isFinite(g.fall.z) ? g.fall : lifted; let arc = 0;
   if (f) { // FALL (and the drone's lift, the glider): the height in the air, from where the feet were drawn when it began
     const kind = f === g.fall ? "fall" : f === g.droneLift ? "drone" : "glide", air = Math.max(0, f.z - tileElevAt(g.map, fx, fy));
-    if (LEAP.fall !== kind) { const was = LEAP.fall; LEAP.fall = kind; LEAP.fOff = (!was && jumping && kind === "fall" || !Number.isFinite(HERO_FEET.z) ? LEAP.base : HERO_FEET.z) - f.z * L; LEAP.fH = Math.max(.25, air); } // from where the feet were drawn (a roof's drawn top, a caught fall)
+    // a lift or glide from a towering structure (OUTDOOR.towering) is drawn at its taller level, eased to the ground's as it comes down
+    if (LEAP.fall !== kind) { const was = LEAP.fall; LEAP.fall = kind; LEAP.fL = kind !== "fall" && RELIEF.map === g.map ? RELIEF.R?.tower?.level?.[Math.floor(fy) * (g.map.width || 32) + Math.floor(fx)] || L : L; LEAP.fZ = Math.max(.25, f.z);
+      LEAP.fOff = (!was && jumping && kind === "fall" || !Number.isFinite(HERO_FEET.z) ? LEAP.base : HERO_FEET.z) - f.z * LEAP.fL; LEAP.fH = Math.max(.25, air); } // from where the feet were drawn (a roof's drawn top, a caught fall)
     if (kind === "fall") LEAP.base = f.z * L + LEAP.fOff * Math.max(0, Math.min(1, air / LEAP.fH)); // met by the landing
-    else { LEAP.fOff *= Math.exp(-K.liftEase * dt); LEAP.base = f.z * L + LEAP.fOff; } // the lift and the glide: let go over a moment
+    else { LEAP.fOff *= Math.exp(-K.liftEase * dt); LEAP.base = f.z * (L + (LEAP.fL - L) * Math.max(0, Math.min(1, f.z / LEAP.fZ))) + LEAP.fOff; } // the lift and the glide: let go over a moment
     if (jumping && kind === "fall") { arc = leapArc(K, L, lift, 0); LEAP.from = LEAP.base; } // a jump that holds its height over lower ground: its own arc
     LEAP.air = jumping && kind === "fall"; LEAP.v = Math.max(0, -(Number(f.vz) || 0) * L); LEAP.bv = 0;
     const z = Math.max(ground, LEAP.base + arc); d.lift = 0; d.jumpLift = Math.max(0, z - ground); LEAP.z = z; LEAP.settle = false; return z;
@@ -3767,6 +3769,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (flash > 0) { const lift = 1 + OUTDOOR.lightning.lift * flash; F.amb[0] *= lift; F.amb[1] *= lift; F.amb[2] *= lift; } }
   // a house's roof fades out while the Wayfarer is inside it (or the camera is), and stays drawn while they are outside it
   F.relief = F.outdoor && openWorld.ground && glRelief(openWorld) ? 1 : 0;
+  // towering structures (OUTDOOR.towering): the air far under a towering top and over its foot, and the cloud deck below it
+  if (F.relief && openWorld.R) outdoorTowerAir(F, g.map, openWorld.R, F.px, F.py, surfaceZ(g.map, F.px, F.py), openWorld.sky, now, reduce, g.presentation?.effectiveQuality || "balanced"); else { F.tower.fill(0); F.towerR.fill(0); F.deck.fill(0); }
   F.nRuns = 0; F.nFades = 0; if (F.outdoor && openWorld.houses.roofs.length) roofRuns(F, openWorld, g.map, F.px, F.py, CAM.cx, CAM.cy, now, reduce, ownRoofDeck(g)?.id ?? null, heroHeight(g), CAM.hc);
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   let solidsNow = F.outdoor ? openWorld.solids : null;
