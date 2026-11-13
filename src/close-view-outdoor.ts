@@ -205,6 +205,14 @@ export const OUTDOOR = f({
       ruinMarker: f({ recipe: "standingStone", colors: f(["#806b52", "#433a31", "#b09b79"]) }),
       dungeon: f({ recipe: "portal", colors: f(["#62576b", "#332d39", "#63817a"]) }),
       watcherTomb: f({ recipe: "tomb", colors: f(["#c9c6d8", "#5a566c", "#e8f4ff"]) }),
+      // 2026-11-13 (Tim: "world caches ... chests, and the doors inside Pentagons and dungeons ... should read as solid 3D objects"):
+      // the release 907 world caches by spot (a fallen wayfarer's remains, an empty throne, a barred alcove and its lever, a bundle on a
+      // ledge or a climb's top), a crossing's way out and a building's doors and ladders (a stair down stays flat in the floor). `wall`:
+      // stands against the wall beside it (its back to the blocked neighbour).
+      worldCache: f({ recipe: "worldCache", colors: f(["#4a4038", "#211d19", "#d8cfbd"]), wall: true }),
+      cacheLever: f({ recipe: "lever", colors: f(["#5a5248", "#2a2622", "#a08a52"]), wall: true }),
+      exit: f({ recipe: "doorway", colors: f(["#76533b", "#382b25", "#8a8177"]), wall: true }),
+      buildingStair: f({ recipe: "doorway", colors: f(["#5a4632", "#2a221c", "#7e766a"]), wall: true }),
     }),
     // states that show a cache or chest opened (its lid thrown back), and that show a rock moved or broken (rubble)
     opened: /^(used|open|opened|empty|looted|taken)$/, rubble: /^(moved|broken)$/,
@@ -608,13 +616,15 @@ export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
 export function outdoorPropObject(o) {
   if (!o || typeof o !== "object" || !OUTDOOR.props.kinds[o.kind] || o.strange || o.carried || o.hidden === true) return false;
   if (o.kind === "cache" && o.state === "hidden") return false;
+  if (o.kind === "buildingStair" && o.dir === "down") return false; // a stair down is drawn flat in the floor
   return Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y));
 }
 // What the props depend on: each one's kind, place and state (a cache opened, a rock broken). A number; nothing allocated.
 export function outdoorPropSignature(map, seen = null) {
   let a = 0; const objs = map?.objects || [];
   for (let i = 0; i < objs.length; i++) { const o = objs[i]; if (!outdoorPropObject(o) || (seen && !seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))) continue; const st = String(o.state || ""), op = OUTDOOR.props.opened.test(st) ? 1 : OUTDOOR.props.rubble.test(st) ? 2 : 0;
-    a = (a + Math.imul(Math.round(o.x * 16) + 7, 73856093) + Math.imul(Math.round(o.y * 16) + 3, 19349663) + Math.imul(op + 1 + o.kind.length * 4, 83492791)) | 0; }
+    const more = o.kind === "buildingStair" ? (o.lock && !o.unlocked ? 4 : 0) + (o.barred && !o.opened ? 8 : 0) : st === "sealed" ? 16 : st === "pulled" ? 32 : 0; // a door's lock and bars, an alcove's bars, a lever pulled
+    a = (a + Math.imul(Math.round(o.x * 16) + 7, 73856093) + Math.imul(Math.round(o.y * 16) + 3, 19349663) + Math.imul(op + 1 + more + o.kind.length * 4, 83492791)) | 0; }
   return a >>> 0;
 }
 // an eight-cornered solid (bottom four counter-clockwise from above, then the top four over them): six faces
@@ -694,14 +704,70 @@ const PROP_RECIPES = {
   portal(V, n, o, C, k) { n = pbox(V, n, -.36, 0, 0, .09, .14, .95, C[0], 1, .08); n = pbox(V, n, .36, 0, 0, .09, .14, .95, C[0], 1, .08);
     n = pbox(V, n, 0, 0, .95, .48, .17, .15, C[0], 1, .05); n = pbox(V, n, 0, 0, 1.1, .3, .12, .08, C[2], 1, .2);
     n = pbox(V, n, 0, .04, 0, .27, .1, .9, [.03, .03, .04], 7); n = pbox(V, n, 0, -.2, 0, .32, .08, .04, C[1], 1); return n; },
+  // the world caches (release 907), by spot; a find not yet taken keeps a small glint (its own light)
+  worldCache(V, n, o, C, k) { const live = !OUTDOOR.props.opened.test(String(o.state || "")), glint = (u, v, w) => pbox(V, n, u, v, w, .025, .025, .05, [1, .9, .55], 9, .6);
+    if (o.spot === "corpse") { // a cloak fallen flat, the skull, ribs, a boot
+      n = lump(V, n, .04, 0, 0, .3, .15, 6, k, C[0], 7); n = lump(V, n, -.27, -.04, 0, .1, .15, 5, k + 3, C[2], 0);
+      for (const u of [-.08, .04, .16]) n = pbox(V, n, u, -.06, .06, .012, .1, .02, C[2], 0, 0);
+      n = pbox(V, n, .3, .08, 0, .07, .04, .06, C[1], 7); if (live) n = glint(.2, -.12, .08); return n; }
+    if (o.spot === "throne") { const st = hex01("#5a5248"), dk = hex01("#211d19"), gold = hex01("#a08a52"), arm = hex01("#6b6255"); // the high back, the seat and arms, the dark beneath, a worn crest
+      n = pbox(V, n, 0, .2, 0, .3, .07, 1.25, st, 1, .06); n = pbox(V, n, 0, .2, 1.25, .2, .07, .14, st, 1, .4); n = pbox(V, n, 0, .02, 0, .3, .22, .36, dk, 1);
+      n = pbox(V, n, 0, 0, .36, .34, .24, .08, arm, 1); for (const u of [-.32, .32]) n = pbox(V, n, u, .02, .36, .04, .22, .22, arm, 1);
+      n = pbox(V, n, 0, .125, 1.05, .07, .01, .07, gold, 8); if (live) n = glint(0, -.25, .12); return n; }
+    if (o.spot === "lever") { const st = hex01("#6e665a"), sealed = o.state === "sealed"; // a barred alcove in the wall: its arch, the dark recess, the bars until the lever is pulled
+      n = pbox(V, n, -.36, .36, 0, .07, .1, .95, st, 1); n = pbox(V, n, .36, .36, 0, .07, .1, .95, st, 1); n = pbox(V, n, 0, .36, .95, .43, .1, .14, st, 1, .1);
+      n = pbox(V, n, 0, .44, 0, .29, .03, .95, [.06, .05, .045], 7); n = pbox(V, n, 0, .32, 0, .3, .06, .08, st, 1);
+      if (sealed) for (const u of [-.18, -.06, .06, .18]) n = pbox(V, n, u, .3, .08, .014, .014, .86, hex01("#5c5a56"), 8);
+      if (live) n = glint(0, .36, .18); return n; }
+    if (live) { n = pbox(V, n, 0, 0, 0, .16, .12, .14, hex01("#7a5a36"), 7, .1); n = pbox(V, n, 0, 0, .14, .1, .125, .02, hex01("#5c4227"), 7); n = glint(.08, -.13, .18); } // a small bundle
+    else n = pbox(V, n, 0, 0, 0, .18, .13, .02, hex01("#5c4227"), 7, .2); // taken: its wrapping left lying open
+    return n; },
+  // the lever that lifts an alcove's bars: a stone base, its iron arm up, or down once pulled
+  lever(V, n, o, C, k) { const down = o.state === "pulled" || OUTDOOR.props.opened.test(String(o.state || "")), t = down ? 2.2 : .45, L = .32, ev = -L * Math.sin(t), ew = .32 + L * Math.cos(t);
+    n = pbox(V, n, 0, .3, 0, .16, .1, .5, C[0], 1, .1); n = pbox(V, n, 0, .2, .3, .05, .02, .1, C[1], 8);
+    n = hexa(V, n, [at3(-.018, .17, .32), at3(.018, .17, .32), at3(.018, .14, .32), at3(-.018, .14, .32), at3(-.018, .17 + ev, ew), at3(.018, .17 + ev, ew), at3(.018, .14 + ev, ew), at3(-.018, .14 + ev, ew)], hex01("#4a4d52"), 8);
+    n = lump(V, n, 0, .155 + ev, ew - .02, .04, .07, 5, k, C[2], 8); return n; },
+  // a way through a wall: a crossing's way out, a building's door (dark beyond; its frame lit; locked, barred, or open with its door
+  // swung back into the room), or a ladder up to a hatch. Open doors stand open so the view through them is never blocked.
+  doorway(V, n, o, C, k) {
+    if (o.kind === "buildingStair" && o.dir !== "door") { const wd = hex01("#8a6a3e"); // a ladder against the wall, up to a hatch
+      for (const u of [-.2, .2]) n = pbox(V, n, u, .32, 0, .025, .025, 1.6, wd, 5, 0);
+      for (let w = .2; w < 1.55; w += .22) n = pbox(V, n, 0, .32, w, .2, .016, .018, wd, 5, 0);
+      n = pbox(V, n, 0, .36, 1.6, .36, .06, .05, C[1], 5); n = pbox(V, n, 0, .36, 1.62, .3, .05, .05, [.03, .03, .035], 7); return n; }
+    const fr = C[2], door = o.kind === "buildingStair", locked = door && o.lock && !o.unlocked, barred = door && o.barred && !o.opened, pv = .4, H = 1.12, half = .3;
+    n = pbox(V, n, -half - .07, pv, 0, .075, .1, H, fr, 1, .04); n = pbox(V, n, half + .07, pv, 0, .075, .1, H, fr, 1, .04); // the jambs
+    n = pbox(V, n, 0, pv, H, half + .15, .11, .16, fr, 1, .08); n = pbox(V, n, 0, pv - .02, 0, half + .1, .12, .035, fr, 1); // the lintel and the sill
+    if (door) n = pbox(V, n, 0, pv - .105, H - .03, half, .006, .025, [1, .92, .64], 9); // its frame lit (the standard view's glow)
+    n = pbox(V, n, 0, pv + .08, 0, half, .02, H, [.025, .022, .02], 7); // the dark beyond
+    if (locked) { n = pbox(V, n, 0, pv - .03, .02, half - .01, .03, H - .04, C[0], 7); n = pbox(V, n, 0, pv - .07, .5, .07, .015, .06, hex01("#c9a24a"), 8); }
+    else if (barred) for (const u of [-.18, 0, .18]) n = pbox(V, n, u, pv - .05, .03, .016, .016, H - .06, hex01("#6a6458"), 8);
+    else { const th = 1.75, cu = Math.cos(th), sv = Math.sin(th), hu = -half, hv = pv - .04, L = half * 2 - .02, tk = .035; // the leaf, swung back on its hinge into the room
+      const P = (a, b, w) => at3(hu + a * cu - b * sv, hv - a * sv - b * cu, w);
+      n = hexa(V, n, [P(0, 0, .02), P(L, 0, .02), P(L, tk, .02), P(0, tk, .02), P(0, 0, H - .04), P(L, 0, H - .04), P(L, tk, H - .04), P(0, tk, H - .04)], C[0], 7);
+      n = pbox(V, n, hu + L * .8 * cu + .02 * sv, hv - L * .8 * sv + .02 * cu, .5, .02, .02, .04, hex01("#4a4d52"), 8); } // its ring
+    return n; },
 };
+// Which way a prop that stands against a wall faces: its back to a blocked neighbour (or the map's edge), its front to the open
+// floor; its own tile blocked (a door in the wall itself), it stands at that tile's face toward the open side. Returns
+// { rot, shift } (shift: how far from the tile's centre toward its back the frame moves). Pure.
+export function outdoorWallFacing(map, x, y) {
+  const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Math.floor(tiles.length / w)), X = Math.floor(x), Y = Math.floor(y);
+  const blocked = (tx, ty) => tx < 0 || ty < 0 || tx >= w || ty >= h || !tiles[ty * w + tx] || !!tiles[ty * w + tx].blocked;
+  // the back's direction (dx, dy) and the turn that puts it there (v = (-sin rot, cos rot) points to the back)
+  const ROT = [[0, -1, Math.PI], [0, 1, 0], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]];
+  if (blocked(X, Y)) { for (const [dx, dy, r] of ROT) if (!blocked(X - dx, Y - dy)) return { rot: r, shift: -.9 }; return { rot: Math.PI, shift: 0 }; } // (its frame at the face, .4 in front of its origin)
+  for (const [dx, dy, r] of ROT) if (blocked(X + dx, Y + dy)) return { rot: r, shift: .5 - .42 };
+  return { rot: Math.PI, shift: -.3 };
+}
 // The props of a section (or a floor) as solids, in the same vertex layout as outdoorMesh. zAt(x, y): the floor's height
 // there (0 outdoors). Returns { data, verts, props, objects } (objects: the props drawn, for their shadows). Pure.
 export function outdoorProps(map, zAt = null, seen = null) {
   const P = OUTDOOR.props, list = (map?.objects || []).filter((o) => outdoorPropObject(o) && (!seen || seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))).slice(0, P.max);
   const V = new Float32Array(list.length * P.maxVerts * OUTDOOR_FLOATS); let n = 0, kept = 0; const objects = [];
   for (const o of list) { const K = P.kinds[o.kind], C = K.colors.map(hex01), k = (Math.round(o.x * 4) * 131 + Math.round(o.y * 4) * 7919) | 0, recipe = PROP_RECIPES[K.recipe];
-    const x = Number(o.x) + .5, y = Number(o.y) + .62, rot = Math.PI + (outdoorHash(k, 5, 19) - .5) * .5; // the front faces the bottom of the map, as the ordinary view draws it
+    const wf = K.wall ? outdoorWallFacing(map, Number(o.x) + .5, Number(o.y) + .5) : null;
+    let x = Number(o.x) + .5, y = Number(o.y) + .62, rot = Math.PI + (outdoorHash(k, 5, 19) - .5) * .5; // the front faces the bottom of the map, as the ordinary view draws it
+    if (wf) { rot = wf.rot; x = Number(o.x) + .5 - Math.sin(rot) * wf.shift; y = Number(o.y) + .5 + Math.cos(rot) * wf.shift; } // against a wall: square to it, at its face
     FRAME.x = x; FRAME.y = y; FRAME.z = zAt ? Number(zAt(x, y)) || 0 : 0; FRAME.c = Math.cos(rot); FRAME.s = Math.sin(rot);
     const n0 = n; n = recipe(V, n, o, C, k); if (n - n0 > P.maxVerts) throw new Error(`prop ${o.kind} over its vertex bound`); kept++; objects.push(o); }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, props: kept, objects };
