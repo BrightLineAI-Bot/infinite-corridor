@@ -3652,6 +3652,7 @@ export class Game {
       swimming: this.swimming === true,
       swimKind: this.swimming === true ? this.swimKind ?? null : null,
       fatalFallPending: this._fatalFallPending === true,
+      edgeHold: this.edgeHold && this.area === "overworld" ? { dx: this.edgeHold.dx, dy: this.edgeHold.dy, elapsed: Math.max(0, clock - this.edgeHold.at) } : null, // QA 926: the edge just crossed (EDGE_HOLD) holds as long after a reload
       springSoak: this.springSoak ? { ...this.springSoak } : null, // QA 926: the hot springs' play-second clocks (HOT_SPRINGS), so a reload resumes a soak exactly
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
@@ -3789,6 +3790,8 @@ export class Game {
     if (Number.isFinite(Number(r.raftZ))) this.raftZ = Number(r.raftZ);
     if (r.swimming === true) { this.swimming = true; if (typeof r.swimKind === "string") this.swimKind = r.swimKind; }
     if (r.fatalFallPending === true) this._fatalFallPending = true;
+    { const q = r.edgeHold, unit = (v) => v === -1 || v === 0 || v === 1; // QA 926: the edge just crossed (EDGE_HOLD; edgeHeld clears it once spent)
+      if (q && typeof q === "object" && unit(q.dx) && unit(q.dy) && Math.abs(q.dx) + Math.abs(q.dy) === 1 && Number.isFinite(Number(q.elapsed)) && Number(q.elapsed) >= 0 && Number(q.elapsed) <= EDGE_HOLD.ms) this.edgeHold = { dx: q.dx, dy: q.dy, at: now - Number(q.elapsed) }; }
     { const q = r.springSoak, n = (v, hi) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(hi, Number(v))) : null; // QA 926: the hot springs' clocks (tickHotSprings)
       if (q && typeof q === "object" && [q.calm, q.away, q.scanIn, q.wisp].every((v) => n(v, 1e9) != null)) this.springSoak = { calm: n(q.calm, 1e9), away: n(q.away, 1e9), told: q.told === true, scanIn: n(q.scanIn, HOT_SPRINGS.scan), foes: q.foes === true, wisp: n(q.wisp, HOT_SPRINGS.wisp) }; }
   }
