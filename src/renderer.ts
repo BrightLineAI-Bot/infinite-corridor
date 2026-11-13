@@ -1,4 +1,7 @@
 import { FOURFOLD_DAGGERS } from "./items.ts"; // the Fourfold Daggers' X of cuts
+import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.ts";
+import { drawBleedIcon } from "./bleed.ts";
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -26,6 +29,7 @@ import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
 import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
@@ -75,6 +79,18 @@ export function drawNativePlayerDecorations(ctx, g, s, now) {
   ctx.restore();
 }
 const ELDER_ROWS = new WeakMap();
+// Stegosaur's Grip (echoes.ts WALL_CLING): the Wayfarer's arms raised onto the wall held, (nx, ny) pointing into it. At (x, y) the
+// drawn top-left of the Wayfarer's tile (already lifted), s pixels a tile. Two short arms and hands; no allocation.
+function drawClingGrip(ctx, x, y, s, nx, ny) {
+  const cx = (x + .5) * s, cy = (y + .36) * s, side = ny !== 0, reachX = nx * .3 * s, reachY = (ny < 0 ? -.34 : ny > 0 ? .08 : -.24) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let k = -1; k <= 1; k += 2) {
+    const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
+    ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
 function elderRuleRows(o){let rows=o.rows||ELDER_ROWS.get(o);if(!rows){rows=Array.from({length:16},(_,k)=>ruleRows(o.rule,33,26,Math.floor((o.phase||.5)*1e6)+7+k*7919).map(r=>r.slice(12,21))).flat();ELDER_ROWS.set(o,rows);}return rows;}
 const RECITER_NATIVE_LOOKS = new Set(['pilgrim','mercenary','minstrel','scholar','traveler','cartographer']);
 function hueRGB(h,s,l){h=((h%360)+360)%360/360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h*12)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));};return (f(0)<<16)|(f(8)<<8)|f(4);}
@@ -2506,7 +2522,8 @@ export function render(ctx, g, w, h, now) {
   const fallLift = g.fall && g.area === "overworld" && Number.isFinite(g.fall.z) ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1)) : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it
   const stepLift = standardStepEase(g, hopLift ?? groundLift(p.x, p.y), jumping, now, worldCapture || closeViewCapturing() || fallLift != null || !!g.glide || !!g.droneLift || g.area !== "overworld" || !!g.save?.boat?.aboard, lift / s); // a step up or down a level (or a hop's landing on the next branch) is eased, never cut (standardStepEase)
   const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : fallLift ?? (hopLift ?? groundLift(p.x, p.y)) + stepLift; // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
-  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
+  const spinoShakeAt = shakeOffset(g.spinoShake, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Spinosaurus's roar (spino-rex.ts): none under reduced motion
+  ctx.translate(Math.round(w / 2 - p.x * s + spinoShakeAt.x), Math.round(h / 2 - (p.y - viewLift) * s + spinoShakeAt.y));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
   const groundCached = !bareFloor && !worldCapture && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
@@ -2774,6 +2791,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "stegoTail") { drawStegoTail(ctx, o, s, now); // the Stego Bait: the severed tail, lying where it fell
           } else if (o.kind === "worldCache") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawWorldCache(ctx, o, s, now); if (L) ctx.restore(); // world caches (world.ts WORLD_CACHES)
           } else if (o.kind === "cacheLever") { drawPentLever(ctx, o, s, now); // and the lever that lifts an alcove's bars
           } else if (o.kind === "tideBearer") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); drawTideLantern(ctx, o, s, now); // travel seeds
@@ -2801,6 +2819,7 @@ export function render(ctx, g, w, h, now) {
           } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else if(SEASON&&o.kind==="tree"&&o.state==="standing")drawSeasonTree(ctx,o,s,kind);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
+  { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
@@ -2838,7 +2857,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "wildStego", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
@@ -2945,6 +2964,8 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
+      // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
+      if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
@@ -3227,6 +3248,8 @@ export function render(ctx, g, w, h, now) {
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, w, h);
   }
+  { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
+    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),

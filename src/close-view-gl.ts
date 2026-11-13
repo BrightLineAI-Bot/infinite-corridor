@@ -126,6 +126,7 @@ uniform vec4 u_floorP; uniform vec3 u_floorRGB; uniform vec3 u_floorJ; uniform v
 // skyZ: zenith, cloud cover; skyH: horizon, ridge height; ridge: its colour, roughness; outW: water base, glance, ripple scale,
 // ripple strength; outR: a level's foot width, its darkness, the lip's width, its light; outD: detail strength, its near and
 // far fade, the sun's glint on water. terrainTex: one texel a tile (colour; flags: water, outcrop, level, surface class).
+uniform float u_edge; // tiles past the section's edge over which the open ground melts into the far haze (CLOSE_VIEW.camera.edgeFog; 0 indoors)
 uniform vec4 u_outdoor; uniform vec4 u_skyZ; uniform vec4 u_skyH; uniform vec4 u_ridge; uniform vec4 u_outW; uniform vec4 u_outR; uniform vec4 u_outD; uniform sampler2D u_terrainTex;
 // outX (the world pass, close-view-outdoor.ts OUTDOOR.ground and OUTDOOR.water): how much of the ordinary art's tile-scale
 // detail a land texel keeps (the rest is its own smoothed colour), the shore's wet band (tiles), foam strength, and 1 when
@@ -335,6 +336,7 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface, float z) { // z:
   vec2 warp = vec2(vnoise(P * 0.9), vnoise(P * 0.9 + 17.3)) - 0.5; // the tiles' colours, their grid broken by a gentle warp
   vec3 farC = texture(u_terrainTex, (P + warp * 0.7) / vec2(u_mapSize)).rgb * (0.9 + 0.2 * vnoise(P * 0.45 + 3.1));
   vec2 dd = abs(P - u_player); float near = (1.0 - smoothstep(u_outdoor.y, u_outdoor.z, max(dd.x, dd.y))) * surface.a;
+  if (u_edge > 0.0 && (P.x < 0.0 || P.y < 0.0 || P.x > float(u_mapSize.x) || P.y > float(u_mapSize.y))) near = 0.0;
   vec3 art = surface.rgb / max(surface.a, 1e-3);
   float wf = waterField(P), wet = smoothstep(0.5 - u_outX.y, 0.5, wf); bool water = wf > 0.5;
   if (near > 0.0 && u_outX.x < 0.999) art = mix(farC, art, water && u_outX.w < 0.5 ? 0.12 : u_outX.x); // the tile lines softened into the ground's own warped colour (no extra texture read)
@@ -368,6 +370,10 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface, float z) { // z:
     if (edge > 0.001) { float br = vnoise(P * 6.0 + vec2(t * 2.5, -t * 1.7)) * 0.6 + vnoise(P * 15.0 - t * 3.0) * 0.4;
       float foam = edge * smoothstep(0.35, 0.75, br + edge * 0.35) * u_outX.z; col = mix(col, vec3(0.92, 0.95, 0.96) * (dif * 0.6 + 0.4), clamp(foam, 0.0, 0.85)); }
     if (u_outX.w > 0.5) col = mix(col, art * dif, near * 0.6); }
+  // past the section's edge (2026-11-13): no ordinary art there (it drew the off-map void as a dark checker); the ground
+  // melts into the far haze over u_edge tiles, as if it lay at the fog's far edge, so the edge reads as distance, not a hole
+  vec2 off = max(-P, P - vec2(u_mapSize)); float beyond = max(off.x, off.y);
+  if (u_edge > 0.0 && beyond > 0.0) return atmos(col, W3, mix(depth, max(depth, u_fogP.y), smoothstep(0.0, u_edge, beyond)), dif);
   return atmos(col, W3, depth, dif);
 }
 vec3 hallBackdrop(vec3 ray) {
@@ -797,6 +803,23 @@ const PROP_CUT_FS = PROP_FS.replace("void main() {\n  /*CUT*/", `uniform float u
 void main() {
   { const float bayerR[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0); ivec2 pr = ivec2(gl_FragCoord.xy) & 3;
     if (u_cut <= (bayerR[pr.y * 4 + pr.x] + 0.5) / 16.0) discard; }`);
+// What stands between the camera and the Wayfarer (2026-11-13, CLOSE_VIEW.camera.occlude): a cone from the eye to the
+// Wayfarer's body (radius u_occC.x at the eye, u_occB.w at the body; it stops u_occC.w short of the body) cuts a screen-door
+// dithered window through every solid and terrain face inside it, down to u_occC.z opacity at its core. Its own programs: the
+// ordinary solids and heightfield passes keep no discard (early depth); close-view.ts draws with these only on a frame whose
+// bounded probe finds something in the cone. closeViewOccluderAlpha (close-view.ts) is this function's twin, for tests.
+const OCC_GLSL = `uniform vec4 u_occA; uniform vec4 u_occB; uniform vec4 u_occC; // eye xyz, strength; body xyz, radius there; eye radius, soft share, least opacity, stop
+void occlude(vec3 P) {
+  if (u_occA.w <= 0.0) return; vec3 d = u_occB.xyz - u_occA.xyz; float L = length(d); if (L < 1e-3) return; vec3 u = d / L;
+  float s = dot(P - u_occA.xyz, u); if (s <= 0.0 || s >= L - u_occC.w) return;
+  float r = max(u_occC.x, u_occB.w * s / L), e = length(P - u_occA.xyz - u * s); if (e >= r) return;
+  float a = mix(1.0, mix(u_occC.z, 1.0, smoothstep(r * u_occC.y, r, e)), u_occA.w);
+  const float bayerO[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0); ivec2 po = ivec2(gl_FragCoord.xy) & 3;
+  if (a <= (bayerO[po.y * 4 + po.x] + 0.5) / 16.0) discard;
+}
+`;
+const PROP_OCC_FS = PROP_FS.replace("void main() {\n  /*CUT*/", OCC_GLSL + "void main() {\n  occlude(v_pos);");
+const TERRAIN_OCC_FS = TERRAIN_FS.replace("void main() {\n  vec3 dir = v_pos - vec3(u_cam, u_hc);", OCC_GLSL + "void main() {\n  occlude(v_pos);\n  vec3 dir = v_pos - vec3(u_cam, u_hc);");
 // ---------------------------------------------------------------------------------------------- decals, props and glows
 // a_loc: -1..1 across the quad; a_meta: kind, alpha, a parameter, light. Kinds, blended: 0 contact shadow, 1 wind-up ring,
 // 4 cobweb (a corner triangle), 5 chain, 7 spike (a small metal spike, a card), 8 bones; added in light: 2 wind-up glow,
@@ -871,7 +894,7 @@ export function closeViewGLDiagnostics(){return {
 };}
 export function noteCloseViewGLFrameAbort(){GPU_DIAGNOSTICS.lastFailure=GPU_DIAGNOSTICS.frameFailure==='none'?'frame-aborted':GPU_DIAGNOSTICS.frameFailure;}
 globalThis.__closeViewGL = closeViewGLStats; // read by the browser harness and the lab's console (diagnostics only)
-const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, propCut: null, vbo: { env: null, wall: null, board: null, decal: null, model: null, prop: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, propCut: null },
+const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, propCut: null, propOcc: null, terrOcc: null, vbo: { env: null, wall: null, board: null, decal: null, model: null, prop: null }, vao: { env: null, wall: null, wallZ: null, board: null, decal: null, model: null, prop: null, propCut: null, propOcc: null, terrOcc: null },
   tex: { ground: null, mask: null, grit: null, terrain: null }, outdoorKey: null, outdoorVerts: 0, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
@@ -921,6 +944,10 @@ export function closeViewGLReady(makeCanvas) {
     try { if (!S.prop) throw new Error("no solids"); S.propCut = compile(gl, PROP_VS, PROP_CUT_FS); S.vao.propCut = layout(gl, S.propCut, S.vbo.prop, 10, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_mat", 1]]); } catch { S.propCut = null; S.vao.propCut = null; }
     // the overworld's heightfield (optional again: without it the open ground stays the flat plane and nothing is lifted)
     try { if (!S.prop) throw new Error("no solids"); S.terr = compile(gl, TERRAIN_VS, TERRAIN_FS); S.vbo.terr = gl.createBuffer(); S.vao.terr = layout(gl, S.terr, S.vbo.terr, 10, [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_mat", 1]]); } catch { S.terr = null; S.vbo.terr = null; S.vao.terr = null; }
+    // the occluder window (optional: without it nothing is cut, and the camera keeps pulling in before solids as it did)
+    const attrs = [["a_pos", 3], ["a_nrm", 3], ["a_col", 3], ["a_mat", 1]];
+    try { if (!S.prop) throw new Error("no solids"); S.propOcc = compile(gl, PROP_VS, PROP_OCC_FS); S.vao.propOcc = layout(gl, S.propOcc, S.vbo.prop, 10, attrs); } catch { S.propOcc = null; S.vao.propOcc = null; }
+    try { if (!S.terr) throw new Error("no relief"); S.terrOcc = compile(gl, TERRAIN_VS, TERRAIN_OCC_FS); S.vao.terrOcc = layout(gl, S.terrOcc, S.vbo.terr, 10, attrs); } catch { S.terrOcc = null; S.vao.terrOcc = null; }
     S.outdoorKey = null; S.outdoorVerts = 0; S.terrKey = null; S.terrVerts = 0;
     S.aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     S.canvas = c; S.gl = gl; S.staticKey = null; closeViewGLStats.ready = true;GPU_DIAGNOSTICS.contextLost=false; return true;
@@ -947,7 +974,7 @@ export const closeViewOutdoorAvailable = () => !!(S.gl && S.prop && S.tex.terrai
 export const prepareCloseViewBeastMesh = (mesh) => !!S.gl && !!S.beast && prepareBeastMesh(S.gl, S.beast, mesh);
 export const prepareCloseViewHeroGL = (asset) => {const ready=!!S.gl&&prepareHeroGL(S.gl,S.hero,asset);if(S.hero?.failed)GPU_DIAGNOSTICS.lastHeroFailure='upload-failed';return ready;};
 // For tests and the lab: forget the context (the next frame asks again).
-export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) { disposeHeroGL(S.gl,S.hero,true); disposeBeastGL(S.gl,S.beast,true); } S.hero = null; S.beast = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.propCut = null; S.vao.propCut = null; S.outdoorKey = null; S.outdoorVerts = 0; S.terr = null; S.vbo.terr = S.vao.terr = null; S.terrKey = null; S.terrVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
+export function resetCloseViewGL() { GPU_DIAGNOSTICS.contextLost=false;if(S.gl) { disposeHeroGL(S.gl,S.hero,true); disposeBeastGL(S.gl,S.beast,true); } S.hero = null; S.beast = null; S.gl = null; S.canvas = null; S.gritReady = false; S.groundW = S.groundH = 0; S.maskMap = null; S.maskW = S.maskH = 0; S.maskAt = 0; S.staticKey = null; S.staticVerts = 0; S.aniso = null; for(const k of ["ground","mask","grit","terrain"])S.tex[k]=null; S.prop = null; S.vbo.prop = S.vao.prop = null; S.propCut = null; S.vao.propCut = null; S.propOcc = S.terrOcc = null; S.vao.propOcc = S.vao.terrOcc = null; S.outdoorKey = null; S.outdoorVerts = 0; S.terr = null; S.vbo.terr = S.vao.terr = null; S.terrKey = null; S.terrVerts = 0; closeViewGLStats.failed = false; closeViewGLStats.ready = false; closeViewGLStats.reason = ""; closeViewGLStats.projectedShots = 0; }
 
 // ---------------------------------------------------------------------------------------------- the mask: one texel a tile
 // r: bits for ceiling, unseen and skylight; g: 0 floor, 1 hole, 2 lava, 3 chasm, 4 bridge, 5 hall shaft.
@@ -1012,7 +1039,8 @@ export function glProps(scene) {
   gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.prop); gl.bufferData(gl.ARRAY_BUFFER, scene.solids.data, gl.STATIC_DRAW);
   S.outdoorKey = scene.key; S.outdoorVerts = scene.solids.verts; closeViewGLStats.propBuilds = (closeViewGLStats.propBuilds || 0) + 1; closeViewGLStats.outdoorVerts = S.outdoorVerts; return true;
 }
-export const closeViewPropsAvailable = () => !!(S.gl && S.prop); // props can be drawn as solids (else they stay cards)
+export const closeViewPropsAvailable = () => !!(S.gl && S.prop);
+export const closeViewOccluderAvailable = () => !!(S.gl && S.propOcc && (S.terrOcc || !S.terr)); // the occluder window can be cut through solids (CLOSE_VIEW.camera.occlude) // props can be drawn as solids (else they stay cards)
 export const closeViewReliefAvailable = () => !!(S.gl && S.prop && S.tex.terrain && S.terr); // the overworld's heightfield can be drawn
 // The heightfield's triangles, uploaded only when the section's relief changes (a new section, a dig).
 export function glRelief(scene) {
@@ -1032,7 +1060,10 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
   runs: new Int32Array(2 * 16), nRuns: 0, relief: 0,
   // roofs part way through their fade (OUTDOOR.buildings.fade): start, count, opacity; each drawn screen-door dithered
-  fades: new Float32Array(3 * 16), nFades: 0 };
+  fades: new Float32Array(3 * 16), nFades: 0,
+  // the occluder window (CLOSE_VIEW.camera.occlude): its cone (see OCC_GLSL), and whether this frame's probe found solids or
+  // terrain inside it (only then are the cutting programs used); edge: the open ground's haze past the section's edge
+  occA: new Float32Array(4), occB: new Float32Array(4), occC: new Float32Array(4), occSolid: 0, occTerrain: 0, edge: 0 };
 export function drawSceneGL(ground, U, models = null, hero = null, beasts = null) {
   const gl = S.gl; if (!closeViewGLFrameReady()) return false; const F = GLF; let calls = 0;
   try {
@@ -1064,12 +1095,13 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   // 1b. outdoors: the outcrops and trees, one static buffer, opaque, with depth
   const outdoor = F.outdoor > 0 && !!S.prop && S.outdoorKey !== null;
   const outdoorU = (P) => { const u = P.U; gl.uniform1i(u.u_ground, 0); gl.uniform1i(u.u_mask, 1); gl.uniform4f(u.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(u.u_tex, ground.width, ground.height); gl.uniform2i(u.u_mapSize, S.maskW, S.maskH);
-    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC);
+    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC); gl.uniform1f(u.u_edge, outdoor ? F.edge : 0);
     gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
   // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
-  if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(S.terr.p); cam(S.terr); light(S.terr); outdoorU(S.terr);
-    gl.bindVertexArray(S.vao.terr); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
-  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ gl.useProgram(S.prop.p); cam(S.prop); light(S.prop); gl.bindVertexArray(S.vao.prop);
+  const occU = (P) => { gl.uniform4fv(P.U.u_occA, F.occA); gl.uniform4fv(P.U.u_occB, F.occB); gl.uniform4fv(P.U.u_occC, F.occC); };
+  if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { const T = F.occTerrain > 0 && S.terrOcc ? S.terrOcc : S.terr; gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(T.p); cam(T); light(T); outdoorU(T); if (T !== S.terr) occU(T);
+    gl.bindVertexArray(T === S.terr ? S.vao.terr : S.vao.terrOcc); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
+  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ const Pp = F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop; gl.useProgram(Pp.p); cam(Pp); light(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
     if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2], c = Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // a roof left out: the rest in runs
       if (F.nFades > 0 && S.propCut) { const P = S.propCut; gl.useProgram(P.p); cam(P); light(P); gl.bindVertexArray(S.vao.propCut); // a roof fading: dithered by its opacity (without the program, left out)
         for (let i = 0; i < F.nFades; i++) { const a = F.fades[i * 3], c = Math.min(F.fades[i * 3 + 1], S.outdoorVerts - a); if (c > 0) { gl.uniform1f(P.U.u_cut, F.fades[i * 3 + 2]); gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } } }

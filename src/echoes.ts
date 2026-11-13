@@ -28,6 +28,11 @@ export function grantSlainEchoes(save) {
   return granted;
 }
 
+// Spinosaur's Echo (Tim, 2026-11-12). Every jump-attack slam (any weapon's plunge, the Shadow Boxing dive's slam
+// included) is followed `delay` s later by one afterimage slam on the same spot, with the same radius, for `share` of the
+// slam's damage (and of its Imbue Weapon spark) and `stunShare` of its stagger. The afterimage is an ordinary effect, so it
+// keeps every rule the slam keeps (friendly fire, bosses and elites, poise, sanctuaries); it never lays another afterimage.
+export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -66,8 +71,52 @@ export const ECHOES = {
   // a Wayfarer who has killed it already (grantSlainEchoes).
   stalker: { name: "Stalker's Mist", cost: 3, trigger: "dodge", module: "mistForm", creature: "The Stalker", text: "Your dodge turns you to mist: each foe you pass through loses a share of its maximum health for good (never more than a third of it)." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
+  // The Wild Stegosaurus (Tim, 2026-11-12: "The stego's Echo lets you wall cling... jump onto a wall... and hold on to it. If you
+  // don't move, you just stay there. Press jump again... you jump off it, and you can do another jump off the next wall"). Taken on
+  // the first kill like every world beast's. Its rules and numbers are WALL_CLING; game.ts carries them out (wallCling*).
+  wildStego: { name: "Stegosaur's Grip", cost: 2, trigger: "jump", module: "wallCling", text: "Jump into a wall, cliff or rock and you hold on at the height you reached, as long as you like. Jump again to kick off it; from wall to wall you climb, up to 3 levels." },
+  // The Spinosaurus (Tim, 2026-11-12: "the Spinosaurus's Echo increases your jump attacks. When you do the jump-attack slam,
+  // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
+  // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
+  // or on load for a Wayfarer who has slain it already (grantSlainEchoes reads save.worldBeasts).
+  spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
+    text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
-export const ECHO_IDS = Object.keys(ECHOES);
+// Stegosaur's Grip, the wall cling (game.ts wallCling*). A jump pushed into a vertical surface (a solid tile, a house's wall, or
+// ground 2 or more levels above the jump) holds there; the stick held into the wall, or let go, keeps the hold (no time limit, as
+// Tim asked); pushed off the wall, a dodge, a blow that moves the Wayfarer, or the wall going lets go (a fall from that height).
+// Jump while holding kicks off it, away from the wall, as a new jump from the hold's height. Never with the drone out or the
+// robot on (their own Jump wins), mounted, swimming, aboard, gliding, inside a house, or on a Pentagon's, Great Castle's or
+// sealed tower's tiles (vehicle-gates.ts DRONE_FIZZLE): the Corridor's rules are different there.
+export const WALL_CLING = {
+  // The stick (or a kick) pushed at least this much on its main axis takes hold.
+  push: .5,
+  // And the main axis at least this share of the push: a run along a wall never grabs it.
+  aim: .7,
+  // How far past the collision box the wall is felt (tiles): more than a frame's step at a kick's pace (moveAxis stops short of it).
+  reach: .25,
+  // A hold is this many levels over the height its jump left from: a jump's top (an ordinary jump climbs one level).
+  rise: 1,
+  // A chain of holds climbs at most this many levels over the ground it began from (the drone lifts 5: DRONE_LIFT.max).
+  maxRise: 3,
+  // Holding, the stick pointed less than this share into the wall (and pushed at all) lets go.
+  letGo: .5,
+  // A stick under this is not pushed at all.
+  dead: .15,
+  // Ms the jump's clock is kept ahead of now each frame of a hold (it never ends while holding).
+  hold: 140,
+  // A wall jump: ms it goes straight off the wall before the stick steers, and its pace (times a walk: a dodge's).
+  kick: { firm: 220, push: 2 },
+};
+export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
+// The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
+// never lays another. `id` is the new effect's id; `aim` the facing it slams toward (the Close View afterimage's yaw).
+export function plungeAfterimage(slam, id, aim) {
+  if (!slam || slam.kind !== "plunge-slam" || slam.afterimage || slam.hostile) return null;
+  const S = SPINO_ECHO, a = aim && Number.isFinite(aim.x) && Number.isFinite(aim.y) ? aim : { x: 1, y: 0 };
+  return { ...slam, id, kind: "plunge-afterimage", afterimage: true, hits: {}, pulseIndex: 0, untilPulse: 0, delay: S.delay, delayMax: S.delay, lifeMax: slam.life,
+    damage: Math.max(1, Math.round(slam.damage * S.share)), imbue: (slam.imbue || 0) * S.share, stun: (slam.stun || 0) * S.stunShare, aimX: a.x, aimY: a.y };
+}
 
 // ---------------------------------------------------------------- save state
 export function ensureEchoState(save) {
