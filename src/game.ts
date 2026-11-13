@@ -2434,9 +2434,22 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // ground hands its descent on to the fall at this speed (the drawn arc's own landing speed), so the arc and the fall join without a
 // float. `plunge`: a jump attack (brawler-spells.ts PLUNGE) that ends over a drop is driven down at this speed and slams where the fall
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
+export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
+// QA 926: how a death on lethal ground is named on waking ("<words> — recovered at ..."), by the tile it took the Wayfarer on:
+// its mark first (a glacier's crevasse or a lunar rille, both lethal `abyss`; a chasm's `canyon` open to the stars), then its kind,
+// then the water kinds; `other` for anything else lethal. Before, every hazard but the canyon said "Lost beneath the water".
+export const HAZARD_DEATH = {
+  marks: [{ mark: "crevasse", kind: "abyss", words: "Lost in a crevasse" }, { mark: "rille", kind: "abyss", words: "Lost in a lunar rille" }, { mark: "chasm", kind: "canyon", words: "Lost to the stars" }],
+  kinds: { lava: "Lost to the lava", abyss: "Lost to the abyss", canyon: "Lost to the canyon" },
+  water: "Lost beneath the water", other: "Lost to the land",
+};
+export function hazardDeathWords(kind, tile = null) {
+  const H = HAZARD_DEATH; if (tile && tile.kind === kind) for (const m of H.marks) if (m.kind === kind && tile[m.mark]) return m.words;
+  if (H.kinds[kind]) return H.kinds[kind];
+  return kind === "river" || kind === "dungeonWater" || DEEP_WATER.includes(kind) ? H.water : H.other;
+}
 // QA 926: the longest jump still in flight that a pause or reload treats as airborne (ms); a longer one is a damaged clock.
 export const AIRBORNE_HOLD = { jumpMs: 10000 };
-export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
   const G = FALL.gravity, T = FALL.terminal, v0 = Math.min(T, Math.max(0, -Number(vz0) || 0)), h = Math.max(0, Number(drop) || 0);
@@ -5119,6 +5132,7 @@ export class Game {
   // Wayfarer wakes at the active checkpoint.
   resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
     const p = this.player, home = this.area === "overworld" ? this.glideHome : null; this.glideHome = null; // TREE_GLIDE.home: read before the carried states clear
+    const lostTo = fellIntoHazard ? hazardDeathWords(terrainHazard, tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)) : null; // QA 926 (HAZARD_DEATH): read where it happened
     // Release 423 (Tim: "the world bosses... keep their health when you die... it only resets after they die"): a living beast's
     // wounds are kept, as a share of its health, on its hunt record; it comes back that hurt (BEAST_KEEPS_WOUNDS).
     for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
@@ -5193,7 +5207,7 @@ export class Game {
     p.y = c.y;
     }
     p.invulnerableUntil = now + 2000;
-    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    this.message = `${lostTo || "Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     if (beastNote) this.message = `${beastNote} ${this.message}`;
 
   }
