@@ -151,6 +151,7 @@ export const OUTDOOR = f({
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),
+    f({ test: /^towerStone$/, h: .4, jitter: 0, mat: 1, inset: .04, taper: .03 }), // tall towers (tall-towers.ts): each tile's `towerH` (the tower's drawn height) is added
     f({ test: /.*/, h: .6, jitter: .6, mat: 0, inset: .03, taper: .1 }),
   ]),
   // standing trees by form: trunk height and radius, crown kind (0 cone stack, 1 round, 2 low round), crown size and lift
@@ -348,7 +349,7 @@ function pushTri(V, n, a, b, c, col, mat) {
 // a quad a b c d (counter-clockwise seen from outside)
 const pushQuad = (V, n, a, b, c, d, col, mat) => pushTri(V, pushTri(V, n, a, b, c, col, mat), a, c, d, col, mat);
 const outcropRule = (kind) => { for (const r of OUTDOOR.outcrops) if (r.test.test(kind)) return r; return OUTDOOR.outcrops[OUTDOOR.outcrops.length - 1]; };
-export function outdoorOutcropHeight(t) { const r = outcropRule(String(t?.kind || "")); return r.h + r.jitter * outdoorHash(t?.x | 0, t?.y | 0, 7) + (r.perLevel || 0) * (Number(t?.elev) || 0); }
+export function outdoorOutcropHeight(t) { const r = outcropRule(String(t?.kind || "")); return r.h + r.jitter * outdoorHash(t?.x | 0, t?.y | 0, 7) + (r.perLevel || 0) * (Number(t?.elev) || 0) + (Number(t?.towerH) || 0); }
 
 // The static solids of a section: outcrops and standing trees. Returns { data, verts, outcrops, trees }. Pure.
 export function outdoorMesh(map, sky, relief = null) { // R: the section's relief (outdoorRelief): outcrops rise from their level, trees stand on theirs
@@ -447,7 +448,7 @@ export function outdoorSurfaceZ(R, x, y) {
 // face, 2 a pit's wall, 3 a pit's floor). Each tile's top, and a face down every edge where it stands above its neighbour
 // (or the section's edge, down to the ground beyond). Pure.
 // A great tree's branch or leaf pad: it floats, held by a limb from the trunk, with nothing under it. Pure.
-export const outdoorFloating = (t) => !!t && t.canopy === true && t.kind !== "canopyTrunk" && !t.blocked && (Number(t.elev) || 0) > 0;
+export const outdoorFloating = (t) => !!t && (t.canopy === true && t.kind !== "canopyTrunk" || t.towerStep === true) && !t.blocked && (Number(t.elev) || 0) > 0; // a tall tower's steps float too (tall-towers.ts)
 export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
   if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1, Tr = OUTDOOR.terrain;
   if (w * h > Tr.maxTiles) return { data: new Float32Array(0), verts: 0 };

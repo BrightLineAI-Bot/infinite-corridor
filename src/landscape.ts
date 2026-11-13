@@ -1855,6 +1855,7 @@ export function interiorGeometryHeight(map, tx, ty, x, y) {
   if (!interiorTerrain(map)) return 0;
   const w = map.width || 32, t = map.tiles[ty * w + tx];
   if (!t?.blocked) return interiorTileLevel(t, x, y) * LIFT_PER_LEVEL;
+  if (map.tallTower) return 0; // tall towers: the shaft's walls stand from its floor, whatever ledge runs along them
   let best = null, distance = Infinity;
   for (const [dx, dy] of Object.values(RAMP_DIR)) {
     const nx = tx + dx, ny = ty + dy;
