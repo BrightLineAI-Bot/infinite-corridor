@@ -1588,15 +1588,15 @@ function drawMap() {
         y = h / 2 + j * cell - cell / 2 + mapView.panY,
         seen = !!save.explored[key],sighted=!seen&&!!save.towerSight?.[key]/* tall towers: charted from a lookout */,signal=atlasLayers.signals?signalBySection.get(key):null,
         frontier =
-          !seen && !sighted &&
+          !seen &&
           [
             [1, 0],
             [-1, 0],
             [0, 1],
             [0, -1],
           ].some(([a, b]) => save.explored[`${rx + a},${ry + b}`]);
-      if (!seen && !sighted && !frontier && !signal && key !== targetKey) continue;
       if (sighted) { mctx.fillStyle = landscapeAtlasColor(biomeFor(save.seed, rx, ry)) || "#51464a"; mctx.globalAlpha = .55; mctx.fillRect(x + 2, y + 2, cell - 4, cell - 4); mctx.globalAlpha = 1; mctx.setLineDash([3, 3]); mctx.strokeStyle = "#c9b98a"; mctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4); mctx.setLineDash([]); if (mapView.zoom >= 1.35) { mctx.fillStyle = "#e6dcc0"; mctx.font = `${Math.max(8, 8 * mapView.zoom)}px monospace`; mctx.fillText("CHARTED", x + 5, y + cell - 7); } continue; } // tall towers: a section a lookout charted, its ground as the land lies, not yet walked
+      if (!seen && !frontier && !signal && key !== targetKey) continue;
       const record = save.atlas?.[key], terrain = record?.terrain || (rx===game.rx&&ry===game.ry?game.map.dominant:"ash");
       const landscape = record?.landscape || (rx===game.rx&&ry===game.ry?game.map.landscape?.biome:null);
       mctx.fillStyle = seen

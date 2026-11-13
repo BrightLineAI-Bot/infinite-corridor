@@ -193,7 +193,7 @@ function mapObjectLists(map) {
   const value = {
     objects,
     length: objects.length,
-    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.kind === "tallTower"),
+    structures: objects.filter((o) => o.kind === "tallTower" || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"), // tall towers (tall-towers.ts) are drawn as great buildings are
     shelters: objects.filter((o) => o.kind === "shack" || o.kind === "greatBuilding"), // a great building has no inside on the overworld; listed so the Wayfarer stays in front of its facade
     animated: objects.filter((o) => ["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)),
   };
@@ -2786,7 +2786,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor || o.kind === "tallTower" || o.towerDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
+          } else if (o.kind === "tallTower" || o.towerDoor || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
           else if (o.kind === "architecturalDistrict") { /* district title is carried by its buildings */ }
           else if (o.kind === "viewport") {
             actor(ctx, o.x, o.y, s, "viewport");
