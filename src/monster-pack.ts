@@ -12,7 +12,7 @@ import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -3404,8 +3404,15 @@ function duelHopStep(e, s, w) {
   h.t += w.dt; const k = Math.min(1, h.t / DUELISTS.hop.time);
   e.x = h.from.x + (h.to.x - h.from.x) * k; e.y = h.from.y + (h.to.y - h.from.y) * k; e.hopLift = hopArc(k, h.climb); e.aloft = k < 1;
   if (Math.abs(h.to.x - h.from.x) > .05) e.facingX = h.mode === "back" ? (w.player.x >= e.x ? 1 : -1) : h.to.x > h.from.x ? 1 : -1;
-  if (k >= 1) { e.x = h.to.x; e.y = h.to.y; e.hopLift = 0; e.aloft = false; s.duelHop = null; s.duelLanded = Number(w.now) || 0; s.gap = Math.max(s.gap || 0, DUELISTS.hop.time * .5); }
+  if (k >= 1) { duelLandClear(h.to, w); e.x = h.to.x; e.y = h.to.y; e.hopLift = 0; e.aloft = false; s.duelHop = null; s.duelLanded = Number(w.now) || 0; s.gap = Math.max(s.gap || 0, DUELISTS.hop.time * .5); }
   return true;
+}
+// 926 bug 9: a landing the Wayfarer has walked onto while the hop was in the air is set down DUELISTS.separation.wayfarer from them
+// (straight out from them, where that is open ground on the landing's level); otherwise where it was going.
+function duelLandClear(to, w) {
+  const p = w.player, keep = DUELISTS.separation.wayfarer, dx = to.x - p.x, dy = to.y - p.y, d = Math.hypot(dx, dy); if (!(d < keep)) return;
+  const ux = d > 1e-4 ? dx / d : 1, uy = d > 1e-4 ? dy / d : 0, x = p.x + ux * keep, y = p.y + uy * keep;
+  if (w.open(x, y) && levelAt(w, { x, y }) === levelAt(w, to)) { to.x = x; to.y = y; }
 }
 function duelHop(e, s, w, p, mode) {
   s.duelCd = DUELISTS.hop.cooldown; s.duelTries = (s.duelTries || 0) + 1;
@@ -3443,7 +3450,7 @@ function duelVector(e, s, w, p, d) {
   s.duelFlip = (s.duelFlip ?? duelFlipTime(e, 0)) - w.dt;
   if (s.duelFlip <= 0) { s.orbitDir = -s.orbitDir; s.duelFlips = (s.duelFlips || 0) + 1; s.duelFlip = duelFlipTime(e, s.duelFlips); }
   const sx = -to.y * s.orbitDir, sy = to.x * s.orbitDir; let x, y, speed;
-  if (!w.los(e, w.player)) { x = to.x; y = to.y; speed = A.approach; }
+  if (!w.los(e, w.player)) { const back = d < DUELISTS.separation.wayfarer; x = back ? -to.x : to.x; y = back ? -to.y : to.y; speed = back ? A.retreat : A.approach; } // 926 bug 9: straight in, never into them
   else if (d < A.backOff) { x = -to.x + sx * .5; y = -to.y + sy * .5; speed = A.retreat; }
   else if (d > far) { x = to.x + sx * .35; y = to.y + sy * .35; speed = A.approach; }
   else { const radial = (d - (near + far) / 2) * .8; x = sx + to.x * radial; y = sy + to.y * radial; speed = A.strafe; }
@@ -3472,7 +3479,7 @@ Object.assign(RUN, {
     if (s.phase !== "active") return;
     const at = A.active - Math.max(0, s.t);
     while (s.data.cut < A.cuts.length && at >= A.cuts[s.data.cut]) {
-      w.move(e, a.x * A.step, a.y * A.step);
+      if (!duelStepTooClose(e, center(w.player), a.x * A.step, a.y * A.step)) w.move(e, a.x * A.step, a.y * A.step); // 926 bug 9: each cut's step stops short of the Wayfarer
       duelBlow(e, w, "duelCombo", inArc(e, center(w.player), a, bodyRadius(e) + A.radius + .3, A.arc));
       s.data.cut++; s.data.cutAt = Number(w.now) || 0;
     }
@@ -3484,7 +3491,7 @@ Object.assign(RUN, {
     if (s.phase === "windup") { if (s.t <= 0) { toPhase(s, "active", A.active); s.data.ran = 0; e.duelPose = "dart"; } return; }
     if (s.phase !== "active") return;
     const at = A.active - Math.max(0, s.t);
-    if (s.data.ran < s.data.dash) { const want = Math.min(s.data.dash, s.data.dash * Math.min(1, at / A.dash.time)), step = want - s.data.ran; if (step > 0 && !w.move(e, a.x * step, a.y * step)) s.data.dash = s.data.ran; else s.data.ran = want; }
+    if (s.data.ran < s.data.dash) { const want = Math.min(s.data.dash, s.data.dash * Math.min(1, at / A.dash.time)), step = want - s.data.ran; if (step > 0 && (duelStepTooClose(e, center(w.player), a.x * step, a.y * step) || !w.move(e, a.x * step, a.y * step))) s.data.dash = s.data.ran; else s.data.ran = want; } // 926 bug 9: the dart stops short of the Wayfarer
     if (at >= A.dash.time && s.tele?.type === "lane") { s.tele = { type: "arc", aim: a, radius: bodyRadius(e) + A.radius, arc: A.arc }; e.duelPose = "cut"; }
     while (s.data.cut < A.cuts.length && at >= A.cuts[s.data.cut]) {
       duelBlow(e, w, "duelTwinCuts", inArc(e, center(w.player), a, bodyRadius(e) + A.radius + .3, A.arc));
