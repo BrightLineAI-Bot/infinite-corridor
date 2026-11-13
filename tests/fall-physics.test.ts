@@ -92,11 +92,13 @@ test('damage parity: every drop costs what the old fallDamage table charged (1 f
   const r = walkOff(g, 60, 33); assert.ok(r.first >= 0); assert.equal(r.lost, fallDamage(2, M)); assert.equal(r.dead, false);
 });
 
-test('the glider: a long fall is still the freefall (Jump opens it), now under the fall model; stowing it is a fall from there', () => {
-  const g = wayfarer({ glider: true }); cliff(g, 6); const d = drive(g); let i = 0; for (; i < 90 && !g.glide; i++) d.step(1);
-  assert.ok(g.glide && g.glide.open === false, 'a freefall'); assert.equal(g.fall, null); const z0 = g.glide.z;
-  d.step(0); d.step(0); assert.ok(g.glide.vz < 0 && g.glide.vz > -GLIDE.drop, `it gathers speed (${g.glide.vz.toFixed(2)})`); assert.ok(g.glide.z < z0);
-  d.step(0, 0, true); assert.equal(g.glide.open, true, 'Jump opens it'); for (let k = 0; k < 300 && g.glide; k++) d.step(0); assert.equal(g.player.hp, M, 'caught: no damage');
+// 2026-11-13 (Tim: "the glider is for great trees only... falls stay dangerous"): was 'the glider: a long fall is still the freefall
+// (Jump opens it)'. Off ordinary ground the glider no longer opens: a long drop is a fall under FALL with its full damage.
+test('the glider does not catch an ordinary fall: a long drop off plain ground is a fall, and lethal', () => {
+  const g = wayfarer({ glider: true }); cliff(g, 6); const d = drive(g); let i = 0; for (; i < 90 && !g.fall; i++) d.step(1);
+  assert.ok(g.fall, 'a fall'); assert.equal(g.glide, null, 'no freefall glide');
+  d.step(0, 0, true); assert.equal(g.glide, null, 'Jump opens nothing'); assert.equal(g.message, FALL.nothing);
+  const d0 = deaths(g); for (let k = 0; k < 300 && (g.fall || g.player.hp > 0) && deaths(g) === d0; k++) d.step(0); assert.ok(deaths(g) > d0 || g.player.hp <= 0 || g._fatalFall, 'six levels: fatal');
 });
 
 test('mid-fall catches: Jump with the drone up catches the fall (same fuel and rules); its damage counts afresh from the catch', () => {
@@ -112,14 +114,12 @@ test('mid-fall catches: Jump with the drone up catches the fall (same fuel and r
   const k = wayfarer({ drone: true }); cliff(k, 3); const dk = drive(k); for (let j = 0; j < 120 && !k.fall; j++) dk.step(1); k.save.mech.fuel = 0; dk.step(0, 0, true); assert.ok(k.fall, 'still falling'); assert.equal(k.message, DRONE_LIFT.none);
 });
 
-test('the glider catches a fall over enough air (a drone stowed in the air), and the landing then costs nothing', () => {
+// 2026-11-13: was 'the glider catches a fall over enough air' (926's FALL.catchGlide, removed: the glider is for great trees only).
+test('a drone stowed in the air is a fall the glider does not catch: Jump says nothing can catch you', () => {
   const g = wayfarer({ drone: true, glider: true }); cliff(g, 0); const d = drive(g);
   d.step(0, 0, true); d.step(0, 0, true, true); assert.ok(g.droneLift, 'on the booster'); g.droneLift.z = 5; g.droneLift.vz = 0; d.step(0, 0, false, true); assert.ok(g.droneLift.z > 4.5, 'up on the booster');
   g.toggleMech(); d.step(0); assert.equal(g.droneLift, null); assert.ok(g.fall && g.fall.z > 4, 'stowed in the air: a fall');
-  d.step(0); assert.ok(g.fall.vz < 0 && g.fall.z < g.fall.from + 1e-9);
-  d.step(0, 0, true); assert.equal(g.fall, null); assert.ok(g.glide && g.glide.open, 'the glider caught it'); for (let k = 0; k < 400 && g.glide; k++) d.step(0); assert.equal(g.player.hp, M);
-  // too near the ground for the glider: Jump leaves the fall alone
-  const k2 = wayfarer({ glider: true }); cliff(k2, 3); const d2 = drive(k2); for (let j = 0; j < 120 && !k2.fall; j++) d2.step(1); d2.step(0, 0, true); assert.equal(k2.glide, null); assert.ok(k2.fall || k2.player.hp < M);
+  d.step(0, 0, true); assert.ok(g.fall, 'still falling'); assert.equal(g.glide, null, 'no glider'); assert.equal(g.message, FALL.nothing);
 });
 
 test('a drone that ends in the air (stowed) falls from where it was, with the old damage', () => {

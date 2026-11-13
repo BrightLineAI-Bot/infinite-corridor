@@ -6,6 +6,22 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 932 — Release 932 — glider for great trees only, landing roll, held Jump drone, Rift Step tap/hold, bigger Jump and Dodge
+
+Tim (2026-11-13): one rule per action in both views; the glider belongs to the great trees and must not make falls harmless; the drone is the mid-fall catch; a skilful landing roll for the early game; and a bigger Jump button now that Jump is the core traversal action.
+
+**CODE:** `src/game.ts`: `treeLaunch(now)` (CANOPY_FALL_MS since the last crown or canopy platform) gates the 641 closed freefall in `finishFall`/`landBlink` and the mid-jump glider open; `FALL.catchGlide` removed, `FALL.nothing` added; glides carry an additive `tree` mark and an unmarked closed glide without a glideHome loads as a fall. A mid-fall drone catch sets `droneLift.cap` (top at most the catch height). `JUMP.liftAt` .5 / `jumpHold` / `droneJumpLift` start the lift from a held Jump. `pressSlot`/`riftPress`/`aimRiftStep` with `RIFT_AIM.hold` .3 (constellation.ts); `renderer.ts` `drawRiftAimStd`. `FALL.roll .22, rollLevels 1, rollPose 260, rolled` with `fall.rollT` (saved) and `player.landRollUntil` (a PLAYER_CLOCK; the dodge roll in both views). `styles.css` 'HUD 2026-11-13' cluster: Jump 1.14, Dodge 1.18 of a button. Tests: `action-rules`.
+
+**BOUNDARY:** Additive schema-14 fields only (`glide.tree`, `droneLift.cap`, `fall.rollT`). The fall damage table is unchanged; only a landing roll takes one level off and five or more stays lethal. Tree glides, their steering and invulnerability are unchanged. Dodge cooldown and i-frames are unchanged. Generators untouched. Existing tests changed only where they asserted the removed glider catch or tap-to-arm. Not tested on a device.
+
+## Release 931 — Release 931 — pause and reload never move you mid-air or off a roof edge; Resonance health; hazard death words
+
+A headless QA pass on release 926 (about 3 million frames) found that the 'settle onto stable ground' recovery ran on every pause and reload even in the air or on a roof edge, that max hp went stale on a Resonance tier gain (healing on the next load), that every hazard death said 'Lost beneath the water', and two small exact-resume drifts.
+
+**CODE:** `src/game.ts`: `airborneHeld(now, rt)` (fall, glide, plunge, pending fatal fall, a jump in flight capped by `AIRBORNE_HOLD.jumpMs` 10000, outdoor droneLift) and `deckEdgeHeld()` gate `recoverPosition(now)` on pause and `resumeAirborne` in `loadArea` on reload (`!capture`, `_resumeNow`). `HAZARD_DEATH` / `hazardDeathWords(kind, tile)` read in `resolveDeath`. `syncResonance()` each frame and before snapshots applies `interactions.ts` `APERTURE_TIER_DUE` (a WeakSet marked by `gainAperture` on a tier crossing) like a level-up. `playerRuntime.springSoak` and `playerRuntime.edgeHold {dx, dy, elapsed}` saved and restored. Tests: qa-926-airborne-pause (4), qa-926-resonance-health (2), qa-926-hazard-death-words (2), qa-926-hot-spring-resume (2), qa-926-edge-hold-resume (2).
+
+**BOUNDARY:** Stranding recovery still applies to grounded, wedged Wayfarers and to a jump clock past 10 s; section crossings keep their relocation. An already-stale 926 save gets its missing tier once on first load. Additive optional runtime fields only (schema 14). Plunge state and an open glide's vz are still not saved.
+
 ## Release 930 — Release 930 — Close View camera: roofs by height, occluder fade, camera limits, big threats in frame
 
 From the release 926 Close View play-through (bugs 1-4) and Tim's 2026-11-13 approval of 'keep big threats in frame': roofs vanished while airborne, nothing faded between camera and hero, the camera dropped close and near-vertical on pillars and at section edges (boom about 1 tile), and dragons and the Lightning Giant sat off screen while their attacks covered it.
