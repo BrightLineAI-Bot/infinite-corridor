@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 930 — Release 930 — Close View camera: roofs by height, occluder fade, camera limits, big threats in frame
+
+From the release 926 Close View play-through (bugs 1-4) and Tim's 2026-11-13 approval of 'keep big threats in frame': roofs vanished while airborne, nothing faded between camera and hero, the camera dropped close and near-vertical on pillars and at section edges (boom about 1 tile), and dragons and the Lightning Giant sat off screen while their attacks covered it.
+
+**CODE:** `src/close-view.ts`: `CLOSE_VIEW.camera.limits {minBoom 2.5, maxPitch 60, solidPad .25, terrain false}`, `occlude {...}`, `edgeFog 3`, `threat {range 8, band 2, minScale 1.8, pull 2.5, focal .82, lift 1.2, easeIn 2.5, easeOut 1.2, hold .8, heads}`; height-aware `camWall` (per-tile solid tops cached per scene by `solidTopsOf`), `minBoomReach`, `framingFit`; occluder cone `occluderProbe` (12x3 samples), `creatureOccluded`; `closeViewThreatWant`/`threatFrame` feeding `boomReach`, focal length and aim; `roofHidden(..., pz, cz)` with `heroHeight`. `src/close-view-gl.ts`: `OCC_GLSL`, optional `propOcc`/`terrOcc` programs drawn only when the probe finds an occluder, preallocated `GLF.occA/B/C`, edge haze `u_edge`. `src/close-view-outdoor.ts`: `outdoorRoofTopAt`, roof `flat`/`base`, `buildings.fade.above`. Tests: `close-view-camera-occlusion` (8).
+
+**BOUNDARY:** Presentation only: collision, traversal, roof decks, combat, generation and saves are unchanged. Indoor walls never fade and the camera is never inside a wall. Terrain-driven pull-ins keep the calm-pass rule while `limits.terrain` is false. Only creatures of game scale 1.8 or more fade. The cut programs draw only on frames whose bounded probe finds something; no per-frame allocation. Neighbouring sections' terrain is not drawn. Phone frame rate unmeasured.
+
 ## Release 929 — The Wild Stegosaurus and the Spinosaurus
 
 Tim asked for two new monsters on 2026-11-12, the stegosaurus for his kid. Both are world beasts at about the Tyrant Mosasaur's strength, each with a standard-view drawing, a Close View body on the shared beast rig and an Echo.
