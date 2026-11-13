@@ -3,7 +3,7 @@
 // moves only through the shared pack joints (close-view-models semanticAngle): 20/21 jaws, 22/23 wings and petals, 31 a hung
 // censer or a stalk, 50-54 arms, 55-59 feelers and roots, 60-69 trailing cloth and tails, 70-77 long limbs, 80/81 tails, 82-89 heads
 // and segments, and ±1 legs on the ordinary gait. The attack families they answer are PACK_ACTION_FAMILIES (actor-presentation.ts).
-import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r945-c3afa98a7637';
+import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r946-4c6c4e323b38';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);

@@ -20,8 +20,8 @@
 // Nothing here changes timing, damage, reach or targeting.
 import {
   defineSkeleton, createPose, resetPose, setEuler, resolveBone, writeSkin, meshBuilder, clamp01, smooth, span, kick, wobble,
-} from "./close-view-beast-rig.js?v=r945-c3afa98a7637";
-import { ASTRAL, ASTRAL_GEOMETRY, ASTRAL_INK_FORMS } from "./astral-worm.js?v=r945-c3afa98a7637";
+} from "./close-view-beast-rig.js?v=r946-4c6c4e323b38";
+import { ASTRAL, ASTRAL_GEOMETRY, ASTRAL_INK_FORMS } from "./astral-worm.js?v=r946-4c6c4e323b38";
 
 const SEGS = 9, U2 = ASTRAL_GEOMETRY.drawScale; // the standard view draws in units of .65 tiles (scale q.u x .65)
 export const ASTRAL_CV_RIG = Object.freeze({

@@ -9,9 +9,9 @@
 // Physical weapons stay physical: every blow goes through game.artBlow (the melee glyphs, glyphHit, the Wayfarer's damage
 // scale); foes that hold their ground (WEAPON_ARTS.anchored) take the blow but are never knocked. Bounded: fixed pools made
 // once and reused (the oldest gives way when full), nothing allocated per frame. The Iron Fists' awakened kick is no longer
-// run here (2026-11-13): it is the fourth step of their combo (game.ts fistPunch), and Ki Blast's ground slam is game.js?v=r945-c3afa98a7637's. A reload drops all of it; a new area drops
+// run here (2026-11-13): it is the fourth step of their combo (game.ts fistPunch), and Ki Blast's ground slam is game.js?v=r946-4c6c4e323b38's. A reload drops all of it; a new area drops
 // what is in play; a rune's foe gone drops the rune. Reduced motion and safe mode stop the turning and pulsing.
-import { AWAKENED_ARTS, WEAPON_ARTS, awakenedFor, awakenedUp } from "./weapon-arts.js?v=r945-c3afa98a7637";
+import { AWAKENED_ARTS, WEAPON_ARTS, awakenedFor, awakenedUp } from "./weapon-arts.js?v=r946-4c6c4e323b38";
 
 const M = AWAKENED_ARTS.moves, P = AWAKENED_ARTS.pools;
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)

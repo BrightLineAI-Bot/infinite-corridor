@@ -1,33 +1,33 @@
-import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r945-c3afa98a7637"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon } from './items.js?v=r945-c3afa98a7637';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r945-c3afa98a7637";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r945-c3afa98a7637";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r945-c3afa98a7637";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r945-c3afa98a7637";
-import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r945-c3afa98a7637";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r945-c3afa98a7637";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r945-c3afa98a7637';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r945-c3afa98a7637";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r945-c3afa98a7637';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r945-c3afa98a7637';
-import { fistCharge } from './brawler-spells.js?v=r945-c3afa98a7637';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.js?v=r945-c3afa98a7637';
-import { dronePos } from "./affixes.js?v=r945-c3afa98a7637";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r945-c3afa98a7637";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r945-c3afa98a7637";
-import { CARBINE, CONTINUOUS_ASSAULT, carbineCharged, carbineFill } from "./tool-forms.js?v=r945-c3afa98a7637"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r945-c3afa98a7637";
-import { knockdownPose } from "./lightning-giant-render.js?v=r945-c3afa98a7637";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r945-c3afa98a7637";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r945-c3afa98a7637";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r945-c3afa98a7637";
-import { SIGIL_CELLS } from "./watcher.js?v=r945-c3afa98a7637";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.js?v=r945-c3afa98a7637"; // release 891: world beasts' skinned bodies (and the Gaunt's)
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r945-c3afa98a7637"; // version 4: the GPU scene
-import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r945-c3afa98a7637"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach } from "./spell-slots.js?v=r945-c3afa98a7637"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r945-c3afa98a7637";
-import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r945-c3afa98a7637"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r946-4c6c4e323b38"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
+import { rangedWeapon } from './items.js?v=r946-4c6c4e323b38';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r946-4c6c4e323b38";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r946-4c6c4e323b38";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r946-4c6c4e323b38";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r946-4c6c4e323b38";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r946-4c6c4e323b38";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r946-4c6c4e323b38";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r946-4c6c4e323b38';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r946-4c6c4e323b38";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r946-4c6c4e323b38';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r946-4c6c4e323b38';
+import { fistCharge } from './brawler-spells.js?v=r946-4c6c4e323b38';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.js?v=r946-4c6c4e323b38';
+import { dronePos } from "./affixes.js?v=r946-4c6c4e323b38";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r946-4c6c4e323b38";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r946-4c6c4e323b38";
+import { CARBINE, CONTINUOUS_ASSAULT, carbineCharged, carbineFill } from "./tool-forms.js?v=r946-4c6c4e323b38"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r946-4c6c4e323b38";
+import { knockdownPose } from "./lightning-giant-render.js?v=r946-4c6c4e323b38";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r946-4c6c4e323b38";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r946-4c6c4e323b38";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r946-4c6c4e323b38";
+import { SIGIL_CELLS } from "./watcher.js?v=r946-4c6c4e323b38";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.js?v=r946-4c6c4e323b38"; // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r946-4c6c4e323b38"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r946-4c6c4e323b38"; // 2026-11-13: the townsfolk's skinned bodies
+import { lanternReach } from "./spell-slots.js?v=r946-4c6c4e323b38"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r946-4c6c4e323b38";
+import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r946-4c6c4e323b38"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -295,8 +295,29 @@ export const CLOSE_VIEW = Object.freeze({
     // `rate` (critically damped; Reduced Motion snaps). With another subject the Wayfarer, between the eye and it, is drawn at
     // `heroFade` of her opacity at full zoom (`heroClear` tiles from the line), never the subject; she is never faded when she
     // is the subject. `lens`: the focal length's gain at full zoom.
+    // Look at everything (Tim, 2026-11-13: "it's the exploration / inspection world... We should be able to check everything and
+    // look at everything"): every captured draw can be the subject (townsfolk, creatures, world beasts and bosses, props, trees,
+    // any other object, the drone and the bodies the ground layers hand over), and a tap on the game area in Look mode picks
+    // what is under the finger (closeViewLookTap): the nearest drawn thing whose screen box (its foot to its top, `tapPad` px
+    // about it) holds the tap, else what a ray from the eye meets first: a solid (an outcrop, a Pentagon's or a keep's wall, a
+    // tower, a house's walls and roof) framed by its height, or the ground (a cliff face, a rib) at that point. A tap there is
+    // only a look: it never attacks, interacts or moves (Action still does). The tapped subject is kept (`tapKeep` tiles) until
+    // another tap, a re-tap of the Wayfarer, or Look mode ends; a tap at the normal view zooms in to `tapZoom`. The pick in
+    // front reaches `reachZoom` tiles farther at full zoom (asked or eased), and a big subject farther again: times
+    // sqrt(size / `reachSize`), at most `reachBig`. Trees, structures and other scenery are picked in front only within
+    // `sceneryCone` degrees of the view's centre and count `sceneryBias` of their distance (characters and creatures first).
+    // Framing: whole first (a subject taller than the normal eye's distance can show is framed from `fit` tiles a tile of its
+    // size, at most `standOff`), then closer toward its face, top or crown (each class's `mid` to `face` share of its height).
+    // `cands`: the most draws remembered for the tap (a fixed table); `rayStep` / `rayFar`: the tap's ray. `labels`: a small
+    // line under the compass names a subject that is not the Wayfarer (its own name, else its kind's).
+    // Per class (`mid`, `face`, `near` as above): `tree` (`giant`: a great tree's height), `structure` (a solid or house the tap's
+    // ray met; `ground`: the aim's height over a bare-ground tap), `scenery` (any other drawn object; `flat`: one drawn on the
+    // floor), `body` (a drawn body with no object: the drone, a mount). `heights`: drawn props' heights by kind (else thing.height).
     look: Object.freeze({ holdMs: 550, holdSlop: 14, minZoom: -1, out: 1.2, pinchGain: .75, pinchJoinMs: 250, rate: 9, pitch: 12, lockShare: .2, keep: 6, range: 4, cone: 38, folkBias: .7, follow: 7, heroFade: .22, heroClear: .45, lens: 1.12, props: true,
-      hero: Object.freeze({ mid: .52, face: .78, near: .45 }), folk: Object.freeze({ mid: .5, face: .86, near: .62 }), creature: Object.freeze({ mid: .5, face: .82, near: .7, perScale: .35 }), thing: Object.freeze({ mid: .5, face: .75, near: .75, height: .6 }) }),
+      swallowMs: 600, reachZoom: 4, reachSize: 1.5, reachBig: 1.5, sceneryCone: 14, sceneryBias: 1.5, tapPad: 16, tapZoom: .35, tapKeep: 16, fit: .9, fitAt: .3, standOff: 9, nearShare: .3, cands: 128, rayStep: .05, rayFar: 24, labels: true,
+      hero: Object.freeze({ mid: .52, face: .78, near: .45 }), folk: Object.freeze({ mid: .5, face: .86, near: .62 }), creature: Object.freeze({ mid: .5, face: .82, near: .7, perScale: .35 }), thing: Object.freeze({ mid: .5, face: .75, near: .75, height: .6 }),
+      tree: Object.freeze({ mid: .45, face: .8, near: .9, height: 2, giant: 9 }), structure: Object.freeze({ mid: .5, face: .85, near: 1.2, ground: .3 }), scenery: Object.freeze({ mid: .5, face: .75, near: .75, height: .9, flat: .25 }), body: Object.freeze({ mid: .5, face: .8, near: .7, height: 1.8 }),
+      heights: Object.freeze({ shrine: 1.3, ruinMarker: 1.5, watcherTomb: 1.4, dungeon: 1.7, exit: 1.6, buildingStair: 1.6, checkpoint: 1.5, weaponCache: 1.1, worldCache: .9 }) }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -506,7 +527,7 @@ export const CLOSE_VIEW = Object.freeze({
   // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r945-c3afa98a7637's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r946-4c6c4e323b38's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -680,7 +701,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r945-c3afa98a7637's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r946-4c6c4e323b38's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -812,7 +833,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r945-c3afa98a7637's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r946-4c6c4e323b38's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, terrainPulls: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1477,9 +1498,18 @@ export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFo
 // (`key`: its game object, null for the Wayfarer) and its aim point (tx, ty, tz, eased) are chosen after each frame's actors are
 // known and used by the next frame's camera. All preallocated; nothing per frame is allocated.
 const LOOK = { on: false, want: 0, s: 0, sV: 0, map: null, key: null, kind: 0, nx: NaN, ny: NaN, nz: 0, nTop: 1.45, nNear: .45, nMid: .52, nFace: .78, lost: 0,
-  tx: NaN, ty: NaN, tz: NaN, txV: 0, tyV: 0, tzV: 0, near: .45, k: 0, heroAlpha: 1, eyeX: NaN, eyeY: NaN, eyeZ: NaN, changedAt: -1e9, chosen: false };
-const LOOK_HERO = 0, LOOK_FOLK = 1, LOOK_CREATURE = 2, LOOK_THING = 3;
-function lookForget() { LOOK.chosen = false; LOOK.key = null; LOOK.kind = LOOK_HERO; LOOK.lost = 0; LOOK.tx = LOOK.ty = LOOK.tz = NaN; LOOK.txV = LOOK.tyV = LOOK.tzV = 0; LOOK.k = 0; LOOK.heroAlpha = 1; LOOK.eyeX = LOOK.eyeY = LOOK.eyeZ = NaN; }
+  tx: NaN, ty: NaN, tz: NaN, txV: 0, tyV: 0, tzV: 0, near: .45, k: 0, heroAlpha: 1, eyeX: NaN, eyeY: NaN, eyeZ: NaN, changedAt: -1e9, chosen: false,
+  pinned: false, nSize: 1.45, fit: 0, label: "" }; // pinned: chosen by a tap (kept at any zoom); nSize: the subject's size (tiles) for its framing; label: its name line
+// The subject's kinds. Trees, scenery and places (a solid, a house or the ground a tap's ray met) are the scenery classes.
+const LOOK_HERO = 0, LOOK_FOLK = 1, LOOK_CREATURE = 2, LOOK_THING = 3, LOOK_TREE = 4, LOOK_SCENERY = 5, LOOK_BODY = 6, LOOK_PLACE = 7;
+const LOOK_SUBJECTS = Object.freeze(["wayfarer", "character", "creature", "thing", "tree", "scenery", "body", "place"]);
+const lookScenic = (kind) => kind === LOOK_TREE || kind === LOOK_SCENERY || kind === LOOK_PLACE;
+// A place's key (a tapped point of the ground or a solid): one frozen token, its point and size held in LOOK.
+const LOOK_PLACE_KEY = Object.freeze({ kind: "place" }), LOOK_HITS = Object.freeze(["", "ground", "solid", "house", "wall"]);
+// The draws the last frame showed, for the tap (CLOSE_VIEW.camera.look.cands at most): key (null: the Wayfarer), kind, foot
+// (x, y, z), height, half width, framing shares. Filled by lookPick while Look mode is on; fixed size, nothing allocated.
+const LC = (() => { const N = CLOSE_VIEW.camera.look.cands, F = () => new Float64Array(N); return { n: 0, N, key: new Array(N).fill(null), kind: new Uint8Array(N), x: F(), y: F(), z: F(), top: F(), rad: F(), mid: F(), face: F(), near: F() }; })();
+function lookForget() { LOOK.chosen = false; LOOK.pinned = false; LOOK.label = ""; LOOK.key = null; LOOK.kind = LOOK_HERO; LOOK.lost = 0; LOOK.tx = LOOK.ty = LOOK.tz = NaN; LOOK.txV = LOOK.tyV = LOOK.tzV = 0; LOOK.k = 0; LOOK.heroAlpha = 1; LOOK.eyeX = LOOK.eyeY = LOOK.eyeZ = NaN; }
 // Is Look mode on? (The zoom may still be easing back after it went off: closeViewLookState().zoom.)
 export function closeViewLookActive() { return LOOK.on; }
 // Turn Look mode on or off. Off, the zoom eases back to the normal view (at once with `snap`, or after an area change).
@@ -1487,7 +1517,7 @@ export function closeViewLookSet(g, on, snap = false) {
   on = !!on && (!g || closeViewShowing(g));
   if (on === LOOK.on && !snap) return LOOK.on;
   LOOK.on = on; LOOK.map = g?.map ?? null; LOOK.changedAt = (globalThis.performance || Date).now();
-  if (!on) { LOOK.want = 0; if (snap) { LOOK.s = LOOK.sV = 0; lookForget(); } }
+  if (!on) { LOOK.want = 0; LOOK.pinned = false; LOOK.label = ""; LC.n = 0; LC.key.fill(null); /* holds no creature or object past Look mode */ if (snap) { LOOK.s = LOOK.sV = 0; lookForget(); } }
   return LOOK.on;
 }
 export function closeViewLookToggle(g) { return closeViewLookSet(g, !LOOK.on); }
@@ -1515,7 +1545,11 @@ export function closeViewLookGuard(g) {
   if (LOOK.on && (dead || !closeViewShowing(g))) closeViewLookSet(g, false, !!(dead || !closeViewWanted(g)));
   return LOOK.on;
 }
-export function closeViewLookState() { return { on: LOOK.on, want: LOOK.want, zoom: LOOK.s, share: LOOK.k, subject: LOOK.kind === LOOK_HERO ? "wayfarer" : LOOK.kind === LOOK_FOLK ? "character" : LOOK.kind === LOOK_CREATURE ? "creature" : "thing", key: LOOK.key, focus: [LOOK.tx, LOOK.ty, LOOK.tz], eye: [LOOK.eyeX, LOOK.eyeY, LOOK.eyeZ], heroAlpha: LOOK.heroAlpha }; }
+export function closeViewLookState() { return { on: LOOK.on, want: LOOK.want, zoom: LOOK.s, share: LOOK.k, subject: LOOK_SUBJECTS[LOOK.kind] || "thing", key: LOOK.key, focus: [LOOK.tx, LOOK.ty, LOOK.tz], eye: [LOOK.eyeX, LOOK.eyeY, LOOK.eyeZ], heroAlpha: LOOK.heroAlpha,
+  pinned: LOOK.pinned, label: LOOK.label, size: LOOK.nSize, near: LOOK.near, fit: LOOK.fit, at: [LOOK.nx, LOOK.ny, LOOK.nz], top: LOOK.nTop }; }
+// The subject's name line (CLOSE_VIEW.camera.look.labels): "" for the Wayfarer or with Look mode off. A string kept from the
+// pick (made only when the subject changes), so the HUD can read it every frame.
+export function closeViewLookLabel() { return LOOK.on && LOOK.kind !== LOOK_HERO && CLOSE_VIEW.camera.look.labels ? LOOK.label : ""; }
 // The boom's extra length when zoomed out past the normal view (CLOSE_VIEW.camera.look.out).
 const lookOut = () => LOOK.s < 0 ? -LOOK.s * CLOSE_VIEW.camera.look.out : 0;
 // The zoom's spring and the subject's aim point, once a rendered frame (paused, nothing moves).
@@ -1527,47 +1561,140 @@ function lookFrame(g, dt, reduce) {
   if (Math.abs(LOOK.s - LOOK.want) < 1e-3) { LOOK.s = LOOK.want; LOOK.sV = 0; }
   if (!LOOK.on && LOOK.s === 0) { lookForget(); return; }
   // the subject's aim point: from its middle (the whole body) toward its face as the zoom closes
-  const p = g.player, k = Math.max(0, LOOK.s); let x, y, z, near, top, mid, face;
-  if (LOOK.key && Number.isFinite(LOOK.nx)) { x = LOOK.nx; y = LOOK.ny; z = LOOK.nz; top = LOOK.nTop; near = LOOK.nNear; mid = LOOK.nMid; face = LOOK.nFace; }
-  else { const H = L.hero; x = footX(p); y = footY(p); z = Number.isFinite(CAM.zA) ? CAM.zA : surfaceZ(g.map, x, y); top = CLOSE_VIEW.camera.framing.bodyHeight; near = H.near; mid = H.mid; face = H.face; }
-  const aimZ = z + top * lerp(mid, face, k), nearD = Math.max(near, top * .3);
+  const p = g.player, k = Math.max(0, LOOK.s); let x, y, z, near, top, mid, face, size;
+  if (LOOK.key && Number.isFinite(LOOK.nx)) { x = LOOK.nx; y = LOOK.ny; z = LOOK.nz; top = LOOK.nTop; near = LOOK.nNear; mid = LOOK.nMid; face = LOOK.nFace; size = LOOK.nSize;
+    if (wallAt(g.map, x, y)) { lookOpen(g.map, x, y, footX(p), footY(p)); x = LO.x; y = LO.y; } // a subject standing in a blocked tile (a tree, a rock): aimed from the open side, so the eye's line starts clear
+    lookInset(g.map, x, y, CLOSE_VIEW.camera.sightPad); x = LO.x; y = LO.y; } // and never hard against a wall's face (a tapped wall): the eye has room in front of it
+  else { const H = L.hero; x = footX(p); y = footY(p); z = Number.isFinite(CAM.zA) ? CAM.zA : surfaceZ(g.map, x, y); top = CLOSE_VIEW.camera.framing.bodyHeight; near = H.near; mid = H.mid; face = H.face; size = top; }
+  const aimZ = z + top * lerp(mid, face, k), nearD = Math.max(near, size * L.nearShare);
+  LOOK.fit = Math.min(L.standOff, size * L.fit); // a big subject is framed whole from this far (CLOSE_VIEW.camera.look.fit / standOff)
   if (!Number.isFinite(LOOK.tx) || reduce || !(dt > 0) && !Number.isFinite(LOOK.tz)) { LOOK.tx = x; LOOK.ty = y; LOOK.tz = aimZ; LOOK.txV = LOOK.tyV = LOOK.tzV = 0; }
   else if (dt > 0) { spring(LOOK, "tx", "txV", x, L.follow, dt); spring(LOOK, "ty", "tyV", y, L.follow, dt); spring(LOOK, "tz", "tzV", aimZ, L.follow, dt); }
   LOOK.near = nearD;
 }
+// The nearest open point to (x, y) on the way to (towardX, towardY), at most two tiles on: into LO. Pure, no allocation.
+const LO = { x: 0, y: 0 };
+function lookOpen(map, x, y, towardX, towardY) { const d = Math.hypot(towardX - x, towardY - y), n = Math.min(20, Math.ceil(d / .1)); LO.x = x; LO.y = y;
+  for (let i = 1; i <= n; i++) { const t = i / n, X = x + (towardX - x) * t, Y = y + (towardY - y) * t; if (!wallAt(map, X, Y)) { LO.x = X; LO.y = Y; return; } } }
+// (x, y) moved off any wall face within `m` along each axis, where the far side is open: into LO. No allocation.
+function lookInset(map, x, y, m) { LO.x = x; LO.y = y; if (wallAt(map, x - m, y) && !wallAt(map, x + m, y)) x = Math.max(x, Math.floor(x - m) + 1 + m); else if (wallAt(map, x + m, y) && !wallAt(map, x - m, y)) x = Math.min(x, Math.floor(x + m) - m);
+  if (wallAt(map, x, y - m) && !wallAt(map, x, y + m)) y = Math.max(y, Math.floor(y - m) + 1 + m); else if (wallAt(map, x, y + m) && !wallAt(map, x, y - m)) y = Math.min(y, Math.floor(y + m) - m);
+  if (wallAt(map, x, y)) return; LO.x = x; LO.y = y; }
+// A draw's size and framing for Look mode, by kind (CLOSE_VIEW.camera.look): into LM. No allocation.
+const LM = { top: 1, rad: .35, mid: .5, face: .8, near: .75 };
+function lookMeasure(g, d, kind, foe, o) {
+  const L = CLOSE_VIEW.camera.look, sc = Math.max(.25, Math.min(4, Number(o?.scale) || 1)); let T;
+  if (kind === LOOK_FOLK) { const look = o && closeViewFolkKind(o, g) === "folk" ? folkLookCached(o) : null; T = L.folk; LM.top = (Number(d.nativeHeight) > 0 && !look ? Number(d.nativeHeight) * .85 : CLOSE_VIEW.camera.framing.bodyHeight * (look ? Number(look.height) || 1 : 1)) * (o?.folkGiant ? FOLK_MOTION.giant : 1); LM.rad = .35; LM.near = T.near; }
+  else if (kind === LOOK_CREATURE) { const s = Math.min(CLOSE_VIEW.actors.maxSprite * 2.5, actorScale(foe)); T = L.creature; LM.top = Math.max(.4, Math.min(6, Object.hasOwn(CLOSE_VIEW.camera.threat.heads, foe.kind) ? CLOSE_VIEW.camera.threat.heads[foe.kind] : nativeBoardTop(foe, s, d.nativeHeight) * .6)); LM.rad = Math.max(.35, Math.min(3, Math.max(Number(foe.bodyRadius) || 0, .3 * s))); LM.near = T.near + T.perScale * Math.max(0, s - 1); }
+  else if (kind === LOOK_THING) { T = L.thing; LM.top = (Object.hasOwn(L.heights, o.kind) ? L.heights[o.kind] : T.height) * sc; LM.rad = .4 * sc; LM.near = T.near; }
+  else if (kind === LOOK_TREE) { T = L.tree; const F = OUTDOOR.trees[o.vegetationForm]; LM.top = (o.vegetationForm === "giant" ? T.giant : F ? (F.lift + F.h * 1.1) * 1.02 : T.height) * sc; LM.rad = o.vegetationForm === "giant" ? 1.2 : F ? F.r * sc : .5; LM.near = T.near; }
+  else if (kind === LOOK_BODY) { T = L.body; LM.top = Number(d.nativeHeight) > 0 ? Number(d.nativeHeight) * .85 : T.height; LM.rad = .4; LM.near = T.near; }
+  else { T = L.scenery; LM.top = flatObject(o) ? T.flat : Number(d.nativeHeight) > 0 ? Number(d.nativeHeight) * .85 : T.height * sc; LM.rad = .4 * sc; LM.near = T.near; }
+  LM.mid = T.mid; LM.face = T.face;
+}
+// Remember one draw in the tap's table (LC); false when it is full.
+function lookRemember(key, kind, x, y, z) { const i = LC.n; if (i >= LC.N) return false;
+  LC.key[i] = key; LC.kind[i] = kind; LC.x[i] = x; LC.y[i] = y; LC.z[i] = z; LC.top[i] = LM.top; LC.rad[i] = LM.rad; LC.mid[i] = LM.mid; LC.face[i] = LM.face; LC.near[i] = LM.near; LC.n++; return true; }
+// The size a subject is framed and reached by: its height or its width, whichever is more.
+const lookSizeOf = (i) => Math.max(LC.top[i], 2 * LC.rad[i]);
+// How far in front a subject of `size` may be picked: farther as the zoom closes (asked or eased), farther again for a big one.
+function lookReach(size, zoom = Math.max(0, LOOK.want, LOOK.s)) { const L = CLOSE_VIEW.camera.look; return (L.range + Math.min(1, zoom) * L.reachZoom) * Math.max(1, Math.min(L.reachBig, Math.sqrt(Math.max(0, size) / L.reachSize))); }
+// A subject's name for the label line: its own name (a townsperson's, a traveller's, a rare pack's), else its kind's, in words.
+function lookHuman(kind) { const t = String(kind || "").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase(); return t ? t[0].toUpperCase() + t.slice(1) : ""; }
+function lookNameOf(key) { if (!key || typeof key !== "object") return ""; for (const k of ["name", "packName", "title"]) { const v = key[k]; if (typeof v === "string" && v.trim() && v.length <= 40) return v.trim(); } return lookHuman(key.kind); }
+// Make table entry i the subject.
+function lookAdopt(i) { const key = LC.key[i], fresh = key !== LOOK.key || LC.kind[i] !== LOOK.kind;
+  LOOK.key = key; LOOK.kind = key ? LC.kind[i] : LOOK_HERO; LOOK.lost = 0; LOOK.nx = LC.x[i]; LOOK.ny = LC.y[i]; LOOK.nz = LC.z[i]; LOOK.nTop = LC.top[i]; LOOK.nNear = LC.near[i]; LOOK.nMid = LC.mid[i]; LOOK.nFace = LC.face[i]; LOOK.nSize = lookSizeOf(i);
+  if (fresh) LOOK.label = key ? lookNameOf(key) : ""; }
 // Choose the subject from this frame's actors (the captured draws, bounded by the renderer's caps): the nearest character,
-// creature or prop in front, else the Wayfarer. Past `lockShare` of zoom a subject is kept while it is within `keep` tiles.
+// creature or prop in front, a tree or other scenery nearly dead ahead, else the Wayfarer; and remember every draw for a tap
+// (LC). Past `lockShare` of zoom a subject is kept while it is within `keep` tiles (or its reach); a tapped one at any zoom
+// while within `tapKeep`. Runs only while Look mode is on or easing back; one pass, no allocation.
 function lookPick(g, draws, player) {
+  LC.n = 0;
   if (!LOOK.on && LOOK.s === 0) return;
-  const L = CLOSE_VIEW.camera.look, p = g.player, px = footX(p), py = footY(p), fx = Math.cos(CAM.yaw), fy = Math.sin(CAM.yaw), cone = Math.cos(L.cone * DEG), held = LOOK.s > L.lockShare && LOOK.chosen; // the Wayfarer, once chosen, is kept as surely as anyone
-  if (held && !LOOK.key) return;
-  let best = null, bestD = Infinity, bestKind = LOOK_HERO, bx = 0, by = 0, found = false;
+  const L = CLOSE_VIEW.camera.look, p = g.player, px = footX(p), py = footY(p), fx = Math.cos(CAM.yaw), fy = Math.sin(CAM.yaw), cone = Math.cos(L.cone * DEG), sCone = Math.cos(L.sceneryCone * DEG), held = LOOK.pinned || LOOK.s > L.lockShare && LOOK.chosen; // the Wayfarer, once chosen, is kept as surely as anyone
+  { const T = L.hero; LM.top = CLOSE_VIEW.camera.framing.bodyHeight; LM.rad = .35; LM.mid = T.mid; LM.face = T.face; LM.near = T.near; lookRemember(null, LOOK_HERO, px, py, Number.isFinite(CAM.zA) ? CAM.zA : surfaceZ(g.map, px, py)); } // the Wayfarer: a tap on her returns to her
+  let best = -1, bestD = Infinity, found = LOOK.key === LOOK_PLACE_KEY, keepD = LOOK.pinned ? L.tapKeep : Math.max(L.keep, lookReach(LOOK.nSize, 1)), lostFar = false;
+  if (found && Math.hypot(LOOK.nx - px, LOOK.ny - py) > keepD) { found = false; lostFar = true; }
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!d || d === player || !Number.isFinite(d.x)) continue;
-    const foe = d.enemy && typeof d.enemy === "object" ? d.enemy : null, o = d.object, key = foe || o; if (!key) continue;
+    const foe = d.enemy && typeof d.enemy === "object" ? d.enemy : null, o = d.object && typeof d.object === "object" ? d.object : null, aux = !o && d.nativeAux && typeof d.nativeAux.source === "object" ? d.nativeAux.source : null, key = foe || o || aux; if (!key) continue;
     let kind;
     if (foe) { if (foe.dead || foe.hidden || !(foe.hp > 0)) continue; kind = LOOK_CREATURE; }
-    else if (closeViewFolkKind(o, g) || d.nativeAux) kind = LOOK_FOLK;
-    else if (L.props && outdoorPropObject(o)) kind = LOOK_THING; else continue;
+    else if (o && (closeViewFolkKind(o, g) || d.nativeAux)) kind = LOOK_FOLK;
+    else if (aux) kind = LOOK_BODY;
+    else if (L.props && outdoorPropObject(o)) kind = LOOK_THING;
+    else if (o.kind === "tree") kind = LOOK_TREE;
+    else kind = LOOK_SCENERY;
     const x = d.x + .5, y = d.y + .82 - (kind === LOOK_FOLK ? .07 : 0), dx = x - px, dy = y - py, dist = Math.hypot(dx, dy);
-    if (key === LOOK.key) { found = true; LOOK.nx = x; LOOK.ny = y; LOOK.nz = surfaceZ(g.map, d.nativeSupportX ?? x, d.nativeSupportY ?? y); lookSize(g, d, kind, foe, o); if (held && dist <= L.keep) { LOOK.lost = 0; return; } }
-    if (held || dist > L.range || dist < 1e-3 || (dx * fx + dy * fy) / dist < cone || !sightTo(g.map, px, py, x, y)) continue;
-    const score = kind === LOOK_FOLK ? dist * L.folkBias : dist; if (score < bestD) { bestD = score; best = d; bestKind = kind; bx = x; by = y; } }
-  if (held) { if (!found && (LOOK.lost += CAM.dt) > .3) { LOOK.key = null; LOOK.kind = LOOK_HERO; LOOK.chosen = false; } return; }
+    lookMeasure(g, d, kind, foe, o); const z = surfaceZ(g.map, d.nativeSupportX ?? x, d.nativeSupportY ?? y);
+    const kept = lookRemember(key, kind, x, y, z);
+    if (key === LOOK.key) { if (dist <= keepD) { found = true; LOOK.lost = 0; } else lostFar = true;
+      LOOK.nx = x; LOOK.ny = y; LOOK.nz = z; LOOK.nTop = LM.top; LOOK.nNear = LM.near; LOOK.nMid = LM.mid; LOOK.nFace = LM.face; LOOK.nSize = Math.max(LM.top, 2 * LM.rad); }
+    if (held || !kept || dist < 1e-3) continue;
+    const size = Math.max(LM.top, 2 * LM.rad), scenic = lookScenic(kind);
+    if (dist > lookReach(size) || (dx * fx + dy * fy) / dist < (scenic ? sCone : cone) || !sightTo(g.map, px, py, x, y)) continue;
+    const score = kind === LOOK_FOLK ? dist * L.folkBias : scenic ? dist * L.sceneryBias : dist; if (score < bestD) { bestD = score; best = LC.n - 1; } }
+  if (held) { if (!LOOK.key) return; if (!found && ((LOOK.lost += CAM.dt) > .3 || lostFar)) { LOOK.key = null; LOOK.kind = LOOK_HERO; LOOK.chosen = false; LOOK.pinned = false; LOOK.label = ""; } return; }
   LOOK.chosen = true;
-  if (!best) { LOOK.key = null; LOOK.kind = LOOK_HERO; return; }
-  const foe = best.enemy && typeof best.enemy === "object" ? best.enemy : null;
-  LOOK.key = foe || best.object; LOOK.kind = bestKind; LOOK.lost = 0; LOOK.nx = bx; LOOK.ny = by; LOOK.nz = surfaceZ(g.map, best.nativeSupportX ?? bx, best.nativeSupportY ?? by); lookSize(g, best, bestKind, foe, best.object);
+  if (best < 0) { LOOK.key = null; LOOK.kind = LOOK_HERO; LOOK.label = ""; return; }
+  lookAdopt(best);
 }
-// The subject's height and framing shares, by kind (CLOSE_VIEW.camera.look).
-function lookSize(g, d, kind, foe, o) {
-  const L = CLOSE_VIEW.camera.look;
-  if (kind === LOOK_FOLK) { const look = closeViewFolkKind(o, g) === "folk" ? folkLookCached(o) : null; LOOK.nTop = (Number(d.nativeHeight) > 0 && !look ? Number(d.nativeHeight) * .85 : CLOSE_VIEW.camera.framing.bodyHeight * (look ? Number(look.height) || 1 : 1)) * (o?.folkGiant ? FOLK_MOTION.giant : 1); LOOK.nNear = L.folk.near; LOOK.nMid = L.folk.mid; LOOK.nFace = L.folk.face; }
-  else if (kind === LOOK_CREATURE) { const sc = Math.min(CLOSE_VIEW.actors.maxSprite * 2.5, actorScale(foe)); LOOK.nTop = Math.max(.4, Math.min(6, Object.hasOwn(CLOSE_VIEW.camera.threat.heads, foe.kind) ? CLOSE_VIEW.camera.threat.heads[foe.kind] : nativeBoardTop(foe, sc, d.nativeHeight) * .6)); LOOK.nNear = L.creature.near + L.creature.perScale * Math.max(0, sc - 1); LOOK.nMid = L.creature.mid; LOOK.nFace = L.creature.face; }
-  else { LOOK.nTop = L.thing.height; LOOK.nNear = L.thing.near; LOOK.nMid = L.thing.mid; LOOK.nFace = L.thing.face; }
+// A tap's ray (CLOSE_VIEW.camera.look.rayStep / rayFar) from the last frame's eye through screen point (sx, sy): what it meets
+// first. RAY.hit: 0 nothing, 1 the ground (a floor, a cliff face, a ledge), 2 a solid (an outcrop, a tower, a Pentagon's or a
+// keep's wall: its drawn top known), 3 a house (its walls and roof), 4 an interior wall. x, y: the last open point before it;
+// z: where it met; base, top: the feature's foot and top; dist: tiles from the eye across the ground. No allocation.
+const RAY = { hit: 0, x: 0, y: 0, z: 0, base: 0, top: 0, dist: 0, tile: null };
+function lookRay(g, sx, sy) {
+  const L = CLOSE_VIEW.camera.look, map = g.map; RAY.hit = 0; RAY.tile = null;
+  const b = (sx - CAM.ppx) / CAM.F, a = (CAM.ppy - sy) / CAM.F, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b, dz = -CAM.sinP + a * CAM.cosP;
+  const len = Math.hypot(dx, dy, dz) || 1, step = L.rayStep / len, n = Math.ceil(L.rayFar / L.rayStep), w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w));
+  const tops = CAM.solidMap === map ? CAM.solidTop : null, scene = tops && g.area === "overworld" ? outdoorScene(map, RELIEF.map === map) : null, roofs = scene?.houses?.roofs || null;
+  let lx = CAM.cx, ly = CAM.cy, roof = null, roofId = null;
+  for (let i = 1; i <= n; i++) { const t = i * step, X = CAM.cx + dx * t, Y = CAM.cy + dy * t, Z = CAM.hc + dz * t, tx = Math.floor(X), ty = Math.floor(Y);
+    const inside = tx >= 0 && ty >= 0 && tx < w && ty < h, tile = inside ? map.tiles[ty * w + tx] : null;
+    if (inside && isWall(tile)) { const top = tops ? tops[ty * w + tx] : NaN;
+      if (Number.isFinite(top) && top > -1e9) { if (Z <= top) { RAY.hit = 2; RAY.top = top; RAY.tile = tile; } }
+      else { RAY.hit = 4; RAY.top = Z; RAY.tile = tile; } }
+    else if (!inside && map !== CAM.edgeMap) { RAY.hit = 4; RAY.top = Z; }
+    if (!RAY.hit && roofs && tile?.buildingId) { if (roofId !== tile.buildingId) { roofId = tile.buildingId; roof = null; for (let k = 0; k < roofs.length; k++) if (roofs[k].id === roofId) { roof = roofs[k]; break; } }
+      if (roof && Z <= outdoorRoofTopAt(roof, X, Y) && Z >= (Number(roof.base) || 0)) { RAY.hit = 3; RAY.top = outdoorRoofTopAt(roof, (roof.x0 + roof.x1) / 2, (roof.y0 + roof.y1) / 2); RAY.tile = tile; } }
+    if (!RAY.hit && Z <= surfaceZ(map, X, Y)) { // the ground: refined to where the ray meets it
+      let lo = t - step, hi = t; for (let k = 0; k < 14; k++) { const m = (lo + hi) / 2; if (CAM.hc + dz * m > surfaceZ(map, CAM.cx + dx * m, CAM.cy + dy * m)) lo = m; else hi = m; }
+      RAY.hit = 1; RAY.x = CAM.cx + dx * hi; RAY.y = CAM.cy + dy * hi; RAY.z = CAM.hc + dz * hi; RAY.base = RAY.z; RAY.top = RAY.z; RAY.tile = tile; RAY.dist = Math.hypot(RAY.x - CAM.cx, RAY.y - CAM.cy); return RAY; }
+    if (RAY.hit) { RAY.x = lx; RAY.y = ly; RAY.z = Z; RAY.base = Math.min(Z, surfaceZ(map, lx, ly)); if (RAY.hit === 3) RAY.base = Math.max(RAY.base, Number(roof.base) || 0); RAY.dist = Math.hypot(X - CAM.cx, Y - CAM.cy); return RAY; }
+    lx = X; ly = Y; }
+  return RAY;
+}
+// A tap on the game area in Look mode (main.ts and the Close View controls send it there instead of the world): the subject
+// under the finger at (sx, sy) of a w x h view. Returns { subject, label } (subject as closeViewLookState names it), or null when
+// Look mode is off or the view has not been drawn at this size. It only chooses what to look at: nothing in the game is touched.
+export function closeViewLookTap(g, w, h, sx, sy) {
+  if (!LOOK.on || !g?.map || !CAM.valid || CAM.map !== g.map || Math.abs(CAM.w - w) > 1 || Math.abs(CAM.h - h) > 1 || !Number.isFinite(sx) || !Number.isFinite(sy)) return null;
+  const L = CLOSE_VIEW.camera.look; let best = -1, bestD = Infinity;
+  for (let i = 0; i < LC.n; i++) { const X = LC.x[i], Y = LC.y[i], Z = LC.z[i], q = project(X, Y, Z); if (!q) continue;
+    const by = q.sy, bx = q.sx, k = CAM.F / q.depth, t = project(X, Y, Z + LC.top[i]), topY = t ? t.sy : -Infinity, hw = LC.rad[i] * k + L.tapPad;
+    if (sx < bx - hw || sx > bx + hw || sy < topY - L.tapPad || sy > by + L.tapPad * .6) continue;
+    const d = Math.hypot(X - CAM.cx, Y - CAM.cy) - (LC.kind[i] === LOOK_HERO ? .3 : 0); // the nearest drawn thing under the finger (the Wayfarer by a hair)
+    if (d < bestD) { bestD = d; best = i; } }
+  const r = lookRay(g, sx, sy);
+  if (best >= 0 && !(r.hit > 1 && r.dist < bestD - .5)) { lookAdopt(best); }
+  else if (r.hit) {
+    const T = L.structure, solid = r.hit === 2 || r.hit === 3;
+    LOOK.key = LOOK_PLACE_KEY; LOOK.kind = LOOK_PLACE; LOOK.lost = 0; LOOK.nx = r.x; LOOK.ny = r.y;
+    if (solid) { LOOK.nz = r.base; LOOK.nTop = Math.max(T.ground, r.top - r.base); LOOK.nMid = T.mid; LOOK.nFace = T.face; }
+    else { LOOK.nz = r.z; LOOK.nTop = T.ground; LOOK.nMid = LOOK.nFace = .5; } // the ground, a cliff face or a wall: aimed at the very point
+    LOOK.nNear = T.near; LOOK.nSize = solid ? Math.max(LOOK.nTop, 1) : T.near;
+    const t = r.tile; LOOK.label = r.hit === 3 ? (/^shelter/i.test(String(t?.structure || "")) ? "Shelter" : "House") : lookHuman(t?.kind) || (r.hit === 4 ? "Wall" : "Ground");
+  } else return null;
+  LOOK.chosen = true; LOOK.pinned = true;
+  if (LOOK.key && LOOK.want < L.tapZoom) LOOK.want = L.tapZoom; // a tap at the normal view comes in a little, onto it
+  return { subject: LOOK_SUBJECTS[LOOK.kind] || "thing", label: closeViewLookLabel(), hit: LOOK.key === LOOK_PLACE_KEY ? LOOK_HITS[r.hit] : "draw" };
 }
 // The compass's long press (CLOSE_VIEW.camera.look.holdMs / holdSlop): main.ts feeds it the compass's pointer events and asks
 // `due` when the hold time has passed. A press held that long without sliding away is a hold (it toggles Look mode in Close
-// View, and the click that follows its release is swallowed); anything shorter stays the compass's ordinary tap.
+// View, and the click that follows its release is swallowed); anything shorter stays the compass's ordinary tap. `swallowMs`: how
+// long after the release that click may come (main.ts drops the flag then, and at once on a cancel or a slide off mid-hold).
 export function createLookHold(L = CLOSE_VIEW.camera.look) {
   const st = { id: null, x: 0, y: 0, at: 0, fired: false, swallow: false };
   return {
@@ -1579,6 +1706,7 @@ export function createLookHold(L = CLOSE_VIEW.camera.look) {
     // the release: true when it ends a hold the timer did not get to (a busy frame can delay the timer past the release)
     up(id, t = NaN) { if (id !== st.id) return false; st.id = null; if (st.fired || !(t - st.at >= L.holdMs)) return false; st.fired = true; return true; },
     cancel() { st.id = null; },
+    drop() { st.swallow = false; }, // no click is coming (a cancel, a slide off, or swallowMs after the release): the next click is a tap again
     takeClick() { const w = st.swallow; st.swallow = false; return w; },
     get pressing() { return st.id !== null; },
   };
@@ -1595,12 +1723,17 @@ function lookRig(g, ex, ey, ez, pitch, fx, fy, capAt) {
   let bx = ex - tx, by = ey - ty; const bl = Math.hypot(bx, by), from = Math.hypot(bl, ez - tz);
   if (bl > 1e-3) { bx /= bl; by /= bl; } else { bx = -fx; by = -fy; }
   let ux = lerp(bx, -fx, k), uy = lerp(by, -fy, k); { const ul = Math.hypot(ux, uy); if (ul < 1e-3) { ux = -fx; uy = -fy; } else { ux /= ul; uy /= ul; } }
-  const pitchO = L.pitch * DEG + CAM.pitchUser, dist = lerp(Math.max(from, LOOK.near), LOOK.near, k);
+  // the distance: from the normal eye's in to the subject's `near`; a subject too big for the normal eye's distance first backs
+  // the eye off to frame it whole (`fit`, at most `standOff`: a very big one stands partly in frame), then closes on it
+  const pitchO = L.pitch * DEG + CAM.pitchUser, far = Math.min(LOOK.fit, Math.max(from, L.standOff)), kf = L.fitAt;
+  let dist = lerp(Math.max(from, LOOK.near), LOOK.near, k);
+  if (far > LOOK.near) dist = Math.max(dist, k < kf ? (far > from ? lerp(from, far, k / kf) : far) : lerp(far, LOOK.near, (k - kf) / (1 - kf))); // a small subject (far under near) keeps the plain glide
   let hd = dist * Math.cos(pitchO), z = lerp(ez, tz + dist * Math.sin(pitchO), k);
   // never inside a wall: the eye stays on a clear line from the subject (pulled in along it)
   const clear = sightClear(g.map, tx, ty, tx + ux * hd, ty + uy * hd, C.sightStep, C.sightPad); hd = Math.max(.05, hd * clear);
   let x = tx + ux * hd, y = ty + uy * hd;
   while (hd > .05 && camWall(g.map, x, y)) { hd -= .03; x = tx + ux * hd; y = ty + uy * hd; }
+  if (camWall(g.map, x, y)) { hd = 0; x = tx; y = ty; } // no room at all: the eye stands on the aim point itself (open), never in the wall
   z = Math.min(z, capAt(x, y)); z = Math.max(z, surfaceZ(g.map, x, y) + C.outdoor.clear);
   LR.x = x; LR.y = y; LR.z = z; LR.fx = -ux; LR.fy = -uy; LR.pitch = lerp(pitch, Math.atan2(z - tz, Math.max(.05, hd)), k); LR.lens = lerp(1, L.lens, k); LR.k = k;
   LOOK.k = k; LOOK.eyeX = x; LOOK.eyeY = y; LOOK.eyeZ = z; return true;
@@ -1673,7 +1806,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r945-c3afa98a7637's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r946-4c6c4e323b38's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -2112,7 +2245,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
-    boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
+    boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy || LOOK.key === d.nativeAux?.source))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused, reduce, g.map);
@@ -4372,7 +4505,9 @@ export function mountCloseViewControls(getGame, host = globalThis, opts = {}) {
       if (stroke(g, e.clientX, e.clientY, t, dy) || closeViewTurning()) return; // the turnaround owns the view while it swings
       turn(g, dx * k * D.yaw / K.yaw, dy * k * D.pitch / K.pitch, t, dx); }, { capture: true });
     const dragEnd = (e) => { if (!dragging(e)) return; e.stopImmediatePropagation?.(); dragId = null; const t = now(); flush(t);
-      if (e.type === "pointerup" && dragMoved < D.tapMove && t - dragDown < D.tapMs && typeof CustomEvent === "function") canvas.dispatchEvent?.(new CustomEvent("worldtap", { detail: { clientX: e.clientX, clientY: e.clientY, pointerType: e.pointerType } }));
+      const tap = e.type === "pointerup" && dragMoved < D.tapMove && t - dragDown < D.tapMs;
+      if (tap && LOOK.on) { const g = getGame(), r = canvas.getBoundingClientRect?.(); if (g && r) closeViewLookTap(g, r.width, r.height, e.clientX - r.left, e.clientY - r.top); } // Look mode: a tap only chooses what to look at (never the world's tap: no attack, use or walk)
+      else if (tap && typeof CustomEvent === "function") canvas.dispatchEvent?.(new CustomEvent("worldtap", { detail: { clientX: e.clientX, clientY: e.clientY, pointerType: e.pointerType } }));
       else CAM.panAt = t; };
     for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(t, (e) => {
       if (pinchOf(e)) { e.stopImmediatePropagation?.(); pinchEnd(e); return; }
@@ -4381,6 +4516,10 @@ export function mountCloseViewControls(getGame, host = globalThis, opts = {}) {
       if (t === "lostpointercapture") { if (dragging(e)) { dragId = null; flush(now()); } }
       else dragEnd(e);
     }, { capture: true });
+    // Look mode: any other world tap (the input's own, from the joystick's pad or a mouse) is only a look too. A capture listener
+    // on the canvas runs before the game's own worldtap listener (main.ts) and stops it: no attack, use, aim, lock or walk.
+    canvas.addEventListener("worldtap", (e) => { if (!shown || !LOOK.on) return; e.stopImmediatePropagation?.(); const g = getGame(), r = canvas.getBoundingClientRect?.(), d = e.detail;
+      if (g && r && d) closeViewLookTap(g, r.width, r.height, d.clientX - r.left, d.clientY - r.top); }, { capture: true });
     // Look mode on a desktop: the wheel zooms (nothing else uses it in Close View)
     canvas.addEventListener("wheel", (e) => { if (!shown || !LOOK.on) return; e.preventDefault?.(); closeViewLookZoomBy(-(Number(e.deltaY) || 0) * .0015); }, { passive: false });
     host.addEventListener?.("blur", () => {

@@ -8,8 +8,8 @@
 // not found (so the notes read in order however the crossings fall) and its page of notes, kept in the Journal. A crossing
 // gives at most one link. Part two (his statue at the edge of the Far Sleep, and the last map) is still to come.
 // State: save.lore.surveyor = { links: [index...], where: { index: dungeonId } } (additive; ensureSurveyor). Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r945-c3afa98a7637";
-import { arcanaRate, regionVersionOf } from "./lore.js?v=r945-c3afa98a7637";
+import { hashSeed } from "./random.js?v=r946-4c6c4e323b38";
+import { arcanaRate, regionVersionOf } from "./lore.js?v=r946-4c6c4e323b38";
 
 export const SURVEYOR = { links: 12, chance: .14, minRing: 8, minFromEntry: 6 };
 // His field notes, one per link, in the order they are found. Original writing for the game. The lengths of the same
@@ -78,7 +78,7 @@ export function takeSurveyorLink(save, o, dungeonId) {
 // FAR_SLEEP_DEPTH along the line from the Refuge through the crossing of the twelfth link, stands his statue
 // (`surveyorStatueSection`, recorded once as save.lore.surveyor.statue so it never moves). Touching it closes the thread
 // (`statueSeen`). Original writing for the game.
-import { FAR_SLEEP_DEPTH } from "./landscape.js?v=r945-c3afa98a7637";
+import { FAR_SLEEP_DEPTH } from "./landscape.js?v=r946-4c6c4e323b38";
 
 export const SURVEYOR_STATUE_LINES = [
   "A man in a surveyor's coat, kneeling, carved from the same pale stone as the Far Sleep's terraces. One end of a brass chain is pinned under his boot; the rest runs up along his arm to the hand that holds it, the way you hold a chain to read a length.",
