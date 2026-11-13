@@ -44,6 +44,7 @@ import { roofDeckById } from "./roof-decks.ts"; // roof decks: the roof stood on
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
 import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
@@ -101,6 +102,20 @@ export function nativeTraveler(o,now,quiet){
   if(o.elder===true&&Number.isInteger(o.rule)&&o.rule>=0&&o.rule<=255){const hue=(o.rule*137.508)%360;return {kind:'elderWanderer',yaw:facing,paletteMap:{[0x17101d]:hueRGB(hue,.4,.08),[0x342b38]:hueRGB(hue,.25,.22),[0xe8e5dc]:hueRGB(hue,.3,.88)},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
   if(o.reciter&&RECITER_NATIVE_LOOKS.has(o.look)){const colors=COLORS[o.look].map(c=>Number.parseInt(c.slice(1),16));return {kind:'dungeonReciter:'+o.look,yaw:facing,paletteMap:{[0x5f6f92]:colors[0],[0x2f3550]:colors[1],[0xc9cfe6]:colors[2]},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
   return null;
+}
+// Close View only (the GPU capture): a person drawn as a skinned body (close-view-folk.ts) keeps on its card only what the body does
+// not draw: a rider's mount, the talk marker over a villager's or a Refuge person's head, the Wanderer's "!" or "…" (raised above
+// the taller body). Nothing else; the standard view never calls this.
+function folkCapture(ctx,o,s,g,now){
+  const mark=o.kind==='villager'&&!o.quarryTurtle||o.kind==='npc'||!!o.wanderer,mount=o.kind==='traveler'&&!!o.mount;
+  if(!mark&&!mount)return {};
+  const giant=o.folkGiant?FAR_FOLK.scale:1,top=(1.38*(folkLook(o).height||1)+(mount?FOLK_MOTION.seat-.5:0))*giant;
+  return {nativeEffects:true,nativeHeight:top+.5,nativeDecorations:()=>{
+    const cx=(o.x+.5)*s,head=(o.y+.82-top)*s;
+    if(mount){const f=o.facing||"down",step=o.state==="walking"?Math.floor(now/180):0;if(o.folkGiant){ctx.save();ctx.translate(cx,(o.y+1)*s);ctx.scale(giant,giant);ctx.translate(-cx,-(o.y+1)*s);}actor(ctx,o.x,o.y+.05,s,o.mount,f,step,o.state==="walking"?"walk":"idle");if(o.folkGiant)ctx.restore();}
+    if(o.wanderer){const q=g.save.wanderer?.quest;ctx.fillStyle=!q||q.done?"#f0d58a":"#9cc8b5";ctx.font=`bold ${Math.max(10,s*.32)}px monospace`;ctx.textAlign="center";ctx.fillText(!q||q.done?"!":"…",cx,head-s*.12);ctx.textAlign="start";}
+    else if(mark){const n=o.kind==='npc'?g.save.consequences?.npcs?.[o.id]:null;ctx.fillStyle=n?.disposition==="hostile"?"#d9977a":"#9cc8b5";ctx.beginPath();ctx.arc(cx,head-s*.12,Math.max(2,s*.08),0,7);ctx.fill();}
+  }};
 }
 export function drawNativeTravelerDetails(ctx,o,s,now,quiet=false){
   if(!o.elder)return;
@@ -2685,6 +2700,7 @@ export function render(ctx, g, w, h, now) {
         ...(closeViewCapturing()&&nativeTraveler(o,now,false)?{nativeAux:{source:o,sample:(clock,quiet)=>nativeTraveler(o,clock,quiet)},nativeHeight:o.elder?3.05:1.8,nativePanelOffset:o.elder?.29:0,nativeEffects:!!o.elder,
           nativeDecorations:()=>drawNativeTravelerDetails(ctx,o,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)),
           nativeFloor:()=>{ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse((o.x+.5)*s,(o.y+.82)*s,s*(o.elder?.45:.3),s*.12,0,0,7);ctx.fill();}}:{}),
+        ...(closeViewCapturing()&&closeViewFolkKind(o,g)?folkCapture(ctx,o,s,g,now):{}), // Close View townsfolk (close-view-folk.ts): what their card still owes beside the body
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
@@ -2896,7 +2912,7 @@ export function render(ctx, g, w, h, now) {
     if (worldCapture) drawSkyDisc(ctx, d, s, now, true);
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
-  const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
+  const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
   const playerDraw = {
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),

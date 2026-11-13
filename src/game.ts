@@ -30,6 +30,8 @@ import {
   cacheLeverFlag,
   grantCacheLoot,
   cacheLootText,
+  HEARTLAND_SHACK,
+  heartlandShackSection,
 } from "./world.ts";
 
 function applyFallenTreeCrossings(map) {
@@ -79,7 +81,7 @@ import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
@@ -1136,6 +1138,69 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
   }
   return true;
 }
+// Solid props (Close View play-through of 926, bug 5: an aimed Rift Step, or a jump onto the shrine's pupil, stood the Wayfarer
+// inside the Watcher's tomb). A prop of a kind listed here is a solid the Wayfarer's collision box cannot enter: a disc `r` tiles
+// across its middle, centred where both views draw it (`cx`, `cy` from its tile corner), `rise` levels tall above its own tile (more than a
+// jump: no hop lands on or in it; the drone carries the Wayfarer over it).
+// Only the Wayfarer is stopped (creatures, shots and generation are unchanged). A prop is solid only where it can never close a
+// way: its eight neighbouring tiles must let the Wayfarer walk round it (the open neighbours beside it all one connected run of
+// the ring), and no other listed prop stands next to it; otherwise it stays as before. Leaving a prop's disc is always allowed
+// (a journey saved inside one walks out). Presentation and saves are untouched; the list is derived from the map, kept per map
+// while its objects and tiles are the same arrays (no per-frame allocation).
+// Release 932 (Tim): standing stones, shrines, Wayglasses and chests too. `r`: the widest half of what Close View builds for the
+// kind (close-view-outdoor.ts PROP_RECIPES: the tomb's plinth .42, a shrine's base .34, a Wayglass pylon's .3, a chest's .3 by .2,
+// a standing stone's .2 by .12 with its foot stones), the standard view's sprite standing on the same spot; `rise`: its drawn
+// height in levels (1.2 tiles a level), rounded up. `id`: only objects whose id matches (a ruin marker is a standing stone only as
+// the world's own landmark, `landmark-*`, the Broken Observatory; rafts, climb signs, gates and other markers stay open). A hidden
+// cache is not drawn and not solid.
+export const PROP_SOLIDS = Object.freeze({ cx: .5, cy: .62, kinds: Object.freeze({
+  watcherTomb: Object.freeze({ r: .42, rise: 1.5 }),
+  shrine: Object.freeze({ r: .34, rise: 1 }),
+  checkpoint: Object.freeze({ r: .3, rise: 1 }),
+  ruinMarker: Object.freeze({ r: .24, rise: 1, id: /^landmark-/ }),
+  chest: Object.freeze({ r: .3, rise: .5 }),
+  cache: Object.freeze({ r: .3, rise: .5 }),
+}) });
+const propSolidKind = (o) => { const K = PROP_SOLIDS.kinds[o?.kind]; return K && (!K.id || K.id.test(String(o.id || ""))) && !(o.kind === "cache" && o.state === "hidden") && Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y)) ? K : null; };
+const PROP_RING = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]], PROP_WALKER = Object.freeze({}), NO_PROPS = new Float64Array(0), propSolidKept = new WeakMap();
+// Would blocking the tile (x, y) cut a way? True when the open neighbours beside it (N, E, S, W) are not all in one walkable run of its ring.
+function propChokes(map, width, x, y) {
+  const open = PROP_RING.map(([dx, dy]) => footprintOpen(map, width, x + dx, y + dy) && !footprintHazard(map, width, x + dx, y + dy));
+  const link = PROP_RING.map(([dx, dy], i) => { const [ex, ey] = PROP_RING[(i + 1) % 8], ax = x + dx, ay = y + dy, bx = x + ex, by = y + ey;
+    return open[i] && open[(i + 1) % 8] && footprintOpen(map, width, (ax + bx) / 2, (ay + by) / 2) && canStep(PROP_WALKER, map, width, ax, ay, bx, by) && canStep(PROP_WALKER, map, width, bx, by, ax, ay); });
+  if (link.every(Boolean)) return false;
+  const start = link.indexOf(false), run = new Array(8); let id = 0;
+  for (let k = 1; k <= 8; k++) { const i = (start + k) % 8; run[i] = id; if (!link[i]) id++; }
+  const sides = [0, 2, 4, 6].filter((i) => open[i]).map((i) => run[i]);
+  return sides.some((r) => r !== sides[0]);
+}
+// What the solid props depend on besides the arrays: each listed prop's place (a number; nothing allocated).
+function propSignature(objs) { let a = 0; for (let i = 0; i < objs.length; i++) { const o = objs[i]; if (propSolidKind(o)) a = (a + Math.imul(Math.round(Number(o.x) * 8) + 7, 73856093) + Math.imul(Math.round(Number(o.y) * 8) + 3, 19349663) + i) | 0; } return a; }
+// The solid props of a map: [cx, cy, r, top level] per prop, flat. Rebuilt only when the map's objects or tiles change.
+export function solidProps(map, width) {
+  const objs = map?.objects; if (!objs?.length || !map.tiles) return NO_PROPS;
+  const kept = propSolidKept.get(map);
+  if (kept && kept.objects === objs && kept.length === objs.length && kept.tiles === map.tiles && kept.width === width) { if (kept.frame === navFrame) return kept.list; kept.frame = navFrame; if (kept.sig === propSignature(objs)) return kept.list; } // once a frame: a cache revealed, a shrine moved
+  const height = Math.floor(map.tiles.length / width), listed = objs.filter(propSolidKind), out = [];
+  for (const o of listed) { const K = PROP_SOLIDS.kinds[o.kind], x = Math.round(Number(o.x)), y = Math.round(Number(o.y)); if (x < 1 || y < 1 || x >= width - 1 || y >= height - 1) continue;
+    if (listed.some((q) => q !== o && Math.max(Math.abs(Math.round(Number(q.x)) - x), Math.abs(Math.round(Number(q.y)) - y)) <= 1) || propChokes(map, width, x, y)) continue;
+    out.push(Number(o.x) + PROP_SOLIDS.cx, Number(o.y) + PROP_SOLIDS.cy, K.r, Math.max(map.tiles[y * width + x]?.elev || 0, Number(o.elev) || 0) + K.rise); }
+  const list = out.length ? Float64Array.from(out) : NO_PROPS; propSolidKept.set(map, { objects: objs, length: objs.length, tiles: map.tiles, width, list, frame: navFrame, sig: propSignature(objs) }); return list;
+}
+// Does the Wayfarer's collision box at (x, y), at `level` (its feet's height, in the air too), stand in a solid prop? Pure.
+export function propBlocked(map, width, x, y, level = -Infinity) {
+  const list = solidProps(map, width); if (!list.length) return false;
+  const left = x + .24, right = x + .76, top = y + .5, bottom = y + .88;
+  for (let i = 0; i < list.length; i += 4) { if (level >= list[i + 3] - 1e-6) continue; const cx = list[i], cy = list[i + 1], r = list[i + 2], nx = cx < left ? left : cx > right ? right : cx, ny = cy < top ? top : cy > bottom ? bottom : cy;
+    if ((nx - cx) * (nx - cx) + (ny - cy) * (ny - cy) < r * r) return true; }
+  return false;
+}
+// A step of the Wayfarer from (fx, fy) to (tx, ty) that enters a solid prop it was not already in. Only the Wayfarer (entity.isPlayer)
+// with a known height (entity.propLevel, set each frame by Game) is checked, so every other mover is exactly as before.
+function propStepBlocked(entity, map, width, fx, fy, tx, ty) {
+  if (entity?.isPlayer !== true || !Number.isFinite(entity.propLevel)) return false;
+  return propBlocked(map, width, tx, ty, entity.propLevel) && !propBlocked(map, width, fx, fy, entity.propLevel);
+}
 // The skiff's footprint fits when every tile under it is sailable water (boats.ts). Release 165: a tile that belongs to
 // a shack or building (its walls, floor or yard carry `structure` or `buildingId`) blocks the skiff even when the ground
 // under it is water, so boats no longer sail through walls.
@@ -1219,13 +1284,13 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, o
   for (let i = 0; i < steps; i++) {
     // Release 287: a two-high stack of blocks (or a wall) stops fliers too; only the Wayfarer climbs builds.
     const tall = (x, y) => allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y);
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y) && !propStepBlocked(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
       const fromX = entity.x;
       entity.x += sx;
       onStep?.(fromX, entity.y, entity.x, entity.y);
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy) && !propStepBlocked(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
       const fromY = entity.y;
       entity.y += sy;
       onStep?.(entity.x, fromY, entity.x, entity.y);
@@ -1249,7 +1314,7 @@ function moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, on
     const x = entity.x + ax * fraction, y = entity.y + ay * fraction, exiting = contacts.canExit?.(x, y) === true;
     if (x === entity.x && y === entity.y) continue;
     if (!exiting && (!footprintOpen(map, width, x, y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null)
-      || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y))) continue;
+      || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y)) || propStepBlocked(entity, map, width, entity.x, entity.y, x, y)) continue;
     const fromX = entity.x, fromY = entity.y;
     entity.x = x; entity.y = y; moved = true;
     if (contacts.record) { const n = contacts.count; contacts.trace[n] = fromX; contacts.trace[n + 1] = fromY; contacts.trace[n + 2] = x; contacts.trace[n + 3] = y; contacts.count += 4; }
@@ -1398,7 +1463,7 @@ export function clearSectionTerrainCache() { terrainCache.clear(); terrainCache.
 export function sectionTerrain(seed, rx, ry, generation, steps) {
   const key = JSON.stringify([seed, rx, ry, generation, steps]), kept = terrainCache.get(key);
   if (kept) { terrainCache.delete(key); terrainCache.set(key, kept); terrainCache.hits = (terrainCache.hits || 0) + 1; return structuredClone(kept); }
-  const map = generateRegion(seed, rx, ry, generation);
+  const map = generateRegion(seed, rx, ry, generation, steps.heartlandShack ? { heartlandShack: steps.heartlandShack } : null); // heartland shacks (world.ts HEARTLAND_SHACK): new ground beside the Refuge only
   applyLandscape(map, seed, rx, ry, steps.landscape);
   if (steps.dream) applyDream(map, seed, rx, ry, steps.dream);
   if (map.canopy) mendCanopy(map); // great-tree review: a tree the Far Sleep paved over (landscape versions 13 to 17) is no tree: its record and door go
@@ -1418,8 +1483,11 @@ export function walkerTerrainSteps(save, rx, ry) {
     hamlet: (!seen || !!seen.hamletVersion) && (hamletSection(save.seed, rx, ry) || legacyMouthHamlet(save, rx, ry)) },
     dream: !seen || seen.dreamVersion ? seen?.dreamVersion || DREAM_VERSION : 0,
     hamlet: !seen || seen.hamletVersion ? [seen?.hamletVersion || HAMLET_VERSION, false, legacyMouthHamlet(save, rx, ry)] : null,
-    trails: !seen || !!seen.travelVersion, bridgeLanes: !!coh };
+    trails: !seen || !!seen.travelVersion, bridgeLanes: !!coh, ...heartlandShackStep(seen, rx, ry) };
 }
+// Heartland shacks (world.ts HEARTLAND_SHACK): the version a section beside the Refuge keeps (ground first seen from now on: the
+// current one; ground seen before: its atlas pin, 0 when it has none). Only present when non-zero, so every other key is unchanged.
+export function heartlandShackStep(seen, rx, ry) { if (!heartlandShackSection(rx, ry)) return {}; const v = seen ? Number(seen.heartlandShackVersion) || 0 : HEARTLAND_SHACK.version; return v ? { heartlandShack: v } : {}; }
 // World coherence (landscape.ts COHERENCE): the version a section keeps. Ground first seen from now on takes the current one;
 // a section in the atlas keeps the one it was first seen with (none, for every section seen before it existed).
 export function coherenceOf(seen) { return seen ? seen.coherenceVersion || 0 : COHERENCE.version; }
@@ -3092,7 +3160,7 @@ export class Game {
     return{landscape:{coherence:coh,explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!save.checkpoints?.[`${rx},${ry}`]||save.checkpoints[`${rx},${ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(save.seed,rx,ry)||legacyMouthHamlet(save,rx,ry)||!!town))||!!town?.mouth},
       dream:!seen||seen.dreamVersion?seen?.dreamVersion||DREAM_VERSION:0,
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
-      trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh};}
+      trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh,...heartlandShackStep(seen,rx,ry)};}
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
   snapshotArea(leaving = true) {
     if (!this.map) return;
@@ -3257,6 +3325,7 @@ export class Game {
     }
     if (area === "overworld") {
       const atlas = (this.save.atlas ||= {}), key = `${this.rx},${this.ry}`, prior = atlas[key];
+      markHeartlandDecks(this.map, this.rx, this.ry); // the low roofs beside Ember Refuge (roof-decks.ts ROOF_DECKS.heartland): derived, the map is unchanged
       const indoor = prior ? prior.indoorDungeonVersion : INDOOR_DUNGEON.version; if (indoor) placeDungeonIndoors(this.map, this.save.seed, this.rx, this.ry); // release 499: only sections first seen from now on
       if (this.map.dream && this.save.narrative?.facts && !this.save.narrative.facts["farSleep.entered"]) { this.save.narrative.facts["farSleep.entered"] = true; this.message = "The ground thins underfoot, and the night shows through. Somewhere, someone is dreaming this. Perhaps you."; } // release 305
       noteSectionVisit(this.save, key); // release 263: a section not among the last 8 different ones counts toward the buffer
@@ -3316,6 +3385,7 @@ export class Game {
         ...(prior ? (prior.buildingVersion ? { buildingVersion: prior.buildingVersion } : {}) : { buildingVersion: BUILDINGS.version }), // the great buildings take their place
         ...(prior ? (prior.farVersion ? { farVersion: prior.farVersion } : {}) : { farVersion: FAR_REALMS.version }), // release 714: the far realms, new ground only
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
+        ...(heartlandShackSection(this.rx, this.ry) ? (prior ? (prior.heartlandShackVersion ? { heartlandShackVersion: prior.heartlandShackVersion } : {}) : { heartlandShackVersion: HEARTLAND_SHACK.version }) : {}), // and the heartland shacks beside the Refuge
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
         ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: this.map.pentagon?.V || 9 }), // and the Pentagons; placement stamps its actual namespace, while no placement preserves r843's literal fallback
@@ -3832,7 +3902,7 @@ export class Game {
   // their exact arithmetic when the swept segment clears bodies; only a real contact
   // enters the terrain/contact solver. Damage and action clocks stay with the caller.
   moveGuardedCombatStep(x, y) {
-    const p = this.player, dx = x - p.x, dy = y - p.y, contacts = actorContactContext(this, p, dx, dy);
+    const p = this.player, dx = x - p.x, dy = y - p.y; if (propStepBlocked(p, this.map, mapWidth(this.map, this.area), p.x, p.y, x, y)) return false; /* solid props (926 bug 5) */ const contacts = actorContactContext(this, p, dx, dy);
     if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
     return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
   }
@@ -3867,7 +3937,7 @@ export class Game {
     probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
     probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
     if (!jumping && this.standingDeck() && this.decksApply()) probe.airElev = this.roofDeck.level; // roof decks: walking on a roof, the ground round the house is a drop
-    probe.deckReach = p.deckReach ?? null;
+    probe.deckReach = p.deckReach ?? null; probe.propLevel = p.propLevel; // solid props (926 bug 5)
     contacts.supportSubject = probe;
     contacts.carrier = carrier;
     contacts.record = true;
@@ -4013,7 +4083,7 @@ export class Game {
   // there (ms, at the fall's speed; the ground under the Wayfarer now)? Read only.
   fallPoseDue() { const f = this.fall; return !!f && this.area === "overworld" && f.from - this.elevationHere(this.player.x, this.player.y) >= FALL.pose; }
   fallRemainingMs() { const f = this.fall; return f ? fallAirtime(f.z - this.elevationHere(this.player.x, this.player.y), f.vz) * 1000 : 0; }
-  decksApply() { return this.area === "overworld" && !!this.map?.landscape && !this.mountRide?.() && !this.mechUp?.() && !aboard(this.save) && roofDeckIndex(this.map).decks.length > 0; }
+  decksApply() { return this.area === "overworld" && roofDecksApply(this.map) && !this.mountRide?.() && !this.mechUp?.() && !aboard(this.save) && roofDeckIndex(this.map).decks.length > 0; }
   standingDeck() { const d = this.roofDeck; if (!d) return null; if (this._deckMap !== this.map || this.area !== "overworld") { this.roofDeck = null; return null; } return d; }
   setRoofDeck(d) { this.roofDeck = d ? { id: d.id, level: d.level } : null; this._deckMap = d ? this.map : null; }
   // The highest deck whose walls do not stop the Wayfarer: the one stood on, or one level over the height a jump holds (null: none).
@@ -4064,6 +4134,13 @@ export class Game {
     const from = wasOn ? this.roofDeck?.level ?? null : this.skyAir, reach = from == null ? null : from + (wasOn ? 0 : 1);
     const on = d && reach != null && d.level <= reach + 1e-6 ? d : reach != null ? this.deckEdgeHold(p.x, p.y, reach) : null; // the edge: still over its walls
     this.setRoofDeck(on); return on;
+  }
+  // Solid props (926 bug 5): the height of the Wayfarer's feet for PROP_SOLIDS, in a jump its held height (skyAir). Not a number
+  // (no prop check) aboard or gliding, which keep their own rules.
+  propLevel(now = this.lastUpdateNow || 0) {
+    if (aboard(this.save) || (this.glide && this.area === "overworld")) return NaN;
+    const level = this.playerLevel(), air = now < (this.jumpUntil || 0) && this.skyAir != null ? this.skyAir : -Infinity;
+    return Math.max(Number.isFinite(level) ? level : 0, air);
   }
   // The roof's edge (pre-publish review of 915: walking or jumping off a roof wedged the Wayfarer in its wall): the deck, at or under
   // maxLevel, whose walls the collision box at (x, y) still stands over once the feet have left its roof, or null. Only a deck whose
@@ -4210,8 +4287,11 @@ export class Game {
     if (d && d.level <= top) return footprintOpen(this.map, w, x, y, false, false, false, false, d.level) ? { level: d.level, deck: d } : null;
     const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
     if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
-    const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
+    const ground = this.elevationHere(x, y); if (propBlocked(this.map, w, x, y, ground)) return null; // solid props (926 bug 5): never inside the Watcher's tomb
+    return ground <= top ? { level: ground, deck: null } : null;
   }
+  // Solid props (926 bug 5): does the collision box at (x, y) stand in a solid prop's footprint at all (any height)? A blink passes through one, never ends in it.
+  blinkInProp(x, y) { return propBlocked(this.map, mapWidth(this.map, this.area), x, y); }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
   // is a freefall only when the step leaves a great tree: treeLaunch). Tim (2026-11-12): every Rift Step falls.
   landBlink(footing, fromLevel, now) {
@@ -4851,6 +4931,7 @@ export class Game {
         ok: false,
         message: (this.message = "Nothing nearby responds."),
       };
+    this.talkVisual = { id: o.id, at: this.lastUpdateNow || 0 }; // presentation only: Close View townsfolk gesture as they are spoken to (close-view-folk.ts)
     if (this.rite && this.area === "overworld") { const why = riteExit(o, action || validActions(o, this.save)[0]); if (why) { this.message = why; return { ok: false, message: why, riteSealed: true }; } } // RITE_LOCKDOWN: no door, gate or fold off the rite's ground
     if (o.towerSeal && o.kind === "dungeon" && !towerUnsealed(this.save, o.towerSeal)) { this.message = towerSealText(o.roofHatch ? TOWER_SEAL.messages.hatch : TOWER_SEAL.messages.sealed, o.towerSeal); return { ok: false, message: this.message, sealed: true }; } // TOWER_SEAL: the central tower's ways in want its key (or its lever)
     if (o.kind === "towerLever") return this.pullTowerLever(o); // and the lever at the top of its climb
@@ -10210,6 +10291,7 @@ export class Game {
     if (gliding) { if (this.glideStep(x, y, dt, now) === "crossed") return; nx = p.x; ny = p.y; dx = 0; dy = 0; }
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
     if (!sailing && !gliding) { this.holdDeckJump(now); p.deckReach = this.deckReach(now < (this.jumpUntil || 0)); } else p.deckReach = null; // roof decks
+    p.propLevel = this.propLevel(now); // solid props (926 bug 5): the height the Wayfarer's feet are at, for the collision mover
     const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
     if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */

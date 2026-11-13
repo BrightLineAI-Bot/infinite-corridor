@@ -91,7 +91,7 @@ test('no boom collapse at a section edge: walking out through the border rocks\'
   assert.ok(Math.min(...seen) > CLOSE_VIEW.presets.standard.outdoorDistance - .05, 'the border rocks are under the eye: the full boom');
 }));
 
-test('a solid or a creature between the eye and the Wayfarer is inside the occluder window and fades', () => withGPU(() => {
+test('a solid between the eye and the Wayfarer is inside the occluder window and fades; a creature, however big, stays solid', () => withGPU(() => {
   const s = scene(10, 28.6, Math.PI); let c = s.frame(); // the camera east of the Wayfarer, over open ground (row 29)
   assert.equal(closeViewOccluder().on, true); assert.equal(closeViewOccluder().solid, 0, 'nothing between');
   const mid = (k: number) => { const o: any = closeViewOccluder(); return [o.eye[0] + (o.body[0] - o.eye[0]) * k, o.eye[1] + (o.body[1] - o.eye[1]) * k, o.eye[2] + (o.body[2] - o.eye[2]) * k]; };
@@ -104,12 +104,12 @@ test('a solid or a creature between the eye and the Wayfarer is inside the occlu
   assert.equal(closeViewOccluder().solid, 1, 'the tree is in the window'); assert.equal(GLF.occSolid, 1);
   assert.ok(Math.abs(c.distance - CLOSE_VIEW.presets.standard.outdoorDistance) < .05, 'and the boom is not pulled in for it');
   s.g.map.objects.pop(); s.frame(2); assert.equal(closeViewOccluder().solid, 0, 'gone: the ordinary programs again');
-  // a big body between: eased down to `creature` of its opacity, and back once it moves away
+  // a big body between (release 932, Tim: "I want the enemies to be as solid and real as possible"): never faded, at any moment
+  assert.equal(Oc.creatureFade, false, 'the creature fade is off');
   const foe: any = createCombatant('crimsonTyrant', 11.5, 28.6, true, []); Object.assign(foe, { id: 'occ-dragon', hp: 1e6, maxHp: 1e6 }); s.g.enemies.push(foe);
-  s.g.presentation.reduceMotion = false; s.frame(1); const first = closeViewCreatureFade(foe); s.frame(60);
-  assert.ok(Math.abs(closeViewCreatureFade(foe) - Oc.creature) < .02, `faded (${closeViewCreatureFade(foe).toFixed(2)})`);
-  foe.x = 5; foe.y = 26; s.frame(60); assert.ok(closeViewCreatureFade(foe) > .98, 'clear again');
-  assert.ok(first >= Oc.creature - 1e-9, 'never below its share');
+  s.g.presentation.reduceMotion = false; for (let i = 0; i < 6; i++) { s.frame(10); assert.equal(closeViewCreatureFade(foe), 1, `the dragon stays opaque (frame ${i})`); }
+  s.g.presentation.reduceMotion = true; s.frame(1); assert.equal(closeViewCreatureFade(foe), 1, 'with reduced motion too');
+  foe.x = 5; foe.y = 26; s.frame(10); assert.equal(closeViewCreatureFade(foe), 1, 'and away from the window');
 }));
 
 test('a big aggroed threat within range widens the view, eased in and out, keeping the limits', () => withGPU(() => {
