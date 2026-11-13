@@ -2434,6 +2434,8 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // ground hands its descent on to the fall at this speed (the drawn arc's own landing speed), so the arc and the fall join without a
 // float. `plunge`: a jump attack (brawler-spells.ts PLUNGE) that ends over a drop is driven down at this speed and slams where the fall
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
+// QA 926: the longest jump still in flight that a pause or reload treats as airborne (ms); a longer one is a damaged clock.
+export const AIRBORNE_HOLD = { jumpMs: 10000 };
 export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
@@ -2517,7 +2519,7 @@ export class Game {
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
     this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
-    this.loadArea(this.area, false); this._resumeDeck = null;
+    this._resumeNow = now; this.loadArea(this.area, false); this._resumeDeck = null; this._resumeNow = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3347,7 +3349,8 @@ export class Game {
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
       resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
-      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeAirborne = !capture && this.airborneHeld(this._resumeNow ?? this.lastUpdateNow ?? 0, this.save.session.playerRuntime), // QA 926: a fall, glide, jump or outdoor lift resumes where it was
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !resumeAirborne && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3488,8 +3491,23 @@ export class Game {
     this.hordeTimer = (this.hordeTimer || 0) + dt; if (this.hordeTimer < HORDE.respawn) return;
     this.hordeTimer = 0; if (this.spawnHordeRevenant(here.id)) this.message = "Another Gate Revenant tears through the crossing.";
   }
-  recoverPosition() {
+  // QA 926: a Wayfarer in the air is not stranded. A fall, a glide, a jump (or jump attack) in flight, a booster lift over open
+  // ground, or a fall already fatal is exact-resume state: where it lands is the uninterrupted game's (a river under a fall
+  // still drowns). `rt` is a saved playerRuntime when resuming (the outdoor lift is restored after the area loads); the jump's
+  // remaining time is bounded (AIRBORNE_HOLD) so a damaged clock never keeps a wedged Wayfarer from being recovered.
+  airborneHeld(now = this.lastUpdateNow || 0, rt = null) {
+    if (this.fall || this.glide || this.plunge || this._fatalFallPending === true) return true;
+    const left = (this.jumpUntil || 0) - now; if (left > 0 && left <= AIRBORNE_HOLD.jumpMs) return true;
+    if (this.droneLift && this.area === "overworld") return true;
+    const q = rt?.droneLift; return !!q && this.area === "overworld" && q.area !== "dungeon" && this.droneLiftAllowed() && ["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])));
+  }
+  // QA 926: standing on a roof deck at its edge (feet past it, the box still over its walls) is not stranded either; the same test
+  // a reload makes (resumeDeckEdge), so a pause never drops the Wayfarer off the roof.
+  deckEdgeHeld() { const d = this.standingDeck(), reach = d ? this.deckReach(false) : null, p = this.player;
+    return reach != null && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, mapWidth(this.map, this.area), p.x, p.y, false, false, false, true, reach); }
+  recoverPosition(now = this.lastUpdateNow || 0) {
     if(this.droneLift && interiorTerrain(this.map) && footprintOpen(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y,true))return false;
+    if (this.airborneHeld(now) || this.deckEdgeHeld()) return false; // QA 926
     // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
     if (this.area === "overworld" && aboard(this.save) && footprintSailable(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) return false;
     const moved = relocateIfStranded(
@@ -3508,7 +3526,7 @@ export class Game {
     if (v) { this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
     if (v && !this.paused) {
       this.pauseStarted = now;
-      this.recoverPosition();
+      this.recoverPosition(now);
       if (this.orrery) this.orrery.charge = null; // the Aether Orrery: a charge held into the pause is dropped, never released
     }
     if (!v && this.paused && this.pauseStarted !== null) {
