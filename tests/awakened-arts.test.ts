@@ -156,7 +156,7 @@ test('Iron Fists: awakened, the fourth step after the uppercut is a roundhouse k
     press(g, clock); frame(g, clock, false); idle(g, clock, 4); assert.equal(g.weaponArts.presses, 3, 'the kick is a press'); }
 });
 
-test('Ki Blast: still in the air after the uppercut blast, a press drops into the ground slam; awakened it weighs as the kick', () => {
+test('Ki Blast: still in the air after the uppercut blast, a press drops into the ground slam; it weighs as the kick, awakened or not', () => {
   // 2026-11-13: replaces the awakened-only axe kick that burst on landing by itself
   const slams = {};
   for (const awakened of [true, false]) {
@@ -167,7 +167,7 @@ test('Ki Blast: still in the air after the uppercut blast, a press drops into th
     idle(g, clock, 40); slams[awakened] = hp - g.enemies[0].hp; assert.ok(slams[awakened] > 0, 'it lands');
     assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross'); assert.equal(g.plunge, null);
   }
-  assert.ok(slams.true > slams.false, `awakened, the slam is stronger (${slams.true} > ${slams.false})`);
+  assert.ok(Math.abs(slams.true - slams.false) <= 1e-6 * Math.max(1, slams.true), `Tim 2026-11-13: the slam has parity with the kick, awakened or not (${slams.true} = ${slams.false})`);
 });
 
 test('Spell runes: the third swing runes the nearest struck foe (unruned first); a spell that strikes one detonates it; one a foe; they fade', () => {
