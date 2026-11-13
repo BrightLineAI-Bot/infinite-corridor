@@ -25,7 +25,7 @@ test('every Echo-eligible pack creature has exactly one Echo; explicit no-Echo c
   // Release 699: the Stalker's Echo (Tim's task) is the one Echo of a creature outside the pack; it names its creature itself.
   assert.deepEqual([...ECHO_IDS].filter(id=>id!=='stalker').sort(), PACK_KINDS.filter(id=>!MONSTER_PACK[id].noEcho).sort()); assert.equal(ECHOES.stalker.creature, 'The Stalker');
   // 2026-11-12: the Wild Stegosaurus has its Echo now, Stegosaur's Grip (tests/wall-cling.test.ts).
-  assert.deepEqual(PACK_KINDS.filter(id=>MONSTER_PACK[id].noEcho), ['astralWorm']);
+  assert.deepEqual(PACK_KINDS.filter(id=>MONSTER_PACK[id].noEcho), ['spinoRex', 'astralWorm']);
   assert.equal(ECHOES.astralWorm, undefined);
   assert.equal(echoDrop(freshSave(), {id:'astral-bounty-only',packKind:'astralWorm'}, true, 1), null);
   for (const e of Object.values(ECHOES)) assert.ok(e.cost >= 1 && e.cost <= 3 && e.text && e.trigger, e.name);

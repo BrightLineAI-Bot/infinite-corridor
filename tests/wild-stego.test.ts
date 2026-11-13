@@ -65,7 +65,7 @@ test('registry: a huge unique world beast of land and sea, twelve moves, its own
   const def = MONSTER_PACK.wildStego, B = WORLD_BEASTS.wildStego;
   assert.deepEqual(validateMonster(def), []); assert.ok(PACK_KINDS.includes('wildStego')); assert.equal(def.render, 'wildStego'); assert.ok(def.unique && !def.noEcho && ECHOES.wildStego);
   assert.equal(ATTACKS.length, 12); for (const id of ATTACKS) assert.ok(ATTACK_MODULES[id] && SETUP[id], id);
-  assert.equal(WORLD_BEAST_IDS.at(-1), 'wildStego', 'listed last: every older beast rolls as it did'); assert.equal(B.kind, 'wildStego'); assert.ok(BEAST_APERTURE.wildStego); assert.ok(PLACEMENT.bigBeasts.includes('wildStego')); assert.ok(BOSS_POISE.wildStego);
+  assert.equal(WORLD_BEAST_IDS.at(-2), 'wildStego', 'listed last but for the Spinosaurus (2026-11-12): every older beast rolls as it did'); assert.equal(B.kind, 'wildStego'); assert.ok(BEAST_APERTURE.wildStego); assert.ok(PLACEMENT.bigBeasts.includes('wildStego')); assert.ok(BOSS_POISE.wildStego);
   const e = createCombatant('wildStego', 0, 0, true, []); assert.ok(e.scale > 1.8); assert.deepEqual([e.stegoPose, e.stegoAir, e.stegoRoll, e.stegoSwim, e.stegoTail, e.stegoTree, e.stegoPlates, e.stegoClimb], [null, 0, 0, 0, 'whole', null, 1, 0]);
   assert.equal(STEGO.baitSeconds, 30);
 });

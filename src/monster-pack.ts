@@ -12,7 +12,8 @@ import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.ts"; // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { onStegoTailSevered } from "./stego-bait.ts";
+import { BLEED, tickCreatureBleed } from "./bleed.ts"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -50,6 +51,8 @@ export const BRAINS = {
   patrol: { id: "patrol", name: "Walks its beat, lamp first", preferred: [1.2, 2.6], cone: true }, // roused only near, or inside its lamp's cone (ADV.lamp)
   // The Wild Stegosaurus (STEGO): presses close like a duelist, but never still; it hops about between its blows (stegoTick).
   restless: { id: "restless", name: "Hungry and restless", preferred: [1.4, 2.6] },
+  // The Spinosaurus (SPINO): presses in like a duelist, but hunts its prey first (spinoTick).
+  hunter: { id: "hunter", name: "Hunts the hunters", preferred: [1.6, 3] },
 };
 
 // Telegraphed abilities. Times are seconds; `damage` multiplies the creature's damage;
@@ -289,6 +292,17 @@ export const ATTACK_MODULES = {
   stegoPounce: { id: "stegoPounce", name: "Wild Pounce", range: [2.5, 10], cooldown: 6, windup: .55, active: 1.2, recover: .6, damage: 1.45, tags: ["ground", "leap"], text: "It crouches and springs, and comes down on you with all its weight. It pounces on other creatures too." },
   stegoTreeClub: { id: "stegoTreeClub", name: "Uprooted Club", range: [0, 9], cooldown: 50, windup: .2, active: 6.5, recover: .8, damage: 1.6, tags: ["melee", "rare"], text: "Near tall thin trees it bites one, tears it out by the roots, shakes it, and swings it as a club. The tree stays down." },
   stegoBreach: { id: "stegoBreach", name: "Breach", range: [2, 12], cooldown: 7, windup: .4, active: 2.2, recover: .6, damage: 1.5, tags: ["ground", "water"], text: "On water only: it dives, then bursts up out of the water across your path, or up and down on top of you." },
+  // The Spinosaurus (Tim, 2026-11-12: "The Hunter of Hunters"). Numbers other than these are in SPINO; `fossil` moves only once it is bone.
+  spinoBite: { id: "spinoBite", name: "Snapping Jaws", range: [0, 3.6], cooldown: 3.2, windup: .55, active: 1.2, recover: .55, damage: .8, tags: ["melee", "bleed"], text: "One or two long snapping bites of its crocodile jaws, stepping in after you. They make you bleed." },
+  spinoClaw: { id: "spinoClaw", name: "Hooked Claws", range: [0, 3], cooldown: 2.8, windup: .45, active: .9, recover: .5, damage: .6, tags: ["melee", "bleed"], text: "It rakes with one great clawed hand, then the other. They make you bleed." },
+  spinoLeapSlam: { id: "spinoLeapSlam", name: "Furrow Leap", range: [3, 11], cooldown: 9, windup: .75, active: 2.8, recover: .8, damage: 1.35, tags: ["ground", "leap"], text: "It leaps onto the marked spot and slams its head down, then drags its jaw on through the ground, ploughing a furrow down the marked lane." },
+  spinoDigFling: { id: "spinoDigFling", name: "Earth Fling", range: [2.5, 10], cooldown: 11, windup: .7, active: 2.5, recover: .7, damage: .5, tags: ["ranged", "ground"], text: "It buries its snout in the ground and flings rock and earth at you in a cone, again and again." },
+  spinoRoar: { id: "spinoRoar", name: "Hunter's Roar", range: [0, 7], cooldown: 18, windup: 1.4, active: 1.2, recover: 1, damage: 1, tags: ["ground", "roar"], text: "It rears up and roars: the ground inside the great ring is struck again and again. Get out of the ring, or behind cover." },
+  spinoTailSwipe: { id: "spinoTailSwipe", name: "Tail Sweep", range: [0, 3.8], cooldown: 4.2, windup: .55, active: 1, recover: .5, damage: .95, tags: ["melee"], text: "It swings its heavy tail across the ground behind and beside it, one way and back." },
+  spinoBodySlam: { id: "spinoBodySlam", name: "Running Lunge", range: [3, 12], cooldown: 8, windup: .5, active: 2, recover: .7, damage: 1.35, tags: ["charge", "leap", "bleed"], text: "It runs at you down the marked lane, then lunges and comes down on the marked spot jaws first. It makes you bleed." },
+  spinoGrab: { id: "spinoGrab", name: "Hunter's Grip", range: [0, 8], cooldown: 14, windup: 1.6, active: 4.8, recover: .8, damage: 1, tags: ["grab", "bleed"], text: "A bite mark follows you. Be out from under it when it stops, or it lunges, lifts you in its jaws, chews (you bleed) and throws you down." },
+  spinoBoneVolley: { id: "spinoBoneVolley", name: "Bone Volley", range: [3, 12], cooldown: 10, windup: .8, active: 1.6, recover: .7, damage: .55, fossil: true, tags: ["ranged"], text: "Bone only: it flings its bones into the air; they hunt you, and those that miss land and burst on the marked ground." },
+  spinoRibSpears: { id: "spinoRibSpears", name: "Rib Spears", range: [0, 4.6], cooldown: 7, windup: .65, active: .7, recover: .7, damage: 1.1, fossil: true, tags: ["melee"], text: "Bone only: its ribs shoot out to either side as spears, then swing in to meet at a point in front of it." },
   chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
 };
 
@@ -510,6 +524,15 @@ export const MONSTER_PACK = {
     attacks: ["stegoBite", "stegoTailWhack", "stegoTailSlam", "stegoWheel", "stegoPlateRockets", "stegoTailBlade", "stegoClaw", "stegoRearSwipe", "stegoBuck", "stegoPounce", "stegoTreeClub", "stegoBreach"], bossAttacks: [],
     palette: ["#2f6fd6", "#163a7a", "#a9dcff", "#6f9fe6"], render: "wildStego", tags: ["beast", "elder", "dinosaur", "water", "climber"],
     lore: "A stegosaurus as big as a house, blue, striped dark along its flanks, its two rows of tall plates barred with pale light, its eyes a fierce yellow. Its beak has turned to teeth, and it is always hungry. It eats the trees as it goes, but it would rather eat you: it snaps and rakes and rears, swings and slams its spiked tail, rolls at you as a wheel of plates, fires its plates into the sky to fall on you, and swims with only its plates above the water. Cut off its tail and it fights the weaker for it.",
+  },
+  // The Spinosaurus (Tim, 2026-11-12): a world beast of the land (never the sea), the big rooms of keeps, arcologies and adventure
+  // Pentagons, and the interloper in a fight with the Wild Stegosaurus or the Briar Stag (spino-rex.ts). Its numbers and pose fields: SPINO.
+  spinoRex: {
+    id: "spinoRex", name: "The Spinosaurus", epithet: "The Hunter of Hunters", unique: true, noEcho: true,
+    stats: [380, 19, 0], form: { scale: 2.1 }, sizeClass: "huge", movement: "walk", brain: "hunter",
+    attacks: ["spinoBite", "spinoClaw", "spinoLeapSlam", "spinoDigFling", "spinoRoar", "spinoTailSwipe", "spinoBodySlam", "spinoGrab", "spinoBoneVolley", "spinoRibSpears"], bossAttacks: [],
+    palette: ["#f2a35e", "#c4561a", "#a8481e", "#f6c48e"], render: "spinoRex", tags: ["beast", "elder", "dinosaur", "predator"],
+    lore: "A spinosaurus taller than a house, always on its hind legs: light orange mottled and striped with rust, a pale belly, a tall dark-orange sail along its back, a long crocodile snout full of teeth, heavy clawed arms and a heavy tail. It hunts the hunters: the Wild Stegosaurus and the Briar Stag first, anything else it sees, and you. It bites and rakes until you bleed, leaps and ploughs the ground with its jaw, digs and flings the earth, roars until the ground shakes, and grabs you in its jaws. Halve it and its skin falls away, and it fights on as a skeleton of white bone, throwing its bones and thrusting its ribs as spears.",
   },
   doomChaser: { // release 710
     id: "doomChaser", name: "The Doom Chaser", epithet: "The Dark That Follows", unique: true,
@@ -915,6 +938,7 @@ export function packCombatantFields(kind, id, boss = false, definition = MONSTER
     meleePatterns: [], instantStrike: false,
     pack: freshPackState(),
     ...(kind === "wildStego" ? stegoPoseDefaults() : {}),
+    ...(kind === "spinoRex" ? spinoPoseDefaults() : {}),
   };
   return fields;
 }
@@ -945,6 +969,8 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "nanobotKnight") enemy.packAttacks = (enemy.packAttacks || MONSTER_PACK.nanobotKnight.attacks).filter((id) => id !== "knightOrbital");
   if (enemy.kind === "psychicCrystal" && !(enemy.packAttacks || []).includes("psyOrbital")) enemy.packAttacks = [...(enemy.packAttacks || MONSTER_PACK.psychicCrystal.attacks), "psyOrbital"].filter((id, i, ids) => ids.indexOf(id) === i);
   if (enemy.kind === "wildStego") { enemy.stegoPose = null; enemy.stegoAir = 0; enemy.stegoRoll = 0; enemy.stegoTree = null; enemy.stegoClimb = 0; enemy.stegoClimbDir = null; enemy.stegoSwim = 0; } // a move, a hop or a climb never resumes mid-way; its tail, tail wear and plates are kept
+  if (enemy.kind === "spinoRex") { enemy.spinoFossil = enemy.spinoFossil === true; Object.assign(enemy, spinoPoseDefaults(), { spinoFossil: enemy.spinoFossil, spinoShed: enemy.spinoFossil ? 1 : 0 }); delete enemy.spinoArriving; } // a move, a grab or the shed never resumes mid-way; once bone, it stays bone
+  if (enemy.spinoHeldBy) delete enemy.spinoHeldBy; // a creature in the Spinosaurus's jaws is let go by a reload
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
   enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; /* release 706 */ enemy.dragonPose = null; enemy.dragonAir = 0; enemy.dragonCharge = 0; enemy.doomRays = null; enemy.doomBreath = null; // release 709 // release 245: no pose survives a reload
   return enemy;
@@ -971,7 +997,7 @@ function bodyRadius(e) { return Math.max(.28, Number(e?.bodyRadius) || .38); }
 // sure that all of their attacks register their hit boxes... fuchsia pink... beneath them, so that we can see where the
 // damage is coming from"): the floor footprint every damage-carrying effect and every body-contact attack really hits
 // with, drawn in DANGER pink beneath it (monster-render). `pad` is what each effect's hit test adds to its radius.
-export const HIT_FOOTPRINT = { pad: { dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0, censerPot: .3, glassShard: .3, thornDart: .3, tendrilFall: .3, icicle: .3, slagPool: .1, lampFire: .1 /* adventure creatures */, stegoDust: .1, stegoSpike: .2, stegoRocket: .1, stegoBlade: .3 }, fallbackPad: .2 };
+export const HIT_FOOTPRINT = { pad: { spinoRock: .3, spinoBone: .3, spinoBoneBurst: .1, spinoFlesh: 0, spinoFurrow: 0, dragonScorch: 0, darkPool: .1, doomErupt: .1, doomScale: .1, doomTar: 0, doomOrb: .3, dragonMeteor: .1, colonize: 0, gale: 0, silk: .15, mire: 0, emberDust: .1, briar: .1, thorn: .2, twister: .2, missile: .35, nanoOrb: .3, comet: .3, gloomfall: .1, gloomMote: .3, flameTrail: .1, frostTrail: .1, lava: .15, orbital: .1, ooze: 0, gas: 0, swordfall: 0, condemn: 0, censerPot: .3, glassShard: .3, thornDart: .3, tendrilFall: .3, icicle: .3, slagPool: .1, lampFire: .1 /* adventure creatures */, stegoDust: .1, stegoSpike: .2, stegoRocket: .1, stegoBlade: .3 }, fallbackPad: .2 };
 export function effectFootprint(f) {
   if (!f || !(Number(f.damage) > 0) || !(f.life > 0) || f.length || f.to || f.state === "circle" || f.state === "splash" || f.kind === "tollRing") return 0; // a toll ring is a ring, drawn as one
   const pad = HIT_FOOTPRINT.pad[f.kind] ?? HIT_FOOTPRINT.fallbackPad; return Math.max(.2, (Number(f.radius) || .3) + pad);
@@ -1263,6 +1289,43 @@ export function clubTreeNear(w, x, y, radius = STEGO.tree.near) {
   for (const o of w.map?.objects || []) { if (!isClubTree(o)) continue; const d = Math.hypot(o.x - x, o.y - y); if (d <= bd) { bd = d; best = o; } }
   return best;
 }
+// The Spinosaurus (Tim, 2026-11-12: "The Hunter of Hunters"). Every number its moves, its fossil shed, its hunt and its one-off jumps and
+// grabs use. Reaches are added to its body radius; `share`s multiply the move's own damage (ATTACK_MODULES); times are seconds.
+// The pose contract the art reads (never timing):
+//   e.spinoPose: null | "bite" | "clawL" | "clawR" | "leap" | "headSlam" | "plough" | "dig" | "fling" | "roarReady" | "roar" | "tailL" |
+//     "tailR" | "run" | "lunge" | "landBite" | "grabTrack" | "grabLunge" | "grabHold" | "grabThrow" | "boneLaunch" | "ribsOut" |
+//     "ribsThrust" | "shed" (the fossil moment) | "roar" too while it arrives as an interloper (e.spinoArriving > 0);
+//   e.spinoAir (0..~3 tiles, height off the ground); e.spinoDig (0..1, its snout buried); e.spinoGrab (null, or { who: 'player' | <enemy
+//   id>, phase: 'track' | 'lunge' | 'hold' | 'throw', t: 0..1 through that phase, and while it tracks or lunges x, y (tiles: the bite-mark
+//   reticle, SPINO.grab.radius across) and k (0..1, the jaws closing as the lunge nears) }); the game's g.spinoBiteMark (1 when a bite
+//   lands on the Wayfarer, falling to 0 over SPINO_SCREEN.bite.ms: the screen's bite mark); e.spinoFossil (false, then true for good at half
+//   health); e.spinoShed (0 flesh .. 1 bare bone, over the shed); e.spinoHeading ({ x, y }, the way its body faces; facingX follows it).
+export const SPINO = {
+  version: 1,
+  turn: 2.2, /* radians a second it turns its body toward what it hunts, between moves */
+  fossil: { at: .5, shed: 1.5, chunks: 6, chunkLife: 1.1, chunkSpeed: 2.2 }, /* at or below `at` of its health it sheds its flesh, for good */
+  fossilOnly: ["spinoBoneVolley", "spinoRibSpears"],
+  bite: { bites: [1, 2, 2], every: .5, reach: 1.9, arc: 70, step: .5 },
+  claw: { swipes: 2, every: .34, reach: 1.6, arc: 120, behind: 120 }, /* bite and claw are never begun with you in the `behind` arc */
+  leap: { max: 8, time: .6, height: 3, radius: 1.8, ring: 3.4, ringShare: .4, pause: .25, warn: .45, length: 6, speed: 9, width: 1.1, ploughShare: .7, crackEvery: .7, crackLife: 1.4, crackCap: 10 },
+  dig: { volleys: 3, every: .75, rocks: 5, arc: 70, speed: 9, range: 8.5, radius: .35, turn: 1.2, cap: 18, flingPose: .3 },
+  roar: { radius: 7.5, hits: 3, every: .45, share: .5, shake: .7, shakeSeconds: 1.4 }, /* three blows in the ring; no dodge passes them, only distance or cover */
+  tail: { swings: 2, every: .45, reach: 2.8, arc: 200, front: 100 },
+  body: { run: .9, speed: 7, lungeAt: 4, lunge: .55, height: 2.2, radius: 1.7, max: 6 },
+  grab: { lockAt: .4, follow: 6, markMax: 8, radius: 1.15, reach: 1.4, lunge: .35, hold: 2.1, slack: .3, chews: 3, chewShare: .35, throwTime: .35, throwShare: .55, throw: 3, throwTurn: .6, lift: 1.2, creatureHold: 3.5, creatureChews: 4 },
+  bones: { count: 5, fan: .5, rise: .55, stagger: .22, speed: 6, turn: 2.4, life: 2.4, radius: .35, burst: 1.3, burstArm: .5, burstShare: .6, cap: 12 },
+  ribs: { reach: 3.6, side: 2.8, width: .6, thrust: .45, outShare: .7, outArc: 200, inArc: 180 }, /* out to the sides (`outArc` shown), then in to a point in front, sweeping the ground between (`inArc` shown) */
+  // Its prey (Tim: "wildStego and briarStag first"): within `sight` it turns on one, at `chance` % each time it chooses (it chooses again after `refocus` s on its prey, `refocusYou` s on you). A blow on
+  // one takes `beastShare` of its health at least; a beast, a boss or a big-room beast is never taken below `floor` of its health by
+  // it, so the kill and its bounty stay yours. It moves on its prey at `speed` of its walk.
+  hunt: { kinds: ["wildStego", "briarStag"], sight: 16, chance: 75, refocus: 5, refocusYou: 2, beastShare: .035, floor: .08, speed: .9, moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam"] },
+  infight: { range: 7, every: 8, chance: 60, share: .8 }, /* one-off jumps and grabs at other creatures it sees; `share` of the victim's health a blow takes */
+  arrive: { time: 1.4 }, /* an interloper roars this long as it comes in (game.ts) */
+  text: { fossil: "Its flesh splits and falls away! The Spinosaurus fights on as bare bone.", grabbed: "Its jaws close on you! You are lifted off your feet." },
+};
+export const spinoPoseDefaults = () => ({ spinoPose: null, spinoAir: 0, spinoGrab: null, spinoDig: 0, spinoFossil: false, spinoShed: 0 });
+// Tuned to the Wayfarer like the roaming beast, with no hunt: one met in a big room, or come in as an interloper (spino-rex.ts).
+export const spinoTuned = (e) => !!(e?.spinoRoom || e?.spinoInterloper);
 export const SWARM_PIERCING_GLYPHS =["echo", "ignite", "chain", "volatile"];
 export const glyphsReachSwarm = (loadout) => SWARM_PIERCING_GLYPHS.some((id) => loadout?.has?.(id));
 const EIGHT = Array.from({ length: 8 }, (_, i) => ({ x: Math.round(Math.cos(i * Math.PI / 4) * 1000) / 1000, y: Math.round(Math.sin(i * Math.PI / 4) * 1000) / 1000 }));
@@ -1299,6 +1362,7 @@ export const BOSS_POISE = {
   crimsonTyrant: { hits: [16, 22, 30], guard: 10, breakTime: 2.6 },
   doomChaser: { hits: [16, 22, 30], guard: 10, breakTime: 2.6 },
   wildStego: { hits: [12, 17, 24], guard: 9, breakTime: 2.4 },
+  spinoRex: { hits: [13, 18, 25], guard: 9, breakTime: 2.4 },
   nanobotKnight: { hits: [10, 15, 22], guard: 9, breakTime: 2.4 },
   voidWalker: { hits: [12, 17, 24], guard: 10, breakTime: 2.4 },
   astralWorm: { hits: [5, 7, 10], guard: 8, breakTime: 2.8 },
@@ -1307,7 +1371,7 @@ export const BOSS_POISE = {
   questingBeast: { hits: [10, 15, 22], guard: 9, breakTime: 2.2 },
   forget: 6,
 };
-export const bossPoiseOf = (e) => e.kind !== "psychicCrystal" && (e.worldBeast || e.questingBeast || e.mireHeart || e.stegoRoom) ? BOSS_POISE[e.kind] || BOSS_POISE.default : null;
+export const bossPoiseOf = (e) => e.kind !== "psychicCrystal" && (e.worldBeast || e.questingBeast || e.mireHeart || e.stegoRoom || spinoTuned(e)) ? BOSS_POISE[e.kind] || BOSS_POISE.default : null;
 export const CRYSTAL = {
   pushRadius: 4.5, pushForce: 9, pushBite: .7,
   pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
@@ -1582,6 +1646,7 @@ function endAttack(e, s) {
   e.voidDashing = false; e.voidCharging = false; e.advPose = null;
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
   if (e.kind === "wildStego") { e.stegoPose = null; e.stegoAir = 0; e.stegoRoll = 0; e.stegoTree = null; } // its water, tail, plates and climb are its own state, not the move's
+  if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 
@@ -1646,6 +1711,17 @@ const START = {
   stegoBreach(e, s, w) { const mode = hashSeed(`${e.id}:${s.seq}:breach`) % 2 ? "lane" : "slam", B = STEGO.breach; Object.assign(s.data, { mode, from: { x: e.x, y: e.y } }); e.stegoPose = "dive"; e.stegoSwim = 1; e.untargetable = true;
     if (mode === "lane") s.tele = { type: "lane", aim: s.data.aim, length: Math.min(B.lane, rayLength(w, e, s.data.aim, B.lane)), width: B.laneWidth * 2 };
     else s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: B.radius, total: ATTACK_MODULES.stegoBreach.windup + B.under }; },
+  // The Spinosaurus (SPINO). `s.data.prey`: a blow at a creature (its prey, or a one-off: spinoTick), aimed at it instead of you.
+  spinoBite(e, s) { const B = SPINO.bite; spinoFace(e, s.data.aim); Object.assign(s.data, { bites: B.bites[hashSeed(`${e.id}:${s.seq}:bites`) % B.bites.length], n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + B.reach + B.step, arc: B.arc }; e.spinoPose = "bite"; },
+  spinoClaw(e, s) { const C = SPINO.claw; spinoFace(e, s.data.aim); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + C.reach, arc: C.arc }; e.spinoPose = "clawL"; },
+  spinoLeapSlam(e, s, w) { const L = SPINO.leap, to = spinoLanding(e, w, spinoReach(e, s.data.target, L.max)); Object.assign(s.data, { to, from: { x: e.x, y: e.y }, stage: "crouch" }); spinoFace(e, s.data.aim); s.tele = { type: "circle", x: to.x, y: to.y, radius: L.radius, total: spinoWindup(s, "spinoLeapSlam") + L.time }; e.spinoPose = "leap"; },
+  spinoDigFling(e, s) { const D = SPINO.dig; spinoFace(e, s.data.aim); Object.assign(s.data, { volley: 0, next: 0, flung: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: D.range, arc: D.arc }; e.spinoPose = "dig"; e.spinoDig = 0; },
+  spinoRoar(e, s) { Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "ring", radius: SPINO.roar.radius }; e.spinoPose = "roarReady"; },
+  spinoTailSwipe(e, s) { const T = SPINO.tail; if (s.data.prey) spinoFace(e, { x: -s.data.aim.x, y: -s.data.aim.y }); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: spinoBack(e), radius: bodyRadius(e) + T.reach, arc: T.arc }; e.spinoPose = "tailL"; },
+  spinoBodySlam(e, s, w) { const B = SPINO.body; spinoFace(e, s.data.aim); Object.assign(s.data, { stage: "run", left: B.run }); s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, Math.min(distance(s.data.target, e) + B.radius, B.speed * B.run + B.max)), width: bodyRadius(e) * 1.6 }; e.spinoPose = "run"; },
+  spinoGrab(e, s) { const G = SPINO.grab, at = s.data.target; spinoFace(e, s.data.aim); Object.assign(s.data, { mark: { x: at.x, y: at.y }, stage: "track", n: 0 }); s.tele = { type: "circle", x: at.x, y: at.y, radius: G.radius, total: spinoWindup(s, "spinoGrab"), reticle: true }; e.spinoPose = "grabTrack"; e.spinoGrab = { who: s.data.prey || "player", phase: "track", t: 0, x: at.x, y: at.y, k: 0 }; },
+  spinoBoneVolley(e, s) { s.tele = { type: "brace" }; e.spinoPose = "boneLaunch"; },
+  spinoRibSpears(e, s) { const R = SPINO.ribs; spinoFace(e, s.data.aim); s.data.stage = "out"; s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + R.side, arc: R.outArc }; e.spinoPose = "ribsOut"; },
   mothGust(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + MOTH.gustReach, arc: MOTH.gustArc }; e.mothPose = "raise"; },
   mothDust(e, s) { s.tele = { type: "brace" }; e.mothPose = "shake"; },
   mothDive(e, s, w) { s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, MOTH.diveSpeed * ATTACK_MODULES.mothDive.active), width: bodyRadius(e) * .9 }; e.mothPose = "climb"; e.aloft = true; },
@@ -2564,6 +2640,196 @@ const RUN = {
     if (d.left > 0) return;
     d.landed = true; e.stegoAir = 0; e.aloft = false; s.tele = null;
     if (d.mode === "slam") { stegoStrike(e, s, w, "stegoBreach", (t) => distance(t, d.to) <= B.radius + .2); w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: B.ring, arming: 0, life: .7, damage: Math.ceil(damageOf(e, "stegoBreach") * B.ringShare), jumpable: true }); }
+    toPhase(s, "recover", A.recover);
+  },
+  // ---------------------------------------------------------------- the Spinosaurus (SPINO)
+  spinoBite(e, s, w) {
+    const A = ATTACK_MODULES.spinoBite, B = SPINO.bite, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.n < d.bites) {
+      const q = spinoQuarry(s, w) || d.target; d.aim = unit(q.x - e.x, q.y - e.y); spinoFace(e, d.aim);
+      const step = Math.min(B.step, Math.max(0, distance(q, e) - bodyRadius(e) - .9)); if (step > 0) w.move(e, d.aim.x * step, d.aim.y * step);
+      const reach = bodyRadius(e) + B.reach; s.tele = { type: "arc", aim: d.aim, radius: reach, arc: B.arc }; e.spinoPose = "bite";
+      spinoStrike(e, s, w, "spinoBite", (t) => inArc(e, t, d.aim, reach, B.arc), { bleed: true, bite: true });
+      d.n++; d.next = B.every;
+    }
+    if (d.n >= d.bites && d.next <= 0 || s.t <= 0) { s.tele = null; e.spinoPose = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoClaw(e, s, w) {
+    const A = ATTACK_MODULES.spinoClaw, C = SPINO.claw, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.n < C.swipes) {
+      const q = spinoQuarry(s, w) || d.target; d.aim = unit(q.x - e.x, q.y - e.y); spinoFace(e, d.aim);
+      const reach = bodyRadius(e) + C.reach; s.tele = { type: "arc", aim: d.aim, radius: reach, arc: C.arc }; e.spinoPose = d.n % 2 ? "clawR" : "clawL";
+      spinoStrike(e, s, w, "spinoClaw", (t) => inArc(e, t, d.aim, reach, C.arc), { bleed: true }); d.n++; d.next = C.every;
+    }
+    if (d.n >= C.swipes && d.next <= 0 || s.t <= 0) { s.tele = null; e.spinoPose = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoLeapSlam(e, s, w) {
+    const A = ATTACK_MODULES.spinoLeapSlam, L = SPINO.leap, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) { d.stage = "air"; d.left = L.time; e.spinoPose = "leap"; e.aloft = true; toPhase(s, "active", A.active); } return; }
+    if (s.phase === "recover") { e.spinoAir = 0; return; }
+    if (s.phase !== "active") return;
+    if (d.stage === "air") {
+      d.left -= w.dt; const k = Math.min(1, 1 - Math.max(0, d.left) / L.time);
+      e.x = d.from.x + (d.to.x - d.from.x) * k; e.y = d.from.y + (d.to.y - d.from.y) * k; e.spinoAir = Math.sin(Math.PI * k) * L.height;
+      if (d.left > 0) return;
+      e.x = d.to.x; e.y = d.to.y; e.spinoAir = 0; e.aloft = false; e.spinoPose = "headSlam";
+      spinoStrike(e, s, w, "spinoLeapSlam", (t) => distance(t, d.to) <= L.radius + .2);
+      w.addEffect({ kind: "shock", owner: e.id, x: d.to.x, y: d.to.y, radius: L.ring, arming: 0, life: .7, damage: Math.max(1, Math.ceil(damageOf(e, "spinoLeapSlam") * L.ringShare)), jumpable: true, stone: true });
+      const q = spinoQuarry(s, w) || d.target; d.dir = unit(q.x - e.x, q.y - e.y); spinoFace(e, d.dir);
+      d.len = Math.max(.5, rayLength(w, e, d.dir, L.length)); d.stage = "slam"; d.left = L.pause + L.warn; d.went = 0; d.crack = 0;
+      s.tele = { type: "lane", aim: d.dir, length: d.len, width: L.width * 2 }; return;
+    }
+    if (d.stage === "slam") { d.left -= w.dt; e.spinoPose = "headSlam"; if (d.left <= 0) { d.stage = "plough"; e.spinoPose = "plough"; } return; }
+    const step = Math.min(L.speed * w.dt, d.len - d.went), before = { x: e.x, y: e.y }, moved = step > 0 && w.move(e, d.dir.x * step, d.dir.y * step);
+    e.spinoPose = "plough"; if (moved) d.went += step;
+    s.tele = { type: "lane", aim: d.dir, length: Math.max(.2, d.len - d.went), width: L.width * 2 };
+    if (!s.hitOnce && spinoStrike(e, s, w, "spinoLeapSlam", (t) => segmentDistance(t, before, e) <= L.width, { share: L.ploughShare })) s.hitOnce = true;
+    d.crack -= step;
+    if (d.crack <= 0 && spinoFxCount(w, e.id, "spinoFurrow") < L.crackCap) { d.crack = L.crackEvery; w.addEffect({ kind: "spinoFurrow", owner: e.id, x: e.x, y: e.y, angle: Math.atan2(d.dir.y, d.dir.x), radius: L.width, arming: 0, life: L.crackLife, total: L.crackLife, damage: 0 }); }
+    if (!moved || d.went >= d.len - .01 || s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoDigFling(e, s, w) {
+    const A = ATTACK_MODULES.spinoDigFling, D = SPINO.dig, d = s.data;
+    if (s.phase === "windup") { e.spinoDig = Math.min(1, 1 - Math.max(0, s.t) / spinoWindup(s, "spinoDigFling")); if (s.t <= 0) { e.spinoDig = 1; toPhase(s, "active", A.active); } return; }
+    if (s.phase === "recover") { e.spinoDig = Math.max(0, s.t / A.recover); e.spinoPose = e.spinoDig > 0 ? "dig" : null; return; }
+    if (s.phase !== "active") return;
+    const q = spinoQuarry(s, w) || d.target, want = Math.atan2(q.y - e.y, q.x - e.x), cur = Math.atan2(d.aim.y, d.aim.x), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-D.turn * w.dt, Math.min(D.turn * w.dt, diff));
+    d.aim = { x: Math.cos(a), y: Math.sin(a) }; spinoFace(e, d.aim); s.tele = { type: "arc", aim: d.aim, radius: D.range, arc: D.arc }; e.spinoDig = 1;
+    d.next -= w.dt; d.flung -= w.dt; e.spinoPose = d.flung > 0 ? "fling" : "dig";
+    if (d.next <= 0 && d.volley < D.volleys) {
+      const dmg = Math.max(1, Math.ceil(damageOf(e, "spinoDigFling"))), life = D.range / D.speed;
+      for (let i = 0; i < D.rocks; i++) {
+        if (spinoFxCount(w, e.id, "spinoRock") >= D.cap) break;
+        const r = a + (D.rocks > 1 ? i / (D.rocks - 1) - .5 : 0) * D.arc * Math.PI / 180 * .9, ox = e.x + d.aim.x * bodyRadius(e), oy = e.y + d.aim.y * bodyRadius(e);
+        w.addEffect({ kind: "spinoRock", owner: e.id, x: ox, y: oy, vx: Math.cos(r) * D.speed, vy: Math.sin(r) * D.speed, radius: D.radius, arming: 0, life, total: life, damage: dmg });
+      }
+      d.volley++; d.next = D.every; d.flung = D.flingPose; e.spinoPose = "fling";
+    }
+    if (d.volley >= D.volleys && d.next <= 0 || s.t <= 0) { s.tele = null; e.spinoPose = "dig"; toPhase(s, "recover", A.recover); }
+  },
+  spinoRoar(e, s, w) {
+    const A = ATTACK_MODULES.spinoRoar, R = SPINO.roar, d = s.data;
+    if (s.phase === "windup") { e.spinoPose = "roarReady"; if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    e.spinoPose = "roar"; d.next -= w.dt;
+    if (d.next <= 0 && d.n < R.hits) {
+      if (d.n === 0) w.shake?.(R.shake, R.shakeSeconds);
+      w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: R.radius, arming: 0, life: .5, damage: 0, stone: true });
+      spinoStrike(e, s, w, "spinoRoar", (t) => distance(t, e) <= R.radius, { share: R.share, piercing: true, beam: true, cover: true });
+      d.n++; d.next = R.every;
+    }
+    if (d.n >= R.hits && d.next <= 0 || s.t <= 0) { s.tele = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoTailSwipe(e, s, w) {
+    const A = ATTACK_MODULES.spinoTailSwipe, T = SPINO.tail, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase !== "active") return;
+    d.next -= w.dt;
+    if (d.next <= 0 && d.n < T.swings) {
+      const back = spinoBack(e), reach = bodyRadius(e) + T.reach; s.tele = { type: "arc", aim: back, radius: reach, arc: T.arc }; e.spinoPose = d.n % 2 ? "tailR" : "tailL";
+      spinoStrike(e, s, w, "spinoTailSwipe", (t) => inArc(e, t, back, reach, T.arc)); d.n++; d.next = T.every;
+    }
+    if (d.n >= T.swings && d.next <= 0 || s.t <= 0) { s.tele = null; e.spinoPose = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoBodySlam(e, s, w) {
+    const A = ATTACK_MODULES.spinoBodySlam, B = SPINO.body, d = s.data;
+    if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", A.active); return; }
+    if (s.phase === "recover") { e.spinoAir = 0; return; }
+    if (s.phase !== "active" || d.landed) return;
+    if (d.stage === "run") {
+      const q = spinoQuarry(s, w) || d.target; d.aim = unit(q.x - e.x, q.y - e.y); spinoFace(e, d.aim); e.spinoPose = "run";
+      const step = B.speed * (e.speedMultiplier || 1) * w.dt, near = distance(q, e) <= B.lungeAt + bodyRadius(e); d.left -= w.dt;
+      if (!near) w.move(e, d.aim.x * step, d.aim.y * step);
+      s.tele = { type: "lane", aim: d.aim, length: rayLength(w, e, d.aim, Math.min(distance(q, e) + B.radius, B.max + B.lungeAt)), width: bodyRadius(e) * 1.6 };
+      if (near || d.left <= 0) { d.stage = "lunge"; d.from = { x: e.x, y: e.y }; d.to = spinoLanding(e, w, spinoReach(e, q, B.max)); d.left = B.lunge; e.aloft = true; e.spinoPose = "lunge"; s.tele = { type: "circle", x: d.to.x, y: d.to.y, radius: B.radius, total: B.lunge }; }
+      return;
+    }
+    d.left -= w.dt; const k = Math.min(1, 1 - Math.max(0, d.left) / B.lunge);
+    e.x = d.from.x + (d.to.x - d.from.x) * k; e.y = d.from.y + (d.to.y - d.from.y) * k; e.spinoAir = Math.sin(Math.PI * k) * B.height; e.spinoPose = "lunge";
+    if (d.left > 0) return;
+    d.landed = true; e.x = d.to.x; e.y = d.to.y; e.spinoAir = 0; e.aloft = false; e.spinoPose = "landBite"; s.tele = null;
+    spinoStrike(e, s, w, "spinoBodySlam", (t) => distance(t, d.to) <= B.radius + .2, { bleed: true, bite: true });
+    toPhase(s, "recover", A.recover);
+  },
+  spinoGrab(e, s, w) {
+    const A = ATTACK_MODULES.spinoGrab, G = SPINO.grab, d = s.data, who = d.prey || "player", total = spinoWindup(s, "spinoGrab");
+    if (s.phase === "windup") {
+      const q = spinoQuarry(s, w) || d.target;
+      if (s.t > G.lockAt) { const k = Math.min(1, w.dt * G.follow); d.mark = spinoReach(e, { x: d.mark.x + (q.x - d.mark.x) * k, y: d.mark.y + (q.y - d.mark.y) * k }, G.markMax + bodyRadius(e)); } else s.tele.locked = true;
+      s.tele.x = d.mark.x; s.tele.y = d.mark.y; spinoFace(e, unit(d.mark.x - e.x, d.mark.y - e.y)); e.spinoPose = "grabTrack";
+      e.spinoGrab = { who, phase: "track", t: Math.max(0, Math.min(1, 1 - s.t / total)), x: d.mark.x, y: d.mark.y, k: 0 };
+      if (s.t <= 0) { const dir = unit(d.mark.x - e.x, d.mark.y - e.y), stand = Math.max(0, distance(d.mark, e) - bodyRadius(e) - G.reach);
+        Object.assign(d, { stage: "lunge", left: G.lunge, from: { x: e.x, y: e.y }, to: spinoLanding(e, w, { x: e.x + dir.x * stand, y: e.y + dir.y * stand }) });
+        e.spinoPose = "grabLunge"; e.spinoGrab = { who, phase: "lunge", t: 0, x: d.mark.x, y: d.mark.y, k: 0 }; toPhase(s, "active", A.active); }
+      return;
+    }
+    if (s.phase === "recover") { e.spinoGrab = null; return; }
+    if (s.phase !== "active") return;
+    d.left -= w.dt;
+    if (d.stage === "lunge") {
+      const k = Math.min(1, 1 - Math.max(0, d.left) / G.lunge); e.x = d.from.x + (d.to.x - d.from.x) * k; e.y = d.from.y + (d.to.y - d.from.y) * k; e.spinoGrab = { who, phase: "lunge", t: k, x: d.mark.x, y: d.mark.y, k };
+      if (d.left > 0) return;
+      s.tele = null; const prey = spinoPreyAlive(w, d.prey);
+      if (d.prey ? prey && distance(prey, d.mark) <= G.radius + bodyRadius(prey) * .5 : distance(center(w.player), d.mark) <= G.radius && (!w.los || w.los(e, w.player)) && w.spinoHold?.(e, G.hold + G.throwTime + G.slack)) {
+        if (prey) { prey.spinoHeldBy = e.id; if (prey.pack?.attack) endAttack(prey, prey.pack); }
+        const hold = prey ? G.creatureHold : G.hold, chews = prey ? G.creatureChews : G.chews;
+        Object.assign(d, { stage: "hold", left: hold, hold, chews, n: 0, next: hold / (chews + 1) }); s.spinoHolding = who; e.spinoPose = "grabHold";
+        if (!prey) w.say?.(SPINO.text.grabbed);
+      } else { e.spinoGrab = null; e.spinoPose = null; toPhase(s, "recover", A.recover); }
+      return;
+    }
+    const h = spinoHeading(e), mouth = { x: e.x + h.x * (bodyRadius(e) + G.reach * .6), y: e.y + h.y * (bodyRadius(e) + G.reach * .6) }, prey = d.prey ? spinoPreyAlive(w, d.prey) : null;
+    if (d.stage === "hold") {
+      e.spinoPose = "grabHold"; e.spinoGrab = { who, phase: "hold", t: Math.max(0, Math.min(1, 1 - d.left / d.hold)) };
+      if (d.prey) { if (!prey) d.left = 0; else { prey.x = mouth.x; prey.y = mouth.y; } }
+      else if (!w.held?.(e)) d.left = 0; else w.carry?.(mouth.x, mouth.y, G.lift);
+      d.next -= w.dt;
+      if (d.next <= 0 && d.n < d.chews && d.left > 0) { d.n++; d.next = d.hold / (d.chews + 1);
+        if (prey) { spinoWound(w, e, prey, spinoPreyBlow(prey, Math.ceil(damageOf(e, "spinoGrab") * G.chewShare))); spinoBleedCreature(prey); }
+        else if (w.hurt(e, Math.max(1, Math.ceil(damageOf(e, "spinoGrab") * G.chewShare)), { jumpable: false, source: "spinoGrab", piercing: true, beam: true })) { w.bleed?.(e); w.biteMark?.(e); } }
+      if (d.left > 0) return;
+      d.stage = "throw"; d.left = G.throwTime; e.spinoPose = "grabThrow"; e.spinoGrab = { who, phase: "throw", t: 0 };
+      const dir = unit(h.x - h.y * G.throwTurn, h.y + h.x * G.throwTurn);
+      if (d.prey) { if (prey) { delete prey.spinoHeldBy; for (let i = 0; i < 8; i++) if (!w.move(prey, dir.x * G.throw / 8, dir.y * G.throw / 8)) break; spinoWound(w, e, prey, spinoPreyBlow(prey, Math.ceil(damageOf(e, "spinoGrab") * G.throwShare))); } }
+      else if (w.held?.(e)) { w.release?.(e); w.throwPlayer?.(e, dir, G.throw); w.hurt(e, Math.max(1, Math.ceil(damageOf(e, "spinoGrab") * G.throwShare)), { jumpable: false, source: "spinoGrab", piercing: true, beam: true }); }
+      s.spinoHolding = null; return;
+    }
+    e.spinoGrab = { who, phase: "throw", t: Math.max(0, Math.min(1, 1 - d.left / G.throwTime)) };
+    if (d.left <= 0 || s.t <= 0) { e.spinoGrab = null; toPhase(s, "recover", A.recover); }
+  },
+  spinoBoneVolley(e, s, w) {
+    const A = ATTACK_MODULES.spinoBoneVolley, B = SPINO.bones;
+    if (s.phase === "windup") {
+      e.spinoPose = "boneLaunch"; if (s.t > 0) return;
+      const h = spinoHeading(e), base = Math.atan2(h.y, h.x), dmg = damageOf(e, "spinoBoneVolley");
+      for (let i = 0; i < B.count; i++) {
+        if (spinoFxCount(w, e.id, "spinoBone") >= B.cap) break;
+        const a = base + (i - (B.count - 1) / 2) * B.fan, arm = B.rise + i * B.stagger;
+        w.addEffect({ kind: "spinoBone", owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * B.speed, vy: Math.sin(a) * B.speed, radius: B.radius, arming: arm, armTotal: arm, life: B.life, total: B.life, damage: dmg, burst: B.burst, burstDamage: Math.max(1, Math.ceil(dmg * B.burstShare)) });
+      }
+      s.tele = null; toPhase(s, "active", A.active); return;
+    }
+    if (s.phase === "active") { e.spinoPose = "boneLaunch"; if (s.t <= 0) { e.spinoPose = null; toPhase(s, "recover", A.recover); } }
+  },
+  spinoRibSpears(e, s, w) {
+    const A = ATTACK_MODULES.spinoRibSpears, R = SPINO.ribs, d = s.data, h = spinoHeading(e), side = { x: -h.y, y: h.x }, r = bodyRadius(e);
+    const tips = [1, -1].map((k) => ({ x: e.x + side.x * k * (r + R.side), y: e.y + side.y * k * (r + R.side) })), roots = [1, -1].map((k) => ({ x: e.x + side.x * k * r, y: e.y + side.y * k * r }));
+    if (s.phase === "windup") {
+      if (s.t > 0) return;
+      e.spinoPose = "ribsOut"; spinoStrike(e, s, w, "spinoRibSpears", (t) => Math.min(segmentDistance(t, roots[0], tips[0]), segmentDistance(t, roots[1], tips[1])) <= R.width, { share: R.outShare });
+      d.left = R.thrust; s.tele = { type: "arc", aim: { x: h.x, y: h.y }, radius: r + Math.max(R.reach, R.side), arc: R.inArc }; toPhase(s, "active", A.active); return;
+    }
+    if (s.phase !== "active" || d.thrust) return;
+    d.left -= w.dt; if (d.left > 0 && s.t > 0) return;
+    d.thrust = true; e.spinoPose = "ribsThrust"; s.tele = null;
+    const point = { x: e.x + h.x * (r + R.reach), y: e.y + h.y * (r + R.reach) };
+    spinoStrike(e, s, w, "spinoRibSpears", (t) => inTriangle(t, tips[0], tips[1], point) || Math.min(segmentDistance(t, tips[0], point), segmentDistance(t, tips[1], point)) <= R.width); // they sweep in over everything between them
     toPhase(s, "recover", A.recover);
   },
   giantArcs(e, s, w) {
@@ -3652,6 +3918,7 @@ function attackReady(e, s, w, id, d) {
   if (id === "voidSupernova" && voidEffects(w).some((f) => f.owner === e.id && f.kind === "voidRift" && f.tracking && !f.activated)) return false;
   if (attack.scheduled) return false; // release 709: only its own clock starts it
   if (e.kind === "wildStego" && !stegoCan(e, s, w, id)) return false; // STEGO: water, plates, the buck rule, the rare tree
+  if (e.kind === "spinoRex" && !spinoCan(e, s, w, id)) return false; // SPINO: bone-only moves, the tail behind it
   if (attack.hurtBelow && !((Number(e.hp) || 0) < (Number(e.maxHp) || 0) * attack.hurtBelow)) return false; // release 708: a heal only once it is hurt
   if (e.kind === "tremorWorm" && attack.posture === "full" && Number.isFinite(s.worm?.fullAt) && (w.now - s.worm.fullAt) / 1000 < WORM.fullGap) return false; // release 664: it comes all the way out only now and then
   if (id === "mirrorSwap" && !w.enemies.some((q) => !q.dead && q.illusion && q.summonedBy === e.id)) return false;
@@ -4053,7 +4320,7 @@ function stegoStrike(e, s, w, id, test, share = 1) {
   return landed;
 }
 // What it will turn on besides you: ordinary creatures and wildlife, never a boss, a beast, a guardian, an elite or anything hidden.
-export const stegoPrey = (q, e) => !!q && q !== e && !q.dead && q.kind !== "npc" && q.kind !== e?.kind && !q.boss && !q.worldBeast && !q.questingBeast && !q.stalker && !q.gatePredator && !q.dungeonRole && !q.eliteId && !q.elite && !q.passingBeast && !q.retreating && !q.untargetable && !q.hidden && !q.illusion && !q.astralCompanionOf && !q.stegoRoom && !q.pentBoss && !q.buildingGuardian && !q.farArrayBoss && !q.mothChrysalis && !q.fleeTo;
+export const stegoPrey = (q, e) => !!q && q !== e && !q.dead && q.kind !== "npc" && q.kind !== e?.kind && !q.boss && !q.worldBeast && !q.questingBeast && !q.stalker && !q.gatePredator && !q.dungeonRole && !q.eliteId && !q.elite && !q.passingBeast && !q.retreating && !q.untargetable && !q.hidden && !q.illusion && !q.astralCompanionOf && !q.stegoRoom && !q.pentBoss && !q.buildingGuardian && !q.farArrayBoss && !q.mothChrysalis && !q.fleeTo && q.kind !== "spinoRex";
 function stegoPreyNear(e, w) { let best = null, bd = STEGO.infight.range + bodyRadius(e); for (const q of w.enemies || []) { if (!stegoPrey(q, e)) continue; const dd = distance(q, e); if (dd < bd) { bd = dd; best = q; } } return best; }
 // A blow counts on the tail when you stand in the arc behind it, past its hips; anywhere else it is a body blow.
 export function stegoTailHit(e, at) { const back = stegoBack(e), along = (at.x - e.x) * back.x + (at.y - e.y) * back.y; return along >= bodyRadius(e) * STEGO.tail.hips && inArc(e, at, back, Infinity, STEGO.tail.arc); }
@@ -4178,6 +4445,97 @@ function stegoTick(e, s, w, p, d) {
   return false;
 }
 
+// ---------------------------------------------------------------- the Spinosaurus (SPINO): body, prey, shed
+function spinoHeading(e) { const h = e.spinoHeading; return h && Number.isFinite(h.x) && Number.isFinite(h.y) && (h.x || h.y) ? h : { x: e.facingX < 0 ? -1 : 1, y: 0 }; }
+function spinoFace(e, v) { const u = unit(v.x, v.y); e.spinoHeading = { x: u.x, y: u.y }; if (Math.abs(u.x) > .05) e.facingX = u.x >= 0 ? 1 : -1; }
+function spinoBack(e) { const h = spinoHeading(e); return { x: -h.x, y: -h.y }; }
+const spinoWindup = (s, id) => (ATTACK_MODULES[id].windup || .5) * (s.paced ? BOSS_PACE.windup : 1);
+function spinoReach(e, t, max) { const dx = t.x - e.x, dy = t.y - e.y, m = Math.hypot(dx, dy); return m <= max ? { x: t.x, y: t.y } : { x: e.x + dx / m * max, y: e.y + dy / m * max }; }
+const spinoLanding = (e, w, t) => stegoLanding(e, w, t);
+function inTriangle(p, a, b, c) { const s1 = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x), s2 = (c.x - b.x) * (p.y - b.y) - (c.y - b.y) * (p.x - b.x), s3 = (a.x - c.x) * (p.y - c.y) - (a.y - c.y) * (p.x - c.x); return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0); }
+const spinoPreyAlive = (w, id) => stegoPreyAlive(w, id);
+const spinoQuarry = (s, w) => stegoQuarry(s, w);
+function spinoFxCount(w, owner, kind) { let n = 0; for (const f of voidEffects(w)) if (f.kind === kind && f.owner === owner && (f.life > 0 || f.arming > 0)) n++; return n; }
+const spinoBig = (q) => !!(q.boss || q.worldBeast || q.questingBeast || q.stegoRoom || spinoTuned(q) || SPINO.hunt.kinds.includes(q.kind));
+// A wound on a creature. A beast (or a boss, or a big-room beast) is never taken below SPINO.hunt.floor of its health by it.
+function spinoWound(w, source, q, amount) {
+  if (!q || q.dead || !(amount > 0)) return false;
+  const n = spinoBig(q) ? Math.min(amount, Math.max(0, (Number(q.hp) || 0) - Math.ceil((Number(q.maxHp) || 1) * SPINO.hunt.floor))) : amount;
+  return n > 0 ? !!w.hurtCreature?.(source, q, n) : false;
+}
+const spinoPreyBlow = (q, dmg) => Math.max(dmg, Math.ceil((Number(q.maxHp) || 1) * (SPINO.hunt.kinds.includes(q.kind) ? SPINO.hunt.beastShare : SPINO.infight.share)));
+function spinoBleedCreature(q) { if (q?.kind === "wildStego" && !q.dead) { q.spinoBleed = BLEED.seconds; if (!Number.isFinite(q.spinoBleedTick)) q.spinoBleedTick = BLEED.tick; } } // only the Wild Stegosaurus bleeds
+// A blow lands on whatever `test` holds: you (bleed and the bite mark if it says so), and its prey when the move is aimed at one.
+function spinoStrike(e, s, w, id, test, o = {}) {
+  const dmg = Math.max(1, Math.ceil(damageOf(e, id) * (o.share ?? 1))), prey = spinoPreyAlive(w, s.data?.prey); let landed = false;
+  if (test(center(w.player)) && (!w.los || w.los(e, w.player, !!o.cover)) && !(o.cover && w.sunfallShaded?.(e))) {
+    landed = !!w.hurt(e, dmg, { jumpable: false, source: id, ...(o.piercing ? { piercing: true } : {}), ...(o.beam ? { beam: true } : {}) });
+    if (landed && o.bleed) w.bleed?.(e); if (landed && o.bite) w.biteMark?.(e);
+  }
+  if (prey && test(center(prey))) { spinoWound(w, e, prey, spinoPreyBlow(prey, dmg)); if (o.bleed) spinoBleedCreature(prey); landed = true; }
+  return landed;
+}
+// The prey it hunts first: the Wild Stegosaurus or the Briar Stag, standing its ground within sight (the nearest).
+export const spinoPreferredPrey = (q, e) => !!q && q !== e && !q.dead && SPINO.hunt.kinds.includes(q.kind) && !q.retreating && !q.passingBeast && !q.fleeTo && !q.untargetable && !q.hidden && !q.illusion && !q.spinoHeldBy;
+function spinoPreferred(e, w) { let best = null, bd = SPINO.hunt.sight; for (const q of w.enemies || []) { if (!spinoPreferredPrey(q, e)) continue; const dd = distance(q, e); if (dd < bd) { bd = dd; best = q; } } return best; }
+// What else it turns on: ordinary creatures and wildlife it sees (the Wild Stegosaurus's rule), never another Spinosaurus.
+export const spinoPrey = (q, e) => stegoPrey(q, e) && !SPINO.hunt.kinds.includes(q.kind) && !q.spinoHeldBy;
+function spinoPreyNear(e, w) { let best = null, bd = SPINO.infight.range + bodyRadius(e); for (const q of w.enemies || []) { if (!spinoPrey(q, e)) continue; const dd = distance(q, e); if (dd < bd && (!w.los || w.los(e, q))) { bd = dd; best = q; } } return best; }
+function spinoCan(e, s, w, id) {
+  if (SPINO.fossilOnly.includes(id) && !e.spinoFossil) return false; // its bones are a weapon only once its flesh is gone
+  const behind = inArc(e, center(w.player), spinoBack(e), Infinity, SPINO.claw.behind);
+  if (id === "spinoBite" || id === "spinoClaw") return !behind;
+  if (id === "spinoTailSwipe") return !inArc(e, center(w.player), spinoHeading(e), Infinity, SPINO.tail.front); // its tail sweeps what is behind and beside it
+  return true;
+}
+// Is a creature still in its jaws? (Its holder alive, mid-grab, holding this one.)
+function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; return false; }
+// Lets go of whatever it held (a grab broken off by a stagger, its death or a reload).
+function spinoLetGo(e, s, w) {
+  const held = s.spinoHolding; s.spinoHolding = null; e.spinoGrab = null; if (!held) return;
+  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) delete q.spinoHeldBy; }
+}
+// Every fighting frame, before the shared brain: the shed, a broken-off grab, its prey first, then one-off jumps and grabs at other
+// creatures. True when it has spent the frame.
+function spinoTick(e, s, w, p, d) {
+  const S = SPINO, dt = w.dt, hp = Number(e.hp) || 0;
+  if (!e.spinoHeading) spinoFace(e, unit(p.x - e.x, p.y - e.y));
+  if (s.spinoHolding && s.attack !== "spinoGrab") spinoLetGo(e, s, w);
+  if (!e.spinoFossil && hp > 0 && hp <= (Number(e.maxHp) || 0) * S.fossil.at) { // its flesh falls away, for good
+    if (s.attack) { if (s.spinoHolding) spinoLetGo(e, s, w); endAttack(e, s); }
+    e.spinoFossil = true; e.spinoShed = 0; e.spinoAir = 0; e.spinoDig = 0; s.spinoShedding = S.fossil.shed; e.spinoPose = "shed";
+    for (let i = 0; i < S.fossil.chunks; i++) { const a = (hashSeed(`${e.id}:shed`) % 628) / 100 + i * TAU / S.fossil.chunks; w.addEffect({ kind: "spinoFlesh", owner: e.id, x: e.x, y: e.y, vx: Math.cos(a) * S.fossil.chunkSpeed, vy: Math.sin(a) * S.fossil.chunkSpeed, radius: .3, arming: 0, life: S.fossil.chunkLife, total: S.fossil.chunkLife, damage: 0 }); }
+    w.say?.(S.text.fossil); w.spinoFossil?.(e);
+  }
+  if (s.spinoShedding > 0) { s.spinoShedding -= dt; e.spinoShed = Math.min(1, 1 - Math.max(0, s.spinoShedding) / S.fossil.shed); e.spinoPose = s.spinoShedding > 0 ? "shed" : null; return s.spinoShedding > 0; }
+  if (e.spinoFossil && !(e.spinoShed >= 1)) e.spinoShed = 1;
+  if (e.spinoArriving > 0) { e.spinoArriving -= dt; e.spinoPose = e.spinoArriving > 0 ? "roar" : null; return e.spinoArriving > 0; } // an interloper roars as it comes in
+  // its prey first: now and then (`refocus` s on its prey, `refocusYou` on you; the clock runs through its moves too) it turns on the stego or the stag in sight, else on you
+  s.spinoRefocus = (s.spinoRefocus ?? 0) - dt;
+  if (s.spinoRefocus <= 0 && !s.attack) { const near = spinoPreferred(e, w); s.spinoFocusN = (s.spinoFocusN || 0) + 1; s.spinoFocus = near && hashSeed(`${e.id}:focus:${s.spinoFocusN}`) % 100 < S.hunt.chance ? near.id : null; s.spinoRefocus = s.spinoFocus ? S.hunt.refocus : S.hunt.refocusYou; }
+  if (s.attack || s.broken > 0 || e.hitStun > 0 || s.evade) return false;
+  if (e.spinoPose === "shed" || e.spinoPose === "roar") e.spinoPose = null;
+  const focus = s.spinoFocus ? (w.enemies || []).find((q) => q.id === s.spinoFocus && spinoPreferredPrey(q, e)) || null : null; if (!focus) s.spinoFocus = null;
+  const at = focus || p;
+  { const h = spinoHeading(e), cur = Math.atan2(h.y, h.x), diff = ((Math.atan2(at.y - e.y, at.x - e.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-S.turn * dt, Math.min(S.turn * dt, diff)); spinoFace(e, { x: Math.cos(a), y: Math.sin(a) }); }
+  if (focus) {
+    const fd = distance(focus, e);
+    if (s.gap <= 0) {
+      const ready = S.hunt.moves.filter((id) => { const A = ATTACK_MODULES[id]; return (e.packAttacks || []).includes(id) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e); });
+      if (ready.length) { const id = ready[hashSeed(`${e.id}:prey-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, focus); return true; }
+    }
+    if (fd > bodyRadius(e) + bodyRadius(focus) + .8) { const v = unit(focus.x - e.x, focus.y - e.y), step = .82 * S.hunt.speed * (e.speedMultiplier || 1) * dt; w.move(e, v.x * step, v.y * step); }
+    return true;
+  }
+  // a creature it sees: a one-off jump or grab
+  if (s.gap <= 0 && (s.cd.spinoInfight || 0) <= 0) {
+    const prey = spinoPreyNear(e, w);
+    if (prey) { s.cd.spinoInfight = S.infight.every; s.infights = (s.infights || 0) + 1;
+      if (hashSeed(`${e.id}:infight:${s.infights}`) % 100 < S.infight.chance) { const id = distance(prey, e) >= ATTACK_MODULES.spinoBodySlam.range[0] && (e.packAttacks || []).includes("spinoBodySlam") ? "spinoBodySlam" : "spinoGrab"; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, prey); return true; } }
+  }
+  return false;
+}
+
 export function updatePackMonster(e, w) {
   if (e.kind === "mothChrysalis") { e.facingX = 1; return; } // release 708: it only hangs there
   if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
@@ -4186,8 +4544,10 @@ export function updatePackMonster(e, w) {
   if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; } // release 421 (a paused frame changes nothing)
   if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
-  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); return; }
+  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); if (e.kind === "spinoRex" && e.pack) spinoLetGo(e, e.pack, w); return; }
+  if (e.spinoHeldBy && spinoHolds(e, w)) return; // in the Spinosaurus's jaws: it does nothing until let go
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
+  if (e.kind === "wildStego" && e.spinoBleed > 0) { const n = tickCreatureBleed(e, dt); if (n > 0) spinoWound(w, null, e, n); if (e.dead) return; } // the Spinosaurus's bleed runs its minute (BLEED)
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
   e.recoil = Math.max(0, (e.recoil || 0) - dt); e.hitStun = Math.max(0, (e.hitStun || 0) - dt); staggerGovernor(e, dt); // release 377
@@ -4213,6 +4573,7 @@ export function updatePackMonster(e, w) {
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
   else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
+  if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (!e.aggro) {
     if (def.adventureKin && advIdle(e, s, w)) return; // adventure-creatures.ts: a loop, a burial, a perch
     if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }
@@ -4226,6 +4587,7 @@ export function updatePackMonster(e, w) {
   if (roaming && !e.retreating) { const seen = d <= CRYSTAL.roamSight || w.los(e, w.player); s.lostFor = seen ? 0 : (s.lostFor || 0) + dt; if (s.lostFor >= CRYSTAL.forgetAfter && !s.attack) { e.aggro = false; s.lostFor = 0; s.manifest = null; s.wallTime = 0; s.roam = null; patrolDungeon(e, s, w); return; } }
   if (def.adventureKin && advTick(e, s, w, p, d)) return;
   if (e.kind === "wildStego" && stegoTick(e, s, w, p, d)) return; // STEGO: its tail, water, climbing, hops, buck and infighting
+  if (e.kind === "spinoRex" && spinoTick(e, s, w, p, d)) return; // SPINO: the fossil shed, its prey first, one-off jumps and grabs
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && s.phase === "windup" && !e.untargetable && windupHeld(e, s.data ||= {}, dt)) return; // release 561: held, never cancelled
   if (!e.illusion) passiveStillness(e, s, w);
@@ -4257,7 +4619,7 @@ export function updatePackMonster(e, w) {
   const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : brainVector(e, s, w, def), v = e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * (e.stegoSwim === 1 ? STEGO.water.swimSpeed : 1) * dt;
   const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   s.moveFailed = !moved; if (!moved && !move.phases) w.detour?.(e, speed);
-  e.facingX = e.kind === "wildStego" ? (stegoHeading(e).x >= 0 ? 1 : -1) : (p.x - e.x) >= 0 ? 1 : -1;
+  e.facingX = e.kind === "wildStego" ? (stegoHeading(e).x >= 0 ? 1 : -1) : e.kind === "spinoRex" ? (spinoHeading(e).x >= 0 ? 1 : -1) : (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
   if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
@@ -4406,7 +4768,7 @@ export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3, o
 export const WINDUP_STAGGER = { max: .35 };
 // Call while hit-stunned during a windup; `held` is the attack's own record. True while the windup may still be held.
 export function windupHeld(e, held, dt) { held.windupStagger = (held.windupStagger || 0) + dt; if (held.windupStagger < WINDUP_STAGGER.max) return true; e.hitStun = 0; return false; }
-export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.stegoRoom || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.stegoRoom || e?.spinoRoom || e?.spinoInterloper || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
   const k = staggerClass(e) || "ordinary"; // release 561: ordinary creatures cannot be stun-locked either
@@ -4837,6 +5199,19 @@ export function tickPackEffects(effects, world) {
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
       if (w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
       else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; if (f.kind === "stegoSpike") f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: f.kind === "stegoBlade" ? "stegoTailBlade" : "stegoSpike" }); }
+    }
+    else if (f.kind === "spinoRock") { /* a flung rock: straight, stopped by walls, one hit */
+      const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      if (w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5)) f.life = 0;
+      else if (!f.hit && segmentDistance(p, before, f) <= f.radius + .3) { f.hit = true; f.life = 0; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "spinoDigFling" }); }
+    } else if (f.kind === "spinoBone") { /* a bone that hunts you; one that misses lands and bursts on its marked ground (spinoBoneBurst) */
+      const B = SPINO.bones, sp = Math.hypot(f.vx, f.vy) || B.speed, want = Math.atan2(p.y - f.y, p.x - f.x), cur = Math.atan2(f.vy, f.vx), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-B.turn * w.dt, Math.min(B.turn * w.dt, diff));
+      f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp; const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
+      const blocked = w.shotBlocked ? w.shotBlocked(f.x + .5, f.y + .5) : w.tileOpen && !w.tileOpen(f.x + .5, f.y + .5);
+      if (!blocked && segmentDistance(p, before, f) <= f.radius + .3) { f.life = 0; f.landed = true; w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: false, source: "spinoBoneVolley" }); }
+      else if (!f.landed && (blocked || f.life - w.dt <= 0)) { f.landed = true; f.life = 0; const at = blocked ? before : f; w.addEffect({ kind: "spinoBoneBurst", owner: f.owner, x: at.x, y: at.y, radius: f.burst || B.burst, arming: B.burstArm, armTotal: B.burstArm, life: .3, total: .3, damage: f.burstDamage || 1 }); }
+    } else if (f.kind === "spinoFlesh" || f.kind === "spinoFurrow") { /* the shed's falling flesh and the plough's broken ground: only seen */
+      if (f.kind === "spinoFlesh") { const k = Math.max(0, 1 - f.age / (f.total || 1)); f.x += (f.vx || 0) * k * w.dt; f.y += (f.vy || 0) * k * w.dt; }
     }
     else if (f.kind === "shock") { const total = f.total ??= f.life ?? .8, r = f.radius * (1 - Math.max(0, f.life ?? total) / total); f.ring = r; if (!f.hit && f.damage > 0 && Math.abs(distance(p, f) - r) < .5) { f.hit = true; if (w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: true, source: "shockwave" }) && f.lightning) w.shockHit?.(); } }
     else if (!f.detonated) { f.detonated = true; f.life ??= .4; if (f.damage > 0 && distance(p, f) <= f.radius + .3) w.hurt(w.enemies.find((q) => q.id === f.owner) || null, f.damage, { jumpable: !!f.jumpable, source: f.kind }); }
