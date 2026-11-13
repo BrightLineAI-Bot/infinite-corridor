@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 949: The compass is always true north again, in Close View too: N stays at the top, the needle points the way to your objective on the map, and in Close View a small blue marker on the rim shows which way you're facing.
 - Release 948: On phones, holding a button with words on it no longer selects the text or opens Chrome's long-press menu; text fields still take typing and selection.
 - Release 947: Fixed: pausing or backgrounding the game during Ki Blast's leap no longer turns the ground slam into an ordinary plunge.
 - Release 946: Look mode can look at everything: tap anything in the view (a creature, a world beast, a tree, a chest, a house, a cliff, the ground) to frame it; big things are framed whole first from farther back, the pick in front reaches farther as you zoom in, a name line under the compass names what you're looking at, and a Look-mode tap never attacks, uses or moves. Fixed: Ki Blast's ground slam no longer carries over into a later jump, a held kick released after the fists lose their awakening is thrown as a plain cross, and an Enter on the compass no longer goes missing after a cancelled long press.

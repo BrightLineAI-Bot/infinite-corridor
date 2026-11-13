@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 949 — The compass is always true north
+
+Tim, 2026-11-13: in Close View the whole compass turned with the character, so it couldn't be used for wayfinding; it should point to true north all the time, with only the arrow turning.
+
+**CODE:** `src/main.ts`: `updateCompassFrame` keeps `navCompassDial` at `rotate(0deg)`; `compassFrame` now eases only the new `navCompassFacing` rim marker (`class:on` in Close View, rotated by `closeViewCompassRotation(cos yaw, sin yaw)` from `closeViewBodyFacingYaw`, with `compassFacingStep`'s deadband and easing, reduced motion snapping); `compassRotation(dx, dy)` is north-up (no facing yaw), so guidance, manual and dungeon door needles point at the map bearing. `styles.css`: `.nav-facing` marker. Tests: `compass-facing` and `dungeon-door-navigation` rewritten for north-up.
+
+**BOUNDARY:** HUD only: no save, generation or camera change. The standard view behaves as before. Look mode's compass hold and tap are unchanged. Not checked on a device.
+
 ## Release 948 — Holding a button no longer selects its words
 
 Tim, 2026-11-13: on the phone, holding down one of the buttons that has words on it selected the text in Chrome.

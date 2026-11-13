@@ -84,8 +84,9 @@ test("Compass north stays in world coordinates at each cardinal Close View yaw",
   assert.equal(closeViewCompassRotation(1,0,0),0);
 });
 
-test("Overworld quest and manual compass arrows stay north-up outside Close View and turn with the Wayfarer's facing inside it",()=>{
-  // r869 turned these arrows with the Close View camera yaw; Tim (2026-11-11) asked for the Wayfarer's facing in Close View.
+test("Overworld quest and manual compass arrows are north-up in both views (Tim, 2026-11-13)",()=>{
+  // r869 turned these arrows with the Close View camera yaw; 2026-11-11 with the Wayfarer's facing; Tim (2026-11-13): the compass
+  // is always true north, so the needle points at the objective's map bearing in Close View too.
   const source=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");
   const read=name=>{
     const body=source.match(new RegExp("^function "+name+"\\([^\\n]+\\n[\\s\\S]*?^}","m"));
@@ -94,17 +95,15 @@ test("Overworld quest and manual compass arrows stay north-up outside Close View
   };
   const game={area:"overworld",rx:0,ry:0,map:{},player:{x:16,y:16}},compassFrame={yaw:NaN,turning:false,ready:false,map:null,at:NaN,target:NaN};
   let close=false,yaw=-Math.PI/2;
-  const {updateNavigationArrow,updateCompassFrame}=new Function("game","hudSet","compassHeading","closeViewShowing","closeViewBodyFacingYaw","closeViewCompassRotation","compassFacingStep","compassFrame","navCompassDial","settings",
+  const {updateNavigationArrow,updateCompassFrame}=new Function("game","hudSet","compassHeading","closeViewShowing","closeViewBodyFacingYaw","closeViewCompassRotation","compassFacingStep","compassFrame","navCompassDial","navCompassFacing","settings",
     read("updateNavigationArrow")+"\n"+read("compassRotation")+"\n"+read("updateCompassFrame")+"\nreturn {updateNavigationArrow,updateCompassFrame};")
-    (game,(arrow,key,value)=>arrow[key]=value,()=>"",()=>close,()=>yaw,closeViewCompassRotation,compassFacingStep,compassFrame,{},{});
+    (game,(arrow,key,value)=>arrow[key]=value,()=>"",()=>close,()=>yaw,closeViewCompassRotation,compassFacingStep,compassFrame,{},{},{});
   const arrowFor=(arrow,target)=>{compassFrame.ready=false;updateCompassFrame(0);updateNavigationArrow(arrow,target);};
   for(const kind of ["guidance","manual"]){
-    const arrow={},target={kind,area:"overworld",rx:0,ry:-1,name:"North"};
-    yaw=Math.PI/2;close=false;arrowFor(arrow,target);
-    assert.equal(arrow.transform,"rotate(0deg)");
-    close=true;
-    const rotations=[-Math.PI/2,0,Math.PI/2,Math.PI].map(value=>{yaw=value;arrowFor(arrow,target);return arrow.transform;});
-    assert.deepEqual(rotations,["rotate(0deg)","rotate(-90deg)","rotate(-180deg)","rotate(-270deg)"]);
+    const arrow={},north={kind,area:"overworld",rx:0,ry:-1,name:"North"},east={kind,area:"overworld",rx:1,ry:0,name:"East"};
+    for(const c of [false,true])for(const value of [-Math.PI/2,0,Math.PI/2,Math.PI]){close=c;yaw=value;
+      arrowFor(arrow,north);assert.equal(arrow.transform,"rotate(0deg)",`north, close ${c}, facing ${value}`);
+      arrowFor(arrow,east);assert.equal(arrow.transform,"rotate(90deg)",`east, close ${c}, facing ${value}`);}
   }
   assert.doesNotMatch(read("compassRotation")+read("updateCompassFrame"),/closeViewCamera/);
 });
