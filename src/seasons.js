@@ -11,7 +11,7 @@
 // - Nothing generated changes: the season is drawn over the same trees (renderer.ts: the tree's leaf colours, bare branches,
 //   snow caps, blossom), with a little seasonal weather (`weather`). It never changes what can be walked, cut or climbed.
 // Save: additive at schema 14 (`save.seasons`: { [regionId]: { t: turns so far, n: sections explored outside since the last turn } }).
-import { hashSeed } from "./random.js?v=r928-60da61d95073";
+import { hashSeed } from "./random.js?v=r937-15794e9d55b3";
 
 export const SEASONS = {
   regions: ["forest", "jungle"],

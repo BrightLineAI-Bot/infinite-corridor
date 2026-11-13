@@ -12,17 +12,17 @@
 // is built onto its pressure plate, and the Heart itself stays sealed until three trial chambers have been cleared of their
 // ghouls. Relics in the chambers tell what happened to the Fivefold Court. Everything is a hash of the seed and the centre;
 // a Pentagon stands only where all nine sections are new ground (`atlas.pentVersion`).
-import { hashSeed, rng, byHash } from "./random.js?v=r928-60da61d95073";
-import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding } from "./close-view-room-routing.js?v=r928-60da61d95073";
-import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.js?v=r928-60da61d95073";
-import { carveMaze } from "./labyrinths.js?v=r928-60da61d95073";
-import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r928-60da61d95073";
-import { grantTesseract } from "./tesseracts.js?v=r928-60da61d95073";
-import { PENTAGON_HALLS, assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.js?v=r928-60da61d95073";
+import { hashSeed, rng, byHash } from "./random.js?v=r937-15794e9d55b3";
+import { CLOSE_VIEW_ROOM_ROUTING, layCloseViewRooms, routingStairPair, routingNearLanding } from "./close-view-room-routing.js?v=r937-15794e9d55b3";
+import { BUILDINGS, layFloor, layFloorV3, addInteriorTerrain, farthest } from "./great-buildings.js?v=r937-15794e9d55b3";
+import { carveMaze } from "./labyrinths.js?v=r937-15794e9d55b3";
+import { LIFT_PER_LEVEL as LIFT } from "./landscape.js?v=r937-15794e9d55b3";
+import { grantTesseract } from "./tesseracts.js?v=r937-15794e9d55b3";
+import { PENTAGON_HALLS, assignPentagonHalls, layPentagonHall, dressPentagonHall, pentagonChamberSigils } from "./pentagon-halls.js?v=r937-15794e9d55b3";
 const PENTAGON_HALLS_FLOOR = (type) => PENTAGON_HALLS.types[type]?.floor || "flagFloor";
-import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea, adventureCreatureTheme } from "./adventures.js?v=r928-60da61d95073";
-import { pickAdventureCreature, adventureSpawnSpot } from "./adventure-creatures.js?v=r928-60da61d95073";
-import { SIGIL_BOUNDS, sigilFits, inlaySigil } from "./watcher.js?v=r928-60da61d95073";
+import { ADVENTURE_PENTAGON as AP, ADVENTURE_THEMES, ADVENTURE_AREAS, ADVENTURE_LINKS, composeDistrict, adventureThemePick, adventureRoster, adventureAreaSize, layAdventureArea, adventureCreatureTheme } from "./adventures.js?v=r937-15794e9d55b3";
+import { pickAdventureCreature, adventureSpawnSpot } from "./adventure-creatures.js?v=r937-15794e9d55b3";
+import { SIGIL_BOUNDS, sigilFits, inlaySigil } from "./watcher.js?v=r937-15794e9d55b3";
 
 export const PENTAGON = {
   version: 9, // 9: spacious branching ordinary chambers; 8: grand halls, murals and the Watcher's sigil (pentagon-halls.ts); earlier versions remain pinned. The legacy baseline: new ground takes 10 (release 844 room routing) or 11 (the adventure: adventures.ts ADVENTURE_PENTAGON), chosen in game.ts recoverPentagonVersion

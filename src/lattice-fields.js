@@ -7,8 +7,9 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r928-60da61d95073";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r928-60da61d95073";
+import { latticePassives } from "./transit-lattice.js?v=r937-15794e9d55b3";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r937-15794e9d55b3";
+import { QUANDRIX } from "./quandrix-staff.js?v=r937-15794e9d55b3";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -27,6 +28,7 @@ export const TOOL_FORMS = {
   "lumen-sunburst": { name: "Sunburst Ricochet", text: `A Lumen Spindle shot that strikes a wall ricochets off it, cutting on through foes, and breaks into a sunburst of ${SUNBURST.shards} small shards, each striking a foe once for ${Math.round(SUNBURST.share * 100)}% of the shot. Up to ${SUNBURST.ricochets} ricochets a shot; one that ricocheted on its way out comes back the same way and bursts again. Still magic (Focus).` }, // tool-forms.ts SUNBURST
   "continuous-assault": { name: "Continuous Assault", text: `With the Carbine: a charged beam released at least ${Math.round(CONTINUOUS_ASSAULT.threshold * 100)}% full calls ${CONTINUOUS_ASSAULT.count} lasers down from the sky, ${CONTINUOUS_ASSAULT.gap} s apart, onto the foe it strikes (or the one nearest where it ends). Each tracks its foe and strikes everything within ${CONTINUOUS_ASSAULT.radius} tile for ${Math.round(CONTINUOUS_ASSAULT.share * 100)}% of the beam. Nothing with any other tool. Grows with Finesse, as the Carbine does.` }, // tool-forms.ts CONTINUOUS_ASSAULT; 2026-11-12 replaces the Lumen Carbine (now the Carbine tool)
 
+  "mages-hand": { name: "Mage's Hand", text: `With the Quandrix Staff: a tap still casts a hand; hold Attack and the hand you cast last clenches into a fist. It grabs every foe it touches (up to ${QUANDRIX.fist.maxGrab}) and drags them toward you, then bursts after ${QUANDRIX.fist.time} s wherever it is, or at once when you let go, for ${Math.round(QUANDRIX.fist.burst.share * 100)}% of the staff within ${QUANDRIX.fist.burst.radius} tiles. Bosses, world beasts and elites hold their ground but take the burst. Awakened, the slammed hand becomes a suction cup instead. Nothing with any other weapon. Grows with Focus, as the staff does.` }, // quandrix-staff.ts QUANDRIX.fist (2026-11-13)
   nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
 };
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);

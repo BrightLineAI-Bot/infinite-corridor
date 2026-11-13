@@ -10,12 +10,12 @@
 //
 // Sections already explored keep their original terrain (Game.loadArea pins the version in the atlas); the starting
 // ring, settlements, exit corridors, the central plaza, structures, rivers/canyons, objects and spawns are protected.
-import { farCivAt } from "./far-realms.js?v=r928-60da61d95073";
-import { hashSeed, byHash } from "./random.js?v=r928-60da61d95073";
-import { placeDock } from "./boats.js?v=r928-60da61d95073";
-import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r928-60da61d95073";
-import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r928-60da61d95073";
-import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r928-60da61d95073";
+import { farCivAt } from "./far-realms.js?v=r937-15794e9d55b3";
+import { hashSeed, byHash } from "./random.js?v=r937-15794e9d55b3";
+import { placeDock } from "./boats.js?v=r937-15794e9d55b3";
+import { growTrees, TREES_V14, TREES_V18 } from "./trees.js?v=r937-15794e9d55b3";
+import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.js?v=r937-15794e9d55b3";
+import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.js?v=r937-15794e9d55b3";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -1855,6 +1855,7 @@ export function interiorGeometryHeight(map, tx, ty, x, y) {
   if (!interiorTerrain(map)) return 0;
   const w = map.width || 32, t = map.tiles[ty * w + tx];
   if (!t?.blocked) return interiorTileLevel(t, x, y) * LIFT_PER_LEVEL;
+  if (map.tallTower) return 0; // tall towers: the shaft's walls stand from its floor, whatever ledge runs along them
   let best = null, distance = Infinity;
   for (const [dx, dy] of Object.values(RAMP_DIR)) {
     const nx = tx + dx, ny = ty + dy;

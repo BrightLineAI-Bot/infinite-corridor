@@ -1,45 +1,51 @@
-import { FOURFOLD_DAGGERS } from "./items.js?v=r928-60da61d95073"; // the Fourfold Daggers' X of cuts
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r928-60da61d95073"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r928-60da61d95073";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r928-60da61d95073"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r928-60da61d95073";
-import { astralBeamAnchors } from "./astral-worm.js?v=r928-60da61d95073";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r928-60da61d95073";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r928-60da61d95073";
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r928-60da61d95073';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r928-60da61d95073";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r928-60da61d95073";
-import { ruleRows } from "./elders.js?v=r928-60da61d95073";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r928-60da61d95073";
-import { BOAT } from "./boats.js?v=r928-60da61d95073";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r928-60da61d95073";
-import { isMarineTile } from "./world-beasts.js?v=r928-60da61d95073";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r928-60da61d95073"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r928-60da61d95073";
-import { setTreeSeason } from "./landscape-render.js?v=r928-60da61d95073";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r928-60da61d95073";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r928-60da61d95073";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r928-60da61d95073";
-import { TREES } from "./trees.js?v=r928-60da61d95073";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r928-60da61d95073";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r928-60da61d95073";
-import { KIT_MOVES } from "./boss-kit.js?v=r928-60da61d95073";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r928-60da61d95073"; // release 587; travel seeds
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r928-60da61d95073";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r928-60da61d95073"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r928-60da61d95073"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r928-60da61d95073";
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r928-60da61d95073"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r928-60da61d95073"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r928-60da61d95073"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r928-60da61d95073";
-import { drawRelayNode } from "./relay-network.js?v=r928-60da61d95073";
-import { structureOccupancy } from "./world.js?v=r928-60da61d95073";
-import { roofDeckById } from "./roof-decks.js?v=r928-60da61d95073"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r928-60da61d95073";
-import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r928-60da61d95073"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r928-60da61d95073";
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r928-60da61d95073"; // Close View: three hooks below, marked CLOSE VIEW
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r937-15794e9d55b3"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r937-15794e9d55b3";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r937-15794e9d55b3"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r937-15794e9d55b3";
+import { drawBleedIcon } from "./bleed.js?v=r937-15794e9d55b3";
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r937-15794e9d55b3"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r937-15794e9d55b3";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r937-15794e9d55b3"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r937-15794e9d55b3";
+import { astralBeamAnchors } from "./astral-worm.js?v=r937-15794e9d55b3";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r937-15794e9d55b3";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r937-15794e9d55b3";
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r937-15794e9d55b3';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r937-15794e9d55b3";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r937-15794e9d55b3";
+import { ruleRows } from "./elders.js?v=r937-15794e9d55b3";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r937-15794e9d55b3";
+import { BOAT } from "./boats.js?v=r937-15794e9d55b3";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r937-15794e9d55b3";
+import { isMarineTile } from "./world-beasts.js?v=r937-15794e9d55b3";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r937-15794e9d55b3"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r937-15794e9d55b3";
+import { setTreeSeason } from "./landscape-render.js?v=r937-15794e9d55b3";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r937-15794e9d55b3";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r937-15794e9d55b3";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r937-15794e9d55b3";
+import { TREES } from "./trees.js?v=r937-15794e9d55b3";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r937-15794e9d55b3";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r937-15794e9d55b3";
+import { KIT_MOVES } from "./boss-kit.js?v=r937-15794e9d55b3";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r937-15794e9d55b3"; // release 587; travel seeds
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r937-15794e9d55b3";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r937-15794e9d55b3";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r937-15794e9d55b3"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r937-15794e9d55b3"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r937-15794e9d55b3";
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r937-15794e9d55b3"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r937-15794e9d55b3"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r937-15794e9d55b3"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r937-15794e9d55b3";
+import { drawRelayNode } from "./relay-network.js?v=r937-15794e9d55b3";
+import { structureOccupancy } from "./world.js?v=r937-15794e9d55b3";
+import { roofDeckById } from "./roof-decks.js?v=r937-15794e9d55b3"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r937-15794e9d55b3";
+import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r937-15794e9d55b3"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r937-15794e9d55b3";
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r937-15794e9d55b3"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r937-15794e9d55b3"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -75,6 +81,18 @@ export function drawNativePlayerDecorations(ctx, g, s, now) {
   ctx.restore();
 }
 const ELDER_ROWS = new WeakMap();
+// Stegosaur's Grip (echoes.ts WALL_CLING): the Wayfarer's arms raised onto the wall held, (nx, ny) pointing into it. At (x, y) the
+// drawn top-left of the Wayfarer's tile (already lifted), s pixels a tile. Two short arms and hands; no allocation.
+function drawClingGrip(ctx, x, y, s, nx, ny) {
+  const cx = (x + .5) * s, cy = (y + .36) * s, side = ny !== 0, reachX = nx * .3 * s, reachY = (ny < 0 ? -.34 : ny > 0 ? .08 : -.24) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let k = -1; k <= 1; k += 2) {
+    const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
+    ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
 function elderRuleRows(o){let rows=o.rows||ELDER_ROWS.get(o);if(!rows){rows=Array.from({length:16},(_,k)=>ruleRows(o.rule,33,26,Math.floor((o.phase||.5)*1e6)+7+k*7919).map(r=>r.slice(12,21))).flat();ELDER_ROWS.set(o,rows);}return rows;}
 const RECITER_NATIVE_LOOKS = new Set(['pilgrim','mercenary','minstrel','scholar','traveler','cartographer']);
 function hueRGB(h,s,l){h=((h%360)+360)%360/360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h*12)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));};return (f(0)<<16)|(f(8)<<8)|f(4);}
@@ -84,6 +102,20 @@ export function nativeTraveler(o,now,quiet){
   if(o.elder===true&&Number.isInteger(o.rule)&&o.rule>=0&&o.rule<=255){const hue=(o.rule*137.508)%360;return {kind:'elderWanderer',yaw:facing,paletteMap:{[0x17101d]:hueRGB(hue,.4,.08),[0x342b38]:hueRGB(hue,.25,.22),[0xe8e5dc]:hueRGB(hue,.3,.88)},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
   if(o.reciter&&RECITER_NATIVE_LOOKS.has(o.look)){const colors=COLORS[o.look].map(c=>Number.parseInt(c.slice(1),16));return {kind:'dungeonReciter:'+o.look,yaw:facing,paletteMap:{[0x5f6f92]:colors[0],[0x2f3550]:colors[1],[0xc9cfe6]:colors[2]},pose:o.state==='walking'?undefined:'idle',pace:o.state==='walking'?undefined:0};}
   return null;
+}
+// Close View only (the GPU capture): a person drawn as a skinned body (close-view-folk.ts) keeps on its card only what the body does
+// not draw: a rider's mount, the talk marker over a villager's or a Refuge person's head, the Wanderer's "!" or "…" (raised above
+// the taller body). Nothing else; the standard view never calls this.
+function folkCapture(ctx,o,s,g,now){
+  const mark=o.kind==='villager'&&!o.quarryTurtle||o.kind==='npc'||!!o.wanderer,mount=o.kind==='traveler'&&!!o.mount;
+  if(!mark&&!mount)return {};
+  const giant=o.folkGiant?FAR_FOLK.scale:1,top=(1.38*(folkLook(o).height||1)+(mount?FOLK_MOTION.seat-.5:0))*giant;
+  return {nativeEffects:true,nativeHeight:top+.5,nativeDecorations:()=>{
+    const cx=(o.x+.5)*s,head=(o.y+.82-top)*s;
+    if(mount){const f=o.facing||"down",step=o.state==="walking"?Math.floor(now/180):0;if(o.folkGiant){ctx.save();ctx.translate(cx,(o.y+1)*s);ctx.scale(giant,giant);ctx.translate(-cx,-(o.y+1)*s);}actor(ctx,o.x,o.y+.05,s,o.mount,f,step,o.state==="walking"?"walk":"idle");if(o.folkGiant)ctx.restore();}
+    if(o.wanderer){const q=g.save.wanderer?.quest;ctx.fillStyle=!q||q.done?"#f0d58a":"#9cc8b5";ctx.font=`bold ${Math.max(10,s*.32)}px monospace`;ctx.textAlign="center";ctx.fillText(!q||q.done?"!":"…",cx,head-s*.12);ctx.textAlign="start";}
+    else if(mark){const n=o.kind==='npc'?g.save.consequences?.npcs?.[o.id]:null;ctx.fillStyle=n?.disposition==="hostile"?"#d9977a":"#9cc8b5";ctx.beginPath();ctx.arc(cx,head-s*.12,Math.max(2,s*.08),0,7);ctx.fill();}
+  }};
 }
 export function drawNativeTravelerDetails(ctx,o,s,now,quiet=false){
   if(!o.elder)return;
@@ -144,6 +176,16 @@ export function cameraTransform(
     y: h / 2 - g.player.y * tileSize,
   };
 }
+// The aimed Rift Step in the standard view (constellation.ts RIFT_AIM; Close View draws its own, close-view.ts riftAimRing): while armed,
+// a dashed ring of its reach round the feet; after the tap, a ring on the point (red when refused) that fades. No allocation.
+export const RIFT_RING_STD = { armed: "#b48cff", ok: "#c9a8ff", bad: "#ff5a5a", width: 2, mark: .45, dash: 6 };
+const RIFT_DASH = [RIFT_RING_STD.dash, RIFT_RING_STD.dash], NO_DASH = [];
+function drawRiftAimStd(ctx, g, s, groundLift) {
+  const p = g.player, C = RIFT_RING_STD, m = g.riftAimMark; ctx.save(); ctx.lineWidth = C.width;
+  if (g.riftAimArmed?.()) { const r = Number(g.riftReach?.()) || 0, fx = p.x + .5, fy = p.y + .75; if (r > 0) { ctx.globalAlpha = .55; ctx.strokeStyle = C.armed; ctx.setLineDash?.(RIFT_DASH); ctx.beginPath(); ctx.ellipse(fx * s, (fy - groundLift(p.x, p.y)) * s, r * s, r * s, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash?.(NO_DASH); } }
+  if (m && m.life > 0) { ctx.globalAlpha = Math.max(0, Math.min(1, m.life / (m.max || 1))); ctx.strokeStyle = m.ok ? C.ok : C.bad; ctx.beginPath(); ctx.ellipse(m.x * s, (m.y - groundLift(m.x - .5, m.y - .75)) * s, C.mark * s, C.mark * .6 * s, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
+}
 export function screenToWorld(g, w, h, x, y) {
   const c = cameraTransform(g, w, h);
   return { x: (x - c.x) / c.tileSize, y: (y - c.y) / c.tileSize };
@@ -193,7 +235,7 @@ function mapObjectLists(map) {
   const value = {
     objects,
     length: objects.length,
-    structures: objects.filter((o) => o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"),
+    structures: objects.filter((o) => o.kind === "tallTower" || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding"), // tall towers (tall-towers.ts) are drawn as great buildings are
     shelters: objects.filter((o) => o.kind === "shack" || o.kind === "greatBuilding"), // a great building has no inside on the overworld; listed so the Wayfarer stays in front of its facade
     animated: objects.filter((o) => ["shrine", "checkpoint", "ruinMarker", "apertureMemory"].includes(o.kind)),
   };
@@ -534,6 +576,7 @@ function drawCloudTile(ctx, t, x, y, s, tiles, w) {
 function tileBase(ctx, t, x, y, s, map, w, activeBuildingId=null, scarSurface=null) {
   if (t?.kind === "voidScar") { drawVoidScarTile(ctx,t,x,y,s,map,w,activeBuildingId,scarSurface); return; }
   if (drawStillworksTile(ctx, t, x, y, s)) return; // the Stillworks (pentagon-arena-render.ts): cached sprites per band and edge
+  if (TOWER_TILES.has(t?.kind)) { towerTile(ctx, t, x, y, s, map, w); return; } // tall towers: the shaft (tall-towers.ts)
   if (t?.landscape && drawLandscapeTile(ctx, t, x, y, s, map, w, closeViewWorldCapture())) return;
   if (cloudSky && drawCloudTile(ctx, t, x, y, s, map, w)) return; // release 589
   if (t?.realm && drawRealmTile(ctx, t, x, y, s, map, w)) return; // seed realms (seed-realm-render.ts)
@@ -1844,6 +1887,66 @@ export const behindRoof = (tiles, w, p) => { const x = Math.floor(p.x + .5), y =
 // Great buildings (great-buildings.ts): a closed block seen from outside, a roof over a facade with a row of windows a floor
 // and the door; a keep in dressed stone under a parapet, an arcology in stained concrete with dead neon. A broken back shows
 // as a torn gap in the roof's far edge (or the facade, when the door faces north).
+// Tall towers (tall-towers.ts): the Upwell outside, a tall stone shaft seen from the south: its top (the footprint raised by its
+// drawn height) with a parapet and the lookout's lamp, a facade banded every few levels with arrow slits, and the door: at the
+// foot, or up the face over the ledge the floating steps lead to (the steps are tiles, drawn by the landscape). Faded while the
+// Wayfarer stands behind it.
+const TOWER_LOOK = { stone: ["#6c675e", "#5a554d", "#4a463f"], mortar: "#2c2a26", top: "#3c3934", lip: "#8a8478", slit: "#0b0b0d", door: "#1a1410", trim: "#a8916b", lamp: "#ffd98a", band: 3 };
+function tallTower(ctx, o, s, p) {
+  const b = o.bounds, C = TOWER_LOOK, H = o.faceH || 4, south = o.door?.side !== "north", inset = .3;
+  const x = (b.x + inset) * s, w = (b.w - inset * 2) * s, foot = (b.y + b.h) * s, faceY = foot - H * s, topY = (b.y - H) * s + s * .2, topH = (b.h - .4) * s;
+  const behind = p && p.x >= b.x - .7 && p.x < b.x + b.w - .3 && p.y >= b.y - H - .8 && p.y < b.y + b.h - .6;
+  ctx.save(); if (behind) ctx.globalAlpha = .42;
+  ctx.fillStyle = "#00000055"; ctx.fillRect(x + s * .2, foot - s * .06, w, s * .3); // its shadow
+  // the facade: stone in three tones, a band every few levels
+  const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, C.stone[2]); g.addColorStop(.35, C.stone[0]); g.addColorStop(1, C.stone[1]);
+  ctx.fillStyle = g; ctx.fillRect(x, faceY, w, H * s);
+  const lv = s * LIFT_PER_LEVEL, levels = o.levels || 8; ctx.strokeStyle = C.mortar; ctx.lineWidth = 1;
+  for (let k = 1; k <= levels; k++) { const y = foot - k * lv; ctx.globalAlpha = (behind ? .42 : 1) * (k % C.band === 0 ? .9 : .3); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke(); }
+  ctx.globalAlpha = behind ? .42 : 1;
+  ctx.fillStyle = C.slit; for (let k = 2; k < levels; k += 2) { const y = foot - (k + .5) * lv, sx = x + w * (k % 4 === 2 ? .3 : .68); ctx.fillRect(sx - s * .04, y - lv * .7, s * .08, lv * .9); }
+  // the top: its parapet and the lookout's lamp
+  ctx.fillStyle = C.top; ctx.fillRect(x, topY, w, topH); ctx.strokeStyle = C.lip; ctx.lineWidth = 2; ctx.strokeRect(x + 1, topY + 1, w - 2, topH - 2);
+  ctx.fillStyle = C.stone[1]; for (let q = 0; q < w; q += s * .4) if (((q / s * 2.5) | 0) % 2 === 0) { ctx.fillRect(x + q, topY - s * .18, s * .22, s * .2); ctx.fillRect(x + q, faceY - s * .18, s * .22, s * .2); }
+  const lx = x + w * .3, ly = topY + topH * .35; ctx.fillStyle = C.lamp + "55"; ctx.beginPath(); ctx.arc(lx, ly, s * .32, 0, 7); ctx.fill(); ctx.fillStyle = C.lamp; ctx.beginPath(); ctx.arc(lx, ly, s * .1, 0, 7); ctx.fill();
+  // the door (seen only when it faces south)
+  if (south) { const d = o.door.raised || 0, dx = (o.door.x + .5) * s, dw = s * .56, dh = s * .82, dy = foot - d * lv;
+    ctx.fillStyle = C.door; ctx.beginPath(); ctx.moveTo(dx - dw / 2, dy); ctx.lineTo(dx - dw / 2, dy - dh + dw / 2); ctx.arc(dx, dy - dh + dw / 2, dw / 2, Math.PI, 0); ctx.lineTo(dx + dw / 2, dy); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = C.trim; ctx.lineWidth = 2; ctx.stroke();
+    if (d) { ctx.fillStyle = C.stone[1]; ctx.fillRect(dx - s * .5, dy, s, s * .12); } // the sill the steps reach
+    else { ctx.fillStyle = "#00000044"; ctx.fillRect(dx - dw / 2, dy - s * .06, dw, s * .06); } }
+  ctx.restore();
+}
+// The shaft inside (tall-towers.ts generateTowerInterior), painted flat as every interior heightfield is in this view
+// (STANDARD_VIEW_FLOOR): the far floor dark, every ledge and platform lighter the higher it stands, with its level written on it
+// where a run of ledge begins, and an edge where it drops away. Close View draws the heights themselves.
+const TOWER_TILES = new Set(["towerFloor", "towerLedge", "towerSummit", "towerPlatform", "towerWall"]);
+const TOWER_LEVEL_TEXT = Array.from({ length: 32 }, (_, i) => String(i));
+function towerTile(ctx, t, x, y, s, tiles, w) {
+  const px = x * s, py = y * s, d = Number.isFinite(t.detail) ? t.detail : 0, e = Number(t.elev) || 0;
+  if (t.kind === "towerWall") { ctx.fillStyle = d & 1 ? "#3a3632" : "#34302c"; ctx.fillRect(px, py, s + 1, s + 1); ctx.strokeStyle = "#1c1a17aa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, py + s * .5); ctx.lineTo(px + s, py + s * .5); ctx.moveTo(px + s * (d & 1 ? .3 : .7), py); ctx.lineTo(px + s * (d & 1 ? .3 : .7), py + s * .5); ctx.stroke(); return; }
+  if (t.kind === "towerFloor") { ctx.fillStyle = d & 1 ? "#121114" : "#0e0d10"; ctx.fillRect(px, py, s + 1, s + 1); ctx.fillStyle = "#1d1b20"; ctx.fillRect(px + s * (.2 + (d % 3) * .15), py + s * .3, s * .18, s * .12); return; }
+  const k = Math.min(1, e / 15), c = Math.round(70 + k * 90);
+  ctx.fillStyle = t.kind === "towerSummit" ? `rgb(${c + 30},${c + 18},${c - 10})` : t.kind === "towerPlatform" ? `rgb(${c - 10},${c},${c + 22})` : `rgb(${c},${c - 4},${c - 12})`;
+  ctx.fillRect(px, py, s + 1, s + 1);
+  const W = w || 13, lower = (dx, dy) => { const q = tiles?.[(y + dy) * W + x + dx]; return q && !q.blocked && (Number(q.elev) || 0) < e; };
+  ctx.fillStyle = "#00000088"; if (lower(0, 1)) ctx.fillRect(px, py + s * .86, s, s * .14); if (lower(1, 0)) ctx.fillRect(px + s * .86, py, s * .14, s); if (lower(-1, 0)) ctx.fillRect(px, py, s * .08, s); if (lower(0, -1)) ctx.fillRect(px, py, s, s * .06);
+  if (closeViewCapturing()) return;
+  const before = tiles?.[y * W + x - 1], above = tiles?.[(y - 1) * W + x], run = (q) => q && !q.blocked && (Number(q.elev) || 0) === e;
+  if (!run(before) && !run(above) || t.kind === "towerPlatform") { ctx.fillStyle = "#f4ead2"; ctx.font = `bold ${Math.max(8, Math.round(s * .36))}px sans-serif`; ctx.textAlign = "center"; ctx.fillText(TOWER_LEVEL_TEXT[Math.min(31, e)], px + s * .5, py + s * .62); ctx.textAlign = "start"; }
+}
+// Release 661's column of floor dots, for an Upwell: a dot a level (the lip on top, gold; the floor at the bottom), the level the
+// Wayfarer stands at (or hangs at, on the drone) lit and ringed, the raised door's level ringed faintly, the drone's cap a tick.
+function drawTowerLevels(ctx, g, w, h) {
+  const C = g.map.tallTower, n = C.levels + 1, gap = Math.max(6, Math.min(12, (h * .6) / n)), x = w - 12, y0 = h / 2 - (n - 1) * gap / 2, here = Math.max(0, Math.min(C.levels, Math.round(g.playerLevel?.() ?? 0)));
+  ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (n - 1) * gap); ctx.stroke();
+  for (let i = 0; i < n; i++) { const lv = C.levels - i, y = y0 + i * gap, on = lv === here;
+    ctx.fillStyle = on ? "#ffe7a6" : lv === C.levels ? "#e2c04fcc" : lv < here ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, on ? 4 : lv === C.levels ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+    if (on) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); }
+    else if (C.door && lv === C.door) { ctx.strokeStyle = "#a8916b99"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.stroke(); }
+    if (lv === C.droneCeiling) { ctx.strokeStyle = "#8ad0ff88"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 5, y); ctx.stroke(); } }
+  ctx.restore();
+}
 function greatBuilding(ctx,o,s,p,map){
   const b=o.bounds,keep=o.style==="keep",grain=o.grain||0,floors=o.floors||3,south=o.door?.side!=="north",faceH=o.faceH||Math.min(b.h-2.2,1+floors*.5);
   const C=keep&&biomechanicalKeep(o.appearance)?{roof:"#353e37",roofLine:"#788271",wall:"#454e45",wallDark:"#252e28",mortar:"#171e19",trim:"#a4a084",glass:"#141d16",lit:"#c5d69a"}:keep?{roof:"#3a3631",roofLine:"#5b544a",wall:"#5d564b",wallDark:"#3f3a33",mortar:"#2b2823",trim:"#a18d6d",glass:"#1b1d22",lit:"#e8b860"}:{roof:"#3b3f44",roofLine:"#575d63",wall:"#6a6e72",wallDark:"#45494d",mortar:"#2f3236",trim:"#58c7c2",glass:"#142328",lit:"#62f0e6"};
@@ -2467,7 +2570,7 @@ export function render(ctx, g, w, h, now) {
     b = Math.min(mh, t + Math.ceil(h / s) + 5 + (!worldCapture && g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
     lift = (interiorTerrain(g.map) && closeViewCapturing() ? 0 : jumpLift(g, now)) * s,
-    dodging = now < (p.dodgeUntil || 0);
+    dodging = now < (p.dodgeUntil || 0) || now < (p.landRollUntil || 0); // FALL.rollPose: a landing roll shows as a dodge roll
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
   renderCacheStats.visibleTiles=(r-l)*(b-t);
@@ -2496,7 +2599,8 @@ export function render(ctx, g, w, h, now) {
   const fallLift = g.fall && g.area === "overworld" && Number.isFinite(g.fall.z) ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1)) : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it
   const stepLift = standardStepEase(g, hopLift ?? groundLift(p.x, p.y), jumping, now, worldCapture || closeViewCapturing() || fallLift != null || !!g.glide || !!g.droneLift || g.area !== "overworld" || !!g.save?.boat?.aboard, lift / s); // a step up or down a level (or a hop's landing on the next branch) is eased, never cut (standardStepEase)
   const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : fallLift ?? (hopLift ?? groundLift(p.x, p.y)) + stepLift; // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
-  ctx.translate(Math.round(w / 2 - p.x * s), Math.round(h / 2 - (p.y - viewLift) * s));
+  const spinoShakeAt = shakeOffset(g.spinoShake, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Spinosaurus's roar (spino-rex.ts): none under reduced motion
+  ctx.translate(Math.round(w / 2 - p.x * s + spinoShakeAt.x), Math.round(h / 2 - (p.y - viewLift) * s + spinoShakeAt.y));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
   const groundCached = !bareFloor && !worldCapture && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
@@ -2657,6 +2761,7 @@ export function render(ctx, g, w, h, now) {
         ...(closeViewCapturing()&&nativeTraveler(o,now,false)?{nativeAux:{source:o,sample:(clock,quiet)=>nativeTraveler(o,clock,quiet)},nativeHeight:o.elder?3.05:1.8,nativePanelOffset:o.elder?.29:0,nativeEffects:!!o.elder,
           nativeDecorations:()=>drawNativeTravelerDetails(ctx,o,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)),
           nativeFloor:()=>{ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse((o.x+.5)*s,(o.y+.82)*s,s*(o.elder?.45:.3),s*.12,0,0,7);ctx.fill();}}:{}),
+        ...(closeViewCapturing()&&closeViewFolkKind(o,g)?folkCapture(ctx,o,s,g,now):{}), // Close View townsfolk (close-view-folk.ts): what their card still owes beside the body
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
@@ -2725,7 +2830,7 @@ export function render(ctx, g, w, h, now) {
             ctx.fillStyle = "#a9b9ab";
             ctx.fillText(o.role, cx, cy - 27);
             ctx.textAlign = "start";
-          } else if (o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
+          } else if (o.kind === "tallTower" || o.towerDoor || o.kind === "shack" || o.kind === "architecturalBuilding" || o.kind === "greatBuilding" || o.buildingDoor) { /* roofs render after actors so exterior views conceal contents; a great building draws its own doors */ }
           else if (o.kind === "architecturalDistrict") { /* district title is carried by its buildings */ }
           else if (o.kind === "viewport") {
             actor(ctx, o.x, o.y, s, "viewport");
@@ -2764,6 +2869,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
           } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "stegoTail") { drawStegoTail(ctx, o, s, now); // the Stego Bait: the severed tail, lying where it fell
           } else if (o.kind === "worldCache") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawWorldCache(ctx, o, s, now); if (L) ctx.restore(); // world caches (world.ts WORLD_CACHES)
           } else if (o.kind === "cacheLever") { drawPentLever(ctx, o, s, now); // and the lever that lifts an alcove's bars
           } else if (o.kind === "tideBearer") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); drawTideLantern(ctx, o, s, now); // travel seeds
@@ -2791,6 +2897,7 @@ export function render(ctx, g, w, h, now) {
           } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else if(SEASON&&o.kind==="tree"&&o.state==="standing")drawSeasonTree(ctx,o,s,kind);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
+  { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
@@ -2828,7 +2935,7 @@ export function render(ctx, g, w, h, now) {
             ctx.restore();
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
-          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
+          if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "wildStego", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
           if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
@@ -2866,7 +2973,7 @@ export function render(ctx, g, w, h, now) {
     if (worldCapture) drawSkyDisc(ctx, d, s, now, true);
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
-  const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
+  const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
   const playerDraw = {
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
@@ -2934,7 +3041,10 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
+      // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
+      if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
@@ -2961,7 +3071,8 @@ export function render(ctx, g, w, h, now) {
         ctx.strokeStyle = "#c6a36a";
         ctx.lineWidth = profile.shape === "thrust" ? 4 : 5;
         ctx.beginPath();
-        if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
+        if (profile.shape === "staff") { /* the Quandrix Staff: no swing arc; its hands are drawn by quandrix-staff.ts */ }
+        else if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
           const D = FOURFOLD_DAGGERS, t = (D.angle * Math.PI) / 180, nx = -Math.sin(a), ny = Math.cos(a), r = s * profile.range;
           for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
         } else if (profile.shape === "thrust") {
@@ -3014,6 +3125,7 @@ export function render(ctx, g, w, h, now) {
     if (skyA > 0 && d !== playerDraw && !d.inSky && !(Number.isFinite(d.x) && tileUnder(g.map, mw, d.x, d.y)?.canopy)) { if (skyA >= .98) continue; ctx.save(); if (raise) ctx.translate(0, -raise * s); ctx.globalAlpha = (d.alpha ?? 1) * (1 - skyA); d.fn(); ctx.restore(); continue; }
     if (raise || (d.alpha ?? 1) < 1) { ctx.save(); if (raise) ctx.translate(0, -raise * s); if ((d.alpha ?? 1) < 1) ctx.globalAlpha = d.alpha; d.fn(); ctx.restore(); } else d.fn(); // release 615: a beneath-the-level rider is a dim shape
   }
+  if (!worldCapture && !closeViewCapturing() && (g.riftAimArmed?.() || g.riftAimMark)) drawRiftAimStd(ctx, g, s, groundLift); // RIFT_AIM (2026-11-13): the aim in the standard view too
   for (const o of g.map.objects) if (o.sigil && !o.unsealed && visibleInCamera(o, l, t, r, b) && seenInDungeon(g, o)) drawSigilMark(ctx, o, s, now); // the Pentagon's sigil doors, still sealed
   for (const o of g.map.objects) if (o.pentagonDoor && o.barred && !o.opened && visibleInCamera(o, l, t, r, b)) drawBars(ctx, o, s); // v6: an exterior shortcut door, bolted from within
   if (g.area === "dungeon" && (g.map.murals || g.map.sigils)) drawHallMarks(ctx, g.map, s, l, t, r, b); // release 795: murals carved in a grand hall's walls, the Watcher's sigil over doors, on banners and columns
@@ -3082,7 +3194,7 @@ export function render(ctx, g, w, h, now) {
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
-  for(const o of objectLists.structures)if(renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):architecturalBuilding;
+  for(const o of objectLists.structures)if(renderableObject(g,o)&&seenInDungeon(g,o)&&visibleInCamera(o,l,t,r,b,o.kind==="greatBuilding"||o.kind==="tallTower"?16:2)){const drawStructure=o.kind==="shack"?shack:o.kind==="greatBuilding"?(o.blocks?greatBlocks:greatBuilding):o.kind==="tallTower"?tallTower:architecturalBuilding;
     // Object records outlive consumed building tiles. Clip roofs/facades to their surviving footprint
     // so they cannot visually restore destroyed walls or expose unexplored building geometry.
     const bounds = o.bounds || { x:o.x-2, y:o.y-2, w:5, h:4 };
@@ -3146,6 +3258,7 @@ export function render(ctx, g, w, h, now) {
     ctx.save(); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + (L.length - 1) * gap); ctx.stroke();
     L.forEach((lv, i) => { const y = y0 + i * gap, here = lv.id === g.map.levelId, seen = here || i === 0 || found.includes(lv.id); ctx.fillStyle = here ? "#ffe7a6" : seen ? "#c9c2b0aa" : "#ffffff30"; ctx.beginPath(); ctx.arc(x, y, here ? 4 : 3, 0, Math.PI * 2); ctx.fill(); if (here) { ctx.strokeStyle = "#ffe7a6aa"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke(); } });
     ctx.restore(); }
+  if (g.area === "dungeon" && g.map?.tallTower) drawTowerLevels(ctx, g, w, h); // tall towers: the levels as the floors' dots, the lip on top
   drawStalkerMarker(ctx, g.stalkerMarker?.(), w, h, now); // release 678: the Stalker's silver marker at the screen edge
   // Release 666: the fracture meter, top centre while Fractured mode holds here: kills toward the Fracture Warden, then its health.
   { const m = g.fractureMeter?.(); if (m) { const bw = Math.min(180, w * .4), bx = (w - bw) / 2, by = 8, warden = m.warden, k = warden ? Math.max(0, warden.hp) / Math.max(1, warden.maxHp) : m.kills / Math.max(1, m.need);
@@ -3216,6 +3329,8 @@ export function render(ctx, g, w, h, now) {
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, w, h);
   }
+  { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
+    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),

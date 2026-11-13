@@ -11,11 +11,11 @@
 // gloom down, draws its corona down into its mouth and looses the grave lights, gathers and plunges, and draws the light into
 // itself as it calls the Dark. Veiled among its cold lights it keeps the standard view's billboard (close-view-beasts.ts).
 // Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r928-60da61d95073";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r937-15794e9d55b3";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, solveTwoBone, writeSkin, meshBuilder,
   clamp01, smooth, span, kick, wobble,
-} from "./close-view-beast-rig.js?v=r928-60da61d95073";
+} from "./close-view-beast-rig.js?v=r937-15794e9d55b3";
 
 // the pose vector: body lean (+ forward), head (+ thrown back), mouth open, hand target (forward, out, up; in the upper body's
 // frame), veil spread (+ raised and out), veil sweep (+ wrapped forward), body swell, corona drawn in (+ in, - flared),

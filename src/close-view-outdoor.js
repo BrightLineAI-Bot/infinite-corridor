@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r928-60da61d95073";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r928-60da61d95073";
-import { hashSeed } from "./random.js?v=r928-60da61d95073";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r937-15794e9d55b3";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r937-15794e9d55b3";
+import { hashSeed } from "./random.js?v=r937-15794e9d55b3";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -151,6 +151,7 @@ export const OUTDOOR = f({
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),
+    f({ test: /^towerStone$/, h: .4, jitter: 0, mat: 1, inset: .04, taper: .03 }), // tall towers (tall-towers.ts): each tile's `towerH` (the tower's drawn height) is added
     f({ test: /.*/, h: .6, jitter: .6, mat: 0, inset: .03, taper: .1 }),
   ]),
   // standing trees by form: trunk height and radius, crown kind (0 cone stack, 1 round, 2 low round), crown size and lift
@@ -167,6 +168,7 @@ export const OUTDOOR = f({
   mound: f({ rim: .5, inner: .92, jitter: .14, wander: .3 }),
   // bounds: at most this many solids in a section (the buffer never grows past it)
   maxOutcrops: 1600, maxTrees: 160,
+  towerDoor: f({ width: .62, height: .95, frame: .1, proud: .012, stone: f([.55, .52, .47]), wood: f([.13, .1, .08]), trim: f([.66, .57, .42]) }), // tall towers' doors (outdoorMesh)
   // The heightfield (version 2, Tim 2026-11-11: "it doesn't show the different heights of things... the depths of holes in
   // canyons, chasms... Everything just looks kind of flat"). Every walkable tile stands at its level's height (the ordinary
   // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
@@ -205,6 +207,14 @@ export const OUTDOOR = f({
       ruinMarker: f({ recipe: "standingStone", colors: f(["#806b52", "#433a31", "#b09b79"]) }),
       dungeon: f({ recipe: "portal", colors: f(["#62576b", "#332d39", "#63817a"]) }),
       watcherTomb: f({ recipe: "tomb", colors: f(["#c9c6d8", "#5a566c", "#e8f4ff"]) }),
+      // 2026-11-13 (Tim: "world caches ... chests, and the doors inside Pentagons and dungeons ... should read as solid 3D objects"):
+      // the release 907 world caches by spot (a fallen wayfarer's remains, an empty throne, a barred alcove and its lever, a bundle on a
+      // ledge or a climb's top), a crossing's way out and a building's doors and ladders (a stair down stays flat in the floor). `wall`:
+      // stands against the wall beside it (its back to the blocked neighbour).
+      worldCache: f({ recipe: "worldCache", colors: f(["#4a4038", "#211d19", "#d8cfbd"]), wall: true }),
+      cacheLever: f({ recipe: "lever", colors: f(["#5a5248", "#2a2622", "#a08a52"]), wall: true }),
+      exit: f({ recipe: "doorway", colors: f(["#76533b", "#382b25", "#8a8177"]), wall: true }),
+      buildingStair: f({ recipe: "doorway", colors: f(["#5a4632", "#2a221c", "#7e766a"]), wall: true }),
     }),
     // states that show a cache or chest opened (its lid thrown back), and that show a rock moved or broken (rubble)
     opened: /^(used|open|opened|empty|looted|taken)$/, rubble: /^(moved|broken)$/,
@@ -229,7 +239,7 @@ export const OUTDOOR = f({
   // roof the Wayfarer shows as the existing silhouette (CLOSE_VIEW.atmosphere.silhouette). Reduced motion: no fade.
   buildings: f({
     wall: f({ h: 1.15, t: .14, lintel: .92 }), pitch: .42, ridge: 1.05, eave: .12, flat: .14, max: 12, perTile: 240,
-    tall: f({ wall: 1.5, roof: 1.5, door: 1.72 }), fade: f({ ms: 240, doorDepth: .5 }),
+    tall: f({ wall: 1.5, roof: 1.5, door: 1.72 }), fade: f({ ms: 240, doorDepth: .5, above: .3 }), // above (2026-11-13): feet this near the roof's drawn top, or higher, are over it, not under it
     looks: f({
       timber: f({ wall: "#6a5a44", roof: "#3a3128", trim: "#8f7658", mat: 7 }), masonry: f({ wall: "#6f6a5e", roof: "#34332e", trim: "#8b8170", mat: 1 }),
       ruinedGatehouse: f({ wall: "#6d6152", roof: "#302d29", trim: "#9a8168", mat: 1 }), cyberRelay: f({ wall: "#22424a", roof: "#152b31", trim: "#42b8b2", mat: 8 }),
@@ -239,6 +249,48 @@ export const OUTDOOR = f({
       other: f({ wall: "#56524a", roof: "#33302a", trim: "#8f7658", mat: 1 }),
     }),
     structures: /^(shack|district)(Wall|Interior|Door)$/,
+  }),
+  // Towering structures (Tim, 2026-11-13: "If you're in close view outside of a pentagon or a tower or like a keep... it just
+  // looks incredibly tall, so tall that you can't get to the top of it... And when you're on top... the height should be
+  // apparent. So maybe it can be like you're in the clouds, or the ground just looks very far away."). Presentation only:
+  // tiles, levels, collision, falls and the standard view are unchanged; only how tall these structures are drawn changes.
+  // - scale: each structure's drawn height is the ordinary view's facade (its block's faceH) times this (a Great Castle's
+  //   keep `keep` times more again, so it stands over its ranges). Every level of its
+  //   roof, parapet, balconies and stair is drawn that much taller too (the heightfield's level for those tiles), so the
+  //   Wayfarer, creatures, items and shadows, which all stand on the heightfield, stay on what is drawn. The Pentagon (its
+  //   rings, curtain and Heart), a Great Castle (ranges, curtain wall and keep) and a compound's central tower (its ring left
+  //   as it is). The Great Keeps of the overworld (keeps.ts) are climbed level by level and keep their own heights.
+  // - climbStep: where a sealed tower or keep has its designed climb of ledges (towerClimb tiles), a level of the tower and
+  //   its ledges is drawn at most this tall, so each ledge still reads as one jump.
+  // - face: a structure's face at least `minDrop` tall is drawn as its coursed masonry (terrain kind 6): courses `course`
+  //   high, a string course every `band`, weathering streaks, darker toward the foot over `foot` tiles.
+  // - merlon: battlements on a towering top's open edges and on its walls' tops: `w` wide with `gap` between (aligned to the
+  //   world, so a run is unbroken across tiles), `depth` deep, `h` tall, `inset` in from the edge; at most `max` a section.
+  //   An edge onto the structure's own lower ledges (a balcony, the stair, a climb) has none.
+  // - drop: the air below a towering top. While the Wayfarer stands on one, everything `from` to `full` tiles under the eye
+  //   fades toward the sky's haze by up to `k` (aerial perspective: the ground looks far away). It comes in as the feet rise
+  //   from `onFrom` to `onFull` of the structure's top, eased over `tau` seconds (off again as they leave it). The fog's
+  //   near and far move out by `fogPush` of the height there, so the land below shows, small and pale, rather than fog.
+  // - rise: the same haze on what stands `from` to `full` tiles over the eye (up to `k`), in a section with a towering
+  //   structure, so its top reads as far off from its foot.
+  // - tint: the haze's colour, the sky's fog lifted toward white by this share. air: that fog first moved `blue` of the way to
+  //   the zenith (distance is blue); the deck's crowns the sky's cloud colour times `cloudLit` plus `cloudLift`, its hollows
+  //   `shade` of the air and the rest half the cloud colour.
+  // - clouds: a drifting cloud deck under a towering top, at `at` of the feet's height (never within `clear` of the feet),
+  //   `radius` tiles round the eye, fading out over its outer `edge` share. cover/soft: the noise threshold and its softness;
+  //   scale: the noise's size (per tile); drift: tiles a second (none with reduced motion, so it holds still); alpha: its
+  //   most. Balanced and full tiers only (`tiers`); the low tier keeps the haze alone.
+  towering: f({
+    version: 1,
+    scale: f({ pentagon: 4.2, castle: 2.8, tower: 3.2, keep: 1.3 }),
+    climbStep: 1.6,
+    face: f({ minDrop: 2.4, course: .42, block: .9, band: 3.2, foot: 3 }),
+    merlon: f({ w: .34, gap: .3, depth: .3, h: .5, inset: .02, max: 128 }),
+    drop: f({ from: 4.5, full: 22, k: .62, onFrom: .55, onFull: .85, tau: .6, fogPush: .9 }),
+    rise: f({ from: 5, full: 20, k: .3 }),
+    tint: .18,
+    air: f({ blue: .55, cloudLit: .95, cloudLift: .08, shade: .62 }),
+    clouds: f({ at: .52, clear: 3, radius: 58, edge: .3, cover: .44, soft: .14, scale: .11, drift: .35, alpha: .85, tiers: f({ low: 0, balanced: 1, full: 1 }) }),
   }),
 });
 
@@ -348,16 +400,18 @@ function pushTri(V, n, a, b, c, col, mat) {
 // a quad a b c d (counter-clockwise seen from outside)
 const pushQuad = (V, n, a, b, c, d, col, mat) => pushTri(V, pushTri(V, n, a, b, c, col, mat), a, c, d, col, mat);
 const outcropRule = (kind) => { for (const r of OUTDOOR.outcrops) if (r.test.test(kind)) return r; return OUTDOOR.outcrops[OUTDOOR.outcrops.length - 1]; };
-export function outdoorOutcropHeight(t) { const r = outcropRule(String(t?.kind || "")); return r.h + r.jitter * outdoorHash(t?.x | 0, t?.y | 0, 7) + (r.perLevel || 0) * (Number(t?.elev) || 0); }
+export function outdoorOutcropHeight(t) { const r = outcropRule(String(t?.kind || "")); return r.h + r.jitter * outdoorHash(t?.x | 0, t?.y | 0, 7) + (r.perLevel || 0) * (Number(t?.elev) || 0) + (Number(t?.towerH) || 0); }
 
 // The static solids of a section: outcrops and standing trees. Returns { data, verts, outcrops, trees }. Pure.
 export function outdoorMesh(map, sky, relief = null) { // R: the section's relief (outdoorRelief): outcrops rise from their level, trees stand on theirs
   const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Number(map?.height) || Math.floor(tiles.length / w));
   const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? null : tiles[y * w + x];
   const heights = new Float32Array(w * h); let outcrops = 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = tiles[y * w + x]; if (outdoorOutcrop(t) && outcrops < OUTDOOR.maxOutcrops) { heights[y * w + x] = outdoorOutcropHeight(t) + (relief ? Math.max(0, relief.top[y * w + x]) : 0); outcrops++; } }
-  const trees = (map?.objects || []).filter(outdoorTreeObject).slice(0, OUTDOOR.maxTrees);
-  const V = new Float32Array((outcrops * 72 + trees.length * 240) * OUTDOOR_FLOATS); let n = 0;
+  const TW = relief?.tower?.any ? relief.tower : null; // towering structures (OUTDOOR.towering): their walls stand to the structure's drawn height
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, t = tiles[i]; if (outdoorOutcrop(t) && outcrops < OUTDOOR.maxOutcrops) { heights[i] = (TW && TW.wall[i] > 0 ? TW.wall[i] : outdoorOutcropHeight(t)) + (relief ? Math.max(0, relief.top[i]) : 0); outcrops++; } }
+  const trees = (map?.objects || []).filter(outdoorTreeObject).slice(0, OUTDOOR.maxTrees), Mn = OUTDOOR.towering.merlon;
+  const towers = (map?.objects || []).filter((o) => o?.kind === "tallTower" && o.bounds && o.door).slice(0, 2); // tall towers: the door on the face (tall-towers.ts)
+  const V = new Float32Array((outcrops * 72 + trees.length * 240 + (TW ? Mn.max * 30 : 0) + towers.length * 30) * OUTDOOR_FLOATS); let n = 0;
   const frost = sky?.frost || 0;
   // Rough outcrops (rock, rubble) are faceted mounds: each tile a ring of eight points round its peak, the points shared with
   // a rough neighbour at the heights both compute alike (so a run of rubble is one lumpy ridge, with no seams), the open
@@ -388,6 +442,25 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
     z0 = sideFrom(x - 1, y); if (z0 < H) n = pushQuad(V, n, [x0, y0, z0], [x0, y1, z0], [tx0, ty1, H], [tx0, ty0, H], col, r.mat); // west
     z0 = sideFrom(x + 1, y); if (z0 < H) n = pushQuad(V, n, [x1, y1, z0], [x1, y0, z0], [tx1, ty0, H], [tx1, ty1, H], col, r.mat); // east
     n = pushQuad(V, n, [tx0, ty0, H], [tx0, ty1, H], [tx1, ty1, H], [tx1, ty0, H], top, r.mat); }
+  // battlements (OUTDOOR.towering.merlon): along a towering top's open edges (a wall's top, or its roof's edge over a drop), a
+  // merlon every `w + gap` along the world's own axis so a run reads unbroken across tiles; none toward the structure's own
+  // lower ledges. Five faces each (never a bottom); at most `max`.
+  let merlons = 0;
+  if (TW) { const topOf = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return Infinity; /* the structure runs on into the next section */ const j = y * w + x; return heights[j] > 0 ? heights[j] : relief.top[j] > 0 ? relief.top[j] : 0; };
+    const ours = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return false; const j = y * w + x; return TW.level[j] > 0 || TW.wall[j] > 0; };
+    const P = Mn.w + Mn.gap;
+    for (let pass = 0; pass < 2; pass++) for (let y = 0; y < h && merlons < Mn.max; y++) for (let x = 0; x < w && merlons < Mn.max; x++) { const i = y * w + x, t = tiles[i], wallTop = TW.wall[i] > 0 && heights[i] > 0, roof = TW.level[i] > 0 && !t?.blocked && !relief.ramp[i];
+      if (pass === 0 ? !roof : !wallTop) continue; /* the roofs' edges first (where the Wayfarer stands), then the walls' tops */ const z = wallTop ? heights[i] : relief.top[i]; if (!(z > OUTDOOR.towering.face.minDrop)) continue;
+      const col = hex01(ATLAS_TILE_COLORS[t.kind] || ATLAS_TILE_COLORS.blocked).map((v) => Math.min(1, v * 1.2 + .03));
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const X = x + dx, Y = y + dy, q = topOf(X, Y);
+        if (q >= z - 1 || (!wallTop && ours(X, Y) && q > 0)) continue; // not an open edge, or onto its own ledge (a balcony, the stair, a climb)
+        const along = dx === 0, a0 = along ? x : y; // the edge runs along x (north and south edges) or along y
+        for (let c = Math.ceil(a0 / P - .5); merlons < Mn.max; c++) { const m = (c + .5) * P; if (m >= a0 + 1) break; /* a merlon belongs to the tile its middle is over */
+          const e = dx > 0 || dy > 0 ? 1 - Mn.inset : Mn.inset, d = (dx > 0 || dy > 0 ? -1 : 1) * Mn.depth, u0 = m - Mn.w / 2, u1 = m + Mn.w / 2;
+          const p = (u, v, zz) => along ? [u, y + v, zz] : [x + v, u, zz], v0 = e, v1 = e + d, z1 = z + Mn.h;
+          centre(along ? m : x + (v0 + v1) / 2, along ? y + (v0 + v1) / 2 : m, z + Mn.h / 2);
+          const A = p(u0, v0, z), B = p(u1, v0, z), C = p(u1, v1, z), D = p(u0, v1, z), A1 = p(u0, v0, z1), B1 = p(u1, v0, z1), C1 = p(u1, v1, z1), D1 = p(u0, v1, z1);
+          n = pushQuad(V, n, A, B, B1, A1, col, 1); n = pushQuad(V, n, B, C, C1, B1, col, 1); n = pushQuad(V, n, C, D, D1, C1, col, 1); n = pushQuad(V, n, D, A, A1, D1, col, 1); n = pushQuad(V, n, A1, B1, C1, D1, col, 1); merlons++; } } } }
   // trees: a tapered trunk and a faceted crown, turned and sized a little by their place
   const crown = sky?.crown || [.2, .4, .2], bark = sky?.bark || [.33, .24, .16];
   for (const o of trees) { const t0 = n; treeSolid(o); if (relief) { const dz = outdoorSurfaceZ(relief, Number(o.x) + .5, Number(o.y) + .72); if (dz) for (let v = t0; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz; } }
@@ -412,13 +485,70 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
         const lring = (rr, zz, ph) => { const out = []; for (let i = 0; i < 5; i++) { const a = rot + ph + i / 5 * 6.283; out.push([lx + Math.cos(a) * rr, ly + Math.sin(a) * rr, zz]); } return out; };
         const A = lring(lr * .9, lz, 0), B = lring(lr * .75, lz + lr * 1.1, .6); centre(lx, ly, lz + lr * .6); capBot(A, [lx, ly, lz - lr * .45], dk, 4); band(A, B, cc, 4); capTop(B, [lx, ly, lz + lr * 1.55], hi, 4); } }
   }
-  return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, outcrops, trees: trees.length };
+  // Tall towers: the door on the tower's face, at the foot or over the ledge the floating steps reach (its sill on that ledge's
+  // drawn height): a stone frame, the dark door and a lintel, a hair proud of the face (OUTDOOR.towerDoor).
+  for (const o of towers) { const D = OUTDOOR.towerDoor, b = o.bounds, south = o.door.side !== "north", fy = south ? b.y + b.h + D.proud : b.y - D.proud, oy = south ? b.y + b.h : b.y - 1, dx = Number(o.door.x);
+    const base = relief ? outdoorSurfaceZ(relief, dx + .5, oy + .5) : 0, x0 = dx + .5 - D.width / 2, x1 = dx + .5 + D.width / 2, cy = south ? fy - 1 : fy + 1;
+    centre(dx + .5, cy, base + D.height / 2);
+    const face = (a0, a1, z0, z1, y, col) => { n = pushQuad(V, n, [a0, y, z0], [a1, y, z0], [a1, y, z1], [a0, y, z1], col, 1); };
+    face(x0 - D.frame, x1 + D.frame, base, base + D.height + D.frame, fy, D.stone);
+    face(x0, x1, base, base + D.height, fy + (south ? D.proud : -D.proud), D.wood);
+    face(x0 - D.frame * 1.6, x1 + D.frame * 1.6, base + D.height, base + D.height + D.frame * 1.3, fy + (south ? 2 * D.proud : -2 * D.proud), D.trim); }
+  return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, outcrops, trees: trees.length, merlons };
 }
 
 // ---------------------------------------------------------------------------------------------- the heightfield
 // How tall one of this tile's levels is drawn in Close View (OUTDOOR.terrain): a ground level, a great tree's, or a great
 // building roof's own lift (the ordinary view's).
 export function outdoorLevelHeight(t) { const T = OUTDOOR.terrain; return t?.canopy ? T.canopyLevel : t?.roofLift ? LIFT_PER_LEVEL * tileLiftScale(t) : T.level; }
+// The towering structures of a section (OUTDOOR.towering), from its great buildings' records: `level` a tile's drawn level
+// height where it is one of theirs (0: its own, outdoorLevelHeight), `wall` a blocked tile's drawn height where it is one of
+// their walls standing from the ground (0: the outcrop's own), `top` the structure's drawn top over its tiles (for the air and
+// the clouds), `any` how many tiles are theirs. Cached per map and signature; pure.
+const TOWERS = new WeakMap();
+const towerScale = (o) => { const S = OUTDOOR.towering.scale; return o?.pentagon ? S.pentagon : o?.castle ? S.castle : o?.compound ? S.tower : 0; };
+export function outdoorTowering(map, sig = outdoorSignature(map)) {
+  if (!map || typeof map !== "object") return null; const known = TOWERS.get(map); if (known && known.sig === sig) return known;
+  const w = Math.max(1, Number(map.width) || 32), tiles = map.tiles || [], h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), T = OUTDOOR.towering;
+  const level = new Float32Array(w * h), wall = new Float32Array(w * h), top = new Float32Array(w * h); let any = 0, climb = false;
+  for (let i = 0; i < w * h; i++) if (tiles[i]?.towerClimb) { climb = true; break; }
+  const inMap = (c) => c && c.x >= 0 && c.y >= 0 && c.x < w && c.y < h;
+  for (const o of map.objects || []) { const X = towerScale(o); if (!(X > 1) || o.kind !== "greatBuilding" || !Array.isArray(o.blocks)) continue;
+    for (const b of o.blocks) { if (o.compound && b.part !== "t") continue; const capped = climb && b.part === "t" && !o.pentagon, Xb = o.castle && b.part === "t" ? X * T.scale.keep : X, H = (Number(b.faceH) || 1) * Xb;
+      for (const c of b.cells || []) { if (!inMap(c)) continue; const i = c.y * w + c.x, t = tiles[i]; if (!t) continue;
+        if (t.blocked && !((Number(t.elev) || 0) > 0)) { wall[i] = Math.max(wall[i], H); top[i] = Math.max(top[i], H); any++; }
+        else if (t.roofLift) { const k = LIFT_PER_LEVEL * tileLiftScale(t) * Xb; level[i] = capped ? Math.min(k, T.climbStep) : k; top[i] = Math.max(top[i], level[i] * (Number(t.elev) || 0)); any++; } } }
+    if (o.pentagon) { let roof = 0; /* the roof's parapet, balconies and stair stand outside the rings' cells: the same scale */
+      for (let i = 0; i < w * h; i++) { const t = tiles[i]; if (!t?.roofLift || !(t.pentRoof || t.pentParapet || t.pentBalcony || t.pentStair > 0)) continue; level[i] = LIFT_PER_LEVEL * tileLiftScale(t) * X; roof = Math.max(roof, level[i] * (Number(t.elev) || 0)); any++; }
+      for (let i = 0; i < w * h; i++) if (level[i] > 0 && (tiles[i].pentBalcony || tiles[i].pentStair > 0)) top[i] = roof; else if (level[i] > 0 && !top[i]) top[i] = roof; } }
+  if (climb) { let k = 0, t0 = 0; for (let i = 0; i < w * h; i++) if (level[i] > 0 && !tiles[i].pentagon && !tiles[i].pentRoof) { k = Math.max(k, level[i]); t0 = Math.max(t0, top[i]); }
+    if (k > 0) for (let i = 0; i < w * h; i++) if (tiles[i]?.towerClimb) { level[i] = k; top[i] = t0; any++; } } // a climb's ledges share the tower's level
+  const out = { sig, level, wall, top, any }; TOWERS.set(map, out); return out;
+}
+// The air and the cloud deck of a towering structure for a frame (OUTDOOR.towering drop, rise, tint, clouds), written into F
+// (close-view-gl.ts GLF: tower, towerR, towerC, deck, deckP, deckC, deckS). R: the section's relief; (x, y) the feet and z
+// their drawn ground; sky: the section's sky (outdoorSky). The drop's strength eases (TOWER_AIR, per frame and never saved);
+// with reduced motion the deck holds still. Nothing allocated.
+export const TOWER_AIR = { map: null, k: 0, z: 0, t: NaN };
+export function outdoorTowerAir(F, map, R, x, y, z, sky, now, reduce = false, quality = "balanced") {
+  const T = OUTDOOR.towering, tw = R?.tower; F.tower.fill(0); F.towerR.fill(0); F.deck.fill(0);
+  if (!tw?.any || !sky) { TOWER_AIR.map = null; TOWER_AIR.k = 0; TOWER_AIR.t = now; return 0; }
+  const tx = Math.floor(x), ty = Math.floor(y), i = tx >= 0 && ty >= 0 && tx < R.w && ty < R.h ? ty * R.w + tx : -1, top = i >= 0 ? tw.top[i] : 0, D = T.drop;
+  const s = top > 0 ? Math.max(0, Math.min(1, (z - D.onFrom * top) / Math.max(1e-3, (D.onFull - D.onFrom) * top))) : 0, want = s * s * (3 - 2 * s);
+  const dt = Number.isFinite(TOWER_AIR.t) ? Math.max(0, Math.min(.25, (now - TOWER_AIR.t) / 1000)) : 0;
+  if (TOWER_AIR.map !== map) { TOWER_AIR.map = map; TOWER_AIR.k = want; } else TOWER_AIR.k += (want - TOWER_AIR.k) * (1 - Math.exp(-dt / D.tau));
+  TOWER_AIR.t = now; const k = TOWER_AIR.k < 1e-3 ? 0 : TOWER_AIR.k, C = T.clouds;
+  if (want > 0) TOWER_AIR.z = Math.min(z - C.clear, z * C.at); // the deck: under the feet on the top, held while the air fades out
+  if (k > 0) { const push = D.fogPush * k * TOWER_AIR.z / Math.max(.05, C.at); F.fogNear += push; F.fogFar += push; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; } // the deck's height over at: the feet's
+  F.tower[0] = D.k * k; F.tower[1] = D.from; F.tower[2] = D.full; F.towerR[0] = T.rise.k; F.towerR[1] = T.rise.from; F.towerR[2] = T.rise.full;
+  const fog = sky.horizon, zen = sky.zenith || fog, cl = sky.cloud || fog, A = T.air; for (let c = 0; c < 3; c++) { const air = fog[c] + (zen[c] - fog[c]) * A.blue; F.towerC[c] = air + (1 - air) * T.tint;
+    F.deckC[c] = Math.min(1, cl[c] * A.cloudLit + A.cloudLift); F.deckS[c] = air * A.shade + cl[c] * (1 - A.shade) * .5; }
+  if (k > 0 && (C.tiers[quality] ?? C.tiers.balanced) > 0 && TOWER_AIR.z > 0) { F.deck[0] = TOWER_AIR.z; F.deck[1] = C.radius; F.deck[2] = C.alpha * k; F.deck[3] = reduce ? 0 : now / 1000 * C.drift * C.scale; }
+  F.deckP[0] = C.cover; F.deckP[1] = C.soft; F.deckP[2] = C.scale; F.deckP[3] = C.edge;
+  return k;
+}
+// How tall one level of the tile at index i is drawn (a towering structure's, else outdoorLevelHeight). Pure.
+export function outdoorTileLevel(R, map, i) { const k = R?.tower?.level?.[i]; return k > 0 ? k : outdoorLevelHeight(map?.tiles?.[i]); }
 export const outdoorPit = (t) => !!t && (t.chasm === true || OUTDOOR.pitKinds.test(String(t.kind || "")));
 // A section's relief: each tile's top (in tiles of height), and each tile corner's height for the ramps. Cached per map and
 // signature; pure. A pit's top is -pitDepth; water's is its bank's less waterDrop.
@@ -426,15 +556,15 @@ const RELIEFS = new WeakMap();
 export function outdoorRelief(map) {
   if (!map || typeof map !== "object") return null; const sig = outdoorSignature(map), known = RELIEFS.get(map); if (known && known.sig === sig) return known;
   const w = Math.max(1, Number(map.width) || 32), tiles = map.tiles || [], h = Math.max(1, Number(map.height) || Math.floor(tiles.length / w)), T = OUTDOOR.terrain;
-  const top = new Float32Array(w * h), ramp = new Uint8Array(w * h), corner = new Float32Array((w + 1) * (h + 1));
-  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0;
+  const top = new Float32Array(w * h), ramp = new Uint8Array(w * h), corner = new Float32Array((w + 1) * (h + 1)), tower = outdoorTowering(map, sig), TL = tower.level;
+  for (let i = 0; i < w * h; i++) { const t = tiles[i], k = TL[i] > 0 ? TL[i] : outdoorLevelHeight(t), e = Number(t?.elev) || 0;
     if (outdoorPit(t)) top[i] = -T.pitDepth; else if (t?.slope) { ramp[i] = 1; top[i] = (e - .5) * k; } else top[i] = e * k - (isWater(t) ? T.waterDrop : 0); }
   // a ramp's corners take the mean of the level tops round them, held between its foot and its head
   for (let cy = 0; cy <= h; cy++) for (let cx = 0; cx <= w; cx++) { let sum = 0, n = 0, lo = Infinity, hi = -Infinity;
     for (let j = -1; j <= 0; j++) for (let i = -1; i <= 0; i++) { const x = cx + i, y = cy + j; if (x < 0 || y < 0 || x >= w || y >= h) continue; const q = y * w + x;
-      if (ramp[q]) { const t = tiles[q], k = outdoorLevelHeight(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
+      if (ramp[q]) { const t = tiles[q], k = TL[q] > 0 ? TL[q] : outdoorLevelHeight(t), e = Number(t?.elev) || 0; lo = Math.min(lo, (e - 1) * k); hi = Math.max(hi, e * k); } else if (top[q] > -T.pitDepth + 1e-6) { sum += top[q]; n++; } }
     let z = n ? sum / n : (lo + hi) / 2; if (hi > -Infinity) z = Math.max(lo, Math.min(hi, n ? z : (lo + hi) / 2)); corner[cy * (w + 1) + cx] = Number.isFinite(z) ? z : 0; }
-  const R = { sig, w, h, top, ramp, corner }; RELIEFS.set(map, R); return R;
+  const R = { sig, w, h, top, ramp, corner, tower }; RELIEFS.set(map, R); return R;
 }
 // The ground's height under (x, y) for what stands there (0 over a pit: what crosses one flies or falls). Pure.
 export function outdoorSurfaceZ(R, x, y) {
@@ -447,9 +577,9 @@ export function outdoorSurfaceZ(R, x, y) {
 // face, 2 a pit's wall, 3 a pit's floor). Each tile's top, and a face down every edge where it stands above its neighbour
 // (or the section's edge, down to the ground beyond). Pure.
 // A great tree's branch or leaf pad: it floats, held by a limb from the trunk, with nothing under it. Pure.
-export const outdoorFloating = (t) => !!t && t.canopy === true && t.kind !== "canopyTrunk" && !t.blocked && (Number(t.elev) || 0) > 0;
+export const outdoorFloating = (t) => !!t && (t.canopy === true && t.kind !== "canopyTrunk" || t.towerStep === true) && !t.blocked && (Number(t.elev) || 0) > 0; // a tall tower's steps float too (tall-towers.ts)
 export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
-  if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1, Tr = OUTDOOR.terrain;
+  if (!R) return { data: new Float32Array(0), verts: 0 }; const { w, h, top, ramp, corner } = R, tiles = map.tiles || [], W = w + 1, Tr = OUTDOOR.terrain, TT = R.tower?.any ? R.tower.level : null, towerFace = TT ? OUTDOOR.towering.face.minDrop : 0;
   if (w * h > Tr.maxTiles) return { data: new Float32Array(0), verts: 0 };
   const float = new Uint8Array(w * h); let floats = 0; for (let i = 0; i < w * h; i++) if (outdoorFloating(tiles[i])) { float[i] = 1; floats++; }
   const trunks = []; if (floats) for (let i = 0; i < w * h; i++) if (tiles[i]?.kind === "canopyTrunk") trunks.push(i);
@@ -468,7 +598,7 @@ export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
       const za = zc(i, x + ax, y + ay), zb = zc(i, x + bx, y + by); let qa, qb; // the neighbour's height along the same edge
       if (!inside) { qa = qb = 0; } else if (outdoorOutcrop(tiles[j])) continue; else if (float[j]) { qa = qb = 0; } /* a branch beside: the face goes down to the ground behind it */ else { qa = zc(j, x + ax, y + ay); qb = zc(j, x + bx, y + by); }
       if (fl) { qa = Math.max(qa, za - Tr.deck); qb = Math.max(qb, zb - Tr.deck); } // a branch's edge is only its deck's thickness
-      if (za <= qa + .005 && zb <= qb + .005) continue; const lowA = Math.min(qa, za), lowB = Math.min(qb, zb), k = Math.min(qa, qb) < -.5 ? 2 : 1, cc = inside && Math.min(qa, qb) < -.5 ? col : col;
+      if (za <= qa + .005 && zb <= qb + .005) continue; const lowA = Math.min(qa, za), lowB = Math.min(qb, zb), k = Math.min(qa, qb) < -.5 ? 2 : towerFace && TT[i] > 0 && Math.max(za, zb) - Math.min(qa, qb) >= towerFace ? 6 : 1, cc = inside && Math.min(qa, qb) < -.5 ? col : col; // 6: a towering structure's masonry face (OUTDOOR.towering.face)
       const P0 = [x + ax, y + ay, lowA], P1 = [x + bx, y + by, lowB], P2 = [x + bx, y + by, zb], P3 = [x + ax, y + ay, za];
       put(P0, dx, dy, 0, cc, k); put(P1, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P0, dx, dy, 0, cc, k); put(P2, dx, dy, 0, cc, k); put(P3, dx, dy, 0, cc, k); } }
   // a branch: its deck's underside, the shaded ground below it, and the limb that holds it, from the nearest trunk
@@ -498,13 +628,15 @@ export function outdoorTerrainMesh(map, R = outdoorRelief(map)) {
 export function outdoorPropObject(o) {
   if (!o || typeof o !== "object" || !OUTDOOR.props.kinds[o.kind] || o.strange || o.carried || o.hidden === true) return false;
   if (o.kind === "cache" && o.state === "hidden") return false;
+  if (o.kind === "buildingStair" && o.dir === "down") return false; // a stair down is drawn flat in the floor
   return Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y));
 }
 // What the props depend on: each one's kind, place and state (a cache opened, a rock broken). A number; nothing allocated.
 export function outdoorPropSignature(map, seen = null) {
   let a = 0; const objs = map?.objects || [];
   for (let i = 0; i < objs.length; i++) { const o = objs[i]; if (!outdoorPropObject(o) || (seen && !seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))) continue; const st = String(o.state || ""), op = OUTDOOR.props.opened.test(st) ? 1 : OUTDOOR.props.rubble.test(st) ? 2 : 0;
-    a = (a + Math.imul(Math.round(o.x * 16) + 7, 73856093) + Math.imul(Math.round(o.y * 16) + 3, 19349663) + Math.imul(op + 1 + o.kind.length * 4, 83492791)) | 0; }
+    const more = o.kind === "buildingStair" ? (o.lock && !o.unlocked ? 4 : 0) + (o.barred && !o.opened ? 8 : 0) : st === "sealed" ? 16 : st === "pulled" ? 32 : 0; // a door's lock and bars, an alcove's bars, a lever pulled
+    a = (a + Math.imul(Math.round(o.x * 16) + 7, 73856093) + Math.imul(Math.round(o.y * 16) + 3, 19349663) + Math.imul(op + 1 + more + o.kind.length * 4, 83492791)) | 0; }
   return a >>> 0;
 }
 // an eight-cornered solid (bottom four counter-clockwise from above, then the top four over them): six faces
@@ -584,14 +716,70 @@ const PROP_RECIPES = {
   portal(V, n, o, C, k) { n = pbox(V, n, -.36, 0, 0, .09, .14, .95, C[0], 1, .08); n = pbox(V, n, .36, 0, 0, .09, .14, .95, C[0], 1, .08);
     n = pbox(V, n, 0, 0, .95, .48, .17, .15, C[0], 1, .05); n = pbox(V, n, 0, 0, 1.1, .3, .12, .08, C[2], 1, .2);
     n = pbox(V, n, 0, .04, 0, .27, .1, .9, [.03, .03, .04], 7); n = pbox(V, n, 0, -.2, 0, .32, .08, .04, C[1], 1); return n; },
+  // the world caches (release 907), by spot; a find not yet taken keeps a small glint (its own light)
+  worldCache(V, n, o, C, k) { const live = !OUTDOOR.props.opened.test(String(o.state || "")), glint = (u, v, w) => pbox(V, n, u, v, w, .025, .025, .05, [1, .9, .55], 9, .6);
+    if (o.spot === "corpse") { // a cloak fallen flat, the skull, ribs, a boot
+      n = lump(V, n, .04, 0, 0, .3, .15, 6, k, C[0], 7); n = lump(V, n, -.27, -.04, 0, .1, .15, 5, k + 3, C[2], 0);
+      for (const u of [-.08, .04, .16]) n = pbox(V, n, u, -.06, .06, .012, .1, .02, C[2], 0, 0);
+      n = pbox(V, n, .3, .08, 0, .07, .04, .06, C[1], 7); if (live) n = glint(.2, -.12, .08); return n; }
+    if (o.spot === "throne") { const st = hex01("#5a5248"), dk = hex01("#211d19"), gold = hex01("#a08a52"), arm = hex01("#6b6255"); // the high back, the seat and arms, the dark beneath, a worn crest
+      n = pbox(V, n, 0, .2, 0, .3, .07, 1.25, st, 1, .06); n = pbox(V, n, 0, .2, 1.25, .2, .07, .14, st, 1, .4); n = pbox(V, n, 0, .02, 0, .3, .22, .36, dk, 1);
+      n = pbox(V, n, 0, 0, .36, .34, .24, .08, arm, 1); for (const u of [-.32, .32]) n = pbox(V, n, u, .02, .36, .04, .22, .22, arm, 1);
+      n = pbox(V, n, 0, .125, 1.05, .07, .01, .07, gold, 8); if (live) n = glint(0, -.25, .12); return n; }
+    if (o.spot === "lever") { const st = hex01("#6e665a"), sealed = o.state === "sealed"; // a barred alcove in the wall: its arch, the dark recess, the bars until the lever is pulled
+      n = pbox(V, n, -.36, .36, 0, .07, .1, .95, st, 1); n = pbox(V, n, .36, .36, 0, .07, .1, .95, st, 1); n = pbox(V, n, 0, .36, .95, .43, .1, .14, st, 1, .1);
+      n = pbox(V, n, 0, .44, 0, .29, .03, .95, [.06, .05, .045], 7); n = pbox(V, n, 0, .32, 0, .3, .06, .08, st, 1);
+      if (sealed) for (const u of [-.18, -.06, .06, .18]) n = pbox(V, n, u, .3, .08, .014, .014, .86, hex01("#5c5a56"), 8);
+      if (live) n = glint(0, .36, .18); return n; }
+    if (live) { n = pbox(V, n, 0, 0, 0, .16, .12, .14, hex01("#7a5a36"), 7, .1); n = pbox(V, n, 0, 0, .14, .1, .125, .02, hex01("#5c4227"), 7); n = glint(.08, -.13, .18); } // a small bundle
+    else n = pbox(V, n, 0, 0, 0, .18, .13, .02, hex01("#5c4227"), 7, .2); // taken: its wrapping left lying open
+    return n; },
+  // the lever that lifts an alcove's bars: a stone base, its iron arm up, or down once pulled
+  lever(V, n, o, C, k) { const down = o.state === "pulled" || OUTDOOR.props.opened.test(String(o.state || "")), t = down ? 2.2 : .45, L = .32, ev = -L * Math.sin(t), ew = .32 + L * Math.cos(t);
+    n = pbox(V, n, 0, .3, 0, .16, .1, .5, C[0], 1, .1); n = pbox(V, n, 0, .2, .3, .05, .02, .1, C[1], 8);
+    n = hexa(V, n, [at3(-.018, .17, .32), at3(.018, .17, .32), at3(.018, .14, .32), at3(-.018, .14, .32), at3(-.018, .17 + ev, ew), at3(.018, .17 + ev, ew), at3(.018, .14 + ev, ew), at3(-.018, .14 + ev, ew)], hex01("#4a4d52"), 8);
+    n = lump(V, n, 0, .155 + ev, ew - .02, .04, .07, 5, k, C[2], 8); return n; },
+  // a way through a wall: a crossing's way out, a building's door (dark beyond; its frame lit; locked, barred, or open with its door
+  // swung back into the room), or a ladder up to a hatch. Open doors stand open so the view through them is never blocked.
+  doorway(V, n, o, C, k) {
+    if (o.kind === "buildingStair" && o.dir !== "door") { const wd = hex01("#8a6a3e"); // a ladder against the wall, up to a hatch
+      for (const u of [-.2, .2]) n = pbox(V, n, u, .32, 0, .025, .025, 1.6, wd, 5, 0);
+      for (let w = .2; w < 1.55; w += .22) n = pbox(V, n, 0, .32, w, .2, .016, .018, wd, 5, 0);
+      n = pbox(V, n, 0, .36, 1.6, .36, .06, .05, C[1], 5); n = pbox(V, n, 0, .36, 1.62, .3, .05, .05, [.03, .03, .035], 7); return n; }
+    const fr = C[2], door = o.kind === "buildingStair", locked = door && o.lock && !o.unlocked, barred = door && o.barred && !o.opened, pv = .4, H = 1.12, half = .3;
+    n = pbox(V, n, -half - .07, pv, 0, .075, .1, H, fr, 1, .04); n = pbox(V, n, half + .07, pv, 0, .075, .1, H, fr, 1, .04); // the jambs
+    n = pbox(V, n, 0, pv, H, half + .15, .11, .16, fr, 1, .08); n = pbox(V, n, 0, pv - .02, 0, half + .1, .12, .035, fr, 1); // the lintel and the sill
+    if (door) n = pbox(V, n, 0, pv - .105, H - .03, half, .006, .025, [1, .92, .64], 9); // its frame lit (the standard view's glow)
+    n = pbox(V, n, 0, pv + .08, 0, half, .02, H, [.025, .022, .02], 7); // the dark beyond
+    if (locked) { n = pbox(V, n, 0, pv - .03, .02, half - .01, .03, H - .04, C[0], 7); n = pbox(V, n, 0, pv - .07, .5, .07, .015, .06, hex01("#c9a24a"), 8); }
+    else if (barred) for (const u of [-.18, 0, .18]) n = pbox(V, n, u, pv - .05, .03, .016, .016, H - .06, hex01("#6a6458"), 8);
+    else { const th = 1.75, cu = Math.cos(th), sv = Math.sin(th), hu = -half, hv = pv - .04, L = half * 2 - .02, tk = .035; // the leaf, swung back on its hinge into the room
+      const P = (a, b, w) => at3(hu + a * cu - b * sv, hv - a * sv - b * cu, w);
+      n = hexa(V, n, [P(0, 0, .02), P(L, 0, .02), P(L, tk, .02), P(0, tk, .02), P(0, 0, H - .04), P(L, 0, H - .04), P(L, tk, H - .04), P(0, tk, H - .04)], C[0], 7);
+      n = pbox(V, n, hu + L * .8 * cu + .02 * sv, hv - L * .8 * sv + .02 * cu, .5, .02, .02, .04, hex01("#4a4d52"), 8); } // its ring
+    return n; },
 };
+// Which way a prop that stands against a wall faces: its back to a blocked neighbour (or the map's edge), its front to the open
+// floor; its own tile blocked (a door in the wall itself), it stands at that tile's face toward the open side. Returns
+// { rot, shift } (shift: how far from the tile's centre toward its back the frame moves). Pure.
+export function outdoorWallFacing(map, x, y) {
+  const w = Math.max(1, Number(map?.width) || 32), tiles = map?.tiles || [], h = Math.max(1, Math.floor(tiles.length / w)), X = Math.floor(x), Y = Math.floor(y);
+  const blocked = (tx, ty) => tx < 0 || ty < 0 || tx >= w || ty >= h || !tiles[ty * w + tx] || !!tiles[ty * w + tx].blocked;
+  // the back's direction (dx, dy) and the turn that puts it there (v = (-sin rot, cos rot) points to the back)
+  const ROT = [[0, -1, Math.PI], [0, 1, 0], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]];
+  if (blocked(X, Y)) { for (const [dx, dy, r] of ROT) if (!blocked(X - dx, Y - dy)) return { rot: r, shift: -.9 }; return { rot: Math.PI, shift: 0 }; } // (its frame at the face, .4 in front of its origin)
+  for (const [dx, dy, r] of ROT) if (blocked(X + dx, Y + dy)) return { rot: r, shift: .5 - .42 };
+  return { rot: Math.PI, shift: -.3 };
+}
 // The props of a section (or a floor) as solids, in the same vertex layout as outdoorMesh. zAt(x, y): the floor's height
 // there (0 outdoors). Returns { data, verts, props, objects } (objects: the props drawn, for their shadows). Pure.
 export function outdoorProps(map, zAt = null, seen = null) {
   const P = OUTDOOR.props, list = (map?.objects || []).filter((o) => outdoorPropObject(o) && (!seen || seen(Math.floor(o.x + .5), Math.floor(o.y + .5)))).slice(0, P.max);
   const V = new Float32Array(list.length * P.maxVerts * OUTDOOR_FLOATS); let n = 0, kept = 0; const objects = [];
   for (const o of list) { const K = P.kinds[o.kind], C = K.colors.map(hex01), k = (Math.round(o.x * 4) * 131 + Math.round(o.y * 4) * 7919) | 0, recipe = PROP_RECIPES[K.recipe];
-    const x = Number(o.x) + .5, y = Number(o.y) + .62, rot = Math.PI + (outdoorHash(k, 5, 19) - .5) * .5; // the front faces the bottom of the map, as the ordinary view draws it
+    const wf = K.wall ? outdoorWallFacing(map, Number(o.x) + .5, Number(o.y) + .5) : null;
+    let x = Number(o.x) + .5, y = Number(o.y) + .62, rot = Math.PI + (outdoorHash(k, 5, 19) - .5) * .5; // the front faces the bottom of the map, as the ordinary view draws it
+    if (wf) { rot = wf.rot; x = Number(o.x) + .5 - Math.sin(rot) * wf.shift; y = Number(o.y) + .5 + Math.cos(rot) * wf.shift; } // against a wall: square to it, at its face
     FRAME.x = x; FRAME.y = y; FRAME.z = zAt ? Number(zAt(x, y)) || 0 : 0; FRAME.c = Math.cos(rot); FRAME.s = Math.sin(rot);
     const n0 = n; n = recipe(V, n, o, C, k); if (n - n0 > P.maxVerts) throw new Error(`prop ${o.kind} over its vertex bound`); kept++; objects.push(o); }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, props: kept, objects };
@@ -660,7 +848,7 @@ export function outdoorBuildings(map, R = null, D = HEIGHTS) { // R: the relief 
     if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(D.ridge, half * D.pitch); // the ridge beam
       FRAME.x = alongX ? (len[0] + len[1]) / 2 : mid; FRAME.y = alongX ? mid : (len[0] + len[1]) / 2; FRAME.z = z - .03; FRAME.c = alongX ? 1 : 0; FRAME.s = alongX ? 0 : 1; n = pbox(V, n, 0, 0, 0, (len[1] - len[0]) / 2, .05, .08, tc, 5); }
     const dz = R ? Math.max(0, R.top[H.cells[0]]) : 0; if (dz) for (let v = start; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz;
-    roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1 }); }
+    roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1, flat, base: dz }); } // flat, base: for outdoorRoofTopAt
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, walls, roofs };
 }
 
@@ -689,6 +877,13 @@ export function propScene(map, zAt = null, seen = null) { // seen: what the fog 
 // Roof decks (roof-decks.ts): the drawn height of a house's roof over the point (X, Y), as outdoorBuildings lays it (the walls'
 // height, then the gable's rise from the eaves or the flat roof's slab, all scaled by `tall`), on the relief's top at the house's first tile. `deck` is
 // a roof-decks.ts deck ({ x0, y0, x1, y1, roofProfile, cells }). Pure.
+// A house's roof as outdoorBuildings drew it (a `roofs` entry: { x0, y0, x1, y1, flat, base }): its drawn top over (X, Y), the
+// eaves' overhang left out. Pure, no allocation.
+export function outdoorRoofTopAt(r, X, Y) {
+  const D = HEIGHTS, x = Math.min(Math.max(X, r.x0), r.x1), y = Math.min(Math.max(Y, r.y0), r.y1), alongX = r.x1 - r.x0 >= r.y1 - r.y0;
+  const half = (alongX ? r.y1 - r.y0 : r.x1 - r.x0) / 2, mid = alongX ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2;
+  return (Number(r.base) || 0) + D.wall + (r.flat ? D.flat : Math.min(D.ridge, Math.max(0, half - Math.abs((alongX ? y : x) - mid)) * D.pitch));
+}
 export function outdoorRoofZ(deck, X, Y, R = null) {
   if (!deck) return 0; const D = HEIGHTS, Hw = D.wall, flat = deck.roofProfile === "flat" || deck.roofProfile === "stepped"; // the tall (scaled) heights, as drawn
   const alongX = deck.x1 - deck.x0 >= deck.y1 - deck.y0, half = (alongX ? deck.y1 - deck.y0 : deck.x1 - deck.x0) / 2, mid = alongX ? (deck.y0 + deck.y1) / 2 : (deck.x0 + deck.x1) / 2;

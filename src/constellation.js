@@ -8,11 +8,11 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand } from "./items.js?v=r928-60da61d95073";
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r928-60da61d95073";
-import { pairingMods } from "./spell-slots.js?v=r928-60da61d95073";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r928-60da61d95073";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r928-60da61d95073";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff } from "./items.js?v=r937-15794e9d55b3";
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r937-15794e9d55b3";
+import { pairingMods } from "./spell-slots.js?v=r937-15794e9d55b3";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r937-15794e9d55b3";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r937-15794e9d55b3";
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -238,13 +238,15 @@ export function tickConstellation(game, dt, now) {
   if (activeIs(s, "force-channel") && nodeOn(s, "overflow")) { game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25); for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (k.startsWith("spell:")) s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * .25); }
   game._cLastHp = p.hp;
 }
-// Rift Step aimed in Close View (Tim, 2026-11-12: "Rift Step aimed at a point, which can kill you by falling"): the Rift Step
-// button arms the aim for `window` seconds; the next tap picks the point and the step goes there (game.ts armRiftAim and
+// Rift Step aimed (Tim, 2026-11-12: "Rift Step aimed at a point, which can kill you by falling"; 2026-11-13: one rule in both views:
+// tap steps, hold aims): a tap of the Rift Step button (let go within `hold` seconds) is the plain step along the way you move;
+// holding it `hold` seconds arms the aim for `window` seconds, in Close View and the standard view alike (keyboard: tap F/G/C to step,
+// hold to aim, then click the point); the next tap picks the point and the step goes there (game.ts pressSlot, armRiftAim and
 // placeRiftAim, main.ts worldtap). The point must lie within the step's reach (flat distance), no more than `rise` levels above
 // where the Wayfarer stands (`longStepRise` more with Long Step), on ground or a roof they can stand on, with no wall and no
 // forbidden air (vehicle-gates.ts droneForbiddenAt) on the way (at most `samples` points tested). An invalid point is refused
 // without a cast (the target ring shows red for `mark` seconds). Every Rift Step, aimed or not, falls by the ordinary rule.
-export const RIFT_AIM = { rise: 2, longStepRise: 1, window: 4, samples: 40, mark: .7 };
+export const RIFT_AIM = { rise: 2, longStepRise: 1, window: 4, samples: 40, mark: .7, hold: .3, armed: "Rift Step: tap where to step (tap Rift Step to step ahead)." };
 // The charges, rank and glyph mods of a step about to be taken, or null (with the message why).
 function riftReady(game) {
   const s = game.save, st = s.magicSkills, rank = skillRank(s, "rift-step");
@@ -292,11 +294,28 @@ export function riftStep(game, now) {
   let best = null;
   for (let t = .25; t <= R.reach + 1e-6; t += .25) {
     const x = from.x + dx * t, y = from.y + dy * t, footing = riftFooting(game, world, x, y, startLevel); // never blink up a ledge (or onto a higher roof)
+    if (!footing && game.blinkInProp?.(x, y)) continue; // 926 bug 5: a solid prop is stepped through, never ended in
     if (!footing) break;
     best = { x, y, footing };
   }
   if (!best) { game.message = "There is no room to step through."; return false; }
   return riftCommit(game, now, R, from, best, startLevel);
+}
+// An aimed step whose point is inside a solid prop (game.blinkInProp; Close View play-through of 926, bug 5: it stood the Wayfarer
+// inside the Watcher's tomb) lands at the nearest open spot beside it instead: rings `ring` tiles apart out to `out`, `angles`
+// points each: on the first ring with a footing (clear of every prop, within reach), the point nearest the Wayfarer. Bounded.
+export const RIFT_PROP_SNAP = Object.freeze({ ring: .25, out: 1.5, angles: 16 });
+function riftBesideProp(game, world, at, fx, fy, reach, startLevel, rise) {
+  const S = RIFT_PROP_SNAP;
+  for (let r = S.ring; r <= S.out + 1e-6; r += S.ring) {
+    let found = null, bestD = Infinity;
+    for (let k = 0; k < S.angles; k++) { const a = k / S.angles * Math.PI * 2, x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r;
+      if (Math.hypot(x + .5 - fx, y + .75 - fy) > reach + 1e-6 || game.blinkInProp(x, y)) continue;
+      const footing = riftFooting(game, world, x, y, startLevel, rise); if (!footing) continue;
+      const d = Math.hypot(x + .5 - fx, y + .75 - fy); if (d < bestD) { bestD = d; found = { x, y, footing }; } } // on a ring, the spot nearest the Wayfarer (the side they came from)
+    if (found) return found;
+  }
+  return null;
 }
 // The aimed step to a point (the feet's point, as a tap gives it). False, and nothing spent, when the point is not one it can reach.
 export function riftAimCheck(game, target, now = game.lastUpdateNow || 0) {
@@ -305,7 +324,9 @@ export function riftAimCheck(game, target, now = game.lastUpdateNow || 0) {
   const fx = p.x + .5, fy = p.y + .75, dist = Math.hypot(tx - fx, ty - fy);
   if (dist > R.reach + 1e-6) return { ok: false, why: "reach", reach: R.reach };
   const startLevel = riftFrom(game), rise = RIFT_AIM.rise + (nodeOn(s, "anchor") ? RIFT_AIM.longStepRise : 0), best = { x: tx - .5, y: ty - .75 };
-  const footing = riftFooting(game, world, best.x, best.y, startLevel, rise); if (!footing) return { ok: false, why: "footing" };
+  let footing = riftFooting(game, world, best.x, best.y, startLevel, rise);
+  if (!footing && game.blinkInProp?.(best.x, best.y)) { const near = riftBesideProp(game, world, best, fx, fy, R.reach, startLevel, rise); if (near) { best.x = near.x; best.y = near.y; footing = near.footing; } } // 926 bug 5
+  if (!footing) return { ok: false, why: "footing" };
   if (game.blinkPathClear && !game.blinkPathClear(p.x, p.y, best.x, best.y, RIFT_AIM.samples, Math.max(startLevel, footing.level))) return { ok: false, why: "path" };
   best.footing = footing; return { ok: true, R, best, startLevel, level: footing.level };
 }
@@ -338,6 +359,7 @@ export function awaken(save, slot) {
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
   item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? "Every third swing now releases a piercing crescent." : "Every shot now fans into three."}` };
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : "Every third swing now releases a piercing crescent." : "Every shot now fans into three."}` };
 }
-export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? "every third swing releases a piercing crescent" : "every shot fans into three"}` : "";
+// The Quandrix Staff's awakening is its own (quandrix-staff.ts QUANDRIX.slam): the held slam replaces the crescent.
+export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : "every third swing releases a piercing crescent" : "every shot fans into three"}` : "";

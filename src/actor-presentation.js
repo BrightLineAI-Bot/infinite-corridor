@@ -1,14 +1,17 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r928-60da61d95073';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r937-15794e9d55b3';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.
 // These are presentation anchors only; rockets keep their authoritative spawn, aim and collision path.
-export const PLAYER_DRONE_VISUAL = Object.freeze({ hover:.37, carry:1.34, bob:.04, bobMs:260,
+// Close View play-through of 926 (bug 7): the model rides at the Wayfarer's shoulder while up (`hover` over the drawn feet, the
+// simulation point's offset drawn `beside` as far from them: about half a tile), and over their head while it carries them
+// (`carry`: its body above the 1.38-tile hero, its grips at the shoulders). Was hover .37 (the knee) and carry 1.34 (in the head).
+export const PLAYER_DRONE_VISUAL = Object.freeze({ hover:1.02, beside:.6, carry:1.95, bob:.04, bobMs:260,
   portForward:-.10, portHeight:-.20, settleSeconds:.12, maxLaunchOffset:64 });
 export function playerDroneVisualAnchor(player, drone, { carrying=false, lift=0, support=0, now=0, quiet=false } = {}) {
   if(!player||!drone||![player.x,player.y,drone.x,drone.y,lift,support,now].every(Number.isFinite))return null;
-  const V=PLAYER_DRONE_VISUAL,yaw=player.facing==='left'?Math.PI:0,x=(carrying?player.x:drone.x)+.5,y=(carrying?player.y:drone.y)+.82;
+  const V=PLAYER_DRONE_VISUAL,yaw=player.facing==='left'?Math.PI:0,x=(carrying?player.x:player.x+(drone.x-player.x)*V.beside)+.5,y=(carrying?player.y:player.y+(drone.y-player.y)*V.beside)+.82;
   const z=support+lift+(carrying?V.carry:V.hover)-(quiet?0:Math.sin(now/V.bobMs)*V.bob);
   return {x,y,z,yaw,muzzle:{x:x+Math.cos(yaw)*V.portForward,y:y+Math.sin(yaw)*V.portForward,z:z+V.portHeight}};
 }

@@ -5,7 +5,7 @@
 // It shades as those models do (close-view-gl.ts MODEL_FS: the same light floor, warm and cool rims, late fog), with one
 // difference: emissive parts are marked per vertex by channel instead of by an exact colour, so a beast's core, coils and
 // lightning can brighten, fade and flicker with its attacks without touching the shared colour list.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r928-60da61d95073";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r937-15794e9d55b3";
 
 const glf = (v) => Number(v).toFixed(4), NB = BEAST_SLOT.maxBones * 3;
 export const BEAST_VERTEX_FLOATS = 13; // position 3, normal 3, colour 3, skin 4 (bone, emissive channel, second bone, its weight)
@@ -46,7 +46,7 @@ void main() {
   color = mix(color, vec3(.96, .34, .23), clamp(u_hit, 0.0, 1.0) * .45 * (1.0 - emit));
   float late = u_fogP.x + ${glf(L.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
   float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
-  color = mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8) * (1.0 - emit * 0.6));
+  color = towerAir(mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8) * (1.0 - emit * 0.6)), v_pos); // the air under a towering top (close-view-gl.ts)
   outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * min(k, 1.0) * (1.0 - ${glf(L.emitFog)})))), 1.0);
 }`;
 
