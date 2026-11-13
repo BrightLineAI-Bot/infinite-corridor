@@ -251,7 +251,8 @@ export const CLOSE_VIEW = Object.freeze({
     // ground itself (a cliff at the Wayfarer's back) pulls the boom in; off, that keeps the calm pass's rule (the crane rises, then
     // the boom shortens until the chest is in sight, however steep: tests/close-view-camera-calm.test.ts pins it). On, the boom
     // stops at minBoom there too, the eye is lowered to maxPitch and the cliff between is cut open by the occluder window.
-    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: false }),
+    // Release 932 (Tim: the best and steadiest view near cliffs and walls): on.
+    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: true }),
     // The occluder window (2026-11-13): whatever stands between the eye and the Wayfarer's body (`body` tiles over their feet)
     // is cut open by a dithered cone, `eye` tiles wide at the camera and `radius` at the body, softened over the outer `soft`
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
@@ -259,7 +260,9 @@ export const CLOSE_VIEW = Object.freeze({
     // the cutting programs. A creature whose body crosses the cone eases (at `rate` a second; at once with Reduced Motion) to
     // `creature` of its opacity, if it is at least `creatureScale` big (its game scale: the dragons, the Giant, the world beasts;
     // ordinary creatures stay solid wherever they stand, tests/close-view-solid-creatures.test.ts). Indoor walls are never faded.
-    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10 }),
+    // Release 932 (Tim: "I want the enemies to be as solid and real as possible"): `creatureFade` off, so no creature, however big,
+    // is ever faded by the window; trees, rocks, props and the ground still are, and big threats are still framed (`threat`).
+    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10, creatureFade: false }),
     // `edgeFog`: tiles past an overworld section's edge over which the open ground melts into the far haze (it showed the
     // ordinary view's off-map checker). The neighbours' own terrain is not drawn (it would need their generation each crossing).
     edgeFog: 3,
@@ -2216,7 +2219,7 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
       // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
       // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
-      const cut = OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
+      const cut = Oc.creatureFade && OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
       if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames }; FOE_FADE.set(foe, st); }
       st.o += (occ - st.o) * k; boardOcc[j] = st.o;
       if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c; } } // not drawn last frame: no stale fade carried over
@@ -2975,11 +2978,17 @@ export function closeViewPrimaryWeaponKind(item) {
   return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
     : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver' : 'salvage-blade';
 }
+// Close View play-through of 926 (bug 11): at a scene's start the native stand-in Wayfarer showed, then popped to the imported
+// model once its data and GPU texture were ready. While that load is in flight (the asset 'loading', or loaded and its texture
+// not yet on the GPU) the Wayfarer is not drawn at all (no stand-in body, no sprite card; their place is kept), for at most
+// `maxMs`; then, or at once when the asset is unavailable, the native body stands in as before. The real model fades in over
+// `fadeMs` after a wait (reduced motion: at once). Presentation only.
+export const CLOSE_VIEW_HERO_WAIT = Object.freeze({ maxMs: 6000, fadeMs: 240 });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
-  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   consumeCurrent:{area:'overworld',areaId:'',levelId:'root'},consumeSample:{active:false,kind:'',itemKind:'',phase:0,elapsedMs:0,remainingMs:0,durationMs:0},
@@ -3165,6 +3174,17 @@ function drawBeastShadows(gc, s) {
     const f = B.items[i], k = Math.max(0, f.shadow) * f.alpha, r = .42 * f.scale * s;
     gc.fillStyle = `rgba(4,6,10,${(.42 * k).toFixed(3)})`; gc.beginPath(); gc.ellipse(f.x * s, f.y * s, r, r * .62, f.yaw, 0, Math.PI * 2); gc.fill();
   }
+}
+// 926 bug 11 (CLOSE_VIEW_HERO_WAIT): hold the Wayfarer back while the real model is on its way, for at most maxMs from the first wait.
+function heroHeld(state, waiting, now) {
+  if (!waiting) { state.heroWaitFrom = NaN; return false; }
+  if (!Number.isFinite(state.heroWaitFrom)) state.heroWaitFrom = now;
+  if (now - state.heroWaitFrom > CLOSE_VIEW_HERO_WAIT.maxMs) return false; // waited long enough: the native body stands in
+  state.heroFadeFrom = -1; return true; // armed: the first frame the real model shows starts its fade-in
+}
+function heroFadeIn(state, now, reduce) {
+  if (state.heroFadeFrom === -1) state.heroFadeFrom = now; if (!Number.isFinite(state.heroFadeFrom)) return 1;
+  const k = reduce ? 1 : Math.max(0, Math.min(1, (now - state.heroFadeFrom) / CLOSE_VIEW_HERO_WAIT.fadeMs)); if (k >= 1) state.heroFadeFrom = NaN; return k;
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -3362,10 +3382,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
-    let imported = false;
+    let imported = false, heroWaiting = false;
     if (who === player && importedPlayer && count < limit) {
-      const asset = getCloseViewHeroAsset();
-      if (asset && prepareCloseViewHeroGL(asset)) {
+      const asset = getCloseViewHeroAsset(), heroReady = !!asset && prepareCloseViewHeroGL(asset);
+      heroWaiting = !heroReady && (!!asset || closeViewHeroAssetStatus() === 'loading'); // 926 bug 11: the real model is on its way
+      if (heroReady) {
         if (state.heroAsset !== asset || !state.heroPose) {
           state.heroAsset = asset; state.heroPose = createHeroPoseState(asset); state.heroFrame = createHeroFrame(asset);
         }
@@ -3390,7 +3411,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
         input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
-        input.alpha = actor.alpha; input.hitFlash = hit;
+        input.alpha = actor.alpha * heroFadeIn(state, now, reduce); input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
         if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
         action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
@@ -3459,6 +3480,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         }
       }
     }
+    if (who === player && !imported && heroHeld(state, heroWaiting, now)) { // 926 bug 11: nothing stands in for the Wayfarer until the real model is ready
+      state.playerRepresentation = 'pending'; Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor }); state.tracks.set(who, track); state.admitted.add(it); return; }
     if (!imported && !append(actor)) return;
     if (who === player && !imported && !reduce && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
       const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = true;

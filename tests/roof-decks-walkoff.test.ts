@@ -117,7 +117,7 @@ test('the deck sweep over seeds ROOF and DECKS: no wedges, and every fall is the
       if (moved < .3 || !footprintOpen(g.map, W, x0, y0, true)) { wedged++; bad.push(`${d.id} ${dx},${dy} wedged at ${x0},${y0}`); }
     }
   }
-  assert.equal(decks, 14, 'the 14 decks of the review'); assert.ok(left >= total * .7, `${left}/${total} walked off`);
+  assert.equal(decks, 18, 'the 14 decks of the review, the heartland shack beside the Refuge (ROOF_DECKS.heartland) and the three guaranteed ones of new ground there (world.ts HEARTLAND_SHACK)'); assert.ok(left >= total * .7, `${left}/${total} walked off`);
   assert.equal(wedged, 0, bad.join('\n')); assert.deepEqual(bad, []);
 });
 

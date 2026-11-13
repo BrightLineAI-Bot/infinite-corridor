@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r932 (`00027a3d495e`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r933 (`4e55e56f8034`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 933 | Claude | claude/towering-cling | Stegosaur's Grip on the Pentagon's outer walls (balconies yes, roof never; capped at level 2 within 4 tiles), two holds per airtime with a kick back to the same wall; Close View towering Pentagons, Great Castles and sealed towers (drawn about 4x taller, masonry faces, battlements, drop haze and a cloud deck), presentation only | In flight. |
+| 934 | Claude | claude/cv-misc-fixes | Watcher tombs, shrines, Wayglasses, standing stones and chests are solid to the Wayfarer (Rift Step lands beside); the drone is drawn in the open world in Close View; Gaunt duelists keep 0.6 tiles off the Wayfarer; no placeholder hero before the real model; shacks beside Ember Refuge have low jumpable roofs, and new journeys always find one in every direction; the Close View camera keeps its distance and pitch at cliffs too; creatures never fade, however big | In flight. |
+| 933 | Claude | claude/towering-cling | Stegosaur's Grip on the Pentagon's outer walls (balconies yes, roof never; capped at level 2 within 4 tiles), two holds per airtime with a kick back to the same wall; Close View towering Pentagons, Great Castles and sealed towers (drawn about 4x taller, masonry faces, battlements, drop haze and a cloud deck), presentation only | Merged as `4e55e56f8034` (#600). |
 | 932 | Claude | claude/action-rules | The glider deploys only off a great tree's crown or canopy; Jump mid-fall without a drone catches nothing; a drone catch never climbs above the catch; holding Jump from the ground brings up the drone at the peak; Rift Step tap steps and hold aims in both views; a landing roll (Dodge just before touchdown takes a level off the fall); Jump and Dodge are the largest phone buttons | In flight. |
 | 931 | Claude | claude/qa-926-fixes-b | Fixes from the release 926 QA pass: pausing or reloading no longer relocates a Wayfarer who is falling, gliding, jumping, on the drone or at a roof edge; a Resonance tier raises max and current hp at once; death messages name the hazard; hot-spring healing and the section-edge hold resume exactly | Merged as `6edd63745e50` (#598). |
 | 930 | Claude | claude/cv-camera-occlusion | Close View presentation only: roofs stay drawn while airborne above them; a dithered cut through trees, rocks, terrain and big bodies between camera and Wayfarer; min boom 2.5 tiles and max pitch 60 on high or narrow ground and at section edges; ground past a section edge melts into haze; an aggroed dragon, giant or world beast within 8 tiles widens the view so both stay in frame | Merged as `7501a870d14e` (#597). |
