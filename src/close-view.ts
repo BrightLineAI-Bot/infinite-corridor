@@ -257,11 +257,23 @@ export const CLOSE_VIEW = Object.freeze({
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
     // heightfield are probed at `samples` fixed points a frame, three each; only when one is inside the cone do they draw with
     // the cutting programs. A creature whose body crosses the cone eases (at `rate` a second; at once with Reduced Motion) to
-    // `creature` of its opacity. Indoor walls are never faded (the camera keeps clear of them).
-    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, rate: 10 }),
+    // `creature` of its opacity, if it is at least `creatureScale` big (its game scale: the dragons, the Giant, the world beasts;
+    // ordinary creatures stay solid wherever they stand, tests/close-view-solid-creatures.test.ts). Indoor walls are never faded.
+    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10 }),
     // `edgeFog`: tiles past an overworld section's edge over which the open ground melts into the far haze (it showed the
     // ordinary view's off-map checker). The neighbours' own terrain is not drawn (it would need their generation each crossing).
     edgeFog: 3,
+    // Big threats in frame (the release 926 play-through, approved 2026-11-13: a dragon's breath filled the screen with the dragon
+    // off it; the Lightning Giant showed as a forearm). A creature at least `minScale` big (its game scale) that has noticed the
+    // Wayfarer within `range` tiles (fully within range - band) asks for more view by how tall it stands: its head about
+    // `headPerScale` tiles a unit of scale over its feet, nothing asked at `fits` tiles, all of it at `tall`. All of it: the boom
+    // `pull` tiles longer (walls still bound it), the lens `focal` of its focal length (wider) and the aim point `lift` tiles
+    // higher (a flatter view, so a head over the Wayfarer shows). Eased in at `easeIn` and out at `easeOut` (per second,
+    // critically damped) once it has wanted less for `hold` seconds. Never shorter or steeper than `limits` allow.
+    // `heads`: the drawn head height (tiles) of the big Close View bodies by kind, where scale alone under-reads them (the region
+    // scales a Giant to 1.9; its Close View body stands far taller); any of these counts as big at any scale.
+    threat: Object.freeze({ range: 8, band: 2, minScale: 1.8, headPerScale: 1.5, fits: 2, tall: 4, pull: 2.5, focal: .82, lift: 1.2, easeIn: 2.5, easeOut: 1.2, hold: .8,
+      heads: Object.freeze({ lightningGiant: 5, crimsonTyrant: 4.5, doomChaser: 4.5, mountainTurtle: 4, questingBeast: 3.5, briarStag: 3.5, voidWalker: 4.5, astralWorm: 4.5, tremorWorm: 4, gloomvast: 4.5, morphingBlob: 3, ashenMoth: 3.5, groveMoth: 3.5, nanobotKnight: 3 }) }),
   }),
   // The camera's framing, by preset (Options → Controls, next to the toggle; save.closeViewPreset). Tim's references (camera and
   // feel only): Bloodborne's tight, low over-the-shoulder view; Remnant: From the Ashes, a little further back and offset to
@@ -757,6 +769,8 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
   // the limits (CLOSE_VIEW.camera.limits): the open world's solids' drawn tops by tile (null: every blocked tile is a wall, as
   // before), the eye's height they are measured against (last frame's), and whether what lies between may be faded this frame
   solidTop: null, solidMap: null, solidW: 0, solidH: 0, eyeZ: -Infinity, seeThrough: false,
+  // big threats in frame (CLOSE_VIEW.camera.threat): the eased share asked (0..1), its rate, how long it has wanted less, and the boom's extra length
+  threat: 0, threatV: 0, threatFor: 0, threatPull: 0,
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -1017,7 +1031,25 @@ function cameraScene(g) {
   if (CAM.solidMap !== g.map || !open) { CAM.solidTop = null; CAM.solidMap = null; CAM.seeThrough = false; }
 }
 // The preset's boom: a tile longer in the open overworld (CLOSE_VIEW.presets version 5, `outdoorDistance`).
-function boomReach(g) { const P = closeViewPreset(g); return CAM.outdoorBoom && Number.isFinite(P.outdoorDistance) ? P.outdoorDistance : P.distance; }
+function boomReach(g) { const P = closeViewPreset(g); return (CAM.outdoorBoom && Number.isFinite(P.outdoorDistance) ? P.outdoorDistance : P.distance) + CAM.threatPull; } // + a big threat's pull (CLOSE_VIEW.camera.threat)
+// How much more view a big threat asks for this frame (CLOSE_VIEW.camera.threat): the most any aggroed creature big enough and
+// near enough asks, by its height and nearness, 0 to 1. One pass over the creatures (bounded by the game's actor caps), no allocation.
+export function closeViewThreatWant(g) {
+  const T = CLOSE_VIEW.camera.threat, p = g?.player, list = g?.enemies; if (!p || !Array.isArray(list)) return 0; const px = footX(p), py = footY(p); let want = 0;
+  for (let i = 0; i < list.length; i++) { const e = list[i]; if (!e || e.dead || !(e.hp > 0) || e.hidden || !e.aggro || e.ambient || e.astralAllyOf) continue;
+    const sc = Number(e.scale) || 0, known = Object.hasOwn(T.heads, e.kind) ? T.heads[e.kind] : 0; if (sc < T.minScale && !known) continue; const d = Math.hypot(e.x + .5 - px, e.y + .75 - py); if (d >= T.range) continue;
+    const near = Math.min(1, (T.range - d) / Math.max(1e-3, T.band)), tall = Math.max(0, Math.min(1, (Math.max(known, sc * T.headPerScale) - T.fits) / Math.max(1e-3, T.tall - T.fits)));
+    if (near * tall > want) want = near * tall; }
+  return want;
+}
+// Eases the share toward what is asked (in at once when more is wanted, out only after `hold`); paused, it holds.
+function threatFrame(g, dt) {
+  const T = CLOSE_VIEW.camera.threat, want = closeViewThreatWant(g);
+  if (!(dt > 0)) { if (!Number.isFinite(CAM.threat)) CAM.threat = 0; }
+  else if (want >= CAM.threat) { CAM.threatFor = 0; spring(CAM, "threat", "threatV", want, T.easeIn, dt); }
+  else if ((CAM.threatFor += dt) >= T.hold) spring(CAM, "threat", "threatV", want, T.easeOut, dt);
+  CAM.threat = Math.max(0, Math.min(1, CAM.threat)); CAM.threatPull = CAM.threat * T.pull;
+}
 function turnCamera(g, now) {
   // The Game lifecycle records elapsed pause time even if no camera/input callback ran during it.
   // Consume it once before the direct-paused fallback, so observed pauses cannot shift clocks twice.
@@ -1416,7 +1448,7 @@ export function closeViewSteer(g, state, now = NaN) {
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; }
+export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; }
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
@@ -1642,7 +1674,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
-  ensureCam(g); turnCamera(g, now);
+  ensureCam(g); turnCamera(g, now); threatFrame(g, CAM.dt); // a big threat's extra view eases in (it lengthens boomReach)
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
   const useGL = Q.gl === true && CLOSE_VIEW_HOOKS.gl !== false && !!ctx.canvas && closeViewGLReady(makeCanvas); closeViewStats.gl = useGL ? 1 : 0;
@@ -1731,13 +1763,13 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
   const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
-  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.dist) * C.crane); if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
+  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.threatPull - CAM.dist) * C.crane); /* the threat's pull is not a wall's: no crane for it */ if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
     spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
   const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
   if (snap) { CAM.focal = lerp(1, C.tightFocal, focalRelief); CAM.focalV = 0; }
   spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
-  const F = baseF * CAM.focal;
+  const F = baseF * CAM.focal * lerp(1, CLOSE_VIEW.camera.threat.focal, CAM.threat * mix); // a big threat: a wider lens
   // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
   const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
   for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (camWall(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
@@ -1813,7 +1845,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const forward = Math.max(.03, eyeDX * fx + eyeDY * fy);
   // Use the same foot anchor as the visible model, slightly beyond the movement foot.
   const bodyForward = Math.max(.03, forward + .07 * fy);
-  const framing = C.framing, maxPitch = C.limits.maxPitch * DEG, lookH = lerp(E.lookHeight, Cp.lookHeight, mix);
+  const framing = C.framing, maxPitch = C.limits.maxPitch * DEG, lookH = lerp(E.lookHeight, Cp.lookHeight, mix) + CAM.threat * C.threat.lift * mix; // a big threat: the aim point higher
   // The steepest view (CLOSE_VIEW.camera.limits.maxPitch): the eye is lowered (never under the ground at it) until the aim point
   // is at most maxPitch below it, provided the body still fits the frame from there (a boom compressed to a fraction of a tile
   // against walls indoors keeps its crane: it needs the height to frame the feet). A short boom then looks over the shoulder,
@@ -2165,6 +2197,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // the face (the camera's side), it is drawn after it; behind it (the face stands between it and the camera), before it, and
 // it is marked hidden. Its opacity, and how hidden it is, ease per creature (CLOSE_VIEW.cues.fade), so a creature walking
 // round a corner fades to a ghost and back, and one coming into sight fades in. At most actors x faces in view (64 x 200).
+export const closeViewCreatureFade = (foe) => FOE_FADE.get(foe)?.c ?? 1; // for tests: a creature's eased share of the occluder window (CLOSE_VIEW.camera.occlude.creature)
 const FOE_FADE = new WeakMap(); // creature -> { a: its eased opacity, o: how far a wall hides it, eased } (one small object a creature, kept with it)
 function occludeBillboards(n, faces, paused = false, reduce = false, map = null) {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, k = 1 - Math.exp(-Cu.fade * CAM.dt /* version 4: a repeat of the same instant changes nothing */);
@@ -2183,10 +2216,10 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
       // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
       // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
-      const cut = OCC.on ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
-      if (!st) { st = { o: occ, c: cut }; FOE_FADE.set(foe, st); }
+      const cut = OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
+      if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames }; FOE_FADE.set(foe, st); }
       st.o += (occ - st.o) * k; boardOcc[j] = st.o;
-      if (!Number.isFinite(st.c)) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; boardB[j] *= st.c; } }
+      if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c; } } // not drawn last frame: no stale fade carried over
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
