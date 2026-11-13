@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 940 — Release 940 — weapon arts and awakened moves rebalanced
+
+Tim, 2026-11-13: the balance pass on the new arts and awakenings, plus the review notes from r939. Measured with a headless bot against scaled packs, the hooded duelists and a pinned world beast at levels 15, 35 and 70.
+
+**CODE:** `src/weapon-arts.ts`: `WEAPON_ARTS.charge.early` is [.3, 1.2] (was [.8, 1.4]); each art carries its own `share`, applied in `release` as artPower x artShare(held) x A.share (missing = 1): Lava Slash .7 (radius 1.9), Blade Stream .5 (radius 2), Cinder Javelin 1, Ki Blast 1. `AWAKENED_ARTS`: Fissure .3 (crack .04), Lance .5 (return .35), Returning blades .25 a way (ring .03); runes .7 and the kick .8 unchanged. A Ki Blast that fizzles throws its held punch. `src/game.ts`: `artBlocked` adds `plungeBlocked()`, `fall`, `fallen`, `plunge` and the plunge recovery; new `lapseKick` ends an unused awakened kick window with the uppercut's own recovery (counted from the uppercut), called in `fistPress` and each frame; the committed Cleaver payload's `awakened` is `!!item.awakened` (it was always false, so the Fissure never fired in Close View). `src/awakened-arts.ts`: the axe slot keeps the uppercut's attack record and fires only if the awakened fists are still equipped and that record is current. Tests: `arts-balance` (5).
+
+**BOUNDARY:** No save or schema change; nothing generated changes. Numbers come from a headless bot harness, not device play. The perfect (2.6), late (1.4) and overcharge (1.6) shares, the Quandrix Staff, tools, the crescent fallback and the kick's 0.8 are unchanged. Art blocking mirrors the jump-attack gate; ordinary swings are still allowed while mounted. Open for Tim: plain Iron Fists measure about 3x other primaries; the 0.8 kick makes awakened fists slightly weaker than plain.
+
 ## Release 939 — Release 939 — awakened moves: one per weapon
 
 Tim, 2026-11-13: each weapon gets its own unique awakened move, as proposed; no new Resonances. Also: hide the pike while the Javelin flies, and let a dodge or attack cancel the throw without cancelling the javelin.

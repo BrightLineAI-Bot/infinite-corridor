@@ -29,7 +29,7 @@ export function awakenedArtsState(game) {
     blades: Array.from({ length: P.blades }, () => ({ on: false, ring: false, back: false, x: 0, y: 0, dx: 1, dy: 0, left: 0, speed: 0, power: 0, n: 0, hit: hitList(), age: 0 })),
     lances: Array.from({ length: P.lances }, () => ({ life: 0, x0: 0, y0: 0, x1: 0, y1: 0 })),
     runes: Array.from({ length: P.runes }, () => ({ on: false, foe: null, left: 0, power: 0, pop: false, age: 0 })),
-    axes: Array.from({ length: P.axes }, () => ({ on: false, wait: 0, power: 0 })),
+    axes: Array.from({ length: P.axes }, () => ({ on: false, wait: 0, power: 0, record: null })), // record: the uppercut's attack record
     flashes: Array.from({ length: P.flashes }, () => ({ life: 0, max: 1, kind: "", x: 0, y: 0, r: 0 })),
     pulse: { queued: false, at: -Infinity, x: 0, y: 0, r: 0, power: 0 },
   });
@@ -37,7 +37,7 @@ export function awakenedArtsState(game) {
 export function clearAwakenedArts(game) {
   const K = game.awakenedArts; if (!K) return;
   for (const f of K.fissures) f.on = false; for (const b of K.blades) b.on = false; for (const l of K.lances) l.life = 0;
-  for (const r of K.runes) { r.on = false; r.foe = null; r.pop = false; } for (const a of K.axes) a.on = false; for (const f of K.flashes) f.life = 0;
+  for (const r of K.runes) { r.on = false; r.foe = null; r.pop = false; } for (const a of K.axes) { a.on = false; a.record = null; } for (const f of K.flashes) f.life = 0;
   K.pulse.queued = false;
 }
 // Live counts (tests, the HUD-free check that nothing piles up).
@@ -121,7 +121,7 @@ export function awakenedArtRelease(game, id, now, air = false) {
   }
   if (id === "ki-blast" && air && awakenedUp(game.save, "roundhouse")) {
     const K = awakenedArtsState(game), U = M.roundhouse.up, a = K.axes[0];
-    a.on = true; a.wait = Math.min(U.wait, Math.max(0, ((Number(game.jumpUntil) || 0) - now) / 1000)); a.power = Math.max(0, Number(game.artPower(now)) || 0) * U.share;
+    a.on = true; a.wait = Math.min(U.wait, Math.max(0, ((Number(game.jumpUntil) || 0) - now) / 1000)); a.power = Math.max(0, Number(game.artPower(now)) || 0) * U.share; a.record = game.player?.attackVisual || null;
     return true;
   }
   return false;
@@ -166,9 +166,10 @@ export function tickAwakenedArts(game, dt, now) {
   }
   for (const a of K.axes) {
     if (!a.on) continue;
-    if (!(game.player.hp > 0)) { a.on = false; continue; }
+    if (!(game.player.hp > 0)) { a.on = false; a.record = null; continue; }
     if ((a.wait -= dt) > 0) continue;
-    const U = M.roundhouse.up, c = centre(game); a.on = false;
+    const U = M.roundhouse.up, c = centre(game), mine = a.record, current = game.player.attackVisual; a.on = false; a.record = null;
+    if (awakenedFor(game.save) !== "roundhouse" || current !== mine) continue; // the fists put away, or a newer action since the uppercut: dropped
     burst(game, c.x, c.y, U.radius, a.power, now, U.stun, U.knock); flash(K, "axe", c.x, c.y, U.radius, AWAKENED_ARTS.flash.kick);
     game.awakenedVisual?.(now, null, "axe-kick", U.poseMs); game.message = AWAKENED_ARTS.messages.axe;
   }
