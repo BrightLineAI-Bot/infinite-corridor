@@ -2866,7 +2866,7 @@ export function render(ctx, g, w, h, now) {
     if (worldCapture) drawSkyDisc(ctx, d, s, now, true);
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
-  const captureDrone=closeViewCapturing()&&closeViewBareFloor()&&!!g.droneUp?.()&&!!g.droneAt;
+  const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
   const playerDraw = {
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
