@@ -8210,7 +8210,7 @@ export class Game {
   // The uppercut's window for the kick ran out unused: the combo ends and recovers from then, as after the uppercut.
   lapseKick(now = this.lastUpdateNow || 0) {
     const c = this.fistCombo; if (!c?.kick || now <= c.until) return false;
-    this.fistCombo = null; this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, c.until + IRON_FISTS.recover * 1000); return true;
+    this.fistCombo = null; this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, c.until - IRON_FISTS.window * 1000 + IRON_FISTS.recover * 1000); return true; // the uppercut's own recovery, counted from the uppercut (never longer than unawakened fists)
   }
   awakenedKick(now = this.lastUpdateNow || 0, direction = null) {
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; }

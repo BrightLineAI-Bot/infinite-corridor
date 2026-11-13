@@ -53,16 +53,16 @@ test('balance pass: a release just past the grace is a small poke; the perfect w
 
 test('awakened Iron Fists: an unused kick window ends the combo with the uppercut\'s recovery; the kick still chains inside it', () => {
   const F = IRON_FISTS;
-  { // skip the kick: once the window has lapsed the next combo waits the recovery, measured from the lapse
+  { // skip the kick: the lapse ends the combo with the uppercut's own recovery, counted from the uppercut — never longer than unawakened fists
     const { g, clock } = arena('iron-fists'); combo(g, clock); const c = g.fistCombo; assert.equal(c?.step, 3); assert.equal(c.kick, true, 'the window is open for the kick');
     const until = c.until; while (clock.t <= until) frame(g, clock); frame(g, clock);
-    assert.equal(g.fistCombo, null, 'the window lapsed'); assert.equal(g.fistRecoverUntil, until + F.recover * 1000, 'the uppercut\'s recovery, from the lapse');
-    const t = clock.t, hp = g.enemies[0].hp; assert.equal(press(g, clock).length, 0); idle(g, clock, 2); assert.equal(g.enemies[0].hp, hp, 'no early dash punch'); assert.equal(g.fistCombo, null);
-    while (clock.t < g.fistRecoverUntil) frame(g, clock); press(g, clock); idle(g, clock, 2); assert.equal(g.fistCombo?.step, 1, 'then the next combo'); assert.ok(clock.t - t >= F.recover * 1000 - 2 * DT * 1000);
+    assert.equal(g.fistCombo, null, 'the window lapsed'); const rec = until - F.window * 1000 + F.recover * 1000; assert.equal(g.fistRecoverUntil, rec, 'the uppercut\'s recovery, from the uppercut'); assert.ok(rec <= clock.t, 'already over: skipping the kick costs nothing extra');
+    press(g, clock); idle(g, clock, 2); assert.equal(g.fistCombo?.step, 1, 'the next combo starts at once');
+
   }
   { // direct presses (no frame between): the lapse is noticed at the press as well
     const { g, clock } = arena('iron-fists'); combo(g, clock); const until = g.fistCombo.until; clock.t = until + 10;
-    assert.equal(g.fistPress(clock.t, { x: 1, y: 0 }, null), false); assert.equal(g.fistRecoverUntil, until + F.recover * 1000);
+    g.fistPress(clock.t, { x: 1, y: 0 }, null); assert.equal(g.fistRecoverUntil, until - F.window * 1000 + F.recover * 1000, 'the lapse is noticed at the press');
   }
   { // the kick inside the window: chained, then the kick's own recovery (unchanged)
     const { g, clock } = arena('iron-fists', { foes: [[1.2, 0], [-1.2, 0]] }); combo(g, clock); idle(g, clock, 20); assert.equal(g.kickReady(clock.t), true);
