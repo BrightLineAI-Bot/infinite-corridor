@@ -25,29 +25,32 @@
 //
 // Transpose's seal: standing in it, the Wayfarer's spells (the armor glyphs' Spell Damage path: spells, magic tools, Imbue)
 // deal `spellDamage` more and she takes `damageTaken` more from every blow (game.ts armorGlyphBonus reads transposeBonus).
-import { latticePassives } from "./transit-lattice.js?v=r939-3cfc61802893";
-import { weaponKey } from "./items.js?v=r939-3cfc61802893";
-import { QUANDRIX } from "./quandrix-staff.js?v=r939-3cfc61802893";
+import { latticePassives } from "./transit-lattice.js?v=r941-b5036c167d5d";
+import { weaponKey } from "./items.js?v=r941-b5036c167d5d";
+import { QUANDRIX } from "./quandrix-staff.js?v=r941-b5036c167d5d";
 
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
 
 export const WEAPON_ARTS = Object.freeze({
   arm: Object.freeze({ presses: 3 }),
   hold: Object.freeze({ grace: .2 }), // as QUANDRIX.hold.grace: shorter, a tap
-  // The charge (the Quandrix slam's numbers): seconds held after the grace, and the share of a normal hit each window gives.
-  charge: Object.freeze({ perfect: Object.freeze([1, 1.3]), max: 2, early: Object.freeze([.8, 1.4]), perfectShare: 2.6, late: 1.4, overcharge: 1.6 }),
+  // The charge (the Quandrix slam's windows): seconds held after the grace, and the share of a normal hit each window gives,
+  // times the art's own `share` below. Balance pass 2026-11-13: an early release starts at .3 (was .8), so a tap-and-let-go
+  // right after the grace is a small poke rather than a free extra hit every fourth press; the perfect window stays 2.6.
+  charge: Object.freeze({ perfect: Object.freeze([1, 1.3]), max: 2, early: Object.freeze([.3, 1.2]), perfectShare: 2.6, late: 1.4, overcharge: 1.6 }),
   anchored: QUANDRIX.anchored, // the same foes the staff never drags
   arts: Object.freeze({
+    // `share`: the art's own weight on the charge's share (balance pass 2026-11-13; a missing one is 1).
     // Dash toward the nearest foe (the lock first) within `dash` tiles, stopping `stop` short of it (straight ahead with none;
     // walls stop it), then the blade slams down `reach` ahead and the ground erupts within `radius`.
-    "lava-slash": Object.freeze({ weapon: "verge-cleaver", name: "Lava Slash", dash: 4, stop: .9, reach: .9, radius: 1.6, stun: .5, knock: .45, poseMs: 460 }),
+    "lava-slash": Object.freeze({ weapon: "verge-cleaver", name: "Lava Slash", share: .7, dash: 4, stop: .9, reach: .9, radius: 1.9, stun: .5, knock: .45, poseMs: 460 }),
     // `hits` slashes of light over `span` s, on every foe within `radius` of the Wayfarer (who may move): together the share.
-    "blade-stream": Object.freeze({ weapon: "fourfold-daggers", name: "Blade Stream", radius: 2.2, hits: 6, span: .6, stun: .1, poseMs: 620 }),
+    "blade-stream": Object.freeze({ weapon: "fourfold-daggers", name: "Blade Stream", share: .5, radius: 2, hits: 6, span: .6, stun: .1, poseMs: 620 }),
     // A wind-up of `windup` s, then the pike flies `range` tiles at `speed`, striking up to `pierce` foes, and is back in hand.
-    "cinder-javelin": Object.freeze({ weapon: "cinder-pike", name: "Cinder Javelin", windup: .26, range: 8, speed: 16, pierce: 3, radius: .42, stun: .35, knock: .35, poseMs: 560 }),
+    "cinder-javelin": Object.freeze({ weapon: "cinder-pike", name: "Cinder Javelin", share: 1, windup: .26, range: 8, speed: 16, pierce: 3, radius: .42, stun: .35, knock: .35, poseMs: 560 }),
     // A forward blast `range` tiles at `speed`; it bursts on the first foe (or wall) within `burst`. Released on the uppercut,
     // the Wayfarer pops up into the air and fires it from there for `air` times as much.
-    "ki-blast": Object.freeze({ weapon: "iron-fists", name: "Ki Blast", range: 7, speed: 12, radius: .45, burst: .9, air: 1.25, stun: .4, knock: .55, poseMs: 380 }),
+    "ki-blast": Object.freeze({ weapon: "iron-fists", name: "Ki Blast", share: 1, range: 7, speed: 12, radius: .45, burst: .9, air: 1.25, stun: .4, knock: .55, poseMs: 380 }),
     // A seal on the ground round the Wayfarer: `base` s (`perfectBase` from a perfect release); each melee hit landed while it
     // lasts adds `perHit` s, the time left never above `cap`. Standing in it: +`spellDamage` spell damage, +`damageTaken` damage
     // taken; both linger `linger` s after stepping out. One at a time. No damage of its own.
@@ -70,26 +73,29 @@ export const WEAPON_ART_IDS = Object.freeze(Object.keys(WEAPON_ARTS.arts));
 
 // Awakened arts (Tim, 2026-11-13: "one unique awakened move per weapon"): the awakening (constellation.ts awaken) gives each
 // primary weapon its own move in place of the shared crescent; awakened-arts.ts runs them. `share` is of a normal hit of the
-// weapon (game.ts primaryAttack: the crescent's base; the Iron Fists' fistPower), about the crescent's .7 a foe. Each move's
-// `up` is the small extra it gains when the weapon's own art (WEAPON_ARTS.arts[passive]) is also selected. The Quandrix
+// weapon (game.ts primaryAttack: the crescent's base; the Iron Fists' fistPower). Balance pass 2026-11-13 (headless harness:
+// the art and the awakening together add about a quarter to the plain weapon's sustained damage, the daggers on top): below
+// the crescent's .7 for the Verge Cleaver (.3), the Cinder Pike (.5) and the Fourfold Daggers (.25 a way); the Salvage Blade's
+// runes keep .7 (they need a spell) and the kick keeps .8 (Tim). Each move's `up` is the small extra it gains when the
+// weapon's own art (WEAPON_ARTS.arts[passive]) is also selected. The Quandrix
 // Staff keeps its own awakening (quandrix-staff.ts); tools keep their fan.
 export const AWAKENED_ARTS = Object.freeze({
   every: 3, // every third accepted swing (no Echo copy, not the daggers' second cut), as the crescent was
   moves: Object.freeze({
     // A crack runs `length` tiles along the aim from `start` ahead (walls stop it) and erupts `delay` s later on every foe within
     // `width` of it. Up: the eruption leaves a lava crack `life` s that strikes foes on it every `tick` s for `share`.
-    fissure: Object.freeze({ weapon: "verge-cleaver", passive: "lava-slash", name: "Fissure", text: "every third swing cracks the ground ahead, and it erupts a beat later", share: .7, start: .5, length: 4, width: .55, delay: .3, stun: .3, knock: .25, poseMs: 420,
-      up: Object.freeze({ life: 3, tick: .5, share: .06 }) }),
+    fissure: Object.freeze({ weapon: "verge-cleaver", passive: "lava-slash", name: "Fissure", text: "every third swing cracks the ground ahead, and it erupts a beat later", share: .3, start: .5, length: 4, width: .55, delay: .3, stun: .3, knock: .25, poseMs: 420,
+      up: Object.freeze({ life: 3, tick: .5, share: .04 }) }),
     // The pair flies `range` tiles at `speed` and back to the Wayfarer's hand; each foe is cut once going out and once coming
     // back, `share` each (walls turn it back; on the way home a wall ends it). Up: Blade Stream's release also throws `count`
     // single blades out in a ring `range` tiles and home again, `share` a cut.
-    "returning-blades": Object.freeze({ weapon: "fourfold-daggers", passive: "blade-stream", name: "Returning blades", text: "every third press throws the pair out and back, cutting both ways", share: .35, range: 4, speed: 11, radius: .45, stun: .1, poseMs: 380,
-      up: Object.freeze({ count: 6, range: 3, speed: 10, share: .12 }) }),
+    "returning-blades": Object.freeze({ weapon: "fourfold-daggers", passive: "blade-stream", name: "Returning blades", text: "every third press throws the pair out and back, cutting both ways", share: .25, range: 4, speed: 11, radius: .45, stun: .1, poseMs: 380,
+      up: Object.freeze({ count: 6, range: 3, speed: 10, share: .03 }) }),
     // A line of cinder light `length` tiles along the aim (walls stop it) strikes every foe within `width` of it at once.
     // Up: the Cinder Javelin flies back to the hand, striking every foe on the way home (up to the shot's hit list) for
     // `returnShare` of its throw.
-    lance: Object.freeze({ weapon: "cinder-pike", passive: "cinder-javelin", name: "Lance", text: "every third thrust extends a long line of cinder light", share: .7, start: .4, length: 6, width: .45, stun: .25, knock: .2, life: .4, poseMs: 360,
-      up: Object.freeze({ returnShare: .4 }) }),
+    lance: Object.freeze({ weapon: "cinder-pike", passive: "cinder-javelin", name: "Lance", text: "every third thrust extends a long line of cinder light", share: .5, start: .4, length: 6, width: .45, stun: .25, knock: .2, life: .4, poseMs: 360,
+      up: Object.freeze({ returnShare: .35 }) }),
     // A fourth strike after the uppercut while the combo's window is open: a spinning kick on every foe within `radius`.
     // Up: an uppercut Ki Blast (the airborne one) ends with an axe kick that bursts where she lands, `share` of the art's power.
     roundhouse: Object.freeze({ weapon: "iron-fists", passive: "ki-blast", name: "Roundhouse kick", text: "a spinning roundhouse kick follows the uppercut", share: .8, radius: 1.6, stun: .3, knock: .6, poseMs: 440,
@@ -223,9 +229,9 @@ function burst(game, x, y, r, amount, stun, knock, now) {
 function release(game, now, held) {
   const K = game.weaponArts, id = K.art, A = WEAPON_ARTS.arts[id], H = K.hold, w = artWindow(held), share = artShare(held);
   const dx = H.dx, dy = H.dy, fistStep = H.step; endHold(K); K.latch = true;
-  if (!A || game.artBlocked(now)) return false; // fizzles; the charge stays stored
+  if (!A || game.artBlocked(now)) { if (A && id === "ki-blast") game.artFistTap(now, { x: dx, y: dy }, fistStep); return false; } // fizzles; the charge stays stored (the fists' held punch is thrown as a tap)
   K.armed = false; K.presses = 0;
-  const power = Math.max(0, Number(game.artPower(now)) || 0) * share;
+  const power = Math.max(0, Number(game.artPower(now)) || 0) * share * (A.share ?? 1); // A.share: the art's own weight (balance)
   if (id === "lava-slash") {
     const c0 = centre(game), d = game.artDash(now, A.dash, A.stop), c = centre(game), x = c.x + d.x * A.reach, y = c.y + d.y * A.reach;
     if (Math.hypot(c.x - c0.x, c.y - c0.y) > .2) flash(K, "dash", c.x, c.y, .35, WEAPON_ARTS.flash.dash, c0.x, c0.y);

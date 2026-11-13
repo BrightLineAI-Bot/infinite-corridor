@@ -18,12 +18,12 @@
 // keep the standard view's billboard (close-view-beasts.ts `eligible`); the hidden states (lying in wait, the fog's veil, the
 // mirage) already do (`hidden`). Its marks, eruptions, chomping puddles and flying shots lie on the floor (drawStalkerCloseViewFloor),
 // where Close View draws an admitted beast's ground work. Nothing here changes timing, damage, reach or targeting.
-import { STALKER } from "./stalker.js?v=r939-3cfc61802893";
-import { drawStalkerMarks } from "./stalker-render.js?v=r939-3cfc61802893";
+import { STALKER } from "./stalker.js?v=r941-b5036c167d5d";
+import { drawStalkerMarks } from "./stalker-render.js?v=r941-b5036c167d5d";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone, boneLocalToWorld,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r939-3cfc61802893";
+} from "./close-view-beast-rig.js?v=r941-b5036c167d5d";
 
 export const STALKER_RIG = Object.freeze({
   closeViewScale: 1.25, // as every Close View beast (presentation only)
@@ -78,7 +78,7 @@ const E_EYE = 1, E_GLOW = 2, E_AURA = 3, E_SHIELD = 4;
 
 // ------------------------------------------------------------------------------------------------ the bodies
 const hexOf = (c) => parseInt(String(c).slice(1), 16);
-// stalker-render.js?v=r939-3cfc61802893's colours, as numbers
+// stalker-render.js?v=r941-b5036c167d5d's colours, as numbers
 const C = Object.freeze({ fur: hexOf("#f1f3f6"), sheen: hexOf("#fbfcfd"), shade: hexOf("#c9d1dc"), leg: hexOf("#e9edf2"), paw: hexOf("#eef1f5"), silver: hexOf("#d8e2ee"),
   earIn: hexOf("#b9c2cf"), nose: hexOf("#8b7a84"), brow: hexOf("#9aa4b4"), eye: hexOf("#9feeff"), chevron: hexOf("#96dcff"), lip: hexOf("#7f8898"),
   saddle: hexOf("#c7d0dc"), skin: hexOf("#5d6573"), face: hexOf("#4f5664"), apeBrow: hexOf("#3d434e"), muzzle: hexOf("#3a404a"), fist: hexOf("#59606c"), edge: hexOf("#7e8898"),

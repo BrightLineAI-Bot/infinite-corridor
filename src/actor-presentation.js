@@ -1,5 +1,5 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r939-3cfc61802893';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r941-b5036c167d5d';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.

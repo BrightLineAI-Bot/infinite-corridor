@@ -1,6 +1,6 @@
 // Candidate-only natural Lantern recovery. No production persistence imports,
 // storage access, fetch or Game construction occurs until an explicit UI action.
-import { unsupportedVersion } from './types.js?v=r939-3cfc61802893';
+import { unsupportedVersion } from './types.js?v=r941-b5036c167d5d';
 export const RECOVERY_CONTEXT=Object.freeze({lab:'recovery',scenario:'natural-lantern-leap-reload',seed:'LANTERN-RELOAD',rx:7,ry:4,actorId:'pack-overworld:7:4:0'});
 const FORMAT='ic-proving-ground-recovery',VERSION=1,STORE='checkpoint',KEY='natural-lantern-leap-reload';
 const plain=q=>!!q&&typeof q==='object'&&!Array.isArray(q)&&(Object.getPrototypeOf(q)===Object.prototype||Object.getPrototypeOf(q)===null);
