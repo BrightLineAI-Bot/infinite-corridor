@@ -89,11 +89,16 @@ export const OUTDOOR = f({
     airless: f({ stars: 1, zenith: [3, 4, 10], horizon: [26, 28, 38], haze: [44, 46, 56], ridge: [118, 122, 132], ridgeH: .045, rough: .85,
       sun: [255, 252, 244], sunAz: 235, sunEl: 34, sunK: .8, ambient: [.36, .38, .46], clouds: 0, grade: [.98, 1, 1.04, 1],
       crown: [90, 96, 110], bark: [60, 60, 66], frost: 0, planet: 1, moodMix: .15 }),
+    // the Marrowworks (landscape 26): a low bruised overcast over the buried engine, verdigris toward the horizon, a weak
+    // greenish sun, and a jagged far ridge of ribs
+    marrow: f({ zenith: [30, 36, 46], horizon: [112, 128, 116], haze: [90, 106, 98], ridge: [52, 58, 56], ridgeH: .075, rough: 1,
+      sun: [206, 232, 210], sunAz: 225, sunEl: 28, sunK: .48, ambient: [.44, .5, .48], clouds: .62, grade: [.97, 1.02, 1, 1.03],
+      crown: [72, 84, 76], bark: [52, 50, 44], frost: 0 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -130,8 +135,8 @@ export const OUTDOOR = f({
     f(["grass", /grass|moss|forest|jungle|meadow|savanna|fen|bog|loam|refuge|canopyLeaf|fringe|mat$/i]),
     f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat/i]),
     f(["snow", /snow|ice|frost|peak|sinter|seaIce|firn|serac/i]),
-    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo|regolith|ejecta|rille/i]),
-    f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule/i]),
+    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo|regolith|ejecta|rille|ribCrest|marrowGutter/i]),
+    f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule|marrowPlate|vertebra/i]),
     f(["glass", /glass|crystal|obsidian|quicksilver|prism/i]),
   ]),
   surfaceIds: f({ earth: 0, grass: 1, sand: 2, snow: 3, rock: 4, paved: 5, glass: 6 }),
@@ -148,6 +153,8 @@ export const OUTDOOR = f({
     f({ test: /^fallenMonolith$/, h: .7, jitter: .1, mat: 3, inset: .1, taper: .05 }),
     f({ test: /Monolith$/, h: 2.8, jitter: .2, mat: 3, inset: .12, taper: .08 }),
     f({ test: /^craterMount$/, h: 1.5, jitter: .4, mat: 0, inset: .06, taper: .55 }),
+    f({ test: /^ribTusk$/, h: 2.3, jitter: .5, mat: 0, inset: .22, taper: .8 }), // the Marrowworks: a rib's tip standing as a bone tusk
+    f({ test: /^marrowConduit$/, h: .7, jitter: .05, mat: 1, inset: .1, taper: 0 }), // and its segmented conduits
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),

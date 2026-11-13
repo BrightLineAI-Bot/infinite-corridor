@@ -30,7 +30,7 @@ let found = null;
 const sections = () => found ||= (() => { const out = []; for (let x = 14; x < 400 && out.length < 40; x += 3) for (let y = 14; y < 400 && out.length < 40; y += 5) { const r = sectionRegion(SEED, x, y, 23); if (r.type !== 'reckoning' || r.hold < .5) continue; const m = make(x, y); if (m.reckoning) out.push({ x, y, m, rule: reckoningFigure(SEED, r.id).rule.id }); } return out; })();
 
 test('version 23 turns some far wild and plains regions into reckoning fields; every other region, the heartland and the near world keep their version 22 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 25); assert.deepEqual(REGIONS_V23.from, ['wild', 'ashfields', 'glasslands', 'emberlands']); assert.ok(REGIONS_V23.minRing > REGIONS.heartland + REGIONS.fadeIn);
+  assert.equal(LANDSCAPE_VERSION, 26); assert.deepEqual(REGIONS_V23.from, ['wild', 'ashfields', 'glasslands', 'emberlands']); assert.ok(REGIONS_V23.minRing > REGIONS.heartland + REGIONS.fadeIn);
   const seen = new Set(); let turned = 0, from = 0;
   for (let x = -150; x < 150; x += 3) for (let y = -150; y < 150; y += 3) {
     const a = sectionRegion(SEED, x, y, 22), b = sectionRegion(SEED, x, y, 23); seen.add(b.type); assert.equal(a.id, b.id); assert.equal(a.hold, b.hold);
@@ -121,7 +121,7 @@ test('deterministic: two fresh generations and two fresh game loads match; a ham
   for (const { x, y, m } of sections().slice(0, 8)) assert.equal(fp(make(x, y)), fp(m), `${x},${y}`);
   const { x, y } = sections()[1], load = () => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return { g, s }; };
   const one = load(), two = load(); assert.equal(JSON.stringify(one.g.map.tiles), JSON.stringify(two.g.map.tiles)); assert.deepEqual(one.g.map.objects.map((o) => o.id), two.g.map.objects.map((o) => o.id));
-  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 25); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'reckoning'));
+  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 26); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'reckoning'));
   const banner = (one.g.questNotices || []).find((q) => q.kind === 'discovery'); if (banner) assert.equal(banner.detail, 'Reckoning fields');
   const h = make(x, y, 23, { hamlet: true }); assert.ok(h.tiles.some((t) => t.landscape === 'reckoning')); assert.ok(h.tiles.filter((t) => t.landscape === 'reckoning').every((t) => !t.elev && t.kind !== 'ruleMonolith'));
   assert.ok(!h.objects.some((o) => String(o.id).startsWith('reckoning-')));
