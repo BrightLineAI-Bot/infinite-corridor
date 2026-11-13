@@ -30,7 +30,7 @@ export const FOLK_SLOT = Object.freeze({
   // how many townsfolk are skinned at once (the nearest first; the rest keep their standard-view card)
   maxFolk: Object.freeze({ full: 8, balanced: 6, low: 4 }),
   // the most triangles one may take (its body, head, hands, back and work)
-  triangles: Object.freeze({ full: 2300, balanced: 1750, low: 1250 }),
+  triangles: Object.freeze({ full: 2000, balanced: 1500, low: 1100 }),
   maxBones: 24,
 });
 // Motion (presentation only): stride and gait, turning, how near the Wayfarer must be to be watched, breathing and sway, the talk
