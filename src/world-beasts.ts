@@ -142,6 +142,33 @@ export const WORLD_BEASTS = {
     slain: "The Doom Chaser falls out of the dark, and the violet fire in its cracks gutters and goes out.",
     gone: "The Doom Chaser has hunted you enough, and rises into the dark. In time it will chase something else.",
   },
+  // The Wild Stegosaurus (Tim, 2026-11-12, for his kid: "threatening for sure"; about as hard as the Tyrant Mosasaur). Listed last, so
+  // it claims only sections no older beast claimed and every older beast's roll is as it was. It roams the land and the sea (beastGround),
+  // and walks home to the deep woods. It is also met in the big rooms of keeps, arcologies and adventure Pentagons (wild-stego.ts).
+  wildStego: {
+    kind: "wildStego", name: "The Wild Stegosaurus", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    hitsToKill: 58, hpPerLevel: 27, damageShare: .21, speed: 1.1, attackGap: .24, staggerResistance: .95, rewardMarks: 185, rewardPerLevel: 18,
+    patience: 180, home: "forest", retreatMoves: "walk",
+    flee: "The Wild Stegosaurus snorts, swings its tail, and lumbers off toward the deep woods, eating as it goes.",
+    homeLine: "The Wild Stegosaurus pushes in among the trees, still chewing, and the woods close round its plates.",
+    arrive: "Trees here have been stripped bare and the ground is torn up by heavy feet. Something big and blue is eating. The Wild Stegosaurus is here, and it is hungry.",
+    slain: "The Wild Stegosaurus sways, sinks to its knees, and lies down for good, its plates fading to grey.",
+    gone: "The Wild Stegosaurus has had its fill of you, and wanders off to eat something else. In time it will be hungry somewhere else.",
+  },
+  // The Spinosaurus (Tim, 2026-11-12: "The Hunter of Hunters"; about as hard as the Wild Stegosaurus). Listed last, so it claims only
+  // sections no older beast claimed and every older beast's roll is as it was. It roams the land only (never the sea), rarely, and walks
+  // home to the deep woods; it is never seen passing. It is also met in big rooms and as the interloper in a stego or stag fight
+  // (spino-rex.ts). Its numbers: monster-pack.ts SPINO.
+  spinoRex: {
+    kind: "spinoRex", name: "The Spinosaurus", chance: .015, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
+    hitsToKill: 58, hpPerLevel: 27, damageShare: .21, speed: 1.1, attackGap: .26, staggerResistance: .95, rewardMarks: 200, rewardPerLevel: 20,
+    patience: 180, home: "forest", retreatMoves: "walk",
+    flee: "The Spinosaurus snaps its jaws once more, turns, and stalks off toward the deep woods to hunt something else.",
+    homeLine: "The Spinosaurus wades in among the trees, its sail the last of it you see.",
+    arrive: "Something has torn through here: great three-toed tracks, the ground ploughed up in furrows, and the smell of blood. The Spinosaurus is hunting, and it has found you.",
+    slain: "The Spinosaurus crashes down, and lies still, its sail sinking last of all.",
+    gone: "The Spinosaurus has hunted you enough, and goes looking for other prey. In time it will hunt somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // Beasts that keep to a homeland (release 760; Tim, 2026-11-05: "The Doom Chaser should still just remain in the Stillworks. That's
@@ -455,7 +482,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser", "wildStego", "spinoRex"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -470,7 +497,7 @@ export function placementRegions(map, here) {
 }
 // Ground a beast can be placed on: open land, or open sea for the marine beasts.
 function beastGround(here, t) {
-  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant" || here === "mountainTurtle"; // release 261: the Turtle walks the sea on ice
+  const marine = here === "voidWalker" || here === "psychicCrystal" || here === "astralWorm" || here === "lightningGiant" || here === "mountainTurtle" || here === "wildStego"; // release 261: the Turtle walks the sea on ice (the Wild Stegosaurus swims it)
   return marine && marineTileOpen(t) || here === "astralWorm" && astralSpawnWater(t) || !t.blocked && !t.structure && !t.environment && !LETHAL_KINDS.has(t.kind);
 }
 export const isWorldBeastKind = (kind) => WORLD_BEAST_IDS.some((id) => WORLD_BEASTS[id].kind === kind);
@@ -526,7 +553,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8, wildStego: 5, spinoRex: 6 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
@@ -586,13 +613,13 @@ export function worldBeastFor(save, map, rx, ry) {
 // - only a beast that is free: not holding, hunting or retreating anywhere, and not cooling down after its last hunt (it cannot be
 //   seen in two places, nor walk by just after it died).
 // Which beast, which way and whether one passes are still fixed by the seed, the section and the explored count.
-export const PASSING = { chance: .02, minDepth: 6, speed: 1.7, ready: true, once: true };
+export const PASSING = { chance: .02, minDepth: 6, speed: 1.7, ready: true, once: true, not: ["wildStego", "spinoRex"] }; // `not`: beasts never seen passing (the Wild Stegosaurus: so every passer an existing journey would see is the one it saw)
 export function passingBeastFor(save, map, rx, ry, explored = 0) {
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < PASSING.minDepth) return null;
   if (PASSING.ready && !encounterReady(save) || PASSING.once && ensureBeastGap(save).passed) return null; // sightings (2026-11-11)
   const h = hashSeed(`${save.seed}:passing-beast:v1:${rx}:${ry}:${explored}`); if ((h % 1000) / 1000 >= PASSING.chance) return null;
   const free = (id) => { const q = save.worldBeasts?.[id]; return !q?.active && !(Number(q?.cooldown) > 0); }; // sightings (2026-11-11)
-  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && beastUnlocked(save, id) && free(id));
+  const ids = WORLD_BEAST_IDS.filter((id) => id !== "astralWorm" && id !== "voidWalker" && !PASSING.not.includes(id) && beastUnlocked(save, id) && free(id));
   if (!ids.length) return null;
   const id = ids[(h >>> 10) % ids.length]; if (!beastRoamsAt(id, rx, ry)) return null; // BEAST_HOMELANDS: inside his `beyond`, where the Doom Chaser would have passed nothing does (every other section's passer is as it was)
   const B = WORLD_BEASTS[id], ex = sectionExits(save.seed, rx, ry), across = (h >>> 4) & 1;

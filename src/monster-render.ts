@@ -13,6 +13,8 @@ import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlob
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
+import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawSpino, drawSpinoMarks } from "./spino-render.ts";
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
 import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.ts";
@@ -458,12 +460,75 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
   ctx.restore();
 }
 
+// The Wild Stegosaurus, a simple placeholder (its full drawing is built separately and reads the same pose fields, monster-pack.ts
+// STEGO): a blue body with a lighter belly and dark stripes, two staggered rows of light-barred plates, a small head with a yellow
+// eye, and a tail with four spikes (two stubs once cut). It reads e.stegoAir, e.stegoRoll, e.stegoSwim, e.stegoTail, e.stegoPlates,
+// e.stegoClimb and e.stegoTree; nothing moves on its own clock under reduced motion.
+const STEGO_LOOK = { body: "#2f6fd6", dark: "#163a7a", plate: "#a9dcff", belly: "#6f9fe6", eye: "#ffd23a", wood: "#6a4a2a", leaf: "#3f7a3a", water: "rgba(40,90,160,.55)" };
+function drawWildStegoPlaceholder(ctx, q) {
+  const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, Number(e.stegoAir) || 0), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
+  const b = q.b - air * u * .45, quiet = !!e.reduceMotion;
+  ctx.save(); ctx.translate(k, b); ctx.scale(flip, 1);
+  if (climb > 0) ctx.rotate(-climb * .9);
+  if (roll > .5) { /* the wheel: a disc of plates */
+    const R = u * .62, spin = quiet ? 0 : q.t * 9;
+    ctx.fillStyle = C.body; ctx.beginPath(); ctx.arc(0, -R, R, 0, TAU); ctx.fill();
+    for (let i = 0; i < 10; i++) { const a = spin + i * TAU / 10; ctx.fillStyle = i % 2 ? C.plate : C.dark; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R, -R + Math.sin(a) * R); ctx.lineTo(Math.cos(a + .2) * R * 1.35, -R + Math.sin(a + .2) * R * 1.35); ctx.lineTo(Math.cos(a + .4) * R, -R + Math.sin(a + .4) * R); ctx.fill(); }
+    ctx.restore(); return;
+  }
+  const low = swim === 1;
+  if (!low) { /* legs, belly, body */
+    ctx.fillStyle = C.dark; for (const x of [-.42, -.2, .2, .4]) ctx.fillRect(x * u - u * .07, -u * .32, u * .14, u * .32);
+    ctx.fillStyle = C.belly; ctx.beginPath(); ctx.ellipse(0, -u * .38, u * .62, u * .2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = C.body; ctx.beginPath(); ctx.ellipse(0, -u * .52, u * .62, u * .3, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = C.dark; ctx.lineWidth = Math.max(1, u * .04); for (const x of [-.3, -.05, .2]) { ctx.beginPath(); ctx.moveTo(x * u, -u * .72); ctx.lineTo((x + .08) * u, -u * .36); ctx.stroke(); }
+    // tail and its spikes
+    const cut = e.stegoTail === "cut", tl = cut ? .25 : .55;
+    ctx.fillStyle = C.body; ctx.beginPath(); ctx.moveTo(-u * .5, -u * .62); ctx.lineTo(-u * (.5 + tl), -u * .5); ctx.lineTo(-u * .5, -u * .42); ctx.fill();
+    if (!cut) { ctx.fillStyle = C.plate; for (const [x, y, dx, dy] of [[-.95, -.52, -.12, -.2], [-.95, -.5, -.18, .1], [-.85, -.55, -.08, -.22], [-.85, -.5, -.14, .12]]) { ctx.beginPath(); ctx.moveTo(x * u, y * u); ctx.lineTo((x + dx) * u, (y + dy) * u); ctx.lineTo((x + .05) * u, y * u); ctx.fill(); } }
+    // head and its yellow eye
+    ctx.fillStyle = C.body; ctx.beginPath(); ctx.ellipse(u * .72, -u * .5, u * .16, u * .1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = C.eye; ctx.beginPath(); ctx.arc(u * .78, -u * .53, Math.max(1, u * .03), 0, TAU); ctx.fill();
+  }
+  // two staggered rows of plates (they shrink while they grow back); only these show above the water when it swims low
+  const base = low ? -u * .05 : -u * .76;
+  for (let i = 0; i < 7; i++) { const x = (-.42 + i * .13) * u, h = (.22 + Math.sin(i / 6 * Math.PI) * .16) * u * plates; ctx.fillStyle = i % 2 ? C.plate : C.belly; ctx.beginPath(); ctx.moveTo(x - u * .06, base); ctx.lineTo(x + (i % 2 ? .03 : -.03) * u, base - h); ctx.lineTo(x + u * .06, base); ctx.fill(); ctx.strokeStyle = C.dark; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x, base - h * .7); ctx.stroke(); }
+  if (low) { ctx.fillStyle = C.water; ctx.beginPath(); ctx.ellipse(0, 0, u * .7, u * .12, 0, 0, TAU); ctx.fill(); }
+  if (e.stegoTree && e.stegoTree.phase !== "grab") { ctx.fillStyle = C.wood; ctx.fillRect(u * .75, -u * 1.5, u * .08, u * 1.1); ctx.fillStyle = C.leaf; ctx.beginPath(); ctx.arc(u * .79, -u * 1.55, u * .22, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+export const STEGO_EFFECT_KINDS = new Set(["stegoDust", "stegoRocket", "stegoSpike", "stegoBlade"]);
+function drawStegoEffect(ctx, f, s, now, presentation = {}) {
+  const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || .4) * s, quiet = !!(presentation?.reduceMotion || presentation?.safeMode);
+  ctx.save();
+  if (f.kind === "stegoRocket") {
+    if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.fillStyle = `rgba(22,58,122,${(.18 + .3 * k).toFixed(3)})`; ctx.strokeStyle = "rgba(169,220,255,.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      const hy = y - (1 - k) * s * 6; ctx.fillStyle = "#a9dcff"; ctx.beginPath(); ctx.moveTo(x, hy - s * .4); ctx.lineTo(x - s * .15, hy); ctx.lineTo(x + s * .15, hy); ctx.fill(); }
+    else { glow(ctx, x, y, r * 1.4, "#a9dcff", .5); }
+  } else if (f.kind === "stegoSpike") { const a = Math.atan2(f.vy || 0, f.vx || 1); ctx.translate(x, y - s * .3); ctx.rotate(a); ctx.fillStyle = "#cfe9ff"; ctx.beginPath(); ctx.moveTo(s * .25, 0); ctx.lineTo(-s * .15, -s * .07); ctx.lineTo(-s * .15, s * .07); ctx.fill();
+  } else if (f.kind === "stegoBlade") { const a = Math.atan2(f.vy || 0, f.vx || 1), L = (f.length || 1.4) * s; ctx.translate(x, y - s * .3); ctx.rotate(a); ctx.strokeStyle = "rgba(200,235,255,.9)"; ctx.lineWidth = Math.max(2, s * .12); ctx.beginPath(); ctx.arc(-L * .3, 0, L * .5, -.9, .9); ctx.stroke();
+  } else { const spin = quiet ? 0 : now / 120; ctx.strokeStyle = "rgba(190,170,130,.7)"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x, y - i * r * .5, r * (1 - i * .2), r * .35, spin + i, 0, TAU * .75); ctx.stroke(); } }
+  ctx.restore();
+}
+export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh"]);
+function drawSpinoEffect(ctx, f, s, now, presentation = {}) {
+  const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || .4) * s, quiet = !!(presentation?.reduceMotion || presentation?.safeMode);
+  ctx.save();
+  if (f.kind === "spinoRock") { ctx.fillStyle = "#7a5a3a"; ctx.beginPath(); ctx.arc(x, y - s * .3, Math.max(2, r), 0, TAU); ctx.fill(); }
+  else if (f.kind === "spinoBone") { const a = quiet ? Math.atan2(f.vy || 0, f.vx || 1) : now / 90; ctx.translate(x, y - s * .5); ctx.rotate(a); ctx.strokeStyle = "#ece6d6"; ctx.lineWidth = Math.max(2, s * .1); ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke(); }
+  else if (f.kind === "spinoBoneBurst") { if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.strokeStyle = "rgba(236,230,214,.85)"; ctx.fillStyle = `rgba(74,70,64,${(.15 + .3 * k).toFixed(3)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); } else glow(ctx, x, y, r * 1.3, "#ece6d6", .5); }
+  else if (f.kind === "spinoFurrow") { const k = Math.max(0, f.life / (f.total || 1)); ctx.translate(x, y); ctx.rotate(f.angle || 0); ctx.strokeStyle = `rgba(60,40,24,${(.7 * k).toFixed(3)})`; ctx.lineWidth = Math.max(2, s * .12); ctx.beginPath(); ctx.moveTo(-s * .5, 0); ctx.lineTo(s * .5, 0); ctx.stroke(); }
+  else { ctx.fillStyle = "#c4561a"; ctx.beginPath(); ctx.arc(x, y - s * .2, Math.max(2, r * .8), 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
 const BODY = {
   ...SEED_REALM_BODIES, // seed realms (seed-realm-render.ts)
   ...ADVENTURE_BODIES, // adventure creatures (adventure-creature-render.ts): drawn once, then stamped
   ...DUELIST_BODIES, // the Gaunt (duelist-render.ts): drawn once per pose, then stamped
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
+  wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
+  spinoRex(ctx, q) { drawSpino(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
@@ -1332,7 +1397,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);
@@ -1672,6 +1737,8 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
       drawAstralInkBlobs(ctx,e.astral.blobs||[],project,s);
     }
     { const b = !e.dead && visible(e) && bodyHitFootprint(e); if (b) { const by = (e.y + .6 - (heights.ground?.(e.x, e.y) || 0)) * s, R = b.radius * s; ctx.save(); ctx.fillStyle = b.armed ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; if (!b.armed) ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, by, R, R * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); } } // release 427: the body's own reach while it hits with it
+    // the Spinosaurus's grab: its bite-mark reticle on its prey (spino-render.ts)
+    if (e.kind === 'spinoRex' && !e.dead && e.spinoGrab && visible(e)) drawSpinoMarks(ctx, e, s, now, enemies, 0, !!heights.reduceMotion);
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;
@@ -1910,6 +1977,8 @@ export function drawPackEffects(ctx, effects, s, now, visible = () => true, lift
     if (STAG_EFFECT_KINDS.has(f.kind)) { drawStagEffect(ctx, f, s, now, presentation); continue; }
     if (DRAGON_EFFECT_KINDS.has(f.kind)) { drawDragonEffect(ctx, f, s, now, presentation); continue; }
     if (DOOM_EFFECT_KINDS.has(f.kind)) { drawDoomEffect(ctx, f, s, now, presentation); continue; }
+    if (STEGO_EFFECT_KINDS.has(f.kind)) { drawStegoEffect(ctx, f, s, now, presentation); continue; }
+    if (SPINO_EFFECT_KINDS.has(f.kind)) { drawSpinoEffect(ctx, f, s, now, presentation); continue; }
     if (MOTH_EFFECT_KINDS.has(f.kind) || f.kind === "orb" && f.moth) { drawMothEffect(ctx, f, s, now, presentation); continue; }
     if (f.kind === "debris" && f.medium === "water") { drawCrystalWater(ctx, f, s, now, lift, presentation); continue; }
     if (f.kind === "gloomfall" || f.kind === "gloomMote") { drawGloomEffect(ctx, f, s, now); continue; } // the Gloomvast's
