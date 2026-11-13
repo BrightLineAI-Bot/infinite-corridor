@@ -14,6 +14,7 @@ export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   melee: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   'salvage-blade': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   'verge-cleaver': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'quandrix-staff': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }), // a primary: held where every primary is (2026-11-13)
   'cinder-pike': Object.freeze({ hand: 'left', scale: 1, grip: 'pike' }),
   'great-sweep': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   mirage: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
@@ -268,7 +269,7 @@ export function playerFormPresentation(game) {
   return {...profile,kind,scale,head:profile.head*.82*scale,lift:mech&&game.mechBoosting===true?.22:0,mech,fists,empowered:mech&&save.mech?.empowered===true};
 }
 export function playerFormModelKey(form,held='melee') {
-  const profile=['salvage-blade','cinder-pike','verge-cleaver'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
+  const profile=['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
   return form&&PLAYER_HELD_PROFILES.includes(profile)?`${form.kind}:${profile}`:form?.kind||null;
 }
 
