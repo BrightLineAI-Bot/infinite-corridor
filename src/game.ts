@@ -64,6 +64,7 @@ import {
   abandonDungeon,
   journalOnce,
   gainAperture,
+  APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
@@ -2480,7 +2481,7 @@ export class Game {
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
-    this._resonanceAperture = save.perception?.aperture; this._resonanceSeen = apertureResonance(save); // QA 926 (syncResonance)
+    APERTURE_TIER_DUE.delete(save); // QA 926 (syncResonance): the load's settleProgression has applied every tier
     const s = save.session;
     this.area = s.area;
     this.rx = s.rx || 0;
@@ -3557,10 +3558,10 @@ export class Game {
   }
   // QA 926: a new Aperture Resonance tier (gainAperture, from any caller) raises the derived maximum health at once, as a level-up
   // does: the maximum and current health both rise by the difference (stamina likewise), so the HUD is right and a reload
-  // (syncCharacterStats on load) has nothing left to hand out. Checked once a frame and before a save, by a number compare only.
+  // (syncCharacterStats on load) has nothing left to hand out. Checked once a frame and before a save: one WeakSet lookup, marked by
+  // gainAperture when a tier is crossed (APERTURE_TIER_DUE), so a lab or test that sets the Aperture by hand is left as set.
   syncResonance() {
-    const a = this.save.perception?.aperture; if (a === this._resonanceAperture) return false; this._resonanceAperture = a;
-    const r = apertureResonance(this.save); if (r === this._resonanceSeen) return false; this._resonanceSeen = r;
+    if (!APERTURE_TIER_DUE.has(this.save)) return false; APERTURE_TIER_DUE.delete(this.save);
     const p = this.player, oldHp = Number(this.save.maxHp) || 0, oldStamina = Number(this.save.maxStamina) || 0; syncCharacterStats(this.save);
     if (p.hp > 0) p.hp = Math.min(this.save.maxHp, p.hp + Math.max(0, this.save.maxHp - oldHp)); else p.hp = Math.min(p.hp, this.save.maxHp);
     p.stamina = Math.min(this.save.maxStamina, p.stamina + Math.max(0, this.save.maxStamina - oldStamina)); p.maxStamina = this.save.maxStamina;
