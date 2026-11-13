@@ -2,11 +2,11 @@
 // the drone just isn't able to fly there. You can start flying there, but your drone will explode or fizzle out, noticeably, so you
 // know: something is wrong with the Corridor here; the rules are different here. Then you fall and die. The drone works wherever
 // else you want." The zones are the closed blocks a structure's route runs through: the Pentagon's walls and a Great Castle's wings
-// and walls (vehicle-gates.ts DRONE_FIZZLE). Courts, roofs and the castle keep's top stay open air; the glider is unchanged.
+// and walls (vehicle-gates.ts DRONE_FIZZLE). Courts, roofs and the castle keep's top stay open air; the glider opens only off great trees (2026-11-13).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DRONE, DRONE_LIFT, DRONE_FIZZLE, droneZoneOf, droneForbiddenAt, setMechMode } from '../src/vehicle-gates.ts';
-import { Game, GLIDE } from '../src/game.ts';
+import { Game, GLIDE, FALL } from '../src/game.ts';
 import { freshSave } from '../src/types.ts';
 import { fallDamage } from '../src/landscape.ts';
 import { PENTAGON } from '../src/pentagon.ts';
@@ -98,18 +98,19 @@ test('the drone works elsewhere: in a Pentagon court, onto an ordinary roof, pas
   assert.equal(droneForbiddenAt({ tiles: [] }, 32, 0, 0), null);
 });
 
-test('the castle keep\'s roof exit: the top is open air beside courts, the glider still carries you off it, and the drone lets you down into the court', () => {
+test('the castle keep\'s roof exit: the top is open air beside courts, the glider does not open off it (great trees only), and the drone lets you down into the court', () => {
   const C = findCastle(), k = quarterSection(C.X, C.Y, castleTopology(SEED, C.X, C.Y).k);
   const keepTop = (g) => { const rec = g.map.objects.find((o) => o.castle && o.blocks?.some((b) => b.part === 't')); return rec.blocks.find((b) => b.part === 't').cells; };
   // The landing the 746 roof exit uses is on the keep's 3×3 top, not a zone; round the top is only court (no wing touches it).
   { const g = visit(k.rx, k.ry), L = roofLanding(g.map, 'keep'), cells = keepTop(g), set = new Set(cells.map((c) => c.y * W + c.x)); assert.ok(L);
     assert.equal(droneZoneOf(T(g, L.x, L.y)), null); assert.equal(T(g, L.x, L.y).elev, 5);
     for (const c of cells) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const i = (c.y + dy) * W + c.x + dx; if (set.has(i)) continue; assert.equal(droneZoneOf(g.map.tiles[i]), null, 'beside the top: court'); assert.ok(g.map.tiles[i].courtyard); } }
-  // The glider: off the edge toward the middle of the land, a freefall, Jump opens it, and it carries you down alive (over the wings).
-  { const g = visit(k.rx, k.ry), L = roofLanding(g.map, 'keep'); g.save.glider = true; g.player.x = L.x; g.player.y = L.y; const dx = L.x > 16 ? -1 : 1, dy = L.y > 16 ? -1 : 1, before = deaths(g);
-    let t = fly(g, 30, () => ({ x: dx, until: () => !!g.glide }), 1000); assert.ok(g.glide, 'off the top: a freefall'); assert.equal(g.glide.open, false);
-    t = fly(g, 1, () => ({ jump: true, x: dx, y: dy }), t); assert.equal(g.glide.open, true, 'Jump opens the glider');
-    t = fly(g, 200, () => ({ x: dx, y: dy, until: () => !g.glide }), t); assert.equal(g.glide, null, 'down'); assert.equal(deaths(g), before, 'alive'); assert.ok(g.player.hp > 0); }
+  // The glider (2026-11-13, Tim: great trees only; was 'a freefall, Jump opens it, and it carries you down alive'): off the keep's top
+  // the glider never opens. The five-level drop is an ordinary fall under FALL, and lethal; Jump mid-fall says nothing can catch you.
+  { const g = visit(k.rx, k.ry), L = roofLanding(g.map, 'keep'); g.save.glider = true; g.player.x = L.x; g.player.y = L.y; const dx = L.x > 16 ? -1 : 1, before = deaths(g);
+    let t = fly(g, 30, () => ({ x: dx, until: () => !!g.fall || !!g.glide }), 1000); assert.equal(g.glide, null, 'off the top: no freefall glide'); assert.ok(g.fall, 'an ordinary fall');
+    t = fly(g, 1, () => ({ jump: true }), t); assert.equal(g.glide, null, 'Jump opens nothing'); assert.equal(g.message, FALL.nothing);
+    t = fly(g, 60, () => ({ until: () => deaths(g) > before }), t); assert.equal(deaths(g) - before, 1, 'five levels down: lethal'); }
   // The drone: lift off the top, over the court beside it, feathered down.
   { const g = visit(k.rx, k.ry), L = roofLanding(g.map, 'keep'), cells = keepTop(g); droneOut(g); g.player.x = L.x; g.player.y = L.y;
     const minX = Math.min(...cells.map((c) => c.x)), inner = L.x > 16; // the court ring is two tiles wide on the land side

@@ -218,7 +218,10 @@ function dressSkyland(map, id, save = null) {
 // right better... descend more slowly... go to a high branch and then glide down... the only way you can glide is if you get up in
 // a tall tree... float down pretty much as much as you want in any direction... if you jump off a tree and you're high enough you
 // can glide into the next undiscovered tile"): the leaf glider, found on the landing of the first great tree climbed
-// (save.glider, additive). It opens only on a fall of `minDrop` levels or more from a great tree. Gliding, the Wayfarer sinks
+// (save.glider, additive). It opens only on a fall of `minDrop` levels or more from a great tree. Tim (2026-11-13: "falls stay
+// dangerous"): it is for great trees only. Leaving a great tree's crown or canopy (`treeLaunch`: stood on within CANOPY_FALL_MS) by
+// a drop of `minDrop` or more is the closed glide (a freefall; Jump opens it), and a jump from there opens it mid-jump. Any other
+// fall is an ordinary fall under FALL (the 641 freefall off any 4+ drop and the 926 Jump-mid-fall catch are gone). Gliding, the Wayfarer sinks
 // `sink` levels a second and steers freely at up to `speed` tiles a second (eased by `steer`), over walls, trees and water, and on
 // over the section's edge into the next. It ends only over open ground it can stand on; over water, walls or anything else it
 // holds at `skim` levels until there is. Tall blocked things (a trunk) still stop it. Out of reach of blows while above `safe`.
@@ -239,7 +242,7 @@ export function crownSpot(map) {
   return { x: t.x, y: t.y - .2 };
 }
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
-export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637)
+export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637); 2026-11-13: crown or canopy (Game.treeLaunch)
 export const CHASM = { version: 1, chance: .2, /* release 672: was .12; rolled once, at a crossing's first entry, and kept */ keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
 // [chasm]... those moving platforms can be in the... Starfield dungeons"): rafts of stone glide to and fro over straight runs of
@@ -2434,7 +2437,7 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // ground hands its descent on to the fall at this speed (the drawn arc's own landing speed), so the arc and the fall join without a
 // float. `plunge`: a jump attack (brawler-spells.ts PLUNGE) that ends over a drop is driven down at this speed and slams where the fall
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
-export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
+export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", nothing: "Nothing to catch you." }; // nothing (Tim, 2026-11-13): Jump mid-fall with no drone to catch you; the glider is for great trees only
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
   const G = FALL.gravity, T = FALL.terminal, v0 = Math.min(T, Math.max(0, -Number(vz0) || 0)), h = Math.max(0, Number(drop) || 0);
@@ -2507,6 +2510,7 @@ export class Game {
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), open: q.open !== false, ...(q.open === false && Number.isFinite(Number(q.fallFrom)) ? { fallFrom: Number(q.fallFrom) } : {}), ...(q.open === false && q.vz != null && Number.isFinite(Number(q.vz)) ? { vz: Math.max(-GLIDE.drop, Math.min(0, Number(q.vz))) } : {}), told: false } : null; } // release 635
     { const q = s.playerRuntime.fall; this.fall = q && s.area === "overworld" && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0) } : null; } // FALL: exact resume in the air (checked against the ground once the section is loaded)
+    { const q = s.playerRuntime.glide, g = this.glide; if (g) { if (g.open !== false || q.tree === true || s.playerRuntime.glideHome) g.tree = true; else { if (!this.fall) this.fall = { z: g.z, vz: Number.isFinite(g.vz) ? Math.max(-FALL.terminal, g.vz) : 0, from: Math.max(g.z, Number.isFinite(g.fallFrom) ? g.fallFrom : g.z), scale: 1, t: 0 }; this.glide = null; } } } // 2026-11-13: a closed glide saved before the glider was for great trees only (the 641 freefall off any drop) resumes as the fall it is, at its height
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
@@ -3542,7 +3546,7 @@ export class Game {
         ...this.save.session.playerRuntime, // release 736 (S7): fields from a newer release are kept
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
         droneLift: this.droneLift && this.droneLiftAllowed() ? { ...this.droneLift, base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air; schema-14 unknown fields survive while canonical values win
-        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null, ...(Number.isFinite(this.glide.vz) ? { vz: this.glide.vz } : {}) } : null,
+        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null, ...(Number.isFinite(this.glide.vz) ? { vz: this.glide.vz } : {}), tree: true } : null, // tree (2026-11-13, additive): every glide is a great tree's; a closed one saved without it is an old freefall and resumes as a fall
         fall: this.fall && this.area === "overworld" && this.fallApplies() ? { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0 } : null, // FALL: a fall resumes in the air // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
@@ -3906,18 +3910,18 @@ export class Game {
     const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
   }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
-  // is a freefall, as off any ledge). Tim (2026-11-12): every Rift Step falls; before, the blink's drop was never counted.
+  // is a freefall only when the step leaves a great tree: treeLaunch). Tim (2026-11-12): every Rift Step falls.
   landBlink(footing, fromLevel, now) {
     const p = this.player, was = this.fall, from = was ? Math.max(was.from, fromLevel) : fromLevel, drop = from - footing.level; this.setRoofDeck(footing.deck); this.skyAir = null; this.deckHop = false;
     // FALL: a step that arrives in the air over its footing falls from there (a step taken while falling keeps the fall's speed and
     // the height its damage counts from: a blink moves you, it does not catch you). Arriving at the footing, it lands now.
     if (this.fallApplies() && fromLevel - footing.level > FALL.minDrop) {
-      if (this.save.glider && !this.glide && !was && drop >= GLIDE.minDrop && !this.mechUp()) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, vz: 0, open: false, fallFrom: from, told: false }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
+      if (this.save.glider && !this.glide && !was && drop >= GLIDE.minDrop && !this.mechUp() && this.treeLaunch(now)) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, vz: 0, open: false, fallFrom: from, told: false, tree: true }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
       this.jumpUntil = Math.min(this.jumpUntil || 0, now); this.beginFall(fromLevel, was ? was.vz : 0, from, was ? was.scale : 1); return 0;
     }
     this.fall = null;
     if (!(drop > 1)) return 0;
-    if (this.save.glider && !this.glide && drop >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp()) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, open: false, fallFrom: fromLevel, told: false }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
+    if (this.save.glider && !this.glide && drop >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && this.treeLaunch(now)) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, open: false, fallFrom: fromLevel, told: false, tree: true }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
     const hurt = fallDamage(drop, this.save.maxHp);
     if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(drop * 10) / 10} levels.`; return hurt; }
     if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `A hard landing: ${Math.round(drop * 10) / 10} levels down.`; }
@@ -4933,6 +4937,9 @@ export class Game {
     this.glide = null; this.skyAir = null; p.hp = 0; this._fatalFallPending = true; this.message = F.message;
     journalOnce(this.save, F.journal, F.message, "The glider"); return "landed";
   }
+  // The glider is for great trees only (Tim, 2026-11-13): is a fall or jump begun now leaving a great tree's crown or canopy (stood on
+  // within CANOPY_FALL_MS; lastCrownAt is set on every canopy platform, the crown included)?
+  treeLaunch(now) { const at = Number(this.lastCrownAt); return this.area === "overworld" && at > 0 && now - at < CANOPY_FALL_MS; }
   // TREE_GLIDE.home (Tim, 2026-11-05): a glide launched at the height of this section's great-tree crown remembers the tree (its
   // section and the crown spot a death wakes you on); a glide begun anywhere lower remembers nothing. Runtime, saved for exact resume.
   // Decision 13 (TREE_GLIDE.home.reached): only when the last ground stood on was this section's great crown (`crownFoot`).
@@ -9601,15 +9608,14 @@ export class Game {
       // Release 641 (Tim: "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button"):
       // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), fall = this.fallApplies() ? this.fall : null, high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0, fall ? fall.z : 0);
-      if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) { g.fallFrom = g.z; g.vz = -GLIDE.sink; } this.message = g.open ? GLIDE.open : GLIDE.shut; }
-      // FALL: falling, Jump catches you: the drone's booster (when it is up; its fuel and rules as from a jump), else the glider (when you
-      // have it, over enough air for it). A catch ends the fall: its damage then counts afresh from where you were caught.
+      if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; g.tree = true; if (!g.open) { g.fallFrom = g.z; g.vz = -GLIDE.sink; } this.message = g.open ? GLIDE.open : GLIDE.shut; }
+      // FALL: falling, Jump catches you with the drone's booster (when it is up; its fuel and rules as from a jump). A catch ends the
+      // fall: its damage then counts afresh from where you were caught. The glider catches nothing (Tim, 2026-11-13: great trees only).
       else if (fall && !(now < this.jumpUntil)) {
         if (this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else if (this.droneRoofCap(fall.z) != null) this.message = DRONE_LIFT.roofed; else { this.droneLift = { base: Math.max(below, Math.floor(fall.z + 1e-6) - DRONE_LIFT.max), z: fall.z, vz: 0 }; this.mechSpent = false; this.fall = null; this.jumpUntil = now + 140; this.skyAir = Math.floor(fall.z + 1e-6); this.liftDrop = false; this.message = FALL.catchDrone; } }
-        else if (this.save.glider && !this.mechUp() && fall.z - below >= GLIDE.minDrop) { this.glide = { z: fall.z, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(fall.z); this.fall = null; this.skyAir = null; this.message = FALL.catchGlide; }
-        else this.message = "Already airborne.";
+        else this.message = FALL.nothing;
       }
-      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }
+      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop && this.treeLaunch(now)) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false, tree: true }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }
       else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); if (this.droneRoofCap(z) != null) this.message = DRONE_LIFT.roofed; /* under a roof: no lift */ else { this.droneLift = { base: Math.max(this.jumpFrom ?? below, below, fall ? Math.floor(fall.z + 1e-6) - DRONE_LIFT.max : -Infinity), z, vz: 0 }; this.mechSpent = false; this.fall = null; this.message = DRONE_LIFT.engage; } } } // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
@@ -9743,7 +9749,7 @@ export class Game {
       // Release 585 (the skyway climb): a jump from a sky platform keeps its height over the gap below until it ends, so the
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
-      if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
+      if (skyFrom?.kind === "canopyTrunk" || (skyFrom?.canopy && skyFrom.skyPlatform)) this.lastCrownAt = now; // release 637: the glider opens only from the crown; 2026-11-13: or the great tree's canopy (treeLaunch)
       if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
       if (p.jumping && (skyFrom?.skyPlatform || (interiorTerrain(this.map) && skyFrom?.interiorPlatform))) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
@@ -9754,7 +9760,7 @@ export class Game {
       let fallStart = was ? was.from : deckStart ? deckStart.level : this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
       let fallWhy = ""; const jumpEnded = !p.jumping && now - (this.jumpUntil || -1e9) <= dt * 1000 + 1e-6, fallScale = this.skyAir != null ? this.skyAirScale || 1 : tileLiftScale(tileUnder(this.map, width, fromX, fromY));
       const finishFall = (height, instant = false) => {
-        const raw0 = fallStart - height, bodyZ = held ? held.z : fallStart; if (this.save.glider && !this.glide && !fallNow && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall */ this.glide = { z: bodyZ, vx: 0, vy: 0, vz: 0, open: false, fallFrom: fallStart, told: false }; this.glideHome = this.treeGlideHome(fallStart); this.fall = null; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
+        const raw0 = fallStart - height, bodyZ = held ? held.z : fallStart; if (this.save.glider && !this.glide && !fallNow && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop && this.treeLaunch(now)) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall. 2026-11-13: only leaving a great tree (treeLaunch); any other drop is an ordinary fall */ this.glide = { z: bodyZ, vx: 0, vy: 0, vz: 0, open: false, fallFrom: fallStart, told: false, tree: true }; this.glideHome = this.treeGlideHome(fallStart); this.fall = null; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
         // FALL: over ground more than minDrop below them they are in the air, and fall (a jump holds its height until it ends and hands
         // the fall its descent); a slope is walked down. Damage waits for the landing.
         const slope = raw0 <= FALL.stepDown + 1e-6 && (!!tileUnder(this.map, width, p.x, p.y)?.slope || !!tileUnder(this.map, width, fromX, fromY)?.slope);
