@@ -5148,7 +5148,7 @@ export class Game {
       const z2 = droneForbiddenAt(this.map, width, nx, ny); if (z2) { ny = p.y; g.vy = 0; held ||= z2; }
       if (held?.glide && g.held !== held.id) { g.held = held.id; this.message = held.glide; journalOnce(this.save, `glide-held:${held.id}`, held.glide, "The glider"); }
     }
-    if (g.open === false) { g.vz = Math.max(-G.drop, Math.min(0, Number.isFinite(g.vz) ? g.vz : -G.drop) - FALL.gravity * dt); g.z += g.vz * dt; } else { g.vz = -G.sink; g.z -= G.sink * dt; } p.invulnerableUntil // FALL: closed, the glider falls under the fall model (GLIDE.drop is its terminal speed); open, it sinks = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;
+    if (g.open === false) { g.vz = Math.max(-G.drop, Math.min(0, Number.isFinite(g.vz) ? g.vz : -G.drop) - FALL.gravity * dt); g.z += g.vz * dt; } else { g.vz = -G.sink; g.z -= G.sink * dt; } p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil; // FALL: closed, the glider falls under the fall model (GLIDE.drop is its terminal speed); open, it sinks
     let out = nx < -.2 ? [-1, 0] : nx > SECTION_SIZE - .8 ? [1, 0] : ny < -.2 ? [0, -1] : ny > SECTION_SIZE - .9 ? [0, 1] : null;
     // A stretch of seam this glide was already turned back from (below) stays a wall to it: no section load each frame.
     const sh = g.seamHold; if (out && sh && sh.rx === this.rx && sh.ry === this.ry && sh.dx === out[0] && sh.dy === out[1] && Math.abs((out[0] ? ny : nx) - sh.at) < 1.5) { if (out[0]) { nx = p.x; g.vx = 0; } else { ny = p.y; g.vy = 0; } out = null; }

@@ -16,6 +16,14 @@ Tim asked for two new monsters on 2026-11-12, the stegosaurus for his kid. Both 
 
 **BOUNDARY:** Saves stay additive at schema 14: `stegoBait`, `bleed`, `spinoInterlopers` and the player's `wallCling` and `wallKick` are normalised in `freshSave` and `migrateSave`. Big-room spawns are pinned per floor history (`stegoRooms`, `spinoRooms`), so floors generated before this release never change. Neither beast appears in ordinary dungeons; the Spinosaurus never appears at sea or as a passing beast. The Spinosaurus interlopes at most once per fight, and only in a real hunt. The stegosaurus follows the Wayfarer up raised floors and platforms in buildings, but not through ladders, lifts or doors to separate floors. The wall cling never works with the drone out or the robot on, inside a house, or on Pentagon, Great Castle or sealed-tower tiles, and a chain of holds climbs at most 3 levels. Bait does not draw bosses or finale beasts. Effects, routes and actors are bounded, and under Reduced Motion the roar's shake is skipped.
 
+## Release 928 — Release 928 — gliding is out of reach of blows again
+
+The pre-publish review of r917 to r927 found that release 926 had put a `// FALL:` comment in the middle of the glide update line, commenting out the assignment that keeps a Wayfarer gliding above `GLIDE.safe` out of reach of blows. In its replay a mid-glide save took 40 damage where the live game took none.
+
+**CODE:** `src/game.ts` glide update: `p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;` restored, with the 926 comment moved to the end of the line. `tests/glide-guard.test.ts` checks an open and a closed glide above `GLIDE.safe` stay invulnerable frame by frame.
+
+**BOUNDARY:** One assignment restored to its r917 behaviour; no other change. No save change.
+
 ## Release 927 — Standard-view beast animation memory keyed by id
 
 This was found while building the Spinosaurus art (2026-11-12), and Tim asked for it to be fixed. The renderer paints a fresh copy of each foe every frame (`drawPackMonster(ctx, { ...e, ... })`). Four modules kept render memory in WeakMaps keyed by the object, so it never found the same key twice:
