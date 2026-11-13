@@ -54,7 +54,7 @@ test('one data table: a move for each primary but the staff, about the crescent\
   for (const id of AWAKENED_IDS) assert.equal(WEAPON_ARTS.arts[M[id].passive].weapon, M[id].weapon, `${id}: its weapon's own art`);
   assert.ok(Object.isFrozen(AWAKENED_ARTS) && Object.isFrozen(M) && AWAKENED_IDS.every((id) => Object.isFrozen(M[id]) && Object.isFrozen(M[id].up)));
   assert.equal(AWAKENED_ARTS.every, 3);
-  assert.equal(M.fissure.share, .7); assert.equal(M.lance.share, .7); assert.equal(M['spell-runes'].share, .7); assert.equal(M['returning-blades'].share * 2, .7, 'a cut out and a cut back'); assert.ok(M.roundhouse.share <= .8);
+  assert.equal(M.fissure.share, .3); assert.equal(M.lance.share, .5); assert.equal(M['spell-runes'].share, .7); assert.equal(M['returning-blades'].share * 2, .5, 'a cut out and a cut back'); for (const id of AWAKENED_IDS) assert.ok(M[id].share <= .8, `${id}: at most the crescent's weight (balance pass)`); assert.ok(M.roundhouse.share <= .8);
   assert.ok(M.fissure.up.share * M.fissure.up.life / M.fissure.up.tick <= .4, 'the lava crack is a small bonus');
   assert.ok(M.lance.up.returnShare < 1 && M['returning-blades'].up.share < M['returning-blades'].share && M.roundhouse.up.share < 1 && M['spell-runes'].up.share < 1);
   for (const [weapon, id] of [['verge-cleaver', 'fissure'], ['fourfold-daggers', 'returning-blades'], ['cinder-pike', 'lance'], ['iron-fists', 'roundhouse'], ['salvage-blade', 'spell-runes'], ['quandrix-staff', null]]) {
