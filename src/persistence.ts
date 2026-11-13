@@ -17,9 +17,15 @@ export function journeyMetadata(raw,slot=1){if(!raw)return{slot,health:"empty",e
 // The Wayfarer tab's "Your journey" figures (release 387; Tim approved the suggestion "a short 'your journey so far' page in the
 // Wayfarer tab"). Read only from what the save already keeps; returns [label, value] rows.
 export function journeyStats(save){const n=(v)=>Math.max(0,Math.floor(Number(v)||0)),h=Math.max(0,Number(save?.playSeconds)||0)/3600,beasts=Object.values(save?.worldBeasts||{}).reduce((a,b)=>a+n(b?.slain),0),cleared=Object.values(save?.consequences?.dungeons||{}).filter((d)=>d?.resolved||d?.guardianDefeated).length,dug=Object.values(save?.digging?.dug||{}).reduce((a,l)=>a+(Array.isArray(l)?l.length:0),0);return[["Time played",`${h.toFixed(1)} h`],...(n(save?.theDeep?.record)?[["Deepest floor of the Deep",n(save.theDeep.record)]]:[]),/* release 677 */["Sections explored",n(Object.keys(save?.explored||{}).length)],["Dungeons cleared",cleared],["World bosses felled",beasts],["Listeners felled",n(save?.farArray?.listeners)],["Towns raised",n(save?.hometowns?.towns?.length)],["Blocks dug",dug]]}
-function openDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
-async function read(key){const db=await openDb();return new Promise((resolve,reject)=>{const q=db.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
-async function write(key,value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
+// Perf spikes (Tim's r937 probe): every read and every autosave opened a new database connection (one more every 8 s, never
+// closed), and the open's success handler ran the save's own work. The connection is opened once and kept; it is dropped
+// (and opened again on the next call) when the browser closes it, another page asks to upgrade it, a call on it fails, or
+// the page's indexedDB is a different one (tests swap it).
+let dbOpen=null,dbFactory=null;
+function dropDb(){const was=dbOpen;dbOpen=null;dbFactory=null;if(was)was.then((db)=>{try{db.close?.()}catch{}},()=>{})}
+function openDb(){if(dbOpen&&dbFactory===globalThis.indexedDB)return dbOpen;dbFactory=globalThis.indexedDB;const opening=dbOpen=new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>{const db=q.result;try{db.onclose=()=>{if(dbOpen===opening)dbOpen=null};db.onversionchange=()=>{if(dbOpen===opening)dbOpen=null;try{db.close()}catch{}}}catch{}resolve(db)};q.onerror=()=>{if(dbOpen===opening)dbOpen=null;reject(q.error)}});return opening}
+async function read(key){const db=await openDb();return new Promise((resolve,reject)=>{const q=db.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)}).catch((error)=>{dropDb();throw error})}
+async function write(key,value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)}).catch((error)=>{dropDb();throw error})}
 // Release 555 (Tim's probe: a ~80-100 ms freeze every 8 s, outside the game's own frame work): IndexedDB copies whatever it
 // is given, on the main thread, when the write is queued. The autosave handed it the whole journey, every area ever visited
 // included, so the copy grew with the journey. A journey is now stored as its main record (session.areas left out, the
@@ -67,14 +73,17 @@ function shareCopy(v, prev) {
   if (v === null || typeof v !== "object") return v;
   if (Array.isArray(v)) {
     const n = v.length, p = Array.isArray(prev) ? prev : null; let out = p && p.length === n ? null : new Array(n);
-    for (let i = 0; i < n; i++) { const c = shareCopy(v[i], p && i < p.length ? p[i] : undefined); if (out) out[i] = c; else if (!Object.is(c, p[i])) { out = new Array(n); for (let j = 0; j < i; j++) out[j] = p[j]; out[i] = c; } }
+    for (let i = 0; i < n; i++) { const x = v[i], c = x === null || typeof x !== "object" ? x : shareCopy(x, p && i < p.length ? p[i] : undefined); if (out) out[i] = c; else if (!Object.is(c, p[i])) { out = new Array(n); for (let j = 0; j < i; j++) out[j] = p[j]; out[i] = c; } }
     return out || p;
   }
   if (!plainProto(v)) return structuredClone(v); // nothing but plain objects and arrays is shared
-  const p = prev && typeof prev === "object" && keyCounts.has(prev) ? prev : null, keys = Object.keys(v); let out = p && keyCounts.get(p) === keys.length ? null : {};
-  for (let i = 0; i < keys.length; i++) { const k = keys[i], had = !!p && own(p, k), c = shareCopy(v[k], had ? p[k] : undefined); if (out) out[k] = c; else if (!had || !Object.is(c, p[k])) { out = {}; for (let j = 0; j < i; j++) out[keys[j]] = p[keys[j]]; out[k] = c; } }
-  if (!out) return p;
-  keyCounts.set(out, keys.length); return out;
+  // Perf spikes (Tim's r937 probe: 20-30 ms autosave frames): the walk of an unchanged part allocates nothing (for...in, not
+  // Object.keys, which made an array for every object of a journey's ~100k on every autosave). Same result as before:
+  // the previous copy when every key and value matches, else a new object in v's key order sharing what did not change.
+  const pc = prev && typeof prev === "object" ? keyCounts.get(prev) : undefined, p = pc === undefined ? null : prev; let out = p ? null : {}, n = 0;
+  for (const k in v) { n++; const x = v[k], pk = p ? p[k] : undefined, had = pk !== undefined || (!!p && own(p, k)), c = x === null || typeof x !== "object" ? x : shareCopy(x, had ? pk : undefined); if (out) out[k] = c; else if (!had || !Object.is(c, pk)) { out = {}; for (const j in v) { if (j === k) break; out[j] = p[j]; } out[k] = c; } }
+  if (!out) { if (pc === n) return p; out = {}; for (const k in v) out[k] = p[k]; } // the same values, but the copy held more keys
+  keyCounts.set(out, n); return out;
 }
 // The first copy of a save (no earlier one to share with) is the engine's structuredClone, then counted for later sharing.
 function countKeys(v) { if (!v || typeof v !== "object") return; if (Array.isArray(v)) { for (const x of v) countKeys(x); return; } if (!plainProto(v) || keyCounts.has(v)) return; const keys = Object.keys(v); keyCounts.set(v, keys.length); for (const k of keys) countKeys(v[k]); }
@@ -129,6 +138,7 @@ function applyDelta(main, delta) {
 // What each journey key holds in the database now (areaKey -> the copy written), so an autosave knows what changed.
 const storedAreas = new Map();
 const storedSizes = new Map(); // journey key -> Map areaKey -> characters of its stored record
+const recordKeys = new Map(); // journey key -> the area keys whose records it holds now (after this page's last write or read)
 const journals = new Map(); // journey key -> { snapshot, stamp, ops, at }: the last write and the delta since the main record
 let stampSeq = 0;
 const assembled = new WeakSet(); // journeys readJourney put back together from split records
@@ -141,8 +151,11 @@ function sizesFor(key, areas, puts, keys) {
   for (const k of keys) if (!out.has(k)) out.set(k, known.has(k) ? known.get(k) : jsonLength(areas[k]));
   return out;
 }
+// A task of its own: the autosave's frame has already done the snapshot; this split, diff and the database's copy run after
+// that frame (the open's success event did this when every write opened the database afresh).
+const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
 async function writeJourney(key, value) {
-  const db = await openDb(), { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
+  const db = await openDb(); await nextTask(); const { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
   const split = main !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, j = journals.get(key), now = Date.now();
   let ops = null;
   if (split && j && sharedSnapshots.has(value) && sharedSnapshots.has(j.snapshot) && now - j.at < SAVE_DELTA.everyMs) {
@@ -159,12 +172,17 @@ async function writeJourney(key, value) {
       if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), ops: [...ops.values()].map((q) => [q.path, q.kind, q.value]) }, deltaKey(key));
       else { store.put(main, key); store.delete(deltaKey(key)); }
       queuedMs = performance.now() - t0;
-      const live = new Set(keys), stale = store.getAllKeys(areaRange(key));
-      stale.onsuccess = () => { for (const k of stale.result) if (!live.has(String(k).slice(prefix.length))) store.delete(k); };
+      // Perf spikes: the stale area records are known from the last write (or the load) of this journey, so a delta write
+      // deletes those no longer listed without reading back every area key (~1,700 in a mature journey, every 8 s); a full
+      // write, or a journey this page has not written or read yet, still sweeps the store.
+      const live = new Set(keys), had = ops ? recordKeys.get(key) : null;
+      if (had) { for (const k of had) if (!live.has(k)) store.delete(prefix + k); }
+      else { const stale = store.getAllKeys(areaRange(key)); stale.onsuccess = () => { for (const k of stale.result) if (!live.has(String(k).slice(prefix.length))) store.delete(k); }; }
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
     });
-  } catch (error) { journals.delete(key); throw error; } // the next write stores the main record whole
+  } catch (error) { journals.delete(key); recordKeys.delete(key); dropDb(); throw error; } // the next write stores the main record whole (and sweeps)
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
+  if (split) recordKeys.set(key, keys); else recordKeys.delete(key);
   if (sizes) storedSizes.set(key, sizes); else storedSizes.delete(key);
   if (split) journals.set(key, { snapshot: value, stamp, ops: ops || new Map(), at: ops ? j.at : now }); else journals.delete(key);
   try { onWriteTiming?.({ ms: Math.round(queuedMs * 10) / 10, areas: puts.length, of: keys.length, delta: !!ops }); } catch {}
@@ -200,13 +218,14 @@ async function readJourney(key) {
     const store = db.transaction(STORE).objectStore(STORE), ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key));
     vs.onsuccess = () => resolve(new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]]))); vs.onerror = () => reject(vs.error); ks.onerror = () => reject(ks.error);
   });
+  recordKeys.set(key, [...records.keys()]);
   const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
   const save = assembleSave(main, records); assembled.add(save); return save;
 }
 async function removeJourney(key) {
   const db = await openDb();
   await new Promise((resolve, reject) => { const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE); store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
-  storedAreas.delete(key); storedSizes.delete(key); journals.delete(key);
+  storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key);
 }
 async function remove(key){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
 // Release 734 (S1): the mirror is returned as stored (not migrated), so a damaged or newer-version mirror reads as damaged,

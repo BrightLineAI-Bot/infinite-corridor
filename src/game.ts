@@ -1466,6 +1466,10 @@ export const SECTION_TERRAIN = Object.freeze({ keep: 12 }); // the section, its 
 // crossing, the edge just crossed does not take the Wayfarer back until they have been `depth` tiles inside it or `ms` have
 // passed; for that moment it holds like the rest of the section's border. Arrival points and map generation are unchanged.
 export const EDGE_HOLD = Object.freeze({ depth: .75, ms: 450 });
+// Perf spikes (Tim's r937 probe: a 68 ms `update` on the frame he crossed into a new section, about half of it generating the
+// new section's terrain): within `edge` tiles of a section edge, idle time lays the section beyond it into the sectionTerrain
+// cache (Game.warmCrossingTerrain, main.ts), so the crossing copies kept terrain instead of generating it in its own frame.
+export const CROSSING_WARM = Object.freeze({ edge: 6 });
 export const DUNGEON_LEVEL_KEEP = 24; // perf pack (D7): other levels' guardian lists kept per session
 const terrainCache = new Map();
 export function sectionTerrainCacheStats() { return { size: terrainCache.size, keep: SECTION_TERRAIN.keep, hits: terrainCache.hits || 0, misses: terrainCache.misses || 0 }; }
@@ -3169,7 +3173,7 @@ export class Game {
   }
   // The terrain passes loadArea runs for the current section, with the versions its atlas entry pins (perf pack: the
   // sectionTerrain key; the same conditions loadArea applied each pass under before).
-  sectionTerrainSteps(){const save=this.save,rx=this.rx,ry=this.ry,seen=save.atlas?.[`${rx},${ry}`],town=townAt(save,rx,ry),coh=coherenceOf(seen);
+  sectionTerrainSteps(rx=this.rx,ry=this.ry){const save=this.save,seen=save.atlas?.[`${rx},${ry}`],town=townAt(save,rx,ry),coh=coherenceOf(seen);
     return{landscape:{coherence:coh,explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!save.checkpoints?.[`${rx},${ry}`]||save.checkpoints[`${rx},${ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(save.seed,rx,ry)||legacyMouthHamlet(save,rx,ry)||!!town))||!!town?.mouth},
       dream:!seen||seen.dreamVersion?seen?.dreamVersion||DREAM_VERSION:0,
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
@@ -6526,6 +6530,25 @@ export class Game {
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const rx = this.rx + dx, ry = this.ry + dy, steps = walkerTerrainSteps(this.save, rx, ry);
+      if (!terrainCached(seed, rx, ry, gen, steps)) { if (generate) sectionTerrain(seed, rx, ry, gen, steps); return false; }
+    }
+    return true;
+  }
+  // Perf spikes: the edges the Wayfarer is near (within CROSSING_WARM.edge tiles) as a mask (1 west, 2 east, 4 north, 8 south;
+  // 0 off the overworld), asked every frame without allocating; crossingEdges() lists them as [dx, dy] pairs.
+  crossingEdgeMask() {
+    if (this.area !== "overworld" || !this.player || this.rite) return 0;
+    const p = this.player, E = CROSSING_WARM.edge, S = SECTION_SIZE;
+    return (p.x < E ? 1 : p.x > S - 1 - E ? 2 : 0) | (p.y < E ? 4 : p.y > S - 1 - E ? 8 : 0);
+  }
+  crossingEdges() { const m = this.crossingEdgeMask(), out = []; if (m & 1) out.push([-1, 0]); if (m & 2) out.push([1, 0]); if (m & 4) out.push([0, -1]); if (m & 8) out.push([0, 1]); return out; }
+  // Lays the terrain of the next section beyond a near edge into the sectionTerrain cache, one section per call (the same
+  // pure function and key loadArea uses, so the crossing gets an equal copy). Returns true when there is nothing (more) to warm;
+  // `generate` false only asks. Nothing in the save or the world changes.
+  warmCrossingTerrain(generate = true) {
+    const seed = this.save.seed, gen = this.save.worldGeneration;
+    for (const [dx, dy] of this.crossingEdges()) {
+      const rx = this.rx + dx, ry = this.ry + dy, steps = this.sectionTerrainSteps(rx, ry);
       if (!terrainCached(seed, rx, ry, gen, steps)) { if (generate) sectionTerrain(seed, rx, ry, gen, steps); return false; }
     }
     return true;

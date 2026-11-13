@@ -99,24 +99,33 @@ function valueNoiseAt(state, x, y) {
 export function valueNoise(key, x, y) { return valueNoiseAt(latticeState(key), x, y); }
 // The lattice states of `${key}:${o}` for each octave o, kept per key.
 function octaveStates(key) { let s = octaveKeys.get(key); if (!s) { s = []; if (octaveKeys.size >= 1024) octaveKeys.clear(); octaveKeys.set(key, s); } return s; }
-export function fbm(key, x, y, octaves = 3) {
-  let sum = 0, amp = 1, norm = 0; const states = octaveStates(key);
+export function fbm(key, x, y, octaves = 3) { return fbmWith(key, octaveStates(key), x, y, octaves); }
+function fbmWith(key, states, x, y, octaves) {
+  let sum = 0, amp = 1, norm = 0;
   for (let o = 0; o < octaves; o++) { const st = states[o] ??= latticeState(`${key}:${o}`); sum += valueNoiseAt(st, x * 2 ** o, y * 2 ** o) * amp; norm += amp; amp *= .5; }
   return sum / norm;
 }
 export { lattice as latticeValue }; // for the perf-pack test, which checks it against hashSeed
 
 // ---------------------------------------------------------------- fields (global tile coordinates)
+// Perf spikes: each field sample built its key string (`${seed}:land:ocean`) and looked its octave states up by it, about
+// 10,000 times a section. The states are now kept per field name for the seed last asked about: the same states, the same values.
+const fieldKeys = { seed: undefined, byName: new Map() };
+function fieldFbm(seed, name, x, y, octaves = 3) {
+  if (fieldKeys.seed !== seed) { fieldKeys.seed = seed; fieldKeys.byName.clear(); }
+  let f = fieldKeys.byName.get(name); if (!f) { const key = `${seed}:land:${name}`; fieldKeys.byName.set(name, f = { key, states: octaveStates(key) }); }
+  return fbmWith(f.key, f.states, x, y, octaves);
+}
 const field = {
-  ocean: (seed, gx, gy) => fbm(`${seed}:land:ocean`, gx / 150, gy / 150),
-  mountain: (seed, gx, gy) => fbm(`${seed}:land:mountain`, gx / 96, gy / 96),
-  desert: (seed, gx, gy) => fbm(`${seed}:land:desert`, gx / 120, gy / 120),
-  alien: (seed, gx, gy) => fbm(`${seed}:land:alien`, gx / 100, gy / 100),
+  ocean: (seed, gx, gy) => fieldFbm(seed, "ocean", gx / 150, gy / 150),
+  mountain: (seed, gx, gy) => fieldFbm(seed, "mountain", gx / 96, gy / 96),
+  desert: (seed, gx, gy) => fieldFbm(seed, "desert", gx / 120, gy / 120),
+  alien: (seed, gx, gy) => fieldFbm(seed, "alien", gx / 100, gy / 100),
   // version 2
-  continent: (seed, gx, gy) => fbm(`${seed}:land:continent`, gx / WATERBODIES.continent.scale, gy / WATERBODIES.continent.scale, 2),
-  island: (seed, gx, gy) => fbm(`${seed}:land:island`, gx / WATERBODIES.island.scale, gy / WATERBODIES.island.scale),
-  lake: (seed, gx, gy) => fbm(`${seed}:land:lake`, gx / WATERBODIES.lake.scale, gy / WATERBODIES.lake.scale, 2),
-  wet: (seed, gx, gy) => fbm(`${seed}:land:wet`, gx / WATERBODIES.swamp.scale, gy / WATERBODIES.swamp.scale),
+  continent: (seed, gx, gy) => fieldFbm(seed, "continent", gx / WATERBODIES.continent.scale, gy / WATERBODIES.continent.scale, 2),
+  island: (seed, gx, gy) => fieldFbm(seed, "island", gx / WATERBODIES.island.scale, gy / WATERBODIES.island.scale),
+  lake: (seed, gx, gy) => fieldFbm(seed, "lake", gx / WATERBODIES.lake.scale, gy / WATERBODIES.lake.scale, 2),
+  wet: (seed, gx, gy) => fieldFbm(seed, "wet", gx / WATERBODIES.swamp.scale, gy / WATERBODIES.swamp.scale),
 };
 // ---------------------------------------------------------------- world regions (release 569)
 // Tim, 2026-10-29: "when I look at the Atlas... with random tiles... it just kind of just looks muddied. And there's no clear
@@ -273,29 +282,45 @@ export function regionName(seed, region) {
 // The region under a tile, looked up once per 4×4 tiles (borders blend over ~45 tiles, so this is invisible) and kept in a
 // bounded cache, so generating a section costs a few hundred lookups, not thousands.
 const leanCache = new Map();
+// Perf spikes: the cache was trimmed one oldest entry at a time once full, and a Map trimmed from the front walks over its
+// deleted slots to find the oldest (about 10 µs per new entry at 30,000; most of a section's region lookups in a long session).
+// It is now emptied when full, as the noise caches are. Only lookups change: every answer is the same.
+function keepLean(key, r) { if (leanCache.size >= 30000) leanCache.clear(); leanCache.set(key, r); }
+// Perf spikes (Tim's r937 probe: 68 ms section crossings): a section asks for its tiles' regions about 6,000 times, and each ask built
+// and hashed a string key (one per version step) even when the answer was kept. The kept answers are now also found by number
+// (one table per version, for the seed last asked about; cleared like leanCache): the same objects, so the same values.
+const regionMemo = { seed: undefined, byVersion: new Map() }, REGION_MEMO_SPAN = 2 ** 21;
 function regionTile(seed, gx, gy, version = 4) {
+  const cx = gx >> 2, cy = gy >> 2;
+  if (!(Math.abs(cy) < REGION_MEMO_SPAN && Math.abs(cx) < REGION_MEMO_SPAN)) return regionTileKept(seed, gx, gy, version);
+  if (regionMemo.seed !== seed) { regionMemo.seed = seed; regionMemo.byVersion.clear(); }
+  let m = regionMemo.byVersion.get(version); if (!m) regionMemo.byVersion.set(version, m = new Map());
+  const k = cx * 2 * REGION_MEMO_SPAN + cy; let r = m.get(k); if (r) return r;
+  r = regionTileKept(seed, gx, gy, version); if (m.size >= 30000) m.clear(); m.set(k, r); return r;
+}
+function regionTileKept(seed, gx, gy, version = 4) {
   if (version >= 25) { // version 25: the version 24 tile, rolled once more (outside the heartland) for the Lunar Wastes
     const key = `${seed}:25:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 24); r = b.gap === Infinity ? b : { ...b, type: v25RegionType(seed, b.id, b.type) };
-    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+    keepLean(key, r); return r;
   }
   if (version >= 24) { // version 24: the version 23 tile, rolled once more (outside the heartland) for the Rimeglaciers
     const key = `${seed}:24:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 23); r = b.gap === Infinity ? b : { ...b, type: v24RegionType(seed, b.id, b.type) };
-    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+    keepLean(key, r); return r;
   }
   if (version >= 23) { // version 23: the version 21 tile, rolled once more (outside the heartland) for the Reckoning Fields
     const key = `${seed}:23:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 21); r = b.gap === Infinity ? b : { ...b, type: v23RegionType(seed, b.id, b.type) };
-    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+    keepLean(key, r); return r;
   }
   if (version >= 21) { // version 21: the version 11 tile, rolled once more (outside the heartland) for Terrace Springs
     const key = `${seed}:21:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 11); r = b.gap === Infinity ? b : { ...b, type: v21RegionType(seed, b.id, b.type) };
-    leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); return r;
+    keepLean(key, r); return r;
   }
   const v = version >= 11 ? 11 : version >= 10 ? 10 : version >= 9 ? 9 : version >= 8 ? 8 : version >= 7 ? 7 : version >= 6 ? 6 : version >= 5 ? 5 : 4, cx = gx >> 2, cy = gy >> 2, key = `${seed}:${v}:${cx}:${cy}`; let r = leanCache.get(key);
-  if (!r) { r = regionAt(seed, (cx * 4 + 2) / 32, (cy * 4 + 2) / 32, v); leanCache.set(key, r); if (leanCache.size > 30000) leanCache.delete(leanCache.keys().next().value); }
+  if (!r) { r = regionAt(seed, (cx * 4 + 2) / 32, (cy * 4 + 2) / 32, v); keepLean(key, r); }
   return r;
 }
 function lean(seed, gx, gy, name, version) { if (version < 4) return 0; const r = regionTile(seed, gx, gy, version), d = REGIONS.lean[r.type]?.[name]; return d ? d * r.hold : 0; }
@@ -1384,7 +1409,10 @@ const SIDE_OF = { "1,0": ["east", "west"], "-1,0": ["west", "east"], "0,1": ["so
 export const wallSidesOf = (t) => t?.encSides?.length ? t.encSides : (t?.structure === "shackWall" || t?.structure === "districtWall") ? t.wallSides || [] : [];
 // A south wall also stands in the way of a step east or west along its row: the Wayfarer's footprint (game.ts footprintOpen,
 // y+.5 to y+.88 of the tile it stands on) reaches into the wall's strip along the tile's south side.
-export function sideWalled(a, b, dx, dy) { const s = SIDE_OF[`${dx},${dy}`]; return !!s && (wallSidesOf(a).includes(s[0]) || wallSidesOf(b).includes(s[1]) || (!!dx && (wallSidesOf(a).includes("south") || wallSidesOf(b).includes("south")))); }
+// Perf spikes: most steps are between tiles with no thin walls at all, answered (false, as before) without building a side key
+// or an empty list; a section load runs this some tens of thousands of times in its floods.
+const mayWall = (t) => !!t && (!!t.encSides?.length || t.structure === "shackWall" || t.structure === "districtWall");
+export function sideWalled(a, b, dx, dy) { if (!mayWall(a) && !mayWall(b)) return false; const s = SIDE_OF[`${dx},${dy}`]; return !!s && (wallSidesOf(a).includes(s[0]) || wallSidesOf(b).includes(s[1]) || (!!dx && (wallSidesOf(a).includes("south") || wallSidesOf(b).includes("south")))); }
 function sweep(map, width, height, start, reverse, walls = false) {
   const T = map.tiles, seen = new Uint8Array(width * height), s0 = start.y * width + start.x;
   if (!walkable(T[s0])) return seen;
