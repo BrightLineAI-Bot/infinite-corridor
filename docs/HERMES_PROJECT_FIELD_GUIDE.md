@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 948 — Holding a button no longer selects its words
+
+Tim, 2026-11-13: on the phone, holding down one of the buttons that has words on it selected the text in Chrome.
+
+**CODE:** `styles.css` (end): `html, body, button, .action-diamond, .action-diamond *` get `-webkit-user-select: none; user-select: none; -webkit-touch-callout: none`; a later rule restores `user-select: text` and the default callout for `input, textarea, [contenteditable="true"]`. The Proving Ground uses the same stylesheet. Test: `no-select-hud` (1).
+
+**BOUNDARY:** CSS only: no script, save or generation change. Journey names and settings inputs still select and edit. Nothing in the game needed text selection (the probe report and saves copy and export through buttons).
+
 ## Release 947 — Ki Blast's slam survives a pause mid-leap
 
 From the r946 pre-publish review (non-blocking): 946 tied the slam to its own leap by comparing `jumpStart` with `kiSlamJump`, but only `jumpStart` was shifted by a pause.
