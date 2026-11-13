@@ -1,15 +1,15 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r937-15794e9d55b3'; // adventure creatures
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r937-15794e9d55b3';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r937-15794e9d55b3';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r937-15794e9d55b3';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r937-15794e9d55b3';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r939-3cfc61802893'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r939-3cfc61802893';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r939-3cfc61802893';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r939-3cfc61802893';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r939-3cfc61802893';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;

@@ -5,7 +5,7 @@
 // It shades as those models do (close-view-gl.ts MODEL_FS: the same light floor, warm and cool rims, late fog), with one
 // difference: emissive parts are marked per vertex by channel instead of by an exact colour, so a beast's core, coils and
 // lightning can brighten, fade and flicker with its attacks without touching the shared colour list.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r937-15794e9d55b3";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r939-3cfc61802893";
 
 const glf = (v) => Number(v).toFixed(4), NB = BEAST_SLOT.maxBones * 3;
 export const BEAST_VERTEX_FLOATS = 13; // position 3, normal 3, colour 3, skin 4 (bone, emissive channel, second bone, its weight)

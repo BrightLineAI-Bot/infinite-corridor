@@ -1,32 +1,33 @@
-import { rangedWeapon } from './items.js?v=r937-15794e9d55b3';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r937-15794e9d55b3";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r937-15794e9d55b3";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r937-15794e9d55b3";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r937-15794e9d55b3";
-import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r937-15794e9d55b3";
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r937-15794e9d55b3";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r937-15794e9d55b3';
-import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r937-15794e9d55b3";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r937-15794e9d55b3';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r937-15794e9d55b3';
-import { fistCharge } from './brawler-spells.js?v=r937-15794e9d55b3';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.js?v=r937-15794e9d55b3';
-import { dronePos } from "./affixes.js?v=r937-15794e9d55b3";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r937-15794e9d55b3";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r937-15794e9d55b3";
-import { CARBINE, CONTINUOUS_ASSAULT, carbineCharged, carbineFill } from "./tool-forms.js?v=r937-15794e9d55b3"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r937-15794e9d55b3";
-import { knockdownPose } from "./lightning-giant-render.js?v=r937-15794e9d55b3";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r937-15794e9d55b3";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r937-15794e9d55b3";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r937-15794e9d55b3";
-import { SIGIL_CELLS } from "./watcher.js?v=r937-15794e9d55b3";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.js?v=r937-15794e9d55b3"; // release 891: world beasts' skinned bodies (and the Gaunt's)
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r937-15794e9d55b3"; // version 4: the GPU scene
-import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r937-15794e9d55b3"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach } from "./spell-slots.js?v=r937-15794e9d55b3"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r937-15794e9d55b3";
-import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r937-15794e9d55b3"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r939-3cfc61802893"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
+import { rangedWeapon } from './items.js?v=r939-3cfc61802893';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r939-3cfc61802893";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r939-3cfc61802893";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r939-3cfc61802893";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r939-3cfc61802893";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r939-3cfc61802893";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r939-3cfc61802893";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r939-3cfc61802893';
+import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r939-3cfc61802893";
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r939-3cfc61802893';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r939-3cfc61802893';
+import { fistCharge } from './brawler-spells.js?v=r939-3cfc61802893';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.js?v=r939-3cfc61802893';
+import { dronePos } from "./affixes.js?v=r939-3cfc61802893";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r939-3cfc61802893";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r939-3cfc61802893";
+import { CARBINE, CONTINUOUS_ASSAULT, carbineCharged, carbineFill } from "./tool-forms.js?v=r939-3cfc61802893"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r939-3cfc61802893";
+import { knockdownPose } from "./lightning-giant-render.js?v=r939-3cfc61802893";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r939-3cfc61802893";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r939-3cfc61802893";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r939-3cfc61802893";
+import { SIGIL_CELLS } from "./watcher.js?v=r939-3cfc61802893";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.js?v=r939-3cfc61802893"; // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r939-3cfc61802893"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r939-3cfc61802893"; // 2026-11-13: the townsfolk's skinned bodies
+import { lanternReach } from "./spell-slots.js?v=r939-3cfc61802893"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r939-3cfc61802893";
+import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r939-3cfc61802893"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -487,7 +488,7 @@ export const CLOSE_VIEW = Object.freeze({
   // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r937-15794e9d55b3's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r939-3cfc61802893's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -661,7 +662,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r937-15794e9d55b3's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r939-3cfc61802893's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -793,7 +794,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r937-15794e9d55b3's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r939-3cfc61802893's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, terrainPulls: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1512,7 +1513,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r937-15794e9d55b3's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r939-3cfc61802893's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -3451,11 +3452,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
         input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
-        input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
+        input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;input.artCharge=weaponArtCharge(g);/* weapon-arts.ts: a charge held */
         input.alpha = actor.alpha * heroFadeIn(state, now, reduce); input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
         if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
-        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;action.weaponArt=attack&&typeof visualRecord?.weaponArt==='string'?visualRecord.weaponArt:undefined;action.awakenedArt=attack&&typeof visualRecord?.awakenedArt==='string'?visualRecord.awakenedArt:undefined/* awakened-arts.ts: the awakened move's pose */;/* weapon-arts.ts */
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         action.primaryStage = primaryStage; action.jumpAir = null;
         if (defeat) { action.kind = 'death'; action.profile = 'death'; action.phase = defeat.amount; action.durationMs = defeat.durationMs; }
@@ -3488,7 +3489,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);

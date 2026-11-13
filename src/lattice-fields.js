@@ -7,9 +7,10 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r937-15794e9d55b3";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r937-15794e9d55b3";
-import { QUANDRIX } from "./quandrix-staff.js?v=r937-15794e9d55b3";
+import { latticePassives } from "./transit-lattice.js?v=r939-3cfc61802893";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r939-3cfc61802893";
+import { QUANDRIX } from "./quandrix-staff.js?v=r939-3cfc61802893";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r939-3cfc61802893";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -31,6 +32,16 @@ export const TOOL_FORMS = {
   "mages-hand": { name: "Mage's Hand", text: `With the Quandrix Staff: a tap still casts a hand; hold Attack and the hand you cast last clenches into a fist. It grabs every foe it touches (up to ${QUANDRIX.fist.maxGrab}) and drags them toward you, then bursts after ${QUANDRIX.fist.time} s wherever it is, or at once when you let go, for ${Math.round(QUANDRIX.fist.burst.share * 100)}% of the staff within ${QUANDRIX.fist.burst.radius} tiles. Bosses, world beasts and elites hold their ground but take the burst. Awakened, the slammed hand becomes a suction cup instead. Nothing with any other weapon. Grows with Focus, as the staff does.` }, // quandrix-staff.ts QUANDRIX.fist (2026-11-13)
   nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
 };
+// Weapon arts (weapon-arts.ts, Tim 2026-11-13): one per primary weapon, each doing nothing with another weapon. Three presses
+// arm it; hold Attack to charge it (a perfect window on a ring) and let go to release it.
+const ART = WEAPON_ARTS.arts, CH = WEAPON_ARTS.charge, ARM = `Attack ${WEAPON_ARTS.arm.presses} times to arm it (one charge is kept); then hold Attack to charge it and let go inside the ring's gold window for ${CH.perfectShare}x.`;
+Object.assign(TOOL_FORMS, {
+  "lava-slash": { name: ART["lava-slash"].name, text: `With the Verge Cleaver: ${ARM} You dash at the nearest foe (within ${ART["lava-slash"].dash} tiles) and slam the blade down: the ground erupts within ${ART["lava-slash"].radius} tiles. Scales with Might.` },
+  "blade-stream": { name: ART["blade-stream"].name, text: `With the Fourfold Daggers: ${ARM} A storm of ${ART["blade-stream"].hits} light slashes cuts every foe within ${ART["blade-stream"].radius} tiles of you over ${ART["blade-stream"].span} s. Scales with Finesse.` },
+  "cinder-javelin": { name: ART["cinder-javelin"].name, text: `With the Cinder Pike: ${ARM} You wind up and hurl the pike ${ART["cinder-javelin"].range} tiles, through up to ${ART["cinder-javelin"].pierce} foes; it returns to your hand. Scales with Finesse.` },
+  "ki-blast": { name: ART["ki-blast"].name, text: `With the Iron Fists: ${ARM} Your next punch fires a ki blast ${ART["ki-blast"].range} tiles ahead; on the uppercut you leap and fire it from the air for ${Math.round((ART["ki-blast"].air - 1) * 100)}% more. Scales with Might.` },
+  transpose: { name: ART.transpose.name, text: `With the Salvage Blade: ${ARM} You set a seal on the ground (${ART.transpose.radius}-tile radius) for ${ART.transpose.base} s (${ART.transpose.perfectBase} s from a perfect release); each melee hit adds ${ART.transpose.perHit} s, up to ${ART.transpose.cap} s. Standing in it your spells deal ${Math.round(ART.transpose.spellDamage * 100)}% more and you take ${Math.round(ART.transpose.damageTaken * 100)}% more damage, for ${ART.transpose.linger} s after you step out. One seal at a time.` },
+});
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
 export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
 export function fieldForm(key) {

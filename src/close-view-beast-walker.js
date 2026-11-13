@@ -6,12 +6,12 @@
 // so the body only gathers, gestures and moves (docs/void-walker-design.md, docs/close-view-boss-rig-manifest.md): restrained
 // stance and steps, hands gathered and brought down as the rends are cast, arms opened for the wraiths and rifts, a
 // supernova charge, the dash's forward lean, the teleport's flicker. Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r937-15794e9d55b3";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r939-3cfc61802893";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r937-15794e9d55b3";
-import { WALKER_BODY } from "./close-view-beast-walker-body.js?v=r937-15794e9d55b3";
+} from "./close-view-beast-rig.js?v=r939-3cfc61802893";
+import { WALKER_BODY } from "./close-view-beast-walker-body.js?v=r939-3cfc61802893";
 
 function walkerJoints() {
   const J = WALKER_BODY.joints, d = (a, b) => Math.hypot(J[a][0] - J[b][0], J[a][1] - J[b][1], J[a][2] - J[b][2]);

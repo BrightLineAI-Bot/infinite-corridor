@@ -4,12 +4,14 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r937-15794e9d55b3";
-import { SHADOW_CLONE } from "./late-spells.js?v=r937-15794e9d55b3";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r937-15794e9d55b3";
-import { drawOrbit } from "./orbit-volley.js?v=r937-15794e9d55b3";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r937-15794e9d55b3";
-import { drawQuandrix } from "./quandrix-staff.js?v=r937-15794e9d55b3"; // the Quandrix Staff (2026-11-13)
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r939-3cfc61802893";
+import { SHADOW_CLONE } from "./late-spells.js?v=r939-3cfc61802893";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r939-3cfc61802893";
+import { drawOrbit } from "./orbit-volley.js?v=r939-3cfc61802893";
+import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r939-3cfc61802893";
+import { drawQuandrix } from "./quandrix-staff.js?v=r939-3cfc61802893"; // the Quandrix Staff (2026-11-13)
+import { drawWeaponArts } from "./weapon-arts.js?v=r939-3cfc61802893"; // weapon arts (2026-11-13)
+import { drawAwakenedArts } from "./awakened-arts.js?v=r939-3cfc61802893"; // awakened arts (2026-11-13)
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? "#7fe7ff" /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
@@ -69,6 +71,8 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   drawQuandrix(ctx, game, toScreen, s, t, projectedShots); // the Quandrix Staff: hands, the fist, the slam, suction and the ring
+  drawWeaponArts(ctx, game, toScreen, s, t); // weapon arts: the armed glint, the charge ring, eruptions, streams, the javelin, ki and the seal
+  drawAwakenedArts(ctx, game, toScreen, s, t); // awakened arts: fissures and lava, returning blades, the lance, runes, kicks and the seal's pulse
   if (game.rite && game.area === "overworld") drawRiteFire(ctx, toScreen, s, t); // the Rite of Ascendancy: fire round the section's edges
   for (const fx of game.effects) if (fx.kind === "riteRubble" && fx.life > 0) { const [x, y] = toScreen(fx), k = 1 - fx.life / fx.maxLife, drop = (fx.h || 2) * (1 - k) * s; ctx.fillStyle = k > .85 ? "rgba(120,100,80,.5)" : "#7a6650"; ctx.fillRect(x - s * .07, y - drop - s * .07, s * .14, s * .12); if (k > .8) { ctx.fillStyle = "rgba(160,140,110,.35)"; ctx.beginPath(); ctx.ellipse(x, y, s * .3 * (k - .6) * 3, s * .1, 0, 0, 7); ctx.fill(); } } // the great tree rising: rubble falling off it
   for (const fx of game.effects) if (fx.kind === "riteFlash" && fx.life > 0) { const a = Math.min(1, fx.life / fx.maxLife * 1.4); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = `rgba(255,250,235,${a * .9})`; ctx.fillRect(0, 0, ctx.canvas?.width || 4000, ctx.canvas?.height || 4000); ctx.restore(); } // ... the flash as it begins

@@ -6,11 +6,11 @@
 // (monster-pack.ts ATTACK_MODULES.qb*, QB_MOVES, QB_ORB): the rend lands as its wind-up ends, every flurry swipe on its strike
 // tick, the pounce rises, dives and lands with the game's phases, the spiral turns with its orbs, the wave lands its slam,
 // the barrage gallops. Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE, QB_MOVES } from "./monster-pack.js?v=r937-15794e9d55b3";
+import { ATTACK_MODULES, BOSS_PACE, QB_MOVES } from "./monster-pack.js?v=r939-3cfc61802893";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r937-15794e9d55b3";
+} from "./close-view-beast-rig.js?v=r939-3cfc61802893";
 
 export const QB_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
