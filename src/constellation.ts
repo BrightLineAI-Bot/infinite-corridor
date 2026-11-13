@@ -292,11 +292,28 @@ export function riftStep(game, now) {
   let best = null;
   for (let t = .25; t <= R.reach + 1e-6; t += .25) {
     const x = from.x + dx * t, y = from.y + dy * t, footing = riftFooting(game, world, x, y, startLevel); // never blink up a ledge (or onto a higher roof)
+    if (!footing && game.blinkInProp?.(x, y)) continue; // 926 bug 5: a solid prop is stepped through, never ended in
     if (!footing) break;
     best = { x, y, footing };
   }
   if (!best) { game.message = "There is no room to step through."; return false; }
   return riftCommit(game, now, R, from, best, startLevel);
+}
+// An aimed step whose point is inside a solid prop (game.blinkInProp; Close View play-through of 926, bug 5: it stood the Wayfarer
+// inside the Watcher's tomb) lands at the nearest open spot beside it instead: rings `ring` tiles apart out to `out`, `angles`
+// points each: on the first ring with a footing (clear of every prop, within reach), the point nearest the Wayfarer. Bounded.
+export const RIFT_PROP_SNAP = Object.freeze({ ring: .25, out: 1.5, angles: 16 });
+function riftBesideProp(game, world, at, fx, fy, reach, startLevel, rise) {
+  const S = RIFT_PROP_SNAP;
+  for (let r = S.ring; r <= S.out + 1e-6; r += S.ring) {
+    let found = null, bestD = Infinity;
+    for (let k = 0; k < S.angles; k++) { const a = k / S.angles * Math.PI * 2, x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r;
+      if (Math.hypot(x + .5 - fx, y + .75 - fy) > reach + 1e-6 || game.blinkInProp(x, y)) continue;
+      const footing = riftFooting(game, world, x, y, startLevel, rise); if (!footing) continue;
+      const d = Math.hypot(x + .5 - fx, y + .75 - fy); if (d < bestD) { bestD = d; found = { x, y, footing }; } } // on a ring, the spot nearest the Wayfarer (the side they came from)
+    if (found) return found;
+  }
+  return null;
 }
 // The aimed step to a point (the feet's point, as a tap gives it). False, and nothing spent, when the point is not one it can reach.
 export function riftAimCheck(game, target, now = game.lastUpdateNow || 0) {
@@ -305,7 +322,9 @@ export function riftAimCheck(game, target, now = game.lastUpdateNow || 0) {
   const fx = p.x + .5, fy = p.y + .75, dist = Math.hypot(tx - fx, ty - fy);
   if (dist > R.reach + 1e-6) return { ok: false, why: "reach", reach: R.reach };
   const startLevel = riftFrom(game), rise = RIFT_AIM.rise + (nodeOn(s, "anchor") ? RIFT_AIM.longStepRise : 0), best = { x: tx - .5, y: ty - .75 };
-  const footing = riftFooting(game, world, best.x, best.y, startLevel, rise); if (!footing) return { ok: false, why: "footing" };
+  let footing = riftFooting(game, world, best.x, best.y, startLevel, rise);
+  if (!footing && game.blinkInProp?.(best.x, best.y)) { const near = riftBesideProp(game, world, best, fx, fy, R.reach, startLevel, rise); if (near) { best.x = near.x; best.y = near.y; footing = near.footing; } } // 926 bug 5
+  if (!footing) return { ok: false, why: "footing" };
   if (game.blinkPathClear && !game.blinkPathClear(p.x, p.y, best.x, best.y, RIFT_AIM.samples, Math.max(startLevel, footing.level))) return { ok: false, why: "path" };
   best.footing = footing; return { ok: true, R, best, startLevel, level: footing.level };
 }

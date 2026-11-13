@@ -1103,6 +1103,52 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
   }
   return true;
 }
+// Solid props (Close View play-through of 926, bug 5: an aimed Rift Step, or a jump onto the shrine's pupil, stood the Wayfarer
+// inside the Watcher's tomb). A prop of a kind listed here is a solid the Wayfarer's collision box cannot enter: a disc `r` tiles
+// across its middle, centred where both views draw it (`cx`, `cy` from its tile corner), `rise` levels tall above its own tile (more than a
+// jump: no hop lands on or in it; the drone carries the Wayfarer over it).
+// Only the Wayfarer is stopped (creatures, shots and generation are unchanged). A prop is solid only where it can never close a
+// way: its eight neighbouring tiles must let the Wayfarer walk round it (the open neighbours beside it all one connected run of
+// the ring), and no other listed prop stands next to it; otherwise it stays as before. Leaving a prop's disc is always allowed
+// (a journey saved inside one walks out). Presentation and saves are untouched; the list is derived from the map, kept per map
+// while its objects and tiles are the same arrays (no per-frame allocation).
+export const PROP_SOLIDS = Object.freeze({ cx: .5, cy: .62, kinds: Object.freeze({ watcherTomb: Object.freeze({ r: .42, rise: 1.5 }) }) });
+const PROP_RING = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]], PROP_WALKER = Object.freeze({}), NO_PROPS = new Float64Array(0), propSolidKept = new WeakMap();
+// Would blocking the tile (x, y) cut a way? True when the open neighbours beside it (N, E, S, W) are not all in one walkable run of its ring.
+function propChokes(map, width, x, y) {
+  const open = PROP_RING.map(([dx, dy]) => footprintOpen(map, width, x + dx, y + dy) && !footprintHazard(map, width, x + dx, y + dy));
+  const link = PROP_RING.map(([dx, dy], i) => { const [ex, ey] = PROP_RING[(i + 1) % 8], ax = x + dx, ay = y + dy, bx = x + ex, by = y + ey;
+    return open[i] && open[(i + 1) % 8] && footprintOpen(map, width, (ax + bx) / 2, (ay + by) / 2) && canStep(PROP_WALKER, map, width, ax, ay, bx, by) && canStep(PROP_WALKER, map, width, bx, by, ax, ay); });
+  if (link.every(Boolean)) return false;
+  const start = link.indexOf(false), run = new Array(8); let id = 0;
+  for (let k = 1; k <= 8; k++) { const i = (start + k) % 8; run[i] = id; if (!link[i]) id++; }
+  const sides = [0, 2, 4, 6].filter((i) => open[i]).map((i) => run[i]);
+  return sides.some((r) => r !== sides[0]);
+}
+// The solid props of a map: [cx, cy, r, top level] per prop, flat. Rebuilt only when the map's objects or tiles change.
+export function solidProps(map, width) {
+  const objs = map?.objects; if (!objs?.length || !map.tiles) return NO_PROPS;
+  const kept = propSolidKept.get(map); if (kept && kept.objects === objs && kept.length === objs.length && kept.tiles === map.tiles && kept.width === width) return kept.list;
+  const height = Math.floor(map.tiles.length / width), listed = objs.filter((o) => PROP_SOLIDS.kinds[o?.kind] && Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y))), out = [];
+  for (const o of listed) { const K = PROP_SOLIDS.kinds[o.kind], x = Math.round(Number(o.x)), y = Math.round(Number(o.y)); if (x < 1 || y < 1 || x >= width - 1 || y >= height - 1) continue;
+    if (listed.some((q) => q !== o && Math.max(Math.abs(Math.round(Number(q.x)) - x), Math.abs(Math.round(Number(q.y)) - y)) <= 1) || propChokes(map, width, x, y)) continue;
+    out.push(Number(o.x) + PROP_SOLIDS.cx, Number(o.y) + PROP_SOLIDS.cy, K.r, (map.tiles[y * width + x]?.elev || 0) + K.rise); }
+  const list = out.length ? Float64Array.from(out) : NO_PROPS; propSolidKept.set(map, { objects: objs, length: objs.length, tiles: map.tiles, width, list }); return list;
+}
+// Does the Wayfarer's collision box at (x, y), at `level` (its feet's height, in the air too), stand in a solid prop? Pure.
+export function propBlocked(map, width, x, y, level = -Infinity) {
+  const list = solidProps(map, width); if (!list.length) return false;
+  const left = x + .24, right = x + .76, top = y + .5, bottom = y + .88;
+  for (let i = 0; i < list.length; i += 4) { if (level >= list[i + 3] - 1e-6) continue; const cx = list[i], cy = list[i + 1], r = list[i + 2], nx = cx < left ? left : cx > right ? right : cx, ny = cy < top ? top : cy > bottom ? bottom : cy;
+    if ((nx - cx) * (nx - cx) + (ny - cy) * (ny - cy) < r * r) return true; }
+  return false;
+}
+// A step of the Wayfarer from (fx, fy) to (tx, ty) that enters a solid prop it was not already in. Only the Wayfarer (entity.isPlayer)
+// with a known height (entity.propLevel, set each frame by Game) is checked, so every other mover is exactly as before.
+function propStepBlocked(entity, map, width, fx, fy, tx, ty) {
+  if (entity?.isPlayer !== true || !Number.isFinite(entity.propLevel)) return false;
+  return propBlocked(map, width, tx, ty, entity.propLevel) && !propBlocked(map, width, fx, fy, entity.propLevel);
+}
 // The skiff's footprint fits when every tile under it is sailable water (boats.ts). Release 165: a tile that belongs to
 // a shack or building (its walls, floor or yard carry `structure` or `buildingId`) blocks the skiff even when the ground
 // under it is water, so boats no longer sail through walls.
@@ -1186,13 +1232,13 @@ export function moveAxis(entity, dx, dy, map, width, allowLethalTerrain=false, o
   for (let i = 0; i < steps; i++) {
     // Release 287: a two-high stack of blocks (or a wall) stops fliers too; only the Wayfarer climbs builds.
     const tall = (x, y) => allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y);
-    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
+    if (sx && footprintOpen(map, width, entity.x + sx, entity.y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x + sx, entity.y) && canStep(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y) && !propStepBlocked(entity, map, width, entity.x, entity.y, entity.x + sx, entity.y)) {
       const fromX = entity.x;
       entity.x += sx;
       onStep?.(fromX, entity.y, entity.x, entity.y);
       moved = true;
     }
-    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
+    if (sy && footprintOpen(map, width, entity.x, entity.y + sy, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null) && !tall(entity.x, entity.y + sy) && canStep(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy) && !propStepBlocked(entity, map, width, entity.x, entity.y, entity.x, entity.y + sy)) {
       const fromY = entity.y;
       entity.y += sy;
       onStep?.(entity.x, fromY, entity.x, entity.y);
@@ -1216,7 +1262,7 @@ function moveAxisWithContacts(entity, dx, dy, map, width, allowLethalTerrain, on
     const x = entity.x + ax * fraction, y = entity.y + ay * fraction, exiting = contacts.canExit?.(x, y) === true;
     if (x === entity.x && y === entity.y) continue;
     if (!exiting && (!footprintOpen(map, width, x, y, allowLethalTerrain, allowMarineTerrain, entity.isPlayer === true && entity.voidSuit === true, false, entity.isPlayer === true ? entity.deckReach ?? null : null)
-      || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y))) continue;
+      || (allowLethalTerrain && !entity.isPlayer && tallBuildAt(map, width, x, y)) || !canStep(entity, map, width, entity.x, entity.y, x, y)) || propStepBlocked(entity, map, width, entity.x, entity.y, x, y)) continue;
     const fromX = entity.x, fromY = entity.y;
     entity.x = x; entity.y = y; moved = true;
     if (contacts.record) { const n = contacts.count; contacts.trace[n] = fromX; contacts.trace[n + 1] = fromY; contacts.trace[n + 2] = x; contacts.trace[n + 3] = y; contacts.count += 4; }
@@ -3658,7 +3704,7 @@ export class Game {
   // their exact arithmetic when the swept segment clears bodies; only a real contact
   // enters the terrain/contact solver. Damage and action clocks stay with the caller.
   moveGuardedCombatStep(x, y) {
-    const p = this.player, dx = x - p.x, dy = y - p.y, contacts = actorContactContext(this, p, dx, dy);
+    const p = this.player, dx = x - p.x, dy = y - p.y; if (propStepBlocked(p, this.map, mapWidth(this.map, this.area), p.x, p.y, x, y)) return false; /* solid props (926 bug 5) */ const contacts = actorContactContext(this, p, dx, dy);
     if (!contacts || contacts.clip(p.x, p.y, dx, dy) === 1) { p.x = x; p.y = y; return true; }
     return moveAxis(p, dx, dy, this.map, mapWidth(this.map, this.area), false, null, false, contacts);
   }
@@ -3693,7 +3739,7 @@ export class Game {
     probe.airElev = jumping ? (launch ? Math.max(this.skyAir ?? -1, from.elev || 0) : this.skyAir ?? undefined) : undefined;
     probe.airElevScale = launch ? tileLiftScale(from) : this.skyAirScale || 1;
     if (!jumping && this.standingDeck() && this.decksApply()) probe.airElev = this.roofDeck.level; // roof decks: walking on a roof, the ground round the house is a drop
-    probe.deckReach = p.deckReach ?? null;
+    probe.deckReach = p.deckReach ?? null; probe.propLevel = p.propLevel; // solid props (926 bug 5)
     contacts.supportSubject = probe;
     contacts.carrier = carrier;
     contacts.record = true;
@@ -3885,6 +3931,13 @@ export class Game {
     const on = d && reach != null && d.level <= reach + 1e-6 ? d : reach != null ? this.deckEdgeHold(p.x, p.y, reach) : null; // the edge: still over its walls
     this.setRoofDeck(on); return on;
   }
+  // Solid props (926 bug 5): the height of the Wayfarer's feet for PROP_SOLIDS, in a jump its held height (skyAir). Not a number
+  // (no prop check) aboard or gliding, which keep their own rules.
+  propLevel(now = this.lastUpdateNow || 0) {
+    if (aboard(this.save) || (this.glide && this.area === "overworld")) return NaN;
+    const level = this.playerLevel(), air = now < (this.jumpUntil || 0) && this.skyAir != null ? this.skyAir : -Infinity;
+    return Math.max(Number.isFinite(level) ? level : 0, air);
+  }
   // The roof's edge (pre-publish review of 915: walking or jumping off a roof wedged the Wayfarer in its wall): the deck, at or under
   // maxLevel, whose walls the collision box at (x, y) still stands over once the feet have left its roof, or null. Only a deck whose
   // walls are all that stop the box (footprintOpen without and with its deckReach) holds: the Wayfarer stays up on that roof's edge
@@ -3903,8 +3956,11 @@ export class Game {
     if (d && d.level <= top) return footprintOpen(this.map, w, x, y, false, false, false, false, d.level) ? { level: d.level, deck: d } : null;
     const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
     if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
-    const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
+    const ground = this.elevationHere(x, y); if (propBlocked(this.map, w, x, y, ground)) return null; // solid props (926 bug 5): never inside the Watcher's tomb
+    return ground <= top ? { level: ground, deck: null } : null;
   }
+  // Solid props (926 bug 5): does the collision box at (x, y) stand in a solid prop's footprint at all (any height)? A blink passes through one, never ends in it.
+  blinkInProp(x, y) { return propBlocked(this.map, mapWidth(this.map, this.area), x, y); }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
   // is a freefall, as off any ledge). Tim (2026-11-12): every Rift Step falls; before, the blink's drop was never counted.
   landBlink(footing, fromLevel, now) {
@@ -9686,6 +9742,7 @@ export class Game {
     if (gliding) { if (this.glideStep(x, y, dt, now) === "crossed") return; nx = p.x; ny = p.y; dx = 0; dy = 0; }
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
     if (!sailing && !gliding) { this.holdDeckJump(now); p.deckReach = this.deckReach(now < (this.jumpUntil || 0)); } else p.deckReach = null; // roof decks
+    p.propLevel = this.propLevel(now); // solid props (926 bug 5): the height the Wayfarer's feet are at, for the collision mover
     const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
     if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
