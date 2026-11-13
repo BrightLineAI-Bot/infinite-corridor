@@ -254,9 +254,9 @@ function layTower(P, T, id, seed, attempt) {
     objects.push({ id: "tower-postern", kind: "exit", towerExit: "postern", name: "The low door (out only)", x: mid, y: S - 1, atLevel: 0, state: "open", actions: ["exit"] }); }
   else objects.push({ id: "tower-door", kind: "exit", towerExit: "door", name: "The door out", x: mid, y: S - 1, atLevel: 0, state: "open", actions: ["exit"] });
   const summit = { x: 1, y: yb - 2 };
-  objects.push({ id: "tower-cache", kind: "chest", towerCache: true, name: `${T.name} Cache`, x: 3, y: yb - 1, atLevel: top, state: "closed", actions: ["open"], rewardSource: `tower-cache-${P.tier}` });
-  objects.push({ id: "tower-lookout", kind: "towerLookout", name: "The lookout", x: 0, y: yb - 1, atLevel: top, state: "ready", actions: ["look"], lore: K.messages.top });
-  objects.push({ id: "tower-rope", kind: "towerRope", name: "The Long Rope (down)", x: 2, y: S - 1, atLevel: top, state: "open", actions: ["descend"] });
+  objects.push({ id: "tower-cache", kind: "chest", towerCache: true, name: `${T.name} Cache`, x: 3, y: yb - 2, atLevel: top, state: "closed", actions: ["open"], rewardSource: `tower-cache-${P.tier}` });
+  objects.push({ id: "tower-lookout", kind: "towerLookout", name: "The lookout", x: 1, y: yb, atLevel: top, state: "ready", actions: ["look"], lore: K.messages.top });
+  objects.push({ id: "tower-rope", kind: "towerRope", name: "The Long Rope (down)", x: 3, y: yb, atLevel: top, state: "open", actions: ["descend"] });
   // creatures: a perched one on a flat run of ledge, fliers over the shaft; never near a door, the summit or each other
   const want = T.dwellers[0] + (h("dwellers") % (T.dwellers[1] - T.dwellers[0] + 1)), enemySpawns = [], C = K.dwellerClear;
   const keep = [bottom, raisedAt, { x: 2, y: yb - 1 }].filter(Boolean);

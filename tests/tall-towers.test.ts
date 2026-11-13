@@ -11,8 +11,9 @@ import { TALL_TOWERS, towerHere, towerTier, tierOf, parseTowerId, isTowerId, gen
 import { learnRank, riftAimCheck, RIFT_AIM, RIFT } from '../src/constellation.ts';
 import { DRONE, DRONE_LIFT, setMechMode } from '../src/vehicle-gates.ts';
 import { render } from '../src/renderer.ts';
-import { closeViewStatic, interiorMap } from '../src/close-view.ts';
-import { outdoorMesh, outdoorTerrainMesh, OUTDOOR } from '../src/close-view-outdoor.ts';
+import { closeViewStatic, interiorMap, CLOSE_VIEW_PROPS } from '../src/close-view.ts';
+import { outdoorMesh, outdoorTerrainMesh, outdoorRelief, OUTDOOR, OUTDOOR_FLOATS } from '../src/close-view-outdoor.ts';
+import { CLOSE_VIEW_PROP_MODELS } from '../src/close-view-models.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
 
 const sha = (v) => createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16);
@@ -26,7 +27,7 @@ const GOLD = [['TOWERS', -5, 0, 0, '8f07ea54f96e620f'], ['TOWERS', -2, 3, 0, 'aa
 const towersIn = GOLD.filter((q) => q[3]);
 // An interior a tier, and the digest of version 1's layout for each (pinned: a change to the generator must take a new version).
 const SAMPLE_IDS = ['tower:TOWERS:-3:3:1:9:2', 'tower:TOWERS:9:3:2:11:0', 'tower:TOWERS:-11:21:3:15:4'];
-const INTERIOR_V1 = { 'tower:TOWERS:-3:3:1:9:2': 'e5394bbd0013a539', 'tower:TOWERS:9:3:2:11:0': 'f8524381a53aae01', 'tower:TOWERS:-11:21:3:15:4': 'ff359980ae87e0ce' };
+const INTERIOR_V1 = { 'tower:TOWERS:-3:3:1:9:2': 'efc0c3c995b17599', 'tower:TOWERS:9:3:2:11:0': '35a943588ece01eb', 'tower:TOWERS:-11:21:3:15:4': '75713765db2df719' };
 const layout = (m) => sha([m.width, m.tiles.map((t) => [t.kind, t.elev, !!t.blocked]), m.objects.map((o) => [o.id, o.x, o.y, o.atLevel]), m.enemySpawns.map((e) => [e.kind, e.x, e.y])]);
 
 function enterTower(seed, rx, ry, save = null) {
@@ -277,4 +278,17 @@ test('the standard view draws the tower outside and the shaft inside without thr
     for (const [x, y] of [[g.map.tallTower.bottom.x, g.map.tallTower.bottom.y], [2, g.map.tallTower.summit.y + 1]]) { g.player.x = x; g.player.y = y; assert.doesNotThrow(() => render(ctx, g, 412, 915, 6000)); }
     const st = closeViewStatic(g.map); assert.ok(st.verts > 0 && st.verts < 40000, `${st.verts} vertices`);
   }
+});
+
+test('Close View outside: the door is drawn on the tower\'s face, a raised one on its ledge; inside, the lookout and the Long Rope are solid props on the lip', () => {
+  let raised = 0, ground = 0;
+  for (const [seed, rx, ry] of towersIn) { const g = visit(seed, rx, ry), m = g.map, T = m.objects.find((o) => o.kind === 'tallTower'), R = outdoorRelief(m);
+    const withDoor = outdoorMesh(m, null, R), without = outdoorMesh({ ...m, objects: m.objects.filter((o) => o !== T) }, null, R);
+    assert.equal(withDoor.verts - without.verts, 18, 'a frame, a door and a lintel');
+    let zMin = Infinity; for (let v = without.verts; v < withDoor.verts; v++) zMin = Math.min(zMin, withDoor.data[v * OUTDOOR_FLOATS + 2]);
+    if (T.door.raised) { raised++; assert.ok(zMin > .3, `a raised door stands over its ledge (${zMin})`); } else { ground++; assert.ok(zMin < .3, `a ground door at the foot (${zMin})`); } }
+  assert.ok(raised && ground);
+  assert.ok(CLOSE_VIEW_PROP_MODELS.towerLookout?.length && CLOSE_VIEW_PROP_MODELS.towerRope?.length); assert.equal(CLOSE_VIEW_PROPS.objects.towerLookout, 'towerLookout'); assert.equal(CLOSE_VIEW_PROPS.objects.towerRope, 'towerRope');
+  const m = generateTowerInterior('TOWERS', 'tower:TOWERS:-11:21:3:15:4');
+  for (const k of ['towerLookout', 'towerRope']) { const o = m.objects.find((q) => q.kind === k), t = m.tiles[o.y * m.width + o.x]; assert.ok(!t.blocked && t.elev === m.tallTower.levels, `${k} stands on the lip`); }
 });

@@ -168,6 +168,7 @@ export const OUTDOOR = f({
   mound: f({ rim: .5, inner: .92, jitter: .14, wander: .3 }),
   // bounds: at most this many solids in a section (the buffer never grows past it)
   maxOutcrops: 1600, maxTrees: 160,
+  towerDoor: f({ width: .62, height: .95, frame: .1, proud: .012, stone: f([.55, .52, .47]), wood: f([.13, .1, .08]), trim: f([.66, .57, .42]) }), // tall towers' doors (outdoorMesh)
   // The heightfield (version 2, Tim 2026-11-11: "it doesn't show the different heights of things... the depths of holes in
   // canyons, chasms... Everything just looks kind of flat"). Every walkable tile stands at its level's height (the ordinary
   // view's LIFT_PER_LEVEL, a great tree's levels taller), a ramp tile slopes between its neighbours, a level's edge is a
@@ -358,7 +359,8 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
   const heights = new Float32Array(w * h); let outcrops = 0;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = tiles[y * w + x]; if (outdoorOutcrop(t) && outcrops < OUTDOOR.maxOutcrops) { heights[y * w + x] = outdoorOutcropHeight(t) + (relief ? Math.max(0, relief.top[y * w + x]) : 0); outcrops++; } }
   const trees = (map?.objects || []).filter(outdoorTreeObject).slice(0, OUTDOOR.maxTrees);
-  const V = new Float32Array((outcrops * 72 + trees.length * 240) * OUTDOOR_FLOATS); let n = 0;
+  const towers = (map?.objects || []).filter((o) => o?.kind === "tallTower" && o.bounds && o.door).slice(0, 2); // tall towers: the door on the face (tall-towers.ts)
+  const V = new Float32Array((outcrops * 72 + trees.length * 240 + towers.length * 30) * OUTDOOR_FLOATS); let n = 0;
   const frost = sky?.frost || 0;
   // Rough outcrops (rock, rubble) are faceted mounds: each tile a ring of eight points round its peak, the points shared with
   // a rough neighbour at the heights both compute alike (so a run of rubble is one lumpy ridge, with no seams), the open
@@ -413,6 +415,15 @@ export function outdoorMesh(map, sky, relief = null) { // R: the section's relie
         const lring = (rr, zz, ph) => { const out = []; for (let i = 0; i < 5; i++) { const a = rot + ph + i / 5 * 6.283; out.push([lx + Math.cos(a) * rr, ly + Math.sin(a) * rr, zz]); } return out; };
         const A = lring(lr * .9, lz, 0), B = lring(lr * .75, lz + lr * 1.1, .6); centre(lx, ly, lz + lr * .6); capBot(A, [lx, ly, lz - lr * .45], dk, 4); band(A, B, cc, 4); capTop(B, [lx, ly, lz + lr * 1.55], hi, 4); } }
   }
+  // Tall towers: the door on the tower's face, at the foot or over the ledge the floating steps reach (its sill on that ledge's
+  // drawn height): a stone frame, the dark door and a lintel, a hair proud of the face (OUTDOOR.towerDoor).
+  for (const o of towers) { const D = OUTDOOR.towerDoor, b = o.bounds, south = o.door.side !== "north", fy = south ? b.y + b.h + D.proud : b.y - D.proud, oy = south ? b.y + b.h : b.y - 1, dx = Number(o.door.x);
+    const base = relief ? outdoorSurfaceZ(relief, dx + .5, oy + .5) : 0, x0 = dx + .5 - D.width / 2, x1 = dx + .5 + D.width / 2, cy = south ? fy - 1 : fy + 1;
+    centre(dx + .5, cy, base + D.height / 2);
+    const face = (a0, a1, z0, z1, y, col) => { n = pushQuad(V, n, [a0, y, z0], [a1, y, z0], [a1, y, z1], [a0, y, z1], col, 1); };
+    face(x0 - D.frame, x1 + D.frame, base, base + D.height + D.frame, fy, D.stone);
+    face(x0, x1, base, base + D.height, fy + (south ? D.proud : -D.proud), D.wood);
+    face(x0 - D.frame * 1.6, x1 + D.frame * 1.6, base + D.height, base + D.height + D.frame * 1.3, fy + (south ? 2 * D.proud : -2 * D.proud), D.trim); }
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, outcrops, trees: trees.length };
 }
 

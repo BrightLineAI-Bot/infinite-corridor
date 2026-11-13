@@ -2950,10 +2950,10 @@ const MODEL_LIMIT = Object.freeze({ low: 8, balanced: 14, full: 20 });
 // the place round it (`light`: reach, strength; `glow`: its colour), taking one of the placed-light slots.
 export const CLOSE_VIEW_PROPS = Object.freeze({ version: 1, cap: 6,
   crystal: Object.freeze({ hover: .78, bob: .07, bobSec: 2.6, turnSec: 9, scale: Object.freeze([1, 1, 1.12, 1.3]) }),
-  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep" }),
+  objects: Object.freeze({ apertureMemory: "apertureCrystal", apertureRelic: "apertureCrystal", apertureDoor: "apertureRift", emberDoor: "wayEmber", deepStair: "wayDeep", towerLookout: "towerLookout", towerRope: "towerRope" }), // tall towers: the lookout and the Long Rope
   dais: Object.freeze({ turnSec: 4, open: .25, fade: .8 }),
   light: Object.freeze({ reach: 2.2, strength: .8, height: .7 }),
-  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]) }) });
+  glow: Object.freeze({ apertureCrystal: Object.freeze([.77, .55, 1]), apertureRift: Object.freeze([.5, .9, 1]), oculusDais: Object.freeze([.5, .9, 1]), wayEmber: Object.freeze([.95, .64, .36]), wayDeep: Object.freeze([1, .82, .35]), towerLookout: Object.freeze([1, .85, .54]) }) });
 // A prop's pose this frame: how high it floats above the floor (lift), its turn (yaw) and its size (scale). Pure.
 export function closeViewPropPose(kind, o, now, reduce = false) {
   const P = CLOSE_VIEW_PROPS, t = reduce ? 0 : (Number(now) || 0) / 1000, seed = (((Number(o?.x) || 0) * 7 + (Number(o?.y) || 0) * 13) % 17 + 17) % 17, TAU = Math.PI * 2;
