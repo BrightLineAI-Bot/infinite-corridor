@@ -171,7 +171,8 @@ export const PRESETS = 2;
 // Release 291 (Tim, 2026-10-22: "you should also be able to select whether... the build button is a build or an item... on
 // your preset... next to each item in the supplies menu... preset 1 or preset 2... if preset 1 is set to build, then only
 // preset 2 will be selectable"). The items the Build button can use.
-export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule", "submersible"]; // release 311: the submersible frame (Tim: "this one should get its own option to place in the... preset slot") // release 293 (Tim): not the draught, which has its own Potion button; release 295: nor the Hull Shield, which Build already deploys at sea (hold)
+// 2026-11-12: the Stego Bait (stego-bait.ts) goes on a preset like the tonics.
+export const BUTTON_ITEMS = ["ironbarkTonic", "lumenPhial", "clearrootAmpoule", "submersible", "stegoBait"]; // release 311: the submersible frame (Tim: "this one should get its own option to place in the... preset slot") // release 293 (Tim): not the draught, which has its own Potion button; release 295: nor the Hull Shield, which Build already deploys at sea (hold)
 // Release 874: what was the Build button is slot C. These keep the release-291/309 reading of it: "item", a castable key,
 // or "build" for anything else (C empty or holding Build).
 const legacyButton = (c) => (c === "item" ? "item" : CASTABLES[c] ? c : "build");

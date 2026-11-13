@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
-import { WORLD_BEASTS, WORLD_BEAST_IDS, BEAST_HOMELANDS, beastRoams, beastRoamsAt, ENCOUNTER, RETREAT, worldBeastFor, passingBeastFor, ensureWorldBeasts, canPursue, beginRetreat, replanRetreat, retreatSide, advanceRetreat } from '../src/world-beasts.ts';
+import { PASSING, WORLD_BEASTS, WORLD_BEAST_IDS, BEAST_HOMELANDS, beastRoams, beastRoamsAt, ENCOUNTER, RETREAT, worldBeastFor, passingBeastFor, ensureWorldBeasts, canPursue, beginRetreat, replanRetreat, retreatSide, advanceRetreat } from '../src/world-beasts.ts';
 import { FAR_REALMS, FAR_DOMAINS, farDomainCentre, farDistance, openFarQuest } from '../src/far-realms.ts';
 import { PENTAGON_ARENA, pentagonArenaRoster } from '../src/pentagon-arena.ts';
 import { isPackKind } from '../src/monster-pack.ts';
@@ -59,7 +59,7 @@ test('beyond 1000 he is an ordinary world beast: he claims sections on his old r
 });
 
 test('he never passes through inside 1000; beyond it he does, and every passer is as before release 760', () => {
-  const s = fresh(); let seen = 0, his = 0; const kinds = new Set(), ids = WORLD_BEAST_IDS.filter((id) => id !== 'astralWorm' && id !== 'voidWalker');
+  const s = fresh(); let seen = 0, his = 0; const kinds = new Set(), ids = WORLD_BEAST_IDS.filter((id) => id !== 'astralWorm' && id !== 'voidWalker' && !PASSING.not.includes(id)); /* 2026-11-12: beasts never seen passing (the Wild Stegosaurus, the Spinosaurus) are not counted */
   for (let i = 0; i < 4000; i++) { const p = passingBeastFor(s, open(), 12 + (i % 40), 3 + Math.floor(i / 40), i);
     if (p) { seen++; kinds.add(p.passingBeast); assert.notEqual(p.passingBeast, 'doomChaser'); assert.notEqual(p.kind, 'doomChaser'); } }
   assert.ok(seen > 60, `${seen} passed`); assert.ok(kinds.size >= ids.length - 2, [...kinds].join());
