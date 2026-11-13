@@ -50,7 +50,7 @@ import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
 import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.ts";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.ts";
 import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.ts";
 import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.ts";
 import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.ts";
@@ -2567,6 +2567,19 @@ export function activeDungeonEnemies(enemies,player,map){
 }
 export function settlementSanctuary(map,rx,ry,save){if(!map||map.farFolk==="monster"||rx===0&&ry===0&&save?.consequences?.settlements?.['ember-refuge']?.status==='fallen')return null;if(map.settlement?.procedural)return{x:map.settlement.x,y:map.settlement.y,radius:map.settlement.radius};return map.settlement||rx===0&&ry===0?{x:16,y:16,radius:9}:null}
 export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y-z.y,d=Math.hypot(dx,dy);if(d>=z.radius)return false;const m=d||1;e.x=z.x+(d?dx/m:1)*(z.radius+.5);e.y=z.y+(d?dy/m:0)*(z.radius+.5);const ai=ensureAI(e);ai.homeX=e.x;ai.homeY=e.y;e.telegraph=0;return true}
+// Stegosaur's Grip and the fizzle zones: is a hold refused with the Wayfarer at (x, y)? When the box there (or a little ahead of it,
+// where the wall is felt) reaches a Great Castle's or sealed tower's ground (vehicle-gates.ts DRONE_FIZZLE) or a Pentagon tile that
+// is none of WALL_CLING.pentagon's `grip` or `stand` parts (or its parapet); or (`feet`) when the tile under the feet is a Pentagon
+// part other than its `stand` parts: never from its roof. Pure; no allocation.
+export function clingBarred(map, width, x, y, feet) {
+  const tiles = map?.tiles; if (!tiles || !(width > 0)) return false;
+  const K = WALL_CLING.pentagon, height = tiles.length / width, x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue; const t = tiles[ty * width + tx]; if (!t) continue;
+    if (t.pentagon ? t.pentParapet || !(K.grip.includes(t.pentagon) || K.stand.includes(t.pentagon)) : droneZoneOf(t)) return true; }
+  if (!feet) return false;
+  const fx = Math.floor(x + .5), fy = Math.floor(y + .75), u = fx >= 0 && fy >= 0 && fx < width && fy < height ? tiles[fy * width + fx] : null;
+  return !!u?.pentagon && !K.stand.includes(u.pentagon);
+}
 // Release 445 (Tim: "the character needs to jump when you actually press the button, not like a second later"): a jump
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
 // plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
@@ -2717,7 +2730,7 @@ export class Game {
     { const q = s.playerRuntime.crownFoot; this.crownFoot = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) ? { rx: q.rx, ry: q.ry } : null; } // TREE_GLIDE.home.reached
     this.restoreJumpAir(s.playerRuntime.jumpAir, now); // a jump resumes at the height it left from
     // Stegosaur's Grip: still on the wall, or down on the ground beneath it.
-    this.restoreWallCling(s.playerRuntime.wallCling, s.playerRuntime.wallKick, now);
+    this.restoreWallCling(s.playerRuntime.wallCling, s.playerRuntime.wallKick, now, s.playerRuntime.wallHolds);
     this.restoreRoofDeck(s.playerRuntime.roofDeck); // roof decks: on the roof it was saved on, or (no longer there) on the ground without a fall
     this.restoreDroneLift(s.playerRuntime.droneLift, now); // release 647: after loading the area, which clears a lift
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
@@ -3838,6 +3851,8 @@ export class Game {
       // Stegosaur's Grip: the wall held (kept on resume while it is still there: restoreWallCling) and a wall jump's kick in progress.
       wallCling: this.wallCling ? this.savedWallCling() : null,
       wallKick: this.wallKick && clock < (this.jumpUntil || 0) ? { x: this.wallKick.x, y: this.wallKick.y, firm: Math.max(0, this.wallKick.firm), anchor: this.wallKick.anchor } : null,
+      // The holds taken in this airtime (WALL_CLING.maxHolds).
+      wallHolds: Math.max(0, Math.floor(Number(this.wallHolds) || 0)),
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
@@ -3947,7 +3962,8 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    this.wallCling = null; this.wallKick = null;
+    // Stegosaur's Grip: the wall held, a kick in the air and the holds taken since the feet last touched ground.
+    this.wallCling = null; this.wallKick = null; this.wallHolds = 0;
     this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.riftPress = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
@@ -4151,9 +4167,10 @@ export class Game {
     return !(now < (p.dodgeUntil || 0)) && !(now < (p.heldUntil || 0)) && !(now < (p.stunnedUntil || 0));
   }
   // Is tile t a surface a hold can take, for a body at height `base`? A solid tile (not water, lava, a drop or a star-void), a
-  // house's or enclosure's wall, or ground 2 or more levels higher. Never a Pentagon's tile or a sealed tower's air.
+  // house's or enclosure's wall, or ground 2 or more levels higher. Never a sealed tower's air, nor a Pentagon's tile but its outer
+  // faces and a balcony's side (WALL_CLING.pentagon.grip; never the parapet).
   clingSurface(t, base) {
-    if (!t || t.pentagon || t.towerAir) return false;
+    if (!t || t.towerAir || t.pentagon && (t.pentParapet || !WALL_CLING.pentagon.grip.includes(t.pentagon))) return false;
     if (t.blocked) return !LETHAL_KINDS.has(t.kind) && !DEEP_WATER.includes(t.kind) && !isMarineTile(t) && !/water|ocean|sea|pool|void|chasm|vent/i.test(String(t.kind || ""));
     if (t.encSides?.length || (["shackWall", "districtWall"].includes(t.structure) && t.wallSides?.length)) return true;
     if (LETHAL_KINDS.has(t.kind) || t.slope) return false;
@@ -4164,7 +4181,7 @@ export class Game {
   clingWallAhead(nx, ny, base) {
     const p = this.player, map = this.map, tiles = map?.tiles; if (!tiles?.length) return -1;
     const w = mapWidth(map, this.area), h = Math.floor(tiles.length / w), R = WALL_CLING.reach, qx = p.x + nx * R, qy = p.y + ny * R;
-    if (droneForbiddenAt(map, w, p.x, p.y) || droneForbiddenAt(map, w, qx, qy) || gliderForbiddenAt(map, w, p.x, p.y) || gliderForbiddenAt(map, w, qx, qy)) return -1;
+    if (clingBarred(map, w, p.x, p.y, true) || clingBarred(map, w, qx, qy, false)) return -1;
     const probe = this._clingProbe ||= { isPlayer: true, jumping: true, airElev: undefined };
     probe.airElev = this.skyAir != null || this.wallCling?.lifted ? base : undefined;
     const reach = this.decksApply() ? Math.floor(base + 1e-6) + 1 : null;
@@ -4175,10 +4192,20 @@ export class Game {
     for (let ty = ay; ty <= by; ty++) for (let tx = ax; tx <= bx; tx++) if (this.clingSurface(tiles[ty * w + tx], base)) return ty * w + tx;
     return -1;
   }
+  // The highest a hold may be where the Wayfarer is (WALL_CLING.pentagon): the Pentagon's roof level less `below` when any Pentagon
+  // tile lies within `near` tiles of their box, else Infinity. Overworld only; read when a hold is taken or restored. No allocation.
+  clingPentagonCap() {
+    const K = WALL_CLING.pentagon, map = this.map, tiles = map?.tiles, p = this.player; if (this.area !== "overworld" || !tiles?.length) return Infinity;
+    const w = mapWidth(map, this.area), h = Math.floor(tiles.length / w), x0 = Math.max(0, Math.floor(p.x + .24) - K.near), x1 = Math.min(w - 1, Math.floor(p.x + .76 - 1e-6) + K.near);
+    const y0 = Math.max(0, Math.floor(p.y + .5) - K.near), y1 = Math.min(h - 1, Math.floor(p.y + .88 - 1e-6) + K.near);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (tiles[ty * w + tx]?.pentagon) return PENTAGON.roof.elev - K.below;
+    return Infinity;
+  }
   // After this frame's move: a jump whose stick (or kick) pushed into a wall, and was stopped by it, takes hold. True when it did.
+  // At most WALL_CLING.maxHolds in one airtime (`wallHolds`, set back to 0 only when the Wayfarer stands on ground).
   tryWallCling(x, y, dx, dy, fromX, fromY, now) {
     const C = WALL_CLING, p = this.player, m = Math.hypot(x, y), alongX = Math.abs(x) >= Math.abs(y), main = alongX ? x : y;
-    if (m < C.push || Math.abs(main) < C.push || Math.abs(main) < C.aim * m || !this.wallClingReady(now)) return false;
+    if (m < C.push || Math.abs(main) < C.push || Math.abs(main) < C.aim * m || !((this.wallHolds || 0) < C.maxHolds) || !this.wallClingReady(now)) return false;
     const want = alongX ? dx : dy, got = alongX ? p.x - fromX : p.y - fromY;
     if (!(Math.abs(want) > 1e-9) || Math.abs(got) > Math.abs(want) * .3) return false;
     const nx = alongX ? Math.sign(main) : 0, ny = alongX ? 0 : Math.sign(main), w = mapWidth(this.map, this.area);
@@ -4188,8 +4215,10 @@ export class Game {
     const wall = this.clingWallAhead(nx, ny, air); if (wall < 0) return false;
     const anchor = Number.isFinite(this.wallKick?.anchor) ? this.wallKick.anchor : Math.floor(air + 1e-6);
     let z = lifted ? Math.max(air, Math.min(anchor + C.maxRise, Math.floor(air + 1e-6) + C.rise)) : air;
+    // By a Pentagon: never a hold higher than its cap (WALL_CLING.pentagon.below), and none taken from above it.
+    const cap = this.clingPentagonCap(); if (air > cap + 1e-6) return false; z = Math.min(z, cap);
     if (lifted && this.area === "dungeon") { const ceiling = this.interiorLiftCeiling(); if (air > ceiling + 1e-6) return false; if (z > ceiling + 1e-6) z = air; }
-    this.wallCling = { z, nx, ny, anchor, base: air, wall, lifted, x: p.x, y: p.y }; this._clingMap = this.map; this.wallKick = null;
+    this.wallCling = { z, nx, ny, anchor, base: air, wall, lifted, x: p.x, y: p.y }; this._clingMap = this.map; this.wallKick = null; this.wallHolds = (this.wallHolds || 0) + 1;
     if (lifted) { this.skyAir = z; this.skyAirScale = tileLiftScale(tileUnder(this.map, w, p.x, p.y)) || 1; }
     this.deckHop = false; this.skyHopGap = false; this.keelLine = null;
     this.jumpUntil = Math.max(this.jumpUntil || 0, now + C.hold);
@@ -4232,14 +4261,16 @@ export class Game {
   // The hold as saved (resumeRuntime `wallCling`), after the area loads: kept while the Echo is set, nothing else forbids it and the
   // same wall is still beside the Wayfarer; otherwise they are set down on the ground under them, unhurt (the hold is dropped, not
   // fallen from). A kick in the air (`wallKick`) resumes with what it had left.
-  restoreWallCling(q, k, now) {
+  restoreWallCling(q, k, now, holds = 0) {
     this.wallCling = null; this.wallKick = null;
+    // The holds taken in this airtime; a save from before the count (release 929) holding or kicking has taken one at least.
+    this.wallHolds = Math.max(Math.min(WALL_CLING.maxHolds, Math.max(0, Math.floor(Number(holds) || 0))), (q && typeof q === "object") || (k && typeof k === "object") ? 1 : 0);
     const n = (v) => v != null && Number.isFinite(Number(v)) ? Number(v) : null, card = (a, b) => Number.isInteger(a) && Number.isInteger(b) && Math.abs(a) + Math.abs(b) === 1;
     if (k && typeof k === "object" && now < (this.jumpUntil || 0) && card(n(k.x), n(k.y)) && n(k.firm) != null && n(k.anchor) != null) { this.wallKick = { x: n(k.x), y: n(k.y), firm: Math.max(0, Math.min(WALL_CLING.kick.firm, n(k.firm))), anchor: n(k.anchor) }; this._clingMap = this.map; }
     if (!q || typeof q !== "object") return false;
     const c = { z: n(q.z), nx: n(q.nx), ny: n(q.ny), anchor: n(q.anchor), base: n(q.base), wall: n(q.wall), lifted: q.lifted === true }, p = this.player;
     const ok = [c.z, c.anchor, c.base, c.wall].every((v) => v != null) && card(c.nx, c.ny) && Number.isInteger(c.wall) && c.z >= c.base - 1e-6 && (c.lifted || c.z === c.base)
-      && c.z <= c.anchor + WALL_CLING.maxRise + 1e-6 && c.lifted === (this.droneLiftAllowed() && !!this.map?.landscape) && this.wallClingReady(now) && this.clingWallAhead(c.nx, c.ny, c.base) === c.wall;
+      && c.z <= c.anchor + WALL_CLING.maxRise + 1e-6 && c.z <= this.clingPentagonCap() + 1e-6 && c.lifted === (this.droneLiftAllowed() && !!this.map?.landscape) && this.wallClingReady(now) && this.clingWallAhead(c.nx, c.ny, c.base) === c.wall;
     if (!ok) { this.wallKick = null; this.jumpUntil = -1e9; this.skyAir = null; this.deckHop = false; this.liftDrop = false; this.skyHopGap = false; return false; }
     c.x = p.x; c.y = p.y; this.wallCling = c; this._clingMap = this.map; this.wallKick = null;
     this.jumpUntil = Math.max(this.jumpUntil || 0, now + WALL_CLING.hold); this.deckHop = false;
@@ -10349,6 +10380,8 @@ export class Game {
       if (!p.jumping && !this.glide && !this.droneLift) { const u = tileUnder(this.map, width, p.x, p.y), top = this.area === "overworld" && u?.kind === "canopyTrunk" && this.map.canopy?.top && u.elev === this.map.canopy.top, f = this.crownFoot;
         if (!top) this.crownFoot = null; else if (!f || f.rx !== this.rx || f.ry !== this.ry) this.crownFoot = { rx: this.rx, ry: this.ry }; }
       if (!p.jumping) { this.skyAir = null; this.liftDrop = false; this.deckHop = false; } p.airElev = undefined;
+      // Stegosaur's Grip: the feet on ground give the holds back (WALL_CLING.maxHolds).
+      if (!p.jumping && !this.fall && !this.glide && !this.droneLift && !this.wallCling) this.wallHolds = 0;
       // Traversal cue: pushing against a ledge explains what it takes (operator ask 2026-10-14: climbing was confusing).
       if (!gliding && this.map.landscape && Math.hypot(x, y) > .4 && Math.hypot(p.x - fromX, p.y - fromY) < Math.hypot(dx, dy) * .3) {
         const here = tileUnder(this.map, width, p.x, p.y), ahead = tileUnder(this.map, width, p.x + x * .6, p.y + y * .6), up = (ahead?.elev || 0) - (here?.elev || 0);
