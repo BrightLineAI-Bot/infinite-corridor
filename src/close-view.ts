@@ -251,7 +251,8 @@ export const CLOSE_VIEW = Object.freeze({
     // ground itself (a cliff at the Wayfarer's back) pulls the boom in; off, that keeps the calm pass's rule (the crane rises, then
     // the boom shortens until the chest is in sight, however steep: tests/close-view-camera-calm.test.ts pins it). On, the boom
     // stops at minBoom there too, the eye is lowered to maxPitch and the cliff between is cut open by the occluder window.
-    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: false }),
+    // Release 932 (Tim: the best and steadiest view near cliffs and walls): on.
+    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: true }),
     // The occluder window (2026-11-13): whatever stands between the eye and the Wayfarer's body (`body` tiles over their feet)
     // is cut open by a dithered cone, `eye` tiles wide at the camera and `radius` at the body, softened over the outer `soft`
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
@@ -259,7 +260,9 @@ export const CLOSE_VIEW = Object.freeze({
     // the cutting programs. A creature whose body crosses the cone eases (at `rate` a second; at once with Reduced Motion) to
     // `creature` of its opacity, if it is at least `creatureScale` big (its game scale: the dragons, the Giant, the world beasts;
     // ordinary creatures stay solid wherever they stand, tests/close-view-solid-creatures.test.ts). Indoor walls are never faded.
-    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10 }),
+    // Release 932 (Tim: "I want the enemies to be as solid and real as possible"): `creatureFade` off, so no creature, however big,
+    // is ever faded by the window; trees, rocks, props and the ground still are, and big threats are still framed (`threat`).
+    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10, creatureFade: false }),
     // `edgeFog`: tiles past an overworld section's edge over which the open ground melts into the far haze (it showed the
     // ordinary view's off-map checker). The neighbours' own terrain is not drawn (it would need their generation each crossing).
     edgeFog: 3,
@@ -2216,7 +2219,7 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
       // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
       // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
-      const cut = OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
+      const cut = Oc.creatureFade && OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
       if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames }; FOE_FADE.set(foe, st); }
       st.o += (occ - st.o) * k; boardOcc[j] = st.o;
       if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c; } } // not drawn last frame: no stale fade carried over
