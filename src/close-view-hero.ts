@@ -243,6 +243,10 @@ function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
   for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold;target[2]=data[o+2]-A.tuckBack*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
 }
+// Stegosaur's Grip (game.ts wallCling): the still cling pose's arm reach and elbow bend, the body's lean in and the head's look up
+// (radians on the source's shoulders 12/22, elbows 11/21, body 27 and head 4).
+const CLING_POSE = Object.freeze({ reach: 2.5, elbow: .35, lean: .12, look: .18 });
+const CLING_ARMS = Object.freeze([Object.freeze([12, 11]), Object.freeze([22, 21])]);
 const HURT_FLINCH = Object.freeze({ lateral: .16, peak: .22, chest: .16, upper: .08, head: .14, twist: .07, guard: .30, elbow: .35 });
 // Touchdown absorb after an ordinary jump: the pelvis sinks and recovers over the accepted landing
 // clock while both soles stay planted (flat) where they are. Presentation only; u is 0..1.
@@ -817,11 +821,13 @@ export function sampleCloseViewHero(asset, state, input, out) {
         if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
         else castPose(state,state.pose,profile,p,roles.free==='leftSocket');
       }
+      // Stegosaur's Grip: holding a wall, both arms reach up onto it and the body leans in; held still (Reduced Motion alike).
+      else if (profile === 'cling') { const A = CLING_POSE; for (const [shoulder, elbow] of CLING_ARMS) { rotateX(state.pose, shoulder, -A.reach * weight); rotateX(state.pose, elbow, -A.elbow * weight); } rotateX(state.pose, 27, A.lean * weight); rotateX(state.pose, 4, -A.look * weight); state.clip = 'derived-cling'; state.clipTime = .5; }
       else { // Legacy jumps keep their brace; reviewed ordinary-air records add connected legs.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
         ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike');
       }
-      if(state.clip!=='derived-ordinary-jump'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
+      if(state.clip!=='derived-ordinary-jump'&&state.clip!=='derived-cling'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);

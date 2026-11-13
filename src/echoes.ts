@@ -66,6 +66,36 @@ export const ECHOES = {
   // a Wayfarer who has killed it already (grantSlainEchoes).
   stalker: { name: "Stalker's Mist", cost: 3, trigger: "dodge", module: "mistForm", creature: "The Stalker", text: "Your dodge turns you to mist: each foe you pass through loses a share of its maximum health for good (never more than a third of it)." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
+  // The Wild Stegosaurus (Tim, 2026-11-12: "The stego's Echo lets you wall cling... jump onto a wall... and hold on to it. If you
+  // don't move, you just stay there. Press jump again... you jump off it, and you can do another jump off the next wall"). Taken on
+  // the first kill like every world beast's. Its rules and numbers are WALL_CLING; game.ts carries them out (wallCling*).
+  wildStego: { name: "Stegosaur's Grip", cost: 2, trigger: "jump", module: "wallCling", text: "Jump into a wall, cliff or rock and you hold on at the height you reached, as long as you like. Jump again to kick off it; from wall to wall you climb, up to 3 levels." },
+};
+// Stegosaur's Grip, the wall cling (game.ts wallCling*). A jump pushed into a vertical surface (a solid tile, a house's wall, or
+// ground 2 or more levels above the jump) holds there; the stick held into the wall, or let go, keeps the hold (no time limit, as
+// Tim asked); pushed off the wall, a dodge, a blow that moves the Wayfarer, or the wall going lets go (a fall from that height).
+// Jump while holding kicks off it, away from the wall, as a new jump from the hold's height. Never with the drone out or the
+// robot on (their own Jump wins), mounted, swimming, aboard, gliding, inside a house, or on a Pentagon's, Great Castle's or
+// sealed tower's tiles (vehicle-gates.ts DRONE_FIZZLE): the Corridor's rules are different there.
+export const WALL_CLING = {
+  // The stick (or a kick) pushed at least this much on its main axis takes hold.
+  push: .5,
+  // And the main axis at least this share of the push: a run along a wall never grabs it.
+  aim: .7,
+  // How far past the collision box the wall is felt (tiles): more than a frame's step at a kick's pace (moveAxis stops short of it).
+  reach: .25,
+  // A hold is this many levels over the height its jump left from: a jump's top (an ordinary jump climbs one level).
+  rise: 1,
+  // A chain of holds climbs at most this many levels over the ground it began from (the drone lifts 5: DRONE_LIFT.max).
+  maxRise: 3,
+  // Holding, the stick pointed less than this share into the wall (and pushed at all) lets go.
+  letGo: .5,
+  // A stick under this is not pushed at all.
+  dead: .15,
+  // Ms the jump's clock is kept ahead of now each frame of a hold (it never ends while holding).
+  hold: 140,
+  // A wall jump: ms it goes straight off the wall before the stick steers, and its pace (times a walk: a dodge's).
+  kick: { firm: 220, push: 2 },
 };
 export const ECHO_IDS = Object.keys(ECHOES);
 

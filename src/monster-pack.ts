@@ -505,7 +505,7 @@ export const MONSTER_PACK = {
   // The Wild Stegosaurus (Tim, 2026-11-12, for his kid): a world beast that roams the land and the sea, and turns up in the big rooms
   // of keeps, arcologies and adventure Pentagons (wild-stego.ts). Its numbers are STEGO; its pose fields are listed there.
   wildStego: {
-    id: "wildStego", name: "The Wild Stegosaurus", epithet: "Hunger on Four Legs", unique: true, noEcho: true,
+    id: "wildStego", name: "The Wild Stegosaurus", epithet: "Hunger on Four Legs", unique: true,
     stats: [360, 18, 0], form: { scale: 1.85 }, sizeClass: "huge", movement: "walk", brain: "restless",
     attacks: ["stegoBite", "stegoTailWhack", "stegoTailSlam", "stegoWheel", "stegoPlateRockets", "stegoTailBlade", "stegoClaw", "stegoRearSwipe", "stegoBuck", "stegoPounce", "stegoTreeClub", "stegoBreach"], bossAttacks: [],
     palette: ["#2f6fd6", "#163a7a", "#a9dcff", "#6f9fe6"], render: "wildStego", tags: ["beast", "elder", "dinosaur", "water", "climber"],
