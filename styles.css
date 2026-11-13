@@ -1093,3 +1093,8 @@ body.reduce-motion #oculusWarp { display: none; }
 .look-subject { display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 4; max-width: min(56vw, 220px); padding: 1px 7px; border-radius: 8px; background: #141714d9; border: 1px solid #f0c86a66; color: #f2dca6; font-size: 11px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .compass-slot.look-on.look-named .look-subject { display: block; }
 .compass-slot.look-on .nav-compass { border-color: #f0c86a; box-shadow: inset 0 0 0 3px #0e1210, 0 0 0 2px #f0c86a66, 0 2px 7px #000b; }
+
+/* Tim, 2026-11-13: holding a button with words on it (on a phone) selected the text in Chrome. Nothing in the game's UI is
+   selectable or opens the long-press callout; text fields (journey names, settings) still take typing and selection. */
+html, body, button, .action-diamond, .action-diamond * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
