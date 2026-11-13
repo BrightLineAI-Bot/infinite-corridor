@@ -1,4 +1,4 @@
-import { weaponArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13): the Close View charge pose
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.ts"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
 import { rangedWeapon } from './items.ts';
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.ts";
@@ -3456,7 +3456,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.alpha = actor.alpha * heroFadeIn(state, now, reduce); input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
         if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
-        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;action.weaponArt=attack&&typeof visualRecord?.weaponArt==='string'?visualRecord.weaponArt:undefined;/* weapon-arts.ts */
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;action.weaponArt=attack&&typeof visualRecord?.weaponArt==='string'?visualRecord.weaponArt:undefined;action.awakenedArt=attack&&typeof visualRecord?.awakenedArt==='string'?visualRecord.awakenedArt:undefined/* awakened-arts.ts: the awakened move's pose */;/* weapon-arts.ts */
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         action.primaryStage = primaryStage; action.jumpAir = null;
         if (defeat) { action.kind = 'death'; action.profile = 'death'; action.phase = defeat.amount; action.durationMs = defeat.durationMs; }
@@ -3489,7 +3489,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);

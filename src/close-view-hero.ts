@@ -788,6 +788,37 @@ function weaponArtChargePose(state,pose,c,reducedMotion){
   const A=ART_POSE.charge,k=smoothstep(c*2)*(reducedMotion?.7:1);if(!(k>0))return;
   rotateY(pose,27,A.turn*k);rotateX(pose,27,A.lean*k);rotateX(pose,22,A.draw*k);plantedCrouch(state.asset,state,pose,k*A.crouch,A.drop);state.clip='derived-art-charge';state.clipTime=c;
 }
+// Awakened arts (awakened-arts.ts; the record wears `awakenedArt`): Fissure, Returning blades, Lance and Spell runes layer over
+// the third swing's own pose; the Iron Fists' roundhouse and axe kick are whole-body moves on a punch record (the punch clip
+// is skipped). Every layer is zero at both ends of the record; reduced motion keeps the kicks but not the spin. Radians on the
+// source joints as ART_POSE; a kick's `up`/`fwd` are the right ankle's lift and reach in heights of the hero.
+const AWAKENED_POSE = Object.freeze({
+  fissure: Object.freeze({ bend: .35, chest: .18, crouch: .3, drop: .14, at: .3, len: .25 }),
+  'returning-blades': Object.freeze({ fling: 1.3, spread: .45, out: .25, back: .55, len: .3 }),
+  lance: Object.freeze({ reach: .9, lead: .5, lean: .26, at: .25 }),
+  'spell-runes': Object.freeze({ trace: 1.1, out: .3 }),
+  roundhouse: Object.freeze({ up: .42, fwd: .3, guard: .55, lean: .15, kickAt: .1, kickLen: .2, holdEnd: .65, spinEnd: .85 }),
+  'axe-kick': Object.freeze({ up: .55, fwd: .22, guard: .4, arch: .12, slam: .3, riseEnd: .35, fallAt: .4, fallLen: .2, crouch: .35, drop: .12 }),
+});
+const AWAKENED_KICKS = new Set(['roundhouse', 'axe-kick']), AWAKENED_CLIP = Object.freeze(Object.fromEntries(Object.keys(AWAKENED_POSE).map((k) => [k, `derived-${k}`])));
+// One leg's ankle lifted `up` and carried `fwd` (heights of the hero), weighted by w; the other sole stays put.
+function kickLeg(asset,state,pose,left,up,fwd,w){
+  if(!(w>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget,side=left?0:1,o=side*10,foot=left?1:36,H=state.referenceHeight;
+  build(asset,state,pose);anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);
+  target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
+}
+function awakenedArtPose(asset,state,pose,art,p,reducedMotion){
+  const A=AWAKENED_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.2));if(!(env>0))return;
+  if(art==='fissure'){const k=smoothstep((p-A.at)/A.len)*env;rotateX(pose,27,A.bend*k);rotateX(pose,24,A.chest*k);plantedCrouch(asset,state,pose,k*A.crouch,A.drop);}
+  else if(art==='returning-blades'){const k=smoothstep(p/A.out)*(1-smoothstep((p-A.back)/A.len))*env;rotateX(pose,12,-A.fling*k);rotateX(pose,22,-A.fling*k);rotateZ(pose,12,-A.spread*k);rotateZ(pose,22,A.spread*k);}
+  else if(art==='lance'){const k=smoothstep(p/A.at)*env;rotateX(pose,22,-A.reach*k);rotateX(pose,12,-A.lead*k);rotateX(pose,27,A.lean*k);}
+  else if(art==='spell-runes'){const k=Math.sin(Math.PI*p)*env;rotateX(pose,12,-A.trace*k);rotateZ(pose,12,-A.out*k);}
+  else if(art==='roundhouse'){const k=smoothstep((p-A.kickAt)/A.kickLen)*(1-smoothstep((p-A.holdEnd)/(1-A.holdEnd)))*env,spin=smoothstep(p/A.spinEnd);
+    if(!reducedMotion&&spin<1)state.sweepSpin+=TAU*spin;rotateX(pose,12,-A.guard*env);rotateX(pose,22,-A.guard*env);rotateX(pose,27,-A.lean*k);kickLeg(asset,state,pose,false,A.up*k,A.fwd*k,k);}
+  else if(art==='axe-kick'){const rise=smoothstep(p/A.riseEnd)*(1-smoothstep((p-A.fallAt)/A.fallLen))*env,down=smoothstep((p-A.fallAt)/A.fallLen)*env;
+    rotateX(pose,12,-A.guard*env);rotateX(pose,22,-A.guard*env);rotateX(pose,27,-A.arch*rise+A.slam*down);kickLeg(asset,state,pose,false,A.up*rise,A.fwd*rise,rise);plantedCrouch(asset,state,pose,down*A.crouch,A.drop);}
+  state.clip=AWAKENED_CLIP[art];state.clipTime=p;
+}
 // Planted crouch: the pelvis sinks while both soles stay where they are (flattening by k).
 function plantedCrouch(asset,state,pose,k,drop){
   if(!(k>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(asset,state,pose);
@@ -839,7 +870,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);
   else state.primaryGripResidual=0;
   let sweepPosed=false;
-  if (action&&!meleeMotion) {
+  if (action&&!meleeMotion&&!(action.kind==='melee'&&AWAKENED_KICKS.has(action.awakenedArt))) { // awakened-arts.ts: a kick is its own whole-body pose
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
     else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup'&&!chestOpening&&!shovelDigging&&!placingStone) clip = asset.clips.PickUp;
@@ -926,6 +957,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
+  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
