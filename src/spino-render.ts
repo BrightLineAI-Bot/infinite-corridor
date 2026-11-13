@@ -682,7 +682,7 @@ function drawSnoutEffects(ctx, env) {
 // ------------------------------------------------------------------------------------------------ marks and overlays
 // The grab's tracking reticle (a bite mark: two arcs of tooth points closing on the target), drawn on the floor where the
 // gameplay holds it (spinoGrab.x, y in tiles; else the grabbed creature's own position). `k` (0..1) is how close the lunge is.
-export const SPINO_BITE_MARK = Object.freeze({ radius: .9, teeth: 8, color: "255,40,60", overlayTeeth: 11, overlayAlpha: .6, overlayVignette: .45 });
+export const SPINO_BITE_MARK = Object.freeze({ radius: 1.15, teeth: 8, color: "255,40,60", overlayTeeth: 11, overlayAlpha: .6, overlayVignette: .45 });
 // one jaw's row of teeth along an arc bulging away from the centre (side -1 the upper jaw, 1 the lower), pointing inward
 function biteRow(ctx, cx, cy, rx, ry, gap, side, n, len, w, fill, blood) {
   for (let i = 0; i < n; i++) {

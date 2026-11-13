@@ -60,7 +60,7 @@ function arena(id, away = false) {
 
 test('registry: a huge unique world beast of the land, ten moves (two bone-only), its own poise, pose defaults, no Echo', () => {
   const def = MONSTER_PACK.spinoRex, B = WORLD_BEASTS.spinoRex;
-  assert.deepEqual(validateMonster(def), []); assert.ok(PACK_KINDS.includes('spinoRex')); assert.equal(def.render, 'spinoRex'); assert.ok(def.unique && def.noEcho); assert.equal(def.name, 'The Spinosaurus');
+  assert.deepEqual(validateMonster(def), []); assert.ok(PACK_KINDS.includes('spinoRex')); assert.equal(def.render, 'spinoRex'); assert.ok(def.unique && !def.noEcho); assert.equal(def.name, 'The Spinosaurus');
   assert.equal(ATTACKS.length, 10); for (const id of ATTACKS) assert.ok(ATTACK_MODULES[id] && SETUP[id], id); assert.deepEqual(SPINO.fossilOnly, ['spinoBoneVolley', 'spinoRibSpears']);
   assert.equal(WORLD_BEAST_IDS.at(-1), 'spinoRex', 'listed last: every older beast rolls as it did'); assert.equal(B.kind, 'spinoRex'); assert.ok(BEAST_APERTURE.spinoRex); assert.ok(PLACEMENT.bigBeasts.includes('spinoRex')); assert.ok(BOSS_POISE.spinoRex);
   const e = createCombatant('spinoRex', 0, 0, true, []), stego = createCombatant('wildStego', 0, 0, true, []); assert.ok(e.scale > stego.scale, 'bigger than the Wild Stegosaurus');

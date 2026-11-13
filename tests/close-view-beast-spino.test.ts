@@ -10,7 +10,8 @@ import { CLOSE_VIEW_BEASTS, closeViewBeastEligible } from '../src/close-view-bea
 import { MONSTER_PACK } from '../src/monster-pack.ts';
 import { createCombatant } from '../src/combat.ts';
 
-const spino = (flags = {}) => Object.assign(createCombatant('spinoRex', 20, 20, true, []), { id: 'spino-cv', hp: 400, maxHp: 500 }, flags);
+// the beast's own start (monster-pack.ts) sets spinoShed 0; a fossil asked for here without a shed is one already shed (spinoShed 1)
+const spino = (flags = {}) => Object.assign(createCombatant('spinoRex', 20, 20, true, []), { id: 'spino-cv', hp: 400, maxHp: 500 }, flags.spinoFossil && !('spinoShed' in flags) ? { spinoShed: 1 } : {}, flags);
 const scaleOf = (e) => (e.scale || 1) * SPINO_RIG.closeViewScale;
 const env = (e, now, extra = {}) => ({ x: e.x + .5, y: e.y + .82, z: 0, scale: scaleOf(e), now, reduce: false, tier: 'full', target: { x: e.x + 6, y: e.y }, dead: false, ...extra });
 const finite = (a) => { for (const v of a) if (!Number.isFinite(v)) return false; return true; };
