@@ -2477,7 +2477,7 @@ export function render(ctx, g, w, h, now) {
     b = Math.min(mh, t + Math.ceil(h / s) + 5 + (!worldCapture && g.map?.canopy?.top ? Math.ceil(g.map.canopy.top * LIFT_PER_LEVEL * CANOPY_LIFT) : 0) + up),
     jumping = now < (g.jumpUntil || 0),
     lift = (interiorTerrain(g.map) && closeViewCapturing() ? 0 : jumpLift(g, now)) * s,
-    dodging = now < (p.dodgeUntil || 0);
+    dodging = now < (p.dodgeUntil || 0) || now < (p.landRollUntil || 0); // FALL.rollPose: a landing roll shows as a dodge roll
   const objectLists=mapObjectLists(g.map), scarSurface=voidScarSurface(g.map,g.area);
   if (g.area === "dungeon" && labFogOf(g.map)) { const at = labFogTile(p); labFogLook(g.map, at.x, at.y); } // LAB_FOG: the sight is current before anything asks it (the game normally worked it out this frame)
   renderCacheStats.visibleTiles=(r-l)*(b-t);

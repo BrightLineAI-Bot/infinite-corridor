@@ -56,7 +56,7 @@ test('3. Rift Step out over a 4+ drop with the glider owned is an ordinary (leth
   const g = wayfarer({ rift: true, glider: true }); cliff(g, 5); g.player.lastMoveVector = { x: 1, y: 0 }; g.lastUpdateNow = 5000;
   assert.equal(riftStep(g, 5000), true); assert.equal(g.glide, null, 'no glide'); assert.ok(g.fall && g.fall.z === 5, 'a fall from five levels');
   const d = drive(g, 60, 5000), d0 = deaths(g); for (let i = 0; i < 200 && deaths(g) === d0 && g.player.hp > 0; i++) d.step(0); assert.ok(deaths(g) > d0 || g.player.hp <= 0, 'fatal, as the table says');
-  assert.equal(fallDamage(5, 100), Infinity);
+  assert.equal(fallDamage(5, M), Infinity);
 });
 
 test('3. Jump while falling with no drone says nothing can catch you, and the fall goes on', () => {
@@ -146,4 +146,66 @@ test('1. a held Rift Step lapses as before, a tap while armed steps ahead and dr
   const g = rifter(false); let t = 6000; g.aimRiftStep(t); assert.ok(g.riftAimArmed()); const x0 = g.player.x;
   g.update(1 / 60, spellInput(0, true, false), t += 1000 / 60); assert.ok(g.player.x > x0 + 1, 'a tap steps ahead'); assert.equal(g.riftAimArmed(), false);
   const k = rifter(false); k.update(1 / 60, spellInput(0, true, true), 7000); assert.ok(k.riftPress); k.player.hp = 0; for (let i = 0; i < 4; i++) k.update(1 / 60, spellInput(0, false, true), 7000 + i * 17); assert.equal(k.riftPress ?? null, null);
+});
+
+// 6. The landing roll (Tim, 2026-11-13): Dodge pressed in the last FALL.roll seconds of a fall (on the fall's own clock) counts the fall
+//    FALL.rollLevels less; the fall's first dodge is its one try; 5+ levels stay lethal; not for a plunge.
+// Walk east off a cliff of `h` (stick held until the fall begins, then let go), pressing Dodge on the frames in `dodgeAt`, counted back
+// from the landing frame `land` (0 = the landing frame, 1 = the frame before it). Returns the hp lost and whether it died.
+function rollOff(h: number, dodgeAt: number[], land = -1, opts: { snapAt?: number } = {}) {
+  const ground = (q: any) => { for (let y = ROW - 4; y <= ROW + 1; y++) for (let x = 1; x <= 30; x++) open(q, x, y, x <= 4 ? h : 0); }; /* the cliff, with room for a dodge's carry; laid again after a reload (the section regenerates) */
+  let g: any = wayfarer(); cliff(g, h); ground(g); g.player.stamina = 100; let t = 5000, frame = 0, began = -1, landed = -1; const d0 = deaths(g), hp0 = g.player.hp;
+  const step = (x: number, dodge: boolean) => { t += 1000 / 60; g.update(1 / 60, inp(x, 0, false, false, dodge), t); g.enemies = []; g.player.stamina = 100; };
+  for (let i = 0; i < 400; i++) {
+    if (opts.snapAt != null && land >= 0 && land - frame === opts.snapAt && g.fall) { const snap = JSON.parse(JSON.stringify(g.exportSnapshot(t))), f0 = { ...g.fall }, x0 = g.player.x, y0 = g.player.y;
+      g = new Game(migrateSave(snap), t); g.enemies = []; ground(g); assert.deepEqual([g.player.x, g.player.y], [x0, y0], 'resumed in place'); assert.deepEqual({ ...g.fall }, f0, 'the fall resumes exactly, its roll try included'); }
+    const press = land >= 0 && began >= 0 && dodgeAt.includes(land - frame);
+    step(began < 0 ? 1 : 0, press); if (began < 0 && g.fall) began = frame; frame++;
+    if (began >= 0 && !g.fall && landed < 0) landed = frame - 1; if (landed >= 0 && frame > landed + 30) break;
+  }
+  return { lost: hp0 - g.player.hp, dead: deaths(g) > d0 || g.player.hp <= 0 || g._fatalFall === true, landed, g };
+}
+const landFrame = (h: number) => rollOff(h, []).landed; // deterministic: the same frames with no dodge
+
+test('6. FALL holds the landing roll as data', () => {
+  assert.ok(FALL.roll >= .2 && FALL.roll <= .25); assert.equal(FALL.rollLevels, 1); assert.ok(FALL.rollPose > 0); assert.equal(FALL.rolled, 'Rolled!');
+});
+
+test('6. a roll in the window counts the fall one level less: 2 free, 3 = 15%, 4 = 40%, 5+ still fatal', () => {
+  for (const h of [2, 3, 4, 5, 7]) {
+    const L = landFrame(h), plain = rollOff(h, []), r = rollOff(h, [3], L);
+    if (fallDamage(h, M) === Infinity) assert.ok(plain.dead, `${h}: lethal unrolled`); else assert.equal(plain.lost, fallDamage(h, M), `${h}: unrolled`);
+    if (fallDamage(h - 1, M) === Infinity) { assert.ok(r.dead, `${h} levels rolled: still lethal`); continue; }
+    assert.equal(r.dead, false, `${h} rolled: alive`); assert.equal(r.lost, fallDamage(h - 1, M), `${h} levels rolled = ${h - 1}`);
+    assert.ok(r.g.message.includes(FALL.rolled), `said: ${r.g.message}`); assert.ok(r.g.player.landRollUntil > 0, 'the roll is drawn on landing');
+  }
+});
+
+test('6. the window\'s edges: FALL.roll seconds of the fall\'s clock before the landing frame counts, a frame earlier does not', () => {
+  const L = landFrame(3), back = Math.floor(FALL.roll * 60 + 1e-9) - 1; // pressed `back` frames before landing, the fall's clock then reads (back + 1) frames short of the landing frame's
+  assert.ok((back + 1) / 60 <= FALL.roll + 1e-9 && (back + 2) / 60 > FALL.roll, 'the two frames straddle the window');
+  assert.equal(rollOff(3, [back], L).lost, fallDamage(2, M), 'at the window\'s edge: rolled');
+  assert.equal(rollOff(3, [back + 1], L).lost, fallDamage(3, M), 'one frame early: no roll');
+  assert.equal(rollOff(3, [0], L).lost, fallDamage(2, M), 'on the landing frame itself: rolled');
+});
+
+test('6. too early does not count, and a fall has one try: spamming Dodge does not roll', () => {
+  const L = landFrame(3);
+  assert.equal(rollOff(3, [20], L).lost, fallDamage(3, M), 'pressed early: an ordinary dodge in the air');
+  assert.equal(rollOff(3, [20, 3], L).lost, fallDamage(3, M), 'early, then in the window: the first dodge was the try');
+  assert.equal(rollOff(3, [18, 16, 14, 12, 10, 8, 6, 4, 2], L).lost, fallDamage(3, M), 'spammed: no roll');
+});
+
+test('6. exact resume: a save mid-fall after the roll try reloads with it, and the landing still rolls', () => {
+  const L = landFrame(3);
+  assert.equal(rollOff(3, [5], L, { snapAt: 3 }).lost, fallDamage(2, M), 'rolled after the reload');
+  assert.equal(rollOff(3, [20], L, { snapAt: 3 }).lost, fallDamage(3, M), 'an early try stays spent after the reload');
+});
+
+test('6. a plunge does not roll: its landing takes the fall\'s full damage', () => {
+  const g: any = wayfarer(); g.save.equipment.primary = { id: 'salvage-blade', name: 'Salvage Blade', slot: 'primary', power: 1 }; cliff(g, 3); let t = 5000;
+  const step = (press: string[] = [], x = 0) => { const left = new Set(press); t += 1000 / 60; g.update(1 / 60, { state: { x, y: 0 }, consume: (k: string) => left.delete(k), held: () => false }, t); g.enemies = []; g.player.stamina = 100; };
+  for (let j = 0; j < 60 && !(g.player.x > 4.3); j++) step([], 1); step(['jump'], 1); for (let j = 0; j < 8; j++) step([], 1);
+  step(['attack']); assert.ok(g.plunge, 'plunging'); const hp = g.player.hp; for (let k = 0; k < 120 && g.fall; k++) step(['dodge']);
+  assert.equal(hp - g.player.hp, fallDamage(3, M), 'the plunge\'s three-level fall costs its 40%');
 });
