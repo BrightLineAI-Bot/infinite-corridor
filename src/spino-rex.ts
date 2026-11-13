@@ -43,11 +43,12 @@ export function ensureSpinoState(save) {
 export const interloperRoll = (seed, preyId) => (hashSeed(`${seed}:spino-interloper:v${SPINO_INTERLOPER.version}:${preyId}`) % 1000) / 1000 < SPINO_INTERLOPER.chance;
 export const interloperCame = (save, preyId) => Array.isArray(save?.spinoInterlopers) && save.spinoInterlopers.includes(preyId);
 export function noteInterloper(save, preyId) { const list = ensureSpinoState(save); if (!list.includes(preyId)) list.push(preyId); save.spinoInterlopers = list.slice(-SPINO_INTERLOPER.keep); }
-// The prey the Wayfarer is fighting, or null: a roused Wild Stegosaurus or Briar Stag, alive, standing its ground, near the Wayfarer.
+// The prey the Wayfarer is fighting, or null: a roused Wild Stegosaurus or Briar Stag of a real hunt (the roaming world beast, or the
+// stego of a big room), alive, standing its ground, near the Wayfarer.
 export function interloperPrey(enemies, player) {
   let best = null, bd = SPINO_INTERLOPER.range;
   for (const q of enemies || []) {
-    if (!q || q.dead || !SPINO_INTERLOPER.prey.includes(q.kind) || !q.aggro || q.retreating || q.passingBeast || q.fleeTo || q.illusion || !q.id) continue;
+    if (!q || q.dead || !SPINO_INTERLOPER.prey.includes(q.kind) || !(q.worldBeast || q.stegoRoom) || !q.aggro || q.retreating || q.passingBeast || q.fleeTo || q.illusion || !q.id) continue;
     const d = Math.hypot((Number(q.x) || 0) - player.x, (Number(q.y) || 0) - player.y); if (d <= bd) { bd = d; best = q; }
   }
   return best;

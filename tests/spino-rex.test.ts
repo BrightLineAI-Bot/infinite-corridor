@@ -198,7 +198,7 @@ test('the interloper roll: once per fight, on a hashed seed, at about its chance
   assert.equal(interloperRoll('A', 'x'), interloperRoll('A', 'x')); let yes = 0; for (let i = 0; i < 1000; i++) if (interloperRoll('ROLL', `world-beast:wildStego:${i}`)) yes++;
   assert.ok(Math.abs(yes / 1000 - SPINO_INTERLOPER.chance) < .06, `${yes}`);
   const s = {}; ensureSpinoState(s); for (let i = 0; i < 40; i++) noteInterloper(s, `p${i}`); assert.equal(s.spinoInterlopers.length, SPINO_INTERLOPER.keep); assert.equal(s.spinoInterlopers.at(-1), 'p39');
-  const stego = { id: 'st', kind: 'wildStego', x: 5, y: 5, aggro: true }; assert.equal(interloperPrey([stego], { x: 6, y: 5 }), stego); assert.equal(interloperPrey([{ ...stego, aggro: false }], { x: 6, y: 5 }), null); assert.equal(interloperPrey([{ ...stego, retreating: true }], { x: 6, y: 5 }), null);
+  const stego = { id: 'st', kind: 'wildStego', x: 5, y: 5, aggro: true, worldBeast: 'wildStego' }; assert.equal(interloperPrey([{ ...stego, worldBeast: undefined }], { x: 6, y: 5 }), null, 'only a real hunt (a duel stego is no fight of the world)'); assert.ok(interloperPrey([{ ...stego, worldBeast: undefined, stegoRoom: true }], { x: 6, y: 5 })); assert.equal(interloperPrey([stego], { x: 6, y: 5 }), stego); assert.equal(interloperPrey([{ ...stego, aggro: false }], { x: 6, y: 5 }), null); assert.equal(interloperPrey([{ ...stego, retreating: true }], { x: 6, y: 5 }), null);
   assert.ok(interloperSpot('A', 'st', { x: 16, y: 16 }, stego, () => true));
 });
 function preyFight(kind, want, seed = 'INTER') {
@@ -207,7 +207,7 @@ function preyFight(kind, want, seed = 'INTER') {
 }
 for (const kind of ['wildStego', 'briarStag']) test(`the interloper comes in from off screen with a roar during a ${kind} fight (once), and not when its roll says no`, () => {
   const run = (want) => { const s = freshSave(); s.seed = 'INTER'; const g = new Game(s, 0); g.rx = 9; g.ry = 3; g.loadArea('overworld'); const p = g.player; s.maxHp = p.maxHp = p.hp = 1e6; g.enemies = [];
-    const prey = createCombatant(kind, p.x + 3, p.y, true, []); Object.assign(prey, { id: preyFight(kind, want), aggro: true, hp: 1e6, maxHp: 1e6 }); prey.packAttacks = []; g.enemies.push(prey);
+    const prey = createCombatant(kind, p.x + 3, p.y, true, []); Object.assign(prey, { id: preyFight(kind, want), aggro: true, hp: 1e6, maxHp: 1e6, worldBeast: kind }); prey.packAttacks = []; g.enemies.push(prey);
     let now = 1000; for (let t = 0; t < SPINO_INTERLOPER.after + 1; t += 1 / 30) { now += 1000 / 30; p.hp = 1e6; g.update(1 / 30, { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} }, now); }
     return { g, s, prey, sp: g.enemies.find((e) => e.kind === 'spinoRex'), now }; };
   const no = run(false); assert.equal(no.sp, undefined); assert.equal(no.s.spinoInterlopers.length, 0);
