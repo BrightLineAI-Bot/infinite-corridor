@@ -61,7 +61,7 @@ test('Tim\'s lineup: every listed weapon and tool reads its stat from one table'
   assert.equal(toolScaling({ id: 'spark-coil', name: 'Spark Coil', slot: 'secondary', upgradeRank: 6, power: 9 }), 'stamina', 'a Spark Coil at +6 (the Carbine) is stamina');
   assert.equal(toolScaling({ id: 'spark-coil', name: 'Spark Coil', slot: 'secondary', upgradeRank: 5, power: 8 }), 'magic', 'below the rank it is still a magic Spark Coil');
   assert.deepEqual(scaledGearNames('stamina'), ['Cinder Pike', 'Fourfold Daggers', 'Needle Caster', 'Blunderbuss', 'Carbine']);
-  assert.deepEqual(scaledGearNames('magic'), ['Salvage Blade', 'Aether Orrery', 'Lumen Spindle', 'Spark Coil']);
+  assert.deepEqual(scaledGearNames('magic'), ['Salvage Blade', 'Quandrix Staff', 'Aether Orrery', 'Lumen Spindle', 'Spark Coil']);
 });
 
 test('each weapon and tool grows with its own stat and no other', () => {

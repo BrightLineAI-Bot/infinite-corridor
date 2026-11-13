@@ -190,6 +190,11 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   carbine: Object.freeze({ axisX: .15, grip: Object.freeze([.72, .86]), gripRadius: .023, stock: Object.freeze([.56, .72]), receiver: Object.freeze([.86, 1.10]),
     barrel: Object.freeze([1.10, 1.64]), barrelRadius: Object.freeze([.020, .017]), coil: Object.freeze([1.14, 1.36]), coilRadius: .040, collar: Object.freeze([1.36, 1.39]), collarRadius: .044,
     muzzle: Object.freeze([1.62, 1.69]), muzzleRadius: .026, bore: .014 }),
+  // Quandrix Staff (2026-11-13): a long dark shaft through the fist with a wrapped grip, a brass collar, three brass prongs and
+  // a lit arcane crystal between them at the head (the hands' colour). The head lies toward -Z (past the pommel side) and the
+  // short butt toward +Z: the primary hand carries a blade point down, so the staff is carried head up and casts butt first.
+  staff: Object.freeze({ butt: 1.24, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([-.18, -.24]), collarRadius: .03,
+    prongTip: -.48, prongSpread: .055, crystal: Object.freeze([-.28, -.42, -.55]), crystalRadius: .045 }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -323,6 +328,50 @@ const heroCarbine = (() => {
     heldFacets(face, C.coil, () => [0, 0, 1]),
   ]);
 })();
+// The Quandrix Staff (quandrix-staff.ts): 92 triangles (the largest held gear is 96). The crystal is 0xb896cf, a lit actor colour (close-view-gl.ts emissive),
+// so it glows like the hands it casts; the shaft is a dark violet wood.
+export const QUANDRIX_COLOURS = Object.freeze({ shaft: 0x4a3a5c, wrap: 0x5a4330, metal: 0xc6a46f, crystal: 0xb896cf, core: 0xc58cff });
+const heroQuandrixStaff = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.staff, C = QUANDRIX_COLOURS, X = .17, Y = -.25, [c0, c1, c2] = F.crystal, r = F.crystalRadius;
+  const crystal = [], tip = [X, Y, c2], foot = [X, Y, c0], ring = Array.from({ length: 4 }, (_, i) => [X + Math.cos(i * Math.PI / 2) * r, Y + Math.sin(i * Math.PI / 2) * r, c1]);
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; crystal.push([tip, ring[i], ring[j]], [foot, ring[j], ring[i]]); }
+  const prongs = [0, 1, 2].map(i => { const a = i * 2 * Math.PI / 3 + Math.PI / 6, ox = Math.cos(a) * F.prongSpread, oy = Math.sin(a) * F.prongSpread;
+    return heldTube([[X + ox * .45, Y + oy * .45, F.collar[1], .009], [X + ox, Y + oy, (F.collar[1] + F.prongTip) / 2, .007], [X + ox * .7, Y + oy * .7, F.prongTip, 0]], 4, C.metal, { ref: [0, 0, 1] }); });
+  return Object.freeze([
+    heldTube([[X, Y, F.butt - .04, F.shaftRadius[0] * 1.2], [X, Y, F.butt, 0]], 4, C.metal),
+    heldTube([[X, Y, F.grip[1], F.shaftRadius[0]], [X, Y, F.butt - .04, F.shaftRadius[0]]], 6, C.shaft),
+    heldTube([[X, Y, F.grip[0], F.gripRadius], [X, Y, F.grip[1], F.gripRadius]], 6, C.wrap),
+    heldTube([[X, Y, F.collar[0], F.shaftRadius[1]], [X, Y, F.grip[0], F.shaftRadius[0]]], 6, C.shaft),
+    heldTube([[X, Y, F.collar[1], F.collarRadius], [X, Y, F.collar[0], F.collarRadius * .8]], 4, C.metal),
+    ...prongs,
+    heldFacets(crystal, C.crystal, c => [c[0] - X, c[1] - Y, c[2] - c1]),
+  ]);
+})();
+// The Quandrix Staff's spectral hands (quandrix-staff.ts quandrixHandPresentation), presentation only: model +X is the hand's
+// heading and +Z up. Both colours are lit actor colours, so the hands glow in the dark. `quandrixHand` drifts upright, palm
+// pushed forward and fingers splayed; `quandrixFist` is clenched; `quandrixSlam` lies palm down, fingers along the heading.
+const qTube = (pts, color) => part(curvedTube(pts, 4), 0, 0, 0, 1, 1, 1, color, 0, 0, 0);
+const quandrixHand = (() => {
+  const G = QUANDRIX_COLOURS.crystal, K = QUANDRIX_COLOURS.core, out = [block(0, 0, .15, .028, .095, .1, G)];
+  for (let i = 0; i < 4; i++) { const y = -.07 + i * .047, spread = (i - 1.5) * .05, len = i === 1 || i === 2 ? .19 : .155;
+    out.push(qTube([[0, y, .24, .019], [.015, y + spread * .5, .24 + len * .55, .016], [.03, y + spread, .24 + len, .011]], K)); }
+  out.push(qTube([[0, -.09, .1, .021], [.025, -.16, .17, .017], [.045, -.21, .24, .012]], K)); // the thumb
+  return Object.freeze(out);
+})();
+const quandrixFist = (() => {
+  const G = QUANDRIX_COLOURS.crystal, K = QUANDRIX_COLOURS.core, out = [block(0, 0, .16, .075, .095, .085, G)];
+  for (let i = 0; i < 4; i++) out.push(block(.08, -.066 + i * .044, .2, .03, .021, .032, K)); // knuckles
+  out.push(block(.045, -.105, .1, .04, .022, .025, K)); // the thumb across the fingers
+  return Object.freeze(out);
+})();
+const quandrixSlam = (() => {
+  const G = QUANDRIX_COLOURS.crystal, K = QUANDRIX_COLOURS.core, out = [block(0, 0, .03, .1, .095, .028, G)];
+  for (let i = 0; i < 4; i++) { const y = -.07 + i * .047, spread = (i - 1.5) * .06, len = i === 1 || i === 2 ? .2 : .16;
+    out.push(qTube([[.09, y, .03, .019], [.09 + len * .55, y + spread * .5, .025, .016], [.09 + len, y + spread, .02, .011]], K)); }
+  out.push(qTube([[.02, -.09, .03, .021], [.08, -.16, .025, .017], [.13, -.2, .02, .012]], K));
+  return Object.freeze(out);
+})();
+export const QUANDRIX_HAND_MODELS = Object.freeze({ quandrixHand, quandrixFist, quandrixSlam });
 // Closed forged blade: the sharp outer ring retains the original broken outline;
 // inset front/back faces provide readable thickness without changing length or reach.
 const brokenGreatswordOutline = [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]];
@@ -575,7 +624,7 @@ const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
 export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, ...QUANDRIX_HAND_MODELS /* the Quandrix Staff's hands */, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -634,7 +683,7 @@ const heroSalvageBlade = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine});
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
