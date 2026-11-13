@@ -28,7 +28,7 @@ let found = null;
 const sections = () => found ||= (() => { const out = []; for (const seed of [SEED, 'AUDIT-A']) for (let x = 36; x < 400 && out.length < (seed === SEED ? 30 : 42); x += 3) for (let y = 36; y < 400 && out.length < (seed === SEED ? 30 : 42); y += 5) { const r = sectionRegion(seed, x, y, 26); if (r.type !== 'marrow' || r.hold < .5) continue; const m = make(x, y, 26, {}, seed); if (m.marrow) out.push({ seed, x, y, m, id: r.id }); } return out; })();
 
 test('version 26 turns some far Carapace Wastes, strange-growth and Obsidian regions into marrowworks, about 2-5% of far sections; every other region, the heartland and the near world keep their version 25 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 26); assert.deepEqual(Object.keys(REGIONS_V26.chance), ['biomech', 'alien', 'obsidian']); assert.equal(REGIONS_V26.minRing, 36); assert.equal(REGIONS_V26.to, 'marrow');
+  assert.equal(LANDSCAPE_VERSION, 26); assert.deepEqual(Object.keys(REGIONS_V26.chance), ['biomech', 'alien', 'obsidian']); assert.equal(REGIONS_V26.minRing, 80); assert.equal(REGIONS_V26.to, 'marrow');
   assert.ok(REGIONS_V26.minRing > REGIONS.heartland + REGIONS.fadeIn);
   for (const seed of [SEED, 'LUNA25', 'AUDIT-A']) {
     const seen = new Set(); let far = 0, marrow = 0, from = 0, turned = 0;
@@ -131,7 +131,9 @@ test('traversable (solver): no trap, every exit, cache and ribcage heart join th
 });
 
 test('the real movement rules: a jump climbs each rib, a sump is lethal ground the brink stops and is named on waking, creatures still have room, the game lays the same engine', () => {
-  const { x, y, m } = sections().find(({ seed, m }) => seed === SEED && m.sumps && m.tiles.some((t) => t.kind === 'ribCrest' && t.elev >= 2));
+  // the first such section the game does not lay as a hamlet (hamlets keep the colours but stay flat, so they have no sumps)
+  const hamlet = (x, y) => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return (g.map.objects || []).some((o) => o.kind === 'shelterMerchant' || o.kind === 'villager'); };
+  const { x, y, m } = sections().find(({ seed, m, x, y }) => seed === SEED && m.sumps && m.tiles.some((t) => t.kind === 'ribCrest' && t.elev >= 2) && !hamlet(x, y));
   let up = 0; for (const a of m.tiles) for (const [dx, dy] of N4) { const b = m.tiles[idx(a.x + dx, a.y + dy)]; if (a.x + dx < 0 || a.x + dx > 31 || !walk(a) || !walk(b) || b.landscape !== 'marrow' || (b.elev || 0) !== (a.elev || 0) + 1) continue;
     assert.ok(canStep({ isPlayer: true, jumping: true }, m, W, a.x, a.y, b.x, b.y), `${x},${y}: jump ${a.x},${a.y} -> ${b.x},${b.y}`); assert.equal(canStep({ isPlayer: true, jumping: false }, m, W, a.x, a.y, b.x, b.y), !!(a.slope || b.slope)); up++; }
   assert.ok(up > 20, `${up} steps up`);

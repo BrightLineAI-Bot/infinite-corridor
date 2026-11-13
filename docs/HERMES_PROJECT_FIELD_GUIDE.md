@@ -6,7 +6,15 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Release 944 — Release 944 — world regions: the Marrowworks (landscape 26)
+## Release 945 — Iron Fists training combo, and the Verge Cleaver's level sweeps
+
+Tim, 2026-11-13: the Iron Fists should flow as a training combo (right, left, right, then the kick when awakened), with a slight gap between punches for better animation, charging per step with Echoes and perfect windows; and, after frame-by-frame captures of the real build, the Verge Cleaver's Close View combo should be three wide level sweeps.
+
+**CODE:** Fists: `src/brawler-spells.ts` `IRON_FISTS` gains `gate` .21, `buffer` .12, `perfect` [1, 1.3] and `perfectShare` 1.25 (`recover` is gone), plus `fistPerfect`, `drawFistStep` and the charge ring's perfect arc. `src/game.ts`: `fistSteps` (3, or 4 awakened), `fistStepSpec`, `fistNextStep` (looping), `fistChargeable` (Echo count), `cancelFists` (dodge and cast), `tickFistQueue`; `fistPunch(step, charge, now, dir, perfect)` throws step 4 as a `fist-kick` effect centred on her; `artLeap` sets runtime `kiSlam` and `airAttack`/`plungeLand` turn the next press in the air into the ground slam (`WEAPON_ARTS.arts['ki-blast'].slam`, plus `AWAKENED_ARTS.moves.roundhouse.up.share` awakened); `GAME_NESTED_CLOCKS` adds `fistCombo`, `fistQueued`, `fistReleaseIntent`. `src/weapon-arts.ts`: roundhouse share 2.8, chargeShare 1.6, echoes 2, no knock; the kick window, `lapseKick` and the axe pool are removed. `src/action-motion.ts`: one 380/90 ms timing for all four steps, legacy timings accepted. `src/close-view-hero.ts` `FIST_CHAIN_POSE`, `fistChainPose`/`fistChargePose`/`kickChain` (the cross and uppercut now use the displayed right hand). Cleaver: `src/close-view-player-presentation.ts` `CLOSE_VIEW_CLEAVER_SLASHES` forehand / return / finisher, three level planes (tip 69-72% of height; finisher -125 to 100 degrees with the biggest turn); `CLEAVER_FOUR_SWEEP` drives `cleaverCutMotion` as level sweeps alternating across and back; `close-view-models.ts` native four-cut lean from `nativeLean`. Tests: `fists-four-step` (12), `close-view-cleaver-level-sweep` (4).
+
+**BOUNDARY:** Saves stay additive at schema 14: the fist chain, waiting press and slam are runtime only (a reload starts at the cross); the gate resumes; pending contacts with old timings still validate; pause shifts the combo window. Anchored foes take every blow; the kick knocks no one. Dodge stays infinite; a dodge or cast cancels a step without refunding the gate. Cleaver changes are presentation only: timing (260/75 ms quick, 240 ms four-cut), hit arc, reach, damage, Echo, Lava Slash, the r858 legacy choreography and the standard view are unchanged; wrist roll stays under 180 degrees. The native fallback models still show the kick as a punch. DPS from a headless bot; poses from software-WebGL captures, not a device. Follow-up (Tim, same day): the Ki Blast ground slam has parity with the awakened kick (`WEAPON_ARTS.arts['ki-blast'].slam.share` 2.8, `AWAKENED_ARTS.moves.roundhouse.up.share` 0), and the Marrowworks (944) sit farther out: `REGIONS_V26.minRing` 36 -> 80 (unpublished, so no explored ground changes).
+
+## Release 944 — world regions: the Marrowworks (landscape 26)
 
 Tim's standing daily world-regions task (2026-10-29): one new large region type at a time, versioned, procedural, Atlas-coloured and mobile-cheap. His list included an H. R. Giger-inspired biomechanical region; this is an original design in that spirit. The Carapace Wastes (625) was only a ground recolour and the Firelands (583) already covers volcanic.
 
@@ -14,7 +22,7 @@ Tim's standing daily world-regions task (2026-10-29): one new large region type 
 
 **BOUNDARY:** Generation only: no save change (schema 14), nothing per frame. Sections pinned to versions 1-25 regenerate byte for byte (26 pins and 2,880 whole maps checked); no Marrowworks inside 36 sections. Every step is one level, exits stay at level 0 and are reached both ways, caches sit on reachable ground; a section whose repairs fail gets no hazards. Hamlets stay flat. Bounded: tusks <= 14 plus a ring, vents <= 6, repairs <= 48. New ground in a former strange-growth region has less sea. Close View look is data only (sky, surfaces, outcrops); no region creatures or loot yet. About 7-8 ms a section to generate.
 
-## Release 943 — Release 943 — Close View Look mode, and the Verge Cleaver's level backhand
+## Release 943 — Close View Look mode, and the Verge Cleaver's level backhand
 
 Tim, 2026-11-13: a way to zoom in and inspect the characters and things around him in Close View, turned on by holding the compass so it never interferes with targeting; and, from a frame-by-frame capture he asked for, the Cleaver's swing that was not horizontal.
 
@@ -22,7 +30,7 @@ Tim, 2026-11-13: a way to zoom in and inspect the characters and things around h
 
 **BOUNDARY:** Look mode is presentation-only and runtime-only: no save field, generation, collision, hit or aim rule changes; it ends on every combat press; the zoomed eye never enters a wall or comes nearer than the subject's near distance; a pinch never reaches movement, aim, camera turning or world taps. The standard (top-down) camera and the compass tap are unchanged. The Cleaver change is presentation only: timing (260 ms, contact 75 ms), hit arc, reach, damage and the standard view are unchanged; the opener diagonal, the overhead and the outdoor four-cut are untouched pending Tim's call. Not checked with hardware multitouch on a phone.
 
-## Release 942 — Release 942 — the hide save is written at once; storage failures recover
+## Release 942 — the hide save is written at once; storage failures recover
 
 The r941 pre-publish review noted that 941's deferred autosave also delayed the save made when the game is hidden (hidden pages throttle timers to about a second), and that a silently dead storage connection could cost a save or stall the queue.
 
@@ -30,7 +38,7 @@ The r941 pre-publish review noted that 941's deferred autosave also delayed the 
 
 **BOUNDARY:** Stored records are unchanged: the same save sequence produces byte-identical stores before and after. Schema stays at 14; the delta, full and split semantics, the 8 s autosave and the 120 s full write are unchanged, and in-play autosaves still defer one task. `SAVE_IO.stallMs` is a safety bound, not a tuning value. Proving Ground pages still do not import persistence.ts. Tests use a fake IndexedDB; behaviour when a real phone kills a backgrounded app has not been measured on a device.
 
-## Release 941 — Release 941 — fewer frame spikes: crossings, autosaves, and a finer probe
+## Release 941 — fewer frame spikes: crossings, autosaves, and a finer probe
 
 Tim, 2026-11-13: his probe on r937 (Android, 83 fps mean, 0 frames over 100 ms) still showed ~68 ms frames on section crossings, 40-73 ms render frames, and 20-30 ms autosave frames.
 
@@ -38,7 +46,7 @@ Tim, 2026-11-13: his probe on r937 (Android, 83 fps mean, 0 frames over 100 ms) 
 
 **BOUNDARY:** No generation change: 1,140 terrain maps across 3 seeds and landscape versions 4-25, and 51 section loads plus 3 dungeons through `loadArea`, are byte-identical. Save format, schema 14, the delta and split records and the 8-second autosave are unchanged; the 120-second full write remains. Laying ahead uses only the pure, bounded `sectionTerrain` cache (12 entries) and touches neither save nor world. Proving Ground storage is untouched; quality tiers and reduced motion unchanged. The post-terrain passes at a crossing still run in its frame. The 40-73 ms render spikes were not reproduced headlessly; the next on-device probe's new parts are the evidence. Measured in Node on a loaded machine, not on a device.
 
-## Release 940 — Release 940 — weapon arts and awakened moves rebalanced
+## Release 940 — weapon arts and awakened moves rebalanced
 
 Tim, 2026-11-13: the balance pass on the new arts and awakenings, plus the review notes from r939. Measured with a headless bot against scaled packs, the hooded duelists and a pinned world beast at levels 15, 35 and 70.
 
@@ -46,7 +54,7 @@ Tim, 2026-11-13: the balance pass on the new arts and awakenings, plus the revie
 
 **BOUNDARY:** No save or schema change; nothing generated changes. Numbers come from a headless bot harness, not device play. The perfect (2.6), late (1.4) and overcharge (1.6) shares, the Quandrix Staff, tools, the crescent fallback and the kick's 0.8 are unchanged. Art blocking mirrors the jump-attack gate; ordinary swings are still allowed while mounted. Open for Tim: plain Iron Fists measure about 3x other primaries; the 0.8 kick makes awakened fists slightly weaker than plain.
 
-## Release 939 — Release 939 — awakened moves: one per weapon
+## Release 939 — awakened moves: one per weapon
 
 Tim, 2026-11-13: each weapon gets its own unique awakened move, as proposed; no new Resonances. Also: hide the pike while the Javelin flies, and let a dodge or attack cancel the throw without cancelling the javelin.
 
@@ -54,7 +62,7 @@ Tim, 2026-11-13: each weapon gets its own unique awakened move, as proposed; no 
 
 **BOUNDARY:** Saves stay additive at schema 14; only the attack-visual record gains an `awakenedArt` string. A reload drops everything in play; an area change clears it. All blows go through `artBlow`: physical, melee glyphs, the Wayfarer's damage scale, anchored foes never knocked. Bounded pools reused oldest-first, no per-frame allocation; reduced motion stops spins and pulsing. The Quandrix Staff awakening, tools' three-shot fan and non-awakened weapons are unchanged; the crescent survives only as the fallback for a weapon with no move. Not tested on a device; balance pass to follow.
 
-## Release 938 — Release 938 — weapon arts: a passive for every primary weapon, and the Cinder Pike thrusts
+## Release 938 — weapon arts: a passive for every primary weapon, and the Cinder Pike thrusts
 
 Tim, 2026-11-13: every weapon gets its own passive, the way the Quandrix Staff has Mage's Hand. At least three swings arm one stored charge; holding Attack charges it, longer is stronger and a perfect release strongest. The Cinder Pike should thrust, not wave.
 
@@ -62,7 +70,7 @@ Tim, 2026-11-13: every weapon gets its own passive, the way the Quandrix Staff h
 
 **BOUNDARY:** The arts are runtime only: nothing new is saved except the additive `weaponArt` string on the existing attack-visual record (schema 14). A reload drops the stored charge, any charge in progress and anything in flight; an area change drops what is in flight and the seal but keeps the stored charge. Each art works only with its own weapon, and switching weapons resets arming. Anchored foes (`QUANDRIX.anchored`) are never knocked but take every blow. The Quandrix Staff and Mage's Hand are untouched. The pike's hit stays the unchanged narrow forward cone; only its presentation changed. Not tested on a device; balance pass to follow.
 
-## Release 937 — Release 937 — the Upwells: tall towers to climb
+## Release 937 — the Upwells: tall towers to climb
 
 Tim (2026-11-13): bite-size vertical explorations in the open world, tall towers with platforms along the sides and in the middle, some doors at ground level and some a few levels up reached by a little platforming, using the vertical toolkit, with a constant threat of falling; not infinite.
 
@@ -70,7 +78,7 @@ Tim (2026-11-13): bite-size vertical explorations in the open world, tall towers
 
 **BOUNDARY:** New ground only: sections seen before regenerate byte for byte (18 gold digests). Saves additive at schema 14 (`save.towerSight`, dungeon history keys). Falls with airtime apply only in the overworld and Upwells; other interiors keep the instant rule. Every generated tower is climbable to the top with jump and Rift Step (solver over 1800 interiors). Creatures bounded at 4, no boss. Not tested on a device.
 
-## Release 936 — Release 936 — the Quandrix Staff and Mage's Hand
+## Release 936 — the Quandrix Staff and Mage's Hand
 
 Tim (2026-11-13): a magic staff that casts slow-moving hands that hit several times as they pass through; a Mage's Hand passive where holding Attack clenches the last hand into a fist that drags enemies toward you and then explodes (early if far away); awakened, holding slams the hand on the floor dealing damage until release or overcharge, with a perfect-timing marker; awakened plus Mage's Hand becomes a suction cup that pulls enemies in while being reeled back, then explodes.
 
@@ -78,7 +86,7 @@ Tim (2026-11-13): a magic staff that casts slow-moving hands that hit several ti
 
 **BOUNDARY:** Saves additive at schema 14: the staff is an ordinary item and `game.quandrix` is runtime only (a reload drops hands and holds with no burst). Only the new loot stream turns some would-be Pikes and Cleavers into the staff; every other roll is byte-identical. Fixed pools (5 own hands, 3 extra hands, 3 queued echoes, 6 held foes, 4 flashes); a hold only ever takes the Wayfarer's own hand; nothing in `projectiles` or `effects`. Bosses, world beasts and elites are never moved. The passive does nothing with any other weapon. Not measured on a device.
 
-## Release 935 — Release 935 — Close View: real 3D bodies for every character, the peddler, caches and doors
+## Release 935 — Close View: real 3D bodies for every character, the peddler, caches and doors
 
 Tim (2026-11-13): every interactable character should have a body in Close View, with variety rather than all hoods; the red peddler stays as he is in the standard view but in Close View is a hunched schemer in red rags and robes with a 35-40 L traveling pack; caches and doors should read as 3D too.
 
@@ -86,7 +94,7 @@ Tim (2026-11-13): every interactable character should have a body in Close View,
 
 **BOUNDARY:** Presentation only: gameplay, saves and the standard view are unchanged (a pixel diff of the standard-view peddler is identical). Elder Wanderers and reciters in their usual looks keep their existing native models. Beyond the slot cap a person keeps the old card. Meshes are cached per look and tier; no per-frame allocation. Phone frame rate unmeasured.
 
-## Release 934 — Release 934 — solid tombs, shrines, Wayglasses, standing stones and chests; the drone in Close View; duelists keep apart; no stand-in hero; roofs near the Refuge; camera limits at cliffs; creatures never fade
+## Release 934 — solid tombs, shrines, Wayglasses, standing stones and chests; the drone in Close View; duelists keep apart; no stand-in hero; roofs near the Refuge; camera limits at cliffs; creatures never fade
 
 Fixes from the release 926 Close View play-through (bugs 5, 7, 9, 11, 14) and Tim's 2026-11-13 decision to teach roofs early: a climbable shack near the Refuge in every direction. Tim then asked for more objects to be solid, the steadiest camera near cliffs and walls, and enemies always as solid and real as possible.
 
@@ -109,7 +117,7 @@ Tim, 2026-11-13: you can cling to the outside of the Pentagon but never climb to
 
 **BOUNDARY:** Unchanged: the glide death over any Pentagon tile, the drone fizzle over its walls, the outer stair, refusals on Great Castle and sealed-tower walls, and the Great Keeps. Within 4 tiles of a Pentagon no hold goes above level 2, so a cling lands at 3 at most. A hold is never taken from the roof, and the parapet is never gripped. Close View is presentation only: tiles, levels, collision, falls, fall damage, reachability, generation, saves and the standard view are unchanged, and ordinary sections are drawn as before. The low tier has haze but no cloud deck; Reduced Motion holds the deck still; nothing is allocated per frame.
 
-## Release 932 — Release 932 — glider for great trees only, landing roll, held Jump drone, Rift Step tap/hold, bigger Jump and Dodge
+## Release 932 — glider for great trees only, landing roll, held Jump drone, Rift Step tap/hold, bigger Jump and Dodge
 
 Tim (2026-11-13): one rule per action in both views; the glider belongs to the great trees and must not make falls harmless; the drone is the mid-fall catch; a skilful landing roll for the early game; and a bigger Jump button now that Jump is the core traversal action.
 
@@ -117,7 +125,7 @@ Tim (2026-11-13): one rule per action in both views; the glider belongs to the g
 
 **BOUNDARY:** Additive schema-14 fields only (`glide.tree`, `droneLift.cap`, `fall.rollT`). The fall damage table is unchanged; only a landing roll takes one level off and five or more stays lethal. Tree glides, their steering and invulnerability are unchanged. Dodge cooldown and i-frames are unchanged. Generators untouched. Existing tests changed only where they asserted the removed glider catch or tap-to-arm. Not tested on a device.
 
-## Release 931 — Release 931 — pause and reload never move you mid-air or off a roof edge; Resonance health; hazard death words
+## Release 931 — pause and reload never move you mid-air or off a roof edge; Resonance health; hazard death words
 
 A headless QA pass on release 926 (about 3 million frames) found that the 'settle onto stable ground' recovery ran on every pause and reload even in the air or on a roof edge, that max hp went stale on a Resonance tier gain (healing on the next load), that every hazard death said 'Lost beneath the water', and two small exact-resume drifts.
 
@@ -125,7 +133,7 @@ A headless QA pass on release 926 (about 3 million frames) found that the 'settl
 
 **BOUNDARY:** Stranding recovery still applies to grounded, wedged Wayfarers and to a jump clock past 10 s; section crossings keep their relocation. An already-stale 926 save gets its missing tier once on first load. Additive optional runtime fields only (schema 14). Plunge state and an open glide's vz are still not saved.
 
-## Release 930 — Release 930 — Close View camera: roofs by height, occluder fade, camera limits, big threats in frame
+## Release 930 — Close View camera: roofs by height, occluder fade, camera limits, big threats in frame
 
 From the release 926 Close View play-through (bugs 1-4) and Tim's 2026-11-13 approval of 'keep big threats in frame': roofs vanished while airborne, nothing faded between camera and hero, the camera dropped close and near-vertical on pillars and at section edges (boom about 1 tile), and dragons and the Lightning Giant sat off screen while their attacks covered it.
 
@@ -143,7 +151,7 @@ Tim asked for two new monsters on 2026-11-12, the stegosaurus for his kid. Both 
 
 **BOUNDARY:** Saves stay additive at schema 14: `stegoBait`, `bleed`, `spinoInterlopers` and the player's `wallCling` and `wallKick` are normalised in `freshSave` and `migrateSave`. Big-room spawns are pinned per floor history (`stegoRooms`, `spinoRooms`), so floors generated before this release never change. Neither beast appears in ordinary dungeons; the Spinosaurus never appears at sea or as a passing beast. The Spinosaurus interlopes at most once per fight, and only in a real hunt. The stegosaurus follows the Wayfarer up raised floors and platforms in buildings, but not through ladders, lifts or doors to separate floors. The wall cling never works with the drone out or the robot on, inside a house, or on Pentagon, Great Castle or sealed-tower tiles, and a chain of holds climbs at most 3 levels. Bait does not draw bosses or finale beasts. Effects, routes and actors are bounded, and under Reduced Motion the roar's shake is skipped.
 
-## Release 928 — Release 928 — gliding is out of reach of blows again
+## Release 928 — gliding is out of reach of blows again
 
 The pre-publish review of r917 to r927 found that release 926 had put a `// FALL:` comment in the middle of the glide update line, commenting out the assignment that keeps a Wayfarer gliding above `GLIDE.safe` out of reach of blows. In its replay a mid-glide save took 40 damage where the live game took none.
 
@@ -164,7 +172,7 @@ As a result, every walk cycle and pose easing restarted each frame.
 
 **BOUNDARY:** render only, in the standard view. Close View is unaffected because it has its own tracks.
 
-## Release 926 — Release 926 — real falls (airtime, catches) and smooth jump-up landings
+## Release 926 — real falls (airtime, catches) and smooth jump-up landings
 
 Tim (2026-11-12): jumping up onto things has a weird unsteady motion; falls need real physics (fall speed, airtime by height, damage from it) now that Rift Step, roofs, the drone and the glider make vertical play common, and he wants to catch a Rift Step fall with the drone or glider.
 
@@ -172,7 +180,7 @@ Tim (2026-11-12): jumping up onto things has a weird unsteady motion; falls need
 
 **BOUNDARY:** Open world on foot only: dungeons, interiors, the robot, mounts and the skiff keep the instant rule (a robot or mount called mid-fall resolves the fall from where it began). The damage table is unchanged and lethal drops stay lethal; reload never saves you from a fall. Jump reach and timing are unchanged (the same inputs give the same position and hp). Rift Step mid-fall keeps the fall's speed and start height. Creatures unchanged. Additive runtime fields only (schema 14). Existing tests changed only to wait for a fall's airtime. Not tested on a device.
 
-## Release 925 — Release 925 — the Spark Coil drops again and becomes the Carbine at +6; Continuous Assault
+## Release 925 — the Spark Coil drops again and becomes the Carbine at +6; Continuous Assault
 
 Tim (2026-11-12): make the Carbine its own weapon carrying the Spindle passive's beam, scaling with Stamina, with a Continuous Assault passive (three lasers from the sky that track into the enemy, like Hammerfall); then: turn the Spark Coil into it, the coil drops again and past +6 it becomes the Carbine, like the Needle Caster and the Blunderbuss. Later: magic damage is fine since it scales with Finesse.
 
@@ -180,7 +188,7 @@ Tim (2026-11-12): make the Carbine its own weapon carrying the Spindle passive's
 
 **BOUNDARY:** Save: schema 14, nothing new; the renamed item keeps its id and `field:lumen-carbine` is dropped on load with its slot freed. Item drops: only the Spark Coil stream changes an item's name and property (id, power, tier, affixes unchanged). Charge, traces and lasers are runtime only and bounded (projectile caps, 6 trace slots, 9 laser slots). On an equal Finesse/Focus build the Carbine matches the old Lumen Carbine.
 
-## Release 924 — Release 924 — the Gaunt: hooded duelists
+## Release 924 — the Gaunt: hooded duelists
 
 Tim (2026-11-12): new enemies on the RPG character model, skeletal thin limbs, big heads, chunky hands, hooded faces, swords/daggers/polearms, hopping, smarter and more aggressive AI, more health, slightly taller than the Wayfarer.
 
@@ -188,7 +196,7 @@ Tim (2026-11-12): new enemies on the RPG character model, skeletal thin limbs, b
 
 **BOUNDARY:** Only dungeon histories first entered from duelist version 1 get bands; generator output and older floors are byte-identical. At most 3 per floor, never in the Deep, Far Array, arenas, Skylands, annexes, hunts or castles. Additive save field `duelistVersion` (schema 14). Close View adds at most 3 skinned duelists (1600/1250/950 tris by tier) on their own slots; a fourth uses its billboard. Not measured on a device.
 
-## Release 923 — Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
+## Release 923 — jump attacks: plunge slams and the Shadow Boxing dive
 
 Tim (2026-11-12): all weapons should have a jump attack that slams down, and with Shadow Boxing a charging dive to the nearest enemy with an explosion.
 
@@ -196,7 +204,7 @@ Tim (2026-11-12): all weapons should have a jump attack that slams down, and wit
 
 **BOUNDARY:** A plunge never moves the Wayfarer itself: it shortens the jump, and the jump's own landing settles falls, sky-hop gaps and roof decks, so fall damage stands. The dive moves only through the collision mover (walls, lethal ground and canStep stop it). One plunge per jump; the recovery never holds back a dodge. Runtime only: on reload the rest of the jump lands without a slam. Not available mounted, in the robot or drone, aboard, gliding, swimming or with the secondary weapon. No save change.
 
-## Release 922 — Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
+## Release 922 — Close View: Shadow Boxing charges as a wraith; the Shadow Clone is a hooded spectre
 
 Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spectral afterimages, and the Shadow Clone looks boxy, make it a wraith and more visible.
 
@@ -204,7 +212,7 @@ Tim (2026-11-12): Shadow Boxing in Close View teleports; make it charge with spe
 
 **BOUNDARY:** Presentation only: gameplay still moves the player in one update and the twin un-rendered game ends identically; damage, timing and hits are unchanged. No per-frame allocation (one pooled actor, fixed afterimage slots). Reduced motion: no travel or trail, a simple fade. The camera follows the logical position. The standard view is unchanged.
 
-## Release 921 — Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
+## Release 921 — Close View: the Great Sweep stays drawn and sweeps a full turn; Mirage blades fly
 
 Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon or tool is used, a full sweeping animation, a 360-degree sweep for its standard form, and Mirage of Blades as rendered blades travelling through the air.
 
@@ -212,7 +220,7 @@ Tim (2026-11-12): keep the Great Sweep out after attacking until another weapon 
 
 **BOUNDARY:** Presentation only: damage, cooldown, reach, timing and hit area are unchanged, and the camera and game facing never turn with the spin. The held state is one additive field on an already-saved record (schema 14); older records load as not held. Mirage blades are capped at 3 by gameplay and allocate nothing per frame. The standard view is unchanged.
 
-## Release 920 — Release 920 — the Lunar Wastes (landscape 25)
+## Release 920 — the Lunar Wastes (landscape 25)
 
 Tim (2026-11-12) asked for a lunar region with craters you can actually go down into in Close View, and pretty large ones.
 
@@ -274,7 +282,7 @@ Tim, 2026-11-12:
 - Worm: 5 passes. The neck gap is closed by a skirt.
 - Field tentacles: 3 passes.
 
-## Release 918 — Release 918 — one stat per weapon and tool; the Fourfold Daggers
+## Release 918 — one stat per weapon and tool; the Fourfold Daggers
 
 Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new paired-dagger weapon: two narrow crossing cuts per press, and a cancel before the second cut starts leaves only the first.
 
@@ -282,7 +290,7 @@ Tim (2026-11-12) set one scaling stat per weapon and tool and asked for a new pa
 
 **BOUNDARY:** Damage types never change with the stat. A save with every stat at 1, and balanced builds, deal identical damage; a matched build equals the old Might build. Saves stay additive at schema 14 (the daggers are ordinary items). The second cut is runtime only. Close View draws the daggers with the Salvage Blade model until their own model lands.
 
-## Release 917 — Release 917 — Rift Step off a roof lands on its edge, never in the wall
+## Release 917 — Rift Step off a roof lands on its edge, never in the wall
 
 The pre-publish review of 916 found that the roof-edge hold added for walking, jumping, the glider and the drone did not cover blinks: a plain or aimed Rift Step from a roof could end with the feet just past the roof and the collision box over the house's walls, and the Wayfarer landed on the ground wedged in the wall (383 of 36,038 plain steps off roofs in its sweep).
 

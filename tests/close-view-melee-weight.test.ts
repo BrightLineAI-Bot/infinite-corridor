@@ -51,7 +51,7 @@ const hero=(action:any,reducedMotion=false,nowMs=2000,heldProfile:any=action?.me
 test('imported hero shares contact poses in full and reduced motion and returns to locomotion',()=>{
   for(const [descriptor,profile,step] of [[cleaver,'verge-cleaver',4],[fist('dash'),'fist',1],[fist('jab'),'fist',2],[fist('uppercut'),'fist',3]] as const){
     const action={kind:'melee',profile,phase:.3,durationMs:descriptor.durationMs,poseMs:1910,primaryStep:step,fistStep:step,primaryStage:{kind:'cleaver-four',step},meleeAction:descriptor};
-    const full=hero(action),reduced=hero(action,true);assert.match(full.state.clip,/derived-weighted/);assert.equal(full.state.clip,reduced.state.clip);
+    const full=hero(action),reduced=hero(action,true);assert.match(full.state.clip,profile==='fist'?/derived-(right-cross|left-jab|right-uppercut)/:/derived-weighted/);assert.equal(full.state.clip,reduced.state.clip);
     assert.ok(full.frame.positionsNormals.every(Number.isFinite)&&reduced.frame.positionsNormals.every(Number.isFinite));
     const end=hero({...action,phase:1}),held=descriptor.kind==='verge-cleaver'?'verge-cleaver':null,idle=hero(null,false,1910+descriptor.durationMs,held);
     const delta=(a:Float32Array,b:Float32Array)=>{let sum=0;for(let i=0;i<a.length;i+=6)sum+=Math.hypot(a[i]-b[i],a[i+1]-b[i+1],a[i+2]-b[i+2]);return sum/(a.length/6);};
@@ -84,7 +84,7 @@ test('weighted cleaver converges to the same low carry at both epsilon boundarie
 });
 
 test('imported Iron Fists mirrors accepted leads and keeps the jab opposite',()=>{
-  for(const lead of ['right','left'] as const){const leadKey=`${lead}Socket` as const,otherKey=`${lead==='right'?'left':'right'}Socket` as const;
+  for(const lead of ['right','left'] as const){const leadKey=`${lead==='right'?'left':'right'}Socket` as const,otherKey=`${lead}Socket` as const; // 2026-11-13: displayed right = source-left (leftSocket)
     for(const [move,expected] of [['dash',leadKey],['jab',otherKey],['uppercut',leadKey]] as const){const frame=hero({kind:'melee',profile:'fist',phase:.3,durationMs:300,poseMs:1910,fistLead:lead,fistStep:move==='dash'?1:move==='jab'?2:3,meleeAction:fist(move)}).frame;
       const guard=expected===leadKey?otherKey:leadKey,axis=move==='uppercut'?14:12;
       assert.ok(frame[expected][axis]>frame[guard][axis]+.015,`${lead} ${move} extends expected hand`);

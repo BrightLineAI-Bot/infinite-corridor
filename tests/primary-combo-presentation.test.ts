@@ -143,7 +143,7 @@ test('primary and fist state coexist through switching, cancellation and reload 
   assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.fistStep,undefined);assert.equal(back.player.attackVisual.presentationCancelled,undefined);
   back.player.attackVisual.presentationCancelled=true;assert.equal(closeViewPlayerAction(back,200446).active,false,'cancelled record wins over a live primary clock');
   back.primaryAttack(200945);assert.equal(back.player.attackVisual.primaryStep,3);assert.equal(back.player.attackVisual.presentationCancelled,undefined);
-  back.save.equipment.primary=fists();assert.equal(back.fistPunch(1,0,201000,{x:1,y:0}),true);assert.equal(back.player.attackVisual.fistLead,'left');assert.equal(back.player.primaryCombo.step,3);
+  back.save.equipment.primary=fists();assert.equal(back.fistPunch(1,0,201000,{x:1,y:0}),true);assert.equal(back.player.attackVisual.fistLead,'right'/* 2026-11-13: every cross is the right hand (was: the cycles alternated) */);assert.equal(back.player.primaryCombo.step,3);
 });
 
 test('successful Aperture skills interrupt either accepted action; refusal preserves both presentation clocks and mechanical recovery',()=>{

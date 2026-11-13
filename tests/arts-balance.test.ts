@@ -34,7 +34,7 @@ const idle = (g, clock, n) => { for (let i = 0; i < n; i++) frame(g, clock, fals
 function press(g, clock, action = null) { g.attackAction = action; try { return g.primaryAttack(clock.t, { x: 1, y: 0 }); } finally { g.attackAction = null; } }
 function charge(g, clock, seconds) { press(g, clock, 'attack'); for (let i = 0; i < Math.round((WEAPON_ARTS.hold.grace + seconds) / DT) + 1; i++) frame(g, clock, true); frame(g, clock, false); }
 function spy(g) { const log = []; const own = g.artBlow.bind(g); g.artBlow = (e, amount, ...rest) => { log.push({ id: e.id, amount }); return own(e, amount, ...rest); }; return log; }
-const combo = (g, clock) => { for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 5); } }; // the dash punch, the jab, the uppercut
+const combo = (g, clock) => { for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 13); } }; // the cross, the jab, the uppercut (2026-11-13: past each step's gate)
 
 test('balance pass: a release just past the grace is a small poke; the perfect window is unchanged; the moves weigh less than the crescent', () => {
   assert.equal(artShare(0), WEAPON_ARTS.charge.early[0]); assert.ok(artShare(0) <= .3, 'no free extra hit every fourth press');
@@ -42,7 +42,7 @@ test('balance pass: a release just past the grace is a small poke; the perfect w
   for (const id of Object.keys(A)) if (id !== 'transpose') assert.ok(A[id].share > 0 && A[id].share <= 1, `${id}: its own weight`);
   assert.ok(A['lava-slash'].share < 1 && A['blade-stream'].share < 1);
   assert.ok(M.fissure.share < .7 && M.lance.share < .7 && M['returning-blades'].share * 2 < .7, 'below the crescent');
-  assert.equal(M.roundhouse.share, .8, 'the kick stays at 0.8 (Tim)');
+  assert.ok(M.roundhouse.share >= IRON_FISTS.punches[2].share, 'the kick is never weaker than a punch (Tim, 2026-11-13; it was .8)');
   assert.ok(M.lance.share >= M.fissure.share && M['returning-blades'].share * 2 >= M.fissure.share, 'the pike and daggers lean single-target');
   // Blade Stream: six hits total the charge's share times the art's own weight
   const { g, clock } = arena('verge-cleaver', { foes: [[1.4, 0]], awakened: false, art: 'lava-slash' }), log = spy(g);
@@ -51,28 +51,18 @@ test('balance pass: a release just past the grace is a small poke; the perfect w
   assert.equal(log.length, 1); assert.ok(Math.abs(log[0].amount - power * 2.6 * A['lava-slash'].share) < 1e-6);
 });
 
-test('awakened Iron Fists: an unused kick window ends the combo with the uppercut\'s recovery; the kick still chains inside it', () => {
+test('awakened Iron Fists: the kick is the fourth step on the same rhythm; a lapsed chain starts again at the cross with no extra recovery', () => {
+  // 2026-11-13: replaces the r940 kick window (lapseKick): the chain is cross, jab, uppercut, kick, looping
   const F = IRON_FISTS;
-  { // skip the kick: the lapse ends the combo with the uppercut's own recovery, counted from the uppercut — never longer than unawakened fists
-    const { g, clock } = arena('iron-fists'); combo(g, clock); const c = g.fistCombo; assert.equal(c?.step, 3); assert.equal(c.kick, true, 'the window is open for the kick');
-    const until = c.until; while (clock.t <= until) frame(g, clock); frame(g, clock);
-    assert.equal(g.fistCombo, null, 'the window lapsed'); const rec = until - F.window * 1000 + F.recover * 1000; assert.equal(g.fistRecoverUntil, rec, 'the uppercut\'s recovery, from the uppercut'); assert.ok(rec <= clock.t, 'already over: skipping the kick costs nothing extra');
-    press(g, clock); idle(g, clock, 2); assert.equal(g.fistCombo?.step, 1, 'the next combo starts at once');
-
-  }
-  { // direct presses (no frame between): the lapse is noticed at the press as well
-    const { g, clock } = arena('iron-fists'); combo(g, clock); const until = g.fistCombo.until; clock.t = until + 10;
-    g.fistPress(clock.t, { x: 1, y: 0 }, null); assert.equal(g.fistRecoverUntil, until - F.window * 1000 + F.recover * 1000, 'the lapse is noticed at the press');
-  }
-  { // the kick inside the window: chained, then the kick's own recovery (unchanged)
-    const { g, clock } = arena('iron-fists', { foes: [[1.2, 0], [-1.2, 0]] }); combo(g, clock); idle(g, clock, 20); assert.equal(g.kickReady(clock.t), true);
-    const log = spy(g); press(g, clock); idle(g, clock, 2); assert.ok(log.length >= 1, 'the kick lands'); assert.equal(g.player.attackVisual.awakenedArt, 'roundhouse');
-    assert.equal(g.fistCombo, null); assert.ok(Math.abs(g.fistRecoverUntil - (clock.t - 3 * DT * 1000 + F.recover * 1000)) <= DT * 1000 + 1e-6);
-  }
-  { // not awakened: the uppercut ends the combo at once, as ever
-    const { g, clock } = arena('iron-fists', { awakened: false }); for (let i = 0; i < 3; i++) { press(g, clock); if (i < 2) idle(g, clock, 5); }
-    assert.equal(g.fistCombo, null); assert.equal(g.fistRecoverUntil, clock.t + F.recover * 1000);
-  }
+  { const { g, clock } = arena('iron-fists'); combo(g, clock); assert.equal(g.fistNextStep(clock.t), 4, 'the kick comes next');
+    const until = g.fistCombo.until; while (clock.t <= until) frame(g, clock); frame(g, clock);
+    assert.equal(g.fistNextStep(clock.t), 1, 'lapsed: the cross'); assert.ok(g.fistRecoverUntil <= clock.t, 'no recovery beyond the step\'s own gate');
+    press(g, clock); idle(g, clock, 2); assert.equal(g.fistCombo?.step, 1, 'the next combo starts at once'); }
+  { const { g, clock } = arena('iron-fists', { foes: [[1.2, 0], [-1.2, 0]] }); combo(g, clock); const at = clock.t; press(g, clock); idle(g, clock, 2);
+    assert.equal(g.player.attackVisual.awakenedArt, 'roundhouse'); assert.equal(g.fistCombo.step, 4); assert.equal(g.fistRecoverUntil, at + F.gate * 1000, 'the kick keeps the rhythm');
+    idle(g, clock, 11); press(g, clock); idle(g, clock, 2); assert.equal(g.fistCombo.step, 1, 'then the cross again'); }
+  { const { g, clock } = arena('iron-fists', { awakened: false }); for (let i = 0; i < 3; i++) { press(g, clock); if (i < 2) idle(g, clock, 13); }
+    assert.equal(g.fistCombo.step, 3); assert.equal(g.fistRecoverUntil, clock.t + F.gate * 1000); assert.equal(g.fistNextStep(clock.t + 300), 1, 'unawakened: the uppercut loops to the cross'); }
 });
 
 test('artBlocked: no charge starts or releases mounted, aboard, gliding, falling, plunging, in the robot, swimming or diving; the stored charge is kept', () => {
@@ -107,17 +97,13 @@ test('artBlocked: no charge starts or releases mounted, aboard, gliding, falling
     assert.equal(shots(), 0, 'no blast'); assert.equal(g.weaponArts.armed, true, 'still stored'); assert.equal(g.fistCombo?.step, 1, 'the dash punch was thrown'); }
 });
 
-test('the axe kick is dropped when the fists are put away or a newer action came after the uppercut', () => {
-  const setUp = () => { const a = arena('iron-fists', { foes: [[1, .2], [6, 0]], art: 'ki-blast' }); const { g, clock } = a; for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
-    idle(g, clock, 40); press(g, clock); idle(g, clock, 5); press(g, clock); idle(g, clock, 5); const log = spy(g); charge(g, clock, 1.15);
-    assert.ok(clock.t < g.jumpUntil, 'airborne'); assert.equal(liveAwakened(g).axes, 1); return { ...a, log }; };
-  const axeHits = (g, log) => log.filter((q) => q.id === 'foe-0' && Math.abs(q.amount - g.artPower(0) * M.roundhouse.up.share) < 1e-3 * g.artPower(0)).length;
-  { const { g, clock, log } = setUp(); idle(g, clock, 80); assert.equal(axeHits(g, log), 1, 'left alone: it lands'); assert.equal(liveAwakened(g).axes, 0); }
-  { const { s, g, clock, log } = setUp(); const axe = g.artPower(clock.t) * M.roundhouse.up.share; s.equipment.primary = { ...WEAPONS['verge-cleaver'](), awakened: { ...AWAKE } }; const before = g.player.attackVisual;
-    idle(g, clock, 80); assert.equal(log.filter((q) => q.id === 'foe-0' && Math.abs(q.amount - axe) < 1e-3 * axe).length, 0, 'no axe kick with the Verge Cleaver in hand'); assert.equal(liveAwakened(g).axes, 0);
-    assert.notEqual(g.player.attackVisual?.awakenedArt, 'axe-kick'); assert.equal(g.player.attackVisual, before, 'no fist pose stamped'); assert.doesNotMatch(g.message || '', /Axe kick/); }
-  { const { g, clock, log } = setUp(); g.player.attackVisual = { ...g.player.attackVisual, profile: 'melee', weaponArt: null }; const newer = g.player.attackVisual; // a newer action's record
-    idle(g, clock, 80); assert.equal(axeHits(g, log), 0, 'dropped'); assert.equal(g.player.attackVisual, newer, 'the newer record is never overwritten'); assert.equal(liveAwakened(g).axes, 0); }
+test('Ki Blast\'s ground slam needs the fists in hand: put away in the leap, a press is an ordinary plunge', () => {
+  // 2026-11-13: replaces the r940 axe-kick checks (the slam is a press now, not a landing burst)
+  const { s, g, clock } = arena('iron-fists', { foes: [[1, .2], [6, 0]], art: 'ki-blast' }); for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
+  idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); charge(g, clock, 1.15);
+  assert.ok(clock.t < g.jumpUntil, 'airborne'); assert.equal(g.kiSlamReady(clock.t), true);
+  s.equipment.primary = { ...WEAPONS['verge-cleaver'](), awakened: { ...AWAKE } }; assert.equal(g.kiSlamReady(clock.t), false);
+  g.attackAction = 'attack'; g.airAttack(clock.t); g.attackAction = null; assert.equal(g.plunge?.kiSlam, undefined); assert.match(g.message, /Plunge/);
 });
 
 test('Close View: the awakened Verge Cleaver\'s delayed contact counts the swings and the third releases the Fissure', () => {

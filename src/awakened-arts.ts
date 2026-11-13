@@ -3,13 +3,13 @@
 // game.awakenedArts (runtime only, never saved). game.ts calls:
 // - awakenedSwing at every third accepted swing of an awakened primary (where the crescent was): the Verge Cleaver's Fissure,
 //   the Fourfold Daggers' Returning blades, the Cinder Pike's Lance, the Salvage Blade's Spell runes;
-// - awakenedKickBurst for the Iron Fists' fourth strike (game.ts awakenedKick, after the uppercut while the combo is open);
-// - awakenedArtRelease from weapon-arts.ts (Blade Stream's ring of blades; the uppercut Ki Blast's axe kick on landing);
+// - awakenedArtRelease from weapon-arts.ts (Blade Stream's ring of blades);
 // - runeStruck when a spell strikes a foe (game.ts, both the shot and the effect paths), awakenedSpellCast when a spell is cast
 //   (Transpose's seal pulse), and tickAwakenedArts every frame.
 // Physical weapons stay physical: every blow goes through game.artBlow (the melee glyphs, glyphHit, the Wayfarer's damage
 // scale); foes that hold their ground (WEAPON_ARTS.anchored) take the blow but are never knocked. Bounded: fixed pools made
-// once and reused (the oldest gives way when full), nothing allocated per frame. A reload drops all of it; a new area drops
+// once and reused (the oldest gives way when full), nothing allocated per frame. The Iron Fists' awakened kick is no longer
+// run here (2026-11-13): it is the fourth step of their combo (game.ts fistPunch), and Ki Blast's ground slam is game.ts's. A reload drops all of it; a new area drops
 // what is in play; a rune's foe gone drops the rune. Reduced motion and safe mode stop the turning and pulsing.
 import { AWAKENED_ARTS, WEAPON_ARTS, awakenedFor, awakenedUp } from "./weapon-arts.ts";
 
@@ -29,7 +29,6 @@ export function awakenedArtsState(game) {
     blades: Array.from({ length: P.blades }, () => ({ on: false, ring: false, back: false, x: 0, y: 0, dx: 1, dy: 0, left: 0, speed: 0, power: 0, n: 0, hit: hitList(), age: 0 })),
     lances: Array.from({ length: P.lances }, () => ({ life: 0, x0: 0, y0: 0, x1: 0, y1: 0 })),
     runes: Array.from({ length: P.runes }, () => ({ on: false, foe: null, left: 0, power: 0, pop: false, age: 0 })),
-    axes: Array.from({ length: P.axes }, () => ({ on: false, wait: 0, power: 0, record: null })), // record: the uppercut's attack record
     flashes: Array.from({ length: P.flashes }, () => ({ life: 0, max: 1, kind: "", x: 0, y: 0, r: 0 })),
     pulse: { queued: false, at: -Infinity, x: 0, y: 0, r: 0, power: 0 },
   });
@@ -37,14 +36,14 @@ export function awakenedArtsState(game) {
 export function clearAwakenedArts(game) {
   const K = game.awakenedArts; if (!K) return;
   for (const f of K.fissures) f.on = false; for (const b of K.blades) b.on = false; for (const l of K.lances) l.life = 0;
-  for (const r of K.runes) { r.on = false; r.foe = null; r.pop = false; } for (const a of K.axes) { a.on = false; a.record = null; } for (const f of K.flashes) f.life = 0;
+  for (const r of K.runes) { r.on = false; r.foe = null; r.pop = false; } for (const f of K.flashes) f.life = 0;
   K.pulse.queued = false;
 }
 // Live counts (tests, the HUD-free check that nothing piles up).
 export function liveAwakened(game) {
-  const K = game.awakenedArts, n = { fissures: 0, blades: 0, lances: 0, runes: 0, axes: 0 }; if (!K) return n;
+  const K = game.awakenedArts, n = { fissures: 0, blades: 0, lances: 0, runes: 0 }; if (!K) return n;
   for (const f of K.fissures) if (f.on) n.fissures++; for (const b of K.blades) if (b.on) n.blades++; for (const l of K.lances) if (l.life > 0) n.lances++;
-  for (const r of K.runes) if (r.on) n.runes++; for (const a of K.axes) if (a.on) n.axes++; return n;
+  for (const r of K.runes) if (r.on) n.runes++; return n;
 }
 export const runeOn = (game, e) => { for (const r of game.awakenedArts?.runes || []) if (r.on && r.foe === e) return true; return false; };
 
@@ -92,7 +91,6 @@ export function awakenedSwing(game, now, d, hit, struck = null) {
     if (struck) for (const e of struck) { if (!e || e.kind === "npc" || !hittable(e)) continue; const q = (fx(e) - c.x) ** 2 + (fy(e) - c.y) ** 2; if (q < nearD) { nearD = q; near = e; } if (!runeOn(game, e) && q < bestD) { bestD = q; best = e; } }
     const e = best || near; if (e) mark(K, e, power);
   }
-  game.awakenedVisual?.(now, d, id, A.poseMs);
   return true;
 }
 function throwBlade(K, ring, x, y, dx, dy, range, speed, power) {
@@ -105,23 +103,11 @@ function mark(K, e, power) {
   r ||= oldest(K.runes, (q) => q.on, (q) => q.age);
   r.on = true; r.foe = e; r.left = M["spell-runes"].life; r.power = power; r.pop = false; r.age = 0;
 }
-// The Iron Fists' awakened fourth strike: every foe within `radius` of the Wayfarer, knocked away from her.
-export function awakenedKickBurst(game, now, power) {
-  const A = M.roundhouse, K = awakenedArtsState(game), c = centre(game);
-  const n = burst(game, c.x, c.y, A.radius, Math.max(0, Number(power) || 0) * A.share, now, A.stun, A.knock);
-  flash(K, "kick", c.x, c.y, A.radius, AWAKENED_ARTS.flash.kick); return n;
-}
-// An art released (weapon-arts.ts): Blade Stream with awakened Fourfold Daggers throws the ring; the airborne Ki Blast with
-// awakened Iron Fists waits for the landing and drops an axe kick.
+// An art released (weapon-arts.ts): Blade Stream with awakened Fourfold Daggers throws the ring.
 export function awakenedArtRelease(game, id, now, air = false) {
   if (id === "blade-stream" && awakenedUp(game.save, "returning-blades")) {
     const K = awakenedArtsState(game), U = M["returning-blades"].up, c = centre(game), power = Math.max(0, Number(game.artPower(now)) || 0) * U.share;
     for (let i = 0; i < U.count; i++) { const a = i * Math.PI * 2 / U.count; throwBlade(K, true, c.x, c.y, Math.cos(a), Math.sin(a), U.range, U.speed, power); }
-    return true;
-  }
-  if (id === "ki-blast" && air && awakenedUp(game.save, "roundhouse")) {
-    const K = awakenedArtsState(game), U = M.roundhouse.up, a = K.axes[0];
-    a.on = true; a.wait = Math.min(U.wait, Math.max(0, ((Number(game.jumpUntil) || 0) - now) / 1000)); a.power = Math.max(0, Number(game.artPower(now)) || 0) * U.share; a.record = game.player?.attackVisual || null;
     return true;
   }
   return false;
@@ -163,15 +149,6 @@ export function tickAwakenedArts(game, dt, now) {
     if (!hittable(r.foe)) { r.on = false; r.foe = null; continue; } // its foe is gone
     if (r.pop) { const e = r.foe, x = fx(e), y = fy(e), A = M["spell-runes"]; r.on = false; r.foe = null; r.pop = false; burst(game, x, y, A.burst, r.power * A.share, now, A.stun, 0); flash(K, "rune", x, y, A.burst); continue; }
     if ((r.left -= dt) <= 0) { r.on = false; r.foe = null; }
-  }
-  for (const a of K.axes) {
-    if (!a.on) continue;
-    if (!(game.player.hp > 0)) { a.on = false; a.record = null; continue; }
-    if ((a.wait -= dt) > 0) continue;
-    const U = M.roundhouse.up, c = centre(game), mine = a.record, current = game.player.attackVisual; a.on = false; a.record = null;
-    if (awakenedFor(game.save) !== "roundhouse" || current !== mine) continue; // the fists put away, or a newer action since the uppercut: dropped
-    burst(game, c.x, c.y, U.radius, a.power, now, U.stun, U.knock); flash(K, "axe", c.x, c.y, U.radius, AWAKENED_ARTS.flash.kick);
-    game.awakenedVisual?.(now, null, "axe-kick", U.poseMs); game.message = AWAKENED_ARTS.messages.axe;
   }
   const Q = K.pulse;
   if (Q.queued) { Q.queued = false; burst(game, Q.x, Q.y, Q.r, Q.power, now, 0, 0); flash(K, "pulse", Q.x, Q.y, Q.r); }

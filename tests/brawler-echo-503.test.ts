@@ -21,11 +21,11 @@ const press = (k, hold = false) => { let used = false; return { state: { x: 0, y
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 const holding = (k) => ({ state: { x: 0, y: 0 }, consume: () => false, held: (q) => q === k });
 
-test('Echo glyphs in the Iron Fists let the jab (one Echo) and the uppercut (two) charge', () => {
+test('Echo glyphs in the Iron Fists let the jab (one Echo) and the uppercut (two) charge', () => { // 2026-11-13: each press waits out the step's gate (250 ms apart)
   const run = (glyphs) => { const { g } = arena([['foe', 11, 10]], (s) => { s.equipment.primary = gear('Iron Fists', glyphs); }); let t = 1000; g.update(.05, idle, t);
     t += 50; g.update(.05, press('attack'), t); t += 50; g.update(.05, idle, t); // the dash punch
-    t += 50; g.update(.05, press('attack', true), t); const jabHeld = !!g.fistCharge; for (let i = 0; i < 4; i++) { t += 50; g.update(.05, holding('attack'), t); } t += 50; g.update(.05, idle, t);
-    t += 50; g.update(.05, press('attack', true), t); const upHeld = !!g.fistCharge; return { jabHeld, upHeld }; };
+    t += 250; g.update(.05, press('attack', true), t); const jabHeld = !!g.fistCharge; for (let i = 0; i < 4; i++) { t += 50; g.update(.05, holding('attack'), t); } t += 50; g.update(.05, idle, t);
+    t += 250; g.update(.05, press('attack', true), t); const upHeld = !!g.fistCharge; return { jabHeld, upHeld }; };
   assert.deepEqual(run([null, null]), { jabHeld: false, upHeld: false });
   assert.deepEqual(run(['echo', null]), { jabHeld: true, upHeld: false });
   assert.deepEqual(run(['echo', 'echo']), { jabHeld: true, upHeld: true });

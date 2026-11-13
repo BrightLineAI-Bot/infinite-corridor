@@ -130,7 +130,7 @@ test('Ki Blast: a tap punches as ever; a charge fires the blast; on the uppercut
   { const { g, clock } = arena('ki-blast', { foes: [[5, 0]] }), log = spy(g); arm(g, clock); idle(g, clock, 40);
     press(g, clock); frame(g, clock, true); frame(g, clock, false); assert.ok(g.fistCombo || g.fistRecoverUntil, 'the tap punched'); idle(g, clock, 40); assert.equal(log.length, 0); assert.equal(g.weaponArts.armed, true); }
   const blast = (taps) => { const { g, clock } = arena('ki-blast', { foes: [[5, 0]] }), log = spy(g); arm(g, clock); idle(g, clock, 40);
-    for (let i = 0; i < taps; i++) { press(g, clock, null); idle(g, clock, 5); }
+    for (let i = 0; i < taps; i++) { press(g, clock, null); idle(g, clock, 13); } // 2026-11-13: past each step's gate
     const power = g.artPower(clock.t), held = charge(g, clock, 1.15), air = clock.t < g.jumpUntil; idle(g, clock, 60);
     return { amount: log.find((q) => q.id === 'foe-0')?.amount / power / artShare(held), air, armed: g.weaponArts.armed };
   };

@@ -114,22 +114,23 @@ export const CLOSE_VIEW_CLEAVER_SLASH_TIMING = Object.freeze({
   follow: .30, // follow-through ends this fraction of the post-contact time after contact
   reducedBody: .55, // reduced motion keeps the blade arc, with less body motion
 });
+// Tim, 2026-11-13: the combo is three wide, sweeping, level swings: across, back, then across again,
+// the last the widest and weightiest. Every plane is level (`ref` and `travel` have no up component),
+// so the blade and its tip hold one height through the sweep; the body turns into each one.
 export const CLOSE_VIEW_CLEAVER_SLASHES = Object.freeze([
-  // 1: diagonal forehand, high on the sword side down across the body.
-  Object.freeze({ name: 'diagonal', pivot: Object.freeze([-.30, -.30, .38]), hand: .48,
-    ref: Object.freeze([-.10, .08, 1]), travel: Object.freeze([-.72, -.69, 0]), from: -105, to: 72, edge: -1,
-    twist: Object.freeze([.30, -.30]), lean: Object.freeze([-.02, .10]), guard: .30 }),
-  // 2: return backhand, a flat horizontal sweep at chest height from the far side across to the sword
-  // side (Tim, 2026-11-13: "its swing is not horizontal"; it had dropped 12 degrees across the arc).
-  // `ref` and `travel` have no up component, so the plane is level: blade and tip hold one height.
-  // `edge` 1 leads with the bevel nearer the guard's, so the wrist turns less into and out of the flat.
+  // 1: forehand, from the sword side across the front to the far side, at chest height.
+  Object.freeze({ name: 'forehand', pivot: Object.freeze([-.30, -.24, .36]), hand: .46,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([-1, 0, 0]), from: -100, to: 80, edge: -1,
+    twist: Object.freeze([.32, -.30]), lean: Object.freeze([-.02, .10]), guard: .30 }),
+  // 2: backhand, from the far side back across to the sword side, at the same height.
   Object.freeze({ name: 'return', pivot: Object.freeze([-.30, -.24, .36]), hand: .46,
     ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([1, 0, 0]), from: -100, to: 78, edge: 1,
     twist: Object.freeze([-.32, .30]), lean: Object.freeze([.02, .08]), guard: .24 }),
-  // 3: overhead finisher, raised behind the head and brought straight down the centre line.
-  Object.freeze({ name: 'overhead', pivot: Object.freeze([-.40, -.06, .30]), hand: .50,
-    ref: Object.freeze([-.08, .10, 1]), travel: Object.freeze([0, -1, .05]), from: -150, to: 52, edge: -1,
-    twist: Object.freeze([.08, -.10]), lean: Object.freeze([-.12, .24]), guard: .36 }),
+  // 3: finisher, across again a little lower and much wider: drawn further back behind the sword
+  // side, carried further round past the far side, with the biggest body turn and lean.
+  Object.freeze({ name: 'finisher', pivot: Object.freeze([-.30, -.32, .36]), hand: .48,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([-1, 0, 0]), from: -125, to: 100, edge: -1,
+    twist: Object.freeze([.50, -.48]), lean: Object.freeze([-.04, .16]), guard: .36 }),
 ]);
 // Clock sampler for one slash step at accepted action progress p (0..1) with the accepted contact
 // fraction. Writes into `out` (no allocation): weight (guard 0 .. slash 1), angle (radians, 0 at
@@ -233,13 +234,18 @@ export function greatSweepTip(angle, length, out = new Float64Array(3)) {
   for (let k = 0; k < 3; k++) out[k] = S.pivot[k] + r * b[k];
   return out;
 }
+// The older four-cut Verge Cleaver (cleaverFourPose; Close View where the quick combo is not used,
+// such as outdoors, and its native fallback): level sweeps alternating across (steps 1 and 3) and back
+// (steps 2 and 4) on the same accepted clock (Tim, 2026-11-13). `pitch` is the blade's own elevation
+// (0 is level), `yaw` its heading from the sword side (+) to the far side (-), `rise` the hand height
+// (0 hip .. 1 shoulder) and `side` the hand's shift across, in arm reaches. Radians. `nativeLean` is the
+// native fallback body's forward lean at full strike (the generic .29 tipped its sweep 10 degrees down in front).
+export const CLEAVER_FOUR_SWEEP = Object.freeze({ pitch: 0, yaw: 1.25, rise: .55, side: .24, twist: .26, nativeLean: .12 });
 export function cleaverCutMotion(stage, phase = 0) {
   const p = Math.max(0, Math.min(1, Number(phase)||0)), step = stage?.kind === 'cleaver-four' ? stage.step : 1;
   const weight = p < .12 ? cutSmooth(p/.12) : p <= .40 ? 1 : 1-cutSmooth((p-.40)/.60);
-  const travel = cutSmooth((p-.12)/.28), up = step === 1 || step === 3, variant = step > 2 ? -1 : 1;
-  return { weight, travel, pitch: (up ? -.62+1.40*travel : .78-1.40*travel),
-    yaw: variant*(.28-.56*travel), rise: up ? travel : 1-travel,
-    side: variant*(.12-.24*travel), twist: variant*(.18-.36*travel)*weight };
+  const travel = cutSmooth((p-.12)/.28), across = step % 2 === 1 ? 1 : -1, S = CLEAVER_FOUR_SWEEP, sweep = across * (1 - 2 * travel);
+  return { weight, travel, pitch: S.pitch, yaw: S.yaw * sweep, rise: S.rise, side: S.side * sweep, twist: S.twist * sweep * weight };
 }
 export const CLOSE_VIEW_PLAYER_FORM_PROFILES = Object.freeze({
   playerIronFists: Object.freeze({ head: 1.68, lift: 0, pose: 'fist' }),

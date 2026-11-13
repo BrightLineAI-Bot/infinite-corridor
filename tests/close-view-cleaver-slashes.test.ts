@@ -33,7 +33,7 @@ const SWORD_SIDE = -1;
 
 test('the hero rig has no sword-slash clip, so the three slashes are authored data on it', () => {
   assert.deepEqual(Object.keys(asset.clips).sort(), ['Attacking_Idle', 'Dagger_Attack', 'Dagger_Attack2', 'Death', 'Idle', 'PickUp', 'Punch', 'RecieveHit', 'RecieveHit_2', 'Roll', 'Run', 'Walk']);
-  assert.deepEqual(CLOSE_VIEW_CLEAVER_SLASHES.map(s => s.name), ['diagonal', 'return', 'overhead']);
+  assert.deepEqual(CLOSE_VIEW_CLEAVER_SLASHES.map(s => s.name), ['forehand', 'return', 'finisher']); // 2026-11-13: three level sweeps (were diagonal, return, overhead)
   for (const s of CLOSE_VIEW_CLEAVER_SLASHES) {
     assert.ok(Object.isFrozen(s) && s.from < 0 && s.to > 0 && s.to - s.from < 300, `${s.name} sweeps less than a turn`);
     const b = cleaverSlashBlade(s, 0); assert.ok(b[2] > .95, `${s.name} points forward at contact`);
@@ -109,11 +109,12 @@ test('each slash sweeps a continuous blade-tip arc across the front strike zone,
     assert.ok(hit.tip[0] > .9 && hit.blade[0] > .9, `step ${step}: blade straight out in front at contact`);
     assert.ok(Math.abs(hit.tip[1]) < .35 && hit.tip[2] > .4 * head && hit.tip[2] < 1.05 * head, `step ${step}: tip at the strike zone at contact`);
     const from = pose(step, windEnd), to = pose(step, followEnd);
-    if (step === 1) { assert.ok(from.tip[1] * SWORD_SIDE > .5 && to.tip[1] * SWORD_SIDE < -.5 && from.tip[2] - to.tip[2] > .9, 'diagonal: high on the sword side down across the body'); }
+    if (step === 1) { assert.ok(from.tip[1] * SWORD_SIDE > .6 && to.tip[1] * SWORD_SIDE < -.6 && Math.abs(from.tip[2] - to.tip[2]) < .05, 'forehand: across from the sword side, level (2026-11-13: was a diagonal down)'); }
     if (step === 2) { assert.ok(from.tip[1] * SWORD_SIDE < -.6 && to.tip[1] * SWORD_SIDE > .6 && Math.abs(from.tip[2] - to.tip[2]) < .05, 'return: across from the far side, level (2026-11-13: was a little down)'); }
     if (step === 3) {
-      assert.ok(from.tip[2] > head && from.tip[0] < 0 && to.tip[2] < .3 * head && to.tip[2] > 0 && to.tip[0] > .5, 'overhead: from behind the head down in front');
-      for (const s of swing) assert.ok(Math.abs(s.tip[1]) < .35, 'overhead stays on the centre line');
+      // 2026-11-13: a level finisher across again, wider than the forehand (was an overhead chop).
+      assert.ok(from.tip[1] * SWORD_SIDE > .6 && to.tip[1] * SWORD_SIDE < -.6 && Math.abs(from.tip[2] - to.tip[2]) < .05, 'finisher: across from the sword side, level');
+      const S = CLOSE_VIEW_CLEAVER_SLASHES; assert.ok(S[2].to - S[2].from > S[0].to - S[0].from + 30 && Math.abs(S[2].twist[0]) > Math.abs(S[0].twist[0]), 'finisher: the widest arc and biggest body turn');
     }
     // Every frame of the strike keeps the tip above the floor; guard and end are the exact carry.
     for (const s of samples) assert.ok(s.tip[2] > 0, `step ${step}: tip above the floor at ${s.ms} ms`);

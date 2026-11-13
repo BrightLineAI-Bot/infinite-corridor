@@ -114,8 +114,10 @@ test('refused competing inputs retain contact while accepted tool, spell and dod
 
 test('buffered Fist beat receives its own delayed descriptor and canceled contact cannot qualify a finisher',()=>{
   const{g}=fixture(BRAWLER_GEAR[0].item);g.update(.016,input(true),100000);g.update(.016,input(),100001);assert.equal(g.pendingMeleeContact.action.move,'dash');
-  g.update(.01,input(true),100010);g.update(.05,input(),100061);assert.equal(g.effects.filter((e:any)=>e.kind==='iron-fist').length,1);assert.equal(g.pendingMeleeContact.action.move,'jab');assert.equal(g.player.attackVisual.meleeAction.move,'jab');
-  g.update(.05,input(),100096);assert.equal(g.effects.filter((e:any)=>e.kind==='iron-fist').length,2);
+  // 2026-11-13: one rhythm per step (IRON_FISTS.gate .21 s, contact 90 ms): the press in the gate's last moments waits for it
+  g.update(.01,input(true),100100);assert.equal(g.effects.filter((e:any)=>e.kind==='iron-fist').length,1);assert.equal(g.pendingMeleeContact,null);
+  g.update(.05,input(),100211);assert.equal(g.pendingMeleeContact.action.move,'jab');assert.equal(g.player.attackVisual.meleeAction.move,'jab');
+  g.update(.05,input(),100305);assert.equal(g.effects.filter((e:any)=>e.kind==='iron-fist').length,2);
 
   const canceled=fixture(BRAWLER_GEAR[0].item);canceled.g.update(.016,input(true),200000);canceled.g.update(.016,input(),200001);assert.equal(canceled.g.fistCombo.landed[0],false);canceled.g.cancelPendingMeleeContact('test');assert.equal(canceled.g.fistCombo.landed[0],false);
   canceled.g.fistPunch(2,0,200100,{x:1,y:0});canceled.g.fistPunch(3,0,200200,{x:1,y:0});const upper=canceled.g.effects.find((e:any)=>e.kind==='fist-uppercut');assert.ok(upper);assert.equal(upper.finisher,false);
@@ -172,5 +174,5 @@ test('actual knockdown cancels either pending contact while ordinary damage pres
 
 test('coarse updates release once at contact pose and preserve newborn Fist lifetime',()=>{
   const cleave=fixture(cleaver());const hp=cleave.foe.hp;cleave.g.update(.016,input(true),300000);cleave.g.update(.3,input(),300300);assert.ok(cleave.foe.hp<hp);const after=cleave.foe.hp;assert.equal(cleave.g.player.actionVisualUntil,300485);cleave.g.update(.3,input(),300600);assert.equal(cleave.foe.hp,after);
-  const fists=fixture(BRAWLER_GEAR[0].item);fists.g.update(.016,input(true),400000);fists.g.update(.016,input(),400001);fists.g.update(.3,input(),400301);const fx=fists.g.effects.find((e:any)=>e.kind==='iron-fist');assert.ok(fx);assert.equal(fx.life,.25);assert.equal(fists.g.player.actionVisualUntil,400561);
+  const fists=fixture(BRAWLER_GEAR[0].item);fists.g.update(.016,input(true),400000);fists.g.update(.016,input(),400001);fists.g.update(.3,input(),400301);const fx=fists.g.effects.find((e:any)=>e.kind==='iron-fist');assert.ok(fx);assert.equal(fx.life,.25);assert.equal(fists.g.player.actionVisualUntil,400591/* 2026-11-13: the cross's 380 ms record (was 320) */);
 });
