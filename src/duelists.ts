@@ -34,13 +34,16 @@ export const DUELISTS = Object.freeze({
     gauntLongarm: Object.freeze({ preferred: Object.freeze([2.4, 3.4]), approach: 1, strafe: .72, retreat: 1.05, flip: Object.freeze([2, 3.6]), backOff: 1.9 }),
   }),
   // Never on top of one another: within `radius` tiles of another living foe each pushes the other away (`weight` of a full step).
-  separation: Object.freeze({ radius: 1.2, weight: 1.5 }),
+  // Close View play-through of 926 (bug 9): never inside the Wayfarer either. `wayfarer`: the least distance (tiles, between the
+  // two standing points) a duelist keeps from them: no hop lands or passes nearer, no cut's step or dart carries it nearer, and
+  // it never walks nearer (it gives ground instead). Every blow still reaches from there (the shortest reach is the Twin Cuts' 1.45).
+  separation: Object.freeze({ radius: 1.2, weight: 1.5, wayfarer: .6 }),
   // The hop: a short leap to open ground `reach` tiles away (up or down at most `maxRise`/`maxDrop` levels: the elevation rules a
   // Wayfarer's jump has, never a fall), `time` seconds in the air, `arc` tiles of lift at the top (+ `climb` a level climbed). It hops
   // to close in (the Wayfarer on another level, or out of reach on foot), now and then (every `every` seconds, `chance`
   // percent: in toward the Wayfarer when it stands `closeFrom` past the band, else to a new angle round them), and back or aside after an attack (`after`). Searches sample `dirs` directions on each radius: at most a few dozen
   // floor tests, and not again for `cooldown` seconds.
-  hop: Object.freeze({ reach: Object.freeze([1.4, 2.1, 2.7]), dirs: 12, time: .42, arc: .9, climb: .45, maxRise: 1, maxDrop: 1, cooldown: 1.6, every: 2.2, chance: 40, closeFrom: 1.2, samples: 6 }),
+  hop: Object.freeze({ reach: Object.freeze([1.4, 2.1, 2.7]), dirs: 12, time: .42, arc: .9, climb: .45, maxRise: 1, maxDrop: 1, cooldown: 1.6, every: 2.2, chance: 40, closeFrom: 1.2, samples: 6, landClear: .9 }),
   // After an attack: `back` (a hop away), `side` (a hop aside) or `stay`, by hashed share (percent); the Longarm hops back only when
   // the Wayfarer stands within `near` of it.
   after: Object.freeze({
@@ -148,13 +151,20 @@ export function duelSeparation(e, enemies, out = { x: 0, y: 0 }) {
   return out;
 }
 // Whether a hop from `a` to `b` is allowed: open ground at the landing, at most one level up or down, and nothing between higher than
-// the higher end (it hops over a low step, never through a wall or a tall block). Sampled at DUELISTS.hop.samples points.
+// the higher end (it hops over a low step, never through a wall or a tall block). Sampled at DUELISTS.hop.samples points. 926 bug 9:
+// nor a landing, or a point on the way, within DUELISTS.separation.wayfarer of the Wayfarer (w.player), so it never hops into them.
+const nearWayfarer = (w, x, y) => !!w?.player && Math.hypot(Number(w.player.x) - x, Number(w.player.y) - y) < DUELISTS.separation.wayfarer;
 export function hopClear(w, a, b) {
   const H = DUELISTS.hop, la = levelOf(w, a.x, a.y), lb = levelOf(w, b.x, b.y);
-  if (!w.open(b.x, b.y) || lb - la > H.maxRise || la - lb > H.maxDrop) return false;
+  if (!w.open(b.x, b.y) || lb - la > H.maxRise || la - lb > H.maxDrop || nearWayfarer(w, b.x, b.y)) return false;
   const top = Math.max(la, lb);
-  for (let i = 1; i < H.samples; i++) { const k = i / H.samples, x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k; if (!w.open(x, y) || levelOf(w, x, y) > top) return false; }
+  for (let i = 1; i < H.samples; i++) { const k = i / H.samples, x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k; if (!w.open(x, y) || levelOf(w, x, y) > top || nearWayfarer(w, x, y)) return false; }
   return true;
+}
+// 926 bug 9: would a step of `e` by (dx, dy) carry it nearer the Wayfarer than DUELISTS.separation.wayfarer (and nearer than it is)?
+export function duelStepTooClose(e, p, dx, dy) {
+  const keep = DUELISTS.separation.wayfarer, after = Math.hypot(p.x - e.x - dx, p.y - e.y - dy);
+  return after < keep && after < Math.hypot(p.x - e.x, p.y - e.y);
 }
 // Where to hop. `mode`: "close" (toward the Wayfarer, onto their level if it can), "back" (away from them), "side" (aside, keeping
 // the distance), "circle" (anywhere in the band round them). Returns the best landing or null; at most reach.length x dirs tests.
@@ -163,7 +173,7 @@ export function findHop(e, w, p, mode, seq = 0, band = [1.5, 2.5]) {
   let best = null, bestScore = -Infinity;
   for (const r of H.reach) for (let i = 0; i < H.dirs; i++) {
     const a = base + (i + off * .5) * TAU / H.dirs, x = e.x + Math.cos(a) * r, y = e.y + Math.sin(a) * r, to = { x, y };
-    const dp = Math.hypot(p.x - x, p.y - y); if (dp < .9) continue; // never onto the Wayfarer
+    const dp = Math.hypot(p.x - x, p.y - y); if (dp < Math.max(H.landClear, DUELISTS.separation.wayfarer)) continue; // never onto the Wayfarer
     const lv = levelOf(w, x, y); let score;
     if (mode === "close") score = -Math.abs(dp - (band[0] + band[1]) / 2) - Math.abs(lv - want) * 2.5 + (lv === want && here !== want ? 3 : 0);
     else if (mode === "back") score = dp - d0 - Math.abs(lv - here) * .5 - (dp > band[1] + 2 ? dp - band[1] - 2 : 0);

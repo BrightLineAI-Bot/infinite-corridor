@@ -22,7 +22,18 @@ export const ROOF_DECKS = Object.freeze({
   safeDrop: 3, // never more than this over the ground outside the door (fallDamage: 3 levels is 40%, never fatal)
   minLevels: 2, // a deck lower than this over its ground (after safeDrop) is not a deck: ground melee would still reach it
   structures: /^(shack|district)(Wall|Interior|Door)$/,
+  // The heartland (Tim, 2026-11-13: "within three squares of the Ember Refuge you find a shack you can climb onto, whichever
+  // direction you go"). The four sections beside Ember Refuge have no landscape (landscape.ts applyLandscape leaves |rx|+|ry| <= 1
+  // alone): every tile is level 0, walking ignores levels and no fall applies. Their houses still get decks, `levels` over their
+  // ground, so an ordinary jump from the flat ground beside the house reaches the roof (a jump climbs one level) and stepping off is
+  // a one-level step down (never a fall). Game marks those maps (markHeartlandDecks); the map itself is unchanged.
+  heartland: Object.freeze({ levels: 1, minLevels: 1, ring: 1 }),
 });
+// The maps of the heartland sections beside the Refuge whose houses take decks (ROOF_DECKS.heartland): kept beside the map, never on it.
+const HEARTLAND = new WeakSet();
+export const heartlandDeckSection = (rx, ry) => Math.abs(rx) + Math.abs(ry) <= ROOF_DECKS.heartland.ring && !(rx === 0 && ry === 0);
+export function markHeartlandDecks(map, rx, ry) { if (map && !map.landscape && !map.settlement && heartlandDeckSection(rx, ry)) HEARTLAND.add(map); return HEARTLAND.has(map); }
+export const heartlandDecks = (map) => !!map && HEARTLAND.has(map);
 const SIDE = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
 // The deck kind and levels of a house object (null: no object, the tiles' own structure decides).
 export function roofDeckLevels(o, structure = "") {
@@ -37,7 +48,7 @@ export function roofDeckKind(o) { return o?.kind === "shack" ? "shack" : o?.sett
 const INDEX = new WeakMap();
 const EMPTY = Object.freeze({ tiles: null, width: 0, cells: null, decks: Object.freeze([]), byId: new Map() });
 // Whether a map can have decks at all.
-export function roofDecksApply(map) { return !!map?.landscape && map.interiorTerrain?.version !== 1 && !map.building && Array.isArray(map.tiles); }
+export function roofDecksApply(map) { return (!!map?.landscape || heartlandDecks(map)) && map.interiorTerrain?.version !== 1 && !map.building && Array.isArray(map.tiles); }
 // The index of a map's decks, built once per map (and again only if its tile array is replaced). Pure apart from the cache.
 export function roofDeckIndex(map) {
   if (!roofDecksApply(map)) return EMPTY;
@@ -48,13 +59,14 @@ export function roofDeckIndex(map) {
     H.cells.push(i); H.base = Math.max(H.base, Number(t.elev) || 0); }
   const cells = new Int16Array(width * height), decks = [], byId = new Map(), objects = new Map();
   for (const o of map.objects || []) if (o && houses.has(o.id)) objects.set(o.id, o);
-  for (const H of houses.values()) { const o = objects.get(H.id), set = new Set(H.cells), levels = roofDeckLevels(o, H.structure);
+  const heart = !map.landscape && heartlandDecks(map), least = heart ? ROOF_DECKS.heartland.minLevels : ROOF_DECKS.minLevels; // the heartland's low roofs (ROOF_DECKS.heartland)
+  for (const H of houses.values()) { const o = objects.get(H.id), set = new Set(H.cells), levels = heart ? ROOF_DECKS.heartland.levels : roofDeckLevels(o, H.structure);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, door = null, approach = Infinity;
     for (const i of H.cells) { const x = i % width, y = Math.floor(i / width), t = tiles[i]; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x + 1); y1 = Math.max(y1, y + 1);
       const d = t.doorSide && SIDE[t.doorSide]; if (d) { const ox = x + d[0], oy = y + d[1], j = oy * width + ox, out = ox >= 0 && oy >= 0 && ox < width && oy < height && !set.has(j) ? tiles[j] : null;
         if (out && !out.blocked) { const e = Number(out.elev) || 0; if (e < approach || !door) { approach = Math.min(approach, e); door = { x: ox, y: oy, side: t.doorSide }; } } } }
     let level = H.base + levels; if (Number.isFinite(approach)) level = Math.min(level, approach + ROOF_DECKS.safeDrop);
-    if (!(level - H.base >= ROOF_DECKS.minLevels)) continue;
+    if (!(level - H.base >= least)) continue;
     const deck = Object.freeze({ id: H.id, n: decks.length, kind: roofDeckKind(o), base: H.base, level, x0, y0, x1, y1, door, roofProfile: o?.roofProfile || "gable", cells: Object.freeze(H.cells.slice()) });
     decks.push(deck); byId.set(H.id, deck); for (const i of H.cells) cells[i] = decks.length; }
   const index = { tiles, width, cells, decks: Object.freeze(decks), byId };
