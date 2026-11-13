@@ -2986,7 +2986,8 @@ export const closeViewToolCueOwnsAction=(acceptedTool,inputAction,selectedAction
 export function closeViewToolConnectorWithin(muzzle,head,aim){const dx=head.x-muzzle[0],dy=head.y-muzzle[1],dz=head.z-muzzle[2];return dx*(aim?.x||0)+dy*(aim?.y||0)>0&&Math.hypot(dx,dy,dz)<=.9;}
 export function closeViewPrimaryWeaponKind(item) {
   return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
-    : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver' : 'salvage-blade';
+    : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver'
+    : item?.id === 'primary-quandrix-staff' || item?.name === 'Quandrix Staff' ? 'quandrix-staff' : 'salvage-blade';
 }
 // Close View play-through of 926 (bug 11): at a scene's start the native stand-in Wayfarer showed, then popped to the imported
 // model once its data and GPU texture were ready. While that load is in flight (the asset 'loading', or loaded and its texture
@@ -3383,7 +3384,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       dashDX = SD.x - who.x; dashDY = SD.y - who.y; wraith = SD.wraith;
     }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
+    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
     const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
     const held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
     const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;

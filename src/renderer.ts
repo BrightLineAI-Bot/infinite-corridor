@@ -1,4 +1,5 @@
-import { FOURFOLD_DAGGERS } from "./items.ts"; // the Fourfold Daggers' X of cuts
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
 import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
@@ -3040,6 +3041,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
       if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
@@ -3069,7 +3071,8 @@ export function render(ctx, g, w, h, now) {
         ctx.strokeStyle = "#c6a36a";
         ctx.lineWidth = profile.shape === "thrust" ? 4 : 5;
         ctx.beginPath();
-        if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
+        if (profile.shape === "staff") { /* the Quandrix Staff: no swing arc; its hands are drawn by quandrix-staff.ts */ }
+        else if (profile.shape === "daggers") { // the Fourfold Daggers (items.ts FOURFOLD_DAGGERS): two short cuts crossing ahead, an X
           const D = FOURFOLD_DAGGERS, t = (D.angle * Math.PI) / 180, nx = -Math.sin(a), ny = Math.cos(a), r = s * profile.range;
           for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
         } else if (profile.shape === "thrust") {

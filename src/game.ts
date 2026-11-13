@@ -71,6 +71,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
+import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
@@ -83,7 +84,7 @@ import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, g
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
-import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
+import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -797,6 +798,7 @@ const MILESTONE_GEAR = [
   [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
   [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
   [FOURFOLD_DAGGERS.milestone.level, { id: "milestone-fourfold-daggers", name: FOURFOLD_DAGGERS.name, slot: "primary", power: FOURFOLD_DAGGERS.milestone.power, property: FOURFOLD_DAGGERS.property }], // Tim 2026-11-12 (items.ts FOURFOLD_DAGGERS)
+  [QUANDRIX_STAFF.milestone.level, { id: "milestone-quandrix-staff", name: QUANDRIX_STAFF.name, slot: "primary", power: QUANDRIX_STAFF.milestone.power, property: QUANDRIX_STAFF.property }], // Tim 2026-11-13 (items.ts QUANDRIX_STAFF)
 ];
 export function grantMilestoneGear(save) {
   save.inventory ||= [];
@@ -7894,6 +7896,7 @@ export class Game {
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (!committed&&this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
+    if (!committed&&this.quandrixEquipped()) { if (!echo) quandrixPress(this, now, _direction || this.player.meleeAim || this.save.lastAim, this.attackAction || null); return []; } // the Quandrix Staff casts hands (quandrix-staff.ts)
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
@@ -8100,6 +8103,44 @@ export class Game {
       this.projectiles.push({ id: `${shot.id}-shard${shot.ricochet}-${i}`, x: shot.x + (nx / m) * S.lift, y: shot.y + (ny / m) * S.lift, dx: Math.cos(a), dy: Math.sin(a), speed: S.speed, life: S.life, damage, damageType: shot.damageType || "magic", path: "straight", age: 0, hits: {}, pierce: S.pierce, shard: true, burst, glyphHost: null, ...(shot.toolUseNewborn ? { toolUseNewborn: true } : {}) });
     }
     return n;
+  }
+  // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix, never saved.
+  quandrixEquipped() { return isQuandrixStaff(this.save.equipment?.primary); }
+  quandrixMageHand() { return this.quandrixEquipped() && fieldOn(this.save, QUANDRIX.passive); } // the Mage's Hand passive works only with the staff
+  quandrixPower() { return this.meleePower(); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage
+  quandrixEchoPlan() { return echoPlan(this.glyphLoadout("melee")); } // a weapon Echo: an echo hand at the swing's delay and share
+  quandrixClone(now) { // the Shadow Clone, while out: its hand from where it stands, toward the lock (else the Wayfarer's way), at its share
+    if (!this.shadowCloneActive(now) || this.shadowClone.charging) return null;
+    const at = clonePosition(this.player, this.shadowClone); return { x: at.x + .5, y: at.y + .45, aim: this.cloneAimFrom(at), share: SHADOW_CLONE.share };
+  }
+  quandrixCooldownScale() { return this.glyphLoadout("melee").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); } // as a swing's 420 ms
+  quandrixOpen(x, y) { return Number.isFinite(x) && Number.isFinite(y) && projectileTileOpen(this.map, mapWidth(this.map, this.area), x, y); }
+  quandrixDrag(e, dx, dy) { if ([dx, dy].every(Number.isFinite)) this.moveGrounded(e, dx, dy); } // the shared ordinary-displacement adapter: never into a wall or lethal ground
+  quandrixAim(direction) {
+    const p = this.player; if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (p.x + .5), q.y - (p.y + .45), p.facing); }
+    const locked = this.lockedDirection(); if (locked) return projectileDirection(locked.x, locked.y, p.facing);
+    if (direction && Math.hypot(direction.x, direction.y) > .01) return projectileDirection(direction.x, direction.y, p.facing);
+    const H = QUANDRIX.hand, auto = selectRangedAim(p, this.enemies, this.map, mapWidth(this.map, this.area), H.speed * H.life * (1 + characterStats(this.save).attackReach));
+    return auto ? projectileDirection(auto.x, auto.y, p.facing) : projectileDirection(this.save.lastAim?.x ?? 0, this.save.lastAim?.y ?? 0, p.facing);
+  }
+  // One blow of a hand, a slam tick or a burst: magic, carrying the weapon's glyphs, through the Wayfarer's damage scale.
+  quandrixBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45) {
+    if (!e || e.dead || e.untargetable || !(amount > 0)) return 0;
+    alertEnemy(e); const glyphs = this.glyphLoadout("melee"), dealt = glyphDamage(glyphs, e, amount, { echo: false }, now), hpBefore = Math.max(0, e.hp);
+    e.hp -= wayfarerDamage(dealt); const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
+    e.hitFlash = .18; if (stun > 0) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? stun * .25 : stun);
+    if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); }
+    this.astralPlayerHit(e, actual); glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: false, origin: { x, y } });
+    if (actual > 0) this.tesseractHitHeal("spell", now);
+    return actual;
+  }
+  // A hand is cast: the staff thrust toward it (an ordinary primary attack visual; Close View holds the staff, quandrix-staff).
+  quandrixCastVisual(now, dx, dy) {
+    const p = this.player; p.attackUntil = now + ACTION_MOTION.meleeMs; p.meleeUntil = now + ACTION_MOTION.meleeMs; p.meleeStrike = null;
+    this.cancelConsumeVisual("attack"); this.attackProfile = primaryProfile(this.save.equipment.primary);
+    const v = stampAttackVisual(p, "melee", ACTION_MOTION.meleeMs, { x: dx, y: dy }); if (!v) return;
+    v.weaponKind = "quandrix-staff"; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
+    v.poseMs = prior?.now ?? Math.max(0, logicalNow); if (prior) v.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
   }
   // The Carbine (tool-forms.ts CARBINE): the Spark Coil's upgraded form (items.ts CARBINE_RANK), a charged beam carbine.
   carbineOn() { return !!rangedWeapon(this.save.equipment?.secondary)?.carbine; }
@@ -10163,6 +10204,7 @@ export class Game {
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
     if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
+    if (this.quandrix) tickQuandrix(this, dt, now, !!input.held?.((this.quandrix.hold.on ? this.quandrix.hold.action : this.quandrix.press.action) || "attack")); // the Quandrix Staff: its hands, the Mage's Hand fist and the awakened slam
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
