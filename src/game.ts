@@ -1114,7 +1114,21 @@ export function footprintOpen(map, width, x, y, allowLethalTerrain=false, allowM
 // the ring), and no other listed prop stands next to it; otherwise it stays as before. Leaving a prop's disc is always allowed
 // (a journey saved inside one walks out). Presentation and saves are untouched; the list is derived from the map, kept per map
 // while its objects and tiles are the same arrays (no per-frame allocation).
-export const PROP_SOLIDS = Object.freeze({ cx: .5, cy: .62, kinds: Object.freeze({ watcherTomb: Object.freeze({ r: .42, rise: 1.5 }) }) });
+// Release 932 (Tim): standing stones, shrines, Wayglasses and chests too. `r`: the widest half of what Close View builds for the
+// kind (close-view-outdoor.ts PROP_RECIPES: the tomb's plinth .42, a shrine's base .34, a Wayglass pylon's .3, a chest's .3 by .2,
+// a standing stone's .2 by .12 with its foot stones), the standard view's sprite standing on the same spot; `rise`: its drawn
+// height in levels (1.2 tiles a level), rounded up. `id`: only objects whose id matches (a ruin marker is a standing stone only as
+// the world's own landmark, `landmark-*`, the Broken Observatory; rafts, climb signs, gates and other markers stay open). A hidden
+// cache is not drawn and not solid.
+export const PROP_SOLIDS = Object.freeze({ cx: .5, cy: .62, kinds: Object.freeze({
+  watcherTomb: Object.freeze({ r: .42, rise: 1.5 }),
+  shrine: Object.freeze({ r: .34, rise: 1 }),
+  checkpoint: Object.freeze({ r: .3, rise: 1 }),
+  ruinMarker: Object.freeze({ r: .24, rise: 1, id: /^landmark-/ }),
+  chest: Object.freeze({ r: .3, rise: .5 }),
+  cache: Object.freeze({ r: .3, rise: .5 }),
+}) });
+const propSolidKind = (o) => { const K = PROP_SOLIDS.kinds[o?.kind]; return K && (!K.id || K.id.test(String(o.id || ""))) && !(o.kind === "cache" && o.state === "hidden") && Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y)) ? K : null; };
 const PROP_RING = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]], PROP_WALKER = Object.freeze({}), NO_PROPS = new Float64Array(0), propSolidKept = new WeakMap();
 // Would blocking the tile (x, y) cut a way? True when the open neighbours beside it (N, E, S, W) are not all in one walkable run of its ring.
 function propChokes(map, width, x, y) {
@@ -1127,15 +1141,18 @@ function propChokes(map, width, x, y) {
   const sides = [0, 2, 4, 6].filter((i) => open[i]).map((i) => run[i]);
   return sides.some((r) => r !== sides[0]);
 }
+// What the solid props depend on besides the arrays: each listed prop's place (a number; nothing allocated).
+function propSignature(objs) { let a = 0; for (let i = 0; i < objs.length; i++) { const o = objs[i]; if (propSolidKind(o)) a = (a + Math.imul(Math.round(Number(o.x) * 8) + 7, 73856093) + Math.imul(Math.round(Number(o.y) * 8) + 3, 19349663) + i) | 0; } return a; }
 // The solid props of a map: [cx, cy, r, top level] per prop, flat. Rebuilt only when the map's objects or tiles change.
 export function solidProps(map, width) {
   const objs = map?.objects; if (!objs?.length || !map.tiles) return NO_PROPS;
-  const kept = propSolidKept.get(map); if (kept && kept.objects === objs && kept.length === objs.length && kept.tiles === map.tiles && kept.width === width) return kept.list;
-  const height = Math.floor(map.tiles.length / width), listed = objs.filter((o) => PROP_SOLIDS.kinds[o?.kind] && Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y))), out = [];
+  const kept = propSolidKept.get(map);
+  if (kept && kept.objects === objs && kept.length === objs.length && kept.tiles === map.tiles && kept.width === width) { if (kept.frame === navFrame) return kept.list; kept.frame = navFrame; if (kept.sig === propSignature(objs)) return kept.list; } // once a frame: a cache revealed, a shrine moved
+  const height = Math.floor(map.tiles.length / width), listed = objs.filter(propSolidKind), out = [];
   for (const o of listed) { const K = PROP_SOLIDS.kinds[o.kind], x = Math.round(Number(o.x)), y = Math.round(Number(o.y)); if (x < 1 || y < 1 || x >= width - 1 || y >= height - 1) continue;
     if (listed.some((q) => q !== o && Math.max(Math.abs(Math.round(Number(q.x)) - x), Math.abs(Math.round(Number(q.y)) - y)) <= 1) || propChokes(map, width, x, y)) continue;
-    out.push(Number(o.x) + PROP_SOLIDS.cx, Number(o.y) + PROP_SOLIDS.cy, K.r, (map.tiles[y * width + x]?.elev || 0) + K.rise); }
-  const list = out.length ? Float64Array.from(out) : NO_PROPS; propSolidKept.set(map, { objects: objs, length: objs.length, tiles: map.tiles, width, list }); return list;
+    out.push(Number(o.x) + PROP_SOLIDS.cx, Number(o.y) + PROP_SOLIDS.cy, K.r, Math.max(map.tiles[y * width + x]?.elev || 0, Number(o.elev) || 0) + K.rise); }
+  const list = out.length ? Float64Array.from(out) : NO_PROPS; propSolidKept.set(map, { objects: objs, length: objs.length, tiles: map.tiles, width, list, frame: navFrame, sig: propSignature(objs) }); return list;
 }
 // Does the Wayfarer's collision box at (x, y), at `level` (its feet's height, in the air too), stand in a solid prop? Pure.
 export function propBlocked(map, width, x, y, level = -Infinity) {

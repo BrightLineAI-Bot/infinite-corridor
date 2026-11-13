@@ -22,7 +22,7 @@ function walk(g, dx, dy, frames, t, jump = null) { for (let i = 0; i < frames; i
 
 test("926 bug 5: the play-through's aimed Rift Step lands beside the Watcher's tomb, never inside it", () => {
   const { g } = atShrine(), p = g.player; p.x = 17.11; p.y = 17.5; g.lastUpdateNow = 1000;
-  assert.equal(solidProps(g.map, W).length, 4, "the shrine tomb is solid");
+  { const L = solidProps(g.map, W); let tomb = false; for (let i = 0; i < L.length; i += 4) if (L[i] === 18.5 && L[i + 1] === 20.62) tomb = true; assert.ok(tomb, "the shrine tomb is solid"); }
   assert.ok(propBlocked(g.map, W, 18, 19.75), "where 926 put the Wayfarer is inside the tomb");
   assert.equal(riftStepTo(g, 1000, { x: 18.5, y: 20.5 }), true, "the step is still taken");
   assert.equal(propBlocked(g.map, W, p.x, p.y), false, `landed clear of the tomb (at ${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
@@ -60,7 +60,7 @@ test("926 bug 5: a listed prop that would close a way is not solid; other movers
   assert.equal(solidProps(room, W).length, 4, "with room round it, it is solid");
   const two = { tiles, objects: [...corridor.objects, { id: "u", kind: "watcherTomb", x: 13, y: 10 }] };
   assert.equal(solidProps(two, W).length, 0, "two listed props side by side are left open");
-  assert.equal(PROP_SOLIDS.kinds.chest, undefined, "only the listed kinds");
+  assert.equal(PROP_SOLIDS.kinds.rock, undefined, "only the listed kinds");
 });
 
 test("926 bug 5: the solid props change no generated map and no save", () => {
