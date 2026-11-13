@@ -13,6 +13,7 @@ import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
 import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawSpino, drawSpinoMarks } from "./spino-render.ts";
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
 import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.ts";
@@ -508,45 +509,6 @@ function drawStegoEffect(ctx, f, s, now, presentation = {}) {
   } else { const spin = quiet ? 0 : now / 120; ctx.strokeStyle = "rgba(190,170,130,.7)"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x, y - i * r * .5, r * (1 - i * .2), r * .35, spin + i, 0, TAU * .75); ctx.stroke(); } }
   ctx.restore();
 }
-// The Spinosaurus, a simple placeholder (its full drawing and Close View body are built separately and read the same pose fields,
-// monster-pack.ts SPINO): an orange biped with a pale belly, a long snout, clawed arms, a heavy tail and a dark-orange sail; bone-white
-// with bare spines and ribs once e.spinoFossil is set (blended by e.spinoShed). It reads e.spinoPose, e.spinoAir, e.spinoDig and
-// e.spinoGrab; nothing moves on its own clock under reduced motion.
-const SPINO_LOOK = { body: "#f2a35e", sail: "#c4561a", stripe: "#a8481e", belly: "#f6c48e", bone: "#ece6d6", boneDark: "#4a4640", eye: "#ffd23a" };
-function drawSpinoPlaceholder(ctx, q) {
-  const { k, u, flip, e } = q, C = SPINO_LOOK, air = Math.max(0, Number(e.spinoAir) || 0), dig = Math.max(0, Math.min(1, Number(e.spinoDig) || 0)), bone = e.spinoFossil ? Math.max(0, Math.min(1, Number.isFinite(e.spinoShed) ? e.spinoShed : 1)) : 0;
-  const pose = e.spinoPose, b = q.b - air * u * .45, quiet = !!e.reduceMotion, sway = quiet ? 0 : Math.sin(q.t * 3) * u * .02;
-  const skin = bone >= .5 ? C.bone : C.body, belly = bone >= .5 ? C.bone : C.belly, sail = bone >= .5 ? C.boneDark : C.sail, line = bone >= .5 ? C.boneDark : C.stripe;
-  ctx.save(); ctx.translate(k, b); ctx.scale(flip, 1);
-  const lean = pose === "dig" || pose === "fling" || pose === "plough" || pose === "headSlam" ? .35 + dig * .25 : pose === "roar" || pose === "roarReady" ? -.2 : pose === "run" || pose === "lunge" || pose === "grabLunge" ? .2 : 0;
-  // legs (always on its hind legs)
-  ctx.fillStyle = line; ctx.fillRect(-u * .18, -u * .5, u * .12, u * .5); ctx.fillRect(u * .06, -u * .5, u * .12, u * .5);
-  ctx.rotate(lean);
-  // tail
-  ctx.fillStyle = skin; ctx.beginPath(); ctx.moveTo(-u * .25, -u * .75); ctx.quadraticCurveTo(-u * .9, -u * .6 + sway, -u * 1.25, -u * .45); ctx.lineTo(-u * .25, -u * .55); ctx.fill();
-  // body, belly, stripes
-  ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(0, -u * .85, u * .38, u * .42, -.3, 0, TAU); ctx.fill();
-  ctx.fillStyle = belly; ctx.beginPath(); ctx.ellipse(u * .1, -u * .75, u * .2, u * .3, -.3, 0, TAU); ctx.fill();
-  ctx.strokeStyle = line; ctx.lineWidth = Math.max(1, u * .035);
-  if (bone >= .5) { for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(-u * .05, -u * .85, u * (.12 + i * .05), Math.PI * .6, Math.PI * 1.4); ctx.stroke(); } }
-  else for (const x of [-.22, -.08, .06]) { ctx.beginPath(); ctx.moveTo(x * u, -u * 1.15); ctx.lineTo((x + .05) * u, -u * .9); ctx.stroke(); }
-  // the sail (bare spines once bone)
-  ctx.fillStyle = sail; ctx.strokeStyle = sail;
-  if (bone >= .5) { for (let i = 0; i < 7; i++) { const x = (-.32 + i * .09) * u; ctx.beginPath(); ctx.moveTo(x, -u * 1.15); ctx.lineTo(x - u * .04, -u * (1.45 + Math.sin(i / 6 * Math.PI) * .35)); ctx.stroke(); } }
-  else { ctx.beginPath(); ctx.moveTo(-u * .38, -u * 1.1); ctx.quadraticCurveTo(-u * .05, -u * 2.05, u * .25, -u * 1.15); ctx.fill(); }
-  // arms with claws
-  const reach = pose === "clawL" || pose === "clawR" || pose === "grabHold" ? .5 : .3;
-  ctx.strokeStyle = skin; ctx.lineWidth = Math.max(2, u * .09); ctx.beginPath(); ctx.moveTo(u * .2, -u * .95); ctx.lineTo(u * (.2 + reach), -u * .72); ctx.stroke();
-  // head: a long crocodile snout (open for a bite, a grab or the roar)
-  const open = pose === "bite" || pose === "landBite" || pose === "roar" || pose === "grabLunge" || pose === "grabTrack" ? .3 : pose === "grabHold" ? .12 : 0;
-  ctx.save(); ctx.translate(u * .3, -u * 1.2); ctx.rotate(-open * .5);
-  ctx.fillStyle = skin; ctx.beginPath(); ctx.moveTo(0, -u * .1); ctx.lineTo(u * .75, -u * .04); ctx.lineTo(u * .75, u * .02); ctx.lineTo(0, u * .06); ctx.fill();
-  ctx.rotate(open); ctx.fillStyle = belly; ctx.beginPath(); ctx.moveTo(0, u * .04); ctx.lineTo(u * .7, u * .05); ctx.lineTo(0, u * .12); ctx.fill();
-  ctx.restore();
-  ctx.fillStyle = bone >= .5 ? C.boneDark : C.eye; ctx.beginPath(); ctx.arc(u * .42, -u * 1.24, Math.max(1, u * .035), 0, TAU); ctx.fill();
-  if (pose === "ribsOut" || pose === "ribsThrust") { ctx.strokeStyle = C.bone; ctx.lineWidth = Math.max(1.5, u * .05); for (const k2 of [-1, 1]) { ctx.beginPath(); ctx.moveTo(0, -u * .85); ctx.lineTo(pose === "ribsOut" ? 0 : u * 1.2, -u * .85 + k2 * u * (pose === "ribsOut" ? .9 : .05)); ctx.stroke(); } }
-  ctx.restore();
-}
 export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh"]);
 function drawSpinoEffect(ctx, f, s, now, presentation = {}) {
   const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || .4) * s, quiet = !!(presentation?.reduceMotion || presentation?.safeMode);
@@ -564,7 +526,7 @@ const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
-  spinoRex(ctx, q) { drawSpinoPlaceholder(ctx, q); }, // the Spinosaurus (a placeholder until its drawing lands)
+  spinoRex(ctx, q) { drawSpino(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
@@ -1773,6 +1735,8 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
       drawAstralInkBlobs(ctx,e.astral.blobs||[],project,s);
     }
     { const b = !e.dead && visible(e) && bodyHitFootprint(e); if (b) { const by = (e.y + .6 - (heights.ground?.(e.x, e.y) || 0)) * s, R = b.radius * s; ctx.save(); ctx.fillStyle = b.armed ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; if (!b.armed) ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, by, R, R * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); } } // release 427: the body's own reach while it hits with it
+    // the Spinosaurus's grab: its bite-mark reticle on its prey (spino-render.ts)
+    if (e.kind === 'spinoRex' && !e.dead && e.spinoGrab && visible(e)) drawSpinoMarks(ctx, e, s, now, enemies, 0, !!heights.reduceMotion);
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;

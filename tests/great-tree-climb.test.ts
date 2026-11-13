@@ -122,7 +122,7 @@ const recordingCtx = () => { // records fills, arcs and gradients by colour with
 };
 
 test('landscape 18: the tree tables, and the drawn scale the generator keeps the trunk strip clear by', () => {
-  assert.equal(LANDSCAPE_VERSION, 24); assert.equal(TREES_V18.version, 18);
+  assert.equal(LANDSCAPE_VERSION, 25); assert.equal(TREES_V18.version, 18);
   assert.equal(TREES_V18.drawnLevel, LIFT_PER_LEVEL * CANOPY_LIFT, 'trees.ts keeps the drawn height of a level without importing the renderer');
   assert.ok(TREES_V18.specs.spire.reach[0] > TREES_V14.compact.reach[0] && TREES_V18.specs.spire.reach[0] >= 4, 'taller spires');
   assert.ok(JUMP.sky / 1000 * SPEED - 2 >= .5, `a sky hop clears one gap tile from anywhere on the launching tile with ${(JUMP.sky / 1000 * SPEED - 2).toFixed(2)} tiles to spare`);
