@@ -35,7 +35,7 @@ test('registry: a huge black dragon world boss, twelve moves, its own poise, Ech
   const B = WORLD_BEASTS.doomChaser, def = MONSTER_PACK.doomChaser;
   assert.equal(B.home, 'canyon'); assert.equal(B.tries, 4); assert.equal(def.attacks.length, 13); /* release 919: Skyfall (dragonDive), shared with the Crimson Tyrant (Tim, 2026-11-12) */ for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.doomChaser); assert.ok(BOSS_POISE.doomChaser); assert.equal(BEAST_APERTURE.doomChaser, 8); assert.ok(PLACEMENT.bigBeasts.includes('doomChaser'));
-  assert.equal(Object.keys(WORLD_BEASTS).at(-1), 'doomChaser', 'listed last, so no older beast loses a claim');
+  assert.equal(Object.keys(WORLD_BEASTS).at(-3), 'doomChaser', 'listed last but for the Wild Stegosaurus and the Spinosaurus (2026-11-12), so no older beast loses a claim');
   const s = freshSave(); ensureWorldBeasts(s, false); assert.ok(s.worldBeasts.doomChaser); assert.ok(migrateSave(JSON.parse(JSON.stringify(s))).worldBeasts.doomChaser);
 });
 
