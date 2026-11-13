@@ -3,8 +3,11 @@
 //    CANOPY_FALL_MS); the 926 Jump-mid-fall glider catch and the 641 freefall off any 4+ drop are gone, so those drops are ordinary
 //    falls with their damage. Jump mid-fall with nothing to catch you says so (FALL.nothing). A closed glide in an old save that was
 //    not a tree's (no `tree` mark, no glideHome) resumes as a fall at its height.
+//    Other items, each in its own section below: 1 Rift Step tap/hold, 2 held Jump brings up the drone, 4 the drone-catch cap,
+//    5 the phone action cluster (Jump and Dodge largest), 6 the landing roll.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, FALL, GLIDE, CANOPY_FALL_MS, JUMP } from '../src/game.ts';
 import { fallDamage } from '../src/landscape.ts';
@@ -208,4 +211,23 @@ test('6. a plunge does not roll: its landing takes the fall\'s full damage', () 
   for (let j = 0; j < 60 && !(g.player.x > 4.3); j++) step([], 1); step(['jump'], 1); for (let j = 0; j < 8; j++) step([], 1);
   step(['attack']); assert.ok(g.plunge, 'plunging'); const hp = g.player.hp; for (let k = 0; k < 120 && g.fall; k++) step(['dodge']);
   assert.equal(hp - g.player.hp, fallDamage(3, M), 'the plunge\'s three-level fall costs its 40%');
+});
+
+// 5. The phone action cluster (styles.css "HUD 2026-11-13"): Jump and Dodge are the two largest buttons; the cross stays inside the
+//    3.56 x 3.24 cluster; neighbouring circles keep at least .12 of a button between their edges and none touches the Build/Potion
+//    pills (the earlier Jump mis-presses came from Jump crowding its neighbours). Measured in a browser at 412x915 and 360x740 too.
+test('5. the action cluster: Jump and Dodge largest, compact, and no tap targets touching', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8'), block = css.slice(css.indexOf('/* HUD 2026-11-13'));
+  const n = (k: string, prop: string) => { const m = block.match(new RegExp(`\\.action-diamond button\\.core\\.${k} \\{[^}]*?${prop}: calc\\(var\\(--button\\) \\* ([\\d.]+)\\)`)); assert.ok(m, `${k} ${prop}`); return Number(m![1]); };
+  const b: Record<string, { x: number; y: number; r: number }> = {};
+  for (const k of ['tool', 'act', 'jump', 'dodge', 'attack']) { const w = n(k, 'width'); assert.equal(n(k, 'height'), w, `${k} is round`); b[k] = { x: n(k, 'left') + w / 2, y: n(k, 'top') + w / 2, r: w / 2 }; }
+  const sizes = Object.entries(b).sort((p, q) => q[1].r - p[1].r).map(([k]) => k); assert.deepEqual(sizes.slice(0, 2).sort(), ['dodge', 'jump'], 'Jump and Dodge are the two largest');
+  for (const k in b) { const c = b[k]; assert.ok(c.x - c.r >= 0 && c.y - c.r >= 0 && c.x + c.r <= 3.56 + 1e-9 && c.y + c.r <= 3.24 + 1e-9, `${k} inside the cluster`); }
+  const keys = Object.keys(b); for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) { const p = b[keys[i]], q = b[keys[j]];
+    assert.ok(Math.hypot(p.x - q.x, p.y - q.y) - p.r - q.r >= .12 - 1e-9, `${keys[i]} and ${keys[j]} keep .12 apart`); }
+  // the pills under the cross (release 261/874 rules, unchanged): Build/slot C at (0, 2.52) and Potion at (2.4, 2.52), 1.16 x .72
+  for (const [x0, y0] of [[0, 2.52], [2.4, 2.52]]) for (const k in b) { const c = b[k], nx = Math.max(x0, Math.min(c.x, x0 + 1.16)), ny = Math.max(y0, Math.min(c.y, y0 + .72));
+    assert.ok(Math.hypot(c.x - nx, c.y - ny) - c.r > .05, `${k} clears the pill at ${x0}`); }
+  assert.ok(b.jump.r * 2 >= 1.1 && b.dodge.r * 2 >= 1.1, 'big enough to hit');
+  assert.match(css, /\.action-diamond\.potion|button\.potion \{ left: calc\(var\(--button\) \* 2\.4\); top: calc\(var\(--button\) \* 2\.52\)/);
 });
