@@ -74,7 +74,7 @@ export const ECHOES = {
   // The Wild Stegosaurus (Tim, 2026-11-12: "The stego's Echo lets you wall cling... jump onto a wall... and hold on to it. If you
   // don't move, you just stay there. Press jump again... you jump off it, and you can do another jump off the next wall"). Taken on
   // the first kill like every world beast's. Its rules and numbers are WALL_CLING; game.ts carries them out (wallCling*).
-  wildStego: { name: "Stegosaur's Grip", cost: 2, trigger: "jump", module: "wallCling", text: "Jump into a wall, cliff or rock and you hold on at the height you reached, as long as you like. Jump again to kick off it; from wall to wall you climb, up to 3 levels." },
+  wildStego: { name: "Stegosaur's Grip", cost: 2, trigger: "jump", module: "wallCling", text: "Jump into a wall, cliff or rock and you hold on at the height you reached, as long as you like. Jump again to kick off it and catch a wall again: two holds before your feet touch the ground, up to 3 levels." },
   // The Spinosaurus (Tim, 2026-11-12: "the Spinosaurus's Echo increases your jump attacks. When you do the jump-attack slam,
   // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
   // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
@@ -86,8 +86,12 @@ export const ECHOES = {
 // ground 2 or more levels above the jump) holds there; the stick held into the wall, or let go, keeps the hold (no time limit, as
 // Tim asked); pushed off the wall, a dodge, a blow that moves the Wayfarer, or the wall going lets go (a fall from that height).
 // Jump while holding kicks off it, away from the wall, as a new jump from the hold's height. Never with the drone out or the
-// robot on (their own Jump wins), mounted, swimming, aboard, gliding, inside a house, or on a Pentagon's, Great Castle's or
-// sealed tower's tiles (vehicle-gates.ts DRONE_FIZZLE): the Corridor's rules are different there.
+// robot on (their own Jump wins), mounted, swimming, aboard, gliding, inside a house, on a Pentagon's roof or within it, or on a
+// Great Castle's or sealed tower's tiles (vehicle-gates.ts DRONE_FIZZLE): the Corridor's rules are different there.
+// Two holds in one airtime (Tim, 2026-11-13: "you get at most two wall clings before you touch the ground, and your feet have to
+// touch the ground before it resets"): `maxHolds`; a hold, a kick or a glide never resets the count, only standing on ground.
+// The kick pops the Wayfarer a little off the wall (`kick.firm` ms) so the stick, held into the wall, brings them back to it.
+// The Pentagon's outer walls (Tim, 2026-11-13: cling to its outside walls, up to a balcony; never its roof): `pentagon`.
 export const WALL_CLING = {
   // The stick (or a kick) pushed at least this much on its main axis takes hold.
   push: .5,
@@ -105,8 +109,19 @@ export const WALL_CLING = {
   dead: .15,
   // Ms the jump's clock is kept ahead of now each frame of a hold (it never ends while holding).
   hold: 140,
-  // A wall jump: ms it goes straight off the wall before the stick steers, and its pace (times a walk: a dodge's).
-  kick: { firm: 220, push: 2 },
+  // Holds in one airtime: a third push into a wall before the feet touch ground does nothing (the jump goes on as any jump).
+  maxHolds: 2,
+  // A wall jump: ms it goes straight off the wall before the stick steers, and its pace (times a walk: a dodge's). With the stick
+  // let go it flies on at that pace (across to a facing wall); held into the wall it comes back to it well before the jump's top
+  // (out about .38 tiles at a dodge's pace, back at a walk's: in contact again about 240 ms into a 520 ms jump).
+  kick: { firm: 80, push: 2 },
+  // The Pentagon (Tim, 2026-11-13). `grip`: the parts (tile.pentagon) a hold takes: its outer faces (the roof's edge, or an old
+  // Pentagon's outer wall) and a balcony's side; never the parapet. `stand`: the parts the Wayfarer may stand on to take one (the
+  // land, or these); never from the roof. `below`: within `near` tiles of any Pentagon tile, a hold is never higher than the
+  // roof's level (pentagon.ts PENTAGON.roof.elev) less this, so the jump off it (one level up at most) lands no higher than
+  // roof - 2: never the roof, nor a balcony one level under it (one jump from the roof). `near`: more than a wall jump carries in
+  // one jump (kick.push × a walk, 4.8 tiles a second, × JUMP.base .52 s: 2.5 tiles).
+  pentagon: { grip: ["outer", "balcony"], stand: ["balcony", "stair"], below: 3, near: 4 },
 };
 export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
 // The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
