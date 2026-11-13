@@ -2,7 +2,7 @@
 // 1. A jump on a mount does not dodge attacks (no invulnerability, unlike a dodge). The general jump rules stay: ground attacks
 //    marked `jumpable` pass under any jump, and on foot a jump still clears an ordinary creature's blow.
 // 2. The glider cannot fly over the Pentagon's walls or a Great Castle's wings: it is held off the drone fizzle's zones
-//    (vehicle-gates.ts DRONE_FIZZLE) at any height, with the zone's message. A glide off the Pentagon's roof still works.
+//    (vehicle-gates.ts DRONE_FIZZLE) at any height, with the zone's message. (2026-11-13: the glider opens only off great trees, so a glide here is one that came from a tree.)
 // 3. After a drone fizzle the drone is stowed, not lost, and it stays so over a save and exact resume.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -133,10 +133,11 @@ test('the Pentagon\'s roof: the glider cannot be used over it, off it or onto it
   { const g = visit(R.g.rx, R.g.ry); g.player.x = x - .5; g.player.y = y - .5; const before = deaths(g); g.deathBeat = 1; assert.equal(T(g, x, y).elev, PENTAGON.roof.elev);
     let t = fly(g, 40, () => ({ x: d, until: () => !!g.glide || g.player.hp <= 0 }), 1000); t = fly(g, 2, (i) => ({ jump: i === 0, x: d }), t);
     fly(g, 80, () => ({}), t); assert.equal(deaths(g) - before, 1, 'dead'); }
-  // Jump on the roof and open the glider while still over it: death.
+  // Jump on the roof and Jump again mid-jump: 2026-11-13 (Tim: great trees only; was 'the glider opens over the roof: death') the roof is
+  // no great tree, so the glider does not open at all and the Wayfarer lands on the roof unharmed.
   { const g = visit(R.g.rx, R.g.ry); g.player.x = x - .5 - d * 1.5; g.player.y = y - .5; const before = deaths(g); assert.ok(pentTile(g, g.player.x, g.player.y), 'on the roof');
-    g.deathBeat = 1; let t = fly(g, 1, () => ({ jump: true }), 1000); g.jumpFrom = PENTAGON.roof.elev + 4; t = fly(g, 1, () => ({ jump: true }), t); // opened mid-jump, over the roof
-    t = fly(g, 3, () => ({}), t); assert.equal(g.glide, null); assert.equal(g.player.hp, 0); assert.equal(g.message, GLIDER_FORBIDDEN.message); fly(g, 80, () => ({}), t); assert.equal(deaths(g) - before, 1); }
+    g.deathBeat = 1; let t = fly(g, 1, () => ({ jump: true }), 1000); g.jumpFrom = PENTAGON.roof.elev + 4; t = fly(g, 1, () => ({ jump: true }), t); // mid-jump, over the roof
+    t = fly(g, 3, () => ({}), t); assert.equal(g.glide, null, 'no glider off a roof'); fly(g, 40, () => ({}), t); assert.equal(deaths(g), before); assert.ok(g.player.hp > 0); }
   // From higher ground outside, steered onto the roof: death at its edge, never a landing on it.
   { const g = visit(R.g.rx, R.g.ry); g.deathBeat = 1; glideAt(g, x + d * 4 - .5, y - .5, PENTAGON.roof.elev + 2.5); const t = fly(g, 300, () => ({ x: -d, until: () => !g.glide }), 1000);
     assert.equal(g.player.hp, 0, 'dead'); assert.equal(g.message, GLIDER_FORBIDDEN.message); fly(g, 60, () => ({}), t); }
@@ -205,10 +206,11 @@ test('the drone\'s booster takes you at most five levels above where the jump be
   assert.ok(Math.abs(top - DRONE_LIFT.max) < 1e-6, `top ${top}`); assert.equal(DRONE_LIFT.max, 5);
 });
 
-test('the castle keep\'s top: a glide off it is held by the wings and comes down alive in the keep\'s court', () => {
+// 2026-11-13 (Tim: the glider is for great trees only): walking off the keep's top no longer opens a glider, so this places a glide (one
+// carried there from a great tree) over the keep's top instead of walking off into a freefall; the wings still hold it off.
+test('the castle keep\'s top: a glide over it is held by the wings and comes down alive in the keep\'s court', () => {
   const C = findCastle(), k = quarterSection(C.X, C.Y, castleTopology(SEED, C.X, C.Y).k), g = visit(k.rx, k.ry), L = roofLanding(g.map, 'keep'); assert.ok(L);
-  g.player.x = L.x; g.player.y = L.y; const dx = L.x > 16 ? -1 : 1, dy = L.y > 16 ? -1 : 1, before = deaths(g);
-  let t = fly(g, 30, () => ({ x: dx, until: () => !!g.glide }), 1000); assert.ok(g.glide); t = fly(g, 1, () => ({ jump: true, x: dx, y: dy }), t); assert.equal(g.glide.open, true);
+  const dx = L.x > 16 ? -1 : 1, dy = L.y > 16 ? -1 : 1, before = deaths(g); glideAt(g, L.x + dx * 2, L.y, (T(g, L.x, L.y).elev || 0) - .2); let t = 1000; // just off the top's edge, a little under it (a glide never climbs)
   t = fly(g, 300, () => ({ x: dx, y: dy, until: () => !g.glide }), t); assert.equal(g.glide, null); assert.equal(deaths(g), before, 'alive');
   const q = T(g, Math.floor(g.player.x + .5), Math.floor(g.player.y + .75)); assert.ok(q.courtyard, `in the court (${q.kind})`);
 });
