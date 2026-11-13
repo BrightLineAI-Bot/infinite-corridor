@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r945 (`c3afa98a7637`); production serves `r945-c3afa98a7637` (published 2026-11-13 after a Fable review of r942 to r945). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r946 (`4c6c4e323b38`); production serves `r946-4c6c4e323b38` (published 2026-11-13 after a Fable review of r946). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 946 | Claude | claude/look-everything | Look mode can frame anything Close View draws (characters, creatures, world beasts, props, trees, buildings, bodies, terrain): tap to pick in Look mode (never attacks/interacts/moves), big subjects framed whole from farther back, reach widens with zoom, a name line under the compass; plus r945 review notes (Ki Blast slam only in its own leap, a kick after losing the awakening is a plain cross, compass Enter after a cancelled hold) | In flight. |
+| 947 | Claude | claude/ki-slam-pause | r946 review note: kiSlamJump added to GAME_CLOCKS so a pause or app-background inside the Ki Blast leap no longer turns the slam into a plain plunge | In flight. |
+| 946 | Claude | claude/look-everything | Look mode can frame anything Close View draws (characters, creatures, world beasts, props, trees, buildings, bodies, terrain): tap to pick in Look mode (never attacks/interacts/moves), big subjects framed whole from farther back, reach widens with zoom, a name line under the compass; plus r945 review notes (Ki Blast slam only in its own leap, a kick after losing the awakening is a plain cross, compass Enter after a cancelled hold) | Merged as `4c6c4e323b38` (#613). |
 | 945 | Claude | claude/fists-four-step | Iron Fists: right cross, left jab, right uppercut on one steady rhythm (0.21 s gate, 0.12 s buffer) with wind-up, blow, follow-through and guard; awakened adds the spinning roundhouse as step 4 (2.8, no knockback); Echo-gated charging incl. the kick at 2 Echoes with perfect windows; Ki Blast airborne uppercut then a ground slam; dodge/spell cancel. Verge Cleaver Close View: three wide level sweeps (forehand, backhand, wider finisher) and the outdoor four-cut sweeps level | Merged as `c3afa98a7637` (#612). |
 | 944 | Claude | claude/daily-region-1113 | Daily world-regions step: a biomechanical region (original design) on new ground only, 80+ sections out (minRing raised from 36 in 945), from far Carapace Wastes / strange-growth / Obsidian regions: vertebral causeways, chevron ribs to level 3, gutters with lethal sumps and sinew bridges, ichor pools, conduits, vents, rib tusks, ribcages with caches; Atlas colours, Close View sky | Merged as `a657edbcd035` (#611). |
 | 943 | Claude | claude/look-zoom | Close View Look mode (hold the compass; pinch to zoom onto the Wayfarer or the character/creature/thing in front; drag to orbit; Attack, Dodge, spells and Tool end it, Action/Jump/walking keep it) plus the Verge Cleaver's second combo cut sweeping level (it was authored 12.4 degrees off) | Merged as `3f9c0b12fb78` (#610). |

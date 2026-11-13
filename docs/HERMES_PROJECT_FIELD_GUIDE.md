@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 947 — Ki Blast's slam survives a pause mid-leap
+
+From the r946 pre-publish review (non-blocking): 946 tied the slam to its own leap by comparing `jumpStart` with `kiSlamJump`, but only `jumpStart` was shifted by a pause.
+
+**CODE:** `src/game.ts` `GAME_CLOCKS` adds `kiSlamJump`, so `shiftClocks` moves it with `jumpStart` on resume and `kiSlamReady` still matches the leap. Test: one more in `fists-four-step` (pause 5 s mid-leap, then the slam).
+
+**BOUNDARY:** Runtime only: `GAME_CLOCKS` is only shifted on pause, never saved (`RESUME_GAME_CLOCKS` unchanged); no save or generation change.
+
 ## Release 946 — Look mode: inspect everything, and the r945 review fixes
 
 Tim, 2026-11-13: Look mode is the inspection world - a closer look at whatever you see from the top-down view, so it should let you check and look at everything. Also the non-blocking notes from the r945 pre-publish review.
