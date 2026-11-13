@@ -7,7 +7,7 @@
 // borders wavered by noise. Each cell rolls one number u in [0, 1) on its own hash; each version of this table gives a realm to a
 // further band of u (`bands`), always carved out of what was still `ordinary`, so a cell keeps its realm in every later version.
 // Only sections first seen with a version hold a realm (the atlas pins `farVersion`); ground seen before keeps none. Pure.
-import { hashSeed, byHash } from "./random.js?v=r941-b5036c167d5d";
+import { hashSeed, byHash } from "./random.js?v=r945-c3afa98a7637";
 
 export const FAR_REALMS = {
   version: 6, start: 1000, cell: 40, warp: 9, // 5 (719): the Ink Wastes; 6 (720): the folk realms; // 2 (release 715): the pockets (FAR_POCKETS); 3 (716): the civilisations (FAR_CIVS); 4 (717): the Storm Halls' people
@@ -61,7 +61,7 @@ export const FAR_POCKETS = { since: 2, grove: .14, blob: .14, groveLean: 1.8, ex
   blobs: ["mossBlob", "emberBlob", "frostBlob", "duskBlob", "saltBlob"],
   blobByRegion: { forest: "mossBlob", jungle: "mossBlob", swamp: "mossBlob", fungal: "mossBlob", reef: "mossBlob", volcanic: "emberBlob", emberlands: "emberBlob", ashfields: "emberBlob", obsidian: "emberBlob", amber: "emberBlob",
     frost: "frostBlob", lakes: "frostBlob", sea: "frostBlob", isles: "frostBlob", lunar: "duskBlob", dream: "duskBlob", fog: "duskBlob", crystal: "duskBlob", alien: "duskBlob", biomech: "duskBlob",
-    desert: "saltBlob", salt: "saltBlob", savanna: "saltBlob", glasslands: "saltBlob", petrified: "saltBlob", terraces: "saltBlob", reckoning: "duskBlob", glacier: "frostBlob", regolith: "duskBlob" },
+    desert: "saltBlob", salt: "saltBlob", savanna: "saltBlob", glasslands: "saltBlob", petrified: "saltBlob", terraces: "saltBlob", reckoning: "duskBlob", glacier: "frostBlob", regolith: "duskBlob", marrow: "duskBlob" },
   text: { grove: { name: "a stag grove", arrive: "Antlers move among the trees, and grey moths drift between them like ash. This is a grove of the Briar Stag's kin." },
   blob: { name: "a blob pocket", arrive: "The ground glistens and quivers. Everything that moves here is one shape or another of ooze: a pocket of the Blob's kin." } },
 };

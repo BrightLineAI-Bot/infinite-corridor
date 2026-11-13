@@ -1,26 +1,26 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r941-b5036c167d5d";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r941-b5036c167d5d";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r941-b5036c167d5d";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r941-b5036c167d5d";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r941-b5036c167d5d";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r941-b5036c167d5d";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r941-b5036c167d5d";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r941-b5036c167d5d";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r941-b5036c167d5d";
-import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r941-b5036c167d5d";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r941-b5036c167d5d";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r941-b5036c167d5d";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r941-b5036c167d5d";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r941-b5036c167d5d";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r941-b5036c167d5d";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r941-b5036c167d5d";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r941-b5036c167d5d";
-import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r941-b5036c167d5d";
-import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r941-b5036c167d5d";
-import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r941-b5036c167d5d";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r945-c3afa98a7637";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r945-c3afa98a7637";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r945-c3afa98a7637";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r945-c3afa98a7637";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r945-c3afa98a7637";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r945-c3afa98a7637";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r945-c3afa98a7637";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r945-c3afa98a7637";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r945-c3afa98a7637";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r945-c3afa98a7637";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r945-c3afa98a7637";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r945-c3afa98a7637";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r945-c3afa98a7637";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r945-c3afa98a7637";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r945-c3afa98a7637";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r945-c3afa98a7637";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r945-c3afa98a7637";
+import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r945-c3afa98a7637";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r945-c3afa98a7637";
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r945-c3afa98a7637";
 
 // The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
 // never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.

@@ -10,18 +10,25 @@ export const ACTION_MOTION = Object.freeze({
 export const CLOSE_VIEW_MELEE_TIMING = Object.freeze({
   cleaver: Object.freeze({ durationMs: 360, contactMs: 75 }),
   cleaverQuick: Object.freeze({ durationMs: 260, contactMs: 75 }),
-  dash: Object.freeze({ durationMs: 320, contactMs: 60 }),
-  jab: Object.freeze({ durationMs: 210, contactMs: 35 }),
-  uppercut: Object.freeze({ durationMs: 380, contactMs: 72 }),
+  // The Iron Fists' training combo (2026-11-13): one rhythm for every step. The wind-up runs to contact (90 ms), then the blow's
+  // follow-through and the hand back in guard by the time the next step may begin (brawler-spells.ts IRON_FISTS.gate .21 s);
+  // with no next step the guard eases back to the carry by the end. 'dash' is the right cross.
+  dash: Object.freeze({ durationMs: 380, contactMs: 90 }),
+  jab: Object.freeze({ durationMs: 380, contactMs: 90 }),
+  uppercut: Object.freeze({ durationMs: 380, contactMs: 90 }),
+  kick: Object.freeze({ durationMs: 380, contactMs: 90 }),
 });
+// Records accepted before 2026-11-13 keep their own timing (exact resume of a saved pending punch).
+const LEGACY_MELEE_TIMING=Object.freeze({dash:Object.freeze({durationMs:320,contactMs:60}),jab:Object.freeze({durationMs:210,contactMs:35}),uppercut:Object.freeze({durationMs:380,contactMs:72})});
 const MELEE_ACTION_KINDS=Object.freeze(['verge-cleaver','iron-fists']);
-const MELEE_ACTION_MOVES=Object.freeze(['cleaver','dash','jab','uppercut']);
+const MELEE_ACTION_MOVES=Object.freeze(['cleaver','dash','jab','uppercut','kick']);
 export function normalizeMeleeActionVisual(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
   const v=Number(raw.v);
   if(v===2){const timing=CLOSE_VIEW_MELEE_TIMING.cleaverQuick,contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs);return raw.kind==='verge-cleaver'&&raw.move==='cleaver'&&durationMs===timing.durationMs&&Number.isFinite(contactMs)&&contactMs>=1&&contactMs<=timing.contactMs?{...raw,v:2,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs}:null;}
   if(Number.isInteger(v)&&v>2)return{...raw};
-  const timing=CLOSE_VIEW_MELEE_TIMING[raw.move],contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs);
+  const contactMs=Number(raw.contactMs),durationMs=Number(raw.durationMs),fits=(q)=>!!q&&durationMs===q.durationMs&&contactMs>=1&&contactMs<=q.contactMs,
+    timing=fits(CLOSE_VIEW_MELEE_TIMING[raw.move])||!Object.hasOwn(LEGACY_MELEE_TIMING,raw.move)?CLOSE_VIEW_MELEE_TIMING[raw.move]:LEGACY_MELEE_TIMING[raw.move]; // the current timing first, else a pre-2026-11-13 record's
   if(v!==1||!MELEE_ACTION_KINDS.includes(raw.kind)||!MELEE_ACTION_MOVES.includes(raw.move)||!timing||
     !Number.isFinite(contactMs)||!Number.isFinite(durationMs)||durationMs!==timing.durationMs||
     contactMs<1||contactMs>timing.contactMs||contactMs>durationMs)return null;
@@ -124,8 +131,8 @@ export function normalizePendingMeleeContact(raw){
     payload={...p,kind:'cleaver',profile:{range:Number(p.profile.range),arc:Number(p.profile.arc),damage:Number(p.profile.damage),shape:p.profile.shape},meleeBonus:Number(p.meleeBonus),attackDamage:Number(p.attackDamage),imbue:Number(p.imbue),spellblade:p.spellblade,boxing:p.boxing?{damage:Number(p.boxing.damage),heal:Number(p.boxing.heal)}:null,awakened:p.awakened,primaryMotion:{v:p.primaryMotion.v,...(p.primaryMotion.mode==='quick'?{mode:'quick'}:{}),step:p.primaryMotion.step},support:Number(p.support)};
   if(action.kind==='iron-fists'&&finiteObject(p)&&p.kind==='fist'&&finiteObject(p.effect)&&
     ['life','radius','damage','pulse','untilPulse','imbue','stun'].every(k=>boundedNumber(p.effect[k],0,1e9))&&
-    ['iron-fist','fist-uppercut'].includes(p.effect.kind)&&p.effect.brawler===true&&p.effect.glyphHost==='melee'&&p.effect.pulse===99&&
-    Number.isInteger(p.step)&&p.step>=1&&p.step<=3&&boundedNumber(p.cloneDamage,0,1e9)&&typeof p.cloneEligible==='boolean')
+    ['iron-fist','fist-uppercut','fist-kick'].includes(p.effect.kind)&&p.effect.brawler===true&&p.effect.glyphHost==='melee'&&p.effect.pulse===99&&
+    Number.isInteger(p.step)&&p.step>=1&&p.step<=4&&(p.effect.kind==='fist-kick')===(p.step===4)&&boundedNumber(p.cloneDamage,0,1e9)&&typeof p.cloneEligible==='boolean')
     payload={...p,kind:'fist',effect:{id:String(p.effect.id||'').slice(0,160),kind:p.effect.kind,brawler:true,life:Number(p.effect.life),radius:Number(p.effect.radius),pulse:99,untilPulse:0,damage:Number(p.effect.damage),pulseIndex:0,hits:{},glyphHost:'melee',healShare:Number(p.effect.healShare)||0,imbue:Number(p.effect.imbue),stun:Number(p.effect.stun),finisher:p.effect.finisher===true},step:p.step,cloneDamage:Number(p.cloneDamage),cloneEligible:p.cloneEligible};
   if(!payload)return null;
   return{...raw,v:1,id:raw.id,action,area:raw.area,areaId:raw.areaId,levelId:raw.levelId,contactMs,elapsedMs,remainingMs,aim:{x:ax,y:ay},payload};
@@ -227,7 +234,7 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   }
   if (raw.fistStep != null) {
     const fistStep = Number(raw.fistStep);
-    if (!Number.isInteger(fistStep) || fistStep < 1 || fistStep > 3) return null;
+    if (!Number.isInteger(fistStep) || fistStep < 1 || fistStep > 4) return null; // 4: the awakened fists' kick (2026-11-13)
     copy.fistStep = fistStep;
   }
   if (raw.fistLead != null) {
@@ -249,6 +256,7 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
     if (!Number.isFinite(fistCharge) || fistCharge < 0 || fistCharge > 1) return null;
     copy.fistCharge = fistCharge;
   }
+  if (raw.fistPerfect != null && typeof raw.fistPerfect !== "boolean") return null; // a charge let go in its perfect window
   if(raw.meleeAction!=null){const action=normalizeMeleeActionVisual(raw.meleeAction);if(!action)return null;copy.meleeAction=action;}
   if (raw.hammerEffectId != null) {
     if (typeof raw.hammerEffectId !== "string" || !/^[a-z0-9-]{1,64}$/.test(raw.hammerEffectId)) return null;

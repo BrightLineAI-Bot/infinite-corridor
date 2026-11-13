@@ -1,8 +1,8 @@
 // More Glimpses (release 199 onward; docs/narrative-bible.md section 5). Each scene is a draw function
 // (ctx, t, w, h, state) painting frame t ∈ [0, 1] of a first-person view; `state` holds what a scene builds once.
 // Canvas 2D only, no assets. The catalogue entries are in glimpses.ts.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r941-b5036c167d5d";
-import { paintHand } from "./glimpse-hand.js?v=r941-b5036c167d5d";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r945-c3afa98a7637";
+import { paintHand } from "./glimpse-hand.js?v=r945-c3afa98a7637";
 
 // Soft cloud built from many shaded puffs: lit from above, shadowed beneath.
 function cloudSprite(seed, light, shade) {

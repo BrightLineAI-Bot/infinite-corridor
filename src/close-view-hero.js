@@ -1,9 +1,9 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r941-b5036c167d5d';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r945-c3afa98a7637';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r941-b5036c167d5d';
-import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r941-b5036c167d5d';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r945-c3afa98a7637';
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r945-c3afa98a7637';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -612,29 +612,92 @@ function fistLayer(pose,step,lead,amount){const opening=lead==='left'?'left':'ri
 function sourceTime(p, duration) { return duration * (p < .18 ? p / .18 * .35 : .35 + (p - .18) / .82 * .65); }
 function fistSourceTime(p,duration){return duration*(p<.08?.35+.05*smoothstep(p/.08):.4+.35*smoothstep((p-.08)/.92));}
 function fistReadyPose(asset,state,pose,charge,lead){const w=clamp(charge);if(!(w>0))return;fistPose(asset,state,asset.clips.Punch.duration*.2,lead);blend(pose,state.other,.58*w);}
+// The Iron Fists' training chain (Tim, 2026-11-13: "right cross, left jab, right uppercut, then the kick... wind-up, punch,
+// follow-through", one rhythm, back to a guard). Presentation only: the accepted action's clock and contact own the blow.
+// Per step, hand targets from the striking shoulder as [out, up, forward] in arm reaches (out < 0 crosses toward the centre
+// line): the chamber (the wind-up's end), the strike (at contact) and the follow-through; then the hand is back in guard by
+// `guardAt` (the next step may begin there: IRON_FISTS.gate over the 380 ms record), the guard is held to `holdTo` and eases
+// to the carry by the end. `twist` [wind-up, strike]: the striking shoulder drawn back (+) and driven through (-), radians;
+// `lean` [wind-up, strike] forward (+); `dip`: the uppercut's planted crouch in the wind-up, rising through the blow.
+// Displayed right = source-left arm. A step thrown out of the last one's guard (record `fistChain`) starts in guard; a charged
+// release starts at its chamber. Reduced motion keeps the arm paths and `reduced` of the body motion.
+export const FIST_CHAIN_POSE = Object.freeze({
+  chamberAt: .62, followTo: .45, guardAt: .55, holdTo: .62, reduced: .55,
+  guard: Object.freeze([-.16, .22, .42]), charge: Object.freeze([.06, -.06, -.18]),
+  steps: Object.freeze({
+    dash: Object.freeze({ chamber: Object.freeze([.06, -.06, .10]), strike: Object.freeze([-.26, .10, .98]), follow: Object.freeze([-.34, .08, .92]), twist: Object.freeze([.32, -.46]), lean: Object.freeze([-.04, .24]), dip: 0, pitch: -.05 }),
+    jab: Object.freeze({ chamber: Object.freeze([-.22, .20, .22]), strike: Object.freeze([-.14, .14, 1]), follow: Object.freeze([-.18, .18, .62]), twist: Object.freeze([.08, -.24]), lean: Object.freeze([0, .12]), dip: 0, pitch: -.05 }),
+    uppercut: Object.freeze({ chamber: Object.freeze([.06, -.46, .20]), strike: Object.freeze([-.24, .30, .62]), follow: Object.freeze([-.26, .42, .50]), twist: Object.freeze([.24, -.30]), lean: Object.freeze([.16, -.10]), dip: .4, pitch: -.45 }),
+  }),
+  // The awakened kick (fistStep 4, the roundhouse): the knee chambered, the leg out at contact while she spins once (a sweep all
+  // round), held, drawn back and planted; `up`/`fwd` are the right ankle's lift and reach in heights of the hero.
+  kick: Object.freeze({ chamber: Object.freeze([.44, .08]), strike: Object.freeze([.30, .44]), spinFrom: .12, spinTo: .62, lean: .16 }),
+});
+const FIST_DESCRIPTORS = Object.freeze(Object.fromEntries(['dash','jab','uppercut'].map(m=>[m,Object.freeze({v:1,kind:'iron-fists',move:m,contactMs:90,durationMs:380})])));
+const FIST_MOVES = Object.freeze(['dash','dash','jab','uppercut']), BOTH_ARMS = Object.freeze([SOURCE_LEFT_ARM, SOURCE_RIGHT_ARM]);
+function lerp3(out,o,a,b,k){for(let i=0;i<3;i++)out[o+i]=a[i]+(b[i]-a[i])*k;}
+// Where the striking hand is (written to out.aim, arm reaches) and the body's twist/lean/dip shares at progress p.
+function fistChainSample(S,p,c,chained,fromCharge,out){
+  const F=FIST_CHAIN_POSE,w0=c*F.chamberAt,f1=c+(F.guardAt-c)*F.followTo,a=out.aim,G=F.guard;
+  if(p<w0){const k=smoothstep(p/Math.max(1e-6,w0));if(fromCharge>0){for(let i=0;i<3;i++)a[i]=S.chamber[i]+F.charge[i]*fromCharge*(1-k);out.load=1;}else{lerp3(a,0,G,S.chamber,k);out.load=k;}out.drive=0;} // a charged release leaves its held chamber
+  else if(p<c){const k=smoothstep((p-w0)/Math.max(1e-6,c-w0));lerp3(a,0,S.chamber,S.strike,k);out.load=1-k;out.drive=k;}
+  else if(p<f1){const k=smoothstep((p-c)/Math.max(1e-6,f1-c));lerp3(a,0,S.strike,S.follow,k);out.load=0;out.drive=1;}
+  else if(p<F.guardAt){const k=smoothstep((p-f1)/Math.max(1e-6,F.guardAt-f1));lerp3(a,0,S.follow,G,k);out.load=0;out.drive=1-k;}
+  else{lerp3(a,0,G,G,0);out.load=0;out.drive=0;}
+  // the guard's own weight: in from the carry over the wind-up (or held from the last step or the charge), out after `holdTo`
+  const into=chained||fromCharge>0?1:smoothstep(p/Math.max(1e-6,w0)),outOf=1-smoothstep((p-F.holdTo)/(1-F.holdTo));
+  out.weight=Math.min(into,outOf);
+}
+const FIST_SAMPLE={aim:new Float64Array(3),load:0,drive:0,weight:0};
+function fistArmTarget(state,arm,R,off,t){const g=state.global,s=arm.shoulder*16;t[0]=g[s+12]+arm.sign*off[0]*R;t[1]=g[s+13]+off[1]*R;t[2]=g[s+14]+off[2]*R;}
+function fistReach(state,arm){const g=state.global,s=arm.shoulder*16,e=arm.elbow*16,h=arm.wrist*16;return Math.hypot(g[e+12]-g[s+12],g[e+13]-g[s+13],g[e+14]-g[s+14])+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);}
+// Both hands to the guard, and the striking one along its path; the body loads and drives. `charge` > 0: held at the chamber,
+// tightening (a charge in progress, or the entry of a charged release).
+function fistChainPose(asset,state,pose,move,p,contact,lead,chained=false,fromCharge=false,held=0,reducedMotion=false){
+  const F=FIST_CHAIN_POSE,S=F.steps[move]||F.steps.dash,c=clamp(contact,.05,.5),q=FIST_SAMPLE;
+  fistChainSample(S,p,c,chained,+fromCharge||0,q);
+  if(held>0){const h=clamp(held);q.aim[0]=S.chamber[0]+F.charge[0]*h;q.aim[1]=S.chamber[1]+F.charge[1]*h;q.aim[2]=S.chamber[2]+F.charge[2]*h;q.load=.7+.3*h;q.drive=0;q.weight=1;}
+  const w=q.weight;state.clip=move==='dash'?'derived-right-cross':move==='jab'?'derived-left-jab':'derived-right-uppercut';state.clipTime=p;if(!(w>0))return;
+  const strike=lead>0?SOURCE_LEFT_ARM:SOURCE_RIGHT_ARM,guardArm=strike===SOURCE_LEFT_ARM?SOURCE_RIGHT_ARM:SOURCE_LEFT_ARM,body=(reducedMotion?F.reduced:1)*w;
+  const twist=(S.twist[0]*q.load+S.twist[1]*q.drive)*body,lean=(S.lean[0]*q.load+S.lean[1]*q.drive)*body;
+  // the body: hips and chest turn the striking shoulder back then through; the weight forward; the head stays on the foe
+  rotateY(pose,27,strike.sign*twist*.55);rotateY(pose,24,strike.sign*twist*.45);rotateX(pose,24,lean);rotateX(pose,4,-.5*lean);rotateY(pose,4,-strike.sign*twist*.6);
+  if(S.dip>0){const dip=S.dip*q.load*body;if(dip>0)plantedCrouch(asset,state,pose,dip,.10);}
+  state.other.set(pose);build(asset,state,state.other);
+  const t=state.primaryTarget,R=fistReach(state,strike),Rg=fistReach(state,guardArm);
+  fistArmTarget(state,guardArm,Rg,F.guard,t);solveArm(state,state.other,guardArm.left,t,guardArm.left?-.08:.08,-.05);
+  build(asset,state,state.other);fistArmTarget(state,strike,R,q.aim,t);solveArm(state,state.other,strike.left,t,strike.left?-.08:.08,S.pitch*q.drive);
+  blend(pose,state.other,w);
+}
+// A charge in progress (profile fistCharge): the step's chamber, tightening as it fills; the kick chambers its knee.
+function fistChargePose(asset,state,pose,step,lead,charge,reducedMotion){
+  const k=clamp(charge);if(step===4){kickChain(asset,state,pose,0,.5,true,k,reducedMotion);return;}
+  const move=FIST_MOVES[step]||'dash',openingRight=lead!=='left',right=move==='jab'?!openingRight:openingRight;
+  fistChainPose(asset,state,pose,move,0,.24,right?1:-1,true,true,Math.max(.05,k),reducedMotion);
+  state.clip='derived-fist-charge';state.clipTime=k;
+}
+// The awakened kick on the chain's rhythm; `held` > 0: a charge holding the chambered knee.
+function kickChain(asset,state,pose,p,c,chained,held=0,reducedMotion=false){
+  const F=FIST_CHAIN_POSE,K=F.kick,w0=c*F.chamberAt,f1=c+(F.guardAt-c)*F.followTo;
+  let up=0,fwd=0,leg=0;
+  if(held>0){up=K.chamber[0]*(.8+.2*held);fwd=K.chamber[1];leg=1;}
+  else if(p<w0){const k=smoothstep(p/Math.max(1e-6,w0));up=K.chamber[0]*k;fwd=K.chamber[1]*k;leg=k;}
+  else if(p<c){const k=smoothstep((p-w0)/Math.max(1e-6,c-w0));up=K.chamber[0]+(K.strike[0]-K.chamber[0])*k;fwd=K.chamber[1]+(K.strike[1]-K.chamber[1])*k;leg=1;}
+  else if(p<f1){up=K.strike[0];fwd=K.strike[1];leg=1;}
+  else if(p<F.guardAt){const k=smoothstep((p-f1)/Math.max(1e-6,F.guardAt-f1));up=K.strike[0]+(K.chamber[0]-K.strike[0])*k;fwd=K.strike[1]+(K.chamber[1]-K.strike[1])*k;leg=1;}
+  else{const k=smoothstep((p-F.guardAt)/Math.max(1e-6,F.holdTo-F.guardAt));up=K.chamber[0]*(1-k);fwd=K.chamber[1]*(1-k);leg=1-k;}
+  const w=held>0?1:Math.min(chained?1:smoothstep(p/Math.max(1e-6,w0)),1-smoothstep((p-F.holdTo)/(1-F.holdTo)));
+  if(!reducedMotion&&held<=0){const spin=smoothstep((p-K.spinFrom)/(K.spinTo-K.spinFrom));if(spin>0&&spin<1)state.sweepSpin+=TAU*spin;}
+  rotateX(pose,27,-K.lean*leg*w);rotateX(pose,4,.5*K.lean*leg*w);
+  state.other.set(pose);build(asset,state,state.other);const t=state.primaryTarget;
+  for(const arm of BOTH_ARMS){build(asset,state,state.other);fistArmTarget(state,arm,fistReach(state,arm),F.guard,t);solveArm(state,state.other,arm.left,t,arm.left?-.08:.08,-.05);}
+  blend(pose,state.other,w);
+  if(leg>0)kickLeg(asset,state,pose,false,up,fwd,leg*w);
+  state.clip=held>0?'derived-kick-charge':'derived-roundhouse';state.clipTime=held>0?held:p;
+}
 function weightedMeleePose(asset,state,pose,motion,reducedMotion=false) {
   const w=motion.weight,d=motion.drive;if(!(w>0))return;
-  if(motion.kind==='iron-fists') {
-    const left=motion.lead<0,openingLeft=motion.openingLead<0,source=fistSourceTime(motion.progress,asset.clips.Punch.duration);
-    fistPose(asset,state,source,left?'left':'right');
-    const step=motion.move==='dash'?1:motion.move==='jab'?2:3;
-    fistLayer(state.other,step,openingLeft?'left':'right',motion.move==='uppercut'?.96:.76);
-    blend(pose,state.other,Math.min(1,w));
-    // Loaded hips/torso/shoulders and opposed legs retain the sampled walk beneath the strike.
-    rotateY(pose,27,motion.twist);rotateX(pose,24,(motion.move==='dash'?.20:.10)*d);rotateX(pose,4,-.06*d);
-    rotateX(pose,left?30:32,-.28*d);rotateX(pose,left?32:30,.13*d);
-    build(asset,state,pose);state.other.set(pose);
-    // Accepted lead owns the end-effector. Targets start at the current grips so a charged
-    // p=0 pose leaves continuously instead of snapping into a new authored source frame.
-    for(const strikingLeft of [left]){build(asset,state,state.other);const shoulder=(strikingLeft?12:22)*16,g=state.global,t=state.primaryTarget,isStrike=true,
-      forward=motion.move==='dash'?.62:motion.move==='jab'?.58:.46,lift=motion.move==='uppercut'?.20:-.12,side=strikingLeft?.06:-.06,
-      tx=g[shoulder+12]+side,ty=g[shoulder+13]+lift,tz=g[shoulder+14]+forward;
-      t[0]=tx;t[1]=ty;t[2]=tz;solveArm(state,state.other,strikingLeft,t,strikingLeft?-.08:.08,motion.move==='uppercut'&&isStrike?-.30:-.05);
-    }
-    blend(pose,state.other,w);
-    state.clip=motion.move==='dash'?'derived-weighted-dash-punch':motion.move==='jab'?'derived-weighted-opposite-jab':'derived-weighted-rising-uppercut';state.clipTime=motion.progress;
-    return;
-  }
+  if(motion.kind==='iron-fists'){fistChainPose(asset,state,pose,motion.move,motion.progress,motion.contact,motion.lead,motion.chained===true,false,0,reducedMotion);return;}
   // Quick (v2) Cleaver actions are the three authored slashes; v1 four-cut records keep their cut below.
   if(motion.kind==='verge-cleaver'&&motion.actionVersion===2){cleaverSlashPose(asset,state,pose,motion,reducedMotion);return;}
   const A=CLEAVER_ARM,m=A.sign;
@@ -807,14 +870,13 @@ function kickLeg(asset,state,pose,left,up,fwd,w){
   build(asset,state,pose);anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);
   target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
 }
-function awakenedArtPose(asset,state,pose,art,p,reducedMotion){
+function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false){
+  if(art==='roundhouse'){kickChain(asset,state,pose,p,contact,chained,0,reducedMotion);return;} // the chain's fourth step (FIST_CHAIN_POSE.kick)
   const A=AWAKENED_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.2));if(!(env>0))return;
   if(art==='fissure'){const k=smoothstep((p-A.at)/A.len)*env;rotateX(pose,27,A.bend*k);rotateX(pose,24,A.chest*k);plantedCrouch(asset,state,pose,k*A.crouch,A.drop);}
   else if(art==='returning-blades'){const k=smoothstep(p/A.out)*(1-smoothstep((p-A.back)/A.len))*env;rotateX(pose,12,-A.fling*k);rotateX(pose,22,-A.fling*k);rotateZ(pose,12,-A.spread*k);rotateZ(pose,22,A.spread*k);}
   else if(art==='lance'){const k=smoothstep(p/A.at)*env;rotateX(pose,22,-A.reach*k);rotateX(pose,12,-A.lead*k);rotateX(pose,27,A.lean*k);}
   else if(art==='spell-runes'){const k=Math.sin(Math.PI*p)*env;rotateX(pose,12,-A.trace*k);rotateZ(pose,12,-A.out*k);}
-  else if(art==='roundhouse'){const k=smoothstep((p-A.kickAt)/A.kickLen)*(1-smoothstep((p-A.holdEnd)/(1-A.holdEnd)))*env,spin=smoothstep(p/A.spinEnd);
-    if(!reducedMotion&&spin<1)state.sweepSpin+=TAU*spin;rotateX(pose,12,-A.guard*env);rotateX(pose,22,-A.guard*env);rotateX(pose,27,-A.lean*k);kickLeg(asset,state,pose,false,A.up*k,A.fwd*k,k);}
   else if(art==='axe-kick'){const rise=smoothstep(p/A.riseEnd)*(1-smoothstep((p-A.fallAt)/A.fallLen))*env,down=smoothstep((p-A.fallAt)/A.fallLen)*env;
     rotateX(pose,12,-A.guard*env);rotateX(pose,22,-A.guard*env);rotateX(pose,27,-A.arch*rise+A.slam*down);kickLeg(asset,state,pose,false,A.up*rise,A.fwd*rise,rise);plantedCrouch(asset,state,pose,down*A.crouch,A.drop);}
   state.clip=AWAKENED_CLIP[art];state.clipTime=p;
@@ -847,7 +909,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
   const primaryAction=action?.kind==='melee'&&!action.weaponArt&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
-    meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
+    meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction??(action.profile==='fist'&&!action.awakenedArt&&[1,2,3].includes(action.fistStep)?FIST_DESCRIPTORS[FIST_MOVES[action.fistStep]]:null)/* a fist record with no contact descriptor: the chain's own timing */,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
   let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
   const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
@@ -859,10 +921,11 @@ export function sampleCloseViewHero(asset, state, input, out) {
   }
   else if(meleeMotion){
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,meleeMotion.actionVersion===1?{kind:'cleaver-four',step:meleeMotion.cutIndex}:input.primaryCarryStage?.kind==='cleaver-four'?input.primaryCarryStage:{kind:'cleaver-four',step:1});
-    else {const charge=clamp(Number(action?.fistCharge)||0)*(1-p);if(charge>0)fistReadyPose(asset,state,state.pose,charge,meleeMotion.lead<0?'left':'right');}
-    weightedMeleePose(asset,state,state.pose,meleeMotion,input.reducedMotion);
-    if(!(meleeMotion.kind==='verge-cleaver'&&meleeMotion.actionVersion===2))weightedMeleeLoad(state.pose,meleeMotion);
+    if(meleeMotion.kind==='iron-fists')fistChainPose(asset,state,state.pose,meleeMotion.move,p,meleeMotion.contact,meleeMotion.lead,action.fistChain===true,clamp(Number(action?.fistCharge)||0),0,input.reducedMotion); // the training chain (FIST_CHAIN_POSE)
+    else{weightedMeleePose(asset,state,state.pose,meleeMotion,input.reducedMotion);
+    if(meleeMotion.actionVersion!==2)weightedMeleeLoad(state.pose,meleeMotion);}
   }
+  else if(action?.kind==='melee'&&action.profile==='fistCharge')fistChargePose(asset,state,state.pose,Number(action.fistStep)||1,action.fistLead,p,input.reducedMotion); // a fist step held to charge
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='cleaver-three')cleaverFourPose(state,state.pose,0,{kind:'cleaver-four',step:1});
   else if(carryProfile==='verge-cleaver'&&(!primaryStage||primaryStage.kind==='cleaver-four'))cleaverFourPose(state,state.pose,primaryAction?p:0,primaryStage);
@@ -870,7 +933,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(heldPrimary)primaryPose(state,state.pose,heldPrimary,0);
   else state.primaryGripResidual=0;
   let sweepPosed=false;
-  if (action&&!meleeMotion&&!(action.kind==='melee'&&AWAKENED_KICKS.has(action.awakenedArt))) { // awakened-arts.ts: a kick is its own whole-body pose
+  if (action&&!meleeMotion&&!(action.kind==='melee'&&(AWAKENED_KICKS.has(action.awakenedArt)||action.profile==='fistCharge'))) { // awakened-arts.ts: a kick is its own whole-body pose
     const kind = action.kind, profile = action.profile;
     if (kind === 'melee') { if (profile === 'fist' || profile === 'fistCharge' || profile === 'unarmed') clip = asset.clips.Punch; else if (profile === 'melee' || profile === 'blade' || profile === 'sweep' || profile === 'mirage' || profile === 'orrery' || profile === 'orrery-tap' || profile === 'orrery-release') clip = asset.clips.Dagger_Attack; }
     else if (kind === 'hit'&&!knocked) clip = asset.clips.RecieveHit; else if (kind === 'death') clip = asset.clips.Death; else if (kind === 'interact'&&profile!=='cache-pickup'&&!chestOpening&&!shovelDigging&&!placingStone) clip = asset.clips.PickUp;
@@ -957,7 +1020,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
-  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion);
+  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the

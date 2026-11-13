@@ -9,12 +9,12 @@
 //
 // Proportions are GIANT_ART's, in body units (the standard view's u: one tile times the actor's scale), so the Close View
 // body is exactly as tall as the sprite: 1.12 u to the helm, the jets above it.
-import { GIANT_ART } from "./lightning-giant-render.js?v=r941-b5036c167d5d";
-import { ATTACK_MODULES, BOSS_PACE, GIANT } from "./monster-pack.js?v=r941-b5036c167d5d";
+import { GIANT_ART } from "./lightning-giant-render.js?v=r945-c3afa98a7637";
+import { ATTACK_MODULES, BOSS_PACE, GIANT } from "./monster-pack.js?v=r945-c3afa98a7637";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, mix, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r941-b5036c167d5d";
+} from "./close-view-beast-rig.js?v=r945-c3afa98a7637";
 
 // GIANT_ART is read when a mesh or pose is first made, never at load: monster-pack.ts reaches close-view.ts, which loads
 // this module before lightning-giant-render.ts has finished loading.

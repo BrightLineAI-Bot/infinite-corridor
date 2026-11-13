@@ -1,5 +1,5 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r941-b5036c167d5d';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r941-b5036c167d5d';
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r945-c3afa98a7637';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r945-c3afa98a7637';
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
 // down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are
@@ -157,12 +157,20 @@ function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {
 // Release 493 (Tim: "the iron fist is an attack... shadow boxing should work with iron fist"): the Iron Fists are a weapon
 // on the Attack button now (the same combo); while Shadow Boxing holds, the dash punch rushes `stick` tiles farther, the jab
 // and uppercut step to the foe, and every punch deals and heals as a boxing swing does.
+// Training combo (Tim, 2026-11-13: "a fluid training combo... right, left, right, then the kick"): the steps loop on one
+// rhythm. Every step, the kick included, is followed by the same `gate` s before the next can be thrown (room for a wind-up, the
+// blow and its follow-through; it replaced the old `recover` .45 s after the uppercut). A press in the gate's last `buffer` s
+// waits for it and is thrown as it opens. Unawakened fists loop cross, jab, uppercut; awakened fists add the spinning
+// roundhouse kick as a fourth step (its numbers are weapon-arts.ts AWAKENED_ARTS.moves.roundhouse). Past `window` s with no
+// press the chain starts again at the cross. A charge let go inside `perfect` (seconds of charge past `tapGrace`) counts as
+// full and strikes `perfectShare` times as hard; held longer it is full, without the bonus.
 export const IRON_FISTS = {
-  base: 10, perPower: 1.2, window: .9, recover: .45, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
+  base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
+  perfect: [1, 1.3], perfectShare: 1.25,
   punches: [
-    { name: "Dash punch", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
-    { name: "Jab", share: .9, chargeShare: 1.2, echoes: 1, dash: .6, radius: 1.1 },
-    { name: "Uppercut", share: 2.4, chargeShare: 1.6, echoes: 2, dash: .3, radius: 1.4, stun: .5 },
+    { name: "Right cross", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
+    { name: "Left jab", share: .9, chargeShare: 1.2, echoes: 1, dash: .6, radius: 1.1 },
+    { name: "Right uppercut", share: 2.4, chargeShare: 1.6, echoes: 2, dash: .3, radius: 1.4, stun: .5 },
   ],
 };
 // Release 503 (Tim: "if you have echo... it'll let you power up your second swing... it'll still... do the small... forward
@@ -175,6 +183,8 @@ export const IRON_FISTS = {
 export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.75, arc: 160 }, toolGap: .22 };
 // How charged the dash punch is after `held` seconds of holding (0..1).
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
+// Whether a charge let go after `held` seconds of holding falls in the perfect window.
+export const fistPerfect = (held) => { const c = held - IRON_FISTS.tapGrace; return c >= IRON_FISTS.perfect[0] && c <= IRON_FISTS.perfect[1]; };
 
 // Presentation only: the original effect owns delay, contact, expiry and Echo identity.
 // Conjure below the local roof/arch rather than pretending to fall from a ceiling.
@@ -284,6 +294,21 @@ function drawAfterimage(ctx, fx, x, y, R, s, capture) {
   if (!captured) drawAfterimageBody(ctx, x, y, s, pose.amount, pose.alpha);
 }
 
+// Standard view (2026-11-13): which hand throws the step, so the chain reads right, left, right (then the kick's sweep). The
+// gauntlet is drawn back to the shoulder (the wind-up), driven out along the aim (the blow; the uppercut rises), and brought
+// home to the guard, over the record's own clock. Nothing allocated; reduced motion keeps it, it is not a loop.
+export const FIST_STEP_VIEW = { windup: .28, strike: .48, shoulder: .22, reach: .62, back: .12, rise: .38, size: .11, arm: "#5a4636", fist: "#e4ebf2", rim: "#8796a6" };
+function drawFistStep(ctx, game, toScreen, s) {
+  const p = game.player, v = p?.attackVisual, now = game.lastUpdateNow || 0, until = Number(p?.fistVisualUntil) || 0, step = Number(v?.fistStep) || 0;
+  if (!v || v.profile !== "fist" || v.presentationCancelled || v.awakenedArt || !(now < until) || step < 1 || step > 3) return;
+  const V = FIST_STEP_VIEW, dur = 240, k = Math.max(0, Math.min(1, 1 - (until - now) / dur)), ax = Number(v.aim?.x) || 0, ay = Number(v.aim?.y) || 0, al = Math.hypot(ax, ay); if (!(al > 0)) return;
+  const ux = ax / al, uy = ay / al, side = step === 2 ? -1 : 1, rx = -uy * side, ry = ux * side; // the striking hand's side of the aim (screen y down)
+  const out = k < V.windup ? -V.back * k / V.windup : k < V.strike ? -V.back + (1 + V.back) * (k - V.windup) / (V.strike - V.windup) : 1 - (k - V.strike) / (1 - V.strike);
+  const [cx, cy] = toScreen({ x: p.x + .5, y: p.y + .35 }), sx = cx + rx * V.shoulder * s, sy = cy + ry * V.shoulder * s, reach = (.1 + V.reach * out) * s; // behind the shoulder line in the wind-up, out to the blow, home to the guard
+  const lift = step === 3 ? V.rise * s * Math.max(0, out) : 0, fx = sx + ux * reach - rx * (step === 2 ? .04 : .08) * s * Math.max(0, out), fy = sy + uy * reach - lift - ry * .08 * s * Math.max(0, out);
+  ctx.strokeStyle = V.arm; ctx.lineWidth = Math.max(2, s * .07); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(fx, fy); ctx.stroke(); ctx.lineCap = "butt";
+  ctx.fillStyle = V.fist; ctx.strokeStyle = V.rim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx, fy, V.size * s, 0, 7); ctx.fill(); ctx.stroke();
+}
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   for (const fx of game.effects) {
@@ -310,6 +335,11 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
       for (const o of [-.35, 0, .35]) { ctx.beginPath(); ctx.moveTo(x + o * R, y + R * .4); ctx.lineTo(x + o * R * .5, y - R * (1.1 - .5 * k)); ctx.stroke(); }
       if (fx.finisher) { ctx.fillStyle = "#ffcf7a44"; ctx.beginPath(); ctx.arc(x, y, R * 1.1, 0, 7); ctx.fill(); }
       ctx.globalAlpha = 1; ctx.lineCap = "butt";
+    } else if (fx.kind === "fist-kick") { // 2026-11-13: the awakened fists' roundhouse sweeps round her
+      const k = Math.max(0, fx.life / .3), still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode), a0 = still ? 0 : (1 - k) * Math.PI * 2.4;
+      ctx.globalAlpha = .3 * k; ctx.fillStyle = "#9ff0ff"; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+      ctx.globalAlpha = k; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(x, y, R * .85, a0 - 2.2, a0); ctx.stroke();
+      ctx.strokeStyle = "#9ff0ff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R, a0 - 3, a0); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineCap = "butt";
     } else if (fx.kind === "iron-fist") {
       const k = Math.max(0, fx.life / .25); ctx.globalAlpha = k; ctx.fillStyle = "#ffb05a55"; ctx.beginPath(); ctx.arc(x, y, R * (1.1 - .3 * k), 0, 7); ctx.fill();
       ctx.strokeStyle = "#ffe0b0"; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .4, y + Math.sin(a) * R * .4); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
@@ -317,9 +347,15 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
     } else if (fx.kind === "plunge-slam" || fx.kind === "plunge-burst") drawPlunge(ctx, fx, x, y, R); // jump attacks
     else if (fx.kind === "plunge-afterimage") drawAfterimage(ctx, fx, x, y, R, s, capture);
   }
+  drawFistStep(ctx, game, toScreen, s);
   const c = game.fistCharge;
-  if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills
-    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), k = fistCharge(((game.lastUpdateNow || 0) - c.start) / 1000);
-    ctx.strokeStyle = k >= 1 ? "#ffe9b0" : "#ffb05a"; ctx.lineWidth = 2 + 3 * k; ctx.globalAlpha = .5 + .4 * k; ctx.beginPath(); ctx.arc(x, y, s * (1.2 - .5 * k), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.05, k)); ctx.stroke(); ctx.globalAlpha = 1;
+  if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills; the perfect window marked on it, flashing inside it
+    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = ((game.lastUpdateNow || 0) - c.start) / 1000, k = fistCharge(held), F = IRON_FISTS;
+    const span = F.perfect[1], fill = Math.max(.05, Math.min(1, (held - F.tapGrace) / span)), perfect = fistPerfect(held), R = s * (1.2 - .5 * k), top = -Math.PI / 2;
+    ctx.globalAlpha = .35; ctx.strokeStyle = "#3a2c20"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); // the track
+    ctx.globalAlpha = .9; ctx.strokeStyle = "#fff2a8"; ctx.beginPath(); ctx.arc(x, y, R, top + Math.PI * 2 * F.perfect[0] / span, top + Math.PI * 2); ctx.stroke(); // the perfect window
+    ctx.strokeStyle = perfect ? "#fff6d8" : k >= 1 ? "#ffe9b0" : "#ffb05a"; ctx.lineWidth = 2 + 3 * k; ctx.globalAlpha = .5 + .4 * k; ctx.beginPath(); ctx.arc(x, y, R, top, top + Math.PI * 2 * fill); ctx.stroke();
+    if (perfect) { ctx.globalAlpha = .6; ctx.strokeStyle = "#fff2a8"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 1.14, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
   }
 }

@@ -1,15 +1,15 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r941-b5036c167d5d'; // adventure creatures
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r941-b5036c167d5d';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r941-b5036c167d5d';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r941-b5036c167d5d';
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r941-b5036c167d5d';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r941-b5036c167d5d';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r945-c3afa98a7637'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r945-c3afa98a7637';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r945-c3afa98a7637';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r945-c3afa98a7637';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r945-c3afa98a7637';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r945-c3afa98a7637';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -963,7 +963,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const cleaverLoad = actor.reduceMotion ? .55 : 1;
   const turn = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
+  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
     + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0); // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);

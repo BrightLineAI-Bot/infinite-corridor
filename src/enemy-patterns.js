@@ -1,4 +1,4 @@
-import { projectileVisualHeight } from "./actor-presentation.js?v=r941-b5036c167d5d";
+import { projectileVisualHeight } from "./actor-presentation.js?v=r945-c3afa98a7637";
 const TAU=Math.PI*2;
 export const ENEMY_PROJECTILE_CAP=64;
 export const DUNGEON_THREAT_TUNING_VERSION=1;

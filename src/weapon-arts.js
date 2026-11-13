@@ -25,9 +25,9 @@
 //
 // Transpose's seal: standing in it, the Wayfarer's spells (the armor glyphs' Spell Damage path: spells, magic tools, Imbue)
 // deal `spellDamage` more and she takes `damageTaken` more from every blow (game.ts armorGlyphBonus reads transposeBonus).
-import { latticePassives } from "./transit-lattice.js?v=r941-b5036c167d5d";
-import { weaponKey } from "./items.js?v=r941-b5036c167d5d";
-import { QUANDRIX } from "./quandrix-staff.js?v=r941-b5036c167d5d";
+import { latticePassives } from "./transit-lattice.js?v=r945-c3afa98a7637";
+import { weaponKey } from "./items.js?v=r945-c3afa98a7637";
+import { QUANDRIX } from "./quandrix-staff.js?v=r945-c3afa98a7637";
 
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
 
@@ -49,8 +49,11 @@ export const WEAPON_ARTS = Object.freeze({
     // A wind-up of `windup` s, then the pike flies `range` tiles at `speed`, striking up to `pierce` foes, and is back in hand.
     "cinder-javelin": Object.freeze({ weapon: "cinder-pike", name: "Cinder Javelin", share: 1, windup: .26, range: 8, speed: 16, pierce: 3, radius: .42, stun: .35, knock: .35, poseMs: 560 }),
     // A forward blast `range` tiles at `speed`; it bursts on the first foe (or wall) within `burst`. Released on the uppercut,
-    // the Wayfarer pops up into the air and fires it from there for `air` times as much.
-    "ki-blast": Object.freeze({ weapon: "iron-fists", name: "Ki Blast", share: 1, range: 7, speed: 12, radius: .45, burst: .9, air: 1.25, stun: .4, knock: .55, poseMs: 380 }),
+    // the Wayfarer pops up into the air and fires it from there for `air` times as much. Still in the air at the next press
+    // (Tim, 2026-11-13), she drops in a ground slam (game.ts airAttack/plungeLand): `slam.share` of the fists' power (fistPower)
+    // on every foe within `slam.radius` where she lands; it takes the kick's place in the chain, which then starts again.
+    "ki-blast": Object.freeze({ weapon: "iron-fists", name: "Ki Blast", share: 1, range: 7, speed: 12, radius: .45, burst: .9, air: 1.25, stun: .4, knock: .55, poseMs: 380,
+      slam: Object.freeze({ share: 2.8, radius: 1.5, stun: .4 }) }), // Tim 2026-11-13: the slam has parity with the awakened kick it replaces
     // A seal on the ground round the Wayfarer: `base` s (`perfectBase` from a perfect release); each melee hit landed while it
     // lasts adds `perHit` s, the time left never above `cap`. Standing in it: +`spellDamage` spell damage, +`damageTaken` damage
     // taken; both linger `linger` s after stepping out. One at a time. No damage of its own.
@@ -76,7 +79,7 @@ export const WEAPON_ART_IDS = Object.freeze(Object.keys(WEAPON_ARTS.arts));
 // weapon (game.ts primaryAttack: the crescent's base; the Iron Fists' fistPower). Balance pass 2026-11-13 (headless harness:
 // the art and the awakening together add about a quarter to the plain weapon's sustained damage, the daggers on top): below
 // the crescent's .7 for the Verge Cleaver (.3), the Cinder Pike (.5) and the Fourfold Daggers (.25 a way); the Salvage Blade's
-// runes keep .7 (they need a spell) and the kick keeps .8 (Tim). Each move's `up` is the small extra it gains when the
+// runes keep .7 (they need a spell). The Iron Fists' kick is a full step of their combo (2026-11-13), a little above the uppercut (2.8; the headless bot keeps the awakened loop about a fifth below r941). Each move's `up` is the small extra it gains when the
 // weapon's own art (WEAPON_ARTS.arts[passive]) is also selected. The Quandrix
 // Staff keeps its own awakening (quandrix-staff.ts); tools keep their fan.
 export const AWAKENED_ARTS = Object.freeze({
@@ -96,21 +99,24 @@ export const AWAKENED_ARTS = Object.freeze({
     // `returnShare` of its throw.
     lance: Object.freeze({ weapon: "cinder-pike", passive: "cinder-javelin", name: "Lance", text: "every third thrust extends a long line of cinder light", share: .5, start: .4, length: 6, width: .45, stun: .25, knock: .2, life: .4, poseMs: 360,
       up: Object.freeze({ returnShare: .35 }) }),
-    // A fourth strike after the uppercut while the combo's window is open: a spinning kick on every foe within `radius`.
-    // Up: an uppercut Ki Blast (the airborne one) ends with an axe kick that bursts where she lands, `share` of the art's power.
-    roundhouse: Object.freeze({ weapon: "iron-fists", passive: "ki-blast", name: "Roundhouse kick", text: "a spinning roundhouse kick follows the uppercut", share: .8, radius: 1.6, stun: .3, knock: .6, poseMs: 440,
-      up: Object.freeze({ share: .4, radius: 1.5, stun: .4, knock: .3, wait: 1.2, poseMs: 360 }) }),
+    // The fourth step of the awakened fists' training combo (Tim, 2026-11-13: cross, jab, uppercut, kick, on one rhythm; "I
+    // don't want it to be lower"): a spinning kick on every foe within `radius`, `share` of the fists' power (fistPower) like a
+    // punch, `chargeShare` more at full charge (with `echoes` Echo glyphs it can be held); it staggers (`stun`) but never
+    // knocks, so the loop keeps the foe in reach. It is thrown as a punch step (game.ts fistPunch, step 4).
+    // Up: Ki Blast's ground slam (WEAPON_ARTS.arts["ki-blast"].slam) strikes `share` more of the fists' power.
+    roundhouse: Object.freeze({ weapon: "iron-fists", passive: "ki-blast", name: "Roundhouse kick", text: "a spinning roundhouse kick becomes the fourth step of the combo", share: 2.8, chargeShare: 1.6, echoes: 2, dash: 0, radius: 1.6, stun: .3,
+      up: Object.freeze({ share: 0 }) }), // Tim 2026-11-13: the slam (2.8) already has parity with the kick; awakening adds nothing more
     // The swing's struck foes take a rune (one a foe; `life` s); the next spell to strike a runed foe detonates it for `share`
     // on every foe within `burst`. Up: each spell cast standing in Transpose's seal sends a pulse from it, `share` of the art's
     // power on every foe in the seal, at most one each `gap` s.
     "spell-runes": Object.freeze({ weapon: "salvage-blade", passive: "transpose", name: "Spell runes", text: "every third swing runes the nearest foe it strikes (one not yet runed first); your next spell to hit one detonates it", share: .7, burst: .9, life: 8, stun: .2,
       up: Object.freeze({ share: .3, gap: .25 }) }),
   }),
-  pools: Object.freeze({ fissures: 3, blades: 8, lances: 2, runes: 6, axes: 1, flashes: 6, hits: 8 }),
-  flash: Object.freeze({ life: .4, kick: .35 }),
+  pools: Object.freeze({ fissures: 3, blades: 8, lances: 2, runes: 6, flashes: 6, hits: 8 }),
+  flash: Object.freeze({ life: .4 }),
   colors: Object.freeze({ crack: "#2a1a12", fissure: "#ff8a3d", fissureCore: "#ffe0a0", blade: "#e8f6ff", bladeEdge: "#9fd8ff", lance: "#ff8a3d", lanceCore: "#fff0c8",
     rune: "#c9a6ff", runeCore: "#f6eeff", kick: "#9ff0ff", kickCore: "#ffffff", pulse: "#b896cf" }),
-  messages: Object.freeze({ kick: "Roundhouse kick!", axe: "Axe kick!" }),
+  messages: Object.freeze({ kick: "Roundhouse kick!", slam: "Ground slam!" }),
 });
 export const AWAKENED_IDS = Object.freeze(Object.keys(AWAKENED_ARTS.moves));
 // The awakened move of the equipped primary (an id of AWAKENED_ARTS.moves), or null: not awakened, or the Quandrix Staff.
@@ -246,12 +252,11 @@ function release(game, now, held) {
     const d = game.artAim(null), W = K.windup; W.on = true; W.left = A.windup; W.dx = d.x; W.dy = d.y; W.power = power;
     game.artVisual(now, d, id, A.poseMs); K.pikeOut = true; K.artRecord = game.player.attackVisual || null; // thrown: out of her hands until it is home or she cancels the throw
   } else if (id === "ki-blast") {
-    const step = game.artFistRelease(now, { x: dx, y: dy }, fistStep), air = step === 3; if (air) game.artLeap(now); // the uppercut pops her up: fired from the air
+    const step = game.artFistRelease(now, { x: dx, y: dy }, fistStep), air = step === 3; if (air) game.artLeap(now); // the uppercut pops her up: fired from the air (game.ts: a press still up there is the ground slam)
     const c = centre(game), s = shotSlot(K);
     s.on = true; s.kind = "ki"; s.x = c.x + dx * .45; s.y = c.y + dy * .45; s.dx = dx; s.dy = dy; s.left = A.range; s.speed = A.speed;
     s.power = power * (air ? A.air : 1); s.n = 0; s.air = !!air; s.back = false; s.age = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
     game.artVisual(now, { x: dx, y: dy }, id, A.poseMs);
-    if (air) game.awakenedRelease?.(id, now, true); // awakened-arts.ts: awakened Iron Fists drop with an axe kick
   } else if (id === "transpose") {
     const c = centre(game), S = K.seal; S.on = true; S.x = c.x; S.y = c.y; S.left = sealBase(w); S.age = 0; // a new seal replaces the old
     flash(K, "seal", c.x, c.y, A.radius); game.artVisual(now, game.artAim(null), id, A.poseMs);
