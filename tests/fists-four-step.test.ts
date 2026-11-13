@@ -197,3 +197,9 @@ test('a held kick released after the awakening is gone is thrown as a plain cros
   const e = g.effects.slice(n).find((q) => /^fist/.test(q.kind || '')) || g.effects[g.effects.length - 1];
   assert.notEqual(e?.kind, 'fist-kick', 'a cross, not a kick'); assert.notEqual(g.player.attackVisual?.fistStep, 4);
 });
+test('Ki Blast slam survives a pause mid-leap (r946 review): kiSlamJump shifts with jumpStart', () => {
+  const { g, clock } = arena({ ki: true, foes: [[1, .2]] }); for (let i = 0; i < 3; i++) { tap(g, clock); idle(g, clock, 40); }
+  idle(g, clock, 40); step(g, clock); step(g, clock); hold(g, clock, WEAPON_ARTS.hold.grace + 1.15); assert.ok(clock.t < g.jumpUntil, 'popped up by the blast');
+  g.setPaused(true, clock.t); clock.t += 5000; g.setPaused(false, clock.t);
+  assert.equal(g.kiSlamReady(clock.t), true, 'still the same leap after the pause'); tap(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam');
+});
