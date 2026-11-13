@@ -181,3 +181,19 @@ test('soak: a minute of random presses, holds, dodges, casts and jumps with ever
     assert.ok(g.effects.length < 60, `effects bounded (${g.effects.length})`); tap(g, clock); assert.ok(g.fistCombo?.step === 1 || g.fistCharge, 'still responsive');
   }
 });
+
+// r945 review notes (2026-11-13): the slam belongs to the Ki Blast's own leap; and a kick released after the awakening is gone
+// is thrown as a plain cross, with the cross's effect and pose.
+test('Ki Blast slam: leap, land, jump again with no press between, and the next airborne press is an ordinary plunge', () => {
+  const { g, clock } = arena({ ki: true, foes: [[1, .2]] }); for (let i = 0; i < 3; i++) { tap(g, clock); idle(g, clock, 40); }
+  idle(g, clock, 40); step(g, clock); step(g, clock); hold(g, clock, WEAPON_ARTS.hold.grace + 1.15); assert.ok(clock.t < g.jumpUntil, 'popped up by the blast');
+  while (clock.t < g.jumpUntil) frame(g, clock); idle(g, clock, 3);
+  frame(g, clock, { pressed: ['jump'] }); assert.ok(clock.t < g.jumpUntil, 'a new jump'); assert.equal(g.kiSlamReady(clock.t), false, 'not the leap the slam belonged to');
+});
+test('a held kick released after the awakening is gone is thrown as a plain cross (its effect, not the kick\'s)', () => {
+  const { g, clock } = arena({ awakened: true }); g.fistPunch(4, 0, clock.t, { x: 1, y: 0 });
+  assert.equal(g.player.attackVisual?.fistStep, 4); g.fistCombo = null; idle(g, clock, 30);
+  delete g.save.equipment.primary.awakened; const n = g.effects.length; g.fistPunch(4, 0, clock.t, { x: 1, y: 0 });
+  const e = g.effects.slice(n).find((q) => /^fist/.test(q.kind || '')) || g.effects[g.effects.length - 1];
+  assert.notEqual(e?.kind, 'fist-kick', 'a cross, not a kick'); assert.notEqual(g.player.attackVisual?.fistStep, 4);
+});

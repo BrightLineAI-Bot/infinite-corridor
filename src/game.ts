@@ -8209,11 +8209,12 @@ export class Game {
     if (now < (this.jumpUntil || 0) || this.cursed("jump", now) || this.swimming || this.mountRide?.() || this.wallCling || this.glide || this.fall || (this.decksApply?.() && this.standingDeck?.())) return false;
     const p = this.player; this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
     this.jumpDur = JUMP.base + skillRank(this.save, "quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur;
-    if (this.fistsEquipped()) this.kiSlam = true;
+    if (this.fistsEquipped()) { this.kiSlam = true; this.kiSlamJump = this.jumpStart; } // the slam belongs to this leap only
     return true;
   }
   // Still up in the Ki Blast's leap with the fists on: a press drops into the ground slam.
-  kiSlamReady(now = this.lastUpdateNow || 0) { if (this.kiSlam && !(now < (this.jumpUntil || 0))) this.kiSlam = false; return !!this.kiSlam && this.fistsEquipped(); }
+  kiSlamReady(now = this.lastUpdateNow || 0) { if (this.kiSlam && (!(now < (this.jumpUntil || 0)) || this.jumpStart !== this.kiSlamJump)) this.kiSlam = false; // landed, or a later jump: an ordinary plunge (r945 review)
+    return !!this.kiSlam && this.fistsEquipped(); }
   // The Iron Fists' waiting press: the step it throws is the combo's next as the press is made (fistNextStep), fixed there however
   // long the charge is held. A tap throws it as ever; a release throws it with the blast. Returns the step.
   artFistStep(now) { return this.fistNextStep(now); }
@@ -9894,7 +9895,7 @@ export class Game {
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
-    const kick = step > IRON_FISTS.punches.length; if (kick && awakenedFor(this.save) !== "roundhouse") step = 1; // the fists' awakening gone mid-chain: the cross
+    let kick = step > IRON_FISTS.punches.length; if (kick && awakenedFor(this.save) !== "roundhouse") { step = 1; kick = false; } // the fists' awakening gone mid-chain: the cross, thrown as a cross (r945 review)
     const F = IRON_FISTS, P = this.fistStepSpec(step), p = this.player, w = this.glyphWorld(now), reach = (P.dash || 0) + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
     const fistLead = 'right'; // Tim, 2026-11-13: right cross, left jab, right uppercut (the jab's hand is the other one)

@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=945" />
+    <link rel="stylesheet" href="./styles.css?v=946" />
     <title>Infinite Corridor</title>
   </head>
   <body>
@@ -60,7 +60,7 @@
           <div id="navCompassSlot" class="compass-slot"><div id="navCompass" class="nav-compass" role="img" aria-label="No navigation target" hidden>
             <span id="navGuidanceArrow" class="nav-arrow guidance-arrow" aria-hidden="true">▲</span>
             <span id="navManualArrow" class="nav-arrow manual-arrow" aria-hidden="true">▲</span>
-          </div><span class="look-badge" aria-hidden="true"></span><span id="navCompassHelp" class="visually-hidden">Tap to step to the next objective. In Close View, press and hold (or Shift and Enter) to turn Look mode on or off: pinch to zoom, drag to look round.</span></div>
+          </div><span class="look-badge" aria-hidden="true"></span><span id="lookSubject" class="look-subject" aria-live="polite"></span><span id="navCompassHelp" class="visually-hidden">Tap to step to the next objective. In Close View, press and hold (or Shift and Enter) to turn Look mode on or off: pinch to zoom, drag to look round, tap anything to look at it.</span></div>
           <!-- release 874: the fixed utility button (Build, Robot / Drone or the Oculus, chosen per preset) takes the compass's place;
                the compass itself shows at the top right of the screen (styles.css) -->
           <div class="utility-slot buttons"><button class="utility" data-action="utility" data-utility="build" aria-label="Utility: Build"><span class="utility-icon"><svg class="icon hammer" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-38 12 12)"><rect x="10.7" y="7.4" width="2.6" height="15" rx="1.2" fill="#c08a52" stroke="#4a2f17" stroke-width=".7"/><rect x="10.7" y="18.2" width="2.6" height="4.2" rx="1.1" fill="#6f4426"/><path d="M6 3.6h10.4l1.6 1.2v2.4l-1.6 1.2H6z" fill="#dfe3e8" stroke="#3f4448" stroke-width=".7"/><path d="M6 3.6 3.3 2.1l.8 3.9-1 3.1L6 8.4z" fill="#a9b0b8" stroke="#3f4448" stroke-width=".7"/><path d="M7.2 4.6h8.6" stroke="#fff" stroke-opacity=".7" stroke-width=".7"/></g></svg></span></button></div>
@@ -157,7 +157,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "945";
+      const release = "946";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"
