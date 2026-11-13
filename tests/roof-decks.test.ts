@@ -180,16 +180,18 @@ test('the aimed step: within reach, at most two levels up (three with Long Step)
   assert.equal(RIFT_AIM.rise, 2); assert.equal(RIFT_AIM.longStepRise, 1); assert.ok(RIFT_AIM.samples <= 40);
 });
 
-test('Close View: the Rift Step button arms the aim; the next tap picks the point and casts; the aim lapses', () => {
+// 2026-11-13 (Tim: one rule in both views, tap steps and hold aims): the arming calls were activateApertureSkill('rift-step'), which
+// armed on a tap in Close View; holding the button now arms (aimRiftStep, what game.update calls after RIFT_AIM.hold).
+test('Close View: holding the Rift Step button arms the aim; the next tap picks the point and casts; the aim lapses', () => {
   const { g, s } = rifter(SHACK), d = roofDeckById(g.map, SHACK.id), { y, x0 } = westApproach(g, d); g.riftAimView = () => true;
   open(g, x0 - 1, y, d.base); open(g, x0 - 2, y, d.base); stand(g, x0 - 2, y); g.lastUpdateNow = 1000;
-  assert.equal(g.activateApertureSkill('rift-step'), false, 'armed, not cast'); assert.equal(g.riftAimArmed(), true); assert.equal(s.magicSkills.riftCharges, 1);
+  assert.equal(g.aimRiftStep(), false, 'armed, not cast'); assert.equal(g.riftAimArmed(), true); assert.equal(s.magicSkills.riftCharges, 1);
   assert.equal(g.placeRiftAim(x0 + 40, y, 1000), true, 'the tap is taken'); assert.equal(g.riftAimMark.ok, false, 'red: out of reach'); assert.equal(s.magicSkills.riftCharges, 1, 'no cast');
-  g.activateApertureSkill('rift-step'); assert.equal(g.placeRiftAim(x0 + 1.5, y + .5, 1000), true); assert.equal(g.riftAimMark.ok, true); assert.equal(g.roofDeck?.id, d.id); assert.equal(s.magicSkills.riftCharges, 0);
+  g.aimRiftStep(); assert.equal(g.placeRiftAim(x0 + 1.5, y + .5, 1000), true); assert.equal(g.riftAimMark.ok, true); assert.equal(g.roofDeck?.id, d.id); assert.equal(s.magicSkills.riftCharges, 0);
   assert.equal(g.placeRiftAim(x0 + 1.5, y + .5, 1000), false, 'not armed: the tap goes on to its usual use');
-  const k = rifter(SHACK).g; k.riftAimView = () => true; k.lastUpdateNow = 1000; k.activateApertureSkill('rift-step'); assert.equal(k.riftAimArmed(), true);
+  const k = rifter(SHACK).g; k.riftAimView = () => true; k.lastUpdateNow = 1000; k.aimRiftStep(); assert.equal(k.riftAimArmed(), true);
   driver(k).idle(RIFT_AIM.window * 1000 + 100); assert.equal(k.riftAimArmed(), false, 'lapsed');
   const q = rifter(SHACK).g; q.riftAimView = () => true; q.lastUpdateNow = 1000; for (let x = x0 - 9; x <= x0 - 1; x++) open(q, x, y, d.base); stand(q, x0 - 2, y); q.player.lastMoveVector = { x: -1, y: 0 };
-  q.activateApertureSkill('rift-step'); const x1 = q.player.x; assert.equal(q.riftAimArmed(), true);
-  assert.equal(q.activateApertureSkill('rift-step'), true, 'pressed again: the plain step along the way you move'); assert.ok(q.player.x < x1 - 1); assert.equal(q.riftAimArmed(), false);
+  q.aimRiftStep(); const x1 = q.player.x; assert.equal(q.riftAimArmed(), true);
+  assert.equal(q.activateApertureSkill('rift-step'), true, 'tapped while armed: the plain step along the way you move'); assert.ok(q.player.x < x1 - 1); assert.equal(q.riftAimArmed(), false);
 });

@@ -63,16 +63,17 @@ test('a freefall off the crown itself remembers the tree; the death wakes on the
   }
 });
 
-test('ground as high as the crown is not the crown: a freefall from there remembers nothing (the height alone was the 766 rule)', () => {
+// 2026-11-13 (Tim: the glider is for great trees only): was 'a freefall from there remembers nothing'. Ground as high as the crown
+// is not the tree, so walking off it is no glide at all, only an ordinary (here lethal) fall, and the recovery is the ordinary one.
+test('ground as high as the crown is not the crown: walking off it is an ordinary fall, never a glide, and nothing is remembered', () => {
   const g = atTree(0), top = g.map.canopy.top, b = g.map.canopy.box;
   // A pillar of ordinary ground beside the tree, raised to the crown's height, over open air on its far side.
   const p = g.map.tiles.find((t) => !t.canopy && !t.blocked && t.x >= 3 && t.x <= 28 && t.y >= 3 && t.y <= 28 && (t.x < b.x - 2 || t.x > b.x + b.n + 2) && [[-1, 0], [1, 0], [0, 1], [0, -1]].every(([a, c]) => !T(g, t.x + a, t.y + c).canopy));
   assert.ok(p); Object.assign(p, { kind: 'grass', elev: top, slope: false, structure: null }); for (const [a, c] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) Object.assign(T(g, p.x + a, p.y + c), { kind: 'grass', elev: 0, blocked: false, slope: false, structure: null });
-  const e = { t: p, d: [1, 0] };
-  TREE_GLIDE.home.reached = false; try { walkOff(g, e); assert.ok(g.glide && g.glideHome, 'by height alone this glide would wake on the crown (the gap)'); } finally { TREE_GLIDE.home.reached = true; }
-  const h = atTree(0); { const q = T(h, p.x, p.y); Object.assign(q, { kind: 'grass', elev: top, slope: false, structure: null }); for (const [a, c] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) Object.assign(T(h, p.x + a, p.y + c), { kind: 'grass', elev: 0, blocked: false, slope: false, structure: null }); }
-  refuge(h); let t = walkOff(h, { t: T(h, p.x, p.y), d: [1, 0] }); assert.ok(h.glide, 'the freefall'); assert.equal(h.glideHome, null, 'never stood on the crown: nothing remembered');
-  h.player.hp = 0; t = fly(h, 4, () => ({}), t); assert.deepEqual([h.rx, h.ry, h.player.x, h.player.y], [0, 0, 16, 16], 'the ordinary recovery'); assert.equal(h.save.activeCheckpoint.name, 'Ember Refuge', 'the rest point untouched');
+  refuge(g); const n0 = deaths(g); let fell = false, t = 1000; Object.assign(g.player, { x: p.x, y: p.y - .25 }); t = fly(g, 3, () => ({}), t);
+  t = fly(g, 60, () => { fell ||= !!g.fall; return { x: 1, until: () => !!g.glide || deaths(g) > n0 }; }, t);
+  assert.equal(g.glide, null, 'no glide'); assert.ok(fell, 'an ordinary fall'); assert.equal(g.glideHome, null, 'never stood on the crown: nothing remembered');
+  t = fly(g, 6, () => ({}), t); assert.equal(deaths(g) - n0, 1, `a fall of ${top} levels is lethal`); assert.deepEqual([g.rx, g.ry, g.player.x, g.player.y], [0, 0, 16, 16], 'the ordinary recovery'); assert.equal(g.save.activeCheckpoint.name, 'Ember Refuge', 'the rest point untouched');
 });
 
 test('a glide opened mid-jump from a lower branch, or from the highest branch just under the crown, wakes at the rest point', () => {

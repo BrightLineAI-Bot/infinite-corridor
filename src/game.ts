@@ -64,6 +64,7 @@ import {
   abandonDungeon,
   journalOnce,
   gainAperture,
+  APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
@@ -172,7 +173,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
@@ -223,7 +224,10 @@ function dressSkyland(map, id, save = null) {
 // right better... descend more slowly... go to a high branch and then glide down... the only way you can glide is if you get up in
 // a tall tree... float down pretty much as much as you want in any direction... if you jump off a tree and you're high enough you
 // can glide into the next undiscovered tile"): the leaf glider, found on the landing of the first great tree climbed
-// (save.glider, additive). It opens only on a fall of `minDrop` levels or more from a great tree. Gliding, the Wayfarer sinks
+// (save.glider, additive). It opens only on a fall of `minDrop` levels or more from a great tree. Tim (2026-11-13: "falls stay
+// dangerous"): it is for great trees only. Leaving a great tree's crown or canopy (`treeLaunch`: stood on within CANOPY_FALL_MS) by
+// a drop of `minDrop` or more is the closed glide (a freefall; Jump opens it), and a jump from there opens it mid-jump. Any other
+// fall is an ordinary fall under FALL (the 641 freefall off any 4+ drop and the 926 Jump-mid-fall catch are gone). Gliding, the Wayfarer sinks
 // `sink` levels a second and steers freely at up to `speed` tiles a second (eased by `steer`), over walls, trees and water, and on
 // over the section's edge into the next. It ends only over open ground it can stand on; over water, walls or anything else it
 // holds at `skim` levels until there is. Tall blocked things (a trunk) still stop it. Out of reach of blows while above `safe`.
@@ -244,7 +248,7 @@ export function crownSpot(map) {
   return { x: t.x, y: t.y - .2 };
 }
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
-export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637)
+export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637); 2026-11-13: crown or canopy (Game.treeLaunch)
 export const CHASM = { version: 1, chance: .2, /* release 672: was .12; rolled once, at a crossing's first entry, and kept */ keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
 // [chasm]... those moving platforms can be in the... Starfield dungeons"): rafts of stone glide to and fro over straight runs of
@@ -2501,7 +2505,7 @@ export function enforceSanctuary(e,z){if(!z)return false;const dx=e.x-z.x,dy=e.y
 // lasts JUMP.base ms plus JUMP.quickening per Quickening rank. The arc rises from the press itself, as fast as the
 // plain leap's rise; Quickening's extra time is hang time at the top, and the robot's boost holds it there too. jumpLift
 // gives the lift as a share of a tile (0..JUMP.arc).
-export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArrival: true }; // landOnArrival (release 759): a sky hop ends on the first platform past the gap. // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
+export const JUMP = { base: 520, quickening: 140, arc: .42, sky: 1100, landOnArrival: true, liftAt: .5 }; // liftAt (2026-11-13): Jump held from the ground starts the drone's lift this share of the base arc in (.5: the peak) // landOnArrival (release 759): a sky hop ends on the first platform past the gap. // release 585: `sky`, a jump from a sky platform (one gap, easily). Great-tree review (Tim, 2026-11-05: "hard to jump"): 900 → 1100 ms: at 2.4 tiles a second a sky hop covers 2.64 tiles, so one gap tile is cleared from anywhere on the launching tile (2 tiles at worst) with .64 tiles (about a quarter second) to spare; it was .16
 // Footing on a great tree's branches (Tim, 2026-11-05: "too hard to find your footing on the platforms"). On a canopy platform a
 // dodge goes along one of the four axes (a branch is one tile wide: a diagonal dodge drifted off it), and a sky hop flies
 // straight: while the Wayfarer is in the air over the gap only the stick's larger axis moves it, so a thumb's drift cannot carry
@@ -2529,7 +2533,23 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // ground hands its descent on to the fall at this speed (the drawn arc's own landing speed), so the arc and the fall join without a
 // float. `plunge`: a jump attack (brawler-spells.ts PLUNGE) that ends over a drop is driven down at this speed and slams where the fall
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
-export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", catchGlide: "The leaf glider snaps open and catches you." };
+export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", nothing: "Nothing to catch you.",
+  roll: .22, rollLevels: 1, rollPose: 260, rolled: "Rolled!" }; // the landing roll (Tim, 2026-11-13): a dodge begun no more than `roll` s of the fall's own time before it lands counts the fall `rollLevels` less (2 levels free, 3 = 15%, 4 = 40%, 5+ still fatal); the first dodge of a fall is its one try; not a plunge's. `rollPose` ms of the dodge roll drawn on landing // nothing (Tim, 2026-11-13): Jump mid-fall with no drone to catch you; the glider is for great trees only
+// QA 926: how a death on lethal ground is named on waking ("<words> — recovered at ..."), by the tile it took the Wayfarer on:
+// its mark first (a glacier's crevasse or a lunar rille, both lethal `abyss`; a chasm's `canyon` open to the stars), then its kind,
+// then the water kinds; `other` for anything else lethal. Before, every hazard but the canyon said "Lost beneath the water".
+export const HAZARD_DEATH = {
+  marks: [{ mark: "crevasse", kind: "abyss", words: "Lost in a crevasse" }, { mark: "rille", kind: "abyss", words: "Lost in a lunar rille" }, { mark: "chasm", kind: "canyon", words: "Lost to the stars" }],
+  kinds: { lava: "Lost to the lava", abyss: "Lost to the abyss", canyon: "Lost to the canyon" },
+  water: "Lost beneath the water", other: "Lost to the land",
+};
+export function hazardDeathWords(kind, tile = null) {
+  const H = HAZARD_DEATH; if (tile && tile.kind === kind) for (const m of H.marks) if (m.kind === kind && tile[m.mark]) return m.words;
+  if (H.kinds[kind]) return H.kinds[kind];
+  return kind === "river" || kind === "dungeonWater" || DEEP_WATER.includes(kind) ? H.water : H.other;
+}
+// QA 926: the longest jump still in flight that a pause or reload treats as airborne (ms); a longer one is a damaged clock.
+export const AIRBORNE_HOLD = { jumpMs: 10000 };
 // The time (s) a fall of `drop` levels takes from a vertical speed vz0 (levels/s, 0 or less) under FALL. Pure.
 export function fallAirtime(drop, vz0 = 0) {
   const G = FALL.gravity, T = FALL.terminal, v0 = Math.min(T, Math.max(0, -Number(vz0) || 0)), h = Math.max(0, Number(drop) || 0);
@@ -2562,6 +2582,7 @@ export class Game {
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
     settleProgression(save);
+    APERTURE_TIER_DUE.delete(save); // QA 926 (syncResonance): the load's settleProgression has applied every tier
     const s = save.session;
     this.area = s.area;
     this.rx = s.rx || 0;
@@ -2603,7 +2624,8 @@ export class Game {
     this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), open: q.open !== false, ...(q.open === false && Number.isFinite(Number(q.fallFrom)) ? { fallFrom: Number(q.fallFrom) } : {}), ...(q.open === false && q.vz != null && Number.isFinite(Number(q.vz)) ? { vz: Math.max(-GLIDE.drop, Math.min(0, Number(q.vz))) } : {}), told: false } : null; } // release 635
-    { const q = s.playerRuntime.fall; this.fall = q && s.area === "overworld" && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0) } : null; } // FALL: exact resume in the air (checked against the ground once the section is loaded)
+    { const q = s.playerRuntime.fall; this.fall = q && s.area === "overworld" && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0), ...(q.rollT != null && Number.isFinite(Number(q.rollT)) ? { rollT: Number(q.rollT) } : {}) } : null; } // FALL: exact resume (FALL.roll: rollT, the landing roll's try, on the fall's clock) in the air (checked against the ground once the section is loaded)
+    { const q = s.playerRuntime.glide, g = this.glide; if (g) { if (g.open !== false || q.tree === true || s.playerRuntime.glideHome) g.tree = true; else { if (!this.fall) this.fall = { z: g.z, vz: Number.isFinite(g.vz) ? Math.max(-FALL.terminal, g.vz) : 0, from: Math.max(g.z, Number.isFinite(g.fallFrom) ? g.fallFrom : g.z), scale: 1, t: 0 }; this.glide = null; } } } // 2026-11-13: a closed glide saved before the glider was for great trees only (the 641 freefall off any drop) resumes as the fall it is, at its height
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
     this.projectiles = [];
@@ -2614,7 +2636,7 @@ export class Game {
     this.restoreRuntime(s.playerRuntime, now); // release 736: before the area loads, so a Rite in progress keeps its dais and foes
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
     this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
-    this.loadArea(this.area, false); this._resumeDeck = null;
+    this._resumeNow = now; this.loadArea(this.area, false); this._resumeDeck = null; this._resumeNow = null;
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -3142,7 +3164,7 @@ export class Game {
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.pentFinale&&!this.map.pentArena)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -3451,7 +3473,8 @@ export class Game {
     const areaWidth = mapWidth(this.map, area),
       resumeLiftPosition = !capture && this.validInteriorLift(this.save.session.playerRuntime?.droneLift),
       resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
-      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
+      resumeAirborne = !capture && this.airborneHeld(this._resumeNow ?? this.lastUpdateNow ?? 0, this.save.session.playerRuntime), // QA 926: a fall, glide, jump or outdoor lift resumes where it was
+      playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !resumeAirborne && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
     if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
@@ -3592,8 +3615,23 @@ export class Game {
     this.hordeTimer = (this.hordeTimer || 0) + dt; if (this.hordeTimer < HORDE.respawn) return;
     this.hordeTimer = 0; if (this.spawnHordeRevenant(here.id)) this.message = "Another Gate Revenant tears through the crossing.";
   }
-  recoverPosition() {
+  // QA 926: a Wayfarer in the air is not stranded. A fall, a glide, a jump (or jump attack) in flight, a booster lift over open
+  // ground, or a fall already fatal is exact-resume state: where it lands is the uninterrupted game's (a river under a fall
+  // still drowns). `rt` is a saved playerRuntime when resuming (the outdoor lift is restored after the area loads); the jump's
+  // remaining time is bounded (AIRBORNE_HOLD) so a damaged clock never keeps a wedged Wayfarer from being recovered.
+  airborneHeld(now = this.lastUpdateNow || 0, rt = null) {
+    if (this.fall || this.glide || this.plunge || this._fatalFallPending === true) return true;
+    const left = (this.jumpUntil || 0) - now; if (left > 0 && left <= AIRBORNE_HOLD.jumpMs) return true;
+    if (this.droneLift && this.area === "overworld") return true;
+    const q = rt?.droneLift; return !!q && this.area === "overworld" && q.area !== "dungeon" && this.droneLiftAllowed() && ["base", "z", "vz"].every(k => Number.isFinite(Number(q[k])));
+  }
+  // QA 926: standing on a roof deck at its edge (feet past it, the box still over its walls) is not stranded either; the same test
+  // a reload makes (resumeDeckEdge), so a pause never drops the Wayfarer off the roof.
+  deckEdgeHeld() { const d = this.standingDeck(), reach = d ? this.deckReach(false) : null, p = this.player;
+    return reach != null && !!roofDeckUnderBox(this.map, p.x, p.y, Infinity, d.id) && footprintOpen(this.map, mapWidth(this.map, this.area), p.x, p.y, false, false, false, true, reach); }
+  recoverPosition(now = this.lastUpdateNow || 0) {
     if(this.droneLift && interiorTerrain(this.map) && footprintOpen(this.map,mapWidth(this.map,this.area),this.player.x,this.player.y,true))return false;
+    if (this.airborneHeld(now) || this.deckEdgeHeld()) return false; // QA 926
     // Match load-time exact resume: pausing aboard a valid skiff must not relocate its sailor onto land.
     if (this.area === "overworld" && aboard(this.save) && footprintSailable(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) return false;
     const moved = relocateIfStranded(
@@ -3612,7 +3650,7 @@ export class Game {
     if (v) { this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
     if (v && !this.paused) {
       this.pauseStarted = now;
-      this.recoverPosition();
+      this.recoverPosition(now);
       if (this.orrery) this.orrery.charge = null; // the Aether Orrery: a charge held into the pause is dropped, never released
     }
     if (!v && this.paused && this.pauseStarted !== null) {
@@ -3627,9 +3665,21 @@ export class Game {
     this.pauseStarted = v ? this.pauseStarted : null;
     this.save.session.paused = v;
   }
+  // QA 926: a new Aperture Resonance tier (gainAperture, from any caller) raises the derived maximum health at once, as a level-up
+  // does: the maximum and current health both rise by the difference (stamina likewise), so the HUD is right and a reload
+  // (syncCharacterStats on load) has nothing left to hand out. Checked once a frame and before a save: one WeakSet lookup, marked by
+  // gainAperture when a tier is crossed (APERTURE_TIER_DUE), so a lab or test that sets the Aperture by hand is left as set.
+  syncResonance() {
+    if (!APERTURE_TIER_DUE.has(this.save)) return false; APERTURE_TIER_DUE.delete(this.save);
+    const p = this.player, oldHp = Number(this.save.maxHp) || 0, oldStamina = Number(this.save.maxStamina) || 0; syncCharacterStats(this.save);
+    if (p.hp > 0) p.hp = Math.min(this.save.maxHp, p.hp + Math.max(0, this.save.maxHp - oldHp)); else p.hp = Math.min(p.hp, this.save.maxHp);
+    p.stamina = Math.min(this.save.maxStamina, p.stamina + Math.max(0, this.save.maxStamina - oldStamina)); p.maxStamina = this.save.maxStamina;
+    return true;
+  }
   exportSnapshot(now = 0) {
     const clock =
       this.paused && this.pauseStarted !== null ? this.pauseStarted : now;
+    this.syncResonance(); // QA 926
     this.reconcileHammerfallStartup();
     this.sync();
     this.snapshotArea(false); // a save in place, not a leaving
@@ -3646,8 +3696,8 @@ export class Game {
         ...this.save.session.playerRuntime, // release 736 (S7): fields from a newer release are kept
         ...this.resumeRuntime(clock), // release 736 (F6/F7/S8, C13): statuses, timers, the rite and the skiff's way
         droneLift: this.droneLift && this.droneLiftAllowed() ? { ...this.droneLift, base: this.droneLift.base, z: this.droneLift.z, vz: this.droneLift.vz, ...(this.area === "dungeon" ? { area: "dungeon", areaId: this.areaId(), levelId: String(this.map.levelId || "root") } : {}) } : null, // release 647: a lift resumes in the air; schema-14 unknown fields survive while canonical values win
-        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null, ...(Number.isFinite(this.glide.vz) ? { vz: this.glide.vz } : {}) } : null,
-        fall: this.fall && this.area === "overworld" && this.fallApplies() ? { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0 } : null, // FALL: a fall resumes in the air // release 635: a glide resumes in the air
+        glide: this.glide && this.area === "overworld" ? { z: this.glide.z, vx: this.glide.vx, vy: this.glide.vy, open: this.glide.open !== false, fallFrom: this.glide.fallFrom ?? null, ...(Number.isFinite(this.glide.vz) ? { vz: this.glide.vz } : {}), tree: true } : null, // tree (2026-11-13, additive): every glide is a great tree's; a closed one saved without it is an old freefall and resumes as a fall
+        fall: this.fall && this.area === "overworld" && this.fallApplies() ? { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0, ...(Number.isFinite(this.fall.rollT) ? { rollT: this.fall.rollT } : {}) } : null, // FALL: a fall resumes in the air // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
         roofDeck: this.standingDeck() && this.area === "overworld" ? { id: this.roofDeck.id, level: this.roofDeck.level } : null, // roof decks (roof-decks.ts): the roof stood on (additive, schema 14)
@@ -3712,6 +3762,8 @@ export class Game {
       swimming: this.swimming === true,
       swimKind: this.swimming === true ? this.swimKind ?? null : null,
       fatalFallPending: this._fatalFallPending === true,
+      edgeHold: this.edgeHold && this.area === "overworld" ? { dx: this.edgeHold.dx, dy: this.edgeHold.dy, elapsed: Math.max(0, clock - this.edgeHold.at) } : null, // QA 926: the edge just crossed (EDGE_HOLD) holds as long after a reload
+      springSoak: this.springSoak ? { ...this.springSoak } : null, // QA 926: the hot springs' play-second clocks (HOT_SPRINGS), so a reload resumes a soak exactly
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
       jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, deckHop: this.deckHop === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
@@ -3827,9 +3879,8 @@ export class Game {
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
-    // Stegosaur's Grip: the wall held and a kick in the air.
     this.wallCling = null; this.wallKick = null;
-    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
+    this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.riftPress = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
     this.plunge = null; this.plungeSpent = false; this.plungeRecoverUntil = 0; // jump attacks
@@ -3853,6 +3904,10 @@ export class Game {
     if (Number.isFinite(Number(r.raftZ))) this.raftZ = Number(r.raftZ);
     if (r.swimming === true) { this.swimming = true; if (typeof r.swimKind === "string") this.swimKind = r.swimKind; }
     if (r.fatalFallPending === true) this._fatalFallPending = true;
+    { const q = r.edgeHold, unit = (v) => v === -1 || v === 0 || v === 1; // QA 926: the edge just crossed (EDGE_HOLD; edgeHeld clears it once spent)
+      if (q && typeof q === "object" && unit(q.dx) && unit(q.dy) && Math.abs(q.dx) + Math.abs(q.dy) === 1 && Number.isFinite(Number(q.elapsed)) && Number(q.elapsed) >= 0 && Number(q.elapsed) <= EDGE_HOLD.ms) this.edgeHold = { dx: q.dx, dy: q.dy, at: now - Number(q.elapsed) }; }
+    { const q = r.springSoak, n = (v, hi) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(hi, Number(v))) : null; // QA 926: the hot springs' clocks (tickHotSprings)
+      if (q && typeof q === "object" && [q.calm, q.away, q.scanIn, q.wisp].every((v) => n(v, 1e9) != null)) this.springSoak = { calm: n(q.calm, 1e9), away: n(q.away, 1e9), told: q.told === true, scanIn: n(q.scanIn, HOT_SPRINGS.scan), foes: q.foes === true, wisp: n(q.wisp, HOT_SPRINGS.wisp) }; }
   }
   // The roof deck stood on as saved (playerRuntime.roofDeck), after the area loads: kept only when that deck is still under the
   // feet at that level (roof-decks.ts validRoofDeck); otherwise the Wayfarer stands on the ground there, unhurt.
@@ -3966,13 +4021,13 @@ export class Game {
     return true;
   }
   // Rift Step aimed (constellation.ts RIFT_AIM): only while Close View shows the world (a tap there picks a point in it).
-  riftAimWanted() { return this.riftAimView ? !!this.riftAimView() : closeViewShowing(this); }
+  riftAimWanted() { return this.riftAimView ? !!this.riftAimView() : closeViewShowing(this); } // which view picks the point (main.ts worldtap: Close View's surface pick, else the standard view's tile); both aim since 2026-11-13
   riftAimArmed() { return !!this.riftAim && this.riftAim.left > 0; }
   riftReach() { return riftReachOf(this.save); }
   armRiftAim(now = this.lastUpdateNow || 0) {
     if (this.riftAimArmed()) { this.riftAim = null; const ok = riftStep(this, now); if (ok) this.riftFlashAt = now; return ok; } // pressed again: the plain step along the way you move
     if (!riftStepReady(this)) return false;
-    this.riftAim = { left: RIFT_AIM.window }; this.message = "Rift Step: tap where to step (press again to step ahead)."; return false; // armed, not cast
+    this.riftAim = { left: RIFT_AIM.window }; this.message = RIFT_AIM.armed; return false; // armed, not cast
   }
   // The tap after arming: the point (the feet's point) and its drawn height `z` for the ring. True when it took the tap (armed).
   placeRiftAim(x, y, now = this.lastUpdateNow || 0, z = null) {
@@ -4127,18 +4182,18 @@ export class Game {
     const ground = this.elevationHere(x, y); return ground <= top ? { level: ground, deck: null } : null;
   }
   // A blink's arrival from fromLevel: stand on the footing, and fall by the ordinary rule (fallDamage; a long fall with the glider
-  // is a freefall, as off any ledge). Tim (2026-11-12): every Rift Step falls; before, the blink's drop was never counted.
+  // is a freefall only when the step leaves a great tree: treeLaunch). Tim (2026-11-12): every Rift Step falls.
   landBlink(footing, fromLevel, now) {
     const p = this.player, was = this.fall, from = was ? Math.max(was.from, fromLevel) : fromLevel, drop = from - footing.level; this.setRoofDeck(footing.deck); this.skyAir = null; this.deckHop = false;
     // FALL: a step that arrives in the air over its footing falls from there (a step taken while falling keeps the fall's speed and
     // the height its damage counts from: a blink moves you, it does not catch you). Arriving at the footing, it lands now.
     if (this.fallApplies() && fromLevel - footing.level > FALL.minDrop) {
-      if (this.save.glider && !this.glide && !was && drop >= GLIDE.minDrop && !this.mechUp()) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, vz: 0, open: false, fallFrom: from, told: false }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
+      if (this.save.glider && !this.glide && !was && drop >= GLIDE.minDrop && !this.mechUp() && this.treeLaunch(now)) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, vz: 0, open: false, fallFrom: from, told: false, tree: true }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
       this.jumpUntil = Math.min(this.jumpUntil || 0, now); this.beginFall(fromLevel, was ? was.vz : 0, from, was ? was.scale : 1); return 0;
     }
     this.fall = null;
     if (!(drop > 1)) return 0;
-    if (this.save.glider && !this.glide && drop >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp()) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, open: false, fallFrom: fromLevel, told: false }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
+    if (this.save.glider && !this.glide && drop >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && this.treeLaunch(now)) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, open: false, fallFrom: fromLevel, told: false, tree: true }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
     const hurt = fallDamage(drop, this.save.maxHp);
     if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(drop * 10) / 10} levels.`; return hurt; }
     if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `A hard landing: ${Math.round(drop * 10) / 10} levels down.`; }
@@ -5178,6 +5233,9 @@ export class Game {
     this.glide = null; this.skyAir = null; p.hp = 0; this._fatalFallPending = true; this.message = F.message;
     journalOnce(this.save, F.journal, F.message, "The glider"); return "landed";
   }
+  // The glider is for great trees only (Tim, 2026-11-13): is a fall or jump begun now leaving a great tree's crown or canopy (stood on
+  // within CANOPY_FALL_MS; lastCrownAt is set on every canopy platform, the crown included)?
+  treeLaunch(now) { const at = Number(this.lastCrownAt); return this.area === "overworld" && at > 0 && now - at < CANOPY_FALL_MS; }
   // TREE_GLIDE.home (Tim, 2026-11-05): a glide launched at the height of this section's great-tree crown remembers the tree (its
   // section and the crown spot a death wakes you on); a glide begun anywhere lower remembers nothing. Runtime, saved for exact resume.
   // Decision 13 (TREE_GLIDE.home.reached): only when the last ground stood on was this section's great crown (`crownFoot`).
@@ -5200,6 +5258,14 @@ export class Game {
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
   // above them. It ends on landing (or when the drone is stowed): the jump ends at once and the landing is settled by the ordinary
   // fall rule as a drop of v²/2g levels (fallDamage).
+  // The drone's lift from a jump (release 647; the second press, or JUMP.liftAt's held Jump): its fuel and roof rules. `held`: from a
+  // held Jump, which says nothing when there is no fuel or a roof (the jump is simply a jump).
+  droneJumpLift(now, held = false) {
+    const m = this.save.mech, width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), fall = this.fallApplies() ? this.fall : null, high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0, fall ? fall.z : 0);
+    if (!(m?.fuel > 0)) { if (!held) this.message = DRONE_LIFT.none; return false; }
+    const z = Math.max(high, below); if (this.droneRoofCap(z) != null) { if (!held) this.message = DRONE_LIFT.roofed; return false; } // under a roof: no lift
+    this.droneLift = { base: Math.max(this.jumpFrom ?? below, below, fall ? Math.floor(fall.z + 1e-6) - DRONE_LIFT.max : -Infinity), z, vz: 0 }; this.mechSpent = false; this.fall = null; this.message = DRONE_LIFT.engage; return true;
+  }
   droneLiftAllowed() { return this.area === "overworld" || (this.area === "dungeon" && interiorTerrain(this.map)); }
   // Lowest local roof over the footprint. Walls still stop moveAxis; this only
   // keeps an airborne body from travelling sideways through a descending roof.
@@ -5244,11 +5310,15 @@ export class Game {
     this.droneLift = lift;
     return true;
   }
+  // `cap` (2026-11-13, from the pre-publish review: the drone-catch trap): a lift that caught a fall (Jump mid-fall) climbs no higher
+  // than where it caught it. Before, holding Jump climbed to base + max and an empty booster dropped you further than the fall you
+  // were caught from. With the cap a catch never leaves you worse off than not catching: any fall after it starts at or under the
+  // catch, which was under where the fall began. Saved with the lift (an additive field; old lifts have none and keep base + max).
   droneLiftStep(dt, now, held) {
     const L = this.droneLift, D = DRONE_LIFT, m = this.save.mech, p = this.player;
     if (!this.droneLiftAllowed() || !this.droneUp() || !m) { this.endDroneLift(now); return; }
     const deck = this.area === "overworld" && this.decksApply() ? roofDeckAt(this.map, p.x + .5, p.y + .75) : null; // roof decks: a roof the lift is over (and high enough to be over the walls) is its ground
-    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), top = Math.min(L.base + D.max, this.interiorLiftCeiling(), this.droneRoofCap(L.z) ?? Infinity), thrust = held && !this.mechSpent && m.fuel > 0;
+    const ground = Math.max(elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y), deck && deck.level <= Math.floor(L.z + 1e-6) + 1 ? deck.level : -Infinity), top = Math.min(L.base + D.max, this.interiorLiftCeiling(), this.droneRoofCap(L.z) ?? Infinity, Number.isFinite(L.cap) ? L.cap : Infinity), thrust = held && !this.mechSpent && m.fuel > 0;
     if (thrust) { m.fuel = Math.max(0, m.fuel - D.burn * dt); this.mechBoosting = true; if (m.fuel <= 0) { this.mechSpent = true; this.message = D.empty; } }
     L.vz = Math.min(D.rise, L.vz + ((thrust ? D.thrust : 0) - D.gravity) * dt); L.z += L.vz * dt;
     if (L.z >= top) { L.z = top; if (thrust || interiorTerrain(this.map)) L.vz = Math.min(0, L.vz); } // the top: it hovers there while Jump is held
@@ -5333,6 +5403,7 @@ export class Game {
   // Wayfarer wakes at the active checkpoint.
   resolveDeath(now, input, fellIntoHazard = false, terrainHazard = null) {
     const p = this.player, home = this.area === "overworld" ? this.glideHome : null; this.glideHome = null; // TREE_GLIDE.home: read before the carried states clear
+    const lostTo = fellIntoHazard ? hazardDeathWords(terrainHazard, tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)) : null; // QA 926 (HAZARD_DEATH): read where it happened
     // Release 423 (Tim: "the world bosses... keep their health when you die... it only resets after they die"): a living beast's
     // wounds are kept, as a share of its health, on its hunt record; it comes back that hurt (BEAST_KEEPS_WOUNDS).
     for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
@@ -5407,7 +5478,7 @@ export class Game {
     p.y = c.y;
     }
     p.invulnerableUntil = now + 2000;
-    this.message = `${fellIntoHazard?(terrainHazard==="canyon"?"Lost to the canyon":"Lost beneath the water"):"Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
+    this.message = `${lostTo || "Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
     if (beastNote) this.message = `${beastNote} ${this.message}`;
 
   }
@@ -8003,6 +8074,17 @@ export class Game {
     this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
+  // A slot button pressed (game.update). Rift Step answers on the press's end (Tim, 2026-11-13: one rule in both views): let go
+  // within RIFT_AIM.hold seconds and it is the plain step along the way you move; hold it that long and it arms the aim (the reach
+  // ring, then a tap on the world picks the point: placeRiftAim). A press already let go (a key tap inside one frame) steps at once.
+  // Everything else casts on the press, as before.
+  pressSlot(slot, action, input, now = this.lastUpdateNow || 0) {
+    const c = slotTool(this.save, slot) ? null : slotted(this.save, slot);
+    if (c?.kind === "skill" && c.id === "rift-step" && input?.held?.(action) === true) { this.riftPress = { slot, action, held: 0 }; return false; }
+    return this.castSlot(slot, now);
+  }
+  // Rift Step held (RIFT_AIM.hold): arm the aim through the slot's own checks (castSlot: an empty slot, a curse).
+  aimRiftStep(now = this.lastUpdateNow || 0, slot = null) { this._riftArm = true; try { return slot ? this.castSlot(slot, now) : this.activateApertureSkill("rift-step"); } finally { this._riftArm = false; } }
   castSlot(slot, now = this.lastUpdateNow || 0) {
     const t = slotTool(this.save, slot);
     if (t?.tool === "lantern") { const r = toggleLantern(this.save); this.message = r.message; return true; } // the Lantern (spell-slots.ts LANTERN): light or shutter it
@@ -9733,7 +9815,7 @@ export class Game {
     if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.recordCastVisual(id,before,'activate'); }
     return result;
   }
-  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this.riftAimWanted())return this.armRiftAim(now);/* Close View: the button arms the aim (RIFT_AIM) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))
       return false;
@@ -9899,6 +9981,7 @@ export class Game {
     this._hurtVisualWitness = null;
     if (this.paused) return;
     if (this.area === "overworld" && this._pentOfferAt !== `${this.rx},${this.ry}` && (this._pentOfferWait = (this._pentOfferWait || 0) + Math.max(0, Number(dt) || 0)) >= PENTAGON_FINDING.hunts.settle) { this._pentOfferAt = `${this.rx},${this.ry}`; this._pentOfferWait = 0; this.warmPentagonCatchments(); this.offerPentagonHunt(); } // Pentagon finding: once a section has settled (never per frame), warm the catchments the next crossing may ask about and look for a hunt
+    this.syncResonance(); // QA 926: a new Resonance tier's health, as a level-up's
     this.save.playSeconds = (Number(this.save.playSeconds) || 0) + Math.max(0, Math.min(1, Number(dt) || 0)); // release 379: playtime (paused time is not counted)
     if (this.fallen) { if (this.player.hurtVisual?.v === 1) this.player.hurtVisual = null; this.tickFallen(dt, input, now); return; } // release 329
     reconcileAstralCompanions(this);
@@ -9974,9 +10057,10 @@ export class Game {
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
-    if (input.consume("spell")) { this.clearAttackBuffer(); this.castSlot("a"); }
-    if (input.consume("spell2")) { this.clearAttackBuffer(); this.castSlot("b"); }
-    if (input.consume("spell3")) { this.clearAttackBuffer(); this.castSlot("c"); } // release 874: slot C
+    if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
+    if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
+    if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
+    if (this.riftPress) { const q = this.riftPress; if (input.held?.(q.action) === true) { q.held += dt; if (q.held >= RIFT_AIM.hold) { this.riftPress = null; this.aimRiftStep(now, q.slot); } } else { this.riftPress = null; this.castSlot(q.slot, now); } } // RIFT_AIM.hold: let go first, a step; held, the aim
     const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
     if (dodgePressed && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
@@ -9986,6 +10070,7 @@ export class Game {
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
+      if (r.ok) { const f = this.fall && this.fallApplies() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; } // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
       if (r.ok) { const logicalNow=now-(this.presentationPausedMs||0),prior=recentHeroPresentation(p,logicalNow,p.x,p.y),canonicalYaw=(yaw)=>Math.atan2(Math.sin(yaw),Math.cos(yaw));p.dodgeVisual = prior ? { facingYaw: canonicalYaw(prior.yaw), gaitPhase: prior.gaitPhase, moving: prior.speed > .01, speed: prior.speed, poseMs: prior.now } : { facingYaw: canonicalYaw(facingYaw), gaitPhase: (Number(p.walkPhase) || 0) * Math.PI, moving: Math.hypot(Number(x) || 0, Number(y) || 0) > .15, speed: Math.hypot(Number(x) || 0, Number(y) || 0) > .15 ? 2.4 : 0, poseMs: Math.max(0,logicalNow) }; }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
@@ -9998,16 +10083,15 @@ export class Game {
       const width0 = mapWidth(this.map, this.area), below = elevationAt(this.map, width0, this.player.x, this.player.y), fall = this.fallApplies() ? this.fall : null, high = Math.max(this.skyAir ?? 0, this.jumpFrom ?? 0, fall ? fall.z : 0);
       // Stegosaur's Grip: Jump on a wall kicks off it (before the glider, which would otherwise open from a high hold).
       if (this.wallCling) { if (!this.cursed("jump", now)) this.wallJump(now); }
-      else if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; if (!g.open) { g.fallFrom = g.z; g.vz = -GLIDE.sink; } this.message = g.open ? GLIDE.open : GLIDE.shut; }
-      // FALL: falling, Jump catches you: the drone's booster (when it is up; its fuel and rules as from a jump), else the glider (when you
-      // have it, over enough air for it). A catch ends the fall: its damage then counts afresh from where you were caught.
+      else if (this.glide && this.area === "overworld") { const g = this.glide; g.open = !g.open; g.tree = true; if (!g.open) { g.fallFrom = g.z; g.vz = -GLIDE.sink; } this.message = g.open ? GLIDE.open : GLIDE.shut; }
+      // FALL: falling, Jump catches you with the drone's booster (when it is up; its fuel and rules as from a jump). A catch ends the
+      // fall: its damage then counts afresh from where you were caught. The glider catches nothing (Tim, 2026-11-13: great trees only).
       else if (fall && !(now < this.jumpUntil)) {
-        if (this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else if (this.droneRoofCap(fall.z) != null) this.message = DRONE_LIFT.roofed; else { this.droneLift = { base: Math.max(below, Math.floor(fall.z + 1e-6) - DRONE_LIFT.max), z: fall.z, vz: 0 }; this.mechSpent = false; this.fall = null; this.jumpUntil = now + 140; this.skyAir = Math.floor(fall.z + 1e-6); this.liftDrop = false; this.message = FALL.catchDrone; } }
-        else if (this.save.glider && !this.mechUp() && fall.z - below >= GLIDE.minDrop) { this.glide = { z: fall.z, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(fall.z); this.fall = null; this.skyAir = null; this.message = FALL.catchGlide; }
-        else this.message = "Already airborne.";
+        if (this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else if (this.droneRoofCap(fall.z) != null) this.message = DRONE_LIFT.roofed; else { this.droneLift = { base: Math.max(below, Math.floor(fall.z + 1e-6) - DRONE_LIFT.max), z: fall.z, vz: 0, cap: fall.z }; this.mechSpent = false; this.fall = null; this.jumpUntil = now + 140; this.skyAir = Math.floor(fall.z + 1e-6); this.liftDrop = false; this.message = FALL.catchDrone; } }
+        else this.message = FALL.nothing;
       }
-      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }
-      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else { const z = Math.max(high, below); if (this.droneRoofCap(z) != null) this.message = DRONE_LIFT.roofed; /* under a roof: no lift */ else { this.droneLift = { base: Math.max(this.jumpFrom ?? below, below, fall ? Math.floor(fall.z + 1e-6) - DRONE_LIFT.max : -Infinity), z, vz: 0 }; this.mechSpent = false; this.fall = null; this.message = DRONE_LIFT.engage; } } } // release 647: the drone's booster
+      else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop && this.treeLaunch(now)) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false, tree: true }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }
+      else if (now < this.jumpUntil && this.droneLiftAllowed() && this.droneUp() && !this.droneLift) this.droneJumpLift(now, false); // release 647: the drone's booster
       else if (now < this.jumpUntil) { if (!this.droneLift) this.message = "Already airborne."; }
       else if (this.cursed("jump", now)) { /* release 737: NO JUMP (the glider and the booster still answer in the air) */ }
       else {
@@ -10019,6 +10103,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        this.jumpHold = true; // JUMP.liftAt: Jump held from the ground hands over to the drone at the jump's peak
         if (deckFrom != null) { this.skyAir = deckFrom; this.skyAirScale = 1; this.deckHop = true; this.setRoofDeck(null); } // held over the roof (and over its edge) until it lands
         { const u = TREE_KEEL.on && this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, width0, p.x, p.y) : null; this.keelLine = u?.canopy && !u.blocked ? { x: u.x, y: u.y } : null; } // TREE_KEEL: a jump from a branch keeps to that branch's line
         this.cancelConsumeVisual('jump');
@@ -10026,6 +10111,10 @@ export class Game {
         cancelCastVisual(p);
       }
     }
+    // JUMP.liftAt (Tim, 2026-11-13: "jump in the air brings up the drone"): Jump held from the ground, without a let-go, starts the
+    // drone's lift once the jump peaks, under the double press's own rules (droneJumpLift). Letting go, or the jump ending, ends it.
+    if (this.jumpHold) { if (input.held?.("jump") !== true || !(now < (this.jumpUntil || 0)) || this.droneLift || this.glide || this.plunge) this.jumpHold = false;
+      else if (Number.isFinite(this.jumpStart) && now - this.jumpStart >= Math.min(this.jumpDur || JUMP.base, JUMP.base) * JUMP.liftAt) { this.jumpHold = false; if (this.droneLiftAllowed() && this.droneUp()) this.droneJumpLift(now, true); } }
     { const m = this.save.mech; this.mechBoosting = false; // release 317: in the robot, hold Jump in the air to boost
       if (!input.held?.("jump")) this.mechSpent = false; // release 319: an emptied boost needs Jump let go before it fires again
       if (this.droneLift) this.droneLiftStep(dt, now, input.held?.("jump") === true); // release 647
@@ -10142,7 +10231,7 @@ export class Game {
       // Release 585 (the skyway climb): a jump from a sky platform keeps its height over the gap below until it ends, so the
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
       const skyFrom = tileUnder(this.map, width, p.x, p.y);
-      if (skyFrom?.kind === "canopyTrunk") this.lastCrownAt = now; // release 637: the glider opens only from the crown
+      if (skyFrom?.kind === "canopyTrunk" || (skyFrom?.canopy && skyFrom.skyPlatform)) this.lastCrownAt = now; // release 637: the glider opens only from the crown; 2026-11-13: or the great tree's canopy (treeLaunch)
       if (skyFrom?.kind === "canopyTrunk" && !this.save.glider) { this.save.glider = true; this.message = GLIDE.found; journalOnce(this.save, "glider:found", GLIDE.found, "The Great Trees"); } // release 635
       if (p.jumping && (skyFrom?.skyPlatform || (interiorTerrain(this.map) && skyFrom?.interiorPlatform))) { this.skyAir = Math.max(this.skyAir ?? -1, skyFrom.elev || 0); this.skyAirScale = tileLiftScale(skyFrom); } // skyAirScale: the launching platform's drawn scale, so the hop is drawn at its height over the gap (renderer.ts)
       p.airElev = p.jumping && this.skyAir != null ? this.skyAir : undefined;
@@ -10151,15 +10240,15 @@ export class Game {
       if (deckStart) p.airElev = deckStart.level;
       const was = this.fall, held = this.fallApplies() ? was : null; if (!held) this.fall = null; // FALL: a fall begun earlier (held by a jump, or in the air); one the model no longer carries (the robot or a mount called up in the air) lands now, counted from where it began
       let fallStart = was ? was.from : deckStart ? deckStart.level : this.skyAir != null ? Math.max(before, this.skyAir) : before, drop = 0, hurt = 0;
-      let fallWhy = ""; const jumpEnded = !p.jumping && now - (this.jumpUntil || -1e9) <= dt * 1000 + 1e-6, fallScale = this.skyAir != null ? this.skyAirScale || 1 : tileLiftScale(tileUnder(this.map, width, fromX, fromY));
+      let fallWhy = "", rolled = false; const jumpEnded = !p.jumping && now - (this.jumpUntil || -1e9) <= dt * 1000 + 1e-6, fallScale = this.skyAir != null ? this.skyAirScale || 1 : tileLiftScale(tileUnder(this.map, width, fromX, fromY));
       const finishFall = (height, instant = false) => {
-        const raw0 = fallStart - height, bodyZ = held ? held.z : fallStart; if (this.save.glider && !this.glide && !fallNow && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall */ this.glide = { z: bodyZ, vx: 0, vy: 0, vz: 0, open: false, fallFrom: fallStart, told: false }; this.glideHome = this.treeGlideHome(fallStart); this.fall = null; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
+        const raw0 = fallStart - height, bodyZ = held ? held.z : fallStart; if (this.save.glider && !this.glide && !fallNow && raw0 >= GLIDE.minDrop && this.area === "overworld" && !this.mechUp() && !this.liftDrop && this.treeLaunch(now)) { /* release 669: a long fall is a freefall with the drone out too (the drone has Jump in a jump; the glider in a freefall); a drop off your own booster is a fall. 2026-11-13: only leaving a great tree (treeLaunch); any other drop is an ordinary fall */ this.glide = { z: bodyZ, vx: 0, vy: 0, vz: 0, open: false, fallFrom: fallStart, told: false, tree: true }; this.glideHome = this.treeGlideHome(fallStart); this.fall = null; this.message = GLIDE.falling; return; } // release 641: a long fall is a freefall: Jump opens the glider // release 635: the glider opens
         // FALL: over ground more than minDrop below them they are in the air, and fall (a jump holds its height until it ends and hands
         // the fall its descent); a slope is walked down. Damage waits for the landing.
         const slope = raw0 <= FALL.stepDown + 1e-6 && (!!tileUnder(this.map, width, p.x, p.y)?.slope || !!tileUnder(this.map, width, fromX, fromY)?.slope);
         if (!instant && this.fallApplies() && bodyZ - height > FALL.minDrop + 1e-9 && !slope && !(this.liftDrop && !held)) { /* not the drone's own touchdown: its speed is charged as the drop it equals (endDroneLift), on the ground */ if (!this.fall) this.beginFall(bodyZ, this.plunge ? -FALL.plunge : p.jumping || jumpEnded ? -FALL.jumpExit : 0, fallStart, fallScale); return; }
-        if (this.fall) { if (fallNow && raw0 > FALL.minDrop) this.fallLanded = { at: now, drop: raw0, t: Number(this.fall.t) || 0 }; if (this.fall.why) fallWhy = `${this.fall.why} `; this.fall = null; }
-        const distance = raw0, damage = fallDamage(distance, this.save.maxHp); // release 637: off the great tree a fall is a fall
+        if (this.fall) { if (fallNow && raw0 > FALL.minDrop) this.fallLanded = { at: now, drop: raw0, t: Number(this.fall.t) || 0 }; if (this.fall.why) fallWhy = `${this.fall.why} `; rolled = !!fallNow && !this.plunge && Number.isFinite(this.fall.rollT) && (Number(this.fall.t) || 0) - this.fall.rollT <= FALL.roll + 1e-9 && raw0 > 1; this.fall = null; } // FALL.roll: the landing roll (not a plunge's landing)
+        const distance = rolled ? raw0 - FALL.rollLevels : raw0, damage = fallDamage(distance, this.save.maxHp); // release 637: off the great tree a fall is a fall
         if (damage > 0) { hurt += damage; drop = Math.max(drop, Math.round(distance * 10) / 10); }
       };
       // Evaluate the actual X-then-Y substeps, not just frame endpoints: a diagonal can enter and
@@ -10238,7 +10327,8 @@ export class Game {
       }
       const fizzled = this.droneFizzleFx?.at === now ? `${this.message} ` : fallWhy; // the drone fizzle's why stays in front of the fall (FALL: when it lands)
       if (hurt === Infinity) { p.hp = 0; this._fatalFall = true; this.message = `${fizzled}The Wayfarer falls ${drop} levels.`; }
-      else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `${fizzled}A hard landing: ${drop} levels down.`; }
+      else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 400); this.message = `${fizzled}${rolled ? `${FALL.rolled} ` : ""}A hard landing: ${drop} levels down.`; }
+      if (rolled && hurt !== Infinity) { p.landRollUntil = now + FALL.rollPose; if (!(hurt > 0)) this.message = `${fizzled}${FALL.rolled}`; } // FALL.roll: the dodge roll drawn on touchdown, said once
       if(!fellIntoHazard)this.noteInternalDoorCrossings(fromX,fromY,p.x,p.y);
     }
     if(!fellIntoHazard&&!terrainHazard&&aerial)this.save.magicSkills.lastSafe={x:p.x,y:p.y,area:this.area,areaId:this.areaId()};

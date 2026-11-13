@@ -229,7 +229,7 @@ export const OUTDOOR = f({
   // roof the Wayfarer shows as the existing silhouette (CLOSE_VIEW.atmosphere.silhouette). Reduced motion: no fade.
   buildings: f({
     wall: f({ h: 1.15, t: .14, lintel: .92 }), pitch: .42, ridge: 1.05, eave: .12, flat: .14, max: 12, perTile: 240,
-    tall: f({ wall: 1.5, roof: 1.5, door: 1.72 }), fade: f({ ms: 240, doorDepth: .5 }),
+    tall: f({ wall: 1.5, roof: 1.5, door: 1.72 }), fade: f({ ms: 240, doorDepth: .5, above: .3 }), // above (2026-11-13): feet this near the roof's drawn top, or higher, are over it, not under it
     looks: f({
       timber: f({ wall: "#6a5a44", roof: "#3a3128", trim: "#8f7658", mat: 7 }), masonry: f({ wall: "#6f6a5e", roof: "#34332e", trim: "#8b8170", mat: 1 }),
       ruinedGatehouse: f({ wall: "#6d6152", roof: "#302d29", trim: "#9a8168", mat: 1 }), cyberRelay: f({ wall: "#22424a", roof: "#152b31", trim: "#42b8b2", mat: 8 }),
@@ -660,7 +660,7 @@ export function outdoorBuildings(map, R = null, D = HEIGHTS) { // R: the relief 
     if (!flat) { const len = alongX ? [H.x0 - e, H.x1 + e] : [H.y0 - e, H.y1 + e], z = Hw + Math.min(D.ridge, half * D.pitch); // the ridge beam
       FRAME.x = alongX ? (len[0] + len[1]) / 2 : mid; FRAME.y = alongX ? mid : (len[0] + len[1]) / 2; FRAME.z = z - .03; FRAME.c = alongX ? 1 : 0; FRAME.s = alongX ? 0 : 1; n = pbox(V, n, 0, 0, 0, (len[1] - len[0]) / 2, .05, .08, tc, 5); }
     const dz = R ? Math.max(0, R.top[H.cells[0]]) : 0; if (dz) for (let v = start; v < n; v++) V[v * OUTDOOR_FLOATS + 2] += dz;
-    roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1 }); }
+    roofs.push({ id: H.id, start, count: n - start, x0: H.x0, y0: H.y0, x1: H.x1, y1: H.y1, flat, base: dz }); } // flat, base: for outdoorRoofTopAt
   return { data: V.subarray(0, n * OUTDOOR_FLOATS), verts: n, walls, roofs };
 }
 
@@ -689,6 +689,13 @@ export function propScene(map, zAt = null, seen = null) { // seen: what the fog 
 // Roof decks (roof-decks.ts): the drawn height of a house's roof over the point (X, Y), as outdoorBuildings lays it (the walls'
 // height, then the gable's rise from the eaves or the flat roof's slab, all scaled by `tall`), on the relief's top at the house's first tile. `deck` is
 // a roof-decks.ts deck ({ x0, y0, x1, y1, roofProfile, cells }). Pure.
+// A house's roof as outdoorBuildings drew it (a `roofs` entry: { x0, y0, x1, y1, flat, base }): its drawn top over (X, Y), the
+// eaves' overhang left out. Pure, no allocation.
+export function outdoorRoofTopAt(r, X, Y) {
+  const D = HEIGHTS, x = Math.min(Math.max(X, r.x0), r.x1), y = Math.min(Math.max(Y, r.y0), r.y1), alongX = r.x1 - r.x0 >= r.y1 - r.y0;
+  const half = (alongX ? r.y1 - r.y0 : r.x1 - r.x0) / 2, mid = alongX ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2;
+  return (Number(r.base) || 0) + D.wall + (r.flat ? D.flat : Math.min(D.ridge, Math.max(0, half - Math.abs((alongX ? y : x) - mid)) * D.pitch));
+}
 export function outdoorRoofZ(deck, X, Y, R = null) {
   if (!deck) return 0; const D = HEIGHTS, Hw = D.wall, flat = deck.roofProfile === "flat" || deck.roofProfile === "stepped"; // the tall (scaled) heights, as drawn
   const alongX = deck.x1 - deck.x0 >= deck.y1 - deck.y0, half = (alongX ? deck.y1 - deck.y0 : deck.x1 - deck.x0) / 2, mid = alongX ? (deck.y0 + deck.y1) / 2 : (deck.x0 + deck.x1) / 2;
