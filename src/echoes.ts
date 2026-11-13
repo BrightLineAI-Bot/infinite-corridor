@@ -28,6 +28,11 @@ export function grantSlainEchoes(save) {
   return granted;
 }
 
+// Spinosaur's Echo (Tim, 2026-11-12). Every jump-attack slam (any weapon's plunge, the Shadow Boxing dive's slam
+// included) is followed `delay` s later by one afterimage slam on the same spot, with the same radius, for `share` of the
+// slam's damage (and of its Imbue Weapon spark) and `stunShare` of its stagger. The afterimage is an ordinary effect, so it
+// keeps every rule the slam keeps (friendly fire, bosses and elites, poise, sanctuaries); it never lays another afterimage.
+export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -66,8 +71,26 @@ export const ECHOES = {
   // a Wayfarer who has killed it already (grantSlainEchoes).
   stalker: { name: "Stalker's Mist", cost: 3, trigger: "dodge", module: "mistForm", creature: "The Stalker", text: "Your dodge turns you to mist: each foe you pass through loses a share of its maximum health for good (never more than a third of it)." },
   graveLantern: { name: "Lantern Stillness", cost: 1, trigger: "still", module: "stillnessCurse", text: "Standing still for a second mends 2 health each second." },
+  // The Spinosaurus (Tim, 2026-11-12: "the Spinosaurus's Echo increases your jump attacks. When you do the jump-attack slam,
+  // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
+  // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
+  // or on load for a Wayfarer who has slain it already (grantSlainEchoes reads save.worldBeasts).
+  // `pending`: the beast (`spinoRex`) is built on its own branch; until its pack entry lands the Echo is defined, grantable
+  // and saved, but left out of ECHO_IDS (the Echoes screen, the Proving Ground's all-Echoes lab and the one-Echo-per-pack-
+  // creature rule). Whoever merges the beast removes `pending` here and `noEcho` from its MONSTER_PACK entry;
+  // tests/spino-echo.test.ts fails until both are done.
+  spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam", pending: true,
+    text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
-export const ECHO_IDS = Object.keys(ECHOES);
+export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
+// The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
+// never lays another. `id` is the new effect's id; `aim` the facing it slams toward (the Close View afterimage's yaw).
+export function plungeAfterimage(slam, id, aim) {
+  if (!slam || slam.kind !== "plunge-slam" || slam.afterimage || slam.hostile) return null;
+  const S = SPINO_ECHO, a = aim && Number.isFinite(aim.x) && Number.isFinite(aim.y) ? aim : { x: 1, y: 0 };
+  return { ...slam, id, kind: "plunge-afterimage", afterimage: true, hits: {}, pulseIndex: 0, untilPulse: 0, delay: S.delay, delayMax: S.delay, lifeMax: slam.life,
+    damage: Math.max(1, Math.round(slam.damage * S.share)), imbue: (slam.imbue || 0) * S.share, stun: (slam.stun || 0) * S.stunShare, aimX: a.x, aimY: a.y };
+}
 
 // ---------------------------------------------------------------- save state
 export function ensureEchoState(save) {

@@ -82,7 +82,7 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES } from "./echoes.ts";
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
@@ -7758,8 +7758,10 @@ export class Game {
     if (!(p.hp > 0) || this.glide || this.droneLift || q.area !== this.area || q.areaId !== this.areaId()) return false;
     const P = plungeProfile(q.kind), boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = this.plungeBase(now) * (1 + (boxing?.damage || 0));
     const cx = p.x + .5, cy = p.y + .45, imbue = this.imbueBonus(now), healShare = boxing?.heal || 0;
-    const blow = (kind, radius, share, stun, life) => { this.effects.push({ id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x: cx, y: cy, life, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(base * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun }); };
-    blow("plunge-slam", P.radius, P.share, P.stun, PLUNGE.slamLife);
+    const blow = (kind, radius, share, stun, life) => { const fx = { id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x: cx, y: cy, life, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(base * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun }; this.effects.push(fx); return fx; };
+    const slam = blow("plunge-slam", P.radius, P.share, P.stun, PLUNGE.slamLife);
+    // Spinosaur's Echo (echoes.ts SPINO_ECHO): one afterimage slam on the same spot a moment later; it never lays another
+    if (hasEcho(this.save, "spinoRex")) { const ghost = plungeAfterimage(slam, `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, p.meleeAim || this.save.lastAim); if (ghost) this.effects.push(ghost); }
     if (q.dive) { const D = PLUNGE_DIVE; blow("plunge-burst", D.burstRadius, D.burstShare, D.burstStun, D.burstLife); }
     this.plungeRecoverUntil = now + PLUNGE.recoverMs; p.attackReadyAt = Math.max(p.attackReadyAt || 0, this.plungeRecoverUntil);
     if (this.fistsEquipped()) { this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; }
