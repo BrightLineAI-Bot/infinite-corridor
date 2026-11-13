@@ -1,7 +1,9 @@
 // Close View townsfolk (Tim, 2026-11-13: "every interactable character should have a real 3D body in Close View, so the 3D world
 // feels alive"). The Refuge's people, hamlet and town folk, the smiths, cooks, keepers and traders, the travelling bands and their
-// peddler, the reciters, Ilse, the Tide Bearer and the Wanderer stood in Close View as the standard view's sprite on a flat card.
-// Now each stands as a skinned body on the shared beast rig (close-view-beast-rig.ts), drawn by the beast slot's GPU program:
+// peddler, Ilse, the Tide Bearer and the Wanderer stood in Close View as the standard view's sprite on a flat card. Now each stands
+// as a skinned body on the shared beast rig (close-view-beast-rig.ts), drawn by the beast slot's GPU program. (The Elder Wanderers
+// and the reciters already stand as native 3D models, renderer.ts nativeTraveler, and keep them; a reciter in a look without one,
+// or riding, takes a body here.)
 //
 // - Two bodies from the RPG Character Pack (CC0, close-view-folk-body.ts, made by docs/asset-sources/townsfolk/convert-folk.mjs):
 //   the Rogue's fitted `tunic` and the Cleric's long `robe`, at an adult's proportions. Every one wears a head of its own built
@@ -134,6 +136,7 @@ export const FOLK_POOLS = Object.freeze({
 });
 // Which pool a traveller's standard-view look draws from (the peddler has his own look)
 const TRAVELER_POOL = Object.freeze({ pilgrim: 'pilgrim', mercenary: 'mercenary', minstrel: 'minstrel', scholar: 'scholar', traveler: 'traveler', cartographer: 'cartographer' });
+const RECITER_NATIVE = new Set(['pilgrim', 'mercenary', 'minstrel', 'scholar', 'traveler', 'cartographer']); // renderer.ts RECITER_NATIVE_LOOKS: a reciter in one of these looks has its own native 3D model
 const NAMED = Object.freeze({ 'vendor-vela': 'vela', 'warden-oren': 'oren', 'keeper-sela': 'sela', 'refuge-farmer': 'hollis', 'cairn-keeper': 'maud',
   'vendor-iona': 'iona', 'resident-tarn': 'tarn', 'vendor-mora': 'mora', 'resident-esh': 'esh' });
 export function folkHash(o) { let h = 2166136261; for (const c of String(o?.id ?? o?.name ?? `${o?.x},${o?.y}`)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -146,7 +149,7 @@ export function closeViewFolkKind(o, g = null) {
   switch (o.kind) {
     case 'villager': return o.quarryTurtle ? 'turtle' : 'folk';
     case 'npc': return g?.save?.consequences?.npcs?.[o.id]?.status === 'dead' ? null : 'folk';
-    case 'traveler': return o.elder ? null : 'folk';
+    case 'traveler': return o.elder || (o.reciter && RECITER_NATIVE.has(o.look) && !o.mount && !o.folkGiant) ? null : 'folk'; // (an Elder and a reciter keep their own native models: renderer.ts nativeTraveler)
     case 'townKeeper': case 'townSmith': case 'shipwright': case 'tideBearer': case 'ilse': case 'shelterMerchant': return 'folk';
     default: return null;
   }
@@ -500,7 +503,7 @@ export const TURTLE_SKELETON = defineSkeleton([
 function buildTurtleMesh(tier) {
   const low = tier === 'low', B = meshBuilder(TURTLE_SKELETON, TIER_DETAIL[tier]), C = TURTLE.colors;
   B.bone('shell').color(C.shell).ellipsoid({ at: [0, 0, 0], radius: [.27, .22, .17], rings: low ? 4 : 6, seg: low ? 8 : 12 });
-  B.bone('shell').color(C.seam).lathe({ at: [0, 0, -.02], F: [0, 0, 1], U: [1, 0, 0], rings: [[0, .285], [.03, .285]], seg: low ? 8 : 12, caps: false });
+  B.bone('shell').color(C.seam).ellipsoid({ at: [0, 0, -.035], radius: [.285, .232, .04], rings: 2, seg: low ? 8 : 12 }); // the shell's rim
   if (!low) for (const [f, r] of [[.08, .1], [-.08, .1], [.08, -.1], [-.08, -.1], [0, 0]]) B.bone('shell').color(shade(C.shell, 1.1)).box({ at: [f, r, .135 - Math.hypot(f, r) * .35], size: [.06, .05, .025], bevel: .3 });
   for (const [f, r] of [[.15, .15], [.15, -.15], [-.14, .15], [-.14, -.15]]) B.bone('root').color(C.leg).ellipsoid({ at: [f, r, .05], radius: [.06, .05, .055], rings: 3, seg: 6 });
   B.bone('neck').color(C.skin).lathe({ at: [-.06, 0, 0], F: [1, 0, .2], rings: [[0, .05], [.12, .045]], seg: 6 });

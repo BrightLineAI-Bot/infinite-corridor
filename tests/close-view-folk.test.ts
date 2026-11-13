@@ -33,7 +33,7 @@ const PEOPLE = [
   ...TRAVELER_GROUPS.flatMap((gr) => gr.looks.map((look, i) => ({ id: `travelers:${gr.id}:${i}`, kind: 'traveler', look, mount: null, x: 2, y: 2, state: 'walking', facing: 'down' }))),
   { id: 'travelers:1,1:0', kind: 'traveler', look: 'mercenary', mount: 'mossGrazer', x: 2, y: 3, state: 'walking', facing: 'down' },
   { id: 'wanderer:3,4', kind: 'traveler', wanderer: true, look: 'cartographer', mount: 'mossGrazer', x: 3, y: 3, state: 'listening', facing: 'down' },
-  { id: 'reciter:3,4', kind: 'traveler', reciter: 'r1', look: 'scholar', x: 4, y: 3, state: 'walking', facing: 'down' },
+  { id: 'reciter:3,4', kind: 'traveler', reciter: 'r1', look: 'peddler', x: 4, y: 3, state: 'walking', facing: 'down' }, // a reciter in a look without its own native model
 ];
 const env = (o = {}) => ({ x: 4.5, y: 4.7, z: 0, scale: 1, now: 1000, reduce: false, tier: 'full', target: { x: 6, y: 5 }, talk: NaN, seat: 0, yaw: NaN, ...o });
 
@@ -50,6 +50,7 @@ test('every interactable person resolves to a skinned 3D body, never a card', ()
   // Shale the quarry keeper is his stone turtle; an Elder Wanderer keeps its own 3D model; a fallen Refuge person keeps the marker
   assert.equal(closeViewFolkKind({ id: 'quarry-keeper', kind: 'villager', quarryTurtle: true, x: 1, y: 1 }), 'turtle');
   assert.equal(closeViewFolkKind({ id: 'elder', kind: 'traveler', elder: true, rule: 30, x: 1, y: 1 }), null);
+  for (const look of ['pilgrim', 'mercenary', 'minstrel', 'scholar', 'traveler', 'cartographer']) assert.equal(closeViewFolkKind({ id: 'r', kind: 'traveler', reciter: 'r1', look, x: 1, y: 1 }), null, 'a reciter keeps its own native 3D model (renderer.ts nativeTraveler)');
   assert.equal(closeViewFolkKind(REFUGE_NPCS[0] && { ...REFUGE_NPCS[0], kind: 'npc' }, { save: { consequences: { npcs: { [REFUGE_NPCS[0].id]: { status: 'dead' } } } } }), null);
   for (const k of ['tree', 'chest', 'worldCache', 'dungeon', 'viewport']) assert.equal(closeViewFolkKind({ id: k, kind: k, x: 1, y: 1 }), null, `${k} is not a person`);
   // the named people have their own looks; every traveller look the world can deal has one
