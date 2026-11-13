@@ -19,7 +19,7 @@ import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
@@ -328,11 +328,17 @@ function applyPresentationSettings(){game.beastTries=settings.beastTries!==false
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
 let probePhases = {}, probeGround = { builds: 0, patches: 0 }, probeInterval = 0, probePrevious = null;
+// Perf spikes: what the render phase draws after render() (the dungeon systems and ranged effects; Viewport Closed), and the
+// section terrain cache's hits and misses, so a long frame says whether it generated a section.
+const probeRenderExtra = { effects: 0, viewport: 0 }; let probeTerrain = { hits: 0, misses: 0, warms: 0 };
 for (const type of ["pointerdown", "pointerup", "pointercancel", "lostpointercapture", "touchstart", "touchend", "touchcancel"]) document.addEventListener(type, (e) => probe.pointer(e), { capture: true, passive: true });
 function storedProbeReport(){if(probe.report)return probe.report;try{return JSON.parse(localStorage.getItem(PROBE_REPORT_KEY)||"null")}catch{return null}}
 function probeSample(interval){
   const r=rendererDiagnostics(),builds=r.groundBuilds||0,patches=r.groundPatches||0,ground={builds:builds-probeGround.builds,patches:patches-probeGround.patches};probeGround={builds,patches};
-  const current={phases:probePhases,render:{ground:renderTimings.ground,world:renderTimings.world,overlay:renderTimings.overlay},ground,context:{area:game.area,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
+  const T=sectionTerrainCacheStats(),terrain={hits:T.hits-probeTerrain.hits,misses:T.misses-probeTerrain.misses,warms:crossWarms-probeTerrain.warms};probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms};
+  const parts={ground:renderTimings.ground,world:renderTimings.world,overlay:renderTimings.overlay,view:renderTimings.view,groundImage:renderTimings.groundImage,effects:probeRenderExtra.effects,viewport:probeRenderExtra.viewport};
+  parts.other=Math.max(0,(probePhases.render||0)-parts.ground-parts.world-parts.overlay-parts.view-parts.effects-parts.viewport); // simClockDraw's own work, or anything else render() did not time (groundImage is inside ground)
+  const current={phases:probePhases,render:parts,ground,terrain,context:{area:game.area,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
   // Release 167: the interval ending at this frame's start covers the previous frame (its work and the browser painting
   // it), so it is paired with that frame's phases; release 165 paired it with this frame's and misplaced every hitch.
   if(probePrevious)probe.frame({interval,...probePrevious});
@@ -1447,7 +1453,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:940,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:941,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1471,7 +1477,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:940,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 940\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:941,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 941\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1483,7 +1489,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};probePhases={};probePrevious=null;probe.start({release:940,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:941,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2561,6 +2567,19 @@ function warmSpillTerrain() {
     catch (error) { spillWarmFor = key; spillWarming = false; console.warn("Supernova warm-up failed", error); }
   });
 }
+// Perf spikes (Tim's r937 probe): near a section edge, the section beyond it is generated in idle time (Game.warmCrossingTerrain),
+// so the crossing's frame copies kept terrain instead of generating it. One section per idle slice, and only the edges near.
+// Asked every frame without allocating: which map and edges were last laid ahead for.
+const crossWarmFor = { map: null, mask: 0 }; let crossWarming = false, crossWarms = 0;
+function warmCrossingTerrain() {
+  if (crossWarming) return;
+  const mask = game.crossingEdgeMask?.() || 0; if (!mask || (crossWarmFor.map === game.map && crossWarmFor.mask === mask)) return;
+  const map = game.map; crossWarming = true;
+  whenIdle(function step() {
+    try { if (game.map !== map || game.crossingEdgeMask() !== mask) { crossWarming = false; return; } crossWarms++; if (game.warmCrossingTerrain()) { crossWarmFor.map = map; crossWarmFor.mask = mask; crossWarming = false; } else whenIdle(step); }
+    catch (error) { crossWarmFor.map = map; crossWarmFor.mask = mask; crossWarming = false; console.warn("Crossing warm-up failed", error); }
+  });
+}
 // Viewport Closed (Tim, 2026-11-04). The Game holds a dead Wayfarer for a short beat of the fall (deathBeat), then recovers
 // at the rest point exactly as before. viewportFrame tracks it: at the recovery it keeps a snapshot of the last frame
 // (the fall), shows VIEWPORT CLOSED, light static and the fade to black over it with the world frozen, then re-opens on the
@@ -2621,18 +2640,24 @@ function frame(now) {
   const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
+  warmCrossingTerrain();
   // Feel pass 1 (pre-warm): a floor just loaded whose Close View walls are not built yet keeps the last frame on screen for one
   // frame, and the walls are built in a task of their own, so the floor's load and the walls' build fall in different frames.
   const holdForWalls = !viewportStage && game.map !== prewarmHeld && closeViewPrewarmDue(game);
   if (holdForWalls) { const g0 = game; prewarmHeld = game.map; setTimeout(() => { try { if (g0 === game) prewarmCloseView(game); } catch (error) { console.warn("Close View pre-warm failed", error); } }, 0); }
   if (!holdForWalls) measured("render", () => {
-    renderTimings.on = probe.running;
+    const timed = renderTimings.on = probe.running;
+    if (timed) { probeRenderExtra.effects = probeRenderExtra.viewport = 0; if (viewportStage && !viewportStage.world) renderTimings.ground = renderTimings.world = renderTimings.overlay = renderTimings.view = renderTimings.groundImage = 0; } // perf spikes: no part carries over from a frame before
+    const tr = timed ? performance.now() : 0;
     if (!viewportStage || viewportStage.world) simClockDraw(simClock, game, () => { /* feel pass 1: drawn between the last two steps; every position is put back after */
       render(ctx, game, innerWidth, innerHeight, now);
       drawDungeonSystems();
       drawRangedEffects();
+      if (timed && renderTimings.endedAt >= tr) probeRenderExtra.effects = performance.now() - renderTimings.endedAt; // what is drawn after render() returned
     });
+    const tv = timed && viewportStage ? performance.now() : 0;
     if (viewportStage) drawViewportClosed(ctx, viewportStage, innerWidth, innerHeight, viewportSeq?.t || 0, viewportStage.live ? Object.assign(viewportLiveArt, { snapshot: canvas, sw: canvas.width, sh: canvas.height, noise: viewportArt.noise, scan: viewportArt.scan }) : viewportArt, currentQuality());
+    if (tv) probeRenderExtra.viewport = performance.now() - tv;
   });
   if (!viewportSeq) updateMessage(game.message); // the recovery's message waits until the Wayfarer wakes
   measured("hud", () => {

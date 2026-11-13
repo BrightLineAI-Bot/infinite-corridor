@@ -19,7 +19,12 @@ const shortSource = (u) => String(u || "").split("?")[0].split("/").slice(-1)[0]
 const PHASES = ["input", "update", "render", "hud", "notices", "persist"];
 // Release 167: render is split into the ground (cached terrain and its animated water), the world (hazards, creatures,
 // objects, buildings) and the overlay (fog, weather, tint, vignette, label), so a report says which part is slow.
-const RENDER_PARTS = ["ground", "world", "overlay"];
+// Perf spikes (r937 probe: 40-73 ms renders whose three parts were 0 or tiny): also `groundImage` (the cached ground image's
+// share of ground: checks, rebuilds, patches and its copy), `view` (the Close View check, or a Close View frame or blend drawn
+// instead), `effects` (dungeon systems and ranged effects, drawn after render()), `viewport` (Viewport Closed) and `other` (the
+// render phase not in any part). Long frames also carry `terrain`: section terrain generated (misses), copied (hits) and laid
+// ahead in idle time (warms) since the frame before.
+const RENDER_PARTS = ["ground", "world", "overlay", "groundImage", "view", "effects", "viewport", "other"];
 
 function percentile(sorted, p) { return sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))] : 0; }
 function stats(values) {
@@ -48,7 +53,7 @@ export function createProbe(clock = () => performance.now()) {
       if (!state) return;
       const now = clock(), ctx = sample.context || {}, key = [ctx.area || "?", ctx.aboard ? "boat" : "", ctx.openSea ? "openSea" : ""].filter(Boolean).join("/");
       let b = state.buckets.get(key);
-      if (!b) { b = { interval: [], unaccounted: [], phases: Object.fromEntries(PHASES.map((k) => [k, []])), renderParts: Object.fromEntries(RENDER_PARTS.map((k) => [k, []])), over33: 0, over50: 0, over100: 0, groundBuilds: 0, groundPatches: 0, enemies: 0, projectiles: 0 }; state.buckets.set(key, b); }
+      if (!b) { b = { interval: [], unaccounted: [], phases: Object.fromEntries(PHASES.map((k) => [k, []])), renderParts: Object.fromEntries(RENDER_PARTS.map((k) => [k, []])), over33: 0, over50: 0, over100: 0, groundBuilds: 0, groundPatches: 0, terrainMisses: 0, terrainWarms: 0, enemies: 0, projectiles: 0 }; state.buckets.set(key, b); }
       const iv = Math.max(0, Number(sample.interval) || 0), phases = sample.phases || {};
       const heap = heapNow(), heapDrop = heap !== null && state.heapPrev !== null ? state.heapPrev - heap : null; // release 555
       if (heap !== null) { const h = state.heap; h.min = h.min === null ? heap : Math.min(h.min, heap); h.max = h.max === null ? heap : Math.max(h.max, heap); if (heapDrop > PROBE.heapDropMb * MB) h.drops++; state.heapPrev = heap; }
@@ -57,7 +62,7 @@ export function createProbe(clock = () => performance.now()) {
       b.interval.push(iv); b.unaccounted.push(Math.max(0, iv - accounted));
       for (const k of RENDER_PARTS) b.renderParts[k].push(Number(sample.render?.[k]) || 0);
       if (iv > 33.4) b.over33++; if (iv > 50) b.over50++; if (iv > 100) b.over100++;
-      b.groundBuilds += sample.ground?.builds || 0; b.groundPatches += sample.ground?.patches || 0;
+      b.groundBuilds += sample.ground?.builds || 0; b.groundPatches += sample.ground?.patches || 0; b.terrainMisses += sample.terrain?.misses || 0; b.terrainWarms += sample.terrain?.warms || 0;
       b.enemies = Math.max(b.enemies, ctx.enemies || 0); b.projectiles = Math.max(b.projectiles, ctx.projectiles || 0);
       state.frames++;
       if (iv >= PROBE.hitchMs) state.hitches++;
@@ -65,7 +70,7 @@ export function createProbe(clock = () => performance.now()) {
       if (state.lastContext !== where) { probe.event("context", { where }); state.lastContext = where; }
       const lf = state.longFrames;
       if (lf.length < PROBE.longFrames || iv > lf[lf.length - 1].interval) {
-        lf.push({ t: Math.round((now - state.startedAt) / 100) / 10, interval: Math.round(iv * 10) / 10, phases: Object.fromEntries(PHASES.map((k) => [k, Math.round((Number(phases[k]) || 0) * 10) / 10])), render: Object.fromEntries(RENDER_PARTS.map((k) => [k, Math.round((Number(sample.render?.[k]) || 0) * 10) / 10])), unaccounted: Math.round(Math.max(0, iv - accounted) * 10) / 10, ...(heap !== null ? { heapMb: r1(heap / MB), heapDropMb: r1((heapDrop || 0) / MB) } : {}), ground: sample.ground, context: ctx, recent: state.events.slice(-4) });
+        lf.push({ t: Math.round((now - state.startedAt) / 100) / 10, interval: Math.round(iv * 10) / 10, phases: Object.fromEntries(PHASES.map((k) => [k, Math.round((Number(phases[k]) || 0) * 10) / 10])), render: Object.fromEntries(RENDER_PARTS.map((k) => [k, Math.round((Number(sample.render?.[k]) || 0) * 10) / 10])), unaccounted: Math.round(Math.max(0, iv - accounted) * 10) / 10, ...(sample.terrain && (sample.terrain.hits || sample.terrain.misses || sample.terrain.warms) ? { terrain: sample.terrain } : {}), ...(heap !== null ? { heapMb: r1(heap / MB), heapDropMb: r1((heapDrop || 0) / MB) } : {}), ground: sample.ground, context: ctx, recent: state.events.slice(-4) });
         lf.sort((a, c) => c.interval - a.interval); if (lf.length > PROBE.longFrames) lf.length = PROBE.longFrames;
       }
       if (now >= state.endsAt) probe.stop();
@@ -98,9 +103,9 @@ export function createProbe(clock = () => performance.now()) {
       const buckets = {};
       for (const [key, b] of s.buckets) {
         const iv = stats(b.interval);
-        buckets[key] = { frames: iv.n, fps: iv.mean ? Math.round(1000 / iv.mean * 10) / 10 : 0, interval: iv, over33ms: b.over33, over50ms: b.over50, over100ms: b.over100, unaccounted: stats(b.unaccounted), phases: Object.fromEntries(PHASES.map((k) => [k, stats(b.phases[k])])), renderParts: Object.fromEntries(RENDER_PARTS.map((k) => [k, stats(b.renderParts[k])])), groundBuilds: b.groundBuilds, groundPatches: b.groundPatches, maxEnemies: b.enemies, maxProjectiles: b.projectiles };
+        buckets[key] = { frames: iv.n, fps: iv.mean ? Math.round(1000 / iv.mean * 10) / 10 : 0, interval: iv, over33ms: b.over33, over50ms: b.over50, over100ms: b.over100, unaccounted: stats(b.unaccounted), phases: Object.fromEntries(PHASES.map((k) => [k, stats(b.phases[k])])), renderParts: Object.fromEntries(RENDER_PARTS.map((k) => [k, stats(b.renderParts[k])])), groundBuilds: b.groundBuilds, groundPatches: b.groundPatches, terrainMisses: b.terrainMisses, terrainWarms: b.terrainWarms, maxEnemies: b.enemies, maxProjectiles: b.projectiles };
       }
-      last = { probe: 1, started: s.wall, seconds: Math.round((clock() - s.startedAt) / 1000), frames: s.frames, hitchesOver100ms: s.hitches, info: s.info, note: "interval = time from this frame's start to the next (the frame's own work plus the browser painting it); phases = game code in that frame; renderParts = render split into ground, world and overlay; unaccounted = interval minus phases (browser painting, compositing, garbage collection, or waiting for the screen); heapMb/heapDropMb = JS heap at the long frame and how much it shrank since the frame before (a big drop is garbage collection); loafs = the browser's own longest frames (blocking, render and style time, and the scripts that ran); saves = each save write and how long the database's copy took on the main thread", buckets, longFrames: s.longFrames, loafs: s.loafs, heap: s.heap.start === null ? null : { startMb: r1(s.heap.start / MB), minMb: r1(s.heap.min / MB), maxMb: r1(s.heap.max / MB), dropsOver2Mb: s.heap.drops }, saves: s.saves, events: s.events, pointer: s.pointer };
+      last = { probe: 1, started: s.wall, seconds: Math.round((clock() - s.startedAt) / 1000), frames: s.frames, hitchesOver100ms: s.hitches, info: s.info, note: "interval = time from this frame's start to the next (the frame's own work plus the browser painting it); phases = game code in that frame; renderParts = render split into ground (groundImage: the cached ground image's share of it), world, overlay, view (Close View), effects (drawn after render), viewport (Viewport Closed) and other (not in any part); terrain = section terrain generated (misses), copied (hits) and laid ahead in idle time (warms); unaccounted = interval minus phases (browser painting, compositing, garbage collection, or waiting for the screen); heapMb/heapDropMb = JS heap at the long frame and how much it shrank since the frame before (a big drop is garbage collection); loafs = the browser's own longest frames (blocking, render and style time, and the scripts that ran); saves = each save write and how long the database's copy took on the main thread", buckets, longFrames: s.longFrames, loafs: s.loafs, heap: s.heap.start === null ? null : { startMb: r1(s.heap.start / MB), minMb: r1(s.heap.min / MB), maxMb: r1(s.heap.max / MB), dropsOver2Mb: s.heap.drops }, saves: s.saves, events: s.events, pointer: s.pointer };
       return last;
     },
   };

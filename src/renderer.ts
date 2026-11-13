@@ -246,7 +246,11 @@ function mapObjectLists(map) {
 }
 export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // Where render time goes (release 167): the diagnostic probe switches this on and reads the three parts each frame.
-export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0 };
+// Perf spikes (Tim's r937 probe: 40-73 ms renders whose three parts were 0 or tiny): `view` is the time before the ground (the
+// Close View check, and a Close View frame or blend when it draws instead), `groundImage` the cached ground image's share of
+// `ground` (its checks, any rebuild or patch, and the copy to the screen); main.ts adds what it draws after render(). Every part
+// is reset when a timed render begins, so a frame that returns early never reports the frame before's numbers.
+export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0, view: 0, groundImage: 0, endedAt: 0 }; // endedAt: when the last timed render returned
 function renderableObject(g,o){
   // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
   const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
@@ -2551,8 +2555,11 @@ export function standardStepEase(g, ground, jumping, now, bypass = false, arc = 
 }
 export const standardStep = () => ({ off: STEP.off, ground: STEP.ground }); // for tests
 export function render(ctx, g, w, h, now) {
-  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) return; // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
+  const timedView = renderTimings.on && !closeViewCapturing(), tv = timedView ? performance.now() : 0; // a capture is a render inside the frame's own
+  if (timedView) { renderTimings.ground = renderTimings.world = renderTimings.overlay = renderTimings.view = renderTimings.groundImage = 0; }
+  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
+  if (timedView) renderTimings.view = t0 - tv;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
   ctx.imageSmoothingEnabled = false;
   const bareFloor = closeViewBareFloor(), worldCapture = closeViewWorldCapture();
@@ -2604,7 +2611,9 @@ export function render(ctx, g, w, h, now) {
   ctx.translate(Math.round(w / 2 - p.x * s + spinoShakeAt.x), Math.round(h / 2 - (p.y - viewLift) * s + spinoShakeAt.y));
   cloudSky = !!g.map?.skyCloud; // release 589
   if (g.area === "dungeon" && g.map?.stillworks && !stillworksCapture) drawStillworksBeyond(ctx, g, s, w, h); // the formations go on past the map's edge
+  const tg = timed ? performance.now() : 0;
   const groundCached = !bareFloor && !worldCapture && (g.area === "overworld" || g.area === "dungeon") && drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, { l, t, r, b }, scarSurface);
+  if (timed) renderTimings.groundImage = performance.now() - tg;
   if (groundCached) {
     const animated = render.animatedTiles || (render.animatedTiles = []), glitter = render.chasmGlitter || (render.chasmGlitter = []); animated.length = 0; glitter.length = 0;
     for (let y = t; y < b; y++) for (let x = l; x < r; x++) {
@@ -3344,7 +3353,7 @@ export function render(ctx, g, w, h, now) {
   ctx.fillStyle = "#cec7b6";
   ctx.fillText(label, labelX + 8, labelY + 16, boxW - 16);
   if (g.area === "dungeon") drawWayDownPointer(ctx, g, w, h, s, p, viewLift, now); // off the screen, a chevron at the edge toward the way down
-  if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; }
+  if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; renderTimings.endedAt = t3; }
 }
 
 // LAB_FOG (labyrinths.ts): a labyrinth chamber's fog of war. The fog is a tiny image, one pixel a tile (the dark over tiles never
