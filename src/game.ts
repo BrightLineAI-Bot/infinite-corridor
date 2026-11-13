@@ -1270,6 +1270,72 @@ export function chaseSearch(sx,sy,gx,gy,map,width,radius=NAV.radius,marine=false
   if(best===start)return null;const f=navFirst[best];return [sx-radius+f%side,sy-radius+((f/side)|0)];
 }
 
+// The Wild Stegosaurus's chase (Tim, 2026-11-12: "it follows the Wayfarer everywhere it can get to, including across levels and
+// heights"; monster-pack.ts stegoChase). The way-round search above knows nothing of heights: it walks a creature into the face of
+// a ledge it cannot step up. This one is the same bounded patch round the beast (NAV.radius, NAV.nodes tiles expanded at most),
+// cheapest first: a step on foot under the real step rules (landscape.ts canStep) costs 1; climbing the face of a height costs
+// STEGO.route.face and .perLevel a level of it; climbing over rock (only where `climbable(x, y, true)` allows: the open world) costs
+// .over a tile, .overMax tiles at most. `climbable(x, y, over)` is the area's rule for where it may climb to. The answer is the
+// first leg toward the reachable tile nearest the Wayfarer's: { x, y, climb } (a tile on foot, or the ground a climb ends on), or
+// null. It runs over typed arrays kept between searches, and shares NAV.budget searches a frame and NAV.keepFrames answers with
+// the creatures' way-round searches (stegoRouteStep).
+const STEGO_PROBE = Object.freeze({}); // canStep's walker: not the Wayfarer, not jumping, not flying
+let rtStamp = 0, rtSeen = new Int32Array(0), rtDone = new Int32Array(0), rtCost = new Int32Array(0), rtFirst = new Int32Array(0), rtClimb = new Uint8Array(0), rtOver = new Uint8Array(0), rtSize = 0, rtPushes = 0;
+const rtHeapK = new Int32Array(4 * NAV.nodes + 8), rtHeapV = new Int32Array(4 * NAV.nodes + 8);
+function rtPush(cost, v) {
+  if (rtSize >= rtHeapK.length) return;
+  const k = cost * 4096 + (rtPushes++ & 4095); let i = rtSize++;
+  while (i > 0) { const up = (i - 1) >> 1; if (rtHeapK[up] <= k) break; rtHeapK[i] = rtHeapK[up]; rtHeapV[i] = rtHeapV[up]; i = up; }
+  rtHeapK[i] = k; rtHeapV[i] = v;
+}
+function rtPop() {
+  const top = rtHeapV[0], k = rtHeapK[--rtSize], v = rtHeapV[rtSize]; let i = 0;
+  for (;;) { let c = 2 * i + 1; if (c >= rtSize) break; if (c + 1 < rtSize && rtHeapK[c + 1] < rtHeapK[c]) c++; if (rtHeapK[c] >= k) break; rtHeapK[i] = rtHeapK[c]; rtHeapV[i] = rtHeapV[c]; i = c; }
+  rtHeapK[i] = k; rtHeapV[i] = v; return top;
+}
+export function stegoRouteSearch(sx, sy, gx, gy, map, width, climbable, marine = false, radius = NAV.radius) {
+  const side = 2 * radius + 1, n = side * side, R = STEGO.route, height = Math.floor(map.tiles.length / width);
+  if (rtSeen.length < n) { rtSeen = new Int32Array(n); rtDone = new Int32Array(n); rtCost = new Int32Array(n); rtFirst = new Int32Array(n); rtClimb = new Uint8Array(n); rtOver = new Uint8Array(n); rtStamp = 0; }
+  if (++rtStamp > 2e9) { rtSeen.fill(0); rtDone.fill(0); rtStamp = 1; }
+  const stamp = rtStamp, start = radius + radius * side;
+  rtSize = 0; rtPushes = 0; rtSeen[start] = stamp; rtCost[start] = 0; rtFirst[start] = -1; rtClimb[start] = 0; rtOver[start] = 0; rtPush(0, start);
+  let best = start, bestDistance = Math.hypot(gx - sx, gy - sy), expanded = 0;
+  while (rtSize > 0 && expanded < NAV.nodes) {
+    const i = rtPop(); if (rtDone[i] === stamp) continue; rtDone[i] = stamp; expanded++;
+    const x = sx - radius + i % side, y = sy - radius + ((i / side) | 0), over = rtOver[i];
+    if (!over) { const distance = Math.hypot(gx - x, gy - y); if (distance < bestDistance) { best = i; bestDistance = distance; } if (x === gx && y === gy) { best = i; break; } }
+    for (const d of NAV_DIRS) {
+      const nx = x + d[0], ny = y + d[1]; if (Math.abs(nx - sx) > radius || Math.abs(ny - sy) > radius || nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const j = (nx - sx + radius) + (ny - sy + radius) * side; if (rtDone[j] === stamp) continue;
+      const open = footprintOpen(map, width, nx, ny, false, marine); let cost = 0, climb = 0, overLen = 0;
+      if (!over && open && canStep(STEGO_PROBE, map, width, x, y, nx, ny)) cost = 1;
+      else if (!over && open && climbable(nx, ny, false)) { cost = R.face + R.perLevel * Math.round(Math.abs((Number(elevationAt(map, width, nx, ny)) || 0) - (Number(elevationAt(map, width, x, y)) || 0))); climb = 1; }
+      else if (over && open && climbable(nx, ny, false)) { cost = 1; climb = 1; }
+      else if (!open && map.tiles[ny * width + nx]?.blocked && over < R.overMax && climbable(nx, ny, true)) { cost = R.over; climb = 1; overLen = over + 1; }
+      else continue;
+      const total = rtCost[i] + cost; if (rtSeen[j] === stamp && rtCost[j] <= total) continue;
+      rtSeen[j] = stamp; rtCost[j] = total; rtOver[j] = overLen;
+      if (i === start) { rtFirst[j] = overLen ? -2 : j; rtClimb[j] = climb; }
+      else if (rtFirst[i] === -2) { rtFirst[j] = overLen ? -2 : j; rtClimb[j] = 1; }
+      else { rtFirst[j] = rtFirst[i]; rtClimb[j] = rtClimb[i]; }
+      rtPush(total, j);
+    }
+  }
+  if (best === start) return null; const f = rtFirst[best]; if (f < 0) return null;
+  return { x: sx - radius + f % side, y: sy - radius + ((f / side) | 0), climb: rtClimb[best] === 1 };
+}
+const stegoKept = new WeakMap();
+export function stegoRouteStep(entity, player, map, width, climbable) {
+  navAsked++;
+  const sx = Math.round(entity.x), sy = Math.round(entity.y), gx = Math.round(player.x), gy = Math.round(player.y), marine = entity._marineTraversal === true, kept = stegoKept.get(entity);
+  if (kept && kept.map === map && kept.tiles === map.tiles && kept.sx === sx && kept.sy === sy && kept.gx === gx && kept.gy === gy && kept.marine === marine && navFrame - kept.frame <= NAV.keepFrames) return kept.step;
+  if (navFrame > 0 && navSpent >= NAV.budget) return kept && kept.map === map ? kept.step : null; // this frame's searches are spent
+  navSpent++;
+  const step = stegoRouteSearch(sx, sy, gx, gy, map, width, climbable, marine);
+  stegoKept.set(entity, { map, tiles: map.tiles, sx, sy, gx, gy, marine, frame: navFrame, step });
+  return step;
+}
+
 // Runtime navigation permission is derived from the current area/kind, never from player boat ownership or
 // restored actor flags. The presentation flag is recomputed after movement and is not durable boat state.
 function refreshMarineBeast(entity, map, width, area) {
@@ -6175,7 +6241,24 @@ export class Game {
       // walls (the Stalker's rule: the open world only, never into a building, shelter or town); a tall thin tree torn out for a club (kept
       // down as a felled tree is: its state and a world flag); its cut tail, kept on its hunt for the rest of that hunt.
       hurtCreature(source, q, amount) { if (!q || q.dead || !(amount > 0)) return false; q.hp = Math.max(0, (Number(q.hp) || 0) - amount); q.hitFlash = .18; q.aggro = true; if (q.hp <= 0) { q.dead = true; q.noRewards = true; game.defeatEnemy(q); } return true; },
-      climbFree: game.area === "overworld" ? (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && !game.stalkerBarred(x, y) : null,
+      // Inside a great building or a Pentagon (map.building) it climbs heights, never through walls: onto open, safe floor that is
+      // no hole, no perch and none of the Wayfarer's builds (only the Wayfarer climbs those), up or down the face of a height it
+      // cannot walk (interior terrain's raised ground and jump platforms). Walls run to the ceiling there, so it goes round them.
+      // In other dungeons it climbs nothing.
+      climbFree: game.area === "overworld" ? (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && !game.stalkerBarred(x, y)
+        : game.area === "dungeon" && map.building ? (x, y) => [x, y].every(Number.isFinite) && x >= .5 && y >= .5 && x <= width - 1.5 && y <= height - 1.5 && footprintOpen(map, width, x, y) && !footprintHazard(map, width, x, y) && !tileUnder(map, width, x, y)?.hole && !tileUnder(map, width, x, y)?.build && !tallBuildAt(map, width, x, y) : null,
+      // Its chase (stegoRouteStep): the way round, on foot or climbing, where this area lets it climb. Over rock only in the open
+      // world (blocked ground that is not water, a chasm or lava), never onto a perch or a build.
+      stegoRoute(e) {
+        if (game.astralRiderHeld(e)) return null;
+        const free = this.climbFree, over = game.area === "overworld";
+        this._stegoClimbable ||= free ? (x, y, across) => {
+          if (!free(x, y)) return false;
+          const t = tileUnder(map, width, x, y); if (t?.perch || t?.build || t?.hole) return false;
+          return !across || over && !!t?.blocked && !footprintHazard(map, width, x, y) && !LETHAL_KINDS.has(t.kind);
+        } : () => false;
+        return stegoRouteStep(e, p, map, width, this._stegoClimbable);
+      },
       uprootTree(o) { if (!isClubTree(o)) return false; o.state = "fallen"; o.stegoUprooted = true; (game.save.worldFlags ||= {})[`${o.id}:uproot`] = true; return true; },
       stegoTailCut(e) { const q = e.worldBeast && game.save.worldBeasts?.[e.worldBeast]?.active; if (q) q.tailCut = true; },
       dropStegoTail: (e, drop) => game.layStegoTail(e, drop), // stego-bait.ts: the severed tail lies where it fell

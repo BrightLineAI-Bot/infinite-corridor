@@ -1237,7 +1237,17 @@ export const STEGO = {
   tailHp: .12, tail: { arc: 110, hips: .2, stagger: 1.8 },
   cut: { whackReach: 1.6, whackShare: .65, slamRadius: 1.2, bladeLife: .45 },
   water: { surface: 4.5, swimSpeed: 1.35 }, /* it swims low (untargetable) until within `surface` of you, then stands on the water */
-  climb: { stuck: .6, near: 2.4, speed: 2.4, time: 4.5, rise: .35, down: .45, settle: .6, reach: 3 },
+  climb: { stuck: .6, near: 2.4, speed: 2.4, time: 4.5, rise: .35, down: .45, settle: .6, reach: 3, perLevel: .3 }, /* `perLevel`: seconds a level of a face it climbs on its way (a route's climb) */
+  // Its chase (Tim, 2026-11-12: "it follows the Wayfarer everywhere it can get to, including across levels and heights"). Where the
+  // game gives a way-round search (w.stegoRoute: the open world, and inside great buildings and Pentagons), a beast walled off from
+  // you (`stuck` s without gaining, or out of sight, or a level or more above or below you) follows the search's first step: on foot
+  // round the walls, or up (or down) the face of a height it cannot walk, climbing. It keeps the route `hold` s, then looks again;
+  // within `near` of its body, on your level, it fights. `speed`: its ordinary walking pace (.82 × .9, as the shared walk).
+  chase: { stuck: .3, near: 2.4, hold: 1.5, speed: .74, arrive: .08 },
+  // The way-round search's costs (game.ts stegoRouteSearch): a step on foot costs 1; climbing a face costs `face` and `perLevel` a
+  // level of it; climbing over a rock or wall (the open world only) costs `over` a tile, `overMax` tiles at most. So it walks a
+  // short way round rather than climb, and climbs when the way round is long or there is none.
+  route: { face: 4, perLevel: 2, over: 4, overMax: 4 },
   hop: { every: [1.6, 2.8], time: .45, height: .8, distance: 1.7, sight: 9 },
   graze: { every: 6, time: 2.4 },
   infight: { range: 5, every: 9, chance: 60, share: .8 }, /* `share`: of the victim's health a blow takes (a one-off kill, mostly) */
@@ -4048,7 +4058,7 @@ function stegoPreyNear(e, w) { let best = null, bd = STEGO.infight.range + bodyR
 // A blow counts on the tail when you stand in the arc behind it, past its hips; anywhere else it is a body blow.
 export function stegoTailHit(e, at) { const back = stegoBack(e), along = (at.x - e.x) * back.x + (at.y - e.y) * back.y; return along >= bodyRadius(e) * STEGO.tail.hips && inArc(e, at, back, Infinity, STEGO.tail.arc); }
 function stegoSever(e, s, w) {
-  e.stegoTail = "cut"; e.stegoTailHp = 0; if (s.attack) endAttack(e, s); s.tele = null; s.stegoHop = null; s.stegoClimbing = null; e.stegoAir = 0;
+  e.stegoTail = "cut"; e.stegoTailHp = 0; if (s.attack) endAttack(e, s); s.tele = null; s.stegoHop = null; s.stegoClimbing = null; s.stegoRoute = 0; e.stegoAir = 0;
   s.stegoStagger = STEGO.tail.stagger; e.stegoPose = "stagger";
   w.stegoTailCut?.(e); onStegoTailSevered(e, w); w.say?.(STEGO.text.severed);
 }
@@ -4074,11 +4084,55 @@ function stegoIdle(e, s, w) {
 }
 function stegoClimbStep(e, s, w, p, d) {
   const C = STEGO.climb, c = s.stegoClimbing; c.left -= w.dt; c.spent += w.dt;
+  // a route's climb (stegoChase): up or down one face of a height, or over a rock or wall to the ground beyond
+  if (c.to) {
+    e.stegoPose = "climb"; e.stegoClimb = Math.min(1, (e.stegoClimb || 0) + w.dt / C.rise);
+    const k = Math.min(1, c.spent / c.need), nx = c.from.x + (c.to.x - c.from.x) * k, ny = c.from.y + (c.to.y - c.from.y) * k;
+    if (!w.climbFree(nx, ny)) { s.stegoClimbing = null; s.stegoRoute = 0; if (!w.open(e.x, e.y)) { e.x = c.from.x; e.y = c.from.y; } return true; }
+    e.x = nx; e.y = ny; if (k >= 1) s.stegoClimbing = null;
+    return true;
+  }
   const v = unit(p.x - e.x, p.y - e.y), st = Math.min(Math.max(0, d - bodyRadius(e)), C.speed * (e.speedMultiplier || 1) * w.dt), nx = e.x + v.x * st, ny = e.y + v.y * st;
   e.stegoClimbDir = { x: v.x, y: v.y }; stegoFace(e, v); e.stegoPose = "climb"; e.stegoClimb = Math.min(1, (e.stegoClimb || 0) + w.dt / C.rise);
   if (w.climbFree(nx, ny)) { e.x = nx; e.y = ny; }
   const open = w.open(e.x, e.y), level = w.elevation ? Math.abs((Number(w.elevation(p.x, p.y)) || 0) - (Number(w.elevation(e.x, e.y)) || 0)) < 1 : true;
   if (open && c.spent >= C.settle && (d <= C.reach + bodyRadius(e) || level) || c.left <= 0) { if (!open) { const q = stegoLanding(e, w, p); e.x = q.x; e.y = q.y; } s.stegoClimbing = null; }
+  return true;
+}
+// Its body turns toward (x, y) at its own pace (STEGO.turn): get behind it, and it bucks.
+function stegoTurnToward(e, x, y, dt) { const h = stegoHeading(e), cur = Math.atan2(h.y, h.x), diff = ((Math.atan2(y - e.y, x - e.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-STEGO.turn * dt, Math.min(STEGO.turn * dt, diff)); stegoFace(e, { x: Math.cos(a), y: Math.sin(a) }); }
+const stegoLevelGap = (w, e, p) => w.elevation ? Math.abs((Number(w.elevation(p.x, p.y)) || 0) - (Number(w.elevation(e.x, e.y)) || 0)) : 0;
+// Its chase (STEGO.chase). Walled off from you (pressing on without gaining), out of sight, or a level or more above or below you,
+// it follows the game's way-round search (w.stegoRoute: the first step of a bounded search that knows heights) instead of pressing
+// straight at you: on foot round the walls, or a climb up or down the face of a height, or over a rock. True when it has spent the
+// frame; false hands it back to the shared brain (which fights when you are near and on its level).
+function stegoChase(e, s, w, p, d) {
+  const C = STEGO.chase, dt = w.dt, apart = stegoLevelGap(w, e, p) >= 1, hidden = !!w.los && !w.los(e, w.player);
+  if (d <= C.near + bodyRadius(e) && !apart) { s.stegoRoute = 0; s.stegoStuck = 0; s.stegoPrevD = null; return false; }
+  if (!(s.stegoRoute > 0)) {
+    const gain = (s.stegoPrevD ?? d + 1) - d; s.stegoPrevD = d;
+    s.stegoStuck = (s.moveFailed || apart) && gain < .02 || hidden ? (s.stegoStuck || 0) + dt : 0;
+    if (s.stegoStuck < C.stuck) return false;
+    s.stegoStuck = 0; s.stegoRoute = C.hold + dt;
+  }
+  s.stegoRoute -= dt;
+  if (s.stegoRoute <= 0) { if (!apart && !hidden) { s.stegoRoute = 0; s.stegoPrevD = null; return false; } s.stegoRoute = C.hold; }
+  const step = w.stegoRoute(e);
+  if (!step) { s.stegoRoute = 0; return false; }
+  const cx = Math.round(e.x), cy = Math.round(e.y), speed = C.speed * (MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk).speed * (e.speedMultiplier || 1) * dt;
+  // a climb starts from the middle of its own ground, up (or down, or over) to the step's
+  if (step.climb && Math.hypot(e.x - cx, e.y - cy) <= C.arrive) {
+    const from = { x: e.x, y: e.y }, to = { x: step.x, y: step.y }, v = unit(to.x - from.x, to.y - from.y), levels = w.elevation ? Math.abs((Number(w.elevation(to.x, to.y)) || 0) - (Number(w.elevation(from.x, from.y)) || 0)) : 0;
+    s.stegoClimbing = { left: STEGO.climb.time, spent: 0, from, to, need: Math.max(STEGO.climb.settle, Math.hypot(to.x - from.x, to.y - from.y) / STEGO.climb.speed, levels * STEGO.climb.perLevel) };
+    e.stegoClimbDir = { x: v.x, y: v.y }; stegoFace(e, v); s.stegoHop = null;
+    return stegoClimbStep(e, s, w, p, d);
+  }
+  if (e.stegoClimb > 0) { e.stegoClimb = Math.max(0, e.stegoClimb - dt / STEGO.climb.down); e.stegoPose = e.stegoClimb > 0 ? "climb" : null; if (!(e.stegoClimb > 0)) e.stegoClimbDir = null; }
+  else if (e.stegoPose === "climb" || e.stegoPose === "hop") e.stegoPose = null;
+  const tx = step.climb ? cx : step.x, ty = step.climb ? cy : step.y, gap = Math.hypot(tx - e.x, ty - e.y);
+  if (gap > 1e-6) { const st = Math.min(gap, speed), ux = (tx - e.x) / gap, uy = (ty - e.y) / gap;
+    stegoTurnToward(e, step.x, step.y, dt);
+    if (!w.move(e, ux * st, uy * st) && !step.climb) { const bx = cx - e.x, by = cy - e.y, bm = Math.hypot(bx, by); if (bm > 1e-6) w.move(e, bx / bm * Math.min(bm, st), by / bm * Math.min(bm, st)); } }
   return true;
 }
 // Every fighting frame, before the shared brain: the tail, its plates, the water, a climb, a stagger, a hop, a buck, a one-off at
@@ -4097,19 +4151,22 @@ function stegoTick(e, s, w, p, d) {
   if (s.stegoStagger > 0) { s.stegoStagger -= dt; e.stegoPose = s.stegoStagger > 0 ? "stagger" : null; return s.stegoStagger > 0; }
   if (s.attack || s.broken > 0 || e.hitStun > 0 || s.evade) { s.stegoHop = null; return false; }
   if (s.stegoClimbing) { if (!w.climbFree) { s.stegoClimbing = null; return false; } return stegoClimbStep(e, s, w, p, d); }
+  if (e.stegoClimb > 0 && w.stegoRoute && s.stegoRoute > 0 && stegoChase(e, s, w, p, d)) return true; // on along its route (the next face, or on foot as it comes down)
   if (e.stegoClimb > 0) { e.stegoClimb = Math.max(0, e.stegoClimb - dt / S.climb.down); e.stegoPose = e.stegoClimb > 0 ? "climb" : null; if (!(e.stegoClimb > 0)) e.stegoClimbDir = null; return e.stegoClimb > 0; }
   if (s.stegoHop) { const h = s.stegoHop, step = S.hop.distance / S.hop.time * dt; h.left -= dt; w.move(e, h.x * step, h.y * step); e.stegoAir = Math.sin(Math.PI * Math.min(1, 1 - Math.max(0, h.left) / S.hop.time)) * S.hop.height; e.stegoPose = "hop"; if (h.left <= 0) { s.stegoHop = null; e.stegoAir = 0; e.stegoPose = null; } return true; }
   if (e.stegoPose === "graze" || e.stegoPose === "stagger") e.stegoPose = null;
   // its body turns toward you at its own pace: get behind it, and it bucks
-  { const h = stegoHeading(e), cur = Math.atan2(h.y, h.x), diff = ((Math.atan2(p.y - e.y, p.x - e.x) - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-S.turn * dt, Math.min(S.turn * dt, diff)); stegoFace(e, { x: Math.cos(a), y: Math.sin(a) }); }
+  stegoTurnToward(e, p.x, p.y, dt);
   if (s.gap <= 0 && attackReady(e, s, w, "stegoBuck", d)) { s.state = "attack"; s.last = "stegoBuck"; beginAttack(e, s, "stegoBuck", w); return true; }
   if (s.gap <= 0 && (s.cd.stegoInfight || 0) <= 0 && e.stegoSwim !== 1) {
     const prey = stegoPreyNear(e, w);
     if (prey) { s.cd.stegoInfight = S.infight.every; s.infights = (s.infights || 0) + 1;
       if (hashSeed(`${e.id}:infight:${s.infights}`) % 100 < S.infight.chance) { const id = distance(prey, e) >= ATTACK_MODULES.stegoPounce.range[0] ? "stegoPounce" : "stegoTailWhack"; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, prey); return true; } }
   }
-  // walled off (a cliff, a rock, a wall): it digs its claws and spikes in and climbs over toward you (overworld only, as the Stalker)
-  if (w.climbFree && e.stegoSwim === 0 && d > S.climb.near + bodyRadius(e)) {
+  // walled off, out of sight or on another level: it chases along the game's way round, climbing where the way goes up or over
+  if (w.stegoRoute) { if (e.stegoSwim === 0 && stegoChase(e, s, w, p, d)) return true; }
+  // without that search (a bare world): walled off, it digs its claws and spikes in and climbs straight over toward you
+  else if (w.climbFree && e.stegoSwim === 0 && d > S.climb.near + bodyRadius(e)) {
     const gain = (s.stegoPrevD ?? d + 1) - d; s.stegoStuck = s.moveFailed && gain < .02 ? (s.stegoStuck || 0) + dt : 0; s.stegoPrevD = d;
     if (s.stegoStuck >= S.climb.stuck) { s.stegoStuck = 0; s.stegoPrevD = null; s.stegoClimbing = { left: S.climb.time, spent: 0 }; return stegoClimbStep(e, s, w, p, d); }
   } else { s.stegoStuck = 0; s.stegoPrevD = null; }
