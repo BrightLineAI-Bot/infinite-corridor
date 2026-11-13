@@ -24,6 +24,10 @@ export const BEAST_SLOT = Object.freeze({
   // Raised again for the Questing Beast's fur (Tim, 2026-11-11: "I understand that's going to add ... cost to the budget").
   triangles: Object.freeze({ full: 5000, balanced: 3000, low: 1200 }),
   emitChannels: 4,
+  // Small minions with a body of their own (the Tremor Worm's field tentacles, Close View worm pass 2): a separate allowance, so up to six
+  // of them never take a beast's slot (they rise round the Wayfarer, nearer than the worm, and admission is nearest first).
+  // Each is a small mesh on a short chain, so the whole allowance costs less than one beast at every tier.
+  minion: Object.freeze({ maxMinions: 6, tierMinions: Object.freeze({ full: 6, balanced: 6, low: 0 }), maxBones: 12, triangles: Object.freeze({ full: 760, balanced: 480, low: 190 }) }),
 });
 
 // ------------------------------------------------------------------------------------------------ the skeleton

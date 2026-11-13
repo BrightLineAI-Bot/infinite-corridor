@@ -17,12 +17,12 @@
 // their middle band put the next host of a kind 8-10 sections from the last in most cases (7-11 in nearly all; tests measure it).
 // The rest of the world is untouched: skyways, shrines and world-beast meetings still come by their own rolls too.
 // Cost: a handful of hashes and memoised cheap tests per cell, nine cells per kind per section entered; nothing per frame.
-import { hashSeed } from "./random.js?v=r917-b9f5feabade1";
-import { openSeaQuick } from "./landscape.js?v=r917-b9f5feabade1";
-import { hamletSection } from "./settlements.js?v=r917-b9f5feabade1";
-import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r917-b9f5feabade1";
-import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r917-b9f5feabade1";
-import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r917-b9f5feabade1";
+import { hashSeed } from "./random.js?v=r928-60da61d95073";
+import { openSeaQuick } from "./landscape.js?v=r928-60da61d95073";
+import { hamletSection } from "./settlements.js?v=r928-60da61d95073";
+import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r928-60da61d95073";
+import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r928-60da61d95073";
+import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r928-60da61d95073";
 
 export const WAYMARK_GUIDES = {
   version: 1,       // the atlas pin (`guideVersion`) for ground first seen with the guides; a change to where hosts stand is a new version

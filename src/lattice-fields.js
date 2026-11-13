@@ -7,8 +7,8 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r917-b9f5feabade1";
-import { SUNBURST, LUMEN_CARBINE } from "./tool-forms.js?v=r917-b9f5feabade1";
+import { latticePassives } from "./transit-lattice.js?v=r928-60da61d95073";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r928-60da61d95073";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -21,11 +21,11 @@ export const FIELD_PASSIVES = {
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.
 export const TOOL_FORMS = {
-  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical (Might)." },
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical, and scales with Finesse like the Blunderbuss." /* Tim 2026-11-12: the Blunderbuss scales with the stamina stat */ },
   "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
   "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s (less with faster tool recovery). Still physical (Might)." }, // release 535
   "lumen-sunburst": { name: "Sunburst Ricochet", text: `A Lumen Spindle shot that strikes a wall ricochets off it, cutting on through foes, and breaks into a sunburst of ${SUNBURST.shards} small shards, each striking a foe once for ${Math.round(SUNBURST.share * 100)}% of the shot. Up to ${SUNBURST.ricochets} ricochets a shot; one that ricocheted on its way out comes back the same way and bursts again. Still magic (Focus).` }, // tool-forms.ts SUNBURST
-  "lumen-carbine": { name: "Lumen Carbine", text: `The Lumen Spindle becomes a beam carbine: each shot is a beam of light that reaches ${LUMEN_CARBINE.range} tiles, as far as any foe you lock, and strikes one foe for ${LUMEN_CARBINE.tap.share}× a Spindle shot, one beam every ${LUMEN_CARBINE.cadence} s. Hold to charge (full in ${LUMEN_CARBINE.charge.full} s): the release is up to ${LUMEN_CARBINE.charge.max}× stronger and passes through ${LUMEN_CARBINE.charge.pierce} foes. A beam takes 1 round, a charge 2 or ${LUMEN_CARBINE.charge.rounds}. Beams do not ricochet. ${LUMEN_CARBINE.scale === "physical" ? "Physical (Might)." : "Magic (Focus)."}` }, // tool-forms.ts LUMEN_CARBINE
+  "continuous-assault": { name: "Continuous Assault", text: `With the Carbine: a charged beam released at least ${Math.round(CONTINUOUS_ASSAULT.threshold * 100)}% full calls ${CONTINUOUS_ASSAULT.count} lasers down from the sky, ${CONTINUOUS_ASSAULT.gap} s apart, onto the foe it strikes (or the one nearest where it ends). Each tracks its foe and strikes everything within ${CONTINUOUS_ASSAULT.radius} tile for ${Math.round(CONTINUOUS_ASSAULT.share * 100)}% of the beam. Nothing with any other tool. Grows with Finesse, as the Carbine does.` }, // tool-forms.ts CONTINUOUS_ASSAULT; 2026-11-12 replaces the Lumen Carbine (now the Carbine tool)
 
   nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
 };

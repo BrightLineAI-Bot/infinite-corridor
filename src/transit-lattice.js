@@ -11,8 +11,8 @@
 // per kind, and what is set: `passives` (a constellation node id for its primary form, `id:alt` for its secondary) and
 // `echoes` (Echo ids). What a passive or Echo set here does is read by constellation.ts (nodeOn/altOn) and echoes.ts
 // (activeEchoes); setting one is done there, so this module stays free of both. Balance as data.
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r917-b9f5feabade1";
-import { piecesNeeded, piecesToUnlock } from "./far-array.js?v=r917-b9f5feabade1";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r928-60da61d95073";
+import { piecesNeeded, piecesToUnlock } from "./far-array.js?v=r928-60da61d95073";
 
 // payPer: "gate" pays each Gate once, when it is unlocked (Tim, 2026-11-05: "the coordinates should come once per gate"), its
 // pieces + 1 for the Listener (363's "components + 1"); "kill" is releases 363-759's payment for every Listener kill.
@@ -27,9 +27,13 @@ export const coordinatesFor = (kill) => piecesNeeded(kill) + 1;
 export const coordinatesForGate = (gate) => piecesToUnlock(gate) + 1;
 const gatesUnlocked = (save) => Math.max(1, Math.floor(Number(save?.farArray?.gate) || 1)) - 1;
 
+// Passives that no longer exist, dropped from `passives` wherever a save is read (freshSave, migrateSave): the slot they held is
+// free again. Setting a passive costs nothing, so there is nothing to refund. 2026-11-12: the Lumen Carbine passive became the
+// Carbine, the Spark Coil's upgraded form (tool-forms.ts CARBINE; items.ts CARBINE_RANK).
+export const RETIRED_PASSIVES = Object.freeze(["field:lumen-carbine"]);
 export function ensureLattice(save) {
   const l = save.lattice && typeof save.lattice === "object" ? save.lattice : {}, int = (v, max = Infinity) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
-  const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i);
+  const list = (v) => (Array.isArray(v) ? v : []).filter((q, i, a) => typeof q === "string" && q && a.indexOf(q) === i && !RETIRED_PASSIVES.includes(q));
   const extra = { ...(l.extra && typeof l.extra === "object" ? l.extra : {}), passive: int(l.extra?.passive, TRANSIT_LATTICE.extra.passive), echo: int(l.extra?.echo, TRANSIT_LATTICE.extra.echo) };
   save.lattice = { ...l, coordinates: int(l.coordinates), paidFor: int(l.paidFor), extra, passives: list(l.passives).slice(0, TRANSIT_LATTICE.base.passive + extra.passive), echoes: list(l.echoes).slice(0, TRANSIT_LATTICE.base.echo + extra.echo) };
   save.lattice.gatesPaid = int(l.gatesPaid); // 2026-11-05: Gates already paid for (grantCoordinates)

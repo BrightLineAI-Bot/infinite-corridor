@@ -1,6 +1,6 @@
 // The Briar Stag's body and effects (release 705). Drawing only: nothing here changes combat state.
 // q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster). `now` (ms) drives the gait and flicker.
-import { STAG, DANGER } from "./monster-pack.js?v=r917-b9f5feabade1";
+import { STAG, DANGER } from "./monster-pack.js?v=r928-60da61d95073";
 
 const TAU = Math.PI * 2;
 export const STAG_ART = {
@@ -10,7 +10,14 @@ export const STAG_ART = {
 };
 export const STAG_EFFECT_KINDS = new Set(["briar", "thorn", "rootLine", "rootRing", "stagSpike", "burnTree", "birdDive", "mire"]);
 
-const gaits = new WeakMap();
+// Render memory keyed by the creature's id, not the object: the renderer paints a fresh copy of each foe every frame
+// ({ ...e }), so a WeakMap keyed by the object never saw the same key twice and the walk cycle and easing restarted every
+// frame. Bounded (oldest dropped first); an actor with no id (a preview) falls back to the object itself.
+function renderMemory(cap = 32) {
+  const m = new Map();
+  return { get: (e) => m.get(e?.id ?? e), set: (e, v) => { const k = e?.id ?? e; if (!m.has(k) && m.size >= cap) m.delete(m.keys().next().value); m.set(k, v); } };
+}
+const gaits = renderMemory();
 function gait(e, now, s, u) {
   const g = gaits.get(e) || { phase: 0, moving: 0 }; gaits.set(e, g);
   const x = Number(e.x) || 0, y = Number(e.y) || 0, dt = g.at == null ? 0 : Math.min(.1, Math.max(0, (now - g.at) / 1000));
@@ -22,7 +29,7 @@ function gait(e, now, s, u) {
   }
   return g;
 }
-const smoothing = new WeakMap();
+const smoothing = renderMemory();
 function eased(e, key, target, now, rate) {
   const st = smoothing.get(e) || {}; smoothing.set(e, st);
   const prev = st[key], last = st["@" + key], dt = last == null ? 0 : Math.min(.1, Math.max(0, (now - last) / 1000)); st["@" + key] = now;

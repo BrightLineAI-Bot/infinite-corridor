@@ -1,14 +1,15 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r917-b9f5feabade1';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r917-b9f5feabade1';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r917-b9f5feabade1';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r917-b9f5feabade1';
-import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r917-b9f5feabade1'; // adventure creatures
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r917-b9f5feabade1';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r917-b9f5feabade1';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r917-b9f5feabade1';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r917-b9f5feabade1';
-export { MESH_FLOATS } from './close-view-mesh.js?v=r917-b9f5feabade1';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.js?v=r928-60da61d95073'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r928-60da61d95073';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r928-60da61d95073';
+import { sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r928-60da61d95073';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r928-60da61d95073';
+export { MESH_FLOATS } from './close-view-mesh.js?v=r928-60da61d95073';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -81,6 +82,35 @@ const emitterGear = [
 ];
 const playerTool = [...player.slice(0, -2), ...scaledHeld(emitterGear, closeViewHeldScale('emitter'), 0, -.25, .783, [.355, -.25, .783])];
 const playerUnarmed = player.slice(0, -2);
+// The Shadow Clone as a wraith (Tim, 2026-11-12: "a boxy version of the character, it should be more of a wraith... I
+// like the spectral-ness, maybe make it a little more visible... it needs a visual rework so it looks like a spectre").
+// The Wayfarer's hood and sleeves on a hooded shroud: a void where the face is, framed by a lit violet edge with two
+// lit eyes and a faint rune at the heart (0xc58cff, an entry of close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive), a robe
+// that flares from the waist (the cape group, so it sways), a torn hem and five trailing wisps (groups 50-54, which
+// drift) in place of legs. Its own colours; writeCloseViewModel's old `shadow` recolour leaves it alone. Within the
+// 256-triangle model budget (MODEL_MAX_VERTICES).
+const wraithShroud = 0x1d1428, wraithRobe = 0x2a1e3d, wraithWisp = 0x3b2a5c, wraithVoid = 0x050309, wraithGlow = 0xc58cff;
+const playerWraith = [
+  part(hoodShell, 0, 0, 0, 1, 1, 1, wraithShroud),
+  part(hoodLining, 0, 0, 0, 1, 1, 1, wraithGlow),
+  part(hoodFace, 0, 0, 0, 1, 1, 1, wraithVoid),
+  part(verticalLoft([[0,.15,-.10],[.01,.20,.04],[-.02,.17,.22],[-.04,.11,.31]], 6), 0, 0, 1.0, 1, 1, 1, wraithShroud, 0, 0, 1.0, 0, true),
+  part(verticalLoft([[-.01,.155,.10],[0,.175,-.10],[-.03,.225,-.34],[-.06,.28,-.56]], 7), 0, 0, .92, 1, 1, 1, wraithRobe, 3, 0, .98, 0, true),
+  part(frontPatch, .168, 0, 1.17, 1, .018, .055, wraithGlow),
+];
+for (const side of [-1, 1]) playerWraith.push(
+  part(frontPatch, .108, side * .046, 1.462, 1, .024, .012, wraithGlow),
+  part(bevel, -.014, side * .25, .984, .078, .088, .211, wraithShroud, side * 2, 0, 1.19, -.14, true),
+  part(membrane([[-.06, side * .25, .80], [.07, side * .27, .79], [-.02, side * .29, .66]]), 0, 0, 0, 1, 1, 1, wraithWisp, side * 2, 0, 1.19, -.14),
+);
+for (let i = 0; i < 8; i++) { // the torn hem: ragged points below the robe's edge, turning with it
+  const a = (i + .5) * Math.PI / 4, c = Math.cos(a), sn = Math.sin(a), r = .27, w = .11, d = i % 2 ? .12 : .19;
+  playerWraith.push(part(membrane([[c * r - .06 - sn * w * .5, sn * r + c * w * .5, .38], [c * r - .06 + sn * w * .5, sn * r - c * w * .5, .38], [c * (r + .03) - .10, sn * (r + .03), .38 - d]]), 0, 0, 0, 1, 1, 1, wraithRobe, 3, 0, .98));
+}
+for (let i = 0; i < 5; i++) { // wisps instead of legs: they trail back and down to points near the floor
+  const a = Math.PI * (.55 + .225 * i), x = Math.cos(a) * .2, y = Math.sin(a) * .22, back = .16 + .05 * (i % 2);
+  playerWraith.push(part(curvedTube([[x, y, .42, .07], [x - back * .55, y * 1.08, .24, .04], [x - back * 1.5, y * 1.16, .05, .006]], 3), 0, 0, 0, 1, 1, 1, wraithWisp, 50 + i, x, .42));
+}
 // Compact original shovel: an ash shaft, iron collar and broad low-poly blade.
 // It shares the existing actor/equipment stream and the canonical right-hand grip.
 const shovelGear=[
@@ -154,6 +184,12 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]),
     blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, shoulder: .87, width: .052, thick: .018, tip: 1.40 }),
     guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5 }),
+  // Carbine (the Spark Coil's upgraded form, 2026-11-12): a compact carbine with a long barrel. The bore axis rides just above
+  // the fist (-X is up); a short stock behind the grip, a gunmetal receiver, the barrel, a cyan coil wound round its root with a
+  // collar ahead of it, and a muzzle with a lit face at `muzzle[1]` (the shot's origin, TOOL_MUZZLE_LOCAL.carbine).
+  carbine: Object.freeze({ axisX: .15, grip: Object.freeze([.72, .86]), gripRadius: .023, stock: Object.freeze([.56, .72]), receiver: Object.freeze([.86, 1.10]),
+    barrel: Object.freeze([1.10, 1.64]), barrelRadius: Object.freeze([.020, .017]), coil: Object.freeze([1.14, 1.36]), coilRadius: .040, collar: Object.freeze([1.36, 1.39]), collarRadius: .044,
+    muzzle: Object.freeze([1.62, 1.69]), muzzleRadius: .026, bore: .014 }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -269,6 +305,24 @@ const riftBombard = (() => {
     heldTube([[S[0], S[1], S[3], .019], [S[0], S[2], S[3], .017]], 4, C.grip, { ref: [0, 0, 1] }),
   ]);
 })();
+// The Carbine's colours: gunmetal body, leather grip, and the coil and muzzle face lit cyan (0x7fe7ff is a lit actor colour,
+// close-view-gl.ts CLOSE_VIEW_ACTOR_LOOK.emissive, so they glow in the dark like the beam they fire).
+export const CARBINE_COLOURS = Object.freeze({ body: 0x3a4246, grip: 0x5a4330, coil: 0x7fe7ff });
+const heroCarbine = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.carbine, C = CARBINE_COLOURS, X = F.axisX, Y = -.25;
+  const face = [], z = F.muzzle[1] + .001, n = Array.from({ length: 6 }, (_, i) => { const a = (i + .5) * Math.PI / 3; return [X + Math.cos(a) * F.bore * 1.4, Y + Math.sin(a) * F.bore * 1.4, z]; });
+  for (let i = 1; i < 5; i++) face.push([n[0], n[i], n[i + 1]]);
+  return Object.freeze([
+    heldTube([[.17, Y, F.grip[0], F.gripRadius], [.17, Y, F.grip[1], F.gripRadius * 1.05]], 6, C.grip),
+    block(.17, Y, (F.stock[0] + F.stock[1]) / 2, .028, .024, (F.stock[1] - F.stock[0]) / 2, C.body, -2, 0, 1.19),
+    block((X + .17) / 2, Y, (F.receiver[0] + F.receiver[1]) / 2, .05, .036, (F.receiver[1] - F.receiver[0]) / 2, C.body, -2, 0, 1.19),
+    heldTube([[X, Y, F.barrel[0], F.barrelRadius[0]], [X, Y, F.barrel[1], F.barrelRadius[1]]], 6, C.body),
+    heldTube([[X, Y, F.coil[0], F.coilRadius], [X, Y, F.coil[1], F.coilRadius]], 6, C.coil, { flat: true, phase: 0 }),
+    heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, C.body),
+    heldTube([[X, Y, F.muzzle[0], F.muzzleRadius], [X, Y, F.muzzle[1], F.muzzleRadius]], 6, C.body, { caps: 1 }),
+    heldFacets(face, C.coil, () => [0, 0, 1]),
+  ]);
+})();
 // Closed forged blade: the sharp outer ring retains the original broken outline;
 // inset front/back faces provide readable thickness without changing length or reach.
 const brokenGreatswordOutline = [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]];
@@ -291,6 +345,20 @@ const greatSweep = [
   block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
   part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
 ];
+// Mirage of Blades in Close View (Tim, 2026-11-12: "we should have rendered projectiles that travel through
+// the air"): one flying broken greatsword, laid flat as a rotor about its middle (model +X along the blade,
+// +Y its width, +Z up through its thickness), with a stub of grip and guard at the back end. The actor's
+// yaw is its spin (mirageBladePresentation in tool-forms.ts). 50 triangles, baked once.
+export const MIRAGE_BLADE_FORM = Object.freeze({ length: .50, width: .21, thick: 1, grip: Object.freeze([-1.02, -1.34]) });
+const mirageBlade = (() => {
+  const F = MIRAGE_BLADE_FORM, flat = tris => tris.map(t => t.map(([x, y, z]) => [z, y, x]));
+  return Object.freeze([
+    part(flat(brokenGreatswordBlade.face), 0, 0, 0, F.length, F.width, F.thick, 0x8a8a92),
+    part(flat(brokenGreatswordBlade.edge), 0, 0, 0, F.length, F.width, F.thick, 0xd8d4c6),
+    block(F.length * -.98, 0, 0, .035, .19, .03, 0x6f6458),
+    block((F.grip[0] + F.grip[1]) / 2 * F.length, 0, 0, (F.grip[0] - F.grip[1]) / 2 * F.length, .028, .028, 0x5a4330),
+  ]);
+})();
 // Six-sided continuous barrel with a recessed bore and a narrow brass lip. Meshes
 // are baked once; the muzzle remains at the established local Z=1.535 anchor.
 const blunderbussBore = { shell: [], lip: [], inner: [], cap: [] };
@@ -343,7 +411,7 @@ const needleCaster = [
 // Recipe-space muzzle tips (the grip is (.17,-.25,.79); the barrel/shaft runs along +Z, except the
 // generic emitter, which points along recipe +X). Every Close View shot from a held tool starts here.
 const TOOL_MUZZLE_LOCAL=Object.freeze({'rift-bombard':Object.freeze([CLOSE_VIEW_HERO_WEAPON_FORM.bombard.axisX,-.25,1.585]),blunderbuss:Object.freeze([.17,-.25,1.535]),'lumen-spindle':Object.freeze([.17,-.25,1.575]),
-  'spark-coil':Object.freeze([.17,-.25,1.30]),'needle-caster':Object.freeze([.17,-.25,1.41]),emitter:Object.freeze([.355,-.25,.783])});
+  'spark-coil':Object.freeze([.17,-.25,1.30]),carbine:Object.freeze([CLOSE_VIEW_HERO_WEAPON_FORM.carbine.axisX,-.25,CLOSE_VIEW_HERO_WEAPON_FORM.carbine.muzzle[1]]),'needle-caster':Object.freeze([.17,-.25,1.41]),emitter:Object.freeze([.355,-.25,.783])});
 const PHASED_TOOL_EMISSION=new Set(['rift-bombard','blunderbuss','lumen-spindle']);
 export const closeViewHeldMuzzleLocal=(profile)=>Object.hasOwn(TOOL_MUZZLE_LOCAL,profile)?TOOL_MUZZLE_LOCAL[profile]:null;
 // Uses the exact recipe grip, normalized socket axes and the .82 x held-scale conversion of
@@ -507,7 +575,7 @@ const wayEmber=wayStone(0xf3a55c,false),wayDeep=wayStone(0xffd25a,true);
 export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, corridorDrone, playerShadow:playerUnarmed, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -566,7 +634,7 @@ const heroSalvageBlade = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster)});
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
@@ -843,7 +911,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const turn = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:.29 * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach;
+    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
+    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0); // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
@@ -1020,7 +1089,7 @@ export function writeCloseViewModel(out, offset, actor) {
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
       if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
       if(actor.paletteMap){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=actor.paletteMap[rgb];if(Number.isInteger(mapped)){sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}}
-      if(actor.shadow){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
+      if(actor.shadow&&kind!=='playerShadow'){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;

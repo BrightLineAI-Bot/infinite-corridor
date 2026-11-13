@@ -1,23 +1,24 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r917-b9f5feabade1"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r917-b9f5feabade1"; // adventure creatures
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r917-b9f5feabade1";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r917-b9f5feabade1";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r928-60da61d95073"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r928-60da61d95073"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.js?v=r928-60da61d95073"; // the Gaunt (duelists.ts)
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r928-60da61d95073";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r928-60da61d95073";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r917-b9f5feabade1"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r917-b9f5feabade1";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r928-60da61d95073"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r928-60da61d95073";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r917-b9f5feabade1";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r917-b9f5feabade1";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r917-b9f5feabade1";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r917-b9f5feabade1";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r917-b9f5feabade1";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r917-b9f5feabade1";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r917-b9f5feabade1";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r928-60da61d95073";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r928-60da61d95073";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r928-60da61d95073";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r928-60da61d95073";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r928-60da61d95073";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r928-60da61d95073";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r928-60da61d95073";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r917-b9f5feabade1";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r928-60da61d95073";
 
 const TAU = Math.PI * 2;
 
@@ -460,6 +461,7 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
 const BODY = {
   ...SEED_REALM_BODIES, // seed realms (seed-realm-render.ts)
   ...ADVENTURE_BODIES, // adventure creatures (adventure-creature-render.ts): drawn once, then stamped
+  ...DUELIST_BODIES, // the Gaunt (duelist-render.ts): drawn once per pose, then stamped
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
@@ -1330,7 +1332,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);

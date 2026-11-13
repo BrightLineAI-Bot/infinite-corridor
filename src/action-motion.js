@@ -42,13 +42,13 @@ export const PRIMARY_VISUAL_KINDS = Object.freeze(["salvage-blade", "cinder-pike
 // Geometry identity only: these immediate tools do not join delayed startup,
 // action motion, muzzle ownership or native form recipe membership.
 export function simpleToolAppearanceKind(weapon) {
-  return weapon?.name==='Spark Coil'?'spark-coil':weapon?.name==='Needle Caster'?'needle-caster':null;
+  return weapon?.name==='Spark Coil'?'spark-coil':weapon?.name==='Needle Caster'?'needle-caster':weapon?.name==='Carbine'?'carbine':null; // the Carbine: a Spark Coil at +CARBINE_RANK (items.ts)
 }
 export function importedEmitterAppearance(record, weapon, active = false) {
   if(!active)return simpleToolAppearanceKind(weapon)||'emitter';
   const appearance=record?.toolAppearance;
   return record?.profile==='emitter'&&record.toolKind==null&&appearance&&typeof appearance==='object'&&!Array.isArray(appearance)&&
-    appearance.v===1&&(appearance.kind==='spark-coil'||appearance.kind==='needle-caster')?appearance.kind:'emitter';
+    appearance.v===1&&(appearance.kind==='spark-coil'||appearance.kind==='needle-caster'||appearance.kind==='carbine')?appearance.kind:'emitter';
 }
 export const TOOL_VISUAL_KINDS = Object.freeze(["rift-bombard", "great-sweep", "blunderbuss", "lumen-spindle"]);
 export const TOOL_ACTION_TIMING = Object.freeze({
@@ -270,6 +270,21 @@ export function normalizeAttackVisual(raw, remainingMs = 0) {
   return copy;
 }
 
+// Held tool (Tim, 2026-11-12: the Wayfarer "keeps holding the Great Sweep until you attack with something
+// else"). Presentation state only: one additive flag, `heldTool: true`, on the accepted Great Sweep
+// attack record itself, so it rides the record's existing schema-14 save and exact resume, and any
+// later accepted attack (another weapon or tool) replaces the record and so puts it away. Game clears
+// it for a spell, a drink, a hands-on interaction, a gear or body change (stowHeldTool).
+export const HELD_TOOL_KINDS = Object.freeze(['great-sweep']);
+export function heldToolKind(player) {
+  const v = player?.attackVisual;
+  return v && typeof v === 'object' && v.heldTool === true && HELD_TOOL_KINDS.includes(v.toolKind) && v.presentationCancelled !== true ? v.toolKind : null;
+}
+export function stowHeldTool(player) {
+  const v = player?.attackVisual;
+  if (!v || typeof v !== 'object' || !Object.hasOwn(v, 'heldTool')) return false;
+  delete v.heldTool; return true;
+}
 // Accepted presentation is independent of combat clocks (which delayed Echo hits still update).
 // Published Fists and the earlier primary candidate retain their optional legacy clocks.
 export function attackVisualDeadline(player, record = player?.attackVisual, context = null) {

@@ -1,22 +1,29 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
-// BEAST_SLOT.maxBeasts keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r917-b9f5feabade1";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r917-b9f5feabade1";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r917-b9f5feabade1";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r917-b9f5feabade1";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r917-b9f5feabade1";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r917-b9f5feabade1";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r917-b9f5feabade1";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r917-b9f5feabade1";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r917-b9f5feabade1";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r917-b9f5feabade1";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r917-b9f5feabade1";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r917-b9f5feabade1";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r917-b9f5feabade1";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r917-b9f5feabade1";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r917-b9f5feabade1";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r917-b9f5feabade1";
+// BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r928-60da61d95073";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r928-60da61d95073";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r928-60da61d95073";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r928-60da61d95073";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r928-60da61d95073";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r928-60da61d95073";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r928-60da61d95073";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r928-60da61d95073";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r928-60da61d95073";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r928-60da61d95073";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r928-60da61d95073";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r928-60da61d95073";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r928-60da61d95073";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r928-60da61d95073";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r928-60da61d95073";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r928-60da61d95073";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r928-60da61d95073";
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r928-60da61d95073";
+
+// The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
+// never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.
+export const DUELIST_SLOT = Object.freeze({ maxDuelists: 3, triangles: Object.freeze({ full: 1600, balanced: 1250, low: 950 }) });
+const duelistBody = (sample) => Object.freeze({ mesh: duelistMesh, createTrack: createDuelistTrack, sample, duelist: true, get scale() { return DUELIST_RIG.closeViewScale; } });
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
   // scale: the Close View size relative to the standard view's (a presentation table, never gameplay)
@@ -33,7 +40,11 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   ashenMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
   groveMoth: Object.freeze({ mesh: mothMesh, createTrack: createMothTrack, sample: sampleMoth, get scale() { return MOTH_RIG.closeViewScale; } }),
   // up out of its hole only: under the ground, or about to burst up, it keeps the standard view's heaving mound
-  tremorWorm: Object.freeze({ mesh: wormMesh, createTrack: createWormTrack, sample: sampleWorm, eligible: (e) => !e.untargetable, get scale() { return WORM_RIG.closeViewScale; } }),
+  // (coming up out of the ground on its emergence clock it is untargetable but drawn whole, as the standard view draws it)
+  tremorWorm: Object.freeze({ mesh: wormMesh, createTrack: createWormTrack, sample: sampleWorm, eligible: wormBodyEligible, get scale() { return WORM_RIG.closeViewScale; } }),
+  // its field tentacles (Close View worm pass 2): small minions in the separate minion allowance (BEAST_SLOT.minion), so the six of them
+  // never take the worm's own slot; under the ground (hidden) they keep the billboard, which draws nothing then
+  wormTentacle: Object.freeze({ mesh: tentacleMesh, createTrack: createTentacleTrack, sample: sampleTentacle, minion: true, get scale() { return TENTACLE_RIG.closeViewScale; } }),
   psychicCrystal: Object.freeze({ mesh: crystalMesh, createTrack: createCrystalTrack, sample: sampleCrystal, get scale() { return CRYSTAL_RIG.closeViewScale; } }),
   morphingBlob: Object.freeze({ mesh: blobMesh, createTrack: createBlobTrack, sample: sampleBlob, get scale() { return BLOB_RIG.closeViewScale; } }),
   // the Void Walker on land (its skiff at sea keeps the billboard)
@@ -50,6 +61,10 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   // Listener's own slot), as does a walled Listener before its Morphling has taken shape (the standard view's banded robe).
   listener: Object.freeze({ mesh: listenerMesh, createTrack: createListenerTrack, sample: sampleListener, get scale() { return LISTENER_RIG.closeViewScale; },
     eligible: (e) => !e.mirrorClone && !e.morphWorm && (e.listenerPhase !== 'walled' || !!e.morphScaled) }),
+  // the Gaunt: the converted Rogue body, slimmed, hooded and armed per kind (close-view-beast-duelist.ts); their own slots
+  gauntDuelist: duelistBody(sampleDuelist),
+  gauntCutthroat: duelistBody(sampleDuelist),
+  gauntLongarm: duelistBody(sampleDuelist),
 });
 // The Stalker's skinned body covers the cat and the ape. Its pool (a silver puddle, a mouth rising out of the floor), its mist (wisps
 // wheeling round the Wayfarer) and the tide (it is the first wave) are flat or vapour art the standard view owns; the small copies and
@@ -57,6 +72,12 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
 export function stalkerBodyEligible(e) {
   return !e.stalkerKin && !e.stalkerDecoy && e.stalkForm !== 'pool' && e.stalkForm !== 'mist' && e.stalkAct?.kind !== 'tide';
 }
+// The Tremor Worm keeps the standard view's heaving mound exactly where the standard view draws it: under the ground (hidden,
+// excluded below) and about to burst up on a Rise (untargetable during the Rise). Coming up after a trip under the ground (the
+// emergence clock) the standard view draws its body rising, so the Close View does too.
+export function wormBodyEligible(e) { return !(e.untargetable && e.pack?.attack === 'wormRise'); }
+// Which allowance a body uses: 'minion' (BEAST_SLOT.minion: small, up to maxMinions) or 'beast' (BEAST_SLOT.maxBeasts).
+export function closeViewBeastAllowance(kind) { return CLOSE_VIEW_BEASTS[kind]?.minion ? 'minion' : 'beast'; }
 // Forms the body covers (`mesh(tier, foe)`: a beast with more than one body picks the one this foe shows). Hidden, veiled, illusory,
 // ridden or mounted states keep the billboard (their art owns them).
 // `scene` (optional: the game) lets a filter look at the other actors (a Worm with a rider on it).

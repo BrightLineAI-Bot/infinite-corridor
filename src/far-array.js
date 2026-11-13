@@ -8,7 +8,7 @@
 // calls guardians in; from gate 3 it hides behind them until they fall. Felling it raises the Gate a tier (harder
 // guardians that borrow moves) and offers a choice of three boons; the first time, it also asks how the story ends,
 // though the climb goes on either way. State: save.farArray (additive). The lore stays open on purpose.
-import { hashSeed, rng } from "./random.js?v=r917-b9f5feabade1";
+import { hashSeed, rng } from "./random.js?v=r928-60da61d95073";
 
 export const FAR = {
   piecesBase: 2, // gate 1 needs 3 pieces, gate 2 needs 4, ...
@@ -197,7 +197,7 @@ export function scaleForGate(c, save, role) {
 export const ARRAY_TUNING = { guardianHits: 32, listenerHits: 60, summonHits: 18, hitsPerGate: 8, hitsPerRelay: 1, relayCap: 40, damageShare: .085, damagePerGate: .012, maxShare: .2 }; // release 357: relays count up to relayCap (was 7)
 export function tuneArrayBoss(c, save, stats, role) {
   const f = ensureFarArray(save), g = f.activeRun?.gate || f.gate, up = g - 1, relays = Math.min(ARRAY_TUNING.relayCap, relayLean(save).answered), T = ARRAY_TUNING;
-  const weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats?.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats?.damageReduction) || 0));
+  const weapon = save.equipment?.[save.activeWeaponSlot], perHit = Math.max(6, (Number(weapon?.power) || 6) + (Number(stats?.weaponBonus ?? stats?.meleeBonus) || 0)), guard = Math.max(0, Math.min(.75, Number(stats?.damageReduction) || 0));
   const hits = (role === "listener" ? T.listenerHits : role === "summon" ? T.summonHits : T.guardianHits) + T.hitsPerGate * up + T.hitsPerRelay * relays;
   c.maxHp = c.hp = Math.round(perHit * hits + 15 * Math.max(1, Number(save.level) || 1));
   c.damage = Math.max(4, Math.round((Number(save.maxHp) || 60) * Math.min(T.maxShare, T.damageShare + T.damagePerGate * up) / (1 - guard)));

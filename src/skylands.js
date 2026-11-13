@@ -21,7 +21,7 @@
 // the section. The first stands one level up, so a jump reaches it; from a platform a jump keeps its height over the gap
 // (game.ts, skyAir) and lands on the next. Creatures walk the ground beneath and cannot climb. A jump that ends over a gap
 // falls (from four levels, fatally). The skyway door stands on the top platform and opens only from there.
-import { hashSeed, byHash } from "./random.js?v=r917-b9f5feabade1";
+import { hashSeed, byHash } from "./random.js?v=r928-60da61d95073";
 
 export const SKYLANDS = {
   version: 3, /* release 585: 2 = the stone skyway ascent; 587: 3 = floating discs */ macro: 8, chance: .65, minDepth: 14, maxTier: 20, hpPerTier: .6, damagePerTier: .25,
@@ -313,7 +313,7 @@ export const SKY_BASE = { // health: hits of the Wayfarer's weapon (+ per level)
 // A Skyland foe's base health and damage for `role`, from the Wayfarer (`stats` is game.ts characterStats).
 export function skyVitals(role, save, stats = {}) {
   const B = SKY_BASE[role]; if (!B) return null;
-  const level = Math.max(1, Number(save?.level) || 1), w = save?.equipment?.[save?.activeWeaponSlot], perHit = Math.max(4, (Number(w?.power) || 6) + (Number(stats.meleeBonus) || 0));
+  const level = Math.max(1, Number(save?.level) || 1), w = save?.equipment?.[save?.activeWeaponSlot], perHit = Math.max(4, (Number(w?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0));
   const maxHp = Math.max(30, Number(save?.maxHp) || 60), guard = Math.min(.75, Math.max(0, Number(stats.damageReduction) || 0));
   return { hp: Math.round(perHit * B.hitsToKill + B.hpPerLevel * level), damage: Math.max(2, Math.round(maxHp * B.damageShare / (1 - guard))) };
 }

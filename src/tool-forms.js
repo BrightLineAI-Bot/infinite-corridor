@@ -1,5 +1,5 @@
-import { stampAttackVisual } from "./action-motion.js?v=r917-b9f5feabade1";
-import { hashSeed } from "./random.js?v=r917-b9f5feabade1";
+import { stampAttackVisual } from "./action-motion.js?v=r928-60da61d95073";
+import { hashSeed } from "./random.js?v=r928-60da61d95073";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -59,52 +59,91 @@ export const MIRAGE = { share: .7, speed: 11, backSpeed: 13, out: 5, back: 2.5, 
 // and ricochets again at the same wall.
 export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed: 8, life: .32, pierce: 3, perEnemy: 2, maxLive: 24, lift: .06 };
 
-// Lumen Carbine (Tim, 2026-11-12: "maybe we can make a passive for the Lumen Spindle that turns it into an energy rifle...
-// instead of getting another weapon... it'll have to scale with magic"; "rather than shooting a bunch of pellets... one powerful
-// shot and then another powerful shot, kind of like a sniper... you can charge it up and shoot it... I was in Close View and saw
-// enemies far away that my tracker had locked on... would be great to launch an energy beam, like a laser, over to them").
-// A Lattice tool form (lattice-fields.ts TOOL_FORMS["lumen-carbine"]). With it held, the Lumen Spindle fires beams of light:
+// The Carbine (Tim, 2026-11-12: "make another tool called the Carbine... it'll take that passive we put on the Lumen
+// Spindle... the Carbine will just function that way... this will be a stamina weapon"; release 916's Lumen Carbine passive,
+// "one powerful shot and then another powerful shot, kind of like a sniper... you can charge it up and shoot it"; then "spark
+// coil... when you upgrade it past six, it turns into the carbine"). The Spark Coil's upgraded form, as the Needle Caster's is
+// the Blunderbuss: a coil at +CARBINE_RANK (items.ts, the Blunderbuss's rank) is renamed Carbine and fires with the profile
+// items.ts RANGED_WEAPONS["secondary-carbine"], built from these numbers. Below it the coil fires as it always has, and the
+// Lumen Spindle is plain again.
 // - The beam is a bolt flying `speed` tiles/s for `range` tiles (times the tool's reach), so it crosses the whole lock range
 //   (game.ts TARGET_LOCK.range, past the Close View lock's) in a fifth of a second. Projectiles step every .2 tiles, so a beam
 //   never skips a foe. It strikes one foe (plus any pierce from glyphs) and ends: a sniper's shot.
-// - Its damage is `tap.share` × one Spindle shot as the Spindle would fire it: (the Spindle's damage + the `scale` bonus) × the
-//   matching armor line × the tool's glyph damage. `scale` "magic" takes Focus (magicBonus), armor's spell damage and the magic
-//   buff, and deals magic damage; "physical" takes Might (meleeBonus) and armor's blow damage, and deals physical damage.
+// - A tap deals (`base` + `bonus` × the tool bonus) × armor's spell damage (× the magic buff) × the tool's glyph damage.
+//   `base` and `bonus` re-derive release 916's "2.7 × one Lumen Spindle shot" as the tool's own numbers: 2.7 × the Spindle's
+//   11 is 29.7 → 30, and the tool bonus counts 2.7 times. The tool bonus is release 918's single scaling table: items.ts
+//   TOOL_SCALING.carbine "stamina" (Finesse; Tim: "this will be a stamina weapon"), read by game.ts toolBonus on the magic
+//   `channel` (1 a rank, the channel of the Spark Coil it grew from and of the Lumen Carbine), so a Finesse build's Carbine
+//   hits as a Focus build's Lumen Carbine did. A magic shot: the damage type stays the Spark Coil's.
 // - A beam every `cadence` s (shortened like any tool: glyphs, armor's attack speed, Wellspring Ground). The Spindle: .36 s.
 // - Tap: the beam fires on release (or at once, from auto attack). Hold past `charge.grace` s: a charge glows at the muzzle,
-//   full at `charge.full` s, and the release fires a stronger beam: its share rises from `charge.min` to `charge.max` × the tap
-//   and it passes through up to `charge.pierce` foes, by how full it was. Holding past full adds nothing (the cap). Walking
-//   is not slowed (as with the Aether Orrery's charge).
+//   full at `charge.full` s, and the release fires a stronger beam: `charge.min` to `charge.max` × a tap, passing through up
+//   to `charge.pierce` foes, by how full it was. Holding past full adds nothing (the cap). Walking is not slowed.
 // - Rounds (ROUNDS): a tap takes `tap.rounds`; a charge takes 1 + ceil(fill × (charge.rounds − 1)): 2 up to half full, 3 past
 //   that. With fewer to hand, the charge fires as full as the rounds paid allow (a single round fires a tap). An empowered
 //   first round empowers the beam. Echo copies, the clone's copy and an awakened fan ride on those rounds.
 // - Drawn as a beam of light from the muzzle to its head while it flies, and an afterglow `trace.life` s long along its path
-//   (at most `trace.max` at once); the charge as a cyan glow growing at the muzzle (2D and Close View).
-// Sunburst Ricochet does nothing while the Carbine is held: a beam does not ricochet. Runtime only (game.carbine); no save state.
-export const LUMEN_CARBINE = {
-  key: "lumen-carbine",
-  tool: "Lumen Spindle",
-  scale: "magic", // "magic" (Focus) or "physical" (Might): Tim, 2026-11-12, "it'll have to scale with magic"
+//   (at most `trace.max` at once); the charge as a cyan glow growing at the muzzle (2D and Close View). Close View holds a
+//   compact carbine (close-view-models.ts, the `carbine` appearance), posed like the other simple tools.
+// - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
+// Runtime only (game.carbine); no save state beyond the item itself.
+export const CARBINE = {
+  channel: "magic", // game.ts toolBonus channel; the stat is items.ts TOOL_SCALING.carbine ("stamina")
+  base: 30, bonus: 2.7,
   range: 16, speed: 80, cadence: 1.05,
-  tap: { share: 2.7, rounds: 1 },
+  tap: { rounds: 1 },
   charge: { grace: .2, full: 1.25, min: 1.3, max: 2.4, pierce: 2, rounds: 3, restampMs: 260 },
+  poseMs: 600, // the raised-carbine visual each press (and charge restamp) holds
   trace: { life: .22, max: 6, width: .07 },
   colors: { beam: "#7fe7ff", core: "#eafcff", glow: 0x7fe7ff },
+  messages: { full: "The Carbine releases a full charge!", release: "The Carbine releases." },
 };
 // How full a charge held `held` s is: 0 below the grace, 1 at `full` and past it.
-export const carbineFill = (held) => { const C = LUMEN_CARBINE.charge, h = Number(held) || 0; return h < C.grace ? 0 : Math.max(0, Math.min(1, (h - C.grace) / (C.full - C.grace))); };
-export const carbineCharged = (held) => (Number(held) || 0) >= LUMEN_CARBINE.charge.grace;
-// The beam's share of one Spindle shot after a hold of `held` s (a tap below the grace).
-export const carbineShare = (held) => { const C = LUMEN_CARBINE, k = carbineFill(held); return carbineCharged(held) ? C.tap.share * (C.charge.min + (C.charge.max - C.charge.min) * k) : C.tap.share; };
-export const carbinePierce = (held) => carbineCharged(held) ? Math.floor(carbineFill(held) * LUMEN_CARBINE.charge.pierce) : 0;
+export const carbineFill = (held) => { const C = CARBINE.charge, h = Number(held) || 0; return h < C.grace ? 0 : Math.max(0, Math.min(1, (h - C.grace) / (C.full - C.grace))); };
+export const carbineCharged = (held) => (Number(held) || 0) >= CARBINE.charge.grace;
+// The beam's multiple of a tap after a hold of `held` s (1 for a tap, below the grace).
+export const carbineShare = (held) => { const C = CARBINE.charge, k = carbineFill(held); return carbineCharged(held) ? C.min + (C.max - C.min) * k : 1; };
+export const carbinePierce = (held) => carbineCharged(held) ? Math.floor(carbineFill(held) * CARBINE.charge.pierce) : 0;
 // Rounds a beam takes: 1 for a tap, 2 up to half full, 3 past half.
-export const carbineRounds = (held) => carbineCharged(held) ? 1 + Math.ceil(carbineFill(held) * (LUMEN_CARBINE.charge.rounds - 1) - 1e-9) : LUMEN_CARBINE.tap.rounds;
+export const carbineRounds = (held) => carbineCharged(held) ? 1 + Math.ceil(carbineFill(held) * (CARBINE.charge.rounds - 1) - 1e-9) : CARBINE.tap.rounds;
 // The hold (s) that `paid` rounds can afford for a charge held `held` s: the same hold, or less when fewer rounds were paid.
 export function carbineAffordedHold(held, paid) {
-  const C = LUMEN_CARBINE.charge, k = carbineFill(held), max = Math.max(0, (Math.floor(Number(paid) || 0) - 1) / (C.rounds - 1));
+  const C = CARBINE.charge, k = carbineFill(held), max = Math.max(0, (Math.floor(Number(paid) || 0) - 1) / (C.rounds - 1));
   if (!carbineCharged(held) || k <= max) return Number(held) || 0;
   return max <= 0 ? 0 : C.grace + max * (C.full - C.grace);
 }
+// A tap's damage before glyphs and the charge: (base + bonus × `toolBonus`, game.ts toolBonus(CARBINE.channel)) × armor's
+// spell damage (`spellDamage`) × the magic buff's 1.4 while it runs, as any magic shot.
+export function carbineBase(toolBonus, spellDamage = 0, magicBuff = false) {
+  return (CARBINE.base + CARBINE.bonus * (Number(toolBonus) || 0)) * (1 + (Number(spellDamage) || 0)) * (magicBuff ? 1.4 : 1);
+}
+
+// Continuous Assault (Tim, 2026-11-12: "there can be a passive for the Carbine called Continuous Assault: when you charge up
+// and fire the beam, three lasers come down from the sky and track into the enemy, boom boom boom, similar to the Hammerfall").
+// A Lattice tool form (lattice-fields.ts TOOL_FORMS["continuous-assault"]) that does nothing unless the Carbine is held.
+// - A charged beam released at least `threshold` full calls a volley: on the beam's first foe (the moment it strikes), or,
+//   if it strikes none, the foe nearest where it ended within `seek` tiles (else that point itself).
+// - `count` sky lasers come down there, the first `lead` s after the volley is called, then one every `gap` s: Hammerfall's
+//   strike from above (an effect with a delay, then one blow), each tracking its foe until it lands (sliding at up to `track`
+//   tiles/s). A foe that falls first hands the laser to the nearest foe within `seek` of it, else it lands where it is.
+// - Each lands a blow on every foe within `radius` tiles for `share` × the charged beam's damage (so it grows with Finesse,
+//   the charge, glyph damage and an empowered round), carrying no glyph procs (like Sunburst shards).
+// - Bounded: one volley per charged release (not its Echo, clone or fan copies); at most `maxLive` lasers at once, held in a
+//   fixed pool (game.carbine.lances) that is reused, never grown; a volley past that calls only the room left.
+// - Drawn (tool-forms.ts drawCarbine): a dashed cyan ring where each will land, then a beam from the top of the screen down
+//   onto it with an impact ring and a short scorch; in Close View a column of light from high above with a flash at its foot
+//   (close-view.ts), the ring and scorch on the floor.
+export const CONTINUOUS_ASSAULT = {
+  key: "continuous-assault",
+  threshold: .5, count: 3, lead: .2, gap: .2,
+  share: .5, radius: 1, seek: 3, track: 12,
+  life: .45, // s the impact ring and scorch stay after the blow
+  maxLive: 9,
+  height: 7, width: .11, // Close View column: tiles above the floor, half-width
+  colors: { beam: "#7fe7ff", core: "#eafcff", ring: "#7fe7ff", scorch: "#0d2a33", glow: 0x7fe7ff, flash: 0xeafcff },
+};
+// Whether a release held `held` s calls a volley.
+export const assaultCharged = (held) => carbineCharged(held) && carbineFill(held) >= CONTINUOUS_ASSAULT.threshold;
 
 // Release 643 (Tim: "I like the great sword, the shuriken and the great axe better"): the blades, by `blade`; 649: in Tim's order.
 export const SWEEP_BLADES = ["greatsword", "greataxe", "shuriken"];
@@ -146,6 +185,15 @@ export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 
   } finally { ctx.restore(); } // the clip never outlives the golem, whatever happens while drawing it
 }
 
+// Mirage of Blades in Close View: presentation only. The projectile (game.ts mirageThrow) owns its path, speed,
+// hits and life; this reads its position and age. `lift` is the flying height above the floor (chest height),
+// `spin` its turn rate (MIRAGE.spin, as the standard view's rotor), `shadow` the floor shadow's radius.
+export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1 });
+export function mirageBladePresentation(p) {
+  if (!p?.mirage || p.dead || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  const age = Number.isFinite(p.age) ? Math.max(0, p.age) : 0, scale = MIRAGE_BLADE_VIEW.scale * (Number.isFinite(p.scale) && p.scale > 0 ? Math.min(3, p.scale) : 1);
+  return { kind: 'mirageBlade', x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
+}
 export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;
   const captured=g&&clock>=g.start&&capture?.captureActor?.({source:g,x:g.x,y:g.y+.32,height:1.5,
@@ -162,11 +210,17 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
       else { const k = s * .22 * Math.min(1, (p.age || 0) * 12 + .4); ctx.moveTo(x, y); ctx.lineTo(x - p.dx * k, y - p.dy * k); } }
     if (any) { if (still) ctx.fill(); else ctx.stroke(); }
   }
-  drawCarbine(ctx, game, toScreen, s, t);
+  drawCarbine(ctx, game, toScreen, s, t, capture);
   for (const fx of game.effects) if (fx.kind === "golem-punch" && fx.life > 0) { const [x, y] = toScreen(fx); ctx.strokeStyle = "#e8d3a2"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, fx.life * 5); ctx.beginPath(); ctx.arc(x, y, fx.radius * s * (1.1 - fx.life * 2), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   for (const p of game.projectiles) {
     if (p.dead) continue;
     if (p.mirage) { const [x, y] = toScreen(p), k = MIRAGE.size * (p.scale || 1), spin = (p.age || 0) * MIRAGE.spin; // release 649: a rotor of steel
+      // Close View (Tim, 2026-11-12): the blade flies through the air as a spinning 3D blade at chest height
+      // (mirageBladePresentation); the floor keeps only its shadow. Elsewhere the flat rotor below, as before.
+      if (capture?.captureActor?.({ source: p, x: p.x, y: p.y, lift: MIRAGE_BLADE_VIEW.lift, height: MIRAGE_BLADE_VIEW.lift + .4,
+        draw: (c, unit) => { c.save(); c.translate(p.x * unit, p.y * unit); c.scale(k, k); sweepBlade(c, 0, 0, spin, unit, p.blade || 0, p.age || 0); c.restore(); },
+        sample: () => mirageBladePresentation(p) })) {
+        ctx.fillStyle = "#0000002e"; ctx.beginPath(); ctx.ellipse(x, y, s * MIRAGE_BLADE_VIEW.shadow * (p.scale || 1), s * MIRAGE_BLADE_VIEW.shadow * .45 * (p.scale || 1), 0, 0, 7); ctx.fill(); continue; }
       ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.strokeStyle = "#ffffff26"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.arc(0, 0, s * .38, 0, 7); ctx.stroke(); sweepBlade(ctx, 0, 0, spin, s, p.blade || 0, p.age || 0); ctx.restore(); }
     else if (p.fireBomb && !capture?.has?.(p)) { const [x, y] = toScreen(p), r = s * .2, spin = (p.age || 0) * 9; // release 547: a cinder shell, cracked and glowing
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
@@ -176,11 +230,13 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   }
 }
 
-// The Lumen Carbine (LUMEN_CARBINE): each flying beam as a line of light from where it left the muzzle to its head, the
-// afterglow of beams just spent, and the charge as a cyan glow at the muzzle with a ring that fills as it does. One stroke per
-// layer; no allocation. Reduced motion and safe mode keep the glow steady.
-export function drawCarbine(ctx, game, toScreen, s, t) {
-  const C = LUMEN_CARBINE, K = game.carbine, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode); let any = false;
+// The Carbine (CARBINE): each flying beam as a line of light from where it left the muzzle to its head, the afterglow of beams
+// just spent, and the charge as a cyan glow at the muzzle with a ring that fills as it does; then Continuous Assault's sky
+// lasers (CONTINUOUS_ASSAULT). One stroke per layer; no allocation. Reduced motion and safe mode keep the glow steady.
+// `capture` is set when Close View draws this onto its floor: the lasers' columns are then Close View's own (close-view.ts),
+// so only their rings and scorch go on the floor.
+export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
+  const C = CARBINE, K = game.carbine, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode); let any = false;
   ctx.save(); try {
     ctx.lineCap = "round"; ctx.strokeStyle = C.colors.beam; ctx.globalAlpha = .55; ctx.lineWidth = Math.max(3, s * C.trace.width * 2.2); ctx.beginPath();
     for (const p of game.projectiles) if (p.carbine && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
@@ -192,7 +248,32 @@ export function drawCarbine(ctx, game, toScreen, s, t) {
       ctx.globalAlpha = .35 + .3 * k; ctx.fillStyle = C.colors.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
       ctx.globalAlpha = 1; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
       const [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }); ctx.strokeStyle = k >= 1 ? C.colors.core : C.colors.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
+    drawAssault(ctx, game, toScreen, s, capture);
   } finally { ctx.restore(); }
+}
+// Continuous Assault's lasers (effects of kind "assault-lance"; game.ts assaultVolley). Hammerfall's pattern, in cyan: a dashed
+// ring where it will land while it waits; a laser from the top of the screen coming down over the last `lead` s (the standard
+// view only); then, struck, the full laser fading, an impact ring opening and a scorch on the floor.
+function drawAssault(ctx, game, toScreen, s, capture) {
+  const A = CONTINUOUS_ASSAULT;
+  for (const fx of game.effects) {
+    if (fx.kind !== "assault-lance" || !(fx.life > 0)) continue;
+    const [x, y] = toScreen(fx), R = fx.radius * s, top = Math.min(0, y - s * 8);
+    if (fx.delay > 0) {
+      ctx.globalAlpha = .75; ctx.strokeStyle = A.colors.ring; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      const fall = 1 - Math.min(1, fx.delay / A.lead);
+      if (!capture && fall > 0) { const head = top + (y - top) * fall; ctx.globalAlpha = .35 + .45 * fall; ctx.strokeStyle = A.colors.beam; ctx.lineWidth = Math.max(2, s * .1); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, head); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.fillStyle = A.colors.core; ctx.beginPath(); ctx.arc(x, head, s * .1, 0, 7); ctx.fill(); }
+      continue;
+    }
+    const k = Math.max(0, Math.min(1, fx.life / A.life));
+    ctx.globalAlpha = .55 * k; ctx.fillStyle = A.colors.scorch; ctx.beginPath(); ctx.ellipse(x, y, R * .55, R * .38, 0, 0, 7); ctx.fill(); // the scorch
+    if (!capture) { ctx.globalAlpha = k; ctx.strokeStyle = A.colors.beam; ctx.lineWidth = Math.max(3, s * .22 * k); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, y); ctx.stroke();
+      ctx.strokeStyle = A.colors.core; ctx.lineWidth = Math.max(1.5, s * .08 * k); ctx.stroke(); }
+    ctx.globalAlpha = k; ctx.strokeStyle = A.colors.core; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R * (1.15 - .45 * k), 0, 7); ctx.stroke(); // the impact ring
+    ctx.globalAlpha = .3 * k; ctx.fillStyle = A.colors.ring; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ================================================================ the Aether Orrery
@@ -463,7 +544,7 @@ export function orreryOnHit(game, p, e, now) {
 //   save.rounds = { v, empowered, loaded, ...unknown } (additive at schema 14; ensureRounds from freshSave and migrateSave).
 export const ROUNDS = {
   v: 1,
-  tools: ["Spark Coil", "Lumen Spindle", "Needle Caster", "Blunderbuss", "Rift Bombard", "Aether Orrery"],
+  tools: ["Spark Coil", "Lumen Spindle", "Needle Caster", "Blunderbuss", "Rift Bombard", "Aether Orrery", "Carbine"],
   iron: { base: 2, perEcho: 1, echoCap: 2 },
   empowered: { damage: 1.5, perShot: 1 },
   belt: 40,

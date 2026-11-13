@@ -1,4 +1,4 @@
-import { hashSeed } from "./random.js?v=r917-b9f5feabade1";
+import { hashSeed } from "./random.js?v=r928-60da61d95073";
 
 export const SCENE_SCHEMA = "infinite-corridor-scene/1.0.0";
 export const SCENE_DEFINITIONS = Object.freeze({

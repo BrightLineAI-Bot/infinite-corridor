@@ -6,54 +6,82 @@
 // tailL/R, spin, roll, nova, colonize, roar ...), `dragonAir` lifts it, `dragonSpin` turns it, `dragonCharge` lights its mouth;
 // the blows land as the game resolves them. Nothing here changes timing, damage, reach or targeting.
 // The art tables are read lazily (monster-pack.ts reaches close-view.ts, which loads this module first).
-import { DRAGON_ART } from "./crimson-dragon-render.js?v=r917-b9f5feabade1";
-import { DOOM_ART } from "./doom-chaser-render.js?v=r917-b9f5feabade1";
+// Second pass (Tim, 2026-11-12): one skin from tail tip to nose with the haunch, thighs and tail root grown out of it; big
+// five-fingered wings with scalloped edges, spread and beating whenever it is aloft, half open as a threat on the move; the roar
+// rears with them outspread; the aerial slam (Skyfall, dragonDive; the Doom Chaser's doomFall) hangs, dives and lands wings up.
+import { DRAGON_ART } from "./crimson-dragon-render.js?v=r928-60da61d95073";
+import { DOOM_ART } from "./doom-chaser-render.js?v=r928-60da61d95073";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r917-b9f5feabade1";
+} from "./close-view-beast-rig.js?v=r928-60da61d95073";
 
 export const DRAGON_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
-  hip: .62, femur: .24, tibia: .23, hindMeta: .13, humerus: .22, radius: .23, foreMeta: .12, paw: .04, halfWidth: .16,
+  hip: .57, femur: .24, tibia: .23, hindMeta: .13, humerus: .22, radius: .23, foreMeta: .12, paw: .04, halfWidth: .16,
   // each dragon's bulk (its art table's build: the Tyrant long and lean, the Doom Chaser heavy): trunk width and depth, neck,
   // head and limb girth over the shared skeleton
   bulk: Object.freeze({ crimsonTyrant: { trunkW: 1.3, trunkH: 1.22, neck: 1.25, head: 1.3, limb: 1.4, tail: 1.3 }, doomChaser: { trunkW: 1.5, trunkH: 1.34, neck: 1.45, head: 1.45, limb: 1.6, tail: 1.5 } }),
+  // the body's shape (buildDragonMesh): the tail's half-thickness where it leaves the hips (× bulk.tail); the trunk's sections
+  // [f, u, half width, half height, bone, bone b, weight b] (× bulk.trunkW/H) from the tail root over the haunch, waist and chest;
+  // the limbs [g (0 hip/shoulder, 1 knee/elbow, 2 hock/wrist, 3 paw), half width, half depth, forward, bone, bone b, weight b]
+  // (× bulk.limb; p trunk, t upper, m middle, l lower limb bone) and the sections the low tier keeps; where the wing meets the haunch
+  mesh: Object.freeze({
+    tailRoot: .135,
+    trunk: Object.freeze([[-.55, .865, .175, .185, 'pelvis', 'tail0', .3], [-.47, .875, .215, .218, 'pelvis'], [-.38, .87, .232, .228, 'pelvis'], [-.28, .86, .215, .215, 'pelvis', 'spine', .25],
+      [-.17, .855, .172, .185, 'pelvis', 'spine', .6], [-.05, .86, .155, .178, 'spine'], [.08, .855, .168, .2, 'spine', 'chest', .45], [.2, .84, .19, .23, 'chest'], [.31, .835, .19, .238, 'chest'],
+      [.41, .87, .15, .195, 'chest', 'neck', .4]]),
+    hind: Object.freeze([[-.6, .05, .1, -.02, 'p'], [-.32, .1, .19, 0, 'p', 't', .2], [-.06, .138, .215, .02, 'p', 't', .5], [.25, .132, .2, .035, 't'], [.58, .095, .14, .03, 't'],
+      [.95, .07, .085, .01, 't', 'm', .5], [1.25, .066, .088, -.025, 'm'], [1.6, .05, .06, -.01, 'm'], [2.0, .042, .047, 0, 'm', 'l', .5], [2.45, .037, .042, 0, 'l'], [2.85, .034, .04, 0, 'l'], [3.0, .036, .042, 0, 'l']]),
+    fore: Object.freeze([[-.55, .035, .07, 0, 'p'], [-.28, .062, .1, .01, 'p', 't', .25], [0, .074, .11, .01, 'p', 't', .5], [.3, .072, .1, -.005, 't'], [.65, .064, .082, -.01, 't'],
+      [.95, .062, .075, 0, 't', 'm', .5], [1.3, .06, .072, .012, 'm'], [1.65, .046, .052, 0, 'm'], [2.0, .037, .042, 0, 'm', 'l', .5], [2.45, .034, .039, 0, 'l'], [2.85, .033, .038, 0, 'l'], [3.0, .035, .04, 0, 'l']]),
+    lowKeep: Object.freeze([0, 2, 4, 5, 8, 10, 11]), wingHaunch: -.42,
+    // the Doom Chaser's glowing cracks: [f, angle round the section (0 the side, + up), half length, tilt]
+    cracks: Object.freeze([[-.4, .1, .07, .5], [-.3, -.35, .06, -.4], [.22, .05, .07, .6], [-.05, .3, .06, -.3], [.3, -.4, .05, .3], [-.47, .55, .05, -.6], [.1, -.15, .05, .2], [-.2, .05, .055, .9], [.36, .35, .045, -.5]]), wingRoot: Object.freeze([.62, .75]),
+  }),
+  // the wings: beats per second in flight and hovering, the beat's half-angle (rad), how far the fingers lag, how much the
+  // upstroke folds them, and how much the body heaves (× scale); spread on the move (a threat display) and at rest when roused
+  flight: Object.freeze({ beat: 1.15, hoverBeat: .8, amp: .56, hoverAmp: .72, lag: .45, upFold: .22, heave: .05, moveSpread: .5, restSpread: .2, mantle: .8, foldFace: .2 }),
   walk: Object.freeze({ stride: .5, stance: .62 }), gallop: Object.freeze({ stride: 1.5, stance: .38 }), gallopSpeed: 3,
-  settle: 7, stepAt: .09, stepTime: .22, standTurnRate: 3.5, standTurnMax: 2.4, turnRate: 1.6, attackTurnRate: 12,
-  footLift: .16, bob: .022, blendMs: 110, deathMs: 2300, landMs: 450, hitMs: 300, impactMs: 360,
+  hockLean: -.4, settle: 7, stepAt: .09, stepTime: .22, standTurnRate: 3.5, standTurnMax: 2.4, turnRate: 1.6, attackTurnRate: 12,
+  footLift: .16, bob: .022, blendMs: 110, poseBlendMs: Object.freeze({ hang: 320, dive: 200, diveLand: 70, roar: 220, rise: 260 }), deathMs: 2300, landMs: 450, hitMs: 300, impactMs: 360,
   // rear (+ body up about the hind hips), head (+ raises), swing (head turned, + right), crouch (body down), lean (+ nose down),
   // wings (0 folded .. 1 spread), paw (the striking forepaw raised and cocked back: + right paw, - left), open (jaw)
   // the game's dragonPose names (crimson-dragon-render.ts POSES) as body poses; tail (+ swung left, - right)
   poses: Object.freeze({
     idle: { open: .1 }, dazed: { rear: -.06, head: -.55, swing: .15, crouch: .16, lean: .06, wings: .15, open: .4 },
-    rise: { rear: .2, head: .3, wings: 1, open: .3 }, fly: { rear: -.1, head: .05, lean: .1, wings: 1, open: .2 }, land: { rear: -.1, head: -.3, crouch: .2, wings: .6, open: .3 },
+    rise: { rear: .3, head: .2, wings: 1, open: .3, flap: 1.2 }, fly: { rear: -.1, head: .05, lean: .1, wings: 1, open: .2, flap: 1 }, land: { rear: -.1, head: -.3, crouch: .2, wings: .8, lift: .35, open: .3 },
     rear: { rear: .45, head: .45, wings: .8, paw: 1, open: .8 }, rearBoth: { rear: .55, head: .5, wings: .9, open: .9 },
     slam: { rear: -.12, head: -.4, crouch: .18, lean: .1, wings: .6, open: .9 }, slamBoth: { rear: -.14, head: -.45, crouch: .22, lean: .12, wings: .7, open: 1 },
     crouch: { rear: -.06, head: -.3, crouch: .2, wings: .3, open: .3 }, hop: { rear: .05, head: -.1, wings: .7, open: .3 },
     wingLash: { rear: .1, head: -.2, swing: .3, wings: 1, open: .6 }, headUp: { rear: .15, head: .7, wings: .4, open: .6 },
     charge: { head: .15, crouch: .08, lean: -.05, wings: .5, open: .45 }, breath: { head: -.1, lean: .1, wings: .5, open: 1 },
-    colonize: { rear: .4, head: .8, wings: 1, open: .7 }, roar: { rear: .2, head: .45, wings: .9, open: 1 },
+    colonize: { rear: .45, head: .8, wings: 1, lift: .25, open: .7 }, roar: { rear: .5, head: .6, wings: 1, lift: .4, sweep: -.15, open: 1, tremble: 1 },
     spinReady: { crouch: .15, wings: .3, tail: .5 }, spin: { crouch: .1, wings: .6, tail: .3 }, tailSpin: { crouch: .12, wings: .4, tail: 1 },
     tailReady: { swing: -.3, crouch: .1, tail: -.8 }, tailL: { swing: .3, crouch: .08, tail: 1 }, tailR: { swing: -.3, crouch: .08, tail: -1 },
     roll: { head: -.4, crouch: .2 }, nova: { rear: .3, head: .6, wings: 1, open: .8 },
     // the Doom Chaser's own (doom-chaser-render.ts): walking on its folded wings, the lunging bite, hanging under its black sun
-    wingWalk: { rear: -.08, head: -.2, crouch: .14, lean: .12, wings: .9, open: .4 }, wingL: { rear: -.12, head: -.3, swing: .3, crouch: .16, lean: .12, wings: 1, open: .6 },
-    wingR: { rear: -.06, head: -.25, swing: -.3, crouch: .12, lean: .1, wings: .8, open: .6 }, bite: { rear: -.1, head: -.25, crouch: .12, lean: .12, wings: .3, open: .9 },
-    eclipse: { rear: .3, head: .5, wings: 1, open: .8 },
+    // (wslam: the wing slammed down, - left, + right; the other is raised for the next)
+    wingWalk: { rear: -.08, head: -.2, crouch: .14, lean: .12, wings: .9, lift: -.35, open: .4 }, wingL: { rear: -.12, head: -.3, swing: .3, crouch: .16, lean: .12, wings: 1, lift: -.2, wslam: -1, open: .6 },
+    wingR: { rear: -.06, head: -.25, swing: -.3, crouch: .12, lean: .1, wings: .9, lift: -.2, wslam: 1, open: .6 }, bite: { rear: -.1, head: -.25, crouch: .12, lean: .12, wings: .3, open: .9 },
+    eclipse: { rear: .3, head: .5, wings: 1, open: .8, flap: .7 },
+    // the aerial slam (Skyfall, monster-pack.ts dragonDive; the Doom Chaser's doomFall): it hangs upright on wide slow beats with
+    // its head down on you, folds its wings back and falls nose first, and lands with them flung up
+    hang: { rear: .6, head: -1.05, wings: 1, open: .6, flap: 1.3 }, dive: { rear: -.85, head: .3, wings: .5, sweep: .9, lift: .25, open: .9, glide: 1 },
+    diveLand: { rear: -.08, head: -.32, crouch: .12, lean: .06, wings: 1, lift: .95, sweep: -.1, open: 1 },
   }),
 });
-const PK = ['rear', 'head', 'swing', 'crouch', 'lean', 'wings', 'paw', 'open', 'reach', 'tail'], K = PK.length;
+const PK = ['rear', 'head', 'swing', 'crouch', 'lean', 'wings', 'paw', 'open', 'reach', 'tail', 'lift', 'sweep', 'flap', 'glide', 'tremble', 'wslam'], K = PK.length;
 const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(DRAGON_RIG.poses).map(([n, p]) => [n, Float64Array.from(PK.map((k) => p[k] || 0))])));
 
 // ------------------------------------------------------------------------------------------------ skeleton
 const R = DRAGON_RIG, TAIL = 6;
 // The right wing spread, in model space (f forward, r right, u up); the left mirrors it. Bind pose = spread.
-const WING = Object.freeze({ shoulder: [.24, .15, 1.06], elbow: [.11, .55, 1.24], wrist: [.33, 1.02, 1.36], tip0: [.04, 1.66, 1.28], tip1: [-.44, 1.38, 1.04], tip2: [-.7, .86, .92] });
+const WING = Object.freeze({ shoulder: [.24, .15, 1.06], elbow: [.08, .6, 1.26], wrist: [.36, 1.14, 1.4], tip0: [.06, 1.98, 1.3], tipA: [-.22, 1.9, 1.2], tip1: [-.46, 1.68, 1.1], tipB: [-.66, 1.42, 1.0], tip2: [-.78, 1.08, .94] });
 // wing bone directions (model frame, right side), spread and folded, and the membrane's facing (the hint) in each
 const WING_BONES = Object.freeze([ // [bone, from, to, folded direction, folded membrane facing (r: - inward, + outward)]
   ['wing', 'shoulder', 'elbow', [-.95, .16, .04], -1], ['wingMid', 'elbow', 'wrist', [.97, -.02, .1], 1],
-  ['wingTip', 'wrist', 'tip0', [-.97, -.03, -.02], -1], ['wingF1', 'wrist', 'tip1', [-.93, -.04, -.28], -1], ['wingF2', 'wrist', 'tip2', [-.85, -.05, -.48], -1]]);
+  ['wingTip', 'wrist', 'tip0', [-.98, .06, -.02], -1], ['wingF1', 'wrist', 'tip1', [-.97, .08, -.1], -1], ['wingF2', 'wrist', 'tip2', [-.96, .1, -.17], -1]]);
 // an orthonormal frame (rows: aimed axis, the hint's remainder, their cross) into out[9]
 function wingFrame(out, dx, dy, dz, hx, hy, hz) {
   let l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l; const d = hx * dx + hy * dy + hz * dz; hx -= d * dx; hy -= d * dy; hz -= d * dz; l = Math.hypot(hx, hy, hz) || 1; hx /= l; hy /= l; hz /= l;
@@ -66,7 +94,7 @@ const WF = new Float64Array(9), WT = new Float64Array(9), RM = new Float64Array(
 export const DRAGON_SKELETON = defineSkeleton([
   { name: 'root', parent: null, at: [0, 0, 0] },
   { name: 'pelvis', parent: 'root', at: [-.42, 0, R.hip] },
-  ...Array.from({ length: TAIL }, (_, i) => ({ name: 'tail' + i, parent: i ? 'tail' + (i - 1) : 'pelvis', at: i ? [-.15, 0, -.025 - .012 * i] : [-.2, 0, .02] })),
+  ...Array.from({ length: TAIL }, (_, i) => ({ name: 'tail' + i, parent: i ? 'tail' + (i - 1) : 'pelvis', at: i ? [-.165, 0, -.022 - .012 * i] : [-.2, 0, .02] })),
   { name: 'thighL', parent: 'pelvis', at: [0, -R.halfWidth, -.02] }, { name: 'shinL', parent: 'thighL', at: [0, 0, -R.femur] }, { name: 'metaHL', parent: 'shinL', at: [0, 0, -R.tibia] }, { name: 'pawHL', parent: 'metaHL', at: [0, 0, -R.hindMeta] },
   { name: 'thighR', parent: 'pelvis', at: [0, R.halfWidth, -.02] }, { name: 'shinR', parent: 'thighR', at: [0, 0, -R.femur] }, { name: 'metaHR', parent: 'shinR', at: [0, 0, -R.tibia] }, { name: 'pawHR', parent: 'metaHR', at: [0, 0, -R.hindMeta] },
   { name: 'spine', parent: 'pelvis', at: [.4, 0, .02] },
@@ -106,114 +134,124 @@ function buildDragonMesh(tier, variant) {
   // The hide is authored at a hip height of .84; LOW sets it onto the skeleton's lower hip. `bw` is the bind pose raised by LOW
   // (so bone-local parts authored at the old heights land right) and M() lowers model-space points.
   const LOW = .84 - R.hip, bw = bw0.map((v, i) => i % 3 === 2 ? v + LOW : v), M = (p) => [p[0], p[1], p[2] - LOW];
-  const BK = R.bulk[variant] || R.bulk.crimsonTyrant, girth = (i) => i <= 10 ? [BK.trunkW, BK.trunkH] : i <= 14 ? [BK.neck, BK.neck] : [BK.head, BK.head * .9];
+  const BK = R.bulk[variant] || R.bulk.crimsonTyrant, MS = R.mesh;
   const lerpHex = (a, b, t) => { t = clamp01(t); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
   const at = (bone, p) => { const i = BI[bone] * 3; return [p[0] - bw[i], p[1] - bw[i + 1], p[2] - bw[i + 2]]; };
-  // The hide: tail root to nose in one skin. A heavy haunch, a tucked waist with ribs over a lean flank, a deep chest, a long
-  // neck rising into an angular wedge of a skull with a narrow muzzle; lit along the top, dark beneath.
-  const BODY = [ // [f, u, half width, half height, bone, bone b, weight b]
-    [-.66, .86, .055, .065, 'pelvis'], [-.6, .86, .115, .135, 'pelvis'], [-.52, .85, .165, .19, 'pelvis'], [-.42, .84, .18, .21, 'pelvis'],
-    [-.3, .84, .165, .195, 'pelvis', 'spine', .3], [-.16, .86, .135, .155, 'pelvis', 'spine', .65], [-.02, .86, .132, .16, 'spine'], [.12, .85, .158, .2, 'spine', 'chest', .4],
-    [.24, .83, .175, .23, 'chest'], [.34, .83, .17, .235, 'chest'], [.43, .88, .135, .18, 'chest', 'neck', .4], [.5, .96, .1, .125, 'neck'],
-    [.58, 1.03, .078, .095, 'neck', 'neck2', .5], [.66, 1.09, .068, .08, 'neck2'], [.74, 1.13, .066, .078, 'neck2', 'head', .6], [.8, 1.15, .068, .08, 'head'],
-    [.87, 1.15, .058, .066, 'head'], [.94, 1.135, .043, .052, 'head'], [1.0, 1.115, .033, .04, 'head'], [1.06, 1.1, .026, .031, 'head'], [1.11, 1.085, .018, .022, 'head'], [1.145, 1.075, 0, 0, 'head']];
-  const shade = (i, k, st) => { const rib = i >= 5 && i <= 7 && Math.abs(st) < .5 && k % 3 === 0 ? .35 : 0; // ribs over the lean flank
-    const mot = ((((i * 2654435761) ^ (k * 40503)) >>> 0) % 100) / 100; // mottled fur
-    let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .3) / .7) * .8); c = lerpHex(c, C.dark, rib + (mot < .3 ? .35 : 0)); if (mot > .85) c = lerpHex(c, C.hideLight, .3);
-    // banded ventral plates under the throat and belly
-    return st < -.25 ? lerpHex(lerpHex(c, C.belly, Math.min(1, (-.25 - st) / .4)), i % 2 ? C.plate : C.dark, st < -.6 ? .45 : 0) : c; };
-  for (let i = 0; i < BODY.length; i++) { const [gw, gh] = girth(i); BODY[i][2] *= gw; BODY[i][3] *= gh; }
-  B.color(C.hide).loft({ seg: low ? 8 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: M([f, 0, u]), rx, rz, bones: [a, b ?? a, w || 0] })), tone: shade, caps: false });
-  // the tail: one tapering skin through six bones, a row of spikes, the bone blade at the end
-  { const T = [[-.6, .86, .085 * BK.tail, .09 * BK.tail, 'pelvis', 'tail0', .4]]; for (let i = 0; i < TAIL; i++) { const p = [bw[BI['tail' + i] * 3], 0, bw[BI['tail' + i] * 3 + 2]], g = BK.tail * (1 - i / (TAIL + 1)); T.push([p[0], p[2], .07 * g + .008, .072 * g + .008, 'tail' + i, i < TAIL - 1 ? 'tail' + (i + 1) : 'tail' + i, .35]); }
-    B.color(C.hide).loft({ seg: low ? 6 : 9, sections: T.map(([f, u, rx, rz, a, b, w]) => ({ at: M([f, 0, u]), rx, rz, bones: [a, b, w] })), tone: (i, k, st) => i > 3 ? C.dark : shade(6, k, st) });
-    for (let i = 1; i < TAIL - 1; i += low ? 2 : 1) { const b = 'tail' + i; B.bone(b).color(C.dark).lathe({ at: [-.06, 0, .03], F: [-.4, 0, .9], rings: [[0, .022], [.07 - i * .006, 0]], seg: 5, caps: false }); }
-    // the spiked club at its end
-    B.bone('tail' + (TAIL - 1)).color(C.dark).ellipsoid({ at: [-.12, 0, 0], radius: [.08, .05, .05], rings: 3, seg: low ? 6 : 8 });
-    for (const [a, b] of low ? [[0, 1]] : [[0, 1], [0, -1], [1, 0], [-1, 0], [.7, .7]]) B.color(C.horn).lathe({ at: [-.12, a * .045, b * .045], F: [-.2, a, b], rings: [[0, .016], [.06, 0]], seg: 4, caps: false }); }
-  // Muscle (Tim, 2026-11-11: "more muscular ... more texture or detail"): masses over the hide on the bones that move them:
-  // shoulder blades and deltoids over the forelegs, glutes and thighs on the haunch, a heavy forearm and calf, cords up the neck.
+  // The hide (Tim, 2026-11-12: "the back halves are boxy and weird"): ONE skin from the tail's tip to the nose. The tail grows
+  // thick out of the hips and tapers to the club; the haunch is the widest, deepest part of the trunk, a smooth muscular mass
+  // that narrows into the waist, swells again over the deep chest and runs up the long neck into a wedge of a skull. No
+  // separate lumps: the muscle is in the cross-sections. Lit along the top, banded plates beneath.
+  const tailRows = [];
+  for (let i = 0; i < TAIL; i++) { const k = BI['tail' + i] * 3, g = Math.pow(1 - i / (TAIL + .4), 1.15);
+    tailRows.push([bw[k], bw[k + 2], (MS.tailRoot * g + .012) * BK.tail, (MS.tailRoot * .98 * g + .012) * BK.tail, 'tail' + i, i < TAIL - 1 ? 'tail' + (i + 1) : 'tail' + i, i < TAIL - 1 ? .3 : 0, 't']); }
+  { const k = BI['tail' + (TAIL - 1)] * 3; tailRows.push([bw[k] - .1, bw[k + 2] - .01, .016, .016, 'tail' + (TAIL - 1), 'tail' + (TAIL - 1), 0, 't']); }
+  const BODY = [ // [f, u, half width, half height, bone, bone b, weight b, kind: t tail, b trunk, n neck, h head]
+    ...tailRows.reverse(),
+    ...MS.trunk.map(([f, u, rx, rz, a, b, w]) => [f, u, rx, rz, a, b ?? a, w || 0, 'b']),
+    [.5, .96, .1, .125, 'neck', 'neck', 0, 'n'], [.58, 1.03, .078, .095, 'neck', 'neck2', .5, 'n'], [.66, 1.09, .068, .08, 'neck2', 'neck2', 0, 'n'], [.74, 1.13, .066, .078, 'neck2', 'head', .6, 'n'],
+    [.8, 1.15, .068, .08, 'head', 'head', 0, 'h'], [.87, 1.15, .058, .066, 'head', 'head', 0, 'h'], [.94, 1.135, .043, .052, 'head', 'head', 0, 'h'], [1.0, 1.115, .033, .04, 'head', 'head', 0, 'h'],
+    [1.06, 1.1, .026, .031, 'head', 'head', 0, 'h'], [1.11, 1.085, .018, .022, 'head', 'head', 0, 'h'], [1.14, 1.077, .006, .007, 'head', 'head', 0, 'h']];
+  for (const row of BODY) { const kd = row[7], [gw, gh] = kd === 'b' ? [BK.trunkW, BK.trunkH] : kd === 'n' ? [BK.neck, BK.neck] : kd === 'h' ? [BK.head, BK.head * .9] : [1, 1]; row[2] *= gw; row[3] *= gh; }
+  const trunk0 = tailRows.length;
+  const shade = (i, k, st) => {
+    // scale bands across the back, a darker spine line, ribs over the waist; lit along the top
+    const band = (i + (k % 2)) % 2 ? .1 : 0, ribs = i >= trunk0 + 4 && i <= trunk0 + 6 && Math.abs(st) < .55 && k % 2 === 0 ? .18 : 0;
+    let c = lerpHex(C.hide, C.hideLight, Math.max(0, (st - .2) / .8) * .75); c = lerpHex(c, C.dark, band + ribs + (st > .9 ? .25 : 0) + (BODY[i][7] === 't' && i < 3 ? .3 : 0));
+    // banded ventral plates under the throat, chest and belly (not under the tail's end)
+    return st < -.3 && BODY[i][7] !== 'h' ? lerpHex(lerpHex(c, C.belly, Math.min(1, (-.3 - st) / .4) * (BODY[i][7] === 't' ? .5 : 1)), i % 2 ? C.plate : C.dark, st < -.65 ? .4 : 0) : c; };
+  B.color(C.hide).loft({ seg: low ? 12 : 16, sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: M([f, 0, u]), rx, rz, bones: [a, b ?? a, w || 0] })), tone: shade, caps: false });
+  // a row of spikes down the tail and the spiked club at its end
+  for (let i = 1; i < TAIL - 1; i += low ? 2 : 1) { const b = 'tail' + i, r = (MS.tailRoot * Math.pow(1 - i / (TAIL + .4), 1.15) + .012) * BK.tail;
+    B.bone(b).color(C.dark).lathe({ at: [-.04, 0, r * .8], F: [-.45, 0, .9], rings: [[0, .022], [.075 - i * .007, 0]], seg: 5, caps: false }); }
+  B.bone('tail' + (TAIL - 1)).color(C.dark).ellipsoid({ at: [-.1, 0, 0], radius: [.085 * BK.tail * .8, .055 * BK.tail * .8, .055 * BK.tail * .8], rings: 3, seg: low ? 6 : 8 });
+  for (const [a, b] of low ? [[0, 1]] : [[0, 1], [0, -1], [1, 0], [-1, 0], [.7, .7]]) B.color(C.horn).lathe({ at: [-.1, a * .05, b * .05], F: [-.2, a, b], rings: [[0, .018], [.07, 0]], seg: 4, caps: false });
+  // cords up the neck (flat, so they read as muscle under the hide, not lumps)
   const mass = (bone, p, r, F = [1, 0, 0], U = [0, 0, 1], tone = C.hideLight) => B.bone(bone).color(tone).ellipsoid({ at: at(bone, [p[0], p[1] * (bone === 'neck' ? BK.neck : BK.trunkW), .84 + (p[2] - .84) * (bone === 'neck' ? 1 : BK.trunkH)]), radius: r, rings: low ? 3 : 4, seg: low ? 6 : 9, F, U });
-  for (const s of [-1, 1]) {
-    mass('chest', [.3, s * .125, .9], [.13, .032, .085], [.6, 0, -.8], [.8, s * .2, .6]); // shoulder blade
-    mass('chest', [.36, s * .135, .76], [.1, .035, .11], [.3, 0, -.95], [.95, 0, .3], C.hide); // deltoid over the arm root
-    mass('pelvis', [-.44, s * .13, .9], [.15, .038, .11], [1, 0, -.3]); // glute
-    mass('pelvis', [-.38, s * .145, .76], [.12, .04, .13], [.3, 0, -.95], [.95, 0, .3], C.hide); // haunch over the thigh root
-    if (!low) { const [th, fa] = s < 0 ? ['thighL', 'foreL'] : ['thighR', 'foreR'];
-      B.bone(th).color(C.hide).ellipsoid({ at: [.03, 0, -.08], radius: [.085, .07, .11], rings: 4, seg: 8 }); // thigh
-      B.bone(fa).color(C.hide).ellipsoid({ at: [.01, 0, -.06], radius: [.055, .05, .08], rings: 4, seg: 8 }); // forearm
-      mass('neck', [.52, s * .055, .99], [.1, .035, .045], [.6, 0, .8], [-.8, 0, .6], C.hide); } // neck cord
+  if (!low) for (const s of [-1, 1]) {
+    mass('neck', [.52, s * .055, .99], [.1, .035, .045], [.6, 0, .8], [-.8, 0, .6], C.hide);
   }
-  // spines down the back, longest over the shoulders (on the bone beneath each)
+  // spines down the back, longest over the shoulders and the hips (on the bone beneath each)
   { const n = low ? 6 : full ? 15 : 11; for (let i = 0; i < n; i++) { const f = i / (n - 1), x = .44 - f * 1.0, h = (.2 - Math.abs(f - .25) * .16) * (i % 2 ? .75 : 1);
-      let q = 1; while (q < BODY.length - 2 && BODY[q + 1][0] < x) q++; const top = BODY[q][1] + BODY[q][3] - .01, bone = x < -.25 ? 'pelvis' : x < .12 ? 'spine' : 'chest';
+      let q = trunk0; while (q < BODY.length - 2 && BODY[q + 1][0] < x) q++; const top = BODY[q][1] + BODY[q][3] - .015, bone = x < -.25 ? 'pelvis' : x < .12 ? 'spine' : 'chest';
       B.bone(bone).color(i % 3 === 0 ? C.boneDark : C.dark).lathe({ at: at(bone, [x, 0, top]), F: [-.45, 0, .9], rings: [[0, .03], [h * .6, .012], [h, 0]], rs: .55, seg: low ? 4 : 6, caps: false }); } }
-  // the skull's detail: a brow ridge over each slit eye, cheek plates, teeth along the upper jaw; the lower jaw opens on fire
+  // the skull's detail: a brow ridge over each slit eye, teeth along the upper jaw; the lower jaw opens on fire
   for (const s of [-1, 1]) {
     if (!low) B.bone('head').color(C.dark).ellipsoid({ at: at('head', [.88, s * .045 * BK.head, 1.19]), radius: [.08, .024, .02], rings: 3, seg: 7, F: [1, 0, -.15] });
     B.bone('head').color(C.eye, E_EYE).ellipsoid({ at: at('head', [.9, s * .052 * BK.head, 1.165]), radius: [.025, .006, .009], rings: 2, seg: 6 });
     if (!low) for (let i = 0; i < 5; i++) B.color(C.bone).lathe({ at: at('head', [.88 + i * .045, s * (.03 - i * .003) * BK.head, 1.085]), F: [0, 0, -1], rings: [[0, .009], [.03, 0]], seg: 4, caps: false });
   }
-  { const J = [[.82, 1.075, .045, .022], [.9, 1.065, .038, .02], [.98, 1.05, .028, .015], [1.05, 1.035, .016, .01], [1.08, 1.03, 0, 0]];
-    B.color(C.dark).loft({ seg: 8, sections: J.map(([f, u, rx, rz]) => ({ at: M([f, 0, u]), rx: rx * BK.head, rz: rz * 1.3, bones: ['jaw', 'jaw', 0] })), caps: false });
-    if (!low) B.bone('jaw').color(C.ember, E_MOUTH).ellipsoid({ at: at('jaw', [.92, 0, 1.085]), radius: [.07, .025, .008], rings: 2, seg: 6 }); } // the fire in its mouth
+  { const J = [[.8, 1.08, .05, .026], [.9, 1.065, .038, .02], [.98, 1.05, .028, .015], [1.05, 1.035, .016, .01], [1.08, 1.03, .004, .003]];
+    B.color(C.dark).loft({ seg: low ? 6 : 8, sections: J.map(([f, u, rx, rz]) => ({ at: M([f, 0, u]), rx: rx * BK.head, rz: rz * 1.3, bones: ['jaw', 'jaw', 0] })), caps: false });
+    if (!low) B.bone('jaw').color(C.ember, E_MOUTH).ellipsoid({ at: at('jaw', [.92, 0, 1.085]), radius: [.07, .025, .008], rings: 2, seg: 6 }); }
   // horns: thick at the brow, swept back over the skull and turning up at the tips, ridged
   for (const s of [-1, 1]) { const hw = s * BK.head, pts = low ? [[.84, hw * .05, 1.2], [.62, hw * .1, 1.27], [.46, hw * .11, 1.31], [.38, hw * .1, 1.38]] : [[.84, hw * .05, 1.2], [.74, hw * .08, 1.25], [.62, hw * .1, 1.27], [.52, hw * .115, 1.29], [.44, hw * .11, 1.33], [.38, hw * .1, 1.39]];
-    B.color(C.horn).loft({ seg: low ? 5 : 7, sections: pts.map((p, i) => ({ at: M(p), rx: .05 * (1 - i / pts.length) + .004, rz: .042 * (1 - i / pts.length) + .004, bones: ['head', 'head', 0] })), tone: (i) => i > 3 ? C.bone : i > 1 ? C.boneDark : C.horn }); }
-  // a crown of short horns behind the swept ones
+    B.color(C.horn).loft({ seg: low ? 4 : 7, sections: pts.map((p, i) => ({ at: M(p), rx: .05 * (1 - i / pts.length) + .004, rz: .042 * (1 - i / pts.length) + .004, bones: ['head', 'head', 0] })), tone: (i) => i > 3 ? C.bone : i > 1 ? C.boneDark : C.horn }); }
   if (!low) for (const [y, f] of [[0, .76], [-.035, .74], [.035, .74]]) B.bone('head').color(C.horn).lathe({ at: at('head', [f, y, 1.2]), F: [-.6, y * 4, .8], rings: [[0, .016], [.06, 0]], seg: 4, caps: false });
-  // The wings: an arm, a forearm and three long fingers; membranes stretched between the fingers, and the broad one from the last
-  // finger back to the flank and down to the haunch, so the wing is joined to the body along its whole length. Bound spread
-  // (WING); folded, it lies over the back like a cape. Dark at the root, wine-red toward the scalloped trailing edges.
-  const bodyAt = (f) => { let k = 0; while (k < BODY.length - 2 && BODY[k + 1][0] < f) k++;
+  // The wings (Tim, 2026-11-12: "pretty large and properly dragon-like"): an arm and forearm of bone, five long fingers fanned
+  // from the wrist (three on their own bones, two between them skinned half to each), the membrane stretched between them with
+  // its trailing edge scalloped between the fingertips, and the broad last panel from the hindmost finger back to the flank and
+  // down to the haunch. Bound spread (WING); folded, it lies over the back like a cape. Dark at the root, lit toward the edges.
+  const bodyAt = (f) => { let k = trunk0; while (k < BODY.length - 2 && BODY[k + 1][0] < f) k++;
     const A = BODY[k], Bq = BODY[k + 1], q = Math.max(0, Math.min(1, (f - A[0]) / (Bq[0] - A[0] || 1))), m = (n) => A[n] + (Bq[n] - A[n]) * q, row = q < .5 ? A : Bq;
     return { u: m(1), rx: m(2), rz: m(3), bone: (row[6] || 0) >= .5 ? row[5] : row[4] }; };
   const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const memTone = (edge, root) => lerpHex(lerpHex(C.membrane, C.membraneEdge, edge * .85), C.dark, root * .35);
+  const scallop = (variant === 'doomChaser' ? DOOM_ART : DRAGON_ART).scallop ?? .3;
   for (const s of [-1, 1]) {
     const tag = s < 0 ? 'L' : 'R', Wp = (n) => [WING[n][0], s * WING[n][1], WING[n][2]], wr = Wp('wrist'), el = Wp('elbow'), sh = Wp('shoulder');
-    const tips = [Wp('tip0'), Wp('tip1'), Wp('tip2')], fb = ['wingTip' + tag, 'wingF1' + tag, 'wingF2' + tag];
-    // between the fingers: fans from the wrist, the outer edge scalloped in between the fingertips
-    const radial = low ? 2 : full ? 5 : 3, across = low ? 3 : full ? 4 : 3;
-    for (let f = 0; f < 2; f++) { const grid = [];
-      for (let r = 0; r < radial; r++) { const t = .06 + .94 * r / (radial - 1), row = [];
-        for (let c = 0; c < across; c++) { const u = c / (across - 1), out = lerp3(tips[f], tips[f + 1], u), k = t * (1 - .24 * Math.sin(Math.PI * u) * t * t);
+    // the fingers, leading to trailing: [tip, bone a, bone b, weight b]
+    const FING = ['tip0', 'tipA', 'tip1', 'tipB', 'tip2'].map((n) => [Wp(n)]);
+    // a finger's skin as a place on the chain wingTip (0) .. wingF1 (1) .. wingF2 (2); between two fingers it is interpolated
+    const CHAIN = ['wingTip' + tag, 'wingF1' + tag, 'wingF2' + tag], chainSkin = (p) => p < 1 ? [CHAIN[0], CHAIN[1], p] : [CHAIN[1], CHAIN[2], Math.min(1, p - 1)];
+    // between the fingers: fans from the wrist, each trailing edge scalloped in between its two fingertips
+    const radial = low ? 2 : full ? 5 : 3, across = low ? 2 : full ? 4 : 3;
+    for (let f = 0; f < FING.length - 1; f += low ? 2 : 1) { const f2 = low ? f + 2 : f + 1, grid = [];
+      for (let r = 0; r < radial; r++) { const t = .05 + .95 * r / (radial - 1), row = [];
+        for (let c = 0; c < across; c++) { const u = c / (across - 1), out = lerp3(FING[f][0], FING[f2][0], u), k = t * (1 - scallop * Math.sin(Math.PI * u) * t * t);
           row.push(lerp3(wr, out, k)); }
         grid.push(row); }
-      B.sheet({ grid: grid.map((row) => row.map(M)), vertBones: (r, c) => [fb[f], fb[f + 1], c / (across - 1)], tone: (r, c) => memTone(r / (radial - 1), 1 - r / (radial - 1)) }); }
-    // from the last finger and the arm back to the flank: u runs from the finger (0) to the body (1), t from the arm (0) to the
+      B.sheet({ grid: grid.map((row) => row.map(M)), vertBones: (r, c) => chainSkin((f + (f2 - f) * c / (across - 1)) / 2), tone: (r, c) => memTone(r / (radial - 1), 1 - r / (radial - 1)) }); }
+    // from the hindmost finger and the arm back to the flank: u runs from the finger (0) to the body (1), t from the arm (0) to the
     // trailing edge (1). The body edge follows the flank from the shoulder to the haunch.
-    const nu = low ? 3 : full ? 6 : 4, nt = low ? 3 : full ? 7 : 4, haunchF = -.52, grid = [], bones = [];
+    const nu = low ? 3 : full ? 6 : 4, nt = low ? 3 : full ? 7 : 4, haunchF = MS.wingHaunch, grid = [], bones = [], tip2 = FING[4][0];
     const front = (u) => u < .5 ? lerp3(wr, el, u * 2) : lerp3(el, sh, u * 2 - 1);
-    const flank = (t) => { const f = sh[0] + (haunchF - sh[0]) * t, b = bodyAt(f); return [f, s * b.rx * .78, b.u + b.rz * .6]; };
+    const flank = (t) => { const f = sh[0] + (haunchF - sh[0]) * t, b = bodyAt(f); return [f, s * b.rx * MS.wingRoot[0], b.u + b.rz * MS.wingRoot[1]]; };
     for (let r = 0; r < nu; r++) { const u = r / (nu - 1), row = [], brow = [];
-      for (let c = 0; c < nt; c++) { const t = c / (nt - 1), back = lerp3(tips[2], flank(1), u), sag = .2 * Math.sin(Math.PI * u) * t * t;
+      for (let c = 0; c < nt; c++) { const t = c / (nt - 1), back = lerp3(tip2, flank(1), u), sag = scallop * .9 * Math.sin(Math.PI * u) * t * t;
         let p = lerp3(front(u), back, t * (1 - sag)); const fl = flank(t), w = u * u * u * u;
         p = c === 0 ? front(u) : r === nu - 1 ? fl : [p[0] + (fl[0] - p[0]) * w, p[1] + (fl[1] - p[1]) * w, p[2] + (fl[2] - p[2]) * w];
         row.push(p);
         const body = bodyAt(p[0]).bone;
-        brow.push(u < .45 ? [fb[2], 'wingMid' + tag, clamp01(1 - t * 3.5)] : [u < .75 ? 'wing' + tag : 'wing' + tag, body, smooth((u - .45) / .55)]); }
+        brow.push(u < .45 ? ['wingF2' + tag, 'wingMid' + tag, clamp01(1 - t * 3.5)] : ['wing' + tag, body, smooth((u - .45) / .55)]); }
       grid.push(row); bones.push(brow); }
     B.sheet({ grid: grid.map((row) => row.map(M)), vertBones: (r, c) => bones[r][c], tone: (r, c) => memTone(c / (nt - 1) * (1 - r / (nu - 1) * .5), r / (nu - 1)) });
     // the bones: a heavy arm and forearm, long fingers tapering to points, a hooked thumb claw at the wrist
     const segs = low ? 4 : 6;
-    B.color(C.wingBone).loft({ seg: segs, sections: [[sh, .04, ['wing' + tag, 'wing' + tag, 0]], [lerp3(sh, el, .5), .032, ['wing' + tag, 'wing' + tag, 0]], [el, .03, ['wing' + tag, 'wingMid' + tag, .5]],
-      [lerp3(el, wr, .5), .024, ['wingMid' + tag, 'wingMid' + tag, 0]], [wr, .026, ['wingMid' + tag, 'wingMid' + tag, 0]]].filter((_, i) => !low || i % 2 === 0).map(([p, r0, bn]) => ({ at: M(p), rx: r0 * 1.3, rz: r0 * 1.1, bones: bn })) });
-    for (let f = 0; f < 3; f++) { if (low && f === 1) continue;
-      B.color(C.wingBone).loft({ seg: low ? 3 : 4, sections: [[wr, .018], [lerp3(wr, tips[f], .5), .012], [tips[f], .003]].filter((_, i) => !low || i !== 1).map(([p, r0]) => ({ at: M(p), rx: r0 * 1.3, rz: r0 * 1.3, bones: [fb[f], fb[f], 0] })) }); }
-    if (!low) { B.bone('wingMid' + tag).color(C.bone).lathe({ at: at('wingMid' + tag, wr), F: [.8, s * .1, .5], rings: [[0, .016], [.08, 0]], seg: 4, caps: false });
-      B.bone(fb[0]).color(C.bone).lathe({ at: at(fb[0], tips[0]), F: [-.3, s * .9, -.2], rings: [[0, .008], [.05, 0]], seg: 4, caps: false }); }
+    B.color(C.wingBone).loft({ seg: segs, sections: [[sh, .045, ['wing' + tag, 'wing' + tag, 0]], [lerp3(sh, el, .5), .034, ['wing' + tag, 'wing' + tag, 0]], [el, .032, ['wing' + tag, 'wingMid' + tag, .5]],
+      [lerp3(el, wr, .5), .026, ['wingMid' + tag, 'wingMid' + tag, 0]], [wr, .03, ['wingMid' + tag, 'wingMid' + tag, 0]]].filter((_, i) => !low || i % 2 === 0).map(([p, r0, bn]) => ({ at: M(p), rx: r0 * 1.3, rz: r0 * 1.1, bones: bn })) });
+    for (let f = 0; f < FING.length; f++) { if (low && f % 2) continue; const tp = FING[f][0], r0 = f === 0 ? .022 : .016;
+      B.color(C.wingBone).loft({ seg: low ? 3 : 4, sections: [[wr, r0], [lerp3(wr, tp, .5), r0 * .65], [tp, .003]].filter((_, i) => !low || i !== 1).map(([p, rr]) => ({ at: M(p), rx: rr * 1.3, rz: rr * 1.3, bones: chainSkin(f / 2) })) }); }
+    if (!low) { B.bone('wingMid' + tag).color(C.bone).lathe({ at: at('wingMid' + tag, wr), F: [.8, s * .1, .5], rings: [[0, .018], [.09, 0]], seg: 4, caps: false });
+      B.bone('wingTip' + tag).color(C.bone).lathe({ at: at('wingTip' + tag, FING[0][0]), F: [-.3, s * .9, -.2], rings: [[0, .008], [.05, 0]], seg: 4, caps: false }); }
   }
-  // legs: lean digitigrade limbs grown out of the body, muscled at the top; three claws on each paw
-  // (Tim, 2026-11-11: the legs were "almost comically small"): heavy limbs, a big muscled thigh and forearm, stout lower legs
-  const HIND = [[.86, .07, .11, 'p'], [.78, .12, .17, 'p', 't', .5], [.68, .115, .16, 't'], [.58, .08, .105, 't', 'm', .5], [.44, .062, .075, 'm'], [.28, .045, .052, 'm', 'l', .5], [.18, .037, .042, 'l'], [.07, .034, .04, 'l'], [.04, .036, .042, 'l']];
-  const FORE = [[.84, .065, .1, 'p'], [.74, .105, .15, 'p', 't', .5], [.64, .1, .135, 't'], [.54, .07, .088, 't', 'm', .5], [.4, .058, .068, 'm'], [.24, .042, .048, 'm', 'l', .5], [.17, .035, .04, 'l'], [.07, .033, .038, 'l'], [.04, .035, .04, 'l']];
+  // the Doom Chaser's scales are burnt glass with violet fire showing through the cracks between them (doom-chaser-render.ts
+  // cracks): thin glowing seams over its flanks, neck and haunch (emissive channel 4, kept out of the outline)
+  if (variant === 'doomChaser' && !low) for (const [f, th, len, tilt] of MS.cracks.slice(0, full ? MS.cracks.length : 6)) for (const s of [-1, 1]) {
+    const b = bodyAt(f), ct = Math.cos(th), st = Math.sin(th), p = [f, s * b.rx * ct * 1.01, b.u + b.rz * st * 1.01], nrm = [0, s * ct / b.rx, st / b.rz];
+    B.bone(b.bone).color(C.ember, E_CRACK).ellipsoid({ at: at(b.bone, p), radius: [len, .007, .004], rings: 2, seg: 4, F: [Math.cos(tilt), 0, Math.sin(tilt)], U: nrm }); }
+  // Legs grown out of the body (Tim, 2026-11-12: "the hind legs should grow out of the haunch with real thigh muscle ... no visible
+  // seams"): each limb's skin starts inside the trunk on the trunk's own bone and blends onto the limb over its first sections,
+  // so the haunch flows into a broad drumstick of a thigh, a lean shin, a jointed hock; the foreleg out of the chest the same way.
+  // Sections in limb units g (0 at the hip or shoulder, 1 at the knee or elbow, 2 at the hock or wrist, 3 at the paw).
   for (const L of LEGS) {
-    const top = BI[L.top] * 3, x = bw[top], y = bw[top + 1], parent = L.hind ? 'pelvis' : 'chest', name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
-    const base = L.hind ? bw0[BI.pelvis * 3 + 2] - R.hip : bw0[BI.chest * 3 + 2] - R.hip, kh = R.hip / .84, lg = BK.limb;
-    B.color(C.hide).loft({ seg: low ? 6 : 10, up: [1, 0, 0], sections: (L.hind ? HIND : FORE).filter((_, i) => !low || i % 2 === 1 || i === 0 || i === 8).map(([u, rx, rz, a, b, w]) => ({ at: [x, y, u * kh + base], rx: rx * lg * (u > .5 ? 1.1 : 1), rz: rz * lg, bones: [name(a), name(b ?? a), w || 0] })),
-      tone: (i, k, st) => i >= 6 ? C.dark : i < 3 ? shade(L.hind ? 3 : 8, k, st) : C.hide });
-    B.bone(L.paw).color(C.dark).ellipsoid({ at: [.03, 0, -.01], radius: [.075 * lg, .058 * lg, .032], rings: 3, seg: 8 });
+    const top = BI[L.top] * 3, x = bw0[top], y = bw0[top + 1], parent = L.hind ? 'pelvis' : 'chest', name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
+    const J = [L.top, L.mid, L.low, L.paw].map((n) => bw0[BI[n] * 3 + 2]), hAt = (g) => g <= 0 ? J[0] - g * (J[0] - J[1]) : g >= 3 ? J[3] : J[Math.floor(g)] + (J[Math.floor(g) + 1] - J[Math.floor(g)]) * (g - Math.floor(g));
+    const lg = BK.limb, prof = L.hind ? MS.hind : MS.fore, keep = low ? MS.lowKeep : null;
+    B.color(C.hide).loft({ seg: low ? 7 : 12, up: [1, 0, 0], sections: prof.filter((_, i) => !keep || keep.includes(i)).map(([g, rx, rz, fw, a, b, w]) => ({ at: [x + fw * lg, y + L.side * Math.max(0, rx * lg - .14) * (g < .6 ? .45 : 0), hAt(g)], rx: rx * lg, rz: rz * lg, bones: [name(a), name(b ?? a), w || 0] })),
+      // the limb's rings are measured fore and aft (st), so its tone runs down the leg: the trunk's own flank colour where it
+      // grows out of the body (no seam), darkening toward the scaled lower leg
+      tone: (i, k) => { const g = prof[keep ? keep[i] : i][0]; return g >= 2.1 ? C.dark : lerpHex(C.hide, C.dark, clamp01((g - .3) * .22) + (k % 2 && g > .9 ? .08 : 0)); } });
+    B.bone(L.paw).color(C.dark).ellipsoid({ at: [.03, 0, -.01], radius: [.075 * lg, .058 * lg, .032], rings: 3, seg: low ? 6 : 8 });
     for (const c of low ? [0] : [-1, 0, 1]) B.color(C.claw).lathe({ at: [.08 + .03 * lg, c * .032 * lg, -.012], F: [1, c * .25, -.6], rings: [[0, .016 * lg], [.075 * lg, 0]], seg: 4, caps: false });
   }
   return B.done();
@@ -227,27 +265,27 @@ export function doomMesh(tier) { return dragonMesh(tier, 'doomChaser'); }
 // ------------------------------------------------------------------------------------------------ track and act
 export function createDragonTrack(variant = 'crimsonTyrant') {
   return { pose: createPose(DRAGON_SKELETON), gait: createGait(LEGS.map((L, k) => ({ side: L.side * .12, fore: L.hind ? -.42 : .36, phase: WALK_PHASE[k] }))),
-    yaw: NaN, at: NaN, key: '', blendAt: -Infinity, from: new Float64Array(K), shown: new Float64Array(K), hp: NaN, hitAt: -Infinity, hitSide: 1,
-    airWas: 0, landAt: -Infinity, landHard: 0, impactAt: -Infinity, impactK: 0, contactWas: 0, beatSeq: -1, beatAt: -Infinity, beatK: 0, deathAt: null, x: 0, y: 0, z: 0, deathDir: 1, gallop: 0, speed: 0,
+    yaw: NaN, at: NaN, key: '', blendAt: -Infinity, blendFor: 0, from: new Float64Array(K), shown: new Float64Array(K), hp: NaN, hitAt: -Infinity, hitSide: 1,
+    airWas: 0, flapPh: 0, landAt: -Infinity, landHard: 0, impactAt: -Infinity, impactK: 0, contactWas: 0, beatSeq: -1, beatAt: -Infinity, beatK: 0, deathAt: null, x: 0, y: 0, z: 0, deathDir: 1, gallop: 0, speed: 0,
     variant, frame: { kind: variant, tier: 'full', mesh: null, skin: null, boneCount: DRAGON_SKELETON.count, alpha: 1, hit: 0, emitK: new Float32Array(4), emitA: new Float32Array(4),
       x: 0, y: 0, z: 0, yaw: 0, scale: 1, shadow: 1, air: 0, feet: new Float64Array(8), phase: '', contact: 0, cloud: false } };
 }
 const V = new Float64Array(K), W = new Float64Array(K);
 const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
-function lerpVec(o, a, b, t) { const A = POSE_VEC[a], Bv = POSE_VEC[b]; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
-function lerpInto(o, b, t) { const Bv = POSE_VEC[b]; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
-function phaseOf(s, id) { const m = ATTACK_MODULES[id] || {}, dur = s.phase === 'windup' ? (m.windup || .3) * (s.paced ? BOSS_PACE.windup : 1) : s.phase === 'active' ? m.active || 0 : s.phase === 'recover' ? m.recover || .3 : 0; return dur > 0 ? clamp01(1 - (Number(s.t) || 0) / dur) : 1; }
-const ACT = { aim: false, aimX: 0, aimY: 0, watch: false, still: false, gallop: false, contact: 0, phase: '', beat: -1, beatK: 0, fire: 0, airTuck: 0, spinYaw: NaN };
-const CONTACT = new Set(['slam', 'slamBoth', 'wingLash', 'roar', 'tailL', 'tailR', 'wingL', 'wingR', 'bite']);
+const ACT = { pose: '', aim: false, aimX: 0, aimY: 0, watch: false, still: false, gallop: false, contact: 0, phase: '', beat: -1, beatK: 0, fire: 0, airTuck: 0, spinYaw: NaN };
+const CONTACT = new Set(['slam', 'slamBoth', 'wingLash', 'roar', 'tailL', 'tailR', 'wingL', 'wingR', 'bite', 'diveLand']);
+// the Doom Chaser's Falling Dark (monster-pack.ts doomFall) poses only rise, fly and slamBoth; its stages are the aerial slam's
+const FALL_POSE = Object.freeze({ track: 'hang', drop: 'dive', done: 'diveLand' });
 function act(e, tr, now, target) {
   const s = e.pack, id = s?.attack, ph = s?.phase, d = s?.data || {}, pose = e.dragonPose;
-  ACT.aim = false; ACT.watch = false; ACT.still = !!id; ACT.gallop = false; ACT.contact = 0; ACT.phase = id ? `${id}:${ph}:${pose || ''}` : 'move'; ACT.beat = -1; ACT.beatK = 0; ACT.fire = 0; ACT.airTuck = 0; ACT.spinYaw = NaN;
+  ACT.pose = ''; ACT.aim = false; ACT.watch = false; ACT.still = !!id; ACT.gallop = false; ACT.contact = 0; ACT.phase = id ? `${id}:${ph}:${pose || ''}` : 'move'; ACT.beat = -1; ACT.beatK = 0; ACT.fire = 0; ACT.airTuck = 0; ACT.spinYaw = NaN;
   const aimDir = (a) => { if (a && Math.hypot(a.x, a.y) > .01) { const l = Math.hypot(a.x, a.y); ACT.aimX = a.x / l; ACT.aimY = a.y / l; ACT.aim = true; } };
-  if (!id && !pose) { setVec(V, tr.speed > .5 ? 'fly' : 'idle'); if (tr.speed > .5) setVec(V, 'idle'); ACT.watch = true; return; }
-  setVec(V, POSE_VEC[pose] ? pose : 'idle');
+  if (!id && !pose) { setVec(V, 'idle'); ACT.watch = true; return; }
+  const shown = id === 'doomFall' && FALL_POSE[d.mode] ? FALL_POSE[d.mode] : pose;
+  setVec(V, POSE_VEC[shown] ? shown : 'idle'); ACT.pose = shown || '';
   if (d.aim) aimDir(d.aim); else if (target) aimDir({ x: target.x - e.x, y: target.y - e.y });
   if (pose === 'fly' || pose === 'roll') ACT.still = false; // it moves under the game's strafe or roll
-  if (CONTACT.has(pose)) ACT.contact = 1;
+  if (CONTACT.has(shown)) ACT.contact = 1;
   ACT.fire = Math.max(Number(e.dragonCharge) || 0, pose === 'breath' ? 1.2 : pose === 'charge' ? .6 : 0);
   ACT.airTuck = (Number(e.dragonAir) || 0) > .1 ? 1 : 0;
 }
@@ -276,14 +314,15 @@ export function sampleDragon(tr, e, env) {
   if (!dead) { const delta = Math.atan2(Math.sin(want - tr.yaw), Math.cos(want - tr.yaw)), rate = e.pack?.attack ? G.attackTurnRate : tr.gait.moving < .1 ? G.standTurnRate : G.turnRate;
     let turn = Math.max(-1, Math.min(1, dt * rate)) * delta; if (!e.pack?.attack && tr.gait.moving < .1) turn = Math.max(-G.standTurnMax * dt, Math.min(G.standTurnMax * dt, turn)); tr.yaw += turn; }
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
-  const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.phase === 'strike' ? 'strike' : ''}` : e.pack?.evade?.t > 0 ? 'evade' : dead ? 'death' : 'move';
+  // a new pose inside one attack blends too (the aerial slam's hang, dive and landing), over its own time where it has one
+  const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${ACT.pose}` : e.pack?.evade?.t > 0 ? 'evade' : dead ? 'death' : 'move';
   if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
+  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.blendFor = G.poseBlendMs[ACT.pose] || G.blendMs; tr.key = key; }
+  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / (tr.blendFor || G.blendMs));
   for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
   W.set(tr.shown);
   if (ACT.beat >= 0 && ACT.beat !== tr.beatSeq) { tr.beatSeq = ACT.beat; tr.beatAt = now; tr.beatK = ACT.beatK; } else if (ACT.beat < 0) tr.beatSeq = -1;
-  if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = /Wave|Pounce|leapSlam/.test(ACT.phase) ? 1 : .55; }
+  if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = /Wave|Pounce|leapSlam|Dive|Fall/.test(ACT.phase) ? 1 : .55; }
   tr.contactWas = ACT.contact;
   const impT = (now - tr.impactAt) / 1000, impact = impT < G.impactMs / 1000 ? kick(impT, 22, 9) * tr.impactK : 0;
   W[3] += .04 * Math.abs(impact); W[1] -= .1 * impact;
@@ -312,8 +351,16 @@ export function sampleDragon(tr, e, env) {
   if (dead) { const sink = smooth(death / .35), side = easeIn(span(death, .25, .55)); W[3] += .2 * sink; W[1] = -.4 * sink; roll = 1.3 * side * tr.deathDir; alpha *= 1 - span(death, .82, 1);
     if (death < 1e-9) { const px = env.target?.x ?? e.x, py = env.target?.y ?? e.y; tr.deathDir = (px - e.x) * -sf + (py - e.y) * cf > 0 ? -1 : 1; } }
   if (e.phasing || e.untargetable && !e.aloft && !(e.pack?.evade?.t > 0)) alpha *= .55;
+  // Roused, it carries its wings half open as a threat display, wider on the move (Tim, 2026-11-12); aloft they are always spread
+  // and beating (unless it folds them to fall), in deep slow strokes while it hovers, the body heaving on each downstroke.
+  const FL = G.flight;
+  if (ACT.watch && !dead) W[5] = Math.max(W[5], FL.restSpread + (FL.moveSpread - FL.restSpread) * clamp01(tr.speed / .3));
+  const glide = clamp01(W[13]), aloft = air > .15 && !dead, hover = clamp01((W[12] - 1) / .3);
+  const flapAmt = reduce || dead ? 0 : Math.max(clamp01(W[12]), aloft ? 1 : 0) * (1 - glide), amp = FL.amp + (FL.hoverAmp - FL.amp) * hover;
+  tr.flapPh = (tr.flapPh + dt * Math.PI * 2 * (FL.beat + (FL.hoverBeat - FL.beat) * hover)) % (Math.PI * 200);
+  const heave = flapAmt * FL.heave * S * -Math.sin(tr.flapPh - .4), tremble = reduce ? 0 : .035 * W[14];
   const spin = Number(e.dragonSpin) || 0, rolling = e.dragonPose === 'roll' && !dead && !reduce ? t * 9 : 0; // the claw and tail spins turn it; the roll tumbles it
-  setEuler(P, BI.root, yaw + spin, 0, roll + rolling); P.scl[BI.root] = S; resolveBone(P, BI.root, x, y, env.z + air + (rolling ? .25 * S : 0));
+  setEuler(P, BI.root, yaw + spin, 0, roll + rolling); P.scl[BI.root] = S; resolveBone(P, BI.root, x, y, env.z + air + heave * (aloft ? 1 : 0) + (rolling ? .25 * S : 0));
   const breathe = reduce ? 0 : Math.sin(t * 2.4);
   const bob = moving * G.bob * (1 + tr.gallop * 1.8) * (.5 - .5 * Math.cos(cyc * 2)), sway = moving * .014 * Math.sin(cyc) * (1 - tr.gallop);
   const gallopFlex = reduce ? 0 : tr.gallop * moving * .14 * Math.sin(cyc * 2);
@@ -329,17 +376,21 @@ export function sampleDragon(tr, e, env) {
   setEuler(P, BI.jaw, 0, .5 * W[7] * (1 + (reduce ? 0 : .08 * Math.sin(t * 30))), 0); resolveBone(P, BI.jaw);
   // the wings: each bone is turned from its spread (bind) direction to a direction blended between folded and spread in the
   // chest's frame. Folded they lie over the back and breathe; spread they open wide, and in the air (or rearing up) they beat.
-  { const ci = BI.chest * 9, sc = Math.hypot(P.wr[ci], P.wr[ci + 1], P.wr[ci + 2]) || 1, sp = clamp01(W[5]), stream = tr.gallop * moving;
-    const flap = reduce ? 0 : clamp01((sp - .55) / .45) * (air > .15 || W[0] > .25 ? 1 : .35), open = Math.max(sp, .22 * stream);
+  { const ci = BI.chest * 9, sc = Math.hypot(P.wr[ci], P.wr[ci + 1], P.wr[ci + 2]) || 1, stream = tr.gallop * moving, open = Math.max(clamp01(W[5]), .22 * stream, aloft ? 1 - .5 * glide : 0);
     for (const [tag, s] of WING_SIDES) for (let b = 0; b < WING_BONES.length; b++) {
-      const [name, , , fold, face] = WING_BONES[b], bd = WING_BIND[b], beat = flap * (.62 * Math.sin(t * 9.5 - b * .5) + .1), ripple = reduce ? 0 : (1 - open) * .05 * Math.sin(t * 1.8 + b * .9 + s);
-      // the direction (model frame, right side), lifted about the body's long axis by the beat
-      let dx = fold[0] + (bd[0] - fold[0]) * open, dy = fold[1] + (bd[1] - fold[1]) * open, dz = fold[2] + (bd[2] - fold[2]) * open - .12 * stream * (b > 1 ? 1 : 0);
-      const th = (b === 0 ? beat : beat * 1.25) + ripple, c = Math.cos(th), sn = Math.sin(th), y2 = dy * c - dz * sn; dz = dy * sn + dz * c; dy = y2;
-      // the membrane faces: up when spread, outward over the flank when folded
-      // so the membrane hangs down the flank when folded
-      let hx = 0, hy = face * .95 * (1 - open), hz = .3 + .7 * open; const hy2 = hy * c - hz * sn; hz = hy * sn + hz * c; hy = hy2;
-      wingFrame(WF, dx, s * dy, dz, 0, s * hy, hz);
+      const [name, , , fold, face] = WING_BONES[b], bd = WING_BIND[b], ripple = reduce ? 0 : (1 - open) * .05 * Math.sin(t * 1.8 + b * .9 + s);
+      // the beat: the arm leads, the forearm and then the fingers follow a little behind; held a touch high on average
+      const ph = tr.flapPh - (b === 0 ? 0 : b === 1 ? .5 : 1) * FL.lag, g = Math.sin(ph) + .22 * Math.sin(2 * ph), beat = flapAmt * (amp * g + .06) * (b === 0 ? 1 : 1.15);
+      // on the upstroke the hand folds in a little (cupping air on the way down)
+      // half open, the arm is raised out first and the hand stays furled (a mantling threat, not a fan of fingers)
+      const ob = b === 0 ? Math.pow(open, .7) : b === 1 ? open : open * open, o = b >= 2 ? Math.max(0, ob - FL.upFold * flapAmt * Math.max(0, Math.cos(ph))) : ob;
+      // the direction (model frame, right side), lifted about the body's long axis by the beat and the pose, then swept back
+      let dx = fold[0] + (bd[0] - fold[0]) * o, dy = fold[1] + (bd[1] - fold[1]) * o, dz = fold[2] + (bd[2] - fold[2]) * o - .12 * stream * (b > 1 ? 1 : 0);
+      const th = beat + ripple + (W[10] + FL.mantle * open * (1 - open) * (1 - flapAmt)) * (b === 0 ? 1 : 1.12) + tremble * Math.sin(t * 31 + b * 1.7 + s) + W[15] * (W[15] * s > 0 ? -.55 : -.35) * s * (b === 0 ? 1 : .8), c = Math.cos(th), sn = Math.sin(th), y2 = dy * c - dz * sn; dz = dy * sn + dz * c; dy = y2;
+      // the membrane faces: up when spread, outward over the flank (so it hangs down the flank) when folded
+      let hx = 0, hy = FL.foldFace * face * (1 - o), hz = .3 + .7 * o; const hy2 = hy * c - hz * sn; hz = hy * sn + hz * c; hy = hy2;
+      const sw = W[11] * (b === 0 ? .8 : 1), cw = Math.cos(sw), swn = Math.sin(sw), dx2 = dx * cw - dy * swn; dy = dx * swn + dy * cw; dx = dx2; const hx2 = hx * cw - hy * swn; hy = hx * swn + hy * cw; hx = hx2;
+      wingFrame(WF, dx, s * dy, dz, hx, s * hy, hz);
       // world = chest frame * model frame
       for (let k = 0; k < 3; k++) { const vx = WF[k * 3], vy = WF[k * 3 + 1], vz = WF[k * 3 + 2];
         WT[k * 3] = (P.wr[ci] * vx + P.wr[ci + 3] * vy + P.wr[ci + 6] * vz) / sc; WT[k * 3 + 1] = (P.wr[ci + 1] * vx + P.wr[ci + 4] * vy + P.wr[ci + 7] * vz) / sc; WT[k * 3 + 2] = (P.wr[ci + 2] * vx + P.wr[ci + 5] * vy + P.wr[ci + 8] * vz) / sc; }
@@ -353,7 +404,7 @@ export function sampleDragon(tr, e, env) {
     resolveBone(P, top); H[0] = P.wp[top * 3]; H[1] = P.wp[top * 3 + 1]; H[2] = P.wp[top * 3 + 2];
     let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], lift = tr.gait.out[k * 4 + 2], fz = env.z + pawH + lift * G.footLift * S * (1 + tr.gallop);
     const strikePaw = !L.hind && ((L.side > 0 && W[6] > .05) || (L.side < 0 && W[6] < -.05)) ? Math.abs(W[6]) : 0; // the raking forepaw
-    const fold = L.hind ? Math.max(ACT.airTuck * .7, air > .15 ? .5 : 0) : Math.max(air > .15 ? .6 : 0, W[0] > .3 ? (W[0] - .2) * 1.5 : 0);
+    const hang = ACT.pose === 'hang' ? .45 : 1, fold = L.hind ? Math.max(ACT.airTuck * .7, air > .15 ? .5 : 0) * hang : Math.max(air > .15 ? .6 : 0, W[0] > .3 ? (W[0] - .2) * 1.5 : 0);
     if (still && !dead && (fold > .05 || air > .15 || strikePaw > 0)) {
       // the striking paw: cocked high and back (reach 0), or raked out forward and low (reach 1)
       const rest = (L.hind ? -.42 : .36) * S, rk = clamp01(W[8]), reach = strikePaw > 0 ? (-.05 + .4 * rk) * strikePaw : 0, ax = x + cf * (rest + reach * S), ay = y + sf * (rest + reach * S);
@@ -366,14 +417,16 @@ export function sampleDragon(tr, e, env) {
     LEGBONES[0] = top; LEGBONES[1] = BI[L.mid]; LEGBONES[2] = BI[L.low]; LEGBONES[3] = BI[L.paw];
     LENS[0] = (L.hind ? G.femur : G.humerus) * S; LENS[1] = (L.hind ? G.tibia : G.radius) * S; LENS[2] = can;
     const bend = Math.min(1, lift * .9 + fold + strikePaw), toe = lift > 0 || fold > .05 || strikePaw ? -.5 * Math.max(lift, fold, strikePaw) : 0;
-    poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe, L.hind ? -.25 - .5 * bend : .1 + 1.1 * bend);
+    poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe, L.hind ? G.hockLean - .5 * bend : .1 + 1.1 * bend);
     tr.frame.feet[k * 2] = tr.gait.out[k * 4 + 3]; tr.frame.feet[k * 2 + 1] = lift;
   }
   writeSkin(P);
   const F = tr.frame, life = dead ? Math.max(0, 1 - death * 2) : 1, beat = .5 + .5 * Math.sin(t * (ACT.fire > .8 ? 22 : 6));
   F.emitK[0] = life * 1.3; F.emitK[1] = 0;
-  F.emitK[2] = life * (.6 + 1.2 * Math.max(W[7], ACT.fire) + (reduce ? 0 : .2 * beat * ACT.fire)); F.emitK[3] = 0;
-  F.emitA[0] = 1; F.emitA[1] = 0; F.emitA[2] = W[7] > .25 || ACT.fire > .1 ? 1 : 0; F.emitA[3] = 0;
+  F.emitK[2] = life * (.6 + 1.2 * Math.max(W[7], ACT.fire) + (reduce ? 0 : .2 * beat * ACT.fire));
+  F.emitA[0] = 1; F.emitA[1] = 0; F.emitA[2] = W[7] > .25 || ACT.fire > .1 ? 1 : 0;
+  // the Doom Chaser's cracks smoulder, flaring as it charges
+  F.emitK[3] = tr.variant === 'doomChaser' ? life * (.7 + .8 * ACT.fire + (reduce ? 0 : .15 * Math.sin(t * 2.1))) : 0; F.emitA[3] = tr.variant === 'doomChaser' ? 1 : 0;
   F.tier = env.tier || 'full'; F.mesh = dragonMesh(F.tier, tr.variant); F.skin = P.skin; F.alpha = alpha; F.hit = Math.max(0, Math.min(1, Number(e.hitFlash) || 0)) * .8 + Math.max(0, hit) * .4;
   F.x = x; F.y = y; F.z = env.z; F.yaw = yaw; F.scale = S; F.air = air; F.shadow = 1 - Math.min(.6, air / (4 * S)); F.phase = ACT.phase; F.contact = ACT.contact; F.cloud = false;
   return F;

@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r917-b9f5feabade1";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r917-b9f5feabade1";
-import { hashSeed } from "./random.js?v=r917-b9f5feabade1";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r928-60da61d95073";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r928-60da61d95073";
+import { hashSeed } from "./random.js?v=r928-60da61d95073";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -83,11 +83,17 @@ export const OUTDOOR = f({
     rule: f({ stars: .6, zenith: [10, 12, 30], horizon: [60, 70, 140], haze: [52, 60, 120], ridge: [20, 22, 46], ridgeH: .05, rough: .2,
       sun: [190, 200, 255], sunAz: 250, sunEl: 36, sunK: .5, ambient: [.42, .44, .58], clouds: 0, grade: [.98, 1, 1.06, 1],
       crown: [60, 70, 130], bark: [30, 32, 50], frost: 0 }),
+    // the Lunar Wastes (landscape 25): an airless black sky full of stars over a pale grey horizon, a hard white sun and a
+    // great pale planet (`planet`: the shader's disc, close-view-gl.ts) hanging low; `moodMix`: a mood lends only this share
+    // of its colour and light, and no clouds or lightning
+    airless: f({ stars: 1, zenith: [3, 4, 10], horizon: [26, 28, 38], haze: [44, 46, 56], ridge: [118, 122, 132], ridgeH: .045, rough: .85,
+      sun: [255, 252, 244], sunAz: 235, sunEl: 34, sunK: .8, ambient: [.36, .38, .46], clouds: 0, grade: [.98, 1, 1.04, 1],
+      crown: [90, 96, 110], bark: [60, 60, 66], frost: 0, planet: 1, moodMix: .15 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -124,7 +130,7 @@ export const OUTDOOR = f({
     f(["grass", /grass|moss|forest|jungle|meadow|savanna|fen|bog|loam|refuge|canopyLeaf|fringe|mat$/i]),
     f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat/i]),
     f(["snow", /snow|ice|frost|peak|sinter|seaIce|firn|serac/i]),
-    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo/i]),
+    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo|regolith|ejecta|rille/i]),
     f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule/i]),
     f(["glass", /glass|crystal|obsidian|quicksilver|prism/i]),
   ]),
@@ -139,7 +145,9 @@ export const OUTDOOR = f({
     f({ test: /^castle|Wall$|wall$/, h: 1.9, jitter: .1, mat: 1, inset: 0 }),
     f({ test: /^crag$/, h: 1.3, jitter: .7, perLevel: .18, mat: 0, inset: .04, taper: .12 }),
     f({ test: /Spire$|Cluster$|Stack$/, h: 2.1, jitter: .8, mat: 2, inset: .14, taper: .7 }),
+    f({ test: /^fallenMonolith$/, h: .7, jitter: .1, mat: 3, inset: .1, taper: .05 }),
     f({ test: /Monolith$/, h: 2.8, jitter: .2, mat: 3, inset: .12, taper: .08 }),
+    f({ test: /^craterMount$/, h: 1.5, jitter: .4, mat: 0, inset: .06, taper: .55 }),
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),
@@ -281,14 +289,16 @@ const tint = (c, m, M) => f([0, 1, 2].map((i) => lerp(c[i] / 255 * m.light, M[i]
 // a region's sky under a mood (exported for tests: every pair is complete and finite)
 export function outdoorSkyMix(id, moodId = "day", weatherId = "still") {
   const key = `${id}:${weatherId || "still"}:${moodId}`; let s = SKY_GL.get(key); if (s) return s;
-  const k = OUTDOOR.skies[id] || OUTDOOR.skies.waste, m = OUTDOOR.moods[moodId] || OUTDOOR.moods.day, weather = OUTDOOR.weather[weatherId] || OUTDOOR.weather.still;
+  const k = OUTDOOR.skies[id] || OUTDOOR.skies.waste, m0 = OUTDOOR.moods[moodId] || OUTDOOR.moods.day, w0 = OUTDOOR.weather[weatherId] || OUTDOOR.weather.still;
+  // an airless sky (`moodMix` below 1) takes only that share of a mood's colour, light and sun tint, and no clouds or lightning
+  const a = k.moodMix ?? 1, m = a === 1 ? m0 : { ...m0, mix: m0.mix * a, light: 1 + (m0.light - 1) * a, sunMix: m0.sunMix * a, clouds: 0, lightning: 0 }, weather = a === 1 ? w0 : { ...w0, clouds: 0 };
   const az = (m.sunAz ?? k.sunAz) * DEG, el = (m.sunEl ?? k.sunEl) * DEG, sunK = k.sunK * weather.sun * m.sunK;
   const sunC = [0, 1, 2].map((i) => lerp(k.sun[i], m.sun[i], m.sunMix) / 255 * sunK);
-  s = f({ id: k === OUTDOOR.skies[id] ? id : "waste", mood: m === OUTDOOR.moods[moodId] ? moodId : "day", zenith: tint(k.zenith, m, m.zenith), horizon: tint(k.horizon, m, m.horizon), haze: tint(k.haze, m, m.horizon),
+  s = f({ id: k === OUTDOOR.skies[id] ? id : "waste", mood: m0 === OUTDOOR.moods[moodId] ? moodId : "day", zenith: tint(k.zenith, m, m.zenith), horizon: tint(k.horizon, m, m.horizon), haze: tint(k.haze, m, m.horizon),
     ridge: f([0, 1, 2].map((i) => lerp(k.ridge[i] / 255 * m.light, m.horizon[i] / 255 * .45, m.mix * .6))), ridgeH: k.ridgeH, rough: k.rough,
     sun: f([Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)]), sunC: f(sunC), ambient: f(k.ambient.map((v, i) => v * m.ambient[i])),
     clouds: Math.max(0, Math.min(1, k.clouds + weather.clouds + m.clouds)), grade: f(k.grade.map((v, i) => v * m.grade[i])), crown: rgb01(k.crown), bark: rgb01(k.bark), frost: k.frost,
-    cloud: rgb01(m.cloud), cloudDark: m.cloudDark, stars: Math.max(m.stars, k.stars || 0), moon: m.moon, lightning: m.lightning, torch: m.torch });
+    cloud: rgb01(m.cloud), cloudDark: m.cloudDark, stars: Math.max(m.stars, k.stars || 0), moon: m.moon, planet: k.planet || 0, lightning: m.lightning, torch: m.torch });
   SKY_GL.set(key, s); return s;
 }
 // Distant lightning at `now` ms for a sky of `strength` (0: none): 0-1, and its azimuth (radians) in LIGHTNING.az. A pure
