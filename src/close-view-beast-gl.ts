@@ -46,7 +46,7 @@ void main() {
   color = mix(color, vec3(.96, .34, .23), clamp(u_hit, 0.0, 1.0) * .45 * (1.0 - emit));
   float late = u_fogP.x + ${glf(L.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
   float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
-  color = mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8) * (1.0 - emit * 0.6));
+  color = towerAir(mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8) * (1.0 - emit * 0.6)), v_pos); // the air under a towering top (close-view-gl.ts)
   outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * min(k, 1.0) * (1.0 - ${glf(L.emitFog)})))), 1.0);
 }`;
 
