@@ -7964,7 +7964,7 @@ export class Game {
     if (cleaverAccepted && this.ordinaryCloseViewBody()) {
       attackVisual.cleaverChoreography = acceptCleaverChoreography(priorAttackVisual, this.consumeLogicalNow(now));
     }
-    if(cleaverAccepted){const quick=attackVisual.primaryMotion?.v===3,T=quick?CLOSE_VIEW_MELEE_TIMING.cleaverQuick:CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:quick?2:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:this.save.equipment.primary?.awakened===true,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
+    if(cleaverAccepted){const quick=attackVisual.primaryMotion?.v===3,T=quick?CLOSE_VIEW_MELEE_TIMING.cleaverQuick:CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:quick?2:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
     const hits = (daggers ? daggerCutHits : primaryAttackHits)(
       this.player,
       [...this.enemies.filter(e=>!e.untargetable&&this.bodyReach(e)), ...this.npcTargets()], // Tim (2026-11-04): the Wayfarer's swing does not reach a creature far below or above (ELEVATION_REACH)
@@ -8174,7 +8174,9 @@ export class Game {
   // Weapon arts (weapon-arts.ts WEAPON_ARTS): the hooks its rules call. Runtime game.weaponArts, never saved.
   weaponArtArmed() { return weaponArtArmed(this); } // the HUD's glint on Attack (main.ts)
   artPower(now = this.lastUpdateNow || 0) { return this.plungeBase(now); } // a normal hit of the weapon (Spellblade included; the Iron Fists' dash punch)
-  artBlocked(now = this.lastUpdateNow || 0) { return !(this.player.hp > 0) || this.cursed("attack", now) || this.penned(now); }
+  // An art neither starts a charge nor releases (the stored charge is kept) where a jump attack could not start either
+  // (plungeBlocked: the robot, the drone, a mount, a boat, gliding, swimming, diving) nor while falling or plunging.
+  artBlocked(now = this.lastUpdateNow || 0) { return !(this.player.hp > 0) || this.cursed("attack", now) || this.penned(now) || this.plungeBlocked() || !!this.fall || !!this.fallen || !!this.plunge || now < (this.plungeRecoverUntil || 0); }
   artOpen(x, y) { return this.quandrixOpen(x, y); }
   artAim(direction = null) { return this.quandrixAim(direction || this.player.meleeAim || this.save.lastAim); } // a manual aim, the lock, the stick, else auto aim
   // One blow of an art: the weapon's own glyphs, through the Wayfarer's damage scale; a foe that holds its ground is never knocked.
@@ -8228,6 +8230,11 @@ export class Game {
   // The Iron Fists' awakened fourth strike (AWAKENED_ARTS.moves.roundhouse): after the uppercut, while the combo's window is
   // open, a spinning kick round her; then the combo ends and recovers as after the uppercut. A press, so it arms an art.
   kickReady(now) { const c = this.fistCombo; return !!c && now <= c.until && c.step === IRON_FISTS.punches.length && awakenedFor(this.save) === "roundhouse"; }
+  // The uppercut's window for the kick ran out unused: the combo ends and recovers from then, as after the uppercut.
+  lapseKick(now = this.lastUpdateNow || 0) {
+    const c = this.fistCombo; if (!c?.kick || now <= c.until) return false;
+    this.fistCombo = null; this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, c.until - IRON_FISTS.window * 1000 + IRON_FISTS.recover * 1000); return true; // the uppercut's own recovery, counted from the uppercut (never longer than unawakened fists)
+  }
   awakenedKick(now = this.lastUpdateNow || 0, direction = null) {
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; }
     const A = AWAKENED_ARTS.moves.roundhouse, d = direction && Math.hypot(direction.x, direction.y) > .01 ? projectileDirection(direction.x, direction.y, this.player.facing) : this.brawlerAim(A.radius + 1).d;
@@ -9863,6 +9870,7 @@ export class Game {
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
+    this.lapseKick(now); // awakened Iron Fists: a kick window that ran out unused recovers as the uppercut would have
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the punch waits for the let-go
     if (this.kickReady(now)) return this.awakenedKick(now, direction); // awakened-arts.ts: the fourth strike, a roundhouse kick
@@ -9893,7 +9901,7 @@ export class Game {
     if(!delayed)this.effects.push(effect);
     if (step === 1) this.save.fistOpeningHand = fistLead;
     const kickNext = step >= F.punches.length && awakenedFor(this.save) === "roundhouse"; // awakened Iron Fists: the uppercut leaves the window open for the kick
-    this.fistCombo = step >= F.punches.length && !kickNext ? null : { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead };
+    this.fistCombo = step >= F.punches.length && !kickNext ? null : { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, ...(kickNext ? { kick: true } : {}) };
     if (step >= F.punches.length && !kickNext) this.fistRecoverUntil = now + F.recover * 1000;
     if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
     this.cancelConsumeVisual('attack');
@@ -10640,6 +10648,7 @@ export class Game {
     this.reconcileHeldTool(now);
     if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction);}finally{this._fistInputUpdate=false;}}}
+    if(this.fistCombo?.kick)this.lapseKick(now);
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";

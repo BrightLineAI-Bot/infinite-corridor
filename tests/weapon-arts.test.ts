@@ -57,12 +57,12 @@ function spy(g) { const log = []; const own = g.artBlow.bind(g); g.artBlow = (e,
 
 test('one data table: arming, the grace and the Quandrix slam\'s charge numbers', () => {
   assert.equal(WEAPON_ARTS.arm.presses, 3); assert.equal(WEAPON_ARTS.hold.grace, .2);
-  assert.deepEqual([...C.perfect], [1, 1.3]); assert.equal(C.max, 2); assert.equal(C.perfectShare, 2.6); assert.equal(C.late, 1.4); assert.equal(C.overcharge, 1.6); assert.deepEqual([...C.early], [.8, 1.4]);
+  assert.deepEqual([...C.perfect], [1, 1.3]); assert.equal(C.max, 2); assert.equal(C.perfectShare, 2.6); assert.equal(C.late, 1.4); assert.equal(C.overcharge, 1.6); assert.deepEqual([...C.early], [.3, 1.2]);
   assert.deepEqual(WEAPON_ART_IDS, ['lava-slash', 'blade-stream', 'cinder-javelin', 'ki-blast', 'transpose']);
   assert.deepEqual(WEAPON_ART_IDS.map(weaponOf), ['verge-cleaver', 'fourfold-daggers', 'cinder-pike', 'iron-fists', 'salvage-blade']);
   assert.ok(Object.isFrozen(WEAPON_ARTS) && Object.isFrozen(A) && WEAPON_ART_IDS.every((id) => Object.isFrozen(A[id])));
   assert.equal(artWindow(0), 'early'); assert.equal(artWindow(.99), 'early'); assert.equal(artWindow(1), 'perfect'); assert.equal(artWindow(1.3), 'perfect'); assert.equal(artWindow(1.31), 'late'); assert.equal(artWindow(2), 'overcharge');
-  assert.equal(artShare(0), .8); assert.ok(Math.abs(artShare(.5) - 1.1) < 1e-9); assert.equal(artShare(1.15), 2.6); assert.equal(artShare(1.6), 1.4); assert.equal(artShare(2.5), 1.6);
+  assert.equal(artShare(0), .3); assert.ok(Math.abs(artShare(.5) - .75) < 1e-9); assert.equal(artShare(1.15), 2.6); assert.equal(artShare(1.6), 1.4); assert.equal(artShare(2.5), 1.6);
   assert.ok(artShare(1.15) > artShare(2) && artShare(2) > artShare(1.6), 'perfect > overcharge > late');
   assert.equal(artFill(1), .5); assert.equal(artFill(9), 1); assert.equal(artFill(NaN), 0);
   assert.equal(sealBase('perfect'), 6); assert.equal(sealBase('early'), 4); assert.equal(sealBase('late'), 4); assert.equal(sealBase('overcharge'), 4);
@@ -106,7 +106,7 @@ test('perfect, late, early and overcharge releases strike at their share of a no
     const { g, clock } = arena('lava-slash', { foes: [[1.4, 0]] }), log = spy(g); arm(g, clock);
     const power = g.artPower(clock.t); assert.ok(Math.abs(power - g.meleePower()) < 1e-9, 'a normal hit of the weapon');
     const held = charge(g, clock, seconds); idle(g, clock, 5); assert.equal(artWindow(held), label);
-    assert.equal(log.length, 1); assert.ok(Math.abs(log[0].amount / power - artShare(held)) < 1e-6, `${label}: ${log[0].amount / power}`);
+    assert.equal(log.length, 1); assert.ok(Math.abs(log[0].amount / power - artShare(held) * A['lava-slash'].share) < 1e-6, `${label}: ${log[0].amount / power}`);
     if (label === 'perfect') assert.match(g.message, /perfect/i);
   }
   const { g } = arena('ki-blast'); assert.ok(Math.abs(g.artPower(0) - g.fistPower() * IRON_FISTS.punches[0].share) < 1e-9, 'the fists: their dash punch');
@@ -120,7 +120,7 @@ test('Lava Slash dashes to the nearest foe and erupts; Blade Stream cuts all rou
   { const { g, clock } = arena('lava-slash', { foes: [] }); g.map.tiles[10 * 32 + 12] = { x: 12, y: 10, kind: 'wall', blocked: true }; arm(g, clock); charge(g, clock, 1.15); assert.ok(g.player.x < 11.5, 'a wall stops it'); }
   { const { g, clock } = arena('blade-stream', { foes: [[1.5, 0], [-1, 1], [4, 0]] }), log = spy(g); arm(g, clock); const power = g.artPower(clock.t), held = charge(g, clock, 1.15); idle(g, clock, 40);
     const near = log.filter((q) => q.id === 'foe-0'); assert.equal(near.length, A['blade-stream'].hits); assert.equal(log.filter((q) => q.id === 'foe-1').length, 6, 'all round');
-    assert.equal(log.filter((q) => q.id === 'foe-2').length, 0, 'outside the radius'); assert.ok(Math.abs(near.reduce((n, q) => n + q.amount, 0) / power - artShare(held)) < 1e-6, 'six hits total the share'); }
+    assert.equal(log.filter((q) => q.id === 'foe-2').length, 0, 'outside the radius'); assert.ok(Math.abs(near.reduce((n, q) => n + q.amount, 0) / power - artShare(held) * A['blade-stream'].share) < 1e-6, 'six hits total the share'); }
   { const { g, clock } = arena('cinder-javelin', { foes: [[2, 0], [3, 0], [4, 0], [5, 0], [6, 0]] }), log = spy(g); arm(g, clock); charge(g, clock, 1.15);
     assert.equal(log.length, 0, 'the wind-up first'); idle(g, clock, 60); assert.deepEqual(log.map((q) => q.id), ['foe-0', 'foe-1', 'foe-2'], 'pierces three'); assert.equal(liveArtShots(g), 0); }
   { const { g, clock } = arena('cinder-javelin', { foes: [[7.5, 0], [10.5, 0]] }), log = spy(g); arm(g, clock); charge(g, clock, 1.15); idle(g, clock, 80); assert.deepEqual(log.map((q) => q.id), ['foe-0'], `${A['cinder-javelin'].range} tiles`); }
