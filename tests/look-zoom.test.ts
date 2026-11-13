@@ -154,7 +154,7 @@ test('it resets: a pause or menu, leaving Close View, a new area, death and a re
   // the pause menu, Pack, Map and Journal end it as they open (main.ts)
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   for (const fn of ['function openMap() {\n  atlasOpenedAt = performance.now(); sigilAtlas = false;', 'function openPack(tab) {', 'function openJournal(mode = "chronicle") {']) assert.ok(main.includes(`${fn}\n  closeViewLookSet(game, false, true);`), fn);
-  assert.match(main, /function pause\(show = true\) \{\n  if \(show\) \{ overlayPause = false; closeViewLookSet\(game, false, true\); \}/);
+  assert.match(main, /function pause\(show = true(?:, urgent = false)?\) \{\n  if \(show\) \{ overlayPause = false; closeViewLookSet\(game, false, true\); \}/);
   CV.closeViewLookSet(g, false, true); assert.equal(CV.closeViewLookActive(), false); assert.equal(CV.closeViewLookState().zoom, 0, 'a menu snaps back'); frame(g, 2);
   on(); g.save.closeView = false; CV.closeViewLookGuard(g); g.save.closeView = true; assert.equal(CV.closeViewLookActive(), false, 'leaving Close View'); frame(g, 2);
   on(); const hp = g.player.hp; g.player.hp = 0; CV.closeViewLookGuard(g); g.player.hp = hp; assert.equal(CV.closeViewLookActive(), false, 'death'); assert.equal(CV.closeViewLookState().zoom, 0);
