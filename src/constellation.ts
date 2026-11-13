@@ -238,13 +238,15 @@ export function tickConstellation(game, dt, now) {
   if (activeIs(s, "force-channel") && nodeOn(s, "overflow")) { game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25); for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (k.startsWith("spell:")) s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * .25); }
   game._cLastHp = p.hp;
 }
-// Rift Step aimed in Close View (Tim, 2026-11-12: "Rift Step aimed at a point, which can kill you by falling"): the Rift Step
-// button arms the aim for `window` seconds; the next tap picks the point and the step goes there (game.ts armRiftAim and
+// Rift Step aimed (Tim, 2026-11-12: "Rift Step aimed at a point, which can kill you by falling"; 2026-11-13: one rule in both views:
+// tap steps, hold aims): a tap of the Rift Step button (let go within `hold` seconds) is the plain step along the way you move;
+// holding it `hold` seconds arms the aim for `window` seconds, in Close View and the standard view alike (keyboard: tap F/G/C to step,
+// hold to aim, then click the point); the next tap picks the point and the step goes there (game.ts pressSlot, armRiftAim and
 // placeRiftAim, main.ts worldtap). The point must lie within the step's reach (flat distance), no more than `rise` levels above
 // where the Wayfarer stands (`longStepRise` more with Long Step), on ground or a roof they can stand on, with no wall and no
 // forbidden air (vehicle-gates.ts droneForbiddenAt) on the way (at most `samples` points tested). An invalid point is refused
 // without a cast (the target ring shows red for `mark` seconds). Every Rift Step, aimed or not, falls by the ordinary rule.
-export const RIFT_AIM = { rise: 2, longStepRise: 1, window: 4, samples: 40, mark: .7 };
+export const RIFT_AIM = { rise: 2, longStepRise: 1, window: 4, samples: 40, mark: .7, hold: .3, armed: "Rift Step: tap where to step (tap Rift Step to step ahead)." };
 // The charges, rank and glyph mods of a step about to be taken, or null (with the message why).
 function riftReady(game) {
   const s = game.save, st = s.magicSkills, rank = skillRank(s, "rift-step");

@@ -1131,7 +1131,7 @@ export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = nu
   if (!p) return CAM.yaw;
   const trackYaw = Number.isFinite(baseYaw) ? baseYaw : Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : MODEL_STATE.tracks.get(p)?.yaw;
   if (p.stunnedUntil > clock) return Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
-  if (p.dodgeUntil > clock && Number.isFinite(p.dodgeVisual?.facingYaw)) return p.dodgeVisual.facingYaw;
+  if ((p.dodgeUntil > clock || p.landRollUntil > clock) && Number.isFinite(p.dodgeVisual?.facingYaw)) return p.dodgeVisual.facingYaw; // FALL.rollPose: the landing roll keeps the dodge's heading
   if (g.fistCharge) { const d = g.fistCharge.direction; if (d && (d.x || d.y)) return Math.atan2(d.y, d.x); }
   const action = closeViewPlayerAction(g, clock), v = action.record;
   const toolYaw = closeViewToolFacingYaw(MODEL_STATE.tracks.get(p), action);
@@ -3398,9 +3398,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         action.primaryStage = primaryStage; action.jumpAir = null;
         if (defeat) { action.kind = 'death'; action.profile = 'death'; action.phase = defeat.amount; action.durationMs = defeat.durationMs; }
         else if (stunned) { action.kind = 'hit'; action.profile = 'knockdown'; }
-        else if (now < (player.dodgeUntil || 0)) {
+        else if (now < (player.dodgeUntil || 0) || now < (player.landRollUntil || 0)) { // FALL.rollPose: the landing roll replays the dodge roll from its start on touchdown
           action.kind = 'dodge'; action.durationMs = 260;
-          action.phase = 1 - Math.min(1, (player.dodgeUntil - now) / action.durationMs);
+          action.phase = 1 - Math.min(1, (Math.max(player.dodgeUntil || 0, player.landRollUntil || 0) - now) / action.durationMs);
           const visual=player.dodgeVisual;if(Number.isFinite(visual?.facingYaw))action.yaw=visual.facingYaw;
           action.moveX=player.dodgeX||0;action.moveY=player.dodgeY||0;
           action.poseMs=Number.isFinite(visual?.poseMs)?visual.poseMs:input.nowMs;
