@@ -5341,6 +5341,7 @@ export class Game {
     const message = way === "rope" ? M.lift : way === "postern" ? M.postern : M.door;
     if (!this.leaveDungeon(message)) return { ok: false, message: (this.message = "Nothing nearby responds.") };
     return { ok: true, message: this.message, transition: "exit" };
+  }
   // The drone's lift from a jump (release 647; the second press, or JUMP.liftAt's held Jump): its fuel and roof rules. `held`: from a
   // held Jump, which says nothing when there is no fuel or a roof (the jump is simply a jump).
   droneJumpLift(now, held = false) {
