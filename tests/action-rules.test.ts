@@ -79,3 +79,25 @@ test('3. old saves: a closed glide that was not a tree\'s resumes as a fall at i
   // a closed glide with a glideHome (a crown launch before the mark existed) stays a glide
   const s3 = JSON.parse(JSON.stringify(snap)); s3.session.playerRuntime.glideHome = { rx: -2, ry: 0, x: 10, y: 10 }; const c: any = new Game(migrateSave(s3), 0); assert.ok(c.glide && c.glide.open === false);
 });
+
+// 4. The drone-catch trap (pre-publish review): a caught lift climbs no higher than the catch, so a catch never costs more than the
+//    fall it caught. Before, holding Jump after catching a three-level fall climbed to base + DRONE_LIFT.max (5) and an empty booster
+//    then dropped the Wayfarer five levels to their death.
+test('4. a drone catch never leaves you worse off: the caught lift\'s ceiling is the catch height', () => {
+  for (const fuel of [DRONE.carry, .6]) {
+    const g = wayfarer({ drone: true }); cliff(g, 3); const d = drive(g); for (let i = 0; i < 120 && !(g.fall && g.fall.z < 2.6); i++) d.step(1); assert.ok(g.fall, 'falling from three levels');
+    g.save.mech.fuel = fuel; const z = g.fall.z; d.step(0, 0, true, true); assert.ok(g.droneLift, 'caught'); assert.equal(g.droneLift.cap, z, 'the cap is the catch height');
+    let top = 0; for (let k = 0; k < 600 && g.droneLift; k++) { d.step(0, 0, false, true); top = Math.max(top, g.droneLift?.z ?? 0); } // hold Jump the whole way
+    for (let k = 0; k < 200 && (g.droneLift || g.fall); k++) d.step(0);
+    assert.ok(top <= z + 1e-9, `never above the catch (${top.toFixed(3)} <= ${z.toFixed(3)})`);
+    assert.ok(M - g.player.hp <= fallDamage(3, M), `no worse than the uncaught three-level fall (lost ${M - g.player.hp})`); assert.equal(deaths(g), 0);
+  }
+});
+
+test('4. the cap survives a save and reload mid-lift (exact resume), and an ordinary jump lift has none', () => {
+  const g = wayfarer({ drone: true }); cliff(g, 3); const d = drive(g); for (let i = 0; i < 120 && !(g.fall && g.fall.z < 2.6); i++) d.step(1);
+  d.step(0, 0, true, true); for (let k = 0; k < 10; k++) d.step(0, 0, false, true); const L = { ...g.droneLift }, x = g.player.x, y = g.player.y;
+  const back: any = new Game(migrateSave(JSON.parse(JSON.stringify(g.exportSnapshot(d.now())))), d.now());
+  assert.deepEqual([back.droneLift.z, back.droneLift.vz, back.droneLift.base, back.droneLift.cap], [L.z, L.vz, L.base, L.cap]); assert.deepEqual([back.player.x, back.player.y], [x, y]);
+  const k = wayfarer({ drone: true }); cliff(k, 0); const dk = drive(k); dk.step(0, 0, true); dk.step(0, 0, true, true); assert.ok(k.droneLift); assert.equal(k.droneLift.cap, undefined, 'a lift from a jump keeps base + max');
+});
