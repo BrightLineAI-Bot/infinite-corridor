@@ -30,6 +30,8 @@ import {
   cacheLeverFlag,
   grantCacheLoot,
   cacheLootText,
+  HEARTLAND_SHACK,
+  heartlandShackSection,
 } from "./world.ts";
 
 function applyFallenTreeCrossings(map) {
@@ -1345,7 +1347,7 @@ export function clearSectionTerrainCache() { terrainCache.clear(); terrainCache.
 export function sectionTerrain(seed, rx, ry, generation, steps) {
   const key = JSON.stringify([seed, rx, ry, generation, steps]), kept = terrainCache.get(key);
   if (kept) { terrainCache.delete(key); terrainCache.set(key, kept); terrainCache.hits = (terrainCache.hits || 0) + 1; return structuredClone(kept); }
-  const map = generateRegion(seed, rx, ry, generation);
+  const map = generateRegion(seed, rx, ry, generation, steps.heartlandShack ? { heartlandShack: steps.heartlandShack } : null); // heartland shacks (world.ts HEARTLAND_SHACK): new ground beside the Refuge only
   applyLandscape(map, seed, rx, ry, steps.landscape);
   if (steps.dream) applyDream(map, seed, rx, ry, steps.dream);
   if (map.canopy) mendCanopy(map); // great-tree review: a tree the Far Sleep paved over (landscape versions 13 to 17) is no tree: its record and door go
@@ -1365,8 +1367,11 @@ export function walkerTerrainSteps(save, rx, ry) {
     hamlet: (!seen || !!seen.hamletVersion) && (hamletSection(save.seed, rx, ry) || legacyMouthHamlet(save, rx, ry)) },
     dream: !seen || seen.dreamVersion ? seen?.dreamVersion || DREAM_VERSION : 0,
     hamlet: !seen || seen.hamletVersion ? [seen?.hamletVersion || HAMLET_VERSION, false, legacyMouthHamlet(save, rx, ry)] : null,
-    trails: !seen || !!seen.travelVersion, bridgeLanes: !!coh };
+    trails: !seen || !!seen.travelVersion, bridgeLanes: !!coh, ...heartlandShackStep(seen, rx, ry) };
 }
+// Heartland shacks (world.ts HEARTLAND_SHACK): the version a section beside the Refuge keeps (ground first seen from now on: the
+// current one; ground seen before: its atlas pin, 0 when it has none). Only present when non-zero, so every other key is unchanged.
+export function heartlandShackStep(seen, rx, ry) { if (!heartlandShackSection(rx, ry)) return {}; const v = seen ? Number(seen.heartlandShackVersion) || 0 : HEARTLAND_SHACK.version; return v ? { heartlandShack: v } : {}; }
 // World coherence (landscape.ts COHERENCE): the version a section keeps. Ground first seen from now on takes the current one;
 // a section in the atlas keeps the one it was first seen with (none, for every section seen before it existed).
 export function coherenceOf(seen) { return seen ? seen.coherenceVersion || 0 : COHERENCE.version; }
@@ -3002,7 +3007,7 @@ export class Game {
     return{landscape:{coherence:coh,explored:!!seen&&!seen.landscapeVersion,version:seen?.landscapeVersion||LANDSCAPE_VERSION,openSea:!seen?OPEN_SEA_VERSION:seen.seaVersion||0,buoy:!save.checkpoints?.[`${rx},${ry}`]||save.checkpoints[`${rx},${ry}`].name==="Lighthouse Buoy",hamlet:((!seen||!!seen.hamletVersion)&&(hamletSection(save.seed,rx,ry)||legacyMouthHamlet(save,rx,ry)||!!town))||!!town?.mouth},
       dream:!seen||seen.dreamVersion?seen?.dreamVersion||DREAM_VERSION:0,
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
-      trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh};}
+      trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh,...heartlandShackStep(seen,rx,ry)};}
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
   snapshotArea(leaving = true) {
     if (!this.map) return;
@@ -3225,6 +3230,7 @@ export class Game {
         ...(prior ? (prior.buildingVersion ? { buildingVersion: prior.buildingVersion } : {}) : { buildingVersion: BUILDINGS.version }), // the great buildings take their place
         ...(prior ? (prior.farVersion ? { farVersion: prior.farVersion } : {}) : { farVersion: FAR_REALMS.version }), // release 714: the far realms, new ground only
         ...(prior ? (prior.compoundVersion ? { compoundVersion: prior.compoundVersion } : {}) : { compoundVersion: COMPOUNDS.version }), // and the compounds
+        ...(heartlandShackSection(this.rx, this.ry) ? (prior ? (prior.heartlandShackVersion ? { heartlandShackVersion: prior.heartlandShackVersion } : {}) : { heartlandShackVersion: HEARTLAND_SHACK.version }) : {}), // and the heartland shacks beside the Refuge
         ...(prior ? (prior.labVersion ? { labVersion: prior.labVersion } : {}) : { labVersion: LABYRINTHS.version }), // and the labyrinths
         ...(prior ? (prior.castleVersion ? { castleVersion: prior.castleVersion } : {}) : { castleVersion: CASTLES.version }), // and the Great Castles
         ...(prior ? (prior.pentVersion ? { pentVersion: prior.pentVersion } : {}) : { pentVersion: this.map.pentagon?.V || 9 }), // and the Pentagons; placement stamps its actual namespace, while no placement preserves r843's literal fallback
