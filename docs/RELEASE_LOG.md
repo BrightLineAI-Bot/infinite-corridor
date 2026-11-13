@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r927 (`85991ba9c562`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r928 (`60da61d95073`); production serves `r917-b9f5feabade1` (published 2026-11-12 after a Fable review of r914 to r917). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 929 | Claude | claude/dinosaurs | New world beasts: the Wild Stegosaurus (12 moves, climbing chase, severable tail giving Stego Bait; Echo: wall cling) and the Spinosaurus (10 moves, fossil phase at half health, command grab, bleed status, interloper in stego and stag fights; Echo: afterimage plunge slam); additive saves at schema 14, version-pinned big-room spawns | In flight. |
 | 928 | Claude | claude/glide-guard-fix | Fix from the r927 pre-publish review: an inline comment added in 926 swallowed the glide invulnerability assignment, so a Wayfarer gliding above GLIDE.safe took hits; restored, with a regression test | In flight. |
 | 927 | Claude | claude/render-state-by-id | Standard-view beast walk cycles and pose easing keyed by id (were reset every frame by the renderer's per-frame copies) | Merged as `85991ba9c562` (#594). |
 | 926 | Claude | claude/fall-physics | Open-world falls get airtime under gravity 14 levels/s^2 to terminal 9 with the old damage per height; Jump catches a fall with the drone or glider; Rift Step works mid-fall (keeps momentum); a plunge over a drop falls and slams on landing; jump-up landings onto ledges, roofs and branches no longer pop in Close View or the standard view; the Close View drone lift and glider are drawn at the terrain level height | In flight. |

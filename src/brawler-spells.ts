@@ -243,6 +243,47 @@ function drawPlunge(ctx, fx, x, y, R) {
   }
 }
 
+// Spinosaur's Echo (echoes.ts SPINO_ECHO, plungeAfterimage): the afterimage slam's look. While it waits (`delay`) a pale
+// afterimage of the Wayfarer fades in over the spot and brings the blow down, striking as the delay runs out (`strikeAt`, the
+// share of Close View's hammer-stomp pose where the stomp lands); then a ghostly ring and the afterimage fade with the slam's
+// life. `alpha` is the afterimage's greatest opacity, `waitAlpha` the dashed mark of where it will land. In Close View the
+// afterimage is the Wayfarer's own hammer-stomp model, tinted as the Shadow Clone's (`shadow`), through captureActor.
+export const PLUNGE_AFTERIMAGE_VIEW = { alpha: .55, fadeIn: .35, waitAlpha: .35, strikeAt: .53, body: "#cfe6ffcc", ring: "#bfe4ff", fill: "#9fd0ff40", spoke: "#7fb6e6" };
+// 0..1: how far through the stomp the afterimage is; and its opacity (0 once the slam has faded).
+export function plungeAfterimagePose(fx) {
+  const V = PLUNGE_AFTERIMAGE_VIEW, wait = Math.max(1e-6, Number(fx.delayMax) || 0), life = Math.max(1e-6, Number(fx.lifeMax) || PLUNGE.slamLife);
+  if (fx.delay > 0) { const k = Math.max(0, Math.min(1, 1 - fx.delay / wait)); return { amount: V.strikeAt * k, alpha: V.alpha * Math.min(1, V.fadeIn + (1 - V.fadeIn) * k) }; }
+  const k = Math.max(0, Math.min(1, fx.life / life));
+  return { amount: V.strikeAt + (1 - V.strikeAt) * (1 - k), alpha: V.alpha * k };
+}
+// The standard view's afterimage: a pale figure with the blow raised overhead (`amount` 0) brought down to the ground (strikeAt).
+function drawAfterimageBody(ctx, x, y, s, amount, alpha) {
+  const V = PLUNGE_AFTERIMAGE_VIEW, down = Math.max(0, Math.min(1, amount / V.strikeAt)), crouch = s * .08 * down;
+  ctx.globalAlpha = alpha; ctx.fillStyle = V.body; ctx.strokeStyle = V.body; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x - s * .2, y + s * .34); ctx.quadraticCurveTo(x - s * .24, y - s * .08 + crouch, x - s * .1, y - s * .18 + crouch); ctx.lineTo(x + s * .1, y - s * .18 + crouch); ctx.quadraticCurveTo(x + s * .24, y - s * .08 + crouch, x + s * .2, y + s * .34); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y - s * .3 + crouch, s * .13, 0, 7); ctx.fill();
+  const hy = y - s * (.75 - 1.05 * down) + crouch;
+  ctx.lineWidth = Math.max(1, s * .08); ctx.beginPath(); ctx.moveTo(x - s * .12, y - s * .14 + crouch); ctx.lineTo(x, hy); ctx.lineTo(x + s * .12, y - s * .14 + crouch); ctx.stroke();
+  ctx.lineCap = "butt"; ctx.globalAlpha = 1;
+}
+function drawAfterimage(ctx, fx, x, y, R, s, capture) {
+  const V = PLUNGE_AFTERIMAGE_VIEW, pose = plungeAfterimagePose(fx);
+  if (fx.delay > 0) { ctx.globalAlpha = V.waitAlpha; ctx.strokeStyle = V.ring; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+  else {
+    const k = Math.max(0, Math.min(1, fx.life / Math.max(1e-6, Number(fx.lifeMax) || PLUNGE.slamLife))); ctx.globalAlpha = .8 * k;
+    ctx.fillStyle = V.fill; ctx.beginPath(); ctx.arc(x, y, R * (1.05 - .35 * k), 0, 7); ctx.fill();
+    ctx.strokeStyle = V.ring; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R * (1.15 - .45 * k), 0, 7); ctx.stroke();
+    ctx.strokeStyle = V.spoke; ctx.lineWidth = 1.5; for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 + .6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .35, y + Math.sin(a) * R * .35); ctx.lineTo(x + Math.cos(a) * R * (1 - .3 * k), y + Math.sin(a) * R * (1 - .3 * k)); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  if (!(pose.alpha > 0)) return;
+  // Close View: the Wayfarer's hammer-stomp model as a Shadow-Clone-tinted afterimage (its flat sprite if the model is refused)
+  const captured = capture?.captureActor?.({ source: fx, x: fx.x, y: fx.y + .37, height: 2,
+    draw: (c, unit) => { const q = plungeAfterimagePose(fx); drawAfterimageBody(c, fx.x * unit, fx.y * unit, unit, q.amount, q.alpha); },
+    sample: () => { const q = plungeAfterimagePose(fx); return { kind: "playerHammerStomp", x: fx.x, y: fx.y + .37, yaw: Number.isFinite(fx.aimX) && Number.isFinite(fx.aimY) && (fx.aimX || fx.aimY) ? Math.atan2(fx.aimY, fx.aimX) : 0, shadow: true, alpha: q.alpha, pose: "attack", amount: q.amount, pace: 0 }; } });
+  if (!captured) drawAfterimageBody(ctx, x, y, s, pose.amount, pose.alpha);
+}
+
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   for (const fx of game.effects) {
@@ -274,6 +315,7 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
       ctx.strokeStyle = "#ffe0b0"; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .4, y + Math.sin(a) * R * .4); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
       ctx.globalAlpha = 1;
     } else if (fx.kind === "plunge-slam" || fx.kind === "plunge-burst") drawPlunge(ctx, fx, x, y, R); // jump attacks
+    else if (fx.kind === "plunge-afterimage") drawAfterimage(ctx, fx, x, y, R, s, capture);
   }
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills
