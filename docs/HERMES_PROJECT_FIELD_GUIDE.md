@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 942 — Release 942 — the hide save is written at once; storage failures recover
+
+The r941 pre-publish review noted that 941's deferred autosave also delayed the save made when the game is hidden (hidden pages throttle timers to about a second), and that a silently dead storage connection could cost a save or stall the queue.
+
+**CODE:** `src/persistence.ts` sends every IndexedDB call through `dbCall(mode, body)` and `txDone`: any error, abort or exception drops the cached connection the call used (`dropDb(which)`), and the next call opens a new one; a connection whose transaction cannot even be created (it died without a `close` event) is retried once on a fresh connection. An open or transaction that does not answer within `SAVE_IO.stallMs` (30 s) is aborted and dropped, so the write queue keeps moving; the failed write clears its delta base, so the next write is whole and sweeps. An open that fails, even by throwing synchronously, is never cached. `saveGame(save, { urgent: true })` marks the snapshot to be written without the `nextTask()` deferral and ends any deferral already under way; `main.ts` passes it from the visibilitychange, pagehide and freeze handlers through `pause(false, true)`, and any save made while `document.hidden` is also written at once. `flushSaves()` reports a failed write once through `lastWriteError`. Tests: `save-hide-fix` (9).
+
+**BOUNDARY:** Stored records are unchanged: the same save sequence produces byte-identical stores before and after. Schema stays at 14; the delta, full and split semantics, the 8 s autosave and the 120 s full write are unchanged, and in-play autosaves still defer one task. `SAVE_IO.stallMs` is a safety bound, not a tuning value. Proving Ground pages still do not import persistence.ts. Tests use a fake IndexedDB; behaviour when a real phone kills a backgrounded app has not been measured on a device.
+
 ## Release 941 — Release 941 — fewer frame spikes: crossings, autosaves, and a finer probe
 
 Tim, 2026-11-13: his probe on r937 (Android, 83 fps mean, 0 frames over 100 ms) still showed ~68 ms frames on section crossings, 40-73 ms render frames, and 20-30 ms autosave frames.
