@@ -6,6 +6,29 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 933 — Clinging to the Pentagon, and towering structures in Close View
+
+Tim, 2026-11-13: you can cling to the outside of the Pentagon but never climb to its roof that way, at most two clings before your feet touch the ground, and in Close View these structures should look so tall that "whoa, I'm up here on top of this massive structure that's almost like a mountain".
+
+**CODE (the cling):** `echoes.ts` `WALL_CLING` gains `maxHolds` (2), `kick.firm` (80 ms; was 220, so the stick can bring you back to the same wall) and `pentagon` (`grip` outer and balcony, `stand` balcony and stair, `below` 3, `near` 4). In `game.ts`, `clingBarred` replaces the fizzle-zone and glider checks in `clingWallAhead`; `clingPentagonCap` caps a hold within `near` tiles of any Pentagon tile at `PENTAGON.roof.elev - below`; `tryWallCling` counts holds in `wallHolds`, which resets only on the ground and on death. `playerRuntime.wallHolds` is saved additively, and `restoreWallCling(q, k, now, holds)` treats a release 929 save that is holding as 1.
+
+**CODE (Close View):** `close-view-outdoor.ts` `OUTDOOR.towering` holds every number. `outdoorTowering` builds a per-tile drawn level for towering roofs, parapets, balconies, the stair and climb ledges from the great-building `blocks`; `outdoorRelief` uses it, and actors stand on `outdoorSurfaceZ`, so they line up with the drawn roof. Other pieces:
+- terrain face kind 6 (coursed masonry);
+- battlements in `outdoorMesh` (at most 128 a section);
+- `outdoorTowerAir`, which sets the drop haze, rise haze and cloud deck each frame;
+- in `close-view-gl.ts`: `towerAir()` in `atmos`, the model shader and the beast shader, plus the optional `DECK_VS`/`DECK_FS` cloud deck;
+- in `close-view.ts`: the `glScene` call, glide and drone easing off a towering top, and echo ribbons.
+
+**BOUNDARY:** Unchanged: the glide death over any Pentagon tile, the drone fizzle over its walls, the outer stair, refusals on Great Castle and sealed-tower walls, and the Great Keeps. Within 4 tiles of a Pentagon no hold goes above level 2, so a cling lands at 3 at most. A hold is never taken from the roof, and the parapet is never gripped. Close View is presentation only: tiles, levels, collision, falls, fall damage, reachability, generation, saves and the standard view are unchanged, and ordinary sections are drawn as before. The low tier has haze but no cloud deck; Reduced Motion holds the deck still; nothing is allocated per frame.
+
+## Release 932 — Release 932 — glider for great trees only, landing roll, held Jump drone, Rift Step tap/hold, bigger Jump and Dodge
+
+Tim (2026-11-13): one rule per action in both views; the glider belongs to the great trees and must not make falls harmless; the drone is the mid-fall catch; a skilful landing roll for the early game; and a bigger Jump button now that Jump is the core traversal action.
+
+**CODE:** `src/game.ts`: `treeLaunch(now)` (CANOPY_FALL_MS since the last crown or canopy platform) gates the 641 closed freefall in `finishFall`/`landBlink` and the mid-jump glider open; `FALL.catchGlide` removed, `FALL.nothing` added; glides carry an additive `tree` mark and an unmarked closed glide without a glideHome loads as a fall. A mid-fall drone catch sets `droneLift.cap` (top at most the catch height). `JUMP.liftAt` .5 / `jumpHold` / `droneJumpLift` start the lift from a held Jump. `pressSlot`/`riftPress`/`aimRiftStep` with `RIFT_AIM.hold` .3 (constellation.ts); `renderer.ts` `drawRiftAimStd`. `FALL.roll .22, rollLevels 1, rollPose 260, rolled` with `fall.rollT` (saved) and `player.landRollUntil` (a PLAYER_CLOCK; the dodge roll in both views). `styles.css` 'HUD 2026-11-13' cluster: Jump 1.14, Dodge 1.18 of a button. Tests: `action-rules`.
+
+**BOUNDARY:** Additive schema-14 fields only (`glide.tree`, `droneLift.cap`, `fall.rollT`). The fall damage table is unchanged; only a landing roll takes one level off and five or more stays lethal. Tree glides, their steering and invulnerability are unchanged. Dodge cooldown and i-frames are unchanged. Generators untouched. Existing tests changed only where they asserted the removed glider catch or tap-to-arm. Not tested on a device.
+
 ## Release 931 — Release 931 — pause and reload never move you mid-air or off a roof edge; Resonance health; hazard death words
 
 A headless QA pass on release 926 (about 3 million frames) found that the 'settle onto stable ground' recovery ran on every pause and reload even in the air or on a roof edge, that max hp went stale on a Resonance tier gain (healing on the next load), that every hazard death said 'Lost beneath the water', and two small exact-resume drifts.
