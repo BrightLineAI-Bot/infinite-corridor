@@ -28,6 +28,11 @@ export function grantSlainEchoes(save) {
   return granted;
 }
 
+// Spinosaur's Echo (Tim, 2026-11-12). Every jump-attack slam (any weapon's plunge, the Shadow Boxing dive's slam
+// included) is followed `delay` s later by one afterimage slam on the same spot, with the same radius, for `share` of the
+// slam's damage (and of its Imbue Weapon spark) and `stunShare` of its stagger. The afterimage is an ordinary effect, so it
+// keeps every rule the slam keeps (friendly fire, bosses and elites, poise, sanctuaries); it never lays another afterimage.
+export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -70,6 +75,12 @@ export const ECHOES = {
   // don't move, you just stay there. Press jump again... you jump off it, and you can do another jump off the next wall"). Taken on
   // the first kill like every world beast's. Its rules and numbers are WALL_CLING; game.ts carries them out (wallCling*).
   wildStego: { name: "Stegosaur's Grip", cost: 2, trigger: "jump", module: "wallCling", text: "Jump into a wall, cliff or rock and you hold on at the height you reached, as long as you like. Jump again to kick off it; from wall to wall you climb, up to 3 levels." },
+  // The Spinosaurus (Tim, 2026-11-12: "the Spinosaurus's Echo increases your jump attacks. When you do the jump-attack slam,
+  // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
+  // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
+  // or on load for a Wayfarer who has slain it already (grantSlainEchoes reads save.worldBeasts).
+  spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
+    text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
 // Stegosaur's Grip, the wall cling (game.ts wallCling*). A jump pushed into a vertical surface (a solid tile, a house's wall, or
 // ground 2 or more levels above the jump) holds there; the stick held into the wall, or let go, keeps the hold (no time limit, as
@@ -97,7 +108,15 @@ export const WALL_CLING = {
   // A wall jump: ms it goes straight off the wall before the stick steers, and its pace (times a walk: a dodge's).
   kick: { firm: 220, push: 2 },
 };
-export const ECHO_IDS = Object.keys(ECHOES);
+export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
+// The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
+// never lays another. `id` is the new effect's id; `aim` the facing it slams toward (the Close View afterimage's yaw).
+export function plungeAfterimage(slam, id, aim) {
+  if (!slam || slam.kind !== "plunge-slam" || slam.afterimage || slam.hostile) return null;
+  const S = SPINO_ECHO, a = aim && Number.isFinite(aim.x) && Number.isFinite(aim.y) ? aim : { x: 1, y: 0 };
+  return { ...slam, id, kind: "plunge-afterimage", afterimage: true, hits: {}, pulseIndex: 0, untilPulse: 0, delay: S.delay, delayMax: S.delay, lifeMax: slam.life,
+    damage: Math.max(1, Math.round(slam.damage * S.share)), imbue: (slam.imbue || 0) * S.share, stun: (slam.stun || 0) * S.stunShare, aimX: a.x, aimY: a.y };
+}
 
 // ---------------------------------------------------------------- save state
 export function ensureEchoState(save) {

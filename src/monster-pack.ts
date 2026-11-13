@@ -534,7 +534,7 @@ export const MONSTER_PACK = {
   // The Spinosaurus (Tim, 2026-11-12): a world beast of the land (never the sea), the big rooms of keeps, arcologies and adventure
   // Pentagons, and the interloper in a fight with the Wild Stegosaurus or the Briar Stag (spino-rex.ts). Its numbers and pose fields: SPINO.
   spinoRex: {
-    id: "spinoRex", name: "The Spinosaurus", epithet: "The Hunter of Hunters", unique: true, noEcho: true,
+    id: "spinoRex", name: "The Spinosaurus", epithet: "The Hunter of Hunters", unique: true,
     stats: [380, 19, 0], form: { scale: 2.1 }, sizeClass: "huge", movement: "walk", brain: "hunter",
     attacks: ["spinoBite", "spinoClaw", "spinoLeapSlam", "spinoDigFling", "spinoRoar", "spinoTailSwipe", "spinoBodySlam", "spinoGrab", "spinoBoneVolley", "spinoRibSpears"], bossAttacks: [],
     palette: ["#f2a35e", "#c4561a", "#a8481e", "#f6c48e"], render: "spinoRex", tags: ["beast", "elder", "dinosaur", "predator"],
