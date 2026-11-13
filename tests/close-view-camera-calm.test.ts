@@ -8,7 +8,7 @@ import { render } from '../src/renderer.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { canStep } from '../src/landscape.ts';
 import { OUTDOOR, outdoorRelief, outdoorSurfaceZ } from '../src/close-view-outdoor.ts';
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_LEAP, closeViewCamera, closeViewLeap, closeViewPan, closeViewShowing, closeViewWallAt, presentLeap, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_LEAP, closeViewCamera, closeViewLeap, closeViewPan, closeViewShowing, closeViewWallAt, closeViewOccluder, presentLeap, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 
 const C = CLOSE_VIEW.camera, O = C.outdoor, V = C.vertical, L = OUTDOOR.terrain.level;
@@ -77,7 +77,8 @@ test('a cliff that blocks the chest pulls the camera in, eased, and lets it out 
   const last = s.frame();
   assert.ok(last.distance < full - 1, `pulled in (${full.toFixed(2)} -> ${last.distance.toFixed(2)})`);
   assert.ok(last.height - z > CLOSE_VIEW.presets.standard.outdoorHeight + .5 && last.height - z <= CLOSE_VIEW.presets.standard.outdoorHeight + O.riseMax + .03, 'risen first, within the bound');
-  assert.ok(chestLineClear(s.g, last, z), 'settled where the chest is in sight');
+  // Release 932 (Tim approved): with limits.terrain on, the boom may stop at minBoom with the cliff cut open by the occluder window.
+  assert.ok(chestLineClear(s.g, last, z) || (last.distance >= C.limits.minBoom - .02 && closeViewOccluder().terrain === 1), 'settled where the chest is in sight, or at the minimum with the cliff cut open');
   assert.ok(full - d[0] < .35 && d[2] > last.distance + .3, `eased, not cut (${full.toFixed(2)}, ${d[0].toFixed(2)}, ${d[1].toFixed(2)}, ${d[2].toFixed(2)})`);
   for (let i = 1; i < d.length; i++) assert.ok(Math.abs(d[i] - d[i - 1]) < .25 && Math.abs(h[i] - h[i - 1]) < .25, `smooth at frame ${i}`);
   const settled = d.slice(90); assert.ok(Math.max(...settled) - Math.min(...settled) < .01, 'and holds still');

@@ -23,6 +23,7 @@ import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
 import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.ts";
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
@@ -251,7 +252,8 @@ export const CLOSE_VIEW = Object.freeze({
     // ground itself (a cliff at the Wayfarer's back) pulls the boom in; off, that keeps the calm pass's rule (the crane rises, then
     // the boom shortens until the chest is in sight, however steep: tests/close-view-camera-calm.test.ts pins it). On, the boom
     // stops at minBoom there too, the eye is lowered to maxPitch and the cliff between is cut open by the occluder window.
-    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: false }),
+    // Release 932 (Tim: the best and steadiest view near cliffs and walls): on.
+    limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: true }),
     // The occluder window (2026-11-13): whatever stands between the eye and the Wayfarer's body (`body` tiles over their feet)
     // is cut open by a dithered cone, `eye` tiles wide at the camera and `radius` at the body, softened over the outer `soft`
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
@@ -259,7 +261,9 @@ export const CLOSE_VIEW = Object.freeze({
     // the cutting programs. A creature whose body crosses the cone eases (at `rate` a second; at once with Reduced Motion) to
     // `creature` of its opacity, if it is at least `creatureScale` big (its game scale: the dragons, the Giant, the world beasts;
     // ordinary creatures stay solid wherever they stand, tests/close-view-solid-creatures.test.ts). Indoor walls are never faded.
-    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10 }),
+    // Release 932 (Tim: "I want the enemies to be as solid and real as possible"): `creatureFade` off, so no creature, however big,
+    // is ever faded by the window; trees, rocks, props and the ground still are, and big threats are still framed (`threat`).
+    occlude: Object.freeze({ body: .8, radius: .9, eye: .35, soft: .45, keep: .2, stop: .35, samples: 12, creature: .3, creatureScale: 1.8, rate: 10, creatureFade: false }),
     // `edgeFog`: tiles past an overworld section's edge over which the open ground melts into the far haze (it showed the
     // ordinary view's off-map checker). The neighbours' own terrain is not drawn (it would need their generation each crossing).
     edgeFog: 3,
@@ -1943,7 +1947,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
-    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(d, lit, d.enemy ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
+    boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
+    boardB[n] = d === capturedPlayer ? (q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? closeViewCreatureFog(q.depth, fogNear, fogFar) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2); boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused, reduce, g.map);
@@ -2216,7 +2221,7 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
       // from current visibility, not zero forever; established fades and active-play fade-in are unchanged.
       // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
       // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
-      const cut = OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
+      const cut = Oc.creatureFade && OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
       if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames }; FOE_FADE.set(foe, st); }
       st.o += (occ - st.o) * k; boardOcc[j] = st.o;
       if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c; } } // not drawn last frame: no stale fade carried over
@@ -2983,11 +2988,18 @@ export function closeViewPrimaryWeaponKind(item) {
   return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
     : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver' : 'salvage-blade';
 }
+// Close View play-through of 926 (bug 11): at a scene's start the native stand-in Wayfarer showed, then popped to the imported
+// model once its data and GPU texture were ready. While that load is in flight (the asset 'loading', or loaded and its texture
+// not yet on the GPU) the Wayfarer is not drawn at all (no stand-in body, no sprite card; their place is kept), for at most
+// `maxMs`; then, or at once when the asset is unavailable, the native body stands in as before. The real model fades in over
+// `fadeMs` after a wait (reduced motion: at once). Presentation only.
+export const CLOSE_VIEW_HERO_WAIT = Object.freeze({ maxMs: 6000, fadeMs: 240 });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
   vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
-  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false,
+  folk: { count: 0, items: [], tracks: new Map(), map: null }, // 2026-11-13: the townsfolk's skinned bodies this frame (close-view-folk.ts), drawn with the beasts
+  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   consumeCurrent:{area:'overworld',areaId:'',levelId:'root'},consumeSample:{active:false,kind:'',itemKind:'',phase:0,elapsedMs:0,remainingMs:0,durationMs:0},
@@ -3164,6 +3176,35 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
 }
+// 2026-11-13 (Tim: "every interactable character should have a real 3D body in Close View"): the townsfolk (close-view-folk.ts).
+// Nearest first, up to FOLK_SLOT.maxFolk for the tier; past it, or without the GPU's beast program, a person keeps its card. A
+// person's card is suppressed while its body is drawn; what the card still owes (a rider's mount, the talk marker over a head) is
+// drawn as its residual (renderer.ts: the capture's nativeDecorations). Their own slots: they never take a beast's or a creature's.
+const FOLK_SOLID = Object.freeze({ enemy: true }); // (closeViewActorEnvironmentAlpha: a creature's visibility, for a person's body)
+const FOLK_TARGET = { x: 0, y: 0 }, FOLK_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: FOLK_TARGET, talk: NaN, seat: 0, yaw: NaN };
+function admitFolk(g, draws, n, Q, now, reduce) {
+  const Fk = MODEL_STATE.folk, tier = Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low', cap = FOLK_SLOT.maxFolk[tier] ?? 4;
+  Fk.count = 0; if (Fk.map !== g.map) { Fk.map = g.map; Fk.tracks.clear(); }
+  FOLK_TARGET.x = footX(g.player); FOLK_TARGET.y = footY(g.player);
+  const talk = g.talkVisual;
+  for (let oi = n - 1; oi >= 0 && Fk.count < cap; oi--) {
+    const it = order[oi]; if (itemKind[it] !== 1 || MODEL_STATE.admitted.has(it)) continue;
+    const d = draws[itemRef[it]], o = d?.object, kind = o && closeViewFolkKind(o, g); if (!kind) continue;
+    const look = kind === 'turtle' ? null : folkLookCached(o), mesh = look ? folkMesh(look, tier) : turtleFolkMesh(tier);
+    if (!prepareCloseViewBeastMesh(mesh)) continue;
+    let track = Fk.tracks.get(o); if (!track || track.look !== look) { track = look ? createFolkTrack(look) : createTurtleFolkTrack(); Fk.tracks.set(o, track); }
+    const X = boardWX[it], Y = boardWY[it] - .07;
+    FOLK_ENV.x = X; FOLK_ENV.y = Y; FOLK_ENV.z = surfaceZ(g.map, d.nativeSupportX ?? X, d.nativeSupportY ?? Y) + (interiorTerrain(g.map) ? closeViewActorLift(d, true) : 0);
+    FOLK_ENV.scale = look ? look.height * (track.jitter ??= folkHeightJitter(o)) * (o.folkGiant ? FOLK_MOTION.giant : 1) : 1; FOLK_ENV.now = now; FOLK_ENV.reduce = reduce; FOLK_ENV.tier = tier;
+    FOLK_ENV.talk = talk && talk.id === o.id ? now - talk.at : NaN; FOLK_ENV.seat = o.mount ? FOLK_MOTION.seat : 0; FOLK_ENV.yaw = NaN;
+    const frame = look ? sampleFolk(track, o, FOLK_ENV) : sampleTurtleFolk(track, o, FOLK_ENV); if (!frame) continue;
+    frame.alpha = Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); track.seen = now;
+    Fk.items[Fk.count++] = frame; MODEL_STATE.admitted.add(it);
+  }
+  for (const [o, track] of Fk.tracks) if (now - (track.seen ?? -Infinity) > 2000) Fk.tracks.delete(o);
+  closeViewGLStats.folk = Fk.count;
+}
+export const closeViewFolk = () => MODEL_STATE.folk;
 // Read-only, for tests and the lab: this frame's admitted beast frames and their render tracks.
 export const closeViewBeasts = () => MODEL_STATE.beasts;
 // A soft contact shadow under each admitted beast and a darker print under each planted foot, on the ground layer.
@@ -3173,6 +3214,17 @@ function drawBeastShadows(gc, s) {
     const f = B.items[i], k = Math.max(0, f.shadow) * f.alpha, r = .42 * f.scale * s;
     gc.fillStyle = `rgba(4,6,10,${(.42 * k).toFixed(3)})`; gc.beginPath(); gc.ellipse(f.x * s, f.y * s, r, r * .62, f.yaw, 0, Math.PI * 2); gc.fill();
   }
+}
+// 926 bug 11 (CLOSE_VIEW_HERO_WAIT): hold the Wayfarer back while the real model is on its way, for at most maxMs from the first wait.
+function heroHeld(state, waiting, now) {
+  if (!waiting) { state.heroWaitFrom = NaN; return false; }
+  if (!Number.isFinite(state.heroWaitFrom)) state.heroWaitFrom = now;
+  if (now - state.heroWaitFrom > CLOSE_VIEW_HERO_WAIT.maxMs) return false; // waited long enough: the native body stands in
+  state.heroFadeFrom = -1; return true; // armed: the first frame the real model shows starts its fade-in
+}
+function heroFadeIn(state, now, reduce) {
+  if (state.heroFadeFrom === -1) state.heroFadeFrom = now; if (!Number.isFinite(state.heroFadeFrom)) return 1;
+  const k = reduce ? 1 : Math.max(0, Math.min(1, (now - state.heroFadeFrom) / CLOSE_VIEW_HERO_WAIT.fadeMs)); if (k >= 1) state.heroFadeFrom = NaN; return k;
 }
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
@@ -3370,10 +3422,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
-    let imported = false;
+    let imported = false, heroWaiting = false;
     if (who === player && importedPlayer && count < limit) {
-      const asset = getCloseViewHeroAsset();
-      if (asset && prepareCloseViewHeroGL(asset)) {
+      const asset = getCloseViewHeroAsset(), heroReady = !!asset && prepareCloseViewHeroGL(asset);
+      heroWaiting = !heroReady && (!!asset || closeViewHeroAssetStatus() === 'loading'); // 926 bug 11: the real model is on its way
+      if (heroReady) {
         if (state.heroAsset !== asset || !state.heroPose) {
           state.heroAsset = asset; state.heroPose = createHeroPoseState(asset); state.heroFrame = createHeroFrame(asset);
         }
@@ -3398,7 +3451,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
         input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;
-        input.alpha = actor.alpha; input.hitFlash = hit;
+        input.alpha = actor.alpha * heroFadeIn(state, now, reduce); input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
         if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
         action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;
@@ -3467,6 +3520,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         }
       }
     }
+    if (who === player && !imported && heroHeld(state, heroWaiting, now)) { // 926 bug 11: nothing stands in for the Wayfarer until the real model is ready
+      state.playerRepresentation = 'pending'; Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor }); state.tracks.set(who, track); state.admitted.add(it); return; }
     if (!imported && !append(actor)) return;
     if (who === player && !imported && !reduce && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
       const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = true;
@@ -3501,6 +3556,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
   closeViewGLStats.auxModels=0;closeViewGLStats.auxKinds=Object.create(null);
+  admitFolk(g, draws, n, Q, now, reduce); // the townsfolk first: a reciter's body is theirs, not its older native model
   const locked = g.lockedTarget?.();
   // Admission is an effect/action coverage contract, not a growing kind whitelist.
   const canModel = (it, foe) => {
@@ -3520,7 +3576,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi], foe = boardFoe[it];
     const d=draws[itemRef[it]];
-    if(itemKind[it]===1&&d?.nativeAux)admitAux(it,d);
+    if(itemKind[it]===1&&d?.nativeAux){if(!state.admitted.has(it))admitAux(it,d);}
     else if (foe !== locked && canModel(it, foe)) admit(it, foe, foe.kind);
   }
   // 2026-11-11: the props (CLOSE_VIEW_PROPS), outside the creature cap; the Oculus's dais first, then the nearest objects.
@@ -3549,6 +3605,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   }
   closeViewGLStats.models = count;
   admitBeasts(g, draws, n, Q, now, reduce);
+  { const B = MODEL_STATE.beasts, Fk = MODEL_STATE.folk; for (let i = 0; i < Fk.count; i++) B.items[B.count++] = Fk.items[i]; } // drawn by the beast slot's program
   return offset ? state.vertices.subarray(0, offset) : null;
 }
 // Five canonical stationary spells only. Recipes are immutable module data;
