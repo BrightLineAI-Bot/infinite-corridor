@@ -110,7 +110,7 @@ test('each slash sweeps a continuous blade-tip arc across the front strike zone,
     assert.ok(Math.abs(hit.tip[1]) < .35 && hit.tip[2] > .4 * head && hit.tip[2] < 1.05 * head, `step ${step}: tip at the strike zone at contact`);
     const from = pose(step, windEnd), to = pose(step, followEnd);
     if (step === 1) { assert.ok(from.tip[1] * SWORD_SIDE > .5 && to.tip[1] * SWORD_SIDE < -.5 && from.tip[2] - to.tip[2] > .9, 'diagonal: high on the sword side down across the body'); }
-    if (step === 2) { assert.ok(from.tip[1] * SWORD_SIDE < -.6 && to.tip[1] * SWORD_SIDE > .6 && from.tip[2] - to.tip[2] > 0 && from.tip[2] - to.tip[2] < .6, 'return: across from the far side, level and a little down'); }
+    if (step === 2) { assert.ok(from.tip[1] * SWORD_SIDE < -.6 && to.tip[1] * SWORD_SIDE > .6 && Math.abs(from.tip[2] - to.tip[2]) < .05, 'return: across from the far side, level (2026-11-13: was a little down)'); }
     if (step === 3) {
       assert.ok(from.tip[2] > head && from.tip[0] < 0 && to.tip[2] < .3 * head && to.tip[2] > 0 && to.tip[0] > .5, 'overhead: from behind the head down in front');
       for (const s of swing) assert.ok(Math.abs(s.tip[1]) < .35, 'overhead stays on the centre line');

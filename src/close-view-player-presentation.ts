@@ -119,9 +119,12 @@ export const CLOSE_VIEW_CLEAVER_SLASHES = Object.freeze([
   Object.freeze({ name: 'diagonal', pivot: Object.freeze([-.30, -.30, .38]), hand: .48,
     ref: Object.freeze([-.10, .08, 1]), travel: Object.freeze([-.72, -.69, 0]), from: -105, to: 72, edge: -1,
     twist: Object.freeze([.30, -.30]), lean: Object.freeze([-.02, .10]), guard: .30 }),
-  // 2: return backhand, from the far side across to the sword side, level and a little downward.
+  // 2: return backhand, a flat horizontal sweep at chest height from the far side across to the sword
+  // side (Tim, 2026-11-13: "its swing is not horizontal"; it had dropped 12 degrees across the arc).
+  // `ref` and `travel` have no up component, so the plane is level: blade and tip hold one height.
+  // `edge` 1 leads with the bevel nearer the guard's, so the wrist turns less into and out of the flat.
   Object.freeze({ name: 'return', pivot: Object.freeze([-.30, -.24, .36]), hand: .46,
-    ref: Object.freeze([-.06, .02, 1]), travel: Object.freeze([1, -.22, 0]), from: -100, to: 78, edge: -1,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([1, 0, 0]), from: -100, to: 78, edge: 1,
     twist: Object.freeze([-.32, .30]), lean: Object.freeze([.02, .08]), guard: .24 }),
   // 3: overhead finisher, raised behind the head and brought straight down the centre line.
   Object.freeze({ name: 'overhead', pivot: Object.freeze([-.40, -.06, .30]), hand: .50,

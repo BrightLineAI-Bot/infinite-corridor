@@ -1080,3 +1080,12 @@ body.reduce-motion #oculusWarp { display: none; }
 .action-diamond button.core.jump { width: calc(var(--button) * 1.14); height: calc(var(--button) * 1.14); left: calc(var(--button) * 1.12); top: calc(var(--button) * 1.03); font-size: 11px; padding-bottom: 0; }
 .action-diamond button.core.dodge { width: calc(var(--button) * 1.18); height: calc(var(--button) * 1.18); left: calc(var(--button) * 2.38); top: calc(var(--button) * 1.01); font-size: 11px; }
 .action-diamond button.core.attack { width: calc(var(--button) * .88); height: calc(var(--button) * .88); left: calc(var(--button) * 1.25); top: calc(var(--button) * 2.29); }
+/* Look mode (2026-11-13, close-view.ts CLOSE_VIEW.camera.look): a press held on the compass in Close View. While it is on, a
+   magnifier sits on the compass's lower left and the compass rim glows (the first time, the message line carries the hint). */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.compass-slot .nav-compass { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.look-badge { display: none; position: absolute; left: -5px; bottom: -5px; z-index: 4; width: 17px; height: 17px; border-radius: 50%; background: #141714; border: 1px solid #f0c86a; pointer-events: none; }
+.look-badge::before { content: ""; position: absolute; left: 3px; top: 3px; width: 6px; height: 6px; border: 1.6px solid #f0c86a; border-radius: 50%; }
+.look-badge::after { content: ""; position: absolute; left: 10px; top: 10px; width: 4px; height: 1.6px; background: #f0c86a; transform: rotate(45deg); transform-origin: 0 50%; }
+.compass-slot.look-on .look-badge { display: block; }
+.compass-slot.look-on .nav-compass { border-color: #f0c86a; box-shadow: inset 0 0 0 3px #0e1210, 0 0 0 2px #f0c86a66, 0 2px 7px #000b; }
