@@ -1249,12 +1249,13 @@ new ResizeObserver(resize).observe($("#app"));
 resize();
 applyPresentationSettings();
 let leavingForProvingGround = false; // release 791: the journey was flushed for the Proving Ground and the page is leaving
-const persist = () => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now())));
-function pause(show = true) {
+// Save hide fix (941 review): the save made as the page hides is written at once, not after a timer a hidden page throttles.
+const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
+function pause(show = true, urgent = false) {
   if (show) overlayPause = false;
   game.setPaused(true, performance.now());
   input.reset();
-  persist();
+  persist(urgent);
   if (show && !pausePanel.open) pausePanel.showModal();
 }
 function pauseForOverlay() {
@@ -2927,17 +2928,17 @@ addEventListener("popstate",()=>{backPressed();backGuard()});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
-    pause(false);
+    pause(false, true);
   }
   else if (game.paused && !pausePanel.open && !glimpseRun) pausePanel.showModal();
 });
 addEventListener("pagehide", () => {
   overlayPause = false;
-  pause(false);
+  pause(false, true);
 });
 addEventListener("freeze", () => {
   overlayPause = false;
-  pause(false);
+  pause(false, true);
 });
 // Release 734: a damaged or unreadable active journey opens on the Journeys screen, saying it is kept and not saved over.
 if (saveBlocked()) { optionCategory = "Journeys"; openOptions().then(() => optionMessage(`${saveBlocked()} Nothing you do now is saved to Journey ${getActiveSlot()}. Recover it, import a journey, or choose another slot.`, true)); }

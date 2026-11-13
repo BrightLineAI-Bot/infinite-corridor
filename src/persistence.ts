@@ -21,11 +21,22 @@ export function journeyStats(save){const n=(v)=>Math.max(0,Math.floor(Number(v)|
 // closed), and the open's success handler ran the save's own work. The connection is opened once and kept; it is dropped
 // (and opened again on the next call) when the browser closes it, another page asks to upgrade it, a call on it fails, or
 // the page's indexedDB is a different one (tests swap it).
+// Save hide fix (941 review): every call goes through dbCall, so any failure (an error, an abort, an exception, a closed
+// connection) drops the cached connection and the next call opens a new one. A call on a connection that died without a
+// `close` event (the transaction cannot even be created) is retried once on a fresh connection before it counts as failed.
+// An open or a transaction that never answers is given up after SAVE_IO.stallMs (the transaction aborted, the connection
+// dropped), so one hung call cannot stall the write queue: the failed autosave then forgets its delta base and the next
+// write is whole and sweeps, as after any failure. An open that fails (even by throwing at once) is never kept.
+export const SAVE_IO = { stallMs: 30000 }; // a generous bound; a slow phone's largest write takes a few seconds
 let dbOpen=null,dbFactory=null;
-function dropDb(){const was=dbOpen;dbOpen=null;dbFactory=null;if(was)was.then((db)=>{try{db.close?.()}catch{}},()=>{})}
-function openDb(){if(dbOpen&&dbFactory===globalThis.indexedDB)return dbOpen;dbFactory=globalThis.indexedDB;const opening=dbOpen=new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>{const db=q.result;try{db.onclose=()=>{if(dbOpen===opening)dbOpen=null};db.onversionchange=()=>{if(dbOpen===opening)dbOpen=null;try{db.close()}catch{}}}catch{}resolve(db)};q.onerror=()=>{if(dbOpen===opening)dbOpen=null;reject(q.error)}});return opening}
-async function read(key){const db=await openDb();return new Promise((resolve,reject)=>{const q=db.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)}).catch((error)=>{dropDb();throw error})}
-async function write(key,value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)}).catch((error)=>{dropDb();throw error})}
+function dropDb(which=dbOpen){if(!which||dbOpen!==which)return;dbOpen=null;dbFactory=null;which.then((db)=>{try{db.close?.()}catch{}},()=>{})}
+function openDb(){if(dbOpen&&dbFactory===globalThis.indexedDB)return dbOpen;dbFactory=globalThis.indexedDB;const opening=dbOpen=new Promise((resolve,reject)=>{let done=false;const fail=(error)=>{if(done)return;done=true;clearTimeout(timer);reject(error)},timer=setTimeout(()=>fail(new Error("The journey store did not open in time.")),SAVE_IO.stallMs);try{const q=globalThis.indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>{const db=q.result;if(done){try{db.close?.()}catch{}return}done=true;clearTimeout(timer);try{db.onclose=()=>{if(dbOpen===opening)dbOpen=null};db.onversionchange=()=>{if(dbOpen===opening)dbOpen=null;try{db.close()}catch{}}}catch{}resolve(db)};q.onerror=()=>fail(q.error)}catch(error){fail(error)}});opening.catch(()=>{if(dbOpen===opening){dbOpen=null;dbFactory=null}});return opening}
+// One transaction: body(store, finish, fail) queues its requests; the call settles when the transaction completes (with
+// what body passed to finish, if anything) or as soon as body calls finish or fail (a read answers at its request's success).
+function txDone(tx,body){return new Promise((resolve,reject)=>{let done=false,result;const finish=(ok,value)=>{if(done)return;done=true;clearTimeout(timer);if(ok)resolve(value);else reject(value)},timer=setTimeout(()=>{try{tx.abort?.()}catch{}finish(false,new Error("The journey store stopped answering."))},SAVE_IO.stallMs);tx.oncomplete=()=>finish(true,result);tx.onerror=()=>finish(false,tx.error||new Error("The journey store failed."));tx.onabort=()=>finish(false,tx.error||new Error("The journey store aborted a write."));try{body(tx.objectStore(STORE),(value)=>finish(true,value),(error)=>finish(false,error))}catch(error){try{tx.abort?.()}catch{}finish(false,error)}})}
+async function dbCall(mode,body){for(let attempt=0;;attempt++){const opening=openDb(),db=await opening;let tx;try{tx=db.transaction(STORE,mode)}catch(error){dropDb(opening);if(attempt===0)continue;throw error}try{return await txDone(tx,body)}catch(error){dropDb(opening);throw error}}}
+function read(key){return dbCall("readonly",(store,finish,fail)=>{const q=store.get(key);q.onsuccess=()=>finish(q.result);q.onerror=()=>fail(q.error)})}
+function write(key,value){return dbCall("readwrite",(store)=>{store.put(value,key)})}
 // Release 555 (Tim's probe: a ~80-100 ms freeze every 8 s, outside the game's own frame work): IndexedDB copies whatever it
 // is given, on the main thread, when the write is queued. The autosave handed it the whole journey, every area ever visited
 // included, so the copy grew with the journey. A journey is now stored as its main record (session.areas left out, the
@@ -153,9 +164,15 @@ function sizesFor(key, areas, puts, keys) {
 }
 // A task of its own: the autosave's frame has already done the snapshot; this split, diff and the database's copy run after
 // that frame (the open's success event did this when every write opened the database afresh).
-const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+// Save hide fix (941 review): a hidden page throttles that timer (about a second), and the OS may kill a backgrounded app
+// in that window, so the save made as the page hides (saveGame(save, { urgent: true })), or any save while the page is
+// hidden, is written at once; an urgent save also ends a wait already under way.
+let hurry = null;
+const nextTask = () => new Promise((resolve) => { const go = () => { clearTimeout(t); if (hurry === go) hurry = null; resolve(); }, t = setTimeout(go, 0); hurry = go; });
+const urgentSnapshots = new WeakSet();
+const writeNow = (value) => urgentSnapshots.has(value) || globalThis.document?.hidden === true;
 async function writeJourney(key, value) {
-  const db = await openDb(); await nextTask(); const { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
+  await openDb(); if (!writeNow(value)) await nextTask(); const { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
   const split = main !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, j = journals.get(key), now = Date.now();
   let ops = null;
   if (split && j && sharedSnapshots.has(value) && sharedSnapshots.has(j.snapshot) && now - j.at < SAVE_DELTA.everyMs) {
@@ -166,8 +183,8 @@ async function writeJourney(key, value) {
   if (split && !ops) Object.assign(main.session, { [MAIN_STAMP]: stamp, [AREA_SIZES]: Object.fromEntries(sizes) });
   let queuedMs = 0;
   try {
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE), t0 = performance.now();
+    await dbCall("readwrite", (store) => {
+      const t0 = performance.now();
       for (const [k, area] of puts) store.put(area, prefix + k);
       if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), ops: [...ops.values()].map((q) => [q.path, q.kind, q.value]) }, deltaKey(key));
       else { store.put(main, key); store.delete(deltaKey(key)); }
@@ -178,9 +195,8 @@ async function writeJourney(key, value) {
       const live = new Set(keys), had = ops ? recordKeys.get(key) : null;
       if (had) { for (const k of had) if (!live.has(k)) store.delete(prefix + k); }
       else { const stale = store.getAllKeys(areaRange(key)); stale.onsuccess = () => { for (const k of stale.result) if (!live.has(String(k).slice(prefix.length))) store.delete(k); }; }
-      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
     });
-  } catch (error) { journals.delete(key); recordKeys.delete(key); dropDb(); throw error; } // the next write stores the main record whole (and sweeps)
+  } catch (error) { journals.delete(key); recordKeys.delete(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole (and sweeps)
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
   if (split) recordKeys.set(key, keys); else recordKeys.delete(key);
   if (sizes) storedSizes.set(key, sizes); else storedSizes.delete(key);
@@ -213,21 +229,20 @@ function primeJournal(key, stored, save) {
 }
 async function readJourney(key) {
   const main = await readMain(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
-  const db = await openDb(), prefix = areaPrefix(key);
-  const records = await new Promise((resolve, reject) => {
-    const store = db.transaction(STORE).objectStore(STORE), ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key));
-    vs.onsuccess = () => resolve(new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]]))); vs.onerror = () => reject(vs.error); ks.onerror = () => reject(ks.error);
+  const prefix = areaPrefix(key);
+  const records = await dbCall("readonly", (store, finish, fail) => {
+    const ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key));
+    vs.onsuccess = () => finish(new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]]))); vs.onerror = () => fail(vs.error); ks.onerror = () => fail(ks.error);
   });
   recordKeys.set(key, [...records.keys()]);
   const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
   const save = assembleSave(main, records); assembled.add(save); return save;
 }
 async function removeJourney(key) {
-  const db = await openDb();
-  await new Promise((resolve, reject) => { const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE); store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
-  storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key);
+  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); }); }
+  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); } // after a failure too: the next write is whole and sweeps
 }
-async function remove(key){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+function remove(key){return dbCall("readwrite",(store)=>{store.delete(key)})}
 // Release 734 (S1): the mirror is returned as stored (not migrated), so a damaged or newer-version mirror reads as damaged,
 // not as an empty slot that a fresh journey may be written over.
 function mirrorRead(slot){try{const text=localStorage.getItem(mirrorKey(slot));return text?JSON.parse(text):null}catch{return null}}
@@ -285,8 +300,9 @@ let lastWriteError=null;
 // of an unchanged area is reused from the previous save; only the rest of the save and changed areas are copied again.
 const areaCopies=new WeakMap();
 export function snapshotSave(save,updatedAt=Date.now()){const areas=save?.session?.areas;if(!areas||typeof areas!=="object"||Array.isArray(areas))return structuredClone({...save,updatedAt});const prev=mainCopies.get(save),live={...save,updatedAt,session:{...save.session,areas:null}},main=prev?shareCopy(live,prev):firstCopy(live),copies={};/* perf pack: unchanged parts reuse their copies */mainCopies.set(save,main);for(const[key,area]of Object.entries(areas)){if(!area||typeof area!=="object"){copies[key]=structuredClone(area);continue}let copy=areaCopies.get(area);if(!copy){copy=structuredClone(area);areaCopies.set(area,copy)}copies[key]=copy}const snapshot={...main,session:{...main.session,areas:copies}};sharedSnapshots.add(snapshot);return snapshot}
-export function saveGame(save){const slot=getActiveSlot();if(writeBlocked.has(slot))return writeQueue=Promise.resolve();/* release 734 */const snapshot=snapshotSave(save);save.updatedAt=snapshot.updatedAt;writeQueue=coordinator.enqueue(slot,snapshot).then(()=>undefined,error=>{lastWriteError=error;console.warn("IndexedDB save failed",error)});return writeQueue}
-export async function flushSaves(){await Promise.all([writeQueue,coordinator.flush()]);if(lastWriteError){const error=lastWriteError;lastWriteError=null;throw error}}
+export function saveGame(save,options={}){const slot=getActiveSlot();if(writeBlocked.has(slot))return writeQueue=Promise.resolve();/* release 734 */const snapshot=snapshotSave(save);save.updatedAt=snapshot.updatedAt;if(options?.urgent){urgentSnapshots.add(snapshot);hurry?.()}/* save hide fix: written at once */writeQueue=coordinator.enqueue(slot,snapshot).then(()=>undefined,error=>{lastWriteError=error;console.warn("IndexedDB save failed",error)});return writeQueue}
+// Save hide fix: a failed write is reported once (by lastWriteError), not again by the coordinator's rejected chain.
+export async function flushSaves(){await Promise.all([writeQueue,coordinator.flush().catch(()=>{})]);if(lastWriteError){const error=lastWriteError;lastWriteError=null;throw error}}
 export function createExclusiveOperation(){let busy=false;return{get busy(){return busy},async run(operation){if(busy)return{ok:false,busy:true};busy=true;try{return{ok:true,value:await operation()}}finally{busy=false}}}}
 export async function commitNewJourneyTransition({activeSlot,targetSlot,targetEmpty,options,saveCurrent,flush=flushSaves,create=createJourney,activate=setActiveSlot}){if(activeSlot!==targetSlot||!targetEmpty)await saveCurrent();await flush();const created=await create(targetSlot,options);activate(targetSlot);return created}
 // Perf pack (Tim's findings 8): listing the journeys (Options -> Journeys, Options -> System) read every slot whole and ran
