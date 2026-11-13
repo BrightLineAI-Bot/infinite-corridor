@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r946-4c6c4e323b38";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r948-c8651a95a1b1";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,13 +8,13 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r946-4
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r946-4c6c4e323b38";
-import { hashSeed, byHash } from "./random.js?v=r946-4c6c4e323b38";
-import { updateAstralActor } from "./astral-worm.js?v=r946-4c6c4e323b38";
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r946-4c6c4e323b38"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.js?v=r946-4c6c4e323b38";
-import { BLEED, tickCreatureBleed } from "./bleed.js?v=r946-4c6c4e323b38"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r946-4c6c4e323b38"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { stageOneBeastReference } from "./stages.js?v=r948-c8651a95a1b1";
+import { hashSeed, byHash } from "./random.js?v=r948-c8651a95a1b1";
+import { updateAstralActor } from "./astral-worm.js?v=r948-c8651a95a1b1";
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r948-c8651a95a1b1"; // adventure creatures (Tim, 2026-11-11)
+import { onStegoTailSevered } from "./stego-bait.js?v=r948-c8651a95a1b1";
+import { BLEED, tickCreatureBleed } from "./bleed.js?v=r948-c8651a95a1b1"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r948-c8651a95a1b1"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;

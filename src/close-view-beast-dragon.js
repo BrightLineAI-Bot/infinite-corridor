@@ -9,12 +9,12 @@
 // Second pass (Tim, 2026-11-12): one skin from tail tip to nose with the haunch, thighs and tail root grown out of it; big
 // five-fingered wings with scalloped edges, spread and beating whenever it is aloft, half open as a threat on the move; the roar
 // rears with them outspread; the aerial slam (Skyfall, dragonDive; the Doom Chaser's doomFall) hangs, dives and lands wings up.
-import { DRAGON_ART } from "./crimson-dragon-render.js?v=r946-4c6c4e323b38";
-import { DOOM_ART } from "./doom-chaser-render.js?v=r946-4c6c4e323b38";
+import { DRAGON_ART } from "./crimson-dragon-render.js?v=r948-c8651a95a1b1";
+import { DOOM_ART } from "./doom-chaser-render.js?v=r948-c8651a95a1b1";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r946-4c6c4e323b38";
+} from "./close-view-beast-rig.js?v=r948-c8651a95a1b1";
 
 export const DRAGON_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
