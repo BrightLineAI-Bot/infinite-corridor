@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 932 — Release 932 — glider for great trees only, landing roll, held Jump drone, Rift Step tap/hold, bigger Jump and Dodge
+
+Tim (2026-11-13): one rule per action in both views; the glider belongs to the great trees and must not make falls harmless; the drone is the mid-fall catch; a skilful landing roll for the early game; and a bigger Jump button now that Jump is the core traversal action.
+
+**CODE:** `src/game.ts`: `treeLaunch(now)` (CANOPY_FALL_MS since the last crown or canopy platform) gates the 641 closed freefall in `finishFall`/`landBlink` and the mid-jump glider open; `FALL.catchGlide` removed, `FALL.nothing` added; glides carry an additive `tree` mark and an unmarked closed glide without a glideHome loads as a fall. A mid-fall drone catch sets `droneLift.cap` (top at most the catch height). `JUMP.liftAt` .5 / `jumpHold` / `droneJumpLift` start the lift from a held Jump. `pressSlot`/`riftPress`/`aimRiftStep` with `RIFT_AIM.hold` .3 (constellation.ts); `renderer.ts` `drawRiftAimStd`. `FALL.roll .22, rollLevels 1, rollPose 260, rolled` with `fall.rollT` (saved) and `player.landRollUntil` (a PLAYER_CLOCK; the dodge roll in both views). `styles.css` 'HUD 2026-11-13' cluster: Jump 1.14, Dodge 1.18 of a button. Tests: `action-rules`.
+
+**BOUNDARY:** Additive schema-14 fields only (`glide.tree`, `droneLift.cap`, `fall.rollT`). The fall damage table is unchanged; only a landing roll takes one level off and five or more stays lethal. Tree glides, their steering and invulnerability are unchanged. Dodge cooldown and i-frames are unchanged. Generators untouched. Existing tests changed only where they asserted the removed glider catch or tap-to-arm. Not tested on a device.
+
 ## Release 931 — Release 931 — pause and reload never move you mid-air or off a roof edge; Resonance health; hazard death words
 
 A headless QA pass on release 926 (about 3 million frames) found that the 'settle onto stable ground' recovery ran on every pause and reload even in the air or on a roof edge, that max hp went stale on a Resonance tier gain (healing on the next load), that every hazard death said 'Lost beneath the water', and two small exact-resume drifts.
