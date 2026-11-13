@@ -16,7 +16,7 @@ import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
@@ -591,7 +591,7 @@ const objective = $("#objective"),
   hud = $("#hud"),
   hudDetails = $("#hudDetails"),
   hudToggles = [$("#hudExpand")].filter(Boolean), // release 113: the bottom-row Menu toggle became spell slot B
-  navCompass = $("#navCompass"), navCompassSlot = $("#navCompassSlot"),
+  navCompass = $("#navCompass"), navCompassSlot = $("#navCompassSlot"), lookSubject = $("#lookSubject"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
 let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
@@ -706,7 +706,8 @@ function idleCompass() {
 }
 function updateNavigationCompass(now = performance.now()) {
   updateCompassFrame(now);
-  { const look = closeViewLookActive(); hudSet(navCompassSlot, "class:look-on", look); hudSet(navCompass, "aria-pressed", look ? "true" : "false"); }
+  { const look = closeViewLookActive(), name = look ? closeViewLookLabel() : ""; hudSet(navCompassSlot, "class:look-on", look); hudSet(navCompass, "aria-pressed", look ? "true" : "false");
+    hudSet(navCompassSlot, "class:look-named", !!name); hudSet(lookSubject, "text", name); } // the subject's name line (Look at everything)
   if (game.area === "dungeon") {
     const points = dungeonCompassPoints();
     pointDungeonCompass(points.find(door => door.id === dungeonCompassPick) || points[0]);
@@ -750,16 +751,20 @@ navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.prev
 // Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in Close View a press held on the compass toggles it (a tap
 // still steps the compass); in it a pinch on the game area zooms the camera and a drag orbits it. Attack, Dodge, a spell or the
 // Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only. The keyboard: Shift+Enter on the compass.
-const lookHold=createLookHold();let lookHinted=false,lookTimer=0;
+const lookHold=createLookHold();let lookHinted=false,lookTimer=0,lookSwallowTimer=0;
 navCompass.setAttribute("aria-describedby","navCompassHelp");
 // The first time in a session the message line carries the one-line hint; after that a short word.
 function toggleLook(){if(!closeViewShowing(game)){game.message="Look mode works in Close View.";return false}const on=closeViewLookToggle(game);
-  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round. Attack, Dodge, a spell or Tool ends it."):"Look mode off.";if(on)lookHinted=true;return on}
+  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round, tap anything to look at it. Attack, Dodge, a spell or Tool ends it."):"Look mode off.";if(on)lookHinted=true;return on}
 const lookStamp=e=>Number.isFinite(e.timeStamp)&&e.timeStamp>0?e.timeStamp:performance.now(); // when the finger moved, not when a busy frame got to it
 navCompass.addEventListener("pointerdown",e=>{lookHold.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(lookTimer);
   lookTimer=setTimeout(()=>{if(lookHold.due(performance.now())&&closeViewShowing(game)){lookHold.hold();toggleLook();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
 navCompass.addEventListener("pointermove",e=>lookHold.move(e.pointerId,e.clientX,e.clientY));
-for(const t of["pointerup","pointercancel","pointerleave"])navCompass.addEventListener(t,e=>{clearTimeout(lookTimer);if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}});
+// A hold's swallowed click (r945 review): only the click its own release makes. A press cancelled, or slid off while held, makes
+// none, so the flag is dropped there; after a release it lapses within swallowMs, so a later Enter on the compass still works.
+for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])navCompass.addEventListener(t,e=>{clearTimeout(lookTimer);if(t==="pointercancel"||t!=="pointerup"&&lookHold.pressing)lookHold.drop();
+  if(t==="lostpointercapture")return;if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}
+  if(t==="pointerup"){clearTimeout(lookSwallowTimer);lookSwallowTimer=setTimeout(()=>lookHold.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
 navCompass.addEventListener("contextmenu",e=>{if(closeViewShowing(game))e.preventDefault()}); // a long press opens no menu there
 addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}});
 let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
