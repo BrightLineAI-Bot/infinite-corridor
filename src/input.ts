@@ -199,6 +199,14 @@ export function createInput(root, host = globalThis, options = {}) {
       for (const a of latch) state[a] = true;
       latch.clear();
     },
+    // Look mode's pinch (close-view.ts mountCloseViewControls): a finger that began on the joystick and is then joined by a
+    // second for a pinch stops moving the Wayfarer; its later moves and its release are ignored (no step, no world tap).
+    releasePointer(id) {
+      if (!pointers.has(id)) return false;
+      pointers.delete(id);
+      if (movementPointer === id) { movementPointer = null; target.x = target.y = 0; }
+      return true;
+    },
     // True while an action's key or on-screen button is held down (release 158: hold Act to leave the skiff).
     held(a) {
       if (heldButtons.has(a)) return true;

@@ -16,7 +16,7 @@ import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
@@ -88,7 +88,7 @@ export function equipFromInventory(save, index) {
 function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
-const closePan = mountCloseViewControls(() => game); // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
+const closePan = mountCloseViewControls(() => game, globalThis, { releaseMovement: (id) => input.releasePointer(id) }); // Look mode: a joystick finger joined for a pinch stops moving the Wayfarer // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
 CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H, projectedShots) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); if (game.oculus) drawOculus(closeViewLayer, performance.now()); /* release 874 */ drawCombatEffects(c, game, W, H, projectedShots); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
@@ -591,7 +591,7 @@ const objective = $("#objective"),
   hud = $("#hud"),
   hudDetails = $("#hudDetails"),
   hudToggles = [$("#hudExpand")].filter(Boolean), // release 113: the bottom-row Menu toggle became spell slot B
-  navCompass = $("#navCompass"),
+  navCompass = $("#navCompass"), navCompassSlot = $("#navCompassSlot"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
 let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
@@ -706,6 +706,7 @@ function idleCompass() {
 }
 function updateNavigationCompass(now = performance.now()) {
   updateCompassFrame(now);
+  { const look = closeViewLookActive(); hudSet(navCompassSlot, "class:look-on", look); hudSet(navCompass, "aria-pressed", look ? "true" : "false"); }
   if (game.area === "dungeon") {
     const points = dungeonCompassPoints();
     pointDungeonCompass(points.find(door => door.id === dungeonCompassPick) || points[0]);
@@ -745,9 +746,25 @@ function renderQuests(out){
 }
 // Tapping the compass names its target and steps to the next objective (release 153).
 navCompass.setAttribute("role","button");navCompass.tabIndex=0;
-navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
+navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();toggleLook();return}if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
+// Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in Close View a press held on the compass toggles it (a tap
+// still steps the compass); in it a pinch on the game area zooms the camera and a drag orbits it. Attack, Dodge, a spell or the
+// Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only. The keyboard: Shift+Enter on the compass.
+const lookHold=createLookHold();let lookHinted=false,lookTimer=0;
+navCompass.setAttribute("aria-describedby","navCompassHelp");
+// The first time in a session the message line carries the one-line hint; after that a short word.
+function toggleLook(){if(!closeViewShowing(game)){game.message="Look mode works in Close View.";return false}const on=closeViewLookToggle(game);
+  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round. Attack, Dodge, a spell or Tool ends it."):"Look mode off.";if(on)lookHinted=true;return on}
+const lookStamp=e=>Number.isFinite(e.timeStamp)&&e.timeStamp>0?e.timeStamp:performance.now(); // when the finger moved, not when a busy frame got to it
+navCompass.addEventListener("pointerdown",e=>{lookHold.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(lookTimer);
+  lookTimer=setTimeout(()=>{if(lookHold.due(performance.now())&&closeViewShowing(game)){lookHold.hold();toggleLook();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
+navCompass.addEventListener("pointermove",e=>lookHold.move(e.pointerId,e.clientX,e.clientY));
+for(const t of["pointerup","pointercancel","pointerleave"])navCompass.addEventListener(t,e=>{clearTimeout(lookTimer);if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}});
+navCompass.addEventListener("contextmenu",e=>{if(closeViewShowing(game))e.preventDefault()}); // a long press opens no menu there
+addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}});
 let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
 navCompass.addEventListener("click",()=>{
+  if(lookHold.takeClick())return; // the release of a long press (Look mode) is not a tap
   if(performance.now()-overlayClosedAt<500)return;
   if(game.area==="dungeon"){
     const points=dungeonCompassPoints();
@@ -1249,12 +1266,13 @@ new ResizeObserver(resize).observe($("#app"));
 resize();
 applyPresentationSettings();
 let leavingForProvingGround = false; // release 791: the journey was flushed for the Proving Ground and the page is leaving
-const persist = () => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now())));
-function pause(show = true) {
-  if (show) overlayPause = false;
+// Save hide fix (941 review): the save made as the page hides is written at once, not after a timer a hidden page throttles.
+const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
+function pause(show = true, urgent = false) {
+  if (show) { overlayPause = false; closeViewLookSet(game, false, true); } // the pause menu ends Look mode; a talk, a shop or another panel over the world keeps it
   game.setPaused(true, performance.now());
   input.reset();
-  persist();
+  persist(urgent);
   if (show && !pausePanel.open) pausePanel.showModal();
 }
 function pauseForOverlay() {
@@ -1453,7 +1471,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:941,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:943,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1477,7 +1495,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:941,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 941\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:943,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 943\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1489,7 +1507,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:941,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:943,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1899,6 +1917,7 @@ function showMapDetail(rx, ry) {
 function openSigilAtlas(){openMap();sigilAtlas=true;mapMode="atlas";updateMapModeUI();drawMap();updateMapTravelButton();$("#mapDetail").textContent="Choose a Wayglass (tap its section or pick it from the list), then press Use Crossing Sigil.";}
 function openMap() {
   atlasOpenedAt = performance.now(); sigilAtlas = false;
+  closeViewLookSet(game, false, true); // a menu ends Look mode (a talk or a shop does not)
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   mapView.x = game.rx;
@@ -1928,6 +1947,7 @@ function packTabBar(current){const bar=document.createElement('nav');bar.classNa
  for(const[id,label]of PACK_TABS){const b=uiButton(label,()=>id==='arcanum'?openSkills():id==='forge'?openForge():openPack(id));if(id===current)b.setAttribute('aria-current','page');bar.append(b)}
  return bar}
 function openPack(tab) {
+  closeViewLookSet(game, false, true); // a menu ends Look mode
   if (typeof tab === "string" && PACK_TABS.some(([id]) => id === tab && id !== "arcanum" && id !== "forge")) packTab = tab; // a click event is not a tab
   if (packTab === "arcanum" || packTab === "forge") packTab = "wayfarer";
   pauseForOverlay();
@@ -2300,6 +2320,7 @@ function traitBadge(id){const meta=CREATURE_TRAITS[id]||{name:id,text:"Unknown t
 function openCreatureViewer(id,name,coords,elite){const dialog=$("#creatureViewer"),canvas=$("#creatureViewerCanvas"),context=canvas.getContext("2d"),image=new Image(),[column,row]=coords;$("#creatureViewerTitle").textContent=name;context.clearRect(0,0,canvas.width,canvas.height);image.onload=()=>{const columns=4,rows=elite?1:2,sw=image.naturalWidth/columns,sh=image.naturalHeight/rows,side=Math.min(sw,sh),sx=column*sw+(sw-side)/2,sy=row*sh+(sh-side)/2;context.imageSmoothingEnabled=false;context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(image,sx,sy,side,side,0,0,canvas.width,canvas.height)};image.src=elite?"./assets/elite-bestiary-atlas-v1-wide.png":"./assets/bestiary-atlas-v1.png";if(!dialog.open)dialog.showModal()}
 function creatureVariants(kind,baseName){const variants=Object.values(save.codex?.variants||{}).filter(v=>v.kind===kind&&v.traits?.length),details=document.createElement("details"),summary=document.createElement("summary"),list=document.createElement("div");details.className="creature-details";summary.textContent=baseName;list.className="variant-list";for(const variant of variants){const row=document.createElement("div"),name=document.createElement("strong"),badges=document.createElement("div");row.className="variant-entry";name.textContent=variant.traits.map(t=>CREATURE_TRAITS[t]?.name||t).join(" ")+" "+baseName;badges.className="trait-badges";for(const trait of variant.traits)badges.append(traitBadge(trait));row.append(name,badges);list.append(row)}if(!variants.length){const empty=document.createElement("p");empty.textContent="No variants of this creature have been recorded yet.";list.append(empty)}details.append(summary,list);return details}
 function openJournal(mode = "chronicle") {
+  closeViewLookSet(game, false, true); // a menu ends Look mode
   if(typeof mode!=="string")mode="chronicle";
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
@@ -2623,6 +2644,7 @@ function frame(now) {
   recordPerf("frame", now - last);
   last = now;
   measured("input",()=>input.update(dt));
+  closeViewLookActions(game, input.state); // Look mode ends on Attack, Dodge, a spell (Rift Step too) or the Tool; Action and Jump keep it
   // Release 199: while a Glimpse plays nothing else runs: no keys, no update, whatever has tried to resume the game.
   if (glimpseRun) { game.setPaused(true, now); return; }
   if (input.consume("pause")) game.paused ? resume() : pause();
@@ -2636,6 +2658,7 @@ function frame(now) {
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
+  closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
@@ -2927,17 +2950,17 @@ addEventListener("popstate",()=>{backPressed();backGuard()});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
-    pause(false);
+    pause(false, true);
   }
   else if (game.paused && !pausePanel.open && !glimpseRun) pausePanel.showModal();
 });
 addEventListener("pagehide", () => {
   overlayPause = false;
-  pause(false);
+  pause(false, true);
 });
 addEventListener("freeze", () => {
   overlayPause = false;
-  pause(false);
+  pause(false, true);
 });
 // Release 734: a damaged or unreadable active journey opens on the Journeys screen, saying it is kept and not saved over.
 if (saveBlocked()) { optionCategory = "Journeys"; openOptions().then(() => optionMessage(`${saveBlocked()} Nothing you do now is saved to Journey ${getActiveSlot()}. Recover it, import a journey, or choose another slot.`, true)); }

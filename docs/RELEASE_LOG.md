@@ -15,13 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r940 (`007ef9ee3cb6`); production serves `r939-3cfc61802893` (published 2026-11-13 after a Fable review of r938 to r939). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r942 (`f19bda103f46`); production serves `r941-b5036c167d5d` (published 2026-11-13 after a Fable review of r940 to r941). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 941 | Claude | claude/perf-spikes | From Tim's on-device probe: lay the next section's terrain ahead while near an edge, fix the region cache that slowed down over long sessions, faster generation lookups (byte-identical), one cached IndexedDB connection, no key read-back on delta saves, the write after the frame, cheaper snapshot copy; probe now times view, ground image, effects, viewport and other, plus terrain hits/misses | In flight. |
+| 943 | Claude | claude/look-zoom | Close View Look mode (hold the compass; pinch to zoom onto the Wayfarer or the character/creature/thing in front; drag to orbit; Attack, Dodge, spells and Tool end it, Action/Jump/walking keep it) plus the Verge Cleaver's second combo cut sweeping level (it was authored 12.4 degrees off) | In flight. |
+| 942 | Claude | claude/save-hide-fix | Follow-up to 941's autosave changes from its review: the save made as the game is hidden or closed skips the one-task deferral; every IndexedDB call drops the cached connection on failure and a hung open/transaction is aborted after 30 s; a failed open is never cached; flushSaves reports a failed write once | Merged as `f19bda103f46` (#609). |
+| 941 | Claude | claude/perf-spikes | From Tim's on-device probe: lay the next section's terrain ahead while near an edge, fix the region cache that slowed down over long sessions, faster generation lookups (byte-identical), one cached IndexedDB connection, no key read-back on delta saves, the write after the frame, cheaper snapshot copy; probe now times view, ground image, effects, viewport and other, plus terrain hits/misses | Merged as `b5036c167d5d` (#608). |
 | 940 | Claude | claude/arts-balance | Balance pass on 938-939 (early release 0.3, per-art shares, lighter awakened moves; daggers stay on top) plus fixes: Fissure fires in Close View, arts blocked while mounted/sailing/gliding/falling/plunging/in the robot/swimming, axe kick never stamps over a newer action, awakened fists' unused kick window ends with the uppercut's own recovery | Merged as `007ef9ee3cb6` (#607). |
 | 939 | Claude | claude/awakened-arts | Each awakened primary gets its own move instead of the shared crescent (Fissure, Returning blades, Lance, roundhouse kick, Spell runes), each with a small upgrade when its weapon art is selected; the thrown Cinder Javelin leaves the hands in Close View and the throw can be cancelled while the javelin keeps flying | Merged as `3cfc61802893` (#606). |
 | 938 | Claude | claude/weapon-arts | Five Lattice tool forms, one per primary weapon (Lava Slash, Blade Stream, Cinder Javelin, Ki Blast, Transpose): 3 presses arm one stored charge, hold to charge with a perfect window, release; Transpose seal (+25% spell damage, +5% damage taken, extended by melee hits, cap 10 s, 3 s linger); Cinder Pike combo becomes three lunging two-handed thrusts (hit shape unchanged) | Merged as `730fe2d66825` (#605). |
