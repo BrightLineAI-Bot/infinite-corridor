@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 928 — Release 928 — gliding is out of reach of blows again
+
+The pre-publish review of r917 to r927 found that release 926 had put a `// FALL:` comment in the middle of the glide update line, commenting out the assignment that keeps a Wayfarer gliding above `GLIDE.safe` out of reach of blows. In its replay a mid-glide save took 40 damage where the live game took none.
+
+**CODE:** `src/game.ts` glide update: `p.invulnerableUntil = g.z > G.safe ? Math.max(p.invulnerableUntil || 0, now + 120) : p.invulnerableUntil;` restored, with the 926 comment moved to the end of the line. `tests/glide-guard.test.ts` checks an open and a closed glide above `GLIDE.safe` stay invulnerable frame by frame.
+
+**BOUNDARY:** One assignment restored to its r917 behaviour; no other change. No save change.
+
 ## Release 927 — Standard-view beast animation memory keyed by id
 
 This was found while building the Spinosaurus art (2026-11-12), and Tim asked for it to be fixed. The renderer paints a fresh copy of each foe every frame (`drawPackMonster(ctx, { ...e, ... })`). Four modules kept render memory in WeakMaps keyed by the object, so it never found the same key twice:
