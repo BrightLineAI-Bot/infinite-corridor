@@ -72,8 +72,8 @@ import {
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
-import { awakenedSwing, awakenedKickBurst, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
@@ -159,7 +159,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
@@ -181,7 +181,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
@@ -3239,7 +3239,7 @@ export class Game {
     this.cancelPendingToolUse('area-transition');
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
-    this.fistReleaseIntent=null;
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.kiSlam=false; // the fists' chain belongs to where it was thrown
     this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
@@ -3979,7 +3979,7 @@ export class Game {
   clearCarriedStates() {
     this.cancelPendingToolUse('world-reset');
     this.clearHammerfallStartup('world-reset');
-    this.fistReleaseIntent=null;
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistCharge=null;this.kiSlam=false;
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
@@ -7902,7 +7902,7 @@ export class Game {
       this.recordPrimaryConsequences(hits);
       return{released:true,cancelled:false,hits};
     }
-    if(q.payload.kind==='fist'){const src=q.payload.effect,at={x:this.player.x+.5+q.aim.x*.7,y:this.player.y+.45+q.aim.y*.7},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
+    if(q.payload.kind==='fist'){const src=q.payload.effect,out=src.kind==='fist-kick'?0:.7/* the kick spins round her */,at={x:this.player.x+.5+q.aim.x*out,y:this.player.y+.45+q.aim.y*out},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
     return{released:false,cancelled:true};
   }
   clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; }
@@ -8204,44 +8204,23 @@ export class Game {
     return d;
   }
   // Ki Blast on the uppercut: an ordinary leap from where the Wayfarer stands (never from a roof, a mount, the water or in the air).
+  // While that leap lasts, the next press is the ground slam (`kiSlam`, runtime only; airAttack and plungeLand).
   artLeap(now) {
     if (now < (this.jumpUntil || 0) || this.cursed("jump", now) || this.swimming || this.mountRide?.() || this.wallCling || this.glide || this.fall || (this.decksApply?.() && this.standingDeck?.())) return false;
     const p = this.player; this.jumpFrom = elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
     this.jumpDur = JUMP.base + skillRank(this.save, "quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur;
+    if (this.fistsEquipped()) this.kiSlam = true;
     return true;
   }
-  // The Iron Fists' waiting press: the punch it throws is the combo's next as the press is made (the jab or the uppercut while
-  // the window is open, else the dash punch), fixed there however long the charge is held. A tap throws it as ever; a release
-  // throws it with the blast. Returns the step.
-  artFistStep(now) { const c = this.fistCombo; return c && now <= c.until && c.step < IRON_FISTS.punches.length ? c.step + 1 : this.kickReady(now) ? IRON_FISTS.punches.length + 1 : 1; } // awakened: the kick after the uppercut
-  artFistTap(now, dir, step = 1) { if (step > IRON_FISTS.punches.length) return this.awakenedKick(now, dir); this._fistInputUpdate = true; try { return this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } }
-  artFistRelease(now, dir, step = 1) { if (step > IRON_FISTS.punches.length) { this.awakenedKick(now, dir); return step; } this._fistInputUpdate = true; try { this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } return step; }
+  // Still up in the Ki Blast's leap with the fists on: a press drops into the ground slam.
+  kiSlamReady(now = this.lastUpdateNow || 0) { if (this.kiSlam && !(now < (this.jumpUntil || 0))) this.kiSlam = false; return !!this.kiSlam && this.fistsEquipped(); }
+  // The Iron Fists' waiting press: the step it throws is the combo's next as the press is made (fistNextStep), fixed there however
+  // long the charge is held. A tap throws it as ever; a release throws it with the blast. Returns the step.
+  artFistStep(now) { return this.fistNextStep(now); }
+  artFistTap(now, dir, step = 1) { this._fistInputUpdate = true; try { return this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } }
+  artFistRelease(now, dir, step = 1) { this._fistInputUpdate = true; try { this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } return step; }
   // Awakened arts (awakened-arts.ts; numbers in weapon-arts.ts AWAKENED_ARTS): the hooks it calls. Runtime game.awakenedArts.
   awakenedRelease(id, now, air = false) { return awakenedArtRelease(this, id, now, air); } // weapon-arts.ts: an art released
-  // A pose for a move that has no swing of its own (the axe kick): a punch record wearing `awakenedArt`.
-  awakenedVisual(now, d, art, ms) {
-    if (art !== "axe-kick" && art !== "roundhouse") return;
-    const p = this.player, aim = d && Math.hypot(d.x, d.y) > 0 ? d : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-    p.attackUntil = now + ms; p.meleeUntil = now + ms; p.fistVisualUntil = now + ms; this.cancelConsumeVisual("attack");
-    const v = stampAttackVisual(p, "fist", ms, aim); if (!v) return;
-    const logicalNow = now - (this.presentationPausedMs || 0); v.fistStep = 3; v.fistLead = this.save.fistOpeningHand === "left" ? "left" : "right"; v.awakenedArt = art; v.poseMs = Math.max(0, logicalNow);
-    v.facingYaw = Math.atan2(aim.y, aim.x); p.actionVisualUntil = now + ms;
-  }
-  // The Iron Fists' awakened fourth strike (AWAKENED_ARTS.moves.roundhouse): after the uppercut, while the combo's window is
-  // open, a spinning kick round her; then the combo ends and recovers as after the uppercut. A press, so it arms an art.
-  kickReady(now) { const c = this.fistCombo; return !!c && now <= c.until && c.step === IRON_FISTS.punches.length && awakenedFor(this.save) === "roundhouse"; }
-  // The uppercut's window for the kick ran out unused: the combo ends and recovers from then, as after the uppercut.
-  lapseKick(now = this.lastUpdateNow || 0) {
-    const c = this.fistCombo; if (!c?.kick || now <= c.until) return false;
-    this.fistCombo = null; this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, c.until - IRON_FISTS.window * 1000 + IRON_FISTS.recover * 1000); return true; // the uppercut's own recovery, counted from the uppercut (never longer than unawakened fists)
-  }
-  awakenedKick(now = this.lastUpdateNow || 0, direction = null) {
-    if (this.cursed("attack", now)) { this.fistCombo = null; return false; }
-    const A = AWAKENED_ARTS.moves.roundhouse, d = direction && Math.hypot(direction.x, direction.y) > .01 ? projectileDirection(direction.x, direction.y, this.player.facing) : this.brawlerAim(A.radius + 1).d;
-    this.fistCombo = null; this.fistRecoverUntil = now + IRON_FISTS.recover * 1000;
-    awakenedKickBurst(this, now, this.fistPower()); this.awakenedVisual(now, d, "roundhouse", A.poseMs);
-    noteArtPress(this); this.message = AWAKENED_ARTS.messages.kick; return true;
-  }
   // The art's pose: an ordinary primary attack record carrying `weaponArt` (Close View: close-view-hero.ts weaponArtPose).
   artVisual(now, d, art, ms) {
     const p = this.player;
@@ -8435,7 +8414,7 @@ export class Game {
   castSpell(spellId = null) {
     const id=spellId&&SPELLS[spellId]?spellId:(this.save.equippedSpell||'ember-ring'),priorVisual=this.player.castVisual,before={effects:this.effects.length,shots:this.projectiles.length,clone:!!this.shadowCloneActive(this.lastUpdateNow||0),orbit:!!this.orbit&&!this.orbit.flight,x:this.player.x,y:this.player.y};
     const result = this.castSpellEffect(spellId);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before);awakenedSpellCast(this,now);/* awakened-arts.ts: Transpose's seal pulses */ }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.cancelFists(now);/* 2026-11-13: so does a cast */if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before);awakenedSpellCast(this,now);/* awakened-arts.ts: Transpose's seal pulses */ }
     return result;
   }
   recordCastVisual(spellKind,before={},variant='cast',accepted=null){
@@ -8577,10 +8556,11 @@ export class Game {
     if (this.plunge || now < (this.plungeRecoverUntil || 0)) return true;
     if (!(now < (this.jumpUntil || 0)) || this.plungeSpent || !(p.hp > 0) || this.plungeBlocked()) return false;
     if (this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.fistCharge) return false;
-    const kind = plungeKind(this.save.equipment?.primary), foe = now < (this.boxingUntil || 0) ? this.plungeDiveTarget() : null;
+    const kiSlam = this.kiSlamReady(now); this.kiSlam = false; // Ki Blast's ground slam (2026-11-13): straight down, the fists' own blow on landing
+    const kind = plungeKind(this.save.equipment?.primary), foe = !kiSlam && now < (this.boxingUntil || 0) ? this.plungeDiveTarget() : null;
     const dist = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
     const ms = foe ? Math.max(PLUNGE.dropMs, Math.min(PLUNGE_DIVE.maxMs, dist / PLUNGE_DIVE.speed * 1000 + 60)) : Math.min(this.jumpUntil - now, PLUNGE.dropMs);
-    this.plunge = { start: now, until: now + ms, lift0: jumpLift(this, now), kind, area: this.area, areaId: this.areaId(), dive: foe ? { id: foe.id } : null };
+    this.plunge = { start: now, until: now + ms, lift0: jumpLift(this, now), kind, area: this.area, areaId: this.areaId(), dive: foe ? { id: foe.id } : null, ...(kiSlam ? { kiSlam: true } : {}) };
     this.plungeSpent = true; this.jumpUntil = now + ms; if (this.fall) this.fall.vz = Math.min(this.fall.vz, -FALL.plunge); // FALL: a jump already over a drop goes down at the plunge's speed
     if (foe) { // the dive holds the height it left from, so a drop on the way is a fall where it lands
       if (this.skyAir == null) this.skyAir = Number.isFinite(this.jumpFrom) ? this.jumpFrom : elevationAt(this.map, mapWidth(this.map, this.area), p.x, p.y);
@@ -8588,9 +8568,9 @@ export class Game {
     }
     this.clearAttackBuffer(); this.cancelPendingMeleeContact("plunge"); this.cancelConsumeVisual("attack"); cancelCastVisual(p);
     const total = ms + PLUNGE.recoverMs; p.attackUntil = now + total; p.meleeUntil = now + total;
-    const visual = stampAttackVisual(p, "hammer", total, p.meleeAim || this.save.lastAim); // an overhead blow brought down (Close View's Hammerfall pose)
-    if (visual) { p.actionVisualUntil = now + total; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); if (prior) visual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
-    this.message = foe ? "Shadow dive!" : "Plunge!";
+    const visual = stampAttackVisual(p, kiSlam ? "fist" : "hammer", total, p.meleeAim || this.save.lastAim); // an overhead blow brought down (Close View's Hammerfall pose); the slam: a dropping kick
+    if (visual) { p.actionVisualUntil = now + total; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); if (prior) visual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); if (kiSlam) { visual.fistStep = 3; visual.fistLead = "right"; visual.awakenedArt = "axe-kick"; } }
+    this.message = kiSlam ? AWAKENED_ARTS.messages.slam : foe ? "Shadow dive!" : "Plunge!";
     return true;
   }
   // The dive's foe: the lock if it is in range, else the nearest foe within PLUNGE_DIVE.range (no allocation).
@@ -8634,6 +8614,13 @@ export class Game {
     const P = plungeProfile(q.kind), boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, base = this.plungeBase(now) * (1 + (boxing?.damage || 0));
     const cx = p.x + .5, cy = p.y + .45, imbue = this.imbueBonus(now), healShare = boxing?.heal || 0;
     const blow = (kind, radius, share, stun, life) => { const fx = { id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x: cx, y: cy, life, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(base * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun }; this.effects.push(fx); return fx; };
+    if (q.kiSlam && this.fistsEquipped()) { // Ki Blast's ground slam: the fists' power, in the kick's place; the chain starts again at the cross on the usual rhythm
+      const S = WEAPON_ARTS.arts["ki-blast"].slam, share = S.share + (awakenedUp(this.save, "roundhouse") ? AWAKENED_ARTS.moves.roundhouse.up.share : 0), fist = this.fistPower() * (1 + (boxing?.damage || 0));
+      this.effects.push({ id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "plunge-slam", brawler: true, x: cx, y: cy, life: PLUNGE.slamLife, radius: S.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(fist * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun: S.stun });
+      this.plungeRecoverUntil = now + IRON_FISTS.gate * 1000; p.attackReadyAt = Math.max(p.attackReadyAt || 0, this.plungeRecoverUntil);
+      this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; noteArtPress(this);
+      return true;
+    }
     const slam = blow("plunge-slam", P.radius, P.share, P.stun, PLUNGE.slamLife);
     // Spinosaur's Echo (echoes.ts SPINO_ECHO): one afterimage slam on the same spot a moment later; it never lays another
     if (hasEcho(this.save, "spinoRex")) { const ghost = plungeAfterimage(slam, `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, p.meleeAim || this.save.lastAim); if (ghost) this.effects.push(ghost); }
@@ -9868,47 +9855,74 @@ export class Game {
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
+  // The training combo (2026-11-13; brawler-spells.ts IRON_FISTS): right cross, left jab, right uppercut and, awakened, the
+  // roundhouse kick (weapon-arts.ts AWAKENED_ARTS.moves.roundhouse), looping on one rhythm: every step is followed by the
+  // same gate (`fistRecoverUntil`), and the chain starts again at the cross once `window` s pass with no press.
+  fistSteps() { return awakenedFor(this.save) === "roundhouse" ? IRON_FISTS.punches.length + 1 : IRON_FISTS.punches.length; }
+  fistStepSpec(step) { return step > IRON_FISTS.punches.length ? AWAKENED_ARTS.moves.roundhouse : IRON_FISTS.punches[step - 1]; }
+  fistNextStep(now = this.lastUpdateNow || 0) { const c = this.fistCombo; return c && now <= c.until && c.step < this.fistSteps() ? c.step + 1 : 1; }
+  // Echo glyphs in the fists let more steps be held (release 503): none, the cross; one, the jab too; two, every step.
+  fistChargeable(step) { const P = this.fistStepSpec(step); return !P.echoes || hostLoadout(this.save, "melee").count("echo") >= P.echoes; }
+  // A dodge or a cast cancels the step in progress, any charge and a waiting press; the chain starts again at the cross.
+  cancelFists(now = this.lastUpdateNow || 0) {
+    if (!this.fistCharge && !this.fistCombo && !this.fistQueued && !this.fistReleaseIntent) return false;
+    this.fistCharge = null; this.fistCombo = null; this.fistQueued = null; this.fistReleaseIntent = null; this.cancelFistPresentation(now); return true;
+  }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
-    this.lapseKick(now); // awakened Iron Fists: a kick window that ran out unused recovers as the uppercut would have
-    if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
-    if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the punch waits for the let-go
-    if (this.kickReady(now)) return this.awakenedKick(now, direction); // awakened-arts.ts: the fourth strike, a roundhouse kick
-    const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
-    if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
-    this.fistCombo = null;
-    if (action) { this.fistCharge = { action, start: now, direction };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; }
-    return this.fistPunch(1, 0, now, direction);
+    if (this.fistCharge) return false;
+    if (this.kiSlamReady(now)) return this.airAttack(now); // Ki Blast: still up in the uppercut's leap, the ground slam
+    if (now < (this.fistRecoverUntil || 0)) { // the gate: a press in its last `buffer` s is thrown as it opens
+      if (this.fistRecoverUntil - now <= IRON_FISTS.buffer * 1000 + 1e-6) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs };
+      return false;
+    }
+    this.fistQueued = null;
+    if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the step waits for the let-go
+    const step = this.fistNextStep(now);
+    if (step === 1) this.fistCombo = null;
+    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
+    return this.fistPunch(step, 0, now, direction);
   }
-  fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null) {
+  // A press that waited out the gate (fistPress): thrown as the gate opens, charging if Attack is still held.
+  tickFistQueue(now, input) {
+    const q = this.fistQueued; if (!q || now < (this.fistRecoverUntil || 0)) return false;
+    this.fistQueued = null;
+    if (now > q.until || !this.fistsEquipped() || !(this.player.hp > 0) || this.fistCharge || this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.pendingMeleeContact?.v === 1) return false;
+    const action = q.action && input?.held?.(q.action) ? q.action : null;
+    this._fistInputUpdate = true; try { return this.fistPress(now, q.direction, action); } finally { this._fistInputUpdate = false; }
+  }
+  fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
-    const F = IRON_FISTS, P = F.punches[step - 1], p = this.player, w = this.glyphWorld(now), reach = P.dash + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
+    const kick = step > IRON_FISTS.punches.length; if (kick && awakenedFor(this.save) !== "roundhouse") step = 1; // the fists' awakening gone mid-chain: the cross
+    const F = IRON_FISTS, P = this.fistStepSpec(step), p = this.player, w = this.glyphWorld(now), reach = (P.dash || 0) + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
-    const fistLead = step === 1 ? (this.save.fistOpeningHand === 'right' ? 'left' : 'right') : this.fistCombo?.lead || this.save.fistOpeningHand || 'right';
-    let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash;
-    if (P.rush) { // release 491: the dash punch rushes to the targeted foe in range, else lands in place
+    const fistLead = 'right'; // Tim, 2026-11-13: right cross, left jab, right uppercut (the jab's hand is the other one)
+    let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash || 0;
+    if (P.rush) { // release 491: the cross rushes to the targeted foe in range, else lands in place
       const rush = P.rush + (boxing ? boxing.stick : 0), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), rush)?.e;
       if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - P.stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
-    } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the jab and uppercut to the foe
+    } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the later steps to the foe
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
-    const at = { x: p.x + .5 + d.x * .7, y: p.y + .45 + d.y * .7 }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
-    const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1];
-    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step === 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * charge) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : P.stun || .3 * charge, finisher: !!finisher };
+    const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
+    const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0));
+    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
     const delayed=this.closeViewActionEligible()&&(this.attackAction==='attack'||this._fistInputUpdate===true);
     if(!delayed)this.effects.push(effect);
-    if (step === 1) this.save.fistOpeningHand = fistLead;
-    const kickNext = step >= F.punches.length && awakenedFor(this.save) === "roundhouse"; // awakened Iron Fists: the uppercut leaves the window open for the kick
-    this.fistCombo = step >= F.punches.length && !kickNext ? null : { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, ...(kickNext ? { kick: true } : {}) };
-    if (step >= F.punches.length && !kickNext) this.fistRecoverUntil = now + F.recover * 1000;
-    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
+    if (step === 1) this.save.fistOpeningHand = fistLead; // kept for older readers: always the right now
+    this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead }; // the chain loops: after the last step the cross comes next
+    this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
+    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each step
+    const chained = now < (p.fistVisualUntil || 0) || now < (p.actionVisualUntil || 0); // a step thrown out of the last one's guard (Close View starts it from the guard)
     this.cancelConsumeVisual('attack');
-    p.attackUntil = now + 240; p.meleeUntil = now + 240; p.fistVisualUntil = now + ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = Math.max(0, Math.min(1, Number(charge) || 0)); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); }
-    if(delayed){const move=step===1?'dash':step===2?'jab':'uppercut',T=CLOSE_VIEW_MELEE_TIMING[move],contactMs=T.contactMs,id=`melee-${effect.id}`;if(visual){visual.durationMs=T.durationMs;visual.meleeAction={v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs};p.actionVisualUntil=now+T.durationMs;}this.pendingMeleeContact={v:1,id,action:{v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{...d},payload:{kind:'fist',effect:structuredClone(effect),step,landedBefore:[...before],cloneDamage:primaryProfile(this.save.equipment.primary).damage,cloneEligible:this.shadowCloneActive(now)}};}
-    noteArtPress(this); // weapon-arts.ts: each punch is a press
-    this.message = finisher ? "Uppercut! All three landed." : step === 1 ? (charge >= 1 ? "Dash punch, fully charged!" : "Dash punch.") : step === 2 ? "Jab." : "Uppercut.";
+    const T = CLOSE_VIEW_MELEE_TIMING[kick ? 'kick' : step === 1 ? 'dash' : step === 2 ? 'jab' : 'uppercut'];
+    p.attackUntil = now + 240; p.meleeUntil = now + 240; p.fistVisualUntil = now + ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = full; if (perfect) visual.fistPerfect = true; if (kick) visual.awakenedArt = "roundhouse"; if (chained) visual.fistChain = true; visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); }
+    if(delayed){const move=kick?'kick':step===1?'dash':step===2?'jab':'uppercut',contactMs=T.contactMs,id=`melee-${effect.id}`;if(visual){visual.durationMs=T.durationMs;visual.meleeAction={v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs};p.actionVisualUntil=now+T.durationMs;}this.pendingMeleeContact={v:1,id,action:{v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{...d},payload:{kind:'fist',effect:structuredClone(effect),step,landedBefore:[...before],cloneDamage:primaryProfile(this.save.equipment.primary).damage,cloneEligible:this.shadowCloneActive(now)}};}
+    noteArtPress(this); // weapon-arts.ts: each step is a press
+    const name = P.name, strong = perfect ? " Perfect!" : full >= 1 ? " Fully charged!" : "";
+    this.message = kick ? `${AWAKENED_ARTS.messages.kick}${strong}` : finisher ? `${name}! All three landed.${strong}` : `${name}.${strong}`;
     return true;
   }
   cancelAttackPresentation(now = this.lastUpdateNow || 0) {
@@ -10102,7 +10116,7 @@ export class Game {
   activateApertureSkill(id = this.save.magicSkills?.selected) {
     const before={x:this.player.x,y:this.player.y,shots:this.projectiles.length,effects:this.effects.length};
     const result = this.activateApertureSkillEffect(id);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.recordCastVisual(id,before,'activate'); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.cancelFists(now);/* 2026-11-13: so does a cast */this.recordCastVisual(id,before,'activate'); }
     return result;
   }
   activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}if((state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */state.cooldowns[id]=skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown;if(id==='aerial-step')state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
@@ -10348,7 +10362,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held);if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
     if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
@@ -10358,7 +10372,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10647,8 +10661,8 @@ export class Game {
     }
     this.reconcileHeldTool(now);
     if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);}
-    if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction);}finally{this._fistInputUpdate=false;}}}
-    if(this.fistCombo?.kick)this.lapseKick(now);
+    if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
+    this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
@@ -10726,7 +10740,7 @@ export class Game {
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
     );
     const hammerTransition=this.reconcileHammerfallStartup(hammerObserved);this._hammerfallObserved=null;
-    if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction)===true;}finally{this._fistInputUpdate=false;}}}if(!accepted)this.tickAttackBuffer(now,input);}
+    if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true)===true;}finally{this._fistInputUpdate=false;}}}if(!accepted)this.tickAttackBuffer(now,input);}
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });

@@ -47,7 +47,7 @@ test('attack presentation metadata is additive at schema 14 and validates withou
   for (const facingYaw of [Infinity, {}, Math.PI * 4 + .01]) assert.equal(normalizeAttackVisual({ ...raw, facingYaw }, 120), null);
   const fist={...raw,fistStep:2,fistLead:'left',fistCharge:.75,fistGaitPhase:1.25,fistSpeed:.8,presentationCancelled:false};assert.deepEqual(normalizeAttackVisual(fist,120),fist);
   assert.equal(normalizeAttackVisual({...raw,presentationCancelled:'false'},120),null);
-  for(const bad of [{fistStep:0},{fistStep:4},{fistLead:'future'},{fistCharge:1.1},{fistGaitPhase:99},{fistSpeed:-1}])assert.equal(normalizeAttackVisual({...raw,...bad},120),null);
+  for(const bad of [{fistStep:0},{fistStep:5}/* 4 is the awakened fists' kick (2026-11-13) */,{fistLead:'future'},{fistCharge:1.1},{fistGaitPhase:99},{fistSpeed:-1}])assert.equal(normalizeAttackVisual({...raw,...bad},120),null);
   const handed=freshSave();handed.fistOpeningHand='left';handed.futureTop=future;assert.equal(migrateSave(copy(handed)).fistOpeningHand,'left');handed.fistOpeningHand='malformed';const cleaned=migrateSave(copy(handed));assert.equal(cleaned.fistOpeningHand,null);assert.deepEqual(cleaned.futureTop,future);
   assert.equal(normalizeAttackVisual(raw, 241), null, 'metadata cannot rewrite an incompatible authoritative clock');
   const player = { attackUntil: 240, meleeUntil: 230, meleeStrike: { dx: 1, dy: 0 }, attackReadyAt: 400 };

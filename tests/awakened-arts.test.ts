@@ -54,7 +54,7 @@ test('one data table: a move for each primary but the staff, about the crescent\
   for (const id of AWAKENED_IDS) assert.equal(WEAPON_ARTS.arts[M[id].passive].weapon, M[id].weapon, `${id}: its weapon's own art`);
   assert.ok(Object.isFrozen(AWAKENED_ARTS) && Object.isFrozen(M) && AWAKENED_IDS.every((id) => Object.isFrozen(M[id]) && Object.isFrozen(M[id].up)));
   assert.equal(AWAKENED_ARTS.every, 3);
-  assert.equal(M.fissure.share, .3); assert.equal(M.lance.share, .5); assert.equal(M['spell-runes'].share, .7); assert.equal(M['returning-blades'].share * 2, .5, 'a cut out and a cut back'); for (const id of AWAKENED_IDS) assert.ok(M[id].share <= .8, `${id}: at most the crescent's weight (balance pass)`); assert.ok(M.roundhouse.share <= .8);
+  assert.equal(M.fissure.share, .3); assert.equal(M.lance.share, .5); assert.equal(M['spell-runes'].share, .7); assert.equal(M['returning-blades'].share * 2, .5, 'a cut out and a cut back'); for (const id of AWAKENED_IDS) if (id !== 'roundhouse') assert.ok(M[id].share <= .8, `${id}: at most the crescent's weight (balance pass)`); assert.ok(M.roundhouse.share >= IRON_FISTS.punches[2].share, 'the kick is a full combo step, never weaker than a punch (2026-11-13)');
   assert.ok(M.fissure.up.share * M.fissure.up.life / M.fissure.up.tick <= .4, 'the lava crack is a small bonus');
   assert.ok(M.lance.up.returnShare < 1 && M['returning-blades'].up.share < M['returning-blades'].share && M.roundhouse.up.share < 1 && M['spell-runes'].up.share < 1);
   for (const [weapon, id] of [['verge-cleaver', 'fissure'], ['fourfold-daggers', 'returning-blades'], ['cinder-pike', 'lance'], ['iron-fists', 'roundhouse'], ['salvage-blade', 'spell-runes'], ['quandrix-staff', null]]) {
@@ -133,37 +133,41 @@ test('Cinder Javelin with the awakened Lance: the pike flies back to the hand an
   }
 });
 
-test('Iron Fists: awakened, a fourth press after the uppercut is a roundhouse kick all round; never without the awakening', () => {
+test('Iron Fists: awakened, the fourth step after the uppercut is a roundhouse kick all round; never without the awakening', () => {
+  // 2026-11-13: the kick is a step of the chain on the punches' rhythm, as strong as a punch, a stagger and no knock
+  const step = (g, clock) => { press(g, clock); idle(g, clock, 13); };
   for (const awakened of [true, false]) {
-    const { g, clock } = arena('roundhouse', { foes: [[1.2, 0], [-1.2, 0], [0, 1.2], [3.5, 0]], awakened }), log = spy(g);
-    for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 8); }
-    assert.equal(g.fistCombo?.step ?? null, awakened ? 3 : null, 'the uppercut leaves the window open only when awakened');
-    [[1.2, 0], [-1.2, 0], [0, 1.2], [3.5, 0]].forEach(([dx, dy], i) => Object.assign(g.enemies[i], { x: g.player.x + dx, y: g.player.y + dy })); log.length = 0; // round her where the combo left her
-    press(g, clock); idle(g, clock, 2);
-    if (awakened) { assert.deepEqual(log.map((q) => q.id).sort(), ['foe-0', 'foe-1', 'foe-2'], 'all round, not the far foe'); for (const q of log) assert.ok(near(q.amount, g.fistPower() * M.roundhouse.share));
-      assert.equal(g.fistCombo, null); assert.ok(g.fistRecoverUntil > clock.t - 100, 'then it recovers'); assert.equal(g.player.attackVisual.awakenedArt, 'roundhouse'); assert.match(g.message, /Roundhouse/); }
-    else { assert.equal(log.length, 0); assert.doesNotMatch(g.message, /Roundhouse/); assert.equal(g.awakenedArts, undefined, 'the uppercut ends the combo as ever'); }
+    const { g, clock } = arena('roundhouse', { foes: [[1.2, 0], [-1.2, 0], [0, 1.2], [3.5, 0]], awakened });
+    for (let i = 0; i < 3; i++) step(g, clock);
+    assert.equal(g.fistNextStep(clock.t), awakened ? 4 : 1, 'the kick follows the uppercut only when awakened');
+    [[1.2, 0], [-1.2, 0], [0, 1.2], [3.5, 0]].forEach(([dx, dy], i) => Object.assign(g.enemies[i], { x: g.player.x + dx, y: g.player.y + dy })); const hp = g.enemies.map((e) => e.hp), at = g.enemies.map((e) => [e.x, e.y]);
+    press(g, clock); idle(g, clock, 2); const lost = g.enemies.map((e, i) => hp[i] - e.hp);
+    if (awakened) { assert.ok(lost[0] > 0 && lost[1] > 0 && lost[2] > 0 && lost[3] === 0, `all round, not the far foe (${lost})`); assert.equal(g.player.attackVisual.awakenedArt, 'roundhouse'); assert.equal(g.player.attackVisual.fistStep, 4); assert.match(g.message, /Roundhouse/);
+      for (const i of [0, 1, 2]) assert.ok(Math.hypot(g.enemies[i].x - at[i][0], g.enemies[i].y - at[i][1]) < 1e-6, 'staggered, never knocked out of reach'); }
+    else { assert.equal(g.fistCombo.step, 1, 'unawakened: the cross'); assert.doesNotMatch(g.message, /Roundhouse/); assert.equal(g.awakenedArts, undefined); }
   }
   // the punches themselves are unchanged
   const { g, clock } = arena('roundhouse', { foes: [[1.2, 0]] }); const hp0 = g.enemies[0].hp; press(g, clock); idle(g, clock, 2); assert.ok(g.enemies[0].hp < hp0); assert.equal(g.fistCombo.step, 1);
   // the kick press counts toward arming Ki Blast
-  { const { g, clock } = arena('roundhouse', { foes: [[1.2, 0]], passive: true }); press(g, clock); idle(g, clock, 8); press(g, clock); idle(g, clock, 8);
-    assert.equal(g.weaponArts.presses, 2); assert.equal(g.weaponArts.armed, false); press(g, clock); idle(g, clock, 8); assert.equal(g.weaponArts.armed, true, 'the uppercut arms it'); }
-  { const { g, clock } = arena('roundhouse', { foes: [[1.2, 0]], passive: true }); g.weaponArts = undefined; press(g, clock); idle(g, clock, 8); press(g, clock); idle(g, clock, 8);
-    g.weaponArts.presses = 1; press(g, clock); idle(g, clock, 8); assert.equal(g.weaponArts.presses, 2); // tap the uppercut
+  { const { g, clock } = arena('roundhouse', { foes: [[1.2, 0]], passive: true }); step(g, clock); step(g, clock);
+    assert.equal(g.weaponArts.presses, 2); assert.equal(g.weaponArts.armed, false); step(g, clock); assert.equal(g.weaponArts.armed, true, 'the uppercut arms it'); }
+  { const { g, clock } = arena('roundhouse', { foes: [[1.2, 0]], passive: true }); g.weaponArts = undefined; step(g, clock); step(g, clock);
+    g.weaponArts.presses = 1; step(g, clock); assert.equal(g.weaponArts.presses, 2); // tap the uppercut
     press(g, clock); frame(g, clock, false); idle(g, clock, 4); assert.equal(g.weaponArts.presses, 3, 'the kick is a press'); }
 });
 
-test('Ki Blast with the awakened Iron Fists: the airborne blast ends with an axe kick where she lands; only with both', () => {
+test('Ki Blast: still in the air after the uppercut blast, a press drops into the ground slam; awakened it weighs as the kick', () => {
+  // 2026-11-13: replaces the awakened-only axe kick that burst on landing by itself
+  const slams = {};
   for (const awakened of [true, false]) {
     const { g, clock } = arena('roundhouse', { foes: [[1, .2], [6, 0]], passive: true, awakened }); for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
-    idle(g, clock, 40); press(g, clock); idle(g, clock, 5); press(g, clock); idle(g, clock, 5); // the dash punch and jab: the uppercut is next
-    const log = spy(g); charge(g, clock, 1.15); const air = clock.t < g.jumpUntil;
-    assert.equal(air, true, 'the uppercut blast pops her up'); assert.equal(liveAwakened(g).axes, awakened ? 1 : 0);
-    idle(g, clock, 80); const axe = log.filter((q) => q.id === 'foe-0' && near(q.amount, g.artPower(clock.t) * M.roundhouse.up.share, 1e-3));
-    assert.equal(axe.length, awakened ? 1 : 0, `awakened=${awakened}: the axe kick`); assert.equal(liveAwakened(g).axes, 0);
-    if (awakened) assert.match(g.message, /Axe kick/);
+    idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); // the cross and jab: the uppercut is next
+    charge(g, clock, 1.15); assert.ok(clock.t < g.jumpUntil, 'the uppercut blast pops her up'); assert.equal(g.kiSlamReady(clock.t), true);
+    const hp = g.enemies[0].hp; press(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam'); assert.match(g.message, /Ground slam/); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick');
+    idle(g, clock, 40); slams[awakened] = hp - g.enemies[0].hp; assert.ok(slams[awakened] > 0, 'it lands');
+    assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross'); assert.equal(g.plunge, null);
   }
+  assert.ok(slams.true > slams.false, `awakened, the slam is stronger (${slams.true} > ${slams.false})`);
 });
 
 test('Spell runes: the third swing runes the nearest struck foe (unruned first); a spell that strikes one detonates it; one a foe; they fade', () => {
@@ -196,13 +200,11 @@ test('Transpose with the awakened Salvage Blade: each spell cast in the seal pul
 });
 
 test('foes that hold their ground take the awakened blows but are never knocked', () => {
-  const { g, clock } = arena('roundhouse', { foes: [[1.2, 0], [-1.2, 0, { boss: true }], [0, 1.2, { eliteId: 'x' }]] }), at = g.enemies.map((e) => [e.x, e.y]), log = spy(g);
-  for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 8); }
-  [[1.2, 0], [-1.2, 0], [0, 1.2]].forEach(([dx, dy], i) => Object.assign(g.enemies[i], { x: g.player.x + dx, y: g.player.y + dy })); at.splice(0, 3, ...g.enemies.map((e) => [e.x, e.y])); log.length = 0;
+  const { g, clock } = arena('roundhouse', { foes: [[1.2, 0], [-1.2, 0, { boss: true }], [0, 1.2, { eliteId: 'x' }]] });
+  for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 13); }
+  [[1.2, 0], [-1.2, 0], [0, 1.2]].forEach(([dx, dy], i) => Object.assign(g.enemies[i], { x: g.player.x + dx, y: g.player.y + dy })); const at = g.enemies.map((e) => [e.x, e.y]), hp = g.enemies.map((e) => e.hp);
   press(g, clock); idle(g, clock, 8);
-  assert.ok(log.some((q) => q.id === 'foe-1') && log.some((q) => q.id === 'foe-2'), 'struck');
-  assert.ok(Math.hypot(g.enemies[0].x - at[0][0], g.enemies[0].y - at[0][1]) > .2, 'the ordinary foe is thrown');
-  for (const i of [1, 2]) assert.ok(Math.hypot(g.enemies[i].x - at[i][0], g.enemies[i].y - at[i][1]) < 1e-4, 'anchored');
+  for (const i of [0, 1, 2]) { assert.ok(g.enemies[i].hp < hp[i], 'struck'); assert.ok(Math.hypot(g.enemies[i].x - at[i][0], g.enemies[i].y - at[i][1]) < 1e-4, 'the kick knocks no one (2026-11-13), anchored or not'); }
   const { g: g2, clock: c2 } = arena('fissure', { foes: [[3, 0, { worldBeast: true }]] }); const x0 = g2.enemies[0].x; swings(g2, c2, 3); idle(g2, c2, 30); assert.ok(g2.enemies[0].hp < 1e6); assert.ok(Math.abs(g2.enemies[0].x - x0) < 1e-4, 'not knocked');
 });
 
@@ -211,7 +213,7 @@ test('runtime only: a reload drops everything in play; a new area drops it too',
   const save = assembleSave(...Object.values(splitSnapshot(snapshotSave(s)))), back = new Game(save, clock.t);
   assert.equal(back.awakenedArts, undefined); assert.equal(JSON.stringify(save).includes('awakenedArts'), false); assert.equal(JSON.stringify(save).includes('awakenSwings'), false);
   assert.deepEqual(save.equipment.primary.awakened, AWAKE, 'the awakening itself is kept');
-  g.area = 'overworld'; frame(g, clock); assert.deepEqual(liveAwakened(g), { fissures: 0, blades: 0, lances: 0, runes: 0, axes: 0 });
+  g.area = 'overworld'; frame(g, clock); assert.deepEqual(liveAwakened(g), { fissures: 0, blades: 0, lances: 0, runes: 0 }); // 2026-11-13: no axe pool
 });
 
 test('the Quandrix Staff and the tools are untouched', () => {
@@ -231,11 +233,11 @@ test('bounded: 60 s of every move fired every frame (cooldowns wiped) keeps the 
   for (const id of AWAKENED_IDS) {
     const { g, clock } = arena(id, { foes: Array.from({ length: 10 }, (_, i) => [1 + (i % 5), (i >> 1) % 3 - 1]), passive: true }); g.presentation = { reduceMotion: id === 'lance' };
     swings(g, clock, 3); const K = awakenedArtsState(g);
-    const sizes = () => Object.fromEntries(['fissures', 'blades', 'lances', 'runes', 'axes', 'flashes'].map((k) => [k, K[k].length]));
+    const sizes = () => Object.fromEntries(['fissures', 'blades', 'lances', 'runes', 'flashes'].map((k) => [k, K[k].length]));
     const at = sizes(); g.weaponArts ||= undefined;
     for (let i = 0; i < 60 / DT; i++) {
       const t = clock.t;
-      if (id === 'roundhouse') { g.fistCombo = { step: IRON_FISTS.punches.length, until: t + 900, landed: [], lead: 'right' }; g.fistRecoverUntil = 0; g.awakenedKick(t, { x: 1, y: 0 }); g.jumpUntil = t + 300; awakenedArtRelease(g, 'ki-blast', t, true); }
+      if (id === 'roundhouse') { g.fistCombo = { step: IRON_FISTS.punches.length, until: t + 900, landed: [], lead: 'right' }; g.fistRecoverUntil = 0; g.fistPunch(4, 0, t, { x: 1, y: 0 }); } // 2026-11-13: the kick is the fourth step
       else { awakenedSwing(g, t, { x: Math.cos(i * .1), y: Math.sin(i * .1) }, 10, g.enemies); if (id === 'returning-blades') awakenedArtRelease(g, 'blade-stream', t); }
       if (id === 'spell-runes') { g.weaponArts ||= { seal: null }; if (g.weaponArts.seal) Object.assign(g.weaponArts.seal, { on: true, x: g.player.x + .5, y: g.player.y + .45, left: 5 }); awakenedSpellCast(g, t);
         g.effects.push({ id: `spell-${i}`, kind: 'test', x: g.player.x + 1.7, y: g.player.y + .45, life: .05, radius: 3, pulse: 99, untilPulse: 0, damage: 1, pulseIndex: 0, hits: {}, glyphHost: 'spell', glyphSpell: 'ember-ring' }); }
