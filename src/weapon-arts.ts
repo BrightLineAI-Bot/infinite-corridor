@@ -97,7 +97,7 @@ export const AWAKENED_ARTS = Object.freeze({
     // The swing's struck foes take a rune (one a foe; `life` s); the next spell to strike a runed foe detonates it for `share`
     // on every foe within `burst`. Up: each spell cast standing in Transpose's seal sends a pulse from it, `share` of the art's
     // power on every foe in the seal, at most one each `gap` s.
-    "spell-runes": Object.freeze({ weapon: "salvage-blade", passive: "transpose", name: "Spell runes", text: "every third swing runes the foes it strikes; your next spell to hit one detonates it", share: .7, burst: .9, life: 8, stun: .2,
+    "spell-runes": Object.freeze({ weapon: "salvage-blade", passive: "transpose", name: "Spell runes", text: "every third swing runes the nearest foe it strikes (one not yet runed first); your next spell to hit one detonates it", share: .7, burst: .9, life: 8, stun: .2,
       up: Object.freeze({ share: .3, gap: .25 }) }),
   }),
   pools: Object.freeze({ fissures: 3, blades: 8, lances: 2, runes: 6, axes: 1, flashes: 6, hits: 8 }),

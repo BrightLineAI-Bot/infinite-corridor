@@ -87,7 +87,11 @@ export function awakenedSwing(game, now, d, hit, struck = null) {
     const x0 = c.x + d.x * A.start, y0 = c.y + d.y * A.start, L = reach(game, x0, y0, d.x, d.y, A.length), x1 = x0 + d.x * L, y1 = y0 + d.y * L;
     strikeLine(game, x0, y0, x1, y1, A.width, power * A.share, now, A.stun, A.knock);
     const l = oldest(K.lances, (q) => q.life > 0, (q) => -q.life); l.life = A.life; l.x0 = x0; l.y0 = y0; l.x1 = x1; l.y1 = y1;
-  } else if (id === "spell-runes") { if (struck) for (const e of struck) if (e && e.kind !== "npc" && hittable(e)) mark(K, e, power); }
+  } else if (id === "spell-runes") { // Tim, 2026-11-13: one rune a third swing, on the nearest struck foe not yet runed (so a crowd fills up); all runed: refresh the nearest
+    let best = null, bestD = Infinity, near = null, nearD = Infinity;
+    if (struck) for (const e of struck) { if (!e || e.kind === "npc" || !hittable(e)) continue; const q = (fx(e) - c.x) ** 2 + (fy(e) - c.y) ** 2; if (q < nearD) { nearD = q; near = e; } if (!runeOn(game, e) && q < bestD) { bestD = q; best = e; } }
+    const e = best || near; if (e) mark(K, e, power);
+  }
   game.awakenedVisual?.(now, d, id, A.poseMs);
   return true;
 }

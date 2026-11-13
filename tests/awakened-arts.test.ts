@@ -166,9 +166,11 @@ test('Ki Blast with the awakened Iron Fists: the airborne blast ends with an axe
   }
 });
 
-test('Spell runes: the third swing runes the foes it strikes; a spell that strikes one detonates it; one a foe; they fade', () => {
+test('Spell runes: the third swing runes the nearest struck foe (unruned first); a spell that strikes one detonates it; one a foe; they fade', () => {
   const { g, clock } = arena('spell-runes', { foes: [[1.2, 0], [1.2, .5]] }), hit = g.meleePower(); swings(g, clock, 2); press(g, clock);
-  assert.equal(runeOn(g, g.enemies[0]), true); assert.equal(runeOn(g, g.enemies[1]), true); assert.equal(liveAwakened(g).runes, 2);
+  // Tim, 2026-11-13: one rune a third swing, on the nearest struck foe not yet runed; all runed: the nearest is refreshed
+  assert.equal(runeOn(g, g.enemies[0]), true, 'the nearest'); assert.equal(runeOn(g, g.enemies[1]), false, 'one a swing'); assert.equal(liveAwakened(g).runes, 1);
+  idle(g, clock, 30); swings(g, clock, 2); press(g, clock); assert.equal(runeOn(g, g.enemies[1]), true, 'the next unruned foe'); assert.equal(liveAwakened(g).runes, 2);
   idle(g, clock, 30); swings(g, clock, 2); press(g, clock); assert.equal(liveAwakened(g).runes, 2, 'one rune a foe: a new mark refreshes it');
   const log = spy(g); const [a] = g.enemies;
   g.effects.push({ id: 'test-spell', kind: 'test', x: a.x + .5, y: a.y + .45, life: .3, radius: .3, pulse: 99, untilPulse: 0, damage: 1, pulseIndex: 0, hits: {}, glyphHost: 'spell', glyphSpell: 'ember-ring' });
