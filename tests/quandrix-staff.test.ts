@@ -9,7 +9,8 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, characterStats, grantMilestoneGear } from '../src/game.ts';
 import { createCombatant, wayfarerDamage } from '../src/combat.ts';
 import { QUANDRIX_STAFF, FOURFOLD_DAGGERS, PRIMARY_PROFILES, primaryProfile, isQuandrixStaff, isFourfoldDaggers, generateItem, isValidItem, weaponScaling, scaledGearNames } from '../src/items.ts';
-import { QUANDRIX, slamWindow, slamBurstShare, slamFill, staffAnchored, latestHand, liveHands, quandrixHandPresentation, drawQuandrix, drawQuandrixStaff } from '../src/quandrix-staff.ts';
+import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
+import { QUANDRIX, slamWindow, slamBurstShare, slamFill, staffAnchored, latestHand, liveHands, liveExtras, quandrixHandPresentation, drawQuandrix, drawQuandrixStaff } from '../src/quandrix-staff.ts';
 import { TOOL_FORMS, TOOL_FORM_KEYS, fieldForm } from '../src/lattice-fields.ts';
 import { awakenedText } from '../src/constellation.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
@@ -22,7 +23,7 @@ import { closeViewPrimaryWeaponKind } from '../src/close-view.ts';
 const H = QUANDRIX.hand, F = QUANDRIX.fist, S = QUANDRIX.slam, U = QUANDRIX.suction, KEY = `field:${QUANDRIX.passive}`;
 const staff = (power = 15, extra = {}) => ({ id: 'primary-qs-test', name: QUANDRIX_STAFF.name, slot: 'primary', power, basePower: power, upgradeRank: 0, property: QUANDRIX_STAFF.property, tier: 'rare', affixes: [], ...extra });
 const BUILDS = { might: { Might: 11, Finesse: 1, Focus: 1, Vigor: 5, Resolve: 1 }, magic: { Might: 1, Finesse: 1, Focus: 11, Vigor: 5, Resolve: 1 }, stamina: { Might: 1, Finesse: 11, Focus: 1, Vigor: 5, Resolve: 1 } };
-function arena(foes = [], { primary = staff(), stats = BUILDS.magic, mageHand = false, awakened = false, blocked = [] } = {}) {
+function arena(foes = [], { primary = staff(), stats = BUILDS.magic, mageHand = false, awakened = false, blocked = [], echo = false, clone = false } = {}) {
   const s = freshSave(); s.seed = 'QUANDRIX'; s.level = 15; s.stats = { ...s.stats, ...stats }; s.equipment.primary = primary;
   if (awakened) s.equipment.primary.awakened = { resonance: 'x', version: 1 };
   s.perception.aperture = 3255; s.farArray = { listeners: 1 }; ensureLattice(s); if (mageHand) s.lattice.passives = [KEY]; // the Lattice open, as continuous-assault.test.ts
@@ -30,6 +31,8 @@ function arena(foes = [], { primary = staff(), stats = BUILDS.magic, mageHand = 
   g.map = { ...g.map, width: 32, height: 32, exits: null, objects: [], enemySpawns: [], tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: blocked.includes(i % 32) ? 'wall' : 'ash', blocked: blocked.includes(i % 32) })) };
   g.area = 'dungeon';
   Object.assign(g.player, { x: 10, y: 10, facing: 'right', invulnerableUntil: 1e15 }); s.lastAim = { x: 1, y: 0 };
+  if (echo) { s.equipment.primary = normalizeSockets(s.equipment.primary); s.glyphs.echo = 1; assert.equal(socketGlyph(s, 'melee', 0, 'echo').ok, true); }
+  if (clone) g.shadowClone = { ox: 0, oy: 2, until: 1e15 }; // the Shadow Clone two tiles below the Wayfarer, out for good
   g.enemies = foes.map(([fx, fy, extra], i) => Object.assign(createCombatant('ashling', 10 + fx, 10 + fy), { id: `foe-${i}`, hp: 1e6, maxHp: 1e6, speedMultiplier: 1e-6, damage: 0, cooldown: 99, meleePatterns: [] }, extra || {}));
   return { s, g };
 }
@@ -209,17 +212,45 @@ test('saves: the staff is an ordinary item; a reload mid-hold resolves safely wi
   assert.equal(g.quandrix.hold.hand.x, x); assert.equal(g.quandrix.hold.held, held);
 });
 
+test('Echo: each of the Wayfarer\'s hands brings an echo hand after the swing\'s delay, at its share, drawn fainter', () => {
+  const plan = arena([], { echo: true }).g.quandrixEchoPlan(); assert.ok(plan, 'the Echo glyph is set'); const [delay, share] = [plan.copies[0].delay, plan.copies[0].share];
+  const { g } = arena([[3, 0]], { echo: true }), pin = pinned(g); press(g, 1000, null);
+  run(g, 1000, 1000 + delay - 40, undefined, pin); assert.equal(liveExtras(g, 'echo'), 0, 'not before the delay');
+  run(g, 1000 + delay - 40, 1000 + delay + 40, undefined, pin); assert.equal(liveExtras(g, 'echo'), 1, 'the echo hand'); assert.equal(liveHands(g), 1, 'not one of the Wayfarer\'s own');
+  const e = g.quandrix.extras.find((h) => h.on); assert.ok(Math.abs(e.power - g.quandrixPower() * share) < 1e-9, 'its share of the staff');
+  assert.ok(quandrixHandPresentation(e).alpha < quandrixHandPresentation(latestHand(g)).alpha, 'fainter');
+  run(g, 1000 + delay + 40, 4500, undefined, pin);
+  const plain = arena([[3, 0]]); press(plain.g, 1000, null); run(plain.g, 1000, 4500, undefined, pinned(plain.g));
+  const with_ = taken(g.enemies[0]), without = taken(plain.g.enemies[0]); assert.ok(with_ > without * (1 + share * .7) && with_ < without * (1 + share * 1.3), `${without} -> ${with_}`);
+});
+
+test('the Shadow Clone casts its own hand from where it stands; the extra cap holds; a hold never takes an extra hand', () => {
+  { const { g } = arena([], { clone: true }); press(g, 1000, null); assert.equal(liveExtras(g, 'clone'), 1);
+    const c = g.quandrix.extras.find((h) => h.on && h.kind === 'clone'), own = latestHand(g); assert.ok(Math.abs(c.y - (own.y + 2)) < .01 && Math.abs(c.x - own.x) < .01, 'from the clone, two tiles below');
+    assert.ok(Math.abs(c.power - g.quandrixPower() * .5) < 1e-9, 'at the clone\'s share'); }
+  { const { g } = arena([], { clone: true, echo: true }); let t = 1000;
+    for (let i = 0; i < 12; i++) { g.player.attackReadyAt = 0; press(g, t, null); t = run(g, t, t + 100); assert.ok(liveExtras(g) <= QUANDRIX.extra.maxLive && liveHands(g) <= H.maxLive); }
+    assert.equal(liveExtras(g), QUANDRIX.extra.maxLive, 'the extra pool is full and gives way'); assert.equal(liveHands(g), H.maxLive, 'the Wayfarer\'s five are unchanged');
+    assert.equal(g.quandrix.extras.length, QUANDRIX.extra.maxLive); assert.equal(g.quandrix.queue.length, QUANDRIX.extra.queue); }
+  for (const [mageHand, awakened] of [[true, false], [false, true], [true, true]]) {
+    const { g } = arena([], { clone: true, echo: true, mageHand, awakened }); let t = 1000; press(g, t, null); const own = latestHand(g); t = run(g, t, t + 400);
+    assert.ok(g.quandrix.extras.some((h) => h.on && h.seq > own.seq), 'an extra hand newer than her own'); g.player.attackReadyAt = 0; press(g, t); run(g, t, t + 300, () => true);
+    assert.equal(g.quandrix.hold.hand, own, 'the hold takes her own last hand'); assert.ok(g.quandrix.extras.every((h) => !h.on || h.mode === 'drift'));
+  }
+});
+
 test('sixty seconds of every mode with the cooldown wiped each frame: no NaN, every pool bounded', () => {
-  for (const [mageHand, awakened] of [[false, false], [true, false], [false, true], [true, true]]) {
+  for (const [mageHand, awakened, extras] of [[false, false, false], [true, false, false], [false, true, false], [true, true, false], [false, false, true], [true, true, true]]) {
     const foes = Array.from({ length: 10 }, (_, i) => [1.5 + (i % 5) * .9, -1.5 + Math.floor(i / 5) * 3, i === 0 ? { boss: true } : {}]);
-    const { g } = arena(foes, { mageHand, awakened, blocked: [17] }); let t = 1000, k = 0;
+    const { g } = arena(foes, { mageHand, awakened, blocked: [17], echo: extras, clone: extras }); let t = 1000, k = 0;
     for (; t < 61000; t += 20, k++) {
       g.player.attackReadyAt = 0; if (k % 3 === 0) press(g, t, k % 97 < 60 ? 'attack' : null);
       for (const e of g.enemies) if (e.dead || e.hp < 1e5) { e.dead = false; e.hp = 1e6; }
       g.player.invulnerableUntil = t + 1e6; g.update(.02, { state: { x: 0, y: 0 }, consume: () => false, held: (q) => q === 'attack' && (k % 97) < 60 }, t);
       const K = g.quandrix;
       if (K) { assert.equal(K.hands.length, H.maxLive); assert.equal(K.flashes.length, QUANDRIX.flash.max); assert.ok(K.hold.n <= Math.max(F.maxGrab, U.maxPull));
-        for (const h of K.hands) { if (!h.on) continue; assert.ok([h.x, h.y, h.age, h.power].every(Number.isFinite)); assert.ok(Object.keys(h.hits).length <= g.enemies.length); } }
+        assert.equal(K.extras.length, QUANDRIX.extra.maxLive); assert.equal(K.queue.length, QUANDRIX.extra.queue); if (K.hold.on) assert.equal(K.hold.hand.kind, 'own');
+        for (const h of [...K.hands, ...K.extras]) { if (!h.on) continue; assert.ok([h.x, h.y, h.age, h.power].every(Number.isFinite)); assert.ok(Object.keys(h.hits).length <= g.enemies.length); } }
       for (const e of g.enemies) assert.ok(Number.isFinite(e.x) && Number.isFinite(e.y) && Number.isFinite(e.hp), `${e.id} finite`);
     }
     assert.ok(g.projectiles.length < 8 && g.effects.length < 16, 'nothing piles up in the shared lists');

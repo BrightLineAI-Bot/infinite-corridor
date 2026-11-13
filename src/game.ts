@@ -7940,6 +7940,11 @@ export class Game {
   quandrixEquipped() { return isQuandrixStaff(this.save.equipment?.primary); }
   quandrixMageHand() { return this.quandrixEquipped() && fieldOn(this.save, QUANDRIX.passive); } // the Mage's Hand passive works only with the staff
   quandrixPower() { return this.meleePower(); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage
+  quandrixEchoPlan() { return echoPlan(this.glyphLoadout("melee")); } // a weapon Echo: an echo hand at the swing's delay and share
+  quandrixClone(now) { // the Shadow Clone, while out: its hand from where it stands, toward the lock (else the Wayfarer's way), at its share
+    if (!this.shadowCloneActive(now) || this.shadowClone.charging) return null;
+    const at = clonePosition(this.player, this.shadowClone); return { x: at.x + .5, y: at.y + .45, aim: this.cloneAimFrom(at), share: SHADOW_CLONE.share };
+  }
   quandrixCooldownScale() { return this.glyphLoadout("melee").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); } // as a swing's 420 ms
   quandrixOpen(x, y) { return Number.isFinite(x) && Number.isFinite(y) && projectileTileOpen(this.map, mapWidth(this.map, this.area), x, y); }
   quandrixDrag(e, dx, dy) { if ([dx, dy].every(Number.isFinite)) this.moveGrounded(e, dx, dy); } // the shared ordinary-displacement adapter: never into a wall or lethal ground

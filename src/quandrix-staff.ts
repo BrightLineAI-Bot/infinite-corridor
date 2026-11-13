@@ -19,6 +19,11 @@
 //   most `suction.maxPull`) while it is reeled back toward the Wayfarer, then bursts by the same release rules.
 // - Bosses, world beasts, elites and the other anchored foes (`anchored`) are never grabbed, dragged or pulled (as the
 //   Gravity Well's boss rule holds them); they still take every blow and the burst.
+// - Echo glyphs and the Shadow Clone (Tim, 2026-11-13: yes to both): an Echo in the weapon casts an echo hand from the
+//   Wayfarer `delay` ms after each of the Wayfarer's own hands, at the Echo's share (glyphs.ts echoPlan, the swing's numbers);
+//   the clone, while it is out, casts its own hand from where it stands at SHADOW_CLONE.share. These extra hands drift, strike
+//   and dissipate by the same rules, drawn fainter, in their own small pool (`extra.maxLive`, the oldest giving way), so the
+//   Wayfarer's five and their oldest-gives-way rule never change; a hold never takes one (latestHand reads only her own).
 // - Bounded: hands, the hold and the burst flashes are fixed pools made once (game.quandrix), reused, never grown; nothing
 //   is allocated per frame. Everything runs on frame time (dt), so pause and background stop it exactly. Runtime only: a
 //   reload drops the hands and any hold, and grabbed foes simply stay where they were dragged (no burst, no damage).
@@ -38,6 +43,7 @@ export const QUANDRIX = Object.freeze({
   // Foes that hold their ground (the Gravity Well's boss rule, widened to every heavy kind): never grabbed or pulled.
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
+  extra: Object.freeze({ maxLive: 3, queue: 3, alpha: .55 }), // echo and clone hands: their own cap; Echo copies waiting to be cast
   view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff }),
@@ -62,7 +68,7 @@ const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind
 const touching = (e, x, y, r) => Math.hypot(e.x + .5 - x, e.y + .45 - y) < r + enemyBodyRadius(e);
 
 // ---------------------------------------------------------------- runtime state (game.quandrix, never saved)
-const newHand = () => ({ on: false, mode: "drift", seq: 0, x: 0, y: 0, dx: 1, dy: 0, age: 0, life: 0, power: 0, hits: {} });
+const newHand = () => ({ on: false, mode: "drift", seq: 0, x: 0, y: 0, dx: 1, dy: 0, age: 0, life: 0, power: 0, hits: {}, kind: "own" });
 export function quandrixState(game) {
   return (game.quandrix ||= {
     seq: 0, where: "",
@@ -70,6 +76,8 @@ export function quandrixState(game) {
     press: { on: false, held: 0, action: "", dx: 1, dy: 0 },
     hold: { on: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull) }, () => ""), n: 0 },
     flashes: Array.from({ length: QUANDRIX.flash.max }, () => ({ life: 0, x: 0, y: 0, r: 0, kind: "" })),
+    extras: Array.from({ length: QUANDRIX.extra.maxLive }, newHand), // echo and clone hands (never a hold's)
+    queue: Array.from({ length: QUANDRIX.extra.queue }, () => ({ on: false, left: 0, dx: 1, dy: 0, power: 0 })), // Echo hands to come
   });
 }
 const clearHits = (h) => { for (const k in h.hits) delete h.hits[k]; };
@@ -78,10 +86,13 @@ function endHold(K) { const H = K.hold; H.on = false; H.mode = ""; H.hand = null
 export function clearQuandrix(game) {
   const K = game.quandrix; if (!K) return;
   for (const h of K.hands) { h.on = false; clearHits(h); }
+  for (const h of K.extras) { h.on = false; clearHits(h); }
+  for (const q of K.queue) q.on = false;
   K.press.on = false; endHold(K);
   for (const f of K.flashes) f.life = 0;
 }
 export const liveHands = (game) => { let n = 0; for (const h of game.quandrix?.hands || []) if (h.on) n++; return n; };
+export const liveExtras = (game, kind = null) => { let n = 0; for (const h of game.quandrix?.extras || []) if (h.on && (!kind || h.kind === kind)) n++; return n; };
 // The most recently cast hand still drifting, or null.
 export function latestHand(game) {
   let best = null; for (const h of game.quandrix?.hands || []) if (h.on && h.mode === "drift" && (!best || h.seq > best.seq)) best = h;
@@ -110,7 +121,29 @@ export function castHand(game, now, dx, dy) {
   slot.age = 0; slot.life = Q.life; slot.power = power; clearHits(slot);
   p.attackReadyAt = now + Q.cadenceMs * (typeof game.quandrixCooldownScale === "function" ? game.quandrixCooldownScale() : 1);
   if (typeof game.quandrixCastVisual === "function") game.quandrixCastVisual(now, ux, uy);
+  castCopies(game, now, ux, uy, power);
   return slot;
+}
+// An extra hand (an echo's or the clone's) from (x, y) toward (dx, dy) with `power` already its share. Its own pool: a free
+// slot, else the oldest extra gives way. Never touches the Wayfarer's hands, her cooldown or her pose.
+export function castExtra(game, x, y, dx, dy, power, kind) {
+  const Q = QUANDRIX.hand, K = quandrixState(game);
+  if (![x, y, dx, dy, power].every(Number.isFinite) || !(power > 0)) return null;
+  let slot = null; for (const h of K.extras) { if (!h.on) { slot = h; break; } if (!slot || h.seq < slot.seq) slot = h; }
+  const m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m;
+  slot.on = true; slot.mode = "drift"; slot.kind = kind; slot.seq = ++K.seq; slot.x = x + ux * Q.lift; slot.y = y + uy * Q.lift; slot.dx = ux; slot.dy = uy;
+  slot.age = 0; slot.life = Q.life; slot.power = power; clearHits(slot);
+  return slot;
+}
+// The copies one of the Wayfarer's hands brings: the clone's hand now, and each Echo copy queued for its delay.
+function castCopies(game, now, ux, uy, power) {
+  const K = game.quandrix, c = typeof game.quandrixClone === "function" ? game.quandrixClone(now) : null;
+  if (c) castExtra(game, c.x, c.y, c.aim?.x ?? ux, c.aim?.y ?? uy, power * c.share, "clone");
+  const plan = typeof game.quandrixEchoPlan === "function" ? game.quandrixEchoPlan() : null;
+  for (const copy of plan?.copies || []) {
+    let slot = null; for (const q of K.queue) { if (!q.on) { slot = q; break; } if (!slot || q.left < slot.left) slot = q; } // full: the soonest gives way
+    slot.on = true; slot.left = Math.max(0, Number(copy.delay) || 0) / 1000; slot.dx = ux; slot.dy = uy; slot.power = power * (Number(copy.share) || 0);
+  }
 }
 // A press of Attack with the staff. With a held button (`action`) and a hold to make, the choice waits: let go within
 // `hold.grace` and it is a tap (a hand); hold on and the hold begins (tickQuandrix). Otherwise a hand at once.
@@ -209,7 +242,9 @@ export function tickQuandrix(game, dt, now, held) {
     else { P.held += dt; if (P.held >= QUANDRIX.hold.grace) { P.on = false; beginHold(game, now); } }
   }
   if (K.hold.on) tickHold(game, dt, now, held);
+  for (const q of K.queue) { if (!q.on) continue; q.left -= dt; if (q.left <= 0) { q.on = false; const c = centre(game); castExtra(game, c.x, c.y, q.dx, q.dy, q.power, "echo"); } } // as the swing's Echo: from where the Wayfarer is now
   for (const h of K.hands) if (h.on && h.mode === "drift") driftHand(game, h, dt, now);
+  for (const h of K.extras) if (h.on) driftHand(game, h, dt, now);
 }
 
 // ---------------------------------------------------------------- presentation
@@ -218,7 +253,7 @@ export function tickQuandrix(game, dt, now, held) {
 export function quandrixHandPresentation(h) {
   if (!h?.on || !Number.isFinite(h.x) || !Number.isFinite(h.y)) return null;
   const V = QUANDRIX.view, kind = h.mode === "fist" ? "quandrixFist" : h.mode === "slam" ? "quandrixSlam" : "quandrixHand";
-  return { kind, x: h.x, y: h.y, supportX: h.x, supportY: h.y, lift: h.mode === "slam" ? V.slamLift : V.lift, yaw: Math.atan2(h.dy, h.dx), scale: V.scale, pose: "idle", pace: 0, phase: 0, amount: 0, alpha: h.mode === "drift" ? Math.min(1, (h.life - h.age) / .3, .92) : 1 };
+  return { kind, x: h.x, y: h.y, supportX: h.x, supportY: h.y, lift: h.mode === "slam" ? V.slamLift : V.lift, yaw: Math.atan2(h.dy, h.dx), scale: V.scale, pose: "idle", pace: 0, phase: 0, amount: 0, alpha: (h.mode === "drift" ? Math.min(1, (h.life - h.age) / .3, .92) : 1) * (h.kind === "echo" || h.kind === "clone" ? QUANDRIX.extra.alpha : 1) };
 }
 // An open palm, fingers splayed along its heading `a`, at (x, y) in pixels; `u` is a tile in pixels.
 function palm(ctx, x, y, a, u, C, alpha) {
@@ -273,6 +308,9 @@ export function drawQuandrix(ctx, game, toScreen, s, t, capture = null) {
       ctx.globalAlpha = .35 * k; ctx.fillStyle = f.kind === "perfect" ? C.perfect : C.glow; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
       ctx.globalAlpha = k; ctx.strokeStyle = f.kind === "perfect" ? C.perfect : C.core; ctx.lineWidth = Math.max(2, s * .08 * k); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); }
     ctx.globalAlpha = 1;
+    for (const h of K.extras) { if (!h.on) continue; const [x, y] = toScreen(h), a = Math.atan2(h.dy, h.dx), q = quandrixHandPresentation(h); // echo and clone hands: fainter
+      if (capture?.captureActor?.({ source: h, x: h.x, y: h.y, lift: q.lift, height: q.lift + .5, draw: (c, unit) => palm(c, h.x * unit, h.y * unit, a, unit, C, q.alpha), sample: () => quandrixHandPresentation(h) })) continue;
+      palm(ctx, x, y, a, s, C, q.alpha); }
     for (const h of K.hands) {
       if (!h.on) continue;
       const [x, y] = toScreen(h), a = Math.atan2(h.dy, h.dx);
