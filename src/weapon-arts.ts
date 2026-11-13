@@ -68,6 +68,54 @@ export const WEAPON_ARTS = Object.freeze({
 });
 export const WEAPON_ART_IDS = Object.freeze(Object.keys(WEAPON_ARTS.arts));
 
+// Awakened arts (Tim, 2026-11-13: "one unique awakened move per weapon"): the awakening (constellation.ts awaken) gives each
+// primary weapon its own move in place of the shared crescent; awakened-arts.ts runs them. `share` is of a normal hit of the
+// weapon (game.ts primaryAttack: the crescent's base; the Iron Fists' fistPower), about the crescent's .7 a foe. Each move's
+// `up` is the small extra it gains when the weapon's own art (WEAPON_ARTS.arts[passive]) is also selected. The Quandrix
+// Staff keeps its own awakening (quandrix-staff.ts); tools keep their fan.
+export const AWAKENED_ARTS = Object.freeze({
+  every: 3, // every third accepted swing (no Echo copy, not the daggers' second cut), as the crescent was
+  moves: Object.freeze({
+    // A crack runs `length` tiles along the aim from `start` ahead (walls stop it) and erupts `delay` s later on every foe within
+    // `width` of it. Up: the eruption leaves a lava crack `life` s that strikes foes on it every `tick` s for `share`.
+    fissure: Object.freeze({ weapon: "verge-cleaver", passive: "lava-slash", name: "Fissure", text: "every third swing cracks the ground ahead, and it erupts a beat later", share: .7, start: .5, length: 4, width: .55, delay: .3, stun: .3, knock: .25, poseMs: 420,
+      up: Object.freeze({ life: 3, tick: .5, share: .06 }) }),
+    // The pair flies `range` tiles at `speed` and back to the Wayfarer's hand; each foe is cut once going out and once coming
+    // back, `share` each (walls turn it back; on the way home a wall ends it). Up: Blade Stream's release also throws `count`
+    // single blades out in a ring `range` tiles and home again, `share` a cut.
+    "returning-blades": Object.freeze({ weapon: "fourfold-daggers", passive: "blade-stream", name: "Returning blades", text: "every third press throws the pair out and back, cutting both ways", share: .35, range: 4, speed: 11, radius: .45, stun: .1, poseMs: 380,
+      up: Object.freeze({ count: 6, range: 3, speed: 10, share: .12 }) }),
+    // A line of cinder light `length` tiles along the aim (walls stop it) strikes every foe within `width` of it at once.
+    // Up: the Cinder Javelin flies back to the hand, striking every foe on the way home (up to the shot's hit list) for
+    // `returnShare` of its throw.
+    lance: Object.freeze({ weapon: "cinder-pike", passive: "cinder-javelin", name: "Lance", text: "every third thrust extends a long line of cinder light", share: .7, start: .4, length: 6, width: .45, stun: .25, knock: .2, life: .4, poseMs: 360,
+      up: Object.freeze({ returnShare: .4 }) }),
+    // A fourth strike after the uppercut while the combo's window is open: a spinning kick on every foe within `radius`.
+    // Up: an uppercut Ki Blast (the airborne one) ends with an axe kick that bursts where she lands, `share` of the art's power.
+    roundhouse: Object.freeze({ weapon: "iron-fists", passive: "ki-blast", name: "Roundhouse kick", text: "a spinning roundhouse kick follows the uppercut", share: .8, radius: 1.6, stun: .3, knock: .6, poseMs: 440,
+      up: Object.freeze({ share: .4, radius: 1.5, stun: .4, knock: .3, wait: 1.2, poseMs: 360 }) }),
+    // The swing's struck foes take a rune (one a foe; `life` s); the next spell to strike a runed foe detonates it for `share`
+    // on every foe within `burst`. Up: each spell cast standing in Transpose's seal sends a pulse from it, `share` of the art's
+    // power on every foe in the seal, at most one each `gap` s.
+    "spell-runes": Object.freeze({ weapon: "salvage-blade", passive: "transpose", name: "Spell runes", text: "every third swing runes the foes it strikes; your next spell to hit one detonates it", share: .7, burst: .9, life: 8, stun: .2,
+      up: Object.freeze({ share: .3, gap: .25 }) }),
+  }),
+  pools: Object.freeze({ fissures: 3, blades: 8, lances: 2, runes: 6, axes: 1, flashes: 6, hits: 8 }),
+  flash: Object.freeze({ life: .4, kick: .35 }),
+  colors: Object.freeze({ crack: "#2a1a12", fissure: "#ff8a3d", fissureCore: "#ffe0a0", blade: "#e8f6ff", bladeEdge: "#9fd8ff", lance: "#ff8a3d", lanceCore: "#fff0c8",
+    rune: "#c9a6ff", runeCore: "#f6eeff", kick: "#9ff0ff", kickCore: "#ffffff", pulse: "#b896cf" }),
+  messages: Object.freeze({ kick: "Roundhouse kick!", axe: "Axe kick!" }),
+});
+export const AWAKENED_IDS = Object.freeze(Object.keys(AWAKENED_ARTS.moves));
+// The awakened move of the equipped primary (an id of AWAKENED_ARTS.moves), or null: not awakened, or the Quandrix Staff.
+export function awakenedFor(save) {
+  const item = save?.equipment?.primary; if (!item?.awakened) return null;
+  const key = weaponKey(item); for (const id of AWAKENED_IDS) if (AWAKENED_ARTS.moves[id].weapon === key) return id;
+  return null;
+}
+// Whether the awakened move `id` is upgraded: the weapon awakened and its own art selected.
+export const awakenedUp = (save, id) => !!id && awakenedFor(save) === id && artFor(save) === AWAKENED_ARTS.moves[id].passive;
+
 // ---------------------------------------------------------------- pure rules
 export function artWindow(held) {
   const C = WEAPON_ARTS.charge, h = Number(held) || 0;
@@ -94,11 +142,11 @@ const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind
 const inside = (e, x, y, r) => Math.hypot(e.x + .5 - x, e.y + .45 - y) <= r + Math.max(0, enemyBodyRadius(e) - .38);
 
 // ---------------------------------------------------------------- runtime state (game.weaponArts, never saved)
-const newShot = () => ({ on: false, kind: "", x: 0, y: 0, dx: 1, dy: 0, left: 0, speed: 0, power: 0, n: 0, hit: Array.from({ length: WEAPON_ARTS.pools.hits }, () => ""), air: false, age: 0 });
+const newShot = () => ({ on: false, kind: "", x: 0, y: 0, dx: 1, dy: 0, left: 0, speed: 0, power: 0, n: 0, hit: Array.from({ length: WEAPON_ARTS.pools.hits }, () => ""), air: false, back: false, age: 0 });
 const newFlash = () => ({ life: 0, max: 1, x: 0, y: 0, x0: 0, y0: 0, r: 0, kind: "" });
 export function weaponArtsState(game) {
   return (game.weaponArts ||= {
-    where: "", art: null, presses: 0, armed: false, heldFor: 0, latch: false, linger: 0, buff: false,
+    where: "", art: null, presses: 0, armed: false, heldFor: 0, latch: false, linger: 0, buff: false, pikeOut: false, artRecord: null,
     hold: { on: false, held: 0, dx: 1, dy: 0, step: 1 },
     fist: { on: false, held: 0, action: "attack", dx: 1, dy: 0, step: 1 }, // the punch the press will throw (fixed at the press)
     windup: { on: false, left: 0, dx: 1, dy: 0, power: 0 },
@@ -120,7 +168,7 @@ function cancelCharge(K) { endHold(K); K.fist.on = false; K.fist.held = 0; K.hel
 // Drops everything in flight and the seal (a new area); keeps the stored charge.
 function clearField(game) {
   const K = game.weaponArts; cancelCharge(K);
-  K.windup.on = false; K.seal.on = false; K.linger = 0; setBuff(game, false);
+  K.windup.on = false; K.seal.on = false; K.linger = 0; K.pikeOut = false; K.artRecord = null; setBuff(game, false);
   for (const s of K.shots) s.on = false;
   for (const s of K.streams) s.on = false;
   for (const f of K.flashes) f.life = 0;
@@ -130,6 +178,11 @@ export const weaponArtArmed = (game) => !!game?.weaponArts?.armed && !!game.weap
 // 0..1 while a charge is held (the Close View lean and the ring), else 0.
 export const weaponArtCharge = (game) => game?.weaponArts?.hold?.on ? Math.max(.05, artFill(game.weaponArts.hold.held)) : 0;
 export const liveArtShots = (game) => { let n = 0; for (const s of game.weaponArts?.shots || []) if (s.on) n++; return n; };
+// Tim, 2026-11-13: while the Cinder Javelin flies (its awakened way home too) the pike is out of her hands (close-view.ts hides it).
+// Tim: the throw can be cancelled (a dodge, another attack) at any time after the release: the pike is back in her hands at
+// once and the javelin flies on, its awakened way home included, as a projectile.
+const javelinOn = (K) => { for (const s of K?.shots || []) if (s.on && s.kind === "javelin") return true; return false; };
+export const javelinInFlight = (game) => !!game?.weaponArts?.pikeOut && javelinOn(game.weaponArts);
 
 function flash(K, kind, x, y, r, life = WEAPON_ARTS.flash.life, x0 = x, y0 = y) {
   let slot = K.flashes[0]; for (const f of K.flashes) { if (f.life <= 0) { slot = f; break; } if (f.life < slot.life) slot = f; }
@@ -182,15 +235,17 @@ function release(game, now, held) {
     let slot = K.streams[0]; for (const s of K.streams) { if (!s.on) { slot = s; break; } if (s.age > slot.age) slot = s; }
     slot.on = true; slot.n = A.hits; slot.every = A.span / A.hits; slot.tick = 0; slot.power = power / A.hits; slot.age = 0;
     const d = game.artAim(null); game.artVisual(now, d, id, A.poseMs);
+    game.awakenedRelease?.(id, now, false); // awakened-arts.ts: awakened Fourfold Daggers also throw a ring of blades
   } else if (id === "cinder-javelin") {
     const d = game.artAim(null), W = K.windup; W.on = true; W.left = A.windup; W.dx = d.x; W.dy = d.y; W.power = power;
-    game.artVisual(now, d, id, A.poseMs);
+    game.artVisual(now, d, id, A.poseMs); K.pikeOut = true; K.artRecord = game.player.attackVisual || null; // thrown: out of her hands until it is home or she cancels the throw
   } else if (id === "ki-blast") {
     const step = game.artFistRelease(now, { x: dx, y: dy }, fistStep), air = step === 3; if (air) game.artLeap(now); // the uppercut pops her up: fired from the air
     const c = centre(game), s = shotSlot(K);
     s.on = true; s.kind = "ki"; s.x = c.x + dx * .45; s.y = c.y + dy * .45; s.dx = dx; s.dy = dy; s.left = A.range; s.speed = A.speed;
-    s.power = power * (air ? A.air : 1); s.n = 0; s.air = !!air; s.age = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
+    s.power = power * (air ? A.air : 1); s.n = 0; s.air = !!air; s.back = false; s.age = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
     game.artVisual(now, { x: dx, y: dy }, id, A.poseMs);
+    if (air) game.awakenedRelease?.(id, now, true); // awakened-arts.ts: awakened Iron Fists drop with an axe kick
   } else if (id === "transpose") {
     const c = centre(game), S = K.seal; S.on = true; S.x = c.x; S.y = c.y; S.left = sealBase(w); S.age = 0; // a new seal replaces the old
     flash(K, "seal", c.x, c.y, A.radius); game.artVisual(now, game.artAim(null), id, A.poseMs);
@@ -203,11 +258,35 @@ function launchJavelin(game) {
   const K = game.weaponArts, W = K.windup, A = WEAPON_ARTS.arts["cinder-javelin"], c = centre(game), s = shotSlot(K);
   W.on = false;
   s.on = true; s.kind = "javelin"; s.x = c.x + W.dx * .5; s.y = c.y + W.dy * .5; s.dx = W.dx; s.dy = W.dy; s.left = A.range; s.speed = A.speed;
-  s.power = W.power; s.n = 0; s.air = false; s.age = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
+  s.power = W.power; s.n = 0; s.air = false; s.back = false; s.age = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
+}
+// Awakened Cinder Pike with Cinder Javelin (AWAKENED_ARTS.moves.lance.up): where the throw would end, the pike turns for home
+// at `returnShare` of its power, its hit list cleared (every foe may be struck again). False: it ends as ever.
+function turnBack(game, s) {
+  if (s.kind !== "javelin" || s.back || !awakenedUp(game.save, "lance")) return false;
+  s.on = true; s.back = true; s.n = 0; for (let i = 0; i < s.hit.length; i++) s.hit[i] = "";
+  s.power *= AWAKENED_ARTS.moves.lance.up.returnShare; s.left = WEAPON_ARTS.arts["cinder-javelin"].range + 2; return true; // never further than the throw and a little
+}
+// The way home: toward the Wayfarer each step; caught within `catch` of her; a wall ends it; at most the hit list's foes.
+function tickReturn(game, s, dt, now) {
+  const K = game.weaponArts, A = WEAPON_ARTS.arts["cinder-javelin"], step = WEAPON_ARTS.view.step, dist = Math.min(s.left, s.speed * dt), n = Math.max(1, Math.ceil(dist / step)), d = dist / n;
+  for (let i = 0; i < n; i++) {
+    const c = centre(game), hx = c.x - s.x, hy = c.y - s.y, hd = Math.hypot(hx, hy);
+    if (hd <= .5) { s.on = false; return; } // back in hand
+    s.dx = hx / hd; s.dy = hy / hd; const nx = s.x + s.dx * d, ny = s.y + s.dy * d;
+    if (!game.artOpen(nx, ny)) { s.on = false; flash(K, "javelin", s.x, s.y, .5); return; }
+    s.x = nx; s.y = ny; s.left -= d;
+    for (const e of game.enemies) {
+      if (s.n >= s.hit.length || !hittable(e) || wasHit(s, e.id) || Math.hypot(e.x + .5 - s.x, e.y + .45 - s.y) >= A.radius + enemyBodyRadius(e)) continue;
+      s.hit[s.n++] = e.id; game.artBlow(e, s.power, now, A.stun, s.x - s.dx, s.y - s.dy, 0);
+    }
+  }
+  if (s.left <= 1e-6) s.on = false;
 }
 const wasHit = (s, id) => { for (let i = 0; i < s.n; i++) if (s.hit[i] === id) return true; return false; };
 function tickShot(game, s, dt, now) {
   const K = game.weaponArts, step = WEAPON_ARTS.view.step; s.age += dt;
+  if (s.back) { tickReturn(game, s, dt, now); return; }
   const dist = Math.min(s.left, s.speed * dt), n = Math.max(1, Math.ceil(dist / step)), d = dist / n;
   for (let i = 0; i < n; i++) {
     const nx = s.x + s.dx * d, ny = s.y + s.dy * d;
@@ -221,7 +300,7 @@ function tickShot(game, s, dt, now) {
       for (const e of game.enemies) {
         if (!hittable(e) || wasHit(s, e.id) || Math.hypot(e.x + .5 - s.x, e.y + .45 - s.y) >= A.radius + enemyBodyRadius(e)) continue;
         s.hit[s.n++] = e.id; game.artBlow(e, s.power, now, A.stun, s.x - s.dx, s.y - s.dy, A.knock);
-        if (s.n >= A.pierce) { flash(K, "javelin", s.x, s.y, .6); s.on = false; return; }
+        if (s.n >= A.pierce) { if (!turnBack(game, s)) { flash(K, "javelin", s.x, s.y, .6); s.on = false; } return; }
       }
     }
   }
@@ -230,7 +309,7 @@ function tickShot(game, s, dt, now) {
 function end(game, s, now) {
   const K = game.weaponArts; s.on = false;
   if (s.kind === "ki") { const A = WEAPON_ARTS.arts["ki-blast"]; burst(game, s.x, s.y, A.burst, s.power, A.stun, A.knock, now); flash(K, "ki", s.x, s.y, A.burst); }
-  else flash(K, "javelin", s.x, s.y, .5);
+  else if (!turnBack(game, s)) flash(K, "javelin", s.x, s.y, .5);
 }
 function tickStream(game, st, dt, now) {
   const A = WEAPON_ARTS.arts["blade-stream"]; st.age += dt; st.tick -= dt;
@@ -262,6 +341,7 @@ export function tickWeaponArts(game, dt, now, held) {
     else if (H.on) { H.held += dt; if (H.held >= C.max) release(game, now, H.held); }
     else if (id !== "ki-blast" && K.armed && K.heldFor >= G && !game.artBlocked(now)) { H.on = true; H.held = 0; } // aimed when let go
   }
+  if (K.pikeOut && (now < (p.dodgeUntil || 0) || p.attackVisual !== K.artRecord || (!K.windup.on && !javelinOn(K)))) { K.pikeOut = false; K.artRecord = null; } // cancelled, or home
   const W = K.windup; if (W.on) { if (!(p.hp > 0)) W.on = false; else if ((W.left -= dt) <= 0) launchJavelin(game); }
   for (const s of K.shots) if (s.on) tickShot(game, s, dt, now);
   for (const st of K.streams) if (st.on) tickStream(game, st, dt, now);

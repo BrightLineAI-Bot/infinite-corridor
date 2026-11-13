@@ -72,7 +72,8 @@ import {
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { awakenedSwing, awakenedKickBurst, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
@@ -7934,6 +7935,7 @@ export class Game {
       const prior = recentHeroPresentation(this.player, logicalNow, this.player.x, this.player.y);
       attackVisual.poseMs = prior?.now ?? Math.max(0, logicalNow);
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
+      { const awake = !followCut && awakenedFor(this.save); if (awake && ((this.awakenSwings || 0) + 1) % AWAKENED_ARTS.every === 0) attackVisual.awakenedArt = awake; } // awakened-arts.ts: the swing that will release the move wears its pose (close-view-hero.ts awakenedArtPose)
     }
     const cleaverAccepted=!echo&&this.attackAction==='attack'&&attackVisual?.weaponKind==='verge-cleaver'&&this.closeViewActionEligible();
     if (cleaverAccepted && this.ordinaryCloseViewBody()) {
@@ -7984,8 +7986,10 @@ export class Game {
     }
     if (daggers && !followCut) (this.glyphTimers ||= []).push({ at: now + FOURFOLD_DAGGERS.gapMs, kind: "daggerCut", aim: { x: geometry.dx, y: geometry.dy }, share: isEcho ? echo.share : 1, echoed: isEcho, areaId: this.areaId() }); // the second cut ("//")
     if (!isEcho && !followCut) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now); // release 365: the Shadow Clone swings too
-    // Awakened primary: every third swing releases a piercing crescent that carries the weapon's glyphs.
-    if (!isEcho && !followCut && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % 3 === 0)
+    // Awakened primary: every third swing releases the weapon's own awakened move (awakened-arts.ts: Fissure, Returning blades,
+    // Lance, Spell runes) from a normal hit (the crescent's base). The piercing crescent stays only as the fallback for a weapon
+    // with no move of its own (none today) and carries the weapon's glyphs.
+    if (!isEcho && !followCut && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % AWAKENED_ARTS.every === 0 && !awakenedSwing(this, now, { x: geometry.dx, y: geometry.dy }, (profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)), hits))
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !isEcho && !followCut && echoPlan(glyphs);
     if (plan) {
@@ -8184,9 +8188,30 @@ export class Game {
   // The Iron Fists' waiting press: the punch it throws is the combo's next as the press is made (the jab or the uppercut while
   // the window is open, else the dash punch), fixed there however long the charge is held. A tap throws it as ever; a release
   // throws it with the blast. Returns the step.
-  artFistStep(now) { const c = this.fistCombo; return c && now <= c.until && c.step < IRON_FISTS.punches.length ? c.step + 1 : 1; }
-  artFistTap(now, dir, step = 1) { this._fistInputUpdate = true; try { return this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } }
-  artFistRelease(now, dir, step = 1) { this._fistInputUpdate = true; try { this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } return step; }
+  artFistStep(now) { const c = this.fistCombo; return c && now <= c.until && c.step < IRON_FISTS.punches.length ? c.step + 1 : this.kickReady(now) ? IRON_FISTS.punches.length + 1 : 1; } // awakened: the kick after the uppercut
+  artFistTap(now, dir, step = 1) { if (step > IRON_FISTS.punches.length) return this.awakenedKick(now, dir); this._fistInputUpdate = true; try { return this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } }
+  artFistRelease(now, dir, step = 1) { if (step > IRON_FISTS.punches.length) { this.awakenedKick(now, dir); return step; } this._fistInputUpdate = true; try { this.fistPunch(step, 0, now, dir); } finally { this._fistInputUpdate = false; } return step; }
+  // Awakened arts (awakened-arts.ts; numbers in weapon-arts.ts AWAKENED_ARTS): the hooks it calls. Runtime game.awakenedArts.
+  awakenedRelease(id, now, air = false) { return awakenedArtRelease(this, id, now, air); } // weapon-arts.ts: an art released
+  // A pose for a move that has no swing of its own (the axe kick): a punch record wearing `awakenedArt`.
+  awakenedVisual(now, d, art, ms) {
+    if (art !== "axe-kick" && art !== "roundhouse") return;
+    const p = this.player, aim = d && Math.hypot(d.x, d.y) > 0 ? d : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
+    p.attackUntil = now + ms; p.meleeUntil = now + ms; p.fistVisualUntil = now + ms; this.cancelConsumeVisual("attack");
+    const v = stampAttackVisual(p, "fist", ms, aim); if (!v) return;
+    const logicalNow = now - (this.presentationPausedMs || 0); v.fistStep = 3; v.fistLead = this.save.fistOpeningHand === "left" ? "left" : "right"; v.awakenedArt = art; v.poseMs = Math.max(0, logicalNow);
+    v.facingYaw = Math.atan2(aim.y, aim.x); p.actionVisualUntil = now + ms;
+  }
+  // The Iron Fists' awakened fourth strike (AWAKENED_ARTS.moves.roundhouse): after the uppercut, while the combo's window is
+  // open, a spinning kick round her; then the combo ends and recovers as after the uppercut. A press, so it arms an art.
+  kickReady(now) { const c = this.fistCombo; return !!c && now <= c.until && c.step === IRON_FISTS.punches.length && awakenedFor(this.save) === "roundhouse"; }
+  awakenedKick(now = this.lastUpdateNow || 0, direction = null) {
+    if (this.cursed("attack", now)) { this.fistCombo = null; return false; }
+    const A = AWAKENED_ARTS.moves.roundhouse, d = direction && Math.hypot(direction.x, direction.y) > .01 ? projectileDirection(direction.x, direction.y, this.player.facing) : this.brawlerAim(A.radius + 1).d;
+    this.fistCombo = null; this.fistRecoverUntil = now + IRON_FISTS.recover * 1000;
+    awakenedKickBurst(this, now, this.fistPower()); this.awakenedVisual(now, d, "roundhouse", A.poseMs);
+    noteArtPress(this); this.message = AWAKENED_ARTS.messages.kick; return true;
+  }
   // The art's pose: an ordinary primary attack record carrying `weaponArt` (Close View: close-view-hero.ts weaponArtPose).
   artVisual(now, d, art, ms) {
     const p = this.player;
@@ -8380,7 +8405,7 @@ export class Game {
   castSpell(spellId = null) {
     const id=spellId&&SPELLS[spellId]?spellId:(this.save.equippedSpell||'ember-ring'),priorVisual=this.player.castVisual,before={effects:this.effects.length,shots:this.projectiles.length,clone:!!this.shadowCloneActive(this.lastUpdateNow||0),orbit:!!this.orbit&&!this.orbit.flight,x:this.player.x,y:this.player.y};
     const result = this.castSpellEffect(spellId);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);if(this.player.castVisual===priorVisual)this.recordCastVisual(id,before);awakenedSpellCast(this,now);/* awakened-arts.ts: Transpose's seal pulses */ }
     return result;
   }
   recordCastVisual(spellKind,before={},variant='cast',accepted=null){
@@ -9817,6 +9842,7 @@ export class Game {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge || now < (this.fistRecoverUntil || 0)) return false;
     if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the punch waits for the let-go
+    if (this.kickReady(now)) return this.awakenedKick(now, direction); // awakened-arts.ts: the fourth strike, a roundhouse kick
     const c = this.fistCombo, live = c && now <= c.until && c.step < IRON_FISTS.punches.length;
     if (live) { const next = c.step + 1, P = IRON_FISTS.punches[next - 1]; if (action && P.echoes && hostLoadout(this.save, "melee").count("echo") >= P.echoes) { this.fistCharge = { action, start: now, direction, step: next };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } return this.fistPunch(next, 0, now, direction); } // release 503: Echo glyphs let the jab and uppercut charge
     this.fistCombo = null;
@@ -9843,8 +9869,9 @@ export class Game {
     const delayed=this.closeViewActionEligible()&&(this.attackAction==='attack'||this._fistInputUpdate===true);
     if(!delayed)this.effects.push(effect);
     if (step === 1) this.save.fistOpeningHand = fistLead;
-    this.fistCombo = step >= F.punches.length ? null : { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead };
-    if (step >= F.punches.length) this.fistRecoverUntil = now + F.recover * 1000;
+    const kickNext = step >= F.punches.length && awakenedFor(this.save) === "roundhouse"; // awakened Iron Fists: the uppercut leaves the window open for the kick
+    this.fistCombo = step >= F.punches.length && !kickNext ? null : { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead };
+    if (step >= F.punches.length && !kickNext) this.fistRecoverUntil = now + F.recover * 1000;
     if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each punch
     this.cancelConsumeVisual('attack');
     p.attackUntil = now + 240; p.meleeUntil = now + 240; p.fistVisualUntil = now + ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = Math.max(0, Math.min(1, Number(charge) || 0)); visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); }
@@ -10265,6 +10292,7 @@ export class Game {
     if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
     if (this.quandrix) tickQuandrix(this, dt, now, !!input.held?.((this.quandrix.hold.on ? this.quandrix.hold.action : this.quandrix.press.action) || "attack")); // the Quandrix Staff: its hands, the Mage's Hand fist and the awakened slam
     if (this.weaponArts) tickWeaponArts(this, dt, now, !!input.held?.(this.weaponArts.fist.on ? this.weaponArts.fist.action : "attack")); // weapon-arts.ts: arming, the charge, and what each art leaves in play
+    if (this.awakenedArts) tickAwakenedArts(this, dt, now); // awakened-arts.ts: fissures, blades, lances, runes, the axe kick and the seal's pulse
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
@@ -10644,7 +10672,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } if (shot.glyphHost === "spell" && !shot.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet
@@ -10662,7 +10690,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now); } },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ },
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
     );
     const hammerTransition=this.reconcileHammerfallStartup(hammerObserved);this._hammerfallObserved=null;

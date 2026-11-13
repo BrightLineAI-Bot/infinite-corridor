@@ -120,7 +120,7 @@ test('awakening needs a max-rank weapon holding a Resonance and lumen dust; awak
   assert.equal(s.equipment.primary.awakened.resonance, 'wildfire'); assert.equal(awaken(s, 'primary').ok, false, 'once');
   const g = arena(s, [[11.2, 10], [14, 10]]);
   for (let k = 0; k < 3; k++) g.primaryAttack(1000 + k * 600, { x: 1, y: 0 });
-  assert.ok(g.projectiles.some((p) => p.crescent), 'third swing releases a crescent');
+  assert.ok(g.awakenedArts?.fissures.some((f) => f.on) && !g.projectiles.some((p) => p.crescent), 'third swing releases the Verge Cleaver\'s own awakened move, Fissure (awakened-arts.ts), in place of the crescent');
   s.equipment.secondary = normalizeSockets({ id: 'secondary-needle-caster', name: 'Needle Caster', slot: 'secondary', power: 4, property: 'quick', tier: 'rare', affixes: [], awakened: { resonance: 'wildfire' } });
   const before = g.projectiles.length; g.fireSecondary(5000, { x: 1, y: 0 });
   assert.equal(g.projectiles.length - before, 3, 'awakened tool fans three shots');
