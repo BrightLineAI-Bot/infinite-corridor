@@ -105,7 +105,7 @@ test('perfect, late, early and overcharge releases strike at their share of a no
   for (const [seconds, label] of [[1.15, 'perfect'], [1.6, 'late'], [.5, 'early'], [2.4, 'overcharge']]) {
     const { g, clock } = arena('lava-slash', { foes: [[1.4, 0]] }), log = spy(g); arm(g, clock);
     const power = g.artPower(clock.t); assert.ok(Math.abs(power - g.meleePower()) < 1e-9, 'a normal hit of the weapon');
-    const held = charge(g, clock, seconds); idle(g, clock, 5); assert.equal(artWindow(held), label);
+    const held = charge(g, clock, seconds); idle(g, clock, 15); assert.equal(artWindow(held), label); // 2026-11-14: the rush is travelled; the blow lands on arrival
     assert.equal(log.length, 1); assert.ok(Math.abs(log[0].amount / power - artShare(held) * A['lava-slash'].share) < 1e-6, `${label}: ${log[0].amount / power}`);
     if (label === 'perfect') assert.match(g.message, /perfect/i);
   }
@@ -113,11 +113,11 @@ test('perfect, late, early and overcharge releases strike at their share of a no
 });
 
 test('Lava Slash dashes to the nearest foe and erupts; Blade Stream cuts all round in six; the Javelin pierces three', () => {
-  { const { g, clock } = arena('lava-slash', { foes: [[3.5, 0], [3.5, .8], [7, 0]] }), log = spy(g); arm(g, clock); const x0 = g.player.x; const held = charge(g, clock, 1.15);
+  { const { g, clock } = arena('lava-slash', { foes: [[3.5, 0], [3.5, .8], [7, 0]] }), log = spy(g); arm(g, clock); const x0 = g.player.x; const held = charge(g, clock, 1.15); idle(g, clock, 15); // 2026-11-14: travelled, landing on arrival
     assert.ok(g.player.x - x0 > 2, 'dashed toward the foe'); assert.ok(g.player.x < 10 + 3.5, 'stopped short of it');
     assert.deepEqual(log.map((q) => q.id).sort(), ['foe-0', 'foe-1'], 'the eruption, not the far foe'); assert.ok(held > 0); }
-  { const { g, clock } = arena('lava-slash', { foes: [] }); arm(g, clock); const x0 = g.player.x; charge(g, clock, 1.15); assert.ok(g.player.x - x0 > 3 && g.player.x - x0 <= A['lava-slash'].dash + 1e-6, 'straight ahead with no foe'); }
-  { const { g, clock } = arena('lava-slash', { foes: [] }); g.map.tiles[10 * 32 + 12] = { x: 12, y: 10, kind: 'wall', blocked: true }; arm(g, clock); charge(g, clock, 1.15); assert.ok(g.player.x < 11.5, 'a wall stops it'); }
+  { const { g, clock } = arena('lava-slash', { foes: [] }); arm(g, clock); const x0 = g.player.x; charge(g, clock, 1.15); idle(g, clock, 15); assert.ok(g.player.x - x0 > 3 && g.player.x - x0 <= A['lava-slash'].dash + 1e-6, 'straight ahead with no foe'); }
+  { const { g, clock } = arena('lava-slash', { foes: [] }); g.map.tiles[10 * 32 + 12] = { x: 12, y: 10, kind: 'wall', blocked: true }; arm(g, clock); charge(g, clock, 1.15); idle(g, clock, 15); assert.ok(g.player.x < 11.5, 'a wall stops it'); }
   { const { g, clock } = arena('blade-stream', { foes: [[1.5, 0], [-1, 1], [4, 0]] }), log = spy(g); arm(g, clock); const power = g.artPower(clock.t), held = charge(g, clock, 1.15); idle(g, clock, 40);
     const near = log.filter((q) => q.id === 'foe-0'); assert.equal(near.length, A['blade-stream'].hits); assert.equal(log.filter((q) => q.id === 'foe-1').length, 6, 'all round');
     assert.equal(log.filter((q) => q.id === 'foe-2').length, 0, 'outside the radius'); assert.ok(Math.abs(near.reduce((n, q) => n + q.amount, 0) / power - artShare(held) * A['blade-stream'].share) < 1e-6, 'six hits total the share'); }
@@ -164,7 +164,7 @@ test('Transpose: the seal\'s time, its growth and cap, the linger, the spell bon
 
 test('foes that hold their ground take the blow but are never knocked', () => {
   const { g, clock } = arena('lava-slash', { foes: [[1.3, -.3], [1.3, .5, { boss: true }]] }), log = spy(g); arm(g, clock);
-  const at = g.enemies.map((e) => [e.x, e.y]); charge(g, clock, 1.15);
+  const at = g.enemies.map((e) => [e.x, e.y]); charge(g, clock, 1.15); idle(g, clock, 15); // 2026-11-14: the blow lands on the rush's arrival
   assert.deepEqual(log.map((q) => q.id).sort(), ['foe-0', 'foe-1'], 'both struck');
   assert.ok(Math.hypot(g.enemies[0].x - at[0][0], g.enemies[0].y - at[0][1]) > .2, 'the ordinary foe is thrown back');
   assert.ok(Math.hypot(g.enemies[1].x - at[1][0], g.enemies[1].y - at[1][1]) < 1e-4, 'the boss does not move');

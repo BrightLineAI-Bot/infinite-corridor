@@ -44,7 +44,9 @@ export const QUANDRIX = Object.freeze({
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
   extra: Object.freeze({ maxLive: 3, queue: 3, alpha: .55 }), // echo and clone hands: their own cap; Echo copies waiting to be cast
-  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35 }),
+  // `staff`: the Standard View staff's drawn length unit (tiles), .95 before the Close View staff was cut to the hero's height
+  // (2026-11-14: 1.79 to 1.68 recipe, the same 6% here).
+  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35, staff: .89 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff }),
   messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches." }),
@@ -212,7 +214,7 @@ function finish(game, now, held) {
 function tickHold(game, dt, now, held) {
   const K = game.quandrix, H = K.hold, h = H.hand, F = QUANDRIX.fist, S = QUANDRIX.slam, U = QUANDRIX.suction;
   if (!h?.on) { endHold(K); return; }
-  H.held += dt;
+  H.held += H.mode === "fist" ? dt : dt / (game.chargeQuicken ? game.chargeQuicken(S.perfect[0]) : 1); // the slam's charge (not the fist's grab time) fills sooner with Gathered Breath
   if (H.mode === "fist") {
     reel(game, h, F.speed, F.arrive, dt);
     for (const e of game.enemies) { if (H.n >= F.maxGrab) break; if (hittable(e) && !staffAnchored(e) && !hasGrab(H, e.id) && touching(e, h.x, h.y, F.grab)) H.grab[H.n++] = e.id; }
@@ -336,7 +338,7 @@ export function drawQuandrix(ctx, game, toScreen, s, t, capture = null) {
 // at the side the Wayfarer faces, tipped toward the aim while a hand is cast. (cx, cy): the sprite's centre in pixels.
 export function drawQuandrixStaff(ctx, cx, cy, s, facing, attacking, aim = null) {
   const C = QUANDRIX.colors, side = facing === "left" ? -1 : 1, hx = cx + side * s * .26, hy = cy + s * .12;
-  const tilt = attacking ? Math.atan2(aim?.y ?? 0, aim?.x ?? side) + Math.PI / 2 : side * .18, L = s * .95;
+  const tilt = attacking ? Math.atan2(aim?.y ?? 0, aim?.x ?? side) + Math.PI / 2 : side * .18, L = s * QUANDRIX.view.staff;
   ctx.save(); ctx.translate(hx, hy); ctx.rotate(attacking ? Math.max(-1.2, Math.min(1.2, tilt > Math.PI ? tilt - Math.PI * 2 : tilt)) : tilt);
   ctx.lineCap = "round"; ctx.strokeStyle = "#1d1626"; ctx.lineWidth = Math.max(3, s * .1); ctx.beginPath(); ctx.moveTo(0, L * .32); ctx.lineTo(0, -L * .62); ctx.stroke();
   ctx.strokeStyle = C.staff; ctx.lineWidth = Math.max(2, s * .06); ctx.stroke();

@@ -73,7 +73,7 @@ import {
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
 import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
@@ -94,7 +94,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLI
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
@@ -161,9 +161,9 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
-import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -184,7 +184,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
@@ -2766,6 +2766,7 @@ export class Game {
     this.restorePendingMeleeContact(s.playerRuntime.pendingMeleeContact,now);
     { const w = normalizeToolSwing(s.playerRuntime.toolSwing); this.toolSwing = w && w.area === this.area && w.areaId === this.areaId() && w.levelId === String(this.map?.levelId || 'root') && this.player.hp > 0 ? { ...w, lastNow: now } : null; } // the Great Sweep resumes mid-swing
     { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
+    { const r = normalizeArtRush(s.playerRuntime.artRush), R = LAVA_RUSH; this.artRush = r?.v === R.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // the Lava Slash rush resumes where it stood
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
@@ -3269,7 +3270,7 @@ export class Game {
     this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
-    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.kiSlam=false; // the fists' chain belongs to where it was thrown
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.kiSlam=false; // the fists' chain belongs to where it was thrown
     this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
@@ -3852,6 +3853,7 @@ export class Game {
         pendingMeleeContact:this.savedPendingMeleeContact(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingMeleeContact?.v)&&this.save.session.playerRuntime.pendingMeleeContact.v>3/* a future record kept opaque */?structuredClone(this.save.session.playerRuntime.pendingMeleeContact):null),
         hammerfallStartup:this.savedHammerfallStartup(),
         toolSwing:this.toolSwing?normalizeToolSwing(this.toolSwing):(Number.isInteger(this.save.session.playerRuntime.toolSwing?.v)&&this.save.session.playerRuntime.toolSwing.v>GREAT_SWEEP_RECORD_VERSION?structuredClone(this.save.session.playerRuntime.toolSwing):null), // the Great Sweep mid-swing (great-sweep.ts; additive, schema 14; a newer record kept opaque)
+        artRush:this.artRush?normalizeArtRush(this.artRush):(Number.isInteger(this.save.session.playerRuntime.artRush?.v)&&this.save.session.playerRuntime.artRush.v>LAVA_RUSH.v?structuredClone(this.save.session.playerRuntime.artRush):null), // the Lava Slash rush mid-way (additive, schema 14; a newer record kept opaque)
         shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -4016,7 +4018,7 @@ export class Game {
     this.cancelPendingToolUse('world-reset');
     this.toolSwing = null;
     this.clearHammerfallStartup('world-reset');
-    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistCharge=null;this.kiSlam=false;
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.fistCharge=null;this.kiSlam=false;
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
@@ -7179,7 +7181,7 @@ export class Game {
     const stats = characterStats(this.save), rev = tuneGatePredator(Object.assign(createCombatant("gateRevenant", 0, 0, false, []), { gatePredator: true }), this.save, stats);
     const beast = beastProfileVitals({ hitsToKill: 0, hpPerLevel: 0, damageShare: STALKER.vitals.damageShare }, this.save, stats), q = regionalThreat(this.rx, this.ry), v = stalkerVitals(rev.maxHp, beast.damage, beastRegionalThreat(q)); // balance pack: regional threat ramps in from BEAST_REGION_RAMP.from
     const key = `${this.save.seed}:stalker:${st.seq}:${st.kills}`, c = createCombatant("ashenHound", spot.x, spot.y, false, []);
-    Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: Math.max(v.hp, Number(st.active?.hp) || 0) /* balance pack: a stalk under way keeps the health it has */, hp: st.active?.hp || v.hp, damage: v.damage, baseDamage: v.damage,
+    Object.assign(c, { id: `stalker-${st.seq}-${st.kills}`, kind: "stalker", stalker: true, boss: true, aggro: true, eliteName: "The Stalker", defeatTitle: "THE STALKER FALLS", maxHp: v.hp, hp: Math.min(v.hp, Number(st.active?.hp) || v.hp) /* balance pack: a stalk under way keeps its wounds; 2026-11-14: never above today's vitals (a stalk saved before the Stalker's health was halved, or under a stronger weapon, came back with the old health) */, damage: v.damage, baseDamage: v.damage,
       range: 0, meleePatterns: [], scale: STALKER.size, baseScale: STALKER.size, bodyRadius: .5, threatRing: q.ring, xpMultiplier: q.xpMultiplier * 2, staggerImmune: true,
       affixes: rollAffixes(key, STALKER.affixes[0] + (hashSeed(`${key}:affix-count`) % (STALKER.affixes[1] - STALKER.affixes[0] + 1))), stalkForm: at ? "cat" : hashSeed(`${key}:first`) % 2 ? "ape" : "cat" });
     // Release 695: how it comes for you, by turns: lying in wait ahead (lurk), running at you from across the section (run), in
@@ -8094,7 +8096,7 @@ export class Game {
     if (now < (this.player.attackReadyAt || 0)) return false;
     if(this.fistsEquipped()&&(this.fistCharge||now<(this.fistRecoverUntil||0)))return false;
     const bufferedToolTap=this.attackBufferToolUse,held=bufferedToolTap&&this.fistsEquipped()&&input?.held?.('attack');
-    const bufferedFist=this.fistsEquipped();this.clearAttackBuffer();this.attackAction=bufferedToolTap&&bufferedFist?(held?'attack':null):"attack";this._fistInputUpdate=bufferedFist;try{this.primaryAttack(now);}finally{this._fistInputUpdate=false;this.attackAction=null;}return true;
+    const bufferedFist=this.fistsEquipped();this.clearAttackBuffer();this.attackAction=bufferedToolTap&&bufferedFist?(held?'attack':null):"attack";this._fistInputUpdate=bufferedFist;this._fistBuffered=true;try{this.primaryAttack(now);}finally{this._fistInputUpdate=false;this._fistBuffered=false;this.attackAction=null;}return true;
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
     const committed=echo?.committed||null,followCut=echo?.daggerCut===1/* the Fourfold Daggers' second cut (tickGlyphs) */,isEcho=!!echo&&!committed&&(!followCut||echo.echoed===true);
@@ -8107,6 +8109,7 @@ export class Game {
     if(swingKind&&this.pendingMeleeContact?.v===3&&!this.swingChainDue(now))return[];
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
+    if (!echo && this.artRush) return []; // 2026-11-14: the Lava Slash rush owns the body until its slam
     if (!echo && !this._shadowArrive && (this.shadowDash || (now < (this.boxingUntil || 0) && this.shadowDashBegin(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now)))) return []; // release 485; 2026-11-14: Shadow Boxing charges to the foe (SHADOW_DASH) and this press lands on arrival (shadowDashLand)
     const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
     if (!echo) { this.player.attackReadyAt = swingKind ? now /* the swing record gates the next press (swingChainDue) */ : now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
@@ -8518,7 +8521,7 @@ export class Game {
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
-    if (held) { c.held = Math.min(c.held + dt, C.charge.full + C.charge.grace); if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
+    if (held) { c.held = Math.min(c.held + (c.held < C.charge.grace ? dt : dt / this.chargeQuicken(C.charge.full - C.charge.grace)), C.charge.full + C.charge.grace); /* Gathered Breath: past the grace */ if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
     K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
     this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
   }
@@ -8739,6 +8742,7 @@ export class Game {
   airAttack(now = this.lastUpdateNow || 0) {
     const p = this.player;
     if (this.plunge || now < (this.plungeRecoverUntil || 0)) return true;
+    if (this.artRush) return true; // the airborne Lava Slash rush (2026-11-14) owns the press until its slam: no plunge
     if (!(now < (this.jumpUntil || 0)) || this.plungeSpent || !(p.hp > 0) || this.plungeBlocked()) return false;
     if (this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.fistCharge) return false;
     const kiSlam = this.kiSlamReady(now); this.kiSlam = false; // Ki Blast's ground slam (2026-11-13): straight down, the fists' own blow on landing
@@ -8803,7 +8807,7 @@ export class Game {
       const S = WEAPON_ARTS.arts["ki-blast"].slam, share = S.share + (awakenedUp(this.save, "roundhouse") ? AWAKENED_ARTS.moves.roundhouse.up.share : 0), fist = this.fistPower() * (1 + (boxing?.damage || 0));
       this.effects.push({ id: `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "plunge-slam", brawler: true, x: cx, y: cy, life: PLUNGE.slamLife, radius: S.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(fist * share)), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare, imbue, stun: S.stun });
       this.plungeRecoverUntil = now + IRON_FISTS.gate * 1000; p.attackReadyAt = Math.max(p.attackReadyAt || 0, this.plungeRecoverUntil);
-      this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; noteArtPress(this);
+      this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; this.fistBeat = null; noteArtPress(this);
       return true;
     }
     const slam = blow("plunge-slam", P.radius, P.share, P.stun, PLUNGE.slamLife);
@@ -8811,7 +8815,7 @@ export class Game {
     if (hasEcho(this.save, "spinoRex")) { const ghost = plungeAfterimage(slam, `plunge-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, p.meleeAim || this.save.lastAim); if (ghost) this.effects.push(ghost); }
     if (q.dive) { const D = PLUNGE_DIVE; blow("plunge-burst", D.burstRadius, D.burstShare, D.burstStun, D.burstLife); }
     this.plungeRecoverUntil = now + PLUNGE.recoverMs; p.attackReadyAt = Math.max(p.attackReadyAt || 0, this.plungeRecoverUntil);
-    if (this.fistsEquipped()) { this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; }
+    if (this.fistsEquipped()) { this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, this.plungeRecoverUntil); this.fistCombo = null; this.fistBeat = null; }
     return true;
   }
   // A normal hit of the equipped weapon before the foe's defences (the melee glyphs apply as the blow lands): a swing's power
@@ -8849,15 +8853,23 @@ export class Game {
     const t0 = q.elapsedMs / q.durationMs; q.elapsedMs = Math.min(q.durationMs, q.elapsedMs + Math.max(0, Number(dt) || 0) * 1000); const t1 = q.elapsedMs / q.durationMs;
     let foe = null; for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; }
     if (!foe || !(foe.hp > 0) || foe.untargetable || foe.hidden) { q.arrived = true; return; } // gone: the blow is thrown where he stands
-    const w = this.glyphWorld(now), gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), e0 = shadowDashTravel(t0);
-    let budget = Math.min(t1 >= 1 ? Infinity : Math.max(0, gap() - q.stop) * (shadowDashTravel(t1) - e0) / Math.max(1e-6, 1 - e0), D.maxTiles - q.travelled), blocked = false;
-    for (let i = 0; i < 64 && budget > 1e-6 && gap() > q.stop + 1e-6; i++) {
-      const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), s = Math.min(D.step, budget, gap() - q.stop), bx = p.x, by = p.y, nx = p.x + d.x * s, ny = p.y + d.y * s;
-      if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) { blocked = true; break; }
-      const moved = Math.hypot(p.x - bx, p.y - by); q.travelled = Math.min(D.maxTiles, q.travelled + moved); budget -= s; if (moved < s * .25) { blocked = true; break; }
-    }
+    const blocked = this.dashCarry(q, foe.x, foe.y, t0, t1, D.maxTiles, now), gap = Math.hypot(foe.x - p.x, foe.y - p.y);
     const fx = foe.x - p.x, fy = foe.y - p.y; p.meleeAim = projectileDirection(fx, fy, p.facing); if (Math.abs(fx) > .15 || Math.abs(fy) > .15) p.facing = Math.abs(fx) > Math.abs(fy) ? (fx < 0 ? "left" : "right") : (fy < 0 ? "up" : "down");
-    if (blocked || t1 >= 1 || gap() <= q.stop + 1e-6 || q.travelled >= D.maxTiles - 1e-6) q.arrived = true;
+    if (blocked || t1 >= 1 || gap <= q.stop + 1e-6 || q.travelled >= D.maxTiles - 1e-6) q.arrived = true;
+  }
+  // The charges' shared mover (Shadow Boxing's, the Verge Cleaver's Lava Slash): one tick's eased share (shadowDashTravel from
+  // time fraction t0 to t1) of what is left between the Wayfarer and (tx, ty) less the record's stop, in SHADOW_DASH.step
+  // steps through canStand and moveGuardedCombatStep (shadowBoxStep's mover: walls, solid props, bodies, lethal ground and
+  // ledges stop it), never more than `maxTiles` in all (q.travelled). True when something stopped it.
+  dashCarry(q, tx, ty, t0, t1, maxTiles, now) {
+    const p = this.player, D = SHADOW_DASH, w = this.glyphWorld(now), gap = () => Math.hypot(tx - p.x, ty - p.y), e0 = shadowDashTravel(t0);
+    let budget = Math.min(t1 >= 1 ? Infinity : Math.max(0, gap() - q.stop) * (shadowDashTravel(t1) - e0) / Math.max(1e-6, 1 - e0), maxTiles - q.travelled), blocked = false;
+    for (let i = 0; i < 64 && budget > 1e-6 && gap() > q.stop + 1e-6; i++) {
+      const d = projectileDirection(tx - p.x, ty - p.y, p.facing), s = Math.min(D.step, budget, gap() - q.stop), bx = p.x, by = p.y, nx = p.x + d.x * s, ny = p.y + d.y * s;
+      if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) { blocked = true; break; }
+      const moved = Math.hypot(p.x - bx, p.y - by); q.travelled = Math.min(maxTiles, q.travelled + moved); budget -= s; if (moved < s * .25) { blocked = true; break; }
+    }
+    return blocked;
   }
   // After the move, on the tick the dash arrives: the held press is thrown (primaryAttack, flagged so it neither charges again
   // nor waits on the dash), and `cooldownCredit` of the dash's time is counted toward its press cooldown.
@@ -8877,16 +8889,73 @@ export class Game {
   // Ends the dash where the Wayfarer stands; the drawn afterimages close in and fade (shadowDashAfter, presentation only, not saved).
   cancelShadowDash(now = this.lastUpdateNow || 0) {
     const q = this.shadowDash; this.shadowDash = null; if (!q || q.v !== SHADOW_DASH.v) return;
-    const a = this.shadowDashAfter || (this.shadowDashAfter = { live: false, at: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, durationMs: 1 });
-    a.live = true; a.at = now; a.fromX = q.fromX; a.fromY = q.fromY; a.toX = this.player.x; a.toY = this.player.y; a.durationMs = q.durationMs;
+    this.markDashAfter(q, "shadow", now);
+  }
+  // A charge's settle: one record reused (presentation only, never saved); `kind` picks its look (brawler-spells.ts DASH_LOOKS).
+  markDashAfter(q, kind, now) {
+    const a = this.shadowDashAfter || (this.shadowDashAfter = { live: false, at: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, durationMs: 1, kind: "shadow" });
+    a.live = true; a.at = now; a.fromX = q.fromX; a.fromY = q.fromY; a.toX = this.player.x; a.toY = this.player.y; a.durationMs = q.durationMs; a.kind = kind;
+  }
+  // The Verge Cleaver's Lava Slash rush (brawler-spells.ts LAVA_RUSH; Tim, 2026-11-14: "you see the
+  // character move to the enemy instead of teleporting"). The released art picks its foe and heading as artDash always did (the
+  // lock within `reach` + 1, else the nearest within `reach`; straight along the aim with none) and records the rush; the
+  // Wayfarer travels it tick by tick (artRushSteer) and the slam lands on arrival (artRushLand). Released mid-jump (Tim,
+  // 2026-11-14: "the same as on the ground") it is the same rush: the jump's own arc and height run on untouched (its clock),
+  // the rush carries her across through the same mover (no wall, ledge or lethal ground is crossed), `air` marks it, and the
+  // slam lands where it ends. With nothing to cross the caller lands at once: returns the heading then, else null. Falling,
+  // gliding or under the drone (no art is released there but the drone) it is still the old one-update dash.
+  artRushBegin(now, reach, stop, power) {
+    const p = this.player, R = LAVA_RUSH;
+    if (this.fall || this.glide || this.droneLift) return this.artDash(now, reach, stop);
+    const t = this.lockedTarget(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
+    const foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach)?.e;
+    let d, dist = reach, gap = 0;
+    if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); gap = Math.hypot(foe.x - p.x, foe.y - p.y); dist = Math.max(0, gap - stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
+    else d = this.artAim(null);
+    p.meleeAim = { x: d.x, y: d.y };
+    dist = Math.floor((dist + 1e-6) / SHADOW_DASH.step) * SHADOW_DASH.step; // whole quarter-tile steps, as artDash went: the same end on open ground
+    if (!(dist > 0)) return d; // nothing to cross: the slam lands where she stands
+    this.artRush = { v: R.v, art: "lava-slash", area: this.area, areaId: this.areaId(), levelId: String(this.map?.levelId || "root"), foe: foe ? String(foe.id) : "",
+      fromX: p.x, fromY: p.y, toX: p.x + d.x * dist, toY: p.y + d.y * dist, dirX: d.x, dirY: d.y, stop: foe ? Math.max(0, gap - dist) : 0, limit: Math.min(R.maxTiles, foe ? R.maxTiles : dist),
+      durationMs: shadowDashMs(dist, R), elapsedMs: 0, travelled: 0, arrived: false, power: Math.max(0, Math.min(1e9, Number(power) || 0)), air: now < (this.jumpUntil || 0) };
+    return null;
+  }
+  // One tick of the rush, as shadowDashSteer: toward the foe's live place (or the fixed end with none) on the eased path, through
+  // dashCarry. It arrives at its time, at the stop distance, at an obstacle or at its cap; a foe gone arrives where she stands.
+  // A dodge, a stun, a new jump, death or leaving the area cancels it (cancelArtRush: no blow, the charge stored again); the jump
+  // it was released in does not (`air` until that jump lands, then it runs on as a ground rush).
+  artRushSteer(dt, now) {
+    const q = this.artRush, p = this.player; if (!q || q.arrived) return;
+    const jumping = now < (this.jumpUntil || 0); if (q.air && !jumping) q.air = false; // landed: a jump from here is a new one
+    if (q.area !== this.area || q.areaId !== this.areaId() || q.levelId !== String(this.map?.levelId || "root") || !(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || (jumping && !q.air)) { this.cancelArtRush(now); return; }
+    const t0 = q.elapsedMs / q.durationMs; q.elapsedMs = Math.min(q.durationMs, q.elapsedMs + Math.max(0, Number(dt) || 0) * 1000); const t1 = q.elapsedMs / q.durationMs;
+    let foe = null; if (q.foe) { for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; } if (!foe || !(foe.hp > 0) || foe.dead || foe.untargetable || foe.hidden) { q.arrived = true; return; } }
+    const tx = foe ? foe.x : q.toX, ty = foe ? foe.y : q.toY, blocked = this.dashCarry(q, tx, ty, t0, t1, q.limit, now), gap = Math.hypot(tx - p.x, ty - p.y);
+    if (gap > .05) { const d = projectileDirection(tx - p.x, ty - p.y, p.facing); q.dirX = d.x; q.dirY = d.y; }
+    p.meleeAim = { x: q.dirX, y: q.dirY }; if (Math.abs(q.dirX) > .15 || Math.abs(q.dirY) > .15) p.facing = Math.abs(q.dirX) > Math.abs(q.dirY) ? (q.dirX < 0 ? "left" : "right") : (q.dirY < 0 ? "up" : "down");
+    if (blocked || t1 >= 1 || gap <= q.stop + 1e-6 || q.travelled >= q.limit - 1e-6) q.arrived = true;
+  }
+  // After the move, on the tick the rush arrives: the slam and the eruption (weapon-arts.ts landLavaSlash) with the power fixed
+  // at the release.
+  artRushLand(now) {
+    const q = this.artRush, p = this.player; if (!q || !q.arrived) return false;
+    this.artRush = null; this.markDashAfter(q, "cleaver", now);
+    if (!(p.hp > 0) || q.area !== this.area || q.areaId !== this.areaId()) return false;
+    landLavaSlash(this, now, { x: q.dirX, y: q.dirY }, q.power, q.fromX + .5, q.fromY + .45); return true;
+  }
+  cancelArtRush(now = this.lastUpdateNow || 0) {
+    const q = this.artRush; this.artRush = null; if (!q) return;
+    this.markDashAfter(q, "cleaver", now); refundArtCharge(this, q.art);
   }
   shadowBoxStep(reach, now = this.lastUpdateNow || 0) {
     const B = BRAWLER["shadow-boxing"], p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
     if (!foe) return false;
     const gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
     if (gap() <= reach * .9 || gap() > reach + B.stick + 1) return false;
+    const x0 = p.x, y0 = p.y; // presentation only: the carry's after-images (markShadowTrail) start here
     for (let i = 0; i < 40 && gap() > stop; i++) { const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
     p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    markShadowTrail(this, x0, y0, now); // the Great Sweep's carry, the fists' later steps and the airborne carries: drawn crossing (writes no gameplay state)
     return true;
   }
   // Release 483 (brawler-spells.ts): a swing's damage before the target's own defences: the weapon, the melee bonus, the
@@ -10097,6 +10166,8 @@ export class Game {
   // Release 489 (brawler-spells.ts IRON_FISTS): the Iron Fists tool. A press of Tool throws the next punch of the combo while
   // its window is open; the dash punch starts a combo and charges while the button (`action`) is held. A world tap (no
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
+  // Gathered Breath (glyphs.ts CHARGE_GLYPH): the multiplier on a charge whose key point is `span` s of holding (1 with none set).
+  chargeQuicken(span = 1) { return chargeScale(this.save, span); }
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   // The training combo (2026-11-13; brawler-spells.ts IRON_FISTS): right cross, left jab, right uppercut and, awakened, the
@@ -10110,12 +10181,13 @@ export class Game {
   // A dodge or a cast cancels the step in progress, any charge and a waiting press; the chain starts again at the cross.
   cancelFists(now = this.lastUpdateNow || 0) {
     if (!this.fistCharge && !this.fistCombo && !this.fistQueued && !this.fistReleaseIntent) return false;
-    this.fistCharge = null; this.fistCombo = null; this.fistQueued = null; this.fistReleaseIntent = null; this.cancelFistPresentation(now); return true;
+    this.fistCharge = null; this.fistCombo = null; this.fistBeat = null; this.fistFlash = null; this.fistQueued = null; this.fistReleaseIntent = null; this.cancelFistPresentation(now); return true;
   }
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge) return false;
     if (this.kiSlamReady(now)) return this.airAttack(now); // Ki Blast: still up in the uppercut's leap, the ground slam
+    const onBeat = !this._fistBuffered && fistOnBeat(this.fistBeat, now); // the rhythm (brawler-spells.ts): a fresh press while the ball is home; a press held over by the gate or the buffer never is
     if (now < (this.fistRecoverUntil || 0)) { // the gate: a press in its last `buffer` s is thrown as it opens
       if (this.fistRecoverUntil - now <= IRON_FISTS.buffer * 1000 + 1e-6) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs };
       return false;
@@ -10124,8 +10196,9 @@ export class Game {
     if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the step waits for the let-go
     const step = this.fistNextStep(now);
     if (step === 1) this.fistCombo = null;
-    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
-    return this.fistPunch(step, 0, now, direction);
+    if (onBeat) this.fistFlash = { at: now, rhythm: false };
+    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step, ...(onBeat ? { onBeat: true } : {}), scale: this.chargeQuicken(IRON_FISTS.perfect[0]) };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
+    return this.fistPunch(step, 0, now, direction, false, onBeat);
   }
   // A press that waited out the gate (fistPress): thrown as the gate opens, charging if Attack is still held.
   tickFistQueue(now, input) {
@@ -10133,9 +10206,9 @@ export class Game {
     this.fistQueued = null;
     if (now > q.until || !this.fistsEquipped() || !(this.player.hp > 0) || this.fistCharge || this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.pendingMeleeContact?.v === 1) return false;
     const action = q.action && input?.held?.(q.action) ? q.action : null;
-    this._fistInputUpdate = true; try { return this.fistPress(now, q.direction, action); } finally { this._fistInputUpdate = false; }
+    this._fistInputUpdate = true; this._fistBuffered = true; try { return this.fistPress(now, q.direction, action); } finally { this._fistInputUpdate = false; this._fistBuffered = false; }
   }
-  fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false) {
+  fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false, onBeat = false) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("attack", now)) { this.fistCombo = null; return false; } // release 737: a charged punch let go under NO ATTACK
     let kick = step > IRON_FISTS.punches.length; if (kick && awakenedFor(this.save) !== "roundhouse") { step = 1; kick = false; } // the fists' awakening gone mid-chain: the cross, thrown as a cross (r945 review)
@@ -10149,15 +10222,18 @@ export class Game {
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the later steps to the foe
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
+    const rushX = p.x, rushY = p.y;
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
+    if (P.rush) markShadowTrail(this, rushX, rushY, now, boxing ? "carry" : "rush"); // the rush stays instant; only its drawing shows the crossing (presentation only). Tim 2026-11-14: the plain cross rush leaves after-images too, like a dodge
     const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
-    const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0));
-    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
+    const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0)), rhythm = onBeat === true && perfect === true; // a charge started on the beat, let go in its perfect window
+    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * ((rhythm ? P.share * F.beatShare : (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1)) * (finisher ? F.finisher : 1) + (rhythm ? F.rhythmBonus : 0)) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
     const delayed=this.attackAction==='attack'||this._fistInputUpdate===true; // Tim 2026-11-14: the Close View interior contact delay, in every area and both views
     if(!delayed)this.effects.push(effect);
     if (step === 1) this.save.fistOpeningHand = fistLead; // kept for older readers: always the right now
     this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead }; // the chain loops: after the last step the cross comes next
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
+    this.fistBeat = { at: now, ...fistBeatWindow(now, this.fistRecoverUntil), step, ax: d.x, ay: d.y }; if (rhythm) this.fistFlash = { at: now, rhythm: true }; // the next beat: the ball goes out with this step and is home as its window opens
     if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each step
     const chained = now < (p.fistVisualUntil || 0) || now < (p.actionVisualUntil || 0); // a step thrown out of the last one's guard (Close View starts it from the guard)
     this.cancelConsumeVisual('attack');
@@ -10165,7 +10241,7 @@ export class Game {
     p.attackUntil = now + 240; p.meleeUntil = now + 240; p.fistVisualUntil = now + ACTION_MOTION.meleeMs; const visual = stampAttackVisual(p, "fist", 240, d); if (visual) { visual.fistStep = step; visual.fistLead = fistLead; visual.fistCharge = full; if (perfect) visual.fistPerfect = true; if (kick) visual.awakenedArt = "roundhouse"; if (chained) visual.fistChain = true; visual.poseMs = prior?.now ?? Math.max(0, logicalNow); visual.fistGaitPhase = prior?.gaitPhase ?? (Number(p.walkPhase) || 0) * Math.PI; visual.fistSpeed = prior?.speed ?? 0; visual.facingYaw = prior ? Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)) : Math.atan2(d.y, d.x); }
     if(delayed){const move=kick?'kick':step===1?'dash':step===2?'jab':'uppercut',contactMs=T.contactMs,id=`melee-${effect.id}`;if(visual){visual.durationMs=T.durationMs;visual.meleeAction={v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs};p.actionVisualUntil=now+T.durationMs;}this.pendingMeleeContact={v:1,id,action:{v:1,kind:'iron-fists',move,contactMs,durationMs:T.durationMs},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{...d},payload:{kind:'fist',effect:structuredClone(effect),step,landedBefore:[...before],cloneDamage:primaryProfile(this.save.equipment.primary).damage,cloneEligible:this.shadowCloneActive(now)}};}
     noteArtPress(this); // weapon-arts.ts: each step is a press
-    const name = P.name, strong = perfect ? " Perfect!" : full >= 1 ? " Fully charged!" : "";
+    const name = P.name, strong = rhythm ? " Perfect rhythm!" : perfect ? " Perfect!" : full >= 1 ? " Fully charged!" : onBeat ? " Perfect timing!" : "";
     this.message = kick ? `${AWAKENED_ARTS.messages.kick}${strong}` : finisher ? `${name}! All three landed.${strong}` : `${name}.${strong}`;
     return true;
   }
@@ -10607,7 +10683,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held);if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
     if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
@@ -10617,7 +10693,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10692,6 +10768,7 @@ export class Game {
     if (this.wallCling || this.wallKick) { const st = this.wallClingSteer(x, y, dt, now); x = st.x; y = st.y; }
     if (!dodging && (this.plunge || now < (this.plungeRecoverUntil || 0))) { x = 0; y = 0; } this.plungeSteer(dt, now); // jump attacks: the plunge drops straight (a dodge is never held back); the dive flies on
     if (!dodging && this.shadowDash) { x = 0; y = 0; } this.shadowDashSteer(dt, now); // Shadow Boxing's charge carries the Wayfarer (a dodge cancels it)
+    if (!dodging && this.artRush) { x = 0; y = 0; } this.artRushSteer(dt, now); // the Lava Slash rush (2026-11-14): the same, its own clock
     if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
@@ -10907,8 +10984,9 @@ export class Game {
       }
     }
     this.reconcileHeldTool(now);
-    if(p.hp<=0){this.cancelShadowDash(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
-    if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
+    shadowTrailTick(this, now); /* presentation only: a dodge's trail follows him and closes when it ends */
+    if(p.hp<=0){this.cancelShadowDash(now);this.cancelArtRush(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.artRushLand(now);/* the Lava Slash rush: the slam on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
+    if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
@@ -10987,7 +11065,7 @@ export class Game {
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
     );
     const hammerTransition=this.reconcileHammerfallStartup(hammerObserved);this._hammerfallObserved=null;
-    if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true)===true;}finally{this._fistInputUpdate=false;}}}if(!accepted)this.tickAttackBuffer(now,input);}
+    if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true)===true;}finally{this._fistInputUpdate=false;}}}if(!accepted)this.tickAttackBuffer(now,input);}
     for(const e of this.enemies)if(e.kind==="astralWorm"&&e.dead&&!e.rewarded)this.defeatEnemy(e);
     this.tickGlyphs(dt, now);
     tickEchoes(this, dt, now, { x, y });

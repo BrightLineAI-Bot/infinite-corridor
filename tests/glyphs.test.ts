@@ -27,7 +27,7 @@ const step = (g, ms, from) => { for (let t = 0; t < ms; t += 50) g.update(.05, {
 test('saves gain glyph state once: starter glyphs, weapon sockets by tier, two spell sockets', () => {
   const s = freshSave();
   assert.deepEqual(['ignite', 'chain', 'echo'].map((id) => s.glyphs[id]), [1, 1, 1]);
-  assert.equal(GLYPH_IDS.length, 10); assert.equal(Object.keys(RESONANCES).length, 8);
+  assert.equal(GLYPH_IDS.length, 11); /* 2026-11-14: Gathered Breath */ assert.equal(Object.keys(RESONANCES).length, 8);
   for (const r of Object.values(RESONANCES)) assert.ok(r.pair.every((g) => GLYPHS[g]), r.name);
   assert.equal(socketCount(weapon('primary', 'common')), 1); assert.equal(socketCount(weapon('primary', 'relic')), 3);
   assert.equal(socketCount({ slot: 'armor', tier: 'relic' }), 3, 'release 295: armor takes glyphs too'); assert.equal(socketCount({ slot: 'charm', tier: 'relic' }), 0);

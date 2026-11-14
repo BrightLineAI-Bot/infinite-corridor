@@ -1,6 +1,7 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
-import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
@@ -37,6 +38,7 @@ import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
 import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
+import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
@@ -2742,7 +2744,7 @@ export function render(ctx, g, w, h, now) {
     for (let k = 0; k < 4; k++) { const ox = Math.cos(tm * 3 + k * 1.6) * s * .22 - (p.dodgeX || 0) * s * .18 * k, oy = Math.sin(tm * 2.4 + k * 2.1) * s * .14 - (p.dodgeY || 0) * s * .18 * k, r = s * (.62 - k * .08), gr = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
       gr.addColorStop(0, "rgba(218,230,244,.5)"); gr.addColorStop(.6, "rgba(160,182,210,.22)"); gr.addColorStop(1, "rgba(120,146,180,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx + ox, cy + oy, r, 0, 7); ctx.fill(); }
   }
-  if (dodging) {
+  if (dodging && !shadowTrailLive(g)) { // the older single ghost: a landing roll, or reduced motion (a dodge's trail is brawler-spells.ts SHADOW_TRAIL)
     ctx.globalAlpha = 0.28;
     actor(
       ctx,
@@ -2928,7 +2930,7 @@ export function render(ctx, g, w, h, now) {
       });
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
-    if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
+    if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
       draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         enemy: e,
@@ -3060,6 +3062,8 @@ export function render(ctx, g, w, h, now) {
       const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
+      const rushLean = kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x + (seatInfo ? seatInfo.dx / s : 0), // release 748: on the mount's back
@@ -3070,6 +3074,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (rushLean) { ctx.restore(); drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
@@ -3107,7 +3112,7 @@ export function render(ctx, g, w, h, now) {
           for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
         } else if (profile.shape === "thrust") { // the Cinder Pike (2026-11-13: "a clear forward thrust"): the shaft drawn back, driven out to its reach along the aim, and pulled home; the hit is unchanged
           const v = p.attackVisual, aim = v?.aim && Number.isFinite(v.aim.x) && Number.isFinite(v.aim.y) ? Math.atan2(v.aim.y, v.aim.x) : a, k = Math.max(0, Math.min(1, 1 - ((p.attackUntil || 0) - now) / ACTION_MOTION.meleeMs)), out = k < .15 ? -.25 * k / .15 : k < .45 ? -.25 + 1.25 * (k - .15) / .3 : 1 - .7 * (k - .45) / .55, R = s * profile.range, ux = Math.cos(aim), uy = Math.sin(aim);
-          const tip = R * (.55 + .45 * out), tail = tip - R * .95;
+          const tip = R * (.55 + .45 * out), tail = tip - s * PRIMARY_SWINGS["cinder-pike"].shaft; // the drawn shaft is the Close View pike's length
           ctx.moveTo(cx + ux * tail, cy + uy * tail); ctx.lineTo(cx + ux * tip, cy + uy * tip);
           ctx.moveTo(cx + ux * (tip + s * .22), cy + uy * (tip + s * .22)); ctx.lineTo(cx + ux * tip - uy * s * .08, cy + uy * tip + ux * s * .08); ctx.lineTo(cx + ux * tip + uy * s * .08, cy + uy * tip - ux * s * .08); ctx.closePath(); // the head
         } else {
