@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 964 — Blunderbuss Arc Wave Echoes
+
+Tim, 2026-11-14: with Arc Wave, each Blunderbuss Echo shot should be a large arc about the width of the three arcs combined, travelling forward; two Echoes give two arc waves after each shot.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE_ECHO` {at 1, scale .9, depth .3, muzzle .35}, `ARC_WAVE_SHAPE` (the crescent's drawing values, now data), `arcWaveEchoHalf` and `arcWaveTouches` (allocation-free hit test following the drawn crescent). `game.ts` `fireSecondary` and `releasePendingToolUse` give each Echo copy of an Arc Wave shot `waveHalf` (0.85 tiles with the .26 cone and a .5 grow; grows with Charged Air). `updateProjectiles` hits across the crescent's width and never forgets a hit foe for such a wave. `drawToolForms` draws it as the Arc Wave crescent at radius waveHalf / sin(span) with a 1.25x stroke, in both views. Tests: `blunderbuss-arc-echo` (8).
+
+**BOUNDARY:** Echo timing (150/300 ms), damage shares (60%/25%), pierce, speed 11, life, the projectile cap, walls and Close View occlusion (stopped at the wave's centre) are unchanged. Without Arc Wave, Echo shots are as before. The cone's own arcs, the awakened fan and the Shadow Clone copy never carry `waveHalf`. No save-schema change: `waveHalf` lives on the in-flight projectile and resumes with it (schema 14).
+
 ## Release 963 — The Shadow Clone charges the Carbine with you
 
 Tim, 2026-11-14: "when you charge your blast, the Shadow Clone charges its blast, and it'll increase its damage also."
