@@ -81,31 +81,84 @@ export function normalizeShadowDash(raw) {
     || !finiteIn(raw.travelled, 0, SHADOW_DASH.maxTiles) || !finiteIn(raw.stop, 0, 20)) return null;
   return { ...structuredClone(raw), elapsedMs: Math.min(raw.elapsedMs, raw.durationMs), arrived: raw.arrived === true, action: raw.action === 'attack' ? 'attack' : null };
 }
+// Shadow trails (Tim, 2026-11-14: "the Iron Fists' Shadow Boxing rush... give it the same after-images and speed streak as
+// the charge so you see him cross the space"; "when the Wayfarer dodges, with any weapon, show the same ghost trail").
+// Presentation only: game.ts writes a record (Game.shadowTrail, never saved, one object reused) and nothing reads it back
+// into gameplay; the moves themselves are untouched. Two kinds share SHADOW_DASH's ghosts, streak, pool and fade:
+//   carry: a move made in one update (the Iron Fists' rush while Shadow Boxing holds, and shadowBoxStep: the Great Sweep's
+//     carry, the fists' later steps and the airborne carries). It is drawn as a charge that has already arrived: the ghosts
+//     start spread back along the path (from about 30% to 90% of it) and close in on the Wayfarer over `carryMs` as they
+//     fade, with the 952 lean and wraith settling. The body is drawn on its true place (no lag), so a blow is never drawn
+//     anywhere but where it lands.
+//   dodge: while the dodge runs, ghosts back along its path from where it began (linear, as the dodge moves), then the same
+//     close-in fade; no lean and no wraith tint (the roll keeps its own pose).
+// Moves shorter than `minJump` tiles are not marked, longer than `maxJump` are teleports (drawn as they are). Drawn at every
+// quality tier and in safe mode; with reduced motion on none of it is drawn (Close View keeps the release-922 reduced-motion
+// fade). A newer 952 charge record (shadowDashAfter) wins over an older trail and the reverse.
+export const SHADOW_TRAIL = Object.freeze({ minJump: .6, maxJump: 12, carryMs: 220 });
+const lerpTravel = (t, linear) => linear ? clamp01(t) : shadowDashTravel(t);
+export function markShadowTrail(game, fromX, fromY, now, kind = "carry") {
+  const T = SHADOW_TRAIL, p = game?.player; if (!p || !Number.isFinite(fromX) || !Number.isFinite(fromY) || !Number.isFinite(now)) return false;
+  const dodge = kind === "dodge";
+  if (!dodge) { const d = Math.hypot(p.x - fromX, p.y - fromY); if (!(d >= T.minJump) || d > T.maxJump) return false; }
+  const r = game.shadowTrail || (game.shadowTrail = { live: false, map: null, at: 0, endAt: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, durationMs: 1, moving: false, linear: false, pose: false });
+  r.live = true; r.map = game.map; r.at = now; r.fromX = fromX; r.fromY = fromY; r.toX = p.x; r.toY = p.y; r.moving = dodge; r.linear = dodge; r.pose = !dodge && kind !== "rush"; // "rush": the Iron Fists' plain cross rush (Tim 2026-11-14), ghosts without the Shadow Boxing lean and tint
+  r.endAt = now; r.durationMs = dodge ? Math.max(1, (Number(p.dodgeUntil) || now) - now) : T.carryMs;
+  return true;
+}
+// Once a tick, after the move: a running dodge's trail follows the Wayfarer and is closed when the dodge ends. No allocation.
+export function shadowTrailTick(game, now) {
+  const r = game?.shadowTrail, p = game?.player; if (!r?.live || !p) return;
+  if (r.map !== game.map) { r.live = false; return; }
+  if (r.moving) { if (now < (Number(p.dodgeUntil) || 0)) { r.toX = p.x; r.toY = p.y; } else { r.moving = false; r.endAt = now; } }
+  else if (now - r.endAt >= Math.max(SHADOW_DASH.settleMs, SHADOW_DASH.fadeMs)) r.live = false;
+}
+// The trail record that drives the drawing now, or null (none, reduced motion, another map, or a teleport mid-dodge).
+function trailNow(game) {
+  const r = game?.shadowTrail, p = game?.player, a = game?.shadowDashAfter;
+  if (!r?.live || !p || game.presentation?.reduceMotion || r.map !== game.map) return null;
+  if (a?.live && a.at > r.at) return null; // a newer Shadow Boxing charge owns the drawing
+  if (r.moving && Math.hypot(p.x - r.fromX, p.y - r.fromY) > SHADOW_TRAIL.maxJump) return null;
+  return r;
+}
+// True while a trail is being drawn (renderer.ts draws its older single dodge ghost only when it is not).
+export function shadowTrailLive(game) { const r = trailNow(game); return !!r && (r.moving || (game.lastUpdateNow || 0) - r.endAt < SHADOW_DASH.fadeMs); }
 // The afterimages to draw now, nearest first, as [x, y, alpha] triples into `out` (a Float64Array of 3 × SHADOW_DASH.ghosts):
 // during a dash (game.shadowDash) back along the path from where it set off to where the Wayfarer is, and for `fadeMs` after
-// arrival (game.shadowDashAfter) closing in on the arrival point as they fade. Returns the count. Logical tile coordinates.
-// No allocation.
+// arrival (game.shadowDashAfter) closing in on the arrival point as they fade; the same for a shadow trail (above). Returns
+// the count. Logical tile coordinates. No allocation.
 export function shadowDashGhosts(game, out) {
   const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter, p = game?.player; let n = 0;
   if (!p || !out) return 0;
-  let t, fx, fy, tx, ty, fade, denom;
+  let t, fx, fy, tx, ty, fade, denom, linear = false, r;
   if (q?.v === D.v && !(q.arrived)) { t = q.elapsedMs / q.durationMs; fx = q.fromX; fy = q.fromY; tx = p.x; ty = p.y; fade = 1; denom = shadowDashTravel(Math.min(1, t)); }
+  else if ((r = trailNow(game))) {
+    const now = game.lastUpdateNow || 0; linear = r.linear; fx = r.fromX; fy = r.fromY;
+    if (r.moving) { t = Math.max(0, now - r.at) / r.durationMs; tx = p.x; ty = p.y; fade = 1; denom = lerpTravel(Math.min(1, t), linear); }
+    else { const after = Math.max(0, now - r.endAt); if (after >= D.fadeMs) return 0; t = 1 + after / r.durationMs; tx = r.toX; ty = r.toY; fade = 1 - after / D.fadeMs; denom = 1; }
+  }
   else if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at); if (after >= D.fadeMs) return 0; t = 1 + after / a.durationMs; fx = a.fromX; fy = a.fromY; tx = a.toX; ty = a.toY; fade = 1 - after / D.fadeMs; denom = 1; }
   else return 0;
   if (!(denom > 1e-6) || !Number.isFinite(t)) return 0;
   for (let k = 1; k <= D.ghosts && n < (out.length / 3 | 0); k++) {
     const tk = t - k * D.spacing; if (tk <= 0 || tk >= 1) continue;
-    const e = shadowDashTravel(tk) / denom, o = n * 3; if (!(e < 1)) continue;
+    const e = lerpTravel(tk, linear) / denom, o = n * 3; if (!(e < 1)) continue;
     out[o] = fx + (tx - fx) * e; out[o + 1] = fy + (ty - fy) * e; out[o + 2] = D.alpha * (1 - k / (D.ghosts + 1)) * fade; n++;
   }
   return n;
 }
 // The charge pose weight (0..1): leaning in over the first `rampIn` of a dash, settling over `settleMs` after it. `wraith`:
-// the spectral weight, 1 while charging and fading out as the body settles.
+// the spectral weight, 1 while charging and fading out as the body settles. A carry trail settles as an arrived charge; a
+// dodge trail is live with no lean and no wraith.
 export function shadowDashPose(game, out) {
   const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter;
   out.live = false; out.charge = 0; out.wraith = 0; out.t = 1;
   if (q?.v === D.v && !q.arrived) { out.live = true; out.t = clamp01(q.elapsedMs / q.durationMs); out.charge = smoothstep(out.t / D.rampIn); out.wraith = 1; return out; }
+  const r = trailNow(game);
+  if (r) { const now = game.lastUpdateNow || 0;
+    if (r.moving) { out.live = true; out.t = clamp01(Math.max(0, now - r.at) / r.durationMs); return out; }
+    const after = Math.max(0, now - r.endAt); if (after < Math.max(D.settleMs, D.fadeMs)) { const c = r.pose ? 1 - smoothstep(after / D.settleMs) : 0; out.charge = c; out.wraith = c; out.live = after < D.fadeMs || c > 0; }
+    return out; }
   if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at), s = Math.max(D.settleMs, D.fadeMs); if (after < s) { out.charge = 1 - smoothstep(after / D.settleMs); out.wraith = out.charge; out.t = 1; out.live = after < D.fadeMs || out.charge > 0; } }
   return out;
 }
