@@ -5,6 +5,7 @@
 // and segments, and ±1 legs on the ordinary gait. The attack families they answer are PACK_ACTION_FAMILIES (actor-presentation.ts).
 import { bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { FOUNDRY_JOINT_POSE } from './close-view-foundry-models.ts';
+import { PENTAGON_JOINT_POSE } from './close-view-pentagon-models.ts';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);
@@ -274,6 +275,7 @@ export const ADVENTURE_JOINT_POSE = Object.freeze({
     slagPour: { 50: J(-.75, -.25, .12), 51: J(-.3, -.1) },
   }),
   ...FOUNDRY_JOINT_POSE,
+  ...PENTAGON_JOINT_POSE,
 });
 export const ADVENTURE_JOINT_KINDS = new Set(Object.keys(ADVENTURE_JOINT_POSE));
 const smooth = (t) => t * t * (3 - 2 * t);
