@@ -38,41 +38,44 @@ export const BRAWLER = {
   "shadow-boxing": { seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15 },
 };
 // The awakened Hammerfall's clap (Tim, 2026-11-14: "when the hammer hits, two lines of energy shoot out and then come back in
-// and slap... in addition to the blows from the hammer falling. So you just have one and it'll slap"). An awakened Hammerfall
-// tool (constellation.ts awaken on the secondary) adds one effect of kind "hammer-clap" to each press (game.ts brawlerTool;
-// Echo copies of the hammer and the Shadow Clone add none). It waits with the hammer (`delay`: the hammer's own) and then runs
-// on the effect's own clock, so it is saved and resumed with the area's effects like the hammer itself:
-//   `extend` s: two lines of energy grow from the impact out to either side, perpendicular to the aim, to `length` tiles;
+// and slap... in addition to the blows from the hammer falling. So you just have one and it'll slap"; then: "two lines move
+// apart, 2 parallel lines move apart and then come back together"). An awakened Hammerfall tool (constellation.ts awaken on
+// the secondary) adds one effect of kind "hammer-clap" to each press (game.ts brawlerTool; Echo copies of the hammer and the
+// Shadow Clone add none). It waits with the hammer (`delay`: the hammer's own) and then runs on the effect's own clock, so it
+// is saved and resumed with the area's effects like the hammer itself. Two straight lines of energy, `length` tiles long, lie
+// along the aim, centred on the impact:
+//   `extend` s: they appear together on the impact and slide apart sideways, parallel all the way, to `spread` tiles each side;
 //   `hold` s: they hang there, humming;
-//   `sweep` s: they swing forward round the impact, like two hands, and meet along the aim: the clap. It strikes once (one
-//     pulse), every foe the closing lines swept: within `length` of the impact (plus `width` and the foe's body) and no more
-//     than `width` behind the line they started on. `share` of the tool's power (Game.toolPower, as the hammer's blow), a
-//     `stun` (a quarter of it on bosses and elites, as the hammer);
-//   `fade` s: the closed lines and the flash of the slap fade.
+//   `sweep` s: they slam back together onto the centre line: the clap. It strikes once (one pulse), every foe in the rectangle
+//     between them: within `length` / 2 of the impact along the aim and `spread` across it, each padded by `width` (the
+//     line's half-thickness) and the foe's body. `share` of the tool's power (Game.toolPower, as the hammer's blow), a `stun`
+//     (a quarter of it on bosses and elites, as the hammer);
+//   `fade` s: the shut lines and the flash of the slap along them fade.
 // Pure numbers and geometry; drawHammerClap below draws it on the floor (both views: Close View projects this layer).
-export const HAMMER_CLAP = Object.freeze({ share: .6, length: 2.4, width: .45, extend: .12, hold: .1, sweep: .1, fade: .2, stun: .3,
-  colors: Object.freeze({ glow: "#ffcf7a", core: "#fff6dc", wedge: "#ffd58a", flash: "#fffbe8" }),
-  text: "when the hammer lands, two lines of energy reach out to either side and clap shut in front of it" });
+export const HAMMER_CLAP = Object.freeze({ share: .6, length: 2.4, spread: 1.3, width: .3, extend: .12, hold: .1, sweep: .1, fade: .2, stun: .3,
+  colors: Object.freeze({ glow: "#ffcf7a", core: "#fff6dc", band: "#ffd58a", flash: "#fffbe8" }),
+  text: "when the hammer lands, two parallel lines of energy slide apart from it and slam back together" });
 // When the clap strikes and how long it lasts, from the moment the hammer lands (seconds).
 export const hammerClapStrikeAt = () => HAMMER_CLAP.extend + HAMMER_CLAP.hold + HAMMER_CLAP.sweep;
 export const hammerClapSpan = () => hammerClapStrikeAt() + HAMMER_CLAP.fade;
-// Whether a foe whose middle is (ex, ey) is caught by the clap `fx` (x, y: the impact; ax, ay: the unit aim; radius: the lines'
-// length). `body`: how much wider than a common foe it is (as updateEffects reckons radii).
+// Whether a foe whose middle is (ex, ey) is caught by the clap `fx` (x, y: the impact; ax, ay: the unit aim, along the lines;
+// radius: the lines' length; spread: how far each slides out). `body`: how much wider than a common foe it is (as
+// updateEffects reckons radii). The rectangle between the lines, padded by `width` and the body.
 export function hammerClapCatches(fx, ex, ey, body = 0) {
   const rx = ex - fx.x, ry = ey - fx.y, slack = HAMMER_CLAP.width + Math.max(0, Number(body) || 0);
-  const along = rx * fx.ax + ry * fx.ay;
-  return along >= -slack && rx * rx + ry * ry <= (fx.radius + slack) ** 2;
+  const along = rx * fx.ax + ry * fx.ay, across = ry * fx.ax - rx * fx.ay, spread = Number.isFinite(fx.spread) ? fx.spread : HAMMER_CLAP.spread;
+  return Math.abs(along) <= fx.radius / 2 + slack && Math.abs(across) <= spread + slack;
 }
-// The lines' shape at `t` s after the hammer landed (null before it lands or once it has faded): `reach` (0..1 of the length),
-// `open` (the angle each line stands from the aim: π/2 out to the side, 0 closed) and `flash` (1 at the slap, fading). Reuses
-// one object (no allocation per frame).
-const CLAP_POSE = { reach: 0, open: 0, flash: 0, phase: "" };
+// The lines' shape at `t` s after the hammer landed (null before it lands or once it has faded): `apart` (0..1 of the spread:
+// 0 together on the centre line, 1 out at the spread), `flash` (1 at the slap, fading) and `phase`: "apart" (sliding out),
+// "hold", "close" (slamming back) or "clap". Reuses one object (no allocation per frame).
+const CLAP_POSE = { apart: 0, flash: 0, phase: "" };
 export function hammerClapPose(t) {
   const C = HAMMER_CLAP, P = CLAP_POSE; if (!(t >= 0) || t > hammerClapSpan()) return null;
-  if (t < C.extend) { const k = t / C.extend; P.reach = 1 - (1 - k) * (1 - k); P.open = Math.PI / 2; P.flash = 0; P.phase = "extend"; }
-  else if (t < C.extend + C.hold) { P.reach = 1; P.open = Math.PI / 2; P.flash = 0; P.phase = "hold"; }
-  else if (t < hammerClapStrikeAt()) { const k = (t - C.extend - C.hold) / C.sweep; P.reach = 1; P.open = Math.PI / 2 * (1 - k * k); P.flash = 0; P.phase = "sweep"; }
-  else { P.reach = 1; P.open = 0; P.flash = Math.max(0, 1 - (t - hammerClapStrikeAt()) / C.fade); P.phase = "clap"; }
+  if (t < C.extend) { const k = t / C.extend; P.apart = 1 - (1 - k) * (1 - k); P.flash = 0; P.phase = "apart"; }
+  else if (t < C.extend + C.hold) { P.apart = 1; P.flash = 0; P.phase = "hold"; }
+  else if (t < hammerClapStrikeAt()) { const k = (t - C.extend - C.hold) / C.sweep; P.apart = 1 - k * k; P.flash = 0; P.phase = "close"; }
+  else { P.apart = 0; P.flash = Math.max(0, 1 - (t - hammerClapStrikeAt()) / C.fade); P.phase = "clap"; }
   return P;
 }
 // Shadow Boxing's charge (Tim, 2026-11-14: "you still just kind of teleport... I want to see him traversing the space to get
@@ -498,30 +501,30 @@ export function hammerfallPresentation(fx, map) {
   return {kind:'hammerfallConjuration', x:fx.x, y:fx.y, supportX:fx.x, supportY:fx.y,
     lift, scale, yaw:0, pose:'idle', pace:0, alpha:struck ? Math.max(0, Math.min(1, fx.life / BRAWLER.hammerfall.lifetime)) : 1};
 }
-// The awakened Hammerfall's clap (HAMMER_CLAP), on the floor at the impact (x, y: screen). Two tapering blades of the hammer's
-// gold light, a soft glow under a white core, each pivoting on the impact; while they swing, the wedge they sweep glows
-// faintly; at the slap a flash where they meet. Nothing drawn before the hammer lands. `still` (reduced motion, safe mode)
-// drops the hum and the flash's spread. No allocation.
+// The awakened Hammerfall's clap (HAMMER_CLAP), on the floor at the impact (x, y: screen). Two straight lines of the hammer's
+// gold light along the aim, a soft glow under a white core, sliding apart parallel and slamming back; while they are apart the
+// band between them (where the slap lands) glows faintly; at the slap a flash along the line where they meet. Nothing drawn
+// before the hammer lands. `still` (reduced motion, safe mode) drops the hum and the flash's swell. No allocation.
 function drawHammerClap(ctx, fx, x, y, s, still) {
   if (fx.delay > 0 || !fx.clap) return;
   const K = HAMMER_CLAP.colors, q = hammerClapPose(hammerClapSpan() - fx.life); if (!q) return;
-  const ax = Number(fx.ax) || 0, ay = Number(fx.ay) || 0, aim = Math.atan2(ay, ax), L = fx.radius * s * q.reach, alpha = q.phase === "clap" ? q.flash : 1;
+  const ax = Number(fx.ax) || 0, ay = Number(fx.ay) || 0, nx = -ay, ny = ax, hx = ax * fx.radius * s / 2, hy = ay * fx.radius * s / 2;
+  const off = (Number.isFinite(fx.spread) ? fx.spread : HAMMER_CLAP.spread) * s * q.apart, alpha = q.phase === "clap" ? q.flash : 1;
   const hum = still || q.phase !== "hold" ? 1 : .85 + .15 * Math.sin(fx.life * 90);
-  if (q.phase === "sweep") { // the wedges the closing lines have swept
-    ctx.globalAlpha = .18; ctx.fillStyle = K.wedge; ctx.beginPath();
-    ctx.moveTo(x, y); ctx.arc(x, y, L, aim - Math.PI / 2, aim - q.open); ctx.closePath();
-    ctx.moveTo(x, y); ctx.arc(x, y, L, aim + q.open, aim + Math.PI / 2); ctx.closePath(); ctx.fill();
+  if (off > 0) { // the band between the lines
+    ctx.globalAlpha = .14 * hum; ctx.fillStyle = K.band; ctx.beginPath();
+    ctx.moveTo(x - hx + nx * off, y - hy + ny * off); ctx.lineTo(x + hx + nx * off, y + hy + ny * off);
+    ctx.lineTo(x + hx - nx * off, y + hy - ny * off); ctx.lineTo(x - hx - nx * off, y - hy - ny * off); ctx.closePath(); ctx.fill();
   }
   ctx.lineCap = "round";
-  for (let side = -1; side <= 1; side += 2) {
-    const a = aim + side * q.open, ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L;
-    ctx.globalAlpha = .45 * alpha * hum; ctx.strokeStyle = K.glow; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
-    ctx.globalAlpha = .95 * alpha; ctx.strokeStyle = K.core; ctx.lineWidth = Math.max(1.5, s * .07); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+  if (q.phase === "clap") { // the slap: a flash along the line where they met
+    ctx.globalAlpha = .5 * q.flash; ctx.strokeStyle = K.flash; ctx.lineWidth = s * (.5 + (still ? .4 : .9 * (1 - q.flash)));
+    ctx.beginPath(); ctx.moveTo(x - hx, y - hy); ctx.lineTo(x + hx, y + hy); ctx.stroke();
   }
-  if (q.phase === "clap") { // the slap: a flash where the lines meet, half way along them
-    const mx = x + ax * L * .55, my = y + ay * L * .55, r = s * (.35 + (still ? .25 : .55 * (1 - q.flash)));
-    ctx.globalAlpha = .55 * q.flash; ctx.fillStyle = K.flash; ctx.beginPath(); ctx.arc(mx, my, r, 0, 7); ctx.fill();
-    ctx.globalAlpha = .9 * q.flash; ctx.strokeStyle = K.glow; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(mx, my, r * 1.3, 0, 7); ctx.stroke();
+  for (let side = -1; side <= 1; side += 2) {
+    const ox = nx * off * side, oy = ny * off * side;
+    ctx.globalAlpha = .45 * alpha * hum; ctx.strokeStyle = K.glow; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); ctx.moveTo(x - hx + ox, y - hy + oy); ctx.lineTo(x + hx + ox, y + hy + oy); ctx.stroke();
+    ctx.globalAlpha = .95 * alpha; ctx.strokeStyle = K.core; ctx.lineWidth = Math.max(1.5, s * .07); ctx.beginPath(); ctx.moveTo(x - hx + ox, y - hy + oy); ctx.lineTo(x + hx + ox, y + hy + oy); ctx.stroke();
   }
   ctx.globalAlpha = 1; ctx.lineCap = "butt";
 }

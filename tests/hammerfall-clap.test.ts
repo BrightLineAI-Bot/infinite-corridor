@@ -20,50 +20,59 @@ function arena(awakened, foes) {
   const s = freshSave(); s.seed = 'CLAP'; s.perception.aperture = 3255; s.equipment.secondary = hammer(awakened); const g = new Game(s, 0);
   g.map = { ...g.map, width: 32, height: 32, exits: null, objects: [], enemySpawns: [], tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ash', blocked: false })) };
   g.area = 'dungeon'; Object.assign(g.player, { x: 10, y: 10, facing: 'right', hp: 100 }); s.maxHp = 100; s.lastAim = { x: 1, y: 0 };
-  g.enemies = foes.map(([id, x, y]) => foe(id, x, y)); g.effects = []; g.projectiles = [];
+  g.enemies = foes.map(([id, x, y]) => foe(id, x, y)); g.effects = []; g.projectiles = []; g.targetId = 'target'; // locked: the hammer lands on it
   return g;
 }
-// Foes as placed round the impact (12.5, 10.45), middles at (x + .5, y + .45):
-//   target   at the impact (the hammer's foe);
-//   side     2 tiles to the left of the aim, on the line the clap starts from: outside the hammer's 1.5, inside the clap's 2.4;
-//   front    1.9 tiles ahead: outside the hammer, swept as the lines close;
-//   behind   1.3 tiles behind the impact line (outside the hammer too): the lines never sweep there;
-//   far      3.4 tiles ahead: past the lines' reach.
-const ROSTER = [['target', 12, 10], ['side', 12, 8], ['front', 13.9, 10], ['behind', 11.2, 11.6], ['far', 15.4, 10]];
+// Foes as placed round the impact (12.5, 10.45), middles at (x + .5, y + .45); a rootBrute's body pads every bound by .096, so
+// the hammer reaches 1.596 and the clap's rectangle 1.2 + .3 + .096 = 1.596 along the aim and 1.3 + .3 + .096 = 1.696 across:
+//   target   at the impact (the hammer's foe, locked);
+//   side     1.65 across the aim: outside the hammer, inside the lines' spread;
+//   corner   1.3 ahead and 1.2 across: outside the hammer, inside the rectangle;
+//   wide     2.1 across: past where the lines slide to;
+//   far      1.8 ahead: past the lines' ends;
+//   aft      1.9 behind: past the lines' other ends.
+const ROSTER = [['target', 12, 10], ['side', 12, 8.35], ['corner', 13.3, 11.2], ['wide', 12, 12.1], ['far', 14.3, 10], ['aft', 10.1, 10.3]];
 function hold(g) { for (const e of g.enemies) { e.x = e.homeX ??= e.x; e.y = e.homeY ??= e.y; } } // the test's foes stand still
 function run(g, from, seconds, each = () => {}) { let t = from; for (let i = 0; i < Math.round(seconds / DT); i++) { t += DT * 1000; hold(g); g.update(DT, idle, t); hold(g); each(g, t); } return t; }
 const hp = (g) => Object.fromEntries(g.enemies.map((e) => [e.id, e.hp]));
 
-test('the clap: its numbers live in one table, and the geometry catches only what the closing lines sweep', () => {
+test('the clap: its numbers live in one table, and the rectangle between the parallel lines is all it catches', () => {
   const C = HAMMER_CLAP;
-  for (const k of ['share', 'length', 'width', 'extend', 'hold', 'sweep', 'fade', 'stun']) assert.ok(Number.isFinite(C[k]) && C[k] > 0, k);
+  for (const k of ['share', 'length', 'spread', 'width', 'extend', 'hold', 'sweep', 'fade', 'stun']) assert.ok(Number.isFinite(C[k]) && C[k] > 0, k);
+  assert.ok(C.spread >= 1.2 && C.spread <= 1.5, 'about 1.2-1.5 tiles each side');
   assert.ok(Math.abs(hammerClapStrikeAt() - (C.extend + C.hold + C.sweep)) < 1e-12); assert.ok(Math.abs(hammerClapSpan() - hammerClapStrikeAt() - C.fade) < 1e-12);
   assert.ok(BRAWLER.hammerfall.delay + hammerClapSpan() < BRAWLER.hammerfall.cooldown, 'at the tool\'s own cooldown one clap is alive at a time');
-  const fx = { x: 0, y: 0, ax: 1, ay: 0, radius: C.length };
-  assert.equal(hammerClapCatches(fx, 0, C.length), true, 'out to the side, where a line stood');
-  assert.equal(hammerClapCatches(fx, 0, -C.length), true, 'and the other side');
-  assert.equal(hammerClapCatches(fx, C.length * .7, C.length * .7), true, 'the swept wedge');
-  assert.equal(hammerClapCatches(fx, C.length, 0), true, 'where they meet');
-  assert.equal(hammerClapCatches(fx, -C.width - .05, 0), false, 'behind the line they start on');
-  assert.equal(hammerClapCatches(fx, C.length + C.width + .05, 0), false, 'past their reach');
-  assert.equal(hammerClapCatches(fx, C.length + C.width + .05, 0, .2), true, 'a broad body reaches in');
-  // The pose: extend (out to the side, growing), hold (full, out), sweep (closing), clap (shut, flashing), then gone.
+  const half = C.length / 2, edge = C.spread + C.width, end = half + C.width;
+  for (const aim of [[1, 0], [0, 1], [Math.SQRT1_2, -Math.SQRT1_2]]) {
+    const [ax, ay] = aim, fx = { x: 3, y: 4, ax, ay, radius: C.length, spread: C.spread }, at = (along, across) => [3 + ax * along - ay * across, 4 + ay * along + ax * across];
+    const catches = (along, across, body = 0) => hammerClapCatches(fx, ...at(along, across), body);
+    assert.equal(catches(0, 0), true, 'the centre line, where they meet');
+    assert.equal(catches(0, edge - .01), true, 'out at one line'); assert.equal(catches(0, -(edge - .01)), true, 'and the other');
+    assert.equal(catches(end - .01, edge - .01), true, 'a corner'); assert.equal(catches(-(end - .01), -(edge - .01)), true, 'the opposite corner');
+    assert.equal(catches(0, edge + .01), false, 'beyond a line'); assert.equal(catches(0, -(edge + .01)), false, 'beyond the other');
+    assert.equal(catches(end + .01, 0), false, 'past the lines\' far end'); assert.equal(catches(-(end + .01), 0), false, 'past their near end');
+    assert.equal(catches(0, edge + .15, .2), true, 'a broad body reaches in');
+  }
+  // The pose: apart (sliding out, parallel), hold (out at the spread), close (slamming back), clap (shut, flashing), then gone.
   assert.equal(hammerClapPose(-.01), null); assert.equal(hammerClapPose(hammerClapSpan() + .01), null);
-  let q = hammerClapPose(C.extend / 2); assert.equal(q.phase, 'extend'); assert.ok(q.reach > 0 && q.reach < 1); assert.equal(q.open, Math.PI / 2);
-  q = hammerClapPose(C.extend + C.hold / 2); assert.equal(q.phase, 'hold'); assert.equal(q.reach, 1); assert.equal(q.open, Math.PI / 2);
-  q = hammerClapPose(C.extend + C.hold + C.sweep / 2); assert.equal(q.phase, 'sweep'); assert.ok(q.open > 0 && q.open < Math.PI / 2);
-  q = hammerClapPose(hammerClapStrikeAt()); assert.equal(q.phase, 'clap'); assert.equal(q.open, 0); assert.equal(q.flash, 1);
+  let q = hammerClapPose(0); assert.equal(q.phase, 'apart'); assert.equal(q.apart, 0, 'together at the impact');
+  q = hammerClapPose(C.extend / 2); assert.equal(q.phase, 'apart'); assert.ok(q.apart > 0 && q.apart < 1);
+  q = hammerClapPose(C.extend + C.hold / 2); assert.equal(q.phase, 'hold'); assert.equal(q.apart, 1);
+  q = hammerClapPose(C.extend + C.hold + C.sweep / 2); assert.equal(q.phase, 'close'); assert.ok(q.apart > 0 && q.apart < 1);
+  q = hammerClapPose(hammerClapStrikeAt()); assert.equal(q.phase, 'clap'); assert.equal(q.apart, 0); assert.equal(q.flash, 1);
+  let last = -1; for (let t = 0; t < C.extend; t += .005) { const a = hammerClapPose(t).apart; assert.ok(a >= last, 'they only move apart'); last = a; }
+  last = 2; for (let t = C.extend + C.hold; t < hammerClapStrikeAt(); t += .005) { const a = hammerClapPose(t).apart; assert.ok(a <= last, 'then only together'); last = a; }
   assert.strictEqual(hammerClapPose(0), hammerClapPose(.3), 'one reused pose object');
 });
 
-test('awakened Hammerfall: the lines extend, hold, close and slap once per foe they sweep, after the hammer\'s own blow', () => {
+test('awakened Hammerfall: the parallel lines slide apart, hold, slam shut and slap once each foe between them, after the hammer\'s own blow', () => {
   const g = arena(true, ROSTER); let t = 1000; g.update(DT, idle, t); t += DT * 1000;
   assert.equal(g.brawlerTool('hammerfall', t, { x: 1, y: 0 }), true);
   const main = g.effects.find((e) => e.kind === 'hammerfall'), clap = g.effects.find((e) => e.kind === 'hammer-clap');
   assert.ok(main && clap, 'one hammer and one clap'); assert.equal(g.effects.filter((e) => e.kind === 'hammer-clap').length, 1);
   assert.equal(clap.clap, 1); assert.equal(clap.x, main.x); assert.equal(clap.y, main.y); assert.equal(clap.delay, main.delay, 'it waits with the hammer');
-  assert.ok(Math.abs(clap.ax - 1) < 1e-9 && Math.abs(clap.ay) < 1e-9, 'perpendicular lines to an aim to the right');
-  assert.equal(clap.radius, HAMMER_CLAP.length); assert.equal(clap.glyphHost, 'tool'); assert.equal(clap.stun, HAMMER_CLAP.stun);
+  assert.ok(Math.abs(clap.ax - 1) < 1e-9 && Math.abs(clap.ay) < 1e-9, 'lines along an aim to the right');
+  assert.equal(clap.radius, HAMMER_CLAP.length); assert.equal(clap.spread, HAMMER_CLAP.spread); assert.equal(clap.glyphHost, 'tool'); assert.equal(clap.stun, HAMMER_CLAP.stun);
   assert.equal(clap.damage, Math.max(1, Math.round(g.toolPower() * HAMMER_CLAP.share)));
   assert.ok(clap.damage < main.damage, 'the slap is lighter than the hammer');
   const start = hp(g), phases = [], hits = [];
@@ -71,18 +80,17 @@ test('awakened Hammerfall: the lines extend, hold, close and slap once per foe t
     const c = g.effects.find((e) => e.kind === 'hammer-clap'); if (c && !(c.delay > 0)) phases.push(hammerClapPose(hammerClapSpan() - c.life)?.phase);
     hits.push({ ...hp(g) });
   });
-  for (const p of ['extend', 'hold', 'sweep', 'clap']) assert.ok(phases.includes(p), `drawn through ${p}`);
-  assert.deepEqual([...new Set(phases)], ['extend', 'hold', 'sweep', 'clap'], 'in order');
+  for (const p of ['apart', 'hold', 'close', 'clap']) assert.ok(phases.includes(p), `drawn through ${p}`);
+  assert.deepEqual([...new Set(phases)], ['apart', 'hold', 'close', 'clap'], 'in order');
   // What a blow deals is its damage through the tool's glyphs and the Wayfarer's damage scale: measured against the same press
   // without the awakening (the hammer alone).
   const plain = arena(false, ROSTER); plain.update(DT, idle, 1000); plain.brawlerTool('hammerfall', 1020, { x: 1, y: 0 }); const p0 = hp(plain); run(plain, 1020, BRAWLER.hammerfall.delay + hammerClapSpan() + .2);
   const end = hp(g), blow = p0.target - hp(plain).target, slap = start.side - end.side;
   assert.ok(blow > 0 && slap > 0 && slap < blow, `a slap (${slap}) lighter than the hammer (${blow})`);
   assert.equal(start.target - end.target, blow + slap, 'the target: the hammer and one slap');
-  assert.equal(start.front - end.front, slap, 'ahead, in the sweep: one slap, the same');
-  assert.equal(end.behind, start.behind, 'behind the lines: untouched');
-  assert.equal(end.far, start.far, 'past their reach: untouched');
-  assert.deepEqual(Object.keys(clap.hits).sort(), ['1:front', '1:side', '1:target'], 'one pulse, one hit each');
+  assert.equal(start.corner - end.corner, slap, 'in the corner of the rectangle: one slap, the same');
+  for (const id of ['wide', 'far', 'aft']) assert.equal(end[id], start[id], `${id}: outside the lines, untouched`);
+  assert.deepEqual(Object.keys(clap.hits).sort(), ['1:corner', '1:side', '1:target'], 'one pulse, one hit each');
   // The slap lands on the frame the lines meet: the side foe is untouched until then.
   const firstSlap = hits.findIndex((h) => h.side < start.side), meetFrame = Math.ceil((BRAWLER.hammerfall.delay + hammerClapStrikeAt()) / DT - 1e-9);
   assert.ok(Math.abs(firstSlap + 1 - meetFrame) <= 1, `the slap lands as the lines meet (frame ${firstSlap + 1}, expected about ${meetFrame})`);
@@ -99,7 +107,7 @@ test('non-awakened Hammerfall is unchanged: no clap, the same hammer, the same b
   const after = hp(plain);
   assert.ok(before.target - after.target > 0, 'one hammer blow');
   assert.equal(plain.effects.filter((e) => e.kind === 'hammerfall').length, 0, 'spent');
-  for (const id of ['side', 'front', 'behind', 'far']) assert.equal(after[id], before[id], `${id}: untouched without the clap`);
+  for (const id of ['side', 'corner', 'wide', 'far', 'aft']) assert.equal(after[id], before[id], `${id}: untouched without the clap`);
   assert.match(awakenedText(hammer(true)), /Clap: /); assert.equal(awakenedText(hammer(false)), '');
   assert.match(awakenedText({ id: 'secondary-blunderbuss', name: 'Blunderbuss', slot: 'secondary', power: 10, awakened: { ...AWAKE } }), /fans into three/, 'firing tools keep their fan');
 });
@@ -138,14 +146,14 @@ test('exact resume mid-clap: a save in the hold resumes the lines where they wer
   const live = g.effects.find((e) => e.kind === 'hammer-clap');
   assert.deepEqual(JSON.parse(JSON.stringify(resumed)), JSON.parse(JSON.stringify(live)), 'byte for byte');
   // The same foes about the impact in both; play both on.
-  const place = (game) => { game.enemies = [foe('side', clap.x - .5, clap.y - .45 + 2), foe('behind', clap.x - .5 - 1.3, clap.y - .45 + 1.2)]; for (const e of game.enemies) e.hitStun = 99; };
+  const place = (game) => { game.enemies = [foe('side', clap.x - .5, clap.y - .45 + 1.5), foe('wide', clap.x - .5, clap.y - .45 + 2.2)]; for (const e of game.enemies) e.hitStun = 99; };
   place(g); place(back);
   const p0 = { x: g.player.x, y: g.player.y }; Object.assign(back.player, p0);
   let u = 200000; const t0 = t;
-  for (let i = 0; i < 30; i++) { t += DT * 1000; u += DT * 1000; for (const game of [g, back]) for (const e of game.enemies) { e.x = e.id === 'side' ? clap.x - .5 : clap.x - 1.8; e.y = e.id === 'side' ? clap.y + 1.55 : clap.y + .75; } g.update(DT, idle, t); back.update(DT, idle, u); }
+  for (let i = 0; i < 30; i++) { t += DT * 1000; u += DT * 1000; for (const game of [g, back]) for (const e of game.enemies) { e.x = clap.x - .5; e.y = clap.y - .45 + (e.id === 'side' ? 1.5 : 2.2); } g.update(DT, idle, t); back.update(DT, idle, u); }
   assert.ok(t > t0);
   assert.deepEqual(hp(back), hp(g), 'the resumed slap struck exactly as the original');
-  assert.ok(hp(g).side < 50000, 'the side foe was slapped'); assert.equal(hp(g).behind, 50000, 'the one behind was not');
+  assert.ok(hp(g).side < 50000, 'the foe between the lines was slapped'); assert.equal(hp(g).wide, 50000, 'the one beyond them was not');
 });
 
 test('stress: an awakened Hammerfall pressed every frame for 60 s with its cooldown wiped stays finite and bounded, and draws', () => {

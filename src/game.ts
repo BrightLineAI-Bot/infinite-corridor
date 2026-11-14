@@ -2107,7 +2107,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
         if (fx.only && !fx.only.includes(e)) continue; // great-sweep.ts: a swing's blow lands only on the foes its blade crossed
         if (
           e.dead || e.untargetable ||
-          (fx.clap ? !hammerClapCatches(fx, e.x + 0.5, e.y + 0.45, Math.max(0, enemyBodyRadius(e) - 0.38)) /* the awakened Hammerfall's clap: the closing lines' sweep (brawler-spells.ts HAMMER_CLAP) */ :
+          (fx.clap ? !hammerClapCatches(fx, e.x + 0.5, e.y + 0.45, Math.max(0, enemyBodyRadius(e) - 0.38)) /* the awakened Hammerfall's clap: the rectangle between its closing lines (brawler-spells.ts HAMMER_CLAP) */ :
           Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
             fx.radius + Math.max(0, enemyBodyRadius(e) - 0.38))
         )
@@ -9165,7 +9165,7 @@ export class Game {
     { const plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     // The awakened Hammerfall's clap (brawler-spells.ts HAMMER_CLAP; Tim, 2026-11-14): one per press, in addition to the hammer's
     // blow and its Echo copies, waiting with the hammer and then on its own clock (saved with the area's effects).
-    if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); }
+    if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, spread: C.spread, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); }
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
     const hammerDurationMs=B.delay*1000+B.lifetime*1000;
