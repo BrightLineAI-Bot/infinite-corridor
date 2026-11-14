@@ -1924,6 +1924,23 @@ function tallTower(ctx, o, s, p) {
     else { ctx.fillStyle = "#00000044"; ctx.fillRect(dx - dw / 2, dy - s * .06, dw, s * .06); } }
   ctx.restore();
 }
+// Tim (2026-11-14, a High Upwell: "almost impossible to get to on standard view... the platform is on the wrong side"): a raised
+// door's floating steps stand on the row before the face, a level a step, so each is drawn lifted up into the face's height, and
+// the facade, drawn after the ground and the actors, hid every step over the first and the Wayfarer climbing them: only the
+// lowest step showed, off to one side. The steps are drawn again over the face, lowest row first, and the Wayfarer with them
+// while up on one or hopping between them (`towerStepsPlan`; nothing allocated beyond the tower's own few steps).
+export function towerStepsPlan(g, o, mw) {
+  const p = g.player, tiles = g.map?.tiles || [], steps = (o?.steps || []).filter((q) => tiles[q.y * mw + q.x]?.towerStep);
+  if (!steps.length) return null;
+  const up = (Number(g.playerLevel?.()) || 0) > .5, near = steps.some((q) => Math.abs(p.x - q.x) <= 1.2 && Math.abs(p.y - q.y) <= 1.2);
+  return { steps: steps.sort((a, b) => a.y - b.y || a.elev - b.elev), player: up && near };
+}
+function towerStepsOver(ctx, g, o, s, mw, p, playerDraw, groundLift) {
+  const plan = towerStepsPlan(g, o, mw); if (!plan) return;
+  for (const q of plan.steps) drawLandscapeTile(ctx, g.map.tiles[q.y * mw + q.x], q.x, q.y, s, g.map.tiles, mw);
+  if (!plan.player || !playerDraw) return;
+  const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
+}
 // The shaft inside (tall-towers.ts generateTowerInterior), painted flat as every interior heightfield is in this view
 // (STANDARD_VIEW_FLOOR): the far floor dark, every ledge and platform lighter the higher it stands, with its level written on it
 // where a run of ledge begins, and an edge where it drops away. Close View draws the heights themselves.
@@ -3222,6 +3239,7 @@ export function render(ctx, g, w, h, now) {
     }
     drawStructure(ctx,o,s,p,g.map.tiles,{l,t,r,b});
     ctx.restore();
+    if(o.kind==="tallTower"&&!worldCapture&&!closeViewCapturing())towerStepsOver(ctx,g,o,s,mw,p,playerDraw,groundLift); // tall towers: the raised door's steps (and the Wayfarer on them) over the face
   }
   if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>!worldCapture&&!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
