@@ -349,7 +349,7 @@ export function tickWeaponArts(game, dt, now, held) {
   } else if (!K.latch && id) {
     K.heldFor += dt;
     if (F.on) { F.held += dt; if (F.held >= G) { F.on = false; H.on = true; H.held = 0; H.dx = F.dx; H.dy = F.dy; H.step = F.step; } }
-    else if (H.on) { H.held += dt; if (H.held >= C.max) release(game, now, H.held); }
+    else if (H.on) { H.held += dt / (game.chargeQuicken ? game.chargeQuicken(C.perfect[0]) : 1); if (H.held >= C.max) release(game, now, H.held); } // Gathered Breath: the charge fills sooner
     else if (id !== "ki-blast" && K.armed && K.heldFor >= G && !game.artBlocked(now)) { H.on = true; H.held = 0; } // aimed when let go
   }
   if (K.pikeOut && (now < (p.dodgeUntil || 0) || p.attackVisual !== K.artRecord || (!K.windup.on && !javelinOn(K)))) { K.pikeOut = false; K.artRecord = null; } // cancelled, or home

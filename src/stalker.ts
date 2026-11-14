@@ -33,7 +33,12 @@ export const STALKER = {
   // it breaks out of a held pen and leaves ("you can escape it for a little bit. But still stalking you").
   lair: { start: 4, near: 1, escape: 0 },
   lairSection: 32, // tiles across a section, for the marker's heading
-  vitals: { hpShare: 1, damageShare: .22, damageScale: .85 },
+  // 2026-11-14 (Tim, at -187,-114: "maybe his health is broken: I'm not able to kill him"): `hpShare` was 1. Its health was at the
+  // top of the world beasts' (a Gate Revenant's whole, 40 blows), and on top of it the Stalker spends about a third of a fight
+  // untouchable (the pool, the mist, lying in wait) and its mirage healed it back: a headless duel of Tim's build at ring 219
+  // took 540 s (world beasts there: 125–250 s, median about 165 s). Half a Revenant, with the smaller heal below, is about 165 s.
+  // Damage is unchanged.
+  vitals: { hpShare: .5, damageShare: .22, damageScale: .85 },
   size: 1.4,
   forms: {
     cat: { speed: 3.3, range: 5, pounce: { warn: .45, time: .32, reach: 1.15, damage: 1 }, swipe: { warn: .3, reach: 1.5, damage: .8 }, spring: { distance: 3.4, time: .3 } },
@@ -97,7 +102,7 @@ export const STALKER = {
   // `orbit` tiles, cuts in at `dash` speed for one or two blows (`strikes`; the cat slashes, the gorilla punches), and springs out
   // again; the afterimage still turns blows. Some mirages bring the fog (`fogChance`); in one it may slip away to `hide.dist` and
   // heal (`hide.regen` of its health a second, at most `hide.cap` a mirage), glowing red while it does.
-  mirage: { every: [20, 30], time: 11, alpha: .06, speed: 6, orbit: 4, dash: 10, reach: 1.3, strikes: [1, 2], gap: .2, damage: .5, out: { dist: 3.4, time: .24 }, rest: [.5, 1.1], reachTime: 1.3, fogChance: .5, hideChance: .35, hide: { time: 5, dist: 8, regen: .03, cap: .15 } },
+  mirage: { every: [20, 30], time: 11, alpha: .06, speed: 6, orbit: 4, dash: 10, reach: 1.3, strikes: [1, 2], gap: .2, damage: .5, out: { dist: 3.4, time: .24 }, rest: [.5, 1.1], reachTime: 1.3, fogChance: .5, hideChance: .35, hide: { time: 5, dist: 8, regen: .02, cap: .05 } }, // hide: was regen .03, cap .15 (2026-11-14: across a long fight its mirages healed back about 70% of its health)
   // How it comes for you, by turns (Tim: "it doesn't always have to be lying in wait... running at you from across the section...
   // slowly stalking towards you and then start running... flying in if it's in the gorilla form... or lying in wait invisible").
   approach: { styles: ["lurk", "run", "fog", "creep", "fly"], far: [10, 13], creepSpeed: .35, creepUntil: 6, flyTime: 1.1 },
