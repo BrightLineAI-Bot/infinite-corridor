@@ -361,7 +361,13 @@ export function awaken(save, slot) {
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
   item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : rangedWeapon(item)?.brawlerTool === "hammerfall" ? `Clap: ${HAMMER_CLAP.text}.` : "Every shot now fans into three."}` };
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
+}
+// An awakened tool: the Hammerfall claps (brawler-spells.ts HAMMER_CLAP), the Great Sweep freezes what its blades touch (great-sweep.ts SWEEP_FREEZE); every other tool fans its shots.
+function awakenedToolText(item, sentence = false) {
+  if (rangedWeapon(item)?.brawlerTool === "great-sweep") return sentence ? "Whatever its blade touches now freezes (with Mirage of Blades, whatever the blades cut); bosses freeze after many touches." : "whatever its blade touches freezes (with Mirage of Blades, the blades too); bosses after many touches";
+  if (rangedWeapon(item)?.brawlerTool === "hammerfall") return sentence ? `Clap: ${HAMMER_CLAP.text}.` : `Clap: ${HAMMER_CLAP.text}`;
+  return sentence ? "Every shot now fans into three." : "every shot fans into three";
 }
 // The Quandrix Staff's awakening is its own (quandrix-staff.ts QUANDRIX.slam): the held slam replaces the crescent. Every
 // other primary has its own move (weapon-arts.ts AWAKENED_ARTS, run by awakened-arts.ts), found by the weapon it belongs to.
@@ -369,4 +375,4 @@ function awakenedMove(item) {
   const key = weaponKey(item); for (const id of AWAKENED_IDS) if (AWAKENED_ARTS.moves[id].weapon === key) return AWAKENED_ARTS.moves[id];
   return { name: "Crescent", text: "every third swing releases a piercing crescent" };
 }
-export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : rangedWeapon(item)?.brawlerTool === "hammerfall" ? `Clap: ${HAMMER_CLAP.text}` : "every shot fans into three"}` : ""; // the awakened Hammerfall claps (brawler-spells.ts HAMMER_CLAP)
+export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : awakenedToolText(item)}` : "";

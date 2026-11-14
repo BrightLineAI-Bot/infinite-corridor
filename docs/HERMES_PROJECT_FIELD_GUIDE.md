@@ -6,6 +6,30 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 967 — Great Sweep awakened freeze
+
+Tim, 2026-11-14: the Great Sweep's awakened ability applies a freeze to whatever its blades touch (the spun blade, and the Mirage blades for a far-sweeping freeze); it should work on bosses, with diminishing returns and a buildup like stagger.
+
+**CODE:** `great-sweep.ts` `SWEEP_FREEZE` {touch: blade 1, mirage .5; ordinary need [.5,.5,1] hold [1.6,1.3,1] guard 1.2; elite need [3,4.5,6] hold [1.6,1.3,1] guard 4; boss need [6,9,13] hold [1.6,1.2,.9] guard 8; forget/drain/calm per class; slow .45; maxTier 8}, `sweepFreezeTouch`, `tickSweepFreeze`, `sweepFrozen`; state `e.sweepFreeze` {build, left, hold, guard, tier, idle, calm, fill} in seconds counted down by dt; `normalizeToolSwing` keeps `freeze`. `game.ts` `sweepAwakened`, `sweepFreezeClass` (via monster-pack `staggerClass`), `sweepFreezeHit`, `tickSweepFreezes` (a filling meter as a glyph slow tagged `frost`); `startToolSwing` stamps `toolSwing.freeze` (the Mirage spin is draw-only, never); `toolSwingHits` and the Mirage blade hit (`shot.sweepFreeze`) apply it; the enemy loop skips a frozen foe's AI; `snapshotArea` copies it; boss/guardian resets clear it. `renderer.ts` `drawSweepFrost` (ice shell sized to the body, thawing shards, fill arc). `constellation.ts` `awakenedToolText` describes the freeze. Tests: `sweep-freeze` (9).
+
+**BOUNDARY:** Only the awakened Great Sweep freezes. Retreating, passing, at-play, untargetable and Worm-riding foes are never frozen. A frozen or guarded foe gains no buildup; worst-case frozen share with presses every frame: boss about 17%, elite 29%, ordinary 57%. Stagger, the stagger governor and boss poise are unchanged. A frozen foe resumes its wind-up when it thaws. Close View shows the frost as a floor decal. No save-schema change: `e.sweepFreeze` and `toolSwing.freeze` are additive (schema 14).
+
+## Release 966 — Arc Wave tempo
+
+Tim, 2026-11-14: the arc waves should be slower and spread out from the centre into a cone; the two great waves should fly faster, shoot forward and overtake them.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE` {speed 5.5 (was 11), range 9.35 tiles × reach, spread .45 rad (was .26)}, `arcWaveLife(reach)` (flight time = range × reach / speed); `ARC_WAVE_ECHO` {speed 24, range 12.5 × reach, at .5 (was 1), scale .9, depth .3, muzzle .35}; `arcWaveEcho(shot, spread)` returns the great wave's width, speed and life (null without Arc Wave), reading the reach stat from the crescent's own speed and life so the Close View held release needs no new payload field. `game.ts` `fireSecondary` uses the Arc Wave cone and tempo; both Echo paths use `arcWaveEcho`; the Close View payload records the cone actually used. Tests: `blunderbuss-arc-echo` (11).
+
+**BOUNDARY:** Without Arc Wave the Blunderbuss keeps 14 tiles/s, 0.85 s and ±0.26 rad. Damage shares, pierce, hit-once, the projectile cap, occlusion and exact resume are unchanged. Awakened fan copies take the crescent tempo and keep their ±0.21 rad. No save change (schema 14).
+
+## Release 965 — Carbine shoulder hold
+
+Tim, 2026-11-14: while charging the Carbine the arm wiggles in a weird way; the arms should be held steady, and the Carbine should be held in two hands up at the shoulder with a cheek weld instead of down by the hip.
+
+**CODE:** Cause: the Carbine used the generic simple-tool pose (`toolPose` 'emitter'), whose arm weight fades in and out over each 600 ms animation; `tickCarbine` restarts that animation every ~340 ms while charging (`CARBINE.charge.restampMs` 260), so the arm dipped and rose. `close-view-player-presentation.ts` `CARBINE_HOLD` {butt [-.13,.02,.16] from the right shoulder in arm lengths, yaw .05, pitch 0, support [1.04,.035] with yaw .55 / pitch -.30, head {roll .22, nod .16, turn .10}, recoil {peak .05, end .40, back .05, rise .07, reduced .4}} and `carbineRecoil(p, reducedMotion)`. `close-view-hero.ts` `carbineHoldPose` is solved last from the shoulder alone (independent of the animation clock), places the stock's butt (`CLOSE_VIEW_HERO_WEAPON_FORM.carbine.stock[0]`) in the shoulder pocket, the left hand via `rifleSupportHand`, and tilts the head onto the stock; idle sway pauses while the Carbine is held. `close-view.ts` sets `input.carbineHold` and, only after a real shot, `input.carbineRecoil`. Tests: `carbine-hold` (6).
+
+**BOUNDARY:** Presentation only: projectile gameplay, hit rules, the charge itself, release 960's shooter height and 963's clone charge are unchanged; the charge glow and shot already start at the posed muzzle. Dodge, hit, knockdown, jump, cast, drink and pickup keep their own poses; Spark Coil below the Carbine rank keeps its one-handed raise. Standard View draws no Carbine arms, so it is unchanged. No save change (schema 14).
+
 ## Release 964 — Blunderbuss Arc Wave Echoes
 
 Tim, 2026-11-14: with Arc Wave, each Blunderbuss Echo shot should be a large arc about the width of the three arcs combined, travelling forward; two Echoes give two arc waves after each shot.

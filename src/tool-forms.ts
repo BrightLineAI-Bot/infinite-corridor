@@ -40,7 +40,14 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 // damage. Magic: they grow with Focus, like the other spells. Drawn as dark shells with a glowing crack.
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
-export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
+// Release 549: per wave, three waves (was one wave at 2.2, grow .75). Tempo (Tim, 2026-11-14: "the arc wave should be slower
+// and the great wave should fly faster. So the two great waves fly out and overtake the arc waves, and then the arc waves keep
+// flying slowly... the smaller waves spread into a cone"): the three crescents fly `speed` tiles/s (was 11) for `range` tiles
+// × the reach stat (the 9.35 they flew before: 11 × the Blunderbuss's .85 s), so they stay out longer, in a cone `spread`
+// radians to a side (the plain Blunderbuss's is .26, unchanged without Arc Wave). The awakened fan's copies share the tempo.
+export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 5.5, range: 9.35, spread: .45 };
+// A crescent's flight time (s) at reach multiplier `reach` (1 + characterStats().attackReach).
+export const arcWaveLife = (reach) => ARC_WAVE.range * Math.max(0, Number(reach) || 1) / ARC_WAVE.speed;
 // The crescent as drawn (both views: Close View draws drawToolForms on its floor through combat-visuals.ts): an arc `span`
 // radians to either side of the heading about a centre `back` × its radius behind the wave, so its tips trail its front.
 // `greatLine`: the stroke's thickness on an Echo's great wave (ARC_WAVE_ECHO), × `line`.
@@ -52,17 +59,28 @@ export const ARC_WAVE_SHAPE = Object.freeze({ span: 1.1, back: .6, line: .14, gr
 // along the aim, in place of a copy of the middle wave. Its half-width `waveHalf` is `scale` × the half-width the three waves
 // span `at` tiles past the muzzle (`muzzle` tiles out from the Wayfarer, where shots leave): the outer waves' paths stand
 // (muzzle + at) × sin(spread) to either side, and each wave catches foes 0.1 + its grow beyond its path (game.ts
-// updateProjectiles). With the Blunderbuss's .26 cone and a .5 wave: .9 × (1.35 × .257 + .6) = .85, a wave 1.7 tiles across
-// where the three span 1.9. It strikes every foe whose body meets the crescent's line (within `depth` tiles of it; the tips
-// trail as drawn), each foe once per wave, passing through as many as the middle wave would (its pierce). Speed, flight time
-// and so range are the middle wave's (ARC_WAVE.speed for the Blunderbuss's lifetime × the reach stat); walls and Close View's
-// raised ground stop it at its centre like any shot. Without Arc Wave, Echo shots are unchanged.
-export const ARC_WAVE_ECHO = Object.freeze({ at: 1, scale: .9, depth: .3, muzzle: .35 });
+// updateProjectiles). With Arc Wave's .45 cone and a .5 wave, measured `at` .5 tiles out: .9 × (.85 × .435 + .6) = .87, a wave
+// 1.75 tiles across where the three span 1.94 (release 964 measured the old .26 cone 1 tile out: 1.70). It strikes every foe
+// whose body meets the crescent's line (within `depth` tiles of it; the tips trail as drawn), each foe once per wave, passing
+// through as many as the middle wave would (its pierce). Tempo (Tim, 2026-11-14: "the great wave should fly faster... the two
+// great waves fly out and overtake the arc waves"): it flies `speed` tiles/s for `range` tiles × the reach stat (a little past
+// the plain Blunderbuss pellet's 14 × .85 = 11.9). Launched 150 and 300 ms after the shot, the two pass the middle crescent
+// (ARC_WAVE.speed) 1.07 and 2.14 tiles past the muzzle: d = speed × delay × ARC_WAVE.speed / (speed − ARC_WAVE.speed).
+// Walls and Close View's raised ground stop it at its centre like any shot. Without Arc Wave, Echo shots are unchanged.
+export const ARC_WAVE_ECHO = Object.freeze({ at: .5, scale: .9, depth: .3, muzzle: .35, speed: 24, range: 12.5 });
 // The great wave's half-width for a middle wave `shot` of a cone `spread` radians to a side (0 when it is not an Arc Wave).
 export function arcWaveEchoHalf(shot, spread) {
   if (!shot?.arcWave) return 0;
   const E = ARC_WAVE_ECHO, grow = Number(shot.grow) || ARC_WAVE.grow, a = Math.max(0, Math.min(Math.PI / 2, Number(spread) || 0));
   return E.scale * ((E.muzzle + E.at) * Math.sin(a) + .1 + grow);
+}
+// The fields that make an Echo copy of the middle wave `shot` (cone `spread`) a great wave, or null when it is not an Arc Wave.
+// The reach stat is read back from the crescent's own flight (ARC_WAVE.range × reach / its speed), so a held Close View release
+// needs nothing new in its payload.
+export function arcWaveEcho(shot, spread) {
+  const waveHalf = arcWaveEchoHalf(shot, spread); if (!(waveHalf > 0)) return null;
+  const E = ARC_WAVE_ECHO, reach = Math.max(0, (Number(shot.life) || 0) * (Number(shot.speed) || 0) / ARC_WAVE.range) || 1;
+  return { waveHalf, speed: E.speed, life: E.range * reach / E.speed };
 }
 // Whether a great wave `p` (heading p.dx, p.dy; half-width p.waveHalf) at (p.x, p.y) touches a foe of body radius `body` centred
 // at (ex, ey): the foe is within the half-width (plus its body) to the side, and its body meets the crescent's line (as drawn:
@@ -117,7 +135,8 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 //   first round empowers the beam. Echo copies, the clone's copy and an awakened fan ride on those rounds.
 // - Drawn as a beam of light from the muzzle to its head while it flies, and an afterglow `trace.life` s long along its path
 //   (at most `trace.max` at once); the charge as a cyan glow growing at the muzzle (2D and Close View). Close View holds a
-//   compact carbine (close-view-models.ts, the `carbine` appearance), posed like the other simple tools.
+//   compact carbine (close-view-models.ts, the `carbine` appearance), shouldered in both hands with a cheek weld and held
+//   steady through a charge (close-view-player-presentation.ts CARBINE_HOLD, 2026-11-14).
 // - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
 // Runtime only (game.carbine); no save state beyond the item itself.
 // Tool ranges (Tim, 2026-11-14: "Some weapons should have shorter ranges. The Rift Bombard... should go out and then fall to

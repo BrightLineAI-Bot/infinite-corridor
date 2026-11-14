@@ -76,7 +76,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveEchoHalf, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -88,7 +88,7 @@ import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, g
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
-import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing } from "./great-sweep.ts"; // the Great Sweep's 360° swing
+import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
@@ -141,7 +141,7 @@ import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
-import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
+import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -3238,7 +3238,7 @@ export class Game {
       ...(this.map.building?.adventure ? { advRespawn: Number(this.save.consequences?.dungeons?.[`${this.map.building.base}:f1`]?.advRespawn) || 0 } : {}), // Pentagon v11: the rests this chamber's dead have seen
       ...(rs ? { respawn: { n: rs.n, t: leaving ? 0 : rs.t, made: leaving ? 0 : rs.made } } : heldRespawn ? { respawn: heldRespawn } : {}),
       leftAt: Number(this.save.playSeconds) || 0, // release 651: when it was last held, for Fractured mode's return
-      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !(e.respawned && e.dead) /* building respawns: the fallen leave no tombstone */ && !e.roofDweller && !e.gloomOrbOf /* the Gloomvast's decoys are laid again from its Dark; */ /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
+      enemies: this.enemies.filter((e) => !e.blobRemnant && !e.passingBeast && !e.fracReinforcement && !(e.respawned && e.dead) /* building respawns: the fallen leave no tombstone */ && !e.roofDweller && !e.gloomOrbOf /* the Gloomvast's decoys are laid again from its Dark; */ /* roof-dwellers.ts: made again from the plan; the slain are on the Pentagon's history */).map((e) => { const dead = deadFoeRecord(e); if (dead !== e) return dead; /* perf pack: a dead, rewarded foe is kept as a tombstone */ return ({ ...e, ...(e.astralMount ? { astralMount: { ...e.astralMount } } : {}), ...(e.sweepFreeze ? { sweepFreeze: { ...e.sweepFreeze } } : {}) /* the freeze meter, exactly resumed */, ai: { ...ensureAI(e) } }); }), // release 259: the Blob's remnant is never saved
       objects,
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
@@ -4478,6 +4478,7 @@ export class Game {
   }
   tickGlyphs(dt, now) {
     const mountedHp = this.enemies.filter(e => e.astralOwner || e.astralMount?.status === "mounted").map(e => [e, Math.max(0,e.hp)]);
+    this.tickSweepFreezes(dt, now); // the awakened Great Sweep's freeze meters (their slow is a glyph slow, applied just below)
     tickGlyphStatus(this.enemies, dt, now, (e) => this.defeatEnemy(e), WAYFARER_DAMAGE.scale); // burns are the Wayfarer's
     for (const [e, hp] of mountedHp) this.astralPlayerHit(e, Math.max(0,hp-Math.max(0,e.hp)));
     const due = (this.glyphTimers ||= []).filter((t) => t.at <= now);
@@ -5723,7 +5724,7 @@ export class Game {
       if (e.worldBeast && this.beastTries === false) { e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: no try is spent and the clock carries on
       state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
       if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
-      delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+      delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.sweepFreeze;
       e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
       resetPackRuntime(e); e.aggro = false;
       if(e.kind === "astralWorm")delete e.astral;
@@ -6498,7 +6499,7 @@ export class Game {
       if (e.dead || e.pentFinaleBeast || e.summonedBy || !isDungeonGuardian(e) || !(e.aggro || e.hp < e.maxHp)) continue;
       ids.add(e.id); fought = true;
       e.hp = e.maxHp; resetPackRuntime(e); e.aggro = false; e.hitStun = 0; e.recoil = 0; e.hitFlash = 0; e.untargetable = false;
-      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.sweepFreeze;
       const ai = ensureAI(e); ai.mode = "patrol"; if (Number.isFinite(ai.homeX) && Number.isFinite(ai.homeY)) { e.x = ai.homeX; e.y = ai.homeY; }
     }
     for (const e of this.enemies) if (!e.dead && (ids.has(e.summonedBy) || ids.has(e.astralOwner) || ids.has(e.kitAddOf))) { e.dead = true; e.noRewards = true; e.rewarded = true; }
@@ -7991,7 +7992,7 @@ export class Game {
       const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
       const originX=this.player.x+.5+q.aim.x*.35,originY=this.player.y+.45+q.aim.y*.35;
       for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:originX,y:originY,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
-      for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true,...(arcWaveEchoHalf(q.payload.shot,q.payload.spread)>0?{waveHalf:arcWaveEchoHalf(q.payload.shot,q.payload.spread)}:{})/* tool-forms.ts ARC_WAVE_ECHO */}});
+      for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true,...arcWaveEcho(q.payload.shot,q.payload.spread)/* tool-forms.ts ARC_WAVE_ECHO */}});
       if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
       echoEvent(this,'shot',now,{shot:base});
     }else{
@@ -8088,7 +8089,7 @@ export class Game {
     const p=this.player,S=GREAT_SWEEP_SWING,mirage=o.mirage===true,tempo=sweepTempo(mirage?o.cooldownMs*S.mirage.fit/S.recoveryMs:this.toolCooldownScale()),T=sweepTimes(tempo,{});
     const prior=mirage?normalizeAttackVisual(p.attackVisual):o.priorTool,deadline=mirage?attackVisualDeadline(p,prior):0,continuing=mirage?prior?.toolKind==='great-sweep'&&prior.toolMotion?.v===1&&!prior.presentationCancelled&&deadline>now:!!o.priorPose,direction=mirage?(continuing?-(prior.toolMotion.direction||1):1):(o.direction===-1?-1:1);
     const aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),id=`sweep-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`;
-    this.toolSwing={v:GREAT_SWEEP_RECORD_VERSION,id,mirage,direction,tempo,elapsedMs:0,lastNow:now,busy:this.toolSwingBusy(now),stopLeft:0,stopUsed:false,contacted:false,hits:[],area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:aim.x,y:aim.y},
+    this.toolSwing={v:GREAT_SWEEP_RECORD_VERSION,id,mirage,freeze:!mirage&&this.sweepAwakened()/* great-sweep.ts SWEEP_FREEZE */,direction,tempo,elapsedMs:0,lastNow:now,busy:this.toolSwingBusy(now),stopLeft:0,stopUsed:false,contacted:false,hits:[],area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:aim.x,y:aim.y},
       payload:{damage:mirage?0:o.damage,radius:mirage?BRAWLER['great-sweep'].radius:o.radius,imbue:mirage?0:o.imbue||0,healShare:mirage?0:o.healShare||0,echoCopies:mirage?[]:o.echoCopies||[]}};
     p.attackUntil=now+(mirage?200:240);
     const visual=stampAttackVisual(p,'sweep',T.recovery,null);if(!visual)return;
@@ -8119,6 +8120,23 @@ export class Game {
   }
   // What the Wayfarer has under way that a newly begun one cancels the swing: 2 casting, 4 dodging, 8 a Fists charge (a jump calls
   // resolveToolSwing where it starts, so being put in the air by anything else does not cancel it).
+  // The awakened Great Sweep (great-sweep.ts SWEEP_FREEZE; Tim 2026-11-14): the equipped tool is the Great Sweep and is awakened.
+  sweepAwakened(){const t=this.save.equipment.secondary;return!!t?.awakened&&rangedWeapon(t)?.brawlerTool==='great-sweep';}
+  // Its freeze class: the stagger governor's (bosses, guardians, world beasts and Gate Revenants are 'boss'; the Stalker too).
+  sweepFreezeClass(e){const k=staggerClass(e);return k==='elite'?'elite':k||e?.staggerImmune?'boss':'ordinary';}
+  // One touch of a freezing blade. A foe that is leaving (a retreat, a passing beast, at play) or cannot be struck is not frozen.
+  sweepFreezeHit(e,amount){
+    if(!e||e.dead||e.untargetable||e.hidden||e.kind==='npc'||e.retreating||e.fleeTo||e.passingBeast||e.playing||e.astralMount?.status==='mounted')return false;
+    const on=sweepFreezeTouch(e,this.sweepFreezeClass(e),amount);
+    if(on){const p=this.player;if(p&&p.heldBy===e.id){p.heldUntil=0;p.heldFirm=false;}} // frozen, it lets go of a held Wayfarer
+    return on;
+  }
+  // Every frame: count the meters down; a filling meter slows its foe through the glyph slow (its own record, renewed briefly).
+  tickSweepFreezes(dt,now){
+    for(const e of this.enemies){if(!e.sweepFreeze)continue;if(e.dead){delete e.sweepFreeze;continue;}
+      const f=tickSweepFreeze(e,this.sweepFreezeClass(e),dt);if(!(f<1))continue;const g=e.glyphSlow,until=now+SWEEP_FREEZE.slowMs;
+      if(g?.frost){g.until=until;g.factor=f;}else if(g&&(g.until||0)>now){g.until=Math.max(g.until,until);g.factor=Math.min(Number(g.factor)||1,f);}else e.glyphSlow={until,factor:f,frost:true};}
+  }
   toolSwingBusy(now){const p=this.player;return(now<(p.castUntil||0)?2:0)|(now<(p.dodgeUntil||0)?4:0)|(this.fistCharge?8:0);}
   // The blow on the foes the blade touches sweeping from a0 to a1 (world radians), or, `full`, anywhere in the whole annulus;
   // plus the body bubble; line of sight; once each per swing. The Echo glyph's repeats start with the first contact.
@@ -8131,6 +8149,7 @@ export class Game {
       if(range>S.bubble+extra&&!(full?range>=S.hilt-r&&range<=tip+r:sweptArcTouches(ex,ey,r,cx,cy,S.hilt,tip,a0,a1)))continue;
       let open=true;const n=Math.ceil(range*4);for(let i=1;i<n&&open;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))open=false;if(!open)continue;
       if(q.hits.length<S.maxHits)q.hits.push(id);hits.push(e);}
+    if(q.freeze)for(const e of hits)this.sweepFreezeHit(e,SWEEP_FREEZE.touch.blade); // the awakened Great Sweep: what the blade touches freezes (great-sweep.ts SWEEP_FREEZE)
     if(hits.length)this.effects.push({id:`${q.id}-hit-${q.hits.length}`,kind:'great-sweep',brawler:true,swingHit:true,x:cx,y:cy,life:1e-4,radius:tip+8,pulse:99,untilPulse:0,pulseIndex:0,hits:{},only:hits.slice(),damage:P.damage,glyphHost:'tool',healShare:P.healShare,imbue:P.imbue});
     return hits;
   }
@@ -8374,22 +8393,23 @@ export class Game {
     if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; } // ROUNDS.empowered.damage: before the copies below, so pellets, Echoes, fan and clone carry it
     if (weapon.path === "boomerang" && weapon.name === "Lumen Spindle" && fieldOn(this.save, "lumen-sunburst")) { shot.ricochet = SUNBURST.ricochets; shot.sunburst = true; } // Sunburst Ricochet: copies below (fan, Echo, clone) ricochet too
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const C = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + C.damage))); shot.scale = C.scale; shot.grow = C.grow; if (shot.blastRadius) shot.blastRadius *= C.blast; } // release 515: Charged Air
+    const cone = weapon.pellets && fieldOn(this.save, "arc-wave") ? ARC_WAVE.spread : weapon.spread; // the pellets' cone: Arc Wave's wider one
     if (weapon.pellets) { // release 533 (tool-forms.ts): the Blunderbuss's three-pellet cone, or with Arc Wave one wide wave
-      if (fieldOn(this.save, "arc-wave")) { shot.arcWave = true; shot.damage = Math.max(1, Math.round(shot.damage * ARC_WAVE.share)); shot.grow = (shot.grow || 0) + ARC_WAVE.grow; shot.pierce = (shot.pierce || 0) + ARC_WAVE.pierce; shot.speed = ARC_WAVE.speed; } // release 549: every pellet becomes a wave, along the same cone
-      for (let i = 1; i < weapon.pellets; i++) { const a = (i % 2 ? 1 : -1) * weapon.spread * Math.ceil(i / 2), c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-pellet${i}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {} }); }
+      if (fieldOn(this.save, "arc-wave")) { shot.arcWave = true; shot.damage = Math.max(1, Math.round(shot.damage * ARC_WAVE.share)); shot.grow = (shot.grow || 0) + ARC_WAVE.grow; shot.pierce = (shot.pierce || 0) + ARC_WAVE.pierce; shot.speed = ARC_WAVE.speed; shot.life = arcWaveLife(reachMultiplier); } // release 549: every pellet becomes a wave; 2026-11-14: slower, as far, in a wider cone (tool-forms.ts ARC_WAVE)
+      for (let i = 1; i < weapon.pellets; i++) { const a = (i % 2 ? 1 : -1) * cone * Math.ceil(i / 2), c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-pellet${i}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {} }); }
     }
     const cloneEligible=this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing;
     if (!delayed&&cloneEligible /* release 503: the Shadow Boxing echo only swings */) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d; preparedProjectiles.push({ ...shot, id: `${shot.id}-shadow`, x: at.x + .5 + cd.x * .35, y: at.y + .45 + cd.y * .35, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // release 365; 387: at the locked target
     const plan = echoPlan(glyphs);
     if(!delayed)echoEvent(this, "shot", now, { shot });
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
-    const waveHalf = arcWaveEchoHalf(shot, weapon.spread); // tool-forms.ts ARC_WAVE_ECHO: with Arc Wave each Echo is one great crescent
-    if (!delayed&&plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true, ...(waveHalf > 0 ? { waveHalf } : {}) } })); // release 507: a third shot with two Echo glyphs
+    const great = arcWaveEcho(shot, cone); // tool-forms.ts ARC_WAVE_ECHO: with Arc Wave each Echo is one great, fast crescent
+    if (!delayed&&plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true, ...great } })); // release 507: a third shot with two Echo glyphs
     if(delayed){
       const counter=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,members=preparedProjectiles.map(p=>{const{x,y,id:_id,hits,age,toolUseNewborn,...rest}=p;return{...rest};}),echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:c.delay,share:c.share,index:i+1}));
       this.save.toolUseCounter=counter+1;delete toolVisual.toolShotId;toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};
-      this.pendingToolUse={v:1,id,toolKind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:{...d},payload:{v:1,family:'shot',shot:{...members[0]},members,pellets:Math.max(0,(weapon.pellets||1)-1),spread:Number(weapon.spread)||0,awakenedFan:!!this.save.equipment.secondary?.awakened,echoCopies,cloneEligible}};
+      this.pendingToolUse={v:1,id,toolKind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:{...d},payload:{v:1,family:'shot',shot:{...members[0]},members,pellets:Math.max(0,(weapon.pellets||1)-1),spread:Number(cone)||0,awakenedFan:!!this.save.equipment.secondary?.awakened,echoCopies,cloneEligible}};
     }
     return true;
   }
@@ -9606,7 +9626,7 @@ export class Game {
     const spawn = (this.map.enemySpawns || []).find((q) => q.pentFinaleBeast), ids = new Set();
     for (const e of this.enemies) if (e.pentFinaleBeast && !e.dead) { ids.add(e.id);
       e.hp = e.maxHp; resetPackRuntime(e); e.aggro = false; e.pentArenaAwake = false; e.hitStun = 0; e.recoil = 0; e.hitFlash = 0; e.voidTeleport = 0; e.untargetable = false;
-      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.astral;
+      if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed; delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.sweepFreeze; delete e.astral;
       if (spawn) { e.x = spawn.x; e.y = spawn.y; } }
     for (const e of this.enemies) if (!e.dead && (ids.has(e.summonedBy) || ids.has(e.astralOwner) || ids.has(e.kitAddOf))) { e.dead = true; e.noRewards = true; e.rewarded = true; }
   }
@@ -10228,12 +10248,12 @@ export class Game {
     const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     const air = fieldOn(this.save, "charged-air") && this.spellRunning(now), CA = FIELD_PASSIVES["charged-air"], base = this.toolPower() * M.share * (air ? 1 + CA.damage : 1);
-    const plan = echoPlan(glyphs), shares = [1, ...(plan ? plan.copies.map((c) => c.share) : [])].slice(0, M.max);
+    const plan = echoPlan(glyphs), shares = [1, ...(plan ? plan.copies.map((c) => c.share) : [])].slice(0, M.max), frost = this.sweepAwakened();
     shares.forEach((share, i) => {
       const live = this.projectiles.filter((q) => q.mirage && !q.dead);
       if (live.length >= M.max) live.sort((a, b) => (b.returning ? 1 : 0) - (a.returning ? 1 : 0) || a.born - b.born)[0].dead = true; // the oldest on its way home goes
       const a = i ? (i % 2 ? 1 : -1) * M.spread * Math.ceil(i / 2) : 0, c = Math.cos(a), sn = Math.sin(a), blade = (this.mirageTurn = ((this.mirageTurn || 0) + 1) % 3);
-      this.projectiles.push({ id: `mirage-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx, y: cy, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: M.speed, life: M.out / M.speed + M.back + 1, outFor: M.out / M.speed, damage: Math.max(1, Math.round(base * share * glyphs.mods.damage)), damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce: 0, knife: true, mirage: true, blade: (blade + 2) % 3, born: now + i, grow: M.grow + (air ? CA.grow * 2 : 0), ...(air ? { scale: CA.scale } : {}), ...(i ? { echo: true } : {}) });
+      this.projectiles.push({ id: `mirage-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, x: cx, y: cy, dx: d.x * c - d.y * sn, dy: d.x * sn + d.y * c, speed: M.speed, life: M.out / M.speed + M.back + 1, outFor: M.out / M.speed, damage: Math.max(1, Math.round(base * share * glyphs.mods.damage)), damageType: "physical", path: "straight", age: 0, hits: {}, glyphHost: "tool", pierce: 0, knife: true, mirage: true, ...(frost ? { sweepFreeze: true } : {}) /* the awakened Great Sweep: its blades freeze too */, blade: (blade + 2) % 3, born: now + i, grow: M.grow + (air ? CA.grow * 2 : 0), ...(air ? { scale: CA.scale } : {}), ...(i ? { echo: true } : {}) });
     });
     p.attackUntil = now + 200; stampAttackVisual(p, "mirage", 200, d); this.message = "Mirage of Blades!";
     return true;
@@ -11164,7 +11184,7 @@ export class Game {
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
-      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } if (shot.glyphHost === "spell" && !shot.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ },
+      (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.mirage && shot.sweepFreeze && !shot.hostile) this.sweepFreezeHit(e, SWEEP_FREEZE.touch.mirage); /* the awakened Great Sweep's Mirage blades freeze what they cut */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now); } if (shot.glyphHost === "spell" && !shot.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet
@@ -11260,6 +11280,7 @@ export class Game {
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
+      if(!e.dead&&sweepFrozen(e)){this.performanceStats.activeEnemies++;e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);continue} // great-sweep.ts SWEEP_FREEZE: frozen in place, it neither moves nor attacks (blows still land)
       if(e.farArrayBoss==="listener"&&!e.dead){if(isMirror(e))tickMirrorListener(e,this.mirrorWorld(dt,now));const morphing=isMorph(e)&&tickMorphListener(e,this.mirrorWorld(dt,now));/* release 385: the Morphling */if(this.updateListener(e,now)||morphing)continue}
       if(e.morphWorm&&!e.dead){this.performanceStats.activeEnemies++;if(tickWorm(e,this.mirrorWorld(dt,now)))continue} // release 369: the mirror form
       if(e.mirrorClone&&!e.dead){this.performanceStats.activeEnemies++;if(tickReflection(e,this.mirrorWorld(dt,now)))continue}
