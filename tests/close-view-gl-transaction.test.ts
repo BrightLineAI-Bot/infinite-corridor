@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
@@ -55,10 +56,10 @@ function game(){
   g.presentation={effectiveQuality:'full',reduceMotion:false};
   g.save.equipment.primary.glyphs=['echo'];
   Object.assign(g.enemies[0],{fracRank:'rare',packName:'Transaction Native'});
-  g.primaryAttack(100000,{x:1,y:0});g.tickGlyphs(.001,100250);
+  g.primaryAttack(100000,{x:1,y:0});const swung=swingTo(g,100000);g.tickGlyphs(.001,swung); // the weighted swing's contact schedules the Echo (2026-11-14)
   assert.equal(g.glyphVisuals.filter((v:any)=>v.kind==='primaryEcho').length,1);
   g.glyphVisuals.find((v:any)=>v.kind==='primaryEcho').actual.shape='arc';
-  const ready=Math.max(100250,g.player.attackReadyAt||0);assert.equal(g.fireSecondary(ready,{x:1,y:0}),true);assert.equal(g.projectiles.length,1);g.lastUpdateNow=ready+16;
+  const ready=Math.max(swung,g.player.attackReadyAt||0);assert.equal(g.fireSecondary(ready,{x:1,y:0}),true);assert.equal(g.projectiles.length,1);g.lastUpdateNow=ready+16;
   return g;
 }
 function frame(h:any,g:any){
@@ -214,7 +215,7 @@ test('a weighted Cleaver trails the admitted blade around contact and yields to 
         return positions;
       };
       g.update(.016, keys(true), 100000);
-      const contact = g.pendingMeleeContact.releaseAt;
+      const contact = 100000 + g.player.attackVisual.meleeAction.contactMs; // the weighted swing's strike (melee-swing.ts, 2026-11-14)
       assert.equal(frame(h, g).showing, true);
       assert.equal(trailVertices().length, 0, 'the preload does not draw a disconnected sweep');
       for (const now of [contact - 18, contact, contact + 18]) {

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts'; // 2026-11-14: the Cleaver's weighted swing strikes after its wind-up
 import assert from 'node:assert/strict';
 import { BRANCHES, BRANCH_IDS, POINT_EVERY, ensureConstellation, pointsEarned, pointsSpent, pointsFree, learnRank, learnMod, chooseCap, respec, respecCost, hasNode, awakenCheck, awaken, AWAKEN_COST, RIFT } from '../src/constellation.ts';
 import { APERTURE_SKILLS, skillRank } from '../src/items.ts';
@@ -98,7 +99,7 @@ test('release 259: Rift Step never recalls you; the Anchor capstone is Long Step
 test('modifiers and capstones act in play: Ember Skin burns, Mirror Veil undoes a blow, Overflow speeds spells, Cinder Heart bursts', () => {
   const s = rich(120); master(s, 'form'); chooseCap(s, 'form', 'cinder-heart'); master(s, 'veil'); chooseCap(s, 'veil', 'mirror-veil'); master(s, 'force');
   const g = arena(s);
-  g.activateApertureSkill('ember-form'); g.primaryAttack(1000, { x: 1, y: 0 });
+  g.activateApertureSkill('ember-form'); g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(g, 1000);
   assert.ok(g.enemies[0].glyphBurn, 'Ember Skin');
   const hp = g.enemies[0].hp; s.magicSkills.active.remaining = .01; run(g, 100, 1100);
   assert.ok(g.enemies[0].hp < hp, 'Cinder Heart burst when the form ended');
@@ -119,7 +120,7 @@ test('awakening needs a max-rank weapon holding a Resonance and lumen dust; awak
   const dust = s.materials.lumenDust; assert.equal(awaken(s, 'primary').ok, true); assert.equal(s.materials.lumenDust, dust - AWAKEN_COST);
   assert.equal(s.equipment.primary.awakened.resonance, 'wildfire'); assert.equal(awaken(s, 'primary').ok, false, 'once');
   const g = arena(s, [[11.2, 10], [14, 10]]);
-  for (let k = 0; k < 3; k++) g.primaryAttack(1000 + k * 600, { x: 1, y: 0 });
+  for (let k = 0, t = 1000; k < 3; k++) { g.primaryAttack(t, { x: 1, y: 0 }); t = swingTo(g, t); } // each weighted swing run out
   assert.ok(g.awakenedArts?.fissures.some((f) => f.on) && !g.projectiles.some((p) => p.crescent), 'third swing releases the Verge Cleaver\'s own awakened move, Fissure (awakened-arts.ts), in place of the crescent');
   s.equipment.secondary = normalizeSockets({ id: 'secondary-needle-caster', name: 'Needle Caster', slot: 'secondary', power: 4, property: 'quick', tier: 'rare', affixes: [], awakened: { resonance: 'wildfire' } });
   const before = g.projectiles.length; g.fireSecondary(5000, { x: 1, y: 0 });

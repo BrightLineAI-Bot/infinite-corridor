@@ -1,4 +1,5 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
+import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
 import { BLEED } from "./bleed.ts"; // the bleed status line
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts"; // release 393; 541: preset gear
@@ -1091,8 +1092,9 @@ addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
 });
 addEventListener("keydown", () => setTimeout(startPulse, 0), { once: true });
 export function combatIndicatorGeometry(game, now = performance.now()) {
-  const out = { melee: null, enemies: [], traps: [], effects: [] };
-  if (now < (game.player.meleeUntil || 0) && game.player.meleeStrike)
+  const out = { melee: null, swing: null, enemies: [], traps: [], effects: [] };
+  out.swing = swingIndicator(game, now, SWING_INDICATOR); // melee-swing.ts: the weighted swing draws its real blade, not the old sweep
+  if (!out.swing && now < (game.player.meleeUntil || 0) && game.player.meleeStrike)
     out.melee = { ...game.player.meleeStrike };
   for (const e of game.enemies)
     if (!e.dead && e.telegraph > 0 && dungeonPointDiscovered(game.map,e))
@@ -1181,6 +1183,7 @@ function drawTruthfulCombatGeometry(layer = null) {
     ctx.arc(sx(q.x), sy(q.y), q.radius * s, 0, Math.PI * 2);
     ctx.stroke();
   }
+  if (g.swing && layer) drawSwingSweep(ctx, g.swing, sx, sy, s); // Close View's floor; Standard View draws it with the Wayfarer (renderer.ts)
   if (g.melee) {
     const q = g.melee,
       a = Math.atan2(q.dy, q.dx),
@@ -1228,6 +1231,7 @@ function drawTruthfulCombatGeometry(layer = null) {
   }
   ctx.restore();
 }
+const SWING_INDICATOR = {};
 drawDungeonSystems = drawTruthfulCombatGeometry;
 const generateRegion = (seed, rx, ry) =>
   generateWorldRegion(seed, rx, ry, save.worldGeneration);

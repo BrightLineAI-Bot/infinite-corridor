@@ -42,6 +42,8 @@ function arena(move, { weapon = M[move]?.weapon || move, foes = [[3, 0]], awaken
 function frame(g, clock, held = false) { g.player.invulnerableUntil = clock.t + 1e6; g.update(DT, { state: { x: 0, y: 0 }, consume: () => false, held: (k) => k === 'attack' && held }, clock.t); clock.t += DT * 1000; }
 const idle = (g, clock, n) => { for (let i = 0; i < n; i++) frame(g, clock, false); };
 function press(g, clock, action = null) { g.attackAction = action; try { return g.primaryAttack(clock.t, { x: 1, y: 0 }); } finally { g.attackAction = null; } }
+// 2026-11-14 (melee-swing.ts): a weighted Cleaver swing strikes after its wind-up; run frames to its first contact tick (other weapons: one frame).
+const settle = (g, clock) => { frame(g, clock); for (let i = 0; i < 60 && g.pendingMeleeContact?.v === 3 && !g.pendingMeleeContact.contacted; i++) frame(g, clock); };
 const swings = (g, clock, n, gap = 30) => { for (let i = 0; i < n; i++) { press(g, clock); idle(g, clock, gap); } };
 function charge(g, clock, seconds) { press(g, clock, 'attack'); for (let i = 0; i < Math.round((WEAPON_ARTS.hold.grace + seconds) / DT) + 1; i++) frame(g, clock, true); frame(g, clock, false); }
 function spy(g) { const log = []; const own = g.artBlow.bind(g); g.artBlow = (e, amount, ...rest) => { log.push({ id: e.id, amount, t: g.lastUpdateNow }); return own(e, amount, ...rest); }; return log; }
@@ -73,11 +75,11 @@ test('the third swing releases the weapon\'s move (never the crescent), only whe
       const { g, clock } = arena(id, { awakened, foes }); swings(g, clock, 2);
       const live = () => { const n = liveAwakened(g); return n.fissures + n.blades + n.lances + n.runes; };
       assert.equal(live(), 0, `${id}: not on the first two`);
-      press(g, clock); frame(g, clock);
+      press(g, clock); settle(g, clock);
       assert.equal(live() > 0, awakened, `${id} awakened=${awakened}: the third swing`);
       assert.equal(g.projectiles.some((p) => p.crescent), false, `${id}: no crescent`);
       if (awakened) assert.equal(g.player.attackVisual?.awakenedArt, id, 'the third swing wears the move\'s pose');
-      idle(g, clock, Math.round((M['spell-runes'].life + 1) / DT)); swings(g, clock, 2); assert.equal(live(), 0, `${id}: nothing until the sixth`); press(g, clock); frame(g, clock); assert.equal(live() > 0, awakened, `${id}: the sixth`);
+      idle(g, clock, Math.round((M['spell-runes'].life + 1) / DT)); swings(g, clock, 2); assert.equal(live(), 0, `${id}: nothing until the sixth`); press(g, clock); settle(g, clock); assert.equal(live() > 0, awakened, `${id}: the sixth`);
     }
   }
   { const { g, clock } = arena('returning-blades', { foes: [] }); for (let i = 0; i < 2; i++) { press(g, clock); idle(g, clock, 30); }
@@ -85,8 +87,8 @@ test('the third swing releases the weapon\'s move (never the crescent), only whe
 });
 
 test('Fissure: a crack along the aim that erupts a beat later on every foe on it; walls stop it', () => {
-  const { g, clock } = arena('fissure', { foes: [[3, 0], [4.3, .3], [3, 1.6], [6, 0]] }), log = spy(g), hit = g.meleePower();
-  swings(g, clock, 2); press(g, clock); const t0 = clock.t;
+  const { g, clock } = arena('fissure', { foes: [[3, 0], [4.3, .3], [3, 1.6], [7.2, 0]] }), log = spy(g), hit = g.meleePower(); // the far foe past the crack's end; 2026-11-14: the three swings' lunges carry the Wayfarer 1.2 tiles forward
+  swings(g, clock, 2); press(g, clock); settle(g, clock); const t0 = clock.t; // from the swing's contact (2026-11-14: the weighted Cleaver strikes after its wind-up)
   for (let i = 0; i < 12; i++) frame(g, clock); assert.equal(log.length, 0, 'not yet');
   idle(g, clock, 10); const struck = log.map((q) => q.id).sort(); assert.deepEqual(struck, ['foe-0', 'foe-1'], 'along the line, not beside it nor past its end');
   assert.ok(log[0].t - t0 >= M.fissure.delay * 1000 - DT * 1000 - 1e-6, 'a beat later');
@@ -98,7 +100,7 @@ test('Fissure: a crack along the aim that erupts a beat later on every foe on it
 
 test('Fissure with Lava Slash: a burning crack for 3 s that strikes foes on it; without the awakening, no fissure at all', () => {
   const { g, clock } = arena('fissure', { foes: [[3, 0]], passive: true }), log = spy(g), hit = g.meleePower(), U = M.fissure.up;
-  swings(g, clock, 2); press(g, clock); idle(g, clock, 20); assert.equal(log.length, 1, 'the eruption');
+  swings(g, clock, 2); press(g, clock); settle(g, clock); idle(g, clock, 20); assert.equal(log.length, 1, 'the eruption');
   idle(g, clock, Math.round((U.life + .3) / DT)); const ticks = log.slice(1);
   assert.equal(ticks.length, Math.round(U.life / U.tick), 'a tick each half second'); for (const q of ticks) assert.ok(near(q.amount, hit * U.share));
   assert.equal(liveAwakened(g).fissures, 0, 'it cools');
@@ -209,7 +211,7 @@ test('foes that hold their ground take the awakened blows but are never knocked'
 });
 
 test('runtime only: a reload drops everything in play; a new area drops it too', () => {
-  const { s, g, clock } = arena('fissure', { foes: [[3, 0]], passive: true }); swings(g, clock, 2); press(g, clock); idle(g, clock, 20); assert.equal(liveAwakened(g).fissures, 1, 'the lava');
+  const { s, g, clock } = arena('fissure', { foes: [[3, 0]], passive: true }); swings(g, clock, 2); press(g, clock); settle(g, clock); idle(g, clock, 20); assert.equal(liveAwakened(g).fissures, 1, 'the lava');
   const save = assembleSave(...Object.values(splitSnapshot(snapshotSave(s)))), back = new Game(save, clock.t);
   assert.equal(back.awakenedArts, undefined); assert.equal(JSON.stringify(save).includes('awakenedArts'), false); assert.equal(JSON.stringify(save).includes('awakenSwings'), false);
   assert.deepEqual(save.equipment.primary.awakened, AWAKE, 'the awakening itself is kept');

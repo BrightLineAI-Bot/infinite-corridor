@@ -106,23 +106,22 @@ test('Ki Blast\'s ground slam needs the fists in hand: put away in the leap, a p
   g.attackAction = 'attack'; g.airAttack(clock.t); g.attackAction = null; assert.equal(g.plunge?.kiSlam, undefined); assert.match(g.message, /Plunge/);
 });
 
-test('Close View: the awakened Verge Cleaver\'s delayed contact counts the swings and the third releases the Fissure', () => {
+test('Close View: the awakened Verge Cleaver\'s weighted swings count at contact and the third releases the Fissure', () => {
   const input = (attack = false) => { let used = false; return { state: { x: 0, y: 0 }, consume: (k) => attack && k === 'attack' && !used && (used = true), held: () => false, reset: () => {} }; };
   const g = createLabFixture({ lab: 'combat-assets', scenario: 'blade-spark-ashling', now: 100000 }).game;
   g.save.closeView = true; g.save.activeWeaponSlot = 'primary'; g.save.equipment.primary = { ...WEAPONS['verge-cleaver'](), awakened: { ...AWAKE } }; g.save.lastAim = { x: 1, y: 0 };
   for (const t of g.map.tiles) { t.blocked = false; t.openAir = false; t.courtyard = false; t.pentRoof = false; t.pentBalcony = false; if (t.kind === 'yardGrass') t.kind = 'flagFloor'; }
   const target = Object.assign(createCombatant('rootBrute', g.player.x + 1, g.player.y), { id: 'contact-foe', hp: 1e5, maxHp: 1e5, damage: 0, cooldown: 99 }); g.enemies = [target];
   assert.equal(g.closeViewActionEligible(), true);
-  let t = 100000;
+  let t = 100000, fissureSeen = -1;
   for (let i = 0; i < 3; i++) {
-    g.update(.016, input(true), t); const q = g.pendingMeleeContact; assert.ok(q, `swing ${i + 1} accepted with a delayed contact`);
+    g.update(.016, input(true), t); const q = g.pendingMeleeContact; assert.ok(q?.v === 3, `swing ${i + 1} accepted as a weighted swing (melee-swing.ts, 2026-11-14)`);
     assert.equal(q.payload.awakened, true, 'the committed swing carries the awakening (a boolean: item.awakened is a record)');
     assert.equal(g.player.attackVisual.awakenedArt ?? null, i === 2 ? 'fissure' : null, 'the third wears the move');
     assert.equal(liveAwakened(g).fissures, 0, 'nothing before the contact');
-    g.update(.016, input(), q.releaseAt); assert.equal(g.pendingMeleeContact, null); t = Math.max(q.releaseAt, g.player.attackReadyAt || 0) + 600;
-    g.update(.016, input(), t - 300);
+    for (let k = 0; k < 120 && g.pendingMeleeContact; k++) { t += 16; g.update(.016, input(), t); if (liveAwakened(g).fissures) fissureSeen = i; } assert.equal(g.pendingMeleeContact, null, 'the swing ran out'); t += 100; // contact in its active window, then follow-through and recovery
   }
-  assert.equal(g.awakenSwings, 3); assert.equal(liveAwakened(g).fissures, 1, 'the Fissure is in the ground');
+  assert.equal(g.awakenSwings, 3); assert.equal(fissureSeen, 2, 'the Fissure is in the ground (from the third swing\'s contact)');
   assert.equal(g.projectiles.some((p) => p.crescent), false, 'never the crescent');
   // a reload keeps the committed swing's flag (exact resume of a pending contact)
   g.update(.016, input(true), t); assert.ok(g.pendingMeleeContact); g.setPaused(true, t + 10);

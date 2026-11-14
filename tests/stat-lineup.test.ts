@@ -1,6 +1,7 @@
 // Tim (2026-11-12, final): which stat each weapon and tool scales with. One table each (items.ts WEAPON_SCALING /
 // TOOL_SCALING); game.ts scaledBonus routes every blow through it. The stamina stat is Finesse (it grows maximum stamina).
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, characterStats, scaledBonus } from '../src/game.ts';
@@ -31,7 +32,7 @@ function dealt(build, kind, name) {
   if (kind === 'weapon') {
     const a = arena(build, name);
     if (name === 'Iron Fists') return a.g.fistPower();
-    a.g.primaryAttack(1000, { x: 1, y: 0 }); step(a.g, 300, 1000); return 1e6 - a.e.hp;
+    a.g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(a.g, 1000); step(a.g, 300, 1000); return 1e6 - a.e.hp; // swingTo: the Cleaver's weighted swing (2026-11-14) strikes after its wind-up
   }
   const a = arena(build, 'Salvage Blade', name);
   if (name === 'Great Sweep' || name === 'Hammerfall') return a.g.toolPower();

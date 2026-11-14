@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts';
+import { PRIMARY_SWINGS } from '../src/melee-swing.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game } from '../src/game.ts';
@@ -54,15 +56,19 @@ test('Salvage and future primaries keep the canonical generic presentation on im
 
 test('Verge Cleaver accepts a three-cut Close View transaction with exact timing and resume',()=>{
   const cleaver=()=>({id:'primary-verge-cleaver',name:'Verge Cleaver',slot:'primary',power:5,property:'impact'});const {g,foe}=(()=>{const g:any=fixture(cleaver());g.save.closeView=true;g.save.activeWeaponSlot='primary';g.save.lastAim={x:1,y:0};for(const t of g.map.tiles){t.blocked=false;t.openAir=false;}const foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{id:'cleaver-target',hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];return{g,foe};})();
-  let hp=foe.hp;
+  // 2026-11-14 (melee-swing.ts): the three cuts are weighted swings; each lands in its own active window and the next press
+  // after the swing chains the next step inside the combo's idle window.
+  let hp=foe.hp,now=100000;
   for(let step=1;step<=3;step++){
-    const now=100000+(step-1)*420;g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(now,{x:1,y:0});}finally{g.attackAction=null;}
+    g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(now,{x:1,y:0});}finally{g.attackAction=null;}
     assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step});assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',step,v:3,mode:'quick',resetWindow:{v:1,acceptedLogicalMs:now}});
-    assert.equal(g.player.attackVisual.durationMs,260);assert.deepEqual(g.player.attackVisual.meleeAction,{v:2,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:260});assert.deepEqual(closeViewMeleeVisualRoute(g.player.attackVisual,true),{meleeAction:g.player.attackVisual.meleeAction,legacyCleaverFrame:false},'production renderer routes v2 without the old frame');assert.equal(g.pendingMeleeContact.releaseAt,now+75);assert.equal(foe.hp,hp);
-    g.releasePendingMeleeContact(now+75);assert.ok(foe.hp<hp);hp=foe.hp;
+    const q=g.pendingMeleeContact,st=PRIMARY_SWINGS['verge-cleaver'].steps[step-1];assert.equal(q.v,3);assert.equal(q.step,step);
+    assert.equal(g.player.attackVisual.durationMs,st.recoveryMs*q.tempo);assert.deepEqual(g.player.attackVisual.meleeAction,{v:3,kind:'verge-cleaver',move:'swing',step,durationMs:st.recoveryMs*q.tempo,contactMs:st.windupMs*q.tempo,tempo:q.tempo});
+    assert.deepEqual(closeViewMeleeVisualRoute(g.player.attackVisual,true),{meleeAction:g.player.attackVisual.meleeAction,legacyCleaverFrame:false},'production renderer routes the swing without the old frame');
+    assert.equal(foe.hp,hp,'nothing at the press');now=swingTo(g,now)+1;assert.ok(foe.hp<hp);hp=foe.hp;
   }
-  g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(101260,{x:1,y:0});}finally{g.attackAction=null;}assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});
-  const saved=deserializeSave(serializeSave(g.exportSnapshot(101280))),back:any=new Game(saved,200000);back.installSystems();assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});assert.deepEqual(back.pendingMeleeContact.payload.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(back.pendingMeleeContact.releaseAt,200055);
+  g.player.attackReadyAt=0;g.attackAction='attack';try{g.primaryAttack(now,{x:1,y:0});}finally{g.attackAction=null;}assert.deepEqual(g.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});
+  const saved=deserializeSave(serializeSave(g.exportSnapshot(now+20))),back:any=new Game(saved,200000);back.installSystems();assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});assert.deepEqual(back.pendingMeleeContact.payload.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(back.pendingMeleeContact.v,3);assert.equal(back.pendingMeleeContact.elapsedMs,0);assert.equal(back.pendingMeleeContact.lastNow,200000);
   const old={primaryMotion:{v:2,step:4},meleeAction:{v:1,kind:'verge-cleaver',move:'cleaver',contactMs:75,durationMs:360}};assert.deepEqual(closeViewMeleeVisualRoute(old,true),{meleeAction:old.meleeAction,legacyCleaverFrame:true},'persisted v1/v2 records retain their legacy frame route');
 });
 

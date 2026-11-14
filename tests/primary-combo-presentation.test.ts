@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
@@ -160,17 +161,20 @@ test('successful Aperture skills interrupt either accepted action; refusal prese
 
 test('only successful real primary inputs cycle their supported stages; Echo never replays or advances presentation',()=>{
   for(const kind of ['cinder-pike','verge-cleaver']){
-    const g=fixture(kind),steps=[];
+    const g=fixture(kind),steps=[];let now=100000;
     for(let n=0;n<7;n++){
-      const now=100000+n*500;g.primaryAttack(now);steps.push(primaryVisualStage(g.player.attackVisual).step);
-      const accepted=clone(g.player.attackVisual),combo=clone(g.player.primaryCombo),until=g.player.actionVisualUntil;
+      if(kind==='cinder-pike')now=100000+n*500;
+      g.primaryAttack(now);steps.push(primaryVisualStage(g.player.attackVisual).step);
+      const accepted=clone(g.player.attackVisual),combo=clone(g.player.primaryCombo),until=g.player.actionVisualUntil,span=until-now;
       g.primaryAttack(now+1);assert.deepEqual(g.player.attackVisual,accepted);assert.deepEqual(g.player.primaryCombo,combo,'refusal cannot advance');
       g.primaryStrike(now+80,null,{share:.25});assert.equal(g.player.attackUntil,now+320,'existing Echo shared clock remains');assert.equal(g.player.actionVisualUntil,until);
       assert.deepEqual(g.player.attackVisual,accepted);assert.deepEqual(g.player.primaryCombo,combo);
-      assert.equal(closeViewPlayerAction(g,now+120).amount,.5,'Echo cannot rewind accepted phase');
-      assert.equal(closeViewPlayerAction(g,now+250).active,false,'Echo cannot extend the real body action');
+      // 2026-11-14: the Cleaver's weighted swing (melee-swing.ts) draws over its own, longer clock; an Echo still cannot move it
+      assert.equal(closeViewPlayerAction(g,now+span/2).amount,.5,'Echo cannot rewind accepted phase');
+      assert.equal(closeViewPlayerAction(g,now+span+10).active,false,'Echo cannot extend the real body action');
+      if(kind==='verge-cleaver')now=swingTo(g,now)+100;
     }
-    assert.deepEqual(steps,kind==='verge-cleaver'?[1,2,3,4,1,2,3]:[1,2,3,1,2,3,1]);
+    assert.deepEqual(steps,[1,2,3,1,2,3,1]);
     g.save.equipment.primary=item(kind==='cinder-pike'?'verge-cleaver':'cinder-pike');g.primaryAttack(104000);assert.equal(primaryVisualStage(g.player.attackVisual).step,1,'different primary family restarts its presentation');
     g.player.hp=0;g.update(.01,calm,104010);assert.equal(g.player.primaryCombo,null);assert.equal(g.player.actionVisualUntil,0);
   }
@@ -248,7 +252,7 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
       g.update(1/60,{...calm,state:{x:.2,y:0}},now);render(screen,g,390,844,now);
       const ready=gl.uploads.at(-1);
       g.attackAction='attack';try{g.primaryAttack(now);}finally{g.attackAction=null;}
-      assert.equal(g.player.attackVisual.cleaverChoreography?.v,1);
+      assert.equal(g.player.attackVisual.meleeAction?.v,3); // 2026-11-14: a weighted swing (melee-swing.ts) in every area and view
       render(screen,g,390,844,now);
       sameGeometry(gl.uploads.at(-1),ready,'new Cleaver cut retains the exact partial-walk boundary before its quick crouch');
     }
@@ -257,20 +261,20 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
       for(let n=1;n<=12;n++){now+=1000/hz;g.update(1/hz,{...calm,state:{x:.2,y:0}},now);render(screen,g,390,844,now);}
       const ready=gl.uploads.at(-1);g.primaryAttack(now);assert.equal(primaryVisualStage(g.player.attackVisual).step,1);render(screen,g,390,844,now);assert.deepEqual(gl.uploads.at(-1),ready,'same-clock partial walking entry');
       const stageFrames=[];
-      for(let stage=1;stage<=4;stage++){
-        if(stage>1){now+=500;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(primaryVisualStage(accepted).step,kind==='verge-cleaver'?stage:(stage-1)%3+1);
+      for(let stage=1;stage<=(kind==='verge-cleaver'?3:4);stage++){
+        if(stage>1){now=kind==='verge-cleaver'?swingTo(g,now)+100:now+500;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(primaryVisualStage(accepted).step,(stage-1)%3+1);
         for(let frame=1;frame<=Math.floor(.24*hz);frame++){const t=start+frame*1000/hz;render(screen,g,390,844,t);if(frame===Math.round(.10*hz))stageFrames.push(gl.uploads.at(-1));}
-        assert.equal(g.player.attackUntil,start+240);assert.deepEqual(g.player.attackVisual,accepted,'rendering never advances gameplay or the stage');
+        assert.equal(g.player.attackUntil,start+(kind==='verge-cleaver'?accepted.durationMs:240));assert.deepEqual(g.player.attackVisual,accepted,'rendering never advances gameplay or the stage');
       }
       assert.notDeepEqual(stageFrames[0],stageFrames[1]);assert.notDeepEqual(stageFrames[1],stageFrames[2]);
-      now+=500;g.primaryAttack(now);render(screen,g,390,844,now+80);const active=gl.uploads.at(-1);g.save.equipment.primary=item(kind==='verge-cleaver'?'cinder-pike':'verge-cleaver');g.setPaused(true,now+80);render(screen,g,390,844,now+5000);assert.deepEqual(gl.uploads.at(-1),active,'pause and equipment switch retain accepted body');
+      now=kind==='verge-cleaver'?swingTo(g,now)+100:now+500;g.primaryAttack(now);render(screen,g,390,844,now+80);const active=gl.uploads.at(-1);g.save.equipment.primary=item(kind==='verge-cleaver'?'cinder-pike':'verge-cleaver');g.setPaused(true,now+80);render(screen,g,390,844,now+5000);assert.deepEqual(gl.uploads.at(-1),active,'pause and equipment switch retain accepted body');
       const back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();render(screen,back,390,844,200000);assert.equal(primaryVisualStage(back.player.attackVisual).step,kind==='verge-cleaver'?1:2);assert.equal(back.player.attackVisual.weaponKind,kind);
       // Reload must preserve the accepted trajectory/clock; ordinary locomotion reconstruction is a pre-existing separate limitation.
       assert.equal(closeViewPlayerAction(back,200000).amount,closeViewPlayerAction(g,now+80).amount);
     }
     for(const kind of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
       const g=fixture(kind),start=300000,pike=normalizeSockets({...item(kind),tier:'relic',affixes:[]});g.save.equipment.primary=pike;g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
-      resetCloseViewCamera();render(screen,g,390,844,start);g.primaryAttack(start);const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
+      resetCloseViewCamera();render(screen,g,390,844,start);g.primaryAttack(start);if(kind==='verge-cleaver'){const at={x:g.player.x,y:g.player.y};swingTo(g,start,'contact');Object.assign(g.player,at);}/* the weighted swing queues its Echo at contact; stand where it started (its lunge is not under test here) */const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
       g.save.equipment.primary=fists();const fistAt=queued.at-80;render(screen,g,390,844,fistAt);assert.equal(g.fistPunch(1,0,fistAt,{x:1,y:0}),true);
       for(let t=fistAt;t<queued.at;t+=1000/hz)render(screen,g,390,844,t);
       g.save.equipment.primary=pike;render(screen,g,390,844,queued.at);const beforeEcho=gl.uploads.at(-1),gearBefore=gl.modelData,accepted=clone(g.player.attackVisual);

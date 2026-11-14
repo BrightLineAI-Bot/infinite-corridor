@@ -1,5 +1,6 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
 import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.ts';
+import { PRIMARY_SWINGS, swingStep, sampleSwing } from './melee-swing.ts';
 const RIGHT_HAND = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
 const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 // Close View held gear, presentation only (Tim, 2026-11-11: every sword in the left hand,
@@ -79,6 +80,7 @@ export function stonePlaceWeight(phase, reducedMotion = false) {
 // reduced-motion presentation.  This sampler is deliberately geometry-only so the
 // renderer can also use it for a bounded weapon trail without inventing another timer.
 export function sampleMeleeActionPose(action, progress = 0, variant = 1, fistLead = 'right') {
+  if(action?.v===3&&action.kind==='verge-cleaver'&&action.move==='swing')return sampleSwingActionPose(action,progress);
   const cleaver=action?.v===1&&action.kind==='verge-cleaver'&&action.move==='cleaver';
   const quickCleaver=action?.v===2&&action.kind==='verge-cleaver'&&action.move==='cleaver';
   const fists=action?.v===1&&action.kind==='iron-fists'&&['dash','jab','uppercut'].includes(action.move);
@@ -132,6 +134,40 @@ export const CLOSE_VIEW_CLEAVER_SLASHES = Object.freeze([
     ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([-1, 0, 0]), from: -125, to: 100, edge: -1,
     twist: Object.freeze([.50, -.48]), lean: Object.freeze([-.04, .16]), guard: .36 }),
 ]);
+// Weighted swings (melee-swing.ts, 2026-11-14): the Close View pose of each step, driven by the same sampler as the hit.
+// Same format as CLOSE_VIEW_CLEAVER_SLASHES. The hit's arc (PRIMARY_SWINGS from..to) maps linearly onto this plane's
+// from..to, so the blade crosses the aim when the hit does; the wind-up cock and the follow-through overshoot carry the
+// blade past both ends. 1: a high forehand diagonal, from high on the sword side down across to the far hip. 2: a flat
+// backhand. 3: an overhead finisher, raised over the head and brought down across the front to bury low.
+export const CLOSE_VIEW_SWING_SLASHES = Object.freeze([
+  Object.freeze({ name: 'swing-forehand', pivot: Object.freeze([-.30, -.16, .36]), hand: .47,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([-1, -.65, 0]), from: -100, to: 82, edge: -1,
+    twist: Object.freeze([.48, -.42]), lean: Object.freeze([-.05, .15]), guard: .34 }),
+  Object.freeze({ name: 'swing-backhand', pivot: Object.freeze([-.30, -.24, .36]), hand: .46,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([1, 0, 0]), from: -96, to: 80, edge: 1,
+    twist: Object.freeze([-.44, .38]), lean: Object.freeze([.02, .12]), guard: .26 }),
+  Object.freeze({ name: 'swing-finisher', pivot: Object.freeze([-.24, -.08, .30]), hand: .50,
+    ref: Object.freeze([-.06, 0, 1]), travel: Object.freeze([-.40, -1, 0]), from: -125, to: 64, edge: -1,
+    twist: Object.freeze([.58, -.40]), lean: Object.freeze([-.12, .34]), guard: .42 }),
+]);
+// The slash sample for a weighted swing at its own clock (ms at tempo 1). Same output fields as sampleCleaverSlash.
+export function sampleSwingSlash(step, elapsedMs, out = {}) {
+  const st = swingStep(PRIMARY_SWINGS['verge-cleaver'], step), spec = CLOSE_VIEW_SWING_SLASHES[Math.max(1, Math.min(3, Math.trunc(Number(step)) || 1)) - 1];
+  const s = sampleSwing(st, elapsedMs, 1, out.sample || (out.sample = {})), k = (s.angle - st.from) / ((st.to - st.from) || 1), rad = Math.PI / 180;
+  out.spec = spec; out.weight = s.weight; out.angle = (spec.from + (spec.to - spec.from) * k) * rad; out.phase = s.phase;
+  out.swing = k; out.windEnd = s.times.windEnd / st.recoveryMs; out.contact = s.times.windEnd / st.recoveryMs; out.followEnd = s.times.followEnd / st.recoveryMs;
+  return out;
+}
+function sampleSwingActionPose(action, progress) {
+  const st = swingStep(PRIMARY_SWINGS['verge-cleaver'], action.step), tempo = Number(action.tempo) || 1, duration = Number(action.durationMs);
+  if (!st || !Number.isFinite(duration) || duration <= 0) return null;
+  const p = unit(progress), e = p * duration / tempo, s = sampleSwing(st, e, 1), T = s.times, k = Math.max(-.2, Math.min(1.2, (s.angle - st.from) / ((st.to - st.from) || 1)));
+  const travel = Math.max(0, Math.min(1, k)), dir = st.to > st.from ? 1 : -1, w = s.weight;
+  return Object.freeze({ kind: 'verge-cleaver', actionVersion: 3, move: 'swing', progress: p, contact: unit(T.windEnd / st.recoveryMs), phase: s.phase === 'active' ? 'swing' : s.phase === 'follow' ? 'follow-through' : s.phase === 'recover' || s.phase === 'done' ? 'recovery' : 'windup',
+    weight: w, drive: w * (s.phase === 'windup' || s.phase === 'hold' ? .3 : 1), recovery: s.phase === 'recover' ? 1 - w : s.phase === 'done' ? 1 : 0, lead: 1, openingLead: 1, cutIndex: Math.trunc(Number(action.step)) || 1, elapsedMs: e,
+    pitch: (action.step === 3 ? .30 - .62 * travel : .10 - .18 * travel), yaw: dir * (.30 - .62 * travel), rise: action.step === 3 ? .55 - .45 * travel : .18 + .12 * travel,
+    side: dir * (.13 - .27 * travel), twist: dir * (.26 - .52 * travel) * w });
+}
 // Clock sampler for one slash step at accepted action progress p (0..1) with the accepted contact
 // fraction. Writes into `out` (no allocation): weight (guard 0 .. slash 1), angle (radians, 0 at
 // contact), swing (0 at the wind-up pose .. 1 at the end of the follow-through), phase. While the

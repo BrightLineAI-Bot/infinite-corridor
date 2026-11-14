@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts'; // 2026-11-14: the Cleaver's weighted swing strikes after its wind-up
 import assert from 'node:assert/strict';
 import { GLYPHS, GLYPH_IDS, RESONANCES, hostLoadout, resonancesOf, socketGlyph, craftGlyph, ensureGlyphState, normalizeSockets, socketCount, glyphDrop, DUST_PER_GLYPH } from '../src/glyphs.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
@@ -65,20 +66,20 @@ test('loadouts: the same glyph changes each host differently, and pairs light re
 test('melee glyphs in play: ignite burns over time, chain arcs, echo repeats, leech heals, still freezes', () => {
   let { s, g } = arena({ melee: ['ignite', 'chain', 'leech'] }, [[11.2, 10], [12.6, 10]]);
   g.player.hp = 20; const [a, b] = g.enemies;
-  g.primaryAttack(1000, { x: 1, y: 0 });
+  g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(g, 1000);
   const afterHit = a.hp;
   assert.ok(a.hp < 400 && b.hp < 400, 'chain arcs to the second foe');
   assert.ok(a.glyphBurn && b.glyphBurn, 'Ignite + Chain is Wildfire: the arc carries the fire');
   assert.equal(s.glyphCodex.resonances.wildfire, true);
   assert.ok(g.player.hp > 20, 'leech heals');
   assert.ok(g.glyphVisuals.some((v) => v.kind === 'heal' && v.amount > 0), 'a +N heal shows over the Wayfarer');
-  step(g, 1500, 1100); assert.ok(a.hp < afterHit, 'burn ticks');
+  step(g, 1500, 1800); assert.ok(a.hp < afterHit, 'burn ticks');
   ({ s, g } = arena({ melee: ['echo', 'still', 'tether'] }));
   const foe = g.enemies[0];
-  g.primaryAttack(1000, { x: 1, y: 0 }); const first = 400 - foe.hp;
+  g.primaryAttack(1000, { x: 1, y: 0 }); const swung = swingTo(g, 1000); const first = 400 - foe.hp;
   assert.ok(foe.hitStun >= .5 && foe.glyphSlow, 'still freezes and tether slows');
   assert.equal(s.glyphCodex.resonances['grave-tether'], true, 'resonance recorded on first use');
-  step(g, 400, 1050);
+  step(g, 400, swung);
   assert.ok(400 - foe.hp >= first * 1.4, `echo repeats the swing (${first} then ${400 - foe.hp})`);
 });
 

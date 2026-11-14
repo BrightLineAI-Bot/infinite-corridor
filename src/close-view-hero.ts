@@ -3,7 +3,7 @@ import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLO
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -699,7 +699,7 @@ function weightedMeleePose(asset,state,pose,motion,reducedMotion=false) {
   const w=motion.weight,d=motion.drive;if(!(w>0))return;
   if(motion.kind==='iron-fists'){fistChainPose(asset,state,pose,motion.move,motion.progress,motion.contact,motion.lead,motion.chained===true,false,0,reducedMotion);return;}
   // Quick (v2) Cleaver actions are the three authored slashes; v1 four-cut records keep their cut below.
-  if(motion.kind==='verge-cleaver'&&motion.actionVersion===2){cleaverSlashPose(asset,state,pose,motion,reducedMotion);return;}
+  if(motion.kind==='verge-cleaver'&&(motion.actionVersion===2||motion.actionVersion===3)){cleaverSlashPose(asset,state,pose,motion,reducedMotion);return;} // 3: the weighted swing (melee-swing.ts)
   const A=CLEAVER_ARM,m=A.sign;
   rotateY(pose,27,m*motion.twist);rotateX(pose,24,(.12-.05*motion.rise)*w);rotateX(pose,4,-.055*w);
   rotateX(pose,m>0?30:32,-.18*d);rotateX(pose,m>0?32:30,.10*d);build(asset,state,pose);state.other.set(pose);
@@ -714,9 +714,10 @@ function weightedMeleePose(asset,state,pose,motion,reducedMotion=false) {
 // the authored arc and back by the slash weight. The arc is anchored at the pre-twist shoulder,
 // so the body load never bends the blade path. No allocation: scratch lives on the pose state.
 const CLEAVER_SLASH_CLIPS = Object.freeze(CLOSE_VIEW_CLEAVER_SLASHES.map(s => 'derived-cleaver-slash-' + s.name));
+const SWING_SLASH_CLIPS = Object.freeze(CLOSE_VIEW_SWING_SLASHES.map(s => 'derived-cleaver-' + s.name));
 function cleaverSlashPose(asset,state,pose,motion,reducedMotion){
-  const slash=sampleCleaverSlash(motion.cutIndex,motion.progress,motion.contact,state.slash),w=slash.weight,spec=slash.spec;
-  state.clip=CLEAVER_SLASH_CLIPS[CLOSE_VIEW_CLEAVER_SLASHES.indexOf(spec)];state.clipTime=motion.progress;state.primaryStep=motion.cutIndex;
+  const swing=motion.actionVersion===3,slash=swing?sampleSwingSlash(motion.cutIndex,motion.elapsedMs,state.slash||(state.slash={})):sampleCleaverSlash(motion.cutIndex,motion.progress,motion.contact,state.slash),w=slash.weight,spec=slash.spec;
+  state.clip=swing?SWING_SLASH_CLIPS[CLOSE_VIEW_SWING_SLASHES.indexOf(spec)]:CLEAVER_SLASH_CLIPS[CLOSE_VIEW_CLEAVER_SLASHES.indexOf(spec)];state.clipTime=motion.progress;state.primaryStep=motion.cutIndex;
   if(!(w>0))return;
   const A=CLEAVER_ARM,m=A.sign,g=state.global,F=state.slashFrame,M=state.slashMatrix,b=state.slashBlade,t=state.primaryTarget,q=state.primaryScratch;
   build(asset,state,pose);
@@ -732,8 +733,8 @@ function cleaverSlashPose(asset,state,pose,motion,reducedMotion){
   const dx=M[0],dy=M[1],dz=M[2];
   const P=spec.pivot,r=reach*spec.hand;
   for(let k=0;k<3;k++){const carry=g[grip+12+k],hand=g[s+12+k]+reach*(k===0?m*P[0]:P[k])+r*(k===0?dx:k===1?dy:dz);t[k]=carry+(hand-carry)*w;}
-  const body=reducedMotion?CLOSE_VIEW_CLEAVER_SLASH_TIMING.reducedBody:1,swing=clamp(slash.swing);
-  const twist=(spec.twist[0]+(spec.twist[1]-spec.twist[0])*swing)*w*body,lean=(spec.lean[0]+(spec.lean[1]-spec.lean[0])*swing)*w*body;
+  const body=reducedMotion?CLOSE_VIEW_CLEAVER_SLASH_TIMING.reducedBody:1,sweep=swing?Math.max(-.25,Math.min(1.15,slash.swing)):clamp(slash.swing); // a weighted swing winds the torso a little past its start and carries it past its end
+  const twist=(spec.twist[0]+(spec.twist[1]-spec.twist[0])*sweep)*w*body,lean=(spec.lean[0]+(spec.lean[1]-spec.lean[0])*sweep)*w*body;
   rotateY(pose,28,m*twist*.35);rotateY(pose,27,m*twist*.65);rotateY(pose,4,-m*twist*.5);
   rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-spec.guard*w*body);
   qmul(q,20,F,4,F,12);
@@ -923,7 +924,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     if(meleeMotion.kind==='verge-cleaver')cleaverFourPose(state,state.pose,0,meleeMotion.actionVersion===1?{kind:'cleaver-four',step:meleeMotion.cutIndex}:input.primaryCarryStage?.kind==='cleaver-four'?input.primaryCarryStage:{kind:'cleaver-four',step:1});
     if(meleeMotion.kind==='iron-fists')fistChainPose(asset,state,state.pose,meleeMotion.move,p,meleeMotion.contact,meleeMotion.lead,action.fistChain===true,clamp(Number(action?.fistCharge)||0),0,input.reducedMotion); // the training chain (FIST_CHAIN_POSE)
     else{weightedMeleePose(asset,state,state.pose,meleeMotion,input.reducedMotion);
-    if(meleeMotion.actionVersion!==2)weightedMeleeLoad(state.pose,meleeMotion);}
+    if(meleeMotion.actionVersion!==2&&meleeMotion.actionVersion!==3)weightedMeleeLoad(state.pose,meleeMotion);}
   }
   else if(action?.kind==='melee'&&action.profile==='fistCharge')fistChargePose(asset,state,state.pose,Number(action.fistStep)||1,action.fistLead,p,input.reducedMotion); // a fist step held to charge
   else if(carryProfile==='verge-cleaver'&&primaryStage?.kind==='opaque')state.primaryGripResidual=0;
