@@ -188,11 +188,11 @@ export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 
 // Mirage of Blades in Close View: presentation only. The projectile (game.ts mirageThrow) owns its path, speed,
 // hits and life; this reads its position and age. `lift` is the flying height above the floor (chest height),
 // `spin` its turn rate (MIRAGE.spin, as the standard view's rotor), `shadow` the floor shadow's radius.
-export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1 });
+export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1, kinds: Object.freeze(['mirageSword', 'mirageAxe', 'mirageShuriken']) /* SWEEP_BLADES order (close-view-sweep-gear.ts MIRAGE_BLADE_MODELS) */ });
 export function mirageBladePresentation(p) {
   if (!p?.mirage || p.dead || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
   const age = Number.isFinite(p.age) ? Math.max(0, p.age) : 0, scale = MIRAGE_BLADE_VIEW.scale * (Number.isFinite(p.scale) && p.scale > 0 ? Math.min(3, p.scale) : 1);
-  return { kind: 'mirageBlade', x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
+  return { kind: MIRAGE_BLADE_VIEW.kinds[(Number(p.blade) || 0) % MIRAGE_BLADE_VIEW.kinds.length] /* 2026-11-14: Standard View's own blade (sweepBlade), in 3D */, x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
 }
 export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;

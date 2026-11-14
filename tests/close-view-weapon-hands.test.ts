@@ -11,7 +11,7 @@ const meta = JSON.parse(fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.jso
 const raw = fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.bin', import.meta.url));
 const asset = decodeCloseViewHero(meta, raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
 const identity = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
-const SWORDS = ['melee', 'salvage-blade', 'verge-cleaver', 'cinder-pike', 'great-sweep', 'mirage'];
+const SWORDS = ['melee', 'salvage-blade', 'verge-cleaver', 'cinder-pike', 'mirage']; // 2026-11-14: the Great Sweep moved to the right hand (held beside the primary)
 const FIRING = ['rift-bombard', 'blunderbuss', 'lumen-spindle', 'spark-coil', 'needle-caster', 'emitter'];
 
 test('every sword is held in the displayed left hand; guns and tools in the displayed right', () => {
@@ -20,7 +20,7 @@ test('every sword is held in the displayed left hand; guns and tools in the disp
     // Source-right (rightSocket) is the displayed anatomical left in the Close View projection.
     assert.deepEqual(closeViewHandRoles(p), { grip: 'rightSocket', free: 'leftSocket' }, p);
   }
-  for (const p of [...FIRING, 'hammer', 'orrery-tap', 'orrery-release']) {
+  for (const p of [...FIRING, 'hammer', 'orrery-tap', 'orrery-release', 'great-sweep']) {
     assert.equal(closeViewHeldHand(p), 'right', p);
     assert.deepEqual(closeViewHandRoles(p), { grip: 'leftSocket', free: 'rightSocket' }, p);
   }

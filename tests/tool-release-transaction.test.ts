@@ -6,6 +6,7 @@ import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { normalizePendingToolUse, sampleToolActionMotion, toolUseStartupMs } from '../src/action-motion.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { createCombatant } from '../src/combat.ts';
+import { GREAT_SWEEP_SWING } from '../src/great-sweep.ts';
 
 const items:any={
   'rift-bombard':{id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'},
@@ -39,14 +40,16 @@ test('delayed Blunderbuss members share the base muzzle origin while retaining t
   const immediate=fixture('blunderbuss');immediate.save.closeView=false;immediate.player.x=25;immediate.player.y=11.62;assert.equal(immediate.fireSecondary(at,{x:1,y:0}),true);assert.ok(immediate.projectiles.every((p:any)=>Math.abs(p.x-25.85)<1e-9&&Math.abs(p.y-12.07)<1e-9));
 });
 
-test('Great Sweep creates no damaging effect before release, fixes release center, and pulses once with full newborn life',()=>{
-  const g=fixture('great-sweep'),at=100000;assert.equal(g.fireSecondary(at,{x:1,y:0}),true);const q=structuredClone(g.pendingToolUse);assert.equal(g.effects.length,0);g.player.x+=1;g.player.y+=.5;g.releasePendingToolUse(q.releaseAt);const fx=g.effects[0],life=fx.life;assert.deepEqual([fx.x,fx.y],[g.player.x+.5,g.player.y+.45]);const foe={id:'f',x:fx.x-.5,y:fx.y-.45,hp:100,maxHp:100};updateEffects(g.effects,[foe],.6);assert.equal(fx.life,life);assert.equal(fx.pulseIndex,1);const hp=foe.hp;updateEffects(g.effects,[foe],0);assert.equal(foe.hp,hp);assert.equal(fx.pulseIndex,1);
+// 2026-11-14 (great-sweep.ts): the Great Sweep no longer waits on a delayed release and then pulses a circle; its 360° swing's blade
+// deals the blow where it passes. This replaces the release-pulse contract this test pinned for it.
+test('Great Sweep creates no damaging effect before its blade reaches the foe, then lands one blow',()=>{
+  const g=fixture('great-sweep'),at=100000,foe=createCombatant('ashling',g.player.x+1.4,g.player.y);Object.assign(foe,{id:'f',hp:1e6,maxHp:1e6,damage:0,cooldown:1e9,speed:0});g.enemies=[foe];assert.equal(g.fireSecondary(at,{x:1,y:0}),true);assert.equal(g.pendingToolUse,null);assert.ok(g.toolSwing);assert.equal(g.effects.length,0);let hits=0;for(let t=at+10;t<=at+1000;t+=10){const hp=foe.hp;foe.x=g.player.x+1.4;foe.y=g.player.y;g.update(.01,input(),t);if(foe.hp<hp){hits++;assert.ok(t-at>=GREAT_SWEEP_SWING.windupMs,'not before the wind-up ends');}}assert.equal(hits,1);
 });
 
 test('contact-clamped movement commits before a due named-tool release without changing accepted aim or newborn ownership',()=>{
   const moving=(kind:string)=>{const g=fixture(kind),p=g.player,start={x:p.x,y:p.y},blocker=createCombatant('ashling',p.x+.8,p.y);blocker.hitStun=1e9;g.enemies=[blocker];g.save.lastAim={x:0,y:-1};assert.equal(g.fireSecondary(100000,{x:0,y:-1}),true);const pending=structuredClone(g.pendingToolUse);assert.ok(pending);assert.equal(g.projectiles.length,0);assert.equal(g.effects.length,0);g.update(pending.startupMs/1000,{state:{x:1,y:0},consume:()=>false,held:()=>false},pending.releaseAt);assert.ok(p.x>start.x&&p.x<start.x+2.4*pending.startupMs/1000,'body contact clips the accepted movement');assert.ok(Math.abs(blocker.x-p.x-.64)<2e-6,'canonical body separation is retained');return{g,p,start,blocker,pending};};
   const shot=moving('rift-bombard'),base=shot.g.projectiles[0];assert.ok(base);assert.equal(shot.g.pendingToolUse,null);assert.ok(Math.abs(base.x-(shot.p.x+.5+shot.pending.aim.x*.35))<1e-9);assert.ok(Math.abs(base.y-(shot.p.y+.45+shot.pending.aim.y*.35))<1e-9);assert.deepEqual([base.dx,base.dy],[shot.pending.aim.x,shot.pending.aim.y]);assert.deepEqual([base.dx,base.dy],[0,-1],'movement input cannot replace accepted aim');assert.equal(base.age,0);assert.equal(base.life,shot.pending.payload.shot.life);assert.equal(base.toolUseNewborn,undefined,'the release frame consumes zero projectile time exactly once');assert.notEqual(base.x,shot.start.x+.5+shot.pending.aim.x*.35,'release cannot use the pre-movement body point');
-  const sweep=moving('great-sweep'),fx=sweep.g.effects[0];assert.ok(fx);assert.equal(sweep.g.pendingToolUse,null);assert.deepEqual([fx.x,fx.y],[sweep.p.x+.5,sweep.p.y+.45]);assert.equal(fx.life,sweep.pending.payload.effect.life);assert.equal(fx.pulseIndex,1);assert.equal(fx.toolUseNewborn,undefined);assert.ok(sweep.blocker.hp<sweep.blocker.maxHp,'the newborn effect owns exactly its release pulse');assert.equal(Object.keys(fx.hits).length,1);
+  const sweep=fixture('great-sweep');sweep.save.lastAim={x:0,y:-1};assert.equal(sweep.fireSecondary(100000,{x:0,y:-1}),true);assert.equal(sweep.pendingToolUse,null,'2026-11-14: the Great Sweep swings at once (great-sweep.ts)');assert.deepEqual(sweep.toolSwing.aim,{x:0,y:-1},'movement input cannot replace accepted aim');
 });
 
 test('accepted payload freezes pellets, Arc Wave, awakened fan, Tool Echo and clone permission; released Spindle keeps return and Bombard keeps cluster callbacks',()=>{
@@ -55,14 +58,18 @@ test('accepted payload freezes pellets, Arc Wave, awakened fan, Tool Echo and cl
   const bomb=fixture('rift-bombard');bomb.save.lattice.passives=['field:cluster-shell'];bomb.fireSecondary(100000,{x:1,y:0});bomb.releasePendingToolUse(bomb.pendingToolUse.releaseAt);const shell=bomb.projectiles[0];bomb.clusterShell(shell);const bomblets=bomb.projectiles.filter((p:any)=>String(p.id).includes('-cluster')),bombletLife=bomblets[0].life;assert.equal(bomblets.length,2);updateProjectiles(bomblets,[],bomb.map,bomb.map.width,.6);assert.ok(bomblets.every((p:any)=>p.age===0&&p.life===bombletLife));
 });
 
-test('one primary tap waits only inside the finite startup window and executes on the release update',()=>{
-  const g=fixture('great-sweep'),at=100000;g.fireSecondary(at,{x:1,y:0});const release=g.pendingToolUse.releaseAt;g.update(.01,input('attack'),release-60);assert.ok(g.attackBufferUntil>=release);assert.equal(g.effects.length,0);g.update(.01,input(),release);assert.equal(g.pendingToolUse,null);assert.equal(g.attackBufferUntil,0);assert.equal(g.player.attackVisual.profile,'melee');
+// 2026-11-14 (great-sweep.ts): the Great Sweep has no startup release any more, so a primary is never held for it: woven in during
+// its wind-up it is accepted at once (Tim's light-weaving), and the committed blade still sweeps round and lands. These replace the
+// two startup-window tests this file pinned on the Great Sweep (delayed tools keep that window: tool-release-presentation tests).
+test('a primary tap during the Great Sweep wind-up is accepted at once and the committed blade still lands',()=>{
+  const g=fixture('great-sweep'),at=100000,foe=createCombatant('ashling',g.player.x+1.4,g.player.y);Object.assign(foe,{id:'f',hp:1e6,maxHp:1e6,damage:0,cooldown:1e9,speed:0});g.enemies=[foe];g.fireSecondary(at,{x:1,y:0});const swing=g.toolSwing;assert.ok(swing);
+  g.update(.01,input('attack'),at+60);assert.equal(g.player.attackVisual.profile,'melee','the primary takes the body at once');assert.strictEqual(g.toolSwing,swing,'the swing stays committed');
+  for(let t=at+70;t<=at+1000;t+=10){foe.x=g.player.x+1.4;foe.y=g.player.y;g.update(.01,input(),t);}assert.ok(swing.hits.includes('f'),'the blade still lands');
 });
 
-test('startup Fist intent waits for native recovery and clears if the active slot changes',()=>{
-  const g=fixture('great-sweep'),at=100000;g.save.equipment.primary={...BRAWLER_GEAR[0].item};g.fireSecondary(at,{x:1,y:0});const release=g.pendingToolUse.releaseAt,recover=release+30;g.player.attackReadyAt=0;g.fistRecoverUntil=recover;g.update(.01,input('attack'),release-60);assert.ok(g.attackBufferUntil>=recover);g.update(.01,input(),release);assert.ok(g.attackBufferUntil>0);assert.notEqual(g.player.attackVisual.profile,'fist');g.update(.01,input(),recover);assert.equal(g.attackBufferUntil,0);assert.equal(g.player.attackVisual.profile,'fist');
-  const held=fixture('great-sweep');held.save.equipment.primary={...BRAWLER_GEAR[0].item};held.fireSecondary(at,{x:1,y:0});const heldRelease=held.pendingToolUse.releaseAt,heldInput:any={state:{x:0,y:0},consume:(k:string)=>k==='attack',held:(k:string)=>k==='attack',reset:()=>{}};held.update(.01,heldInput,heldRelease-60);held.update(.01,{...heldInput,consume:()=>false},heldRelease);assert.equal(held.fistCharge?.start,heldRelease);assert.equal(held.player.attackVisual.profile,'sweep');
-  const swapped=fixture('great-sweep');swapped.save.equipment.primary={...BRAWLER_GEAR[0].item};swapped.fireSecondary(at,{x:1,y:0});swapped.player.attackReadyAt=0;swapped.update(.01,input('attack'),swapped.pendingToolUse.releaseAt-60);swapped.save.activeWeaponSlot='secondary';swapped.update(.01,input(),swapped.pendingToolUse.releaseAt);assert.equal(swapped.attackBufferUntil,0);assert.notEqual(swapped.player.attackVisual.profile,'fist');
+test('a Fists press during the Great Sweep wind-up starts at once; the swing stays committed',()=>{
+  const g=fixture('great-sweep'),at=100000;g.save.equipment.primary={...BRAWLER_GEAR[0].item};g.fireSecondary(at,{x:1,y:0});const swing=g.toolSwing;g.player.attackReadyAt=0;
+  const heldInput:any={state:{x:0,y:0},consume:(k:string)=>k==='attack',held:(k:string)=>k==='attack',reset:()=>{}};g.update(.01,heldInput,at+60);assert.ok(g.fistCharge||g.player.attackVisual.profile==='fist','the fist is not held back');assert.strictEqual(g.toolSwing,swing);
 });
 
 test('actual normal and Swift repeats flatten the prior released pose before a new startup',()=>{

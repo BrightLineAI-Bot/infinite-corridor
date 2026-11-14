@@ -4,6 +4,7 @@ import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { closeViewPlayerAction } from '../src/close-view.ts';
 import { TOOL_ACTION_TIMING } from '../src/action-motion.ts';
+import { GREAT_SWEEP_SWING } from '../src/great-sweep.ts';
 
 const tools={
   'rift-bombard':{id:'secondary-rift-bombard',name:'Rift Bombard',slot:'secondary',power:5,property:'blast'},
@@ -21,8 +22,8 @@ const fixture=(tool,primary='pike')=>{const {game:g}=createLabFixture({lab:'comb
 const physical=g=>structuredClone({projectiles:g.projectiles,effects:g.effects,toolReadyAt:g.toolReadyAt,stamina:g.player.stamina,hp:g.player.hp});
 
 test('legacy immediate named tools own their complete authored presentation independently of the short combat clock',()=>{
-  for(const [kind,T] of Object.entries(TOOL_ACTION_TIMING)){
-    const g=fixture(kind);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);const record=g.player.attackVisual;
+  for(const [kind,A] of Object.entries(TOOL_ACTION_TIMING)){
+    const T=kind==='great-sweep'?{...A,durationMs:GREAT_SWEEP_SWING.recoveryMs}/* 2026-11-14: the 360° swing's own clock (great-sweep.ts) */:A,g=fixture(kind);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true,kind);const record=g.player.attackVisual;
     assert.ok(closeViewPlayerAction(g,100000+T.durationMs-1).active,kind+' remains visible through recovery');
     assert.strictEqual(g.player.attackVisual,record);assert.equal(closeViewPlayerAction(g,100000+T.durationMs).active,false,kind+' completes at its authored deadline');
     assert.equal(g.player.actionVisualUntil,100000+T.durationMs);assert.ok(g.player.attackUntil<=100240,kind+' canonical combat clock remains short');

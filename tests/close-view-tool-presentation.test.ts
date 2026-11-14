@@ -49,7 +49,7 @@ test('actual source sockets give four smooth accepted poses over unchanged locom
     assert.deepEqual(start.frame[grip],end.frame[grip],`${profile} socket returns exactly`);
     for(const sample of [start,middle,end]){assert.ok(sample.frame.positionsNormals.every(Number.isFinite));for(let i=3;i<sample.frame.positionsNormals.length;i+=6)assert.ok(Math.abs(Math.hypot(sample.frame.positionsNormals[i],sample.frame.positionsNormals[i+1],sample.frame.positionsNormals[i+2])-1)<1e-5);}
     travel[profile]=Math.hypot(middle.frame[grip][12]-start.frame[grip][12],middle.frame[grip][13]-start.frame[grip][13],middle.frame[grip][14]-start.frame[grip][14]);
-    heights[profile]=middle.frame[grip][14];assert.ok(travel[profile]>.08,`${profile} has a readable accepted socket pose`);
+    heights[profile]=middle.frame[grip][14];if(profile!=='great-sweep')assert.ok(travel[profile]>.08,`${profile} has a readable accepted socket pose`);/* 2026-11-14: the sweep starts and ends on the shoulder and its hand passes back near it mid-turn; its peak travel is checked below */
   }
   assert.ok(heights['lumen-spindle']>heights['rift-bombard']+.1,'the Spindle is held distinctly raised to shoot');
   // Right-hand tools now raise from the free-side hip, and the Blunderbuss shoulders like a rifle; the

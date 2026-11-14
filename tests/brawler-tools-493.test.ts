@@ -35,7 +35,7 @@ test('Tool with Hammerfall drops a hammer on the foe; with Great Sweep it sweeps
   assert.ok(h.g.enemies[0].hp < 50000, 'the hammer landed');
   assert.equal(h.g.brawlerTool('hammerfall', t + 50), false, `recovering (${BRAWLER.hammerfall.cooldown} s)`);
   const w = arena([['e', 12, 10], ['w', 8, 10]], (s) => { s.equipment.secondary = gear('Great Sweep'); }); let u = 1000; w.g.update(.05, idle, u);
-  u += 50; w.g.update(.05, press('tool'), u); u += 50; w.g.update(.05, idle, u);
+  u += 50; w.g.update(.05, press('tool'), u); for (let i = 0; i < 14; i++) { u += 50; w.g.update(.05, idle, u); } // 2026-11-14: the blade sweeps round over its active window (great-sweep.ts)
   assert.ok(w.g.enemies.every((e) => e.hp < 50000), 'both sides');
 });
 
@@ -69,5 +69,5 @@ test('release 495: Shadow Boxing works with Hammerfall and Great Sweep too', () 
     g.player.hp = 50; g.brawlerTool('hammerfall', t + 50); for (let i = 0; i < 10; i++) { t += 50; g.update(.05, idle, t); } return { hit: g.enemies[0].hp < 50000, hp: g.player.hp }; };
   assert.equal(far(false).hit, false, 'six tiles off: the plain hammer falls short'); const b = far(true); assert.ok(b.hit, 'boxing reaches it'); assert.ok(b.hp > 50, 'and heals');
   const { g } = arena([['foe', 14, 10]], (s) => { s.equipment.secondary = gear('Great Sweep'); }); let t = 1000; g.update(.05, idle, t); g.castSpell('shadow-boxing');
-  g.brawlerTool('great-sweep', t + 50); t += 50; g.update(.05, idle, t); assert.ok(g.player.x > 11, `carried to the foe (${g.player.x})`); assert.ok(g.enemies[0].hp < 50000);
+  g.brawlerTool('great-sweep', t + 50); t += 50; g.update(.05, idle, t); assert.ok(g.player.x > 11, `carried to the foe (${g.player.x})`); for (let i = 0; i < 14; i++) { t += 50; g.update(.05, idle, t); } /* 2026-11-14: the 360° swing lands over its active window */ assert.ok(g.enemies[0].hp < 50000);
 });

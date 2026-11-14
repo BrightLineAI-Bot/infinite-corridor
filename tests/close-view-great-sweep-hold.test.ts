@@ -141,17 +141,17 @@ test('Mirage of Blades: Close View blades fly through the air on the gameplay pa
     maxSeen = Math.max(maxSeen, captured.length); assert.ok(captured.length <= MIRAGE.max, 'never more than the gameplay cap');
     for (const spec of captured) {
       const p = spec.source, a = spec.sample(t);
-      assert.equal(a.kind, 'mirageBlade'); assert.equal(a.x, p.x); assert.equal(a.y, p.y); assert.ok(Number.isFinite(a.yaw));
+      assert.equal(a.kind, MIRAGE_BLADE_VIEW.kinds[(p.blade || 0) % 3], '2026-11-14: Standard View\'s own blade (close-view-sweep-gear.ts)'); assert.equal(a.x, p.x); assert.equal(a.y, p.y); assert.ok(Number.isFinite(a.yaw));
       assert.ok(a.lift >= .6 && spec.lift === a.lift, 'at chest height, above the floor');
     }
   }
   assert.ok(maxSeen >= 1);
   assert.ok(foe.hp < 50000, 'gameplay unchanged: the blades still cut');
   // The baked blade is small and sits wholly above the floor at its flying height.
-  assert.ok(modelTriangleCount('mirageBlade') > 0 && modelTriangleCount('mirageBlade') <= 64);
+  assert.ok(modelTriangleCount(MIRAGE_BLADE_VIEW.kinds[0]) > 0 && modelTriangleCount(MIRAGE_BLADE_VIEW.kinds[0]) <= 64);
   const a = mirageBladePresentation({ mirage: true, x: 4, y: 5, age: .3 }), out = new Float32Array(256 * 3 * MODEL_FLOATS);
   const end = writeCloseViewModel(out, 0, { ...a, z: a.lift, reduceMotion: false, alpha: 1 });
-  assert.equal(end / MODEL_FLOATS / 3, modelTriangleCount('mirageBlade'));
+  assert.equal(end / MODEL_FLOATS / 3, modelTriangleCount(a.kind));
   for (let i = 0; i < end; i += MODEL_FLOATS) { assert.ok(out[i + 2] > MIRAGE_BLADE_VIEW.lift - .1, 'above the floor'); assert.ok(Math.hypot(out[i] - 4, out[i + 1] - 5) < 1); }
   assert.equal(mirageBladePresentation({ mirage: true, dead: true, x: 1, y: 1 }), null);
   // The standard view keeps its own spinning rotor sprite (no capture).

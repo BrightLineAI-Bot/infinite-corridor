@@ -87,7 +87,8 @@ import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, g
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
-import { generateItem, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
+import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing } from "./great-sweep.ts"; // the Great Sweep's 360° swing
+import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
@@ -2074,6 +2075,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
       fx.pulseIndex = (fx.pulseIndex || 0) + 1;
       if(fx.hostile)continue;
       for (const e of enemies) {
+        if (fx.only && !fx.only.includes(e)) continue; // great-sweep.ts: a swing's blow lands only on the foes its blade crossed
         if (
           e.dead || e.untargetable ||
           Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
@@ -2743,6 +2745,7 @@ export class Game {
     this.player.hurtVisual = normalizeHurtVisual(s.playerRuntime.hurtVisual);
     this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
     this.restorePendingMeleeContact(s.playerRuntime.pendingMeleeContact,now);
+    { const w = normalizeToolSwing(s.playerRuntime.toolSwing); this.toolSwing = w && w.area === this.area && w.areaId === this.areaId() && w.levelId === String(this.map?.levelId || 'root') && this.player.hp > 0 ? { ...w, lastNow: now } : null; } // the Great Sweep resumes mid-swing
     { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
@@ -3244,6 +3247,7 @@ export class Game {
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
     if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
+    this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
     this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.kiSlam=false; // the fists' chain belongs to where it was thrown
@@ -3769,6 +3773,7 @@ export class Game {
       shiftClocks(this, pausedMs); // release 736 (F5/C12): every timer, from the one list
       if(this.pendingMeleeContact?.v===1){this.pendingMeleeContact.acceptedAt+=pausedMs;this.pendingMeleeContact.releaseAt+=pausedMs;}
       if(this.pendingMeleeContact?.v===3)this.pendingMeleeContact.lastNow+=pausedMs; // a paused swing resumes where it stood
+      if(this.toolSwing?.v===GREAT_SWEEP_RECORD_VERSION)this.toolSwing.lastNow+=pausedMs; // and a paused Great Sweep
       // Runtime presentation clocks can observe a pause even when scenes/background suspension skip every render/input callback.
       // Its logical time is saved separately; this offset never joins the gameplay clock lists.
       this.presentationPausedMs = (this.presentationPausedMs || 0) + pausedMs;
@@ -3827,6 +3832,7 @@ export class Game {
         pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
         pendingMeleeContact:this.savedPendingMeleeContact(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingMeleeContact?.v)&&this.save.session.playerRuntime.pendingMeleeContact.v>3/* a future record kept opaque */?structuredClone(this.save.session.playerRuntime.pendingMeleeContact):null),
         hammerfallStartup:this.savedHammerfallStartup(),
+        toolSwing:this.toolSwing?normalizeToolSwing(this.toolSwing):(Number.isInteger(this.save.session.playerRuntime.toolSwing?.v)&&this.save.session.playerRuntime.toolSwing.v>GREAT_SWEEP_RECORD_VERSION?structuredClone(this.save.session.playerRuntime.toolSwing):null), // the Great Sweep mid-swing (great-sweep.ts; additive, schema 14; a newer record kept opaque)
         shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -3989,6 +3995,7 @@ export class Game {
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
     this.cancelPendingToolUse('world-reset');
+    this.toolSwing = null;
     this.clearHammerfallStartup('world-reset');
     this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistCharge=null;this.kiSlam=false;
     const p = this.player;
@@ -7969,6 +7976,48 @@ export class Game {
     if(q.queued&&(T.chain!=null?cur>=T.chain:cur>=T.recovery)){if(T.chain!=null)this.noteSwingChain(q);this.endSwing(q);this.attackAction='attack';try{this.primaryAttack(now);}finally{this.attackAction=null;}return;}
     if(cur>=T.recovery)this.endSwing(q);
   }
+  // ---- The Great Sweep's 360° swing (great-sweep.ts GREAT_SWEEP_SWING; Tim 2026-11-14). One record, game.toolSwing, saved with
+  // the journey (exact resume); the same clock, hit and drawing in every area and both views. `mirage`: the Mirage of Blades swing,
+  // drawn only (the thrown blades deal the damage).
+  startToolSwing(now,o){
+    const p=this.player,S=GREAT_SWEEP_SWING,mirage=o.mirage===true,tempo=sweepTempo(mirage?o.cooldownMs*S.mirage.fit/S.recoveryMs:this.toolCooldownScale()),T=sweepTimes(tempo,{});
+    const prior=mirage?normalizeAttackVisual(p.attackVisual):o.priorTool,deadline=mirage?attackVisualDeadline(p,prior):0,continuing=mirage?prior?.toolKind==='great-sweep'&&prior.toolMotion?.v===1&&!prior.presentationCancelled&&deadline>now:!!o.priorPose,direction=mirage?(continuing?-(prior.toolMotion.direction||1):1):(o.direction===-1?-1:1);
+    const aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),id=`sweep-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`;
+    this.toolSwing={v:GREAT_SWEEP_RECORD_VERSION,id,mirage,direction,tempo,elapsedMs:0,lastNow:now,stopLeft:0,stopUsed:false,contacted:false,hits:[],area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:aim.x,y:aim.y},
+      payload:{damage:mirage?0:o.damage,radius:mirage?BRAWLER['great-sweep'].radius:o.radius,imbue:mirage?0:o.imbue||0,healShare:mirage?0:o.healShare||0,echoCopies:mirage?[]:o.echoCopies||[]}};
+    p.attackUntil=now+(mirage?200:240);
+    const visual=stampAttackVisual(p,'sweep',T.recovery,null);if(!visual)return;
+    const primary=this.save.equipment.primary?.id,priorPose=mirage?null:o.priorPose,baseKind=priorPose?prior.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';
+    visual.toolKind='great-sweep';if(!mirage)visual.heldTool=true;visual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction,baseKind};visual.sweepSwing={v:1,id,tempo};p.actionVisualUntil=now+T.recovery;
+  }
+  // One tick: advance the clock (held in hit-stop), then, in the active window, hit what the blade crossed since the last tick
+  // (hilt to tip, all round) and the body bubble, once each per swing. The hits land through updateEffects (one short-lived
+  // effect limited to those foes, `only`), so glyphs, Imbue, Shadow Boxing's heal and the frenzy work as for every tool blow.
+  tickToolSwing(now){
+    const q=this.toolSwing;if(q?.v!==GREAT_SWEEP_RECORD_VERSION)return;
+    const p=this.player,S=GREAT_SWEEP_SWING;
+    if(!(p?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||now<(p.stunnedUntil||0)){this.toolSwing=null;return;} // a committed swing lands even if the gear changes under it, as an accepted tool shot does
+    let d=Math.max(0,Math.min(1000,now-(Number(q.lastNow)||now)));q.lastNow=now;
+    if(q.stopLeft>0){const held=Math.min(q.stopLeft,d);q.stopLeft-=held;d-=held;}
+    const T=sweepTimes(q.tempo,this._sweepT||(this._sweepT={})),prev=q.elapsedMs,cur=prev+d;q.elapsedMs=cur;
+    const v=p.attackVisual;if(v?.sweepSwing?.id!==q.id&&(q.mirage||prev>=T.activeEnd)){this.toolSwing=null;return;} // another action took the body: a drawn-only swing, or one past its blow, ends. A primary woven in during the wind-up or the turn (light-weaving, never blocked) takes the body, and the committed blade still sweeps round and lands, as the old sweep's blow did
+    if(!q.mirage&&cur>T.windEnd&&prev<T.activeEnd){
+      const contact=!q.contacted;q.contacted=true;
+      const cx=p.x+.5,cy=p.y+.45,aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,a0=aim+sweepDamageAngle(Math.max(prev,T.windEnd),T,q.direction)*deg,a1=aim+sweepDamageAngle(Math.min(cur,T.activeEnd),T,q.direction)*deg,tip=q.payload.radius,width=mapWidth(this.map,this.area),P=q.payload;
+      if(contact)for(const c of P.echoCopies)this.effects.push({id:`${q.id}-echo-${c.index||1}`,kind:'great-sweep',brawler:true,x:cx,y:cy,life:BRAWLER['great-sweep'].lifetime,radius:tip,pulse:99,untilPulse:0,pulseIndex:0,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(P.damage*c.share)),glyphHost:'tool',healShare:P.healShare,imbue:P.imbue*c.share,echo:true}); // the Echo glyph repeats the blow, as before
+      const hits=(this._sweepHits||=[]);hits.length=0;
+      for(const e of this.enemies){if(e.dead||e.untargetable||!this.bodyReach(e))continue;const id=String(e.id);if(q.hits.includes(id))continue;
+        const extra=Math.max(0,enemyBodyRadius(e)-.38),ex=e.x+.5,ey=e.y+.45,range=Math.hypot(ex-cx,ey-cy);
+        if(range>S.bubble+extra&&!sweptArcTouches(ex,ey,extra+S.foePad,cx,cy,S.hilt,tip,a0,a1))continue;
+        let open=true;const n=Math.ceil(range*4);for(let i=1;i<n&&open;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))open=false;if(!open)continue;
+        if(q.hits.length<S.maxHits)q.hits.push(id);hits.push(e);}
+      if(hits.length){
+        this.effects.push({id:`${q.id}-hit-${q.hits.length}`,kind:'great-sweep',brawler:true,swingHit:true,x:cx,y:cy,life:1e-4,radius:tip+8,pulse:99,untilPulse:0,pulseIndex:0,hits:{},only:hits.slice(),damage:P.damage,glyphHost:'tool',healShare:P.healShare,imbue:P.imbue});
+        if(!q.stopUsed){q.stopUsed=true;q.stopLeft=S.hitStopMs;for(const e of hits)e.hitStun=Math.max(e.hitStun||0,S.hitStopMs/1000);p.attackUntil=Math.max(p.attackUntil||0,now)+S.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+S.hitStopMs;if(v?.sweepSwing?.id===q.id)v.hitStopMs=(Number(v.hitStopMs)||0)+S.hitStopMs;} // hit-stop: once, on the first hit
+      }
+    }
+    if(cur>=T.recovery)this.toolSwing=null;
+  }
   swingFoeAhead(q,spec){
     const p=this.player,cx=p.x,cy=p.y;
     for(const e of this.enemies){if(e.dead||e.untargetable||e.hidden)continue;const dx=e.x-cx,dy=e.y-cy,dist=Math.hypot(dx,dy),gap=spec.lungeStop+Math.max(0,enemyBodyRadius(e)-.38);
@@ -8857,7 +8906,7 @@ export class Game {
   brawlerTool(kind, now = this.lastUpdateNow || 0, direction = null) {
     if(!this._toolInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.cursed("tools", now)) return false; // release 737: NO TOOLS (Hammerfall, Great Sweep, Mirage of Blades)
-    if (kind === 'great-sweep' && fieldOn(this.save, 'nanoknives')) { const accepted=this.mirageThrow(now); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // release 533; 649: Mirage of Blades
+    if (kind === 'great-sweep' && fieldOn(this.save, 'nanoknives')) { const accepted=this.mirageThrow(now); if(accepted){this.cancelConsumeVisual('tool');this.startToolSwing(now,{mirage:true,cooldownMs:MIRAGE.cooldown*1000*this.toolCooldownScale()});} return accepted; } // release 533; 649: Mirage of Blades (2026-11-14: he still swings it all the way round; the swing deals nothing)
     const B = BRAWLER[kind], p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null; if (!B || now < (this.toolReadyAt || 0)) return false;
     if(kind==='great-sweep'&&this.closeViewActionEligible()){const counter=Number(this.save.toolUseCounter),effective=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);if(toolUseStartupMs(kind,effective)==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;}
     const priorTool=normalizeAttackVisual(p.attackVisual),priorDeadline=attackVisualDeadline(p,priorTool),continuing=priorTool?.toolKind==='great-sweep'&&priorTool.toolMotion?.v===1&&!priorTool.presentationCancelled&&priorDeadline>now,sweepDirection=continuing?-(priorTool.toolMotion.direction||1):1;
@@ -8870,6 +8919,7 @@ export class Game {
     // and Charged Air the Great Sweep alone (more damage, a wider sweep).
     const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
     const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1);
+    if (kind === 'great-sweep') { const plan=echoPlan(this.glyphLoadout('tool')); this.startToolSwing(now,{mirage:false,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),radius:B.radius*fieldGrow,imbue:this.imbueBonus(now),healShare:boxing?.heal||0,echoCopies:(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1})),priorTool,priorPose,direction:sweepDirection}); this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); this.cancelConsumeVisual('tool'); this.message = 'Great Sweep!'; return true; } // great-sweep.ts (2026-11-14): the blade itself, swung all the way round, deals the damage
     if(kind==='great-sweep'&&this.closeViewActionEligible()){
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
@@ -10246,9 +10296,10 @@ export class Game {
   obtainDrop(src, ordinaryMonster = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
-    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster ? { ordinaryMonster: true } : null);
+    const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its gift's band is reached
+    const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster || orrery ? { ...(ordinaryMonster ? { ordinaryMonster: true } : {}), ...(orrery ? { orreryLoot: orrery } : {}) } : null);
     const r = storeInventoryItem(this.save, item);
-    if (r.stored && item.property === "brawler") this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
+    if (r.stored && (item.property === "brawler" || item.property === "orrery")) this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
   }
   upgrade() {
@@ -10528,7 +10579,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.toolSwing = null; /* great-sweep.ts: a dodge cancels the spin */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10817,7 +10868,7 @@ export class Game {
       }
     }
     this.reconcileHeldTool(now);
-    if(p.hp<=0){this.cancelShadowDash(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);}
+    if(p.hp<=0){this.cancelShadowDash(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);

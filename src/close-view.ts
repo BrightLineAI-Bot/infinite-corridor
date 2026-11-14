@@ -9,7 +9,8 @@ import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's 
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
+import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
@@ -3669,7 +3670,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     else if (bodyHit) amount = hit;
     if(drink?.active)amount=drink.phase;
     if(pickupPhase!==null)amount=pickupPhase;
-    if (who === player && attack && (meleeAction?.v === 3 || visualAttack && visualRecord?.meleeAction?.v === 3)) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; } // the weighted swing's own clock (frozen in hit-stop; the pike's thrust keys mapped onto it)
+    if (who === player && attack && (meleeAction?.v === 3 || visualAttack && visualRecord?.meleeAction?.v === 3)) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; }
+    if (who === player && attack && visualRecord?.sweepSwing?.v === 1 && g.toolSwing?.id === visualRecord.sweepSwing.id) amount = Math.max(0, Math.min(1, g.toolSwing.elapsedMs / visualRecord.durationMs)); // great-sweep.ts: the spin's own clock (held in hit-stop) // the weighted swing's own clock (frozen in hit-stop; the pike's thrust keys mapped onto it)
     if (charge != null && !bodyHit) amount = charge;
     if (stunned && !defeat) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     if (defeat) amount = defeat.amount;
@@ -3691,7 +3693,18 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
     const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
     const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
-    const held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    let held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    // 2026-11-14 (Tim: the Orrery "in his right hand all the time"; the Great Sweep held "whenever it's equipped", on the right
+    // shoulder; "two weapons out"): the equipped Great Sweep or Aether Orrery rides in the right hand while the primary, whatever
+    // it is, stays in the left, through idle, walking, the tool's own use and one-handed swings. A primary that needs both hands
+    // (the Cinder Pike, the Fourfold Daggers, the Iron Fists) is carried in the left alone (one dagger, one gauntlet), and while
+    // it attacks or charges it briefly takes both hands as it always has (its 951/953 poses untouched): the tool is put away for
+    // that attack and comes back with the carry. Not during a drink or a hands-on interaction (the right hand is busy).
+    const rightTool = who !== player || !ordinary || !importedPlayer || !getCloseViewHeroAsset() /* the imported hero only: native forms keep their one held part */ ? '' : acceptedTool === 'great-sweep' ? 'great-sweep' : visualAttack && visualProfile?.startsWith('orrery-') ? 'orrery' : visualAttack && acceptedTool ? '' : closeViewHeldToolKind(g.save), /* an accepted use keeps its own tool, whatever is equipped since */ toolOwnsHeld = !!rightTool && (held === rightTool || held === 'emitter' || rightTool === 'orrery' && (held === 'orrery-tap' || held === 'orrery-release'));
+    const heldBase = toolOwnsHeld ? primaryHeld : held, heldGrip = Object.hasOwn(CLOSE_VIEW_HELD_GEAR, heldBase) ? CLOSE_VIEW_HELD_GEAR[heldBase].grip : heldBase === 'fist' || heldBase === 'fistCharge' ? 'bilateral' : 'one';
+    const primaryBusy = heldGrip !== 'one' && (visualAttack && (visualProfile === 'melee' || visualProfile === 'fist') || charge != null);
+    const offhandTool = rightTool && heldBase && !primaryBusy && !drink?.active && pickupPhase === null && closeViewHeldHand(heldBase) === 'left' ? rightTool : '', offhandSingle = !!offhandTool && heldGrip !== 'one';
+    if (offhandTool) held = heldBase;
     const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;
     let cleaverFrame=null;
     if(ordinary&&held==='verge-cleaver'&&now>=(player.dodgeUntil||0)&&(pose==='attack'||pose==='idle'||pose==='walk')){
@@ -3755,12 +3768,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (visualAttack && visualProfile === 'fist') { if (Number.isFinite(visualRecord?.fistSpeed)) input.speed = visualRecord.fistSpeed; if (Number.isFinite(visualRecord?.fistGaitPhase)) input.gaitPhase = visualRecord.fistGaitPhase; }
         // Empty gear retains Hammerfall carry; accepted tools retain their flattened base pose.
         input.heldProfile=visualProfile==='hammer'?(g.save.activeWeaponSlot==='secondary'?'emitter':currentPrimary):acceptedTool==='great-sweep'?'great-sweep':acceptedTool&&visualRecord?.toolMotion?.v===1?visualRecord.toolMotion.baseKind:held;
-        input.heldTool=heldSweep||acceptedTool==='great-sweep'?'great-sweep':null; // the sweep returns to its carry, never to the primary
+        input.heldTool=offhandTool||(heldSweep||acceptedTool==='great-sweep'?'great-sweep':null); // the sweep returns to its carry, never to the primary; the Orrery floats over the open palm
         input.primaryCarryStage=primaryStage;input.handProfile=held;input.cleaverFrame=cleaverFrame;input.artCharge=weaponArtCharge(g);/* weapon-arts.ts: a charge held */
         input.alpha = actor.alpha * heroFadeIn(state, now, reduce); input.hitFlash = hit;
         input.tint[0] = actor.poison ? .72 : 1; input.tint[1] = 1; input.tint[2] = actor.poison ? .65 : 1;
         if (wraith > 0) for (let k = 0; k < 3; k++) input.tint[k] *= 1 - (1 - CLOSE_VIEW_SHADOW_FORMS.wraith.tint[k]) * wraith;
-        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.fistChain = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;action.weaponArt=attack&&typeof visualRecord?.weaponArt==='string'?visualRecord.weaponArt:undefined;action.awakenedArt=attack&&typeof visualRecord?.awakenedArt==='string'?visualRecord.awakenedArt:undefined/* awakened-arts.ts: the awakened move's pose */;/* weapon-arts.ts */
+        action.kind = ''; action.profile = acceptedTool || (visualProfile === 'melee' && ['cinder-pike','verge-cleaver'].includes(held) ? held : visualProfile || held); action.phase = amount; action.poseMs = undefined; action.primaryStep = visualRecord?.primaryStep; action.primaryMotion=visualRecord?.primaryMotion; action.fistStep = undefined; action.fistLead = undefined; action.fistCharge = undefined; action.fistChain = undefined; action.toolKind=visualRecord?.toolKind;action.toolMotion=visualRecord?.toolMotion;action.toolUse=visualRecord?.toolUse;action.sweepSwing=visualRecord?.sweepSwing;/* great-sweep.ts: the 360° swing's own clock */action.weaponArt=attack&&typeof visualRecord?.weaponArt==='string'?visualRecord.weaponArt:undefined;action.awakenedArt=attack&&typeof visualRecord?.awakenedArt==='string'?visualRecord.awakenedArt:undefined/* awakened-arts.ts: the awakened move's pose */;/* weapon-arts.ts */
         action.durationMs = visualRecord?.durationMs || (tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs); action.yaw = actor.yaw;
         action.primaryStage = primaryStage; action.jumpAir = null;
         if (defeat) { action.kind = 'death'; action.profile = 'death'; action.phase = defeat.amount; action.durationMs = defeat.durationMs; }
@@ -3796,6 +3809,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
           gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
+          gear.offhand = offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
           if (!reduce && equipped > offset && action.kind === 'melee' && held === 'verge-cleaver' && meleeAction?.kind === 'verge-cleaver') {
@@ -3806,6 +3820,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             }
           }
           offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
+          if (offhandTool) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.

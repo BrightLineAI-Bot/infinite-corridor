@@ -64,7 +64,7 @@ test('Mirage of Blades: a Great Sweep press throws one spinning blade instead of
 
 test('without Mirage of Blades the Great Sweep still sweeps', () => {
   const { g } = arena({ name: 'Great Sweep', property: 'impact' });
-  g.fireSecondary(1000, { x: 1, y: 0 }); assert.ok(g.effects.some((e) => e.brawler)); assert.equal(g.projectiles.filter((p) => p.mirage).length, 0);
+  g.fireSecondary(1000, { x: 1, y: 0 }); assert.equal(g.toolSwing?.mirage, false, '2026-11-14: the 360° swing (great-sweep.ts), whose blade deals the damage'); assert.equal(g.projectiles.filter((p) => p.mirage).length, 0);
 });
 
 // Release 535 (Tim: "go with the quick golem").
