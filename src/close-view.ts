@@ -17,7 +17,7 @@ import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowD
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
-import { CARBINE, CONTINUOUS_ASSAULT, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
 import { knockdownPose } from "./lightning-giant-render.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
@@ -4344,6 +4344,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   }
   { const c = g.carbine?.charge; if (c && MODEL_STATE.muzzleReady && carbineCharged(c.held)) { const k = carbineFill(c.held), m = MODEL_STATE.muzzle, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55), r = (.045 + .07 * k) * pulse;
     card(m[0], m[1], m[2] - r * 1.9, m[2] + r * 1.9, r * 1.9, 11, .3 + .3 * k, CARBINE.colors.glow, 0, true); card(m[0], m[1], m[2] - r * .7, m[2] + r * .7, r * .7, 11, .95, 0xeafcff, 0, true); } } // the Carbine's charge
+  // The Shadow Clone charging with her (tool-forms.ts CLONE_CARBINE): her charge glow at its muzzle, in its violet.
+  { const q = g.cloneCarbineGlow?.(); if (q && finite(q.x) && finite(q.y)) { const V = CLONE_CARBINE.colors, z = SHOT_DRAW.height, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55 + 1.3), r = (.045 + .07 * q.k) * pulse;
+    card(q.x, q.y, z - r * 1.9, z + r * 1.9, r * 1.9, 11, .3 + .3 * q.k, V.glow, 0); card(q.x, q.y, z - r * .7, z + r * .7, r * .7, 11, .95, V.flash, 0); } }
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }
     const k = Math.max(0, Math.min(1, fx.life / A.life)), w = A.width * (.4 + .6 * k); card(fx.x, fx.y, 0, A.height, w, 11, .85 * k, A.colors.glow, 0); card(fx.x, fx.y, 0, A.height, w * .4, 11, k, A.colors.flash, 0);
