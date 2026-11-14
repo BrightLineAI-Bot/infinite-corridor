@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r963 (`5a4b4610b2d1`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r964 (`ea6000138121`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 964 | Claude | claude/blunderbuss-arc-echo | Blunderbuss with the Arc Wave tool form: each Echo follow-up shot is one great crescent about as wide as the three arcs as they leave the muzzle (90%), flying straight along the aim and striking each foe in its path once; one wave per Echo glyph at the existing Echo timing; without Arc Wave Echo shots are unchanged | In flight. |
+| 965 | Claude | claude/carbine-hold | Carbine in Close View: held two-handed at the right shoulder with a cheek weld (stock in the shoulder pocket, left hand on the fore-end, barrel level along the aim), arms steady while charging (the charge's animation restarts no longer flicker the arm down and up), a slight recoil kick that settles back to the hold | In flight. |
+| 964 | Claude | claude/blunderbuss-arc-echo | Blunderbuss with the Arc Wave tool form: each Echo follow-up shot is one great crescent about as wide as the three arcs as they leave the muzzle (90%), flying straight along the aim and striking each foe in its path once; one wave per Echo glyph at the existing Echo timing; without Arc Wave Echo shots are unchanged | Merged as `ea6000138121` (#631). |
 | 963 | Claude | claude/clone-carbine-charge | The Shadow Clone charges the Carbine with the Wayfarer and fires its own charged beam at her target; both beams up to x1.15 at full charge with the clone out; clone aims at her target without a lock | Merged as `5a4b4610b2d1` (#630). |
 | 962 | Claude | claude/daily-region-1114 | New far region (landscape v27, REGIONS_V27): lava channels between scoria levees with crust bridges, cinder cones with a lava crater and climbable rim (sometimes a cache), sulphur-ringed fumaroles; from far Firelands, Emberlands and Ashfields; new ground only | In flight. |
 | 961 | Claude | claude/sweep-orrery | Great Sweep: broken giant's greatsword carried on the right shoulder, swung a full 360° with the hit following the blade (with Mirage of Blades the swing is drawn only, blades do the damage, now shaped as Standard View's in 3D and tilted to the camera); any player cancel ends the animation but lands the whole blow; Aether Orrery floats over the open right palm with the primary in the left; the Orrery now drops (v1 stream past Infinite III) and a one-time re-gift for saves that lost the gifted one | Merged as `2b574429348b` (#628). |
