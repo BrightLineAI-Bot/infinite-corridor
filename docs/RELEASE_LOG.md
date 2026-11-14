@@ -15,13 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r960 (`616e563b1b3b`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r962 (`a8bf3852db96`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 961 | Claude | claude/sweep-orrery | Great Sweep: broken giant's greatsword carried on the right shoulder, swung a full 360° with the hit following the blade (with Mirage of Blades the swing is drawn only, blades do the damage, now shaped as Standard View's in 3D and tilted to the camera); any player cancel ends the animation but lands the whole blow; Aether Orrery floats over the open right palm with the primary in the left; the Orrery now drops (v1 stream past Infinite III) and a one-time re-gift for saves that lost the gifted one | In flight. |
+| 963 | Claude | claude/clone-carbine-charge | The Shadow Clone charges the Carbine with the Wayfarer and fires its own charged beam at her target; both beams up to x1.15 at full charge with the clone out; clone aims at her target without a lock | In flight. |
+| 962 | Claude | claude/daily-region-1114 | New far region (landscape v27, REGIONS_V27): lava channels between scoria levees with crust bridges, cinder cones with a lava crater and climbable rim (sometimes a cache), sulphur-ringed fumaroles; from far Firelands, Emberlands and Ashfields; new ground only | In flight. |
+| 961 | Claude | claude/sweep-orrery | Great Sweep: broken giant's greatsword carried on the right shoulder, swung a full 360° with the hit following the blade (with Mirage of Blades the swing is drawn only, blades do the damage, now shaped as Standard View's in 3D and tilted to the camera); any player cancel ends the animation but lands the whole blow; Aether Orrery floats over the open right palm with the primary in the left; the Orrery now drops (v1 stream past Infinite III) and a one-time re-gift for saves that lost the gifted one | Merged as `2b574429348b` (#628). |
 | 960 | Claude | claude/tool-ranges | Rift Bombard finite (6.5 tiles x reach, bursts where it lands); Lumen Spindle 5.4 tiles x reach, dissipates or turns back for an equal leg; Carbine and Aether Orrery unlimited; in Close View the Wayfarer's shots follow line of sight (waist-high rises block, foes seen on plateaus or flying can be hit, shots from her real height), a full-charge Carbine pierces terrain | Merged as `616e563b1b3b` (#627). |
 | 959 | Claude | claude/cleaver-charge-dash | The Verge Cleaver's Lava Slash weapon art no longer teleports: a travelled rush (16 tiles/s, 140-280 ms, eased) through the shared quarter-step mover, slam on arrival, ember after-images, Close View camera following, in every area and both views; also when released mid-jump; a dodge cancels it and returns the stored charge; additive playerRuntime.artRush v1 | Merged as `a7520840d7f4` (#626). |
 | 958 | Claude | claude/pike-model | Close View presentation: the Cinder Pike rebuilt from the Quandrix Staff's slim shaft at the staff's old length, a wooden spear with an iron leaf point, carried in both hands across the body about halfway up the shaft and thrust past the hip; the Quandrix Staff cut to the Wayfarer's height; the Fourfold Daggers white with a green stripe across each blade; Standard View lengths match | Merged as `5c951f09dc7f` (#625). |
@@ -319,6 +321,8 @@ Main is at r960 (`616e563b1b3b`); production serves `r951-4925ab3898c1` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 961 | r961-2b574429348b | 2026-11-14 | Includes r952–r960. Fable review (951→961): no blockers. Publish run 43625993906 succeeded; gh-pages release-identity names the candidate. Non-blocking notes: the soundtrack's CPU cost on a real phone is unmeasured; audio resumes only on visibilitychange or unmute; a rollback to r951 after Gathered Breath is socketed needs care. |
+| 951 | r951-4925ab3898c1 | 2026-11-14 | Includes r950 (tower steps, gargoyle ×2). Fable review (949→951): no blockers. Cleaver weighted swings. |
 | 914 | r914-c1265a9326d1 | 2026-11-12 | Fable review (912→914, releases 913–914): no blockers; build clean; phase release refuses walls and lethal tiles (probe beside lava and abyss); dithered roof program falls back safely; camera occlusion fixed at 16 samples. Note: the phase ring fallback ignores elevation (fixed in 915). |
 | 912 | r912-f0117e40ae61 | 2026-11-12 | Fable review (911→912): no blockers. Published by the publishing session. |
 | 911 | r911-37269cec64fc | 2026-11-12 | Fable review (910→911): no blockers. Published by the publishing session. |
