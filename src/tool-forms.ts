@@ -41,6 +41,39 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
+// The crescent as drawn (both views: Close View draws drawToolForms on its floor through combat-visuals.ts): an arc `span`
+// radians to either side of the heading about a centre `back` × its radius behind the wave, so its tips trail its front.
+// `greatLine`: the stroke's thickness on an Echo's great wave (ARC_WAVE_ECHO), × `line`.
+export const ARC_WAVE_SHAPE = Object.freeze({ span: 1.1, back: .6, line: .14, greatLine: 1.25, alpha: .85, color: "#e8c27a" });
+// The great Echo wave (Tim, 2026-11-14: "when you have Arc Wave enabled, each Echo shot will be a large arc... about the same
+// width as the 3 arcs combined (or slightly smaller) when they first come out. And then it'll just travel forward. So if you
+// have 2 echoes on there, it'll do 2 of those arc waves after each shot"). With Arc Wave on, each Echo copy of a Blunderbuss
+// shot (one per Echo glyph, at the Echo's own delay and damage share: glyphs.ts echoPlan) flies as one great crescent straight
+// along the aim, in place of a copy of the middle wave. Its half-width `waveHalf` is `scale` × the half-width the three waves
+// span `at` tiles past the muzzle (`muzzle` tiles out from the Wayfarer, where shots leave): the outer waves' paths stand
+// (muzzle + at) × sin(spread) to either side, and each wave catches foes 0.1 + its grow beyond its path (game.ts
+// updateProjectiles). With the Blunderbuss's .26 cone and a .5 wave: .9 × (1.35 × .257 + .6) = .85, a wave 1.7 tiles across
+// where the three span 1.9. It strikes every foe whose body meets the crescent's line (within `depth` tiles of it; the tips
+// trail as drawn), each foe once per wave, passing through as many as the middle wave would (its pierce). Speed, flight time
+// and so range are the middle wave's (ARC_WAVE.speed for the Blunderbuss's lifetime × the reach stat); walls and Close View's
+// raised ground stop it at its centre like any shot. Without Arc Wave, Echo shots are unchanged.
+export const ARC_WAVE_ECHO = Object.freeze({ at: 1, scale: .9, depth: .3, muzzle: .35 });
+// The great wave's half-width for a middle wave `shot` of a cone `spread` radians to a side (0 when it is not an Arc Wave).
+export function arcWaveEchoHalf(shot, spread) {
+  if (!shot?.arcWave) return 0;
+  const E = ARC_WAVE_ECHO, grow = Number(shot.grow) || ARC_WAVE.grow, a = Math.max(0, Math.min(Math.PI / 2, Number(spread) || 0));
+  return E.scale * ((E.muzzle + E.at) * Math.sin(a) + .1 + grow);
+}
+// Whether a great wave `p` (heading p.dx, p.dy; half-width p.waveHalf) at (p.x, p.y) touches a foe of body radius `body` centred
+// at (ex, ey): the foe is within the half-width (plus its body) to the side, and its body meets the crescent's line (as drawn:
+// forward offset −back·R + √(R² − l²) at side offset l, R = waveHalf / sin(span)) within `depth`. No allocation.
+export function arcWaveTouches(p, ex, ey, body) {
+  const H = Number(p.waveHalf) || 0; if (!(H > 0)) return false;
+  const rx = ex - p.x, ry = ey - p.y, f = rx * p.dx + ry * p.dy, l = ry * p.dx - rx * p.dy, b = Math.max(0, Number(body) || 0);
+  if (Math.abs(l) > H + b) return false;
+  const S = ARC_WAVE_SHAPE, R = H / Math.sin(S.span), lc = Math.min(Math.abs(l), H), line = -S.back * R + Math.sqrt(Math.max(0, R * R - lc * lc));
+  return Math.abs(f - line) < ARC_WAVE_ECHO.depth + b;
+}
 // Release 649 (Tim, 2026-11-01: "a large sword that... moves out and swings, and then comes back to you... great sword... great
 // axe... a huge shuriken... they should Pierce through... home towards me... for like 3 seconds... I only have 3 maximum at a
 // time... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air").
@@ -338,7 +371,8 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
       ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = "#ff8a2a"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); for (const a of [spin - 1.6, spin + .5, spin + 2.6]) { ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8); } ctx.stroke(); }
-    else if (p.arcWave) { const [x, y] = toScreen(p), a = Math.atan2(p.dy, p.dx), R = (p.grow || ARC_WAVE.grow) * s; ctx.strokeStyle = "#e8c27a"; ctx.lineWidth = s * .14; ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x - Math.cos(a) * R * .6, y - Math.sin(a) * R * .6, R, a - 1.1, a + 1.1); ctx.stroke(); ctx.globalAlpha = 1; }
+    else if (p.arcWave) { const S = ARC_WAVE_SHAPE, [x, y] = toScreen(p), a = Math.atan2(p.dy, p.dx), great = p.waveHalf > 0, R = (great ? p.waveHalf / Math.sin(S.span) : (p.grow || ARC_WAVE.grow)) * s; // ARC_WAVE_ECHO: an Echo's great wave is the same crescent at its own width
+      ctx.strokeStyle = S.color; ctx.lineWidth = s * S.line * (great ? S.greatLine : 1); ctx.globalAlpha = S.alpha; ctx.beginPath(); ctx.arc(x - Math.cos(a) * R * S.back, y - Math.sin(a) * R * S.back, R, a - S.span, a + S.span); ctx.stroke(); ctx.globalAlpha = 1; }
   }
 }
 
