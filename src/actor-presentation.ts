@@ -127,14 +127,21 @@ export function shotVisualHeight(shot,age=shot?.age) {
   if(flight&&shot?.path==='grenade'){const u=Math.max(0,Math.min(1,finite(age,0)/flight.duration));return .66*(1-u)+.08*u+2.4*u*(1-u);}
   return Math.max(.05, Math.min(8, finite(shot?.visualHeight, DEFAULT_PROJECTILE_VISUAL_HEIGHT)));
 }
+// A creature's designed opacity: burrowed or hidden (0), phasing through a wall, a Cinder Seraph aloft out of reach, an illusion,
+// a departing fade. `aloft` false leaves out the Seraph's aloft fade (Close View draws it solid, its height shows it is aloft).
+export const ACTOR_ALPHA = Object.freeze({ phasing: .45, aloftSeraph: .35, illusion: .92 });
+export function designedAlpha(actor, p = actorProfile(actor), aloft = true) {
+  if (!p) return 1; const A = ACTOR_ALPHA;
+  return Math.max(0, Math.min(1, (actor.hidden && (p.hidden || burrowing(actor)) ? 0 : 1) * (actor.phasing || actor.phases && actor.untargetable ? A.phasing : aloft && actor.kind === 'cinderSeraph' && actor.aloft ? A.aloftSeraph : 1) *
+    (actor.illusion ? A.illusion : 1) * finite(actor.fleeFade, 1)));
+}
 export function actorPresentation(actor) {
   const p = actorProfile(actor);
   if (!p) return null;
   const scale = presentationScale(actor);
   const air = actor.kind === 'cinderSeraph' && actor.aloft ? .9 : 0;
   return { ...p, scale, bodyLift: (p.bodyLift + air) * scale, head: (p.bodyLift + air + p.head) * scale,
-    alpha: Math.max(0, Math.min(1, (actor.hidden && (p.hidden || burrowing(actor)) ? 0 : 1) * (actor.phasing || actor.phases && actor.untargetable ? .45 : actor.kind === 'cinderSeraph' && actor.aloft ? .35 : 1) *
-      (actor.illusion ? .92 : 1) * finite(actor.fleeFade, 1))), stagger: Math.max(0, Math.min(1, Math.max(finite(actor.poiseBreak, 0), actor.pack?.phase === 'stunned' ? finite(actor.pack.t, 0) / 1.4 : 0))) };
+    alpha: designedAlpha(actor, p, true), stagger: Math.max(0, Math.min(1, Math.max(finite(actor.poiseBreak, 0), actor.pack?.phase === 'stunned' ? finite(actor.pack.t, 0) / 1.4 : 0))) };
 }
 const AFFIXES = new Set(['volcanic', 'skyAssault', 'spiked', 'venomous', 'droneSwarm', 'enraged']);
 // A body alone is insufficient. New families opt in only after their action and body-embedded effects are covered.
