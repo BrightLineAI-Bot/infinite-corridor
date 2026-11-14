@@ -2681,8 +2681,8 @@ const RUN = {
     }
     if (d.stage === "shake") {
       const k = Math.min(1, 1 - Math.max(0, d.left) / J.shake), side = Math.sin(k * Math.PI * J.swings), across = { x: -d.base.y, y: d.base.x };
-      prey.x = e.x + d.base.x * d.hold + across.x * side * J.swing; prey.y = e.y + d.base.y * d.hold + across.y * side * J.swing;
-      e.stegoPose = "grabShake"; e.stegoGrab = { who: d.prey, phase: "shake", t: k, where: d.where };
+      prey.x = e.x + d.base.x * d.hold + across.x * side * J.swing; prey.y = e.y + d.base.y * d.hold + across.y * side * J.swing; prey.dinoYank = side; // the art yaws the shaken body with it (close-view-beast-spino.ts)
+      e.stegoPose = "grabShake"; e.stegoGrab = { who: d.prey, phase: "shake", t: k, where: d.where, side };
       d.next -= w.dt;
       if (d.next <= 0 && d.n < J.swings) { d.n++; d.next = J.shake / J.swings;
         stegoWoundRival(w, e, prey, Math.max(1, Math.ceil(damageOf(e, "stegoJaws") * J.chewShare)), DINO_DUEL.weight.stegoJaws); dinoCue(w, e, "hit", "stegoJaws", prey, { victim: prey.kind });
@@ -4617,8 +4617,8 @@ function dinoFeeds(e, s, w) {
   return true;
 }
 // The Spinosaurus in the stego's jaws (stegoJaws): its holder alive, mid-grab, holding it. Else the hold is dropped.
-function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; return false; }
-function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) delete q.stegoHeldBy; }
+function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; q.dinoYank = 0; return false; }
+function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) { delete q.stegoHeldBy; q.dinoYank = 0; } }
 // Is `foe`'s blow at `e` coming (its wind-up or its swing, aimed at e)? Then e holds its own, so the blows alternate.
 const dinoBlowComing = (foe, e) => !!foe?.pack?.attack && foe.pack.data?.prey === e.id && foe.pack.phase !== "recover";
 // Its choice, every `refocus` s (its moves pause the clock): the Spinosaurus in sight, or (now and then, with you close) you.
@@ -4823,11 +4823,11 @@ function spinoCan(e, s, w, id) {
   return true;
 }
 // Is a creature still in its jaws? (Its holder alive, mid-grab, holding this one.)
-function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; return false; }
+function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; if (q.dinoLift) q.dinoLift = 0; return false; }
 // Lets go of whatever it held (a grab broken off by a stagger, its death or a reload).
 function spinoLetGo(e, s, w) {
   const held = s.spinoHolding; s.spinoHolding = null; e.spinoGrab = null; if (!held) return;
-  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) delete q.spinoHeldBy; }
+  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) { delete q.spinoHeldBy; q.dinoLift = 0; } }
 }
 // Every fighting frame, before the shared brain: the shed, a broken-off grab, its prey first, then one-off jumps and grabs at other
 // creatures. True when it has spent the frame.

@@ -24,7 +24,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast, holdInJaws } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
@@ -280,6 +280,10 @@ export const CLOSE_VIEW = Object.freeze({
     // `heads`: the drawn head height (tiles) of the big Close View bodies by kind, where scale alone under-reads them (the region
     // scales a Giant to 1.9; its Close View body stands far taller); any of these counts as big at any scale.
     threat: Object.freeze({ range: 8, band: 2, minScale: 1.8, headPerScale: 1.5, fits: 2, tall: 4, pull: 2.5, focal: .82, lift: 1.2, easeIn: 2.5, easeOut: 1.2, hold: .8,
+      // The dino duel (Tim, 2026-11-14): while the Spinosaurus and the Wild Stegosaurus duel (their e.dinoDuel) within `range` tiles of
+      // the Wayfarer, the framing asks for all of itself, and the boom pulls back by `perTile` a tile the farther duellist stands past
+      // `fits` tiles from her, up to `pull` tiles (walls still bound it, as the threat's own `pull`), so both and she stay in view.
+      duel: Object.freeze({ range: 16, fits: 4, perTile: .45, pull: 5 }),
       heads: Object.freeze({ lightningGiant: 5, crimsonTyrant: 4.5, doomChaser: 4.5, mountainTurtle: 4, questingBeast: 3.5, briarStag: 3.5, voidWalker: 4.5, astralWorm: 4.5, tremorWorm: 4, gloomvast: 4.5, morphingBlob: 3, ashenMoth: 3.5, groveMoth: 3.5, nanobotKnight: 3 }) }),
     // Look mode (Tim, 2026-11-13: "hold down on the compass to activate pinch-to-zoom... if you're talking to someone you can
     // zoom in on their face or body to see what they look like"). Runtime only (closeViewLook*; nothing is saved). A press on
@@ -816,7 +820,7 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
   // before), the eye's height they are measured against (last frame's), and whether what lies between may be faded this frame
   solidTop: null, solidMap: null, solidW: 0, solidH: 0, eyeZ: -Infinity, seeThrough: false,
   // big threats in frame (CLOSE_VIEW.camera.threat): the eased share asked (0..1), its rate, how long it has wanted less, and the boom's extra length
-  threat: 0, threatV: 0, threatFor: 0, threatPull: 0,
+  threat: 0, threatV: 0, threatFor: 0, threatPull: 0, duelPull: 0, duelPullV: 0, // duelPull: the dino duel's boom length (threat.duel)
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -1088,13 +1092,24 @@ export function closeViewThreatWant(g) {
     if (near * tall > want) want = near * tall; }
   return want;
 }
-// Eases the share toward what is asked (in at once when more is wanted, out only after `hold`); paused, it holds.
+// The dino duel's framing (CLOSE_VIEW.camera.threat.duel): the boom's extra length (tiles) the duel near the Wayfarer asks for, or 0.
+export function closeViewDuelPull(g) {
+  const D = CLOSE_VIEW.camera.threat.duel, p = g?.player, list = g?.enemies; if (!p || !Array.isArray(list)) return 0; const px = footX(p), py = footY(p); let far = -1;
+  for (let i = 0; i < list.length; i++) { const e = list[i]; if (!e || e.dead || !(e.hp > 0) || !e.dinoDuel || typeof e.dinoDuel.foe !== "string") continue;
+    const d = Math.hypot(e.x + .5 - px, e.y + .75 - py); if (d >= D.range) continue;
+    let foe = null; for (let j = 0; j < list.length; j++) if (list[j]?.id === e.dinoDuel.foe) { foe = list[j]; break; }
+    if (!foe || foe.dead || !(foe.hp > 0)) continue; far = Math.max(far, d, Math.hypot(foe.x + .5 - px, foe.y + .75 - py)); }
+  return far < 0 ? 0 : Math.max(.001, Math.min(D.pull, (far - D.fits) * D.perTile));
+}
+// Eases the share toward what is asked (in at once when more is wanted, out only after `hold`); paused, it holds. A dino duel asks
+// for all of it, and its own boom length while that is longer than the threat's.
 function threatFrame(g, dt) {
-  const T = CLOSE_VIEW.camera.threat, want = closeViewThreatWant(g);
+  const T = CLOSE_VIEW.camera.threat, duel = closeViewDuelPull(g), want = duel > 0 ? 1 : closeViewThreatWant(g);
+  if (dt > 0) spring(CAM, "duelPull", "duelPullV", duel, duel >= CAM.duelPull ? T.easeIn : T.easeOut, dt); else if (!Number.isFinite(CAM.duelPull)) CAM.duelPull = 0;
   if (!(dt > 0)) { if (!Number.isFinite(CAM.threat)) CAM.threat = 0; }
   else if (want >= CAM.threat) { CAM.threatFor = 0; spring(CAM, "threat", "threatV", want, T.easeIn, dt); }
   else if ((CAM.threatFor += dt) >= T.hold) spring(CAM, "threat", "threatV", want, T.easeOut, dt);
-  CAM.threat = Math.max(0, Math.min(1, CAM.threat)); CAM.threatPull = CAM.threat * T.pull;
+  CAM.threat = Math.max(0, Math.min(1, CAM.threat)); CAM.threatPull = CAM.threat * Math.max(T.pull, Math.max(0, Math.min(T.duel.pull, CAM.duelPull)));
 }
 function turnCamera(g, now) {
   // The Game lifecycle records elapsed pause time even if no camera/input callback ran during it.
@@ -1494,7 +1509,7 @@ export function closeViewSteer(g, state, now = NaN) {
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
+export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
 // ------------------------------------------------------------------------------------------------ Look mode (CLOSE_VIEW.camera.look)
 // Runtime only: nothing here is saved, and a reload starts with it off. `s` is the eased zoom, `want` the asked one; the subject
 // (`key`: its game object, null for the Wayfarer) and its aim point (tx, ty, tz, eased) are chosen after each frame's actors are
@@ -3445,6 +3460,7 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
 // beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
 const BEAST_SIGHT_FRAME = { far: Infinity }; // this frame's fog far edge, for a kept beast's distant mesh (CLOSE_VIEW_BEAST_SIGHT.lod)
 const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+const DINO_ROCK_DRAW = Object.freeze({ from: 4.5, still: 1.6, size: .6, alpha: .92 }); // the dino duel's falling rock: from `from` tiles up, a disc `size` of its ring (drawn with the spell lights and shots)
 // Close View worm pass 2: small minions (the Tremor Worm's field tentacles: `minion` in the roster) count against their own allowance
 // (BEAST_SLOT.minion.maxMinions), so they never crowd a beast out of its slot; the frame's total stays bounded by both.
 function admitBeasts(g, draws, n, Q, now, reduce) {
@@ -3474,6 +3490,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); frame.fogCap = kept ? S.fog : 1; track.seen = now;
     B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); count(spec);
   }
+  holdInJaws(B.tracks, now); // the dino duel: a beast held in the other's jaws is drawn there (close-view-beasts.ts)
   for (const [foe, track] of B.tracks) {
     if (track.seen === now) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind];
@@ -4347,6 +4364,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // The Shadow Clone charging with her (tool-forms.ts CLONE_CARBINE): her charge glow at its muzzle, in its violet.
   { const q = g.cloneCarbineGlow?.(); if (q && finite(q.x) && finite(q.y)) { const V = CLONE_CARBINE.colors, z = SHOT_DRAW.height, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55 + 1.3), r = (.045 + .07 * q.k) * pulse;
     card(q.x, q.y, z - r * 1.9, z + r * 1.9, r * 1.9, 11, .3 + .3 * q.k, V.glow, 0); card(q.x, q.y, z - r * .7, z + r * .7, r * .7, 11, .95, V.flash, 0); } }
+  // The dino duel's rockfall (monster-pack.ts dinoRock): its ring is on the floor (the ground capture); the rock itself drops onto it
+  // from the ceiling here as a dark stone, landing as its warning runs out (held still above the ring under reduced motion).
+  for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
+    const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
+    card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }
     const k = Math.max(0, Math.min(1, fx.life / A.life)), w = A.width * (.4 + .6 * k); card(fx.x, fx.y, 0, A.height, w, 11, .85 * k, A.colors.glow, 0); card(fx.x, fx.y, 0, A.height, w * .4, 11, k, A.colors.flash, 0);

@@ -27,6 +27,10 @@ export const SPINO_RIG = Object.freeze({
   shedSwitch: .12, chunkFall: 1.2, chunkSpin: 5, chunkStagger: .55, chunkSize: 1.45,
   // the rib spears: length (model units), how far out to the sides, where they converge ahead of the chest
   spear: .78, spearOut: Object.freeze([[.15, .95, .3], [-.25, .95, -.2]]), spearPoint: Object.freeze([1.25, 0, -.1]),
+  // the dino duel: the body yawed and rolled (radians) at the end of each swing of the stego's shake
+  yank: Object.freeze({ yaw: .45, roll: .22 }),
+  // and where its jaws hold the stego it lifts: forward and up from the head bone (model units)
+  jawHold: Object.freeze([.3, -.06]), flank: .3, // flank: how far out from the spine the stego's beak holds its belly
   // ground the snout: the plough drags the jaw along it, the dig drives it under
   ploughHead: -.2, digHead: -1.05,
 });
@@ -289,6 +293,10 @@ export function sampleSpino(tr, e, env) {
   else if (env.target && !dead) { const tx = env.target.x - e.x, ty = env.target.y - e.y; if (Math.hypot(tx, ty) > .3) want = Math.atan2(ty, tx); }
   if (!Number.isFinite(want)) want = e.facingX < 0 ? Math.PI : 0;
   if (!Number.isFinite(tr.yaw)) tr.yaw = want;
+  // the dino duel: shaken in the Wild Stegosaurus's jaws (e.stegoHeldBy), it keeps its heading while the shake yaws and rolls its whole
+  // body with the stego's swing (e.dinoYank, -1..1; the game moves it side to side); none under reduced motion
+  const yank = dead || !e.stegoHeldBy || reduce ? 0 : Math.max(-1, Math.min(1, Number(e.dinoYank) || 0));
+  if (e.stegoHeldBy) want = tr.yaw;
   if (!dead) { const delta = Math.atan2(Math.sin(want - tr.yaw), Math.cos(want - tr.yaw)), rate = e.pack?.attack ? G.attackTurnRate : tr.gait.moving < .1 ? G.standTurnRate : G.turnRate;
     let turn = Math.max(-1, Math.min(1, dt * rate)) * delta; if (!e.pack?.attack && tr.gait.moving < .1) turn = Math.max(-G.standTurnMax * dt, Math.min(G.standTurnMax * dt, turn)); tr.yaw += turn; }
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
@@ -318,7 +326,7 @@ export function sampleSpino(tr, e, env) {
   tr.run += ((running ? 1 : 0) - tr.run) * Math.min(1, dt * 6);
   const gs = running ? G.run : G.walk;
   for (let k = 0; k < 2; k++) tr.gait.side[k] = (k ? 1 : -1) * G.halfWidth * S;
-  const still = (!!e.pack?.attack && !running && name !== 'lunge' && name !== 'grabLunge') || air > .1 || dead || e.fleeFade != null;
+  const still = (!!e.pack?.attack && !running && name !== 'lunge' && name !== 'grabLunge') || air > .1 || dead || e.fleeFade != null || !!e.stegoHeldBy;
   stepGait(tr.gait, env.x, env.y, yaw, now, { stride: gs.stride * S, stance: gs.stance, settle: G.settle, still, snapDistance: 3 * S, stepAt: G.stepAt * S, stepTime: G.stepTime });
   const moving = tr.gait.moving, cyc = tr.gait.phase * Math.PI * 2;
   // the shed: the share of the hide gone, a tremble through the first moment of it
@@ -328,7 +336,7 @@ export function sampleSpino(tr, e, env) {
   let alpha = e.fleeFade != null ? clamp01(e.fleeFade) : 1, roll = 0, sink = 0;
   if (dead) { if (death < 1e-9 || tr.deathDir === 0) { const px = env.target?.x ?? e.x, py = env.target?.y ?? e.y; tr.deathDir = (px - e.x) * -sf + (py - e.y) * cf > 0 ? -1 : 1; }
     sink = smooth(death / .35); roll = 1.35 * easeIn(span(death, .2, .55)) * tr.deathDir; alpha *= 1 - span(death, .82, 1); }
-  setEuler(P, BI.root, yaw, 0, roll); P.scl[BI.root] = S; resolveBone(P, BI.root, x, y, env.z + air * (1 - sink) + (dead ? .12 * S * span(death, .2, .55) : 0));
+  setEuler(P, BI.root, yaw + yank * G.yank.yaw, 0, roll + yank * G.yank.roll); P.scl[BI.root] = S; resolveBone(P, BI.root, x, y, env.z + air * (1 - sink) + (dead ? .12 * S * span(death, .2, .55) : 0));
   const breathe = reduce ? 0 : Math.sin(t * 2.1);
   const bob = moving * G.bob * (1 + tr.run * 1.5) * (.5 - .5 * Math.cos(cyc * 2)), sway = reduce ? 0 : moving * .012 * Math.sin(cyc);
   const shiver = tremble ? tremble * Math.sin(t * G.tremble) : 0;
@@ -422,3 +430,14 @@ export function sampleSpino(tr, e, env) {
   return F;
 }
 export const spinoBone = (tr, name) => { const i = BI[name]; return [tr.pose.wp[i * 3], tr.pose.wp[i * 3 + 1], tr.pose.wp[i * 3 + 2]]; };
+// The dino duel (close-view-beasts.ts holdInJaws): where its jaws close on a held Wild Stegosaurus, and where the stego's jaws hold it
+// (`where`: its tail or its belly), in world units, from this frame's pose.
+export const spinoJawPoint = (tr, out) => boneLocalToWorld(tr.pose, 'head', R.jawHold[0], 0, R.jawHold[1], out);
+const FLANK = [0, 0, 0];
+export function spinoHoldPoint(tr, where, out, from = null) {
+  if (where === 'tail') return boneLocalToWorld(tr.pose, 'tail2', 0, 0, 0, out);
+  // the belly: its flank on the side nearer the jaws that hold it
+  const a = boneLocalToWorld(tr.pose, 'spine', 0, -R.flank, -.05, FLANK), b = boneLocalToWorld(tr.pose, 'spine', 0, R.flank, -.05, out);
+  if (from && Math.hypot(a[0] - from[0], a[1] - from[1]) < Math.hypot(b[0] - from[0], b[1] - from[1])) { out[0] = a[0]; out[1] = a[1]; out[2] = a[2]; }
+  return out;
+}

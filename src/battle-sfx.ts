@@ -31,12 +31,15 @@ export const BATTLE_SFX = {
   // Footfalls: one each `stride` tiles walked on the ground, `stepGap` s apart at the least.
   stride: { spinoRex: 1.7, wildStego: 1.25 }, stepGap: .3,
   roll: { max: 4.4, release: .25 },
+  // The Wild Stegosaurus's roar (bellowStego, bellowShort): its fundamental (Hz; the Spinosaurus's sits at 48-72), the second saw's
+  // detune, the snarl's rise (s), the rasp's band (Hz), its level and its formant's, the growl's tremolo (Hz) and the drive into the soft clipper.
+  stegoRoar: { f0: 98, detune: 1.021, snarl: .09, rasp: 2100, raspLevel: 1.4, growl: 38, drive: 2.6, raspFormant: 1.1 },
   // The undercurrent (DUEL.undercurrent): a `hz` drone with its octave, and a lub-dub heartbeat every `beat` s; `gain` sets the
   // drone (about -37 dB RMS at the output with default volumes, its beats peaking near -27 dB), `thump` the heartbeat.
   undercurrent: { gain: .012, hz: 49, octave: .35, beat: 1.35, dub: .3, thump: .022, fade: 2, ahead: .5 },
   // Each sound's peak level and priority.
   sounds: {
-    roarSpino: [.6, 3], roarBig: [.7, 3], growlSpino: [.42, 2], inhale: [.22, 2], bellowStego: [.42, 3], bellowShort: [.36, 2],
+    roarSpino: [.6, 3], roarBig: [.7, 3], growlSpino: [.42, 2], inhale: [.22, 2], bellowStego: [1.3, 3], bellowShort: [1.1, 2],
     biteSpino: [.85, 3], biteStego: [.62, 3], rakeSpino: [.42, 3], rakeStego: [.36, 3], whoosh: [.32, 2], whooshHeavy: [.36, 2], whooshLight: [.24, 2],
     tailSpino: [.85, 3], tailStego: [.72, 3], slam: [.85, 3], slamBig: [.95, 3], impact: [.8, 3], wheelRoll: [.34, 3], wheelCrunch: [.75, 3],
     digScrape: [.3, 2], fling: [.42, 2], rockets: [.45, 3], boneVolley: [.42, 3], boneCrackle: [.32, 2], spear: [.62, 3], crunch: [.85, 3],
@@ -261,16 +264,29 @@ export class BattleSfx {
     }
     return { ...p, end };
   }
+  // The Wild Stegosaurus's roar (Tim, 2026-11-14: "too much like a goat bleat"): a snarl, then a throaty, rasping roar body. Two
+  // detuned saws (beating against each other) and a heavy rasp of noise through a fast growl tremolo, driven into the shared soft
+  // clipper (BATTLE_SFX.stegoRoar.drive), shaped by throat formants. Higher and raspier than the Spinosaurus's deep roar, a bark and
+  // a snarl more than a bellow; no vibrato (it bleated).
   bellowVoice(t, out, L, dur) {
-    const p = { src: [], nodes: [] }, a = this.osc("square", 130, t), b = this.osc("sawtooth", 262, t), vib = this.osc("sine", 5.6, t), vg = this.gain(5);
-    for (const [osc, k] of [[a, 1], [b, 2.016]]) { const f = osc.frequency; f.setValueAtTime(130 * k, t); f.linearRampToValueAtTime(186 * k, t + .12); f.linearRampToValueAtTime(164 * k, t + dur * .6); f.linearRampToValueAtTime(112 * k, t + dur); }
-    const bg = this.gain(.45), f1 = this.filter("bandpass", 720, 7), f2 = this.filter("bandpass", 1850, 9), f2g = this.gain(.8), lp = this.filter("lowpass", 3200), env = this.gain(0);
-    const nz = this.noiseSrc(t), nb = this.filter("bandpass", 1400, 1), ng = this.gain(.12);
-    vib.connect(vg); vg.connect(a.frequency); vg.connect(b.frequency); a.connect(f1); b.connect(bg); bg.connect(f1); a.connect(f2); bg.connect(f2); f2.connect(f2g);
-    f1.connect(lp); f2g.connect(lp); nz.connect(nb); nb.connect(ng); ng.connect(lp); lp.connect(env); env.connect(out);
-    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(L * 2.2, t + .06); env.gain.linearRampToValueAtTime(L * 1.9, t + dur * .6); env.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    p.src.push(a, b, vib, nz); p.nodes.push(a, b, vib, vg, bg, f1, f2, f2g, lp, env, nz, nb, ng);
+    const R = BATTLE_SFX.stegoRoar, p = { src: [], nodes: [] }, f0 = R.f0, a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0 * R.detune, t);
+    for (const [osc, k] of [[a, 1], [b, R.detune]]) { const f = osc.frequency; f.setValueAtTime(f0 * .78 * k, t); f.linearRampToValueAtTime(f0 * 1.3 * k, t + R.snarl); f.linearRampToValueAtTime(f0 * 1.12 * k, t + dur * .35); f.linearRampToValueAtTime(f0 * .74 * k, t + dur); }
+    const nz = this.noiseSrc(t), rasp = this.filter("bandpass", R.rasp, 1.1), rg = this.gain(R.raspLevel), mix = this.gain(.5), am = this.gain(.55), lfo = this.osc("sine", R.growl, t), lg = this.gain(.45);
+    const drive = this.gain(R.drive), clip = this.shaper(), post = this.gain(1 / R.drive);
+    const f1 = this.filter("bandpass", 480, 3), f2 = this.filter("bandpass", 1350, 4), f2g = this.gain(.8), f3 = this.filter("bandpass", 2600, 2.5), f3g = this.gain(R.raspFormant), body = this.filter("lowpass", 420), bg = this.gain(.7), env = this.gain(0);
+    f1.frequency.setValueAtTime(480, t); f1.frequency.linearRampToValueAtTime(760, t + dur * .3); f1.frequency.linearRampToValueAtTime(520, t + dur);
+    a.connect(mix); b.connect(mix); nz.connect(rasp); rasp.connect(rg); rg.connect(mix); mix.connect(am); lfo.connect(lg); lg.connect(am.gain);
+    am.connect(drive); if (clip) { drive.connect(clip); clip.connect(post); } else drive.connect(post);
+    post.connect(f1); f1.connect(env); post.connect(f2); f2.connect(f2g); f2g.connect(env); post.connect(f3); f3.connect(f3g); f3g.connect(env); post.connect(body); body.connect(bg); bg.connect(env); env.connect(out);
+    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(L * 1.6, t + .025); env.gain.linearRampToValueAtTime(L * 1.15, t + R.snarl + .05); env.gain.linearRampToValueAtTime(L * 1.05, t + dur * .6); env.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    p.src.push(a, b, nz, lfo); p.nodes.push(a, b, nz, rasp, rg, mix, am, lfo, lg, drive, post, f1, f2, f2g, f3, f3g, body, bg, env); if (clip) p.nodes.push(clip);
     return { ...p, end: t + dur + .05 };
+  }
+  // The soft clipper the stego's roar is driven into: one curve, made once and shared; one WaveShaperNode a sound (null without one).
+  shaper() {
+    if (!this.ctx.createWaveShaper) return null;
+    if (!this.clipCurve) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(x * 2.5) / Math.tanh(2.5); } this.clipCurve = c; }
+    const w = this.ctx.createWaveShaper(); w.curve = this.clipCurve; return w;
   }
   biteVoice(t, out, L, heavy) {
     const p = { src: [], nodes: [] }, nz = this.noiseSrc(t), hp = this.filter("highpass", heavy ? 2400 : 3000), cg = this.gain(0), bp = this.filter("bandpass", heavy ? 380 : 520, 1.6), wg = this.gain(0);

@@ -4721,7 +4721,7 @@ export class Game {
   dinoDuelTick(dt) {
     if (!(dt > 0)) return [];
     if (this.enemies.some((e) => e.dinoFled && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.dinoFled && e.fleeDone));
-    if (!this.enemies.some((e) => e.kind === "spinoRex" && !e.dead)) return [];
+    if (!this.enemies.some((e) => e.kind === "spinoRex" && (!e.dead || e.dinoDuel))) return []; // (a Spinosaurus just eaten still has its duel to close)
     const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
     return tickDinoDuels(this.enemies, dt, {
       clock: Number(this.save.playSeconds) || 0, width, height,

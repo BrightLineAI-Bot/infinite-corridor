@@ -14,6 +14,10 @@ import { createCombatant } from '../src/combat.ts';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { ensureWorldBeasts } from '../src/world-beasts.ts';
+import { createStegoTrack, sampleStego, stegoBone } from '../src/close-view-beast-stego.ts';
+import { createSpinoTrack, sampleSpino, SPINO_RIG } from '../src/close-view-beast-spino.ts';
+import { holdInJaws, CLOSE_VIEW_BEASTS } from '../src/close-view-beasts.ts';
+import { closeViewDuelPull, CLOSE_VIEW } from '../src/close-view.ts';
 
 // ------------------------------------------------------------------------------------------------ a headless arena
 function world({ size = 40, player = { x: 20, y: 30 }, indoors = false } = {}) {
@@ -69,6 +73,7 @@ class Ctx {
   createBufferSource() { return new Source(this, 'buffer'); }
   createBuffer(c, length) { const d = Array.from({ length: c }, () => new Float32Array(length)); return { length, getChannelData: (i) => d[i] }; }
   createConvolver() { return new Node(this, 'convolver'); }
+  createWaveShaper() { const n = new Node(this, 'shaper'); n.curve = null; return n; }
   advance(t) { this.currentTime = t; for (const s of this.sources) if (!s.ended && s.stopAt != null && s.stopAt <= t) { s.ended = true; s.onended?.(); } }
 }
 const sfx = (o = {}) => { const ctx = new Ctx(), log = [], b = new BattleSfx(ctx, { seed: 3, onEvent: (e) => log.push(e), ...o }); return { ctx, b, log }; };
@@ -316,4 +321,45 @@ test('an escape: a world beast takes its own retreat with its wounds kept; any o
   const k = gameWith(); k.st.dinoDuel = { foe: k.sp.id, start: 3, t: 33, hp: 900, byRival: 10, rivalSeen: 10, byYou: 0, apart: 0, verdict: null }; k.sp.dinoDuel = { ...k.st.dinoDuel, foe: k.st.id };
   k.g.exportSnapshot(5000); const saved = Object.values(k.s.session.areas).flatMap((a) => a.enemies || []).find((e) => e.id === k.st.id);
   assert.equal(JSON.parse(JSON.stringify(saved)).dinoDuel.t, 33);
+});
+
+// ------------------------------------------------------------------------------------------------ the Stegosaurus eats too
+test('either can eat the other: both directions happen across seeds', () => {
+  const eaten = { spinoRex: 0, wildStego: 0 };
+  for (let i = 0; i < 16; i++) { const w = world({ indoors: i % 3 === 0 }), [s] = pair(w, { sid: `spino-${i}`, tid: `stego-${i}` }), o = outcome(run(w, 92)); if (o?.type === 'eaten') eaten[o.loser === s.id ? 'spinoRex' : 'wildStego']++; }
+  assert.ok(eaten.spinoRex > 0 && eaten.wildStego > 0, JSON.stringify(eaten));
+});
+test('the Wild Stegosaurus devours the Spinosaurus: its message, its feeding, nothing for the Wayfarer, the record marked eaten', () => {
+  const { g, s, st, sp } = gameWith(); s.worldBeasts.spinoRex.active = { rx: g.rx, ry: g.ry, tries: 0 }; sp.worldBeast = 'spinoRex'; const marks = s.currency || 0;
+  st.dinoDuel = { foe: sp.id, start: 0, t: 40, hp: 900, byRival: 0, rivalSeen: 0, byYou: 0, apart: 0, verdict: { loser: sp.id, winner: st.id, end: 'kill' } }; sp.dinoDuel = { ...st.dinoDuel, foe: st.id };
+  g.packWorld(1 / 30, 1000).hurtCreature(st, sp, 99999); g.dinoDuelTick(1 / 30);
+  assert.equal(g.message, 'The Wild Stegosaurus devours the Spinosaurus. Its spoils are lost.');
+  assert.equal(s.currency || 0, marks); assert.equal(s.worldBeasts.spinoRex.slain, 0); assert.equal(s.worldBeasts.spinoRex.active, null); assert.equal(s.worldBeasts.spinoRex.eaten, 1);
+  assert.ok(st.dinoFeed > 0); const w = world({ player: { x: 40, y: 40 } }); w.enemies = [st]; st.pack.attack = null; updatePackMonster(st, w); assert.equal(st.stegoPose, 'graze', 'it feeds');
+  assert.ok(w.cues.some((c) => c.phase === 'feed'));
+});
+
+// ------------------------------------------------------------------------------------------------ Close View
+const cvEnv = (e, now, o = {}) => ({ x: e.x + .5, y: e.y + .82, z: 0, scale: (e.scale || 1) * CLOSE_VIEW_BEASTS[e.kind].scale, now, reduce: false, tier: 'full', target: { x: 30, y: e.y }, dead: false, ...o });
+function cvSample(e, flags, o = {}) { const spec = CLOSE_VIEW_BEASTS[e.kind], tr = spec.createTrack(); let f = null; Object.assign(e, flags); for (let k = 0, now = 1000; k < 30; k++, now += 16) f = spec.sample(tr, e, cvEnv(e, now, o)); tr.seen = 1000 + 29 * 16; return { tr, f }; }
+test('Close View: the stego thrashes its head with the shake (still under reduced motion); the lifted stego rises; held bodies sit in the jaws', () => {
+  const mk = (kind, x = 0) => { const e = createCombatant(kind, x, 0, true, []); e.id = kind; e.hp = 1000; e.pack = { attack: null, data: {} }; return e; };
+  const shakeAt = (side, reduce = false) => { const e = mk('wildStego'); const { tr } = cvSample(e, { stegoPose: 'grabShake', stegoGrab: { phase: 'shake', where: 'tail', side, t: .5 } }, { reduce }); return stegoBone(tr, 'head'); };
+  const L = shakeAt(-1), R = shakeAt(1); assert.ok(Math.abs(L[1] - R[1]) > .5, `the head swings (${(L[1] - R[1]).toFixed(2)})`);
+  const Lq = shakeAt(-1, true), Rq = shakeAt(1, true); assert.ok(Math.abs(Lq[1] - Rq[1]) < 1e-6, 'held still under reduced motion');
+  const low = cvSample(mk('wildStego'), {}).f.air, up = cvSample(mk('wildStego'), { spinoHeldBy: 'spinoRex', dinoLift: 1.4 }).f.air; assert.ok(up >= 1.4 && low === 0, `lifted ${up}`);
+  // held in the jaws: the stego the Spinosaurus lifts moves to its jaws; the Spinosaurus the stego shakes, its tail to the stego's beak
+  const sp = mk('spinoRex'), st = mk('wildStego', 1.6); const A = cvSample(sp, { spinoPose: 'grabLift' }), B = cvSample(st, { spinoHeldBy: 'spinoRex', dinoLift: 1.4 });
+  const before = [B.f.x, B.f.y], skin = B.f.skin[3]; B.tr.seen = A.tr.seen; holdInJaws(new Map([[sp, A.tr], [st, B.tr]]), A.tr.seen);
+  assert.ok(Math.hypot(B.f.x - before[0], B.f.y - before[1]) > .01 && B.f.skin[3] !== skin, 'moved into the jaws'); assert.ok(B.f.air >= 0);
+  const y1 = mk('spinoRex', 2.6), y0 = mk('wildStego'); const C = cvSample(y0, { stegoPose: 'grabShake', stegoGrab: { phase: 'shake', where: 'tail', side: 1 } }), D = cvSample(y1, { stegoHeldBy: 'wildStego', dinoYank: 1 });
+  const x0 = D.f.x, yawHeld = D.f.yaw; D.tr.seen = C.tr.seen; holdInJaws(new Map([[y1, D.tr], [y0, C.tr]]), C.tr.seen); assert.notEqual(D.f.x, x0, 'its tail to the beak');
+  const still = cvSample(mk('spinoRex', 2.6), { stegoHeldBy: 'wildStego', dinoYank: 0 }); assert.ok(Math.abs(yawHeld - still.f.yaw) < 1e-9, 'the yank yaws the skin, not the heading');
+  assert.ok(SPINO_RIG.yank.yaw > 0);
+});
+test('Close View camera: a duel near the Wayfarer pulls the boom back to frame all three, within the duel pull; none without one', () => {
+  const D = CLOSE_VIEW.camera.threat.duel, s = { id: 's', kind: 'spinoRex', x: 10, y: 10, hp: 9, dinoDuel: { foe: 't' } }, t = { id: 't', kind: 'wildStego', x: 14, y: 10, hp: 9, dinoDuel: { foe: 's' } };
+  const g = { player: { x: 12, y: 16 }, enemies: [s, t] }, pull = closeViewDuelPull(g); assert.ok(pull > 0 && pull <= D.pull, `${pull}`);
+  t.x = 26; s.x = 2; assert.ok(closeViewDuelPull(g) <= D.pull, 'capped');
+  assert.equal(closeViewDuelPull({ ...g, enemies: [{ ...s, dinoDuel: null }, { ...t, dinoDuel: null }] }), 0, 'no duel, no pull'); assert.equal(closeViewDuelPull({ ...g, player: { x: 60, y: 60 } }), 0, 'far off');
 });
