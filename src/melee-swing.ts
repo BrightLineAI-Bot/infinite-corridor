@@ -65,8 +65,10 @@ export const PRIMARY_SWINGS = Object.freeze({
   // (drawn back in the wind-up) out to the full reach in the active window, and each tick hits only the stretch of line the
   // tip crossed, `width` tiles either side (a thin capsule), so a foe off the line is not touched. Weightier than the daggers,
   // quicker than the Cleaver; the third thrust is the deep lunge. Reach lengthens the shaft.
+  // `shaft`: the Standard View's drawn shaft behind the head, in tiles (presentation only): the Close View pike is 1.47 tiles
+  // long (close-view-models.ts CLOSE_VIEW_HERO_WEAPON_FORM.pike, 1.79 recipe x .82), less the .22 drawn head.
   'cinder-pike': Object.freeze({
-    hilt: .3, bubble: .48, foePad: .1, bufferMs: 150, lungeFrom: .35, lungeStop: .9, lungeCone: .5, knockback: .2, width: .12,
+    shaft: 1.25, hilt: .3, bubble: .48, foePad: .1, bufferMs: 150, lungeFrom: .35, lungeStop: .9, lungeCone: .5, knockback: .2, width: .12,
     extraShare: 1.17,
     steps: Object.freeze([
       Object.freeze({ name: 'thrust', thrust: true, draw: .55, windupMs: 200, holdMs: 40, activeMs: 80, hitStopMs: 50, followEndMs: 360, chainMs: 380, recoveryMs: 560, lunge: .3, from: 0, to: 0, cock: 0, overshoot: 0, share: 1.17 }),
@@ -237,7 +239,7 @@ export function drawSwingSweep(ctx, q, sx, sy, s) {
   ctx.globalAlpha = 1;
 }
 function drawThrust(ctx, q, cx, cy, s, R, H) {
-  const ux = Math.cos(q.aim), uy = Math.sin(q.aim), tip = R * Math.max(.2, q.reach), tail = tip - R * .95, w = Math.max(3, s * .1);
+  const ux = Math.cos(q.aim), uy = Math.sin(q.aim), tip = R * Math.max(.2, q.reach), tail = tip - s * PRIMARY_SWINGS['cinder-pike'].shaft, w = Math.max(3, s * .1);
   if (q.phase === "windup" || q.phase === "hold") { // the line the thrust will run along, out to the full reach
     ctx.globalAlpha = .3 + .45 * q.windup; ctx.strokeStyle = "#ffe0a0"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
     ctx.beginPath(); ctx.moveTo(cx + ux * tip, cy + uy * tip); ctx.lineTo(cx + ux * R, cy + uy * R); ctx.stroke(); ctx.setLineDash([]);
