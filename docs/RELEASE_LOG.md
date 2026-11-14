@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r961 (`2b574429348b`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r962 (`a8bf3852db96`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 963 | Claude | claude/clone-carbine-charge | The Shadow Clone charges the Carbine with the Wayfarer and fires its own charged beam at her target; both beams up to x1.15 at full charge with the clone out; clone aims at her target without a lock | In flight. |
 | 962 | Claude | claude/daily-region-1114 | New far region (landscape v27, REGIONS_V27): lava channels between scoria levees with crust bridges, cinder cones with a lava crater and climbable rim (sometimes a cache), sulphur-ringed fumaroles; from far Firelands, Emberlands and Ashfields; new ground only | In flight. |
 | 961 | Claude | claude/sweep-orrery | Great Sweep: broken giant's greatsword carried on the right shoulder, swung a full 360° with the hit following the blade (with Mirage of Blades the swing is drawn only, blades do the damage, now shaped as Standard View's in 3D and tilted to the camera); any player cancel ends the animation but lands the whole blow; Aether Orrery floats over the open right palm with the primary in the left; the Orrery now drops (v1 stream past Infinite III) and a one-time re-gift for saves that lost the gifted one | Merged as `2b574429348b` (#628). |
 | 960 | Claude | claude/tool-ranges | Rift Bombard finite (6.5 tiles x reach, bursts where it lands); Lumen Spindle 5.4 tiles x reach, dissipates or turns back for an equal leg; Carbine and Aether Orrery unlimited; in Close View the Wayfarer's shots follow line of sight (waist-high rises block, foes seen on plateaus or flying can be hit, shots from her real height), a full-charge Carbine pierces terrain | Merged as `616e563b1b3b` (#627). |

@@ -6,6 +6,24 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 963 — The Shadow Clone charges the Carbine with you
+
+Tim, 2026-11-14: "when you charge your blast, the Shadow Clone charges its blast, and it'll increase its damage also."
+
+**CODE:**
+- `src/tool-forms.ts`:
+  - `CLONE_CARBINE` (bonus .15, cone .7, muzzle .42, violet colours), `cloneCarbineBoost` and `cloneCarbineRatio`;
+  - `drawCarbine` draws the clone's violet beams, glow and fill ring.
+- `src/game.ts`:
+  - `carbine.charge.clone` grows by the Wayfarer's increments while `cloneCarbineEligible`, and is set to null when the clone ends;
+  - `carbineFire(now, d, held, cloneHeld)` boosts her beam;
+  - `cloneCarbineFire` fires from the clone at `SHADOW_CLONE.share` × the charge ratio, with its own pierce, charge and `launchAt`;
+  - `cloneCarbineAim` aims at the lock, or the foe her beam is aimed at if the clone can see it, else the nearest visible foe in a cone, else her aim;
+  - `groundFeetAt`, and `shotOccluded` honours `launchAt`.
+- `src/close-view.ts` draws the clone's muzzle glow, and `src/combat-visuals.ts` colours the clone's Carbine shots violet and turns the clone to its aim.
+
+**BOUNDARY:** The clone's charge is runtime only and never saved; pause freezes it and a reload drops it. It ends with hers (release, stagger, the Carbine put away, falling) and is cancelled when the clone expires or is stepped into. The Shadow Boxing echo and a clone still being placed take no part. The clone uses her rounds, carries no glyph procs and fires no Continuous Assault volley. Taps and play without the clone are unchanged. One clone beam per release, within the existing caps. No save change, no generation change, no `Math.random`.
+
 ## Release 962 — The Magma Rivers (landscape 27)
 
 The daily region step (Tim, 2026-10-29: rich, vibrant regions without costing performance): his severe volcanic region, which the existing Firelands only touched.
