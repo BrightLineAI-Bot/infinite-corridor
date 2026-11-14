@@ -56,17 +56,17 @@ test('in the game it closes in by walking and comes from behind; never in a dung
 
 test('door-waiting: it waits by the dungeon door the Wayfarer went in, and is there when they come out', () => {
   const g = game(), now = { t: 0 }, q = ensureStalker(g.save); q.ground = q.need - 1;
-  const e = walkUntilAmbush(g, 600, now); assert.ok(e); e.hp = 600; g.tickStalker(.05, now.t += 50);
+  const e = walkUntilAmbush(g, 600, now); assert.ok(e); const hurt = Math.round(e.maxHp * .6); /* 2026-11-14: a wound below its (now halved) health; was 600 */ e.hp = hurt; g.tickStalker(.05, now.t += 50);
   const door = { x: g.player.x, y: g.player.y };
   // Into a dungeon: the creature is gone with the section, and it waits by that door.
   g.area = 'dungeon'; g.enemies = []; g.tickStalker(.05, now.t += 50);
-  assert.deepEqual(q.active.door, { rx: g.rx, ry: g.ry, x: door.x, y: door.y }); assert.equal(q.active.hp, 600);
+  assert.deepEqual(q.active.door, { rx: g.rx, ry: g.ry, x: door.x, y: door.y }); assert.equal(q.active.hp, hurt);
   for (let i = 0; i < 40; i++) g.tickStalker(.05, now.t += 50);
   assert.ok(!g.enemies.some((x) => x.stalker), 'it never enters the dungeon');
   // Out again in the same section: there it is, by the door, with its wounds.
   g.area = 'overworld'; g.loadArea('overworld', false); g.player.x = door.x; g.player.y = door.y; g.tickStalker(.05, now.t += 50);
   const back = g.enemies.find((x) => x.stalker && !x.dead);
-  assert.ok(back, 'waiting'); assert.ok(Math.hypot(back.x - door.x, back.y - door.y) < 2); assert.equal(back.hp, 600); assert.match(g.message, /waiting by the door/);
+  assert.ok(back, 'waiting'); assert.ok(Math.hypot(back.x - door.x, back.y - door.y) < 2); assert.equal(back.hp, hurt); assert.match(g.message, /waiting by the door/);
   assert.equal(q.active.door, null);
   // Out by another way (another section): it has lost the trail for now and hangs back.
   g.area = 'dungeon'; g.enemies = []; g.tickStalker(.05, now.t += 50); assert.ok(q.active.door);
@@ -152,5 +152,5 @@ test('the swarm comes at its thresholds and is capped; health and damage scale w
   assert.ok(g.enemies.filter((x) => x.stalkerKin && !x.dead).length <= STALKER.swarm.cap, 'capped');
   const near = stalkerVitals(300, 50, regionalThreat(1, 0)), far = stalkerVitals(300, 50, regionalThreat(40, 0));
   assert.ok(far.hp > near.hp && far.damage > near.damage);
-  assert.equal(stalkerVitals(300, 50).hp, 300, 'about a Gate Revenant\'s health'); assert.ok(stalkerVitals(300, 50).damage < 50, 'a little under a world beast\'s damage');
+  assert.equal(stalkerVitals(300, 50).hp, 150, 'half a Gate Revenant\'s health (2026-11-14: was the whole, 300)'); assert.ok(stalkerVitals(300, 50).damage < 50, 'a little under a world beast\'s damage');
 });

@@ -6,6 +6,44 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 957 — The soundtrack
+
+Tim, 2026-11-14: a downtempo dungeon-synth soundtrack that mirrors Aindulmedir's *Star Lore* (original music, nothing quoted), told as a journey: torpid, urgent and awe-struck pieces that follow the Wayfarer's progress, lift in a fight and settle after, and change seamlessly. The first mix was "a little too flute heavy for the game", so the melodies now pass between choir, strings, horn, plucks and bells. Music only, with no sound effects.
+
+**CODE:**
+- `soundtrack-songs.ts` holds the album as data: `MODES`, `SONGS` (12 songs), `STINGERS`, `validateSong`, `LINER_NOTES`, and `MUSIC_SELECTION` (place × chapter → song weights).
+  - The songs are modal chords on an 8-bar grid, with 16-step bass, drum and arp patterns, 2-bar lead motifs and forms.
+  - Each song has a `leads` rotation: a voice per 8-bar phrase, with winds at most one turn in four and handing over to strings in a fight.
+- `soundtrack.ts` is the engine. A 25 ms timer schedules 120 ms ahead on the AudioContext clock.
+  - Tiers change on bar lines, with an exhale bar going down.
+  - Song changes come on bar or phrase lines, with a common-tone drone and bell bridge and a tempo ease.
+  - Voices are capped at 40, or 28 on the low tier, with ornaments dropped first, and every note's nodes are disconnected when it ends.
+- `soundtrack-director.ts` reads the game 4 times a second and returns a song, an intensity and story beats. It reads:
+  - place: sea, sky, deep, dungeon, halls, dusk or day;
+  - chapter: from the Aperture tier, beasts slain, the Pentagon and far realms;
+  - fighting: engaged and nearby hostiles, damage taken and dealt;
+  - bosses (`BOSS_THEMES`, with `bossSongFor` falling back to `boss`), the checkpoint, region and death.
+- `main.ts` (`directMusic`, `startAmbience`) wires it onto the existing master, compressor, echo and music bus.
+- `settings.soundtrack` is "adaptive" or "calm".
+
+**BOUNDARY:** The music never writes game or save state and adds no save fields. It uses no `Math.random`; variation comes from seeded PRNGs. There are no audio files and no dependencies. When muted, nothing is scheduled and the audio clock is suspended; a hidden tab or a pause suspends or quiets it. Calm only never lifts for a fight. A beast's own theme is a `SONGS` entry plus a `BOSS_THEMES` row.
+
+## Release 956 — Iron Fists rhythm: the ball is the perfect-timing cue; new glyph Gathered Breath
+
+Tim, 2026-11-14: he couldn't tell when he was hitting the Iron Fists' perfect timing; the ball that runs out from the Wayfarer and back should be the cue (a press when it returns home is perfect), and with two Echoes the perfect charge rhythm should be the strongest play. Then: keep the big hits but shorten the charge a little, and add something like Monster Hunter's Focus that cuts charge time a lot when stacked, at a cost.
+
+**CODE:** `src/brawler-spells.ts` `IRON_FISTS`: `chargeTime` .96 (was 1.2), `perfect` [.8, 1.04] (was [1, 1.3]), new `beat` [1, 1.3] x gate after each step, `beatShare` 1.25, `rhythmBonus` 13, `flashMs`; `fistBeatWindow` (never opens before the gate), `fistOnBeat`, `fistBallAt`; `drawFistStep` draws the ball from `fistBeat` on the combat floor layer (body y .45 in Standard View, feet y .75 in Close View), out with the blow, home at the window's start, a pulsing glow while it is open, a ring on an on-beat press (no pulse or spreading ring with reduced motion or safe mode). `src/game.ts`: runtime-only nested clocks `fistBeat {at, opens, closes, step, ax, ay}` and `fistFlash`; `fistPress` judges only fresh presses (presses replayed by `tickFistQueue` or `tickAttackBuffer` carry `_fistBuffered`); `fistCharge {onBeat, scale}` reaches `fistPunch(..., perfect, onBeat)`; a rhythm blow deals (share x beatShare x finisher + rhythmBonus) x fist power x boxing; the beat clears with the chain. `src/glyphs.ts` `CHARGE_GLYPH` Gathered Breath {per .7, floor .15 s, dust 12, drop .01, hosts melee/tool/armour}; `chargeScale(save, span)` through `Game.chargeQuicken` scales the post-grace charge of the fists (`fistHeld`), the Carbine, weapon arts, the Quandrix slam and suction, and the Aether Orrery; `glyphDrop` draws ordinary drops from the frozen `GLYPH_V1_IDS`, and a kill that leaves nothing rolls `glyph-drop:v2`; `glyphDustCost`. Tests: `fist-rhythm` (7), `gathered-breath` (6); `glyphs` (10 to 11 glyph ids) and `fists-four-step` (perfect hold at the new window's middle) updated.
+
+**BOUNDARY:** The beat belongs to the chain: a dodge, cast, area change, world reset or slam clears it; a reload starts afresh (nothing saved); a pause shifts it exactly. Off-beat damage, the combo, kick, Ki Blast, slam and the 90 ms contact delay unchanged; mashing damage per second unchanged. Gathered Breath changes only how fast charges fill, never taps, cadences or damage shares; it counts in equipped weapon, tool and armour sockets only; no charge takes less than .15 s to its key point. Every earlier glyph drop is unchanged (the new glyph rolls its own v2 stream); new glyph counts are additive, save schema 14. Measured at 60 fps: awakened fists with 2 Echoes, perfect rhythm 12.3 / 15.6 / 19.3 / 22.6 x fist power per second at 0-3 copies against perfect taps 10.4 and mashing 8.9; the Carbine's full-charge spam 1.07-1.48x its tap damage.
+
+## Release 955 — World beasts stay drawn in Close View; the Stalker's health in line
+
+Tim, 2026-11-14: fighting the Blob in Close View it kept popping in and out of existence; world beasts should always be drawn while they're in your section. And the Stalker at section -187,-114 seemed impossible to kill at his strength.
+
+**CODE:** `src/close-view-beasts.ts` `CLOSE_VIEW_BEAST_SIGHT` {pad 34, fog .35, lod 2} and `closeViewSectionBeast(e)` (a world beast, the Questing Beast, a passing beast or the Stalker, not its copies or decoys). `src/renderer.ts` picks such a beast up in Close View with `pad` tiles of padding (was the floor's reach, about 8.5 tiles on the low tier, which safe mode forces). `src/close-view.ts`: such beasts skip the view-reach cull and the distance fade; `admitBeasts` admits in two passes, section beasts first; more than `lod` tiles past the fog edge they sample the low-tier mesh and set `frame.fogCap`. `src/close-view-beast-gl.ts` `u_fogCap` (default 1 for every other body). Stalker: `STALKER.vitals.hpShare` 1 to .5, `STALKER.mirage.hide` regen .03/cap .15 to .02/.05; `spawnStalker` (game.ts) uses today's vitals as the maximum and caps a saved stalk's health there (keeping wounds). Tests: `close-view-beast-sight` (4), `stalker-health-1114` (8); `stalker-678` updated for the halved health.
+
+**BOUNDARY:** Close View drawing changes only for the beasts; no simulation, save, generation, damage or reach change for them. At most two beasts per section, no per-frame allocation. Designed invisibility (the Stalker lurking or in its mirage, the Gloomvast's Dark) stays hidden. Floor telegraphs still draw only on the floor drawn round the Wayfarer; the 3D wind-up ring goes with the beast. The Stalker's damage, moves and timings unchanged; its kill time for Tim's build at ring 219 goes from about 540 s to about 167 s, in line with the other world beasts there (125-253 s). Save schema 14 untouched.
+
 ## Release 954 — After-images on the Iron Fists' rush and on every dodge
 
 Tim, 2026-11-14: the Iron Fists' Shadow Boxing rush should stay the instant, best Shadow Boxing movement, and the dodge should have the after-images too, without changing any movement.
