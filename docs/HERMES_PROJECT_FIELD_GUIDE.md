@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 968 — Hammerfall awakened clap
+
+Tim, 2026-11-14: the awakened Hammerfall's ability is a clap: when the hammer lands, two lines of energy move apart from it and come back together and slap, in addition to the hammer's blow (two parallel lines, not two radii).
+
+**CODE:** `brawler-spells.ts` `HAMMER_CLAP` {share .6 of toolPower, length 2.4, spread 1.3 each side, width .3, extend .12, hold .1, sweep .1, fade .2, stun .3, colours, text}; `hammerClapCatches` (|along| ≤ length/2 and |across| ≤ spread, each padded by width plus the foe's extra body size), `hammerClapPose` (apart, hold, close, clap; one reused object), `drawHammerClap` (floor layer, both views). `game.ts` `brawlerTool` pushes one `hammer-clap` effect (`clap: 1`, unit aim, `spread`, the hammer's `delay`, `life` = span, `untilPulse` = strike time) when the secondary is awakened, after the Echo copies; `updateEffects` uses `hammerClapCatches` for `fx.clap`, one pulse per foe. `constellation.ts` `awakenedToolText` names the clap. Tests: `hammerfall-clap` (7).
+
+**BOUNDARY:** One clap per press; Echo copies and the Shadow Clone add none; the golem is unchanged; non-awakened Hammerfall is byte-identical. The clap is an ordinary area effect that saves and resumes with the area (no new field, schema 14). At most one is alive at the tool's own cooldown. The lines are not stopped by walls, like the hammer's own radius.
+
 ## Release 967 — Great Sweep awakened freeze
 
 Tim, 2026-11-14: the Great Sweep's awakened ability applies a freeze to whatever its blades touch (the spun blade, and the Mirage blades for a far-sweeping freeze); it should work on bosses, with diminishing returns and a buildup like stagger.
