@@ -75,7 +75,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -4127,21 +4127,46 @@ export class Game {
   // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION; Tim, 2026-11-14): the test updateProjectiles puts to each of
   // the Wayfarer's shots while Close View applies here (close-view.ts closeViewApplies: the save's switches, the place and the
   // tile stood on, so it is the same on every device and on resume), else null: Standard View shoots over elevation as before.
-  // A shot's launch level (the ground, or the roof deck, the Wayfarer stood on) and a shell's planned flight are set on its
-  // first test and saved with it, so a shot resumed mid-flight keeps them. One closure a Game; nothing allocated a frame.
+  // On a shot's first test its launch ground (`launchZ`, drawn tiles: the ground or roof deck the Wayfarer stood on), its sight
+  // line (`los`, chest to its foe's chest) and a shell's planned flight (`lobSpan`) are fixed on it as plain numbers and saved
+  // with it, so a shot resumed mid-flight keeps them. One closure a Game; a frame allocates nothing; a shot's foe is chosen once.
   shotOccluder() {
     if (RANGED_OCCLUSION.closeViewOnly && !closeViewApplies(this)) return null;
     this._occludeOutdoor = overworldCloseViewApplies(this);
     return this._occluder ||= (p, x, y) => this.shotOccluded(p, x, y);
   }
+  levelDrawn(t) { return this._occludeOutdoor ? outdoorLevelHeight(t) : LIFT_PER_LEVEL * tileLiftScale(t); } // a level's drawn height on tile t
+  groundDrawnAt(map, w, x, y) { // the drawn top of the ground at the point (x, y) (projectile coordinates); a ramp counts its foot
+    const t = map.tiles[Math.floor(y) * w + Math.floor(x)]; if (!t) return 0;
+    const level = (Number(elevationAt(map, w, x - .5, y - .75)) || 0) - (t.slope && !interiorTerrain(map) ? RANGED_OCCLUSION.slopeLevel : 0);
+    return Math.max(0, level) * this.levelDrawn(t);
+  }
+  // The foe a shot is aimed at: the locked foe if the shot's path passes it, else the nearest live foe whose body the path
+  // passes within RANGED_OCCLUSION.lane tiles of, within the shot's reach. Null when none.
+  shotSightFoe(p) {
+    const lane = RANGED_OCCLUSION.lane, reach = Math.max(0, Number(p.speed) || 0) * Math.max(0, Number(p.life) || 0), dx = Number(p.dx) || 0, dy = Number(p.dy) || 0;
+    const along = (e) => { const ex = e.x + .5 - p.x, ey = e.y + .45 - p.y, t = ex * dx + ey * dy; if (!(t > 0) || t > reach) return -1; return Math.abs(ex * dy - ey * dx) <= enemyBodyRadius(e) + lane ? t : -1; };
+    const ok = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc";
+    const locked = this.lockedTarget?.(); if (ok(locked) && along(locked) >= 0) return locked;
+    let best = null, bt = Infinity; for (const e of this.enemies) { if (!ok(e)) continue; const t = along(e); if (t >= 0 && t < bt) { bt = t; best = e; } }
+    return best;
+  }
   shotOccluded(p, x, y) {
-    if (shotPiercesTerrain(p)) return false; // a charged Carbine beam
-    const map = this.map, w = mapWidth(map, this.area), t = map?.tiles?.[Math.floor(y) * w + Math.floor(x)]; if (!t || !this.player) return false;
-    if (!Number.isFinite(p.launchLevel)) { const pl = this.player, d = this.standingDeck(); p.launchLevel = Math.max(Number(elevationAt(map, w, pl.x, pl.y)) || 0, d ? Number(d.level) || 0 : 0); }
-    if (p.path === "grenade" && !(p.lobSpan > 0)) p.lobSpan = Number(p.visualFlight?.duration) > 0 ? Number(p.visualFlight.duration) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
-    const rise = (Number(elevationAt(map, w, x - .5, y - .75)) || 0) - (t.slope && !interiorTerrain(map) ? RANGED_OCCLUSION.slopeLevel : 0) - p.launchLevel;
-    if (!(rise > 1e-9)) return false;
-    return rise * (this._occludeOutdoor ? outdoorLevelHeight(t) : LIFT_PER_LEVEL * tileLiftScale(t)) > shotClearance(p) + 1e-9;
+    if (shotPiercesTerrain(p)) return false; // a fully charged Carbine beam
+    const map = this.map, w = mapWidth(map, this.area); if (!map?.tiles?.[Math.floor(y) * w + Math.floor(x)] || !this.player) return false;
+    const O = RANGED_OCCLUSION;
+    if (!Number.isFinite(p.launchZ)) { const pl = this.player, d = this.standingDeck(), under = tileUnder(map, w, pl.x, pl.y); p.launchZ = Math.max(Number(elevationAt(map, w, pl.x, pl.y)) || 0, d ? Number(d.level) || 0 : 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL); }
+    const top = this.groundDrawnAt(map, w, x, y);
+    if (p.path === "grenade") { // a lobbed shell keeps its arc
+      if (!(p.lobSpan > 0)) p.lobSpan = Number(p.visualFlight?.duration) > 0 ? Number(p.visualFlight.duration) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
+      return top - p.launchZ > shotClearance(p) + 1e-9;
+    }
+    if (!(Array.isArray(p.los) && p.los.length === 6 && p.los.every(Number.isFinite))) {
+      const z0 = p.launchZ + O.chest, foe = this.shotSightFoe(p);
+      if (foe) { const under = tileUnder(map, w, foe.x, foe.y); p.los = [p.x, p.y, z0, foe.x + .5, foe.y + .45, (Number(elevationAt(map, w, foe.x, foe.y)) || 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL) + O.chest]; }
+      else p.los = [p.x, p.y, z0, p.x + (Number(p.dx) || 0), p.y + (Number(p.dy) || 0), z0];
+    }
+    return sightBlocked(top, sightLineZ(p.los, x, y));
   }
   standingDeck() { const d = this.roofDeck; if (!d) return null; if (this._deckMap !== this.map || this.area !== "overworld") { this.roofDeck = null; return null; } return d; }
   setRoofDeck(d) { this.roofDeck = d ? { id: d.id, level: d.level } : null; this._deckMap = d ? this.map : null; }

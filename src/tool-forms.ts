@@ -98,35 +98,44 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 // - Rift Bombard: the shell flies at most `range` tiles (or to the point aimed at, if nearer), then comes down and bursts there.
 // - Lumen Spindle: the cast leg flies at most `range` tiles. With no hit it dissipates there, shrinking over its last `fade`
 //   tiles. Striking a foe (or a wall) turns it back, and the return leg is `range` tiles too, piercing as before. `legs` bounds
-//   its life: the cast leg, Sunburst Ricochet's wall bounces (SUNBURST.ricochets), and the return.
+//   its life: the cast leg, Sunburst Ricochet's wall bounces (SUNBURST.ricochets), and the return. Tim's follow-up
+//   (2026-11-14): "about 8 out and 8 back" on his save (reach × 1.48): 5.4 × 1.48 = 8.0, still short of the Bombard's 9.6.
 // Saved shots from before (no `legRange`) keep the old turn-by-age flight.
 export const TOOL_RANGE = Object.freeze({
   unlimited: 64,
   "rift-bombard": Object.freeze({ range: 6.5 }),
-  "lumen-spindle": Object.freeze({ range: 4, fade: .75, legs: 4 }),
+  "lumen-spindle": Object.freeze({ range: 5.4, fade: .75, legs: 4 }),
   carbine: "unlimited",
   "aether-orrery": "unlimited",
 });
 // Close View terrain occlusion (Tim, 2026-11-14: "in Close View, projectiles shouldn't go through the rises/raised blocks...
-// In Standard View that's fine — you should be able to shoot over elevation there... maybe that's the trade-off for the
-// mobility"). A deliberate view difference: in Standard View every shot flies over elevation as before.
-// While Close View applies (close-view.ts closeViewApplies), each of the Wayfarer's shots flies at its launch height: the
-// ground level it left from plus `shotHeight` tiles (the drawn shot height, actor-presentation.ts
-// DEFAULT_PROJECTILE_VISUAL_HEIGHT). Ground it would enter whose drawn top is higher than that stops it like a wall (a shell
-// bursts there, a Spindle turns back). A level is drawn LIFT_PER_LEVEL tiles tall inside, OUTDOOR.terrain.level outside
-// (close-view-outdoor.ts outdoorLevelHeight), so outdoors any rise of a level stops a shot, and inside one of two levels.
-// A ramp counts `slopeLevel` below its top. A lobbed shell (path "grenade") flies an arc: from `shotHeight` up to an apex of
-// `lob.apexPerTile` × its planned flight (at least `lob.minApex` tiles) and down to the ground where it lands, so it clears
-// a low rise mid-flight and is stopped by one it meets low. Enemy shots are unchanged (`hostile: false`).
-// `pierce.carbine` "charged": a Carbine beam fired from a charge (any charge past CARBINE.charge.grace) passes through terrain
-// (Tim, 2026-11-14); a tap is stopped like any shot.
+// In Standard View that's fine — you should be able to shoot over elevation there"; then: "You should be able to shoot up at
+// creatures that are up on plateaus; you just can't shoot through the plateaus or through rises. Rises that are waist/chest
+// height and above, the ones that block your view or hide most of the enemy, should block the shot. If you can see the enemy,
+// you should be able to shoot him"). A deliberate view difference: in Standard View every shot flies over elevation as before.
+// While Close View applies (close-view.ts closeViewApplies), each of the Wayfarer's shots follows a line of sight: from the
+// Wayfarer's chest (the drawn ground it left from + `chest` tiles) to the chest of the foe it was aimed at (the locked foe, else
+// the nearest live foe within `lane` tiles of its body along the shot's path, on its own ground), or level when there is none;
+// past the foe the line runs level. Ground the shot enters whose drawn top stands within `chest` − `waist` tiles below that
+// line, or above it, stops the shot like a wall (a Spindle turns back): on level ground, a rise of waist height or more; on a
+// line up to a foe on a plateau, an edge that hides it below the waist. Heights are the drawn ones: a level is LIFT_PER_LEVEL
+// (0.34) tiles inside and close-view-outdoor.ts outdoorLevelHeight (1.2) outside, so inside a one-level step (0.34) is below
+// the waist and passes and two levels (0.68) block, and outside any one-level rise blocks a level shot. `chest` is the drawn
+// shot height (actor-presentation.ts DEFAULT_PROJECTILE_VISUAL_HEIGHT); `waist` is about two thirds of it. A ramp tile
+// counts `slopeLevel` levels below its top (1: its foot), so a ramp is never a wall.
+// A lobbed shell (path "grenade") keeps its arc instead: from `chest` up to an apex of `lob.apexPerTile` × its planned flight
+// (at least `lob.minApex` tiles) and down to the ground where it lands; ground above the arc stops it and it bursts there.
+// `pierce.carbine` "full": a fully charged Carbine beam (CARBINE.charge.full) passes through terrain; taps and partial charges
+// follow the line of sight. Enemy shots are unchanged (`hostile: false`).
 export const RANGED_OCCLUSION = Object.freeze({
   closeViewOnly: true,
   hostile: false,
-  shotHeight: .66,
-  slopeLevel: .5,
+  chest: .66,
+  waist: .45,
+  lane: .35,
+  slopeLevel: 1,
   lob: Object.freeze({ apexPerTile: .25, minApex: 1 }),
-  pierce: Object.freeze({ carbine: "charged" }),
+  pierce: Object.freeze({ carbine: "full" }),
 });
 // The reach of a tool range entry, in tiles (`unlimited` for an unlimited one).
 export const toolRange = (key) => { const r = TOOL_RANGE[key]; return r === "unlimited" ? TOOL_RANGE.unlimited : Number(r?.range) || 0; };
@@ -136,16 +145,23 @@ export function shotFade(p) {
   const f = TOOL_RANGE["lumen-spindle"].fade, left = L - (Number(p.legDist) || 0);
   return Math.max(0, Math.min(1, left / f));
 }
-// The height (tiles above the ground it left from) a shot flies at, for the Close View occlusion: `shotHeight`, or a lobbed
-// shell's arc at `u` = age / its planned flight `span` (seconds).
+// A lobbed shell's height (tiles above the drawn ground it left from) at `u` = age / its planned flight `span` (seconds).
 export function shotClearance(p) {
-  const O = RANGED_OCCLUSION; if (p?.path !== "grenade") return O.shotHeight;
+  const O = RANGED_OCCLUSION; if (p?.path !== "grenade") return O.chest;
   const span = Number(p.lobSpan) > 0 ? Number(p.lobSpan) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
   const u = Math.max(0, Math.min(1, (Number(p.age) || 0) / span)), apex = Math.max(O.lob.minApex, O.lob.apexPerTile * (Number(p.speed) || 0) * span);
-  return O.shotHeight * (1 - u) + apex * 4 * u * (1 - u);
+  return O.chest * (1 - u) + apex * 4 * u * (1 - u);
 }
-// Whether occlusion lets this shot pass through terrain regardless (a charged Carbine beam).
-export const shotPiercesTerrain = (p) => RANGED_OCCLUSION.pierce.carbine === "charged" && p?.carbine === true && p.carbineCharged === true;
+// The sight line's drawn height at (x, y): `los` is [x0, y0, z0, x1, y1, z1], chest to chest; level past either end.
+export function sightLineZ(los, x, y) {
+  const dx = los[3] - los[0], dy = los[4] - los[1], L = dx * dx + dy * dy;
+  const f = L > 1e-9 ? Math.max(0, Math.min(1, ((x - los[0]) * dx + (y - los[1]) * dy) / L)) : 0;
+  return los[2] + (los[5] - los[2]) * f;
+}
+// Whether ground whose drawn top is `top` stops a shot whose sight line stands at `line` there: it reaches the waist.
+export const sightBlocked = (top, line) => top > line - (RANGED_OCCLUSION.chest - RANGED_OCCLUSION.waist) + 1e-9;
+// Whether occlusion lets this shot pass through terrain regardless (a fully charged Carbine beam; "charged": any charge).
+export const shotPiercesTerrain = (p) => { const m = RANGED_OCCLUSION.pierce.carbine; return p?.carbine === true && (m === "full" ? Number(p.charge) >= 1 - 1e-9 : m === "charged" && p.carbineCharged === true); };
 export const CARBINE = {
   channel: "magic", // game.ts toolBonus channel; the stat is items.ts TOOL_SCALING.carbine ("stamina")
   base: 30, bonus: 2.7,

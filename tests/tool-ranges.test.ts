@@ -51,15 +51,17 @@ test('the ranges live in TOOL_RANGE and keep Tim\'s order: Verge Cleaver < Lumen
   const cleaver = PRIMARY_PROFILES['primary-verge-cleaver'].range, spindle = toolRange('lumen-spindle'), bombard = toolRange('rift-bombard');
   assert.ok(cleaver < spindle && spindle < bombard, `${cleaver} < ${spindle} < ${bombard}`);
   for (const reach of [0, .48, 1.2]) assert.ok(cleaver * (1 + reach) < spindle * (1 + reach) && spindle * (1 + reach) < bombard * (1 + reach), 'both scale with reach, so the order holds at any reach');
-  assert.ok(Math.abs(cleaver * 1.48 - 2.59) < .01, 'Tim\'s Cleaver at +48% reach'); assert.ok(spindle * 1.48 > 5 && spindle * 1.48 < 6.5 && bombard * 1.48 > 8.5 && bombard * 1.48 < 10.5, 'and his Spindle and Bombard');
+  assert.ok(Math.abs(cleaver * 1.48 - 2.59) < .01, 'Tim\'s Cleaver at +48% reach'); assert.ok(Math.abs(spindle * 1.48 - 8) < .1 && bombard * 1.48 > 9.5 && bombard * 1.48 < 9.7 && spindle * 1.48 < bombard * 1.48, 'and his Spindle (about 8 out and 8 back) and Bombard (9.6)');
   assert.equal(TOOL_RANGE.carbine, 'unlimited'); assert.equal(TOOL_RANGE['aether-orrery'], 'unlimited');
   assert.ok(toolRange('carbine') > SECTION_SIZE * Math.SQRT2 && toolRange('carbine') >= 64, 'past a section\'s diagonal and an interior\'s width');
   const B = RANGED_WEAPONS['secondary-rift-bombard'], S = RANGED_WEAPONS['secondary-lumen-spindle'];
   assert.ok(Math.abs(B.speed * B.lifetime - bombard) < 1e-9 && Math.abs(S.speed * S.lifetime - spindle) < 1e-9, 'the weapons read the table');
   assert.equal(B.damage, 16); assert.equal(S.damage, 11); assert.equal(B.speed, 8); assert.equal(S.speed, 10); // damage and speed unchanged
-  assert.equal(RANGED_OCCLUSION.closeViewOnly, true); assert.equal(RANGED_OCCLUSION.pierce.carbine, 'charged'); assert.equal(RANGED_OCCLUSION.hostile, false);
-  assert.equal(RANGED_OCCLUSION.shotHeight, DEFAULT_PROJECTILE_VISUAL_HEIGHT, 'a shot flies at its drawn height');
-  assert.ok(LIFT_PER_LEVEL * 2 > RANGED_OCCLUSION.shotHeight && LIFT_PER_LEVEL < RANGED_OCCLUSION.shotHeight && OUTDOOR.terrain.level > RANGED_OCCLUSION.shotHeight, 'inside two levels stop a shot, outside one');
+  assert.equal(RANGED_OCCLUSION.closeViewOnly, true); assert.equal(RANGED_OCCLUSION.hostile, false);
+  assert.equal(RANGED_OCCLUSION.chest, DEFAULT_PROJECTILE_VISUAL_HEIGHT, 'the sight line runs at the drawn shot height');
+  const O = RANGED_OCCLUSION; assert.ok(O.waist > 0 && O.waist < O.chest);
+  assert.ok(LIFT_PER_LEVEL < O.waist && LIFT_PER_LEVEL * 2 >= O.waist && OUTDOOR.terrain.level >= O.waist, 'a level shot: inside two levels stop it, outside one');
+  assert.equal(O.pierce.carbine, 'full');
 });
 
 test('the Rift Bombard comes down at its range and bursts there', () => {
@@ -83,17 +85,17 @@ test('the Lumen Spindle dissipates at its range when it strikes nothing, shrinki
 });
 
 test('the Lumen Spindle turns back off a foe it strikes, and the return leg is as long as the cast range', () => {
-  const { g } = arena({ tool: TOOLS.spindle(), foes: [[PX + 2.5, PY - .1]] }); const foe = g.enemies[0];
+  const { g } = arena({ tool: TOOLS.spindle(), foes: [[PX + 5.5, PY - .1]] }); const foe = g.enemies[0];
   assert.equal(fire(g, 1000), true); const shot = g.projectiles[0], range = toolRange('lumen-spindle');
   let turnX = shot.x, turned = false, hits = 0, last = foe.hp;
   run(g, 40, 1000, () => { if (!shot.dead) turnX = Math.max(turnX, shot.x); turned ||= shot.returning; if (foe.hp < last) { hits++; last = foe.hp; } });
-  assert.ok(turned, 'it turned back'); assert.ok(turnX < PX + 3.5, 'at the foe, not at its range');
+  assert.ok(turned, 'it turned back'); assert.ok(turnX < PX + 6.5, 'at the foe, not at its range');
   assert.ok(hits >= 1, 'the foe was struck');
   assert.ok(shot.dead && shot.dissipated); assert.ok(Math.abs((turnX - shot.x) - range) < .45, `return leg ${(turnX - shot.x).toFixed(2)} tiles, range ${range}`);
   // A wall turns it too, for the same return leg.
-  const w = arena({ tool: TOOLS.spindle(), rises: {} }); for (let y = 0; y < W; y++) w.g.map.tiles[y * W + 6].blocked = true;
+  const w = arena({ tool: TOOLS.spindle(), rises: {} }); for (let y = 0; y < W; y++) w.g.map.tiles[y * W + 8].blocked = true;
   assert.equal(fire(w.g, 1000), true); const s2 = w.g.projectiles[0]; let back = s2.x, turned2 = false; run(w.g, 40, 1000, () => { if (!s2.dead) back = Math.max(back, s2.x); turned2 ||= s2.returning; });
-  assert.ok(turned2 && back < 6, 'turned at the wall'); assert.ok(Math.abs((back - s2.x) - range) < .45, 'then flew its range back');
+  assert.ok(turned2 && back < 8, 'turned at the wall'); assert.ok(Math.abs((back - s2.x) - range) < .45, 'then flew its range back');
 });
 
 test('a Spindle saved before the change (no legRange) keeps its old turn by age', () => {
@@ -129,26 +131,37 @@ test('Close View: a shot into a raised block stops there; the Standard View shot
   assert.equal(standard.g.shotOccluder(), null, 'no test at all in the standard view');
   // One interior level (.34 tiles) is below the shot: it flies over it in Close View too.
   const low = arena({ close: true, rises: { 8: 1 } }); assert.ok(follow(low.g, 30).far > 9, 'a single interior level is cleared');
-  // A foe up on the block cannot be shot from below in Close View.
-  const up = arena({ close: true, rises: { 8: 2, 9: 2, 10: 2 }, foes: [[9, PY - .1]] }); follow(up.g, 30); assert.equal(up.g.enemies[0].hp, 1e9, 'the block shields it');
+  // Line of sight (Tim: "If you can see the enemy, you should be able to shoot him"): a foe up on a plateau whose edge is in
+  // view is hit from below; a foe on the floor behind a rise is not.
+  const up = arena({ close: true, rises: { 8: 2, 9: 2, 10: 2, 11: 2 }, foes: [[9, PY - .1]] }); follow(up.g, 30); assert.ok(up.g.enemies[0].hp < 1e9, 'shot up at the foe on the plateau');
+  assert.ok(up.g.projectiles.length === 0);
+  const behind = arena({ close: true, rises: { 8: 2 }, foes: [[11, PY - .1]] }); follow(behind.g, 30); assert.equal(behind.g.enemies[0].hp, 1e9, 'the rise shields the foe behind it');
+  const low1 = arena({ close: true, rises: { 8: 1 }, foes: [[11, PY - .1]] }); follow(low1.g, 30); assert.ok(low1.g.enemies[0].hp < 1e9, 'a step below the waist does not');
   // From up on the block the shot flies out over the lower floor.
   const top = arena({ close: true, rises: { 2: 2, 3: 2, 4: 2 } }); assert.ok(follow(top.g, 30).far > 9, 'shooting down from a rise is clear');
 });
 
-test('Close View outdoors: one level of rise stops a shot (a level is drawn 1.2 tiles tall)', () => {
+test('Close View outdoors: one level of rise stops a level shot (a level is drawn 1.2 tiles tall); a foe just over a plateau edge is hit, one far back is hidden', () => {
   const s = freshSave(); s.seed = 'RANGES-OUT'; s.overworldCloseView = true; const g = new Game(s, 0);
   g.area = 'overworld'; g.map = { ...g.map, width: 32, height: 32, landscape: true, building: null, interiorTerrain: null, tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'grass', blocked: false, elev: i % 32 === 8 ? 1 : 0 })) };
   Object.assign(g.player, { x: PX, y: PY, hp: 1e6 });
   const occ = g.shotOccluder(); assert.equal(typeof occ, 'function', 'Close View applies outdoors');
   const shot = () => ({ id: 'o', x: 3.85, y: 10, dx: 1, dy: 0, speed: 15, life: 1.25, damage: 10, damageType: 'physical', path: 'straight', age: 0, hits: {} });
   const a = shot(); updateProjectiles([a], [], g.map, 32, .5, () => {}, () => {}, null, () => {}, (p) => p.damage, () => {}, [], null, null, (n) => n, occ);
-  assert.ok(a.dead && a.x < 8, 'stopped at the rise'); assert.equal(a.launchLevel, 0);
+  assert.ok(a.dead && a.x < 8, 'stopped at the rise'); assert.equal(a.launchZ, 0); assert.deepEqual(a.los.slice(2), [.66, 4.85, 10, .66], 'a level sight line with no foe');
   const b = shot(); updateProjectiles([b], [], g.map, 32, .5, () => {}, () => {}, null, () => {}, (p) => p.damage, () => {}, [], null, null, (n) => n, null);
   assert.ok(b.x > 9, 'with no occluder (the standard view) it flies on');
   s.overworldCloseView = false; assert.equal(g.shotOccluder(), null);
-  // A ramp counts half a level: .6 tiles, cleared; the top of the ramp stops it.
+  // A ramp tile counts its foot: a shot passes up it.
   s.overworldCloseView = true; g.map.tiles[10 * 32 + 8].slope = true; const c = shot(); updateProjectiles([c], [], g.map, 32, .5, () => {}, () => {}, null, () => {}, (p) => p.damage, () => {}, [], null, null, (n) => n, g.shotOccluder());
   assert.ok(c.x > 9, 'up a ramp tile the shot passes');
+  // A plateau from x = 8 on: a foe just over the edge is in view and hit; one 12 tiles back is hidden by the edge.
+  g.map.tiles[10 * 32 + 8].slope = false; for (const t of g.map.tiles) t.elev = t.x >= 8 ? 1 : 0;
+  for (const [fx, hit] of [[9, true], [20, false]]) {
+    const foe = Object.assign(createCombatant('rootBrute', fx, PY - .1), { id: 'top', hp: 1e9, maxHp: 1e9, damage: 0, cooldown: 99, speed: 0 }); g.enemies = [foe];
+    const d = shot(); let list = [d]; for (let i = 0; i < 20 && list.length; i++) list = updateProjectiles(list, g.enemies, g.map, 32, .05, () => {}, () => {}, null, () => {}, (p) => p.damage, () => {}, [], null, null, (n) => n, g.shotOccluder());
+    assert.equal(foe.hp < 1e9, hit, `foe at x ${fx}: ${hit ? 'hit' : 'hidden'}`); if (!hit) assert.ok(d.x < 8.01, 'stopped at the edge');
+  }
 });
 
 test('Close View: a lobbed shell clears a low rise mid-flight and bursts at its range; a tall one stops it and it bursts at the face', () => {
@@ -158,30 +171,32 @@ test('Close View: a lobbed shell clears a low rise mid-flight and bursts at its 
   const tall = arena({ tool: TOOLS.bombard(), close: true, rises: { 7: 8 } }); const b = follow(tall.g, 40);
   assert.ok(b.blast && b.blast.x < 7 && b.blast.x > 6, `it burst at the face (${b.blast?.x.toFixed(2)})`);
   // The arc: from the shot height up to its apex and down to the ground.
-  const shell = { path: 'grenade', speed: 8, lobSpan: .8125, age: 0 }; assert.equal(shotClearance(shell), RANGED_OCCLUSION.shotHeight);
+  const shell = { path: 'grenade', speed: 8, lobSpan: .8125, age: 0 }; assert.equal(shotClearance(shell), RANGED_OCCLUSION.chest);
   shell.age = .40625; assert.ok(shotClearance(shell) > 1.5); shell.age = .8125; assert.equal(shotClearance(shell), 0);
 });
 
-test('Close View: a charged Carbine beam passes through raised ground; a tap is stopped', () => {
+test('Close View: a fully charged Carbine beam passes through raised ground; taps and partial charges are stopped', () => {
   const rises = { 8: 6 }, foes = [[14, PY - .1]];
-  const tap = arena({ tool: TOOLS.coil(), close: true, rises, foes }); assert.equal(tap.g.carbineFire(1000, { x: 1, y: 0 }, 0), true);
-  const tb = tap.g.projectiles.find((p) => p.carbine); assert.equal(tb.carbineCharged, false); run(tap.g, 20, 1000);
-  assert.ok(tb.dead && tb.x < 8, 'the tap stopped at the rise'); assert.equal(tap.g.enemies[0].hp, 1e9);
-  for (const held of [CARBINE.charge.grace + .01, CARBINE.charge.full]) {
-    const ch = arena({ tool: TOOLS.coil(), close: true, rises, foes }); assert.equal(ch.g.carbineFire(1000, { x: 1, y: 0 }, held), true);
-    const cb = ch.g.projectiles.find((p) => p.carbine); assert.equal(cb.carbineCharged, true, 'any charge past the grace counts');
-    run(ch.g, 20, 1000); assert.ok(ch.g.enemies[0].hp < 1e9, `a charge held ${held} s struck the foe beyond the rise`);
+  for (const held of [0, CARBINE.charge.grace + .01, (CARBINE.charge.grace + CARBINE.charge.full) / 2, CARBINE.charge.full - .01]) {
+    const q = arena({ tool: TOOLS.coil(), close: true, rises, foes }); assert.equal(q.g.carbineFire(1000, { x: 1, y: 0 }, held), true);
+    const b = q.g.projectiles.find((p) => p.carbine); assert.ok(b.charge < 1); run(q.g, 20, 1000);
+    assert.ok(b.dead && b.x < 8, `a beam held ${held} s stopped at the rise`); assert.equal(q.g.enemies[0].hp, 1e9);
   }
+  const ch = arena({ tool: TOOLS.coil(), close: true, rises, foes }); assert.equal(ch.g.carbineFire(1000, { x: 1, y: 0 }, CARBINE.charge.full), true);
+  const cb = ch.g.projectiles.find((p) => p.carbine); assert.equal(cb.charge, 1, 'full');
+  run(ch.g, 20, 1000); assert.ok(ch.g.enemies[0].hp < 1e9, 'the full charge struck the foe beyond the rise');
 });
 
 test('exact resume: a shell and a Spindle saved mid-flight in Close View finish exactly as unsaved ones do', () => {
-  for (const tool of [TOOLS.bombard, TOOLS.spindle]) {
-    const make = () => arena({ tool: tool(), close: true, rises: { 7: 2 }, foes: [[PX + 2.2, PY - .1]] });
+  const plateau = { 8: 2, 9: 2, 10: 2, 11: 2 };
+  for (const [tool, rises, foe] of [[TOOLS.bombard, { 7: 2 }, PX + 2.2], [TOOLS.spindle, { 7: 2 }, PX + 2.2], [TOOLS.needle, plateau, 9], [TOOLS.spindle, plateau, 9]]) {
+    const make = () => arena({ tool: tool(), close: true, rises, foes: [[foe, PY - .1]] });
     const A = make(), B = make(); fire(A.g, 1000); fire(B.g, 1000);
     let t = run(A.g, 3, 1000); run(B.g, 3, 1000);
-    const saved = JSON.parse(JSON.stringify(B.g.projectiles)); assert.ok(saved.length && saved.every((p) => Number.isFinite(p.launchLevel)), 'the launch level is saved with the shot');
+    const saved = JSON.parse(JSON.stringify(B.g.projectiles)); assert.ok(saved.length && saved.every((p) => Number.isFinite(p.launchZ) && (p.path === 'grenade' ? p.lobSpan > 0 : p.los.length === 6)), 'the launch ground, sight line and arc are saved with the shot');
     B.g.projectiles = saved; B.g.player.x = PX; // resumed: plain data only
     run(A.g, 40, t); run(B.g, 40, t);
+    if (rises === plateau) assert.ok(A.g.enemies[0].hp < 1e9, 'the foe on the plateau was hit: ' + tool().name);
     assert.deepEqual(B.g.enemies.map((e) => e.hp), A.g.enemies.map((e) => e.hp));
     assert.deepEqual(JSON.parse(JSON.stringify(B.g.projectiles)), JSON.parse(JSON.stringify(A.g.projectiles)));
     assert.deepEqual(B.g.effects.map((f) => [f.kind, f.x, f.y]), A.g.effects.map((f) => [f.kind, f.x, f.y]));
