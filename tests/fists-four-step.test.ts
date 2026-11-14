@@ -55,7 +55,7 @@ test('one rhythm: every step, the kick included, is followed by the same gate; a
   const { g, clock } = arena({ awakened: true }), at = [];
   for (let i = 0; i < 8; i++) { tap(g, clock); frame(g, clock); at.push(g.fistRecoverUntil - g.fistCombo.until); assert.ok(Math.abs(at.at(-1) - (F.gate - F.window) * 1000) < 1e-6, `step ${i + 1}: the same gate`); idle(g, clock, 11); }
   // inside the gate: refused; in its last `buffer` s: thrown as it opens
-  const t0 = clock.t; tap(g, clock); frame(g, clock); const gate = g.fistRecoverUntil; assert.equal(g.fistPress(t0 + 40, { x: 1, y: 0 }), false); assert.equal(g.fistQueued, null, 'too early: dropped');
+  const t0 = clock.t; tap(g, clock); frame(g, clock); const gate = g.fistRecoverUntil; assert.equal(g.fistPress(t0 + 40, { x: 1, y: 0 }), false); assert.equal(g.fistQueued, null, 'too early: dropped'); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */
   const step0 = g.fistCombo.step; assert.equal(g.fistPress(gate - F.buffer * 1000 + 5, { x: 1, y: 0 }), false); assert.ok(g.fistQueued, 'near the end: waiting');
   clock.t = gate - F.buffer * 1000 + 10; while (clock.t < gate) frame(g, clock); frame(g, clock);
   assert.equal(g.fistQueued, null); assert.equal(g.fistCombo.step, step0 % 4 + 1, 'thrown as the gate opened');
@@ -67,7 +67,7 @@ test('the kick is never weaker than a punch; it strikes all round and staggers w
   assert.ok(K.share >= Math.max(...F.punches.map((p) => p.share)), 'at least the uppercut');
   const { g, clock } = arena({ awakened: true, foes: [[1.2, 0], [-1.2, 0, { boss: true }], [0, 1.2, { eliteId: 'x' }], [3.5, 0]] });
   for (let i = 0; i < 3; i++) { step(g, clock); keep(g); g.enemies[3].x = g.player.x + 3.5; g.enemies[3].y = g.player.y; }
-  const hp = g.enemies.map((e) => e.hp), pos = g.enemies.map((e) => [e.x, e.y]); tap(g, clock); idle(g, clock, 3);
+  const hp = g.enemies.map((e) => e.hp), pos = g.enemies.map((e) => [e.x, e.y]); tap(g, clock); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */
   for (const i of [0, 1, 2]) { assert.ok(g.enemies[i].hp < hp[i], `foe ${i} struck`); assert.ok(Math.hypot(g.enemies[i].x - pos[i][0], g.enemies[i].y - pos[i][1]) < 1e-6, `foe ${i} not knocked`); }
   assert.equal(g.enemies[3].hp, hp[3], 'outside the radius');
   // measured against the cross on the same foe: the kick hits harder than the plain cross and the jab
@@ -87,7 +87,7 @@ test('Echo glyphs: none, the cross charges; one, the jab too; two, every step, t
 test('every charge has a perfect window: a release inside it beats a longer, full one; longer is stronger up to the cap', () => {
   assert.equal(fistPerfect(F.tapGrace + F.perfect[0] - .01), false); assert.equal(fistPerfect(F.tapGrace + (F.perfect[0] + F.perfect[1]) / 2), true); assert.equal(fistPerfect(F.tapGrace + F.perfect[1] + .01), false);
   assert.ok(F.perfectShare > 1); assert.ok(fistCharge(F.tapGrace + .3) < fistCharge(F.tapGrace + .9));
-  const dealt = (seconds, s = 1) => { const { g, clock } = arena({ awakened: true, echoes: 2 }); for (let i = 1; i < s; i++) step(g, clock); const before = lost(g); keep(g); hold(g, clock, seconds); idle(g, clock, 3); return { amount: lost(g) - before, msg: g.message, perfect: g.player.attackVisual.fistPerfect === true }; };
+  const dealt = (seconds, s = 1) => { const { g, clock } = arena({ awakened: true, echoes: 2 }); for (let i = 1; i < s; i++) step(g, clock); const before = lost(g); keep(g); hold(g, clock, seconds); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */ return { amount: lost(g) - before, msg: g.message, perfect: g.player.attackVisual.fistPerfect === true }; };
   for (const s of [1, 4]) {
     const short = dealt(.4, s), perfect = dealt(F.tapGrace + 1.15, s), late = dealt(F.tapGrace + 1.6, s);
     assert.ok(short.amount < late.amount, `step ${s}: longer is stronger`); assert.ok(perfect.amount > late.amount, `step ${s}: the perfect window is strongest`);
@@ -99,7 +99,7 @@ test('Ki Blast: the airborne uppercut is followed by the ground slam in the kick
   const setUp = (awakened) => { const a = arena({ awakened, ki: true, foes: [[1, .2]] }); const { g, clock } = a; for (let i = 0; i < 3; i++) { tap(g, clock); idle(g, clock, 40); }
     idle(g, clock, 40); step(g, clock); step(g, clock); assert.equal(g.fistNextStep(clock.t), 3); hold(g, clock, WEAPON_ARTS.hold.grace + 1.15); return a; };
   for (const awakened of [true, false]) {
-    { const { g, clock } = setUp(awakened); assert.ok(clock.t < g.jumpUntil, 'popped up'); assert.equal(g.fistCombo.step, 3);
+    { const { g, clock } = setUp(awakened); idle(g, clock, 5); /* 2026-11-14: the fists' contact delay runs in every area */ assert.ok(clock.t < g.jumpUntil, 'popped up'); assert.equal(g.fistCombo.step, 3);
       tap(g, clock); assert.ok(g.plunge?.kiSlam, 'the press in the air is the slam'); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick');
       const before = lost(g); idle(g, clock, 30); assert.ok(lost(g) > before, 'it lands'); assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross');
       tap(g, clock); frame(g, clock); assert.equal(g.fistCombo.step, 1); }
@@ -122,7 +122,7 @@ test('a dodge or a cast cancels any step or charge, a waiting press too, and the
     tap(g, clock); frame(g, clock); assert.equal(g.fistCombo.step, 1);
   }
   // a dodge drops a waiting press and a Close View step not yet in contact
-  const { g, clock } = arena(); g.player.stamina = 100; tap(g, clock); frame(g, clock); g.fistPress(g.fistRecoverUntil - 20, { x: 1, y: 0 }); assert.ok(g.fistQueued);
+  const { g, clock } = arena(); g.player.stamina = 100; tap(g, clock); frame(g, clock); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */ g.fistPress(g.fistRecoverUntil - 20, { x: 1, y: 0 }); assert.ok(g.fistQueued);
   frame(g, clock, { pressed: ['dodge'] }); assert.equal(g.fistQueued, null);
 });
 
@@ -201,5 +201,5 @@ test('Ki Blast slam survives a pause mid-leap (r946 review): kiSlamJump shifts w
   const { g, clock } = arena({ ki: true, foes: [[1, .2]] }); for (let i = 0; i < 3; i++) { tap(g, clock); idle(g, clock, 40); }
   idle(g, clock, 40); step(g, clock); step(g, clock); hold(g, clock, WEAPON_ARTS.hold.grace + 1.15); assert.ok(clock.t < g.jumpUntil, 'popped up by the blast');
   g.setPaused(true, clock.t); clock.t += 5000; g.setPaused(false, clock.t);
-  assert.equal(g.kiSlamReady(clock.t), true, 'still the same leap after the pause'); tap(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam');
+  idle(g, clock, 5); /* 2026-11-14: the fists' contact delay runs in every area */ assert.equal(g.kiSlamReady(clock.t), true, 'still the same leap after the pause'); tap(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam');
 });

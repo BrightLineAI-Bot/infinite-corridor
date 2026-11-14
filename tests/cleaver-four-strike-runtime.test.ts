@@ -55,7 +55,7 @@ test('six accepted Cleaver presses stamp 1/2/3/1/2/3 while refusal, Echo and clo
 });
 
 test('Pike remains three-stage and family switches restart without changing Fists state',()=>{
-  const g=fixture('pike'),steps=[];for(let n=0;n<4;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.attackVisual.primaryMotion,undefined);}assert.deepEqual(steps,[1,2,3,1]);
+  const g=fixture('pike'),steps=[];for(let n=0;n<4;n++){g.primaryAttack(100000+n*500);swingTo(g,100000+n*500);/* 2026-11-14: the pike's thrust runs its own clock (melee-swing.ts) */steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.attackVisual.primaryMotion,undefined);}assert.deepEqual(steps,[1,2,3,1]);
   // Game stores the accepted logical input time; the two-argument pure helper below remains legacy.
   g.save.equipment.primary=cleaver();g.primaryAttack(102000);assert.equal(g.player.attackVisual.primaryMotion.step,1);assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',v:3,mode:'quick',step:1,resetWindow:{v:1,acceptedLogicalMs:102000}});
   const player:any={primaryCombo:{weaponKind:'verge-cleaver',v:2,step:4,future:9}};assert.equal(advancePrimaryCombo(player,'verge-cleaver'),1);assert.deepEqual(player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,future:9});
@@ -77,7 +77,7 @@ test('all three Cleaver stages and committed phases round-trip through both runt
 test('accepted Pike replaces inherited Cleaver or opaque versions with its supported three-stage counter',()=>{
   for(const prior of [{weaponKind:'verge-cleaver',v:2,step:4,future:{kept:true}},{weaponKind:'cinder-pike',v:7,step:99,future:{kept:true}}]){
     const g=fixture('pike');g.player.primaryCombo=clone(prior);const steps=[];
-    for(let n=0;n<5;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.primaryCombo.v,undefined);assert.deepEqual(g.player.primaryCombo.future,{kept:true});}
+    for(let n=0;n<5;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);swingTo(g,100000+n*500);/* 2026-11-14: run each thrust out */assert.equal(g.player.primaryCombo.v,undefined);assert.deepEqual(g.player.primaryCombo.future,{kept:true});}
     assert.deepEqual(steps,[1,2,3,1,2]);
   }
 });
