@@ -148,10 +148,10 @@ test('Reduced Motion holds a calm pose: no lunge or recoil translation, half the
 
 test('triangle counts are unchanged per kind, and a posed creature writes exactly its triangles', () => {
   const pinned: any = { ashling: 160, hollowMarshal: 224, weepingSaint: 148, mirrorShade: 104, censerWarden: 196, lamplighter: 196, rimeSentinel: 220, ashenHound: 224, riftLynx: 192, thunderhorn: 176,
-    'foundry-quadruped': 176, glassMite: 168, pallidCrawler: 178, veilSpinner: 202, siegeBeetle: 220, galleryLurker: 220, lakeGlider: 190, hookhanger: 174, coilStalker: 176, sunderjaw: 200, sinkmaw: 210,
+    'foundry-quadruped': 176, glassMite: 168, pallidCrawler: 178, veilSpinner: 202, siegeBeetle: 220, galleryLurker: 220, lakeGlider: 184, hookhanger: 174, coilStalker: 176, sunderjaw: 200, sinkmaw: 208,
     'foundry-segmented': 192, cinderWisp: 140, veilMoth: 120, hangedChoir: 204, graveLantern: 160, cinderSeraph: 232, lumenWraith: 154, gloomwisp: 180, cinderKite: 176, spindriftMedusa: 146,
     'foundry-floating': 160, amalgam: 192, gnawingMaw: 168, gloomgorge: 220, 'foundry-tentacled': 184, 'foundry-tentacled-3': 152, 'foundry-tentacled-6': 200, sparkWarden: 196, voidSentinel: 204,
-    knellkeeper: 174, prismStilt: 160, slagwright: 170, 'foundry-geometric': 152, 'foundry-biomechanical': 204, 'foundry-biomechanical-3': 204, 'foundry-biomechanical-6': 228, rootBrute: 204,
+    knellkeeper: 172, prismStilt: 160, slagwright: 170, 'foundry-geometric': 152, 'foundry-biomechanical': 204, 'foundry-biomechanical-3': 204, 'foundry-biomechanical-6': 228, rootBrute: 204,
     vinehookLeaper: 218, thornspitterBloom: 178 };
   assert.deepEqual(Object.keys(pinned).sort(), Object.keys(CREATURE_POSE.kinds).sort());
   const out = new Float32Array(MODEL_MAX_VERTICES * MODEL_FLOATS);

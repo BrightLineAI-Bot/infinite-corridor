@@ -3,7 +3,7 @@ import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, vert
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
-import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.ts'; // adventure creatures
+import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.ts'; // adventure creatures
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
@@ -1275,6 +1275,12 @@ export function writeCloseViewModel(out, offset, actor) {
     if(placingStone&&swing===freeSwing&&kind!=='playerCinderPike')angle+=(-.94-angle)*place;
     if(shovelDigging&&swing===-2)angle+=(-1.18*(shovel?.down||0)+.46*(shovel?.lever||0)-angle)*(shovel?.weight||0);
     if(shovelDigging&&swing===2)angle+=(-.50*(shovel?.down||0)-.28*(shovel?.lever||0)-angle)*(shovel?.weight||0);
+    // Adventure creatures and Foundry kin: per-kind limb attack poses on the root pose's own stage clock, over their ambient sway
+    // (close-view-adventure-models.ts ADVENTURE_JOINT_POSE).
+    if (root && root.stage && ADVENTURE_JOINT_KINDS.has(kind)) {
+      const a = adventureJointPose(kind, swing, actor.action || actor.rootAttack, root.style, root.stage, root.u, actor.reduceMotion ? CREATURE_POSE.reduced.scale : 1);
+      if (a !== null) angle = (semanticAngle(kind, swing, '', '', '', 0, 0, beat, moving, phase, secondary) ?? -Math.sign(swing) * beat * stride) + a;
+    }
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
