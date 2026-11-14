@@ -9,12 +9,13 @@ import { createHash } from 'node:crypto';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { createCombatant, wayfarerDamage } from '../src/combat.ts';
+import { regiftOrreryGear, ownsAetherOrrery } from '../src/game.ts';
 import { generateItem, ORRERY_LOOT, APERTURE_BANDS, isValidItem, rangedWeapon, normalizeItemUpgrade } from '../src/items.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
 import { deserializeSave, serializeSave } from '../src/persistence.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { BRAWLER } from '../src/brawler-spells.ts';
-import { MIRAGE, mirageBladePresentation, SWEEP_BLADES } from '../src/tool-forms.ts';
+import { ORRERY as ORRERY_FORM, MIRAGE, MIRAGE_BLADE_VIEW, mirageBladePresentation, SWEEP_BLADES } from '../src/tool-forms.ts';
 import { GREAT_SWEEP_SWING, sweepTimes, sampleSweep, sweepDamageAngle, normalizeToolSwing, sampleSweepPose } from '../src/great-sweep.ts';
 import { closeViewHeldToolKind, writeCloseViewHeldTool, HERO_GREAT_SWEEP, GREAT_SWEEP_HELD_TRIANGLES, ORRERY_HELD, ORRERY_HELD_TRIANGLES, MIRAGE_BLADE_SHAPES, MIRAGE_BLADE_MODELS, MIRAGE_BLADE_KINDS } from '../src/close-view-sweep-gear.ts';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, HERO_SLOT_EXTRA_TRIANGLES, HERO_EQUIPMENT_MAX_TRIANGLES, HERO_KIT_MAX_TRIANGLES, writeCloseViewModel, modelTriangleCount } from '../src/close-view-models.ts';
@@ -208,5 +209,57 @@ test('the Mirage blades in Close View have Standard View\'s shapes, sizes and co
   const sh = box('mirageShuriken'); assert.ok(near(sh.x1, .26 * k) && near(sh.x0, -.26 * k) && near(sh.y1, .26 * k)); for (const c of [0xc9d1d8, 0xffd23f]) assert.ok(sh.colors.has(rgb(c)));
   for (const kind of MIRAGE_BLADE_KINDS) { const n = modelTriangleCount(kind); assert.ok(n > 0 && n <= 64, `${kind} ${n}`);
     const a = { ...mirageBladePresentation({ mirage: true, x: 4, y: 5, age: .3, blade: MIRAGE_BLADE_KINDS.indexOf(kind) }), z: .82, reduceMotion: false, alpha: 1 }, out = new Float32Array(256 * 3 * MODEL_FLOATS), end = writeCloseViewModel(out, 0, a);
-    assert.equal(end / MODEL_FLOATS / 3, n); for (let i = 0; i < end; i += MODEL_FLOATS) assert.ok(out[i + 2] > .6, 'flies at chest height'); }
+    assert.equal(end / MODEL_FLOATS / 3, n); for (let i = 0; i < end; i += MODEL_FLOATS) assert.ok(out[i + 2] > .6, 'flat with no camera: at chest height');
+    // tipped up toward the camera (MIRAGE_BLADE_VIEW.tilt): seen from a camera looking along +x, the face leans back toward it
+    const tilted = new Float32Array(256 * 3 * MODEL_FLOATS), e2 = writeCloseViewModel(tilted, 0, { ...a, camYaw: 0 }); assert.equal(e2, end);
+    let nz = 0, nx = 0, lo = Infinity; const flats = (MIRAGE_BLADE_MODELS as any)[kind][0].mesh.length / 9 * MODEL_FLOATS; for (let i = 0; i < e2; i += MODEL_FLOATS) { lo = Math.min(lo, tilted[i + 2]); if (i < flats && tilted[i + 5] > nz) { nz = tilted[i + 5]; nx = tilted[i + 3]; } } // the first part: the blade's own flats
+    const deg = Math.atan2(-nx, nz) * 180 / Math.PI; assert.ok(Math.abs(deg - MIRAGE_BLADE_VIEW.tilt) < 1, `${kind} face tipped ${deg.toFixed(1)}° toward the camera`); assert.ok(MIRAGE_BLADE_VIEW.tilt >= 35 && MIRAGE_BLADE_VIEW.tilt <= 50); assert.ok(lo > .15, 'still clear of the floor'); }
+});
+
+// ---------------------------------------------------------------- answers from Tim (2026-11-14)
+test('a cancel (a primary, a dodge, a jump) in the wind-up or mid-turn still hits every foe in the circle exactly once', () => {
+  const T = sweepTimes(1, {});
+  for (const cancel of ['primary', 'dodge', 'jump']) for (const at of [100, 400]) {
+    const { g } = arena(), angles = [0, 45, 90, 135, 180, 225, 270, 315], foes = angles.map((a) => foeAt(g, a, 1.6)); g.enemies = foes.slice();
+    g.save.equipment.primary = { id: 'primary-verge-cleaver', name: 'Verge Cleaver', slot: 'primary', power: 5, property: 'impact' }; g.player.stamina = 1e6;
+    const press = (i: number) => i === 0 ? once('tool') : i === at / 8 && cancel !== 'primary' ? once(cancel) : calm;
+    const home = foes.map((f) => [f.x, f.y]), seen = new Map(); let t = 1000, swingBefore = null, sweepHits = 0;
+    for (let i = 0; i * 8 < 1100; i++) {
+      foes.forEach((f, k) => { f.x = home[k][0]; f.y = home[k][1]; f.hitStun = 0; }); g.enemies = g.enemies.filter((e: any) => foes.includes(e)); g.player.invulnerableUntil = t + 1e6;
+      if (cancel === 'primary' && i === at / 8) { g.player.attackReadyAt = 0; g.attackAction = 'attack'; try { g.primaryAttack(t, { x: 0, y: -1 }); } finally { g.attackAction = null; } } // a cut away from most of the ring
+      const list = g.effects; list.push = function (...xs: any[]) { for (const e of xs) if (e?.swingHit) for (const f of e.only) seen.set(f.id, (seen.get(f.id) || 0) + 1); return Array.prototype.push.apply(this, xs); }; // every blow the swing gives
+      swingBefore = g.toolSwing; g.update(.008, press(i), t);
+      if (i === at / 8) { assert.ok(swingBefore, `${cancel}@${at}: swinging before`); assert.equal(g.toolSwing, null, `${cancel}@${at}: the animation ends at once`); }
+      t += 8;
+    }
+    assert.deepEqual([...seen.keys()].sort(), foes.map((f) => f.id).sort(), `${cancel}@${at}: every foe in the circle`);
+    assert.ok([...seen.values()].every((n) => n === 1), `${cancel}@${at}: once each`);
+  }
+  // the Mirage swing deals nothing when cancelled either
+  const { g } = arena(['nanoknives']), near = foeAt(g, 180, 1.3, 'near'), ahead = foeAt(g, 0, 1, 'ahead'); g.enemies = [near, ahead]; g.player.stamina = 1e6;
+  g.update(.008, once('tool'), 1000); g.update(.008, once('jump'), 1008); assert.equal(g.toolSwing, null); for (let t = 1016; t < 1300; t += 8) { near.x = g.player.x - 1.3; near.y = g.player.y; g.update(.008, calm, t); } assert.equal(near.hp, near.maxHp);
+});
+
+test('cancelling every swing at once keeps the damage per second', () => {
+  const { g } = arena(), foes = Array.from({ length: 5 }, (_, i) => foeAt(g, i * 72, 1.6, `c${i}`)); g.enemies = foes.slice(); g.player.stamina = 1e6;
+  const home = foes.map((f) => [f.x, f.y]), px = g.player.x, py = g.player.y, power = g.toolPower(); let t = 1000, cancelAt = -1;
+  for (let i = 0; i * 16 < 60000; i++) {
+    foes.forEach((f, k) => { f.x = home[k][0]; f.y = home[k][1]; f.hitStun = 0; }); g.enemies = g.enemies.filter((e: any) => foes.includes(e)); g.player.x = px; g.player.y = py; g.player.invulnerableUntil = t + 1e6; g.player.stamina = 1e6;
+    const ready = g.toolReadyAt; g.update(.016, i === cancelAt ? once('dodge') : tool, t); if (g.toolReadyAt !== ready) cancelAt = i + 3; // a dodge 48 ms after each press
+    t += 16;
+  }
+  const dps = foes.reduce((a, f) => a + f.maxHp - f.hp, 0) / 60, old = 5 * wayfarerDamage(Math.max(1, Math.round(power * BRAWLER['great-sweep'].share))) / BRAWLER['great-sweep'].cooldown;
+  assert.ok(Math.abs(dps / old - 1) <= .1, `${dps.toFixed(1)} vs ${old.toFixed(1)}`);
+});
+
+test('the Orrery is given once more to a save that was given it but no longer has one', () => {
+  const s: any = freshSave(); s.worldFlags = { [ORRERY_FORM.flag]: true }; s.inventory = [];
+  assert.equal(ownsAetherOrrery(s), false); assert.equal(regiftOrreryGear(s), true); assert.equal(s.inventory.filter((q: any) => q.name === 'Aether Orrery').length, 1); assert.equal(s.worldFlags[ORRERY_FORM.regift], true);
+  s.inventory = []; assert.equal(regiftOrreryGear(s), false, 'never twice'); assert.equal(s.inventory.length, 0);
+  const never: any = freshSave(); never.worldFlags = {}; assert.equal(regiftOrreryGear(never), false, 'only for saves that had the gift'); assert.equal(never.worldFlags[ORRERY_FORM.regift], undefined);
+  for (const where of ['equipment', 'preset']) { const o: any = freshSave(); o.worldFlags = { [ORRERY_FORM.flag]: true }; o.inventory = []; if (where === 'equipment') o.equipment.secondary = { ...ORRERY_FORM.item }; else o.magicSkills.presets = [{ build: { gear: { secondary: { ...ORRERY_FORM.item } } } }];
+    assert.equal(regiftOrreryGear(o), false, `owned in ${where}`); assert.equal(o.worldFlags[ORRERY_FORM.regift], 'owned'); }
+  // a full pack still takes it (never salvaged for room); and on load it is given with a message
+  const full: any = freshSave(); full.seed = 'REGIFT'; full.worldFlags = { [ORRERY_FORM.flag]: true }; full.perception.aperture = 1e6; full.inventory = Array.from({ length: 62 }, (_, i) => generateItem(`REGIFT:${i}`, 10, null)).filter((q: any) => q.name !== 'Aether Orrery');
+  const n = full.inventory.length, g: any = new Game(full, 0); assert.equal(full.inventory.length, n + 1); assert.equal(g.glyphNotice || g.message, ORRERY_FORM.messages.regift);
 });

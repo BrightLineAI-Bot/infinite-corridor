@@ -96,7 +96,7 @@ export function normalizeToolSwing(raw) {
   const aim = raw.aim, mag = Math.hypot(Number(aim?.x), Number(aim?.y)), p = raw.payload;
   if (typeof raw.id !== 'string' || !raw.id || raw.id.length > 160 || !['area', 'areaId', 'levelId'].every((k) => typeof raw[k] === 'string' && raw[k].length <= 512) ||
     !obj(aim) || !(Math.abs(mag - 1) <= 1e-5) || (raw.direction !== 1 && raw.direction !== -1) || typeof raw.mirage !== 'boolean' ||
-    !inRange(raw.tempo, S.tempo.min, S.tempo.max) || !inRange(raw.elapsedMs, 0, 10000) || !inRange(raw.stopLeft ?? 0, 0, 1000) ||
+    !inRange(raw.tempo, S.tempo.min, S.tempo.max) || !inRange(raw.elapsedMs, 0, 10000) || !inRange(raw.stopLeft ?? 0, 0, 1000) || !inRange(raw.busy ?? 0, 0, 15) ||
     !Array.isArray(raw.hits) || raw.hits.length > S.maxHits || !raw.hits.every((h) => typeof h === 'string' && h.length <= 160) || !obj(p) ||
     !inRange(p.damage, 0, 1e9) || !inRange(p.radius, 0, 20) || !inRange(Number(p.imbue) || 0, 0, 1e9) || !inRange(Number(p.healShare) || 0, 0, 4) ||
     !Array.isArray(p.echoCopies) || p.echoCopies.length > 8 || !p.echoCopies.every((c) => obj(c) && inRange(c.delayMs, 0, 10000) && inRange(c.share, 0, 4))) return null;

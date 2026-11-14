@@ -59,17 +59,17 @@ test('accepted payload freezes pellets, Arc Wave, awakened fan, Tool Echo and cl
 });
 
 // 2026-11-14 (great-sweep.ts): the Great Sweep has no startup release any more, so a primary is never held for it: woven in during
-// its wind-up it is accepted at once (Tim's light-weaving), and the committed blade still sweeps round and lands. These replace the
-// two startup-window tests this file pinned on the Great Sweep (delayed tools keep that window: tool-release-presentation tests).
-test('a primary tap during the Great Sweep wind-up is accepted at once and the committed blade still lands',()=>{
+// its wind-up it is accepted at once (Tim's light-weaving); it cancels the swing's animation and the rest of the blow lands at once
+// (Tim: "the animation cancels but the Great Sweep still deals all its damage"). These replace the two startup-window tests this
+// file pinned on the Great Sweep (delayed tools keep that window: tool-release-presentation tests).
+test('a primary tap during the Great Sweep wind-up is accepted at once and the whole blow lands at once',()=>{
   const g=fixture('great-sweep'),at=100000,foe=createCombatant('ashling',g.player.x+1.4,g.player.y);Object.assign(foe,{id:'f',hp:1e6,maxHp:1e6,damage:0,cooldown:1e9,speed:0});g.enemies=[foe];g.fireSecondary(at,{x:1,y:0});const swing=g.toolSwing;assert.ok(swing);
-  g.update(.01,input('attack'),at+60);assert.equal(g.player.attackVisual.profile,'melee','the primary takes the body at once');assert.strictEqual(g.toolSwing,swing,'the swing stays committed');
-  for(let t=at+70;t<=at+1000;t+=10){foe.x=g.player.x+1.4;foe.y=g.player.y;g.update(.01,input(),t);}assert.ok(swing.hits.includes('f'),'the blade still lands');
+  g.update(.01,input('attack'),at+60);assert.equal(g.player.attackVisual.profile,'melee','the primary takes the body at once');g.update(.01,input(),at+70);assert.equal(g.toolSwing,null,'the animation ends by the next tick');assert.ok(swing.hits.includes('f'),'the blow landed at once');
 });
 
-test('a Fists press during the Great Sweep wind-up starts at once; the swing stays committed',()=>{
+test('a Fists press during the Great Sweep wind-up starts at once; the swing resolves',()=>{
   const g=fixture('great-sweep'),at=100000;g.save.equipment.primary={...BRAWLER_GEAR[0].item};g.fireSecondary(at,{x:1,y:0});const swing=g.toolSwing;g.player.attackReadyAt=0;
-  const heldInput:any={state:{x:0,y:0},consume:(k:string)=>k==='attack',held:(k:string)=>k==='attack',reset:()=>{}};g.update(.01,heldInput,at+60);assert.ok(g.fistCharge||g.player.attackVisual.profile==='fist','the fist is not held back');assert.strictEqual(g.toolSwing,swing);
+  const heldInput:any={state:{x:0,y:0},consume:(k:string)=>k==='attack',held:(k:string)=>k==='attack',reset:()=>{}};g.update(.01,heldInput,at+60);assert.ok(g.fistCharge||g.player.attackVisual.profile==='fist','the fist is not held back');assert.ok(swing);g.update(.01,{...heldInput,consume:()=>false},at+70);assert.equal(g.toolSwing,null,'the swing\'s animation ends, its blow resolved');
 });
 
 test('actual normal and Swift repeats flatten the prior released pose before a new startup',()=>{

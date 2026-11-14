@@ -855,6 +855,25 @@ export function grantOrreryGear(save) {
   if (!owned) { if (save.inventory.length >= EQUIPMENT_CAPACITY) return false; save.inventory.push(normalizeSockets({ ...item })); }
   save.worldFlags[O.flag] = true; return !owned;
 }
+// The Orrery's one-time re-gift (Tim, 2026-11-14): its gift is given once, and a save that salvaged it (Tim's did, with a full
+// pack) could never have it again until it started dropping. A save that was given it (ORRERY.flag) but holds no Aether Orrery
+// anywhere in the save (pack, equipment, presets, any other store) is given one, once; ORRERY.regift then records that this was
+// settled (true: given; "owned": one was found, so nothing was given), so the search runs once per journey and never repeats.
+// The pack takes it even when full (it is never salvaged for room).
+export function ownsAetherOrrery(save) {
+  const stack = [save], name = ORRERY.item.name;
+  while (stack.length) { const o = stack.pop(); if (!o || typeof o !== "object" || ArrayBuffer.isView(o)) continue;
+    if (Array.isArray(o)) { for (let i = 0; i < o.length; i++) { const q = o[i]; if (q && typeof q === "object") stack.push(q); } continue; }
+    if (o.name === name && (o.slot === "secondary" || o.property === "orrery")) return true;
+    for (const k in o) { const q = o[k]; if (q && typeof q === "object") stack.push(q); } }
+  return false;
+}
+export function regiftOrreryGear(save) {
+  save.worldFlags ||= {}; save.inventory ||= [];
+  if (!save.worldFlags[ORRERY.flag] || save.worldFlags[ORRERY.regift]) return false;
+  if (ownsAetherOrrery(save)) { save.worldFlags[ORRERY.regift] = "owned"; return false; }
+  save.inventory.push(normalizeSockets({ ...ORRERY.item })); save.worldFlags[ORRERY.regift] = true; return true;
+}
 // Release 607 (Tim, 2026-10-31: "I have like 43000 marks... maybe 100000 cinder iron... the economy of the game... is almost
 // without consequence"; he took the recommendation): salvage pays SMITHY.salvage.iron by tier (1/1/2/2, was 1/2/3/4), and a
 // piece salvaged only because the pack was full (`auto`) pays no iron at all, just its glyph dust. Kill and clear marks halve
@@ -2679,7 +2698,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
-    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (grantOrreryGear(save)) this.message = ORRERY.messages.given; /* the Aether Orrery */ if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ // release 489; 493
+    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (grantOrreryGear(save)) this.message = ORRERY.messages.given; /* the Aether Orrery */ else if (regiftOrreryGear(save)) { this.message = ORRERY.messages.regift; this.glyphNotice ||= ORRERY.messages.regift; } /* its one-time re-gift */ if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ // release 489; 493
     if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -4291,7 +4310,7 @@ export class Game {
   }
   // Jump on a wall: a new jump from the hold's height, kicking away from the wall.
   wallJump(now) {
-    const c = this.wallCling, p = this.player; this.wallCling = null;
+    const c = this.wallCling, p = this.player; this.wallCling = null; this.resolveToolSwing(now);
     this.jumpFrom = c.lifted ? c.z : this.elevationHere(p.x, p.y); if (c.lifted) this.skyAir = c.z;
     this.deckHop = false; this.skyHopGap = false; this.keelLine = null; this.liftDrop = false;
     this.jumpDur = JUMP.base + skillRank(this.save, "quickening") * JUMP.quickening; this.jumpStart = now; this.jumpUntil = now + this.jumpDur;
@@ -7983,7 +8002,7 @@ export class Game {
     const p=this.player,S=GREAT_SWEEP_SWING,mirage=o.mirage===true,tempo=sweepTempo(mirage?o.cooldownMs*S.mirage.fit/S.recoveryMs:this.toolCooldownScale()),T=sweepTimes(tempo,{});
     const prior=mirage?normalizeAttackVisual(p.attackVisual):o.priorTool,deadline=mirage?attackVisualDeadline(p,prior):0,continuing=mirage?prior?.toolKind==='great-sweep'&&prior.toolMotion?.v===1&&!prior.presentationCancelled&&deadline>now:!!o.priorPose,direction=mirage?(continuing?-(prior.toolMotion.direction||1):1):(o.direction===-1?-1:1);
     const aim=projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),id=`sweep-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`;
-    this.toolSwing={v:GREAT_SWEEP_RECORD_VERSION,id,mirage,direction,tempo,elapsedMs:0,lastNow:now,stopLeft:0,stopUsed:false,contacted:false,hits:[],area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:aim.x,y:aim.y},
+    this.toolSwing={v:GREAT_SWEEP_RECORD_VERSION,id,mirage,direction,tempo,elapsedMs:0,lastNow:now,busy:this.toolSwingBusy(now),stopLeft:0,stopUsed:false,contacted:false,hits:[],area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:aim.x,y:aim.y},
       payload:{damage:mirage?0:o.damage,radius:mirage?BRAWLER['great-sweep'].radius:o.radius,imbue:mirage?0:o.imbue||0,healShare:mirage?0:o.healShare||0,echoCopies:mirage?[]:o.echoCopies||[]}};
     p.attackUntil=now+(mirage?200:240);
     const visual=stampAttackVisual(p,'sweep',T.recovery,null);if(!visual)return;
@@ -7993,30 +8012,49 @@ export class Game {
   // One tick: advance the clock (held in hit-stop), then, in the active window, hit what the blade crossed since the last tick
   // (hilt to tip, all round) and the body bubble, once each per swing. The hits land through updateEffects (one short-lived
   // effect limited to those foes, `only`), so glyphs, Imbue, Shadow Boxing's heal and the frenzy work as for every tool blow.
+  // Cancels (Tim, 2026-11-14: "the animation cancels but the Great Sweep still deals all its damage"): when the player starts
+  // anything else (a primary or Fists attack, another tool use, a dodge, a jump, a spell), the rest of the sweep resolves at
+  // once (resolveToolSwing) and the swing ends. `busy` holds what was already under way when the swing started or last ticked
+  // (2 casting, 4 dodging, 8 a Fists charge; a jump cancels where it starts), so only something newly begun cancels. Death, a stun and a change of area drop it.
   tickToolSwing(now){
     const q=this.toolSwing;if(q?.v!==GREAT_SWEEP_RECORD_VERSION)return;
     const p=this.player,S=GREAT_SWEEP_SWING;
     if(!(p?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||now<(p.stunnedUntil||0)){this.toolSwing=null;return;} // a committed swing lands even if the gear changes under it, as an accepted tool shot does
+    const v=p.attackVisual,busy=this.toolSwingBusy(now),begun=busy&~(Number(q.busy)||0);q.busy=busy;
+    if(v?.sweepSwing?.id!==q.id||v.presentationCancelled||begun){this.resolveToolSwing(now);return;} // another action took the body: the rest of the blow lands now
     let d=Math.max(0,Math.min(1000,now-(Number(q.lastNow)||now)));q.lastNow=now;
     if(q.stopLeft>0){const held=Math.min(q.stopLeft,d);q.stopLeft-=held;d-=held;}
     const T=sweepTimes(q.tempo,this._sweepT||(this._sweepT={})),prev=q.elapsedMs,cur=prev+d;q.elapsedMs=cur;
-    const v=p.attackVisual;if(v?.sweepSwing?.id!==q.id&&(q.mirage||prev>=T.activeEnd)){this.toolSwing=null;return;} // another action took the body: a drawn-only swing, or one past its blow, ends. A primary woven in during the wind-up or the turn (light-weaving, never blocked) takes the body, and the committed blade still sweeps round and lands, as the old sweep's blow did
     if(!q.mirage&&cur>T.windEnd&&prev<T.activeEnd){
-      const contact=!q.contacted;q.contacted=true;
-      const cx=p.x+.5,cy=p.y+.45,aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,a0=aim+sweepDamageAngle(Math.max(prev,T.windEnd),T,q.direction)*deg,a1=aim+sweepDamageAngle(Math.min(cur,T.activeEnd),T,q.direction)*deg,tip=q.payload.radius,width=mapWidth(this.map,this.area),P=q.payload;
-      if(contact)for(const c of P.echoCopies)this.effects.push({id:`${q.id}-echo-${c.index||1}`,kind:'great-sweep',brawler:true,x:cx,y:cy,life:BRAWLER['great-sweep'].lifetime,radius:tip,pulse:99,untilPulse:0,pulseIndex:0,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(P.damage*c.share)),glyphHost:'tool',healShare:P.healShare,imbue:P.imbue*c.share,echo:true}); // the Echo glyph repeats the blow, as before
-      const hits=(this._sweepHits||=[]);hits.length=0;
-      for(const e of this.enemies){if(e.dead||e.untargetable||!this.bodyReach(e))continue;const id=String(e.id);if(q.hits.includes(id))continue;
-        const extra=Math.max(0,enemyBodyRadius(e)-.38),ex=e.x+.5,ey=e.y+.45,range=Math.hypot(ex-cx,ey-cy);
-        if(range>S.bubble+extra&&!sweptArcTouches(ex,ey,extra+S.foePad,cx,cy,S.hilt,tip,a0,a1))continue;
-        let open=true;const n=Math.ceil(range*4);for(let i=1;i<n&&open;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))open=false;if(!open)continue;
-        if(q.hits.length<S.maxHits)q.hits.push(id);hits.push(e);}
-      if(hits.length){
-        this.effects.push({id:`${q.id}-hit-${q.hits.length}`,kind:'great-sweep',brawler:true,swingHit:true,x:cx,y:cy,life:1e-4,radius:tip+8,pulse:99,untilPulse:0,pulseIndex:0,hits:{},only:hits.slice(),damage:P.damage,glyphHost:'tool',healShare:P.healShare,imbue:P.imbue});
-        if(!q.stopUsed){q.stopUsed=true;q.stopLeft=S.hitStopMs;for(const e of hits)e.hitStun=Math.max(e.hitStun||0,S.hitStopMs/1000);p.attackUntil=Math.max(p.attackUntil||0,now)+S.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+S.hitStopMs;if(v?.sweepSwing?.id===q.id)v.hitStopMs=(Number(v.hitStopMs)||0)+S.hitStopMs;} // hit-stop: once, on the first hit
-      }
+      const aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,hits=this.toolSwingHits(q,aim+sweepDamageAngle(Math.max(prev,T.windEnd),T,q.direction)*deg,aim+sweepDamageAngle(Math.min(cur,T.activeEnd),T,q.direction)*deg);
+      if(hits.length&&!q.stopUsed){q.stopUsed=true;q.stopLeft=S.hitStopMs;for(const e of hits)e.hitStun=Math.max(e.hitStun||0,S.hitStopMs/1000);p.attackUntil=Math.max(p.attackUntil||0,now)+S.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+S.hitStopMs;v.hitStopMs=(Number(v.hitStopMs)||0)+S.hitStopMs;} // hit-stop: once, on the first hit
     }
     if(cur>=T.recovery)this.toolSwing=null;
+  }
+  // What the Wayfarer has under way that a newly begun one cancels the swing: 2 casting, 4 dodging, 8 a Fists charge (a jump calls
+  // resolveToolSwing where it starts, so being put in the air by anything else does not cancel it).
+  toolSwingBusy(now){const p=this.player;return(now<(p.castUntil||0)?2:0)|(now<(p.dodgeUntil||0)?4:0)|(this.fistCharge?8:0);}
+  // The blow on the foes the blade touches sweeping from a0 to a1 (world radians), or, `full`, anywhere in the whole annulus;
+  // plus the body bubble; line of sight; once each per swing. The Echo glyph's repeats start with the first contact.
+  toolSwingHits(q,a0,a1,full=false){
+    const p=this.player,S=GREAT_SWEEP_SWING,P=q.payload,cx=p.x+.5,cy=p.y+.45,tip=P.radius,width=mapWidth(this.map,this.area);
+    if(!q.contacted){q.contacted=true;for(const c of P.echoCopies)this.effects.push({id:`${q.id}-echo-${c.index||1}`,kind:'great-sweep',brawler:true,x:cx,y:cy,life:BRAWLER['great-sweep'].lifetime,radius:tip,pulse:99,untilPulse:0,pulseIndex:0,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(P.damage*c.share)),glyphHost:'tool',healShare:P.healShare,imbue:P.imbue*c.share,echo:true});} // the Echo glyph repeats the blow, as before
+    const hits=(this._sweepHits||=[]);hits.length=0;
+    for(const e of this.enemies){if(e.dead||e.untargetable||!this.bodyReach(e))continue;const id=String(e.id);if(q.hits.includes(id))continue;
+      const extra=Math.max(0,enemyBodyRadius(e)-.38),r=extra+S.foePad,ex=e.x+.5,ey=e.y+.45,range=Math.hypot(ex-cx,ey-cy);
+      if(range>S.bubble+extra&&!(full?range>=S.hilt-r&&range<=tip+r:sweptArcTouches(ex,ey,r,cx,cy,S.hilt,tip,a0,a1)))continue;
+      let open=true;const n=Math.ceil(range*4);for(let i=1;i<n&&open;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))open=false;if(!open)continue;
+      if(q.hits.length<S.maxHits)q.hits.push(id);hits.push(e);}
+    if(hits.length)this.effects.push({id:`${q.id}-hit-${q.hits.length}`,kind:'great-sweep',brawler:true,swingHit:true,x:cx,y:cy,life:1e-4,radius:tip+8,pulse:99,untilPulse:0,pulseIndex:0,hits:{},only:hits.slice(),damage:P.damage,glyphHost:'tool',healShare:P.healShare,imbue:P.imbue});
+    return hits;
+  }
+  // A cancelled swing: every foe still inside the whole circle that the blade has not struck is struck now, with the same blow
+  // (the Mirage swing deals nothing and just ends); the swing's own drawing stops and the new action proceeds at once.
+  resolveToolSwing(now){
+    const q=this.toolSwing;if(q?.v!==GREAT_SWEEP_RECORD_VERSION)return;this.toolSwing=null;
+    const v=this.player?.attackVisual;if(v?.sweepSwing?.id===q.id&&!v.presentationCancelled)v.presentationCancelled=true;
+    if(q.mirage||q.elapsedMs>=sweepTimes(q.tempo,this._sweepT||(this._sweepT={})).activeEnd)return;
+    this.toolSwingHits(q,0,0,true);
   }
   swingFoeAhead(q,spec){
     const p=this.player,cx=p.x,cy=p.y;
@@ -10579,7 +10617,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.toolSwing = null; /* great-sweep.ts: a dodge cancels the spin */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10616,6 +10654,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        this.resolveToolSwing(now); // great-sweep.ts: a jump cancels the swing; the rest of its blow lands at once
         this.jumpHold = true; // JUMP.liftAt: Jump held from the ground hands over to the drone at the jump's peak
         if (deckFrom != null) { this.skyAir = deckFrom; this.skyAirScale = 1; this.deckHop = true; this.setRoofDeck(null); } // held over the roof (and over its edge) until it lands
         { const u = TREE_KEEL.on && this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, width0, p.x, p.y) : null; this.keelLine = u?.canopy && !u.blocked ? { x: u.x, y: u.y } : null; } // TREE_KEEL: a jump from a branch keeps to that branch's line

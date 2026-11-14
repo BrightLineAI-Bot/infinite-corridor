@@ -12,7 +12,7 @@
 // No allocation per frame; every mesh is inside the triangle budgets the tests check.
 import { MESH_FLOATS, prism, ellipsoid, part, block } from './close-view-mesh.ts';
 import { rangedWeapon } from './items.ts';
-import { MIRAGE } from './tool-forms.ts';
+import { MIRAGE, MIRAGE_BLADE_VIEW } from './tool-forms.ts';
 
 const FLOATS = 10; // close-view-models.ts MODEL_FLOATS (position, normal, RGB, alpha); a test pins the two together
 // ---------------------------------------------------------------- the Great Sweep (held gear recipe space)
@@ -77,6 +77,8 @@ export const MIRAGE_BLADE_KINDS = Object.freeze(['mirageSword', 'mirageAxe', 'mi
 // A flat polygon (x, y) extruded ±t about z = 0: the two flats (fans from the first point; the outlines are convex or star-
 // shaped about it) and the rim. Model space: +X along the blade, +Y across, +Z up. Scaled by k.
 function slab(poly, t, k, fanFrom = null) {
+  let area = 0; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; area += a[0] * b[1] - b[0] * a[1]; }
+  if (area < 0) poly = [...poly].reverse(); // counter-clockwise, so the top flat faces up and the rim faces out
   const flats = [], rim = [], n = poly.length, c = fanFrom || poly[0], top = (p) => [p[0] * k, p[1] * k, t * k], bot = (p) => [p[0] * k, p[1] * k, -t * k];
   for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; if (fanFrom || (i > 0 && i + 1 < n)) { flats.push([top(c), top(a), top(b)], [bot(c), bot(b), bot(a)]); } rim.push([top(a), bot(a), bot(b)], [top(a), bot(b), top(b)]); }
   return { flats, rim };
@@ -142,5 +144,24 @@ export function writeCloseViewHeldTool(out, offset, gear, limit = out?.length ??
 }
 function putMesh(out, offset, mesh, x, y, z, gear) {
   for (let i = 0; i < mesh.length; i += MESH_FLOATS) { out[offset++] = x + mesh[i]; out[offset++] = y + mesh[i + 1]; out[offset++] = z + mesh[i + 2]; out[offset++] = mesh[i + 3]; out[offset++] = mesh[i + 4]; out[offset++] = mesh[i + 5]; shade(out, offset, mesh[i + 6], mesh[i + 7], mesh[i + 8], gear); offset += 4; }
+  return offset;
+}
+
+// A Mirage blade in Close View (close-view-models.ts writeCloseViewModel hands these kinds here): the blade spins in its own
+// plane (`actor.yaw`, the gameplay spin) and that plane is tipped MIRAGE_BLADE_VIEW.tilt degrees up toward the camera
+// (`actor.camYaw`, the camera's heading; flat when unknown), so its face reads from the low camera. A few multiplies per vertex.
+export function writeMirageBladeModel(out, offset, actor) {
+  const parts = MIRAGE_BLADE_MODELS[actor?.kind]; if (!parts || !Number.isSafeInteger(offset) || offset < 0) return offset;
+  let n = 0; for (const p of parts) n += p.mesh.length / MESH_FLOATS; if (offset + n * FLOATS > out.length) return offset;
+  const a = Number(actor.yaw) || 0, ca = Math.cos(a), sa = Math.sin(a), cam = Number(actor.camYaw), tilt = Number.isFinite(cam) ? MIRAGE_BLADE_VIEW.tilt * Math.PI / 180 : 0;
+  const fx = Number.isFinite(cam) ? Math.cos(cam) : 1, fy = Number.isFinite(cam) ? Math.sin(cam) : 0, ct = Math.cos(tilt), st = Math.sin(tilt);
+  const k = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1, X = Number(actor.x) || 0, Y = Number(actor.y) || 0, Z = Number(actor.z) || 0;
+  const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
+  for (const p of parts) for (let i = 0; i < p.mesh.length; i += MESH_FLOATS) { const m = p.mesh;
+    for (let pass = 0; pass < 2; pass++) { const o = pass ? 3 : 0, lx = m[i + o] + (pass ? 0 : p.px), ly = m[i + o + 1], lz = m[i + o + 2] + (pass ? 0 : p.pz);
+      const x1 = lx * ca - ly * sa, y1 = lx * sa + ly * ca, pf = x1 * fx + y1 * fy, ps = -x1 * fy + y1 * fx, pf2 = pf * ct - lz * st, pz2 = pf * st + lz * ct;
+      const wx = pf2 * fx - ps * fy, wy = pf2 * fy + ps * fx;
+      if (pass) { out[offset++] = wx; out[offset++] = wy; out[offset++] = pz2; } else { out[offset++] = X + wx * k; out[offset++] = Y + wy * k; out[offset++] = Z + pz2 * k; } }
+    out[offset++] = m[i + 6]; out[offset++] = m[i + 7]; out[offset++] = m[i + 8]; out[offset++] = alpha; }
   return offset;
 }

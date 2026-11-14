@@ -3872,7 +3872,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(a.kind==='playerShadow'&&Number.isFinite(source?.until)){a.alpha=shadowCloneAlpha(source.until,now,reduce);if(!reduce&&!Number.isFinite(a.phase))a.phase=track.phase+now/450;} // the wraith clone: stronger, its wisps drifting (close-view-shadow-forms.ts)
     const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
-      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it]))};
+      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
     if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
