@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r967 (`f59ad4379249`); production serves `r962-a8bf3852db96` (published 2026-11-14 after a Fable review of r961 to r962). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r968 (`0e129b0365a0`); production serves `r962-a8bf3852db96` (published 2026-11-14 after a Fable review of r961 to r962). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 968 | Claude | claude/hammerfall-clap | Awakened Hammerfall claps: when the hammer lands, two parallel lines of energy along the aim slide apart sideways from the impact, hold, and slam back together on the centre line; one extra slap on every foe between them, on top of the hammer's blow, its Echo copies and the Corridor Golem | In flight. |
+| 969 | Claude | claude/arc-wave-reach | Arc Wave: the three small crescents carry on much farther (20 tiles × reach, was 9.35), still slow (5.5 tiles/s) and spreading in the ±0.45 rad cone, long after the fast great waves (unchanged) have dissipated | In flight. |
+| 968 | Claude | claude/hammerfall-clap | Awakened Hammerfall claps: when the hammer lands, two parallel lines of energy along the aim slide apart sideways from the impact, hold, and slam back together on the centre line; one extra slap on every foe between them, on top of the hammer's blow, its Echo copies and the Corridor Golem | Merged as `0e129b0365a0` (#635). |
 | 967 | Claude | claude/sweep-freeze | Awakened Great Sweep freezes foes: the spun blade and, with Mirage of Blades, the thrown blades. Ordinary foes freeze at a touch; elites, bosses, guardians, world beasts and Gate Revenants fill a freeze meter (slowed as it fills) and freeze briefly when full; each later freeze needs more and lasts less, with a guard after every thaw so nothing can be held frozen | Merged as `f59ad4379249` (#634). |
 | 966 | Claude | claude/arc-wave-tempo | Arc Wave: the Blunderbuss's three small crescents fly slower (5.5 tiles/s, same reach) and fan out in a wider cone (±0.45 rad); the two Echo great waves fly much faster (24 tiles/s, 12.5 tiles × reach) straight along the aim and overtake the crescents within about 2 tiles | Merged as `93562f2ca134` (#633). |
 | 965 | Claude | claude/carbine-hold | Carbine in Close View: held two-handed at the right shoulder with a cheek weld (stock in the shoulder pocket, left hand on the fore-end, barrel level along the aim), arms steady while charging (the charge's animation restarts no longer flicker the arm down and up), a slight recoil kick that settles back to the hold | Merged as `09c278b8c720` (#632). |

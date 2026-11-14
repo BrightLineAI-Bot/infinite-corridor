@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 969 — Arc Wave reach
+
+Tim, 2026-11-14: the great waves should shoot out quickly and dissipate rapidly, as they do; the smaller arc waves should continue on for a far distance.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE.range` 20 tiles × reach (was 9.35); flight time from `arcWaveLife` is now 3.64 s at speed 5.5; the outer crescents end about 17 tiles apart. Great waves unchanged (`ARC_WAVE_ECHO` 24 tiles/s, 12.5 × reach). Tests: `blunderbuss-arc-echo` (13).
+
+**BOUNDARY:** Speed, cone, damage, pierce, hit-once, walls and Close View occlusion are unchanged; the press cap (32 live shots in dungeons, 64 elsewhere) is unchanged, so with a fast cadence in an open dungeon room some presses can be refused at the cap. The plain Blunderbuss without Arc Wave is unchanged. No save change (schema 14).
+
 ## Release 968 — Hammerfall awakened clap
 
 Tim, 2026-11-14: the awakened Hammerfall's ability is a clap: when the hammer lands, two lines of energy move apart from it and come back together and slap, in addition to the hammer's blow (two parallel lines, not two radii).
