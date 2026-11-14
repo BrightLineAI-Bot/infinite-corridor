@@ -8,7 +8,7 @@ import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { SHADOW_CLONE } from "./late-spells.ts";
 import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.ts";
 import { drawOrbit } from "./orbit-volley.ts";
-import { drawToolForms, drawOrrery } from "./tool-forms.ts";
+import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.ts";
 import { drawQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { drawWeaponArts } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { drawAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13)
@@ -39,10 +39,10 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     for (const p of list) {
       const [x, y] = toScreen(p);
       if (p.path === "boomerang") {
-        const a = Math.atan2(p.dy, p.dx);
-        ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8);
-        ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
-        ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
+        const a = Math.atan2(p.dy, p.dx), k = .25 + .75 * shotFade(p); // tool-forms.ts TOOL_RANGE: a Spindle dissipating at the end of its range shrinks away
+        ctx.moveTo(x + Math.cos(a) * 8 * k, y + Math.sin(a) * 8 * k);
+        ctx.lineTo(x + Math.cos(a + 2.35) * 7 * k, y + Math.sin(a + 2.35) * 7 * k);
+        ctx.lineTo(x + Math.cos(a - 2.35) * 7 * k, y + Math.sin(a - 2.35) * 7 * k);
         ctx.closePath();
       } else if(p.path==="grenade"){const gr=p.bomblet?4:7;/* release 537: Cluster Shell bomblets */ctx.moveTo(x+gr,y);ctx.arc(x,y,gr,0,7);ctx.moveTo(x,y-gr);ctx.lineTo(x+gr*.57,y-gr*1.57)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
     }

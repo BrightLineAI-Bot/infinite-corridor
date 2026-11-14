@@ -18,7 +18,7 @@ export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   'verge-cleaver': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   'quandrix-staff': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }), // a primary: held where every primary is (2026-11-13)
   'cinder-pike': Object.freeze({ hand: 'left', scale: 1, grip: 'pike' }),
-  'great-sweep': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'great-sweep': Object.freeze({ hand: 'right', scale: 1, grip: 'one' }), // 2026-11-14: in the right hand, so it is held beside the primary in the left (close-view-sweep-gear.ts)
   mirage: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   emitter: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'spark-coil': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
@@ -257,7 +257,9 @@ export const CLOSE_VIEW_GREAT_SWEEP = Object.freeze({
   twist: -.26, lean: .10, guard: .30, reducedBody: .55,
   // Held carry between uses: the hand low at the sweep hip and the long blade out forward and down, its
   // flat toward the camera behind and above. `hand` is from the shoulder, `blade` and `edge` directions.
-  carry: Object.freeze({ hand: Object.freeze([.16, -.74, .22]), blade: Object.freeze([.58, -.40, .71]), edge: Object.freeze([0, .86, .51]) }),
+  // 2026-11-14 (Tim: "resting on his right shoulder like a huge sword, blade up and back over the shoulder, hand at the grip by
+  // the shoulder"): the hand just in front of and below the shoulder, the long handle laid back over it, the broken blade up behind.
+  carry: Object.freeze({ hand: Object.freeze([.10, -.32, .30]), blade: Object.freeze([-.05, .55, -.83]), edge: Object.freeze([1, .1, 0]) }),
 });
 // Clock sampler for one Great Sweep use at accepted elapsed ms. `startupMs` is the accepted release
 // offset (the stored toolUse startup, or the nominal TOOL_USE_STARTUP_MS for a record without one) and

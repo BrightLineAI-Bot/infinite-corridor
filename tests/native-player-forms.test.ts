@@ -78,7 +78,7 @@ test('accepted fist combo identity survives pause and schema-14 reload; refusal 
 
 
 test('actual accepted tool producers keep every native form and use existing model passes',()=>gpu(({gl,screen})=>{
-  const cases=[['blade-spark-ashling','emitter'],['blade-hammerfall-brute','hammer'],['cleaver-sweep-marshal','sweep'],['cleaver-mirage-stalker','mirage'],['blade-orrery-sentinel','orrery-tap']];
+  const cases=[['blade-spark-ashling','emitter'],['blade-hammerfall-brute','hammer'],['cleaver-sweep-marshal','sweep'],['cleaver-mirage-stalker','sweep']/* 2026-11-14: with Mirage of Blades he still swings the Great Sweep round (great-sweep.ts) */,['blade-orrery-sentinel','orrery-tap']];
   let calls=0;
   for(const kind of kinds)for(const [scenario,held] of cases){const g=fixture(scenario,'combat-assets');activate(g,kind);resetCloseViewCamera();g.player.attackReadyAt=0;assert.equal(g.fireSecondary(100010,{x:0,y:-1}),true,`${kind}/${held}`);assert.equal(g.player.attackVisual.profile,held);const prior=structuredClone(g.player.attackVisual);assert.equal(g.fireSecondary(100011,{x:1,y:0}),false);assert.deepEqual(g.player.attackVisual,prior);
     const map=g.map,p=g.player,save=g.save,xy=[p.x,p.y],mech=structuredClone(save.mech),active=structuredClone(save.magicSkills.active);

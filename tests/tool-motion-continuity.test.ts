@@ -46,7 +46,7 @@ test('legacy top-down ordinary and Swift gun repeats retain the ready hold throu
 });
 
 test('legacy top-down early accepts and lowering repeats continue exact partial poses without a second cold draw',()=>{
-  for(const kind of Object.keys(tools)){
+  for(const kind of Object.keys(tools).filter(k=>k!=='great-sweep')/* 2026-11-14: the Great Sweep's 360° swing has its own clock (great-sweep.ts) */){
     const g=fixture(kind);let now=100000;assert.equal(g.fireSecondary(now,{x:1,y:0}),true);
     for(const gap of [20,20,TOOL_ACTION_TIMING[kind].holdMs+30]){
       const old=structuredClone(g.player.attackVisual),prior=sampleToolActionMotion(old,gap);assert.ok(prior.weight>0);
@@ -60,10 +60,10 @@ test('legacy top-down early accepts and lowering repeats continue exact partial 
 });
 
 test('legacy top-down cold v1 draw stays cold while rapid Sweep continuation retains its raised blend',()=>{
-  for(const kind of Object.keys(tools)){
+  for(const kind of Object.keys(tools).filter(k=>k!=='great-sweep')){
     const g=fixture(kind,true);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);
     const cold=g.player.attackVisual;assert.deepEqual(cold.toolMotion.entry,[0,0,0,0,0]);assert.equal(sampleToolActionMotion(cold,0).weight,0);assert.ok(sampleToolActionMotion(cold,20).weight<1);
   }
   const g=fixture('great-sweep',true);assert.equal(g.fireSecondary(100000,{x:1,y:0}),true);assert.equal(g.fireSecondary(g.toolReadyAt,{x:1,y:0}),true);
-  const continued=g.player.attackVisual;assert.equal(continued.toolMotion.direction,-1);for(let ms=0;ms<=70;ms+=5)assert.equal(sampleToolActionMotion(continued,ms).weight,1);
+  const continued=g.player.attackVisual;assert.equal(continued.toolMotion.direction,-1);assert.equal(g.toolSwing.direction,-1,'2026-11-14: the next 360° swing turns the other way (great-sweep.ts)');
 });

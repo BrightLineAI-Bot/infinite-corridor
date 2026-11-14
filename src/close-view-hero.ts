@@ -2,6 +2,7 @@
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
+import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
 import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
@@ -509,7 +510,9 @@ function greatSweepFrame(F,o,dx,dy,dz,ex,ey,ez){
 // The accepted record's clock: the stored startup is the release; a record without a receipt uses the
 // nominal startup. A cancelled or unknown receipt shows the carry.
 function greatSweepActionSample(action,p,out){
-  const duration=Number(action?.durationMs)>0?Number(action.durationMs):TOOL_ACTION_TIMING['great-sweep'].durationMs,q=toolUsePoseTime(action,p*duration);
+  const duration=Number(action?.durationMs)>0?Number(action.durationMs):TOOL_ACTION_TIMING['great-sweep'].durationMs;
+  if(action?.sweepSwing?.v===1)return sampleSweepPose(CLOSE_VIEW_GREAT_SWEEP,p*duration,duration,out); // great-sweep.ts: the swing the hit follows
+  const q=toolUsePoseTime(action,p*duration);
   if((action?.toolMotion&&action.toolMotion.v!==1)||q.phase==='cancelled'||q.phase==='unknown'){sampleGreatSweep(duration,NaN,duration,out);return out;}
   return sampleGreatSweep(q.elapsedMs,q.phase==='legacy'?NaN:q.startupMs,duration,out);
 }
@@ -532,6 +535,21 @@ function greatSweepPose(state,pose,sample,reducedMotion){
     rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-S.guard*w);
   }
   state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+}
+// The Aether Orrery held (Tim, 2026-11-14: "his right hand is held out, palm up, and the Orrery floats just above it"): the
+// right forearm out in front at the waist, the hand turned palm up and its fingers opened, the same through idle and walking
+// (solved last, over the gait). CLOSE_VIEW_ORRERY_PALM: `hand` from the shoulder in arm reaches [side, up, forward]; `thumb`
+// and `face` the socket's +X and +Z (the grip frame, as the Great Sweep's carry); `open` and `tip` uncurl the two finger joints.
+export const CLOSE_VIEW_ORRERY_PALM = Object.freeze({ hand: Object.freeze([.18, -.52, .62]), thumb: Object.freeze([1, .1, .15]), face: Object.freeze([0, -1, .2]), open: -.9, tip: -.6 });
+function orreryPalmPose(state,pose){
+  const P=CLOSE_VIEW_ORRERY_PALM,A=heldArm('orrery-tap'),m=A.sign,F=state.sweepScratch,q=state.primaryScratch,t=state.primaryTarget;
+  build(state.asset,state,pose);
+  const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,sx=g[s+12],sy=g[s+13],sz=g[s+14];
+  const reach=Math.hypot(g[e+12]-sx,g[e+13]-sy,g[e+14]-sz)+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  greatSweepFrame(F,0,m*P.thumb[0],P.thumb[1],P.thumb[2],m*P.face[0],P.face[1],P.face[2]);for(let k=0;k<4;k++)q[20+k]=F[k];
+  t[0]=sx+reach*m*P.hand[0];t[1]=sy+reach*P.hand[1];t[2]=sz+reach*P.hand[2];
+  state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+  rotateX(pose,A.grip,P.open);rotateX(pose,A.left?5:14,P.tip);
 }
 function rifleSupportHand(state,pose,profile,rifle,A,weight){
   build(state.asset,state,pose);
@@ -1050,6 +1068,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
   if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
+  if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
   // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
