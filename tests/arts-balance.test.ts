@@ -100,7 +100,7 @@ test('artBlocked: no charge starts or releases mounted, aboard, gliding, falling
 test('Ki Blast\'s ground slam needs the fists in hand: put away in the leap, a press is an ordinary plunge', () => {
   // 2026-11-13: replaces the r940 axe-kick checks (the slam is a press now, not a landing burst)
   const { s, g, clock } = arena('iron-fists', { foes: [[1, .2], [6, 0]], art: 'ki-blast' }); for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
-  idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); charge(g, clock, 1.15);
+  idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); charge(g, clock, 1.15); idle(g, clock, 6); // 2026-11-14: the fists' contact delay runs in every area
   assert.ok(clock.t < g.jumpUntil, 'airborne'); assert.equal(g.kiSlamReady(clock.t), true);
   s.equipment.primary = { ...WEAPONS['verge-cleaver'](), awakened: { ...AWAKE } }; assert.equal(g.kiSlamReady(clock.t), false);
   g.attackAction = 'attack'; g.airAttack(clock.t); g.attackAction = null; assert.equal(g.plunge?.kiSlam, undefined); assert.match(g.message, /Plunge/);

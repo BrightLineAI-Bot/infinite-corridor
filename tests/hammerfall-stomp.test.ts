@@ -145,7 +145,7 @@ test('actual masked renderer retains carry at Hammerfall acceptance and exact lo
     for(const kind of ['cinder-pike','verge-cleaver','fist']){
       const g=fixture(kind);if(kind==='fist')g.save.equipment.primary={...BRAWLER_GEAR[0].item};resetCloseViewCamera();const now=101801;draw(g,now);
       if(kind==='fist')assert.equal(g.fistPunch(1,0,now,{x:1,y:0}),true);else g.primaryAttack(now);
-      g.setPaused(true,now+(kind==='verge-cleaver'?g.player.attackVisual.durationMs:240)-.001); /* the Cleaver's weighted swing (2026-11-14) runs its own, longer clock */const paused=draw(g,now+5000),back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),2000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();
+      g.setPaused(true,now+(kind!=='fist'?g.player.attackVisual.durationMs:240)-.001); /* 2026-11-14: the pike's thrust runs its own clock too */ /* the Cleaver's weighted swing (2026-11-14) runs its own, longer clock */const paused=draw(g,now+5000),back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),2000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();
       assert.equal(delta(paused,draw(back,2000)),0,kind+' near-end nonzero-idle pose survives JSON');back.setPaused(false,3000);
       const ended=draw(back,3000.01);assert.equal(closeViewPlayerAction(back,3000.01).active,false);back.player.attackVisual=null;
       assert.equal(delta(ended,draw(back,3000.01)),0,kind+' published endpoint returns to its restored logical idle');

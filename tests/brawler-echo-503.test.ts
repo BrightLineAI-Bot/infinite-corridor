@@ -45,14 +45,14 @@ test('Echo on Shadow Boxing spawns a short clone that swings with your punches a
   const { s, g } = arena([['foe', 12, 10]], (s) => { s.equipment.primary = gear('Iron Fists'); }); s.spellGlyphs = { 'shadow-boxing': ['echo', null] };
   let t = 1000; g.update(.05, idle, t); g.castSpell('shadow-boxing');
   assert.ok(g.shadowClone?.boxing, 'a clone'); assert.ok(g.shadowClone.until - 1000 <= BRAWLER_ECHO.echoClone * 1000 + 100);
-  t += 50; g.update(.05, press('attack'), t); t += 50; g.update(.05, idle, t); assert.ok(g.shadowClone.swingUntil > 0, 'the clone swung');
+  t += 50; g.update(.05, press('attack'), t); t += 50; g.update(.05, idle, t); t += 100; g.update(.05, idle, t); /* 2026-11-14: the punch lands after the fists' contact delay, in every area */ assert.ok(g.shadowClone.swingUntil > 0, 'the clone swung');
   t += BRAWLER_ECHO.echoClone * 1000 + 200; g.update(.05, idle, t); assert.equal(g.shadowCloneActive(t), false, 'gone after 3 s');
 });
 
 test('the Shadow Clone spell swings a plain arc with each Iron Fists punch', () => {
   const { g } = arena([['foe', 12, 10]], (s) => { s.equipment.primary = gear('Iron Fists'); }); let t = 1000; g.update(.05, idle, t);
   g.castSpell('shadow-clone'); t += 50; g.update(.05, idle, t); g.shadowClone && delete g.shadowClone.charging;
-  t += 50; g.update(.05, press('attack'), t); t += 50; g.update(.05, idle, t); assert.ok(g.shadowClone.swingUntil > 0);
+  t += 50; g.update(.05, press('attack'), t); t += 50; g.update(.05, idle, t); t += 100; g.update(.05, idle, t); /* 2026-11-14: after the contact delay */ assert.ok(g.shadowClone.swingUntil > 0);
 });
 
 test('the brawler gear drops as loot; every other roll of an item is unchanged', () => {

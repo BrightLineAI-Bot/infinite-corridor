@@ -30,7 +30,7 @@ function render(ctx,g,w,h,now) {
 
 function queuedTool(kind) {
   const g=fixture('cinder-pike');
-  g.save.equipment.primary=normalizeSockets({...item('cinder-pike'),tier:'relic',affixes:[]});
+  g.save.equipment.primary=normalizeSockets({id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:5,property:'steady',tier:'relic',affixes:[]}); // 2026-11-14: the Cinder Pike's Echo now queues at its thrust's contact (melee-swing.ts); an instant primary stands in
   g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
   if(kind==='emitter'){g.save.glyphs.swift=2;for(const slot of [1,2])assert.equal(socketGlyph(g.save,'melee',slot,'swift').ok,true);}
   const foe=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{id:'tool-echo-target',hp:10000,maxHp:10000,damage:0,cooldown:99});
@@ -110,7 +110,7 @@ test('successful newer casts, Aperture skills and jumps cancel tools; refusals a
 
 test('an actual queued primary Echo preserves an accepted fist identity and phase after a switch back, including pause/reload',()=>{
   for(const switchBack of [false,true]){
-    const g=fixture('cinder-pike'),pike=normalizeSockets({...item('cinder-pike'),tier:'relic',affixes:[]});g.save.equipment.primary=pike;g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
+    const g=fixture('cinder-pike'),pike=normalizeSockets({id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:5,property:'steady',tier:'relic',affixes:[]}); /* 2026-11-14: an instant primary stands in for the pike (its Echo now queues at contact) */g.save.equipment.primary=pike;g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
     const foe=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{id:'echo-target',hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];g.save.lastAim={x:1,y:0};
     g.primaryAttack(100000);const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);g.save.equipment.primary=fists();
     assert.equal(g.fistPunch(1,0,queued.at-80,{x:1,y:0}),true);g.player.attackVisual.future={preserved:true};const record=clone(g.player.attackVisual),until=g.player.fistVisualUntil,combatUntil=g.player.attackUntil,hp=foe.hp;
@@ -143,7 +143,7 @@ test('primary and fist state coexist through switching, cancellation and reload 
   assert.ok(back.player.castUntil>200445,'old cast is still alive');assert.equal(closeViewPlayerAction(back,200445).active,true);
   assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.fistStep,undefined);assert.equal(back.player.attackVisual.presentationCancelled,undefined);
   back.player.attackVisual.presentationCancelled=true;assert.equal(closeViewPlayerAction(back,200446).active,false,'cancelled record wins over a live primary clock');
-  back.primaryAttack(200945);assert.equal(back.player.attackVisual.primaryStep,3);assert.equal(back.player.attackVisual.presentationCancelled,undefined);
+  swingTo(back,200445);/* 2026-11-14: the thrust runs its own clock */back.primaryAttack(200945);assert.equal(back.player.attackVisual.primaryStep,3);assert.equal(back.player.attackVisual.presentationCancelled,undefined);
   back.save.equipment.primary=fists();assert.equal(back.fistPunch(1,0,201000,{x:1,y:0}),true);assert.equal(back.player.attackVisual.fistLead,'right'/* 2026-11-13: every cross is the right hand (was: the cycles alternated) */);assert.equal(back.player.primaryCombo.step,3);
 });
 
@@ -163,7 +163,6 @@ test('only successful real primary inputs cycle their supported stages; Echo nev
   for(const kind of ['cinder-pike','verge-cleaver']){
     const g=fixture(kind),steps=[];let now=100000;
     for(let n=0;n<7;n++){
-      if(kind==='cinder-pike')now=100000+n*500;
       g.primaryAttack(now);steps.push(primaryVisualStage(g.player.attackVisual).step);
       const accepted=clone(g.player.attackVisual),combo=clone(g.player.primaryCombo),until=g.player.actionVisualUntil,span=until-now;
       g.primaryAttack(now+1);assert.deepEqual(g.player.attackVisual,accepted);assert.deepEqual(g.player.primaryCombo,combo,'refusal cannot advance');
@@ -172,7 +171,7 @@ test('only successful real primary inputs cycle their supported stages; Echo nev
       // 2026-11-14: the Cleaver's weighted swing (melee-swing.ts) draws over its own, longer clock; an Echo still cannot move it
       assert.equal(closeViewPlayerAction(g,now+span/2).amount,.5,'Echo cannot rewind accepted phase');
       assert.equal(closeViewPlayerAction(g,now+span+10).active,false,'Echo cannot extend the real body action');
-      if(kind==='verge-cleaver')now=swingTo(g,now)+100;
+      now=swingTo(g,now)+100; // 2026-11-14: the pike's thrust runs its own clock too
     }
     assert.deepEqual(steps,[1,2,3,1,2,3,1]);
     g.save.equipment.primary=item(kind==='cinder-pike'?'verge-cleaver':'cinder-pike');g.primaryAttack(104000);assert.equal(primaryVisualStage(g.player.attackVisual).step,1,'different primary family restarts its presentation');
@@ -181,13 +180,13 @@ test('only successful real primary inputs cycle their supported stages; Echo nev
 });
 
 test('accepted primary stage, visual clock and unknown metadata survive pause/reload, while malformed and legacy records remain safe',()=>{
-  const g=fixture('cinder-pike');g.primaryAttack(100000);g.primaryAttack(100500);const accepted=clone(g.player.attackVisual);
+  const g=fixture('cinder-pike');g.primaryAttack(100000);swingTo(g,100000);g.primaryAttack(100500);const accepted=clone(g.player.attackVisual); // 2026-11-14: the first thrust runs out on its own clock
   g.player.primaryCombo.future={kept:true};g.player.attackVisual.future={kept:true};g.save.equipment.primary=item('verge-cleaver');
   g.setPaused(true,100560);const saved=migrateSave(clone(g.exportSnapshot(110000))),back=new Game(saved,200000);
-  assert.equal(saved.version,14);assert.equal(saved.session.playerRuntime.actionVisualMotion,180);assert.equal(back.player.actionVisualUntil-back.pauseStarted,180);
+  const left=accepted.durationMs-60; /* 2026-11-14: the thrust's own duration (was 240) */assert.equal(saved.version,14);assert.equal(saved.session.playerRuntime.actionVisualMotion,left);assert.equal(back.player.actionVisualUntil-back.pauseStarted,left);
   assert.equal(back.player.attackVisual.primaryStep,2);assert.equal(back.player.attackVisual.weaponKind,'cinder-pike');assert.deepEqual(back.player.attackVisual.aim,accepted.aim);
   assert.deepEqual(back.player.primaryCombo.future,{kept:true});assert.deepEqual(back.player.attackVisual.future,{kept:true});
-  back.setPaused(false,205000);assert.equal(closeViewPlayerAction(back,205000).amount,.25);assert.equal(back.player.actionVisualUntil,205180);
+  back.setPaused(false,205000);assert.ok(Math.abs(closeViewPlayerAction(back,205000).amount-60/accepted.durationMs)<1e-9);assert.equal(back.player.actionVisualUntil,205000+left);
   back.player.attackReadyAt=0;back.attackAction='attack';try{back.primaryAttack(205001);}finally{back.attackAction=null;}assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1},'new accepted Close View Cleaver family starts its v3 cycle');
   const legacy=freshSave();legacy.session.playerRuntime.attackMotion=120;legacy.session.playerRuntime.attackVisual={profile:'melee',weaponKind:'cinder-pike',durationMs:240};const old=new Game(migrateSave(legacy),300000);assert.equal(closeViewPlayerAction(old,300000).amount,.5);
   for(const primaryStep of [0,4,1.5,'2',Infinity])assert.equal(normalizeAttackVisual({profile:'melee',durationMs:240,primaryStep}),null);
@@ -262,19 +261,19 @@ test('actual Game and renderer display accepted stage sequences at 30/60fps, pre
       const ready=gl.uploads.at(-1);g.primaryAttack(now);assert.equal(primaryVisualStage(g.player.attackVisual).step,1);render(screen,g,390,844,now);assert.deepEqual(gl.uploads.at(-1),ready,'same-clock partial walking entry');
       const stageFrames=[];
       for(let stage=1;stage<=(kind==='verge-cleaver'?3:4);stage++){
-        if(stage>1){now=kind==='verge-cleaver'?swingTo(g,now)+100:now+500;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(primaryVisualStage(accepted).step,(stage-1)%3+1);
+        if(stage>1){now=swingTo(g,now)+100;g.primaryAttack(now);render(screen,g,390,844,now);}const start=now,accepted=clone(g.player.attackVisual);assert.equal(primaryVisualStage(accepted).step,(stage-1)%3+1);
         for(let frame=1;frame<=Math.floor(.24*hz);frame++){const t=start+frame*1000/hz;render(screen,g,390,844,t);if(frame===Math.round(.10*hz))stageFrames.push(gl.uploads.at(-1));}
-        assert.equal(g.player.attackUntil,start+(kind==='verge-cleaver'?accepted.durationMs:240));assert.deepEqual(g.player.attackVisual,accepted,'rendering never advances gameplay or the stage');
+        assert.equal(g.player.attackUntil,start+accepted.durationMs); // 2026-11-14: the pike's thrust runs its own clock as the Cleaver's swing doesassert.deepEqual(g.player.attackVisual,accepted,'rendering never advances gameplay or the stage');
       }
       assert.notDeepEqual(stageFrames[0],stageFrames[1]);assert.notDeepEqual(stageFrames[1],stageFrames[2]);
-      now=kind==='verge-cleaver'?swingTo(g,now)+100:now+500;g.primaryAttack(now);render(screen,g,390,844,now+80);const active=gl.uploads.at(-1);g.save.equipment.primary=item(kind==='verge-cleaver'?'cinder-pike':'verge-cleaver');g.setPaused(true,now+80);render(screen,g,390,844,now+5000);assert.deepEqual(gl.uploads.at(-1),active,'pause and equipment switch retain accepted body');
+      now=swingTo(g,now)+100;g.primaryAttack(now);render(screen,g,390,844,now+80);const active=gl.uploads.at(-1);g.save.equipment.primary=item(kind==='verge-cleaver'?'cinder-pike':'verge-cleaver');g.setPaused(true,now+80);render(screen,g,390,844,now+5000);assert.deepEqual(gl.uploads.at(-1),active,'pause and equipment switch retain accepted body');
       const back=new Game(migrateSave(clone(g.exportSnapshot(now+5000))),200000);back.enemies=[];back.presentation=g.presentation;resetCloseViewCamera();render(screen,back,390,844,200000);assert.equal(primaryVisualStage(back.player.attackVisual).step,kind==='verge-cleaver'?1:2);assert.equal(back.player.attackVisual.weaponKind,kind);
       // Reload must preserve the accepted trajectory/clock; ordinary locomotion reconstruction is a pre-existing separate limitation.
       assert.equal(closeViewPlayerAction(back,200000).amount,closeViewPlayerAction(g,now+80).amount);
     }
     for(const kind of ['verge-cleaver','cinder-pike'])for(const hz of [30,60]){
       const g=fixture(kind),start=300000,pike=normalizeSockets({...item(kind),tier:'relic',affixes:[]});g.save.equipment.primary=pike;g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
-      resetCloseViewCamera();render(screen,g,390,844,start);g.primaryAttack(start);if(kind==='verge-cleaver'){const at={x:g.player.x,y:g.player.y};swingTo(g,start,'contact');Object.assign(g.player,at);}/* the weighted swing queues its Echo at contact; stand where it started (its lunge is not under test here) */const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
+      resetCloseViewCamera();render(screen,g,390,844,start);g.primaryAttack(start);{const at={x:g.player.x,y:g.player.y};swingTo(g,start,'contact');Object.assign(g.player,at);}/* the weighted swing (the pike's thrust too, 2026-11-14) queues its Echo at contact; stand where it started (its lunge is not under test here) */const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
       g.save.equipment.primary=fists();const fistAt=queued.at-80;render(screen,g,390,844,fistAt);assert.equal(g.fistPunch(1,0,fistAt,{x:1,y:0}),true);
       for(let t=fistAt;t<queued.at;t+=1000/hz)render(screen,g,390,844,t);
       g.save.equipment.primary=pike;render(screen,g,390,844,queued.at);const beforeEcho=gl.uploads.at(-1),gearBefore=gl.modelData,accepted=clone(g.player.attackVisual);

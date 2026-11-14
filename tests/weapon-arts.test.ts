@@ -186,7 +186,7 @@ test('a dodge cancels a charge and keeps the stored one; a new area keeps it and
 test('the Cinder Pike keeps its narrow forward hit; its Close View combo is three lunging thrusts', () => {
   assert.deepEqual(PRIMARY_PROFILES['primary-cinder-pike'], { shape: 'thrust', range: 2.45, arc: 32, damage: 8 });
   const { g, clock } = arena('cinder-javelin', { foes: [[2.1, 0], [1.2, 1.2]], passives: [] }), hp = g.enemies.map((e) => e.hp);
-  press(g, clock, null); assert.ok(g.enemies[0].hp < hp[0], 'straight ahead within reach'); assert.equal(g.enemies[1].hp, hp[1], '45 degrees off: missed');
+  press(g, clock, null); for (let i = 0; i < 20; i++) frame(g, clock, false); /* 2026-11-14 (melee-swing.ts): the thrust lands after its draw-back */ assert.ok(g.enemies[0].hp < hp[0], 'straight ahead within reach'); assert.equal(g.enemies[1].hp, hp[1], '45 degrees off: missed');
   assert.equal(primaryProfile(WEAPONS['cinder-pike']()).shape, 'thrust');
 });
 

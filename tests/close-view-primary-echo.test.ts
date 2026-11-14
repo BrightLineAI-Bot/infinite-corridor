@@ -50,11 +50,12 @@ function arena(){const save=freshSave();save.seed='PRIMARY-ECHO-VISUAL';save.equ
 const ctxStyles=(g,reduce=false)=>{g.presentation={...(g.presentation||{}),reduceMotion:reduce,safeMode:false,effectiveQuality:'low',weather:false};const styles=new Set(),ctx=new Proxy({canvas:null,measureText:()=>({width:10}),getTransform:()=>({a:1,b:0,c:0,d:1,e:0,f:0}),createRadialGradient:()=>({addColorStop(){}}),createLinearGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>{if(k==='fillStyle'||k==='strokeStyle')styles.add(v);o[k]=v;return true;}});render(ctx,g,390,844,1250);return styles;};
 
 test('the delayed Echo keeps a faint accepted memory but its dominant cue follows actual canonical recomputation',()=>{
-  const g=arena();g.primaryAttack(1000,{x:1,y:0});const accepted=structuredClone(g.player.attackVisual),combo=structuredClone(g.player.primaryCombo),visualUntil=g.player.primaryVisualUntil;
-  assert.equal(g.glyphTimers.length,1);assert.equal(g.glyphTimers[0].at,1250);assert.deepEqual(g.glyphTimers[0].echoVisual,{x:10.5,y:10.45,dx:1,dy:0,range:2.45,arc:32,shape:'thrust',weaponKind:'cinder-pike',primaryStep:1,support:0});
-  g.tickGlyphs(.001,1249);assert.equal(g.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false);assert.equal(g.enemies[0].hp,100);
-  Object.assign(g.player,{x:15,y:10});g.save.equipment.primary=item('verge-cleaver');g.player.meleeAim={x:1,y:0};g.tickGlyphs(.001,1250);
-  const cue=g.glyphVisuals.find(v=>v.kind==='primaryEcho');assert.ok(cue);assert.deepEqual(cue.memory,g.glyphTimers[0]?.echoVisual??{x:10.5,y:10.45,dx:1,dy:0,range:2.45,arc:32,shape:'thrust',weaponKind:'cinder-pike',primaryStep:1,support:0});
+  // 2026-11-14 (melee-swing.ts): the pike's thrust lands after its draw-back and queues its Echo at that contact, from where the lunge carried it
+  const g=arena();g.primaryAttack(1000,{x:1,y:0});const at=swingTo(g,1000,'contact');const accepted=structuredClone(g.player.attackVisual),combo=structuredClone(g.player.primaryCombo),visualUntil=g.player.primaryVisualUntil;
+  const memory=g.glyphTimers[0]?.echoVisual;assert.equal(g.glyphTimers.length,1);assert.equal(g.glyphTimers[0].at,at+250);assert.deepEqual({...memory,x:undefined},{x:undefined,y:10.45,dx:1,dy:0,range:2.45,arc:32,shape:'thrust',weaponKind:'cinder-pike',primaryStep:1,support:0});assert.ok(memory.x>10.5&&memory.x<11,'where the thrust struck');
+  g.tickGlyphs(.001,at+249);assert.equal(g.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false);assert.equal(g.enemies[0].hp,100);
+  Object.assign(g.player,{x:15,y:10});g.save.equipment.primary=item('verge-cleaver');g.player.meleeAim={x:1,y:0};g.tickGlyphs(.001,at+250);
+  const cue=g.glyphVisuals.find(v=>v.kind==='primaryEcho');assert.ok(cue);assert.deepEqual(cue.memory,memory);
   assert.equal(cue.actual.x,15.5);assert.equal(cue.actual.shape,'arc');assert.equal(cue.actual.range,1.75);assert.equal(g.enemies[0].hitFlash,.18);assert.ok(g.enemies[0].hp<100);
   assert.deepEqual(g.player.attackVisual,accepted);assert.deepEqual(g.player.primaryCombo,combo);assert.equal(g.player.primaryVisualUntil,visualUntil,'Echo cannot replay or extend accepted body presentation');
   assert.ok(ctxStyles(g,false).has('#c9a7ff'),'actual player Echo is violet, not hostile pink');assert.ok(ctxStyles(g,false).has('#d8c8ff'),'normal motion retains faint original memory');assert.equal(ctxStyles(g,true).has('#d8c8ff'),false,'reduced motion omits secondary memory only');
@@ -70,13 +71,13 @@ test('primary Echo visuals expire and evict only their oldest visual without tou
 });
 
 test('primary Echo cues require a newly accepted canonical strike, including accepted empty air',()=>{
-  const equipped=arena();equipped.enemies[0].x=12;equipped.primaryAttack(1000,{x:1,y:0});const equippedHp=equipped.enemies[0].hp,oldEquippedStrike=equipped.player.meleeStrike;
-  equipped.save.equipment.primary=fists();equipped.tickGlyphs(.001,1250);
+  const equipped=arena();equipped.enemies[0].x=12;equipped.primaryAttack(1000,{x:1,y:0});const eAt=swingTo(equipped,1000,'contact'); /* 2026-11-14: the thrust's contact queues the Echo */const equippedHp=equipped.enemies[0].hp,oldEquippedStrike=equipped.player.meleeStrike;
+  equipped.save.equipment.primary=fists();equipped.tickGlyphs(.001,eAt+250);
   assert.strictEqual(equipped.player.meleeStrike,oldEquippedStrike,'Fists refusal leaves the prior strike untouched');assert.equal(equipped.enemies[0].hp,equippedHp,'refused Echo adds no hit');assert.equal(equipped.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false,'refused Echo adds no stale cue');assert.equal(equipped.glyphTimers.length,0,'the due mechanical timer is still consumed');
 
-  const penned=arena();penned.primaryAttack(1000,{x:1,y:0});const oldPennedStrike=penned.player.meleeStrike;penned.penned=()=>true;penned.tickGlyphs(.001,1250);
+  const penned=arena();penned.primaryAttack(1000,{x:1,y:0});const pAt=swingTo(penned,1000,'contact');const oldPennedStrike=penned.player.meleeStrike;penned.penned=()=>true;penned.tickGlyphs(.001,pAt+250);
   assert.strictEqual(penned.player.meleeStrike,oldPennedStrike);assert.equal(penned.glyphVisuals?.some(v=>v.kind==='primaryEcho')||false,false,'pen refusal adds no stale cue');assert.equal(penned.glyphTimers.length,0);
 
-  const empty=arena();empty.enemies=[];empty.primaryAttack(1000,{x:1,y:0});const oldEmptyStrike=empty.player.meleeStrike;empty.tickGlyphs(.001,1250);
+  const empty=arena();empty.enemies=[];empty.primaryAttack(1000,{x:1,y:0});const mAt=swingTo(empty,1000,'contact');const oldEmptyStrike=empty.player.meleeStrike;empty.tickGlyphs(.001,mAt+250);
   assert.notStrictEqual(empty.player.meleeStrike,oldEmptyStrike,'accepted empty-air strike still produces fresh canonical geometry');assert.equal(empty.glyphVisuals.some(v=>v.kind==='primaryEcho'),true,'accepted empty-air strike retains its readable cue');assert.equal(empty.glyphTimers.length,0);
 });
