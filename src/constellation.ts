@@ -8,7 +8,8 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey } from "./items.ts";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.ts";
+import { HAMMER_CLAP } from "./brawler-spells.ts"; // the awakened Hammerfall's clap (2026-11-14)
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
 import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
@@ -360,7 +361,7 @@ export function awaken(save, slot) {
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
   item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : "Every shot now fans into three."}` };
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : rangedWeapon(item)?.brawlerTool === "hammerfall" ? `Clap: ${HAMMER_CLAP.text}.` : "Every shot now fans into three."}` };
 }
 // The Quandrix Staff's awakening is its own (quandrix-staff.ts QUANDRIX.slam): the held slam replaces the crescent. Every
 // other primary has its own move (weapon-arts.ts AWAKENED_ARTS, run by awakened-arts.ts), found by the weapon it belongs to.
@@ -368,4 +369,4 @@ function awakenedMove(item) {
   const key = weaponKey(item); for (const id of AWAKENED_IDS) if (AWAKENED_ARTS.moves[id].weapon === key) return AWAKENED_ARTS.moves[id];
   return { name: "Crescent", text: "every third swing releases a piercing crescent" };
 }
-export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : "every shot fans into three"}` : "";
+export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : rangedWeapon(item)?.brawlerTool === "hammerfall" ? `Clap: ${HAMMER_CLAP.text}` : "every shot fans into three"}` : ""; // the awakened Hammerfall claps (brawler-spells.ts HAMMER_CLAP)
