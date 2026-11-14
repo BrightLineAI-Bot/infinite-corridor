@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 968: Awakened Hammerfall claps: when the hammer lands, two parallel lines of energy slide apart from it, hold, and slam back together. One extra hit on every foe between them, on top of the hammer's blow, its Echo copies and the Corridor Golem.
 - Release 967: The awakened Great Sweep freezes whatever its blade touches, and with Mirage of Blades whatever the thrown blades cut. Ordinary foes freeze at a touch. Elites and bosses (guardians, world beasts, Gate Revenants) fill a freeze meter, are slowed as it fills, and freeze for a moment when it is full. Each later freeze takes more and lasts less, and a guard after every thaw means nothing can be held frozen.
 - Release 966: Arc Wave: the Blunderbuss's three crescents now fly slower and fan out in a wider cone; with Echo glyphs, the great waves race out much faster, overtaking the crescents within a couple of tiles.
 - Release 965: Carbine: the Wayfarer now shoulders it with both hands, cheek down on the stock, and the arms hold steady while charging instead of wobbling.
