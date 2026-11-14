@@ -84,7 +84,8 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 //   first round empowers the beam. Echo copies, the clone's copy and an awakened fan ride on those rounds.
 // - Drawn as a beam of light from the muzzle to its head while it flies, and an afterglow `trace.life` s long along its path
 //   (at most `trace.max` at once); the charge as a cyan glow growing at the muzzle (2D and Close View). Close View holds a
-//   compact carbine (close-view-models.ts, the `carbine` appearance), posed like the other simple tools.
+//   compact carbine (close-view-models.ts, the `carbine` appearance), shouldered in both hands with a cheek weld and held
+//   steady through a charge (close-view-player-presentation.ts CARBINE_HOLD, 2026-11-14).
 // - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
 // Runtime only (game.carbine); no save state beyond the item itself.
 // Tool ranges (Tim, 2026-11-14: "Some weapons should have shorter ranges. The Rift Bombard... should go out and then fall to
