@@ -28,8 +28,40 @@ export const GLYPHS = {
   volatile: { name: "Volatile", sigil: "✶", color: "#ffd25c", text: { melee: "Kills burst for 6 + 40% of the blow.", tool: "Shots burst on impact for 50%.", spell: "Kills inside the spell burst for 6 + 40%." }, hit: { melee: [1.6, .4], tool: [1.2, .5], spell: [1.6, .4] } },
   tether: { name: "Tether", sigil: "⊸", color: "#6fd0c4", text: { melee: "Hits slow foes by 40% for 2 s.", tool: "Hits slow foes by 40% for 1.5 s.", spell: "Pulses drag foes toward the centre." }, hit: { melee: 2, tool: 1.5, spell: .35 } },
   still: { name: "Still", sigil: "▢", color: "#cfd6e0", text: { melee: "Hits freeze foes for 0.5 s.", tool: "Hits freeze foes for 0.6 s.", spell: "Pulses freeze foes for 0.4 s." }, hit: { melee: .5, tool: .6, spell: .4 } },
+  // 2026-11-14 (CHARGE_GLYPH below): the same rule in every gear host; nothing in a spell or skill.
+  "gathered-breath": { name: "Gathered Breath", sigil: "≋", color: "#9fd9e6", text: { melee: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time).", tool: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time).", spell: "Does nothing in a spell: set it in a weapon, tool or armor.", armor: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time)." } },
 };
 export const GLYPH_IDS = Object.keys(GLYPHS);
+// The first ten glyphs: the pool ordinary drops have always drawn from (glyphDrop's v1 stream). Frozen, so a seed's drops
+// stay what they were however many glyphs are added after them.
+export const GLYPH_V1_IDS = Object.freeze(["ignite", "chain", "pierce", "echo", "leech", "heavy", "swift", "volatile", "tether", "still"]);
+// Gathered Breath (Tim, 2026-11-14: "a glyph you slot that reduces charge time for the fists, the Carbine, or whatever charged
+// weapon you have... It should cost you to take it, but reduce the charge time pretty significantly — with three of them
+// slotted, your charge time should be pretty small"). Every copy set in the equipped weapon, tool or armor (`hosts`) makes
+// every hold-to-charge fill `per` times as long, compounding: one .7, two .49, three .343. The time a charge takes to reach
+// its key point (the perfect window's start, or full) never drops below `floor` s however many are set. Each attack passes
+// its own span (chargeScale). What it costs: a socket (the Echoes the fists need to charge, a resonance, an armor bonus) and
+// no rule of its own: it lights no pair or triad and changes no hit. It is rarer than the first ten (`drop` of the kills that
+// leave no other glyph, on its own v2 stream, and never from a guardian's guaranteed glyph) and takes `dust` to inscribe.
+// Why .7: one copy is a felt change (the fists' rhythm 15% faster, the Carbine's full charge in .94 s rather than 1.25 s);
+// three bring every key point to about a third (the fists' perfect window from .8 s to .27 s of charge, under four
+// frames' slip at 60 fps of it lost), so the charge stays a decision rather than vanishing; a fourth is past the point
+// where the floor starts to matter on the shortest charges.
+export const CHARGE_GLYPH = Object.freeze({ id: "gathered-breath", per: .7, floor: .15, dust: 12, drop: .01, hosts: Object.freeze(["melee", "tool", "armor"]) });
+const CHARGE_HOST_SLOTS = { melee: "primary", tool: "secondary", armor: "armor" };
+// How many Gathered Breath glyphs are set in the equipped gear.
+export function chargeGlyphCount(save) {
+  let n = 0; const eq = save?.equipment; if (!eq) return 0;
+  for (const h of CHARGE_GLYPH.hosts) { const list = eq[CHARGE_HOST_SLOTS[h]]?.glyphs; if (Array.isArray(list)) for (const g of list) if (g === CHARGE_GLYPH.id) n++; }
+  return n;
+}
+// The multiplier on a charge's time for one whose key point is `span` s of holding (1 with none set).
+export function chargeScale(save, span = 1) {
+  const n = chargeGlyphCount(save); if (!n) return 1;
+  return Math.min(1, Math.max(CHARGE_GLYPH.per ** n, CHARGE_GLYPH.floor / Math.max(1e-6, Number(span) || 1)));
+}
+// Glyph dust to inscribe a glyph.
+export const glyphDustCost = (id) => id === CHARGE_GLYPH.id ? CHARGE_GLYPH.dust : DUST_PER_GLYPH;
 // Release 295 (Tim, 2026-10-22: "a glyph setting for the armor... movement or traversal... attack speed... dodges... cost less
 // stamina... stamina increases more rapidly... spell cool down... defense and health... spell... duration"; "we could just use
 // the existing glyphs... they'll just have new attributes when slotted into the armor"). Armor carries sockets by tier like a
@@ -61,6 +93,7 @@ export const SKILL_GLYPHS = {
   volatile: { infuse: true, text: "While active, your kills and shots burst." },
   tether: { infuse: true, text: "While active, your hits slow foes." },
   still: { infuse: true, text: "While active, your hits freeze foes briefly." },
+  "gathered-breath": { text: "Does nothing in a skill: set it in a weapon, tool or armor." },
 };
 export const SKILL_INFUSE_AFTER_STEP = 4;
 for (const [id, k] of Object.entries(SKILL_GLYPHS)) GLYPHS[id].text.skill = k.text;
@@ -79,7 +112,7 @@ export function skillInfusion(save) {
   return id ? skillGlyphs(save, id).filter((g) => SKILL_GLYPHS[g]?.infuse) : [];
 }
 export const ARMOR_GLYPH_CAP = { move: .24, defense: .15, hp: .3, spellDuration: .6, spellCooldown: .36, attackSpeed: .36, staminaRegen: .75, dodgeCost: .6, spellDamage: .36, attackDamage: .3, burstRadius: .6, burstChain: .6 }; // release 481: dodge-burst radius and chain (Tim: "increase the radius... if it hits one enemy... a burst explodes around... that enemy")
-for (const [id, a] of Object.entries(ARMOR_GLYPHS)) GLYPHS[id].text.armor = a.text;
+for (const [id, a] of Object.entries(ARMOR_GLYPHS)) GLYPHS[id].text.armor = a.text; // Gathered Breath keeps its own (no armor stat: it works on charges)
 // The bonuses from the glyphs set in the equipped armor: { move, defense, hp, ... } (each 0 when absent).
 export function armorGlyphBonus(save) {
   const out = Object.fromEntries(Object.keys(ARMOR_GLYPH_CAP).map((k) => [k, 0]));
@@ -300,8 +333,12 @@ export function applyGlyphLayout(save, host) {
 // Weapons swapped out of a slot keep their glyphs; the glyphs travel with the item.
 export function glyphDrop(save, source, n, guaranteed = false) {
   const h = hashSeed(`${save.seed}:glyph-drop:v${GLYPH_VERSION}:${source}:${n}`);
-  if (!guaranteed && h % 100 >= 12) return null;
-  const id = GLYPH_IDS[Math.floor(h / 100) % GLYPH_IDS.length];
+  if (!guaranteed && h % 100 >= 12) { // no glyph from the first stream: the v2 stream may leave a Gathered Breath (CHARGE_GLYPH)
+    if (hashSeed(`${save.seed}:glyph-drop:v2:${source}:${n}`) % 10000 >= CHARGE_GLYPH.drop * 10000) return null;
+    save.glyphs[CHARGE_GLYPH.id] = (save.glyphs[CHARGE_GLYPH.id] || 0) + 1; save.glyphCodex.glyphs[CHARGE_GLYPH.id] = true;
+    return CHARGE_GLYPH.id;
+  }
+  const id = GLYPH_V1_IDS[Math.floor(h / 100) % GLYPH_V1_IDS.length];
   save.glyphs[id] += 1; save.glyphCodex.glyphs[id] = true;
   return id;
 }
@@ -309,8 +346,9 @@ export function salvageDust(item) { return 1 + Math.max(0, ["common", "rare", "e
 export function craftGlyph(save, id) {
   if (!GLYPHS[id]) return { ok: false, message: "Unknown glyph." };
   if (!save.glyphCodex.glyphs[id]) return { ok: false, message: "You have never found that glyph; its pattern is unknown." };
-  if (save.glyphDust < DUST_PER_GLYPH) return { ok: false, message: `Inscribing needs ${DUST_PER_GLYPH} glyph dust (you have ${save.glyphDust}).` };
-  save.glyphDust -= DUST_PER_GLYPH; save.glyphs[id] += 1;
+  const cost = glyphDustCost(id);
+  if (save.glyphDust < cost) return { ok: false, message: `Inscribing needs ${cost} glyph dust (you have ${save.glyphDust}).` };
+  save.glyphDust -= cost; save.glyphs[id] = (save.glyphs[id] || 0) + 1;
   return { ok: true, message: `You inscribe a ${GLYPHS[id].name} glyph.` };
 }
 export function describeHost(save, host) {

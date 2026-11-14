@@ -11,7 +11,7 @@ import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, cre
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
-import { fistCharge, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
+import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
@@ -3586,7 +3586,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const cast = who === player && player.castUntil > now && (!castRecord||castRecord.cancelled!==true);
     const fallAir = who === player ? ordinaryFallPresentation(g, now, closeViewActorLift(d)) : null; // FALL: the falling pose (game.ts FALL.pose)
     const jump = who === player && g.jumpUntil > now || !!fallAir || !!monsterAction?.leapActive;
-    const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(Math.max(0, now - g.fistCharge.start) / 1000) : null;
+    const charge = who === player && !attack && !cast && !jump && g.fistCharge ? fistCharge(fistHeld(g.fistCharge, now)) : null;
     const knownProfile = visualProfile && KNOWN_PLAYER_VISUAL.has(visualProfile);
     const tool = who === player && attack && (visualProfile ? visualProfile === "emitter" || !!acceptedTool : !(player.meleeUntil > now));
     const winding = !!monsterAction?.winding;

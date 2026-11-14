@@ -445,7 +445,7 @@ export function tickOrrery(game, dt, now, held) {
   { const at = clonePlace(game, now); if (at) { const a = (h ? h.angle : now / 1000 * O.halo.spin) * 1.3; S.clonePt.x = at.x + Math.cos(a) * O.clone.orbit; S.clonePt.y = at.y + Math.sin(a) * O.clone.orbit * .8; } else S.clonePt.x = S.clonePt.y = 0; }
   const c = S.charge; if (!c) return;
   if (!held) { S.charge = null; if (c.held >= O.charge.grace) release(game, c, now); return; }
-  c.held += dt;
+  c.held += c.held < O.charge.grace ? dt : dt / (game.chargeQuicken ? game.chargeQuicken(O.charge.full - O.charge.grace) : 1); // Gathered Breath: past the grace
   if (overcharged(c.held)) { S.charge = null; game.orreryLockUntil = now + O.charge.lockout * 1000; game.message = O.messages.over; return; }
   if (c.held < O.charge.grace) return;
   { const aim = game.lockedDirection?.() || game.save.lastAim; const m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the cone follows the lock, else the aim (in place)

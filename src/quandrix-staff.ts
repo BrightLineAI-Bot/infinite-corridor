@@ -212,7 +212,7 @@ function finish(game, now, held) {
 function tickHold(game, dt, now, held) {
   const K = game.quandrix, H = K.hold, h = H.hand, F = QUANDRIX.fist, S = QUANDRIX.slam, U = QUANDRIX.suction;
   if (!h?.on) { endHold(K); return; }
-  H.held += dt;
+  H.held += H.mode === "fist" ? dt : dt / (game.chargeQuicken ? game.chargeQuicken(S.perfect[0]) : 1); // the slam's charge (not the fist's grab time) fills sooner with Gathered Breath
   if (H.mode === "fist") {
     reel(game, h, F.speed, F.arrive, dt);
     for (const e of game.enemies) { if (H.n >= F.maxGrab) break; if (hittable(e) && !staffAnchored(e) && !hasGrab(H, e.id) && touching(e, h.x, h.y, F.grab)) H.grab[H.n++] = e.id; }
