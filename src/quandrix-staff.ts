@@ -44,8 +44,9 @@ export const QUANDRIX = Object.freeze({
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
   extra: Object.freeze({ maxLive: 3, queue: 3, alpha: .55 }), // echo and clone hands: their own cap; Echo copies waiting to be cast
-  // `staff`: the Standard View staff's drawn length unit (tiles), .95 before the Close View staff was shortened 18% (2026-11-14).
-  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35, staff: .78 }),
+  // `staff`: the Standard View staff's drawn length unit (tiles), .95 before the Close View staff was cut to the hero's height
+  // (2026-11-14: 1.79 to 1.68 recipe, the same 6% here).
+  view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35, staff: .89 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff }),
   messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches." }),

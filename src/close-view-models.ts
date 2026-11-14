@@ -190,9 +190,10 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   dagger: Object.freeze({ grip: Object.freeze([.700, .800]), gripRadius: .018, pommel: Object.freeze([.672, .700]), pommelRadius: .022,
     guard: Object.freeze({ z: Object.freeze([.800, .822]), corner: Object.freeze([.016, .072]) }),
     blade: Object.freeze({ base: .822, baseWidth: .034, baseThick: .013, shoulder: .90, width: .040, thick: .014, tip: 1.19 }),
-    // The inlaid jewel (2026-11-14): `at` of the way from the blade's base to its shoulder, `length` and `width` its half-extents
-    // along and across the blade, `rise` how far its point stands proud of the ridge.
-    jewel: Object.freeze({ at: .5, length: .022, width: .014, rise: .006 }) }),
+    // The green stripe (Tim, 2026-11-14: "a green horizontal stripe across the blade, on both blades"): a band across the blade's
+    // width centred `at` of the way from its base to its point, `width` long along the blade (recipe units; .05 is 14% of the
+    // blade), standing `lift` proud of the faces (a radial scale from the blade's axis).
+    stripe: Object.freeze({ at: .5, width: .05, lift: 1.08 }) }),
   // Carbine (the Spark Coil's upgraded form, 2026-11-12): a compact carbine with a long barrel. The bore axis rides just above
   // the fist (-X is up); a short stock behind the grip, a gunmetal receiver, the barrel, a cyan coil wound round its root with a
   // collar ahead of it, and a muzzle with a lit face at `muzzle[1]` (the shot's origin, TOOL_MUZZLE_LOCAL.carbine).
@@ -202,16 +203,19 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   // Quandrix Staff (2026-11-13): a long dark shaft through the fist with a wrapped grip, a brass collar, three brass prongs and
   // a lit arcane crystal between them at the head (the hands' colour). The head lies toward -Z (past the pommel side) and the
   // short butt toward +Z: the primary hand carries a blade point down, so the staff is carried head up and casts butt first.
-  // Shortened (Tim, 2026-11-14: "a little bit shorter; it's really long right now") from 1.79 (1.47 world, taller than the
-  // 1.38 hero) to `length` 1.47 (1.21 world, about his shoulder), 18% shorter: the head slides .24 toward the fist and the butt
-  // loses .08. `length` is butt to crystal point; presentation only (its hands, range and damage are quandrix-staff.ts).
-  staff: Object.freeze({ length: 1.47, butt: 1.16, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([.06, 0]), collarRadius: .03,
-    prongTip: -.24, prongSpread: .055, crystal: Object.freeze([-.04, -.18, -.31]), crystalRadius: .045 }),
+  // Shortened (Tim, 2026-11-14: "a little bit shorter; it's really long right now", then "about the same height as he is, so
+  // it looks like he could use it as a walking staff or wizard staff") from 1.79 (1.47 world, taller than the hero) to `length`
+  // 1.68: 1.38 world, the hero's own height (close-view.ts draws him 1.68 x .82 tall). The head slides .07
+  // toward the fist and the butt loses .04. `length` is butt to crystal point; presentation only (its hands, range and damage
+  // are quandrix-staff.ts).
+  staff: Object.freeze({ length: 1.68, butt: 1.20, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([-.11, -.17]), collarRadius: .03,
+    prongTip: -.41, prongSpread: .055, crystal: Object.freeze([-.21, -.35, -.48]), crystalRadius: .045 }),
   // Cinder Pike (Tim, 2026-11-14: "borrow the model from the staff... the same length as the Quandrix Staff is right now, but be
   // a pike. It could be wooden."): the staff's slim round shaft in wood, `length` 1.79 (the staff's length before it was shortened)
-  // from butt to point. The rear hand holds it at the canonical .79 grip with `trail` of butt behind; ahead, a small iron socket
+  // from butt to point. The rear hand holds it at the canonical .79 grip with `trail` of butt behind (Tim: "he holds it about
+  // halfway up the shaft": .65 puts the rear hand at 36% of the shaft and the front hand near its middle); ahead, a small iron socket
   // collar and a leaf-shaped iron point, widest `leaf.wide` above its base and faceted along a midrib, its lower facets ember-lit.
-  pike: Object.freeze({ length: 1.79, trail: .30, shaftRadius: Object.freeze([.019, .016]), collar: .05, collarRadius: .024,
+  pike: Object.freeze({ length: 1.79, trail: .65, shaftRadius: Object.freeze([.019, .016]), collar: .05, collarRadius: .024,
     leaf: Object.freeze({ length: .24, wide: .095, width: .046, rib: .013 }) }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
@@ -724,9 +728,9 @@ const heroSalvageBlade = (() => {
   ]);
 })();
 // Fourfold Daggers for the imported hero: 44 triangles a dagger, one in each hand (writeCloseViewHeroGear draws it on both
-// sockets), so the pair is 88, inside the largest held gear's 96. Reskinned (Tim, 2026-11-14): white blades, each with a green
-// jewel inlaid on both faces, centred between the guard and the blade's shoulder: a rhombus raised to a point (4 facets a face).
-export const DAGGER_COLOURS = Object.freeze({ blade: 0xeeeeea, jewel: 0x2fc46a });
+// sockets), so the pair is 88, inside the largest held gear's 96. Reskinned (Tim, 2026-11-14): white blades, each crossed by a
+// green stripe halfway along it, on both faces (two facets a face, following the blade's diamond section).
+export const DAGGER_COLOURS = Object.freeze({ blade: 0xeeeeea, stripe: 0x2fc46a });
 const heroDagger = (() => {
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.dagger, B = F.blade, G = F.guard, X = .17, Y = -.25;
   const ring = (z, w, t) => [[X + t, Y, z], [X, Y + w, z], [X - t, Y, z], [X, Y - w, z]], tip = [X, Y, B.tip];
@@ -735,15 +739,13 @@ const heroDagger = (() => {
   const wrap = [], n = 4, R = F.gripRadius, ringAt = (z, turn) => Array.from({ length: n }, (_, i) => { const q = (i + .5 + turn) * 2 * Math.PI / n; return [X + R * Math.cos(q), Y + R * Math.sin(q), z]; });
   const lo = ringAt(F.grip[0], 0), hi = ringAt(F.grip[1], .5);
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; wrap.push([lo[i], lo[j], hi[j]], [lo[i], hi[j], hi[i]]); }
-  // The jewel sits on the blade's ridge (each broad face is the +-X side, rising to the thickness `t` on the centre line).
-  const J = F.jewel, jz = B.base + (B.shoulder - B.base) * J.at, k = (jz - B.base) / (B.shoulder - B.base), w = B.baseWidth + (B.width - B.baseWidth) * k, t = B.baseThick + (B.thick - B.baseThick) * k, jewel = [];
-  for (const side of [1, -1]) {
-    const at = (dy, dz, lift) => [X + side * (t * (1 - Math.abs(dy) / w) + lift), Y + dy, jz + dz], top = at(0, J.length, .0008), bottom = at(0, -J.length, .0008), left = at(J.width, 0, .0008), right = at(-J.width, 0, .0008), crown = at(0, 0, J.rise);
-    jewel.push([top, left, crown], [left, bottom, crown], [bottom, right, crown], [right, top, crown]);
-  }
+  // The stripe: the blade's section at either side of `at` (between the shoulder and the point), pushed out by `lift`.
+  const S = F.stripe, mid = B.base + (B.tip - B.base) * S.at, section = (z) => { const k = (z - B.shoulder) / (B.tip - B.shoulder); return ring(z, B.width * (1 - k) * S.lift, B.thick * (1 - k) * S.lift); };
+  const s0 = section(mid - S.width / 2), s1 = section(mid + S.width / 2), stripe = [];
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; stripe.push([s0[i], s0[j], s1[j]], [s0[i], s1[j], s1[i]]); }
   return Object.freeze([
     heldFacets(blade, DAGGER_COLOURS.blade, c => [c[0] - X, c[1] - Y, 0]),
-    heldFacets(jewel, DAGGER_COLOURS.jewel, c => [c[0] - X, 0, 0]),
+    heldFacets(stripe, DAGGER_COLOURS.stripe, c => [c[0] - X, c[1] - Y, 0]),
     heldTube([[X, Y, G.z[0], G.corner[0], G.corner[1]], [X, Y, G.z[1], G.corner[0], G.corner[1]]], 4, WAYFARER_GUNMETAL, { caps: 3, flat: true, phase: 0 }),
     heldFacets(wrap, WAYFARER_LEATHER, c => [c[0] - X, c[1] - Y, 0]),
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], F.pommelRadius]], 4, brass, { flat: true }),
