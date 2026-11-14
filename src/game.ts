@@ -8655,6 +8655,7 @@ export class Game {
   airAttack(now = this.lastUpdateNow || 0) {
     const p = this.player;
     if (this.plunge || now < (this.plungeRecoverUntil || 0)) return true;
+    if (this.artRush) return true; // the airborne Lava Slash rush (2026-11-14) owns the press until its slam: no plunge
     if (!(now < (this.jumpUntil || 0)) || this.plungeSpent || !(p.hp > 0) || this.plungeBlocked()) return false;
     if (this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.fistCharge) return false;
     const kiSlam = this.kiSlamReady(now); this.kiSlam = false; // Ki Blast's ground slam (2026-11-13): straight down, the fists' own blow on landing
@@ -8811,11 +8812,14 @@ export class Game {
   // The Verge Cleaver's Lava Slash rush (brawler-spells.ts LAVA_RUSH; Tim, 2026-11-14: "you see the
   // character move to the enemy instead of teleporting"). The released art picks its foe and heading as artDash always did (the
   // lock within `reach` + 1, else the nearest within `reach`; straight along the aim with none) and records the rush; the
-  // Wayfarer travels it tick by tick (artRushSteer) and the slam lands on arrival (artRushLand). In the air (a jump) or with
-  // nothing to cross it is the old one-update dash and the caller lands at once: returns the heading then, else null.
+  // Wayfarer travels it tick by tick (artRushSteer) and the slam lands on arrival (artRushLand). Released mid-jump (Tim,
+  // 2026-11-14: "the same as on the ground") it is the same rush: the jump's own arc and height run on untouched (its clock),
+  // the rush carries her across through the same mover (no wall, ledge or lethal ground is crossed), `air` marks it, and the
+  // slam lands where it ends. With nothing to cross the caller lands at once: returns the heading then, else null. Falling,
+  // gliding or under the drone (no art is released there but the drone) it is still the old one-update dash.
   artRushBegin(now, reach, stop, power) {
     const p = this.player, R = LAVA_RUSH;
-    if (now < (this.jumpUntil || 0) || this.fall || this.glide || this.droneLift) return this.artDash(now, reach, stop);
+    if (this.fall || this.glide || this.droneLift) return this.artDash(now, reach, stop);
     const t = this.lockedTarget(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
     const foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach)?.e;
     let d, dist = reach, gap = 0;
@@ -8826,15 +8830,17 @@ export class Game {
     if (!(dist > 0)) return d; // nothing to cross: the slam lands where she stands
     this.artRush = { v: R.v, art: "lava-slash", area: this.area, areaId: this.areaId(), levelId: String(this.map?.levelId || "root"), foe: foe ? String(foe.id) : "",
       fromX: p.x, fromY: p.y, toX: p.x + d.x * dist, toY: p.y + d.y * dist, dirX: d.x, dirY: d.y, stop: foe ? Math.max(0, gap - dist) : 0, limit: Math.min(R.maxTiles, foe ? R.maxTiles : dist),
-      durationMs: shadowDashMs(dist, R), elapsedMs: 0, travelled: 0, arrived: false, power: Math.max(0, Math.min(1e9, Number(power) || 0)) };
+      durationMs: shadowDashMs(dist, R), elapsedMs: 0, travelled: 0, arrived: false, power: Math.max(0, Math.min(1e9, Number(power) || 0)), air: now < (this.jumpUntil || 0) };
     return null;
   }
   // One tick of the rush, as shadowDashSteer: toward the foe's live place (or the fixed end with none) on the eased path, through
   // dashCarry. It arrives at its time, at the stop distance, at an obstacle or at its cap; a foe gone arrives where she stands.
-  // A dodge, a stun, a jump, death or leaving the area cancels it (cancelArtRush: no blow, the charge stored again).
+  // A dodge, a stun, a new jump, death or leaving the area cancels it (cancelArtRush: no blow, the charge stored again); the jump
+  // it was released in does not (`air` until that jump lands, then it runs on as a ground rush).
   artRushSteer(dt, now) {
     const q = this.artRush, p = this.player; if (!q || q.arrived) return;
-    if (q.area !== this.area || q.areaId !== this.areaId() || q.levelId !== String(this.map?.levelId || "root") || !(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || now < (this.jumpUntil || 0)) { this.cancelArtRush(now); return; }
+    const jumping = now < (this.jumpUntil || 0); if (q.air && !jumping) q.air = false; // landed: a jump from here is a new one
+    if (q.area !== this.area || q.areaId !== this.areaId() || q.levelId !== String(this.map?.levelId || "root") || !(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || (jumping && !q.air)) { this.cancelArtRush(now); return; }
     const t0 = q.elapsedMs / q.durationMs; q.elapsedMs = Math.min(q.durationMs, q.elapsedMs + Math.max(0, Number(dt) || 0) * 1000); const t1 = q.elapsedMs / q.durationMs;
     let foe = null; if (q.foe) { for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; } if (!foe || !(foe.hp > 0) || foe.dead || foe.untargetable || foe.hidden) { q.arrived = true; return; } }
     const tx = foe ? foe.x : q.toX, ty = foe ? foe.y : q.toY, blocked = this.dashCarry(q, tx, ty, t0, t1, q.limit, now), gap = Math.hypot(tx - p.x, ty - p.y);

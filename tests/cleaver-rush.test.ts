@@ -227,6 +227,78 @@ test('a dodge, a stun, leaving the area or death cancels the rush: no slam, and 
     assert.equal(n, 1, 'the slam only'); }
 });
 
+// ---- the airborne rush (Tim, 2026-11-14: "Lava Slash released mid-jump should also be a travelled charge, the same as on the
+// ground"): the jump's own arc runs on, the rush carries her across through the same mover, the slam lands where it ends.
+const jumpInput = (held: boolean) => { let used = false; return { state: { x: 0, y: 0 }, consume: (k: string) => k === 'jump' && !used && (used = true), held: (k: string) => held && k === 'attack', reset: () => {} }; };
+// Charge held, jump, let go `afterMs` into the jump. Logs each frame from the release.
+function airRush(g: any, foeAt: [number, number] | null, afterMs = 48, ms = 700) {
+  const foe = foeAt ? dummy('air-foe', g.player.x + foeAt[0], g.player.y + foeAt[1]) : null; g.enemies = foe ? [foe] : [];
+  let t = ready(g, (g.lastUpdateNow || 1000)); t += 16; g.update(DT, jumpInput(true), t); const jumpUntil = g.jumpUntil; assert.ok(t < jumpUntil, 'jumping');
+  for (let e = 16; e < afterMs; e += 16) { t += 16; g.update(DT, input(false, true), t); }
+  const x0 = g.player.x, y0 = g.player.y, fx0 = foe?.x ?? 0, blows = spy(g), log: any[] = [];
+  t += 16; g.update(DT, input(), t); const q = g.artRush ? structuredClone(g.artRush) : null;
+  log.push({ at: 16, dx: g.player.x - x0, rush: !!g.artRush, elapsed: g.artRush?.elapsedMs, blows: blows.length, air: t < g.jumpUntil });
+  for (let i = 2; i * 16 <= ms; i++) { t += 16; g.update(DT, input(), t); log.push({ at: i * 16, dx: g.player.x - x0, rush: !!g.artRush, elapsed: g.artRush?.elapsedMs, blows: blows.length, air: t < g.jumpUntil }); }
+  return { q, log, foe, blows, x0, y0, fx0, t, jumpUntil };
+}
+
+test('mid-jump: the same travelled rush on the same clock, the jump\'s arc untouched, the slam on arrival, landing where it ended', () => {
+  for (const gap of [2.6, 3.8]) {
+    const g = room(), { q, log, blows, x0, fx0, jumpUntil } = airRush(g, [gap, 0]);
+    assert.ok(q, `${gap}: a rush began in the air`); assert.equal(q.air, true); const want = planned(fx0 - x0);
+    assert.equal(q.durationMs, shadowDashMs(want, R), 'the same LAVA_RUSH clock');
+    assert.equal(g.jumpUntil, jumpUntil, 'the jump keeps its own arc and length');
+    const arrive = log.findIndex((r) => !r.rush); assert.equal(log[arrive].at, Math.ceil(q.durationMs / 16) * 16, 'arrives on time');
+    assert.equal(log.findIndex((r) => r.blows > 0), arrive, 'the slam lands on the arrival tick'); assert.equal(blows.length, 1);
+    assert.equal(log[arrive].air, true, 'still up when it lands its slam (a short rush inside the jump)');
+    for (const r of log.slice(0, arrive)) { const e = want * shadowDashTravel(r.elapsed / q.durationMs); assert.ok(Math.abs(r.dx - e) < 1e-6, `${gap} at ${r.at}: ${r.dx} vs ${e}`); }
+    const end = log[arrive].dx; assert.ok(Math.abs(end - want) < 1e-6, 'ends where the ground rush would');
+    const landed = log.findIndex((r) => !r.air); assert.ok(landed > arrive, 'then lands'); assert.ok(Math.abs(log[log.length - 1].dx - end) < .05, 'on the spot the rush ended'); assert.ok(g.player.hp > 0);
+    assert.ok(!g.plunge, 'no plunge');
+  }
+  { // let go late in the jump: it lands during the rush, which runs on as a ground rush (no cancel), slam on arrival
+    const g = room(), { q, log, blows } = airRush(g, [3.8, 0], 400);
+    assert.equal(q.air, true); const landed = log.findIndex((r) => !r.air), arrive = log.findIndex((r) => !r.rush);
+    assert.ok(landed > 0 && landed < arrive, `lands mid-rush (${landed} < ${arrive})`); assert.equal(blows.length, 1); assert.equal(log.findIndex((r) => r.blows > 0), arrive);
+  }
+  { // a press during the airborne rush is the rush's: no plunge while it runs, one slam
+    const g = room(), foe = dummy('p', 23.8, 20); g.enemies = [foe]; let t = ready(g, 1000); t += 16; g.update(DT, jumpInput(true), t); t += 16; g.update(DT, input(), t); assert.ok(g.artRush?.air);
+    const blows = spy(g); while (g.artRush) { t += 16; g.update(DT, input(true), t); if (g.artRush) assert.ok(!g.plunge, 'no plunge while it runs'); } assert.equal(blows.length, 1, 'the slam lands (a press after it is a new action)');
+  }
+});
+
+test('mid-jump: walls, lethal ground and drops still stop it (nothing is crossed in the air)', () => {
+  for (const [name, setup] of Object.entries({
+    wall: (g: any) => { for (const t of g.map.tiles) if (t.x === 23) t.blocked = true; },
+    lava: (g: any) => { for (const t of g.map.tiles) if (t.x === 23) t.kind = 'lava'; },
+    drop: (g: any) => { for (const t of g.map.tiles) if (t.x >= 23) t.kind = 'canyon'; },
+  })) {
+    const g = room(); setup(g); const w = mapWidth(g.map, g.area); const foe = dummy('beyond', 24.6, 20); g.enemies = [foe]; g.targetId = foe.id;
+    let t = ready(g, 1000); t += 16; g.update(DT, jumpInput(true), t); t += 16; g.update(DT, input(), t); assert.ok(g.artRush?.air, `${name}: airborne rush`);
+    for (let i = 0; i < 60; i++) { t += 16; g.update(DT, input(), t); for (const [ox, oy] of [[.2, .55], [.8, .55], [.2, .85], [.8, .85]]) { const tile = g.map.tiles[Math.floor(g.player.y + oy) * w + Math.floor(g.player.x + ox)]; assert.ok(!tile.blocked && tile.kind !== 'lava' && tile.kind !== 'canyon', `${name}: never over it`); } }
+    assert.equal(g.artRush, null); assert.ok(g.player.hp > 0, `${name}: alive after landing`); assert.ok(g.player.x + .5 < 23.2, `${name}: short of it (${g.player.x.toFixed(2)})`);
+  }
+});
+
+test('mid-jump: exact resume, a save mid-rush in the air resumes airborne and lands the same slam on the same tick', () => {
+  for (const cut of [16, 64]) {
+    const g: any = createLabFixture({ lab: 'combat-assets', scenario: 'blade-spark-ashling', now: 100000 }).game; kit(g.save); g.enemies = [];
+    const w = g.glyphWorld(100000), dir = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [Math.cos(k * Math.PI / 4), Math.sin(k * Math.PI / 4)]).find(([dx, dy]) => { for (let d = .25; d <= 4; d += .25) if (!w.canStand(g.player.x + dx * d, g.player.y + dy * d)) return false; return true; })!;
+    g.save.lastAim = { x: dir[0], y: dir[1] }; const foe = dummy('air-resume', g.player.x + dir[0] * 3.9, g.player.y + dir[1] * 3.9); g.enemies = [foe];
+    let t = ready(g, 100000); t += 16; g.update(DT, jumpInput(true), t); t += 16; g.update(DT, input(), t); g.save.lastAim = { x: dir[0], y: dir[1] };
+    for (let e = 0; e < cut; e += 16) { t += 16; g.update(DT, input(), t); }
+    const q = structuredClone(g.artRush); assert.ok(q?.air && q.elapsedMs < q.durationMs && t < g.jumpUntil, `mid-rush in the air at ${cut}`);
+    g.setPaused(true, t); const save = deserializeSave(serializeSave(g.exportSnapshot(t))); g.setPaused(false, t);
+    assert.equal(save.session.playerRuntime.artRush.air, true);
+    const back: any = new Game(save, 500000); back.installSystems(); back.setPaused(false, 500000);
+    assert.deepEqual(back.artRush, normalizeArtRush(q)); assert.equal(back.player.x, g.player.x); assert.ok(500000 < back.jumpUntil, 'still up after the reload');
+    assert.equal(back.jumpUntil - 500000, g.jumpUntil - t, 'the same time left in the jump');
+    const bf = back.enemies.find((e: any) => e.id === foe.id) || Object.assign(dummy(foe.id, foe.x, foe.y), { hp: foe.hp }); back.enemies = [bf];
+    const play = (q2: any, from: number, f: any) => { const out: any[] = []; for (let s = from; s < from + 640; s += 16) { q2.update(DT, input(), s); out.push([Math.round(q2.player.x * 1e6), Math.round(q2.player.y * 1e6), Math.round(f.hp), !!q2.artRush, s < q2.jumpUntil]); } return out; };
+    const a = play(back, 500016, bf), b = play(g, t + 16, foe); assert.deepEqual(a, b, `cut at ${cut} ms`); assert.ok(b.some((r) => r[2] < 1e9), 'the slam landed'); assert.ok(!b[b.length - 1][4], 'and she landed');
+  }
+});
+
 // ---- harness: a recording 2D context and WebGL2 stand-in (as shadow-boxing-dash.test.ts)
 function ctx(log: any[] = []) { return new Proxy({ canvas: null, globalAlpha: 1, measureText: () => ({ width: 10 }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), createPattern: () => ({}), getImageData: () => ({ data: new Uint8ClampedArray(4) }) } as any, { get: (o, k) => k in o ? o[k] : (...args: any[]) => log.push([k, ...args]), set: (o, k, v) => { o[k] = v; log.push(['__set', k, v]); return true; } }); }
 class MockGL {

@@ -94,6 +94,8 @@ export function normalizeShadowDash(raw) {
 // Shadow Boxing's eased path (shadowDashTravel) through the same quarter-tile mover (game.ts dashCarry: SHADOW_DASH.step,
 // canStand and moveGuardedCombatStep), and artRushLand brings the slam and the eruption down on arrival. The art still picks its
 // foe and its end as the old one-update dash did (whole quarter steps, `stop` short), so on open ground it ends where it ended.
+// Released mid-jump it is the same rush (Tim, 2026-11-14): the jump's arc runs on by its own clock and the record's `air` holds
+// until that jump lands; the slam lands where the rush ends.
 //   Its own clock, shadowDashMs(tiles, LAVA_RUSH): ms = clamp(1000 x tiles / `speed`, `minMs`, `maxMs`). 16 tiles/s is two
 //     thirds of Shadow Boxing's 24: a greatsword charge, heavier and longer to read, yet still six times a walk and over three
 //     times a dodge; at 60 fps the body moves at most a third of a tile a frame (peak 1.25x the mean). The longest dash (a lock
@@ -111,6 +113,7 @@ export function normalizeArtRush(raw) {
   const R = LAVA_RUSH, r = normalizeDashCore(raw, R); if (!r || r.v !== R.v) return r;
   if (raw.art !== "lava-slash" || !finiteIn(raw.toX, -1e4, 1e5) || !finiteIn(raw.toY, -1e4, 1e5) || !finiteIn(raw.dirX, -1, 1) || !finiteIn(raw.dirY, -1, 1)
     || !finiteIn(raw.limit, 0, R.maxTiles) || !finiteIn(raw.power, 0, 1e9)) return null;
+  if (Object.hasOwn(raw, "air")) r.air = raw.air === true; // released mid-jump, until that jump lands (game.ts artRushSteer)
   return r;
 }
 // Shadow trails (Tim, 2026-11-14: "the Iron Fists' Shadow Boxing rush... give it the same after-images and speed streak as
