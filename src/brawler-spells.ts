@@ -297,9 +297,15 @@ function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {
 // roundhouse kick as a fourth step (its numbers are weapon-arts.ts AWAKENED_ARTS.moves.roundhouse). Past `window` s with no
 // press the chain starts again at the cross. A charge let go inside `perfect` (seconds of charge past `tapGrace`) counts as
 // full and strikes `perfectShare` times as hard; held longer it is full, without the bonus.
+// 2026-11-14 (Tim: "charging should be reduced a little in general for the fists"): `chargeTime` 1.2 → .96 s and `perfect`
+// [1, 1.3] → [.8, 1.04], the same ×.8 on both, so the perfect window keeps its place in the fill (it opens at 5/6 of full and
+// closes just past it) and the ring reads as before. A fifth off: one beat of the rhythm goes from 1.33 s to 1.13 s, a change
+// you feel in a combo without the charge turning into a tap. Gathered Breath glyphs (glyphs.ts CHARGE_GLYPH) shorten it
+// further: the charge records its multiplier as it starts (`scale`), and fistHeld turns the time held into charge time.
 export const IRON_FISTS = {
-  base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
-  perfect: [1, 1.3], perfectShare: 1.25,
+  base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: .96, guardMs: 220,
+  perfect: [.8, 1.04], perfectShare: 1.25,
+  beat: [1, 1.3], beatShare: 1.25, rhythmBonus: 13, flashMs: 180,
   punches: [
     { name: "Right cross", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
     { name: "Left jab", share: .9, chargeShare: 1.2, echoes: 1, dash: .6, radius: 1.1 },
@@ -318,6 +324,48 @@ export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.7
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 // Whether a charge let go after `held` seconds of holding falls in the perfect window.
 export const fistPerfect = (held) => { const c = held - IRON_FISTS.tapGrace; return c >= IRON_FISTS.perfect[0] && c <= IRON_FISTS.perfect[1]; };
+// The charge seconds (as fistCharge and fistPerfect read them) of the charge `c` ({ start, scale }) at `now` (ms): the tap grace
+// runs at its own pace, the charge past it `1 / scale` times as fast (Gathered Breath).
+export const fistHeld = (c, now) => { const h = Math.max(0, ((Number(now) || 0) - (Number(c?.start) || 0)) / 1000), k = Number(c?.scale) > 0 ? Math.min(1, c.scale) : 1; return h <= IRON_FISTS.tapGrace ? h : IRON_FISTS.tapGrace + (h - IRON_FISTS.tapGrace) / k; };
+
+// The rhythm (Tim, 2026-11-14: "the ball extends from his body and comes back to the centre, and whenever it reaches his body,
+// hitting Attack at that moment is the perfect timing... charge the punch, let it go, then start the next charge at the perfect
+// timing... that should do the most damage. It should not be behind spamming"). After every step the gauntlet ball goes out
+// along the blow and comes home to the Wayfarer's centre; it reaches home as the beat window opens, `beat`[0] × the gate after
+// the step was thrown (never before the gate itself opens), and stays home, glowing, until `beat`[1] × the gate. A fresh press
+// inside that window is on the beat: the step strikes `beatShare` times as hard. A press made earlier and held over by the gate
+// or the attack buffer (mashing) is never on the beat. Starting a charge on the beat carries the beat into the charged blow, and
+// a charge started on the beat and let go in its own perfect window (`perfect` above) is a rhythm blow: the step's on-beat tap
+// (with the finisher, if it is one) plus `rhythmBonus` × the fists' power, in place of the charge's shares.
+// Why a flat bonus, and why 13: the rhythm costs a charge (tapGrace + perfect[0] = .92 s) on top of the beat (.21 s) for every
+// step, about 4.8 taps' time (each step also pays the press and let-go frames). A bonus in proportion to the step's share would
+// pay most on the big steps, so tapping the cross and jab and charging only the uppercut and kick would beat charging every
+// move; a flat bonus is worth the same on every step, so once it is at least the mean on-beat tap × (4.8 - 1) (about 10.3 with
+// the kick, 9.3 without) charging every step is the best of every mix. 13 puts the full rhythm about 18% above perfect taps at
+// every window's start (the fastest taps possible) with the awakened kick and about 28% without it (r953 follow-up, after the
+// charge was cut to .96 s; it was 16 at 1.2 s, the same edge); tests/fist-rhythm.test.ts measures it with the real loop at 60
+// fps. A player 30 ms late per step loses about a tenth on taps and 3% on the rhythm, so in hand the lead only grows. Gathered
+// Breath (glyphs.ts CHARGE_GLYPH) shortens the charge and so widens the lead on purpose: with three, about 2.2 times taps.
+// The beat window after a step thrown at `at` (ms) whose gate opens at `gateOpens` (ms).
+export function fistBeatWindow(at, gateOpens = at + IRON_FISTS.gate * 1000) {
+  const g = IRON_FISTS.gate * 1000, opens = Math.max(at + g * IRON_FISTS.beat[0], gateOpens);
+  return { opens, closes: opens + g * (IRON_FISTS.beat[1] - IRON_FISTS.beat[0]) };
+}
+// Whether a press at `now` (ms) falls in the beat window `beat` ({ opens, closes }).
+export const fistOnBeat = (beat, now) => !!beat && Number.isFinite(beat.opens) && now >= beat.opens - 1e-6 && now <= beat.closes + 1e-6;
+// The ball at `ms` after the step (home at `homeMs`, the window's start; gone after `closesMs`, its end): `along` is how far out
+// along the blow (FIST_STEP_VIEW.reach at full), `side` how far toward the striking shoulder (0 at home), `home` whether it is
+// back at the centre. One shared record (no allocation per frame); null once the window has closed.
+const BALL = { along: 0, side: 0, home: false };
+export function fistBallAt(ms, homeMs, closesMs) {
+  const V = FIST_STEP_VIEW; if (!(ms >= 0) || !(homeMs > 0) || !(ms <= closesMs)) return null;
+  const u = ms / homeMs;
+  if (u >= 1) { BALL.along = 0; BALL.side = 0; BALL.home = true; }
+  else if (u < V.windup) { const q = u / V.windup; BALL.along = -V.back * q; BALL.side = q; BALL.home = false; }
+  else if (u < V.strike) { const q = (u - V.windup) / (V.strike - V.windup); BALL.along = -V.back + (V.reach + V.back) * q; BALL.side = 1; BALL.home = false; }
+  else { const q = (u - V.strike) / (1 - V.strike); BALL.along = V.reach * (1 - q); BALL.side = 1 - q; BALL.home = false; }
+  return BALL;
+}
 
 // Presentation only: the original effect owns delay, contact, expiry and Echo identity.
 // Conjure below the local roof/arch rather than pretending to fall from a ceiling.
@@ -427,20 +475,34 @@ function drawAfterimage(ctx, fx, x, y, R, s, capture) {
   if (!captured) drawAfterimageBody(ctx, x, y, s, pose.amount, pose.alpha);
 }
 
-// Standard view (2026-11-13): which hand throws the step, so the chain reads right, left, right (then the kick's sweep). The
-// gauntlet is drawn back to the shoulder (the wind-up), driven out along the aim (the blow; the uppercut rises), and brought
-// home to the guard, over the record's own clock. Nothing allocated; reduced motion keeps it, it is not a loop.
-export const FIST_STEP_VIEW = { windup: .28, strike: .48, shoulder: .22, reach: .62, back: .12, rise: .38, size: .11, arm: "#5a4636", fist: "#e4ebf2", rim: "#8796a6" };
-function drawFistStep(ctx, game, toScreen, s) {
-  const p = game.player, v = p?.attackVisual, now = game.lastUpdateNow || 0, until = Number(p?.fistVisualUntil) || 0, step = Number(v?.fistStep) || 0;
-  if (!v || v.profile !== "fist" || v.presentationCancelled || v.awakenedArt || !(now < until) || step < 1 || step > 3) return;
-  const V = FIST_STEP_VIEW, dur = 240, k = Math.max(0, Math.min(1, 1 - (until - now) / dur)), ax = Number(v.aim?.x) || 0, ay = Number(v.aim?.y) || 0, al = Math.hypot(ax, ay); if (!(al > 0)) return;
-  const ux = ax / al, uy = ay / al, side = step === 2 ? -1 : 1, rx = -uy * side, ry = ux * side; // the striking hand's side of the aim (screen y down)
-  const out = k < V.windup ? -V.back * k / V.windup : k < V.strike ? -V.back + (1 + V.back) * (k - V.windup) / (V.strike - V.windup) : 1 - (k - V.strike) / (1 - V.strike);
-  const [cx, cy] = toScreen({ x: p.x + .5, y: p.y + .35 }), sx = cx + rx * V.shoulder * s, sy = cy + ry * V.shoulder * s, reach = (.1 + V.reach * out) * s; // behind the shoulder line in the wind-up, out to the blow, home to the guard
-  const lift = step === 3 ? V.rise * s * Math.max(0, out) : 0, fx = sx + ux * reach - rx * (step === 2 ? .04 : .08) * s * Math.max(0, out), fy = sy + uy * reach - lift - ry * .08 * s * Math.max(0, out);
-  ctx.strokeStyle = V.arm; ctx.lineWidth = Math.max(2, s * .07); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(fx, fy); ctx.stroke(); ctx.lineCap = "butt";
-  ctx.fillStyle = V.fist; ctx.strokeStyle = V.rim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx, fy, V.size * s, 0, 7); ctx.fill(); ctx.stroke();
+// The gauntlet ball (2026-11-13; the rhythm cue from 2026-11-14): which hand throws the step, so the chain reads right, left,
+// right (the kick straight out along its aim). The ball is drawn back toward the striking shoulder (the wind-up), driven out
+// along the aim to full reach as the blow lands (`strike` × the home time: the 90 ms contact of a .21 s gate) and brought home
+// to the Wayfarer's centre exactly as the beat window opens (fistBallAt, keyed on game.fistBeat, the same record the press is
+// judged by). It stays home with a glow until the window closes; a press on the beat flashes a ring round it. Drawn on the
+// floor, so both views show it: Close View projects this layer onto its ground, so there home is under the hero's feet
+// (`footY`, as close-view.ts stands him) rather than the sprite's middle (`bodyY`). Reduced motion and safe mode keep the ball and
+// its glow but drop the pulse and the ring's spread. Nothing allocated.
+export const FIST_STEP_VIEW = { windup: .28, strike: .43, shoulder: .22, reach: .62, back: .12, rise: .38, size: .11, arm: "#5a4636", fist: "#e4ebf2", rim: "#8796a6", glow: "#fff2a8", rhythm: "#ffd36a", halo: .3, flash: .55, bodyY: .45, footY: .75 };
+function drawFistStep(ctx, game, toScreen, s, floor = false) {
+  const p = game.player, b = game.fistBeat, now = game.lastUpdateNow || 0, V = FIST_STEP_VIEW;
+  const still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode), [cx, cy] = p ? toScreen({ x: p.x + .5, y: p.y + (floor ? V.footY : V.bodyY) }) : [0, 0];
+  const f = game.fistFlash, fk = f && p ? (now - f.at) / IRON_FISTS.flashMs : 2;
+  if (fk >= 0 && fk < 1) { // a press on the beat: a ring round the ball, gold for a rhythm blow
+    ctx.globalAlpha = 1 - fk; ctx.strokeStyle = f.rhythm ? V.rhythm : V.glow; ctx.lineWidth = f.rhythm ? 4 : 3;
+    ctx.beginPath(); ctx.arc(cx, cy, s * (still ? V.flash : V.halo + (V.flash - V.halo) * fk), 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (!b || !p) return;
+  const q = fistBallAt(now - b.at, b.opens - b.at, b.closes - b.at); if (!q) return;
+  const ux = Number(b.ax) || 0, uy = Number(b.ay) || 0, step = Number(b.step) || 1, side = step === 2 ? -1 : step > 3 ? 0 : 1, rx = -uy * side, ry = ux * side;
+  const sx = cx + rx * V.shoulder * s, sy = cy + ry * V.shoulder * s, out = Math.max(0, q.along) / V.reach, lift = step === 3 ? V.rise * s * out : 0;
+  const fx = cx + rx * V.shoulder * s * q.side + ux * q.along * s, fy = cy + ry * V.shoulder * s * q.side + uy * q.along * s - lift;
+  if (q.home) { // home: the beat window is open
+    const pulse = still ? 1 : .75 + .25 * Math.sin((now - b.opens) / 1000 * Math.PI * 2 / (IRON_FISTS.gate * (IRON_FISTS.beat[1] - IRON_FISTS.beat[0])));
+    ctx.globalAlpha = .28 * pulse; ctx.fillStyle = V.glow; ctx.beginPath(); ctx.arc(cx, cy, V.halo * s, 0, 7); ctx.fill();
+    ctx.globalAlpha = .9; ctx.strokeStyle = V.glow; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, V.halo * s * (still ? 1 : .9 + .1 * pulse), 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  } else if (side && q.side > 0) { ctx.strokeStyle = V.arm; ctx.lineWidth = Math.max(2, s * .07); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(fx, fy); ctx.stroke(); ctx.lineCap = "butt"; }
+  ctx.fillStyle = q.home ? V.glow : V.fist; ctx.strokeStyle = V.rim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx, fy, V.size * s * (q.home ? 1.25 : 1), 0, 7); ctx.fill(); ctx.stroke();
 }
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
@@ -480,10 +542,10 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
     } else if (fx.kind === "plunge-slam" || fx.kind === "plunge-burst") drawPlunge(ctx, fx, x, y, R); // jump attacks
     else if (fx.kind === "plunge-afterimage") drawAfterimage(ctx, fx, x, y, R, s, capture);
   }
-  drawFistStep(ctx, game, toScreen, s);
+  drawFistStep(ctx, game, toScreen, s, capture != null); // Close View passes its capture (the floor layer)
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills; the perfect window marked on it, flashing inside it
-    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = ((game.lastUpdateNow || 0) - c.start) / 1000, k = fistCharge(held), F = IRON_FISTS;
+    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = fistHeld(c, game.lastUpdateNow || 0), k = fistCharge(held), F = IRON_FISTS;
     const span = F.perfect[1], fill = Math.max(.05, Math.min(1, (held - F.tapGrace) / span)), perfect = fistPerfect(held), R = s * (1.2 - .5 * k), top = -Math.PI / 2;
     ctx.globalAlpha = .35; ctx.strokeStyle = "#3a2c20"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); // the track
     ctx.globalAlpha = .9; ctx.strokeStyle = "#fff2a8"; ctx.beginPath(); ctx.arc(x, y, R, top + Math.PI * 2 * F.perfect[0] / span, top + Math.PI * 2); ctx.stroke(); // the perfect window

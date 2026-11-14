@@ -89,7 +89,7 @@ test('every charge has a perfect window: a release inside it beats a longer, ful
   assert.ok(F.perfectShare > 1); assert.ok(fistCharge(F.tapGrace + .3) < fistCharge(F.tapGrace + .9));
   const dealt = (seconds, s = 1) => { const { g, clock } = arena({ awakened: true, echoes: 2 }); for (let i = 1; i < s; i++) step(g, clock); const before = lost(g); keep(g); hold(g, clock, seconds); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */ return { amount: lost(g) - before, msg: g.message, perfect: g.player.attackVisual.fistPerfect === true }; };
   for (const s of [1, 4]) {
-    const short = dealt(.4, s), perfect = dealt(F.tapGrace + 1.15, s), late = dealt(F.tapGrace + 1.6, s);
+    const short = dealt(.4, s), perfect = dealt(F.tapGrace + (F.perfect[0] + F.perfect[1]) / 2, s), late = dealt(F.tapGrace + 1.6, s); // 2026-11-14: the window's middle (it moved with the shorter charge)
     assert.ok(short.amount < late.amount, `step ${s}: longer is stronger`); assert.ok(perfect.amount > late.amount, `step ${s}: the perfect window is strongest`);
     assert.equal(perfect.perfect, true); assert.match(perfect.msg, /Perfect/); assert.equal(late.perfect, false);
   }
