@@ -127,6 +127,12 @@ export const TOOL_RANGE = Object.freeze({
 // (at least `lob.minApex` tiles) and down to the ground where it lands; ground above the arc stops it and it bursts there.
 // `pierce.carbine` "full": a fully charged Carbine beam (CARBINE.charge.full) passes through terrain; taps and partial charges
 // follow the line of sight. Enemy shots are unchanged (`hostile: false`).
+// Heights at launch and at the foe (Tim, 2026-11-14, yes to both): the shot leaves from the Wayfarer's actual height (game.ts
+// shotLaunchFeet: her height in the air, a jump's arc peaking at `jump.peak` tiles, which is Close View's drawn jump,
+// CLOSE_VIEW_LEAP.arcPeak × OUTDOOR.terrain.level, and the robot's boost lift) plus her chest, scaled for a taller form by its
+// drawn head over `heroHead` (the drawn hero, 1.38 tiles); the drone's rockets leave the drone. A flying foe's chest is the
+// middle of its drawn body (actor-presentation.ts actorPresentation), `flier.fallback` tiles with no profile, so a rise
+// below it does not hide it.
 export const RANGED_OCCLUSION = Object.freeze({
   closeViewOnly: true,
   hostile: false,
@@ -134,6 +140,9 @@ export const RANGED_OCCLUSION = Object.freeze({
   waist: .45,
   lane: .35,
   slopeLevel: 1,
+  heroHead: 1.38,
+  jump: Object.freeze({ peak: .864 }),
+  flier: Object.freeze({ fallback: 1 }),
   lob: Object.freeze({ apexPerTile: .25, minApex: 1 }),
   pierce: Object.freeze({ carbine: "full" }),
 });

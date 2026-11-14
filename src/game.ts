@@ -1,4 +1,5 @@
-import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
+import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.ts';
+import { playerFormPresentation } from './close-view-player-presentation.ts'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
 import { canopyGateDestination } from './trees.ts';
 import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
 import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
@@ -4127,9 +4128,10 @@ export class Game {
   // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION; Tim, 2026-11-14): the test updateProjectiles puts to each of
   // the Wayfarer's shots while Close View applies here (close-view.ts closeViewApplies: the save's switches, the place and the
   // tile stood on, so it is the same on every device and on resume), else null: Standard View shoots over elevation as before.
-  // On a shot's first test its launch ground (`launchZ`, drawn tiles: the ground or roof deck the Wayfarer stood on), its sight
-  // line (`los`, chest to its foe's chest) and a shell's planned flight (`lobSpan`) are fixed on it as plain numbers and saved
-  // with it, so a shot resumed mid-flight keeps them. One closure a Game; a frame allocates nothing; a shot's foe is chosen once.
+  // On a shot's first test its launch height (`launchZ`, drawn tiles: where the Wayfarer's feet were, see shotLaunchFeet, and
+  // `launchChest`, the chest above them), its sight line (`los`, chest to its foe's chest) and a shell's planned flight
+  // (`lobSpan`) are fixed on it as plain numbers and saved with it, so a shot resumed mid-flight keeps them. One closure a Game;
+  // a frame allocates nothing; a shot's foe is chosen once.
   shotOccluder() {
     if (RANGED_OCCLUSION.closeViewOnly && !closeViewApplies(this)) return null;
     this._occludeOutdoor = overworldCloseViewApplies(this);
@@ -4151,19 +4153,45 @@ export class Game {
     let best = null, bt = Infinity; for (const e of this.enemies) { if (!ok(e)) continue; const t = along(e); if (t >= 0 && t < bt) { bt = t; best = e; } }
     return best;
   }
+  // The drawn height of the Wayfarer's feet now (Tim, 2026-11-14: a shot "starts from her actual height"): the ground or roof
+  // deck under her, raised to her height in the air (a sky hop, the drone's lift, a fall, the glider: levels, as the game
+  // holds them), plus a jump's arc (RANGED_OCCLUSION.jump.peak at its middle, along a half sine over JUMP's duration) and the
+  // robot's boost lift (close-view-player-presentation.ts playerFormPresentation). Read from game state, never the renderer.
+  shotLaunchFeet(map, w) {
+    const pl = this.player, d = this.standingDeck(), under = tileUnder(map, w, pl.x, pl.y), lh = under ? this.levelDrawn(under) : LIFT_PER_LEVEL;
+    let level = Math.max(Number(elevationAt(map, w, pl.x, pl.y)) || 0, d ? Number(d.level) || 0 : 0);
+    for (const z of [this.skyAir, this.droneLift?.z, this.fall?.z, this.glide?.z]) if (Number.isFinite(z) && z > level) level = z;
+    let feet = level * lh; const now = this.lastUpdateNow || 0, dur = Number(this.jumpDur) || 0;
+    if (dur > 0 && now < (this.jumpUntil || 0)) { const u = Math.max(0, Math.min(1, (now - (Number.isFinite(this.jumpStart) ? this.jumpStart : this.jumpUntil - dur)) / dur)); feet += RANGED_OCCLUSION.jump.peak * Math.sin(Math.PI * u); }
+    const form = this.mechUp() ? playerFormPresentation(this) : null; if (form) feet += Math.max(0, Number(form.lift) || 0);
+    return feet;
+  }
+  // The chest above the feet a shot leaves from: RANGED_OCCLUSION.chest, scaled by a taller form (the robot, the suit, the Ember
+  // Form: its drawn head over RANGED_OCCLUSION.heroHead); the drone's rockets leave the drone (PLAYER_DRONE_VISUAL.hover).
+  shotLaunchChest(p) {
+    const O = RANGED_OCCLUSION; if (p.droneRocket) return PLAYER_DRONE_VISUAL.hover;
+    const form = playerFormPresentation(this), head = Number(form?.head); return O.chest * (head > O.heroHead ? head / O.heroHead : 1);
+  }
+  // A foe's chest above its ground: RANGED_OCCLUSION.chest, or for a flier (fliesHigh) the middle of its drawn body (actor-
+  // presentation.ts actorPresentation: its lift and head, aloft or not), RANGED_OCCLUSION.flier.fallback with no profile.
+  foeChest(e) {
+    const O = RANGED_OCCLUSION; if (!fliesHigh(e)) return O.chest;
+    const a = actorPresentation(e); return a ? Math.max(O.chest, ((Number(a.bodyLift) || 0) + (Number(a.head) || 0)) / 2) : O.flier.fallback;
+  }
   shotOccluded(p, x, y) {
     if (shotPiercesTerrain(p)) return false; // a fully charged Carbine beam
     const map = this.map, w = mapWidth(map, this.area); if (!map?.tiles?.[Math.floor(y) * w + Math.floor(x)] || !this.player) return false;
     const O = RANGED_OCCLUSION;
-    if (!Number.isFinite(p.launchZ)) { const pl = this.player, d = this.standingDeck(), under = tileUnder(map, w, pl.x, pl.y); p.launchZ = Math.max(Number(elevationAt(map, w, pl.x, pl.y)) || 0, d ? Number(d.level) || 0 : 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL); }
+    if (!Number.isFinite(p.launchZ)) p.launchZ = this.shotLaunchFeet(map, w);
+    if (!Number.isFinite(p.launchChest)) p.launchChest = this.shotLaunchChest(p);
     const top = this.groundDrawnAt(map, w, x, y);
     if (p.path === "grenade") { // a lobbed shell keeps its arc
       if (!(p.lobSpan > 0)) p.lobSpan = Number(p.visualFlight?.duration) > 0 ? Number(p.visualFlight.duration) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
       return top - p.launchZ > shotClearance(p) + 1e-9;
     }
     if (!(Array.isArray(p.los) && p.los.length === 6 && p.los.every(Number.isFinite))) {
-      const z0 = p.launchZ + O.chest, foe = this.shotSightFoe(p);
-      if (foe) { const under = tileUnder(map, w, foe.x, foe.y); p.los = [p.x, p.y, z0, foe.x + .5, foe.y + .45, (Number(elevationAt(map, w, foe.x, foe.y)) || 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL) + O.chest]; }
+      const z0 = p.launchZ + p.launchChest, foe = this.shotSightFoe(p);
+      if (foe) { const under = tileUnder(map, w, foe.x, foe.y); p.los = [p.x, p.y, z0, foe.x + .5, foe.y + .45, (Number(elevationAt(map, w, foe.x, foe.y)) || 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL) + this.foeChest(foe)]; }
       else p.los = [p.x, p.y, z0, p.x + (Number(p.dx) || 0), p.y + (Number(p.dy) || 0), z0];
     }
     return sightBlocked(top, sightLineZ(p.los, x, y));

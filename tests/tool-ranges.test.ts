@@ -11,7 +11,7 @@ import { normalizeItemUpgrade, PRIMARY_PROFILES, RANGED_WEAPONS, CARBINE_RANK } 
 import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotFade, ORRERY, CARBINE } from '../src/tool-forms.ts';
 import { LIFT_PER_LEVEL } from '../src/landscape.ts';
 import { OUTDOOR } from '../src/close-view-outdoor.ts';
-import { DEFAULT_PROJECTILE_VISUAL_HEIGHT } from '../src/actor-presentation.ts';
+import { DEFAULT_PROJECTILE_VISUAL_HEIGHT, PLAYER_DRONE_VISUAL } from '../src/actor-presentation.ts';
 import { SECTION_SIZE } from '../src/world.ts';
 
 const W = 48, PX = 3, PY = 9.55, ROW = 10;
@@ -213,4 +213,40 @@ test('60 s of every ranged tool fired every frame in Close View among rises (coo
     }
     assert.ok(peak <= 32 + 24 + 8, `${tool().name}: ${peak} live shots`); assert.ok(g.effects.length < 200, `${tool().name}: ${g.effects.length} effects`);
   }
+});
+
+// Tim (2026-11-14, yes to both): a flier's chest is its drawn flying height; the Wayfarer's shot leaves from her actual height.
+test('Close View: a flier behind a rise is still in sight (its drawn flying height); a grounded foe there is hidden', () => {
+  const rises = { 8: 2 };
+  const grounded = arena({ close: true, rises, foes: [[10, PY - .1]] }); follow(grounded.g, 30); assert.equal(grounded.g.enemies[0].hp, 1e9, 'the grounded foe is hidden');
+  const fl = arena({ close: true, rises }); const seraph = Object.assign(createCombatant('cinderSeraph', 10, PY - .1), { id: 'flier', aloft: true, hp: 1e9, maxHp: 1e9, damage: 0, cooldown: 99, speed: 0, aggro: false });
+  fl.g.enemies = [seraph]; assert.ok(fl.g.foeChest(seraph) > 2, `drawn aloft: ${fl.g.foeChest(seraph).toFixed(2)}`);
+  const { shot } = follow(fl.g, 30); assert.ok(seraph.hp < 1e9 || seraph.dead, 'the flier above the rise was hit'); assert.ok(shot.los[5] > 2);
+  const moth = createCombatant('veilMoth', 4, 4), brute = createCombatant('rootBrute', 4, 4);
+  assert.ok(fl.g.foeChest(moth) > RANGED_OCCLUSION.chest && fl.g.foeChest(brute) === RANGED_OCCLUSION.chest, 'a moth is drawn higher than a walker');
+  assert.equal(fl.g.foeChest(Object.assign(createCombatant('rootBrute', 4, 4), { flying: true, kind: 'unprofiled-flier' })), RANGED_OCCLUSION.flier.fallback);
+});
+
+test('Close View: a shot fired mid-jump clears a rise that stops a standing shot, and keeps its launch height on resume', () => {
+  const rises = { 8: 2 };
+  const stand = arena({ close: true, rises }); assert.ok(follow(stand.g, 30).far < 8, 'standing: stopped');
+  const jump = arena({ close: true, rises }); const g = jump.g; g.jumpDur = 520; g.jumpStart = 1050 - 260; g.jumpUntil = g.jumpStart + 520; g.lastUpdateNow = 1050;
+  assert.ok(Math.abs(g.shotLaunchFeet(g.map, W) - RANGED_OCCLUSION.jump.peak) < 1e-9, 'at the top of the jump');
+  const r = follow(g, 30); assert.ok(r.shot.launchZ > .5, `launched at ${r.shot.launchZ.toFixed(2)}`); assert.ok(r.far > 9, 'the jump shot flew over the rise');
+  const saved = JSON.parse(JSON.stringify({ launchZ: r.shot.launchZ, los: r.shot.los })); assert.deepEqual(saved.los, r.shot.los);
+  assert.equal(RANGED_OCCLUSION.jump.peak, Math.round(.72 * OUTDOOR.terrain.level * 1000) / 1000, 'Close View\'s drawn jump peak');
+});
+
+test('Close View: a shot from the drone\'s lift, the drone\'s rockets and a boosting robot leave from their height', () => {
+  const s = freshSave(); s.seed = 'RANGES-AIR'; s.overworldCloseView = true; const g = new Game(s, 0);
+  g.area = 'overworld'; g.map = { ...g.map, width: 32, height: 32, landscape: true, building: null, interiorTerrain: null, tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'grass', blocked: false, elev: i % 32 === 8 ? 1 : 0 })) };
+  Object.assign(g.player, { x: PX, y: PY, hp: 1e6 }); g.enemies = []; g.lastUpdateNow = 1000;
+  const shot = (extra = {}) => ({ id: 'a', x: 3.85, y: 10, dx: 1, dy: 0, speed: 15, life: 1.25, damage: 10, damageType: 'physical', path: 'straight', age: 0, hits: {}, ...extra });
+  const fly = (p) => { updateProjectiles([p], [], g.map, 32, .5, () => {}, () => {}, null, () => {}, (q) => q.damage, () => {}, [], null, null, (n) => n, g.shotOccluder()); return p; };
+  assert.ok(fly(shot()).x < 8, 'on the ground a one-level rise stops it');
+  g.droneLift = { base: 0, z: 2, vz: 0 }; const lifted = fly(shot()); assert.ok(Math.abs(lifted.launchZ - 2 * OUTDOOR.terrain.level) < 1e-9); assert.ok(lifted.x > 9, 'from the drone\'s lift it flies over');
+  g.droneLift = null; const rocket = fly(shot({ droneRocket: true })); assert.equal(rocket.launchChest, PLAYER_DRONE_VISUAL.hover, 'a rocket leaves the drone'); assert.equal(rocket.los[2], PLAYER_DRONE_VISUAL.hover, 'its sight line starts at the drone'); assert.ok(rocket.x < 8, 'a rise drawn 1.2 tiles tall still hides what is behind it from the drone at the shoulder');
+  s.mech = { ...(s.mech || {}), active: true, mode: 'robot' }; g.mechBoosting = true; assert.equal(g.mechUp(), true);
+  const boosted = fly(shot()); assert.ok(boosted.launchZ >= .22 - 1e-9, `the robot's boost lift: ${boosted.launchZ}`); assert.ok(boosted.launchChest >= RANGED_OCCLUSION.chest);
+  g.mechBoosting = false; assert.equal(fly(shot()).launchZ, 0, 'the robot standing: from the ground');
 });
