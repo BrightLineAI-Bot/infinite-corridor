@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r964 (`ea6000138121`); production serves `r961-2b574429348b` (published 2026-11-14 after a Fable review of r951 to r961). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r965 (`09c278b8c720`); production serves `r962-a8bf3852db96` (published 2026-11-14 after a Fable review of r961 to r962). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 965 | Claude | claude/carbine-hold | Carbine in Close View: held two-handed at the right shoulder with a cheek weld (stock in the shoulder pocket, left hand on the fore-end, barrel level along the aim), arms steady while charging (the charge's animation restarts no longer flicker the arm down and up), a slight recoil kick that settles back to the hold | In flight. |
+| 966 | Claude | claude/arc-wave-tempo | Arc Wave: the Blunderbuss's three small crescents fly slower (5.5 tiles/s, same reach) and fan out in a wider cone (±0.45 rad); the two Echo great waves fly much faster (24 tiles/s, 12.5 tiles × reach) straight along the aim and overtake the crescents within about 2 tiles | In flight. |
+| 965 | Claude | claude/carbine-hold | Carbine in Close View: held two-handed at the right shoulder with a cheek weld (stock in the shoulder pocket, left hand on the fore-end, barrel level along the aim), arms steady while charging (the charge's animation restarts no longer flicker the arm down and up), a slight recoil kick that settles back to the hold | Merged as `09c278b8c720` (#632). |
 | 964 | Claude | claude/blunderbuss-arc-echo | Blunderbuss with the Arc Wave tool form: each Echo follow-up shot is one great crescent about as wide as the three arcs as they leave the muzzle (90%), flying straight along the aim and striking each foe in its path once; one wave per Echo glyph at the existing Echo timing; without Arc Wave Echo shots are unchanged | Merged as `ea6000138121` (#631). |
 | 963 | Claude | claude/clone-carbine-charge | The Shadow Clone charges the Carbine with the Wayfarer and fires its own charged beam at her target; both beams up to x1.15 at full charge with the clone out; clone aims at her target without a lock | Merged as `5a4b4610b2d1` (#630). |
 | 962 | Claude | claude/daily-region-1114 | New far region (landscape v27, REGIONS_V27): lava channels between scoria levees with crust bridges, cinder cones with a lava crater and climbable rim (sometimes a cache), sulphur-ringed fumaroles; from far Firelands, Emberlands and Ashfields; new ground only | In flight. |
@@ -323,6 +324,7 @@ Main is at r964 (`ea6000138121`); production serves `r961-2b574429348b` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 962 | r962-a8bf3852db96 | 2026-11-14 | Magma Rivers. Fable review (961→962): no blockers; versions 1–26 byte-identical (3,744 maps), 785 magma sections loaded with no crash, no lethal spawn and no lost exits. Publish run 43634257401 succeeded; gh-pages release-identity and the in-game release string name the candidate. Non-blocking: a rim cache can be walled in by a later great building (1 in 84); decorative objects can sit on lava; the non-WebGL fallback rims cinder ground like lava. |
 | 961 | r961-2b574429348b | 2026-11-14 | Includes r952–r960. Fable review (951→961): no blockers. Publish run 43625993906 succeeded; gh-pages release-identity names the candidate. Non-blocking notes: the soundtrack's CPU cost on a real phone is unmeasured; audio resumes only on visibilitychange or unmute; a rollback to r951 after Gathered Breath is socketed needs care. |
 | 951 | r951-4925ab3898c1 | 2026-11-14 | Includes r950 (tower steps, gargoyle ×2). Fable review (949→951): no blockers. Cleaver weighted swings. |
 | 914 | r914-c1265a9326d1 | 2026-11-12 | Fable review (912→914, releases 913–914): no blockers; build clean; phase release refuses walls and lethal tiles (probe beside lava and abyss); dithered roof program falls back safely; camera occlusion fixed at 16 samples. Note: the phase ring fallback ignores elevation (fixed in 915). |

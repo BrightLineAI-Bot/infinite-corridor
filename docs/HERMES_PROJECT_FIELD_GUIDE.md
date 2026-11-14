@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 966 — Arc Wave tempo
+
+Tim, 2026-11-14: the arc waves should be slower and spread out from the centre into a cone; the two great waves should fly faster, shoot forward and overtake them.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE` {speed 5.5 (was 11), range 9.35 tiles × reach, spread .45 rad (was .26)}, `arcWaveLife(reach)` (flight time = range × reach / speed); `ARC_WAVE_ECHO` {speed 24, range 12.5 × reach, at .5 (was 1), scale .9, depth .3, muzzle .35}; `arcWaveEcho(shot, spread)` returns the great wave's width, speed and life (null without Arc Wave), reading the reach stat from the crescent's own speed and life so the Close View held release needs no new payload field. `game.ts` `fireSecondary` uses the Arc Wave cone and tempo; both Echo paths use `arcWaveEcho`; the Close View payload records the cone actually used. Tests: `blunderbuss-arc-echo` (11).
+
+**BOUNDARY:** Without Arc Wave the Blunderbuss keeps 14 tiles/s, 0.85 s and ±0.26 rad. Damage shares, pierce, hit-once, the projectile cap, occlusion and exact resume are unchanged. Awakened fan copies take the crescent tempo and keep their ±0.21 rad. No save change (schema 14).
+
 ## Release 965 — Carbine shoulder hold
 
 Tim, 2026-11-14: while charging the Carbine the arm wiggles in a weird way; the arms should be held steady, and the Carbine should be held in two hands up at the shoulder with a cheek weld instead of down by the hip.
