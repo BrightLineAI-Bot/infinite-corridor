@@ -1,7 +1,7 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
-import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
@@ -3062,6 +3062,8 @@ export function render(ctx, g, w, h, now) {
       const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
+      const rushLean = kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x + (seatInfo ? seatInfo.dx / s : 0), // release 748: on the mount's back
@@ -3072,6 +3074,7 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
+      if (rushLean) { ctx.restore(); drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
@@ -3109,7 +3112,7 @@ export function render(ctx, g, w, h, now) {
           for (const side of [1, -1]) { const ox = cx + nx * side * D.offset * s, oy = cy + ny * side * D.offset * s, b = a - side * t; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(b) * r, oy + Math.sin(b) * r); }
         } else if (profile.shape === "thrust") { // the Cinder Pike (2026-11-13: "a clear forward thrust"): the shaft drawn back, driven out to its reach along the aim, and pulled home; the hit is unchanged
           const v = p.attackVisual, aim = v?.aim && Number.isFinite(v.aim.x) && Number.isFinite(v.aim.y) ? Math.atan2(v.aim.y, v.aim.x) : a, k = Math.max(0, Math.min(1, 1 - ((p.attackUntil || 0) - now) / ACTION_MOTION.meleeMs)), out = k < .15 ? -.25 * k / .15 : k < .45 ? -.25 + 1.25 * (k - .15) / .3 : 1 - .7 * (k - .45) / .55, R = s * profile.range, ux = Math.cos(aim), uy = Math.sin(aim);
-          const tip = R * (.55 + .45 * out), tail = tip - R * .95;
+          const tip = R * (.55 + .45 * out), tail = tip - s * PRIMARY_SWINGS["cinder-pike"].shaft; // the drawn shaft is the Close View pike's length
           ctx.moveTo(cx + ux * tail, cy + uy * tail); ctx.lineTo(cx + ux * tip, cy + uy * tip);
           ctx.moveTo(cx + ux * (tip + s * .22), cy + uy * (tip + s * .22)); ctx.lineTo(cx + ux * tip - uy * s * .08, cy + uy * tip + ux * s * .08); ctx.lineTo(cx + ux * tip + uy * s * .08, cy + uy * tip - ux * s * .08); ctx.closePath(); // the head
         } else {

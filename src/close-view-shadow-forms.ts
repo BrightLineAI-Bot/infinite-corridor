@@ -27,6 +27,10 @@ export const CLOSE_VIEW_SHADOW_FORMS = Object.freeze({
   wraith: Object.freeze({ alpha: .58, tint: Object.freeze([.70, .56, 1.12]), reducedAlpha: .5 }),
   trail: Object.freeze({ max: 5, spacing: .16, alpha: .5, fadeMs: 170, tint: Object.freeze([.58, .44, 1.15]) }),
   clone: Object.freeze({ alpha: .86, pulse: .04, pulseHz: 6, fadeMs: 1500 }),
+  // The Verge Cleaver's Lava Slash rush (2026-11-14; brawler-spells.ts DASH_LOOKS.cleaver): the same pooled afterimages tinted
+  // iron and ember instead of violet (their alpha is already the look's), no wraith; the body leans and runs low as the
+  // charge does, and the blade is carried low and trailing: `grip` radians back on the weapon shoulder, `elbow` on its elbow.
+  rush: Object.freeze({ tint: Object.freeze([1.08, .78, .58]), grip: .62, elbow: .35 }),
 });
 
 const clamp01 = (v) => v <= 0 ? 0 : v >= 1 ? 1 : v;
@@ -36,11 +40,11 @@ const travel = (t) => { t = clamp01(t); return .5 * t + .5 * t * t * (3 - 2 * t)
 
 // One state per view. `trail` holds [x, y, alpha] for each live afterimage, nearest first.
 export function createShadowDash() {
-  return { active: false, reduce: false, fromX: 0, fromY: 0, toX: 0, toY: 0, start: 0, lag: 0, arriveAt: 0,
+  return { kind: "shadow", active: false, reduce: false, fromX: 0, fromY: 0, toX: 0, toY: 0, start: 0, lag: 0, arriveAt: 0,
     x: 0, y: 0, progress: 1, charge: 0, wraith: 0, moving: false, dashes: 0,
     trail: new Float64Array(CLOSE_VIEW_SHADOW_FORMS.trail.max * 3), trailCount: 0, game: false };
 }
-export function resetShadowDash(D) { D.active = false; D.charge = 0; D.wraith = 0; D.trailCount = 0; D.progress = 1; D.moving = false; return D; }
+export function resetShadowDash(D) { D.kind = "shadow"; D.active = false; D.charge = 0; D.wraith = 0; D.trailCount = 0; D.progress = 1; D.moving = false; return D; }
 
 // Advance the presentation for one frame. lx, ly: the Wayfarer's logical position now; px, py: last frame's logical
 // position; elapsedMs: time since that frame; boxing: Shadow Boxing holds; fresh: a swing began this frame (the only
@@ -89,10 +93,10 @@ export function stepShadowDash(D, now, lx, ly, px, py, elapsedMs, boxing, fresh,
 // drawn in safe mode and at every quality tier (it is the same few pooled copies, nothing flashes). True while it drives D.
 // `ghostsOf` and `poseOf` are brawler-spells.ts shadowDashGhosts and shadowDashPose, passed in by close-view.ts (importing
 // brawler-spells here would close a module cycle through close-view.ts). No allocation.
-const DASH_POSE = { live: false, charge: 0, wraith: 0, t: 1 };
+const DASH_POSE = { live: false, charge: 0, wraith: 0, t: 1, kind: "shadow", moving: false };
 export function followShadowDash(D, game, lx, ly, ghostsOf, poseOf) {
   const P = poseOf(game, DASH_POSE); if (!P.live && !(P.charge > 0)) { if (D.game) { resetShadowDash(D); D.game = false; } return false; }
-  D.active = true; D.game = true; D.reduce = false; D.x = lx; D.y = ly; D.toX = lx; D.toY = ly; D.moving = !!game?.shadowDash && !game.shadowDash.arrived; D.progress = P.t;
+  D.active = true; D.game = true; D.reduce = false; D.x = lx; D.y = ly; D.toX = lx; D.toY = ly; D.moving = !!P.moving; D.progress = P.t; D.kind = P.kind === "cleaver" ? "cleaver" : "shadow"; // the Cleaver's Lava Slash rush too (2026-11-14)
   D.charge = P.charge; D.wraith = P.wraith;
   D.trailCount = ghostsOf(game, D.trail); return true; // at most trail.max (the pool's size)
 }
