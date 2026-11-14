@@ -18,26 +18,26 @@ function jointed(item, swing, px, pz) {
 }
 
 // Glass Mite, a low crystal feeder: a flat faceted shell with one lit crystal spur, a small dark head carrying two lit
-// mandibles (joint 122), and six splayed, high-kneed legs, each on its own joint (131-136: front, middle, rear; left, right)
+// mandibles (joint 30), and six splayed, high-kneed legs, each on its own joint (70-75: front, middle, rear; left, right)
 // so the hop staggers them. 166 triangles.
 const glassMite = [
   part(ellipsoid(6, 2), -.05, 0, .30, .33, .29, .17, glass, 0, -.05, .30, 0, false),
   part(taper, -.12, 0, .45, .07, .06, .13, glassEdge, 0, -.12, .45, -.35),
-  part(ellipsoid(5, 1), .25, 0, .28, .1, .13, .085, glassDark, 121, .2, .3, 0, true),
-  jointed(part(taper, .38, -.075, .28, .035, .03, .11, glassEdge, 0, .38, .28, 1.3), 122, .3, .29),
-  jointed(part(taper, .38, .075, .28, .035, .03, .11, glassEdge, 0, .38, .28, 1.3), 122, .3, .29),
+  part(ellipsoid(5, 1), .25, 0, .28, .1, .13, .085, glassDark, 82, .2, .3, 0, true),
+  jointed(part(taper, .38, -.075, .28, .035, .03, .11, glassEdge, 0, .38, .28, 1.3), 30, .3, .29),
+  jointed(part(taper, .38, .075, .28, .035, .03, .11, glassEdge, 0, .38, .28, 1.3), 30, .3, .29),
 ];
 for (let i = 0; i < 3; i++) for (const side of [-1, 1]) {
   const x = .15 - i * .19, reach = (1 - i) * .14, y = side * (.19 + i * .012);
-  glassMite.push(part(curvedTube([[x, y, .29, .045], [x + reach * .4, side * .40, .40, .035], [x + reach, side * .58, .03, .012]], 4), 0, 0, 0, 1, 1, 1, i === 1 ? glassDark : glass, 131 + i * 2 + (side > 0 ? 1 : 0), x, .29));
+  glassMite.push(part(curvedTube([[x, y, .29, .045], [x + reach * .4, side * .40, .40, .035], [x + reach, side * .58, .03, .012]], 4), 0, 0, 0, 1, 1, 1, i === 1 ? glassDark : glass, 70 + i * 2 + (side > 0 ? 1 : 0), x, .29));
 }
 
-// Spark Warden, a walking conductor: plate armour, a broad dark helm with a lit visor slit (joint 121), three lit chest bars,
+// Spark Warden, a walking conductor: plate armour, a broad dark helm with a lit visor slit (joint 82), three lit chest bars,
 // an insulator stack on the back, and a staff ending in a lit tip and a fork that throws the bolts. 184 triangles.
 const sparkWarden = [
   part(bevel, 0, 0, .86, .19, .25, .44, wardPlate),
-  part(ellipsoid(6, 2), .06, 0, 1.36, .30, .31, .20, wardDark, 121, .02, 1.26, 0, true),
-  part(membrane([[.33, -.17, 1.38], [.33, .17, 1.38], [.335, .15, 1.335], [.335, -.15, 1.335]]), 0, 0, 0, 1, 1, 1, wardGlow, 121, .02, 1.26),
+  part(ellipsoid(6, 2), .06, 0, 1.36, .30, .31, .20, wardDark, 82, .02, 1.26, 0, true),
+  part(membrane([[.33, -.17, 1.38], [.33, .17, 1.38], [.335, .15, 1.335], [.335, -.15, 1.335]]), 0, 0, 0, 1, 1, 1, wardGlow, 82, .02, 1.26),
   part(prism(5), -.2, 0, .98, .07, .07, .26, wardDark),
 ];
 for (const side of [-1, 1]) sparkWarden.push(
@@ -63,7 +63,7 @@ for (let i = 0; i < 6; i++) {
   cinderWisp.push(part(curvedTube([[x, y, .68, .075], [x - .07, y * 1.15, .86 + h * .5, .05], [x - .2, y * .9, 1.0 + h, .008]], 4), 0, 0, 0, 1, 1, 1, i % 2 ? flame : cinder, 124 + (i % 2), 0, .6));
 }
 
-// Veil Moth, a drifting predator: a slim body, a dark head (joint 121) with pale eyes and feathered antennae, broad forewings
+// Veil Moth, a drifting predator: a slim body, a dark head (joint 82) with pale eyes and feathered antennae, broad forewings
 // and smaller hindwings raised in a shallow V (group ±7, so a pitch sweeps their tips) and two dangling legs. 116 triangles.
 const dihedral = .34;
 const wingAt = (pts) => pts.map(([x, y, z]) => [x, y * Math.cos(dihedral), z + Math.abs(y) * Math.sin(dihedral)]);
@@ -72,15 +72,15 @@ const hindWing = membrane(wingAt([[-.06, 0, -.04], [-.30, .22, -.10], [-.40, .48
 const mirror = (shape) => shape.map((tri) => tri.map(([x, y, z]) => [x, -y, z]));
 const veilMoth = [
   part(ellipsoid(6, 2), .02, 0, .55, .13, .12, .31, moth, 0, .02, .55, 0, true),
-  part(ellipsoid(5, 2), .12, 0, .83, .15, .14, .13, mothVein, 121, .06, .76, 0, true),
+  part(ellipsoid(5, 2), .12, 0, .83, .15, .14, .13, mothVein, 82, .06, .76, 0, true),
   part(foreWing, -.06, 0, .66, 1, 1, 1, mothWing, 7, -.06, .66, -.08),
   part(mirror(foreWing), -.06, 0, .66, 1, 1, 1, mothWing, -7, -.06, .66, -.08),
   part(hindWing, -.06, 0, .66, 1, 1, 1, moth, 7, -.06, .66, -.08),
   part(mirror(hindWing), -.06, 0, .66, 1, 1, 1, moth, -7, -.06, .66, -.08),
 ];
 for (const side of [-1, 1]) veilMoth.push(
-  part(ellipsoid(4, 1), .235, side * .075, .86, .045, .04, .045, mothEye, 121, .06, .76, 0, true),
-  part(membrane([[.2, side * .03, .93], [.27, side * .12, 1.06], [.30, side * .19, 1.13], [.24, side * .14, 1.05]]), 0, 0, 0, 1, 1, 1, mothWing, 121, .06, .76),
+  part(ellipsoid(4, 1), .235, side * .075, .86, .045, .04, .045, mothEye, 82, .06, .76, 0, true),
+  part(membrane([[.2, side * .03, .93], [.27, side * .12, 1.06], [.30, side * .19, 1.13], [.24, side * .14, 1.05]]), 0, 0, 0, 1, 1, 1, mothWing, 82, .06, .76),
   part(curvedTube([[.04, side * .06, .43, .025], [.14, side * .15, .22, .018], [.25, side * .17, .04, .008]], 3), 0, 0, 0, 1, 1, 1, mothVein, side, .04, .43),
 );
 
@@ -100,24 +100,44 @@ voidSentinel.push(part(membrane([[.25, -.2, 1.06], [.30, -.1, 1.15], [.33, .1, 1
 export const CLOSE_VIEW_ARCOLOGY_MODELS = { glassMite, sparkWarden, cinderWisp, veilMoth, voidSentinel };
 export const CLOSE_VIEW_ARCOLOGY_KINDS = Object.freeze(Object.keys(CLOSE_VIEW_ARCOLOGY_MODELS));
 
-// Attack joints (close-view-models.ts CREATURE_LIMB_RIGS reads these): radians a joint turns with the root's coil, extension
-// and impact bump; `nod`/`flick` give a joint this table owns its rest motion. See CORE_CREATURE_LIMB_RIGS for the conventions.
-const limb = (coil, ext, bump = 0, nod = null, flick = 0) => Object.freeze({ coil, ext, bump, own: nod !== null, nod: nod || 0, flick });
-const tentacle = (i) => i % 2 ? limb(-.26, .42, -.16) : limb(.36, -.62, .26);
-export const CLOSE_VIEW_ARCOLOGY_LIMB_RIGS = Object.freeze({
+// Attack joints for the eleven core and Arcology creatures, merged into close-view-adventure-models.ts ADVENTURE_JOINT_POSE and
+// driven by its adventureJointPose on the shared root pose (J(coil, strike, follow, lag), radians: positive dips a part ahead of
+// its pivot and swings a hanging part back; `lag` holds a joint behind the body). Ordinary creatures key '*' (any of their melee
+// patterns or their bolt); the Pallid Crawler keys its legacy bite and leap. Joints: ±1 legs, ±2 arms or forelegs, 3 cape,
+// 4/5 coil segments, 6 tail, 7 wings, 10-16 tentacles, 30/31 jaw (and the Crawler's head), 70-75 Mite legs, 82 head, 124/125
+// flame tongues. Purely visual; the hit geometry never reads these.
+const J = (coil, strike, follow = 0, lag = 0) => Object.freeze([coil, strike, follow, lag]);
+const crawlerBite = Object.freeze({ [-2]: J(.3, -.82, .3), 2: J(.36, -.56, .34, .12), [-1]: J(-.36, .46, -.16, .1), 1: J(-.3, .4, -.12, .2), 30: J(-.22, .32, -.1), 31: J(.72, -.05, .3) });
+const sentinelTentacle = (i) => i % 2 ? J(-.26, .42, -.16, .06 * Math.abs(i - 3)) : J(.36, -.62, .26, .06 * Math.abs(i - 3));
+export const CORE_JOINT_POSE = Object.freeze({
+  // A short clawed lunge: the lead claw draws back and thrusts, the off arm guards, the stance splits and the head snaps in.
+  ashling: Object.freeze({ '*': Object.freeze({ [-2]: J(1.0, -1.75, .25), 2: J(-.35, .55, -.1, .15), [-1]: J(-.25, -.45), 1: J(.3, .5), 82: J(.18, -.38, .12) }) }),
+  // The Heavy Slam: both arms rise overhead in the windup and hammer down in front, stopping short of the floor so the root's
+  // lean no longer pitches the body past it (the old strike swing stacked on that lean); the head looks up, then ducks in.
+  rootBrute: Object.freeze({ '*': Object.freeze({ [-2]: J(-2.55, -.62, .32), 2: J(-2.55, -.62, .32, .06), [-1]: J(-.2, -.28), 1: J(.25, .34), 82: J(-.3, .22, .12) }) }),
+  // The Long Reach pole thrust: the halberd arm lifts the blade upright, then levels it point first; the cape streams back, the
+  // free arm draws back and the helm dips behind the point.
+  hollowMarshal: Object.freeze({ '*': Object.freeze({ [-2]: J(.38, -1.05, .14), 2: J(-.35, .45, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .14, .06) }) }),
+  // The Zigzag Assault: the hind legs load under the body and drive, the forequarters lift and both forelegs reach (the lead one
+  // further), the head drops to stalk then snaps forward as the jaw gapes and slams shut; the tail counterbalances.
+  ashenHound: Object.freeze({ '*': Object.freeze({ 2: J(.32, -1.0, .35), [-2]: J(.32, -.78, .3, .1), 1: J(-.38, .62, -.2), [-1]: J(-.38, .62, -.2, .1), 6: J(-.3, .5, -.22, .3), 82: J(.28, -.2, .14), 30: J(.55, -.04, .3) }) }),
+  // The serpent strike: the head rears back with the jaw open, drives down and forward as the jaw snaps; the two trailing
+  // segments coil and whip after it, the second later and wider.
+  coilStalker: Object.freeze({ '*': Object.freeze({ 82: J(-.42, .48, -.12), 30: J(.62, -.05, .22), 4: J(.26, -.34, .16, .2), 5: J(.42, -.6, .3, .4) }) }),
+  // The legacy bite and leap: forelegs tuck and strike out staggered, hind legs load and drive, the head rears then bites down
+  // while the jaw gapes and snaps.
+  pallidCrawler: Object.freeze({ bite: crawlerBite, leapSlam: crawlerBite }),
   // The hop: the legs gather under the shell, then fire out staggered (front legs reach, rear legs drive, the middle pair
-  // splays wide for the landing) as the mandibles gape and clamp; the tripod gait alternates on the step beat.
-  glassMite: Object.freeze({ groups: Object.freeze({
-    131: limb(.34, -.66, .22, .42), 132: limb(.34, -.58, .26, -.42), 133: limb(-.12, .2, .36, -.42), 134: limb(-.12, .2, .36, .42),
-    135: limb(-.34, .5, -.12, .42), 136: limb(-.34, .56, -.16, -.42), 121: limb(-.12, .16, .08, .04), 122: limb(-.62, .42, -.18, 0, .05),
-  }) }),
-  // The bolt: the staff arm draws the staff up and back, then thrusts it level at the target and kicks back as the bolt
-  // leaves; the free hand rises to channel, the stance braces and the helm tips into the aim.
-  sparkWarden: Object.freeze({ groups: Object.freeze({ '-2': limb(.55, -1.2, .32), 2: limb(-.7, -.25, .12), '-1': limb(-.15, -.28), 1: limb(.15, .28), 121: limb(.12, -.14, .06, .03) }) }),
+  // splays for the landing) as the mandibles gape and clamp.
+  glassMite: Object.freeze({ '*': Object.freeze({ 70: J(.34, -.66, .22), 71: J(.34, -.58, .26, .08), 72: J(-.12, .2, .36, .16), 73: J(-.12, .2, .36, .2), 74: J(-.34, .5, -.12, .28), 75: J(-.34, .56, -.16, .32), 82: J(-.12, .16, .08), 30: J(-.62, .42, -.18) }) }),
+  // The bolt: the staff arm draws the staff up and back, thrusts it level at the target and kicks back as the bolt leaves; the
+  // free hand rises to channel, the stance braces and the helm tips into the aim.
+  sparkWarden: Object.freeze({ '*': Object.freeze({ [-2]: J(.55, -1.2, .32), 2: J(-.7, -.25, .12), [-1]: J(-.15, -.28), 1: J(.15, .28), 82: J(.12, -.14, .06) }) }),
   // The cast: the flame tongues draw back and gather, then flare forward over the core and gutter on the release.
-  cinderWisp: Object.freeze({ groups: Object.freeze({ 124: limb(-.36, .52, -.22, 0, .1), 125: limb(-.26, .62, -.28, 0, -.1) }) }),
-  // The cast: the wings rise and sweep back, then clap forward to throw the force; the head lifts, the legs trail.
-  veilMoth: Object.freeze({ groups: Object.freeze({ 7: limb(.55, -.75, .3), '-7': limb(.55, -.75, .3), 121: limb(-.18, .22, -.08, .03), 1: limb(.22, -.3), '-1': limb(.22, -.3) }) }),
-  // The bolt: alternate tentacles curl in and flare out to frame the eye, then shudder on release.
-  voidSentinel: Object.freeze({ groups: Object.freeze(Object.fromEntries(Array.from({ length: 7 }, (_, i) => [10 + i, tentacle(i)]))) }),
+  cinderWisp: Object.freeze({ '*': Object.freeze({ 124: J(-.36, .52, -.22), 125: J(-.26, .62, -.28, .15) }) }),
+  // The cast: the wings rise and sweep back, then clap forward to throw the force; the head lifts and the legs trail.
+  veilMoth: Object.freeze({ '*': Object.freeze({ 7: J(.55, -.75, .3), [-7]: J(.55, -.75, .3), 82: J(-.18, .22, -.08), 1: J(.22, -.3, 0, .3), [-1]: J(.22, -.3, 0, .3) }) }),
+  // The bolt: alternate tentacles curl in and flare out to frame the eye, rippling outward from the centre, then shudder.
+  voidSentinel: Object.freeze({ '*': Object.freeze(Object.fromEntries(Array.from({ length: 7 }, (_, i) => [10 + i, sentinelTentacle(i)]))) }),
 });
+
