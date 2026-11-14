@@ -93,7 +93,7 @@ import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLI
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
@@ -160,7 +160,7 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistBeatWindow, fistOnBeat, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
@@ -8431,7 +8431,7 @@ export class Game {
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
-    if (held) { c.held = Math.min(c.held + dt, C.charge.full + C.charge.grace); if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
+    if (held) { c.held = Math.min(c.held + (c.held < C.charge.grace ? dt : dt / this.chargeQuicken(C.charge.full - C.charge.grace)), C.charge.full + C.charge.grace); /* Gathered Breath: past the grace */ if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
     K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
     this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
   }
@@ -10009,6 +10009,8 @@ export class Game {
   // Release 489 (brawler-spells.ts IRON_FISTS): the Iron Fists tool. A press of Tool throws the next punch of the combo while
   // its window is open; the dash punch starts a combo and charges while the button (`action`) is held. A world tap (no
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
+  // Gathered Breath (glyphs.ts CHARGE_GLYPH): the multiplier on a charge whose key point is `span` s of holding (1 with none set).
+  chargeQuicken(span = 1) { return chargeScale(this.save, span); }
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   // The training combo (2026-11-13; brawler-spells.ts IRON_FISTS): right cross, left jab, right uppercut and, awakened, the
@@ -10038,7 +10040,7 @@ export class Game {
     const step = this.fistNextStep(now);
     if (step === 1) this.fistCombo = null;
     if (onBeat) this.fistFlash = { at: now, rhythm: false };
-    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step, ...(onBeat ? { onBeat: true } : {}) };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
+    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step, ...(onBeat ? { onBeat: true } : {}), scale: this.chargeQuicken(IRON_FISTS.perfect[0]) };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
     return this.fistPunch(step, 0, now, direction, false, onBeat);
   }
   // A press that waited out the gate (fistPress): thrown as the gate opens, charging if Attack is still held.
@@ -10521,7 +10523,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
-    if (this.fistCharge) { const held = (now - this.fistCharge.start) / 1000; if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
     if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C

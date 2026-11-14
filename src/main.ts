@@ -176,7 +176,7 @@ import { STATS, freshSave } from "./types.ts";
 import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
 import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
 import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.ts";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
@@ -3110,7 +3110,7 @@ function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${
  const pouch=el('div','arc-tiles');
  for(const id of GLYPH_IDS){const known=save.glyphCodex.glyphs[id],n=save.glyphs[id]||0,t=el('div','arc-tile'+(known?'':' unknown')+(target&&known&&n>0?' pickable':''));t.style.setProperty('--glyph',GLYPHS[id].color);
   t.append(el('span','arc-tile-sigil',known?GLYPHS[id].sigil:'?'),el('strong','',known?GLYPHS[id].name:'Unknown'),el('small','',known?`×${n}`:'Find one to learn it'));
-  if(known){const more=el('details','arc-tile-more'),sum=el('summary','','Effects');more.append(sum,el('p','',`Weapon: ${GLYPHS[id].text.melee}`),el('p','',`Tool: ${GLYPHS[id].text.tool}`),el('p','',`Spell: ${GLYPHS[id].text.spell}`),el('p','',`Armor: ${GLYPHS[id].text.armor}`),el('p','',`Skill: ${GLYPHS[id].text.skill}`));const ins=uiButton(`Inscribe · ${DUST_PER_GLYPH} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()});more.append(ins);t.append(more)}
+  if(known){const more=el('details','arc-tile-more'),sum=el('summary','','Effects');more.append(sum,el('p','',`Weapon: ${GLYPHS[id].text.melee}`),el('p','',`Tool: ${GLYPHS[id].text.tool}`),el('p','',`Spell: ${GLYPHS[id].text.spell}`),el('p','',`Armor: ${GLYPHS[id].text.armor}`),el('p','',`Skill: ${GLYPHS[id].text.skill}`));const ins=uiButton(`Inscribe · ${glyphDustCost(id)} dust`,()=>{const r=craftGlyph(save,id);game.message=r.message;persist();openGlyphs()});more.append(ins);t.append(more)}
   if(target&&known&&n>0){const set=uiButton('Set here',()=>{const r=socketGlyph(save,hostKey,target.index,id);game.message=r.message;if(hostKey==='armor')syncArmorGlyphs();persist();arcanumSocket=null;openGlyphs()});set.className='arc-go';t.append(set)}
   pouch.append(t)}
  body.append(el('h3','','Glyph pouch'),pouch);

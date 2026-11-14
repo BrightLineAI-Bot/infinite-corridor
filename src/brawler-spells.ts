@@ -244,10 +244,15 @@ function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {
 // roundhouse kick as a fourth step (its numbers are weapon-arts.ts AWAKENED_ARTS.moves.roundhouse). Past `window` s with no
 // press the chain starts again at the cross. A charge let go inside `perfect` (seconds of charge past `tapGrace`) counts as
 // full and strikes `perfectShare` times as hard; held longer it is full, without the bonus.
+// 2026-11-14 (Tim: "charging should be reduced a little in general for the fists"): `chargeTime` 1.2 → .96 s and `perfect`
+// [1, 1.3] → [.8, 1.04], the same ×.8 on both, so the perfect window keeps its place in the fill (it opens at 5/6 of full and
+// closes just past it) and the ring reads as before. A fifth off: one beat of the rhythm goes from 1.33 s to 1.13 s, a change
+// you feel in a combo without the charge turning into a tap. Gathered Breath glyphs (glyphs.ts CHARGE_GLYPH) shorten it
+// further: the charge records its multiplier as it starts (`scale`), and fistHeld turns the time held into charge time.
 export const IRON_FISTS = {
-  base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: 1.2, guardMs: 220,
-  perfect: [1, 1.3], perfectShare: 1.25,
-  beat: [1, 1.3], beatShare: 1.25, rhythmBonus: 16, flashMs: 180,
+  base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: .96, guardMs: 220,
+  perfect: [.8, 1.04], perfectShare: 1.25,
+  beat: [1, 1.3], beatShare: 1.25, rhythmBonus: 13, flashMs: 180,
   punches: [
     { name: "Right cross", share: 1.4, chargeShare: 2.2, dash: 0, radius: 1.3, rush: 4, stop: .9 }, // release 491: rushes to a foe within `rush` tiles (to `stop` from it); none in range, it lands in place
     { name: "Left jab", share: .9, chargeShare: 1.2, echoes: 1, dash: .6, radius: 1.1 },
@@ -266,6 +271,9 @@ export const BRAWLER_ECHO = { echoClone: 3, cloneArc: { shape: "arc", range: 1.7
 export const fistCharge = (held) => Math.max(0, Math.min(1, (held - IRON_FISTS.tapGrace) / IRON_FISTS.chargeTime));
 // Whether a charge let go after `held` seconds of holding falls in the perfect window.
 export const fistPerfect = (held) => { const c = held - IRON_FISTS.tapGrace; return c >= IRON_FISTS.perfect[0] && c <= IRON_FISTS.perfect[1]; };
+// The charge seconds (as fistCharge and fistPerfect read them) of the charge `c` ({ start, scale }) at `now` (ms): the tap grace
+// runs at its own pace, the charge past it `1 / scale` times as fast (Gathered Breath).
+export const fistHeld = (c, now) => { const h = Math.max(0, ((Number(now) || 0) - (Number(c?.start) || 0)) / 1000), k = Number(c?.scale) > 0 ? Math.min(1, c.scale) : 1; return h <= IRON_FISTS.tapGrace ? h : IRON_FISTS.tapGrace + (h - IRON_FISTS.tapGrace) / k; };
 
 // The rhythm (Tim, 2026-11-14: "the ball extends from his body and comes back to the centre, and whenever it reaches his body,
 // hitting Attack at that moment is the perfect timing... charge the punch, let it go, then start the next charge at the perfect
@@ -276,14 +284,15 @@ export const fistPerfect = (held) => { const c = held - IRON_FISTS.tapGrace; ret
 // or the attack buffer (mashing) is never on the beat. Starting a charge on the beat carries the beat into the charged blow, and
 // a charge started on the beat and let go in its own perfect window (`perfect` above) is a rhythm blow: the step's on-beat tap
 // (with the finisher, if it is one) plus `rhythmBonus` × the fists' power, in place of the charge's shares.
-// Why a flat bonus, and why 16: the rhythm costs a charge (tapGrace + perfect[0] = 1.12 s) on top of the beat (.21 s) for every
-// step, about 5.6 taps' time (each step also pays the press and let-go frames). A bonus in proportion to the step's share would
+// Why a flat bonus, and why 13: the rhythm costs a charge (tapGrace + perfect[0] = .92 s) on top of the beat (.21 s) for every
+// step, about 4.8 taps' time (each step also pays the press and let-go frames). A bonus in proportion to the step's share would
 // pay most on the big steps, so tapping the cross and jab and charging only the uppercut and kick would beat charging every
-// move; a flat bonus is worth the same on every step, so once it is at least the mean on-beat tap × (5.6 - 1) (about 12.5 with
-// the kick, 11.3 without) charging every step is the best of every mix. 16 puts the full rhythm about 19% above perfect taps at
-// every window's start (the fastest taps possible) with the awakened kick (charging the kick needs the two Echoes the rhythm
-// needs anyway) and about 30% without it; tests/fist-rhythm.test.ts measures it with the real loop at 60 fps. A player 30 ms
-// late per step loses about a tenth on taps and 2% on the rhythm, so in hand the lead only grows.
+// move; a flat bonus is worth the same on every step, so once it is at least the mean on-beat tap × (4.8 - 1) (about 10.3 with
+// the kick, 9.3 without) charging every step is the best of every mix. 13 puts the full rhythm about 18% above perfect taps at
+// every window's start (the fastest taps possible) with the awakened kick and about 28% without it (r953 follow-up, after the
+// charge was cut to .96 s; it was 16 at 1.2 s, the same edge); tests/fist-rhythm.test.ts measures it with the real loop at 60
+// fps. A player 30 ms late per step loses about a tenth on taps and 3% on the rhythm, so in hand the lead only grows. Gathered
+// Breath (glyphs.ts CHARGE_GLYPH) shortens the charge and so widens the lead on purpose: with three, about 2.2 times taps.
 // The beat window after a step thrown at `at` (ms) whose gate opens at `gateOpens` (ms).
 export function fistBeatWindow(at, gateOpens = at + IRON_FISTS.gate * 1000) {
   const g = IRON_FISTS.gate * 1000, opens = Math.max(at + g * IRON_FISTS.beat[0], gateOpens);
@@ -483,7 +492,7 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   drawFistStep(ctx, game, toScreen, s, capture != null); // Close View passes its capture (the floor layer)
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills; the perfect window marked on it, flashing inside it
-    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = ((game.lastUpdateNow || 0) - c.start) / 1000, k = fistCharge(held), F = IRON_FISTS;
+    const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = fistHeld(c, game.lastUpdateNow || 0), k = fistCharge(held), F = IRON_FISTS;
     const span = F.perfect[1], fill = Math.max(.05, Math.min(1, (held - F.tapGrace) / span)), perfect = fistPerfect(held), R = s * (1.2 - .5 * k), top = -Math.PI / 2;
     ctx.globalAlpha = .35; ctx.strokeStyle = "#3a2c20"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); // the track
     ctx.globalAlpha = .9; ctx.strokeStyle = "#fff2a8"; ctx.beginPath(); ctx.arc(x, y, R, top + Math.PI * 2 * F.perfect[0] / span, top + Math.PI * 2); ctx.stroke(); // the perfect window
