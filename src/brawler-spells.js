@@ -1,5 +1,5 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r949-8620d2d2e96d';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r949-8620d2d2e96d';
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r951-4925ab3898c1';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r951-4925ab3898c1';
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
 // down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are

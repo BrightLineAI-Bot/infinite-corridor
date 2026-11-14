@@ -7,12 +7,12 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r949-8620d2d2e96d";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r949-8620d2d2e96d";
-import { BELLS, bellsRung } from "./bells.js?v=r949-8620d2d2e96d";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r949-8620d2d2e96d";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r949-8620d2d2e96d";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r949-8620d2d2e96d";
+import { hashSeed } from "./random.js?v=r951-4925ab3898c1";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r951-4925ab3898c1";
+import { BELLS, bellsRung } from "./bells.js?v=r951-4925ab3898c1";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r951-4925ab3898c1";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r951-4925ab3898c1";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r951-4925ab3898c1";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first

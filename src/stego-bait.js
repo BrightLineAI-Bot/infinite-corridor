@@ -12,7 +12,7 @@
 //   { v: 1, drops: [{ id, area, x, y }] (severed tails lying where they fell, at most `drops`; `area` is the game's
 //     areaStateId), placed: null | { id, area, x, y, hp, maxHp, left } (the bait on the ground; `left` in seconds) }.
 // A placed bait keeps its remaining time on exact resume. It belongs to the area it was laid in: leaving the area ends it.
-import { STEGO_ART } from "./wild-stego-render.js?v=r949-8620d2d2e96d";
+import { STEGO_ART } from "./wild-stego-render.js?v=r951-4925ab3898c1";
 
 export const STEGO_BAIT = Object.freeze({
   item: "stegoBait", name: "Stego Bait",

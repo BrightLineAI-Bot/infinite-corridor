@@ -1,52 +1,54 @@
-import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r949-8620d2d2e96d"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { ACTION_MOTION } from "./action-motion.js?v=r949-8620d2d2e96d"; // the Cinder Pike's standard-view thrust clock
-import { drawQuandrixStaff } from "./quandrix-staff.js?v=r949-8620d2d2e96d";
-import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r949-8620d2d2e96d"; // the Stego Bait (Tim, 2026-11-12)
-import { shakeOffset } from "./spino-rex.js?v=r949-8620d2d2e96d";
-import { drawBleedIcon } from "./bleed.js?v=r949-8620d2d2e96d";
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r949-8620d2d2e96d"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r949-8620d2d2e96d";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r949-8620d2d2e96d"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r949-8620d2d2e96d";
-import { astralBeamAnchors } from "./astral-worm.js?v=r949-8620d2d2e96d";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r949-8620d2d2e96d";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r949-8620d2d2e96d";
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r949-8620d2d2e96d';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r949-8620d2d2e96d";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r949-8620d2d2e96d";
-import { ruleRows } from "./elders.js?v=r949-8620d2d2e96d";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r949-8620d2d2e96d";
-import { BOAT } from "./boats.js?v=r949-8620d2d2e96d";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r949-8620d2d2e96d";
-import { isMarineTile } from "./world-beasts.js?v=r949-8620d2d2e96d";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r949-8620d2d2e96d"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r949-8620d2d2e96d";
-import { setTreeSeason } from "./landscape-render.js?v=r949-8620d2d2e96d";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r949-8620d2d2e96d";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r949-8620d2d2e96d";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r949-8620d2d2e96d";
-import { TREES } from "./trees.js?v=r949-8620d2d2e96d";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r949-8620d2d2e96d";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r949-8620d2d2e96d";
-import { KIT_MOVES } from "./boss-kit.js?v=r949-8620d2d2e96d";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r949-8620d2d2e96d"; // release 587; travel seeds
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r949-8620d2d2e96d";
-import { drawSpinoBiteOverlay } from "./spino-render.js?v=r949-8620d2d2e96d";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r949-8620d2d2e96d"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r949-8620d2d2e96d"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r949-8620d2d2e96d";
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r949-8620d2d2e96d"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r949-8620d2d2e96d"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r949-8620d2d2e96d"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r949-8620d2d2e96d";
-import { drawRelayNode } from "./relay-network.js?v=r949-8620d2d2e96d";
-import { structureOccupancy } from "./world.js?v=r949-8620d2d2e96d";
-import { roofDeckById } from "./roof-decks.js?v=r949-8620d2d2e96d"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r949-8620d2d2e96d";
-import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r949-8620d2d2e96d"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r949-8620d2d2e96d";
-import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r949-8620d2d2e96d"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r949-8620d2d2e96d"; // Close View: three hooks below, marked CLOSE VIEW
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r951-4925ab3898c1"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { ACTION_MOTION } from "./action-motion.js?v=r951-4925ab3898c1"; // the Cinder Pike's standard-view thrust clock
+import { swingIndicator, drawSwingSweep } from "./melee-swing.js?v=r951-4925ab3898c1"; // the weighted Cleaver swing (2026-11-14)
+const SWING_DRAW = {};
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r951-4925ab3898c1";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r951-4925ab3898c1"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r951-4925ab3898c1";
+import { drawBleedIcon } from "./bleed.js?v=r951-4925ab3898c1";
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r951-4925ab3898c1"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r951-4925ab3898c1";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r951-4925ab3898c1"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r951-4925ab3898c1";
+import { astralBeamAnchors } from "./astral-worm.js?v=r951-4925ab3898c1";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r951-4925ab3898c1";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r951-4925ab3898c1";
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r951-4925ab3898c1';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r951-4925ab3898c1";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r951-4925ab3898c1";
+import { ruleRows } from "./elders.js?v=r951-4925ab3898c1";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r951-4925ab3898c1";
+import { BOAT } from "./boats.js?v=r951-4925ab3898c1";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r951-4925ab3898c1";
+import { isMarineTile } from "./world-beasts.js?v=r951-4925ab3898c1";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r951-4925ab3898c1"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r951-4925ab3898c1";
+import { setTreeSeason } from "./landscape-render.js?v=r951-4925ab3898c1";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r951-4925ab3898c1";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r951-4925ab3898c1";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r951-4925ab3898c1";
+import { TREES } from "./trees.js?v=r951-4925ab3898c1";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r951-4925ab3898c1";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r951-4925ab3898c1";
+import { KIT_MOVES } from "./boss-kit.js?v=r951-4925ab3898c1";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r951-4925ab3898c1"; // release 587; travel seeds
+import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r951-4925ab3898c1";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r951-4925ab3898c1";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r951-4925ab3898c1"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r951-4925ab3898c1"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r951-4925ab3898c1";
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r951-4925ab3898c1"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r951-4925ab3898c1"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r951-4925ab3898c1"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r951-4925ab3898c1";
+import { drawRelayNode } from "./relay-network.js?v=r951-4925ab3898c1";
+import { structureOccupancy } from "./world.js?v=r951-4925ab3898c1";
+import { roofDeckById } from "./roof-decks.js?v=r951-4925ab3898c1"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r951-4925ab3898c1";
+import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r951-4925ab3898c1"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r951-4925ab3898c1";
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r951-4925ab3898c1"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r951-4925ab3898c1"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -1922,6 +1924,23 @@ function tallTower(ctx, o, s, p) {
     else { ctx.fillStyle = "#00000044"; ctx.fillRect(dx - dw / 2, dy - s * .06, dw, s * .06); } }
   ctx.restore();
 }
+// Tim (2026-11-14, a High Upwell: "almost impossible to get to on standard view... the platform is on the wrong side"): a raised
+// door's floating steps stand on the row before the face, a level a step, so each is drawn lifted up into the face's height, and
+// the facade, drawn after the ground and the actors, hid every step over the first and the Wayfarer climbing them: only the
+// lowest step showed, off to one side. The steps are drawn again over the face, lowest row first, and the Wayfarer with them
+// while up on one or hopping between them (`towerStepsPlan`; nothing allocated beyond the tower's own few steps).
+export function towerStepsPlan(g, o, mw) {
+  const p = g.player, tiles = g.map?.tiles || [], steps = (o?.steps || []).filter((q) => tiles[q.y * mw + q.x]?.towerStep);
+  if (!steps.length) return null;
+  const up = (Number(g.playerLevel?.()) || 0) > .5, near = steps.some((q) => Math.abs(p.x - q.x) <= 1.2 && Math.abs(p.y - q.y) <= 1.2);
+  return { steps: steps.sort((a, b) => a.y - b.y || a.elev - b.elev), player: up && near };
+}
+function towerStepsOver(ctx, g, o, s, mw, p, playerDraw, groundLift) {
+  const plan = towerStepsPlan(g, o, mw); if (!plan) return;
+  for (const q of plan.steps) drawLandscapeTile(ctx, g.map.tiles[q.y * mw + q.x], q.x, q.y, s, g.map.tiles, mw);
+  if (!plan.player || !playerDraw) return;
+  const raise = groundLift(p.x, p.y) + (playerDraw.lift || 0); ctx.save(); if (raise) ctx.translate(0, -raise * s); playerDraw.fn(); ctx.restore();
+}
 // The shaft inside (tall-towers.ts generateTowerInterior), painted flat as every interior heightfield is in this view
 // (STANDARD_VIEW_FLOOR): the far floor dark, every ledge and platform lighter the higher it stands, with its level written on it
 // where a run of ledge begins, and an edge where it drops away. Close View draws the heights themselves.
@@ -3068,7 +3087,8 @@ export function render(ctx, g, w, h, now) {
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.playerFire?.left > 0) { const t = now / 1000, cx = (p.x + .5) * s, cy = (p.y - lift / s + .55) * s; for (let i = 0; i < 6; i++) { const ph = (t * 1.6 + i / 6) % 1, fx = cx + Math.sin(i * 2.3 + t * 3) * s * .22, fh = s * (.28 + .2 * Math.sin(i + t * 9)) * (1 - ph * .5); ctx.fillStyle = i % 2 ? "rgba(255,176,42,.85)" : "rgba(255,90,26,.75)"; ctx.beginPath(); ctx.moveTo(fx - s * .07, cy - ph * s * .5); ctx.quadraticCurveTo(fx, cy - ph * s * .5 - fh, fx + s * .07, cy - ph * s * .5); ctx.fill(); } } // release 708: on fire
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
-      if (now < (p.attackUntil || 0)) {
+      const swingNow = swingIndicator(g, now, SWING_DRAW); if (swingNow) drawSwingSweep(ctx, swingNow, (x) => x * s, (y) => y * s - lift, s); // melee-swing.ts: the weighted swing's real blade, wind-up cue and sweep, centred on its aim
+      if (now < (p.attackUntil || 0) && !swingNow && p.attackVisual?.meleeAction?.v !== 3 /* a weighted swing draws itself above, not this 4-way arc */) {
         const a = {
             right: 0,
             down: Math.PI / 2,
@@ -3219,6 +3239,7 @@ export function render(ctx, g, w, h, now) {
     }
     drawStructure(ctx,o,s,p,g.map.tiles,{l,t,r,b});
     ctx.restore();
+    if(o.kind==="tallTower"&&!worldCapture&&!closeViewCapturing())towerStepsOver(ctx,g,o,s,mw,p,playerDraw,groundLift); // tall towers: the raised door's steps (and the Wayfarer on them) over the face
   }
   if(skyA>0)ctx.restore()}
   const frontShelter=objectLists.shelters.find(o=>!worldCapture&&!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);

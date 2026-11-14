@@ -4,7 +4,7 @@
 // before it takes hold of you) as one skinned body on the shared beast rig. It turns slowly; it leans into a push and back from
 // a pull, and its shards wheel faster as it works; broken (`e.crystalFall`), it sinks to the floor and tips over, its lesser
 // crystals and shards clattering down round it. Nothing here changes timing, damage, reach or targeting.
-import { defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, writeSkin, meshBuilder, clamp01, smooth, span, kick } from "./close-view-beast-rig.js?v=r949-8620d2d2e96d";
+import { defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, writeSkin, meshBuilder, clamp01, smooth, span, kick } from "./close-view-beast-rig.js?v=r951-4925ab3898c1";
 
 export const CRYSTAL_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
