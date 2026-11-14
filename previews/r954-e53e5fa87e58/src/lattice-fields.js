@@ -1,0 +1,51 @@
+// Field passives for the Transit Lattice (release 515; Tim, 2026-10-28: "passives... that don't purely depend on... a skill
+// active... while your spell's going... if you stand inside of it... you get some extra buffs... healing... damage
+// reduction... increased cooldown... your tool shots are larger... the passives that modify the Dodge").
+//
+// They exist only in the Lattice: drawn in from other histories, they need nothing learned. A key is `field:<id>` in
+// save.lattice.passives (no new save state). "Your field" is one of your own lingering spells (a spell that holds for at
+// least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
+// it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
+// Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
+import { latticePassives } from "./transit-lattice.js?v=r954-e53e5fa87e58";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r954-e53e5fa87e58";
+import { QUANDRIX } from "./quandrix-staff.js?v=r954-e53e5fa87e58";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r954-e53e5fa87e58";
+
+export const FIELD = { minLife: 1 };
+export const FIELD_PASSIVES = {
+  sanctum: { name: "Sanctum", text: "Standing inside one of your lingering spells, you take 20% less damage and mend 2% of your health each second.", guard: .2, mend: .02 },
+  wellspring: { name: "Wellspring Ground", text: "Standing inside one of your lingering spells, your spells, Aperture skills and tools recover 30% faster.", rate: .3 },
+  "charged-air": { name: "Charged Air", text: "While one of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider; the Great Sweep deals 25% more and spreads 30% wider.", scale: 1.5, damage: .25, blast: 1.3, grow: .18 },
+  spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists, Hammerfall and the Great Sweep too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
+  "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
+};
+// Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
+// (keys `field:<id>`), listed apart from them.
+export const TOOL_FORMS = {
+  "arc-wave": { name: "Arc Wave", text: "The Blunderbuss's three shots become crescent waves along the same cone: each sweeps through every foe in its path. Still physical, and scales with Finesse like the Blunderbuss." /* Tim 2026-11-12: the Blunderbuss scales with the stamina stat */ },
+  "cluster-shell": { name: "Cluster Shell", text: "When a Rift Bombard shell bursts, two bomblets fly off a short way and burst again. Still physical (Might)." }, // release 537
+  "corridor-golem": { name: "Corridor Golem", text: "A Hammerfall blow raises a stone golem where it lands: it dashes to the nearest foe and punches up to three times, turning to the next when one falls, then sinks back into the floor. One at a time, at most every 6 s (less with faster tool recovery). Still physical (Might)." }, // release 535
+  "lumen-sunburst": { name: "Sunburst Ricochet", text: `A Lumen Spindle shot that strikes a wall ricochets off it, cutting on through foes, and breaks into a sunburst of ${SUNBURST.shards} small shards, each striking a foe once for ${Math.round(SUNBURST.share * 100)}% of the shot. Up to ${SUNBURST.ricochets} ricochets a shot; one that ricocheted on its way out comes back the same way and bursts again. Still magic (Focus).` }, // tool-forms.ts SUNBURST
+  "continuous-assault": { name: "Continuous Assault", text: `With the Carbine: a charged beam released at least ${Math.round(CONTINUOUS_ASSAULT.threshold * 100)}% full calls ${CONTINUOUS_ASSAULT.count} lasers down from the sky, ${CONTINUOUS_ASSAULT.gap} s apart, onto the foe it strikes (or the one nearest where it ends). Each tracks its foe and strikes everything within ${CONTINUOUS_ASSAULT.radius} tile for ${Math.round(CONTINUOUS_ASSAULT.share * 100)}% of the beam. Nothing with any other tool. Grows with Finesse, as the Carbine does.` }, // tool-forms.ts CONTINUOUS_ASSAULT; 2026-11-12 replaces the Lumen Carbine (now the Carbine tool)
+
+  "mages-hand": { name: "Mage's Hand", text: `With the Quandrix Staff: a tap still casts a hand; hold Attack and the hand you cast last clenches into a fist. It grabs every foe it touches (up to ${QUANDRIX.fist.maxGrab}) and drags them toward you, then bursts after ${QUANDRIX.fist.time} s wherever it is, or at once when you let go, for ${Math.round(QUANDRIX.fist.burst.share * 100)}% of the staff within ${QUANDRIX.fist.burst.radius} tiles. Bosses, world beasts and elites hold their ground but take the burst. Awakened, the slammed hand becomes a suction cup instead. Nothing with any other weapon. Grows with Focus, as the staff does.` }, // quandrix-staff.ts QUANDRIX.fist (2026-11-13)
+  nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
+};
+// Weapon arts (weapon-arts.ts, Tim 2026-11-13): one per primary weapon, each doing nothing with another weapon. Three presses
+// arm it; hold Attack to charge it (a perfect window on a ring) and let go to release it.
+const ART = WEAPON_ARTS.arts, CH = WEAPON_ARTS.charge, ARM = `Attack ${WEAPON_ARTS.arm.presses} times to arm it (one charge is kept); then hold Attack to charge it and let go inside the ring's gold window for ${CH.perfectShare}x.`;
+Object.assign(TOOL_FORMS, {
+  "lava-slash": { name: ART["lava-slash"].name, text: `With the Verge Cleaver: ${ARM} You dash at the nearest foe (within ${ART["lava-slash"].dash} tiles) and slam the blade down: the ground erupts within ${ART["lava-slash"].radius} tiles. Scales with Might.` },
+  "blade-stream": { name: ART["blade-stream"].name, text: `With the Fourfold Daggers: ${ARM} A storm of ${ART["blade-stream"].hits} light slashes cuts every foe within ${ART["blade-stream"].radius} tiles of you over ${ART["blade-stream"].span} s. Scales with Finesse.` },
+  "cinder-javelin": { name: ART["cinder-javelin"].name, text: `With the Cinder Pike: ${ARM} You wind up and hurl the pike ${ART["cinder-javelin"].range} tiles, through up to ${ART["cinder-javelin"].pierce} foes; it returns to your hand. Scales with Finesse.` },
+  "ki-blast": { name: ART["ki-blast"].name, text: `With the Iron Fists: ${ARM} Your next punch fires a ki blast ${ART["ki-blast"].range} tiles ahead; on the uppercut you leap and fire it from the air for ${Math.round((ART["ki-blast"].air - 1) * 100)}% more. Scales with Might.` },
+  transpose: { name: ART.transpose.name, text: `With the Salvage Blade: ${ARM} You set a seal on the ground (${ART.transpose.radius}-tile radius) for ${ART.transpose.base} s (${ART.transpose.perfectBase} s from a perfect release); each melee hit adds ${ART.transpose.perHit} s, up to ${ART.transpose.cap} s. Standing in it your spells deal ${Math.round(ART.transpose.spellDamage * 100)}% more and you take ${Math.round(ART.transpose.damageTaken * 100)}% more damage, for ${ART.transpose.linger} s after you step out. One seal at a time.` },
+});
+export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
+export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
+export function fieldForm(key) {
+  const [kind, id] = String(key).split(":"), f = kind === "field" && (FIELD_PASSIVES[id] || TOOL_FORMS[id]);
+  return f ? { id: key, field: true, alt: false, name: f.name, text: f.text } : null;
+}
+export const fieldOn = (save, id) => latticePassives(save).includes(`field:${id}`);
