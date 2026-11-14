@@ -27,6 +27,8 @@ export const SOUNDTRACK = {
   pause: { level: .3, time: .25 },
   hiss: .0022,
   wobble: { base: .012, depth: .0008, rate: .45 },
+  // Depth of a song's string tremolo (soundtrack-songs.ts `tremolo`): the level swings between 1 - 2 * depth and 1.
+  tremolo: .35,
   reverb: { seconds: 2.6, decay: 2.4, return: .55 },
   echoFeedback: .36,
   pad: [50, 74], bass: [36, 50], drone: [38, 49],
@@ -257,7 +259,7 @@ export class Soundtrack {
       for (const voice in drums) { const c = drums[voice][s]; if (c && c !== ".") this.drum(d, voice, at, c); }
       for (const [start, tone, len] of song.bass[d.tier ? "combat" : "calm"]) if (start === s) this.bassNote(d, at, tone, len * d.stepDur);
       if (d.motionOn) { const ch = song.arps[d.tier >= 2 ? "busy" : "calm"][s]; if (ch && ch !== ".") this.arpNote(d, at + d.rand() * .006, Number(ch), s === 0); }
-      if (d.lead) for (const [, step, len] of d.leadSteps.get((d.bar % 2) * 16 + s) || []) this.leadNote(d, at + d.rand() * .008, song.root + 12 * song.leadOct + stepToSemi(song.mode, step), len * d.stepDur);
+      if (d.lead) for (const [, step, len] of d.leadSteps.get((d.bar % 2) * 16 + s) || []) this.leadNote(d, at + d.rand() * .008, song.root + 12 * song.leadOct + stepToSemi((d.key || song).mode, step), len * d.stepDur);
     } else this.stats.pastSkips++;
     this.advance(d);
   }
@@ -274,6 +276,9 @@ export class Soundtrack {
       const phrase = Math.floor(d.bar / 8);
       d.form = song.forms[phrase === 0 ? 0 : Math.floor(d.rand() * song.forms.length)];
       d.leadPhrase = !!song.leadPlan[phrase % song.leadPlan.length] || d.tier > 0;
+      // A song with `modes` (a shape-shifter) turns to the next mode each phrase: its chords and lines keep their degrees, their colour shifts.
+      const mode = song.modes ? song.modes[phrase % song.modes.length] : song.mode;
+      d.key = mode === song.mode ? song : { root: song.root, mode };
       this.emit({ type: "phrase", songId: song.id, at: t, phrase, form: d.form });
     }
     if (d.tier > 0 && !d.leadPhrase && idx % 2 === 0) d.leadPhrase = true;
@@ -314,15 +319,15 @@ export class Soundtrack {
 
   // ---- parts ----
   bed(d, t, spec, dur) {
-    const song = d.song, S = SOUNDTRACK, semis = chordSemis(song, spec), pcs = semis.map((s) => pc(song.root + s));
+    const song = d.song, S = SOUNDTRACK, semis = chordSemis(d.key || song, spec), pcs = semis.map((s) => pc(song.root + s));
     d.voicing = voiceLead(d.voicing, pcs, S.pad[0], S.pad[1]);
     const bright = 1 + .3 * d.tier, dest = d.stems.bed;
-    if (song.pad !== "choir") this.strings(dest, t, d.voicing, dur + .3, song.pad === "both" ? .8 : 1, bright);
+    if (song.pad !== "choir") this.strings(dest, t, d.voicing, dur + .3, song.pad === "both" ? .8 : 1, bright, song.tremolo || 0);
     if (song.pad !== "strings") this.choir(dest, t, d.voicing, dur + .3, song.pad === "both" ? .7 : 1);
     if (!song.pedal) this.drone(dest, t, into(song.root + semis[0], S.drone[0], S.drone[1]), dur + .6, .8, 1.5);
   }
   bassNote(d, t, tone, dur) {
-    const song = d.song, S = SOUNDTRACK, semis = chordSemis(song, d.chordSpec || song.chords[d.bar % 8]);
+    const song = d.song, S = SOUNDTRACK, semis = chordSemis(d.key || song, d.chordSpec || song.chords[d.bar % 8]);
     const semi = tone === "P" ? 0 : tone === "3" ? semis[1] : tone === "5" ? semis[2] : tone === "7" ? (semis[3] ?? semis[2]) : semis[0];
     let n = into(song.root + semi, S.bass[0], S.bass[1]);
     if (d.bassNote != null && tone !== "P") { const alt = n + 12 <= S.bass[1] + 2 ? n + 12 : n - 12; if (alt >= S.bass[0] - 2 && Math.abs(alt - d.bassNote) < Math.abs(n - d.bassNote)) n = alt; }
@@ -387,15 +392,22 @@ export class Soundtrack {
   // Sustained envelope: up in `a`, held, released over `rel` before `end`.
   swell(param, t, a, peak, end, rel) { param.setValueAtTime(0, t); param.linearRampToValueAtTime(peak, t + Math.min(a, (end - t) * .5)); param.setValueAtTime(peak, Math.max(t + Math.min(a, (end - t) * .5), end - rel)); param.linearRampToValueAtTime(0, end); }
 
-  strings(dest, t, notes, dur, vel, bright) {
+  // `trem` (Hz): bowed tremolo, one LFO on the section's level (not a voice of its own).
+  strings(dest, t, notes, dur, vel, bright, trem = 0) {
     const L = SOUNDTRACK.level.strings * vel / Math.sqrt(notes.length), end = t + dur + 1.4, f = this.filter("lowpass", 700 * bright, .5), g = this.gain(0), src = [];
     f.frequency.setValueAtTime(900 * bright, t); f.frequency.linearRampToValueAtTime(2600 * bright, t + Math.min(dur, 4));
-    this.swell(g.gain, t, 1.2, L, end, 1.4); f.connect(g); g.connect(dest);
+    this.swell(g.gain, t, 1.2, L, end, 1.4); f.connect(g);
+    const extra = [];
+    if (trem > 0) {
+      const D = SOUNDTRACK.tremolo, tg = this.gain(1 - D), lfo = this.osc("sine", trem, t), lg = this.gain(D);
+      lfo.connect(lg); lg.connect(tg.gain); g.connect(tg); tg.connect(dest); extra.push(lfo, lg, tg);
+    } else g.connect(dest);
     for (const m of notes) {
       if (!this.claim(2, t, end)) continue;
       for (const cents of [-7, 6]) { const o = this.osc("sawtooth", mtof(m), t); o.detune.value = cents + (this.rand() - .5) * 4; o.connect(f); src.push(o); }
     }
-    if (src.length) this.finish(src, [...src, f, g], end); else { f.disconnect(); g.disconnect(); }
+    if (src.length) this.finish([...src, ...extra.slice(0, 1)], [...src, f, g, ...extra], end);
+    else { if (extra.length) extra[0].stop(t); for (const n of [f, g, ...extra]) n.disconnect(); }
   }
   // A choir "aah": a saw stack through two vowel formants.
   choir(dest, t, notes, dur, vel) {
