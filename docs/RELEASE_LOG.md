@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r958 (`5c951f09dc7f`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r959 (`a7520840d7f4`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 959 | Claude | claude/cleaver-charge-dash | The Verge Cleaver's Lava Slash weapon art no longer teleports: a travelled rush (16 tiles/s, 140-280 ms, eased) through the shared quarter-step mover, slam on arrival, ember after-images, Close View camera following, in every area and both views; also when released mid-jump; a dodge cancels it and returns the stored charge; additive playerRuntime.artRush v1 | In flight. |
+| 960 | Claude | claude/tool-ranges | Rift Bombard finite (6.5 tiles x reach, bursts where it lands); Lumen Spindle 5.4 tiles x reach, dissipates or turns back for an equal leg; Carbine and Aether Orrery unlimited; in Close View the Wayfarer's shots follow line of sight (waist-high rises block, foes seen on plateaus or flying can be hit, shots from her real height), a full-charge Carbine pierces terrain | In flight. |
+| 959 | Claude | claude/cleaver-charge-dash | The Verge Cleaver's Lava Slash weapon art no longer teleports: a travelled rush (16 tiles/s, 140-280 ms, eased) through the shared quarter-step mover, slam on arrival, ember after-images, Close View camera following, in every area and both views; also when released mid-jump; a dodge cancels it and returns the stored charge; additive playerRuntime.artRush v1 | Merged as `a7520840d7f4` (#626). |
 | 958 | Claude | claude/pike-model | Close View presentation: the Cinder Pike rebuilt from the Quandrix Staff's slim shaft at the staff's old length, a wooden spear with an iron leaf point, carried in both hands across the body about halfway up the shaft and thrust past the hip; the Quandrix Staff cut to the Wayfarer's height; the Fourfold Daggers white with a green stripe across each blade; Standard View lengths match | Merged as `5c951f09dc7f` (#625). |
 | 957 | Claude | claude/soundtrack | The soundtrack: 12 original synthesized dungeon-synth songs as a journey album, an adaptive director (place, chapter, combat lift, boss track, story stingers), seamless page-turn changes, Audio setting Adaptive/Calm only; no sound effects | Merged as `c23e3c476eac` (#624). |
 | 956 | Claude | claude/fist-rhythm | Iron Fists: a beat window after each step drives the gauntlet ball (home and glowing as the window opens), presses on the beat x1.25, a charge started on the beat and let go in its perfect window is a rhythm blow (top damage); the fists' charge a fifth shorter; new glyph Gathered Breath (each copy in weapon, tool or armour makes every charged attack fill 30% sooner, floor .15 s), rare v2 drop stream, 12 dust | Merged as `09c2c7023a9a` (#623). |

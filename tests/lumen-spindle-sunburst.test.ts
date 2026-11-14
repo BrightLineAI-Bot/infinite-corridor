@@ -48,7 +48,7 @@ test('without the passive a Spindle shot behaves as before: it turns at a wall, 
 });
 
 test('a wall hit ricochets the shot (reflected, still cutting) and bursts into shards fanned away from the wall', () => {
-  const { g } = arena({ foes: [[13.2, 11.2]] });
+  const { g } = arena({ foes: [] /* 2026-11-14: a foe on its path now turns it back before the wall */, item: { affixes: [{ id: 'reach', value: .2 }] } /* and its 5.4-tile range (tool-forms.ts TOOL_RANGE) reaches the wall 5.9 tiles off */ });
   const d = { x: Math.cos(.5), y: Math.sin(.5) }; fire(g, 1000, d); const shot = g.projectiles[0];
   assert.equal(shot.ricochet, SUNBURST.ricochets); assert.equal(shot.damageType, 'magic');
   let shards = [];
