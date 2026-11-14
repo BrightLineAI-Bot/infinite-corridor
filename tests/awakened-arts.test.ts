@@ -83,7 +83,7 @@ test('the third swing releases the weapon\'s move (never the crescent), only whe
     }
   }
   { const { g, clock } = arena('returning-blades', { foes: [] }); for (let i = 0; i < 2; i++) { press(g, clock); idle(g, clock, 30); }
-    press(g, clock); idle(g, clock, 2); assert.equal(liveAwakened(g).blades, 1, 'the daggers\' second cut is no swing'); }
+    press(g, clock); settle(g, clock); idle(g, clock, 2); assert.equal(liveAwakened(g).blades, 1, 'the daggers\' second cut is no swing'); } // 2026-11-14: the daggers' cut lands after its short wind-up
 });
 
 test('Fissure: a crack along the aim that erupts a beat later on every foe on it; walls stop it', () => {
@@ -108,7 +108,7 @@ test('Fissure with Lava Slash: a burning crack for 3 s that strikes foes on it; 
 });
 
 test('Returning blades: out four tiles and back to the hand, each foe cut going and coming; with Blade Stream a ring follows the burst', () => {
-  const { g, clock } = arena('returning-blades', { foes: [[3, 0], [5.5, 0]] }), log = spy(g), hit = g.meleePower();
+  const { g, clock } = arena('returning-blades', { foes: [[3, 0], [5.9, 0]] }), log = spy(g), hit = g.meleePower(); // 2026-11-14: the three cuts' small lunges carry the Wayfarer about .36 tiles forward
   swings(g, clock, 2); press(g, clock); idle(g, clock, 120);
   const a = log.filter((q) => q.id === 'foe-0'); assert.equal(a.length, 2, 'out and back'); for (const q of a) assert.ok(near(q.amount, hit * M['returning-blades'].share));
   assert.equal(log.filter((q) => q.id === 'foe-1').length, 0, 'beyond the throw'); assert.equal(liveAwakened(g).blades, 0, 'back in hand');
@@ -121,8 +121,8 @@ test('Returning blades: out four tiles and back to the hand, each foe cut going 
 });
 
 test('Lance: a line of cinder light six tiles along the aim strikes every foe on it at once', () => {
-  const { g, clock } = arena('lance', { foes: [[3, 0], [5.8, .2], [7.5, 0], [3, 1.5]] }), log = spy(g), hit = g.meleePower();
-  swings(g, clock, 2); log.length = 0; press(g, clock); assert.deepEqual(log.map((q) => q.id).sort(), ['foe-0', 'foe-1']); for (const q of log) assert.ok(near(q.amount, hit * M.lance.share));
+  const { g, clock } = arena('lance', { foes: [[3, 0], [6.5, .2], [8.4, 0], [3, 1.5]] }), log = spy(g), hit = g.meleePower(); // 2026-11-14: the three thrusts' lunges carry the Wayfarer about .9 tiles forward
+  swings(g, clock, 2); log.length = 0; press(g, clock); settle(g, clock); assert.deepEqual(log.map((q) => q.id).sort(), ['foe-0', 'foe-1']); // 2026-11-14: the thrust lands after its draw-back for (const q of log) assert.ok(near(q.amount, hit * M.lance.share));
   idle(g, clock, 40); assert.equal(liveAwakened(g).lances, 0, 'the light fades');
 });
 
@@ -164,7 +164,7 @@ test('Ki Blast: still in the air after the uppercut blast, a press drops into th
   for (const awakened of [true, false]) {
     const { g, clock } = arena('roundhouse', { foes: [[1, .2], [6, 0]], passive: true, awakened }); for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
     idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); // the cross and jab: the uppercut is next
-    charge(g, clock, 1.15); assert.ok(clock.t < g.jumpUntil, 'the uppercut blast pops her up'); assert.equal(g.kiSlamReady(clock.t), true);
+    charge(g, clock, 1.15); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */ assert.ok(clock.t < g.jumpUntil, 'the uppercut blast pops her up'); assert.equal(g.kiSlamReady(clock.t), true);
     const hp = g.enemies[0].hp; press(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam'); assert.match(g.message, /Ground slam/); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick');
     idle(g, clock, 40); slams[awakened] = hp - g.enemies[0].hp; assert.ok(slams[awakened] > 0, 'it lands');
     assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross'); assert.equal(g.plunge, null);

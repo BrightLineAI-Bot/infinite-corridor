@@ -184,6 +184,11 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]),
     blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, shoulder: .87, width: .052, thick: .018, tip: 1.40 }),
     guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5 }),
+  // Fourfold Daggers (2026-11-14): one short dagger in each hand, drawn once per hand socket. A wrapped grip the fist's
+  // length, a narrow cross guard, a diamond blade to a needle point (a third of the Cleaver's length).
+  dagger: Object.freeze({ grip: Object.freeze([.700, .800]), gripRadius: .018, pommel: Object.freeze([.672, .700]), pommelRadius: .022,
+    guard: Object.freeze({ z: Object.freeze([.800, .822]), corner: Object.freeze([.016, .072]) }),
+    blade: Object.freeze({ base: .822, baseWidth: .034, baseThick: .013, shoulder: .90, width: .040, thick: .014, tip: 1.19 }) }),
   // Carbine (the Spark Coil's upgraded form, 2026-11-12): a compact carbine with a long barrel. The bore axis rides just above
   // the fist (-X is up); a short stock behind the grip, a gunmetal receiver, the barrel, a cyan coil wound round its root with a
   // collar ahead of it, and a muzzle with a lit face at `muzzle[1]` (the shot's origin, TOOL_MUZZLE_LOCAL.carbine).
@@ -687,7 +692,24 @@ const heroSalvageBlade = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
+// Fourfold Daggers for the imported hero: 36 triangles a dagger, one in each hand (writeCloseViewHeroGear draws it on both
+// sockets), so the pair is 72, inside the largest held gear's 96. Same palette as the other held blades.
+const heroDagger = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.dagger, B = F.blade, G = F.guard, X = .17, Y = -.25;
+  const ring = (z, w, t) => [[X + t, Y, z], [X, Y + w, z], [X - t, Y, z], [X, Y - w, z]], tip = [X, Y, B.tip];
+  const a = ring(B.base, B.baseWidth, B.baseThick), b = ring(B.shoulder, B.width, B.thick), blade = [];
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; blade.push([a[i], a[j], b[j]], [a[i], b[j], b[i]], [b[i], b[j], tip]); }
+  const wrap = [], n = 4, R = F.gripRadius, ringAt = (z, turn) => Array.from({ length: n }, (_, i) => { const q = (i + .5 + turn) * 2 * Math.PI / n; return [X + R * Math.cos(q), Y + R * Math.sin(q), z]; });
+  const lo = ringAt(F.grip[0], 0), hi = ringAt(F.grip[1], .5);
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; wrap.push([lo[i], lo[j], hi[j]], [lo[i], hi[j], hi[i]]); }
+  return Object.freeze([
+    heldFacets(blade, 0xc9ccc8, c => [c[0] - X, c[1] - Y, 0]),
+    heldTube([[X, Y, G.z[0], G.corner[0], G.corner[1]], [X, Y, G.z[1], G.corner[0], G.corner[1]]], 4, WAYFARER_GUNMETAL, { caps: 3, flat: true, phase: 0 }),
+    heldFacets(wrap, WAYFARER_LEATHER, c => [c[0] - X, c[1] - Y, 0]),
+    heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], F.pommelRadius]], 4, brass, { flat: true }),
+  ]);
+})();
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'fourfold-daggers':heroDagger,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
@@ -709,14 +731,15 @@ export function writeCloseViewHeroGear(out,offset,gear) {
   // Legacy callers supplied only rightSocket. Callers with both sockets get the table's hand.
   const gripKey=gear?.primaryStage===undefined&&!gear?.leftSocket?'rightSocket':closeViewHandRoles(gear?.profile).grip,m=gear?.[gripKey],k=.82*closeViewHeldScale(gear?.profile);
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
-  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',left=gear.leftSocket;
-  if(bilateral&&(!left||left.length!==16))return offset;
-  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;vertices*=bilateral?2:1;
+  // Two of the gear, one on each hand socket: the gauntlets (their own frame) and the paired daggers (the blade frame).
+  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',paired=gear.profile==='fourfold-daggers',twin=bilateral||paired,left=gear.leftSocket;
+  if(twin&&(!left||left.length!==16))return offset;
+  let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;vertices*=twin?2:1;
   if(vertices>256*3||offset+vertices*MODEL_FLOATS>out.length)return offset;
-  for(let pass=0;pass<(bilateral?2:1);pass++){const socket=bilateral&&pass===0?left:m;for(let i=0;i<16;i++)if(!Number.isFinite(socket[i]))return offset;const ax=Math.hypot(socket[0],socket[1],socket[2]),ay=Math.hypot(socket[4],socket[5],socket[6]),az=Math.hypot(socket[8],socket[9],socket[10]);if(Math.min(ax,ay,az)<1e-6)return offset;}
+  for(let pass=0;pass<(twin?2:1);pass++){const socket=twin&&pass===0?left:m;for(let i=0;i<16;i++)if(!Number.isFinite(socket[i]))return offset;const ax=Math.hypot(socket[0],socket[1],socket[2]),ay=Math.hypot(socket[4],socket[5],socket[6]),az=Math.hypot(socket[8],socket[9],socket[10]);if(Math.min(ax,ay,az)<1e-6)return offset;}
   const alpha=Number.isFinite(gear.alpha)?Math.max(0,Math.min(1,gear.alpha)):1,hit=Math.max(0,Math.min(1,Number(gear.hitFlash)||0));
   const tr=Number.isFinite(gear.tint?.[0])?gear.tint[0]:1,tg=Number.isFinite(gear.tint?.[1])?gear.tint[1]:1,tb=Number.isFinite(gear.tint?.[2])?gear.tint[2]:1;
-  for(let pass=0;pass<(bilateral?2:1);pass++){const m=bilateral&&pass===0?left:gear[gripKey],ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
+  for(let pass=0;pass<(twin?2:1);pass++){const m=twin&&pass===0?left:gear[gripKey],ax=Math.hypot(m[0],m[1],m[2]),ay=Math.hypot(m[4],m[5],m[6]),az=Math.hypot(m[8],m[9],m[10]);
   for(const p of parts)for(let i=0;i<p.mesh.length;i+=MESH_FLOATS){const a=p.mesh;
     // Recipe grip (.17,-.25,.79), canonical blade +Z -> the source weapon socket +X.
     const x=bilateral?(a[i]+p.px)*.62:(a[i+2]+p.pz-.79)*k,y=bilateral?(a[i+1]+(p.py||0))*.62:-(a[i]+p.px-.17)*k,z=bilateral?(a[i+2]+p.pz)*.62:-(a[i+1]+.25)*k;
@@ -733,7 +756,7 @@ export function writeCloseViewHeroGear(out,offset,gear) {
 export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   const armored=frame?.powerSuit===true,armorVertices=armored?frame.suitVertexCount:0,parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
   let gearVertices=0;if(parts)for(const p of parts)gearVertices+=p.mesh.length/MESH_FLOATS;
-  if(gear?.profile==='fist'||gear?.profile==='fistCharge')gearVertices*=2;
+  if(gear?.profile==='fist'||gear?.profile==='fistCharge'||gear?.profile==='fourfold-daggers')gearVertices*=2;
   if(!Number.isSafeInteger(offset)||offset<0||armorVertices!==(armored?CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES*3:0)||(armorVertices+gearVertices)/3>HERO_EQUIPMENT_MAX_TRIANGLES||offset+(armorVertices+gearVertices)*MODEL_FLOATS>out.length)return offset;
   const vialRequested=gear?.drinkVial===true&&!armored&&Number(gear.vialWeight)>0,vialVertices=HERO_DRINK_VIAL_TRIANGLES*3;
   const vialFits=vialRequested&&(armorVertices+gearVertices+vialVertices)/3<=HERO_EQUIPMENT_MAX_TRIANGLES&&offset+(armorVertices+gearVertices+vialVertices)*MODEL_FLOATS<=out.length;

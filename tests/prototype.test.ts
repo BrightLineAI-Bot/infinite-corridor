@@ -1782,7 +1782,7 @@ test("action readiness reports local cooldowns and potion availability", () => {
   const s = freshSave(),
     g = new Game(s, 100);
   g.player.attackReadyAt = 520;
-  g.player.dodgeReadyAt = 952;
+  g.player.dodgeReadyAt = 954;
   g.jumpUntil = 620;
   g.spellCooldownRemaining = 3;
   s.consumables.restorativeDraught = 2;
@@ -1885,6 +1885,7 @@ test("explicit melee direction overrides closer automatic targets", () => {
     { id: "west", kind: "ashling", x: 9, y: 10, hp: 30, maxHp: 30 },
   ];
   g.primaryAttack(1, { x: -1, y: 0 });
+  for (let t = 9; g.pendingMeleeContact && t < 2000; t += 8) g.tickMeleeSwing(t); // 2026-11-14: the pike's thrust lands after its draw-back (melee-swing.ts)
   assert.equal(g.enemies[0].hp, 30);
   assert.ok(g.enemies[1].hp < 30);
 });
@@ -2404,12 +2405,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 952 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 954 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "952"/);assert.match(html,/styles\.css\?v=952/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v952`/);assert.match(sw,/styles\.css\?v=952/);assert.match(sw,/proving-ground-labs\.js\?v=952/);assert.match(sw,/dungeon-framework\.js\?v=952/);assert.match(sw,/renderer\.js\?v=952/);
-  assert.match(build,/release='952'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "954"/);assert.match(html,/styles\.css\?v=954/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v954`/);assert.match(sw,/styles\.css\?v=954/);assert.match(sw,/proving-ground-labs\.js\?v=954/);assert.match(sw,/dungeon-framework\.js\?v=954/);assert.match(sw,/renderer\.js\?v=954/);
+  assert.match(build,/release='954'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });

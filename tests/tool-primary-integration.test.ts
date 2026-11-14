@@ -44,7 +44,7 @@ test('production masked renderer keeps accepted tool poses across primary Echo, 
     for(const [kind,item] of Object.entries(items)){
       const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.presentation={effectiveQuality:'full',reduceMotion:false};
       g.save.closeView=true;
-      g.save.equipment.primary=normalizeSockets({id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5,property:'reach',tier:'relic',affixes:[]});g.save.glyphs.echo=1;g.save.glyphs.swift=2;
+      g.save.equipment.primary=normalizeSockets({id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:5,property:'steady',tier:'relic',affixes:[]});/* 2026-11-14: the Cinder Pike's Echo now queues at its thrust's contact (melee-swing.ts), so an instant primary stands in */g.save.glyphs.echo=1;g.save.glyphs.swift=2;
       for(const [slot,glyph] of [[0,'echo'],[1,'swift'],[2,'swift']])assert.equal(socketGlyph(g.save,'melee',slot,glyph).ok,true);
       resetCloseViewCamera();draw(g,100000);g.primaryAttack(100000);const queued=g.glyphTimers.find(q=>q.kind==='strike');assert.ok(queued);
       g.save.equipment.secondary=structuredClone(item);assert.equal(g.fireSecondary(100240,{x:1,y:0}),true,kind);assert.equal(g.player.attackVisual.toolKind,kind);

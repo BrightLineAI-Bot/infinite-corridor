@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, characterStats, daggerCutHits, grantMilestoneGear } from '../src/game.ts';
 import { createCombatant, wayfarerDamage } from '../src/combat.ts';
+import { PRIMARY_SWINGS } from '../src/melee-swing.ts';
 import { FOURFOLD_DAGGERS, PRIMARY_PROFILES, primaryProfile, isFourfoldDaggers, generateItem, isValidItem, weaponScaling, itemMechanicalStats } from '../src/items.ts';
 
 const D = FOURFOLD_DAGGERS, PROFILE = PRIMARY_PROFILES[D.key];
@@ -49,31 +50,35 @@ test('cone geometry: front-close is in both cuts, angled in one, straight ahead 
   assert.equal(n([0, .8]), 2); assert.equal(n([.35, 1.3]), 1); assert.equal(n([0, 1.45]), 0);
 });
 
-test('one press: two cuts, the second about 80 ms after the first; damage per cut and in total', () => {
+// 2026-11-14 (Tim: "cuts that cross in an X", melee-swing.ts PRIMARY_SWINGS['fourfold-daggers']): a press is one hand's cut
+// after a short wind-up (the right hand, then the left, then both crossing); these replace the old two-cuts-a-press timing.
+const W = PRIMARY_SWINGS['fourfold-daggers'].steps;
+const untilCut = (g, e) => { for (let t = 1000; t < 1400 && e.hp >= e.maxHp; t += 20) g.update(.02, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, t); }; // the frame the cut lands
+const near = (v, want) => v <= want + 1e-9 && v >= want - .02 - 1e-9; // read in the frame of the cut, after that frame's own stun tick (.02 s)
+test('one press: one hand\'s cut after a short wind-up; the combo is right, left, then both crossing', () => {
   const { g } = arena([FRONT_CLOSE]), e = g.enemies[0];
-  g.primaryAttack(1000, { x: 1, y: 0 });
-  const first = taken(e), bonus = g.weaponBonus(), cut = wayfarerDamage((PROFILE.damage + bonus) * D.share);
-  assert.equal(first, cut, 'the first cut lands at once');
-  step(g, 1020, 1000 + D.gapMs - 20); assert.equal(taken(e), first, 'nothing more before the gap');
-  step(g, 1000 + D.gapMs - 20, 1000 + D.gapMs + 40); assert.equal(taken(e), 2 * cut, 'the second cut lands after the gap');
-  step(g, 1100, 1400); assert.equal(taken(e), 2 * cut, 'and only two');
-  const normal = wayfarerDamage(PROFILE.damage + bonus);
-  assert.ok(cut < normal, 'each cut is lighter than a normal hit');
-  assert.ok(2 * cut >= normal * .95 && 2 * cut <= normal * 1.2, `two cuts (${2 * cut}) come to about a normal hit (${normal})`);
+  g.primaryAttack(1000, { x: 1, y: 0 }); assert.equal(taken(e), 0, 'nothing at the press: the wind-up');
+  step(g, 1000, 1000 + W[0].windupMs - 20); assert.equal(taken(e), 0, 'nothing before the wind-up ends');
+  step(g, 1000 + W[0].windupMs - 20, 1000 + W[0].recoveryMs + W[0].hitStopMs + 40);
+  const bonus = g.weaponBonus(), cut = wayfarerDamage((PROFILE.damage + bonus) * W[0].share);
+  assert.equal(taken(e), cut, 'one cut a press');
+  const normal = wayfarerDamage(PROFILE.damage + bonus); assert.ok(cut < normal, 'each cut is lighter than a normal hit');
 });
 
-test('an angled foe takes one cut and a foe in the gap none; a crowd is poorly served', () => {
-  const { g } = arena([FRONT_CLOSE, ANGLED, STRAIGHT_FAR, [1.2, .9]]), [front, angled, far, wide] = g.enemies;
-  g.primaryAttack(1000, { x: 1, y: 0 }); step(g, 1000, 1300);
-  const cut = wayfarerDamage((PROFILE.damage + g.weaponBonus()) * D.share);
-  assert.equal(taken(front), 2 * cut); assert.equal(taken(angled), cut); assert.equal(taken(far), 0); assert.equal(taken(wide), 0);
+test('an X in front: the foe in it takes both hands\' cuts, one off to the side one, one further out none', () => {
+  const { g } = arena([FRONT_CLOSE, [.3, 1.2], [2.3, 0]]), [front, side, far] = g.enemies; let t = 1000;
+  for (let k = 0; k < 3; k++) { g.update(.02, { state: { x: 0, y: 0 }, consume: (q) => q === 'attack', held: () => false }, t); t += 20; step(g, t, t + 300); t += 300; g.player.x = 10; g.player.y = 10; }
+  const per = (i) => wayfarerDamage((PROFILE.damage + g.weaponBonus()) * W[i].share);
+  assert.equal(taken(front), per(0) + per(1) + 2 * per(2), 'right, left and both crossing');
+  assert.equal(taken(side), per(1) + per(2), 'only the hand whose cut reaches that side');
+  assert.equal(taken(far), 0, 'beyond the tips');
 });
 
 test('each cut staggers slightly, less than a swing, and the stagger governor still rules', () => {
   const { g } = arena([FRONT_CLOSE]), e = g.enemies[0];
-  g.primaryAttack(1000, { x: 1, y: 0 }); assert.equal(e.hitStun, D.stun.ordinary); assert.equal(e.recoil, D.recoil);
+  g.primaryAttack(1000, { x: 1, y: 0 }); untilCut(g, e); assert.ok(near(e.hitStun, D.stun.ordinary), `${e.hitStun}`); assert.ok(near(e.recoil, D.recoil), `${e.recoil}`); // 2026-11-14: once the cut lands
   assert.ok(D.stun.ordinary < .22 && D.stun.boss < .12 && D.recoil < .2, 'lighter than a normal swing (.22 / .12 boss, recoil .2)');
-  const b = arena([[.8, 0, { boss: true }]]); b.g.primaryAttack(1000, { x: 1, y: 0 }); assert.equal(b.g.enemies[0].hitStun, D.stun.boss);
+  const b = arena([[.8, 0, { boss: true }]]); b.g.primaryAttack(1000, { x: 1, y: 0 }); untilCut(b.g, b.g.enemies[0]); assert.ok(near(b.g.enemies[0].hitStun, D.stun.boss));
   // A guarded foe (the governor's guard after a stagger lock) shrugs the cuts off.
   const q = arena([[.8, 0, { boss: true, staggerGuard: 2 }]]), f = q.g.enemies[0];
   q.g.primaryAttack(1000, { x: 1, y: 0 }); step(q.g, 1000, 1200); assert.equal(f.hitStun, 0); assert.ok(taken(f) > 0, 'the blows still land');
@@ -125,21 +130,17 @@ test('glyphs: the daggers take sockets, and a melee Echo repeats both cuts at it
   assert.ok(taken(q.g.enemies[0]) > plain * 1.2, `the Echo adds its own two cuts: ${plain} -> ${taken(q.g.enemies[0])}`);
 });
 
-// Tim (2026-11-12): a cancel before the second cut starts drops it (only the first lands); a cancel after it keeps both. The
-// first cut resolves at the press itself, so it has always landed by the time any cancel can come.
-test('a cancel before the second cut drops it; a cancel after keeps both', () => {
+// Tim (2026-11-12, kept 2026-11-14): a cancel drops what has not landed yet; what has landed stays. A press is now one cut after
+// a short wind-up (melee-swing.ts), so a dodge in the wind-up drops the cut and one after it keeps it.
+test('a cancel in the wind-up drops the cut; a cancel after it lands keeps it', () => {
   const press = () => { const a = arena([FRONT_CLOSE]); a.s.stamina = a.g.player.stamina = 100; a.g.primaryAttack(1000, { x: 1, y: 0 }); return a; };
-  const cut = (g) => wayfarerDamage((PROFILE.damage + g.weaponBonus()) * D.share);
-  // Dodge between the cuts: the game's melee cancel signal (cancelPendingMeleeContact('dodge')).
-  { const { g } = press(), e = g.enemies[0]; assert.equal(taken(e), cut(g), 'the first cut landed at the press');
-    step(g, 1000, 1040); let dodged = false; g.update(.02, { state: { x: 0, y: 1 }, consume: (k) => k === 'dodge' && !dodged && (dodged = true), held: () => false }, 1040);
-    assert.ok(dodged && g.player.dodgeUntil > 1040, 'the dodge went off'); step(g, 1060, 1400); assert.equal(taken(e), cut(g), 'dodge: only the first cut'); }
-  // Every other cancel path goes through the same signal: a tool, a cast, a stun, a switch.
+  const cut = (g) => wayfarerDamage((PROFILE.damage + g.weaponBonus()) * W[0].share);
+  { const { g } = press(), e = g.enemies[0]; step(g, 1000, 1060); let dodged = false; g.update(.02, { state: { x: 0, y: 1 }, consume: (k) => k === 'dodge' && !dodged && (dodged = true), held: () => false }, 1060);
+    assert.ok(dodged && g.player.dodgeUntil > 1060, 'the dodge went off'); assert.equal(g.pendingMeleeContact, null); step(g, 1080, 1400); assert.equal(taken(e), 0, 'dodge in the wind-up: no cut'); }
   for (const reason of ['tool', 'presentation-interrupted', 'knockdown', 'equipment-switch']) {
-    const { g } = press(), e = g.enemies[0]; step(g, 1000, 1040); assert.equal(g.cancelPendingMeleeContact(reason), true, `${reason}: it dropped the pending cut`);
-    step(g, 1040, 1400); assert.equal(taken(e), cut(g), `${reason}: only the first cut`);
+    const { g } = press(), e = g.enemies[0]; step(g, 1000, 1060); assert.equal(g.cancelPendingMeleeContact(reason), true, `${reason}: it dropped the swing`);
+    step(g, 1060, 1400); assert.equal(taken(e), 0, `${reason}: no cut`);
   }
-  // A cancel after the second cut has started keeps both.
-  { const { g } = press(), e = g.enemies[0]; step(g, 1000, 1000 + D.gapMs + 40); assert.equal(taken(e), 2 * cut(g));
-    assert.equal(g.cancelPendingMeleeContact('dodge'), false, 'nothing left to cancel'); step(g, 1000 + D.gapMs + 40, 1400); assert.equal(taken(e), 2 * cut(g), 'both cuts kept'); }
+  { const { g } = press(), e = g.enemies[0]; step(g, 1000, 1000 + W[0].windupMs + 60); assert.equal(taken(e), cut(g));
+    g.cancelPendingMeleeContact('dodge'); step(g, 1000 + W[0].windupMs + 60, 1500); assert.equal(taken(e), cut(g), 'the landed cut is kept'); }
 });

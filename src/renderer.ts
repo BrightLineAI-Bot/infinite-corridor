@@ -1,5 +1,6 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
+import { shadowTrailLive } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
 import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
@@ -2743,7 +2744,7 @@ export function render(ctx, g, w, h, now) {
     for (let k = 0; k < 4; k++) { const ox = Math.cos(tm * 3 + k * 1.6) * s * .22 - (p.dodgeX || 0) * s * .18 * k, oy = Math.sin(tm * 2.4 + k * 2.1) * s * .14 - (p.dodgeY || 0) * s * .18 * k, r = s * (.62 - k * .08), gr = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
       gr.addColorStop(0, "rgba(218,230,244,.5)"); gr.addColorStop(.6, "rgba(160,182,210,.22)"); gr.addColorStop(1, "rgba(120,146,180,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx + ox, cy + oy, r, 0, 7); ctx.fill(); }
   }
-  if (dodging) {
+  if (dodging && !shadowTrailLive(g)) { // the older single ghost: a landing roll, or reduced motion (a dodge's trail is brawler-spells.ts SHADOW_TRAIL)
     ctx.globalAlpha = 0.28;
     actor(
       ctx,

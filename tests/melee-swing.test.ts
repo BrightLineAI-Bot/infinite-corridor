@@ -224,7 +224,7 @@ test('Iron Fists keep their timing (unchanged by the weighted swing)', () => {
     for (let f = 0; f < 40 && at < 0; f++) { foe.x = px + 1.2; foe.y = py; g.player.x = px; g.player.y = py; g.save.lastAim = { x: 1, y: 0 }; const hp = foe.hp; g.update(.016, f === 0 ? once('attack') : calm, t); if (foe.hp < hp) at = t - 100000; t += 16; }
     return { at, pending: g.pendingMeleeContact };
   };
-  assert.equal(first(false).at, 16, 'Standard View: as before');
+  assert.equal(first(false).at, 112, 'Standard View: the Close View contact delay (Tim 2026-11-14: "the delay timing everywhere"; was 16)');
   assert.equal(first(true).at, 112, 'Close View interior: as before');
   assert.equal(swingTimes(STEPS[0]).windEnd, 230);
 });

@@ -15,13 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r951 (`4925ab3898c1`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r953 (`59250bbc63d3`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 952 | Claude | claude/shadow-dash | Shadow Boxing's carry to a foe becomes a 120-220 ms eased charge through the same walls and hazards, the blow landing on arrival, with violet after-images and a speed streak in both views at every quality tier and in safe mode; damage and healing kept; additive playerRuntime.shadowDash v1 | In flight. |
+| 954 | Claude | claude/fist-dash-ghosts | Presentation only: the Iron Fists' Shadow Boxing rush, every dodge, the Great Sweep carry and airborne carries leave Shadow Boxing's violet after-images and speed streak in both views, at every quality tier and in safe mode (not with reduced motion); gameplay byte-for-byte unchanged | In flight. |
+| 953 | Claude | claude/weapons-feel | Fourfold Daggers and Cinder Pike join the weighted swing system (hits follow each blade's tip / the pike's tip along its line; wind-up, hit-stop, follow-through, buffer, instant cancels); a dagger in each hand in Close View; the Iron Fists' contact delay applies in every area and both views | Merged as `59250bbc63d3` (#620). |
+| 952 | Claude | claude/shadow-dash | Shadow Boxing's carry to a foe becomes a 120-220 ms eased charge through the same walls and hazards, the blow landing on arrival, with violet after-images and a speed streak in both views at every quality tier and in safe mode; damage and healing kept; additive playerRuntime.shadowDash v1 | Merged as `7b1f2d3c3e62` (#619). |
 | 951 | Claude | claude/weighty-cleaver | Verge Cleaver: three weighted steps (wind-up, step in, strike, follow-through) with hits only in the sector the blade crosses plus a body bubble, short hit-stop, no camera shake; identical in every area and both views; DPS kept; pending melee record v3 | Merged as `4925ab3898c1` (#618). Published 2026-11-14 in r951. |
 | 950 | Claude | claude/tower-fixes | Upwell towers: a raised door's floating steps (and the Wayfarer on them) draw over the tower face in Standard View; tower wall creatures no longer take the regional difficulty twice (an Eave Gargoyle far out had ~33x health, ~15x damage); old saves mended once | Merged as `399b10eae9b6` (#617). Published 2026-11-14 in r951. |
 | 949 | Claude | claude/compass-north | The compass dial stays north-up in both views; the objective needle points at the map bearing; in Close View a small rim marker shows the way the Wayfarer faces (replaces the 2026-11-11 dial that turned with the facing) | Merged as `8620d2d2e96d` (#616). Published 2026-11-13. |
