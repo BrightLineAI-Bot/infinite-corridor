@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 950 — Tall towers: steps shown in Standard View; wall creatures scaled once
+
+Tim, 2026-11-14: a tall tower's door looked impossible to reach in Standard View ('the platform is on the wrong side'), and inside, an unnamed demon-like creature one-shot him and took a huge number of hits to kill.
+
+**CODE:** `src/renderer.ts`: `towerStepsPlan`/`towerStepsOver` redraw a tower's 2-4 floating steps over its face after the tower is drawn, lowest first, and redraw the Wayfarer there while on or hopping between steps (the face used to cover every step above the first). `src/tall-towers.ts`: `TALL_TOWERS.dwellerVitals` 2. `src/game.ts`: the two fresh-area regional passes (in `installAperture`'s `decorate` and its `loadArea` wrapper) skip `towerScaled` wall creatures, which already took `scaleToRegion` at spawn; on restore a snapshot dweller without `towerVitals` 2 takes its newly spawned maxHp/damage and keeps its health share (dead stay dead, mended once). Tests: `tall-tower-access` (5: a 70-tower door sweep climbed with the real movement, Tim's tower at -159,-116, the Standard View step redraw, wall creature vitals against the ring, old-save mending).
+
+**BOUNDARY:** No generation or layout change: every tower regenerates identically. No new save field beyond the dweller's `towerVitals` marker (additive, schema 14). The extra Standard View drawing is limited to a tower's own steps. Not checked on a device. Pentagon v11 adventure creatures may share the double-scaling path and are not changed here.
+
 ## Release 949 — The compass is always true north
 
 Tim, 2026-11-13: in Close View the whole compass turned with the character, so it couldn't be used for wayfinding; it should point to true north all the time, with only the arrow turning.
