@@ -26,12 +26,12 @@ const dummy = (id: string, x: number, y: number, hp = 1e9) => Object.assign(crea
 const ghosts = (g: any) => shadowDashGhosts(g, new Float64Array(SHADOW_DASH.ghosts * 3));
 
 // A flat open dungeon room; `weapon` 'fists' or the starting blade; Shadow Boxing cast.
-function room(weapon = 'fists', presentation: any = LOW_SAFE, seed = 'TRAIL') {
+function room(weapon = 'fists', presentation: any = LOW_SAFE, seed = 'TRAIL', boxing = true) {
   const s = freshSave(); s.seed = seed; s.perception.aperture = 3255; s.maxHp = 1e6; if (weapon === 'fists') s.equipment.primary = fists();
   const g: any = new Game(s, 0); g.presentation = { ...presentation };
   g.map = { ...g.map, name: 'Trail Room', width: 40, height: 40, exits: null, objects: [], enemySpawns: [], tiles: Array.from({ length: 1600 }, (_, i) => ({ x: i % 40, y: Math.floor(i / 40), kind: 'ash', blocked: false })) };
   g.area = 'dungeon'; Object.assign(g.player, { x: 20, y: 20, facing: 'right', hp: 100 }); s.lastAim = { x: 1, y: 0 };
-  g.enemies = []; g.update(.016, calm, 1000); g.castSpell('shadow-boxing'); return g;
+  g.enemies = []; g.update(.016, calm, 1000); if (boxing) g.castSpell('shadow-boxing'); return g;
 }
 
 test('the trail table is data; its ghosts are SHADOW_DASH\'s pool', () => {
@@ -54,6 +54,15 @@ test('the Iron Fists\' Shadow Boxing rush: still one update, now drawn with afte
   // they close in and are gone after the fade
   let t = 1100, last = n; for (let i = 0; i < 20; i++) { t += 16; g.update(.016, calm, t); const m = ghosts(g); assert.ok(m <= last + 0, 'never more as they close in'); last = m; }
   assert.equal(ghosts(g), 0, 'gone after the fade'); assert.equal(g.shadowTrail.live, false, 'the record retires itself');
+});
+
+test('the Iron Fists\' plain cross rush (no Shadow Boxing) leaves after-images too, without the wraith lean (Tim 2026-11-14)', () => {
+  const g = room('fists', LOW_SAFE, 'TRAIL', false), foe = dummy('plain-foe', 24, 20); g.enemies = [foe]; const x0 = g.player.x;
+  g.update(.016, press('attack'), 1084); g.update(.016, calm, 1100);
+  assert.ok(g.player.x - x0 > 1, `the plain cross still rushes in one update (${(g.player.x - x0).toFixed(2)} tiles)`);
+  assert.ok(ghosts(g) >= 1, 'after-images along the rush'); const pose = shadowDashPose(g, {} as any); assert.ok(!(pose.wraith > .5), 'no Shadow Boxing wraith on a plain rush');
+  let t = 1100; for (let i = 0; i < 30; i++) { t += 16; g.update(.016, calm, t); } assert.equal(ghosts(g), 0, 'gone after the fade');
+  const r = room('fists', REDUCED, 'TRAIL', false); r.enemies = [dummy('plain-foe2', 24, 20)]; r.update(.016, press('attack'), 1084); r.update(.016, calm, 1100); assert.equal(ghosts(r), 0, 'none with reduced motion');
 });
 
 test('a dodge (any weapon) leaves the same trail in safe mode at low quality, behind him as he goes and fading after', () => {

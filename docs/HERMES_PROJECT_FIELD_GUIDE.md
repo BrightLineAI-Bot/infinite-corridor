@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 954 — After-images on the Iron Fists' rush and on every dodge
+
+Tim, 2026-11-14: the Iron Fists' Shadow Boxing rush should stay the instant, best Shadow Boxing movement, and the dodge should have the after-images too, without changing any movement.
+
+**CODE:** `src/brawler-spells.ts` `SHADOW_TRAIL` {minJump .6, maxJump 12, carryMs 220}, `markShadowTrail` (one reused, unsaved `Game.shadowTrail` record that gameplay never reads), `shadowTrailTick` (a dodge's trail follows him while it runs), `shadowTrailLive`; `shadowDashGhosts`/`shadowDashPose` also read the trail (the newer of the trail and `shadowDashAfter` wins), from the same pool of at most `SHADOW_DASH.ghosts` (4). `src/game.ts` marks a trail after the Iron Fists' rush (kind `carry` while Shadow Boxing holds, `rush` otherwise: ghosts without the lean and wraith), in `shadowBoxStep` (Great Sweep, the fists' later steps, airborne carries) and on a dodge (not aboard or mounted), and ticks it each update. Close View draws it through `followShadowDash` on the true position (no lag); Standard View in `drawBrawlerAuras`; `renderer.ts` keeps the older single dodge ghost only when no trail shows. Tests: `shadow-trail-ghosts` (7, including twin games and a release 952 digest match).
+
+**BOUNDARY:** Presentation only: nothing in gameplay reads `shadowTrail`; moves, hit timing, dodge distance, invulnerability and stamina untouched (twin-game and release 952 digest tests). Never saved; no save, schema or generator change. At most 4 pooled ghosts, no per-frame allocation. Drawn at every quality tier and in safe mode, not with reduced motion. Other weapons' Shadow Boxing keeps the release 952 timed charge.
+
 ## Release 953 — Daggers cross in an X with a blade in each hand; the Pike draws back and thrusts
 
 Tim, 2026-11-14: the Fourfold Daggers showed one dagger and cut twice to one side; he wanted a dagger in each hand, cuts that cross in an X in front of the Wayfarer, Elden Ring dual-dagger speed, and hits that track the blade tips; the Cinder Pike the same kind of rework; the Iron Fists' Close View contact delay everywhere; one cohesive feel across weapons.

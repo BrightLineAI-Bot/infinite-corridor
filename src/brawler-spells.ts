@@ -102,7 +102,7 @@ export function markShadowTrail(game, fromX, fromY, now, kind = "carry") {
   const dodge = kind === "dodge";
   if (!dodge) { const d = Math.hypot(p.x - fromX, p.y - fromY); if (!(d >= T.minJump) || d > T.maxJump) return false; }
   const r = game.shadowTrail || (game.shadowTrail = { live: false, map: null, at: 0, endAt: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, durationMs: 1, moving: false, linear: false, pose: false });
-  r.live = true; r.map = game.map; r.at = now; r.fromX = fromX; r.fromY = fromY; r.toX = p.x; r.toY = p.y; r.moving = dodge; r.linear = dodge; r.pose = !dodge;
+  r.live = true; r.map = game.map; r.at = now; r.fromX = fromX; r.fromY = fromY; r.toX = p.x; r.toY = p.y; r.moving = dodge; r.linear = dodge; r.pose = !dodge && kind !== "rush"; // "rush": the Iron Fists' plain cross rush (Tim 2026-11-14), ghosts without the Shadow Boxing lean and tint
   r.endAt = now; r.durationMs = dodge ? Math.max(1, (Number(p.dodgeUntil) || now) - now) : T.carryMs;
   return true;
 }
