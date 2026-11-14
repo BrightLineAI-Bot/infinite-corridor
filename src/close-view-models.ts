@@ -533,7 +533,7 @@ const ashClaw = 0xb78a62;
 // broken crown spikes and slanted ember eyes, long clawed arms and short coal legs. 158 triangles.
 const ashling = [
   part(ellipsoid(6, 2), 0, 0, .64, .23, .255, .29, ash, 0, 0, .64, .14, true),
-  part(membrane([[.226, .004, .86], [.238, .034, .75], [.226, -.022, .67], [.234, .03, .57], [.214, -.012, .47]]), 0, 0, 0, 1, 1, 1, ember),
+  part(membrane([[.262, .004, .84], [.262, .034, .74], [.25, -.022, .66], [.244, .03, .57], [.222, -.012, .48]]), 0, 0, 0, 1, 1, 1, ember),
   part(ellipsoid(6, 2), .13, 0, .985, .19, .19, .175, coal, 82, .04, .88, 0, true),
   jointed(part(taper, .05, -.12, 1.19, .075, .066, .14, ash, 0, .05, 1.12, -.42), 82, .04, .88),
   jointed(part(taper, .06, .12, 1.17, .075, .072, .10, ash, 0, .06, 1.12, -.30), 82, .04, .88),
@@ -628,7 +628,7 @@ const ashenHound = [
 ];
 for (const side of [-1, 1]) {
   ashenHound.push(
-    jointed(part(taper, .33, side * .097, .719, .068, .061, .30, houndFur, 0, .33, .657, -.38), 82, .27, .55),
+    jointed(part(taper, .33, side * .1, .70, .06, .055, .10, houndFur, 0, .33, .657, -.38), 82, .27, .55),
     part(curvedTube([[.235,side*.131,.43,.045],[.235,side*.131,.20,.038],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
     part(curvedTube([[-.293,side*.132,.41,.045],[-.293,side*.132,.19,.038],[-.25,side*.132,.035,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
     part(membrane([[.50, side * .07, .62], [.47, side * .12, .63], [.49, side * .11, .60]]), 0, 0, 0, 1, 1, 1, houndEye, 82, .27, .55),

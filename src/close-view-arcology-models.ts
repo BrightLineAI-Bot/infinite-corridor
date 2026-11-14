@@ -59,8 +59,8 @@ const cinderWisp = [
 ];
 for (const side of [-1, 1]) cinderWisp.push(part(membrane([[.185, side * .035, .64], [.17, side * .11, .66], [.18, side * .09, .60]]), 0, 0, 0, 1, 1, 1, char, 8, 0, .58));
 for (let i = 0; i < 6; i++) {
-  const a = (i + .5) * Math.PI / 3, x = Math.cos(a) * .1, y = Math.sin(a) * .13, h = (i % 3) * .08;
-  cinderWisp.push(part(curvedTube([[x, y, .68, .075], [x - .07, y * 1.15, .86 + h * .5, .05], [x - .2, y * .9, 1.0 + h, .008]], 4), 0, 0, 0, 1, 1, 1, i % 2 ? flame : cinder, 124 + (i % 2), 0, .6));
+  const a = (i + .5) * Math.PI / 3, x = Math.cos(a) * .12, y = Math.sin(a) * .14, h = (i % 3) * .06;
+  cinderWisp.push(part(curvedTube([[x, y, .66, .09], [x - .09, y * 1.1, .84 + h * .5, .06], [x - .24, y * .75, .96 + h, .008]], 4), 0, 0, 0, 1, 1, 1, i % 2 ? cinder : ember, 124 + (i % 2), 0, .6));
 }
 
 // Veil Moth, a drifting predator: a slim body, a dark head (joint 82) with pale eyes and feathered antennae, broad forewings
@@ -88,14 +88,14 @@ for (const side of [-1, 1]) veilMoth.push(
 // by seven independently phased tapered tentacles (joints 10-16). 198 triangles.
 const voidSentinel = [
   part(ellipsoid(8, 3), 0, 0, .91, .31, .30, .39, voidShell, 0, 0, .91, 0, true),
-  part(ellipsoid(6, 2), .24, 0, .95, .085, .19, .17, voidEye, 0, .24, .95, 0, true),
-  part(ellipsoid(5, 1), .318, 0, .95, .02, .045, .12, voidDark, 0, .318, .95, 0, true),
+  part(ellipsoid(6, 2), .245, 0, .94, .09, .2, .19, voidEye, 0, .245, .94, 0, true),
+  part(ellipsoid(5, 1), .325, 0, .94, .02, .05, .13, voidDark, 0, .325, .94, 0, true),
 ];
 for (let i = 0; i < 7; i++) {
   const a = (i - 3) * .36, y = Math.sin(a) * .23, x = Math.cos(a) * .10 - .04;
   voidSentinel.push(part(curvedTube([[x, y, .66, .045], [x - .10 - .025 * (i % 2), y * 1.32, .34, .030], [x + .04 * Math.sin(i), y * 1.65, .04, .009]], 4), 0, 0, 0, 1, 1, 1, i % 2 ? voidDark : voidShell, 10 + i, x, .66));
 }
-voidSentinel.push(part(membrane([[.25, -.2, 1.06], [.30, -.1, 1.15], [.33, .1, 1.15], [.27, .2, 1.06]]), 0, 0, 0, 1, 1, 1, voidDark));
+voidSentinel.push(part(membrane([[.25, -.21, 1.05], [.31, -.1, 1.12], [.31, .1, 1.12], [.25, .21, 1.05]]), 0, 0, 0, 1, 1, 1, voidDark));
 
 export const CLOSE_VIEW_ARCOLOGY_MODELS = { glassMite, sparkWarden, cinderWisp, veilMoth, voidSentinel };
 export const CLOSE_VIEW_ARCOLOGY_KINDS = Object.freeze(Object.keys(CLOSE_VIEW_ARCOLOGY_MODELS));
@@ -117,7 +117,7 @@ export const CORE_JOINT_POSE = Object.freeze({
   rootBrute: Object.freeze({ '*': Object.freeze({ [-2]: J(-2.55, -.62, .32), 2: J(-2.55, -.62, .32, .06), [-1]: J(-.2, -.28), 1: J(.25, .34), 82: J(-.3, .22, .12) }) }),
   // The Long Reach pole thrust: the halberd arm lifts the blade upright, then levels it point first; the cape streams back, the
   // free arm draws back and the helm dips behind the point.
-  hollowMarshal: Object.freeze({ '*': Object.freeze({ [-2]: J(.38, -1.05, .14), 2: J(-.35, .45, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .14, .06) }) }),
+  hollowMarshal: Object.freeze({ '*': Object.freeze({ [-2]: J(-.32, .95, -.16), 2: J(-.35, .45, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .14, .06) }) }),
   // The Zigzag Assault: the hind legs load under the body and drive, the forequarters lift and both forelegs reach (the lead one
   // further), the head drops to stalk then snaps forward as the jaw gapes and slams shut; the tail counterbalances.
   ashenHound: Object.freeze({ '*': Object.freeze({ 2: J(.32, -1.0, .35), [-2]: J(.32, -.78, .3, .1), 1: J(-.38, .62, -.2), [-1]: J(-.38, .62, -.2, .1), 6: J(-.3, .5, -.22, .3), 82: J(.28, -.2, .14), 30: J(.55, -.04, .3) }) }),
@@ -132,7 +132,7 @@ export const CORE_JOINT_POSE = Object.freeze({
   glassMite: Object.freeze({ '*': Object.freeze({ 70: J(.34, -.66, .22), 71: J(.34, -.58, .26, .08), 72: J(-.12, .2, .36, .16), 73: J(-.12, .2, .36, .2), 74: J(-.34, .5, -.12, .28), 75: J(-.34, .56, -.16, .32), 82: J(-.12, .16, .08), 30: J(-.62, .42, -.18) }) }),
   // The bolt: the staff arm draws the staff up and back, thrusts it level at the target and kicks back as the bolt leaves; the
   // free hand rises to channel, the stance braces and the helm tips into the aim.
-  sparkWarden: Object.freeze({ '*': Object.freeze({ [-2]: J(.55, -1.2, .32), 2: J(-.7, -.25, .12), [-1]: J(-.15, -.28), 1: J(.15, .28), 82: J(.12, -.14, .06) }) }),
+  sparkWarden: Object.freeze({ '*': Object.freeze({ [-2]: J(-.4, 1.15, -.28), 2: J(-.7, -.25, .12), [-1]: J(-.15, -.28), 1: J(.15, .28), 82: J(.12, -.14, .06) }) }),
   // The cast: the flame tongues draw back and gather, then flare forward over the core and gutter on the release.
   cinderWisp: Object.freeze({ '*': Object.freeze({ 124: J(-.36, .52, -.22), 125: J(-.26, .62, -.28, .15) }) }),
   // The cast: the wings rise and sweep back, then clap forward to throw the force; the head lifts and the legs trail.
