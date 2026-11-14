@@ -12,8 +12,8 @@
 // the fight: a world beast's id carries its hunt's cycle), so it is the same on every reload. It comes at most once per fight: the
 // fights it came to are kept in save.spinoInterlopers (additive at schema 14, the newest `keep`), and while it lives the area's snapshot
 // keeps it. It is tuned to the Wayfarer like the roaming beast, with no hunt (no tries, retreat or bounty): game.ts tuneSpinoBeast.
-import { hashSeed } from "./random.js?v=r948-c8651a95a1b1";
-import { stegoRoomGround, stegoRoomSquare } from "./wild-stego.js?v=r948-c8651a95a1b1";
+import { hashSeed } from "./random.js?v=r949-8620d2d2e96d";
+import { stegoRoomGround, stegoRoomSquare } from "./wild-stego.js?v=r949-8620d2d2e96d";
 
 export const SPINO_ROOMS = { version: 1, chance: .1, side: 10 };
 export const SPINO_INTERLOPER = {

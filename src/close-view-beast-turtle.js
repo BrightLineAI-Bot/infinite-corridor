@@ -11,11 +11,11 @@
 //
 // Body units are the standard view's (a tile times the actor's scale). monster-pack.ts reaches close-view.ts, which loads this
 // module before monster-pack.ts has finished loading, so its tables are read lazily (never at module load).
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r948-c8651a95a1b1";
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r949-8620d2d2e96d";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r948-c8651a95a1b1";
+} from "./close-view-beast-rig.js?v=r949-8620d2d2e96d";
 
 export const TURTLE_RIG = Object.freeze({
   closeViewScale: 1.25, // drawn a quarter larger than the standard view, like every Close View beast (presentation only)

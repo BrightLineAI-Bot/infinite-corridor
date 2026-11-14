@@ -11,12 +11,12 @@
 //
 // Body units are the standard view's (a tile times the actor's scale). monster-pack.ts reaches close-view.ts, which loads this module
 // before monster-pack.ts has finished loading, so its tables are read lazily (never at module load).
-import { DUELISTS } from "./duelists.js?v=r948-c8651a95a1b1";
+import { DUELISTS } from "./duelists.js?v=r949-8620d2d2e96d";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r948-c8651a95a1b1";
-import { DUELIST_BODY } from "./close-view-beast-duelist-body.js?v=r948-c8651a95a1b1";
+} from "./close-view-beast-rig.js?v=r949-8620d2d2e96d";
+import { DUELIST_BODY } from "./close-view-beast-duelist-body.js?v=r949-8620d2d2e96d";
 
 // The Wayfarer's Close View height in tiles (close-view.ts: the imported hero is drawn 1.68 x .82 tall); the Gaunt stand 1.1 x that.
 export const WAYFARER_CV_HEIGHT = 1.68 * .82;
