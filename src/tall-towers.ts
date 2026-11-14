@@ -49,6 +49,8 @@ export const TALL_TOWERS = f({
   slab: 1, // a ledge or a platform is drawn this many levels thick, hollow beneath (Close View; landscape heights unchanged)
   dwellerKinds: f({ perch: "roofGargoyle", flier: "slateRook" }), // from the existing pack (roof-dwellers.ts): one keeps its ledge, one flies the shaft
   dwellerClear: 3, // tiles kept between a creature and a door, the summit or another creature
+  dwellerBoost: f({ roofGargoyle: f({ hp: 2, damage: 2 }) }), // Tim, 2026-11-14: the Eave Gargoyle on a tower's walls has twice the health and damage of its kind at that ring and tier (on top of the tier scale); other dwellers none
+  dwellerVitals: 3, // how the creatures' health and damage were derived: 1 (releases 937 to 949) took the region's threat twice (about 30x the health and 15x the damage of their kind at ring 200); 2 (unreleased) took it once, as every creature does; 3 adds `dwellerBoost`. A dweller saved under 1 is mended on load (game.ts)
   exteriorStep: "skyPlatform", // the floating steps up to a raised door (the Sky Stairs' kind)
   messages: f({
     arrive: "An Upwell stands here: a tower hollow to the sky.",

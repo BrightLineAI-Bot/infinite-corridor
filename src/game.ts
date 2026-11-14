@@ -2960,6 +2960,7 @@ export class Game {
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
+          if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       };
@@ -3004,6 +3005,7 @@ export class Game {
         for (const e of this.enemies) {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
+          if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       }
@@ -3511,6 +3513,8 @@ export class Game {
           ai: { ...ensureAI(e), ...restored.ai },
         };
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
+        if (e.towerScaled && !isTombstone(restored) && restored.towerVitals !== TALL_TOWERS.dwellerVitals) { const share = restored.maxHp > 0 ? Math.max(0, Math.min(1, (Number(restored.hp) || 0) / restored.maxHp)) : 1; // tall towers: a dweller saved with the region taken twice (TALL_TOWERS.dwellerVitals) takes its true health and damage, keeping its wounds
+          Object.assign(merged, { maxHp: e.maxHp, hp: merged.dead ? 0 : Math.max(1, Math.round(e.maxHp * share)), damage: e.damage, towerVitals: TALL_TOWERS.dwellerVitals }); if (e.baseDamage != null) merged.baseDamage = e.baseDamage; else delete merged.baseDamage; }
         if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !spinoTuned(merged) && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
@@ -7339,7 +7343,7 @@ export class Game {
         if (GUARDIAN_ROLES.includes(c.dungeonRole)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, guardianAffixes(f)); else if (!c.affixes && !c.ambient && (hashSeed(`${this.save.seed}:deep-affix:${f}:${c.id}`) % 1000) / 1000 < floorAffixShare(f)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, 1); }
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
       if (area === "dungeon" && this.map?.building && e.buildingGuard && !c.buildingScaled) { const k = buildingScale(this.map.building.floor), G = BUILDINGS.creatures.guardian; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * (e.buildingGuardian ? G.hp : 1))); c.damage = Math.max(1, Math.round(c.damage * k.damage * (e.buildingGuardian ? G.damage : 1))); if (c.baseDamage) c.baseDamage = c.damage; if (e.buildingGuardian) { c.packName = e.keyKeeper ? TOWER_SEAL.keeper.name : `${this.map.building.style === "keep" ? "Keep" : "Arcology"} Guardian`; /* TOWER_SEAL: the tower key's warden */ c.affixes = rollAffixes(`${this.save.seed}:building-guardian:${c.id}`, G.affixes); } if (e.pentBoss) { const B = e.pentBoss, g = e.buildingGuardian ? G : { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp / g.hp * B.hp)); c.damage = Math.max(1, Math.round(c.damage / g.damage * B.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.packName = B.name; c.pentBoss = true; c.affixes = rollAffixes(`${this.save.seed}:pentagon-boss:${c.id}`, B.affixes); } c.buildingScaled = true; c.buildingGuard = true; } // great buildings: each floor up is harder; the top floor's guardian most of all
-      if (e.towerDweller && !c.towerScaled) { const k = towerTierOf(e.towerDweller).scale; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.towerScaled = true; c.towerDweller = e.towerDweller; this.scaleToRegion(c); } // tall towers: the creatures on its walls, by tier, then the region
+      if (e.towerDweller && !c.towerScaled) { const k = towerTierOf(e.towerDweller).scale, b = TALL_TOWERS.dwellerBoost[c.kind] || { hp: 1, damage: 1 }; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp * b.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage * b.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.towerScaled = true; c.towerDweller = e.towerDweller; this.scaleToRegion(c); c.towerVitals = TALL_TOWERS.dwellerVitals; } // tall towers: the creatures on its walls, by tier, then the region (once: the fresh-area pass below skips them)
       if (e.adventureCreature) { c.adventureCreature = e.adventureCreature; this.scaleToRegion(c); } // Pentagon v11: an adventure creature (adventure-creatures.ts) takes its region's threat
       if (e.stegoRoom) tuneStegoRoom(c, this.save, characterStats(this.save)); // the Wild Stegosaurus in a big room (wild-stego.ts)
       if (e.spinoRoom) tuneSpinoBeast(c, this.save, characterStats(this.save), { spinoRoom: true }); // the Spinosaurus in a big room (spino-rex.ts)

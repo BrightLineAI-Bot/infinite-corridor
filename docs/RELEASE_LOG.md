@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r948 (`c8651a95a1b1`); production serves `r948-c8651a95a1b1` (published 2026-11-13 after a Fable review of r947 to r948). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r949 (`8620d2d2e96d`); production serves `r949-8620d2d2e96d` (published 2026-11-13 after a Fable review of r948 to r949). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 949 | Claude | claude/compass-north | The compass dial stays north-up in both views; the objective needle points at the map bearing; in Close View a small rim marker shows the way the Wayfarer faces (replaces the 2026-11-11 dial that turned with the facing) | In flight. |
+| 950 | Claude | claude/tower-fixes | Upwell towers: a raised door's floating steps (and the Wayfarer on them) draw over the tower face in Standard View; tower wall creatures no longer take the regional difficulty twice (an Eave Gargoyle far out had ~33x health, ~15x damage); old saves mended once | In flight. |
+| 949 | Claude | claude/compass-north | The compass dial stays north-up in both views; the objective needle points at the map bearing; in Close View a small rim marker shows the way the Wayfarer faces (replaces the 2026-11-11 dial that turned with the facing) | Merged as `8620d2d2e96d` (#616). Published 2026-11-13. |
 | 948 | Claude | claude/no-select-hud | Page-wide user-select: none and no long-press callout for the game UI (buttons, HUD, action diamond, menus); text inputs and contenteditable stay selectable | Merged as `c8651a95a1b1` (#615). |
 | 947 | Claude | claude/ki-slam-pause | r946 review note: kiSlamJump added to GAME_CLOCKS so a pause or app-background inside the Ki Blast leap no longer turns the slam into a plain plunge | Merged as `4da3a989e6d9` (#614). |
 | 946 | Claude | claude/look-everything | Look mode can frame anything Close View draws (characters, creatures, world beasts, props, trees, buildings, bodies, terrain): tap to pick in Look mode (never attacks/interacts/moves), big subjects framed whole from farther back, reach widens with zoom, a name line under the compass; plus r945 review notes (Ki Blast slam only in its own leap, a kick after losing the awakening is a plain cross, compass Enter after a cancelled hold) | Merged as `4c6c4e323b38` (#613). |
