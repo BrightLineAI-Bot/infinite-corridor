@@ -587,7 +587,8 @@ for (const side of [-1, 1]) {
 // Hollow Marshal: crimson armour, a crested helm with a brass visor slit, a cape, and a halberd carried at guard - shaft up
 // and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first. 220 triangles.
 const marshalHand = [.04, -.41, .94], marshalDir = [.47, .883];
-const marshalAt = (k, n = 0) => [marshalHand[0] + marshalDir[0] * k + marshalDir[1] * n, marshalHand[1], marshalHand[2] + marshalDir[1] * k - marshalDir[0] * n];
+// The halberd is drawn at .8 of its first length so its blade stays inside the Marshal's contact height (actor-contact.ts).
+const marshalAt = (k0, n = 0, k = k0 * .8) => [marshalHand[0] + marshalDir[0] * k + marshalDir[1] * n, marshalHand[1], marshalHand[2] + marshalDir[1] * k - marshalDir[0] * n];
 const hollowMarshal = [
   part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
   part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
