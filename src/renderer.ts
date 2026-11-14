@@ -3443,11 +3443,21 @@ function drawDamageNumbers(ctx,g,s,now){const list=g.damageFloaters;if(!list?.le
   for(const f of list){const k=Math.min(1,Math.max(0,(now-f.born)/900));if(k>=1)continue;const taken=f.kind==="taken",size=Math.max(11,Math.round(s*(taken?.36:.32))),x=(f.x+f.jitter)*s,y=(f.y-k*.9)*s;
     ctx.globalAlpha=k<.7?1:1-(k-.7)/.3;ctx.font=`bold ${size}px system-ui,sans-serif`;ctx.lineWidth=3;ctx.strokeStyle="rgba(0,0,0,.85)";ctx.strokeText(taken?`-${f.text}`:f.text,x,y);ctx.fillStyle=taken?"#ff6b6b":"#ffd970";ctx.fillText(taken?`-${f.text}`:f.text,x,y)}
   ctx.restore()}
+// A frozen foe: a pale ice shell over its body (sized to it, so a boss is covered too) ringed by ice shards, fading as it thaws;
+// a filling meter: a pale arc round it, as full as the meter. A few strokes, no allocation.
+function drawSweepFrost(ctx,e,q,cx,cy,s){
+  const r=s*(.46+Math.max(0,(Number(e.bodyRadius)||.38)-.38)*1.1);
+  if(q.left>0){const k=Math.max(0,Math.min(1,q.left/Math.max(.01,q.hold||q.left)));ctx.globalAlpha=.3+.25*k;ctx.fillStyle="#bfe4ff";ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fill();
+    ctx.globalAlpha=.6+.35*k;ctx.strokeStyle="#effaff";ctx.lineWidth=Math.max(1.5,s*.05);ctx.stroke();ctx.lineWidth=Math.max(1.5,s*.06);
+    for(let i=0;i<6;i++){const a=i*Math.PI/3+.3;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r*.82,cy+Math.sin(a)*r*.82);ctx.lineTo(cx+Math.cos(a)*r*(1.16+.06*k),cy+Math.sin(a)*r*(1.16+.06*k));ctx.stroke()}ctx.globalAlpha=1}
+  else if(q.fill>0){ctx.globalAlpha=.75;ctx.strokeStyle="#bfe4ff";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.min(1,q.fill)*Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+}
 function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
     if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
+    if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
     if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 967: The awakened Great Sweep freezes whatever its blade touches, and with Mirage of Blades whatever the thrown blades cut. Ordinary foes freeze at a touch. Elites and bosses (guardians, world beasts, Gate Revenants) fill a freeze meter, are slowed as it fills, and freeze for a moment when it is full. Each later freeze takes more and lasts less, and a guard after every thaw means nothing can be held frozen.
 - Release 966: Arc Wave: the Blunderbuss's three crescents now fly slower and fan out in a wider cone; with Echo glyphs, the great waves race out much faster, overtaking the crescents within a couple of tiles.
 - Release 965: Carbine: the Wayfarer now shoulders it with both hands, cheek down on the stock, and the arms hold steady while charging instead of wobbling.
 - Release 964: Blunderbuss with Arc Wave: each Echo shot is now one great crescent, about as wide as the three arcs as they leave the muzzle. It flies straight along your aim and strikes each foe in its path once (two Echo glyphs: two great waves after every shot).
