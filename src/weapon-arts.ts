@@ -26,8 +26,9 @@
 //   playerRuntime.artRush (brawler-spells.ts LAVA_RUSH) and resumed exactly; a dodge, stun, jump, death or new area cancels it
 //   and stores the charge again.
 //
-// Transpose's seal: standing in it, the Wayfarer's spells (the armor glyphs' Spell Damage path: spells, magic tools, Imbue)
-// deal `spellDamage` more and she takes `damageTaken` more from every blow (game.ts armorGlyphBonus reads transposeBonus).
+// Transpose's seal: standing in it, all the Wayfarer's magic damage (MAGIC_DAMAGE_SOURCES: spells, Imbue, dodge bursts, the
+// Carbine and every magic tool, the Quandrix Staff) deals `spellDamage` more and she takes `damageTaken` more from every blow
+// (game.ts armorGlyphBonus reads transposeBonus; quandrixPower adds transposeMagic).
 import { latticePassives } from "./transit-lattice.ts";
 import { weaponKey } from "./items.ts";
 import { QUANDRIX } from "./quandrix-staff.ts";
@@ -176,6 +177,31 @@ export function weaponArtsState(game) {
 // Transpose's buff is read by the save-only damage path (game.ts armorGlyphBonus): keyed by the live save, never stored in it.
 const SEAL_BUFF = new WeakMap();
 export function transposeBonus(save) { return save && typeof save === "object" ? SEAL_BUFF.get(save) || null : null; }
+// Tim, 2026-11-14: "Transpose should buff magic damage... the Carbine, since that does magic damage, and other weapons that do
+// magic damage. It shouldn't just be spells and skills. It should be all magic damage." Every source of the Wayfarer's magic
+// damage, with the one route by which the seal's bonus reaches it, so it is applied once and never twice:
+// - "spell-damage": the source already multiplies by armor's Spell Damage (game.ts armorGlyphBonus), which adds the seal's bonus.
+// - "own": the source scales with armor's attack damage instead, so it adds the seal's bonus itself (transposeMagic).
+// Copies made from a source's damage (Echo copies, the Carbine's fan, clone beam and Continuous Assault, Spindle shards, Fire
+// Burst blasts) carry it already. The magic tools are the items.ts RANGED_WEAPONS profiles whose damageType is "magic" and the
+// one magic primary is the Quandrix Staff (QUANDRIX.damageType); tests/transpose-magic.test.ts keeps this table in step with them.
+// Physical damage (the other primaries, weapon arts, punches, Needle Caster, Blunderbuss, Bombard, Hammerfall, Great Sweep,
+// Mirage of Blades, the golem) is never buffed.
+export const MAGIC_DAMAGE_SOURCES = Object.freeze({
+  spell: "spell-damage", // every spell: fields, Fire Burst, Orbit Volley, their Echo copies
+  "imbue-weapon": "spell-damage", // Imbue Weapon's magic share on swings, punches and tool blows
+  "dodge-burst": "spell-damage", // Ember Wake and the Afterimage skill node
+  "spark-coil": "spell-damage", // magic tool shots (game.ts fireSecondary)
+  "secondary-lumen-spindle": "spell-damage",
+  "secondary-aether-orrery": "spell-damage", // game.ts orreryPower
+  "secondary-carbine": "spell-damage", // tool-forms.ts carbineBase
+  "quandrix-staff": "own", // its hands, slam ticks and bursts (game.ts quandrixPower: meleePower, armor attack damage)
+});
+// The seal's bonus a magic source of route "own" adds itself (0 for any other source, or outside the seal).
+export function transposeMagic(save, source) {
+  if (MAGIC_DAMAGE_SOURCES[source] !== "own") return 0;
+  const b = transposeBonus(save); return b ? b.spellDamage : 0;
+}
 const BONUS = Object.freeze({ spellDamage: WEAPON_ARTS.arts.transpose.spellDamage, damageTaken: WEAPON_ARTS.arts.transpose.damageTaken });
 function setBuff(game, on) { const K = game.weaponArts; K.buff = on; if (on) SEAL_BUFF.set(game.save, BONUS); else SEAL_BUFF.delete(game.save); }
 
