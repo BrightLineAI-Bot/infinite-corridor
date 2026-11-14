@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {swingTo} from './swing-helpers.ts';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createLabFixture} from '../src/proving-ground-labs.ts';
@@ -19,7 +20,8 @@ function fixture(now=start){
 }
 function input(action=null){const q=new Set(action?[action]:[]);return{state:{x:0,y:0},consume:k=>q.delete(k),held:()=>false,reset:()=>{}};}
 function press(g,now){g.update(.016,input('attack'),now);return g.player.attackVisual.primaryMotion?.step;}
-function contact(g){const q=copy(g.pendingMeleeContact);assert.ok(q);g.update(.001,input(),q.releaseAt);assert.equal(g.pendingMeleeContact,null);return q;}
+// 2026-11-14: a Cleaver press is a weighted swing (melee-swing.ts, record v3); run it out on its own clock. v1 records still release at releaseAt.
+function contact(g){const q=copy(g.pendingMeleeContact);assert.ok(q);if(q.v===3)swingTo(g,q.lastNow);else g.update(.001,input(),q.releaseAt);assert.equal(g.pendingMeleeContact,null);return q;}
 const stamp=g=>g.player.primaryCombo.resetWindow.acceptedLogicalMs;
 
 test('actual Cleaver acceptance continues at 999ms and resets at 1000/1001ms without changing mechanics',()=>{
@@ -30,7 +32,7 @@ test('actual Cleaver acceptance continues at 999ms and resets at 1000/1001ms wit
     assert.deepEqual(primaryCarryStage(prior,combo,false),{kind:'cleaver-three',step:1,direction:1});
     assert.equal(press(g,start+gap),gap<1000?2:1);
     assert.equal(stamp(g),start+gap);const ready=g.player.attackReadyAt-(start+gap),second=contact(g);
-    assert.equal(foe.hp,before-damage);assert.equal(ready,420);
+    assert.equal(foe.hp,before-damage);assert.equal(ready,0,'the live swing, not a cooldown, gates the next press');
     assert.equal(second.contactMs,first.contactMs);assert.deepEqual(second.payload.profile,first.payload.profile);assert.deepEqual(second.aim,first.aim);
     g.update(.01,input(),start+gap+500);assert.equal(foe.hp,before-damage,'each accepted attack contacts once');
   }
@@ -100,7 +102,7 @@ test('old v2 without a stamp restarts only on acceptance, while opaque future co
   const {g:legacyWindow}=fixture();legacyWindow.player.primaryCombo={...known.primaryCombo,step:3};
   assert.equal(press(legacyWindow,start),4);
   assert.deepEqual(legacyWindow.player.attackVisual.primaryMotion,{v:2,step:4});
-  assert.equal(legacyWindow.pendingMeleeContact.action.v,1);
+  assert.equal(legacyWindow.pendingMeleeContact.v,3,'2026-11-14: even a legacy counter now presses a weighted swing (melee-swing.ts)');
   assert.deepEqual(legacyWindow.player.primaryCombo.resetWindow,futureWindow);
   contact(legacyWindow);
 });

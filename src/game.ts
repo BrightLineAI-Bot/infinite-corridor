@@ -1,6 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { canopyGateDestination } from './trees.ts';
 import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
+import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, circleTouchesSector, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
 import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -2840,7 +2841,9 @@ export class Game {
           : "Tool aim stowed.";
         return false;
       }
-      return fire(now, direction, action);
+      const fired = fire(now, direction, action);
+      if (fired && this.pendingMeleeContact?.v === 3) this.cancelPendingMeleeContact("tool"); // an accepted tool cancels the swing at once, in any phase
+      return fired;
     };
     const attack = this.primaryAttack.bind(this);
     this.primaryAttack = (now = 0, direction = null) => {
@@ -3763,6 +3766,7 @@ export class Game {
       const pausedMs = Math.max(0, now - this.pauseStarted);
       shiftClocks(this, pausedMs); // release 736 (F5/C12): every timer, from the one list
       if(this.pendingMeleeContact?.v===1){this.pendingMeleeContact.acceptedAt+=pausedMs;this.pendingMeleeContact.releaseAt+=pausedMs;}
+      if(this.pendingMeleeContact?.v===3)this.pendingMeleeContact.lastNow+=pausedMs; // a paused swing resumes where it stood
       // Runtime presentation clocks can observe a pause even when scenes/background suspension skip every render/input callback.
       // Its logical time is saved separately; this offset never joins the gameplay clock lists.
       this.presentationPausedMs = (this.presentationPausedMs || 0) + pausedMs;
@@ -3819,7 +3823,7 @@ export class Game {
         attackMotion: remaining(this.player.attackUntil, clock),
         attackVisual: normalizeAttackVisual(this.player.attackVisual, remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock)),
         pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
-        pendingMeleeContact:this.savedPendingMeleeContact(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingMeleeContact?.v)&&this.save.session.playerRuntime.pendingMeleeContact.v>1?structuredClone(this.save.session.playerRuntime.pendingMeleeContact):null),
+        pendingMeleeContact:this.savedPendingMeleeContact(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingMeleeContact?.v)&&this.save.session.playerRuntime.pendingMeleeContact.v>3/* a future record kept opaque */?structuredClone(this.save.session.playerRuntime.pendingMeleeContact):null),
         hammerfallStartup:this.savedHammerfallStartup(),
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -3883,8 +3887,8 @@ export class Game {
   }
   savedPendingToolUse(clock){const q=this.pendingToolUse;if(!q||q.v!==1)return null;const remainingMs=Math.max(0,Math.min(q.startupMs,q.releaseAt-clock)),elapsedMs=q.startupMs-remainingMs;return normalizePendingToolUse({...q,acceptedAt:undefined,releaseAt:undefined,elapsedMs,remainingMs});}
   restorePendingToolUse(raw,now){const q=normalizePendingToolUse(raw);if(!q||q.v!==1||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||!(this.player.hp>0)){this.pendingToolUse=null;return false;}const{elapsedMs,remainingMs,...rest}=q;this.pendingToolUse={...rest,acceptedAt:now-elapsedMs,releaseAt:now+remainingMs};return true;}
-  savedPendingMeleeContact(clock){const q=this.pendingMeleeContact;if(!q||q.v!==1)return null;const remainingMs=Math.max(0,Math.min(q.contactMs,q.releaseAt-clock)),elapsedMs=q.contactMs-remainingMs;return normalizePendingMeleeContact({...q,acceptedAt:undefined,releaseAt:undefined,elapsedMs,remainingMs});}
-  restorePendingMeleeContact(raw,now){const q=normalizePendingMeleeContact(raw);if(!q||q.v!==1||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||!(this.player.hp>0)){this.pendingMeleeContact=null;return false;}const{elapsedMs,remainingMs,...rest}=q;this.pendingMeleeContact={...rest,acceptedAt:now-elapsedMs,releaseAt:now+remainingMs};return true;}
+  savedPendingMeleeContact(clock){const q=this.pendingMeleeContact;if(q?.v===3)return normalizePendingSwing(q);if(!q||q.v!==1)return null;const remainingMs=Math.max(0,Math.min(q.contactMs,q.releaseAt-clock)),elapsedMs=q.contactMs-remainingMs;return normalizePendingMeleeContact({...q,acceptedAt:undefined,releaseAt:undefined,elapsedMs,remainingMs});}
+  restorePendingMeleeContact(raw,now){if(raw?.v===3){const w=normalizePendingSwing(raw),ok=!!w&&w.area===this.area&&w.areaId===this.areaId()&&w.levelId===String(this.map?.levelId||'root')&&this.player.hp>0&&this.swingWeaponKind()===w.weapon;this.pendingMeleeContact=ok?{...w,lastNow:now}:null;return ok;}const q=normalizePendingMeleeContact(raw);if(!q||q.v!==1||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||!(this.player.hp>0)){this.pendingMeleeContact=null;return false;}const{elapsedMs,remainingMs,...rest}=q;this.pendingMeleeContact={...rest,acceptedAt:now-elapsedMs,releaseAt:now+remainingMs};return true;}
   savedHammerfallStartup(){const q=this.hammerfallStartup;if(q?.v===1)return normalizeHammerfallStartup(q);const old=this.save.session.playerRuntime.hammerfallStartup;return Number.isInteger(old?.v)&&old.v>1?structuredClone(old):null;}
   restoreHammerfallStartup(raw){const q=normalizeHammerfallStartup(raw);this.hammerfallStartup=q?.v===1?q:null;if(this.hammerfallStartup&&this.resolveHammerfallStartup().status!=='pending')this.hammerfallStartup=null;if(this.hammerfallStartup&&this.pendingToolUse)this.cancelPendingToolUse('dual-startup-restore');return !!this.hammerfallStartup;}
   // Release 736 (review F8): lethal ground is judged where the Wayfarer ends up, not where the stick pointed. A step whose end
@@ -7838,7 +7842,7 @@ export class Game {
     const w=Math.max(1,Number(m.width)||32),t=m.tiles?.[Math.floor(p.y+.75)*w+Math.floor(p.x+.5)];return !(t&&(t.courtyard===true||t.openAir===true||t.pentRoof===true||t.pentBalcony===true||t.kind==="yardGrass"));
   }
   closeViewAttackBufferEligible(now = 0) {
-    return this.closeViewActionEligible() && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
+    return (this.closeViewActionEligible() || !!this.swingWeaponKind() /* melee-swing.ts: the Cleaver's press buffers the same in every area and view */) && !this.fistsEquipped() && this.save.activeWeaponSlot !== "secondary"
       && !this.cursed("attack", now) && !this.penned(now);
   }
   ordinaryCloseViewBody() {
@@ -7886,7 +7890,78 @@ export class Game {
   // Tim 2026-11-12: a cancel (dodge, a tool, a cast, a stun, a switch, leaving) before the Fourfold Daggers' second cut starts
   // drops that cut; the first has already landed at the press, and a second cut already struck stays struck.
   dropDaggerCut(){const list=this.glyphTimers;if(!list?.length)return false;const kept=list.filter(t=>t.kind!=='daggerCut');if(kept.length===list.length)return false;this.glyphTimers=kept;return true;}
-  cancelPendingMeleeContact(_reason='cancelled'){const droppedCut=this.dropDaggerCut(),q=this.pendingMeleeContact;if(!q)return droppedCut;this.pendingMeleeContact=null;if(q.payload?.kind==='fist'&&this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed)&&this.fistCombo.landed.length)this.fistCombo.landed[this.fistCombo.landed.length-1]=false;const v=this.player?.attackVisual;if(v?.meleeAction?.v===1||v?.meleeAction?.v===2)v.presentationCancelled=true;return true;}
+  cancelPendingMeleeContact(_reason='cancelled'){const droppedCut=this.dropDaggerCut(),q=this.pendingMeleeContact;if(!q)return droppedCut;this.pendingMeleeContact=null;if(q.payload?.kind==='fist'&&this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed)&&this.fistCombo.landed.length)this.fistCombo.landed[this.fistCombo.landed.length-1]=false;const v=this.player?.attackVisual;if(v?.meleeAction?.v===1||v?.meleeAction?.v===2)v.presentationCancelled=true;if(q.v===3&&this.player){this.player.meleeStrike=null;if(v?.meleeAction?.v===3)v.presentationCancelled=true;}return true;} // a cancelled swing: no strike to draw; its body action is marked cancelled (the clocks stay, as a cancelled contact's do)
+  // ---- Weighted swings (melee-swing.ts PRIMARY_SWINGS; Tim 2026-11-14). The same clock, hit and root motion in every area
+  // and in both views. The record lives on pendingMeleeContact at version 3 and saves with the journey (exact resume).
+  swingWeaponKind(){const p=this.save.equipment?.primary;return(p?.id==='primary-verge-cleaver'||p?.name==='Verge Cleaver')&&swingSpec('verge-cleaver')?'verge-cleaver':null;}
+  // A press while a swing is up: start the next step now if its chain point has passed, keep it (buffer) if it comes within
+  // bufferMs of the chain point (or of the end of the finisher's recovery), otherwise let it go. True: start a new step now.
+  swingChainDue(now){
+    const q=this.pendingMeleeContact,spec=PRIMARY_SWINGS[q?.weapon],st=swingStep(spec,q?.step);if(!st){this.pendingMeleeContact=null;return true;}
+    const T=swingTimes(st,q.tempo,this._swingT||(this._swingT={}),spec.lungeFrom),e=q.elapsedMs,at=T.chain??T.recovery;
+    if(T.chain!=null&&e>=T.chain){this.endSwing(q);return true;}
+    if(e>=at-spec.bufferMs*q.tempo){q.queued=true;}
+    return false;
+  }
+  endSwing(q){if(this.pendingMeleeContact===q)this.pendingMeleeContact=null;}
+  startSwing(now,kind,visual,profile,geometry,acceptedCooldown){
+    const spec=PRIMARY_SWINGS[kind],step=Math.max(1,Math.min(spec.steps.length,Number(visual.primaryMotion?.step)||1)),st=spec.steps[step-1],tempo=clampTempo(acceptedCooldown/420),T=swingTimes(st,tempo,{},spec.lungeFrom);
+    const armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null,p=this.player;
+    visual.durationMs=T.recovery;visual.meleeAction={v:3,kind,move:'swing',step,durationMs:T.recovery,contactMs:T.windEnd,tempo};
+    p.attackUntil=p.meleeUntil=p.actionVisualUntil=now+T.recovery;p.meleeStrike=null; // the strike geometry is set at contact
+    this.pendingMeleeContact={v:3,id:`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,weapon:kind,step,tempo,elapsedMs:0,lastNow:now,stopLeft:0,stopUsed:false,lunged:0,lungeDone:false,contacted:false,queued:false,hits:[],
+      area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:geometry.dx,y:geometry.dy},
+      payload:{kind:'swing',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(visual.primaryMotion||null),support:this.playerLevel()}};
+  }
+  // One tick of the live swing: advance its clock (held during hit-stop), carry the lunge, test the swept sector and the body
+  // bubble during the active window, then chain a buffered press or end. One pass over the foes per active tick; the hit and
+  // bubble lists are reused.
+  tickMeleeSwing(now){
+    const q=this.pendingMeleeContact;if(q?.v!==3)return;
+    const p=this.player,spec=PRIMARY_SWINGS[q.weapon],st=swingStep(spec,q.step);
+    if(!st||!(p?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')||now<(p.stunnedUntil||0)||this.swingWeaponKind()!==q.weapon){this.cancelPendingMeleeContact('invalid-owner');return;}
+    let d=Math.max(0,Math.min(1000,now-(Number(q.lastNow)||now)));q.lastNow=now; // the swept test is exact for any step; a long stall is capped
+    if(q.stopLeft>0){const held=Math.min(q.stopLeft,d);q.stopLeft-=held;d-=held;}
+    const T=swingTimes(st,q.tempo,this._swingT||(this._swingT={}),spec.lungeFrom),prev=q.elapsedMs,cur=prev+d;q.elapsedMs=cur;
+    const S=sampleSwing(st,cur,q.tempo,this._swingS||(this._swingS={}),T);
+    // The lunge: root motion through the collision mover (never into a wall, lethal ground or off a ledge), stopping short of a foe in front.
+    const want=st.lunge*S.lunge,step=want-q.lunged;
+    if(step>1e-4&&!q.lungeDone){
+      if(this.swingFoeAhead(q,spec))q.lungeDone=true;
+      else{const bx=p.x,by=p.y,w=this.glyphWorld(now),nx=p.x+q.aim.x*step,ny=p.y+q.aim.y*step;if(!w.canStand(nx,ny)||!this.moveGuardedCombatStep(nx,ny)||Math.hypot(p.x-bx,p.y-by)<step*.5)q.lungeDone=true;}
+      q.lunged=want;
+    }
+    // The swept hit: only what the blade crossed since the last tick, hilt to tip, plus the body bubble, once each per swing.
+    if(cur>T.windEnd&&prev<T.activeEnd){
+      const a0=Math.max(prev,T.windEnd),a1=Math.min(cur,T.activeEnd),aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180;
+      const from=aim+damageAngle(st,q.contacted?a0:T.windEnd,T)*deg,to=aim+damageAngle(st,a1,T)*deg,contact=!q.contacted;q.contacted=true;
+      const hits=(this._swingHits||=[]),bubble=(this._swingBubble||=[]);hits.length=0;bubble.length=0;
+      const cx=p.x+.5,cy=p.y+.45,tip=Number(q.payload.profile.range)||1,width=mapWidth(this.map,this.area);
+      const test=(e,id)=>{if(!id||q.hits.includes(id))return;const extra=Math.max(0,enemyBodyRadius(e)-.38),r=extra+spec.foePad,ex=e.x+.5,ey=e.y+.45,inBubble=Math.hypot(ex-cx,ey-cy)<=spec.bubble+extra;
+        if(!inBubble&&!circleTouchesSector(ex,ey,r,cx,cy,spec.hilt,tip,from,to))return;
+        const range=Math.hypot(ex-cx,ey-cy),n=Math.ceil(range*4);for(let i=1;i<n;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))return;
+        if(q.hits.length<64)q.hits.push(id);hits.push(e);if(inBubble)bubble.push(e);};
+      for(const e of this.enemies)if(!e.dead&&!e.untargetable&&this.bodyReach(e))test(e,String(e.id));
+      for(const o of this.map.objects||[])if(o.kind==='npc'&&this.save.consequences.npcs[o.id]?.status!=='dead')test(o,'npc:'+o.id);
+      if(hits.length||contact){
+        const dealt=this.primaryStrike(now,q.aim,{committed:q.payload,swing:{kind:q.weapon,hits,bubble,share:st.share,contact,aim:q.aim}});
+        this.recordPrimaryConsequences(dealt||[]);
+        for(const e of bubble)if(!e.dead&&!e.boss&&!e.eliteId&&!artAnchored(e)){const kx=e.x+.5-cx,ky=e.y+.45-cy,k=Math.hypot(kx,ky),ux=k>.05?kx/k:q.aim.x,uy=k>.05?ky/k:q.aim.y;this.moveGrounded(e,ux*spec.knockback,uy*spec.knockback);} // the body bubble: knocked off the Wayfarer (along the facing when right on top)
+        if(hits.some(e=>e.kind!=='npc')&&!q.stopUsed&&this.pendingMeleeContact===q){q.stopUsed=true;q.stopLeft=st.hitStopMs;const v=p.attackVisual;p.attackUntil+=st.hitStopMs;p.meleeUntil+=st.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+st.hitStopMs;if(v?.meleeAction?.v===3)v.hitStopMs=(Number(v.hitStopMs)||0)+st.hitStopMs;
+          for(const e of hits)if(!e.dead&&e.kind!=='npc')e.hitStun=Math.max(e.hitStun||0,st.hitStopMs/1000);} // hit-stop: the swing and the struck foes hold
+      }
+    }
+    if(this.pendingMeleeContact!==q)return;
+    if(q.queued&&(T.chain!=null?cur>=T.chain:cur>=T.recovery)){this.endSwing(q);this.attackAction='attack';try{this.primaryAttack(now);}finally{this.attackAction=null;}return;}
+    if(cur>=T.recovery)this.endSwing(q);
+  }
+  swingFoeAhead(q,spec){
+    const p=this.player,cx=p.x,cy=p.y;
+    for(const e of this.enemies){if(e.dead||e.untargetable||e.hidden)continue;const dx=e.x-cx,dy=e.y-cy,dist=Math.hypot(dx,dy),gap=spec.lungeStop+Math.max(0,enemyBodyRadius(e)-.38);
+      if(dist<=gap&&(dist<1e-6||(dx*q.aim.x+dy*q.aim.y)/dist>=spec.lungeCone))return true;
+      if(dist<=spec.bubble+Math.max(0,enemyBodyRadius(e)-.38))return true;} // a foe on top of the Wayfarer: stand and cut (the body bubble takes it)
+    return false;
+  }
   releasePendingMeleeContact(now=this.lastUpdateNow||0){
     const q=this.pendingMeleeContact;if(!q||q.v!==1||now<q.releaseAt||this.paused)return{released:false,cancelled:false};
     if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')){this.cancelPendingMeleeContact('invalid-owner');return{released:false,cancelled:true};}
@@ -7927,20 +8002,22 @@ export class Game {
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (!committed&&this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
     if (!committed&&this.quandrixEquipped()) { if (!echo) quandrixPress(this, now, _direction || this.player.meleeAim || this.save.lastAim, this.attackAction || null); return []; } // the Quandrix Staff casts hands (quandrix-staff.ts)
+    const swingCall=echo?.swing||null,swingKind=!echo?this.swingWeaponKind():null; // melee-swing.ts: a weighted swing (the Verge Cleaver) runs its own clock
+    if(swingKind&&this.pendingMeleeContact?.v===3&&!this.swingChainDue(now))return[];
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
     const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
-    if (!echo) { this.player.attackReadyAt = now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
+    if (!echo) { this.player.attackReadyAt = swingKind ? now /* the swing record gates the next press (swingChainDue) */ : now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
-    this.player.attackUntil = now + ACTION_MOTION.meleeMs;
-    this.player.meleeUntil = now + ACTION_MOTION.meleeMs;
+    if (!swingCall) { this.player.attackUntil = now + ACTION_MOTION.meleeMs;
+    this.player.meleeUntil = now + ACTION_MOTION.meleeMs; }
     const baseProfile = primaryProfile(this.save.equipment.primary),
       profile = committed?.profile||{ ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range + (this.spellbladeOn(now) ? FIELD_PASSIVES.spellblade.reach : 0) /* release 515: Spellblade */, damage: baseProfile.damage * glyphs.mods.damage },
       geometry = meleeAttackGeometry(
         this.player,
         profile,
-        followCut ? echo.aim : this.player.meleeAim || this.save.lastAim,
+        followCut ? echo.aim : swingCall ? swingCall.aim : this.player.meleeAim || this.save.lastAim,
       ),
       daggers = !committed && profile.shape === "daggers"; // items.ts FOURFOLD_DAGGERS: two cuts a press, each `share` of a hit
     this.player.meleeStrike = { ...geometry };
@@ -7951,7 +8028,7 @@ export class Game {
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
         : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(primary) ? FOURFOLD_DAGGERS.closeView.placeholder /* Close View roster hook: the daggers wear the Salvage Blade until their own model lands */ : "salvage-blade";
       const logicalNow = now - (this.presentationPausedMs || 0);
-      const newCleaverMotion=attackVisual.weaponKind==='verge-cleaver'&&this.attackAction==='attack'&&this.closeViewActionEligible();
+      const newCleaverMotion=attackVisual.weaponKind==='verge-cleaver'&&(!!swingKind||this.attackAction==='attack'&&this.closeViewActionEligible()); // the weighted swing: always the clocked three-step combo
       const primaryStep = attackVisual.weaponKind === 'verge-cleaver'
         ? advancePrimaryCombo(this.player, attackVisual.weaponKind, logicalNow,newCleaverMotion)
         : advancePrimaryCombo(this.player, attackVisual.weaponKind);
@@ -7964,12 +8041,13 @@ export class Game {
       if (prior) attackVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw));
       { const awake = !followCut && awakenedFor(this.save); if (awake && ((this.awakenSwings || 0) + 1) % AWAKENED_ARTS.every === 0) attackVisual.awakenedArt = awake; } // awakened-arts.ts: the swing that will release the move wears its pose (close-view-hero.ts awakenedArtPose)
     }
+    if(swingKind&&attackVisual){this.startSwing(now,swingKind,attackVisual,profile,geometry,acceptedCooldown);return[];} // melee-swing.ts: wind-up, swept strike, follow-through (every area, both views)
     const cleaverAccepted=!echo&&this.attackAction==='attack'&&attackVisual?.weaponKind==='verge-cleaver'&&this.closeViewActionEligible();
     if (cleaverAccepted && this.ordinaryCloseViewBody()) {
       attackVisual.cleaverChoreography = acceptCleaverChoreography(priorAttackVisual, this.consumeLogicalNow(now));
     }
     if(cleaverAccepted){const quick=attackVisual.primaryMotion?.v===3,T=quick?CLOSE_VIEW_MELEE_TIMING.cleaverQuick:CLOSE_VIEW_MELEE_TIMING.cleaver,contactMs=Math.max(1,Math.min(T.contactMs,acceptedCooldown)),id=`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,stats=characterStats(this.save),armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null;attackVisual.durationMs=T.durationMs;attackVisual.meleeAction={v:quick?2:1,kind:'verge-cleaver',move:'cleaver',contactMs,durationMs:T.durationMs};this.player.actionVisualUntil=now+T.durationMs;this.pendingMeleeContact={v:1,id,action:{...attackVisual.meleeAction},area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+contactMs,contactMs,aim:{x:geometry.dx,y:geometry.dy},payload:{kind:'cleaver',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(attackVisual.primaryMotion),support:this.playerLevel()}};return[];}
-    const hits = (daggers ? daggerCutHits : primaryAttackHits)(
+    const hits = swingCall ? swingCall.hits : (daggers ? daggerCutHits : primaryAttackHits)(
       this.player,
       [...this.enemies.filter(e=>!e.untargetable&&this.bodyReach(e)), ...this.npcTargets()], // Tim (2026-11-04): the Wayfarer's swing does not reach a creature far below or above (ELEVATION_REACH)
       this.map,
@@ -7978,7 +8056,8 @@ export class Game {
       { x: geometry.dx, y: geometry.dy },
       followCut ? 1 : 0,
     );
-    const cutShare = daggers ? FOURFOLD_DAGGERS.share : 1;
+    const cutShare = daggers ? FOURFOLD_DAGGERS.share : swingCall ? swingCall.share : 1; // a swing step's share (melee-swing.ts PRIMARY_SWINGS)
+    const contact = !swingCall || swingCall.contact, extra = swingCall ? PRIMARY_SWINGS[swingCall.kind].extraShare : 1; // once per swing: the Shadow Clone, the Echo, the awakened move (the Echo and the Clone scaled by the slower swing's cadence; the awakened move, every third swing, keeps its own weight)
     const pounce = isEcho || followCut || !hits.some((q) => q.kind !== "npc") ? 1 : pounceBonus(this, now);
     for (const e of hits) {
       if (e.kind === "npc") {
@@ -8012,16 +8091,16 @@ export class Game {
       if (!isEcho && !scattered) this.bellToll(e, dealt + imbued, now); // 2026-11-11: Bell Toll
     }
     if (daggers && !followCut) (this.glyphTimers ||= []).push({ at: now + FOURFOLD_DAGGERS.gapMs, kind: "daggerCut", aim: { x: geometry.dx, y: geometry.dy }, share: isEcho ? echo.share : 1, echoed: isEcho, areaId: this.areaId() }); // the second cut ("//")
-    if (!isEcho && !followCut) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now); // release 365: the Shadow Clone swings too
+    if (!isEcho && !followCut && contact) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now, extra); // release 365: the Shadow Clone swings too
     // Awakened primary: every third swing releases the weapon's own awakened move (awakened-arts.ts: Fissure, Returning blades,
     // Lance, Spell runes) from a normal hit (the crescent's base). The piercing crescent stays only as the fallback for a weapon
     // with no move of its own (none today) and carries the weapon's glyphs.
-    if (!isEcho && !followCut && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % AWAKENED_ARTS.every === 0 && !awakenedSwing(this, now, { x: geometry.dx, y: geometry.dy }, (profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)), hits))
+    if (!isEcho && !followCut && contact && (committed?committed.awakened:this.save.equipment.primary?.awakened) && (this.awakenSwings = (this.awakenSwings || 0) + 1) % AWAKENED_ARTS.every === 0 && !awakenedSwing(this, now, { x: geometry.dx, y: geometry.dy }, (profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)), hits))
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
-    const plan = !isEcho && !followCut && echoPlan(glyphs);
+    const plan = !isEcho && !followCut && contact && echoPlan(glyphs);
     if (plan) {
       const memory=committed?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:'verge-cleaver',primaryMotion:structuredClone(committed.primaryMotion),support:committed.support}:attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
-      (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share, echoVisual:memory });
+      (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share * extra, echoVisual:memory });
     }
     this.reconcileConsequences();
     this.attackProfile = profile;
@@ -10034,11 +10113,11 @@ export class Game {
   }
   // The clone's copy of a swing: the same blow from where it stands, at `share` of the damage (release 387: toward the
   // locked target when there is one).
-  cloneSwing(profile, dir, now) {
+  cloneSwing(profile, dir, now, scale = 1) {
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return;
     const at = clonePosition(this.player, this.shadowClone), body = { ...this.player, x: at.x, y: at.y }; dir = this.cloneAimFrom(at) || dir;
     const hits = primaryAttackHits(body, this.enemies.filter((e) => !e.untargetable), this.map, mapWidth(this.map, this.area), profile, dir);
-    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * SHADOW_CLONE.share))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } }
+    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * SHADOW_CLONE.share * scale))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } }
     this.shadowClone.swingUntil = now + 240; this.shadowClone.swingDir = { x: dir.x, y: dir.y };
   }
   // Release 309 (Tim: "we can click on a monster... and then that'll just be the targeting... our blasts and attacks and swings
@@ -10665,7 +10744,7 @@ export class Game {
       }
     }
     this.reconcileHeldTool(now);
-    if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);}
+    if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);

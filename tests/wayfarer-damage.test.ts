@@ -10,6 +10,7 @@ import { createCombatant, WAYFARER_DAMAGE, wayfarerDamage } from '../src/combat.
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { primaryProfile } from '../src/items.ts';
 import { regionalThreat } from '../src/world.ts';
+import { swingTo } from './swing-helpers.ts'; // 2026-11-14: the Cleaver's weighted swing strikes after its wind-up
 
 const SHIPPED = WAYFARER_DAMAGE.scale;
 const weapon = (slot) => normalizeSockets({ id: `${slot}-wd`, name: slot === 'primary' ? 'Verge Cleaver' : 'Needle Caster', slot, power: 12, property: slot === 'primary' ? 'impact' : 'quick', tier: 'relic', affixes: [] });
@@ -45,7 +46,7 @@ test('the Wayfarer damage scale is one data-table number: 0.9', () => {
 });
 
 test('melee swings land at 0.9', () => {
-  one('swing', both(({ g }) => { g.primaryAttack(1000, { x: 1, y: 0 }); }));
+  one('swing', both(({ g }) => { g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(g, 1000); }));
 });
 
 test('tool and gun shots land at 0.9', () => {
@@ -99,7 +100,7 @@ test('healing from blows keeps the unscaled amount (Leech)', () => {
   const healed = [];
   for (const scale of [1, SHIPPED]) {
     WAYFARER_DAMAGE.scale = scale;
-    try { const { s, g } = arena(); s.maxHp = 1000; g.player.hp = 100; s.glyphs.leech = 1; assert.equal(socketGlyph(s, 'melee', 0, 'leech').ok, true); g.primaryAttack(1000, { x: 1, y: 0 }); step(g, 200, 1000); healed.push(g.player.hp); } finally { WAYFARER_DAMAGE.scale = SHIPPED; }
+    try { const { s, g } = arena(); s.maxHp = 1000; g.player.hp = 100; s.glyphs.leech = 1; assert.equal(socketGlyph(s, 'melee', 0, 'leech').ok, true); g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(g, 1000, 'contact'); step(g, 200, 1000); healed.push(g.player.hp); } finally { WAYFARER_DAMAGE.scale = SHIPPED; }
   }
   assert.ok(healed[0] > 100, `Leech healed (${healed[0]})`); assert.equal(healed[1], healed[0]);
 });
@@ -113,7 +114,7 @@ test('the gold damage numbers show the scaled blow', () => {
   const shown = [];
   for (const scale of [1, SHIPPED]) {
     WAYFARER_DAMAGE.scale = scale;
-    try { const { g, e } = arena(); g.damageNumbers = true; g.trackDamageNumbers(900); const before = e.hp; g.primaryAttack(1000, { x: 1, y: 0 }); const lost = before - e.hp; g.trackDamageNumbers(1000);
+    try { const { g, e } = arena(); g.damageNumbers = true; g.trackDamageNumbers(900); const before = e.hp; g.primaryAttack(1000, { x: 1, y: 0 }); swingTo(g, 1000); const lost = before - e.hp; g.trackDamageNumbers(1000);
       const n = (g.damageFloaters || []).filter((f) => f.kind === 'dealt'); assert.equal(n.length, 1); assert.equal(n[0].text, String(lost)); shown.push(Number(n[0].text)); } finally { WAYFARER_DAMAGE.scale = SHIPPED; }
   }
   assert.equal(shown[1], wayfarerDamage(shown[0]));

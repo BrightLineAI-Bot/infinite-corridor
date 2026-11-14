@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts';
+import { PRIMARY_SWINGS } from '../src/melee-swing.ts';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
@@ -33,36 +35,41 @@ test('pure v2 motion, stage and carry helpers preserve legacy and opaque provena
   assert.equal(primaryCarryStage(null,{weaponKind:'cinder-pike',step:2}),null);
 });
 
-test('six accepted Cleaver presses stamp 1/2/3/4/1/2 while refusal, Echo and clone paths never advance',()=>{
-  const g=fixture(),steps:number[]=[],foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];let canonical:any=null;
+// 2026-11-14 (melee-swing.ts): every Cleaver press is now a weighted swing of the three-step combo (record v3), landing in
+// its active window; each step's damage carries its share (PRIMARY_SWINGS). The tests below were the legacy four-cut v2 path.
+test('six accepted Cleaver presses stamp 1/2/3/1/2/3 while refusal, Echo and clone paths never advance',()=>{
+  const g=fixture(),steps:number[]=[],foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];let canonical:any=null,now=100000;
   for(let n=0;n<6;n++){
-    const now=100000+n*500,hp=foe.hp,hits=g.primaryAttack(now);assert.equal(hits.filter((q:any)=>q===foe).length,1);assert.ok(foe.hp<hp);
-    const mechanics={damage:hp-foe.hp,cooldown:g.player.attackReadyAt-now,strike:clone(g.player.meleeStrike),range:g.attackProfile.range,arc:g.attackProfile.arc};if(!canonical)canonical=mechanics;else assert.deepEqual(mechanics,canonical,'presentation stage cannot change canonical damage, cooldown, reach or strike geometry');
-    assert.equal(g.player.attackVisual.primaryStep,undefined);steps.push(g.player.attackVisual.primaryMotion.step);
+    const hp=foe.hp;assert.deepEqual(g.primaryAttack(now),[],'the swing lands in its active window, not at the press');assert.equal(foe.hp,hp);
+    assert.equal(g.player.attackVisual.primaryStep,undefined);const step=g.player.attackVisual.primaryMotion.step;steps.push(step);
     const combo=clone(g.player.primaryCombo),visual=clone(g.player.attackVisual),ready=g.player.attackReadyAt;
     assert.deepEqual(g.primaryAttack(now+1),[]);assert.deepEqual(g.player.primaryCombo,combo);assert.deepEqual(g.player.attackVisual,visual);assert.equal(g.player.attackReadyAt,ready);
-    g.primaryStrike(now+80,null,{share:.25});assert.deepEqual(g.player.primaryCombo,combo);assert.deepEqual(g.player.attackVisual,visual);
-    g.shadowClone={ox:-1,oy:0,until:now+1000};g.cloneSwing({range:1.75,arc:180,damage:1},{x:1,y:0},now+90);assert.deepEqual(g.player.primaryCombo,combo);
+    const end=swingTo(g,now),share=PRIMARY_SWINGS['verge-cleaver'].steps[step-1].share;assert.ok(foe.hp<hp,'the swing landed');
+    const mechanics={damage:(hp-foe.hp)/share,cooldown:g.player.attackReadyAt-now,dx:g.player.meleeStrike.dx,dy:g.player.meleeStrike.dy,range:g.attackProfile.range,arc:g.attackProfile.arc};
+    if(!canonical)canonical=mechanics;else{assert.ok(Math.abs(mechanics.damage-canonical.damage)<=2,'each step deals its share of the same hit');assert.deepEqual({...mechanics,damage:0},{...canonical,damage:0},'presentation stage cannot change cooldown, reach or strike direction');}
+    g.primaryStrike(end+80,null,{share:.25});assert.deepEqual(g.player.primaryCombo,combo);
+    g.shadowClone={ox:-1,oy:0,until:end+1000};g.cloneSwing({range:1.75,arc:180,damage:1},{x:1,y:0},end+90);assert.deepEqual(g.player.primaryCombo,combo);
+    now=end+100;
   }
-  assert.deepEqual(steps,[1,2,3,4,1,2]);
+  assert.deepEqual(steps,[1,2,3,1,2,3]);
 });
 
 test('Pike remains three-stage and family switches restart without changing Fists state',()=>{
   const g=fixture('pike'),steps=[];for(let n=0;n<4;n++){g.primaryAttack(100000+n*500);steps.push(g.player.attackVisual.primaryStep);assert.equal(g.player.attackVisual.primaryMotion,undefined);}assert.deepEqual(steps,[1,2,3,1]);
   // Game stores the accepted logical input time; the two-argument pure helper below remains legacy.
-  g.save.equipment.primary=cleaver();g.primaryAttack(102000);assert.equal(g.player.attackVisual.primaryMotion.step,1);assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,resetWindow:{v:1,acceptedLogicalMs:102000}});
+  g.save.equipment.primary=cleaver();g.primaryAttack(102000);assert.equal(g.player.attackVisual.primaryMotion.step,1);assert.deepEqual(g.player.primaryCombo,{weaponKind:'verge-cleaver',v:3,mode:'quick',step:1,resetWindow:{v:1,acceptedLogicalMs:102000}});
   const player:any={primaryCombo:{weaponKind:'verge-cleaver',v:2,step:4,future:9}};assert.equal(advancePrimaryCombo(player,'verge-cleaver'),1);assert.deepEqual(player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step:1,future:9});
 });
 
-test('all four Cleaver stages and committed phases round-trip through both runtime writers with unknown fields',()=>{
-  for(const step of [1,2,3,4])for(const phase of [0,60,120,239])for(const paused of [false,true]){
-    const g=fixture();for(let n=1;n<=step;n++)g.primaryAttack(100000+(n-1)*500);
+test('all three Cleaver stages and committed phases round-trip through both runtime writers with unknown fields',()=>{
+  for(const step of [1,2,3])for(const phase of [0,60,120,239])for(const paused of [false,true]){
+    const g=fixture();let pressAt=100000;for(let n=1;n<=step;n++){if(n>1)pressAt=swingTo(g,pressAt)+100;g.primaryAttack(pressAt);}
     g.player.attackVisual.future={kept:step};g.player.attackVisual.primaryMotion.futureMotion={kept:true};g.player.primaryCombo.futureCombo={kept:true};
-    const at=100000+(step-1)*500+phase;if(paused)g.setPaused(true,at);
+    const at=pressAt+phase;g.tickMeleeSwing(at);if(paused)g.setPaused(true,at);
     const saved=migrateSave(clone(g.exportSnapshot(at))),back:any=new Game(saved,200000);
-    assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step,futureMotion:{kept:true}});assert.equal(back.player.attackVisual.future.kept,step);
+    assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step,futureMotion:{kept:true}});assert.equal(back.player.attackVisual.future.kept,step);
     // Reload preserves the last accepted logical time, independently of phase, pause and new wall clock.
-    assert.deepEqual(back.player.primaryCombo,{weaponKind:'verge-cleaver',v:2,step,resetWindow:{v:1,acceptedLogicalMs:100000+(step-1)*500},futureCombo:{kept:true}});assert.equal(back.paused,paused);
+    assert.deepEqual(back.player.primaryCombo,{weaponKind:'verge-cleaver',v:3,mode:'quick',step,resetWindow:{v:1,acceptedLogicalMs:pressAt},futureCombo:{kept:true}});assert.equal(back.paused,paused);
     assert.deepEqual(saved.session.playerRuntime.attackVisual.primaryMotion,back.player.attackVisual.primaryMotion);
   }
 });
@@ -85,14 +92,14 @@ test('old Cleaver descriptors retain legacy carry after expiry without a combo c
     const resumed:any=new Game(migrateSave(clone(back.exportSnapshot(200121))),300000);
     assert.deepEqual(primaryCarryStage(resumed.player.attackVisual,resumed.player.primaryCombo,false),expected);
     resumed.player.attackReadyAt=0;resumed.primaryAttack(300001);
-    assert.deepEqual(primaryCarryStage(resumed.player.attackVisual,resumed.player.primaryCombo,false),{kind:'cleaver-four',step:1,direction:1});
+    assert.deepEqual(primaryCarryStage(resumed.player.attackVisual,resumed.player.primaryCombo,false),{kind:'cleaver-three',step:1,direction:1}); // the weighted three-step swing (2026-11-14)
   }
 });
 
 test('legacy three-stage Cleaver carries until the next accepted v2 cut; future records stay opaque',()=>{
   const old:any=fixture();old.player.primaryCombo={weaponKind:'verge-cleaver',step:3,legacyUnknown:7};old.player.attackVisual={profile:'melee',durationMs:240,weaponKind:'verge-cleaver',primaryStep:3};old.player.actionVisualUntil=100240;
   const saved=migrateSave(clone(old.exportSnapshot(100120))),back:any=new Game(saved,200000);assert.deepEqual(primaryCarryStage(back.player.attackVisual,back.player.primaryCombo),{kind:'legacy',step:3});
-  back.player.attackReadyAt=0;back.primaryAttack(200001);assert.deepEqual(back.player.attackVisual.primaryMotion,{v:2,step:1});assert.equal(back.player.attackVisual.primaryStep,undefined);assert.equal(back.player.primaryCombo.legacyUnknown,7);
+  back.player.attackReadyAt=0;back.primaryAttack(200001);assert.deepEqual(back.player.attackVisual.primaryMotion,{v:3,mode:'quick',step:1});assert.equal(back.player.attackVisual.primaryStep,undefined);assert.equal(back.player.primaryCombo.legacyUnknown,7);
   const futureVisual={profile:'melee',durationMs:240,weaponKind:'verge-cleaver',primaryMotion:{v:7,step:99,future:true}};assert.deepEqual(normalizeAttackVisual(futureVisual),futureVisual);
   assert.deepEqual(normalizePrimaryCombo({weaponKind:'verge-cleaver',v:7,step:99,future:true}),{weaponKind:'verge-cleaver',v:7,step:99,future:true});
   const opaque:any=fixture();opaque.player.attackVisual=futureVisual;opaque.player.actionVisualUntil=100240;opaque.player.primaryCombo={weaponKind:'verge-cleaver',v:7,step:99,futureCombo:{kept:true}};
@@ -101,8 +108,8 @@ test('legacy three-stage Cleaver carries until the next accepted v2 cut; future 
 
 test('queued Echo freezes v2 motion metadata and never advances the live combo or body',()=>{
   const g=fixture();g.save.equipment.primary=normalizeSockets({...cleaver(),tier:'relic',affixes:[]});g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);
-  const foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];g.primaryAttack(100000);
-  const timer=g.glyphTimers.find((q:any)=>q.kind==='strike'),combo=clone(g.player.primaryCombo),visual=clone(g.player.attackVisual);assert.ok(timer);assert.deepEqual(timer.echoVisual.primaryMotion,{v:2,step:1});
-  g.player.attackVisual.primaryMotion.step=4;assert.deepEqual(timer.echoVisual.primaryMotion,{v:2,step:1},'queued memory is immutable from later live mutation');
-  g.tickGlyphs(0,timer.at);assert.deepEqual(g.player.primaryCombo,combo);assert.equal(g.player.attackVisual.primaryMotion.step,4);const cue=g.glyphVisuals.find((v:any)=>v.kind==='primaryEcho');assert.deepEqual(cue.memory.primaryMotion,{v:2,step:1});assert.deepEqual(visual.primaryMotion,{v:2,step:1});
+  const foe:any=Object.assign(createCombatant('rootBrute',g.player.x+1,g.player.y),{hp:10000,maxHp:10000,damage:0,cooldown:99});g.enemies=[foe];g.primaryAttack(100000);swingTo(g,100000,'contact'); // the Echo is queued at the weighted swing's contact (2026-11-14)
+  const timer=g.glyphTimers.find((q:any)=>q.kind==='strike'),combo=clone(g.player.primaryCombo),visual=clone(g.player.attackVisual);assert.ok(timer);assert.deepEqual(timer.echoVisual.primaryMotion,{v:3,mode:'quick',step:1});
+  g.player.attackVisual.primaryMotion.step=4;assert.deepEqual(timer.echoVisual.primaryMotion,{v:3,mode:'quick',step:1},'queued memory is immutable from later live mutation');
+  g.tickGlyphs(0,timer.at);assert.deepEqual(g.player.primaryCombo,combo);assert.equal(g.player.attackVisual.primaryMotion.step,4);const cue=g.glyphVisuals.find((v:any)=>v.kind==='primaryEcho');assert.deepEqual(cue.memory.primaryMotion,{v:3,mode:'quick',step:1});assert.deepEqual(visual.primaryMotion,{v:3,mode:'quick',step:1});
 });

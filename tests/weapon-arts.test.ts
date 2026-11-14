@@ -45,7 +45,7 @@ function frame(g, clock, held = false, input = {}) { g.player.invulnerableUntil 
 const idle = (g, clock, n) => { for (let i = 0; i < n; i++) frame(g, clock, false); };
 function press(g, clock, action = 'attack') { g.attackAction = action; try { return g.primaryAttack(clock.t, { x: 1, y: 0 }); } finally { g.attackAction = null; } }
 // Three ordinary presses, the swings let finish (fists: taps with no held button).
-function arm(g, clock, n = WEAPON_ARTS.arm.presses) { for (let i = 0; i < n; i++) { press(g, clock, null); idle(g, clock, 40); } }
+function arm(g, clock, n = WEAPON_ARTS.arm.presses) { const at = { x: g.player.x, y: g.player.y }; for (let i = 0; i < n; i++) { press(g, clock, null); idle(g, clock, 40); } Object.assign(g.player, at); } // back where it stood: the Cleaver's weighted swings lunge (2026-11-14)
 // A press held for the grace and `seconds` more, then let go. Returns how long the charge itself was held at the release.
 function charge(g, clock, seconds) {
   press(g, clock); let last = 0, was = false;

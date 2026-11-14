@@ -2,12 +2,14 @@
 // from Focus alone. Zero at the starting Focus, so a Might build gains (almost) nothing; on a Focus build it makes melee usable
 // but keeps it below a pure Might build's melee and below the build's own spells.
 import test from 'node:test';
+import { swingTo } from './swing-helpers.ts'; // 2026-11-14: the Cleaver's weighted swing strikes after its wind-up
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, characterStats, GAME_CLOCKS, RESUME_GAME_CLOCKS } from '../src/game.ts';
 import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../src/persistence.ts';
 import { createCombatant } from '../src/combat.ts';
 import { SPELLS, spellOpen } from '../src/items.ts';
+import { PRIMARY_SWINGS } from '../src/melee-swing.ts';
 import { CASTABLES, availableCastables, setSlot } from '../src/spell-slots.ts';
 import { IMBUE, IMBUE_COLORS, imbueAmount, imbueSpark, drawBrawlerAuras, BRAWLER } from '../src/brawler-spells.ts';
 
@@ -70,12 +72,12 @@ test('zero Focus adds zero; the amount grows with Focus and with the magic bonus
 
 test('it applies only while active, and expires after its duration', () => {
   const s = build('focus'), g = arena(s); g.update(.05, idle, 1000);
-  const swing = (t) => { g.player.attackReadyAt = 0; const e = g.enemies[0], before = e.hp; g.primaryAttack(t); return before - e.hp; };
+  const swing = (t) => { g.player.attackReadyAt = 0; const e = g.enemies[0], before = e.hp; g.primaryAttack(t); swingTo(g, t); return before - e.hp; }; // the weighted swing run out on its own clock
   const plain = swing(1100);
   assert.equal(g.castSpell('imbue-weapon'), true);
   const per = g.imbueBonus(1200); assert.ok(per > 100, `per hit ${per}`);
-  const imbued = swing(1200); assert.ok(Math.abs(imbued - plain - Math.round(per) * .9) <= 1, `${plain} -> ${imbued}`); // the imbued share lands at WAYFARER_DAMAGE.scale
-  assert.ok((g.imbueSparks || []).some((q) => q.at === 1200), 'a hit flash where it landed');
+  const imbued = swing(1200); assert.ok(Math.abs(imbued - plain - Math.round(per * PRIMARY_SWINGS['verge-cleaver'].steps[1].share) * .9) <= 1, `${plain} -> ${imbued}`); // the imbued share lands at WAYFARER_DAMAGE.scale, carried by the swing step's share (melee-swing.ts)
+  assert.ok((g.imbueSparks || []).some((q) => q.at > 1200 && q.at < 2000), 'a hit flash where it landed (at the swing\'s contact)');
   assert.ok(g.spellBuffLeft('imbue-weapon', 1200) > .98, 'the button fills');
   const end = 1000 + IMBUE.seconds * 1000 + 50; assert.equal(g.imbueBonus(end), 0); assert.equal(swing(end), plain, 'gone after it runs out');
   assert.equal(g.spellBuffLeft('imbue-weapon', end), 0);
@@ -121,8 +123,9 @@ test('every spell cast each frame for 60 s with cooldowns wiped: no NaN, bounded
   let maxFx = 0, maxShots = 0;
   for (let i = 0; i < 60 * 20; i++) {
     t += 50; for (const k of Object.keys(s.magicSkills.cooldowns)) s.magicSkills.cooldowns[k] = 0; g.spellCooldownRemaining = 0; g.player.attackReadyAt = 0; g.toolReadyAt = 0;
-    for (const id of Object.keys(SPELLS)) g.castSpell(id);
-    g.primaryAttack(t); g.fireSecondary(t, { x: 1, y: 0 });
+    const winding = g.pendingMeleeContact?.v === 3; // 2026-11-14: a spell or tool press cancels a Cleaver wind-up, so they wait while one is up
+    if (!winding) for (const id of Object.keys(SPELLS)) g.castSpell(id);
+    g.primaryAttack(t); if (!winding) g.fireSecondary(t, { x: 1, y: 0 });
     for (const e of g.enemies) e.dead = false; Object.assign(g.player, { hp: s.maxHp });
     g.update(.05, idle, t);
     maxFx = Math.max(maxFx, g.effects.length); maxShots = Math.max(maxShots, g.projectiles.length);

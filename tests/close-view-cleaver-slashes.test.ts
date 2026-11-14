@@ -1,6 +1,7 @@
 // Tim, 2026-11-12: the Verge Cleaver's Close View attack is three standard sword slashes, and the
 // Salvage Blade is reskinned without changing how it is held. Presentation only.
 import test from 'node:test';
+import { PRIMARY_SWINGS } from '../src/melee-swing.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { decodeCloseViewHero, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from '../src/close-view-hero.ts';
@@ -68,9 +69,12 @@ test('slash timing follows the accepted quick Cleaver action and leaves its cont
   let used = false; g.update(.016, { state: { x: 0, y: 0 }, consume: (k: string) => k === 'attack' && !used && (used = true), held: () => false, reset: () => {} }, 100000);
   const v = g.player.attackVisual;
   assert.deepEqual(v.primaryMotion, { v: 3, mode: 'quick', step: 1 });
-  assert.deepEqual(v.meleeAction, meleeAction(T.contactMs));
-  assert.equal(v.durationMs, T.durationMs);
-  assert.equal(g.pendingMeleeContact.releaseAt - g.pendingMeleeContact.acceptedAt, T.contactMs, 'the hit still lands at the table contact time');
+  // 2026-11-14: the game now stamps a weighted swing (melee-swing.ts) in every area and view; the v2 quick action above stays
+  // for records saved before it.
+  const q = g.pendingMeleeContact, st = PRIMARY_SWINGS['verge-cleaver'].steps[0];
+  assert.deepEqual(v.meleeAction, { v: 3, kind: 'verge-cleaver', move: 'swing', step: 1, durationMs: st.recoveryMs * q.tempo, contactMs: st.windupMs * q.tempo, tempo: q.tempo });
+  assert.equal(v.durationMs, st.recoveryMs * q.tempo);
+  assert.equal(q.v, 3); assert.equal(q.elapsedMs, 0, 'the hit waits for the strike window');
 });
 
 test('each slash sweeps a continuous blade-tip arc across the front strike zone, with no spin and no NaN', () => {

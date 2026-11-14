@@ -5,6 +5,7 @@ import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./veh
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
+import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
@@ -719,7 +720,7 @@ export const closeViewPreset = (g) => CLOSE_VIEW.presets[g?.save?.closeViewPrese
 // Shared imported/native routing: supported v2 Cleaver actions never inherit
 // the persisted v1 choreography frame, while old v1/v2 records keep it exactly.
 export function closeViewMeleeVisualRoute(record, active = false) {
-  const normalized=normalizeMeleeActionVisual(record?.meleeAction),meleeAction=active&&(normalized?.v===1||normalized?.v===2)?normalized:null;
+  const normalized=normalizeMeleeActionVisual(record?.meleeAction),meleeAction=active&&(normalized?.v===1||normalized?.v===2||normalized?.v===3&&normalized.kind==='verge-cleaver'&&normalized.move==='swing')?normalized:null; // 3: the weighted swing (melee-swing.ts)
   return {meleeAction,legacyCleaverFrame:normalized?.v===1&&normalized.kind==='verge-cleaver'&&record?.primaryMotion?.v===2};
 }
 
@@ -3667,6 +3668,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     else if (bodyHit) amount = hit;
     if(drink?.active)amount=drink.phase;
     if(pickupPhase!==null)amount=pickupPhase;
+    if (who === player && attack && meleeAction?.v === 3) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; } // the weighted swing's own clock (frozen in hit-stop)
     if (charge != null && !bodyHit) amount = charge;
     if (stunned && !defeat) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     if (defeat) amount = defeat.amount;
@@ -3690,7 +3692,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(ordinary&&held==='verge-cleaver'&&now>=(player.dodgeUntil||0)&&(pose==='attack'||pose==='idle'||pose==='walk')){
       const logicalNow=(g.paused&&finite(g.pauseStarted)?g.pauseStarted:now)-(g.presentationPausedMs||0);
       cleaverFrame=meleeRoute.legacyCleaverFrame?sampleCleaverChoreography(visualRecord,logicalNow):null;
-      if(!cleaverFrame&&meleeAction?.v!==2&&(!primaryStage||visualRecord?.cleaverChoreography?.retired===true))cleaverFrame=cleaverCarryFrame();
+      if(!cleaverFrame&&meleeAction?.v!==2&&meleeAction?.v!==3&&(!primaryStage||visualRecord?.cleaverChoreography?.retired===true))cleaverFrame=cleaverCarryFrame();
     }
     const activeKind = who===player&&held==='cinder-pike'?'playerCinderPike':who===player&&held==='verge-cleaver'?'playerVergeCleaver':visualAttack ? knownProfile ? PLAYER_VISUAL_KIND[visualProfile] : "playerUnarmed" : null;
     // Special native forms retain their existing tool recipe. Only the normal imported

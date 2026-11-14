@@ -1,5 +1,7 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
+import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
+const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
 import { shakeOffset } from "./spino-rex.ts";
@@ -3085,7 +3087,8 @@ export function render(ctx, g, w, h, now) {
       // Poisoned (release 165): the Wayfarer pulses green while poison lasts.
       if (g.playerFire?.left > 0) { const t = now / 1000, cx = (p.x + .5) * s, cy = (p.y - lift / s + .55) * s; for (let i = 0; i < 6; i++) { const ph = (t * 1.6 + i / 6) % 1, fx = cx + Math.sin(i * 2.3 + t * 3) * s * .22, fh = s * (.28 + .2 * Math.sin(i + t * 9)) * (1 - ph * .5); ctx.fillStyle = i % 2 ? "rgba(255,176,42,.85)" : "rgba(255,90,26,.75)"; ctx.beginPath(); ctx.moveTo(fx - s * .07, cy - ph * s * .5); ctx.quadraticCurveTo(fx, cy - ph * s * .5 - fh, fx + s * .07, cy - ph * s * .5); ctx.fill(); } } // release 708: on fire
       if (g.save.elites?.status?.poison > 0) { const pulse = .5 + .5 * Math.sin(now / 160); ctx.fillStyle = `rgba(120,230,90,${.12 + pulse * .22})`; ctx.strokeStyle = `rgba(150,255,110,${.35 + pulse * .45})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y - lift / s + .35) * s, s * (.42 + pulse * .08), s * (.55 + pulse * .08), 0, 0, 7); ctx.fill(); ctx.stroke(); }
-      if (now < (p.attackUntil || 0)) {
+      const swingNow = swingIndicator(g, now, SWING_DRAW); if (swingNow) drawSwingSweep(ctx, swingNow, (x) => x * s, (y) => y * s - lift, s); // melee-swing.ts: the weighted swing's real blade, wind-up cue and sweep, centred on its aim
+      if (now < (p.attackUntil || 0) && !swingNow && p.attackVisual?.meleeAction?.v !== 3 /* a weighted swing draws itself above, not this 4-way arc */) {
         const a = {
             right: 0,
             down: Math.PI / 2,
