@@ -22,6 +22,21 @@ import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-vie
 import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
 import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.ts";
 
+// A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
+// visible whenever they're in the same section as you... You should know where they are"). The Close View had kept every
+// actor, a beast too, to the floor it draws (the quality tier's radius plus two tiles: about 8.5 tiles on the low tier, which
+// safe mode forces): a beast that sprang back, flew or circled past it left the view and came back, and on its way out it
+// thinned and took the fog. Now a world beast, the Questing Beast and the Stalker are captured anywhere in the section
+// (`pad`: tiles round the ground canvas the ordinary renderer still captures them from; a section is 32 across), stand solid
+// at any distance, take no more than `fog` of the fog's colour, and come before every other creature for the beast slot.
+// Past `lod` tiles beyond the fog's far edge a body draws its low-tier mesh (cheaper) instead of its tier's own. At most one
+// or two such beasts share a section, so the cost is bounded. What the beast's own design hides (the Stalker lying in wait or
+// in its mirage, the Gloomvast's Dark) stays hidden: that is the fight, not the camera. Presentation only.
+export const CLOSE_VIEW_BEAST_SIGHT = Object.freeze({ pad: 34, fog: .35, lod: 2 });
+export function closeViewSectionBeast(e) {
+  return !!e && !e.dead && !!(e.worldBeast || e.questingBeast || e.passingBeast || (e.stalker && !e.stalkerKin && !e.stalkerDecoy));
+}
+
 // The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
 // never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.
 export const DUELIST_SLOT = Object.freeze({ maxDuelists: 3, triangles: Object.freeze({ full: 1600, balanced: 1250, low: 950 }) });

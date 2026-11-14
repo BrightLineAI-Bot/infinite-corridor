@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 955 — World beasts stay drawn in Close View; the Stalker's health in line
+
+Tim, 2026-11-14: fighting the Blob in Close View it kept popping in and out of existence; world beasts should always be drawn while they're in your section. And the Stalker at section -187,-114 seemed impossible to kill at his strength.
+
+**CODE:** `src/close-view-beasts.ts` `CLOSE_VIEW_BEAST_SIGHT` {pad 34, fog .35, lod 2} and `closeViewSectionBeast(e)` (a world beast, the Questing Beast, a passing beast or the Stalker, not its copies or decoys). `src/renderer.ts` picks such a beast up in Close View with `pad` tiles of padding (was the floor's reach, about 8.5 tiles on the low tier, which safe mode forces). `src/close-view.ts`: such beasts skip the view-reach cull and the distance fade; `admitBeasts` admits in two passes, section beasts first; more than `lod` tiles past the fog edge they sample the low-tier mesh and set `frame.fogCap`. `src/close-view-beast-gl.ts` `u_fogCap` (default 1 for every other body). Stalker: `STALKER.vitals.hpShare` 1 to .5, `STALKER.mirage.hide` regen .03/cap .15 to .02/.05; `spawnStalker` (game.ts) uses today's vitals as the maximum and caps a saved stalk's health there (keeping wounds). Tests: `close-view-beast-sight` (4), `stalker-health-1114` (8); `stalker-678` updated for the halved health.
+
+**BOUNDARY:** Close View drawing changes only for the beasts; no simulation, save, generation, damage or reach change for them. At most two beasts per section, no per-frame allocation. Designed invisibility (the Stalker lurking or in its mirage, the Gloomvast's Dark) stays hidden. Floor telegraphs still draw only on the floor drawn round the Wayfarer; the 3D wind-up ring goes with the beast. The Stalker's damage, moves and timings unchanged; its kill time for Tim's build at ring 219 goes from about 540 s to about 167 s, in line with the other world beasts there (125-253 s). Save schema 14 untouched.
+
 ## Release 954 — After-images on the Iron Fists' rush and on every dodge
 
 Tim, 2026-11-14: the Iron Fists' Shadow Boxing rush should stay the instant, best Shadow Boxing movement, and the dodge should have the after-images too, without changing any movement.
