@@ -40,7 +40,58 @@ export const GOLEM = { share: .9, punches: 3, gap: .38, rise: .35, sink: .4, ran
 // damage. Magic: they grow with Focus, like the other spells. Drawn as dark shells with a glowing crack.
 export const FIRE_BURST = { count: 5, spread: 1.4, reach: 2.6, speed: 9 };
 export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
-export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 11 }; // release 549: per wave, three waves (was one wave at 2.2, grow .75)
+// Release 549: per wave, three waves (was one wave at 2.2, grow .75). Tempo (Tim, 2026-11-14: "the arc wave should be slower
+// and the great wave should fly faster. So the two great waves fly out and overtake the arc waves, and then the arc waves keep
+// flying slowly... the smaller waves spread into a cone"): the three crescents fly `speed` tiles/s (was 11) for `range` tiles
+// × the reach stat (the 9.35 they flew before: 11 × the Blunderbuss's .85 s), so they stay out longer, in a cone `spread`
+// radians to a side (the plain Blunderbuss's is .26, unchanged without Arc Wave). The awakened fan's copies share the tempo.
+export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 5.5, range: 9.35, spread: .45 };
+// A crescent's flight time (s) at reach multiplier `reach` (1 + characterStats().attackReach).
+export const arcWaveLife = (reach) => ARC_WAVE.range * Math.max(0, Number(reach) || 1) / ARC_WAVE.speed;
+// The crescent as drawn (both views: Close View draws drawToolForms on its floor through combat-visuals.ts): an arc `span`
+// radians to either side of the heading about a centre `back` × its radius behind the wave, so its tips trail its front.
+// `greatLine`: the stroke's thickness on an Echo's great wave (ARC_WAVE_ECHO), × `line`.
+export const ARC_WAVE_SHAPE = Object.freeze({ span: 1.1, back: .6, line: .14, greatLine: 1.25, alpha: .85, color: "#e8c27a" });
+// The great Echo wave (Tim, 2026-11-14: "when you have Arc Wave enabled, each Echo shot will be a large arc... about the same
+// width as the 3 arcs combined (or slightly smaller) when they first come out. And then it'll just travel forward. So if you
+// have 2 echoes on there, it'll do 2 of those arc waves after each shot"). With Arc Wave on, each Echo copy of a Blunderbuss
+// shot (one per Echo glyph, at the Echo's own delay and damage share: glyphs.ts echoPlan) flies as one great crescent straight
+// along the aim, in place of a copy of the middle wave. Its half-width `waveHalf` is `scale` × the half-width the three waves
+// span `at` tiles past the muzzle (`muzzle` tiles out from the Wayfarer, where shots leave): the outer waves' paths stand
+// (muzzle + at) × sin(spread) to either side, and each wave catches foes 0.1 + its grow beyond its path (game.ts
+// updateProjectiles). With Arc Wave's .45 cone and a .5 wave, measured `at` .5 tiles out: .9 × (.85 × .435 + .6) = .87, a wave
+// 1.75 tiles across where the three span 1.94 (release 964 measured the old .26 cone 1 tile out: 1.70). It strikes every foe
+// whose body meets the crescent's line (within `depth` tiles of it; the tips trail as drawn), each foe once per wave, passing
+// through as many as the middle wave would (its pierce). Tempo (Tim, 2026-11-14: "the great wave should fly faster... the two
+// great waves fly out and overtake the arc waves"): it flies `speed` tiles/s for `range` tiles × the reach stat (a little past
+// the plain Blunderbuss pellet's 14 × .85 = 11.9). Launched 150 and 300 ms after the shot, the two pass the middle crescent
+// (ARC_WAVE.speed) 1.07 and 2.14 tiles past the muzzle: d = speed × delay × ARC_WAVE.speed / (speed − ARC_WAVE.speed).
+// Walls and Close View's raised ground stop it at its centre like any shot. Without Arc Wave, Echo shots are unchanged.
+export const ARC_WAVE_ECHO = Object.freeze({ at: .5, scale: .9, depth: .3, muzzle: .35, speed: 24, range: 12.5 });
+// The great wave's half-width for a middle wave `shot` of a cone `spread` radians to a side (0 when it is not an Arc Wave).
+export function arcWaveEchoHalf(shot, spread) {
+  if (!shot?.arcWave) return 0;
+  const E = ARC_WAVE_ECHO, grow = Number(shot.grow) || ARC_WAVE.grow, a = Math.max(0, Math.min(Math.PI / 2, Number(spread) || 0));
+  return E.scale * ((E.muzzle + E.at) * Math.sin(a) + .1 + grow);
+}
+// The fields that make an Echo copy of the middle wave `shot` (cone `spread`) a great wave, or null when it is not an Arc Wave.
+// The reach stat is read back from the crescent's own flight (ARC_WAVE.range × reach / its speed), so a held Close View release
+// needs nothing new in its payload.
+export function arcWaveEcho(shot, spread) {
+  const waveHalf = arcWaveEchoHalf(shot, spread); if (!(waveHalf > 0)) return null;
+  const E = ARC_WAVE_ECHO, reach = Math.max(0, (Number(shot.life) || 0) * (Number(shot.speed) || 0) / ARC_WAVE.range) || 1;
+  return { waveHalf, speed: E.speed, life: E.range * reach / E.speed };
+}
+// Whether a great wave `p` (heading p.dx, p.dy; half-width p.waveHalf) at (p.x, p.y) touches a foe of body radius `body` centred
+// at (ex, ey): the foe is within the half-width (plus its body) to the side, and its body meets the crescent's line (as drawn:
+// forward offset −back·R + √(R² − l²) at side offset l, R = waveHalf / sin(span)) within `depth`. No allocation.
+export function arcWaveTouches(p, ex, ey, body) {
+  const H = Number(p.waveHalf) || 0; if (!(H > 0)) return false;
+  const rx = ex - p.x, ry = ey - p.y, f = rx * p.dx + ry * p.dy, l = ry * p.dx - rx * p.dy, b = Math.max(0, Number(body) || 0);
+  if (Math.abs(l) > H + b) return false;
+  const S = ARC_WAVE_SHAPE, R = H / Math.sin(S.span), lc = Math.min(Math.abs(l), H), line = -S.back * R + Math.sqrt(Math.max(0, R * R - lc * lc));
+  return Math.abs(f - line) < ARC_WAVE_ECHO.depth + b;
+}
 // Release 649 (Tim, 2026-11-01: "a large sword that... moves out and swings, and then comes back to you... great sword... great
 // axe... a huge shuriken... they should Pierce through... home towards me... for like 3 seconds... I only have 3 maximum at a
 // time... hit on the way out and... on the way in... spinning... like the blades of a helicopter... grow with... charged air").
@@ -84,7 +135,8 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 //   first round empowers the beam. Echo copies, the clone's copy and an awakened fan ride on those rounds.
 // - Drawn as a beam of light from the muzzle to its head while it flies, and an afterglow `trace.life` s long along its path
 //   (at most `trace.max` at once); the charge as a cyan glow growing at the muzzle (2D and Close View). Close View holds a
-//   compact carbine (close-view-models.ts, the `carbine` appearance), posed like the other simple tools.
+//   compact carbine (close-view-models.ts, the `carbine` appearance), shouldered in both hands with a cheek weld and held
+//   steady through a charge (close-view-player-presentation.ts CARBINE_HOLD, 2026-11-14).
 // - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
 // Runtime only (game.carbine); no save state beyond the item itself.
 // Tool ranges (Tim, 2026-11-14: "Some weapons should have shorter ranges. The Rift Bombard... should go out and then fall to
@@ -202,6 +254,31 @@ export function carbineBase(toolBonus, spellDamage = 0, magicBuff = false) {
   return (CARBINE.base + CARBINE.bonus * (Number(toolBonus) || 0)) * (1 + (Number(spellDamage) || 0)) * (magicBuff ? 1.4 : 1);
 }
 
+// The Carbine with the Shadow Clone out (Tim, 2026-11-14: "when you have the Shadow Clone out, the Shadow Clone will charge its
+// blast with you. So when you charge your blast, the Shadow Clone charges its blast, and it'll increase its damage also").
+// - While the clone stands out (late-spells.ts SHADOW_CLONE; not while it is being placed, not the Shadow Boxing echo) and the
+//   Wayfarer holds a Carbine charge, the clone holds its own charge beside hers (game.ts carbine.charge.clone: the seconds it
+//   has charged with her, so a clone cast mid-charge starts from nothing). It glows at the clone's muzzle `muzzle` tiles out,
+//   the Wayfarer's charge glow in the clone's violet (`colors`), in the standard view and Close View.
+// - On release the clone fires its own beam from where it stands at SHADOW_CLONE.share of a beam of its own charge: a tap
+//   gives the clone's small tap copy, a full charge its full beam. It aims at the Wayfarer's foe (the lock, else the foe her
+//   beam is aimed down); if its line to that foe is walled off, at the nearest foe it can see within `cone` of her aim (cos of
+//   the half-angle) and the Carbine's reach; else along her aim. In Close View its shot leaves from the clone's own ground.
+// - Charging together strengthens both beams: × (1 + `bonus` × how full the clone's charge was), so a tap gains nothing
+//   and a full charge × (1 + bonus) on both. With no clone out nothing changes.
+// - The clone's charge ends with hers (release, stagger, putting the Carbine away, falling), and is cancelled the moment the
+//   clone ends or is stepped into. Runtime only (never saved): a reload starts with no charge, as the Wayfarer's does.
+export const CLONE_CARBINE = Object.freeze({
+  bonus: .15,
+  cone: .7,
+  muzzle: .42,
+  colors: Object.freeze({ beam: "#b48cff", core: "#f1e8ff", glow: 0xb48cff, flash: 0xf1e8ff }),
+});
+// The multiple both beams take when the clone charged `cloneHeld` s with the Wayfarer (null: no clone out): 1 for a tap.
+export const cloneCarbineBoost = (cloneHeld) => cloneHeld == null ? 1 : 1 + CLONE_CARBINE.bonus * carbineFill(cloneHeld);
+// The clone's beam as a part of the Wayfarer's (before SHADOW_CLONE.share): its own charge's share over hers (1 when equal).
+export const cloneCarbineRatio = (held, cloneHeld) => carbineShare(cloneHeld ?? 0) / carbineShare(held);
+
 // Continuous Assault (Tim, 2026-11-12: "there can be a passive for the Carbine called Continuous Assault: when you charge up
 // and fire the beam, three lasers come down from the sky and track into the enemy, boom boom boom, similar to the Hammerfall").
 // A Lattice tool form (lattice-fields.ts TOOL_FORMS["continuous-assault"]) that does nothing unless the Carbine is held.
@@ -312,7 +389,8 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
       ctx.fillStyle = "#ff7a2a33"; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill();
       ctx.fillStyle = "#5a2416"; ctx.strokeStyle = "#2a0e08"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = "#ff8a2a"; ctx.lineWidth = Math.max(1.5, s * .045); ctx.beginPath(); for (const a of [spin - 1.6, spin + .5, spin + 2.6]) { ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8); } ctx.stroke(); }
-    else if (p.arcWave) { const [x, y] = toScreen(p), a = Math.atan2(p.dy, p.dx), R = (p.grow || ARC_WAVE.grow) * s; ctx.strokeStyle = "#e8c27a"; ctx.lineWidth = s * .14; ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x - Math.cos(a) * R * .6, y - Math.sin(a) * R * .6, R, a - 1.1, a + 1.1); ctx.stroke(); ctx.globalAlpha = 1; }
+    else if (p.arcWave) { const S = ARC_WAVE_SHAPE, [x, y] = toScreen(p), a = Math.atan2(p.dy, p.dx), great = p.waveHalf > 0, R = (great ? p.waveHalf / Math.sin(S.span) : (p.grow || ARC_WAVE.grow)) * s; // ARC_WAVE_ECHO: an Echo's great wave is the same crescent at its own width
+      ctx.strokeStyle = S.color; ctx.lineWidth = s * S.line * (great ? S.greatLine : 1); ctx.globalAlpha = S.alpha; ctx.beginPath(); ctx.arc(x - Math.cos(a) * R * S.back, y - Math.sin(a) * R * S.back, R, a - S.span, a + S.span); ctx.stroke(); ctx.globalAlpha = 1; }
   }
 }
 
@@ -325,8 +403,12 @@ export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
   const C = CARBINE, K = game.carbine, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode); let any = false;
   ctx.save(); try {
     ctx.lineCap = "round"; ctx.strokeStyle = C.colors.beam; ctx.globalAlpha = .55; ctx.lineWidth = Math.max(3, s * C.trace.width * 2.2); ctx.beginPath();
-    for (const p of game.projectiles) if (p.carbine && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
+    for (const p of game.projectiles) if (p.carbine && !p.shadow && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
     if (any) { ctx.stroke(); ctx.globalAlpha = 1; ctx.strokeStyle = C.colors.core; ctx.lineWidth = Math.max(1.5, s * C.trace.width); ctx.stroke(); }
+    // The clone's beams, in its violet.
+    any = false; ctx.strokeStyle = CLONE_CARBINE.colors.beam; ctx.globalAlpha = .55; ctx.lineWidth = Math.max(3, s * C.trace.width * 2.2); ctx.beginPath();
+    for (const p of game.projectiles) if (p.carbine && p.shadow && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
+    if (any) { ctx.stroke(); ctx.globalAlpha = 1; ctx.strokeStyle = CLONE_CARBINE.colors.core; ctx.lineWidth = Math.max(1.5, s * C.trace.width); ctx.stroke(); }
     if (K?.traces) for (const q of K.traces) if (q.life > 0) { const a = q.life / C.trace.life, [ax, ay] = toScreen({ x: q.x0, y: q.y0 }), [bx, by] = toScreen({ x: q.x1, y: q.y1 });
       ctx.globalAlpha = .7 * a; ctx.strokeStyle = C.colors.beam; ctx.lineWidth = Math.max(2, s * C.trace.width * (1 + q.k) * 2); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
       ctx.globalAlpha = a; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(bx, by, s * (.12 + .1 * q.k) * a, 0, 7); ctx.fill(); }
@@ -334,6 +416,12 @@ export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
       ctx.globalAlpha = .35 + .3 * k; ctx.fillStyle = C.colors.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
       ctx.globalAlpha = 1; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
       const [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }); ctx.strokeStyle = k >= 1 ? C.colors.core : C.colors.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
+    // The Shadow Clone charging with her (CLONE_CARBINE): the same glow and ring at its muzzle, in its violet.
+    const q = game.cloneCarbineGlow?.(); if (q) {
+      const V = CLONE_CARBINE.colors, [x, y] = toScreen(q), pulse = still ? 1 : 1 + .12 * Math.sin(t * 18 + 1.3), R = s * (.12 + .2 * q.k) * pulse;
+      ctx.globalAlpha = .35 + .3 * q.k; ctx.fillStyle = V.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = V.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
+      const [cx, cy] = toScreen({ x: q.cx, y: q.cy }); ctx.strokeStyle = q.k >= 1 ? V.core : V.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q.k); ctx.stroke(); }
     drawAssault(ctx, game, toScreen, s, capture);
   } finally { ctx.restore(); }
 }
