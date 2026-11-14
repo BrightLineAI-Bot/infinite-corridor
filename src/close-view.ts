@@ -3741,7 +3741,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         const input = state.heroInput, action = state.heroAction;
         input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
         input.x = actor.x; input.y = actor.y;
-        input.groundZ = surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY); input.charge = state.shadowDash.charge;
+        input.groundZ = surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY); input.charge = state.shadowDash.charge; input.rushGrip = state.shadowDash.kind === 'cleaver' ? state.shadowDash.charge : 0; /* the Lava Slash rush: the blade low and trailing */
         input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
         input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
         input.powerSuit = form?.kind === 'playerPowerSuit';
@@ -3821,6 +3821,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
           { const SD = state.shadowDash, fr = state.heroFrame, z0 = input.groundZ; fr.ghostCount = 0; // afterimages: the same pose, back along the dash
+            fr.ghostTint.set(SD.kind === 'cleaver' ? CLOSE_VIEW_SHADOW_FORMS.rush.tint : CLOSE_VIEW_SHADOW_FORMS.trail.tint); // the Cleaver's rush: iron and ember, not violet
             for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, q = fr.ghostCount * 4, gx = SD.trail[o], gy = SD.trail[o + 1];
               fr.ghosts[q] = gx - SD.x; fr.ghosts[q + 1] = gy - SD.y; fr.ghosts[q + 2] = surfaceZ(g.map, gx + .5, gy + .75) - z0; fr.ghosts[q + 3] = SD.trail[o + 2] * (d.alpha ?? 1); fr.ghostCount++; } }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
@@ -3832,7 +3833,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       state.playerRepresentation = 'pending'; Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor }); state.tracks.set(who, track); state.admitted.add(it); return; }
     if (!imported && !append(actor)) return;
     if (who === player && !imported && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
-      const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = true;
+      const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = SD.kind !== 'cleaver'; /* the Cleaver's rush: plain, not the wraith */
       for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, gx = SD.trail[o], gy = SD.trail[o + 1];
         ghost.x = actor.x + gx - SD.x; ghost.y = actor.y + gy - SD.y; ghost.z = actor.z + surfaceZ(g.map, gx + .5, gy + .75) - surfaceZ(g.map, SD.x + .5, SD.y + .75); ghost.alpha = SD.trail[o + 2] * (d.alpha ?? 1);
         offset = writeCloseViewModel(state.vertices, offset, ghost); } }

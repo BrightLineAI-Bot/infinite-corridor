@@ -65,21 +65,53 @@ export const SHADOW_DASH = Object.freeze({
 });
 const clamp01 = (v) => v <= 0 ? 0 : v >= 1 ? 1 : v;
 const smoothstep = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
-// The dash's time for `tiles` of travel (ms).
-export function shadowDashMs(tiles) { const D = SHADOW_DASH, n = Number(tiles); return Math.max(D.minMs, Math.min(D.maxMs, Number.isFinite(n) && n > 0 ? 1000 * n / D.speed : 0)); }
+// The dash's time for `tiles` of travel (ms). `D`: the clock's table (speed, minMs, maxMs): SHADOW_DASH, or another charge's
+// own (LAVA_RUSH below, the Verge Cleaver's Lava Slash).
+export function shadowDashMs(tiles, D = SHADOW_DASH) { const n = Number(tiles); return Math.max(D.minMs, Math.min(D.maxMs, Number.isFinite(n) && n > 0 ? 1000 * n / D.speed : 0)); }
 // The share of the path covered at time fraction t: half linear, half smoothstep.
 export function shadowDashTravel(t) { t = clamp01(t); return .5 * t + .5 * t * t * (3 - 2 * t); }
 // The saved dash (playerRuntime.shadowDash, additive at schema 14). A valid version-1 record comes back clean; a newer one is
 // kept as it is (opaque); anything else is null (the dash is dropped and the press with it, rather than resumed wrong).
-const finiteIn = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
-export function normalizeShadowDash(raw) {
+export const finiteIn = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+// The fields every saved charge shares, checked against its own table D (v, minMs, maxMs, maxTiles): a valid record of D's
+// version comes back clean (elapsed held to its duration, `arrived` a boolean), a newer one is kept opaque, anything else null.
+export function normalizeDashCore(raw, D) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  if (Number.isInteger(raw.v) && raw.v > SHADOW_DASH.v) return structuredClone(raw);
-  if (raw.v !== SHADOW_DASH.v) return null;
+  if (Number.isInteger(raw.v) && raw.v > D.v) return structuredClone(raw);
+  if (raw.v !== D.v) return null;
   if (!['area', 'areaId', 'levelId', 'foe'].every((k) => typeof raw[k] === 'string' && raw[k].length <= 512)) return null;
-  if (!finiteIn(raw.fromX, -1e4, 1e5) || !finiteIn(raw.fromY, -1e4, 1e5) || !finiteIn(raw.durationMs, SHADOW_DASH.minMs, SHADOW_DASH.maxMs) || !finiteIn(raw.elapsedMs, 0, SHADOW_DASH.maxMs)
-    || !finiteIn(raw.travelled, 0, SHADOW_DASH.maxTiles) || !finiteIn(raw.stop, 0, 20)) return null;
-  return { ...structuredClone(raw), elapsedMs: Math.min(raw.elapsedMs, raw.durationMs), arrived: raw.arrived === true, action: raw.action === 'attack' ? 'attack' : null };
+  if (!finiteIn(raw.fromX, -1e4, 1e5) || !finiteIn(raw.fromY, -1e4, 1e5) || !finiteIn(raw.durationMs, D.minMs, D.maxMs) || !finiteIn(raw.elapsedMs, 0, D.maxMs)
+    || !finiteIn(raw.travelled, 0, D.maxTiles) || !finiteIn(raw.stop, 0, 20)) return null;
+  return { ...structuredClone(raw), elapsedMs: Math.min(raw.elapsedMs, raw.durationMs), arrived: raw.arrived === true };
+}
+export function normalizeShadowDash(raw) {
+  const r = normalizeDashCore(raw, SHADOW_DASH); if (!r || r.v !== SHADOW_DASH.v) return r;
+  r.action = raw.action === 'attack' ? 'attack' : null; return r;
+}
+// The Verge Cleaver's Lava Slash rush (weapon-arts.ts WEAPON_ARTS.arts["lava-slash"]; Tim, 2026-11-14: "The charged dash for
+// the Verge Cleaver just lunges you, it teleports you to the enemy. It should be like the other dash moves"). The art's dash is
+// travelled: game.ts artRushBegin records it (Game.artRush, saved with the journey at `v`), artRushSteer carries her along it on
+// Shadow Boxing's eased path (shadowDashTravel) through the same quarter-tile mover (game.ts dashCarry: SHADOW_DASH.step,
+// canStand and moveGuardedCombatStep), and artRushLand brings the slam and the eruption down on arrival. The art still picks its
+// foe and its end as the old one-update dash did (whole quarter steps, `stop` short), so on open ground it ends where it ended.
+//   Its own clock, shadowDashMs(tiles, LAVA_RUSH): ms = clamp(1000 x tiles / `speed`, `minMs`, `maxMs`). 16 tiles/s is two
+//     thirds of Shadow Boxing's 24: a greatsword charge, heavier and longer to read, yet still six times a walk and over three
+//     times a dodge; at 60 fps the body moves at most a third of a tile a frame (peak 1.25x the mean). The longest dash (a lock
+//     at the art's `dash` + 1 tiles, less its `stop`: 4.1 tiles, 4 in whole steps) takes 250 ms, under `maxMs`; `minMs` 140 ms
+//     (8 frames) is the shortest span that reads as travel. `maxTiles`: at most this far in one rush (the longest old dash and
+//     a little for a foe stepping back).
+//   Damage per second holds within a few percent of the one-update dash with no compensation (the charge's hold dominates
+//   the cycle; measured in tests/cleaver-rush.test.ts), so no number of the art changed.
+//   Drawn with SHADOW_DASH's ghosts, streak and pose in DASH_LOOKS.cleaver (ember and iron, never violet, no wraith).
+export const LAVA_RUSH = Object.freeze({ v: 1, speed: 16, minMs: 140, maxMs: 280, maxTiles: 5 });
+// The saved rush (playerRuntime.artRush, additive at schema 14): normalizeDashCore's shared fields against LAVA_RUSH, then its
+// own: the art, the fixed end with no foe, the heading, the cap and the blow's power (fixed at the release). A valid version-1
+// record comes back clean; a newer one is kept as it is (opaque); anything else is null (dropped, and no blow).
+export function normalizeArtRush(raw) {
+  const R = LAVA_RUSH, r = normalizeDashCore(raw, R); if (!r || r.v !== R.v) return r;
+  if (raw.art !== "lava-slash" || !finiteIn(raw.toX, -1e4, 1e5) || !finiteIn(raw.toY, -1e4, 1e5) || !finiteIn(raw.dirX, -1, 1) || !finiteIn(raw.dirY, -1, 1)
+    || !finiteIn(raw.limit, 0, R.maxTiles) || !finiteIn(raw.power, 0, 1e9)) return null;
+  return r;
 }
 // Shadow trails (Tim, 2026-11-14: "the Iron Fists' Shadow Boxing rush... give it the same after-images and speed streak as
 // the charge so you see him cross the space"; "when the Wayfarer dodges, with any weapon, show the same ghost trail").
@@ -121,6 +153,26 @@ function trailNow(game) {
   if (r.moving && Math.hypot(p.x - r.fromX, p.y - r.fromY) > SHADOW_TRAIL.maxJump) return null;
   return r;
 }
+// The charge in progress, if any: Shadow Boxing's (game.shadowDash) or the Verge Cleaver's Lava Slash (game.artRush, game.ts
+// artRushBegin; weapon-arts.ts). Both carry fromX, fromY, elapsedMs, durationMs and arrived, and game.ts keeps only valid
+// records of the current version on the game, so the drawing reads them alike.
+function liveDash(game) {
+  const q = game?.shadowDash; if (q?.v === SHADOW_DASH.v && !q.arrived) return q;
+  const r = game?.artRush; return r && !r.arrived && r.durationMs > 0 ? r : null;
+}
+// Whose look the charge drawing wears now (DASH_LOOKS): the Cleaver's while its rush runs or settles, else Shadow Boxing's.
+export function dashKind(game) {
+  if (game?.shadowDash?.v === SHADOW_DASH.v && !game.shadowDash.arrived) return "shadow";
+  if (game?.artRush && !game.artRush.arrived) return "cleaver";
+  const a = game?.shadowDashAfter; return a?.live && a.kind === "cleaver" && !trailNow(game) ? "cleaver" : "shadow";
+}
+// The look of each kind of charge, both views. Shadow Boxing's is violet (and spectral: the wraith); the Verge Cleaver's
+// Lava Slash rush (Tim, 2026-11-14: "like the other dash moves") is a subtle ember-and-iron streak and plain dark afterimages
+// at `alpha` of SHADOW_DASH's, never violet, never a wraith. Close View's tints are close-view-shadow-forms.ts.
+export const DASH_LOOKS = Object.freeze({
+  shadow: Object.freeze({ streak: "#b99bff", body: "#6f4fc8", head: "#c9b2ff", alpha: 1, wraith: true }),
+  cleaver: Object.freeze({ streak: "#e0874a", body: "#4a3a30", head: "#b89a7a", alpha: .55, wraith: false }),
+});
 // True while a trail is being drawn (renderer.ts draws its older single dodge ghost only when it is not).
 export function shadowTrailLive(game) { const r = trailNow(game); return !!r && (r.moving || (game.lastUpdateNow || 0) - r.endAt < SHADOW_DASH.fadeMs); }
 // The afterimages to draw now, nearest first, as [x, y, alpha] triples into `out` (a Float64Array of 3 × SHADOW_DASH.ghosts):
@@ -128,10 +180,11 @@ export function shadowTrailLive(game) { const r = trailNow(game); return !!r && 
 // arrival (game.shadowDashAfter) closing in on the arrival point as they fade; the same for a shadow trail (above). Returns
 // the count. Logical tile coordinates. No allocation.
 export function shadowDashGhosts(game, out) {
-  const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter, p = game?.player; let n = 0;
+  const D = SHADOW_DASH, q = liveDash(game), a = game?.shadowDashAfter, p = game?.player; let n = 0;
   if (!p || !out) return 0;
   let t, fx, fy, tx, ty, fade, denom, linear = false, r;
-  if (q?.v === D.v && !(q.arrived)) { t = q.elapsedMs / q.durationMs; fx = q.fromX; fy = q.fromY; tx = p.x; ty = p.y; fade = 1; denom = shadowDashTravel(Math.min(1, t)); }
+  const look = DASH_LOOKS[dashKind(game)].alpha;
+  if (q) { t = q.elapsedMs / q.durationMs; fx = q.fromX; fy = q.fromY; tx = p.x; ty = p.y; fade = 1; denom = shadowDashTravel(Math.min(1, t)); }
   else if ((r = trailNow(game))) {
     const now = game.lastUpdateNow || 0; linear = r.linear; fx = r.fromX; fy = r.fromY;
     if (r.moving) { t = Math.max(0, now - r.at) / r.durationMs; tx = p.x; ty = p.y; fade = 1; denom = lerpTravel(Math.min(1, t), linear); }
@@ -143,7 +196,7 @@ export function shadowDashGhosts(game, out) {
   for (let k = 1; k <= D.ghosts && n < (out.length / 3 | 0); k++) {
     const tk = t - k * D.spacing; if (tk <= 0 || tk >= 1) continue;
     const e = lerpTravel(tk, linear) / denom, o = n * 3; if (!(e < 1)) continue;
-    out[o] = fx + (tx - fx) * e; out[o + 1] = fy + (ty - fy) * e; out[o + 2] = D.alpha * (1 - k / (D.ghosts + 1)) * fade; n++;
+    out[o] = fx + (tx - fx) * e; out[o + 1] = fy + (ty - fy) * e; out[o + 2] = D.alpha * (1 - k / (D.ghosts + 1)) * fade * look; n++;
   }
   return n;
 }
@@ -151,18 +204,38 @@ export function shadowDashGhosts(game, out) {
 // the spectral weight, 1 while charging and fading out as the body settles. A carry trail settles as an arrived charge; a
 // dodge trail is live with no lean and no wraith.
 export function shadowDashPose(game, out) {
-  const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter;
-  out.live = false; out.charge = 0; out.wraith = 0; out.t = 1;
-  if (q?.v === D.v && !q.arrived) { out.live = true; out.t = clamp01(q.elapsedMs / q.durationMs); out.charge = smoothstep(out.t / D.rampIn); out.wraith = 1; return out; }
+  const D = SHADOW_DASH, q = liveDash(game), a = game?.shadowDashAfter, kind = dashKind(game), spectral = DASH_LOOKS[kind].wraith ? 1 : 0;
+  out.live = false; out.charge = 0; out.wraith = 0; out.t = 1; out.kind = kind; out.moving = !!q;
+  if (q) { out.live = true; out.t = clamp01(q.elapsedMs / q.durationMs); out.charge = smoothstep(out.t / D.rampIn); out.wraith = spectral; return out; }
   const r = trailNow(game);
   if (r) { const now = game.lastUpdateNow || 0;
     if (r.moving) { out.live = true; out.t = clamp01(Math.max(0, now - r.at) / r.durationMs); return out; }
     const after = Math.max(0, now - r.endAt); if (after < Math.max(D.settleMs, D.fadeMs)) { const c = r.pose ? 1 - smoothstep(after / D.settleMs) : 0; out.charge = c; out.wraith = c; out.live = after < D.fadeMs || c > 0; }
     return out; }
-  if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at), s = Math.max(D.settleMs, D.fadeMs); if (after < s) { out.charge = 1 - smoothstep(after / D.settleMs); out.wraith = out.charge; out.t = 1; out.live = after < D.fadeMs || out.charge > 0; } }
+  if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at), s = Math.max(D.settleMs, D.fadeMs); if (after < s) { out.charge = 1 - smoothstep(after / D.settleMs); out.wraith = out.charge * spectral; out.t = 1; out.live = after < D.fadeMs || out.charge > 0; } }
   return out;
 }
 const DASH_GHOSTS = new Float64Array(SHADOW_DASH.ghosts * 3); // the drawing pool for drawBrawlerAuras
+// Standard View's pose for the Verge Cleaver's Lava Slash rush (2026-11-14: "in both Standard View and Close View you should
+// see the character charge"): the sprite tips `lean` radians into the heading (by its side-to-side share, so a rush up or down
+// the screen barely tips), weighted by the charge pose (in over the first `rampIn`, out over `settleMs`), and the Cleaver is
+// drawn carried low and trailing: a blade `len` tiles from the hand, `back` behind it and `low` below. No allocation.
+export const RUSH_VIEW = Object.freeze({ lean: .26, len: .62, back: .42, low: .3, width: .08, steel: "#cfc6b8", edge: "#e0874a" });
+const RUSH_POSE = { live: false, charge: 0, wraith: 0, t: 1, kind: "shadow", moving: false };
+export function cleaverRushWeight(game) { const P = shadowDashPose(game, RUSH_POSE); return P.kind === "cleaver" && P.charge > 0 ? P.charge : 0; }
+const HEADING = { x: 1, y: 0 }; // reused: the rush's heading (or the aim it left), no allocation
+const rushHeading = (game) => { const q = game?.artRush, a = game?.player?.meleeAim; HEADING.x = q ? q.dirX : Number(a?.x) || (game?.player?.facing === "left" ? -1 : 1); HEADING.y = q ? q.dirY : Number(a?.y) || 0; return HEADING; };
+export function cleaverRushLean(game) { const k = cleaverRushWeight(game); if (!(k > 0)) return 0; return RUSH_VIEW.lean * k * Math.max(-1, Math.min(1, rushHeading(game).x * 1.5)); }
+export function drawCleaverRushBlade(ctx, game, s, lift = 0) {
+  const k = cleaverRushWeight(game), p = game?.player; if (!(k > 0) || !p) return false;
+  const V = RUSH_VIEW, H = rushHeading(game), l = Math.hypot(H.x, H.y) || 1, ux = H.x / l, uy = H.y / l;
+  const hx = (p.x + .5 + ux * .12) * s, hy = (p.y + .62) * s - lift, tx = hx - ux * V.back * s, ty = hy - uy * V.back * s * .5 + V.low * s;
+  const bx = hx + (tx - hx) * V.len / Math.max(.01, Math.hypot(V.back, V.low)), by = hy + (ty - hy) * V.len / Math.max(.01, Math.hypot(V.back, V.low));
+  ctx.globalAlpha = k; ctx.lineCap = "round";
+  ctx.strokeStyle = V.steel; ctx.lineWidth = Math.max(2, s * V.width); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.strokeStyle = V.edge; ctx.lineWidth = Math.max(1, s * V.width * .35); ctx.beginPath(); ctx.moveTo(hx + (bx - hx) * .35, hy + (by - hy) * .35 + 1); ctx.lineTo(bx, by + 1); ctx.stroke();
+  ctx.lineCap = "butt"; ctx.globalAlpha = 1; return true;
+}
 // Imbue Weapon (Tim, 2026-11-04: "While Imbue Weapon is running, it gives you an aura and adds a magic-damage buff to your
 // melee attacks... It scales only off your Focus: with zero Focus or magic it adds nothing, so on a Might build it adds very
 // little. On a Focus build it's a way to use melee if you feel like it, but it will never be as strong as a pure Might build.
@@ -207,10 +280,10 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t, floor = false) {
     ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
-  { const G = DASH_GHOSTS, n = shadowDashGhosts(game, G); // Shadow Boxing's charge: a speed streak and violet afterimages along the path (every tier, safe mode too)
-    if (n > 0) { const far = toScreen({ x: G[(n - 1) * 3] + .5, y: G[(n - 1) * 3 + 1] + .45 }); ctx.globalAlpha = .35 * G[2] / SHADOW_DASH.alpha; ctx.strokeStyle = "#b99bff"; ctx.lineWidth = s * .22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(far[0], far[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.lineCap = "butt";
+  { const G = DASH_GHOSTS, n = shadowDashGhosts(game, G), L = DASH_LOOKS[dashKind(game)]; // a charge (Shadow Boxing's violet, the Cleaver's ember): a speed streak and afterimages along the path (every tier, safe mode too)
+    if (n > 0) { const far = toScreen({ x: G[(n - 1) * 3] + .5, y: G[(n - 1) * 3 + 1] + .45 }); ctx.globalAlpha = .35 * G[2] / SHADOW_DASH.alpha; ctx.strokeStyle = L.streak; ctx.lineWidth = s * .22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(far[0], far[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.lineCap = "butt";
       // the bodies (Close View draws its own 3D afterimages over this floor streak)
-      if (!floor) for (let k = n - 1; k >= 0; k--) { const [gx, gy] = toScreen({ x: G[k * 3] + .5, y: G[k * 3 + 1] + .45 }); ctx.globalAlpha = G[k * 3 + 2]; ctx.fillStyle = "#6f4fc8"; ctx.beginPath(); ctx.ellipse(gx, gy, s * .24, s * .34, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#c9b2ff"; ctx.beginPath(); ctx.arc(gx, gy - s * .38, s * .14, 0, 7); ctx.fill(); }
+      if (!floor) for (let k = n - 1; k >= 0; k--) { const [gx, gy] = toScreen({ x: G[k * 3] + .5, y: G[k * 3 + 1] + .45 }); ctx.globalAlpha = G[k * 3 + 2]; ctx.fillStyle = L.body; ctx.beginPath(); ctx.ellipse(gx, gy, s * .24, s * .34, 0, 0, 7); ctx.fill(); ctx.fillStyle = L.head; ctx.beginPath(); ctx.arc(gx, gy - s * .38, s * .14, 0, 7); ctx.fill(); }
       ctx.globalAlpha = 1; } }
   if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
   drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y);
