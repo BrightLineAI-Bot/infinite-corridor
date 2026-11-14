@@ -317,14 +317,21 @@ function rotateY(pose,node,angle){const o=node*10+3,s=Math.sin(angle/2),c=Math.c
 // The Cinder Pike's three thrusts (close-view-hero primaryPose). Per step: the shaft's yaw and pitch (radians, model space),
 // its height and the drive forward (shares of arm reach), a sideways offset, and how far the lunge opens. Presentation only:
 // the hit is the unchanged narrow forward cone (items.ts PRIMARY_PROFILES 'primary-cinder-pike').
+// 2026-11-14 (the staff-length wooden pike with its butt trailing): the line now runs past the rear hand's hip (PIKE_CARRY.hip),
+// each yaw turned in so the point still meets the aim, and the lunge turns the body further (-.5) so the front hand reaches.
 const PIKE_THRUST = Object.freeze([
-  Object.freeze({ yaw: .10, pitch: -.02, height: .06, base: .04, drive: .32, side: -.02, lunge: 1 }), // a level thrust at the waist
-  Object.freeze({ yaw: -.06, pitch: .05, height: .22, base: .02, drive: .28, side: -.09, lunge: .8 }), // high, across to the left
-  Object.freeze({ yaw: .22, pitch: -.08, height: -.10, base: .04, drive: .30, side: .07, lunge: 1.2 }), // low and deep, to the right
+  Object.freeze({ yaw: .22, pitch: -.02, height: .06, base: .04, drive: .32, side: -.02, lunge: 1 }), // a level thrust at the waist
+  Object.freeze({ yaw: .08, pitch: .05, height: .22, base: .02, drive: .28, side: -.06, lunge: .8 }), // high, across to the left
+  Object.freeze({ yaw: .26, pitch: -.08, height: -.10, base: .04, drive: .30, side: .01, lunge: 1.2 }), // low and deep, to the right
 ]);
 // The lunge: the left foot steps `front` forward, the right `back` behind, the pelvis sinks `drop` (source units); the body
 // turns `turn`, the spine leans `lean`, the chest `chest`, the head looks up `look` (radians); `draw` pulls the shaft back.
-const PIKE_LUNGE = Object.freeze({ front: .17, back: .13, drop: .07, turn: -.16, lean: .16, chest: .08, look: .10, draw: .10 });
+const PIKE_LUNGE = Object.freeze({ front: .17, back: .13, drop: .07, turn: -.5, lean: .16, chest: .08, look: .10, draw: .10 });
+// The two-handed carry (Tim, 2026-11-14: held in both hands across the body, ready): the shaft's yaw and pitch (radians, model
+// space; yaw near a quarter turn lays it across the chest), the hands' mid-point to the side (source units), below the
+// shoulders and forward of them (shares of arm reach). `hip` moves the thrust line toward the rear hand's side (source units),
+// so the butt trails past the hip instead of through the torso.
+const PIKE_CARRY = Object.freeze({ yaw: 1.40, pitch: 1.0, side: 0, height: -.36, forward: .40, hip: -.2 });
 // A lunge of weight k (0 leaves the pose alone): both soles stay flat on the ground, one ahead of the other.
 function lungeStance(state,pose,k,scale=1){
   if(!(k>0))return;const L=PIKE_LUNGE,data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(state.asset,state,pose);
@@ -349,11 +356,11 @@ function primaryPose(state,pose,profile,p,step=1){
     // front of the other... leaning into a forward stab") levels the shaft forward at the waist,
     // draws it back a little, then drives it out over the lunge and returns to the same carry.
     const T=PIKE_THRUST[step-1],draw=p<.12?smoothstep(p/.12):1-smoothstep((p-.12)/.10),stab=smoothstep((p-.14)/.16)*(1-smoothstep((p-.44)/.40));
-    const yaw=.60*(1-commit)+T.yaw*commit;
-    const pitch=.60*(1-commit)+T.pitch*commit;
+    const C=PIKE_CARRY,yaw=C.yaw*(1-commit)+T.yaw*commit;
+    const pitch=C.pitch*(1-commit)+T.pitch*commit;
     const nx=Math.sin(yaw)*Math.cos(pitch),ny=Math.sin(pitch),nz=Math.cos(yaw)*Math.cos(pitch),half=reach*.23;
-    const x=cx+T.side*commit;
-    const y=cy-reach*.36+T.height*reach*commit,z=cz+reach*.22+(T.base-PIKE_LUNGE.draw*draw+T.drive*stab)*reach*commit;
+    const x=cx+C.side*(1-commit)+(C.hip+T.side)*commit;
+    const y=cy+(C.height*(1-commit)+(T.height-.36)*commit)*reach,z=cz+(C.forward*(1-commit)+(.22+T.base-PIKE_LUNGE.draw*draw+T.drive*stab)*commit)*reach;
     t[0]=x-nx*half;t[1]=y-ny*half;t[2]=z-nz*half;const rr=solveArm(state,pose,false,t,yaw,pitch);
     t[0]=x+nx*half;t[1]=y+ny*half;t[2]=z+nz*half;const lr=solveArm(state,pose,true,t,yaw,pitch);
     state.primaryGripResidual=Math.max(rr,lr);state.clip='derived-polearm-thrust';
