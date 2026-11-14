@@ -1026,7 +1026,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
   // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
-  {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);}}
+  {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);if(!action)plantedCrouch(asset,state,state.pose,CLOSE_VIEW_SHADOW_FORMS.dash.crouch*w,CLOSE_VIEW_SHADOW_FORMS.dash.drop);}} // 2026-11-14: low in the charge (not over a swing's own legs)
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.

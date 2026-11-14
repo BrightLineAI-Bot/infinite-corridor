@@ -3,7 +3,7 @@ import { normalizeCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual
 import{ensureBleed}from'./bleed.ts';import{ensureSpinoState}from'./spino-rex.ts';
 import{freshEliteState,ensureEliteState}from'./elites.ts';import{ensureRot}from'./water-traversal.ts';import{ensureBoatState,ensureWood}from'./boats.ts';import{ensureSlots,ensureLantern}from'./spell-slots.ts';import{ensureWanderer,ensureReciters}from'./travelers.ts';import{ensureQuestingBeast}from'./questing-beast.ts';import{ensureFarArray}from'./far-array.ts';
 import{normalizeMapMarks}from'./atlas-view.ts';import{ensureLattice}from'./transit-lattice.ts';import{ensureHometowns}from'./hometowns.ts';import{freshCorridorStory,freshWorldSteward,ensureCorridorSystems}from'./story.ts';
-import{ensureTowerSight}from'./tall-towers.ts';
+import{ensureTowerSight}from'./tall-towers.ts';import{normalizeShadowDash}from'./brawler-spells.ts';
 import{freshViewportState,ensureViewportState}from'./foundry.ts';import{normalizeRoofDeck}from'./roof-decks.ts';/* roof decks: playerRuntime.roofDeck (additive, schema 14) */
 import{freshSceneState,ensureSceneState}from'./scenes.ts';
 import{normalizeItemUpgrade,apertureBand}from'./items.ts';import{ensurePresetGear}from'./build-presets.ts';import{ensureSling}from'./sling.ts';import{ensureSkylands,ensureSeeds}from'./skylands.ts';import{ensureSeedRealmSession}from'./seed-realms.ts';import{ensureBellState}from'./bells.ts';import{ensurePageState}from'./torn-pages.ts';import{ensureThreadState}from'./threads.ts';import{normalizeFractured}from'./fractured.ts';import{ensureTheDeep}from'./the-deep.ts';import{ensureAscendancy}from'./ascendancy.ts';import{ensureSeasons}from'./seasons.ts';import{ensureGlyphState}from'./glyphs.ts';import{ensureTesseracts}from'./tesseracts.ts';import{ensurePentagonFinding,ensurePentagonJournal}from'./pentagon.ts';import{ensureEchoState,grantSlainEchoes}from'./echoes.ts';import{ensureConstellation}from'./constellation.ts';import{ensureLore}from'./lore.ts';import{ensureLinks}from'./linked-dungeons.ts';import{ensureDigging}from'./digging.ts';import{ensureBuild}from'./building.ts';import{ensureRegrowth}from'./refuge-lands.ts';import{ensureBeastCeiling}from'./stages.ts';import{ensureWorldBeasts}from'./world-beasts.ts';import{ensureTurtleShells}from'./turtle-shell.ts';import{ensureMech,ensureDroneLiftRuntime}from'./vehicle-gates.ts';import{ensureMeal}from'./meals.ts';import{ensureMarginalia}from'./marginalia.ts';import{ensureStalker}from'./stalker.ts';import{ensureMounts}from'./beast-mounts.ts';
@@ -148,6 +148,7 @@ export function ensureAttackVisualRuntime(save) {
     runtime.pendingToolUse = normalizePendingToolUse(runtime.pendingToolUse);
     runtime.pendingMeleeContact = normalizePendingMeleeContact(runtime.pendingMeleeContact);
     runtime.hammerfallStartup = normalizeHammerfallStartup(runtime.hammerfallStartup);
+    if (Object.hasOwn(runtime, "shadowDash")) runtime.shadowDash = normalizeShadowDash(runtime.shadowDash); // Shadow Boxing's charge (brawler-spells.ts)
   }
   if(save)save.toolUseCounter=!Object.hasOwn(save,'toolUseCounter')?0:Number.isSafeInteger(save.toolUseCounter)&&save.toolUseCounter>=0?save.toolUseCounter:Number.MAX_SAFE_INTEGER;
   if (save) save.fistOpeningHand = save.fistOpeningHand === 'left' || save.fistOpeningHand === 'right' ? save.fistOpeningHand : null;
