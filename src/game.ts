@@ -76,7 +76,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -4194,6 +4194,8 @@ export class Game {
     const form = this.mechUp() ? playerFormPresentation(this) : null; if (form) feet += Math.max(0, Number(form.lift) || 0);
     return feet;
   }
+  // The drawn height of the ground (no air, no jump) at (x, y), player coordinates: where a shot from a figure standing there leaves.
+  groundFeetAt(map, w, x, y) { const under = tileUnder(map, w, x, y); return Math.max(0, Number(elevationAt(map, w, x, y)) || 0) * (under ? this.levelDrawn(under) : LIFT_PER_LEVEL); }
   // The chest above the feet a shot leaves from: RANGED_OCCLUSION.chest, scaled by a taller form (the robot, the suit, the Ember
   // Form: its drawn head over RANGED_OCCLUSION.heroHead); the drone's rockets leave the drone (PLAYER_DRONE_VISUAL.hover).
   shotLaunchChest(p) {
@@ -4210,7 +4212,7 @@ export class Game {
     if (shotPiercesTerrain(p)) return false; // a fully charged Carbine beam
     const map = this.map, w = mapWidth(map, this.area); if (!map?.tiles?.[Math.floor(y) * w + Math.floor(x)] || !this.player) return false;
     const O = RANGED_OCCLUSION;
-    if (!Number.isFinite(p.launchZ)) p.launchZ = this.shotLaunchFeet(map, w);
+    if (!Number.isFinite(p.launchZ)) p.launchZ = Array.isArray(p.launchAt) && p.launchAt.length === 2 && p.launchAt.every(Number.isFinite) ? this.groundFeetAt(map, w, p.launchAt[0], p.launchAt[1]) : this.shotLaunchFeet(map, w); // CLONE_CARBINE: the clone's beam leaves its own ground
     if (!Number.isFinite(p.launchChest)) p.launchChest = this.shotLaunchChest(p);
     const top = this.groundDrawnAt(map, w, x, y);
     if (p.path === "grenade") { // a lobbed shell keeps its arc
@@ -8527,24 +8529,26 @@ export class Game {
     const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
     const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
     if (!action) return this.carbineFire(now, d, 0);
-    K.charge = { held: 0, action, dir: { x: d.x, y: d.y } }; this.carbinePose(now, d); return true;
+    K.charge = { held: 0, action, dir: { x: d.x, y: d.y }, clone: this.cloneCarbineEligible(now) ? 0 : null /* CLONE_CARBINE: the clone charges with her */ }; this.carbinePose(now, d); return true;
   }
   // The beam after a hold of `held` s (0: a tap). Takes its rounds, then fires as full a beam as they paid for. Its damage is
   // carbineBase (CARBINE.base + CARBINE.bonus × toolBonus: items.ts TOOL_SCALING.carbine, Finesse; × armor's spell damage) × the tool's glyph damage × the charge.
-  carbineFire(now, d, held) {
+  // `cloneHeld`: the seconds the Shadow Clone charged with her (CLONE_CARBINE; null: it did not), a tap's 0 by default.
+  carbineFire(now, d, held, cloneHeld = held) {
     const C = CARBINE, weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool"), echoes = glyphs.count("echo"); if (!weapon?.carbine) return false;
     const want = carbineRounds(held), round = this.takeRound(echoes); if (!round) return false;
     let paid = 1; while (paid < want && spendRound(this.save, echoes)) paid++;
     if (paid < want) { held = carbineAffordedHold(held, paid); this.message = paid > 1 ? `Rounds ran short: a part charge (${paid} of ${want}).` : "Rounds ran short: the charge fires as a single beam."; }
+    const cloneOut = this.cloneCarbineEligible(now), cloneCharge = cloneOut ? Math.min(Number(held) || 0, Number(cloneHeld) || 0) : null, boost = cloneCarbineBoost(cloneCharge); // CLONE_CARBINE: charging together strengthens both beams
     const derived = characterStats(this.save), reach = 1 + derived.attackReach, k = carbineFill(held), ag = armorGlyphBonus(this.save);
     const base = carbineBase(this.toolBonus(C.channel, derived), ag.spellDamage, this.magicBuffRemaining > 0), ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
-    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: toolRange("carbine") / C.speed /* 2026-11-14 (tool-forms.ts TOOL_RANGE): unlimited, to a wall, a foe or the map's edge (was C.range × reach) */, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: weapon.damageType, path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k, carbineCharged: carbineCharged(held) /* RANGED_OCCLUSION.pierce: a charged beam passes raised ground */ };
+    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: toolRange("carbine") / C.speed /* 2026-11-14 (tool-forms.ts TOOL_RANGE): unlimited, to a wall, a foe or the map's edge (was C.range × reach) */, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held) * boost)), damageType: weapon.damageType, path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k, carbineCharged: carbineCharged(held) /* RANGED_OCCLUSION.pierce: a charged beam passes raised ground */ };
     if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; }
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const A = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + A.damage))); shot.scale = A.scale; shot.grow = A.grow; } // release 515: Charged Air
     this.projectiles.push(shot); const trace = this.carbineTrace(shot, k);
     this.player.attackReadyAt = now + C.cadence * 1000 * glyphs.mods.cooldown * (1 - ag.attackSpeed);
     this.carbinePose(now, d);
-    if (this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing) { const at = clonePosition(this.player, this.shadowClone), cd = this.cloneAimFrom(at) || d, sx = at.x + .5 + cd.x * .35, sy = at.y + .45 + cd.y * .35; this.projectiles.push({ ...shot, id: `${shot.id}-shadow`, x: sx, y: sy, bx: sx, by: sy, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share)), glyphHost: null, shadow: true }); } // the clone's copy (release 365)
+    if (cloneOut) this.cloneCarbineFire(shot, d, held, cloneCharge, glyphs.mods.pierce); // the clone's own beam (release 365; CLONE_CARBINE)
     const plan = echoPlan(glyphs); echoEvent(this, "shot", now, { shot });
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); this.projectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-beam fan
     if (plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true } })); // Echo glyphs: copies of the beam
@@ -8552,6 +8556,35 @@ export class Game {
     if (fieldOn(this.save, CONTINUOUS_ASSAULT.key) && assaultCharged(held)) { shot.assault = true; trace.assault = shot.damage; }
     if (paid === want && carbineCharged(held)) this.message = k >= 1 ? C.messages.full : C.messages.release;
     return true;
+  }
+  // CLONE_CARBINE: the Shadow Clone can charge and fire with her (standing out: not while placed, not the Shadow Boxing echo).
+  cloneCarbineEligible(now = this.lastUpdateNow || 0) { return this.shadowCloneActive(now) && !this.shadowClone.charging && !this.shadowClone.boxing; }
+  // The clone's beam beside hers: from where it stands, of its own charge (`cloneHeld` s), at SHADOW_CLONE.share. Rides on her
+  // rounds; carries no glyph procs and calls no Continuous Assault volley (her beam's flag is set after its copies).
+  cloneCarbineFire(shot, d, held, cloneHeld, glyphPierce) {
+    const at = clonePosition(this.player, this.shadowClone), cd = this.cloneCarbineAim(at, d, shot), sx = at.x + .5 + cd.x * .35, sy = at.y + .45 + cd.y * .35;
+    const q = { ...shot, id: `${shot.id}-shadow`, x: sx, y: sy, bx: sx, by: sy, dx: cd.x, dy: cd.y, hits: {}, damage: Math.max(1, Math.round(shot.damage * SHADOW_CLONE.share * cloneCarbineRatio(held, cloneHeld))), glyphHost: null, shadow: true,
+      pierce: glyphPierce + carbinePierce(cloneHeld), charge: carbineFill(cloneHeld), carbineCharged: carbineCharged(cloneHeld), launchAt: [at.x, at.y] /* Close View occlusion: from the clone's own ground (shotOccluded) */ };
+    this.projectiles.push(q); return q;
+  }
+  // Where the clone's beam goes (CLONE_CARBINE): at her foe (the lock, else the foe her beam is aimed down) when the clone can see
+  // it; else the nearest foe the clone can see within CLONE_CARBINE.cone of her aim and the Carbine's reach; else along her aim.
+  cloneCarbineAim(at, d, shot) {
+    const map = this.map, w = mapWidth(map, this.area), lock = this.lockedTarget(), live = (e) => !!e && autoAimable(e);
+    const foe = live(lock) && !lock.hidden ? lock : this.shotSightFoe(shot);
+    if (foe && hasLineOfSight(foe, at, map, w, true)) return projectileDirection(foe.x - at.x, foe.y - at.y, this.player.facing);
+    const reach = CARBINE.range * (1 + characterStats(this.save).attackReach); let best = null, bd = Infinity;
+    for (const e of this.enemies) { if (!live(e)) continue; const ex = e.x - at.x, ey = e.y - at.y, m = Math.hypot(ex, ey); if (!(m > 1e-6) || m > reach || m >= bd || (ex * d.x + ey * d.y) / m < CLONE_CARBINE.cone || !hasLineOfSight(e, at, map, w, true)) continue; best = e; bd = m; }
+    return best ? projectileDirection(best.x - at.x, best.y - at.y, this.player.facing) : { x: d.x, y: d.y };
+  }
+  // The clone's charge glow for drawing (tool-forms.ts drawCarbine, close-view.ts): its muzzle (x, y), its centre (cx, cy), its aim
+  // (ax, ay) and fill k; null when it is not charging. One scratch object, no allocation.
+  cloneCarbineGlow(now = this.lastUpdateNow || 0) {
+    const c = this.carbine?.charge; if (!c || c.clone == null || !carbineCharged(c.clone) || !this.cloneCarbineEligible(now)) return null;
+    const G = (this._cloneGlow ||= { x: 0, y: 0, cx: 0, cy: 0, ax: 0, ay: 0, k: 0 }), P = this.player, sc = this.shadowClone;
+    G.cx = P.x + (Number(sc.ox) || 0) + .5; G.cy = P.y + (Number(sc.oy) || 0) + .45; G.ax = c.dir.x; G.ay = c.dir.y;
+    const e = this.lockedTarget(); if (e && !e.untargetable && !e.hidden) { const dx = e.x + .5 - G.cx, dy = e.y + .45 - G.cy, m = Math.hypot(dx, dy); if (m > 1e-6) { G.ax = dx / m; G.ay = dy / m; } }
+    G.x = G.cx + G.ax * CLONE_CARBINE.muzzle; G.y = G.cy + G.ay * CLONE_CARBINE.muzzle; G.k = carbineFill(c.clone); return G;
   }
   // The afterglow follows a beam while it flies and fades once it ends (fixed slots: a free one, else the oldest is reused).
   carbineTrace(shot, k) {
@@ -8601,9 +8634,10 @@ export class Game {
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
-    if (held) { c.held = Math.min(c.held + (c.held < C.charge.grace ? dt : dt / this.chargeQuicken(C.charge.full - C.charge.grace)), C.charge.full + C.charge.grace); /* Gathered Breath: past the grace */ if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
+    if (!this.cloneCarbineEligible(now)) c.clone = null; // CLONE_CARBINE: the clone ended (or was stepped into): its charge is gone
+    if (held) { const was = c.held; c.held = Math.min(c.held + (c.held < C.charge.grace ? dt : dt / this.chargeQuicken(C.charge.full - C.charge.grace)), C.charge.full + C.charge.grace); /* Gathered Breath: past the grace */ if (this.cloneCarbineEligible(now)) c.clone = Math.min(c.held, (c.clone ?? 0) + (c.held - was)); /* the clone charges with her, from when it stood out */ if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
     K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
-    this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held);
+    this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held, c.clone);
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
   // A slot button pressed (game.update). Rift Step answers on the press's end (Tim, 2026-11-13: one rule in both views): let go
