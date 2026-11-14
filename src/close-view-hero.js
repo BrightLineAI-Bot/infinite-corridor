@@ -1,9 +1,10 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r951-4925ab3898c1';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r961-2b574429348b';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r951-4925ab3898c1';
-import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r951-4925ab3898c1';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r951-4925ab3898c1';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r961-2b574429348b';
+import { sampleSweepPose } from './great-sweep.js?v=r961-2b574429348b'; // the Great Sweep's 360° swing clock (2026-11-14)
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.js?v=r961-2b574429348b';
+import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r961-2b574429348b';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -317,14 +318,21 @@ function rotateY(pose,node,angle){const o=node*10+3,s=Math.sin(angle/2),c=Math.c
 // The Cinder Pike's three thrusts (close-view-hero primaryPose). Per step: the shaft's yaw and pitch (radians, model space),
 // its height and the drive forward (shares of arm reach), a sideways offset, and how far the lunge opens. Presentation only:
 // the hit is the unchanged narrow forward cone (items.ts PRIMARY_PROFILES 'primary-cinder-pike').
+// 2026-11-14 (the staff-length wooden pike with its butt trailing): the line now runs past the rear hand's hip (PIKE_CARRY.hip),
+// each yaw turned in so the point still meets the aim, and the lunge turns the body further (-.5) so the front hand reaches.
 const PIKE_THRUST = Object.freeze([
-  Object.freeze({ yaw: .10, pitch: -.02, height: .06, base: .04, drive: .32, side: -.02, lunge: 1 }), // a level thrust at the waist
-  Object.freeze({ yaw: -.06, pitch: .05, height: .22, base: .02, drive: .28, side: -.09, lunge: .8 }), // high, across to the left
-  Object.freeze({ yaw: .22, pitch: -.08, height: -.10, base: .04, drive: .30, side: .07, lunge: 1.2 }), // low and deep, to the right
+  Object.freeze({ yaw: .22, pitch: -.02, height: .06, base: .04, drive: .32, side: -.02, lunge: 1 }), // a level thrust at the waist
+  Object.freeze({ yaw: .08, pitch: .05, height: .22, base: .02, drive: .28, side: -.06, lunge: .8 }), // high, across to the left
+  Object.freeze({ yaw: .26, pitch: -.08, height: -.10, base: .04, drive: .30, side: .01, lunge: 1.2 }), // low and deep, to the right
 ]);
 // The lunge: the left foot steps `front` forward, the right `back` behind, the pelvis sinks `drop` (source units); the body
 // turns `turn`, the spine leans `lean`, the chest `chest`, the head looks up `look` (radians); `draw` pulls the shaft back.
-const PIKE_LUNGE = Object.freeze({ front: .17, back: .13, drop: .07, turn: -.16, lean: .16, chest: .08, look: .10, draw: .10 });
+const PIKE_LUNGE = Object.freeze({ front: .17, back: .13, drop: .07, turn: -.5, lean: .16, chest: .08, look: .10, draw: .10 });
+// The two-handed carry (Tim, 2026-11-14: held in both hands across the body, ready): the shaft's yaw and pitch (radians, model
+// space; yaw near a quarter turn lays it across the chest), the hands' mid-point to the side (source units), below the
+// shoulders and forward of them (shares of arm reach). `hip` moves the thrust line toward the rear hand's side (source units),
+// so the butt trails past the hip instead of through the torso.
+const PIKE_CARRY = Object.freeze({ yaw: 1.40, pitch: 1.0, side: 0, height: -.36, forward: .40, hip: -.2 });
 // A lunge of weight k (0 leaves the pose alone): both soles stay flat on the ground, one ahead of the other.
 function lungeStance(state,pose,k,scale=1){
   if(!(k>0))return;const L=PIKE_LUNGE,data=state.hammerLegData,g=state.global,target=state.primaryTarget;build(state.asset,state,pose);
@@ -349,11 +357,11 @@ function primaryPose(state,pose,profile,p,step=1){
     // front of the other... leaning into a forward stab") levels the shaft forward at the waist,
     // draws it back a little, then drives it out over the lunge and returns to the same carry.
     const T=PIKE_THRUST[step-1],draw=p<.12?smoothstep(p/.12):1-smoothstep((p-.12)/.10),stab=smoothstep((p-.14)/.16)*(1-smoothstep((p-.44)/.40));
-    const yaw=.60*(1-commit)+T.yaw*commit;
-    const pitch=.60*(1-commit)+T.pitch*commit;
+    const C=PIKE_CARRY,yaw=C.yaw*(1-commit)+T.yaw*commit;
+    const pitch=C.pitch*(1-commit)+T.pitch*commit;
     const nx=Math.sin(yaw)*Math.cos(pitch),ny=Math.sin(pitch),nz=Math.cos(yaw)*Math.cos(pitch),half=reach*.23;
-    const x=cx+T.side*commit;
-    const y=cy-reach*.36+T.height*reach*commit,z=cz+reach*.22+(T.base-PIKE_LUNGE.draw*draw+T.drive*stab)*reach*commit;
+    const x=cx+C.side*(1-commit)+(C.hip+T.side)*commit;
+    const y=cy+(C.height*(1-commit)+(T.height-.36)*commit)*reach,z=cz+(C.forward*(1-commit)+(.22+T.base-PIKE_LUNGE.draw*draw+T.drive*stab)*commit)*reach;
     t[0]=x-nx*half;t[1]=y-ny*half;t[2]=z-nz*half;const rr=solveArm(state,pose,false,t,yaw,pitch);
     t[0]=x+nx*half;t[1]=y+ny*half;t[2]=z+nz*half;const lr=solveArm(state,pose,true,t,yaw,pitch);
     state.primaryGripResidual=Math.max(rr,lr);state.clip='derived-polearm-thrust';
@@ -502,7 +510,9 @@ function greatSweepFrame(F,o,dx,dy,dz,ex,ey,ez){
 // The accepted record's clock: the stored startup is the release; a record without a receipt uses the
 // nominal startup. A cancelled or unknown receipt shows the carry.
 function greatSweepActionSample(action,p,out){
-  const duration=Number(action?.durationMs)>0?Number(action.durationMs):TOOL_ACTION_TIMING['great-sweep'].durationMs,q=toolUsePoseTime(action,p*duration);
+  const duration=Number(action?.durationMs)>0?Number(action.durationMs):TOOL_ACTION_TIMING['great-sweep'].durationMs;
+  if(action?.sweepSwing?.v===1)return sampleSweepPose(CLOSE_VIEW_GREAT_SWEEP,p*duration,duration,out); // great-sweep.ts: the swing the hit follows
+  const q=toolUsePoseTime(action,p*duration);
   if((action?.toolMotion&&action.toolMotion.v!==1)||q.phase==='cancelled'||q.phase==='unknown'){sampleGreatSweep(duration,NaN,duration,out);return out;}
   return sampleGreatSweep(q.elapsedMs,q.phase==='legacy'?NaN:q.startupMs,duration,out);
 }
@@ -525,6 +535,21 @@ function greatSweepPose(state,pose,sample,reducedMotion){
     rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-S.guard*w);
   }
   state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+}
+// The Aether Orrery held (Tim, 2026-11-14: "his right hand is held out, palm up, and the Orrery floats just above it"): the
+// right forearm out in front at the waist, the hand turned palm up and its fingers opened, the same through idle and walking
+// (solved last, over the gait). CLOSE_VIEW_ORRERY_PALM: `hand` from the shoulder in arm reaches [side, up, forward]; `thumb`
+// and `face` the socket's +X and +Z (the grip frame, as the Great Sweep's carry); `open` and `tip` uncurl the two finger joints.
+export const CLOSE_VIEW_ORRERY_PALM = Object.freeze({ hand: Object.freeze([.18, -.52, .62]), thumb: Object.freeze([1, .1, .15]), face: Object.freeze([0, -1, .2]), open: -.9, tip: -.6 });
+function orreryPalmPose(state,pose){
+  const P=CLOSE_VIEW_ORRERY_PALM,A=heldArm('orrery-tap'),m=A.sign,F=state.sweepScratch,q=state.primaryScratch,t=state.primaryTarget;
+  build(state.asset,state,pose);
+  const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,sx=g[s+12],sy=g[s+13],sz=g[s+14];
+  const reach=Math.hypot(g[e+12]-sx,g[e+13]-sy,g[e+14]-sz)+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  greatSweepFrame(F,0,m*P.thumb[0],P.thumb[1],P.thumb[2],m*P.face[0],P.face[1],P.face[2]);for(let k=0;k<4;k++)q[20+k]=F[k];
+  t[0]=sx+reach*m*P.hand[0];t[1]=sy+reach*P.hand[1];t[2]=sz+reach*P.hand[2];
+  state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+  rotateX(pose,A.grip,P.open);rotateX(pose,A.left?5:14,P.tip);
 }
 function rifleSupportHand(state,pose,profile,rifle,A,weight){
   build(state.asset,state,pose);
@@ -698,6 +723,7 @@ function kickChain(asset,state,pose,p,c,chained,held=0,reducedMotion=false){
 function weightedMeleePose(asset,state,pose,motion,reducedMotion=false) {
   const w=motion.weight,d=motion.drive;if(!(w>0))return;
   if(motion.kind==='iron-fists'){fistChainPose(asset,state,pose,motion.move,motion.progress,motion.contact,motion.lead,motion.chained===true,false,0,reducedMotion);return;}
+  if(motion.kind==='fourfold-daggers'){daggerCutPose(asset,state,pose,motion,reducedMotion);return;} // the weighted swing's dagger cuts (melee-swing.ts)
   // Quick (v2) Cleaver actions are the three authored slashes; v1 four-cut records keep their cut below.
   if(motion.kind==='verge-cleaver'&&(motion.actionVersion===2||motion.actionVersion===3)){cleaverSlashPose(asset,state,pose,motion,reducedMotion);return;} // 3: the weighted swing (melee-swing.ts)
   const A=CLEAVER_ARM,m=A.sign;
@@ -739,6 +765,25 @@ function cleaverSlashPose(asset,state,pose,motion,reducedMotion){
   rotateX(pose,24,lean);rotateX(pose,4,-lean*.5);rotateX(pose,A.free,-spec.guard*w*body);
   qmul(q,20,F,4,F,12);
   state.primaryGripResidual=solveArmFrame(state,pose,A.left,t);
+}
+// Fourfold Daggers (CLOSE_VIEW_DAGGER_CUTS): a dagger in each hand. The cutting hand runs a level arc in front of the chest
+// around its own shoulder, the blade heading at the sampled angle (source +x is the displayed right, so the hit's angle is the
+// grip yaw); the other hand holds its dagger up at guard; a paired step cuts with both, mirrored. Solved on the scratch pose
+// and blended in by the swing's weight, so both ends are the carry. No allocation.
+function daggerCutPose(asset,state,pose,motion,reducedMotion){
+  const C=CLOSE_VIEW_DAGGER_CUTS,w=motion.weight;state.clip='derived-dagger-cut-'+motion.cutIndex;state.clipTime=motion.progress;state.primaryStep=motion.cutIndex;
+  if(!(w>0))return;
+  const body=(reducedMotion?C.reducedBody:1)*w,sweep=Math.max(-.25,Math.min(1.2,Number(motion.sweep)||0)),hand=motion.hand>=0?1:-1,twist=motion.pair?0:hand*C.twist*(.5-sweep)*body;
+  rotateY(pose,27,twist*.6);rotateY(pose,24,twist*.4);rotateY(pose,4,-twist*.5);rotateX(pose,24,C.lean*body);rotateX(pose,4,-C.lean*.5*body);
+  state.other.set(pose);const t=state.primaryTarget,g=state.global;let residual=0;
+  for(const arm of BOTH_ARMS){
+    build(asset,state,state.other);const side=arm.sign,R=fistReach(state,arm),s=arm.shoulder*16,cutting=motion.pair||side===hand;
+    if(cutting){const a=side===hand?motion.angle:-motion.angle;
+      t[0]=g[s+12]+R*(side*C.pivot[0]+C.hand*Math.sin(a));t[1]=g[s+13]+R*C.pivot[1];t[2]=g[s+14]+R*(C.pivot[2]+C.hand*Math.cos(a));
+      residual=Math.max(residual,solveArm(state,state.other,arm.left,t,a,C.pitch));}
+    else{const G=C.guard;t[0]=g[s+12]+R*side*G.hand[0];t[1]=g[s+13]+R*G.hand[1];t[2]=g[s+14]+R*G.hand[2];solveArm(state,state.other,arm.left,t,side*G.yaw,G.pitch);}
+  }
+  blend(pose,state.other,w);state.primaryGripResidual=residual;
 }
 // Source-space grip quaternion (written at F[o..o+3]) for the blade at a slash angle; M keeps the axes.
 // Character side +1 is the sword hand: source x = m * side. The frame keeps blade (+X) and edge (+Y).
@@ -1023,10 +1068,14 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
   if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
+  if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
   // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
-  {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);}}
+  {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);if(!action)plantedCrouch(asset,state,state.pose,CLOSE_VIEW_SHADOW_FORMS.dash.crouch*w,CLOSE_VIEW_SHADOW_FORMS.dash.drop);}} // 2026-11-14: low in the charge (not over a swing's own legs)
+  // The Verge Cleaver's Lava Slash rush (2026-11-14; input.rushGrip, the rush's charge weight): over that lean, the blade carried
+  // low and trailing, the weapon shoulder swung back and its elbow eased (close-view-shadow-forms.ts CLOSE_VIEW_SHADOW_FORMS.rush).
+  {const k=clamp(Number(input.rushGrip)||0)*(input.reducedMotion?.5:1);if(k>0){const R=CLOSE_VIEW_SHADOW_FORMS.rush,right=roles.free==='leftSocket';rotateX(state.pose,right?22:12,R.grip*k);rotateX(state.pose,right?21:11,-R.elbow*k);}}
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.

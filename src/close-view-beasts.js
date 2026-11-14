@@ -1,26 +1,41 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r951-4925ab3898c1";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r951-4925ab3898c1";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r951-4925ab3898c1";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r951-4925ab3898c1";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r951-4925ab3898c1";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r951-4925ab3898c1";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r951-4925ab3898c1";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r951-4925ab3898c1";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r951-4925ab3898c1";
-import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r951-4925ab3898c1";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r951-4925ab3898c1";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r951-4925ab3898c1";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r951-4925ab3898c1";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r951-4925ab3898c1";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r951-4925ab3898c1";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r951-4925ab3898c1";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r951-4925ab3898c1";
-import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r951-4925ab3898c1";
-import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r951-4925ab3898c1";
-import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r951-4925ab3898c1";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r961-2b574429348b";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r961-2b574429348b";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r961-2b574429348b";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r961-2b574429348b";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r961-2b574429348b";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r961-2b574429348b";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r961-2b574429348b";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r961-2b574429348b";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r961-2b574429348b";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r961-2b574429348b";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r961-2b574429348b";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r961-2b574429348b";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r961-2b574429348b";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r961-2b574429348b";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r961-2b574429348b";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r961-2b574429348b";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r961-2b574429348b";
+import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r961-2b574429348b";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r961-2b574429348b";
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r961-2b574429348b";
+
+// A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
+// visible whenever they're in the same section as you... You should know where they are"). The Close View had kept every
+// actor, a beast too, to the floor it draws (the quality tier's radius plus two tiles: about 8.5 tiles on the low tier, which
+// safe mode forces): a beast that sprang back, flew or circled past it left the view and came back, and on its way out it
+// thinned and took the fog. Now a world beast, the Questing Beast and the Stalker are captured anywhere in the section
+// (`pad`: tiles round the ground canvas the ordinary renderer still captures them from; a section is 32 across), stand solid
+// at any distance, take no more than `fog` of the fog's colour, and come before every other creature for the beast slot.
+// Past `lod` tiles beyond the fog's far edge a body draws its low-tier mesh (cheaper) instead of its tier's own. At most one
+// or two such beasts share a section, so the cost is bounded. What the beast's own design hides (the Stalker lying in wait or
+// in its mirage, the Gloomvast's Dark) stays hidden: that is the fight, not the camera. Presentation only.
+export const CLOSE_VIEW_BEAST_SIGHT = Object.freeze({ pad: 34, fog: .35, lod: 2 });
+export function closeViewSectionBeast(e) {
+  return !!e && !e.dead && !!(e.worldBeast || e.questingBeast || e.passingBeast || (e.stalker && !e.stalkerKin && !e.stalkerDecoy));
+}
 
 // The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
 // never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.

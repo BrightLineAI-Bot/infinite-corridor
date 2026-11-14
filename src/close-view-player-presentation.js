@@ -1,6 +1,6 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
-import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.js?v=r951-4925ab3898c1';
-import { PRIMARY_SWINGS, swingStep, sampleSwing } from './melee-swing.js?v=r951-4925ab3898c1';
+import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.js?v=r961-2b574429348b';
+import { PRIMARY_SWINGS, swingStep, sampleSwing } from './melee-swing.js?v=r961-2b574429348b';
 const RIGHT_HAND = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
 const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 // Close View held gear, presentation only (Tim, 2026-11-11: every sword in the left hand,
@@ -14,10 +14,11 @@ const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   melee: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   'salvage-blade': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'fourfold-daggers': Object.freeze({ hand: 'left', scale: 1, grip: 'paired' }), // 2026-11-14: a dagger in each hand (close-view-models.ts writeCloseViewHeroGear draws one on each socket)
   'verge-cleaver': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   'quandrix-staff': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }), // a primary: held where every primary is (2026-11-13)
   'cinder-pike': Object.freeze({ hand: 'left', scale: 1, grip: 'pike' }),
-  'great-sweep': Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
+  'great-sweep': Object.freeze({ hand: 'right', scale: 1, grip: 'one' }), // 2026-11-14: in the right hand, so it is held beside the primary in the left (close-view-sweep-gear.ts)
   mirage: Object.freeze({ hand: 'left', scale: 1, grip: 'one' }),
   emitter: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'spark-coil': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
@@ -81,6 +82,7 @@ export function stonePlaceWeight(phase, reducedMotion = false) {
 // renderer can also use it for a bounded weapon trail without inventing another timer.
 export function sampleMeleeActionPose(action, progress = 0, variant = 1, fistLead = 'right') {
   if(action?.v===3&&action.kind==='verge-cleaver'&&action.move==='swing')return sampleSwingActionPose(action,progress);
+  if(action?.v===3&&action.kind==='fourfold-daggers'&&action.move==='swing')return sampleDaggerActionPose(action,progress);
   const cleaver=action?.v===1&&action.kind==='verge-cleaver'&&action.move==='cleaver';
   const quickCleaver=action?.v===2&&action.kind==='verge-cleaver'&&action.move==='cleaver';
   const fists=action?.v===1&&action.kind==='iron-fists'&&['dash','jab','uppercut'].includes(action.move);
@@ -168,6 +170,27 @@ function sampleSwingActionPose(action, progress) {
     pitch: (action.step === 3 ? .30 - .62 * travel : .10 - .18 * travel), yaw: dir * (.30 - .62 * travel), rise: action.step === 3 ? .55 - .45 * travel : .18 + .12 * travel,
     side: dir * (.13 - .27 * travel), twist: dir * (.26 - .52 * travel) * w });
 }
+// The Fourfold Daggers' cuts (melee-swing.ts PRIMARY_SWINGS['fourfold-daggers'], 2026-11-14): the pose of each hand, driven by
+// the same sampler as the hit. Each cut is a level arc in front of the chest around its own shoulder; the blade heads where
+// the hit's blade heads (angle 0 along the aim, positive toward the displayed right), wind-up cock and follow-through
+// included, so the two hands' cuts cross in an X in front of the Wayfarer. Character frame [right, up, forward] in arm
+// reaches from that hand's shoulder: `pivot` (x mirrored for the left hand), `hand` the arc's radius; `guard` the hand not
+// cutting, held up in front of its own shoulder with its blade forward; `pitch` the blade's tilt (radians, + up); `twist`
+// the chest's turn into the cut at full sweep and `lean` forward (radians). Presentation only.
+export const CLOSE_VIEW_DAGGER_CUTS = Object.freeze({
+  pivot: Object.freeze([-.12, -.30, .26]), hand: .44, pitch: .10,
+  guard: Object.freeze({ hand: Object.freeze([-.06, -.26, .36]), yaw: -.12, pitch: .55 }),
+  twist: .30, lean: .10, reducedBody: .55,
+});
+const DAGGER_SAMPLE = {}; // scratch: the sampler writes into it
+function sampleDaggerActionPose(action, progress) {
+  const spec = PRIMARY_SWINGS['fourfold-daggers'], st = swingStep(spec, action.step), tempo = Number(action.tempo) || 1, duration = Number(action.durationMs);
+  if (!st || !Number.isFinite(duration) || duration <= 0) return null;
+  const p = unit(progress), e = p * duration / tempo, s = sampleSwing(st, e, 1, DAGGER_SAMPLE), T = s.times;
+  return Object.freeze({ kind: 'fourfold-daggers', actionVersion: 3, move: 'swing', progress: p, contact: unit(T.windEnd / st.recoveryMs), phase: s.phase === 'active' ? 'swing' : s.phase === 'follow' ? 'follow-through' : s.phase === 'recover' || s.phase === 'done' ? 'recovery' : 'windup',
+    weight: s.weight, drive: s.weight, recovery: s.phase === 'recover' ? 1 - s.weight : s.phase === 'done' ? 1 : 0, lead: Math.sign(st.side) || 1, openingLead: 1, cutIndex: Math.trunc(Number(action.step)) || 1, elapsedMs: e,
+    angle: s.angle * Math.PI / 180, sweep: s.sweep, hand: Math.sign(st.side) || 1, pair: !!st.pair });
+}
 // Clock sampler for one slash step at accepted action progress p (0..1) with the accepted contact
 // fraction. Writes into `out` (no allocation): weight (guard 0 .. slash 1), angle (radians, 0 at
 // contact), swing (0 at the wind-up pose .. 1 at the end of the follow-through), phase. While the
@@ -234,7 +257,9 @@ export const CLOSE_VIEW_GREAT_SWEEP = Object.freeze({
   twist: -.26, lean: .10, guard: .30, reducedBody: .55,
   // Held carry between uses: the hand low at the sweep hip and the long blade out forward and down, its
   // flat toward the camera behind and above. `hand` is from the shoulder, `blade` and `edge` directions.
-  carry: Object.freeze({ hand: Object.freeze([.16, -.74, .22]), blade: Object.freeze([.58, -.40, .71]), edge: Object.freeze([0, .86, .51]) }),
+  // 2026-11-14 (Tim: "resting on his right shoulder like a huge sword, blade up and back over the shoulder, hand at the grip by
+  // the shoulder"): the hand just in front of and below the shoulder, the long handle laid back over it, the broken blade up behind.
+  carry: Object.freeze({ hand: Object.freeze([.10, -.32, .30]), blade: Object.freeze([-.05, .55, -.83]), edge: Object.freeze([1, .1, 0]) }),
 });
 // Clock sampler for one Great Sweep use at accepted elapsed ms. `startupMs` is the accepted release
 // offset (the stored toolUse startup, or the nominal TOOL_USE_STARTUP_MS for a record without one) and
@@ -314,7 +339,7 @@ export function playerFormPresentation(game) {
   return {...profile,kind,scale,head:profile.head*.82*scale,lift:mech&&game.mechBoosting===true?.22:0,mech,fists,empowered:mech&&save.mech?.empowered===true};
 }
 export function playerFormModelKey(form,held='melee') {
-  const profile=['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
+  const profile=['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
   return form&&PLAYER_HELD_PROFILES.includes(profile)?`${form.kind}:${profile}`:form?.kind||null;
 }
 

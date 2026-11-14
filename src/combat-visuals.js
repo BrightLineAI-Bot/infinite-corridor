@@ -4,14 +4,14 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r951-4925ab3898c1";
-import { SHADOW_CLONE } from "./late-spells.js?v=r951-4925ab3898c1";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r951-4925ab3898c1";
-import { drawOrbit } from "./orbit-volley.js?v=r951-4925ab3898c1";
-import { drawToolForms, drawOrrery } from "./tool-forms.js?v=r951-4925ab3898c1";
-import { drawQuandrix } from "./quandrix-staff.js?v=r951-4925ab3898c1"; // the Quandrix Staff (2026-11-13)
-import { drawWeaponArts } from "./weapon-arts.js?v=r951-4925ab3898c1"; // weapon arts (2026-11-13)
-import { drawAwakenedArts } from "./awakened-arts.js?v=r951-4925ab3898c1"; // awakened arts (2026-11-13)
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r961-2b574429348b";
+import { SHADOW_CLONE } from "./late-spells.js?v=r961-2b574429348b";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r961-2b574429348b";
+import { drawOrbit } from "./orbit-volley.js?v=r961-2b574429348b";
+import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r961-2b574429348b";
+import { drawQuandrix } from "./quandrix-staff.js?v=r961-2b574429348b"; // the Quandrix Staff (2026-11-13)
+import { drawWeaponArts } from "./weapon-arts.js?v=r961-2b574429348b"; // weapon arts (2026-11-13)
+import { drawAwakenedArts } from "./awakened-arts.js?v=r961-2b574429348b"; // awakened arts (2026-11-13)
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? "#7fe7ff" /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
@@ -39,10 +39,10 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     for (const p of list) {
       const [x, y] = toScreen(p);
       if (p.path === "boomerang") {
-        const a = Math.atan2(p.dy, p.dx);
-        ctx.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8);
-        ctx.lineTo(x + Math.cos(a + 2.35) * 7, y + Math.sin(a + 2.35) * 7);
-        ctx.lineTo(x + Math.cos(a - 2.35) * 7, y + Math.sin(a - 2.35) * 7);
+        const a = Math.atan2(p.dy, p.dx), k = .25 + .75 * shotFade(p); // tool-forms.ts TOOL_RANGE: a Spindle dissipating at the end of its range shrinks away
+        ctx.moveTo(x + Math.cos(a) * 8 * k, y + Math.sin(a) * 8 * k);
+        ctx.lineTo(x + Math.cos(a + 2.35) * 7 * k, y + Math.sin(a + 2.35) * 7 * k);
+        ctx.lineTo(x + Math.cos(a - 2.35) * 7 * k, y + Math.sin(a - 2.35) * 7 * k);
         ctx.closePath();
       } else if(p.path==="grenade"){const gr=p.bomblet?4:7;/* release 537: Cluster Shell bomblets */ctx.moveTo(x+gr,y);ctx.arc(x,y,gr,0,7);ctx.moveTo(x,y-gr);ctx.lineTo(x+gr*.57,y-gr*1.57)}else if(p.path==="arc"){const a=Math.atan2(p.dy,p.dx);ctx.moveTo(x+Math.cos(a)*8,y+Math.sin(a)*8);ctx.ellipse(x,y,8,3,a,0,7)}else{const r=(p.damageType === "magic" ? 5 : 3)*(p.scale||1);ctx.moveTo(x+r,y);ctx.arc(x, y, r, 0, 7)}
     }
@@ -66,7 +66,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   // Release 365: Gravity Well (a turning spiral) and Stillpoint (still clock rings) over their circles; the Shadow Clone.
   {const t = performance.now() / 1000;
   drawBrawler(ctx, game, toScreen, s, t, projectedShots); // release 483: Hammerfall, Great Sweep, Iron Fist
-  drawBrawlerAuras(ctx, game, toScreen, s, t); // release 485: Aegis, Shadow Boxing
+  drawBrawlerAuras(ctx, game, toScreen, s, t, projectedShots != null); // release 485: Aegis, Shadow Boxing (on Close View's floor: its charge streak only)
   drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery

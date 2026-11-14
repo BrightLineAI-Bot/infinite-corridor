@@ -22,12 +22,15 @@
 //   grown; nothing is allocated per frame. Everything runs on frame time (dt). Runtime only, never saved: a reload drops the
 //   armed charge, any charge in progress and anything in flight (nothing bursts); a new area drops what is in flight and the
 //   seal, and keeps the stored charge.
+//   The one exception is Lava Slash's rush (2026-11-14): a released slam still travelling to its foe is Game.artRush, saved at
+//   playerRuntime.artRush (brawler-spells.ts LAVA_RUSH) and resumed exactly; a dodge, stun, jump, death or new area cancels it
+//   and stores the charge again.
 //
 // Transpose's seal: standing in it, the Wayfarer's spells (the armor glyphs' Spell Damage path: spells, magic tools, Imbue)
 // deal `spellDamage` more and she takes `damageTaken` more from every blow (game.ts armorGlyphBonus reads transposeBonus).
-import { latticePassives } from "./transit-lattice.js?v=r951-4925ab3898c1";
-import { weaponKey } from "./items.js?v=r951-4925ab3898c1";
-import { QUANDRIX } from "./quandrix-staff.js?v=r951-4925ab3898c1";
+import { latticePassives } from "./transit-lattice.js?v=r961-2b574429348b";
+import { weaponKey } from "./items.js?v=r961-2b574429348b";
+import { QUANDRIX } from "./quandrix-staff.js?v=r961-2b574429348b";
 
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
 
@@ -43,6 +46,8 @@ export const WEAPON_ARTS = Object.freeze({
     // `share`: the art's own weight on the charge's share (balance pass 2026-11-13; a missing one is 1).
     // Dash toward the nearest foe (the lock first) within `dash` tiles, stopping `stop` short of it (straight ahead with none;
     // walls stop it), then the blade slams down `reach` ahead and the ground erupts within `radius`.
+    // The dash is travelled, not a one-update move (Tim, 2026-11-14: "you should see the character charge toward the enemy"):
+    // game.ts artRushBegin / artRushSteer / artRushLand on its own clock, brawler-spells.ts LAVA_RUSH; the slam lands on arrival.
     "lava-slash": Object.freeze({ weapon: "verge-cleaver", name: "Lava Slash", share: .7, dash: 4, stop: .9, reach: .9, radius: 1.9, stun: .5, knock: .45, poseMs: 460 }),
     // `hits` slashes of light over `span` s, on every foe within `radius` of the Wayfarer (who may move): together the share.
     "blade-stream": Object.freeze({ weapon: "fourfold-daggers", name: "Blade Stream", share: .5, radius: 2, hits: 6, span: .6, stun: .1, poseMs: 620 }),
@@ -239,10 +244,10 @@ function release(game, now, held) {
   K.armed = false; K.presses = 0;
   const power = Math.max(0, Number(game.artPower(now)) || 0) * share * (A.share ?? 1); // A.share: the art's own weight (balance)
   if (id === "lava-slash") {
-    const c0 = centre(game), d = game.artDash(now, A.dash, A.stop), c = centre(game), x = c.x + d.x * A.reach, y = c.y + d.y * A.reach;
-    if (Math.hypot(c.x - c0.x, c.y - c0.y) > .2) flash(K, "dash", c.x, c.y, .35, WEAPON_ARTS.flash.dash, c0.x, c0.y);
-    burst(game, x, y, A.radius, power, A.stun, A.knock, now); flash(K, "eruption", x, y, A.radius);
-    game.artVisual(now, d, id, A.poseMs);
+    // 2026-11-14: the dash is travelled (game.artRush); the slam lands on arrival (landLavaSlash). In the air, or with nothing
+    // to cross, it lands at once as before.
+    const c0 = centre(game), d = game.artRushBegin(now, A.dash, A.stop, power);
+    if (d) landLavaSlash(game, now, d, power, c0.x, c0.y);
   } else if (id === "blade-stream") {
     let slot = K.streams[0]; for (const s of K.streams) { if (!s.on) { slot = s; break; } if (s.age > slot.age) slot = s; }
     slot.on = true; slot.n = A.hits; slot.every = A.span / A.hits; slot.tick = 0; slot.power = power / A.hits; slot.age = 0;
@@ -264,6 +269,22 @@ function release(game, now, held) {
   if (w === "perfect") game.message = `${A.name}: ${WEAPON_ARTS.messages.perfect}`;
   else if (w === "overcharge") game.message = `${A.name}: ${WEAPON_ARTS.messages.overcharge}`;
   return true;
+}
+// Lava Slash's slam on arrival: the blade comes down `reach` ahead along the heading and the ground erupts within `radius`
+// (the lava streak back to where the dash set off, c0, if it went anywhere). Runs from release (no travel) or game.ts
+// artRushLand; after a reload the runtime state is made afresh (only the rush is saved).
+export function landLavaSlash(game, now, d, power, x0, y0) {
+  const A = WEAPON_ARTS.arts["lava-slash"], K = weaponArtsState(game), c = centre(game), x = c.x + d.x * A.reach, y = c.y + d.y * A.reach;
+  if (Math.hypot(c.x - x0, c.y - y0) > .2) flash(K, "dash", c.x, c.y, .35, WEAPON_ARTS.flash.dash, x0, y0);
+  burst(game, x, y, A.radius, power, A.stun, A.knock, now); flash(K, "eruption", x, y, A.radius);
+  game.artVisual(now, d, "lava-slash", A.poseMs);
+}
+// A rush cut short (a dodge, a stun, a jump, death, leaving the area): no blow, and the charge it spent is stored again (as a
+// charge cancelled while held keeps it), so Attack held through the cancel must be let go before a new charge.
+export function refundArtCharge(game, id) {
+  if (!WEAPON_ARTS.arts[id]) return false; const K = weaponArtsState(game);
+  if (K.art !== id && artFor(game.save) !== id) return false;
+  K.art = id; K.armed = true; K.presses = WEAPON_ARTS.arm.presses; cancelCharge(K); return true;
 }
 function launchJavelin(game) {
   const K = game.weaponArts, W = K.windup, A = WEAPON_ARTS.arts["cinder-javelin"], c = centre(game), s = shotSlot(K);
@@ -349,7 +370,7 @@ export function tickWeaponArts(game, dt, now, held) {
   } else if (!K.latch && id) {
     K.heldFor += dt;
     if (F.on) { F.held += dt; if (F.held >= G) { F.on = false; H.on = true; H.held = 0; H.dx = F.dx; H.dy = F.dy; H.step = F.step; } }
-    else if (H.on) { H.held += dt; if (H.held >= C.max) release(game, now, H.held); }
+    else if (H.on) { H.held += dt / (game.chargeQuicken ? game.chargeQuicken(C.perfect[0]) : 1); if (H.held >= C.max) release(game, now, H.held); } // Gathered Breath: the charge fills sooner
     else if (id !== "ki-blast" && K.armed && K.heldFor >= G && !game.artBlocked(now)) { H.on = true; H.held = 0; } // aimed when let go
   }
   if (K.pikeOut && (now < (p.dodgeUntil || 0) || p.attackVisual !== K.artRecord || (!K.windup.on && !javelinOn(K)))) { K.pikeOut = false; K.artRecord = null; } // cancelled, or home
