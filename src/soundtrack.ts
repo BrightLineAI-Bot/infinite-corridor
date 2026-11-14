@@ -11,7 +11,7 @@
 //   is stopped when its note ends and its nodes disconnected when it has. One noise buffer and one reverb impulse are
 //   built once, never per note.
 // - Muted means nothing is scheduled at all. It never reads or writes game state.
-import { SONGS, STINGERS, stepToSemi, chordSemis, pc, MODES } from "./soundtrack-songs.ts";
+import { SONGS, STINGERS, WINDS, stepToSemi, chordSemis, pc, MODES } from "./soundtrack-songs.ts";
 
 export const SOUNDTRACK = {
   lookahead: .12, interval: 25,
@@ -33,8 +33,17 @@ export const SOUNDTRACK = {
   // Peak gain of each instrument's note before stem and song mix.
   level: {
     strings: .075, choir: .055, drone: .035, bass: .08, harpsichord: .08, lute: .11, dulcimer: .095, bell: .07,
-    flute: .13, recorder: .11, ney: .13, frame: .34, edge: .12, tom: .26, timp: .28, bridge: .05,
+    // Winds about 5 dB under their first mix (2026-11-14, Tim: "a little too flute heavy"); the other lead voices are set
+    // to sit at the level the flute did.
+    flute: .073, recorder: .062, ney: .082, frame: .34, edge: .12, tom: .26, timp: .28, bridge: .05,
+    choirLine: .16, stringLine: .1, cello: .08, horn: .12, celesta: .16,
   },
+  // Lead voices: the highest note each sits comfortably at (a line above it drops an octave), and the gain a pluck or
+  // bell gets when it carries the melody rather than an arpeggio.
+  leadCeiling: { cello: 67, horn: 74, choir: 79, strings: 86, harpsichord: 86, lute: 81, dulcimer: 88, bell: 88, celesta: 91, flute: 88, recorder: 86, ney: 84 },
+  leadGain: { harpsichord: 3, lute: 1.9, dulcimer: 1.35, bell: 1.15 },
+  // A wind's turn in a fight passes to this voice (no flute doubling in combat).
+  combatLead: "strings",
   velocity: { X: 1, x: .75, o: .4 },
   // Stem sends to the shared reverb and echo.
   sends: { reverb: { bed: .8, groove: .25, motion: .8, lead: .9 }, echo: { bed: 0, groove: 0, motion: 1, lead: .7 } },
@@ -269,6 +278,9 @@ export class Soundtrack {
     }
     if (d.tier > 0 && !d.leadPhrase && idx % 2 === 0) d.leadPhrase = true;
     d.leadSteps = motifSteps(song, d.form[Math.floor(idx / 2)]);
+    // Who sings this phrase: the song's leads in turn; a wind's turn passes to the strings once a fight starts.
+    const voice = song.leads[Math.floor(d.bar / 8) % song.leads.length];
+    d.leadKind = d.tier > 0 && WINDS.includes(voice) ? song.combatLead || S.combatLead : voice;
     d.lead = d.leadPhrase && d.bar >= d.leadFrom;
     d.motionOn = d.bar >= d.motionFrom && (d.tier > 0 || song.arps.motionCalm !== false);
     const spec = song.chords[idx];
@@ -323,9 +335,24 @@ export class Soundtrack {
     this[song.arp](d.stems.motion, t, midi, vel);
   }
   leadNote(d, t, midi, dur) {
-    const song = d.song, vel = .9 + d.rand() * .1;
-    if (song.lead === "bell") this.bell(d.stems.lead, t, midi, vel);
-    else this.wind(d.stems.lead, t, midi, dur * .96, vel, song.lead);
+    this.playLead(d.stems.lead, t, midi, dur, .9 + d.rand() * .1, d.leadKind || d.song.leads[0]);
+  }
+  // One melody note in a given voice, dropped by octaves into that voice's range.
+  playLead(dest, t, midi, dur, vel, kind) {
+    const top = SOUNDTRACK.leadCeiling[kind] ?? 88;
+    while (midi > top) midi -= 12;
+    if (WINDS.includes(kind)) this.wind(dest, t, midi, dur * .8, vel, kind);
+    else if (kind === "choir") this.choirLine(dest, t, midi, dur, vel);
+    else if (kind === "strings" || kind === "cello") this.stringLine(dest, t, midi, dur, vel, kind === "cello");
+    else if (kind === "horn") this.horn(dest, t, midi, dur, vel);
+    else if (kind === "celesta") this.celesta(dest, t, midi, vel);
+    else if (kind === "bell") this.bell(dest, t, midi, vel * SOUNDTRACK.leadGain.bell);
+    else {
+      // A plucked melody (harpsichord, lute, dulcimer): a long note is struck again halfway, softer.
+      const v = vel * (SOUNDTRACK.leadGain[kind] || 1);
+      this[kind](dest, t, midi, v);
+      if (dur > 1.6) this[kind](dest, t + dur / 2, midi, v * .7);
+    }
   }
   drum(d, voice, t, c) {
     const v = SOUNDTRACK.velocity[c] || .7, dest = d.stems.groove;
@@ -431,14 +458,52 @@ export class Soundtrack {
   wind(dest, t, midi, dur, vel, kind = "flute") {
     const end = t + dur + .25; if (!this.claim(3, t, end)) return;
     const f0 = mtof(midi), ney = kind === "ney", rec = kind === "recorder";
-    const o = this.osc(ney ? "sine" : "triangle", f0, t), lfo = this.osc("sine", ney ? 4.6 : 5.2, t), lg = this.gain(0), nz = this.noiseSource(t), bp = this.filter("bandpass", Math.min(8000, f0 * 2), 1.2), bg = this.gain(0), f = this.filter("lowpass", rec ? 4200 : 3000), g = this.gain(0);
+    const o = this.osc(ney ? "sine" : "triangle", f0, t), lfo = this.osc("sine", ney ? 4.6 : 5.2, t), lg = this.gain(0), nz = this.noiseSource(t), bp = this.filter("bandpass", Math.min(8000, f0 * 2), 1.2), bg = this.gain(0), f = this.filter("lowpass", rec ? 2400 : 1900), g = this.gain(0);
     if (ney) { o.frequency.setValueAtTime(f0 * .985, t); o.frequency.linearRampToValueAtTime(f0, t + .12); }
     lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f0 * (rec ? .003 : .006), t + Math.min(.6, dur));
     lfo.connect(lg); lg.connect(o.frequency); o.connect(f); nz.connect(bp); bp.connect(bg); bg.connect(f); f.connect(g); g.connect(dest);
-    const L = SOUNDTRACK.level[kind] * vel, breath = ney ? .9 : .45;
+    const L = SOUNDTRACK.level[kind] * vel, breath = ney ? .45 : .2;
     bg.gain.setValueAtTime(0, t); bg.gain.linearRampToValueAtTime(breath, t + .03); bg.gain.linearRampToValueAtTime(breath * .3, t + .25);
     this.swell(g.gain, t, ney ? .12 : .07, L, end, .22);
     this.finish([o, lfo, nz], [o, lfo, lg, nz, bp, bg, f, g], end);
+  }
+  // A slow sung melody: two detuned saws through the same "aah" formants as the choir pad.
+  choirLine(dest, t, midi, dur, vel) {
+    const end = t + dur + .6; if (!this.claim(3, t, end)) return;
+    const f0 = mtof(midi), a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0, t), f1 = this.filter("bandpass", 720, 3.5), f2 = this.filter("bandpass", 1180, 5), g2 = this.gain(.6), g = this.gain(0);
+    a.detune.value = -6; b.detune.value = 6;
+    a.connect(f1); b.connect(f1); a.connect(f2); b.connect(f2); f1.connect(g); f2.connect(g2); g2.connect(g); g.connect(dest);
+    this.swell(g.gain, t, Math.min(.35, dur * .4), SOUNDTRACK.level.choirLine * vel, end, .55);
+    this.finish([a, b], [a, b, f1, f2, g2, g], end);
+  }
+  // A string line (or a solo cello: lower, darker, quicker to speak): detuned saws, a soft lowpass, delayed vibrato.
+  stringLine(dest, t, midi, dur, vel, cello = false) {
+    const end = t + dur + .4; if (!this.claim(3, t, end)) return;
+    const f0 = mtof(midi), a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0, t), lfo = this.osc("sine", 5, t), lg = this.gain(0), f = this.filter("lowpass", cello ? 1300 : 2600, .8), g = this.gain(0);
+    a.detune.value = -8; b.detune.value = 7;
+    lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f0 * .004, t + Math.min(.7, dur));
+    lfo.connect(lg); lg.connect(a.frequency); lg.connect(b.frequency); a.connect(f); b.connect(f); f.connect(g); g.connect(dest);
+    this.swell(g.gain, t, cello ? .12 : .2, SOUNDTRACK.level[cello ? "cello" : "stringLine"] * vel, end, .4);
+    this.finish([a, b, lfo], [a, b, lfo, lg, f, g], end);
+  }
+  // A soft synth horn: a saw whose filter opens as it speaks, warm and round.
+  horn(dest, t, midi, dur, vel) {
+    const end = t + dur + .35; if (!this.claim(3, t, end)) return;
+    const f0 = mtof(midi), a = this.osc("sawtooth", f0, t), b = this.osc("triangle", f0 * .5, t), bg = this.gain(.4), f = this.filter("lowpass", 400, 1.1), g = this.gain(0);
+    a.detune.value = 3;
+    f.frequency.setValueAtTime(380, t); f.frequency.linearRampToValueAtTime(1500, t + .14); f.frequency.linearRampToValueAtTime(1000, t + .5);
+    a.connect(f); b.connect(bg); bg.connect(f); f.connect(g); g.connect(dest);
+    this.swell(g.gain, t, .1, SOUNDTRACK.level.horn * vel, end, .35);
+    this.finish([a, b], [a, b, bg, f, g], end);
+  }
+  // A glassy celesta: a sine with a quickly fading partial two octaves up.
+  celesta(dest, t, midi, vel) {
+    const end = t + 1.6; if (!this.claim(3, t, end)) return;
+    const f0 = mtof(midi), a = this.osc("sine", f0, t), b = this.osc("sine", f0 * 4, t), bg = this.gain(0), g = this.gain(0);
+    this.hit(bg.gain, t, .001, .3, .25);
+    a.connect(g); b.connect(bg); bg.connect(g); g.connect(dest);
+    this.hit(g.gain, t, .002, SOUNDTRACK.level.celesta * vel, 1.5);
+    this.finish([a, b], [a, b, bg, g], end);
   }
   frame(dest, t, vel) {
     const end = t + .7; if (!this.claim(3, t, end)) return;
@@ -484,7 +549,7 @@ export class Soundtrack {
       else if (inst === "choir") this.choir(dest, t, notes, dur, vel);
       else if (inst === "drone") this.drone(dest, t, into(notes[0], S.drone[0], S.drone[1]), dur + .8, vel, .4, 3);
       else if (inst === "timp") this.timp(dest, t, into(notes[0], 38, 49), vel);
-      else if (["flute", "recorder", "ney"].includes(inst)) this.wind(dest, t, notes[0], dur, vel, inst);
+      else if (WINDS.includes(inst) || ["horn", "cello", "celesta"].includes(inst)) this.playLead(dest, t, notes[0], dur, vel, inst);
       else for (const n of notes) this[inst](dest, t, n, vel);
     }
     const seconds = last + 1.2, g = this.duck.gain;

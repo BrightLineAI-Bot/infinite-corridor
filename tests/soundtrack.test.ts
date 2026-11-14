@@ -59,6 +59,32 @@ test('every song validates: in key, patterns the right length, slow tempos, moti
   assert.ok(validateSong(broken).length >= 2);
 });
 
+test('the lead lines belong mostly to choir, strings, horn, plucks and bells; winds are an occasional answer', () => {
+  const winds = ['flute', 'recorder', 'ney'];
+  let all = 0, wind = 0;
+  for (const song of Object.values(SONGS)) {
+    const turns = song.leads.filter((v) => winds.includes(v)).length;
+    assert.ok(turns / song.leads.length <= .25, `${song.id}: winds sing at most one turn in four`);
+    all += song.leads.length; wind += turns;
+  }
+  assert.ok(wind / all <= .15, `winds ${wind}/${all} of all lead turns`);
+  for (const id of ['moonlitTower', 'observatory']) { assert.ok(!SONGS[id].leads.some((v) => winds.includes(v)), id); assert.ok(SONGS[id].leads.includes('choir') && SONGS[id].leads.includes('strings')); }
+  assert.ok(SONGS.astrolabe.leads.includes('ney') && SONGS.astrolabe.leads.includes('dulcimer'), 'a little ney, shared');
+  for (const s of Object.values(STINGERS)) for (const [, inst] of s.events) assert.ok(!winds.includes(inst), 'no wind in the story beats');
+  // Every lead voice plays through the engine; in a fight a wind's turn passes to the strings.
+  const { ctx, eng } = engine();
+  for (const kind of ['choir', 'strings', 'cello', 'horn', 'harpsichord', 'lute', 'dulcimer', 'bell', 'celesta', 'flute', 'recorder', 'ney']) {
+    const before = ctx.sources.length; eng.playLead(eng.mix, 1, 76, 2, 1, kind); assert.ok(ctx.sources.length > before, kind);
+  }
+  // Saltwind's third phrase (bars 16-23) is the flute's turn: in calm the flute sings it, in a fight the strings do.
+  assert.equal(SONGS.saltwind.leads[2], 'flute');
+  const third = 16.5 * barSeconds(SONGS.saltwind) + .1;
+  for (const [intensity, want] of [[0, 'flute'], [.9, 'strings']]) {
+    const e = engine(); e.eng.setTarget({ songId: 'saltwind', intensity }); e.eng.start(); run(e.ctx, e.eng, 0, third);
+    const d = e.eng.current(); assert.equal(Math.floor(d.bar / 8), 2); assert.equal(d.leadKind, want, `intensity ${intensity}`);
+  }
+});
+
 test('the liner notes and the selection table cover the album', () => {
   assert.deepEqual(LINER_NOTES.map((n) => n.id).sort(), Object.keys(SONGS).sort(), 'every song has its place in the arc');
   for (const n of LINER_NOTES) assert.ok(['torpid', 'urgent', 'awe'].includes(n.feel) && n.moment);

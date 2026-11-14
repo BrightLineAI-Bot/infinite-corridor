@@ -15,6 +15,8 @@
 // - arps: 16 characters, a digit picks the n-th note of the pad voicing an octave up (wrapping a further octave).
 // - motifs: two-bar lead phrases, [start step 0-31, scale step from the lead tonic, length in steps].
 // - forms: four motifs per eight-bar phrase; leadPlan says which phrases the lead sings (the rest is air).
+// - leads: the voice that sings each phrase in turn (phrase n: leads[n % length]). A wind (flute, recorder, ney) is never
+//   the main voice: at most one turn in four, and in a fight its turn passes to the strings.
 // - tiers: 0 calm, 1 combat, 2 driving combat. drums.calm / combat / drive and bass.calm / combat choose by tier.
 
 export const MODES = {
@@ -31,7 +33,8 @@ export const DRUM_VOICES = ["frame", "tom", "timp"];
 export const INSTRUMENTS = {
   pads: ["strings", "choir", "both"],
   arps: ["harpsichord", "lute", "dulcimer", "bell"],
-  leads: ["flute", "recorder", "ney", "bell"],
+  // Lead voices: the genre's choir, strings, cello, horn, plucks and bells carry most melodies; winds are an occasional answer.
+  leads: ["choir", "strings", "cello", "horn", "harpsichord", "lute", "dulcimer", "bell", "celesta", "flute", "recorder", "ney"],
 };
 // What the song table must stay within (the brief: slow and spacious, about 60-84 BPM).
 export const SONG_LIMITS = { bpm: [58, 84], swing: [0, .3], bars: 8, steps: 16 };
@@ -74,11 +77,11 @@ const D = {
 };
 
 export const SONGS = {
-  // The departure: the Refuge behind, the first miles over pale hills, recorder over lute.
+  // The departure: the Refuge behind, the first miles over pale hills; lute, strings and a horn sing, a recorder answers.
   roadOut: {
     id: "roadOut", name: "The Road Out", mood: "torpid and open, the first miles in thin morning light",
     bpm: 66, swing: .08, root: 50, mode: "dorian", leadOct: 2, pedal: false,
-    pad: "strings", arp: "lute", lead: "recorder",
+    pad: "strings", arp: "lute", leads: ["lute", "strings", "horn", "recorder"],
     chords: ["1:add9", "1:add9", "7", "7", "4", "3:7", "5:sus4", "5:7"],
     bass: { calm: B.breath, combat: B.pulse },
     drums: { calm: D.heartbeat, combat: D.ritual, drive: D.war },
@@ -96,11 +99,11 @@ export const SONGS = {
     mix: { bed: .9, groove: .8, motion: .7, lead: .8 }, echo: .35, reverb: .45,
   },
   // Overworld at dusk and night: the closest to the reference. A choir over strings, a harpsichord turning slowly, a
-  // flute over an A pedal, distant bells. i-VII-VI-iv, a chord every two bars.
+  // string line over an A pedal, distant bells. i-VII-VI-iv, a chord every two bars.
   moonlitTower: {
     id: "moonlitTower", name: "The Moonlit Tower", mood: "nocturnal and meditative, a lone tower in moonlit snow",
     bpm: 64, swing: 0, root: 57, mode: "aeolian", leadOct: 1, pedal: true,
-    pad: "both", arp: "harpsichord", lead: "flute",
+    pad: "both", arp: "harpsichord", leads: ["choir", "strings", "bell"],
     chords: ["1:add9", "1:add9", "7", "7", "6:7", "6:7", "4:7", "4:7"],
     bass: { calm: B.pedal, combat: B.pulse },
     drums: { calm: D.none, combat: D.procession, drive: D.rising },
@@ -117,11 +120,11 @@ export const SONGS = {
     leadPlan: [1, 0, 1, 1, 0],
     mix: { bed: 1, groove: .8, motion: .6, lead: .8 }, echo: .45, reverb: .6,
   },
-  // Dungeons: E Phrygian, the flute low, long silences, the bells far off.
+  // Dungeons: E Phrygian, a low cello, long silences, the bells far off, a dark flute now and then.
   underhollow: {
     id: "underhollow", name: "Underhollow", mood: "dark and sparse, dripping stone",
     bpm: 62, swing: 0, root: 52, mode: "phrygian", leadOct: 1, pedal: true,
-    pad: "choir", arp: "bell", lead: "flute",
+    pad: "choir", arp: "bell", leads: ["cello", "bell", "choir", "flute", "bell"],
     chords: ["1", "1", "2:7", "2:7", "1:7", "1:7", "7", "1:sus4"],
     bass: { calm: B.pedal, combat: B.tread },
     drums: { calm: D.none, combat: D.ritual, drive: D.war },
@@ -142,7 +145,7 @@ export const SONGS = {
   deepbell: {
     id: "deepbell", name: "The Deep Bell", mood: "vast, cold and still, far below",
     bpm: 60, swing: 0, root: 47, mode: "aeolian", leadOct: 2, pedal: true,
-    pad: "strings", arp: "bell", lead: "bell",
+    pad: "strings", arp: "bell", leads: ["bell", "choir", "celesta", "bell"],
     chords: ["1:add9", "1:add9", "1:add9", "1:add9", "6:7", "6:7", "4:7", "5:sus4"],
     bass: { calm: B.pedal, combat: B.pulse },
     drums: { calm: D.none, combat: D.procession, drive: D.rising },
@@ -157,11 +160,11 @@ export const SONGS = {
     leadPlan: [1, 0, 1],
     mix: { bed: 1, groove: .85, motion: .5, lead: .6 }, echo: .55, reverb: .7,
   },
-  // The open sea, boating and swimming: G Dorian, dulcimer ripples in the echo, the flute riding over them.
+  // The open sea, boating and swimming: G Dorian, dulcimer ripples in the echo, dulcimer, strings and horn riding over them.
   saltwind: {
     id: "saltwind", name: "Saltwind", mood: "rolling and wistful, grey water to the horizon",
     bpm: 70, swing: .08, root: 55, mode: "dorian", leadOct: 1, pedal: false,
-    pad: "strings", arp: "dulcimer", lead: "flute",
+    pad: "strings", arp: "dulcimer", leads: ["dulcimer", "strings", "flute", "horn"],
     chords: ["1:add9", "1:add9", "4", "4", "7:add9", "7:add9", "3:7", "5:sus4"],
     bass: { calm: B.halves, combat: B.ostinato },
     drums: { calm: D.none, combat: D.ritual, drive: D.war },
@@ -182,7 +185,7 @@ export const SONGS = {
   fiveHalls: {
     id: "fiveHalls", name: "Five Halls", mood: "stately and mysterious, torchlit stone",
     bpm: 68, swing: 0, root: 48, mode: "aeolian", leadOct: 2, pedal: false,
-    pad: "both", arp: "harpsichord", lead: "recorder",
+    pad: "both", arp: "harpsichord", leads: ["harpsichord", "horn", "strings", "horn"],
     chords: ["1:7", "6:7", "4:7", "5:sus4", "1:7", "6:7", "3:7", "5:7"],
     bass: { calm: B.roots, combat: B.tread },
     drums: { calm: D.none, combat: D.march, drive: D.siege },
@@ -197,12 +200,12 @@ export const SONGS = {
     leadPlan: [1, 1, 0],
     mix: { bed: .95, groove: .8, motion: .7, lead: .75 }, echo: .3, reverb: .55,
   },
-  // The far realms and skylands: the travelling scholar's road. E Hijaz over an E pedal, a ney-like flute, dulcimer and a
+  // The far realms and skylands: the travelling scholar's road. E Hijaz over an E pedal, a little ney shared with the dulcimer, and a
   // soft frame drum walking even in calm.
   astrolabe: {
     id: "astrolabe", name: "The Astrolabe", mood: "strange and airy, a scholar's road east under foreign stars",
     bpm: 72, swing: .12, root: 52, mode: "hijaz", leadOct: 2, pedal: true,
-    pad: "strings", arp: "dulcimer", lead: "ney",
+    pad: "strings", arp: "dulcimer", leads: ["ney", "dulcimer", "strings", "dulcimer", "strings"],
     chords: ["1", "1", "2", "1", "7", "4", "2", "1"],
     bass: { calm: B.pedal, combat: B.ostinato },
     drums: { calm: { frame: "X.....o...x....." }, combat: D.ritual, drive: D.war },
@@ -219,11 +222,11 @@ export const SONGS = {
     leadPlan: [1, 1, 0, 1],
     mix: { bed: .9, groove: .85, motion: .7, lead: .8 }, echo: .45, reverb: .6,
   },
-  // A second walking song for the overworld: F Dorian, lute and recorder, a pilgrim's steady pace.
+  // A second walking song for the overworld: F Dorian, horn and lute, a pilgrim's steady pace.
   pilgrimsWay: {
     id: "pilgrimsWay", name: "Pilgrim's Way", mood: "steady and hopeful, a long road between shrines",
     bpm: 72, swing: .1, root: 53, mode: "dorian", leadOct: 1, pedal: false,
-    pad: "strings", arp: "lute", lead: "recorder",
+    pad: "strings", arp: "lute", leads: ["horn", "lute", "strings", "lute"],
     chords: ["1:7", "4", "1:7", "4", "3:7", "7:add9", "2:7", "5:sus4"],
     bass: { calm: B.halves, combat: B.ostinato },
     drums: { calm: D.heartbeat, combat: D.ritual, drive: D.war },
@@ -243,7 +246,7 @@ export const SONGS = {
   stormPass: {
     id: "stormPass", name: "Storm on the Pass", mood: "urgent and rising, sleet and wind on the high road",
     bpm: 80, swing: 0, root: 55, mode: "aeolian", leadOct: 1, pedal: false,
-    pad: "strings", arp: "harpsichord", lead: "recorder", arpOct: 0,
+    pad: "strings", arp: "harpsichord", leads: ["strings", "horn", "harpsichord"], arpOct: 0,
     chords: ["1", "7", "6:7", "7", "1", "4:7", "6:7", "5:sus4"],
     bass: { calm: B.pulse, combat: B.ostinato },
     drums: { calm: { frame: "X.......x...o..." }, combat: D.war, drive: D.siege },
@@ -263,7 +266,7 @@ export const SONGS = {
   gateOpens: {
     id: "gateOpens", name: "The Gate Opens", mood: "urgent and rising, stone grinding on stone",
     bpm: 72, swing: 0, root: 53, mode: "phrygian", leadOct: 1, pedal: false,
-    pad: "both", arp: "harpsichord", lead: "flute", arpOct: 0,
+    pad: "both", arp: "harpsichord", leads: ["horn", "cello", "choir"], arpOct: 0,
     chords: ["1", "1", "2:7", "1", "7", "6:7", "2:7", "1:sus4"],
     bass: { calm: B.pulse, combat: B.tread },
     drums: { calm: D.procession, combat: D.war, drive: D.siege },
@@ -283,7 +286,7 @@ export const SONGS = {
   observatory: {
     id: "observatory", name: "Observatory of Still Stars", mood: "awe, wide and slow, the sky turning overhead",
     bpm: 62, swing: 0, root: 54, mode: "dorian", leadOct: 2, pedal: true,
-    pad: "both", arp: "dulcimer", lead: "bell",
+    pad: "both", arp: "dulcimer", leads: ["choir", "celesta", "strings", "bell"],
     chords: ["1:add9", "1:add9", "4", "4", "3:7", "3:7", "7:add9", "5:sus4"],
     bass: { calm: B.pedal, combat: B.pulse },
     drums: { calm: D.none, combat: D.procession, drive: D.rising },
@@ -304,7 +307,7 @@ export const SONGS = {
   boss: {
     id: "boss", name: "The Old Beasts Wake", mood: "heavy and ominous, the ground itself answering",
     bpm: 76, swing: 0, root: 50, mode: "phrygian", leadOct: 2, pedal: false, boss: true, intensityFloor: .72,
-    pad: "both", arp: "harpsichord", lead: "flute", arpOct: 0,
+    pad: "both", arp: "harpsichord", leads: ["choir", "horn", "cello"], arpOct: 0,
     chords: ["1", "1", "2:7", "1", "6:7", "7:7", "1:sus4", "1"],
     bass: { calm: B.ostinato, combat: B.ostinato },
     drums: { calm: D.rising, combat: D.war, drive: D.siege },
@@ -324,10 +327,10 @@ export const SONGS = {
 // Short scored moments, 2-6 s. Played in the current song's key (its tonic pitch class, around middle C), in their own
 // mode. Events: [beat, instrument, scale step or [steps], length in beats, velocity].
 export const STINGERS = {
-  // The departure: the gate of the Refuge closes behind, a bell, the recorder sets out.
+  // The departure: the gate of the Refuge closes behind, a bell, a horn sets out.
   departure: { bpm: 60, mode: "dorian", events: [
     [0, "drone", -14, 5, .8], [0, "strings", [-7, -5, -3], 5, .7], [0, "bell", 7, 3, .55],
-    [1, "recorder", 0, 1, .7], [2, "recorder", 2, .5, .7], [2.5, "recorder", 4, 1.5, .75], [4, "bell", 4, 1.5, .45],
+    [1, "horn", 0, 1, .7], [2, "horn", 2, .5, .7], [2.5, "horn", 4, 1.5, .75], [4, "bell", 4, 1.5, .45],
   ] },
   // A world beast appears or wakes: timpani roll, a low choir, a bell on the flat second.
   beast: { bpm: 66, mode: "phrygian", events: [
@@ -335,30 +338,31 @@ export const STINGERS = {
     [2, "timp", -14, .25, .45], [2.25, "timp", -14, .25, .55], [2.5, "timp", -14, .25, .7], [2.75, "timp", -14, .25, .85],
     [3, "timp", -14, 2, 1], [3, "bell", -6, 2, .8], [3.5, "bell", -7, 1.5, .6],
   ] },
-  // A boss is defeated: strings swell, the harpsichord climbs, a bell answers. Dorian, ending on its major fourth chord.
+  // A boss is defeated: strings swell, the harpsichord climbs, a horn and a bell answer. Dorian, ending on its major fourth chord.
   victory: { bpm: 72, mode: "dorian", events: [
     [0, "strings", [-7, -5, -3], 2, .8], [2, "strings", [-4, -2, 0], 3.5, .85],
     [0, "harpsichord", 0, .5, .7], [.25, "harpsichord", 2, .5, .7], [.5, "harpsichord", 4, .5, .75], [.75, "harpsichord", 7, .5, .75],
-    [1, "harpsichord", 9, .5, .8], [1.25, "harpsichord", 11, 1, .8], [2, "bell", 10, 2.5, .8], [2, "flute", 5, 1, .7], [3, "flute", 7, 2.5, .75],
+    [1, "harpsichord", 9, .5, .8], [1.25, "harpsichord", 11, 1, .8], [2, "bell", 10, 2.5, .8], [2, "horn", 5, 1, .7], [3, "horn", 7, 2.5, .75],
   ] },
   // Rest at a Waystone or Crown Rest: a choir breath and three soft dulcimer notes.
   rest: { bpm: 60, mode: "dorian", events: [
     [0, "choir", [-7, -5, -3, -1], 4.5, .7], [0, "dulcimer", 0, 1, .6], [.5, "dulcimer", 4, 1, .55], [1, "dulcimer", 2, 1, .55],
     [2, "dulcimer", 7, 2, .6], [3, "bell", 8, 2, .45],
   ] },
-  // Entering a new region: a recorder call over a sus chord and the drone.
+  // Entering a new region: a celesta call over a sus chord and the drone.
   region: { bpm: 66, mode: "dorian", events: [
     [0, "drone", -14, 4, .8], [0, "strings", [-7, -4, -3], 4, .7],
-    [0, "recorder", 4, 1, .75], [1, "recorder", 5, .5, .7], [1.5, "recorder", 4, .5, .7], [2, "recorder", 2, 2, .75],
+    [0, "celesta", 4, 1, .75], [1, "celesta", 5, .5, .7], [1.5, "celesta", 4, .5, .7], [2, "celesta", 2, 2, .75],
   ] },
-  // The Wayfarer dies: the flute falls through the scale over a darkening choir.
+  // The Wayfarer dies: a cello falls through the scale over a darkening choir.
   death: { bpm: 56, mode: "aeolian", events: [
     [0, "timp", -14, 2, .6], [0, "choir", [-7, -5, -3], 2, .75], [2, "choir", [-9, -7, -5], 3, .7],
-    [0, "flute", 4, 1, .75], [1, "flute", 3, 1, .7], [2, "flute", 2, 1, .7], [3, "flute", 1, .5, .65], [3.5, "flute", 0, 2, .7],
+    [0, "cello", 4, 1, .75], [1, "cello", 3, 1, .7], [2, "cello", 2, 1, .7], [3, "cello", 1, .5, .65], [3.5, "cello", 0, 2, .7],
     [4, "bell", -7, 1.5, .5],
   ] },
 };
-export const STINGER_INSTRUMENTS = ["timp", "drone", "choir", "strings", "bell", "harpsichord", "dulcimer", "flute", "recorder"];
+export const STINGER_INSTRUMENTS = ["timp", "drone", "choir", "strings", "bell", "celesta", "harpsichord", "dulcimer", "horn", "cello"];
+export const WINDS = ["flute", "recorder", "ney"];
 export const stingerSeconds = (s) => Math.max(...s.events.map(([beat, , , len]) => (beat + len) * 60 / s.bpm)) + 1.2;
 
 // Every problem with a song's data, as text (empty: valid). The test suite runs it over every song.
@@ -368,7 +372,7 @@ export function validateSong(song) {
   if (!(song.bpm >= L.bpm[0] && song.bpm <= L.bpm[1])) bad.push(`${id}: tempo ${song.bpm} outside ${L.bpm}`);
   if (!(song.swing >= L.swing[0] && song.swing <= L.swing[1])) bad.push(`${id}: swing ${song.swing}`);
   if (!Number.isInteger(song.root) || song.root < 45 || song.root > 59) bad.push(`${id}: root ${song.root}`);
-  if (!INSTRUMENTS.pads.includes(song.pad) || !INSTRUMENTS.arps.includes(song.arp) || !INSTRUMENTS.leads.includes(song.lead)) bad.push(`${id}: instrument`);
+  if (!INSTRUMENTS.pads.includes(song.pad) || !INSTRUMENTS.arps.includes(song.arp) || !(song.leads?.length && song.leads.every((l) => INSTRUMENTS.leads.includes(l)))) bad.push(`${id}: instrument`);
   if (song.chords?.length !== L.bars) bad.push(`${id}: needs ${L.bars} chords`);
   if (bad.length) return bad;
   const scale = new Set(MODES[song.mode].map((s) => pc(song.root + s)));
