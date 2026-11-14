@@ -162,6 +162,7 @@ import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -2742,6 +2743,7 @@ export class Game {
     this.player.hurtVisual = normalizeHurtVisual(s.playerRuntime.hurtVisual);
     this.restorePendingToolUse(s.playerRuntime.pendingToolUse,now);
     this.restorePendingMeleeContact(s.playerRuntime.pendingMeleeContact,now);
+    { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
@@ -3825,6 +3827,7 @@ export class Game {
         pendingToolUse:this.savedPendingToolUse(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingToolUse?.v)&&this.save.session.playerRuntime.pendingToolUse.v>1?structuredClone(this.save.session.playerRuntime.pendingToolUse):null),
         pendingMeleeContact:this.savedPendingMeleeContact(clock)??(Number.isInteger(this.save.session.playerRuntime.pendingMeleeContact?.v)&&this.save.session.playerRuntime.pendingMeleeContact.v>3/* a future record kept opaque */?structuredClone(this.save.session.playerRuntime.pendingMeleeContact):null),
         hammerfallStartup:this.savedHammerfallStartup(),
+        shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
         ...(Number.isFinite(this.player.primaryVisualUntil) ? { primaryVisualMotion: remaining(this.player.primaryVisualUntil, clock) } : {}),
@@ -8006,7 +8009,7 @@ export class Game {
     if(swingKind&&this.pendingMeleeContact?.v===3&&!this.swingChainDue(now))return[];
     const glyphs = this.glyphLoadout("melee");
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
-    if (!echo && now < (this.boxingUntil || 0)) this.shadowBoxStep(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now); // release 485
+    if (!echo && !this._shadowArrive && (this.shadowDash || (now < (this.boxingUntil || 0) && this.shadowDashBegin(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now)))) return []; // release 485; 2026-11-14: Shadow Boxing charges to the foe (SHADOW_DASH) and this press lands on arrival (shadowDashLand)
     const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
     if (!echo) { this.player.attackReadyAt = swingKind ? now /* the swing record gates the next press (swingChainDue) */ : now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
@@ -8721,6 +8724,64 @@ export class Game {
   }
   // Release 485: Shadow Boxing carries the Wayfarer to the foe before a swing when it is out of reach (the lock, else the
   // nearest within `stick` tiles past the reach), in quarter-tile steps that stop at walls and lethal ground.
+  // Shadow Boxing's charge (brawler-spells.ts SHADOW_DASH; Tim, 2026-11-14: "I want to see him traversing the space"). A swing
+  // pressed with the foe out of reach (the same test and foe as shadowBoxStep) records the dash and holds the press; the
+  // Wayfarer is carried along it tick by tick (shadowDashSteer) and the press is thrown on arrival (shadowDashLand). In the air
+  // (a jump, a fall, a glide, the drone) the old one-step carry is kept. True: the press waits for the dash.
+  shadowDashBegin(reach, now = this.lastUpdateNow || 0) {
+    const B = BRAWLER["shadow-boxing"], p = this.player;
+    if (now < (this.jumpUntil || 0) || this.fall || this.glide || this.droneLift) { this.shadowBoxStep(reach, now); return false; }
+    const t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
+    if (!foe) return false;
+    const gap = Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
+    if (!(gap > reach * .9) || gap > reach + B.stick + 1) return false;
+    p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    this.shadowDash = { v: SHADOW_DASH.v, area: this.area, areaId: this.areaId(), levelId: String(this.map?.levelId || "root"), foe: String(foe.id), fromX: p.x, fromY: p.y, stop, durationMs: shadowDashMs(gap - stop), elapsedMs: 0, travelled: 0, arrived: false, action: this.attackAction === "attack" ? "attack" : null };
+    return true;
+  }
+  // One tick of the dash: the eased share of what is left to the foe's live place, in quarter-tile steps through canStand and
+  // moveGuardedCombatStep (as shadowBoxStep), so walls, props, bodies, lethal ground and ledges stop it. It arrives at its time,
+  // at the stop distance, at an obstacle or after maxTiles. A dodge, a stun, a jump, death or leaving the area cancels it (and
+  // the press it carries).
+  shadowDashSteer(dt, now) {
+    const q = this.shadowDash, p = this.player, D = SHADOW_DASH; if (!q) return;
+    if (q.v !== D.v) { this.shadowDash = null; return; }
+    if (q.arrived) return;
+    if (q.area !== this.area || q.areaId !== this.areaId() || q.levelId !== String(this.map?.levelId || "root") || !(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || now < (this.jumpUntil || 0)) { this.cancelShadowDash(now); return; }
+    const t0 = q.elapsedMs / q.durationMs; q.elapsedMs = Math.min(q.durationMs, q.elapsedMs + Math.max(0, Number(dt) || 0) * 1000); const t1 = q.elapsedMs / q.durationMs;
+    let foe = null; for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; }
+    if (!foe || !(foe.hp > 0) || foe.untargetable || foe.hidden) { q.arrived = true; return; } // gone: the blow is thrown where he stands
+    const w = this.glyphWorld(now), gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), e0 = shadowDashTravel(t0);
+    let budget = Math.min(t1 >= 1 ? Infinity : Math.max(0, gap() - q.stop) * (shadowDashTravel(t1) - e0) / Math.max(1e-6, 1 - e0), D.maxTiles - q.travelled), blocked = false;
+    for (let i = 0; i < 64 && budget > 1e-6 && gap() > q.stop + 1e-6; i++) {
+      const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), s = Math.min(D.step, budget, gap() - q.stop), bx = p.x, by = p.y, nx = p.x + d.x * s, ny = p.y + d.y * s;
+      if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) { blocked = true; break; }
+      const moved = Math.hypot(p.x - bx, p.y - by); q.travelled = Math.min(D.maxTiles, q.travelled + moved); budget -= s; if (moved < s * .25) { blocked = true; break; }
+    }
+    const fx = foe.x - p.x, fy = foe.y - p.y; p.meleeAim = projectileDirection(fx, fy, p.facing); if (Math.abs(fx) > .15 || Math.abs(fy) > .15) p.facing = Math.abs(fx) > Math.abs(fy) ? (fx < 0 ? "left" : "right") : (fy < 0 ? "up" : "down");
+    if (blocked || t1 >= 1 || gap() <= q.stop + 1e-6 || q.travelled >= D.maxTiles - 1e-6) q.arrived = true;
+  }
+  // After the move, on the tick the dash arrives: the held press is thrown (primaryAttack, flagged so it neither charges again
+  // nor waits on the dash), and `cooldownCredit` of the dash's time is counted toward its press cooldown.
+  shadowDashLand(now) {
+    const q = this.shadowDash, p = this.player; if (!q || q.v !== SHADOW_DASH.v || !q.arrived) return false;
+    this.cancelShadowDash(now);
+    if (!(p.hp > 0) || q.area !== this.area || q.areaId !== this.areaId()) return false;
+    const action = this.attackAction; this.attackAction = q.action; this._shadowArrive = true;
+    try { this.primaryAttack(now); } finally { this._shadowArrive = false; this.attackAction = action; }
+    const credit = q.elapsedMs * SHADOW_DASH.cooldownCredit, sw = this.pendingMeleeContact;
+    if (sw?.v === 3 && sw.elapsedMs === 0 && !sw.contacted) { // a weighted swing (melee-swing.ts): the charge was its wind-up; it arrives cocked and strikes `swingLeadMs` later
+      const spec = PRIMARY_SWINGS[sw.weapon], st = swingStep(spec, sw.step); if (st) { const T = swingTimes(st, sw.tempo, {}, spec.lungeFrom), skip = Math.max(0, T.windEnd - SHADOW_DASH.swingLeadMs * clampTempo(sw.tempo));
+        if (skip > 0) { sw.elapsedMs = skip; sw.lunged = st.lunge * sampleSwing(st, skip, sw.tempo, {}, T).lunge; /* the charge was the approach: no extra lunge for the skipped part */ p.attackUntil -= skip; p.meleeUntil -= skip; if (Number.isFinite(p.actionVisualUntil)) p.actionVisualUntil -= skip; } } }
+    else if (!this.swingWeaponKind() && p.attackReadyAt > now) p.attackReadyAt = Math.max(now, p.attackReadyAt - credit);
+    return true;
+  }
+  // Ends the dash where the Wayfarer stands; the drawn afterimages close in and fade (shadowDashAfter, presentation only, not saved).
+  cancelShadowDash(now = this.lastUpdateNow || 0) {
+    const q = this.shadowDash; this.shadowDash = null; if (!q || q.v !== SHADOW_DASH.v) return;
+    const a = this.shadowDashAfter || (this.shadowDashAfter = { live: false, at: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, durationMs: 1 });
+    a.live = true; a.at = now; a.fromX = q.fromX; a.fromY = q.fromY; a.toX = this.player.x; a.toY = this.player.y; a.durationMs = q.durationMs;
+  }
   shadowBoxStep(reach, now = this.lastUpdateNow || 0) {
     const B = BRAWLER["shadow-boxing"], p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
     if (!foe) return false;
@@ -10529,6 +10590,7 @@ export class Game {
     // Stegosaur's Grip: a hold keeps the Wayfarer still (or lets go); a wall jump's kick goes straight off the wall.
     if (this.wallCling || this.wallKick) { const st = this.wallClingSteer(x, y, dt, now); x = st.x; y = st.y; }
     if (!dodging && (this.plunge || now < (this.plungeRecoverUntil || 0))) { x = 0; y = 0; } this.plungeSteer(dt, now); // jump attacks: the plunge drops straight (a dodge is never held back); the dive flies on
+    if (!dodging && this.shadowDash) { x = 0; y = 0; } this.shadowDashSteer(dt, now); // Shadow Boxing's charge carries the Wayfarer (a dodge cancels it)
     if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
@@ -10744,7 +10806,7 @@ export class Game {
       }
     }
     this.reconcileHeldTool(now);
-    if(p.hp<=0){this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);}
+    if(p.hp<=0){this.cancelShadowDash(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);

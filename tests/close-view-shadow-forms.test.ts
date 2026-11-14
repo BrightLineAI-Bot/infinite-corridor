@@ -10,6 +10,7 @@ import { CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory, clos
 import { closeViewGLStats, resetCloseViewGL, CLOSE_VIEW_ACTOR_LOOK } from '../src/close-view-gl.ts';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelTriangleCount, writeCloseViewModel } from '../src/close-view-models.ts';
 import { drawHeroGL, HERO_VERTEX_BODY } from '../src/close-view-hero-gl.ts';
+import { SHADOW_DASH } from '../src/brawler-spells.ts';
 import { CLOSE_VIEW_SHADOW_FORMS as SF, createShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from '../src/close-view-shadow-forms.ts';
 
 const FRAME = 1000 / 60, MAX_STEP = .75; // tiles: no drawn jump between two 60 Hz frames may exceed this
@@ -100,25 +101,24 @@ function boxingFixture(reduceMotion = false) {
 }
 const facts = (g) => JSON.stringify({ p: [g.player.x, g.player.y, g.player.hp, g.player.attackUntil, g.player.attackReadyAt], e: g.enemies.map((e) => [e.x, e.y, e.hp]), b: g.boxingUntil, c: g.pendingMeleeContact?.id ?? null });
 
-test('in the real Close View the drawn hero charges continuously and arrives, with gameplay positions untouched', () => gpu(({ gl, screen }) => {
-  const g = boxingFixture(), x0 = g.player.x; resetCloseViewCamera();
+// 2026-11-14 (tests/shadow-boxing-dash.test.ts): the charge is gameplay now. This replaces the release-922 check that gameplay
+// moved in one update and only the drawing lagged: the Wayfarer travels over the dash and the drawn hero stands on him.
+const calm = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset: () => {} };
+test('in the real Close View the Wayfarer charges continuously and is drawn where he is, with bounded afterimages; rendering changes nothing', () => gpu(({ gl, screen }) => {
+  const g = boxingFixture(), twin = boxingFixture(); resetCloseViewCamera();
   layer(g, () => { for (let t = 99900; t <= 100000; t += FRAME) render(screen, g, 390, 844, t); });
-  const before = g.player.x; g.primaryAttack(100000); const after = g.player.x;
-  assert.ok(after - before >= 2, `gameplay still dashes in one update (${after - before} tiles)`);
-  // A twin game that never renders moves exactly the same.
-  const twin = boxingFixture(); twin.primaryAttack(100000); assert.equal(twin.player.x, after); assert.equal(twin.player.y, g.player.y);
-  const D = closeViewShadowDash(), drawn = []; let maxTrail = 0, ghostTris = 0;
-  layer(g, () => { for (let i = 0; i < 18; i++) { const t = 100000 + i * FRAME, f = facts(g); render(screen, g, 390, 844, t); assert.equal(facts(g), f, 'rendering mutates no gameplay state');
-    drawn.push({ t, x: D.x, active: D.active }); maxTrail = Math.max(maxTrail, D.trailCount);
+  const before = g.player.x; g.primaryAttack(100000); twin.primaryAttack(100000);
+  assert.equal(g.player.x, before, 'the press itself does not move the Wayfarer'); assert.ok(g.shadowDash, 'a dash is under way');
+  const D = closeViewShadowDash(); let prev = before, maxTrail = 0, ghostTris = 0, t = 100000, arrivedAt = null;
+  layer(g, () => { for (let i = 0; i < 24; i++) { t += FRAME; g.update(FRAME / 1000, calm, t); twin.update(FRAME / 1000, calm, t); const f = facts(g); render(screen, g, 390, 844, t); assert.equal(facts(g), f, 'rendering mutates no gameplay state');
+    assert.equal(D.x, g.player.x, 'drawn on the logical position'); assert.ok(Math.abs(g.player.x - prev) <= MAX_STEP, `step ${(g.player.x - prev).toFixed(3)} at ${t - 100000} ms`); prev = g.player.x;
+    if (arrivedAt === null && !g.shadowDash) arrivedAt = t - 100000; maxTrail = Math.max(maxTrail, D.trailCount);
     if (D.trailCount) ghostTris = Math.max(ghostTris, closeViewGLStats.modelTriangles - closeViewGLStats.models * 256); } });
-  assert.equal(g.player.x, after, 'the logical position never moved back');
-  let prev = before; for (const s of drawn) { assert.ok(Math.abs(s.x - prev) <= MAX_STEP, `drawn step ${(s.x - prev).toFixed(3)} at ${s.t - 100000} ms`); prev = s.x; }
-  assert.ok(drawn[1].x < after - .5, 'still charging after the first frames');
-  const arrival = drawn.find((s) => s.x === after); assert.ok(arrival && arrival.t - 100000 <= SF.dash.lagMax + FRAME, 'arrives within the lag');
+  assert.ok(g.player.x - before >= 2, `charged ${(g.player.x - before).toFixed(2)} tiles`); assert.equal(twin.player.x, g.player.x); assert.equal(twin.player.y, g.player.y);
+  assert.ok(arrivedAt !== null && arrivedAt >= SHADOW_DASH.minMs - FRAME && arrivedAt <= SHADOW_DASH.maxMs + FRAME, `arrived after ${arrivedAt} ms`);
   assert.ok(maxTrail > 0 && maxTrail <= 5, `bounded afterimages (${maxTrail})`);
   assert.ok(ghostTris <= 5 * 256, 'afterimages stay inside five model budgets');
   assert.ok(gl.uploads.at(-1).every(Number.isFinite));
-  assert.ok(x0 < after);
 }));
 
 test('reduced motion keeps the hero on its logical place with no trail', () => gpu(({ screen }) => {
