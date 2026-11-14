@@ -162,7 +162,7 @@ import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind } from "./brawler-spells.ts"; // jump attacks (2026-11-12)
-import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -8787,8 +8787,10 @@ export class Game {
     if (!foe) return false;
     const gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
     if (gap() <= reach * .9 || gap() > reach + B.stick + 1) return false;
+    const x0 = p.x, y0 = p.y; // presentation only: the carry's after-images (markShadowTrail) start here
     for (let i = 0; i < 40 && gap() > stop; i++) { const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
     p.meleeAim = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    markShadowTrail(this, x0, y0, now); // the Great Sweep's carry, the fists' later steps and the airborne carries: drawn crossing (writes no gameplay state)
     return true;
   }
   // Release 483 (brawler-spells.ts): a swing's damage before the target's own defences: the weapon, the melee bonus, the
@@ -10050,7 +10052,9 @@ export class Game {
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the later steps to the foe
     if (step === 1) p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs);
+    const rushX = p.x, rushY = p.y;
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
+    if (P.rush && boxing) markShadowTrail(this, rushX, rushY, now); // the Shadow Boxing rush stays instant; only its drawing shows the crossing (presentation only)
     const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0));
     const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
@@ -10517,7 +10521,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.cancelPendingMeleeContact('dodge'); this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10806,6 +10810,7 @@ export class Game {
       }
     }
     this.reconcileHeldTool(now);
+    shadowTrailTick(this, now); /* presentation only: a dodge's trail follows him and closes when it ends */
     if(p.hp<=0){this.cancelShadowDash(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate

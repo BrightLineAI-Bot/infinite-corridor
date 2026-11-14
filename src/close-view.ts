@@ -3680,7 +3680,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       const sinceMs = Math.max(0, now - track.at), fresh = attack && amount * swingMs <= sinceMs + CLOSE_VIEW_SHADOW_FORMS.dash.freshMs;
       const boxing = now < (g.boxingUntil || 0) && !stunned && !defeat && !importedDodge && !g.save.boat?.aboard && !g.mountRide?.();
       // 2026-11-14: a swing's charge is gameplay now (game.shadowDash): drawn where the Wayfarer is, leaning, with afterimages, in
-      // safe mode too. The lag below is left for the carries that still move in one update (the Iron Fists, the Great Sweep, in the air).
+      // safe mode too. The carries that still move in one update (the Iron Fists' rush, the Great Sweep, in the air) and the dodge
+      // come through here as well (brawler-spells.ts SHADOW_TRAIL: ghosts on the true place, no lag); the release-922 lag below is
+      // what is left for reduced motion (its plain wraith fade) and any carry too short to mark.
       if (!followShadowDash(SD, g, who.x, who.y, shadowDashGhosts, shadowDashPose)) {
         stepShadowDash(SD, now, who.x, who.y, track.x, track.y, sinceMs, boxing, fresh, !!g.presentation?.reduceMotion);
         if (attack && SD.active) amount = shadowStrikePhase(SD, now, amount, swingMs, meleeAction ? meleeAction.contactMs / meleeAction.durationMs : .18);
