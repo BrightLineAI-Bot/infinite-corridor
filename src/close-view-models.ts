@@ -1,6 +1,6 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
 import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
+import { CLOSE_VIEW_ARCOLOGY_MODELS, CLOSE_VIEW_ARCOLOGY_LIMB_RIGS } from './close-view-arcology-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.ts'; // adventure creatures
@@ -516,107 +516,196 @@ const playerCinderPike=[...playerUnarmed.map(p=>Math.abs(p.swing)===2?{...p,pike
   // existing displayed-left arm mesh at its midpoint and treats every weapon mesh as one rigid grip.
   playerVergeCleaver=[...playerUnarmed.map(p=>p.swing===-2?{...p,cleaverArm:true}:p),...vergeCleaver.map(p=>({...p,cleaverWeapon:true}))];
 
-// Ashling: compact cinder body, a glowing crack and two broken crown spikes.
+// The six core creature bodies (refinement pass, Tim 2026-11-14: "a couple of visual refinement passes for each creature" so
+// bodies read as what they are, "without adding anything to the phone budget"). Each stays at or under its earlier triangle
+// count (tests/close-view-legacy-models.test.ts pins them). Joint groups: ±1 legs, ±2 arms or forelegs, 3 cape, 4/5 coil
+// segments, 6 tail, and the creature joints of CREATURE_LIMB_RIGS below: 121 head, 122 jaw.
+// A part posed by `rest` about its own anchor, then carried by joint `swing` about (px, pz).
+function jointed(item, swing, px, pz) {
+  const mesh = item.mesh, dx = item.px - px, dz = item.pz - pz;
+  for (let i = 0; i < mesh.length; i += MESH_FLOATS) { mesh[i] += dx; mesh[i + 2] += dz; }
+  return { mesh, swing, px, pz };
+}
+const ashClaw = 0xb78a62, crawlerMaw = 0x9b1c25;
+
+// Ashling, a hunched furnace scavenger: a rounded cinder trunk split by an ember crack, a coal head thrust forward under two
+// broken crown spikes and slanted ember eyes, long clawed arms and short coal legs. 158 triangles.
 const ashling = [
-  part(ellipsoid(6, 2), 0, 0, .64, .23, .258, .29, ash, 0, 0, .64, 0, true),
-  part(ellipsoid(6, 1), .085, 0, .986, .211, .216, .208, coal, 0, .085, .986, 0, true),
-  block(.252, 0, .974, .018, .147, .027, ember),
-  block(.199, 0, .68, .03, .025, .116, ember),
-  part(taper, .01, -.13, 1.227, .081, .071, .14, ash, 0, .01, 1.15, -.37),
-  part(taper, .02, .13, 1.2, .081, .079, .098, ash, 0, .02, 1.15, -.31),
+  part(ellipsoid(6, 2), 0, 0, .64, .23, .255, .29, ash, 0, 0, .64, .14, true),
+  part(membrane([[.226, .004, .86], [.238, .034, .75], [.226, -.022, .67], [.234, .03, .57], [.214, -.012, .47]]), 0, 0, 0, 1, 1, 1, ember),
+  part(ellipsoid(6, 2), .13, 0, .985, .19, .19, .175, coal, 121, .04, .88, 0, true),
+  jointed(part(taper, .05, -.12, 1.19, .075, .066, .14, ash, 0, .05, 1.12, -.42), 121, .04, .88),
+  jointed(part(taper, .06, .12, 1.17, .075, .072, .10, ash, 0, .06, 1.12, -.30), 121, .04, .88),
 ];
+for (const side of [-1, 1]) ashling.push(part(membrane([[.288, side * .035, 1.005], [.282, side * .12, 1.045], [.29, side * .115, 1.0], [.29, side * .04, .975]]), 0, 0, 0, 1, 1, 1, ember, 121, .04, .88));
 for (const side of [-1, 1]) {
   ashling.push(
-    part(ellipsoid(6, 1), .056, side * .27, .524, .136, .127, .22, ash, side * 2, .03, .77, -.43, true),
-    part(ellipsoid(5, 1), .10, side * .32, .365, .106, .109, .086, coal, side * 2, .03, .77, 0, true),
-    part(curvedTube([[0,side*.133,.39,.075],[0,side*.133,.19,.06],[.071,side*.133,.055,.035]],4),0,0,0,1,1,1,coal,side,0,.43),
+    part(curvedTube([[.03, side * .25, .86, .075], [.07, side * .33, .63, .058], [.17, side * .29, .44, .04]], 4), 0, 0, 0, 1, 1, 1, ash, side * 2, .03, .84),
+    part(membrane([[.16, side * .29, .45], [.31, side * .31, .40], [.27, side * .34, .32], [.30, side * .25, .31]]), 0, 0, 0, 1, 1, 1, ashClaw, side * 2, .03, .84),
+    part(curvedTube([[0, side * .133, .39, .075], [0, side * .133, .19, .06], [.071, side * .133, .055, .035]], 4), 0, 0, 0, 1, 1, 1, coal, side, 0, .43),
   );
 }
 
-// Root Brute: heavy bark shoulders and oversized, knotted forearms.
+// Root Brute, a slow growth animated by buried machinery: a hunched bark trunk, a heavy head sunk between the shoulders with
+// two pale knot-eyes, branch spurs rooted in the shoulders (they no longer swing with the arms), knotted forearms ending in
+// pale root-knot fists, and stump legs. 204 triangles.
 const rootBrute = [
-  part(ellipsoid(8, 2), 0, 0, 1.035, .32, .403, .48, bark, 0, 0, 1.035, 0, true),
-  part(ellipsoid(6, 1), .224, 0, 1.455, .221, .235, .199, darkBark, 0, .224, 1.455, 0, true),
-  block(.409, 0, 1.468, .027, .143, .024, root),
-  block(.261, 0, .977, .074, .05, .252, root),
+  part(ellipsoid(8, 2), 0, 0, 1.035, .32, .403, .48, bark, 0, 0, 1.035, .12, true),
+  part(membrane([[.30, 0, 1.24], [.36, .09, .98], [.33, -.02, .86], [.35, -.10, 1.05]]), 0, 0, 0, 1, 1, 1, root),
+  part(ellipsoid(6, 2), .26, 0, 1.39, .2, .25, .17, darkBark, 121, .12, 1.3, 0, true),
 ];
+for (const side of [-1, 1]) rootBrute.push(
+  part(membrane([[.445, side * .04, 1.43], [.43, side * .16, 1.46], [.44, side * .15, 1.40], [.445, side * .06, 1.395]]), 0, 0, 0, 1, 1, 1, root, 121, .12, 1.3),
+  part(taper, -.07, side * .33, 1.55, .15, .13, .30, bark, 0, -.07, 1.28, -.38),
+);
 for (const side of [-1, 1]) {
   rootBrute.push(
-    part(taper, -.05, side * .363, 1.518, .15, .13, .274, bark, side * 2, -.05, 1.27, -.30),
     part(ellipsoid(6, 1), .042, side * .465, 1.136, .229, .22, .27, bark, side * 2, .04, 1.27, 0, true),
     part(ellipsoid(6, 1), .145, side * .48, .78, .217, .201, .273, darkBark, side * 2, .04, 1.27, 0, true),
-    block(.307, side * .49, .767, .072, .13, .133, root, side * 2, .04, 1.27),
     part(curvedTube([[-.045,side*.209,.70,.11],[-.045,side*.209,.36,.10],[.046,side*.209,.10,.07]],5),0,0,0,1,1,1,darkBark,side,-.04,.71),
+    part(ellipsoid(6, 1), .25, side * .49, .56, .15, .16, .15, root, side * 2, .04, 1.27, 0, true),
   );
 }
 
-// Pallid Crawler: long, floor-hugging back, splayed limbs and a jutting jaw.
+// Pallid Crawler, "too many joints, no eyes, and a mouth where a face should be": a long floor-hugging back, an eyeless head
+// whose face is a wet maw behind a hinged jaw and a row of teeth, and four spider-high limbs with three joints each. 168.
 const pallidCrawler = [
   part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],7), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
-  part(ellipsoid(7, 2), .31, 0, .418, .23, .207, .187, bone, 0, .31, .418, 0, true),
-  part(ringLoft([[0,.13,-.04],[.16,.11,0],[.30,.03,.02]],5), .35, 0, .32, 1, 1, 1, sinew, 0, .35, .32),
+  part(ellipsoid(6, 2), .31, 0, .43, .22, .2, .17, bone, 121, .2, .45, 0, true),
+  part(membrane([[.505, -.085, .42], [.505, .085, .42], [.485, .065, .33], [.485, -.065, .33]]), 0, 0, 0, 1, 1, 1, crawlerEye, 121, .2, .45),
+  part(membrane([[.512, -.08, .425], [.515, -.045, .372], [.513, 0, .425], [.515, .045, .372], [.512, .08, .425]]), 0, 0, 0, 1, 1, 1, 0xe3d6cf, 121, .2, .45),
+  part(ringLoft([[0,.12,-.04],[.15,.10,0],[.27,.03,.02]],5), .33, 0, .31, 1, 1, 1, sinew, 122, .30, .37),
 ];
 for (const side of [-1, 1]) {
   pallidCrawler.push(
-    block(.483, side * .112, .462, .036, .039, .031, crawlerEye),
-    part(curvedTube([[.18,side*.20,.38,.06],[.35,side*.36,.18,.045],[.51,side*.40,.055,.022]],4),0,0,0,1,1,1,bone,side*2,.14,.48),
-    part(curvedTube([[-.30,side*.20,.38,.06],[-.50,side*.33,.19,.045],[-.43,side*.36,.05,.022]],4),0,0,0,1,1,1,sinew,-side,-.34,.45),
+    part(curvedTube([[.16,side*.19,.42,.055],[.30,side*.36,.58,.045],[.45,side*.44,.30,.034],[.56,side*.45,.03,.016]],3),0,0,0,1,1,1,bone,side*2,.14,.48),
+    part(curvedTube([[-.30,side*.19,.42,.055],[-.42,side*.36,.58,.045],[-.56,side*.42,.28,.034],[-.47,side*.44,.03,.016]],3),0,0,0,1,1,1,sinew,-side,-.34,.45),
   );
 }
 
-// Hollow Marshal: crimson armor, split brass crest, and a long polearm.
+// Hollow Marshal: crimson armour, a crested helm with a brass visor slit, a cape, and a halberd carried at guard - shaft up
+// and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first. 220 triangles.
+const marshalHand = [.04, -.41, .94], marshalDir = [.47, .883];
+const marshalAt = (k, n = 0) => [marshalHand[0] + marshalDir[0] * k + marshalDir[1] * n, marshalHand[1], marshalHand[2] + marshalDir[1] * k - marshalDir[0] * n];
 const hollowMarshal = [
   part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
   part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
-  part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 0, .04, 1.737, 0, true),
-  part(detailPrism,.226,0,1.737,.047,.147,.057,brass),
-  part(detailPrism,.275,0,1.745,.006,.105,.017,iron),
+  part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 121, .02, 1.6, 0, true),
+  part(detailPrism,.226,0,1.737,.047,.147,.057,brass,121,.02,1.6),
+  part(detailPrism,.275,0,1.745,.006,.105,.017,iron,121,.02,1.6),
   block(.208, 0, 1.254, .053, .143, .096, brass),
   block(.021, 0, .865, .22, .275, .069, iron),
 ];
 for (const side of [-1, 1]) {
   hollowMarshal.push(
-    part(taper, .002, side * .132, 2.025, .096, .063, .16, brass, 0, 0, 1.951, -.19),
+    jointed(part(taper, .002, side * .132, 2.025, .096, .063, .16, brass, 0, 0, 1.951, -.19), 121, .02, 1.6),
     part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side*2,0,1.46),
     part(curvedTube([[.03,side*.153,.80,.09],[.03,side*.153,.42,.075],[.08,side*.153,.10,.055]],4),0,0,0,1,1,1,plate,side,0,.831),
   );
 }
-hollowMarshal.push(
-  block(.178, -.432, .903, .034, .037, .661, iron, -2, 0, 1.46, .12),
-  part(taper, .241, -.432, 1.578, .074, .142, .221, brass, -2, 0, 1.46, .12),
-);
+{
+  const butt = marshalAt(-.35), top = marshalAt(1.05), tip = marshalAt(1.44), mid = marshalAt(1.2), y = marshalHand[1];
+  hollowMarshal.push(
+    part(curvedTube([[...butt, .03], [...top, .026]], 4), 0, 0, 0, 1, 1, 1, iron, -2, 0, 1.46),
+    part(membrane([top, marshalAt(1.2, -.07), tip, marshalAt(1.2, .07)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
+    part(membrane([top, [mid[0], y - .07, mid[2]], tip, [mid[0], y + .07, mid[2]]]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
+    part(membrane([marshalAt(.91), marshalAt(1.07), marshalAt(1.07, .2), marshalAt(.88, .17)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
+  );
+}
 
-// Ashen Hound: low charcoal body, pointed ears and a rust-colored muzzle.
+// Ashen Hound: a low charcoal body, a rust head on its own neck joint with pointed ears, lit eyes and a hinged lower jaw, and a
+// tail. 216 triangles.
 const houndFur = 0x765244, houndDark = 0x302724, houndEye = 0xc18a63;
 const ashenHound = [
   part(ellipsoid(8, 2), -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09, true),
   part(ellipsoid(6, 2), .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34, true),
-  part(ellipsoid(6, 1), .388, 0, .581, .177, .146, .133, houndFur, 0, .388, .581, 0, true),
-  part(ringLoft([[0,.10,-.05],[.15,.08,0],[.25,.025,.02]],5),.43,0,.53,1,1,1,houndFur),
-  block(.637, 0, .553, .033, .084, .035, houndDark),
+  part(ellipsoid(6, 1), .388, 0, .581, .177, .146, .133, houndFur, 121, .27, .55, 0, true),
+  part(ringLoft([[0,.10,-.05],[.15,.08,0],[.25,.025,.02]],5),.43,0,.55,1,1,1,houndFur,121,.27,.55),
+  block(.637, 0, .573, .033, .07, .032, houndDark, 121, .27, .55),
+  jointed(part(taper, .52, 0, .50, .045, .065, .13, houndDark, 0, .52, .50, Math.PI / 2), 122, .44, .51),
   part(taper, -.484, 0, .574, .076, .074, .216, houndFur, 6, -.354, .477, -.95),
 ];
 for (const side of [-1, 1]) {
   ashenHound.push(
-    part(taper, .33, side * .097, .719, .068, .061, .122, houndFur, 0, .33, .657, -.38),
-    block(.478, side * .113, .609, .028, .014, .021, houndEye),
+    jointed(part(taper, .33, side * .097, .719, .068, .061, .122, houndFur, 0, .33, .657, -.38), 121, .27, .55),
     part(curvedTube([[.235,side*.131,.43,.045],[.235,side*.131,.20,.038],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
     part(curvedTube([[-.293,side*.132,.41,.045],[-.293,side*.132,.19,.038],[-.25,side*.132,.035,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
+    part(membrane([[.50, side * .07, .62], [.47, side * .12, .63], [.49, side * .11, .60]]), 0, 0, 0, 1, 1, 1, houndEye, 121, .27, .55),
   );
 }
 
-// Coil Stalker: a raised teal head, mint transverse ribs and two trailing segments.
+// Coil Stalker: a dark trunk banded in mint, a long teal snake head on its own joint with mint eye slits, a hinged jaw and a
+// back frill, and two trailing segments (groups 4 and 5) that lag behind every strike. 172 triangles.
 const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad;
 const coilStalker = [
   part(ellipsoid(8, 2), .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19, true),
-  part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],6), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
-  part(ellipsoid(6, 2), .141, 0, .721, .215, .212, .183, coilShell, 0, .141, .721, 0, true),
-  block(.32, 0, .734, .012, .056, .036, coilLight),
-  part(ellipsoid(6, 2), -.294, 0, .262, .232, .217, .192, coilShell, 4, -.294, .262, 0, true),
-  part(ringLoft([[0,.20,-.04],[.01,.23,0],[.02,.20,.04]],6),-.375,0,.263,1,1,1,coilLight,4,-.375,.263,0,true),
-  part(ellipsoid(6, 1), -.599, 0, .168, .225, .16, .144, coilDark, 5, -.599, .168, 0, true),
-  part(ringLoft([[0,.14,-.03],[.01,.17,0],[.02,.14,.03]],6),-.686,0,.169,1,1,1,coilLight,5,-.686,.169,0,true),
+  part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],5), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
+  part(ellipsoid(6, 2), .2, 0, .735, .25, .19, .145, coilShell, 121, .1, .62, 0, true),
+  part(membrane([[.02, 0, .70], [-.07, 0, .93], [.05, 0, .91], [.12, 0, .84]]), 0, 0, 0, 1, 1, 1, coilLight, 121, .1, .62),
+  jointed(part(taper, .28, 0, .645, .05, .11, .15, coilLight, 0, .28, .645, Math.PI / 2), 122, .17, .66),
 ];
+for (const side of [-1, 1]) coilStalker.push(part(membrane([[.39, side * .085, .77], [.33, side * .14, .78], [.37, side * .12, .745]]), 0, 0, 0, 1, 1, 1, coilLight, 121, .1, .62));
+coilStalker.push(
+  part(ellipsoid(6, 2), -.294, 0, .262, .232, .217, .192, coilShell, 4, -.294, .262, 0, true),
+  part(ringLoft([[0,.20,-.04],[.01,.23,0],[.02,.20,.04]],5),-.375,0,.263,1,1,1,coilLight,4,-.375,.263,0,true),
+  part(ellipsoid(6, 1), -.599, 0, .168, .225, .16, .144, coilDark, 5, -.599, .168, 0, true),
+  part(ringLoft([[0,.14,-.03],[.01,.17,0],[.02,.14,.03]],5),-.686,0,.169,1,1,1,coilLight,5,-.686,.169,0,true),
+);
+
+// Creature joints for the attack layer (Phase B, on top of creatureRootPose): per kind and joint group, how far a joint turns
+// (radians; for a hanging limb positive swings it back, negative forward and up; for a head or jaw ahead of its pivot positive
+// dips it) with the root's coil (the windup, eased in), its extension (the blow, snapped out, held, then eased back) and its
+// impact bump (just after contact). `idle` marks a joint this table owns outright (121+): its rest motion is a gait nod
+// (`nod`, on the step beat) and an ambient flicker (`flick`), both muted with the other secondary motion. Purely visual: the
+// creature's hit geometry never reads these. `actions` limits a rig to the attacks it was authored for.
+const limb = (coil, ext, bump = 0, nod = null, flick = 0) => Object.freeze({ coil, ext, bump, own: nod !== null, nod: nod || 0, flick });
+export const CORE_CREATURE_LIMB_RIGS = Object.freeze({
+  // A short clawed lunge: the lead claw draws back and thrusts, the off arm guards, the stance splits and the head snaps in.
+  ashling: Object.freeze({ groups: Object.freeze({ '-2': limb(1.0, -1.75, .25), 2: limb(-.35, .55, -.1), '-1': limb(-.25, -.45), 1: limb(.3, .5), 121: limb(.18, -.38, .12, .1) }) }),
+  // The Heavy Slam: both arms rise overhead in the windup and hammer down in front at contact, stopping short of the floor so
+  // the root lean does not pitch the whole body past it (the earlier strike swing stacked on that lean); the head looks up then
+  // ducks into the blow.
+  rootBrute: Object.freeze({ groups: Object.freeze({ '-2': limb(-2.55, -.62, .32), 2: limb(-2.55, -.62, .32), '-1': limb(-.2, -.28), 1: limb(.25, .34), 121: limb(-.3, .22, .12, .06) }) }),
+  // The Long Reach pole thrust: the halberd arm lifts the blade upright in the windup and levels it point first; the cape
+  // streams back, the off arm draws back and the helm dips behind the point.
+  hollowMarshal: Object.freeze({ groups: Object.freeze({ '-2': limb(.38, -1.05, .14), 2: limb(-.35, .45, -.1), 3: limb(-.18, .38, .16), '-1': limb(-.15, -.42), 1: limb(.2, .48), 121: limb(-.12, .14, .06, .04) }) }),
+  // The Zigzag Assault: hind legs load under the body, the forequarters lift and both forelegs reach (the lead one further),
+  // the head drops to stalk then snaps forward with the jaw opening in the windup and slamming shut on contact; the tail
+  // counterbalances.
+  ashenHound: Object.freeze({ groups: Object.freeze({ 2: limb(.32, -1.0, .35), '-2': limb(.32, -.78, .3), 1: limb(-.38, .62, -.2), '-1': limb(-.38, .62, -.2), 6: limb(-.3, .5, -.22), 121: limb(.28, -.2, .14, .08), 122: limb(.55, -.04, .3, 0) }) }),
+  // The serpent strike: the head rears back with the jaw open, then drives down and forward as the jaw snaps shut; the two
+  // trailing segments coil and whip after it, the second later and wider than the first.
+  coilStalker: Object.freeze({ groups: Object.freeze({ 121: limb(-.42, .48, -.12, .05, .03), 122: limb(.62, -.05, .22, 0), 4: limb(.26, -.34, .16), 5: limb(.42, -.6, .3) }) }),
+  // The legacy bite and leap: forelegs tuck and strike out staggered, hind legs load and drive, the head rears then bites
+  // down while the jaw gapes and snaps.
+  pallidCrawler: Object.freeze({ actions: Object.freeze(['bite', 'leapSlam']), groups: Object.freeze({ '-2': limb(.3, -.82, .3), 2: limb(.36, -.56, .34), '-1': limb(-.36, .46, -.16), 1: limb(-.3, .4, -.12), 121: limb(-.22, .32, -.1, .06), 122: limb(.72, -.05, .3, 0) }) }),
+});
+
+const CREATURE_LIMB_RIGS = Object.freeze({ ...CORE_CREATURE_LIMB_RIGS, ...CLOSE_VIEW_ARCOLOGY_LIMB_RIGS });
+export const creatureLimbRig = (kind) => typeof kind === 'string' && Object.hasOwn(CREATURE_LIMB_RIGS, kind) ? CREATURE_LIMB_RIGS[kind] : null;
+// One scratch record (no per-frame allocation): this frame's coil, extension and impact weights for a rigged creature, read from
+// its root pose (creatureRootPose). Coil eases in over the windup and lets go as the blow snaps out; the extension holds through
+// the contact and eases back in the recovery; the impact bump rises and falls over CREATURE_POSE.recoilSpan of the recovery.
+// Reduced Motion follows the root's calm rules: CREATURE_POSE.reduced.scale on the swing, its recoil share (none) on the bump.
+const LIMB_CURVE = { coil: 0, ext: 0, bump: 0 };
+export function creatureLimbCurve(rig, actor, root, out = LIMB_CURVE) {
+  out.coil = 0; out.ext = 0; out.bump = 0;
+  if (!rig || !root || !root.stage || rig.actions && !rig.actions.includes(actor?.action)) return out;
+  const P = CREATURE_POSE, u = root.u, smooth = u * u * (3 - 2 * u), reduce = !!actor?.reduceMotion, amp = reduce ? P.reduced.scale : 1;
+  if (root.stage === 1) out.coil = smooth;
+  else if (root.stage === 2) { const k = 1 - (1 - u) * (1 - u) * (1 - u); out.coil = 1 - k; out.ext = k; }
+  else if (root.stage === 3) out.ext = 1;
+  else { out.ext = 1 - smooth; out.bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0; }
+  out.coil *= amp; out.ext *= amp; out.bump *= reduce ? P.reduced.recoil : 1;
+  return out;
+}
+// A rigged joint's angle: the generic gait/ambient angle (or, for a joint the rig owns, its own nod and flicker) plus the attack.
+export function creatureLimbAngle(rig, swing, angle, curve, beat, phase, secondary) {
+  const j = rig.groups[swing];
+  if (!j) return angle;
+  const base = j.own ? (j.nod * beat + j.flick * Math.sin(phase * 2.3 + swing)) * secondary : angle;
+  return base + j.coil * curve.coil + j.ext * curve.ext + j.bump * curve.bump;
+}
 
 // Static held-part variants reuse the authored body. Move only existing tool meshes to each form's grip;
 // they stay in the same bounded actor submission (the widest robot plus emitter is exactly 256 triangles).
@@ -1144,7 +1233,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const turnAmount = Number.isFinite(actor.turn) ? Math.max(-1, Math.min(1, actor.turn)) : 0;
   const beat = Math.sin(phase) * moving;
   const heel = Math.cos(phase * 2) * moving;
-  const windup = pose === "windup" ? progress : 0;
+  // A rigged creature swings its joints from CREATURE_LIMB_RIGS instead of the generic windup/strike limb swings.
+  const windup = pose === "windup" && !creatureLimbRig(kind) ? progress : 0;
   // Contact comes early, then the cut carries through before recovering. Damage remains a gameplay event;
   // this curve only makes its already-immediate result read as a committed, weighted blow.
   let strike = 0;
@@ -1159,6 +1249,7 @@ export function writeCloseViewModel(out, offset, actor) {
     else { const t = (progress - .30) / .70; strike = 1 - t * t * (3 - 2 * t); }
   }
   if(kind==='playerHammerStomp'||phasedTool)strike=0;
+  if (creatureLimbRig(kind)) strike = 0;
   const tool = phasedTool?toolMotion?.weight||0:pose === "tool" ? Math.sin(Math.PI * progress) : 0;
   const cast = pose === "cast" ? Math.sin(Math.PI * progress) : 0;
   const jump = pose === "jump" ? Math.sin(Math.PI * progress) : 0;
@@ -1190,6 +1281,8 @@ export function writeCloseViewModel(out, offset, actor) {
   // windup pitch and strike shove/lean/turn below (gen 0); its limbs keep their windup/strike swings.
   const root = playerLike ? null : creatureRootPose(actor).family ? ROOT_POSE : null, gen = root ? 0 : 1;
   const rootSquash = root ? 1 - root.squash : 1, rootLift = root ? root.lift : 0;
+  const limbRig = root ? creatureLimbRig(kind) : null;
+  if (limbRig) creatureLimbCurve(limbRig, actor, root);
   const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist : turn0;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch0 = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup * gen + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29 * gen) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
@@ -1275,6 +1368,7 @@ export function writeCloseViewModel(out, offset, actor) {
     if(placingStone&&swing===freeSwing&&kind!=='playerCinderPike')angle+=(-.94-angle)*place;
     if(shovelDigging&&swing===-2)angle+=(-1.18*(shovel?.down||0)+.46*(shovel?.lever||0)-angle)*(shovel?.weight||0);
     if(shovelDigging&&swing===2)angle+=(-.50*(shovel?.down||0)-.28*(shovel?.lever||0)-angle)*(shovel?.weight||0);
+    if (limbRig) angle = creatureLimbAngle(limbRig, swing, angle, LIMB_CURVE, beat, phase, secondary);
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
