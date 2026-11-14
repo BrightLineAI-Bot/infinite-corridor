@@ -25,6 +25,7 @@ void main() {
 export const beastFragmentBody = (L) => `
 in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth; flat in int v_emit;
 uniform float u_pass; uniform vec3 u_sil; uniform float u_alpha; uniform float u_hit; uniform vec4 u_emitK; uniform vec4 u_emitA;
+uniform float u_fogCap; // the most fog this body takes (1: all; a beast of your section less: close-view-beasts.ts CLOSE_VIEW_BEAST_SIGHT)
 void main() {
   if (v_pos.z < -0.5) discard;
   float k = v_emit == 1 ? u_emitK.x : v_emit == 2 ? u_emitK.y : v_emit == 3 ? u_emitK.z : v_emit == 4 ? u_emitK.w : 0.0;
@@ -44,7 +45,7 @@ void main() {
   vec3 glowC = v_col * ${glf(L.glow)} * k + vec3(max(k - 1.0, 0.0) * 0.35);
   color = mix(color, mix(color * 0.45, max(color * 0.45, glowC), clamp(k * 2.0, 0.0, 1.0)), emit);
   color = mix(color, vec3(.96, .34, .23), clamp(u_hit, 0.0, 1.0) * .45 * (1.0 - emit));
-  float late = u_fogP.x + ${glf(L.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = f * f * (3.0 - 2.0 * f);
+  float late = u_fogP.x + ${glf(L.fogLate)}, f = clamp((v_depth - late) / max(u_fogP.y - late, 0.001), 0.0, 1.0); f = min(f * f * (3.0 - 2.0 * f), u_fogCap);
   float hz = u_finish.z > 0.5 ? (1.0 - exp(-v_depth * u_fogP.z)) * exp(-max(v_pos.z, 0.0) / u_fogP.w) : 0.0;
   color = towerAir(mix(color, u_haze + dif * u_finish.y, clamp(hz, 0.0, 0.8) * (1.0 - emit * 0.6)), v_pos); // the air under a towering top (close-view-gl.ts)
   outColor = vec4(finish(mix(color, u_fog, f * (1.0 - emit * min(k, 1.0) * (1.0 - ${glf(L.emitFog)})))), 1.0);
@@ -92,7 +93,7 @@ export function drawBeastsGL(gl, s, beasts, pass, cam, light, silhouette) {
   for (let i = 0; i < beasts.count; i++) {
     const f = beasts.items[i], r = s.meshes.get(f.mesh); if (!r) continue;
     gl.bindVertexArray(r.vao); gl.uniform4fv(u.u_bones, f.skin, 0, f.boneCount * 12);
-    gl.uniform1f(u.u_alpha, f.alpha); gl.uniform1f(u.u_hit, f.hit); gl.uniform4fv(u.u_emitK, f.emitK); gl.uniform4fv(u.u_emitA, f.emitA);
+    gl.uniform1f(u.u_alpha, f.alpha); gl.uniform1f(u.u_hit, f.hit); gl.uniform1f(u.u_fogCap, Number.isFinite(f.fogCap) ? f.fogCap : 1); gl.uniform4fv(u.u_emitK, f.emitK); gl.uniform4fv(u.u_emitA, f.emitA);
     gl.drawElements(gl.TRIANGLES, f.cloud ? f.mesh.indices.length : f.mesh.coreIndices, gl.UNSIGNED_SHORT, 0); calls++;
   }
   return calls;
