@@ -87,6 +87,65 @@ export const SUNBURST = { ricochets: 2, shards: 6, share: .3, spread: 2.4, speed
 //   compact carbine (close-view-models.ts, the `carbine` appearance), posed like the other simple tools.
 // - Obtained by upgrading a Spark Coil at Sela's forge (the starter, or one that drops: items.ts SPARK_COIL_LOOT).
 // Runtime only (game.carbine); no save state beyond the item itself.
+// Tool ranges (Tim, 2026-11-14: "Some weapons should have shorter ranges. The Rift Bombard... should go out and then fall to
+// the ground eventually. The Lumen Spindle... should go out and, if it doesn't hit anything, just dissipate; if it hits
+// something it should bounce back, and its bounce range is the same as its cast range... The Carbine should have infinite
+// range, and the Orrery should have infinite range too"). Ranges are tiles at no reach bonus; like every tool shot they grow
+// with the reach stat (1 + characterStats().attackReach), as the Verge Cleaver's reach does, so the order holds at any reach:
+// the Cleaver's 1.75 < the Spindle's `range` < the Bombard's `range`.
+// - `unlimited`: how far a shot "without a range" may fly. It is past a 32-tile section's diagonal (45.3) and a 64-tile
+//   interior's width, so such a shot ends at a wall, a foe or the map's edge, never in the open; the number only bounds it.
+// - Rift Bombard: the shell flies at most `range` tiles (or to the point aimed at, if nearer), then comes down and bursts there.
+// - Lumen Spindle: the cast leg flies at most `range` tiles. With no hit it dissipates there, shrinking over its last `fade`
+//   tiles. Striking a foe (or a wall) turns it back, and the return leg is `range` tiles too, piercing as before. `legs` bounds
+//   its life: the cast leg, Sunburst Ricochet's wall bounces (SUNBURST.ricochets), and the return.
+// Saved shots from before (no `legRange`) keep the old turn-by-age flight.
+export const TOOL_RANGE = Object.freeze({
+  unlimited: 64,
+  "rift-bombard": Object.freeze({ range: 6.5 }),
+  "lumen-spindle": Object.freeze({ range: 4, fade: .75, legs: 4 }),
+  carbine: "unlimited",
+  "aether-orrery": "unlimited",
+});
+// Close View terrain occlusion (Tim, 2026-11-14: "in Close View, projectiles shouldn't go through the rises/raised blocks...
+// In Standard View that's fine — you should be able to shoot over elevation there... maybe that's the trade-off for the
+// mobility"). A deliberate view difference: in Standard View every shot flies over elevation as before.
+// While Close View applies (close-view.ts closeViewApplies), each of the Wayfarer's shots flies at its launch height: the
+// ground level it left from plus `shotHeight` tiles (the drawn shot height, actor-presentation.ts
+// DEFAULT_PROJECTILE_VISUAL_HEIGHT). Ground it would enter whose drawn top is higher than that stops it like a wall (a shell
+// bursts there, a Spindle turns back). A level is drawn LIFT_PER_LEVEL tiles tall inside, OUTDOOR.terrain.level outside
+// (close-view-outdoor.ts outdoorLevelHeight), so outdoors any rise of a level stops a shot, and inside one of two levels.
+// A ramp counts `slopeLevel` below its top. A lobbed shell (path "grenade") flies an arc: from `shotHeight` up to an apex of
+// `lob.apexPerTile` × its planned flight (at least `lob.minApex` tiles) and down to the ground where it lands, so it clears
+// a low rise mid-flight and is stopped by one it meets low. Enemy shots are unchanged (`hostile: false`).
+// `pierce.carbine` "charged": a Carbine beam fired from a charge (any charge past CARBINE.charge.grace) passes through terrain
+// (Tim, 2026-11-14); a tap is stopped like any shot.
+export const RANGED_OCCLUSION = Object.freeze({
+  closeViewOnly: true,
+  hostile: false,
+  shotHeight: .66,
+  slopeLevel: .5,
+  lob: Object.freeze({ apexPerTile: .25, minApex: 1 }),
+  pierce: Object.freeze({ carbine: "charged" }),
+});
+// The reach of a tool range entry, in tiles (`unlimited` for an unlimited one).
+export const toolRange = (key) => { const r = TOOL_RANGE[key]; return r === "unlimited" ? TOOL_RANGE.unlimited : Number(r?.range) || 0; };
+// How visible a ranged shot still is (1, shrinking to 0 over the last `fade` tiles of a Spindle leg). Drawing only.
+export function shotFade(p) {
+  const L = Number(p?.legRange); if (!(L > 0)) return 1;
+  const f = TOOL_RANGE["lumen-spindle"].fade, left = L - (Number(p.legDist) || 0);
+  return Math.max(0, Math.min(1, left / f));
+}
+// The height (tiles above the ground it left from) a shot flies at, for the Close View occlusion: `shotHeight`, or a lobbed
+// shell's arc at `u` = age / its planned flight `span` (seconds).
+export function shotClearance(p) {
+  const O = RANGED_OCCLUSION; if (p?.path !== "grenade") return O.shotHeight;
+  const span = Number(p.lobSpan) > 0 ? Number(p.lobSpan) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
+  const u = Math.max(0, Math.min(1, (Number(p.age) || 0) / span)), apex = Math.max(O.lob.minApex, O.lob.apexPerTile * (Number(p.speed) || 0) * span);
+  return O.shotHeight * (1 - u) + apex * 4 * u * (1 - u);
+}
+// Whether occlusion lets this shot pass through terrain regardless (a charged Carbine beam).
+export const shotPiercesTerrain = (p) => RANGED_OCCLUSION.pierce.carbine === "charged" && p?.carbine === true && p.carbineCharged === true;
 export const CARBINE = {
   channel: "magic", // game.ts toolBonus channel; the stat is items.ts TOOL_SCALING.carbine ("stamina")
   base: 30, bonus: 2.7,
@@ -317,17 +376,17 @@ export const ORRERY = {
   flag: "gear:aether-orrery",
   band: 13, // given once at Infinite III, like the brawler gear (APERTURE_BANDS index)
   base: 10, // its spell damage (SPELL_POWER's `damage`)
-  tap: { share: .66, cooldown: .4, speed: 10, life: .8, grow: .12, shedEvery: .08 },
+  tap: { share: .66, cooldown: .4, speed: 10, life: .8, grow: .12, shedEvery: .08, shedFor: .8 }, // 2026-11-14: the orb flies TOOL_RANGE's unlimited range; it sheds pellets only over its first `shedFor` s (its old `life`), so a tap's pellet field is as before
   pellet: { share: .24, speed: 2.4, life: 1.5, grow: .06, turn: 2.39996 },
   charge: { grace: .2, full: 1.6, max: 2.6, lockout: LOCKOUT, pulse: .2 },
   cone: { share: .41, range: 3.3, half: .6 },
-  big: { min: 1.2, max: 3.1, speed: 7.5, life: 1.4, grow: .5 },
+  big: { min: 1.2, max: 3.1, speed: 7.5, life: 1.4, grow: .5 }, // `life` is the pre-2026-11-14 flight; the great orb now flies TOOL_RANGE's unlimited range
   halo: { base: 1, max: 3, radius: 1.2, chargeRadius: 1.9, spin: 2.4, idle: 8, contact: .42, contactShare: .3, pulse: .3 },
   drone: { share: .43, speed: 18, life: .45, range: 7 },
   beam: { share: .36, touch: .3 },
   cube: { share: .72, speed: 12, out: 6, overshoot: 1, minSide: 1.1, minLeg: .4, onLine: .3, seek: 7, life: 2.4, turns: 5, grow: .16 },
   clone: { share: .66, gap: .12, speed: 16, life: .6, orbit: .7 },
-  caps: { orbs: 6, pellets: 30, bigs: 2, lasers: 12 },
+  caps: { orbs: 12, pellets: 30, bigs: 4, lasers: 12 }, // 2026-11-14: orbs 6 → 12, bigs 2 → 4, as unlimited orbs stay longer in flight (still inside the area's projectile cap)
   sparks: { low: 6, balanced: 12, full: 20 },
   messages: { over: `The Orrery overloads: it cannot charge for ${LOCKOUT} s.`, locked: "The Orrery is still overloaded.", given: "In your pack: the Aether Orrery, a magic tool (Focus)." },
   text: "A magic tool (Focus). Tap: an orb that sheds drifting pellets. Hold: a cone of sparks, then a great orb through every foe; holding too long overloads it for 6 s. An orb circles you (two with one Echo glyph, three with two): orbs burn what they touch and fire lasers with each press; while you charge, two form a burning beam and three a burning triangle; on release each looses a right-angle laser. With a Shadow Clone: its own orb and a burning tether.",
@@ -403,7 +462,7 @@ export function orreryPress(game, now, dir, action = null) {
   const round = now >= (game.toolReadyAt || 0) && room(game) > 0 && count(game, "orb") < O.caps.orbs ? (typeof game.takeRound === "function" ? game.takeRound(echoes) : "ordinary") : null;
   if (round) {
     game.toolReadyAt = now + O.tap.cooldown * 1000 * game.toolCooldownScale();
-    shot(game, "orb", c.x + d.x * .35, c.y + d.y * .35, d, O.tap.speed, O.tap.life, power * O.tap.share * roundDamage(round), { grow: O.tap.grow, shedAcc: 0, shedTurn: Math.atan2(d.y, d.x), ...(round === "empowered" ? { empowered: true } : {}) });
+    shot(game, "orb", c.x + d.x * .35, c.y + d.y * .35, d, O.tap.speed, toolRange("aether-orrery") / O.tap.speed, power * O.tap.share * roundDamage(round), { grow: O.tap.grow, shedAcc: 0, shedTurn: Math.atan2(d.y, d.x), ...(round === "empowered" ? { empowered: true } : {}) });
     p.attackUntil = now + 160; stampAttackVisual(p, "orrery-tap", 160, d); fired = true;
     const tier = orbTier(game.glyphLoadout("tool").count("echo"));
     if (tier && S.halo && S.halo.where === game.orreryWhere()) { // the circling orbs fire, one laser each
@@ -462,7 +521,7 @@ function release(game, c, now) {
   const O = ORRERY, S = state(game), o = centre(game), power = game.orreryPower(), d = c.dir;
   if (room(game) > 0 && count(game, "big") < O.caps.bigs) { const round = typeof game.takeRound === "function" ? game.takeRound(game.glyphLoadout("tool").count("echo")) : "ordinary"; // ROUNDS: the great orb takes a round
     if (!round) { S.charge = null; return; }
-    shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, O.big.life, power * chargeShare(c.held) * roundDamage(round), { knife: true, grow: O.big.grow, ...(round === "empowered" ? { empowered: true } : {}) }); }
+    shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, toolRange("aether-orrery") / O.big.speed, power * chargeShare(c.held) * roundDamage(round), { knife: true, grow: O.big.grow, ...(round === "empowered" ? { empowered: true } : {}) }); }
   const h = S.halo;
   if (h && h.where === game.orreryWhere()) { h.idle = O.halo.idle; const volley = id(game, "volley"), ahead = nearest(game, o.x, o.y, O.cube.out, 6).filter((e) => (e.x + .5 - o.x) * d.x + (e.y + .45 - o.y) * d.y > 0); // forward: each laser at a foe ahead (a different one where it can), else a fan
     for (let i = 0; i < h.n && room(game) > 0 && count(game, "cube") < O.caps.lasers; i++) { const f = ahead.length ? ahead[i % ahead.length] : null, a = (i - (h.n - 1) / 2) * .18, cs = Math.cos(a), sn = Math.sin(a), ld = f ? unit(f.x + .5 - h.pts[i].x, f.y + .45 - h.pts[i].y, d.x, d.y) : { x: d.x * cs - d.y * sn, y: d.x * sn + d.y * cs };
@@ -478,6 +537,7 @@ function tickShots(game, dt, now) {
   for (const p of game.projectiles) {
     if (p.dead || !p.orrery) continue;
     if (p.orrery === "orb") {
+      if (!((Number(p.age) || 0) <= O.tap.shedFor)) continue; // sheds over its first `shedFor` s only
       p.shedAcc = (p.shedAcc || 0) + dt;
       while (p.shedAcc >= O.tap.shedEvery) { p.shedAcc -= O.tap.shedEvery;
         if (pellets < 0) { pellets = count(game, "pellet"); space = room(game); }

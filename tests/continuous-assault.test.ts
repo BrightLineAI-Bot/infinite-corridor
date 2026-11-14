@@ -86,10 +86,11 @@ test('tracking and target choice: the struck foe, followed as it moves; else the
   }
   { // A beam that strikes nothing (fired into the empty half of the room): the foe nearest where it ended, within seek.
     const { g, s } = on({ foes: [[3 + 16 * 0 + 2, 15.1]] }); s.lastAim = { x: 0, y: -1 }; g.enemies[0].x = 3; g.enemies[0].y = 9.55 - 16 - 1; // off the map end: none in reach
-    g.enemies = []; const { t } = charge(g, 1000, full); run(g, 8, t); const L = lances(g);
+    g.enemies = []; const { t } = charge(g, 1000, full); run(g, 12, t) /* 2026-11-14: was 8 frames; the unlimited beam (tool-forms.ts TOOL_RANGE) crosses the 40-tile room before it ends */; const L = lances(g);
     assert.equal(L.length, 3, 'still called, on the point'); assert.ok(L.every((q) => q.track === ''));
   }
   { const { g } = on({ foes: [[20.4, 11.6]] }); // the beam runs 2 tiles above it, missing, and ends within seek of it
+    g.map.tiles[10 * W + 20].blocked = true; // 2026-11-14: the beam's range is unlimited (tool-forms.ts TOOL_RANGE), so a wall ends it where its 16 tiles used to
     let down = true; const inp = input(() => down); g.fireSecondary(1000, { x: 1, y: 0 }, 'tool'); g.lockedDirection = () => ({ x: 1, y: 0 }); let t = run(g, Math.round(full / .05), 1000, inp); down = false; t = run(g, 8, t, inp);
     const L = lances(g); assert.equal(L.length, 3); assert.ok(L.every((q) => q.track === 'foe0'), 'the nearest foe within seek of its end');
   }

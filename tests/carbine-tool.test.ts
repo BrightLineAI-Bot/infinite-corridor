@@ -12,7 +12,7 @@ import { normalizeItemUpgrade, RANGED_WEAPONS, rangedWeapon, generateItem, isVal
 import { ensureLattice, RETIRED_PASSIVES } from '../src/transit-lattice.ts';
 import { TOOL_FORMS, TOOL_FORM_KEYS } from '../src/lattice-fields.ts';
 import { toggleLatticePassive } from '../src/constellation.ts';
-import { CARBINE, carbineFill, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineBase, drawCarbine, roundsLabel, usesRounds } from '../src/tool-forms.ts';
+import { CARBINE, toolRange, carbineFill, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineBase, drawCarbine, roundsLabel, usesRounds } from '../src/tool-forms.ts';
 import { CLOSE_VIEW } from '../src/close-view.ts';
 import { closeViewHeldMuzzleLocal, closeViewHeldMuzzlePoint, writeCloseViewHeroGear, writeCloseViewHeroEquipment, CLOSE_VIEW_HERO_WEAPON_FORM, CARBINE_COLOURS, HERO_EQUIPMENT_MAX_TRIANGLES, MODEL_FLOATS } from '../src/close-view-models.ts';
 import { CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES } from '../src/close-view-player-forms.ts';
@@ -89,7 +89,7 @@ test('tap: one beam out to 16 tiles, past every lock range, cadence 1.05 s, 1 ro
   assert.ok(CARBINE.range >= TARGET_LOCK.range && CARBINE.range >= CLOSE_VIEW.lock.range + CLOSE_VIEW.lock.slack && CARBINE.range > BB.speed * BB.lifetime * 1.3);
   const { g, s } = arena({ foes: [[3 + 15, 9.1], [3 + 15.6, 9.1]] });
   assert.equal(g.fireSecondary(1000, { x: 1, y: 0 }), true); const beam = g.projectiles[0];
-  assert.equal(beam.pierce, 0); assert.ok(Math.abs(beam.speed * beam.life - CARBINE.range) < 1e-9 && beam.life <= .25);
+  assert.equal(beam.pierce, 0); assert.ok(Math.abs(beam.speed * beam.life - toolRange('carbine')) < 1e-9 && toolRange('carbine') > CARBINE.range && beam.life <= 1); // 2026-11-14 (tool-forms.ts TOOL_RANGE): unlimited, was CARBINE.range
   assert.equal(g.player.attackReadyAt, 1000 + CARBINE.cadence * 1000); assert.equal(g.fireSecondary(1000 + CARBINE.cadence * 1000 - 1, { x: 1, y: 0 }), false, 'refused while it recovers');
   run(g, 8, 1000); const [near, behind] = lost(g); assert.ok(near > 0 && behind === 0, 'strikes the first foe 15 tiles off and stops');
   assert.equal(s.rounds.loaded, 39);

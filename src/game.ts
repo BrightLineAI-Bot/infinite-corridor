@@ -75,7 +75,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, ARC_WAVE, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -116,7 +116,8 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
-import { closeViewOccludedOnEntry, closeViewShowing } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
 import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.ts";
@@ -1766,7 +1767,7 @@ export function projectileDirection(x, y, facing = "down") {
   return { x: a, y: b };
 }
 export function closeViewActionEligible(game){return !!game?.closeViewActionEligible?.();}
-const PREPARED_SHOT_FIELDS=['dx','dy','speed','life','damage','damageType','path','turnAfter','returning','blastRadius','glyphHost','pierce','ricochet','sunburst','scale','grow','arcWave','visualFlight'];
+const PREPARED_SHOT_FIELDS=['dx','dy','speed','life','damage','damageType','path','turnAfter','legRange','returning','blastRadius','glyphHost','pierce','ricochet','sunburst','scale','grow','arcWave','visualFlight'];
 function executablePreparedShot(raw){const out={};for(const k of PREPARED_SHOT_FIELDS)if(Object.hasOwn(raw||{},k))out[k]=k==='visualFlight'&&raw[k]?{...raw[k]}:raw[k];return out;}
 const PREPARED_EFFECT_FIELDS=['kind','brawler','life','radius','pulse','damage','glyphHost','healShare','imbue'];
 function executablePreparedEffect(raw){const out={};for(const k of PREPARED_EFFECT_FIELDS)if(Object.hasOwn(raw||{},k))out[k]=raw[k];return out;}
@@ -1786,6 +1787,7 @@ export function updateProjectiles(
   onBuildHit = null,
   onRicochet = null,
   landed = (n) => n, // the health a hit of `dealt` takes (the Game passes wayfarerDamage); onHit still gets `dealt`
+  occluded = null, // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): (shot, x, y) → true when raised ground stops it there
 ) {
   for (const p of projectiles) {
     if (p.dead) continue;
@@ -1794,6 +1796,7 @@ export function updateProjectiles(
     if (
       p.path === "boomerang" &&
       !p.returning &&
+      !(p.legRange > 0) /* 2026-11-14: a Spindle flown in legs turns by distance (below), not by age */ &&
       p.age >= (Number(p.turnAfter) || p.life / 2)
     ) {
       p.returning = true;
@@ -1809,8 +1812,9 @@ export function updateProjectiles(
       const nx = next.x, ny = next.y;
       // Release 265: a hostile shot entering a build (not the one the Wayfarer stands on) is absorbed by it.
       if (p.hostile && onBuildHit && map.tiles[Math.floor(ny) * width + Math.floor(nx)]?.build && !(player && Math.floor(nx) === Math.floor(player.x + .5) && Math.floor(ny) === Math.floor(player.y + .75))) { p.dead = true; p.impact = { x: p.x, y: p.y }; onBuildHit(Math.floor(nx), Math.floor(ny)); break; }
-      if (!projectileTileOpen(map, width, nx, ny) && p.mirage) { if (!p.returning) { p.returning = true; p.backAt = p.age; p.hits = {}; } } // release 649: a mirage blade turns home at a wall and passes walls on its way back
-      else if (!projectileTileOpen(map, width, nx, ny)) {
+      const open = projectileTileOpen(map, width, nx, ny) && !(occluded && (!p.hostile || RANGED_OCCLUSION.hostile) && occluded(p, nx, ny)); // Close View: raised ground stops a shot as a wall does
+      if (!open && p.mirage) { if (!p.returning) { p.returning = true; p.backAt = p.age; p.hits = {}; } } // release 649: a mirage blade turns home at a wall and passes walls on its way back
+      else if (!open) {
         if(p.path==="grenade"){p.dead=true;onDetonate(p);break}
         // Sunburst Ricochet (tool-forms.ts SUNBURST): a shot with ricochets left reflects off a wall inside the map (the map's
         // edge is a section seam, not a wall) and stays where it is this substep; `onRicochet` throws the shards.
@@ -1818,7 +1822,7 @@ export function updateProjectiles(
           const odx = p.dx, ody = p.dy, bx = !projectileTileOpen(map, width, nx, p.y), by = !projectileTileOpen(map, width, p.x, ny), both = !bx && !by;
           if (bx || both) p.dx = -p.dx;
           if (by || both) p.dy = -p.dy;
-          p.ricochet -= 1; p.returning = true; // the ricochet is the shot's turn: it does not turn again later
+          p.ricochet -= 1; p.returning = true; if (p.legRange > 0) p.legDist = 0; // the ricochet is the shot's turn: it does not turn again later (a Spindle's new leg starts here)
           if (onRicochet) onRicochet(p, bx || both ? -Math.sign(odx) : 0, by || both ? -Math.sign(ody) : 0);
           continue;
         }
@@ -1826,6 +1830,7 @@ export function updateProjectiles(
           p.returning = true;
           p.dx *= -1;
           p.dy *= -1;
+          if (p.legRange > 0) p.legDist = 0; // the return leg is as long as the cast (tool-forms.ts TOOL_RANGE)
           continue;
         } else {
           p.dead = true;
@@ -1876,6 +1881,7 @@ export function updateProjectiles(
           if (p.path === "boomerang" || p.pierce > 0 || p.knife) { // 643: thrown blades fly on through (649: Mirage of Blades)
             (p.hits ||= {})[e.id] = true;
             if (p.path !== "boomerang" && !p.knife) p.pierce -= 1;
+            if (p.path === "boomerang" && p.legRange > 0 && !p.returning) { p.returning = true; p.dx *= -1; p.dy *= -1; p.legDist = 0; } // 2026-11-14: a hit turns the Spindle back, for a leg as long as the cast
           } else p.dead = true;
           if (p.burst) p.burst.hits[e.id] = (p.burst.hits[e.id] || 0) + 1; // Sunburst Ricochet: one burst's shards share a per-foe limit
           p.impact = { x: p.x, y: p.y };
@@ -1887,6 +1893,7 @@ export function updateProjectiles(
           if (p.dead || mountedPeerId || !peer) break;
           mountedPeerId = peer.id;
         }
+      if (!p.dead && p.legRange > 0 && (p.legDist = (Number(p.legDist) || 0) + step) >= p.legRange - 1e-9) { p.dead = true; p.dissipated = true; } // a Spindle leg run out: it dissipates (tool-forms.ts TOOL_RANGE)
     }
     if(p.toolUseNewborn===true)delete p.toolUseNewborn;
     p.life -= stepDt;
@@ -4117,6 +4124,25 @@ export class Game {
   fallPoseDue() { const f = this.fall; return !!f && this.fallArea() && f.from - this.elevationHere(this.player.x, this.player.y) >= FALL.pose; }
   fallRemainingMs() { const f = this.fall; return f ? fallAirtime(f.z - this.elevationHere(this.player.x, this.player.y), f.vz) * 1000 : 0; }
   decksApply() { return this.area === "overworld" && roofDecksApply(this.map) && !this.mountRide?.() && !this.mechUp?.() && !aboard(this.save) && roofDeckIndex(this.map).decks.length > 0; }
+  // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION; Tim, 2026-11-14): the test updateProjectiles puts to each of
+  // the Wayfarer's shots while Close View applies here (close-view.ts closeViewApplies: the save's switches, the place and the
+  // tile stood on, so it is the same on every device and on resume), else null: Standard View shoots over elevation as before.
+  // A shot's launch level (the ground, or the roof deck, the Wayfarer stood on) and a shell's planned flight are set on its
+  // first test and saved with it, so a shot resumed mid-flight keeps them. One closure a Game; nothing allocated a frame.
+  shotOccluder() {
+    if (RANGED_OCCLUSION.closeViewOnly && !closeViewApplies(this)) return null;
+    this._occludeOutdoor = overworldCloseViewApplies(this);
+    return this._occluder ||= (p, x, y) => this.shotOccluded(p, x, y);
+  }
+  shotOccluded(p, x, y) {
+    if (shotPiercesTerrain(p)) return false; // a charged Carbine beam
+    const map = this.map, w = mapWidth(map, this.area), t = map?.tiles?.[Math.floor(y) * w + Math.floor(x)]; if (!t || !this.player) return false;
+    if (!Number.isFinite(p.launchLevel)) { const pl = this.player, d = this.standingDeck(); p.launchLevel = Math.max(Number(elevationAt(map, w, pl.x, pl.y)) || 0, d ? Number(d.level) || 0 : 0); }
+    if (p.path === "grenade" && !(p.lobSpan > 0)) p.lobSpan = Number(p.visualFlight?.duration) > 0 ? Number(p.visualFlight.duration) : Math.max(1e-3, (Number(p.age) || 0) + Math.max(0, Number(p.life) || 0));
+    const rise = (Number(elevationAt(map, w, x - .5, y - .75)) || 0) - (t.slope && !interiorTerrain(map) ? RANGED_OCCLUSION.slopeLevel : 0) - p.launchLevel;
+    if (!(rise > 1e-9)) return false;
+    return rise * (this._occludeOutdoor ? outdoorLevelHeight(t) : LIFT_PER_LEVEL * tileLiftScale(t)) > shotClearance(p) + 1e-9;
+  }
   standingDeck() { const d = this.roofDeck; if (!d) return null; if (this._deckMap !== this.map || this.area !== "overworld") { this.roofDeck = null; return null; } return d; }
   setRoofDeck(d) { this.roofDeck = d ? { id: d.id, level: d.level } : null; this._deckMap = d ? this.map : null; }
   // The highest deck whose walls do not stop the Wayfarer: the one stood on, or one level over the height a jump holds (null: none).
@@ -8194,6 +8220,7 @@ export class Game {
       pierce: glyphs.mods.pierce,
     });
     const shot = preparedProjectiles[preparedProjectiles.length - 1];
+    if (weapon.legs) { shot.legRange = weapon.speed * weapon.lifetime * reachMultiplier; shot.life = TOOL_RANGE["lumen-spindle"].legs * shot.legRange / shot.speed; shot.turnAfter = shot.life; } // 2026-11-14 (tool-forms.ts TOOL_RANGE): the Spindle flies a cast leg of its range, and back as far after a hit
     if(toolVisual&&toolKind){toolVisual.toolShotId=shot.id;if(toolKind==='rift-bombard')shot.visualFlight={v:1,duration:shot.life};}
     shot.damage = Math.max(1, Math.round(shot.damage * glyphs.mods.damage));
     if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; } // ROUNDS.empowered.damage: before the copies below, so pellets, Echoes, fan and clone carry it
@@ -8368,7 +8395,7 @@ export class Game {
     if (paid < want) { held = carbineAffordedHold(held, paid); this.message = paid > 1 ? `Rounds ran short: a part charge (${paid} of ${want}).` : "Rounds ran short: the charge fires as a single beam."; }
     const derived = characterStats(this.save), reach = 1 + derived.attackReach, k = carbineFill(held), ag = armorGlyphBonus(this.save);
     const base = carbineBase(this.toolBonus(C.channel, derived), ag.spellDamage, this.magicBuffRemaining > 0), ox = this.player.x + .5 + d.x * .35, oy = this.player.y + .45 + d.y * .35;
-    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: C.range * reach / C.speed, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: weapon.damageType, path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k };
+    const shot = { id: `shot-${this.save.dropCounter}-${now}-carbine`, x: ox, y: oy, bx: ox, by: oy, dx: d.x, dy: d.y, speed: C.speed, life: toolRange("carbine") / C.speed /* 2026-11-14 (tool-forms.ts TOOL_RANGE): unlimited, to a wall, a foe or the map's edge (was C.range × reach) */, damage: Math.max(1, Math.round(Math.round(base) * glyphs.mods.damage * carbineShare(held))), damageType: weapon.damageType, path: "straight", age: 0, hits: {}, blastRadius: 0, glyphHost: "tool", pierce: glyphs.mods.pierce + carbinePierce(held), carbine: true, charge: k, carbineCharged: carbineCharged(held) /* RANGED_OCCLUSION.pierce: a charged beam passes raised ground */ };
     if (round === "empowered") { shot.damage = Math.max(1, Math.round(shot.damage * roundDamage(round))); shot.empowered = true; }
     if (fieldOn(this.save, "charged-air") && this.spellRunning(now)) { const A = FIELD_PASSIVES["charged-air"]; shot.damage = Math.max(1, Math.round(shot.damage * (1 + A.damage))); shot.scale = A.scale; shot.grow = A.grow; } // release 515: Charged Air
     this.projectiles.push(shot); const trace = this.carbineTrace(shot, k);
@@ -10880,6 +10907,7 @@ export class Game {
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
       (shot, nx, ny) => this.sunburst(shot, nx, ny), // Sunburst Ricochet
       wayfarerDamage, // Tim 2026-11-11: the Wayfarer's shots land at WAYFARER_DAMAGE.scale (hostile shots never reach foes)
+      this.shotOccluder(), // Close View only: raised ground stops the Wayfarer's shots (tool-forms.ts RANGED_OCCLUSION)
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();p.invulnerableUntil=now+700}}

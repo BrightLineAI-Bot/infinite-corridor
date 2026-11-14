@@ -36,7 +36,7 @@ test('Sunburst Ricochet is a Lattice tool form whose numbers live in SUNBURST', 
 });
 
 test('without the passive a Spindle shot behaves as before: it turns at a wall, dies at a wall on its way back, throws nothing', () => {
-  const { g } = arena({ passive: false });
+  const { g } = arena({ passive: false, item: { affixes: [{ id: 'reach', value: .75 }] /* 2026-11-14: the Spindle's range (tool-forms.ts TOOL_RANGE) reaches the wall */ } });
   fire(g, 1000); const shot = g.projectiles[0];
   assert.equal(shot.ricochet, undefined); assert.equal(shot.sunburst, undefined);
   let turnedAt = null; step(g, 40, 1000, () => { if (turnedAt === null && shot.returning) turnedAt = { dx: shot.dx, dy: shot.dy }; assert.equal(g.projectiles.filter((p) => p.shard).length, 0); });
@@ -48,7 +48,7 @@ test('without the passive a Spindle shot behaves as before: it turns at a wall, 
 });
 
 test('a wall hit ricochets the shot (reflected, still cutting) and bursts into shards fanned away from the wall', () => {
-  const { g } = arena({ foes: [[13.2, 11.2]] });
+  const { g } = arena({ foes: [] /* 2026-11-14: a foe on its path would now turn it back before the wall */, item: { affixes: [{ id: 'reach', value: .75 }] /* 2026-11-14: the Spindle's range (tool-forms.ts TOOL_RANGE) reaches the wall */ } });
   const d = { x: Math.cos(.5), y: Math.sin(.5) }; fire(g, 1000, d); const shot = g.projectiles[0];
   assert.equal(shot.ricochet, SUNBURST.ricochets); assert.equal(shot.damageType, 'magic');
   let shards = [];
@@ -79,7 +79,7 @@ test('the map edge is not a wall: no ricochet there', () => {
 });
 
 test('caps hold: firing every frame for 60 s in a corridor (awakened, with the shadow of more shots) stays bounded and finite', () => {
-  const { g } = arena({ sides: true, foes: [[13, 9.5], [14.5, 8.5], [14.5, 10.5]], item: { awakened: { resonance: 'afterimage', version: 1 } } });
+  const { g } = arena({ sides: true, foes: [[13, 9.5], [14.5, 8.5], [14.5, 10.5]], item: { awakened: { resonance: 'afterimage', version: 1 }, affixes: [{ id: 'reach', value: .75 }] /* 2026-11-14: the Spindle's range (tool-forms.ts TOOL_RANGE) reaches the wall */ } });
   let t = 1000, maxShards = 0, maxShots = 0, bursts = 0; const seen = new Set();
   for (let i = 0; i < 1200; i++) {
     g.player.attackReadyAt = 0; g.fireSecondary(t, { x: Math.cos(i * .37), y: Math.sin(i * .37) * .8 });
@@ -93,7 +93,7 @@ test('caps hold: firing every frame for 60 s in a corridor (awakened, with the s
   }
   assert.ok(maxShards > 0 && maxShards <= SUNBURST.maxLive, `shards ${maxShards}`);
   assert.ok(maxShots <= 32 + 4, `shots ${maxShots}`); assert.ok(g.projectiles.length <= 32 + 4 + SUNBURST.maxLive);
-  assert.ok(bursts > 50, 'it kept bursting');
+  assert.ok(bursts > 25 /* 2026-11-14: was 50; a Spindle now turns back off the foes in the corridor too */, 'it kept bursting ' + bursts);
 });
 
 test('in the overworld too, on a real generated section', () => {
