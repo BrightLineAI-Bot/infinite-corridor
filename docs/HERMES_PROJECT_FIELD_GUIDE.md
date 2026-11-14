@@ -6,6 +6,28 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 957 — The soundtrack
+
+Tim, 2026-11-14: a downtempo dungeon-synth soundtrack that mirrors Aindulmedir's *Star Lore* (original music, nothing quoted), told as a journey: torpid, urgent and awe-struck pieces that follow the Wayfarer's progress, lift in a fight and settle after, and change seamlessly. The first mix was "a little too flute heavy for the game", so the melodies now pass between choir, strings, horn, plucks and bells. Music only, with no sound effects.
+
+**CODE:**
+- `soundtrack-songs.ts` holds the album as data: `MODES`, `SONGS` (12 songs), `STINGERS`, `validateSong`, `LINER_NOTES`, and `MUSIC_SELECTION` (place × chapter → song weights).
+  - The songs are modal chords on an 8-bar grid, with 16-step bass, drum and arp patterns, 2-bar lead motifs and forms.
+  - Each song has a `leads` rotation: a voice per 8-bar phrase, with winds at most one turn in four and handing over to strings in a fight.
+- `soundtrack.ts` is the engine. A 25 ms timer schedules 120 ms ahead on the AudioContext clock.
+  - Tiers change on bar lines, with an exhale bar going down.
+  - Song changes come on bar or phrase lines, with a common-tone drone and bell bridge and a tempo ease.
+  - Voices are capped at 40, or 28 on the low tier, with ornaments dropped first, and every note's nodes are disconnected when it ends.
+- `soundtrack-director.ts` reads the game 4 times a second and returns a song, an intensity and story beats. It reads:
+  - place: sea, sky, deep, dungeon, halls, dusk or day;
+  - chapter: from the Aperture tier, beasts slain, the Pentagon and far realms;
+  - fighting: engaged and nearby hostiles, damage taken and dealt;
+  - bosses (`BOSS_THEMES`, with `bossSongFor` falling back to `boss`), the checkpoint, region and death.
+- `main.ts` (`directMusic`, `startAmbience`) wires it onto the existing master, compressor, echo and music bus.
+- `settings.soundtrack` is "adaptive" or "calm".
+
+**BOUNDARY:** The music never writes game or save state and adds no save fields. It uses no `Math.random`; variation comes from seeded PRNGs. There are no audio files and no dependencies. When muted, nothing is scheduled and the audio clock is suspended; a hidden tab or a pause suspends or quiets it. Calm only never lifts for a fight. A beast's own theme is a `SONGS` entry plus a `BOSS_THEMES` row.
+
 ## Release 956 — Iron Fists rhythm: the ball is the perfect-timing cue; new glyph Gathered Breath
 
 Tim, 2026-11-14: he couldn't tell when he was hitting the Iron Fists' perfect timing; the ball that runs out from the Wayfarer and back should be the cue (a press when it returns home is perfect), and with two Echoes the perfect charge rhythm should be the strongest play. Then: keep the big hits but shorten the charge a little, and add something like Monster Hunter's Focus that cuts charge time a lot when stacked, at a cost.

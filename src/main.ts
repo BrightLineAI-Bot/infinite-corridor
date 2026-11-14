@@ -1,4 +1,6 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
+import { createSoundtrack } from "./soundtrack.ts";
+import { MusicDirector, sampleMusic } from "./soundtrack-director.ts";
 import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
 import { BLEED } from "./bleed.ts"; // the bleed status line
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
@@ -324,7 +326,7 @@ function currentQuality(){return effectiveQuality(settings,{width:innerWidth,hei
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
 game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
-function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;resize()}
+function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
@@ -811,11 +813,15 @@ for (const b of hudToggles) b.onclick = () => setHudExpanded(hudDetails.hidden);
 // Release 327 (Tim: "the music and the game is too low... on my headphones... too understated, so it just needs to be
 // louder"): the whole mix measured about -50 dBFS RMS. A gentler compressor with makeup gain, a higher master and a
 // brighter filter bring the score to about -20 dBFS RMS (peaks near -11), roughly 30 dB louder, with room for the pulse.
-const AUDIO_MIX = { master: 0.45, music: 0.72, makeup: 3, lowpass: 2200, compressor: { threshold: -30, knee: 18, ratio: 3 } };
+// The soundtrack (2026-11-14) shapes its own tone, so the bus filter only trims the top (lowpass 2200 -> 9000).
+const AUDIO_MIX = { master: 0.45, music: 0.72, makeup: 3, lowpass: 9000, compressor: { threshold: -30, knee: 18, ratio: 3 } };
 let audio = null,
   audioGain = null,
   musicBus = null,
+  soundtrack = null,
+  director = null,
   muted = localStorage.getItem("corridor-muted") === "1";
+const musicMemo = {};
 function voice(
   freq,
   when,
@@ -841,9 +847,21 @@ function playNoticeSound(kind) {
   const notes = NOTICE_SOUNDS[kind]; if (!audio || !notes || muted) return;
   try { const t = audio.currentTime; for (const [f, at, d, type] of notes) voice(f, t + at, d, 0.12, type); } catch { /* sound is a nicety */ }
 }
+// The soundtrack (Tim, 2026-11-14; soundtrack-songs.ts, soundtrack.ts, soundtrack-director.ts): an adaptive, synthesized
+// dungeon-synth score. Four times a second the director reads the game (never changing it) and names the song, how
+// urgent it is and any story beat; the engine schedules notes on the audio clock. Muted, nothing is scheduled at all.
+function directMusic() {
+  if (!soundtrack || !director || muted || !audio) return;
+  try {
+    const out = director.update(sampleMusic(game, musicMemo), audio.currentTime);
+    soundtrack.setPaused(game.paused);
+    soundtrack.setTarget(out);
+    for (const s of out.stingers) soundtrack.stinger(s);
+  } catch (error) { console.warn("Soundtrack director failed", error); }
+}
 function startAmbience() {
   if (audio) {
-    if (audio.state === "suspended") audio.resume();
+    if (audio.state === "suspended" && !muted) audio.resume();
     return;
   }
   const A = window.AudioContext || window.webkitAudioContext;
@@ -873,7 +891,24 @@ function startAmbience() {
     .connect(makeup)
     .connect(audioGain)
     .connect(audio.destination);
-  filter.connect(delay).connect(echo).connect(compressor);
+  delay.connect(echo).connect(compressor);
+  try {
+    soundtrack = createSoundtrack(audio, { out: musicBus, echo: delay, quality: currentQuality(), seed: hashSeed(`${save.seed}:soundtrack`) });
+    director = new MusicDirector({ seed: hashSeed(`${save.seed}:director`), calmOnly: settings.soundtrack === "calm" });
+    soundtrack.setMuted(muted);
+    soundtrack.start();
+    directMusic();
+    setInterval(directMusic, 250);
+  } catch (error) {
+    console.warn("Soundtrack unavailable; the old drone plays instead", error);
+    soundtrack = null; director = null;
+    filter.connect(delay);
+    legacyScore(filter);
+  }
+  if (muted) audio.suspend?.();
+}
+// The score before the soundtrack (release 327), kept only as a fallback if the soundtrack cannot start.
+function legacyScore(filter) {
   const chords = [
       [55, 82.41, 110, 130.81],
       [49, 73.42, 98, 123.47],
@@ -937,12 +972,16 @@ mute.onclick = () => {
   localStorage.setItem("corridor-muted", muted ? "1" : "0");
   mute.textContent = muted ? "Unmute" : "Mute";
   if (!audio && !muted) startAmbience();
+  if (audio && !muted && audio.state === "suspended") audio.resume();
+  soundtrack?.setMuted(muted);
   if (audioGain) {
     const t = audio.currentTime;
     audioGain.gain.cancelScheduledValues(t);
     audioGain.gain.setValueAtTime(Math.max(0.0001, audioGain.gain.value), t);
     audioGain.gain.linearRampToValueAtTime(muted ? 0 : AUDIO_MIX.master * settings.masterVolume, t + 0.35);
   }
+  // Muted, the audio clock itself sleeps once the fade is done (nothing is scheduled, nothing is processed).
+  if (muted) setTimeout(() => { if (muted && audio) audio.suspend?.(); }, 450);
 };
 setInterval(() => {
   const value = save.perception?.aperture || 0,
@@ -1044,53 +1083,7 @@ function drawDungeonSystems(layer = null) {
   }
   ctx.restore();
 }
-function startPulse() {
-  if (!audio || startPulse.running) return;
-  startPulse.running = true;
-  let step = 0;
-  const bass = [55, 0, 55, 65.41, 0, 49, 55, 43.65],
-    ticks = [0, 1, 0, 0, 0, 1, 0, 1];
-  setInterval(() => {
-    if (!audio || audio.state !== "running" || game.paused) return;
-    const t = audio.currentTime,
-      f = bass[step % bass.length],
-      dungeon = game.area === "dungeon";
-    if (f) {
-      const o = audio.createOscillator(),
-        g = audio.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(f * 1.25, t);
-      o.frequency.exponentialRampToValueAtTime(f, t + 0.24);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(dungeon ? 0.11 : 0.07, t + 0.018);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-      o.connect(g).connect(musicBus);
-      o.start(t);
-      o.stop(t + 0.45);
-    }
-    if (ticks[step % ticks.length]) {
-      const length = Math.floor(audio.sampleRate * 0.055),
-        buffer = audio.createBuffer(1, length, audio.sampleRate),
-        data = buffer.getChannelData(0);
-      for (let i = 0; i < length; i++)
-        data[i] = (Math.random() * 2 - 1) * (1 - i / length);
-      const noise = audio.createBufferSource(),
-        hp = audio.createBiquadFilter(),
-        g = audio.createGain();
-      noise.buffer = buffer;
-      hp.type = "highpass";
-      hp.frequency.value = 2800;
-      g.gain.value = dungeon ? 0.025 : 0.012;
-      noise.connect(hp).connect(g).connect(musicBus);
-      noise.start(t);
-    }
-    step++;
-  }, 792);
-}
-addEventListener("pointerdown", () => setTimeout(startPulse, 0), {
-  once: true,
-});
-addEventListener("keydown", () => setTimeout(startPulse, 0), { once: true });
+// (The old 792 ms bass pulse is gone: the soundtrack carries its own pulse, in time, and only in a fight.)
 export function combatIndicatorGeometry(game, now = performance.now()) {
   const out = { melee: null, swing: null, enemies: [], traps: [], effects: [] };
   out.swing = swingIndicator(game, now, SWING_INDICATOR); // melee-swing.ts: the weighted swing draws its real blade, not the old sweep
@@ -1485,7 +1478,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:956,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:957,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1506,10 +1499,10 @@ async function renderSettings(category){const grid=document.createElement("div")
     const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));/* release 793: the camera control, its sensitivity */const cc=document.createElement("select");for(const[id,label]of[["drag","Drag anywhere (default)"],["crescent","Pan crescent"]]){const o=document.createElement("option");o.value=id;o.textContent=label;cc.append(o)}cc.value=save.closeViewCamera==="crescent"?"crescent":"drag";cc.onchange=()=>{save.closeViewCamera=cc.value;persist()};grid.append(settingRow("Camera control",cc,"Drag anywhere: drag the open screen outside the left joystick to turn the view. Start inside the joystick to move. Each finger keeps its role until you lift it, and buttons keep their own touches. Quick turnaround: hold the stick back toward the camera and swipe down on the right, and the view swings round behind you. Pan crescent: slide along the arc round the action buttons instead."));const sv=document.createElement("input");sv.type="range";sv.min=String(CLOSE_VIEW.drag.sensitivity[0]);sv.max=String(CLOSE_VIEW.drag.sensitivity[1]);sv.step="0.1";sv.value=String(save.closeViewSensitivity||1);sv.oninput=()=>{save.closeViewSensitivity=Number(sv.value);persist()};grid.append(settingRow("Camera sensitivity",sv,"How far the view turns for a drag (or a slide along the crescent). 1 is the default."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last turn the view (a drag, or the crescent), it slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("World boss tries (on: 4 deaths and the boss leaves; off: no tries, it loses patience after 3 minutes of fighting, 5 once it is below half health)",toggleSetting("beastTries")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
-  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)));
+  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:956,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 956\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:957,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 957\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1521,7 +1514,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:956,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:957,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2965,16 +2958,23 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
     pause(false, true);
+    // The soundtrack sleeps with the tab.
+    audio?.suspend?.();
   }
-  else if (game.paused && !pausePanel.open && !glimpseRun) pausePanel.showModal();
+  else {
+    if (audio && !muted && audio.state === "suspended") audio.resume?.();
+    if (game.paused && !pausePanel.open && !glimpseRun) pausePanel.showModal();
+  }
 });
 addEventListener("pagehide", () => {
   overlayPause = false;
   pause(false, true);
+  audio?.suspend?.();
 });
 addEventListener("freeze", () => {
   overlayPause = false;
   pause(false, true);
+  audio?.suspend?.();
 });
 // Release 734: a damaged or unreadable active journey opens on the Journeys screen, saying it is kept and not saved over.
 if (saveBlocked()) { optionCategory = "Journeys"; openOptions().then(() => optionMessage(`${saveBlocked()} Nothing you do now is saved to Journey ${getActiveSlot()}. Recover it, import a journey, or choose another slot.`, true)); }
