@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r955 (`4e3605d4beed`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r956 (`09c2c7023a9a`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 957 | Claude | claude/soundtrack | The soundtrack: 12 original synthesized dungeon-synth songs as a journey album, an adaptive director (place, chapter, combat lift, boss track, story stingers), seamless page-turn changes, Audio setting Adaptive/Calm only; no sound effects | In flight. |
 | 956 | Claude | claude/fist-rhythm | Iron Fists: a beat window after each step drives the gauntlet ball (home and glowing as the window opens), presses on the beat x1.25, a charge started on the beat and let go in its perfect window is a rhythm blow (top damage); the fists' charge a fifth shorter; new glyph Gathered Breath (each copy in weapon, tool or armour makes every charged attack fill 30% sooner, floor .15 s), rare v2 drop stream, 12 dust | In flight. |
 | 955 | Claude | claude/beasts-visible | Close View: world beasts, the Questing Beast, passing beasts and the Stalker stay admitted and drawn anywhere in your section at every quality tier and in safe mode (no distance cull, fog capped, low-tier mesh far out, beast slots first, wind-up ring with them); the Stalker's health halved and its mirage heal reduced | Merged as `4e3605d4beed` (#622). |
 | 954 | Claude | claude/fist-dash-ghosts | Presentation only: the Iron Fists' Shadow Boxing rush, every dodge, the Great Sweep carry and airborne carries leave Shadow Boxing's violet after-images and speed streak in both views, at every quality tier and in safe mode (not with reduced motion); gameplay byte-for-byte unchanged | Merged as `e53e5fa87e58` (#621). |
