@@ -2,29 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_FLOATS, writeCloseViewHeroGear } from '../src/close-view-models.ts';
 import { closeViewHeldScale } from '../src/close-view-player-presentation.ts';
+import { GREAT_SWEEP_HELD_TRIANGLES } from '../src/close-view-sweep-gear.ts';
 const socket=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
 function mesh(profile){const out=new Float32Array(96*3*MODEL_FLOATS);const end=writeCloseViewHeroGear(out,0,{profile,rightSocket:socket});return out.slice(0,end);}
 const near=(a,b)=>Math.abs(a-b)<1e-6;
 // Right-hand tools are drawn at their CLOSE_VIEW_HELD_GEAR scale on top of the .82 recipe conversion.
 const KB=.82*closeViewHeldScale('blunderbuss'),KR=.82*closeViewHeldScale('rift-bombard'),KS=.82*closeViewHeldScale('lumen-spindle');
 
-test('Great Sweep forged blade is closed, nondegenerate, and retains its broken outline',()=>{
-  const out=mesh('great-sweep');assert.equal(out.length/30,64);
-  // Grip and guard precede the 26-triangle closed blade; spine follows it.
-  const blade=out.slice(24*30,50*30),edges=new Map();
-  const key=p=>p.map(v=>Math.round(v*1e6)).join(',');
-  for(let i=0;i<blade.length;i+=30){
-    const p=[0,10,20].map(k=>Array.from(blade.slice(i+k,i+k+3)));
+// 2026-11-14 (Tim: "a long handle with a large broken greatsword blade... only a stub just above the hilt, but it's big, like a
+// giant's weapon"): replaces the forged broken outline this test pinned before (close-view-sweep-gear.ts HERO_GREAT_SWEEP).
+test('Great Sweep: a long handle and a broad broken stub of a blade, nondegenerate, inside its budget',()=>{
+  const out=mesh('great-sweep');assert.equal(out.length/30,GREAT_SWEEP_HELD_TRIANGLES);assert.ok(GREAT_SWEEP_HELD_TRIANGLES<=72);
+  let lo=Infinity,hi=-Infinity,wide=0;
+  for(let i=0;i<out.length;i+=30){
+    const p=[0,10,20].map(k=>Array.from(out.slice(i+k,i+k+3)));
     const a=p[1].map((v,k)=>v-p[0][k]),b=p[2].map((v,k)=>v-p[0][k]);
     assert.ok(Math.hypot(a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])>1e-8);
-    for(let k=0;k<3;k++){const edge=[key(p[k]),key(p[(k+1)%3])].sort().join('|');edges.set(edge,(edges.get(edge)||0)+1);}
+    for(const q of p){lo=Math.min(lo,q[0]);hi=Math.max(hi,q[0]);wide=Math.max(wide,Math.abs(q[2]));}
   }
-  assert.ok([...edges.values()].every(n=>n===2),'every blade edge has two adjoining triangles');
-  const verts=Array.from({length:blade.length/10},(_,i)=>Array.from(blade.slice(i*10,i*10+3)));
-  for(const [y,z] of [[-1,-1],[1,-1],[.88,.50],[.30,1],[-.72,.72]]){
-    assert.ok(verts.some(p=>near(p[0],(1.70+.68*z-.79)*.82)&&near(p[1],0)&&near(p[2],-.30*y*.82)),'original sharp outline vertex');
-  }
-  assert.ok(verts.some(p=>near(p[1],.018*.82)));assert.ok(verts.some(p=>near(p[1],-.018*.82)));
+  assert.ok(lo<-.25,'the handle runs on below the hand');assert.ok(hi>.9,'a long reach to the broken edge');assert.ok(wide>.2,'a broad blade');
 });
 
 test('Blunderbuss retains its muzzle plane with a recessed open bore within the equipment budget',()=>{

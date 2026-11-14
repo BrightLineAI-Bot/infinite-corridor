@@ -1,5 +1,7 @@
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.ts';
 import { PRIMARY_PROFILES, primaryProfile } from './items.ts';
+import { sweepIndicator, drawSweepSwing } from './great-sweep.ts';
+const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
 // down and attacks... another one that does a large sweep with a sword. And these can be buffed by melee damage... these are
@@ -583,7 +585,7 @@ function drawFistStep(ctx, game, toScreen, s, floor = false) {
 // Drawing (called from combat-visuals.ts with its screen transform). `t` is seconds.
 export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   for (const fx of game.effects) {
-    if (!fx.brawler) continue;
+    if (!fx.brawler || fx.swingHit) continue; // great-sweep.ts: a swing's blow is drawn as the swing itself (below)
     const [x, y] = toScreen(fx), R = fx.radius * s;
     if (fx.kind === "hammerfall") {
       const native = hammerfallPresentation(fx, game.map);
@@ -618,6 +620,7 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
     } else if (fx.kind === "plunge-slam" || fx.kind === "plunge-burst") drawPlunge(ctx, fx, x, y, R); // jump attacks
     else if (fx.kind === "plunge-afterimage") drawAfterimage(ctx, fx, x, y, R, s, capture);
   }
+  { const q = sweepIndicator(game, SWEEP_DRAW); if (q) { const [x, y] = toScreen(q); drawSweepSwing(ctx, q, x, y, s); } } // the Great Sweep's 360° swing (great-sweep.ts)
   drawFistStep(ctx, game, toScreen, s, capture != null); // Close View passes its capture (the floor layer)
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills; the perfect window marked on it, flashing inside it

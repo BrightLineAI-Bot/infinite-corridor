@@ -9,6 +9,7 @@ import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-v
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
+import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.ts'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
@@ -668,7 +669,7 @@ const towerRope=[block(0,0,.32,.07,.07,.32,0x5a4632),block(0,0,.66,.09,.09,.03,0
 export const CLOSE_VIEW_PROP_MODELS=Object.freeze({apertureCrystal,apertureRift,oculusDais,wayEmber,wayDeep,towerLookout,towerRope});
 
 // Exact renderer kind keys (with "wayfarer" as a caller alias for "player").
-const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, ...QUANDRIX_HAND_MODELS /* the Quandrix Staff's hands */, nativeOrb, mirageBlade, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
+const models = { ...companions, ...CLOSE_VIEW_EFFECT_MODELS, ...QUANDRIX_HAND_MODELS /* the Quandrix Staff's hands */, nativeOrb, mirageBlade, ...MIRAGE_BLADE_MODELS, corridorDrone, playerShadow:playerWraith, player, wayfarer: player, playerTool, playerUnarmed, playerShovel, playerHammer, playerHammerStomp, playerSweep, playerMirage, playerOrrery, playerCinderPike, playerVergeCleaver,
   ...CLOSE_VIEW_PLAYER_FORM_MODELS, ...playerFormModels, ashling, rootBrute, pallidCrawler, hollowMarshal, ashenHound, coilStalker, ...CLOSE_VIEW_ARCOLOGY_MODELS, ...CLOSE_VIEW_PENTAGON_MODELS, ...CLOSE_VIEW_ADVENTURE_MODELS, voidWalker: STILLWORKS_WALKER_MODEL, ...CLOSE_VIEW_FOUNDRY_MODELS, ...CLOSE_VIEW_FOUNDRY_VARIANTS, ...CLOSE_VIEW_PROP_MODELS };
 const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, parts]) => [
   kind, parts.reduce((size, item) => size + item.mesh.length / MESH_FLOATS, 0),
@@ -751,7 +752,7 @@ const heroDagger = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'fourfold-daggers':heroDagger,'salvage-blade':heroSalvageBlade,'cinder-pike':heroCinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'fourfold-daggers':heroDagger,'salvage-blade':heroSalvageBlade,'cinder-pike':heroCinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':HERO_GREAT_SWEEP,blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
@@ -774,7 +775,7 @@ export function writeCloseViewHeroGear(out,offset,gear) {
   const gripKey=gear?.primaryStage===undefined&&!gear?.leftSocket?'rightSocket':closeViewHandRoles(gear?.profile).grip,m=gear?.[gripKey],k=.82*closeViewHeldScale(gear?.profile);
   if(!parts||!m||m.length!==16||!Number.isSafeInteger(offset)||offset<0)return offset;
   // Two of the gear, one on each hand socket: the gauntlets (their own frame) and the paired daggers (the blade frame).
-  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',paired=gear.profile==='fourfold-daggers',twin=bilateral||paired,left=gear.leftSocket;
+  const bilateral=gear.profile==='fist'||gear.profile==='fistCharge',paired=gear.profile==='fourfold-daggers',twin=(bilateral||paired)&&gear.single!==true/* 2026-11-14: one in the left hand while the right holds a tool (close-view-sweep-gear.ts) */,left=gear.leftSocket;
   if(twin&&(!left||left.length!==16))return offset;
   let vertices=0;for(const p of parts)vertices+=p.mesh.length/MESH_FLOATS;vertices*=twin?2:1;
   if(vertices>256*3||offset+vertices*MODEL_FLOATS>out.length)return offset;
@@ -798,7 +799,7 @@ export function writeCloseViewHeroGear(out,offset,gear) {
 export function writeCloseViewHeroEquipment(out,offset,gear,frame) {
   const armored=frame?.powerSuit===true,armorVertices=armored?frame.suitVertexCount:0,parts=Object.hasOwn(HERO_GEAR,gear?.profile)?HERO_GEAR[gear.profile]:null;
   let gearVertices=0;if(parts)for(const p of parts)gearVertices+=p.mesh.length/MESH_FLOATS;
-  if(gear?.profile==='fist'||gear?.profile==='fistCharge'||gear?.profile==='fourfold-daggers')gearVertices*=2;
+  if((gear?.profile==='fist'||gear?.profile==='fistCharge'||gear?.profile==='fourfold-daggers')&&gear.single!==true)gearVertices*=2;
   if(!Number.isSafeInteger(offset)||offset<0||armorVertices!==(armored?CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES*3:0)||(armorVertices+gearVertices)/3>HERO_EQUIPMENT_MAX_TRIANGLES||offset+(armorVertices+gearVertices)*MODEL_FLOATS>out.length)return offset;
   const vialRequested=gear?.drinkVial===true&&!armored&&Number(gear.vialWeight)>0,vialVertices=HERO_DRINK_VIAL_TRIANGLES*3;
   const vialFits=vialRequested&&(armorVertices+gearVertices+vialVertices)/3<=HERO_EQUIPMENT_MAX_TRIANGLES&&offset+(armorVertices+gearVertices+vialVertices)*MODEL_FLOATS<=out.length;
@@ -958,6 +959,7 @@ function nativeCleaverRig(frame) {
 }
 
 export function writeCloseViewModel(out, offset, actor) {
+  if (Object.hasOwn(MIRAGE_BLADE_MODELS, actor?.kind)) return writeMirageBladeModel(out, offset, actor); // the Mirage blades: spun in a plane tipped toward the camera (close-view-sweep-gear.ts)
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
   const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;

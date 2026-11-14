@@ -272,11 +272,13 @@ export function drawGolem(ctx, game, toScreen, s, clock = game.lastUpdateNow || 
 // Mirage of Blades in Close View: presentation only. The projectile (game.ts mirageThrow) owns its path, speed,
 // hits and life; this reads its position and age. `lift` is the flying height above the floor (chest height),
 // `spin` its turn rate (MIRAGE.spin, as the standard view's rotor), `shadow` the floor shadow's radius.
-export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1 });
+// `tilt` (2026-11-14, Tim): degrees the spinning blade's face is tipped up toward the camera from flat, so its outline reads
+// from the low Close View camera (close-view-sweep-gear.ts writeMirageBladeModel); it still spins in its own plane.
+export const MIRAGE_BLADE_VIEW = Object.freeze({ lift: .82, shadow: .34, scale: 1, tilt: 40, kinds: Object.freeze(['mirageSword', 'mirageAxe', 'mirageShuriken']) /* SWEEP_BLADES order (close-view-sweep-gear.ts MIRAGE_BLADE_MODELS) */ });
 export function mirageBladePresentation(p) {
   if (!p?.mirage || p.dead || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
   const age = Number.isFinite(p.age) ? Math.max(0, p.age) : 0, scale = MIRAGE_BLADE_VIEW.scale * (Number.isFinite(p.scale) && p.scale > 0 ? Math.min(3, p.scale) : 1);
-  return { kind: 'mirageBlade', x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
+  return { kind: MIRAGE_BLADE_VIEW.kinds[(Number(p.blade) || 0) % MIRAGE_BLADE_VIEW.kinds.length] /* 2026-11-14: Standard View's own blade (sweepBlade), in 3D */, x: p.x, y: p.y, supportX: p.x, supportY: p.y, lift: MIRAGE_BLADE_VIEW.lift, yaw: (age * MIRAGE.spin) % (Math.PI * 2), scale, pose: 'idle', pace: 0, phase: 0, amount: 0 };
 }
 export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
   const g=game.golem,clock=capture?.now??game.lastUpdateNow??0;
@@ -413,7 +415,9 @@ export const ORRERY = {
   clone: { share: .66, gap: .12, speed: 16, life: .6, orbit: .7 },
   caps: { orbs: 12, pellets: 30, bigs: 4, lasers: 12 }, // 2026-11-14: orbs 6 → 12, bigs 2 → 4, as unlimited orbs stay longer in flight (still inside the area's projectile cap)
   sparks: { low: 6, balanced: 12, full: 20 },
-  messages: { over: `The Orrery overloads: it cannot charge for ${LOCKOUT} s.`, locked: "The Orrery is still overloaded.", given: "In your pack: the Aether Orrery, a magic tool (Focus)." },
+  messages: { over: `The Orrery overloads: it cannot charge for ${LOCKOUT} s.`, locked: "The Orrery is still overloaded.", given: "In your pack: the Aether Orrery, a magic tool (Focus).", regift: "The Aether Orrery finds its way back to you: it is in your pack." },
+  // 2026-11-14 (Tim): a save that was given the Orrery (`flag`) but no longer has one anywhere is given one more, once (`regift`).
+  regift: "gear:aether-orrery-regift:v1",
   text: "A magic tool (Focus). Tap: an orb that sheds drifting pellets. Hold: a cone of sparks, then a great orb through every foe; holding too long overloads it for 6 s. An orb circles you (two with one Echo glyph, three with two): orbs burn what they touch and fire lasers with each press; while you charge, two form a burning beam and three a burning triangle; on release each looses a right-angle laser. With a Shadow Clone: its own orb and a burning tether.",
 };
 

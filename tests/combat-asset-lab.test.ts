@@ -54,7 +54,7 @@ test('all combat asset scenarios resolve and emit their production tool and Spel
       game.releasePendingToolUse(game.pendingToolUse.releaseAt);
     }
     if (contract.form === 'mirage-of-blades') assert.equal(game.projectiles.filter((q) => q.mirage).length, 1);
-    if (contract.form === 'great-sweep') { assert.ok(game.effects.some((q) => q.kind === 'great-sweep')); assert.equal(game.projectiles.filter((q) => q.mirage).length, 0); }
+    if (contract.form === 'great-sweep') { assert.ok(game.toolSwing && game.toolSwing.mirage === false, '2026-11-14: the 360° swing, whose blade deals the blow (great-sweep.ts)'); assert.equal(game.projectiles.filter((q) => q.mirage).length, 0); }
     if (contract.form === 'aether-orrery') assert.ok(game.projectiles.some((q) => q.orrery === 'orb'));
     if (contract.form === 'blunderbuss+arc-wave') assert.equal(game.projectiles.filter((q) => q.arcWave).length, 3);
     if (contract.form === 'grenade') assert.ok(game.projectiles.some((q) => q.path === 'grenade'));

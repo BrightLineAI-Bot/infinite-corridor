@@ -34,7 +34,7 @@ test('Echo glyphs in the Iron Fists let the jab (one Echo) and the uppercut (two
 test('Echo in Hammerfall or Great Sweep repeats the blow; Echo on Orbit Volley bursts again', () => {
   for (const name of ['Hammerfall', 'Great Sweep']) {
     const { g } = arena([['foe', 12, 10]], (s) => { s.equipment.secondary = gear(name, ['echo', null]); }); g.update(.05, idle, 1000);
-    g.brawlerTool(rangedWeapon(gear(name)).brawlerTool, 1050); assert.ok(g.effects.some((e) => e.echo), `${name} echo`);
+    g.brawlerTool(rangedWeapon(gear(name)).brawlerTool, 1050); if (name === 'Great Sweep') for (let t = 1100; t <= 1400; t += 50) g.update(.05, idle, t); /* 2026-11-14: the 360° swing repeats its blow at contact (great-sweep.ts) */ assert.ok(g.effects.some((e) => e.echo), `${name} echo`);
   }
   const { s, g } = arena([['foe', 14, 10]]); s.spellGlyphs = { 'orbit-volley': ['echo', null] }; let t = 1000; g.update(.05, idle, t);
   g.castSpell('orbit-volley'); t += 300; g.update(.05, idle, t); g.castSpell('orbit-volley'); for (let i = 0; i < 6; i++) { t += 50; g.update(.05, idle, t); }
