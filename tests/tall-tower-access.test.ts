@@ -74,10 +74,10 @@ test('the creatures on an Upwell\'s walls take the region once, then their tier:
   assert.ok(extra && extra.kind === 'roofGargoyle' && DUNGEON_BOOST.count > 0, 'the crossing\'s extra gargoyle stands for the ordinary one');
   assert.ok(dw.length >= 3);
   for (const e of dw) { assert.equal(e.towerVitals, TALL_TOWERS.dwellerVitals); assert.equal(e.threatRing, 196); }
-  const garg = dw.find((e) => e.kind === 'roofGargoyle');
-  assert.ok(Math.abs(garg.maxHp / extra.maxHp - k.hp) < .02, `health ${garg.maxHp} vs its kind's ${extra.maxHp} (x${k.hp})`);
-  assert.ok(Math.abs(garg.damage / extra.damage - k.damage) < .02, `damage ${garg.damage} vs its kind's ${extra.damage} (x${k.damage})`);
-  assert.ok(garg.maxHp < 6000 && garg.damage < 600, `${garg.maxHp} health, ${garg.damage} damage (release 949: 109923 and 5407)`);
+  const garg = dw.find((e) => e.kind === 'roofGargoyle'), B = TALL_TOWERS.dwellerBoost.roofGargoyle; assert.deepEqual({ ...B }, { hp: 2, damage: 2 }, 'Tim: the gargoyle at twice its kind');
+  assert.ok(Math.abs(garg.maxHp / extra.maxHp - k.hp * B.hp) < .02, `health ${garg.maxHp} vs its kind's ${extra.maxHp} (x${k.hp * B.hp})`);
+  assert.ok(Math.abs(garg.damage / extra.damage - k.damage * B.damage) < .02, `damage ${garg.damage} vs its kind's ${extra.damage} (x${k.damage * B.damage})`);
+  assert.ok(garg.maxHp < 12000 && garg.damage < 1200, `${garg.maxHp} health, ${garg.damage} damage (release 949: 109923 and 5407)`);
 });
 
 test('a dweller saved with the region taken twice is mended on load: its true health and damage, its wounds kept; the dead stay dead', () => {

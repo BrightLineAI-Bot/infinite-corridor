@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Release 950: Upwells: a raised door's floating steps (and you on them) now show over the tower face in Standard View, so the climb to the door is visible; the creatures on a tower's walls no longer take the region's difficulty twice (an Eave Gargoyle near section 200 had about 33 times its health and 15 times its damage and could one-shot you); creatures already saved that way are mended when you next enter.
+- Release 950: Upwells: a raised door's floating steps (and you on them) now show over the tower face in Standard View, so the climb to the door is visible; the creatures on a tower's walls no longer take the region's difficulty twice (an Eave Gargoyle near section 200 had about 33 times its health and 15 times its damage and could one-shot you; it now has twice the health and damage of an ordinary gargoyle there, at Tim's request); creatures already saved that way are mended when you next enter.
 - Release 949: The compass is always true north again, in Close View too: N stays at the top, the needle points the way to your objective on the map, and in Close View a small blue marker on the rim shows which way you're facing.
 - Release 948: On phones, holding a button with words on it no longer selects the text or opens Chrome's long-press menu; text fields still take typing and selection.
 - Release 947: Fixed: pausing or backgrounding the game during Ki Blast's leap no longer turns the ground slam into an ordinary plunge.
