@@ -28,9 +28,9 @@
 //
 // Transpose's seal: standing in it, the Wayfarer's spells (the armor glyphs' Spell Damage path: spells, magic tools, Imbue)
 // deal `spellDamage` more and she takes `damageTaken` more from every blow (game.ts armorGlyphBonus reads transposeBonus).
-import { latticePassives } from "./transit-lattice.js?v=r961-2b574429348b";
-import { weaponKey } from "./items.js?v=r961-2b574429348b";
-import { QUANDRIX } from "./quandrix-staff.js?v=r961-2b574429348b";
+import { latticePassives } from "./transit-lattice.js?v=r962-a8bf3852db96";
+import { weaponKey } from "./items.js?v=r962-a8bf3852db96";
+import { QUANDRIX } from "./quandrix-staff.js?v=r962-a8bf3852db96";
 
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
 

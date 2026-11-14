@@ -4,14 +4,14 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r961-2b574429348b";
-import { SHADOW_CLONE } from "./late-spells.js?v=r961-2b574429348b";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r961-2b574429348b";
-import { drawOrbit } from "./orbit-volley.js?v=r961-2b574429348b";
-import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r961-2b574429348b";
-import { drawQuandrix } from "./quandrix-staff.js?v=r961-2b574429348b"; // the Quandrix Staff (2026-11-13)
-import { drawWeaponArts } from "./weapon-arts.js?v=r961-2b574429348b"; // weapon arts (2026-11-13)
-import { drawAwakenedArts } from "./awakened-arts.js?v=r961-2b574429348b"; // awakened arts (2026-11-13)
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r962-a8bf3852db96";
+import { SHADOW_CLONE } from "./late-spells.js?v=r962-a8bf3852db96";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r962-a8bf3852db96";
+import { drawOrbit } from "./orbit-volley.js?v=r962-a8bf3852db96";
+import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r962-a8bf3852db96";
+import { drawQuandrix } from "./quandrix-staff.js?v=r962-a8bf3852db96"; // the Quandrix Staff (2026-11-13)
+import { drawWeaponArts } from "./weapon-arts.js?v=r962-a8bf3852db96"; // weapon arts (2026-11-13)
+import { drawAwakenedArts } from "./awakened-arts.js?v=r962-a8bf3852db96"; // awakened arts (2026-11-13)
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? "#7fe7ff" /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {

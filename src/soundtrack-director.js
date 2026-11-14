@@ -9,9 +9,9 @@
 // - Intensity 0-1: rises quickly with hostiles engaged or near and with damage dealt or taken, holds a moment, then decays
 //   over about ten seconds. "Calm only" (the Soundtrack setting) holds it at 0.
 // - A world beast or boss in the fight switches to BOSS_THEMES[kind], or the shared boss track.
-import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r961-2b574429348b";
-import { apertureTier } from "./world.js?v=r961-2b574429348b";
-import { seededRandom } from "./soundtrack.js?v=r961-2b574429348b";
+import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r962-a8bf3852db96";
+import { apertureTier } from "./world.js?v=r962-a8bf3852db96";
+import { seededRandom } from "./soundtrack.js?v=r962-a8bf3852db96";
 
 export const DIRECTOR = {
   engagedRange: 14, nearRange: 8, bossRange: 22,

@@ -2,11 +2,11 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r961-2b574429348b";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r961-2b574429348b";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r961-2b574429348b";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r961-2b574429348b";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r961-2b574429348b";
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r962-a8bf3852db96";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r962-a8bf3852db96";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r962-a8bf3852db96";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r962-a8bf3852db96";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r962-a8bf3852db96";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };

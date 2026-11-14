@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r961-2b574429348b";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r961-2b574429348b";
-import { hashSeed } from "./random.js?v=r961-2b574429348b";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r962-a8bf3852db96";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r962-a8bf3852db96";
+import { hashSeed } from "./random.js?v=r962-a8bf3852db96";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -94,11 +94,16 @@ export const OUTDOOR = f({
     marrow: f({ zenith: [30, 36, 46], horizon: [112, 128, 116], haze: [90, 106, 98], ridge: [52, 58, 56], ridgeH: .075, rough: 1,
       sun: [206, 232, 210], sunAz: 225, sunEl: 28, sunK: .48, ambient: [.44, .5, .48], clouds: .62, grade: [.97, 1.02, 1, 1.03],
       crown: [72, 84, 76], bark: [52, 50, 44], frost: 0 }),
+    // the Magma Rivers (landscape 27): a sky lit from below, smoke-dark overhead and glowing red-orange toward the horizon, a dim
+    // copper sun through the fumes and a black far ridge of cones
+    magma: f({ zenith: [40, 22, 24], horizon: [214, 92, 46], haze: [150, 66, 40], ridge: [30, 20, 20], ridgeH: .085, rough: 1,
+      sun: [255, 150, 90], sunAz: 210, sunEl: 18, sunK: .5, ambient: [.58, .4, .36], clouds: .66, grade: [1.06, .97, .92, 1.04],
+      crown: [60, 44, 34], bark: [44, 30, 24], frost: 0 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -133,9 +138,9 @@ export const OUTDOOR = f({
   // surface classes for the ground detail (the shader's outdoorDetail): the first pattern a tile's kind matches
   surfaces: f([
     f(["grass", /grass|moss|forest|jungle|meadow|savanna|fen|bog|loam|refuge|canopyLeaf|fringe|mat$/i]),
-    f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat/i]),
+    f(["sand", /sand|dune|beach|salt|mesa|desert|pillarGround|reefFlat|ashDrift|sulfurCrust/i]),
     f(["snow", /snow|ice|frost|peak|sinter|seaIce|firn|serac/i]),
-    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo|regolith|ejecta|rille|ribCrest|marrowGutter/i]),
+    f(["rock", /rock|crag|stone|trail|basalt|rim|slope|crater|shale|moon|hoodoo|regolith|ejecta|rille|ribCrest|marrowGutter|cinderPlain|cinderCone|scoriaLevee|pahoehoe|crustBridge/i]),
     f(["paved", /court|city|floor|stair|battlement|dock|bridge|platform|cloister|arc|rule|marrowPlate|vertebra/i]),
     f(["glass", /glass|crystal|obsidian|quicksilver|prism/i]),
   ]),
