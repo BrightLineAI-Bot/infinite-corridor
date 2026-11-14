@@ -2,9 +2,10 @@
 import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
+import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.ts'; // the Carbine's stock, for its shouldered hold
 import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -560,6 +561,21 @@ function rifleSupportHand(state,pose,profile,rifle,A,weight){
   t[0]=g[o+12]+g[o]/ax*along;t[1]=g[o+13]+g[o+1]/ax*along-rifle.support[1]/scale;t[2]=g[o+14]+g[o+2]/ax*along;
   state.other.set(pose);solveArm(state,state.other,!A.left,t,A.sign*rifle.supportYaw,rifle.supportPitch);blend(pose,state.other,weight);
 }
+// The Carbine shouldered (CARBINE_HOLD): solved last over the gait, from nothing but the posed shoulder, so the same body
+// gives the same arms on every frame (a charge's restamps no longer restart a raise). `recoil` 0..1 is one shot's kick.
+function carbineHoldPose(state,pose,recoil){
+  const H=CARBINE_HOLD,F=CLOSE_VIEW_HERO_WEAPON_FORM.carbine,A=heldArm('carbine'),m=A.sign,t=state.primaryTarget,k=clamp(Number(recoil)||0);
+  rotateZ(pose,4,-m*H.head.roll);rotateX(pose,4,H.head.nod);rotateY(pose,4,m*H.head.turn);
+  build(state.asset,state,pose);
+  const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,sx=g[s+12],sy=g[s+13],sz=g[s+14],scale=state.worldScale>0?state.worldScale:1;
+  const reach=Math.hypot(g[e+12]-sx,g[e+13]-sy,g[e+14]-sz)+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
+  const yaw=-m*H.yaw,pitch=H.pitch+H.recoil.rise*k,dx=Math.sin(yaw)*Math.cos(pitch),dy=Math.sin(pitch),dz=Math.cos(yaw)*Math.cos(pitch);
+  const pull=(.79-F.stock[0])*.82*closeViewHeldScale('carbine')/scale,back=H.recoil.back*k*reach;
+  t[0]=sx+reach*m*H.butt[0]+dx*pull;t[1]=sy+reach*H.butt[1]+dy*pull;t[2]=sz+reach*H.butt[2]+dz*pull-back;
+  state.primaryGripResidual=solveArm(state,pose,A.left,t,yaw,pitch);
+  rifleSupportHand(state,pose,'carbine',H,A,1);
+  state.clip='derived-carbine-shoulder';
+}
 
 function build(asset, state, pose) {
   const head = asset.meta.headAttachment;
@@ -950,7 +966,10 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const shovelDigging=action?.kind==='interact'&&(action.profile==='shovel-dig'||action.profile==='iron-shovel-dig');
   const placingStone=action?.kind==='interact'&&action.profile==='stone-place';
   const locomotionLayer=action?.kind==='drink'||(action?.kind==='interact'&&(action.profile==='cache-pickup'||chestOpening||shovelDigging||placingStone));
-  const idleFrozen = input.reducedMotion || action&&!timedAction&&!hammerAction&&!locomotionLayer, idleSec = idleFrozen ? 0 : idleMs / 1000;
+  // The Carbine in hand (close-view.ts input.carbineHold): carried, charging or firing, only over the plain carry or its own
+  // record. Its idle is held still too, so a charge starting from the carry does not jump the shoulders (CARBINE_HOLD).
+  const carbineHeld=input.carbineHold===true&&!knocked&&(!action||!action.kind||action.kind==='ranged'&&action.profile==='emitter');
+  const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer, idleSec = idleFrozen ? 0 : idleMs / 1000;
   clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
@@ -1045,6 +1064,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
       if (kind === 'ranged' && ['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)) toolPose(state,state.pose,profile,p,weight,action);
       // The simple shooting tools (Spark Coil, Needle Caster: profile 'emitter') aim forward from a
       // braced chest-height hold like the named tools, rather than pointing at the ceiling.
+      else if (kind === 'ranged' && profile === 'emitter' && carbineHeld) state.clip='derived-carbine-shoulder'; // the Carbine: shouldered below, not raised
       else if (kind === 'ranged' && profile === 'emitter') { toolPose(state,state.pose,profile,p,weight,action); state.clip='derived-ranged'; }
       else if (kind === 'ranged') { const A=heldArm(profile); rotateX(state.pose, A.shoulder, -.8 * weight); rotateX(state.pose, A.elbow, -.4 * weight - .15 * pulse); }
       else if (kind === 'cast') {
@@ -1068,6 +1088,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
   if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
+  if(carbineHeld)carbineHoldPose(state,state.pose,input.carbineRecoil); // the Carbine shouldered (CARBINE_HOLD), over the gait and any carbine record
   if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the

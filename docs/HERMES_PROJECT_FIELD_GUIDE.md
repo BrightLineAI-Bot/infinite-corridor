@@ -6,6 +6,72 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 968 — Hammerfall awakened clap
+
+Tim, 2026-11-14: the awakened Hammerfall's ability is a clap: when the hammer lands, two lines of energy move apart from it and come back together and slap, in addition to the hammer's blow (two parallel lines, not two radii).
+
+**CODE:** `brawler-spells.ts` `HAMMER_CLAP` {share .6 of toolPower, length 2.4, spread 1.3 each side, width .3, extend .12, hold .1, sweep .1, fade .2, stun .3, colours, text}; `hammerClapCatches` (|along| ≤ length/2 and |across| ≤ spread, each padded by width plus the foe's extra body size), `hammerClapPose` (apart, hold, close, clap; one reused object), `drawHammerClap` (floor layer, both views). `game.ts` `brawlerTool` pushes one `hammer-clap` effect (`clap: 1`, unit aim, `spread`, the hammer's `delay`, `life` = span, `untilPulse` = strike time) when the secondary is awakened, after the Echo copies; `updateEffects` uses `hammerClapCatches` for `fx.clap`, one pulse per foe. `constellation.ts` `awakenedToolText` names the clap. Tests: `hammerfall-clap` (7).
+
+**BOUNDARY:** One clap per press; Echo copies and the Shadow Clone add none; the golem is unchanged; non-awakened Hammerfall is byte-identical. The clap is an ordinary area effect that saves and resumes with the area (no new field, schema 14). At most one is alive at the tool's own cooldown. The lines are not stopped by walls, like the hammer's own radius.
+
+## Release 967 — Great Sweep awakened freeze
+
+Tim, 2026-11-14: the Great Sweep's awakened ability applies a freeze to whatever its blades touch (the spun blade, and the Mirage blades for a far-sweeping freeze); it should work on bosses, with diminishing returns and a buildup like stagger.
+
+**CODE:** `great-sweep.ts` `SWEEP_FREEZE` {touch: blade 1, mirage .5; ordinary need [.5,.5,1] hold [1.6,1.3,1] guard 1.2; elite need [3,4.5,6] hold [1.6,1.3,1] guard 4; boss need [6,9,13] hold [1.6,1.2,.9] guard 8; forget/drain/calm per class; slow .45; maxTier 8}, `sweepFreezeTouch`, `tickSweepFreeze`, `sweepFrozen`; state `e.sweepFreeze` {build, left, hold, guard, tier, idle, calm, fill} in seconds counted down by dt; `normalizeToolSwing` keeps `freeze`. `game.ts` `sweepAwakened`, `sweepFreezeClass` (via monster-pack `staggerClass`), `sweepFreezeHit`, `tickSweepFreezes` (a filling meter as a glyph slow tagged `frost`); `startToolSwing` stamps `toolSwing.freeze` (the Mirage spin is draw-only, never); `toolSwingHits` and the Mirage blade hit (`shot.sweepFreeze`) apply it; the enemy loop skips a frozen foe's AI; `snapshotArea` copies it; boss/guardian resets clear it. `renderer.ts` `drawSweepFrost` (ice shell sized to the body, thawing shards, fill arc). `constellation.ts` `awakenedToolText` describes the freeze. Tests: `sweep-freeze` (9).
+
+**BOUNDARY:** Only the awakened Great Sweep freezes. Retreating, passing, at-play, untargetable and Worm-riding foes are never frozen. A frozen or guarded foe gains no buildup; worst-case frozen share with presses every frame: boss about 17%, elite 29%, ordinary 57%. Stagger, the stagger governor and boss poise are unchanged. A frozen foe resumes its wind-up when it thaws. Close View shows the frost as a floor decal. No save-schema change: `e.sweepFreeze` and `toolSwing.freeze` are additive (schema 14).
+
+## Release 966 — Arc Wave tempo
+
+Tim, 2026-11-14: the arc waves should be slower and spread out from the centre into a cone; the two great waves should fly faster, shoot forward and overtake them.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE` {speed 5.5 (was 11), range 9.35 tiles × reach, spread .45 rad (was .26)}, `arcWaveLife(reach)` (flight time = range × reach / speed); `ARC_WAVE_ECHO` {speed 24, range 12.5 × reach, at .5 (was 1), scale .9, depth .3, muzzle .35}; `arcWaveEcho(shot, spread)` returns the great wave's width, speed and life (null without Arc Wave), reading the reach stat from the crescent's own speed and life so the Close View held release needs no new payload field. `game.ts` `fireSecondary` uses the Arc Wave cone and tempo; both Echo paths use `arcWaveEcho`; the Close View payload records the cone actually used. Tests: `blunderbuss-arc-echo` (11).
+
+**BOUNDARY:** Without Arc Wave the Blunderbuss keeps 14 tiles/s, 0.85 s and ±0.26 rad. Damage shares, pierce, hit-once, the projectile cap, occlusion and exact resume are unchanged. Awakened fan copies take the crescent tempo and keep their ±0.21 rad. No save change (schema 14).
+
+## Release 965 — Carbine shoulder hold
+
+Tim, 2026-11-14: while charging the Carbine the arm wiggles in a weird way; the arms should be held steady, and the Carbine should be held in two hands up at the shoulder with a cheek weld instead of down by the hip.
+
+**CODE:** Cause: the Carbine used the generic simple-tool pose (`toolPose` 'emitter'), whose arm weight fades in and out over each 600 ms animation; `tickCarbine` restarts that animation every ~340 ms while charging (`CARBINE.charge.restampMs` 260), so the arm dipped and rose. `close-view-player-presentation.ts` `CARBINE_HOLD` {butt [-.13,.02,.16] from the right shoulder in arm lengths, yaw .05, pitch 0, support [1.04,.035] with yaw .55 / pitch -.30, head {roll .22, nod .16, turn .10}, recoil {peak .05, end .40, back .05, rise .07, reduced .4}} and `carbineRecoil(p, reducedMotion)`. `close-view-hero.ts` `carbineHoldPose` is solved last from the shoulder alone (independent of the animation clock), places the stock's butt (`CLOSE_VIEW_HERO_WEAPON_FORM.carbine.stock[0]`) in the shoulder pocket, the left hand via `rifleSupportHand`, and tilts the head onto the stock; idle sway pauses while the Carbine is held. `close-view.ts` sets `input.carbineHold` and, only after a real shot, `input.carbineRecoil`. Tests: `carbine-hold` (6).
+
+**BOUNDARY:** Presentation only: projectile gameplay, hit rules, the charge itself, release 960's shooter height and 963's clone charge are unchanged; the charge glow and shot already start at the posed muzzle. Dodge, hit, knockdown, jump, cast, drink and pickup keep their own poses; Spark Coil below the Carbine rank keeps its one-handed raise. Standard View draws no Carbine arms, so it is unchanged. No save change (schema 14).
+
+## Release 964 — Blunderbuss Arc Wave Echoes
+
+Tim, 2026-11-14: with Arc Wave, each Blunderbuss Echo shot should be a large arc about the width of the three arcs combined, travelling forward; two Echoes give two arc waves after each shot.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE_ECHO` {at 1, scale .9, depth .3, muzzle .35}, `ARC_WAVE_SHAPE` (the crescent's drawing values, now data), `arcWaveEchoHalf` and `arcWaveTouches` (allocation-free hit test following the drawn crescent). `game.ts` `fireSecondary` and `releasePendingToolUse` give each Echo copy of an Arc Wave shot `waveHalf` (0.85 tiles with the .26 cone and a .5 grow; grows with Charged Air). `updateProjectiles` hits across the crescent's width and never forgets a hit foe for such a wave. `drawToolForms` draws it as the Arc Wave crescent at radius waveHalf / sin(span) with a 1.25x stroke, in both views. Tests: `blunderbuss-arc-echo` (8).
+
+**BOUNDARY:** Echo timing (150/300 ms), damage shares (60%/25%), pierce, speed 11, life, the projectile cap, walls and Close View occlusion (stopped at the wave's centre) are unchanged. Without Arc Wave, Echo shots are as before. The cone's own arcs, the awakened fan and the Shadow Clone copy never carry `waveHalf`. No save-schema change: `waveHalf` lives on the in-flight projectile and resumes with it (schema 14).
+
+## Release 963 — The Shadow Clone charges the Carbine with you
+
+Tim, 2026-11-14: "when you charge your blast, the Shadow Clone charges its blast, and it'll increase its damage also."
+
+**CODE:**
+- `src/tool-forms.ts`:
+  - `CLONE_CARBINE` (bonus .15, cone .7, muzzle .42, violet colours), `cloneCarbineBoost` and `cloneCarbineRatio`;
+  - `drawCarbine` draws the clone's violet beams, glow and fill ring.
+- `src/game.ts`:
+  - `carbine.charge.clone` grows by the Wayfarer's increments while `cloneCarbineEligible`, and is set to null when the clone ends;
+  - `carbineFire(now, d, held, cloneHeld)` boosts her beam;
+  - `cloneCarbineFire` fires from the clone at `SHADOW_CLONE.share` × the charge ratio, with its own pierce, charge and `launchAt`;
+  - `cloneCarbineAim` aims at the lock, or the foe her beam is aimed at if the clone can see it, else the nearest visible foe in a cone, else her aim;
+  - `groundFeetAt`, and `shotOccluded` honours `launchAt`.
+- `src/close-view.ts` draws the clone's muzzle glow, and `src/combat-visuals.ts` colours the clone's Carbine shots violet and turns the clone to its aim.
+
+**BOUNDARY:** The clone's charge is runtime only and never saved; pause freezes it and a reload drops it. It ends with hers (release, stagger, the Carbine put away, falling) and is cancelled when the clone expires or is stepped into. The Shadow Boxing echo and a clone still being placed take no part. The clone uses her rounds, carries no glyph procs and fires no Continuous Assault volley. Taps and play without the clone are unchanged. One clone beam per release, within the existing caps. No save change, no generation change, no `Math.random`.
+
+## Release 962 — The Magma Rivers (landscape 27)
+
+The daily region step (Tim, 2026-10-29: rich, vibrant regions without costing performance): his severe volcanic region, which the existing Firelands only touched.
+
+**CODE:** `landscape.ts` `LANDSCAPE_VERSION` 27; `REGIONS_V27` {chance: volcanic .8, emberlands .6, ashfields .5; to magma; minRing 52} on its own hash after the v26 roll in `regionAt` and `regionTileKept`; `MAGMA` (river period, width, sway, levee; crust, rope and ash noises; cone, fumarole, repairs, cache); `magmaFlow`/`magmaAt` (one world field per region bearing); `applyMagma` lays the kinds, cones and levels, lava (`kind: lava`, `magma: river|crater`) and `fumaroleVent`, repairs any cut-off ground both ways, clears trees and rocks in the melt, and adds `magma-cache-<rx>-<ry>` on a rim; `applyFirelands(..., version)` skips magma tiles from 27. `landscape-render.ts` draws marked lava once as `lavaRiver`, new paints and `FACE.magma`; `close-view-outdoor.ts` `skies.magma` and surfaces; `atlas-colors.ts` the kinds (region `#8a2e14`); `REGION_BANNER` and `FAR_POCKETS` `emberBlob`. Tests: `magma-rivers-v27` (11); 24 files' landscape version pins 26 to 27.
+
+**BOUNDARY:** Only sections first seen at version 27 change; versions 1-26 are byte-identical (28 pins, 840 maps compared). About 2% of far sections; none within about 36 sections of Ember Refuge. No save change (schema 14). Kind names never contain 'lava' or 'magma' except real melt. Hamlets keep the colours, flat and safe. No weather and no per-frame drawing; the Close View lava is the existing shader. Cones at most 3 levels, so a fall from a rim is never fatal.
+
 ## Release 961 — The Great Sweep spins 360°; tools held in the right hand; the Aether Orrery drops
 
 Tim, 2026-11-14: the Aether Orrery never seemed to drop; it should float over the Wayfarer's open right hand as an orange ball with small coloured spheres; the Great Sweep wasn't shown when equipped, should be a broken giant's greatsword resting on his right shoulder with his primary in his left hand, swung 360° with the damage following the blade (unless Mirage of Blades, whose blades should match Standard View); any cancel should keep the full damage.
