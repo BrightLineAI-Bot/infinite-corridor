@@ -73,7 +73,7 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
+import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
 import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
@@ -2779,6 +2779,7 @@ export class Game {
     { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
     { const r = normalizeArtRush(s.playerRuntime.artRush), R = LAVA_RUSH; this.artRush = r?.v === R.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // the Lava Slash rush resumes where it stood
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
+    restoreQuandrixHold(this, s.playerRuntime.quandrixHold); // the Quandrix Staff's held or let-go hand resumes as let go, on its clock (quandrix-staff.ts)
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
@@ -3865,6 +3866,7 @@ export class Game {
         hammerfallStartup:this.savedHammerfallStartup(),
         toolSwing:this.toolSwing?normalizeToolSwing(this.toolSwing):(Number.isInteger(this.save.session.playerRuntime.toolSwing?.v)&&this.save.session.playerRuntime.toolSwing.v>GREAT_SWEEP_RECORD_VERSION?structuredClone(this.save.session.playerRuntime.toolSwing):null), // the Great Sweep mid-swing (great-sweep.ts; additive, schema 14; a newer record kept opaque)
         artRush:this.artRush?normalizeArtRush(this.artRush):(Number.isInteger(this.save.session.playerRuntime.artRush?.v)&&this.save.session.playerRuntime.artRush.v>LAVA_RUSH.v?structuredClone(this.save.session.playerRuntime.artRush):null), // the Lava Slash rush mid-way (additive, schema 14; a newer record kept opaque)
+        quandrixHold:savedQuandrixHold(this)??(Number.isInteger(this.save.session.playerRuntime.quandrixHold?.v)&&this.save.session.playerRuntime.quandrixHold.v>QUANDRIX.release.record?structuredClone(this.save.session.playerRuntime.quandrixHold):null), // the Quandrix Staff's held or let-go hand (additive, schema 14; a newer record kept opaque)
         shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -8426,7 +8428,7 @@ export class Game {
     }
     return n;
   }
-  // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix, never saved.
+  // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix; only the held or let-go hand is saved (playerRuntime.quandrixHold).
   quandrixEquipped() { return isQuandrixStaff(this.save.equipment?.primary); }
   quandrixMageHand() { return this.quandrixEquipped() && fieldOn(this.save, QUANDRIX.passive); } // the Mage's Hand passive works only with the staff
   quandrixPower() { return this.meleePower(); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage
