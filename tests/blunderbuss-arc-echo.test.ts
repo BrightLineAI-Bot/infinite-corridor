@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, updateProjectiles } from '../src/game.ts';
+import { Game, updateProjectiles, characterStats } from '../src/game.ts';
 import { createCombatant, enemyBodyRadius } from '../src/combat.ts';
 import { rangedWeapon, normalizeItemUpgrade } from '../src/items.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
@@ -44,20 +44,65 @@ test('Arc Wave with two Echo glyphs: two great waves per shot, each about as wid
   assert.equal(base.filter((p: any) => p.arcWave).length, 3, 'the three crescents fire as before');
   assert.ok(base.every((p: any) => !('waveHalf' in p)), 'the cone keeps its own small crescents');
   assert.equal(echoes.length, 2, 'one great wave per Echo glyph');
-  const mid = base.find((p: any) => Math.abs(p.dy) < 1e-9);
-  // The three arcs' combined hit width 1 tile past the muzzle: the outer paths' side offset plus each wave's catch (0.1 + grow).
-  const three = 2 * ((ARC_WAVE_ECHO.muzzle + ARC_WAVE_ECHO.at) * Math.sin(weapon.spread) + .1 + mid.grow);
+  const mid = base.find((p: any) => Math.abs(p.dy) < 1e-9), reach = mid.life * mid.speed / ARC_WAVE.range;
+  // 2026-11-14 tempo: the crescents fly slower, as far as before, in Arc Wave's wider cone.
+  assert.ok(ARC_WAVE.speed <= 11 * .6, 'noticeably slower than release 549\'s 11 tiles/s');
+  assert.ok(ARC_WAVE.spread > weapon.spread * 1.5, 'a clearly wider cone than the plain pellets\'');
+  assert.ok(Math.abs(ARC_WAVE.range - 11 * weapon.lifetime) < .01, 'the same reach as before');
+  for (const p of base) { assert.equal(p.speed, ARC_WAVE.speed); assert.ok(Math.abs(p.life * p.speed - ARC_WAVE.range * reach) < 1e-9); }
+  const sides = base.filter((p: any) => p !== mid).map((p: any) => Math.atan2(p.dy, p.dx)).sort((a: number, b: number) => a - b);
+  assert.ok(Math.abs(sides[0] + ARC_WAVE.spread) < 1e-9 && Math.abs(sides[1] - ARC_WAVE.spread) < 1e-9, 'along Arc Wave\'s cone');
+  // The three arcs' combined hit width `at` tiles past the muzzle: the outer paths' side offset plus each wave's catch (0.1 + grow).
+  const three = 2 * ((ARC_WAVE_ECHO.muzzle + ARC_WAVE_ECHO.at) * Math.sin(ARC_WAVE.spread) + .1 + mid.grow);
   for (const w of echoes) {
     assert.equal(w.arcWave, true); assert.equal(w.echo, true);
     assert.ok(Math.abs(w.dx - 1) < 1e-9 && Math.abs(w.dy) < 1e-9, 'straight along the aim');
-    assert.equal(w.speed, ARC_WAVE.speed); assert.equal(w.life, mid.life, 'the middle wave\'s range');
+    assert.equal(w.speed, ARC_WAVE_ECHO.speed); assert.ok(w.speed >= 3 * ARC_WAVE.speed, 'much faster than the crescents');
+    assert.ok(Math.abs(w.life * w.speed - ARC_WAVE_ECHO.range * reach) < 1e-9 && ARC_WAVE_ECHO.range >= 14 * weapon.lifetime, 'at least the plain pellet\'s reach');
     const width = 2 * w.waveHalf;
     assert.ok(width <= three + 1e-9 && width >= .85 * three, `width ${width.toFixed(2)} vs three arcs ${three.toFixed(2)}`);
+    assert.ok(width >= 1.6 && width <= 1.9, `about release 964's 1.7 tiles: ${width.toFixed(2)}`);
     assert.ok(width > 2 * (.1 + mid.grow) * 1.4 && width > 1.9 * 2 * (mid.grow * Math.sin(ARC_WAVE_SHAPE.span)), 'clearly wider than one crescent (its catch, and nearly twice its drawn chord)');
   }
   assert.equal(echoes[0].damage, Math.max(1, Math.round(mid.damage * GLYPHS.echo.echo.tool[1])), 'the first Echo keeps its share');
   assert.equal(echoes[1].damage, Math.max(1, Math.round(mid.damage * GLYPHS.echo.third.tool)), 'the second Echo keeps its share');
-  assert.equal(Math.abs(arcWaveEchoHalf(mid, weapon.spread) - echoes[0].waveHalf) < 1e-12, true);
+  assert.equal(Math.abs(arcWaveEchoHalf(mid, ARC_WAVE.spread) - echoes[0].waveHalf) < 1e-12, true);
+});
+
+// Fly a whole shot in small steps (Echo timers included); `each(t, list)` sees every step.
+function flight(g: any, each: (t: number, list: any[]) => void, seconds = 1.6, dt = 1 / 240) {
+  assert.equal(g.fireSecondary(T0, { x: 1, y: 0 }), true);
+  for (let t = 0; t < seconds; t += dt) { g.tickGlyphs(0, T0 + (t + dt) * 1000); g.projectiles = updateProjectiles(g.projectiles, [], g.map, 32, dt); each(t + dt, g.projectiles); }
+}
+
+test('both great waves overtake the middle crescent within 2.5 tiles of the muzzle and fly on ahead', () => {
+  const { g } = arena(true, 2), muzzle = g.player.x + .5 + .35, passedAt: Record<string, number> = {}; let lastAhead = 0;
+  flight(g, (_t, list) => {
+    const mid = list.find((p: any) => !p.echo && Math.abs(p.dy) < 1e-9); if (!mid) return;
+    for (const w of list) if (w.waveHalf > 0 && w.x > mid.x && !(w.id in passedAt)) passedAt[w.id] = mid.x - muzzle;
+    const ahead = list.filter((p: any) => p.waveHalf > 0 && p.x > mid.x).length; if (ahead === 2) lastAhead = mid.x - muzzle;
+  });
+  assert.equal(Object.keys(passedAt).length, 2, 'both pass it');
+  for (const [id, d] of Object.entries(passedAt)) assert.ok(d > 0 && d <= 2.5, `${id} passes ${d.toFixed(2)} tiles out`);
+  assert.ok(lastAhead > 3, `both stay ahead to the end of their flight (the crescent ${lastAhead.toFixed(2)} tiles out)`);
+});
+
+test('the crescents spread apart as they fly; the great waves fly straight', () => {
+  const { g } = arena(true, 2), gaps: number[] = [];
+  flight(g, (t, list) => {
+    const outer = list.filter((p: any) => !p.echo && Math.abs(p.dy) > 1e-9);
+    if (outer.length === 2 && [.1, .4, .8, 1.2].some((k) => Math.abs(t - k) < 1e-6 + 1 / 480)) gaps.push(Math.abs(outer[0].y - outer[1].y));
+    for (const w of list) if (w.waveHalf > 0) assert.ok(Math.abs(w.y - (g.player.y + .45)) < 1e-9);
+  });
+  assert.equal(gaps.length, 4); for (let i = 1; i < gaps.length; i++) assert.ok(gaps[i] > gaps[i - 1] + .5, `the gap grows: ${gaps.map((q) => q.toFixed(2))}`);
+});
+
+test('without Arc Wave the Blunderbuss keeps its own cone and pace', () => {
+  const { g } = arena(false, 0), weapon = rangedWeapon(g.save.equipment.secondary); g.fireSecondary(T0, { x: 1, y: 0 });
+  assert.equal(g.projectiles.length, 3);
+  for (const p of g.projectiles) { assert.equal(p.speed, weapon.speed); assert.ok(Math.abs(p.life - weapon.lifetime * (1 + characterStats(g.save).attackReach)) < 1e-12 && !p.arcWave); }
+  const angles = g.projectiles.map((p: any) => Math.atan2(p.dy, p.dx)).sort((a: number, b: number) => a - b);
+  assert.ok(Math.abs(angles[0] + weapon.spread) < 1e-9 && Math.abs(angles[2] - weapon.spread) < 1e-9);
 });
 
 test('a great wave travels straight and strikes every foe across its width once, and none beside it', () => {
