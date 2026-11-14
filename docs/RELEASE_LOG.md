@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r953 (`59250bbc63d3`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r954 (`e53e5fa87e58`); production serves `r951-4925ab3898c1` (published 2026-11-14 after a Fable review of r949 to r951). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 954 | Claude | claude/fist-dash-ghosts | Presentation only: the Iron Fists' Shadow Boxing rush, every dodge, the Great Sweep carry and airborne carries leave Shadow Boxing's violet after-images and speed streak in both views, at every quality tier and in safe mode (not with reduced motion); gameplay byte-for-byte unchanged | In flight. |
+| 955 | Claude | claude/beasts-visible | Close View: world beasts, the Questing Beast, passing beasts and the Stalker stay admitted and drawn anywhere in your section at every quality tier and in safe mode (no distance cull, fog capped, low-tier mesh far out, beast slots first, wind-up ring with them); the Stalker's health halved and its mirage heal reduced | In flight. |
+| 954 | Claude | claude/fist-dash-ghosts | Presentation only: the Iron Fists' Shadow Boxing rush, every dodge, the Great Sweep carry and airborne carries leave Shadow Boxing's violet after-images and speed streak in both views, at every quality tier and in safe mode (not with reduced motion); gameplay byte-for-byte unchanged | Merged as `e53e5fa87e58` (#621). |
 | 953 | Claude | claude/weapons-feel | Fourfold Daggers and Cinder Pike join the weighted swing system (hits follow each blade's tip / the pike's tip along its line; wind-up, hit-stop, follow-through, buffer, instant cancels); a dagger in each hand in Close View; the Iron Fists' contact delay applies in every area and both views | Merged as `59250bbc63d3` (#620). |
 | 952 | Claude | claude/shadow-dash | Shadow Boxing's carry to a foe becomes a 120-220 ms eased charge through the same walls and hazards, the blow landing on arrival, with violet after-images and a speed streak in both views at every quality tier and in safe mode; damage and healing kept; additive playerRuntime.shadowDash v1 | Merged as `7b1f2d3c3e62` (#619). |
 | 951 | Claude | claude/weighty-cleaver | Verge Cleaver: three weighted steps (wind-up, step in, strike, follow-through) with hits only in the sector the blade crosses plus a body bubble, short hit-stop, no camera shake; identical in every area and both views; DPS kept; pending melee record v3 | Merged as `4925ab3898c1` (#618). Published 2026-11-14 in r951. |
