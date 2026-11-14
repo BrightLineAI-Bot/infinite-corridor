@@ -202,6 +202,31 @@ export function carbineBase(toolBonus, spellDamage = 0, magicBuff = false) {
   return (CARBINE.base + CARBINE.bonus * (Number(toolBonus) || 0)) * (1 + (Number(spellDamage) || 0)) * (magicBuff ? 1.4 : 1);
 }
 
+// The Carbine with the Shadow Clone out (Tim, 2026-11-14: "when you have the Shadow Clone out, the Shadow Clone will charge its
+// blast with you. So when you charge your blast, the Shadow Clone charges its blast, and it'll increase its damage also").
+// - While the clone stands out (late-spells.ts SHADOW_CLONE; not while it is being placed, not the Shadow Boxing echo) and the
+//   Wayfarer holds a Carbine charge, the clone holds its own charge beside hers (game.ts carbine.charge.clone: the seconds it
+//   has charged with her, so a clone cast mid-charge starts from nothing). It glows at the clone's muzzle `muzzle` tiles out,
+//   the Wayfarer's charge glow in the clone's violet (`colors`), in the standard view and Close View.
+// - On release the clone fires its own beam from where it stands at SHADOW_CLONE.share of a beam of its own charge: a tap
+//   gives the clone's small tap copy, a full charge its full beam. It aims at the Wayfarer's foe (the lock, else the foe her
+//   beam is aimed down); if its line to that foe is walled off, at the nearest foe it can see within `cone` of her aim (cos of
+//   the half-angle) and the Carbine's reach; else along her aim. In Close View its shot leaves from the clone's own ground.
+// - Charging together strengthens both beams: × (1 + `bonus` × how full the clone's charge was), so a tap gains nothing
+//   and a full charge × (1 + bonus) on both. With no clone out nothing changes.
+// - The clone's charge ends with hers (release, stagger, putting the Carbine away, falling), and is cancelled the moment the
+//   clone ends or is stepped into. Runtime only (never saved): a reload starts with no charge, as the Wayfarer's does.
+export const CLONE_CARBINE = Object.freeze({
+  bonus: .15,
+  cone: .7,
+  muzzle: .42,
+  colors: Object.freeze({ beam: "#b48cff", core: "#f1e8ff", glow: 0xb48cff, flash: 0xf1e8ff }),
+});
+// The multiple both beams take when the clone charged `cloneHeld` s with the Wayfarer (null: no clone out): 1 for a tap.
+export const cloneCarbineBoost = (cloneHeld) => cloneHeld == null ? 1 : 1 + CLONE_CARBINE.bonus * carbineFill(cloneHeld);
+// The clone's beam as a part of the Wayfarer's (before SHADOW_CLONE.share): its own charge's share over hers (1 when equal).
+export const cloneCarbineRatio = (held, cloneHeld) => carbineShare(cloneHeld ?? 0) / carbineShare(held);
+
 // Continuous Assault (Tim, 2026-11-12: "there can be a passive for the Carbine called Continuous Assault: when you charge up
 // and fire the beam, three lasers come down from the sky and track into the enemy, boom boom boom, similar to the Hammerfall").
 // A Lattice tool form (lattice-fields.ts TOOL_FORMS["continuous-assault"]) that does nothing unless the Carbine is held.
@@ -325,8 +350,12 @@ export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
   const C = CARBINE, K = game.carbine, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode); let any = false;
   ctx.save(); try {
     ctx.lineCap = "round"; ctx.strokeStyle = C.colors.beam; ctx.globalAlpha = .55; ctx.lineWidth = Math.max(3, s * C.trace.width * 2.2); ctx.beginPath();
-    for (const p of game.projectiles) if (p.carbine && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
+    for (const p of game.projectiles) if (p.carbine && !p.shadow && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
     if (any) { ctx.stroke(); ctx.globalAlpha = 1; ctx.strokeStyle = C.colors.core; ctx.lineWidth = Math.max(1.5, s * C.trace.width); ctx.stroke(); }
+    // The clone's beams, in its violet.
+    any = false; ctx.strokeStyle = CLONE_CARBINE.colors.beam; ctx.globalAlpha = .55; ctx.lineWidth = Math.max(3, s * C.trace.width * 2.2); ctx.beginPath();
+    for (const p of game.projectiles) if (p.carbine && p.shadow && !p.dead && Number.isFinite(p.bx)) { const [ax, ay] = toScreen({ x: p.bx, y: p.by }), [bx, by] = toScreen(p); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); any = true; }
+    if (any) { ctx.stroke(); ctx.globalAlpha = 1; ctx.strokeStyle = CLONE_CARBINE.colors.core; ctx.lineWidth = Math.max(1.5, s * C.trace.width); ctx.stroke(); }
     if (K?.traces) for (const q of K.traces) if (q.life > 0) { const a = q.life / C.trace.life, [ax, ay] = toScreen({ x: q.x0, y: q.y0 }), [bx, by] = toScreen({ x: q.x1, y: q.y1 });
       ctx.globalAlpha = .7 * a; ctx.strokeStyle = C.colors.beam; ctx.lineWidth = Math.max(2, s * C.trace.width * (1 + q.k) * 2); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
       ctx.globalAlpha = a; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(bx, by, s * (.12 + .1 * q.k) * a, 0, 7); ctx.fill(); }
@@ -334,6 +363,12 @@ export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
       ctx.globalAlpha = .35 + .3 * k; ctx.fillStyle = C.colors.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
       ctx.globalAlpha = 1; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
       const [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }); ctx.strokeStyle = k >= 1 ? C.colors.core : C.colors.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
+    // The Shadow Clone charging with her (CLONE_CARBINE): the same glow and ring at its muzzle, in its violet.
+    const q = game.cloneCarbineGlow?.(); if (q) {
+      const V = CLONE_CARBINE.colors, [x, y] = toScreen(q), pulse = still ? 1 : 1 + .12 * Math.sin(t * 18 + 1.3), R = s * (.12 + .2 * q.k) * pulse;
+      ctx.globalAlpha = .35 + .3 * q.k; ctx.fillStyle = V.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = V.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
+      const [cx, cy] = toScreen({ x: q.cx, y: q.cy }); ctx.strokeStyle = q.k >= 1 ? V.core : V.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q.k); ctx.stroke(); }
     drawAssault(ctx, game, toScreen, s, capture);
   } finally { ctx.restore(); }
 }
