@@ -1,4 +1,4 @@
-// Close View shadow forms (Tim, 2026-11-12). Presentation only: nothing here reads or writes gameplay state.
+// Close View shadow forms (Tim, 2026-11-12). Presentation only: nothing here writes gameplay state (followShadowDash reads it).
 //
 // Shadow Boxing: "in close view you kind of just teleport to different places... it'd be cool if the character would
 // track and charge to an enemy, a charging animation, then deliver the blow... Make him more of a wraith, a spectral
@@ -22,6 +22,7 @@ export const CLOSE_VIEW_SHADOW_FORMS = Object.freeze({
     rampIn: .2,         // fraction of the charge over which the lean comes in
     lean: .42,          // forward lean (radians) at full charge, imported hero spine
     nativeLean: .30,    // the same for the native fallback body
+    crouch: .45, drop: .1, // 2026-11-14: the charge runs low: planted crouch weight and pelvis drop at full charge (imported hero)
   }),
   wraith: Object.freeze({ alpha: .58, tint: Object.freeze([.70, .56, 1.12]), reducedAlpha: .5 }),
   trail: Object.freeze({ max: 5, spacing: .16, alpha: .5, fadeMs: 170, tint: Object.freeze([.58, .44, 1.15]) }),
@@ -37,7 +38,7 @@ const travel = (t) => { t = clamp01(t); return .5 * t + .5 * t * t * (3 - 2 * t)
 export function createShadowDash() {
   return { active: false, reduce: false, fromX: 0, fromY: 0, toX: 0, toY: 0, start: 0, lag: 0, arriveAt: 0,
     x: 0, y: 0, progress: 1, charge: 0, wraith: 0, moving: false, dashes: 0,
-    trail: new Float64Array(CLOSE_VIEW_SHADOW_FORMS.trail.max * 3), trailCount: 0 };
+    trail: new Float64Array(CLOSE_VIEW_SHADOW_FORMS.trail.max * 3), trailCount: 0, game: false };
 }
 export function resetShadowDash(D) { D.active = false; D.charge = 0; D.wraith = 0; D.trailCount = 0; D.progress = 1; D.moving = false; return D; }
 
@@ -79,6 +80,21 @@ export function stepShadowDash(D, now, lx, ly, px, py, elapsedMs, boxing, fresh,
   D.trailCount = n;
   if (t >= 1 && after >= Math.max(T.settleMs, R.fadeMs)) resetShadowDash(D);
   return D;
+}
+
+// Shadow Boxing's charge as gameplay now runs it (brawler-spells.ts SHADOW_DASH, game.shadowDash; Tim, 2026-11-14: "I still
+// just see him teleport"). The Wayfarer really travels, so the drawn hero stands on the logical position (no lag) and only the
+// pose and the afterimages come from the dash: the lean and crouch weight, the wraith weight and up to SHADOW_DASH.ghosts
+// afterimages back along the path, during the dash and for its fade after arrival. Unlike the release-922 lag above this is
+// drawn in safe mode and at every quality tier (it is the same few pooled copies, nothing flashes). True while it drives D.
+// `ghostsOf` and `poseOf` are brawler-spells.ts shadowDashGhosts and shadowDashPose, passed in by close-view.ts (importing
+// brawler-spells here would close a module cycle through close-view.ts). No allocation.
+const DASH_POSE = { live: false, charge: 0, wraith: 0, t: 1 };
+export function followShadowDash(D, game, lx, ly, ghostsOf, poseOf) {
+  const P = poseOf(game, DASH_POSE); if (!P.live && !(P.charge > 0)) { if (D.game) { resetShadowDash(D); D.game = false; } return false; }
+  D.active = true; D.game = true; D.reduce = false; D.x = lx; D.y = ly; D.toX = lx; D.toY = ly; D.moving = !!game?.shadowDash && !game.shadowDash.arrived; D.progress = P.t;
+  D.charge = P.charge; D.wraith = P.wraith;
+  D.trailCount = ghostsOf(game, D.trail); return true; // at most trail.max (the pool's size)
 }
 
 // The swing's presented progress during a dash. Gameplay's clock is unchanged; only the pose is re-timed so the

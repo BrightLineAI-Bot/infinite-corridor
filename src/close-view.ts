@@ -11,8 +11,8 @@ import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, cre
 import { actorPresentation, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
-import { fistCharge } from './brawler-spells.ts';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha } from './close-view-shadow-forms.ts';
+import { fistCharge, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
 import { dronePos } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
@@ -3680,8 +3680,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       const SD = state.shadowDash, swingMs = visualAttack ? Number(visualRecord?.durationMs) || ACTION_MOTION.meleeMs : tool ? MODEL_TIMING.toolMs : ACTION_MOTION.meleeMs;
       const sinceMs = Math.max(0, now - track.at), fresh = attack && amount * swingMs <= sinceMs + CLOSE_VIEW_SHADOW_FORMS.dash.freshMs;
       const boxing = now < (g.boxingUntil || 0) && !stunned && !defeat && !importedDodge && !g.save.boat?.aboard && !g.mountRide?.();
-      stepShadowDash(SD, now, who.x, who.y, track.x, track.y, sinceMs, boxing, fresh, reduce);
-      if (attack && SD.active) amount = shadowStrikePhase(SD, now, amount, swingMs, meleeAction ? meleeAction.contactMs / meleeAction.durationMs : .18);
+      // 2026-11-14: a swing's charge is gameplay now (game.shadowDash): drawn where the Wayfarer is, leaning, with afterimages, in
+      // safe mode too. The lag below is left for the carries that still move in one update (the Iron Fists, the Great Sweep, in the air).
+      if (!followShadowDash(SD, g, who.x, who.y, shadowDashGhosts, shadowDashPose)) {
+        stepShadowDash(SD, now, who.x, who.y, track.x, track.y, sinceMs, boxing, fresh, !!g.presentation?.reduceMotion);
+        if (attack && SD.active) amount = shadowStrikePhase(SD, now, amount, swingMs, meleeAction ? meleeAction.contactMs / meleeAction.durationMs : .18);
+      }
       dashDX = SD.x - who.x; dashDY = SD.y - who.y; wraith = SD.wraith;
     }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
@@ -3815,7 +3819,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             if(fire||orbit){state.spellEmission[0]=lx;state.spellEmission[1]=ly;state.spellEmission[2]=lz;state.spellEmissionReady=true;state.spellRelease=castRecord;state.spellAlpha=actor.alpha;}
           }
           { const SD = state.shadowDash, fr = state.heroFrame, z0 = input.groundZ; fr.ghostCount = 0; // afterimages: the same pose, back along the dash
-            if (!reduce) for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, q = fr.ghostCount * 4, gx = SD.trail[o], gy = SD.trail[o + 1];
+            for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, q = fr.ghostCount * 4, gx = SD.trail[o], gy = SD.trail[o + 1];
               fr.ghosts[q] = gx - SD.x; fr.ghosts[q + 1] = gy - SD.y; fr.ghosts[q + 2] = surfaceZ(g.map, gx + .5, gy + .75) - z0; fr.ghosts[q + 3] = SD.trail[o + 2] * (d.alpha ?? 1); fr.ghostCount++; } }
           recordHeroPresentation(player,{gaitPhase:input.gaitPhase,speed:input.speed,yaw:actor.yaw,now:input.nowMs,x:who.x,y:who.y});
           state.hero = state.heroFrame; count++; imported = true;state.playerRepresentation='imported';
@@ -3825,7 +3829,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (who === player && !imported && heroHeld(state, heroWaiting, now)) { // 926 bug 11: nothing stands in for the Wayfarer until the real model is ready
       state.playerRepresentation = 'pending'; Object.assign(track, { x: who.x, y: who.y, at: now, hp: who.hp, actor }); state.tracks.set(who, track); state.admitted.add(it); return; }
     if (!imported && !append(actor)) return;
-    if (who === player && !imported && !reduce && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
+    if (who === player && !imported && state.shadowDash.trailCount) { // the native body's afterimages: pooled, outside the actor cap
       const SD = state.shadowDash, ghost = Object.assign(state.shadowGhost, actor); ghost.muzzleOut = null; ghost.attachments = null; ghost.shadow = true;
       for (let k = 0; k < SD.trailCount && k < CLOSE_VIEW_SHADOW_FORMS.trail.max; k++) { const o = k * 3, gx = SD.trail[o], gy = SD.trail[o + 1];
         ghost.x = actor.x + gx - SD.x; ghost.y = actor.y + gy - SD.y; ghost.z = actor.z + surfaceZ(g.map, gx + .5, gy + .75) - surfaceZ(g.map, SD.x + .5, SD.y + .75); ghost.alpha = SD.trail[o + 2] * (d.alpha ?? 1);

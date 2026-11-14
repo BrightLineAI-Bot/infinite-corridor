@@ -35,6 +35,81 @@ export const BRAWLER = {
   // reaches `stick` tiles farther, the sweep carries you to the foe first; each deals `damage` more and heals `heal`).
   "shadow-boxing": { seconds: 8, stick: 4, damage: .1, heal: .06, guard: .15 },
 };
+// Shadow Boxing's charge (Tim, 2026-11-14: "you still just kind of teleport... I want to see him traversing the space to get
+// to where he needs to be... have him charge to where he needs to be"). A swing pressed with the foe out of reach no longer
+// moves the Wayfarer in one update: game.ts shadowDashBegin records a dash (Game.shadowDash, saved with the journey at `v`),
+// shadowDashSteer carries him along it each tick through the same quarter-tile collision mover the old carry used (canStand
+// and moveGuardedCombatStep: walls, solid props, bodies, lethal ground and ledges stop him), and shadowDashLand throws the
+// accepted swing on the tick he arrives, so the blow lands on arrival. The same in every area and in both views; only the
+// drawing differs (shadowDashGhosts below, Close View close-view-shadow-forms.ts followShadowDash).
+//   Duration: `minMs` + travel at a mean `speed`, clamped to [minMs, maxMs]: ms = clamp(1000 × tiles / speed, minMs, maxMs).
+//     24 tiles/s is ten times a walk and five times a dodge, unmistakably a charge, yet at 60 fps the body moves at most about
+//     .5 tile a frame (peak 1.25× the mean), 7 to 13 drawn frames a dash. 120 ms (7 frames) is the shortest span that still
+//     reads as travel rather than a pop; 220 ms covers the longest carry (reach + `stick` + 1 tiles less the stop, about 5.5
+//     tiles) and stays under the Verge Cleaver's 230 ms forehand wind-up and the 420 ms press cooldown, so the press and the
+//     blow stay one gesture.
+//   The path eases (half linear, half smoothstep): he sets off and lands with weight, peak speed 1.25× the mean. Each tick he
+//     covers the eased share of what is left to the foe's live place, so a stepping foe is tracked and the dash still ends on
+//     time. At most `maxTiles` in one dash.
+//   `cooldownCredit`: the share of the dash's time that counts toward the press cooldown (attackReadyAt) of the blow thrown
+//     on arrival, so damage per second holds (the cooldown runs during the charge). A weighted swing (melee-swing.ts, the
+//     Verge Cleaver) has its own clock instead: the charge stands in for its wind-up, so the swing starts on arrival already
+//     cocked, with only the last `swingLeadMs` (× its tempo) of the wind-up left, and strikes then. Measured in
+//     tests/shadow-boxing-dash.test.ts.
+//   Drawing: `ghosts` afterimages `spacing` of the dash apart along the travelled path, alpha `alpha` falling off behind,
+//     fading over `fadeMs` after arrival; the body leans in and sinks (close-view-shadow-forms.ts `lean`, `crouch`) over the
+//     first `rampIn` of the dash and settles over `settleMs`. Drawn at every quality tier and in safe mode (fixed slots, no allocation).
+export const SHADOW_DASH = Object.freeze({
+  v: 1, speed: 24, minMs: 120, maxMs: 220, step: .25, maxTiles: 8, cooldownCredit: 1, swingLeadMs: 60,
+  ghosts: 4, spacing: .17, alpha: .55, fadeMs: 180, rampIn: .2, settleMs: 140,
+});
+const clamp01 = (v) => v <= 0 ? 0 : v >= 1 ? 1 : v;
+const smoothstep = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
+// The dash's time for `tiles` of travel (ms).
+export function shadowDashMs(tiles) { const D = SHADOW_DASH, n = Number(tiles); return Math.max(D.minMs, Math.min(D.maxMs, Number.isFinite(n) && n > 0 ? 1000 * n / D.speed : 0)); }
+// The share of the path covered at time fraction t: half linear, half smoothstep.
+export function shadowDashTravel(t) { t = clamp01(t); return .5 * t + .5 * t * t * (3 - 2 * t); }
+// The saved dash (playerRuntime.shadowDash, additive at schema 14). A valid version-1 record comes back clean; a newer one is
+// kept as it is (opaque); anything else is null (the dash is dropped and the press with it, rather than resumed wrong).
+const finiteIn = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+export function normalizeShadowDash(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (Number.isInteger(raw.v) && raw.v > SHADOW_DASH.v) return structuredClone(raw);
+  if (raw.v !== SHADOW_DASH.v) return null;
+  if (!['area', 'areaId', 'levelId', 'foe'].every((k) => typeof raw[k] === 'string' && raw[k].length <= 512)) return null;
+  if (!finiteIn(raw.fromX, -1e4, 1e5) || !finiteIn(raw.fromY, -1e4, 1e5) || !finiteIn(raw.durationMs, SHADOW_DASH.minMs, SHADOW_DASH.maxMs) || !finiteIn(raw.elapsedMs, 0, SHADOW_DASH.maxMs)
+    || !finiteIn(raw.travelled, 0, SHADOW_DASH.maxTiles) || !finiteIn(raw.stop, 0, 20)) return null;
+  return { ...structuredClone(raw), elapsedMs: Math.min(raw.elapsedMs, raw.durationMs), arrived: raw.arrived === true, action: raw.action === 'attack' ? 'attack' : null };
+}
+// The afterimages to draw now, nearest first, as [x, y, alpha] triples into `out` (a Float64Array of 3 × SHADOW_DASH.ghosts):
+// during a dash (game.shadowDash) back along the path from where it set off to where the Wayfarer is, and for `fadeMs` after
+// arrival (game.shadowDashAfter) closing in on the arrival point as they fade. Returns the count. Logical tile coordinates.
+// No allocation.
+export function shadowDashGhosts(game, out) {
+  const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter, p = game?.player; let n = 0;
+  if (!p || !out) return 0;
+  let t, fx, fy, tx, ty, fade, denom;
+  if (q?.v === D.v && !(q.arrived)) { t = q.elapsedMs / q.durationMs; fx = q.fromX; fy = q.fromY; tx = p.x; ty = p.y; fade = 1; denom = shadowDashTravel(Math.min(1, t)); }
+  else if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at); if (after >= D.fadeMs) return 0; t = 1 + after / a.durationMs; fx = a.fromX; fy = a.fromY; tx = a.toX; ty = a.toY; fade = 1 - after / D.fadeMs; denom = 1; }
+  else return 0;
+  if (!(denom > 1e-6) || !Number.isFinite(t)) return 0;
+  for (let k = 1; k <= D.ghosts && n < (out.length / 3 | 0); k++) {
+    const tk = t - k * D.spacing; if (tk <= 0 || tk >= 1) continue;
+    const e = shadowDashTravel(tk) / denom, o = n * 3; if (!(e < 1)) continue;
+    out[o] = fx + (tx - fx) * e; out[o + 1] = fy + (ty - fy) * e; out[o + 2] = D.alpha * (1 - k / (D.ghosts + 1)) * fade; n++;
+  }
+  return n;
+}
+// The charge pose weight (0..1): leaning in over the first `rampIn` of a dash, settling over `settleMs` after it. `wraith`:
+// the spectral weight, 1 while charging and fading out as the body settles.
+export function shadowDashPose(game, out) {
+  const D = SHADOW_DASH, q = game?.shadowDash, a = game?.shadowDashAfter;
+  out.live = false; out.charge = 0; out.wraith = 0; out.t = 1;
+  if (q?.v === D.v && !q.arrived) { out.live = true; out.t = clamp01(q.elapsedMs / q.durationMs); out.charge = smoothstep(out.t / D.rampIn); out.wraith = 1; return out; }
+  if (a?.live) { const after = Math.max(0, (game.lastUpdateNow || 0) - a.at), s = Math.max(D.settleMs, D.fadeMs); if (after < s) { out.charge = 1 - smoothstep(after / D.settleMs); out.wraith = out.charge; out.t = 1; out.live = after < D.fadeMs || out.charge > 0; } }
+  return out;
+}
+const DASH_GHOSTS = new Float64Array(SHADOW_DASH.ghosts * 3); // the drawing pool for drawBrawlerAuras
 // Imbue Weapon (Tim, 2026-11-04: "While Imbue Weapon is running, it gives you an aura and adds a magic-damage buff to your
 // melee attacks... It scales only off your Focus: with zero Focus or magic it adds nothing, so on a Might build it adds very
 // little. On a Focus build it's a way to use melee if you feel like it, but it will never be as strong as a pure Might build.
@@ -61,7 +136,7 @@ export function imbueSpark(game, x, y, now) {
   r[i].x = x; r[i].y = y; r[i].at = now;
 }
 // Aegis, Shadow Boxing and Imbue Weapon, as the Wayfarer wears them (drawn round the player).
-export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
+export function drawBrawlerAuras(ctx, game, toScreen, s, t, floor = false) {
   const now = game.lastUpdateNow || 0, [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 });
   // Imbue Weapon's palette (Tim, 2026-11-04: "red, not violet"): crimson, not the orange of fire and lava, with a dark edge
   // under each line so it still reads on lava and fire tiles; Aegis is blue, Shadow Boxing violet.
@@ -79,6 +154,11 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t) {
     ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
+  { const G = DASH_GHOSTS, n = shadowDashGhosts(game, G); // Shadow Boxing's charge: a speed streak and violet afterimages along the path (every tier, safe mode too)
+    if (n > 0) { const far = toScreen({ x: G[(n - 1) * 3] + .5, y: G[(n - 1) * 3 + 1] + .45 }); ctx.globalAlpha = .35 * G[2] / SHADOW_DASH.alpha; ctx.strokeStyle = "#b99bff"; ctx.lineWidth = s * .22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(far[0], far[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.lineCap = "butt";
+      // the bodies (Close View draws its own 3D afterimages over this floor streak)
+      if (!floor) for (let k = n - 1; k >= 0; k--) { const [gx, gy] = toScreen({ x: G[k * 3] + .5, y: G[k * 3 + 1] + .45 }); ctx.globalAlpha = G[k * 3 + 2]; ctx.fillStyle = "#6f4fc8"; ctx.beginPath(); ctx.ellipse(gx, gy, s * .24, s * .34, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#c9b2ff"; ctx.beginPath(); ctx.arc(gx, gy - s * .38, s * .14, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1; } }
   if (now < (game.boxingUntil || 0)) { ctx.strokeStyle = "#7a5fc0"; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .2 * Math.sin(t * 8); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.ellipse(x, y + s * .35, s * .55, s * .2, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
   drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y);
 }

@@ -32,10 +32,10 @@ test('Aegis turns every blow aside for a second, then no longer', () => {
 
 test('Shadow Boxing: a swing carries you to a foe out of reach, hits harder and heals; blows taken are reduced', () => {
   const { s, g } = arena([['foe', 13, 10]]); step(g, 1000); g.castSpell('shadow-boxing'); g.player.hp = 50;
-  const x0 = g.player.x; g.primaryAttack(1100);
+  const x0 = g.player.x; g.primaryAttack(1100); for (let t = 1150; t <= 1400; t += 50) step(g, t); // 2026-11-14: the carry is a charge over a few ticks (SHADOW_DASH), the swing lands on arrival
   assert.ok(g.player.x > x0 + 1, `carried toward the foe (${x0} -> ${g.player.x.toFixed(2)})`);
   assert.ok(g.enemies[0].hp < 5000, 'and the swing lands'); assert.ok(g.player.hp > 50, 'and heals');
-  const plainBlow = arena([]); step(plainBlow.g, 1000); const full = blow(plainBlow.g, 1200), boxed = blow(g, 1200);
+  const plainBlow = arena([]); step(plainBlow.g, 1000); const full = blow(plainBlow.g, 1500), boxed = blow(g, 1500);
   assert.ok(full > 0 && Math.abs(boxed - full * (1 - BRAWLER['shadow-boxing'].guard)) < 1.01, `guard takes 15% off (${full} -> ${boxed})`);
   const plain = arena([['foe', 13, 10]]); step(plain.g, 1000); const px = plain.g.player.x; plain.g.primaryAttack(1100);
   assert.equal(plain.g.player.x, px, 'without it, a swing does not move you');
@@ -43,5 +43,5 @@ test('Shadow Boxing: a swing carries you to a foe out of reach, hits harder and 
 
 test('Shadow Boxing never carries you through a wall', () => {
   const { g } = arena([['foe', 14, 10]]); for (const t of g.map.tiles) if (t.x === 12) t.blocked = true;
-  step(g, 1000); g.castSpell('shadow-boxing'); g.primaryAttack(1100); assert.ok(g.player.x < 11.3, `${g.player.x}`);
+  step(g, 1000); g.castSpell('shadow-boxing'); g.primaryAttack(1100); for (let t = 1150; t <= 1400; t += 50) step(g, t); assert.ok(g.player.x < 11.3, `${g.player.x}`);
 });
