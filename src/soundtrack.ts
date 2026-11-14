@@ -108,7 +108,9 @@ export class Soundtrack {
     // One high-pass at the output: nothing below 40 Hz (phones cannot play it and it only spends headroom).
     this.floor = ctx.createBiquadFilter(); this.floor.type = "highpass"; this.floor.frequency.value = 40; this.floor.Q.value = .7; this.floor.connect(out); out = this.floor;
     this.out = out; this.mix = ctx.createGain(); this.duck = ctx.createGain(); this.pauseGain = ctx.createGain(); this.stingBus = ctx.createGain();
-    this.mix.connect(this.duck); this.duck.connect(this.pauseGain); this.stingBus.connect(this.pauseGain);
+    // `hush` (setHush): the score's own level, faded out while the dinosaurs duel; story beats (the stingBus) pass it by.
+    this.hush = ctx.createGain(); this.hushLevel = 1;
+    this.mix.connect(this.duck); this.duck.connect(this.hush); this.hush.connect(this.pauseGain); this.stingBus.connect(this.pauseGain);
     // Tape wow: the whole score through one short delay whose time drifts (skipped on the low tier).
     if (!low) {
       this.wobble = ctx.createDelay(.1); this.wobble.delayTime.value = S.wobble.base;
@@ -166,6 +168,14 @@ export class Soundtrack {
   setPaused(paused) {
     paused = !!paused; if (paused === this.paused) return; this.paused = paused;
     const t = this.now(), g = this.pauseGain.gain; g.cancelScheduledValues(t); g.setTargetAtTime(paused ? SOUNDTRACK.pause.level : 1, t, SOUNDTRACK.pause.time);
+  }
+  // The score's level (0-1) reached over `seconds` from where it is now: the dino duel's fade out and back (soundtrack-director.ts DUEL).
+  setHush(level, seconds = 1.5, now = this.now()) {
+    level = Math.max(0, Math.min(1, Number(level) || 0)); if (level === this.hushLevel) return false; this.hushLevel = level;
+    const g = this.hush.gain, from = Math.max(0, Math.min(1, Number(g.value)));
+    g.cancelScheduledValues(now); g.setValueAtTime(from, now); g.linearRampToValueAtTime(level, now + Math.max(.05, seconds));
+    this.emit({ type: "hush", level, at: now, seconds });
+    return true;
   }
   setQuality(quality) {
     this.quality = quality; this.maxVoices = quality === "low" ? SOUNDTRACK.lowMaxVoices : SOUNDTRACK.maxVoices;

@@ -1,6 +1,7 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
 import { createSoundtrack } from "./soundtrack.ts";
-import { MusicDirector, sampleMusic } from "./soundtrack-director.ts";
+import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.ts";
+import { createBattleSfx } from "./battle-sfx.ts"; // the dino duel's sounds of battle (Tim, 2026-11-14)
 import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
 import { BLEED } from "./bleed.ts"; // the bleed status line
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
@@ -326,7 +327,7 @@ function currentQuality(){return effectiveQuality(settings,{width:innerWidth,hei
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
 game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
-function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());resize()}
+function applyPresentationSettings(){game.beastTries=settings.beastTries!==false;/* release 345 */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
@@ -820,8 +821,16 @@ let audio = null,
   musicBus = null,
   soundtrack = null,
   director = null,
+  battleSfx = null,
   muted = localStorage.getItem("corridor-muted") === "1";
 const musicMemo = {};
+// The dino duel's sounds (battle-sfx.ts): the game's cues (game.dinoCues, the newest kept) handed over once a frame, then the
+// footfalls, the rolling wheel and the undercurrent's heartbeat. The queue is emptied even with no sound, so it never grows.
+function duelSounds() {
+  const cues = game.dinoCues; if (cues?.length) game.dinoCues = [];
+  if (!battleSfx || muted || !audio) return;
+  try { for (const c of cues || []) battleSfx.cue(c, game.player); battleSfx.track(game.player); } catch (error) { console.warn("Battle sounds failed", error); }
+}
 function voice(
   freq,
   when,
@@ -857,6 +866,9 @@ function directMusic() {
     soundtrack.setPaused(game.paused);
     soundtrack.setTarget(out);
     for (const s of out.stingers) soundtrack.stinger(s);
+    // the dino duel: the score fades out under the battle and back after it (soundtrack-director.ts DUEL); its sounds follow the duel
+    soundtrack.setHush(out.hush, out.hush ? DUEL.fadeIn : DUEL.fadeOut);
+    battleSfx?.setPaused(game.paused); battleSfx?.setDuel(out.duel, musicMemo.duelPair);
   } catch (error) { console.warn("Soundtrack director failed", error); }
 }
 function startAmbience() {
@@ -895,6 +907,9 @@ function startAmbience() {
   try {
     soundtrack = createSoundtrack(audio, { out: musicBus, echo: delay, quality: currentQuality(), seed: hashSeed(`${save.seed}:soundtrack`) });
     director = new MusicDirector({ seed: hashSeed(`${save.seed}:director`), calmOnly: settings.soundtrack === "calm" });
+    // the battle's own bus into the master (mute and the master volume hold; Effects volume sets it; "Calm only" leaves it be)
+    try { battleSfx = createBattleSfx(audio, { out: audioGain, musicOut: musicBus, noise: soundtrack.noise, seed: hashSeed(`${save.seed}:battle`), quality: currentQuality(), volume: settings.effectsVolume }); battleSfx.setMuted(muted); }
+    catch (error) { console.warn("Battle sounds unavailable", error); battleSfx = null; }
     soundtrack.setMuted(muted);
     soundtrack.start();
     directMusic();
@@ -974,6 +989,7 @@ mute.onclick = () => {
   if (!audio && !muted) startAmbience();
   if (audio && !muted && audio.state === "suspended") audio.resume();
   soundtrack?.setMuted(muted);
+  battleSfx?.setMuted(muted);
   if (audioGain) {
     const t = audio.currentTime;
     audioGain.gain.cancelScheduledValues(t);
@@ -2664,6 +2680,7 @@ function frame(now) {
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
+  duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;

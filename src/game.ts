@@ -128,6 +128,7 @@ import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, genera
 import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.ts"; // the Pentagon's finale arena, the Stillworks
 import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.ts";
 import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interloperCame, noteInterloper, interloperPrey, interloperSpot, SPINO_SCREEN } from "./spino-rex.ts"; // the Spinosaurus: big rooms and the interloper
+import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.ts"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
 import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.ts"; // the Spinosaurus's bleed (the Wayfarer's status)
 import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
 import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
@@ -154,7 +155,7 @@ import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, gianti
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
 import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.ts"; // the Pentagon roofs' dwellers
 import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.ts";
-import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
 import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
@@ -433,6 +434,7 @@ function interiorTerrainVersion(history, fresh) {
 }
 const terrainPinned = (save, id) => save.consequences?.dungeons?.[id]?.terrainVersion ?? 1;
 
+const DINO_CUES_KEPT = 48; // the dino duel's sound cues waiting for main.ts (packWorld.dinoSfx), the newest kept
 const INERT_KEEP_HISTORY = new Map([["discovered", false], ["bypassed", false], ["guardianDefeated", false], ["resolved", false], ["visitOpen", false], ["visits", 0], ["abandoned", 0]]);
 const ROOM_PADDING_CANDIDATE = Symbol("roomPaddingCandidate");
 const ROOM_PADDING_VERSION = 1;
@@ -4713,6 +4715,42 @@ export class Game {
     this.message = SPINO_INTERLOPER.text.arrive;
     return c;
   }
+  // The dino duel (dino-duel.ts DINO_DUEL, Tim 2026-11-14): the Spinosaurus and the Wild Stegosaurus fight each other, and by 90 s one
+  // has the other: eaten (dinoEaten: nothing is the Wayfarer's) or fled (dinoEscape). Duels live on the creatures (e.dinoDuel), so the
+  // area snapshot carries one in progress; a loser fled off the area's edge is gone once it is over it.
+  dinoDuelTick(dt) {
+    if (!(dt > 0)) return [];
+    if (this.enemies.some((e) => e.dinoFled && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.dinoFled && e.fleeDone));
+    if (!this.enemies.some((e) => e.kind === "spinoRex" && !e.dead)) return [];
+    const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
+    return tickDinoDuels(this.enemies, dt, {
+      clock: Number(this.save.playSeconds) || 0, width, height,
+      eaten: (loser, winner) => this.dinoEaten(loser, winner), escape: (loser) => this.dinoEscape(loser),
+      kill: (winner, loser) => { loser.hp = 0; loser.dead = true; loser.noRewards = true; loser.hitFlash = .18; this.defeatEnemy(loser); },
+      say: (text) => { this.message = text; }, cue: (c) => { const q = this.dinoCues ||= []; if (q.length >= DINO_CUES_KEPT) q.shift(); q.push(c); },
+    });
+  }
+  // Devoured by the other beast: no reward, no Echo, no first-kill spoils and no `slain` record for the Wayfarer (its fall carries
+  // noRewards); a world beast's hunt ends all the same, so it is never back as never slain (world-beasts.ts worldBeastEaten). The
+  // winner feeds on it a few seconds before it turns on her.
+  dinoEaten(loser, winner) {
+    loser.noRewards = true; loser.rewarded = true; const text = duelText("eaten", winner, loser); this.message = text;
+    const id = loser.worldBeast;
+    if (id && WORLD_BEASTS[id] && this.save.worldBeasts?.[id]?.active) { const cycle = this.save.worldBeasts[id].cycle; worldBeastEaten(this.save, id); journalOnce(this.save, `world-beast-eaten:${id}:${cycle}`, `${text} (${this.rx},${this.ry})`, WORLD_BEASTS[id].name); }
+    if (winner && !winner.dead) winner.dinoFeed = DINO_DUEL.feed;
+  }
+  // The loser breaks off, wounded: a world beast takes its own retreat (its wounds kept on its hunt, so it is still out there); any
+  // other runs off the nearest edge of the area and is gone.
+  dinoEscape(e) {
+    const id = e.worldBeast, q = id && WORLD_BEASTS[id] ? this.save.worldBeasts?.[id]?.active : null;
+    if (q && !q.retreat && !q.astralJoined && id !== "astralWorm") {
+      const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) q.wounds = Math.round(f * 1e4) / 1e4;
+      if (q.dungeon && this.area === "dungeon") { beginDungeonRetreat(this.save, id, this.map); e.retreating = true; return; }
+      if (!q.dungeon && this.area === "overworld") { beginRetreat(this.save, id, this.rx, this.ry, this.retreatProbe()); e.retreating = true; return; }
+    }
+    if (e.pack?.attack) { e.pack.attack = null; e.pack.phase = null; e.pack.data = null; e.pack.tele = null; }
+    Object.assign(e, dinoFleeEdge(e, mapWidth(this.map, this.area), mapHeight(this.map, this.area)));
+  }
   applyBeastWounds() {
     for (const e of this.enemies) if (e.kind === "wildStego" && e.worldBeast && this.save.worldBeasts?.[e.worldBeast]?.active?.tailCut) { e.stegoTail = "cut"; e.stegoTailHp = 0; } // its tail stays cut for the rest of this hunt
     for (const e of this.enemies) if (e.kind === "spinoRex" && e.worldBeast && this.save.worldBeasts?.[e.worldBeast]?.active?.fossil) { e.spinoFossil = true; e.spinoShed = 1; } // once bone, bone for the rest of this hunt
@@ -6897,6 +6935,10 @@ export class Game {
       // then thrown (the collision mover, as a push); its fossil shed, kept on its hunt.
       bleed() { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (applyBleed(game.save)) game.message = BLEED.text.start; return true; },
       biteMark() { game.spinoBiteMark = 1; }, // the screen's bite mark (decays in update)
+      indoors: game.area === "dungeon", // the dino duel's rockfall: every interior has a ceiling (monster-pack.ts dinoBigMove)
+      // The dino duel's sound cues (monster-pack.ts dinoCue): kept for main.ts to hand to battle-sfx.ts each frame, the newest
+      // DINO_CUES_KEPT at most. Runtime only, never saved; sound only, so the fight is the same with or without it.
+      dinoSfx(cue) { const q = game.dinoCues ||= []; if (q.length >= DINO_CUES_KEPT) q.shift(); q.push(cue); },
       shake(power, seconds) { const was = game.spinoShake && now < game.spinoShake.until ? game.spinoShake.power : 0; game.spinoShake = { at: now, until: now + seconds * 1000, power: Math.max(power, was) }; },
       spinoHold(source, seconds) { if (now < (p.dodgeUntil || 0) || p.hp <= 0 || sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return false; p.heldUntil = now + seconds * 1000; p.heldBy = source.id; p.heldFirm = true; game.cancelPendingMeleeContact?.("held"); return true; },
       carry(x, y) { if (footprintOpen(map, width, x, y)) { p.x = x; p.y = y; } },
@@ -11220,6 +11262,7 @@ export class Game {
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
+    this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
