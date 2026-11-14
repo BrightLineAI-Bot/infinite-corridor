@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 965: Carbine: the Wayfarer now shoulders it with both hands, cheek down on the stock, and the arms hold steady while charging instead of wobbling.
 - Release 964: Blunderbuss with Arc Wave: each Echo shot is now one great crescent, about as wide as the three arcs as they leave the muzzle. It flies straight along your aim and strikes each foe in its path once (two Echo glyphs: two great waves after every shot).
 - Release 963: The Carbine and the Shadow Clone: with the clone out, it charges its blast with you (a violet glow at its muzzle in both views) and fires its own charged beam from where it stands at your target; charging together strengthens both beams by up to 15% at full charge. The clone now aims at your target even without a lock.
 - Release 962: World regions: the Magma Rivers. Far Firelands, Emberlands and Ashfields may become a land where the fire still runs: lava channels between red scoria levees, crust bridges, cinder cones with a lava crater and a climbable rim (sometimes a cache on it), and fumaroles ringed with sulphur, under a smoky red sky in Close View. On new ground only.

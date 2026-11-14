@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 965 — Carbine shoulder hold
+
+Tim, 2026-11-14: while charging the Carbine the arm wiggles in a weird way; the arms should be held steady, and the Carbine should be held in two hands up at the shoulder with a cheek weld instead of down by the hip.
+
+**CODE:** Cause: the Carbine used the generic simple-tool pose (`toolPose` 'emitter'), whose arm weight fades in and out over each 600 ms animation; `tickCarbine` restarts that animation every ~340 ms while charging (`CARBINE.charge.restampMs` 260), so the arm dipped and rose. `close-view-player-presentation.ts` `CARBINE_HOLD` {butt [-.13,.02,.16] from the right shoulder in arm lengths, yaw .05, pitch 0, support [1.04,.035] with yaw .55 / pitch -.30, head {roll .22, nod .16, turn .10}, recoil {peak .05, end .40, back .05, rise .07, reduced .4}} and `carbineRecoil(p, reducedMotion)`. `close-view-hero.ts` `carbineHoldPose` is solved last from the shoulder alone (independent of the animation clock), places the stock's butt (`CLOSE_VIEW_HERO_WEAPON_FORM.carbine.stock[0]`) in the shoulder pocket, the left hand via `rifleSupportHand`, and tilts the head onto the stock; idle sway pauses while the Carbine is held. `close-view.ts` sets `input.carbineHold` and, only after a real shot, `input.carbineRecoil`. Tests: `carbine-hold` (6).
+
+**BOUNDARY:** Presentation only: projectile gameplay, hit rules, the charge itself, release 960's shooter height and 963's clone charge are unchanged; the charge glow and shot already start at the posed muzzle. Dodge, hit, knockdown, jump, cast, drink and pickup keep their own poses; Spark Coil below the Carbine rank keeps its one-handed raise. Standard View draws no Carbine arms, so it is unchanged. No save change (schema 14).
+
 ## Release 964 — Blunderbuss Arc Wave Echoes
 
 Tim, 2026-11-14: with Arc Wave, each Blunderbuss Echo shot should be a large arc about the width of the three arcs combined, travelling forward; two Echoes give two arc waves after each shot.
