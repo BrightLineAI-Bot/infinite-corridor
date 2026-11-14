@@ -23,7 +23,7 @@ export const CLOSE_VIEW_HELD_GEAR = Object.freeze({
   emitter: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'spark-coil': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'needle-caster': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
-  carbine: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }), // the Spark Coil's upgraded form: compact, one-handed
+  carbine: Object.freeze({ hand: 'right', scale: .8, grip: 'one' }), // the Spark Coil's upgraded form, compact; in the right hand, shouldered with the left on the fore-end by CARBINE_HOLD (not the rifle raise)
   'lumen-spindle': Object.freeze({ hand: 'right', scale: .8, grip: 'one' }),
   'rift-bombard': Object.freeze({ hand: 'right', scale: .78, grip: 'rifle' }),
   blunderbuss: Object.freeze({ hand: 'right', scale: .8, grip: 'rifle' }),
@@ -40,6 +40,33 @@ export const CLOSE_VIEW_RIFLE_GRIP = Object.freeze({
   'rift-bombard': Object.freeze({ raise: Object.freeze([.07, -.26, -.12]), pitch: 0, support: Object.freeze([1.20, .045]), supportYaw: .55, supportPitch: -.35, nativeRaise: -.35, nativeReach: .92, nativeInward: .55 }),
   blunderbuss: Object.freeze({ raise: Object.freeze([.11, .19, -.06]), pitch: .10, support: Object.freeze([1.22, .04]), supportYaw: .55, supportPitch: -.35, nativeRaise: .28, nativeReach: .92, nativeInward: .55 }),
 });
+// The Carbine shouldered (Tim, 2026-11-14: "when you're charging it, the character's arm just kind of wiggles... his arms should
+// just be held steady"; "use 2 hands; instead of holding it down by the hip, it should be up at the shoulder, like a cheek
+// weld"). Whenever the Carbine is in hand in Close View (carried, charging, firing) it is held one fixed way, never by the
+// simple-tool raise envelope that each charge restamp restarted (the wiggle): the stock's butt in the right shoulder pocket,
+// the barrel level and forward along the aim, the right hand on the grip, the left under the fore-end and the cheek down on
+// the stock. Presentation only: the beam, its aim and its hit are game.ts carbineFire's. Source space: [side, up, forward],
+// side +1 toward the gun hand's outside; lengths in arm reaches from the gun shoulder unless noted.
+//   butt: where the stock's butt (CLOSE_VIEW_HERO_WEAPON_FORM.carbine.stock[0]) sits; the grip follows along the barrel.
+//   yaw, pitch: the barrel's turn in toward the centre line and its tilt up (radians; 0, 0 is straight ahead and level).
+//   support: the left hand's point along the barrel in recipe units (.79 = the grip) and how far below it (source units);
+//     supportYaw, supportPitch: its grip frame (as CLOSE_VIEW_RIFLE_GRIP).
+//   head: the cheek weld: `roll` toward the stock, `nod` down onto it, `turn` toward the gun side (radians, the head node).
+//   recoil: each shot's kick on the accepted record's clock (0..1): it peaks at `peak` and has settled by `end`, the butt
+//     driven `back` (arm reaches) and the muzzle up `rise` (radians); Reduced Motion keeps `reduced` of it.
+export const CARBINE_HOLD = Object.freeze({
+  butt: Object.freeze([-.17, .12, .07]), yaw: .05, pitch: 0,
+  support: Object.freeze([1.04, .035]), supportYaw: .55, supportPitch: -.30,
+  head: Object.freeze({ roll: .22, nod: .16, turn: .10 }),
+  recoil: Object.freeze({ peak: .05, end: .40, back: .05, rise: .07, reduced: .4 }),
+});
+// The kick of one shot at record progress p (0 before and after it: the hold returns exactly to the shouldered pose).
+export function carbineRecoil(p, reducedMotion = false) {
+  const R = CARBINE_HOLD.recoil, x = Number(p);
+  if (!Number.isFinite(x) || x <= 0 || x >= R.end) return 0;
+  const k = x < R.peak ? cutSmooth(x / R.peak) : 1 - cutSmooth((x - R.peak) / (R.end - R.peak));
+  return k * (reducedMotion ? R.reduced : 1);
+}
 export const closeViewHeldGear = (profile) => Object.hasOwn(CLOSE_VIEW_HELD_GEAR, profile) ? CLOSE_VIEW_HELD_GEAR[profile] : null;
 export const closeViewHeldHand = (profile) => closeViewHeldGear(profile)?.hand ?? 'left';
 export const closeViewHeldScale = (profile) => closeViewHeldGear(profile)?.scale ?? 1;
