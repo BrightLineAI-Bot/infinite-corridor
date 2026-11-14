@@ -1,5 +1,5 @@
 import { weaponArtCharge, javelinInFlight } from "./weapon-arts.ts"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon } from './items.ts';
+import { rangedWeapon, FOURFOLD_DAGGERS, isFourfoldDaggers } from './items.ts';
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
@@ -720,7 +720,7 @@ export const closeViewPreset = (g) => CLOSE_VIEW.presets[g?.save?.closeViewPrese
 // Shared imported/native routing: supported v2 Cleaver actions never inherit
 // the persisted v1 choreography frame, while old v1/v2 records keep it exactly.
 export function closeViewMeleeVisualRoute(record, active = false) {
-  const normalized=normalizeMeleeActionVisual(record?.meleeAction),meleeAction=active&&(normalized?.v===1||normalized?.v===2||normalized?.v===3&&normalized.kind==='verge-cleaver'&&normalized.move==='swing')?normalized:null; // 3: the weighted swing (melee-swing.ts)
+  const normalized=normalizeMeleeActionVisual(record?.meleeAction),meleeAction=active&&(normalized?.v===1||normalized?.v===2||normalized?.v===3&&(normalized.kind==='verge-cleaver'||normalized.kind==='fourfold-daggers')&&normalized.move==='swing')?normalized:null; // 3: the weighted swing (melee-swing.ts); the Cinder Pike's thrust keeps its own pose (primaryPose), on the swing's clock
   return {meleeAction,legacyCleaverFrame:normalized?.v===1&&normalized.kind==='verge-cleaver'&&record?.primaryMotion?.v===2};
 }
 
@@ -3286,7 +3286,8 @@ export function closeViewToolConnectorWithin(muzzle,head,aim){const dx=head.x-mu
 export function closeViewPrimaryWeaponKind(item) {
   return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
     : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver'
-    : item?.id === 'primary-quandrix-staff' || item?.name === 'Quandrix Staff' ? 'quandrix-staff' : 'salvage-blade';
+    : item?.id === 'primary-quandrix-staff' || item?.name === 'Quandrix Staff' ? 'quandrix-staff'
+    : isFourfoldDaggers(item) ? FOURFOLD_DAGGERS.closeView.model /* 2026-11-14: a dagger in each hand */ : 'salvage-blade';
 }
 // Close View play-through of 926 (bug 11): at a scene's start the native stand-in Wayfarer showed, then popped to the imported
 // model once its data and GPU texture were ready. While that load is in flight (the asset 'loading', or loaded and its texture
@@ -3668,7 +3669,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     else if (bodyHit) amount = hit;
     if(drink?.active)amount=drink.phase;
     if(pickupPhase!==null)amount=pickupPhase;
-    if (who === player && attack && meleeAction?.v === 3) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; } // the weighted swing's own clock (frozen in hit-stop)
+    if (who === player && attack && (meleeAction?.v === 3 || visualAttack && visualRecord?.meleeAction?.v === 3)) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; } // the weighted swing's own clock (frozen in hit-stop; the pike's thrust keys mapped onto it)
     if (charge != null && !bodyHit) amount = charge;
     if (stunned && !defeat) amount = Math.max(0, Math.min(1, -knock.angle / (Math.PI / 2)));
     if (defeat) amount = defeat.amount;
@@ -3684,7 +3685,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       dashDX = SD.x - who.x; dashDY = SD.y - who.y; wraith = SD.wraith;
     }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
+    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
     const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
     const held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
     const primaryStage=who===player?primaryCarryStage(visualRecord,player.primaryCombo,visualAttack&&acceptedPrimary==='verge-cleaver'):null;

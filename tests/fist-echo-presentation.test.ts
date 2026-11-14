@@ -7,7 +7,7 @@ import { closeViewPlayerAction } from '../src/close-view.ts';
 import { normalizeSockets, socketGlyph } from '../src/glyphs.ts';
 import { createCombatant } from '../src/combat.ts';
 const clone=x=>JSON.parse(JSON.stringify(x));
-const pike=()=>normalizeSockets({id:'primary-cinder-pike',name:'Cinder Pike',slot:'primary',power:5,property:'reach',tier:'relic',affixes:[]});
+const pike=()=>normalizeSockets({id:'salvage-blade',name:'Salvage Blade',slot:'primary',power:5,property:'steady',tier:'relic',affixes:[]}); // 2026-11-14: the Cinder Pike's Echo now queues at its thrust's contact (melee-swing.ts); an instant primary stands in
 const fists=()=>({...BRAWLER_GEAR[0].item});
 const fixture=()=>{const {game:g}=createLabFixture({lab:'combat-assets',scenario:'blade-spark-ashling',now:100000});g.enemies=[];g.save.equipment.primary=pike();g.save.glyphs.echo=1;assert.equal(socketGlyph(g.save,'melee',0,'echo').ok,true);return g;};
 

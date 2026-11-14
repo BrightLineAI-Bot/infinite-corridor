@@ -43,7 +43,7 @@ test('the brawler gear is given once at Infinite III, never twice; old tool fist
 test('three presses: dash punch, jab, uppercut; the uppercut is a finisher when all three land', () => {
   const { g } = arena([['foe', 13, 10]]); let t = 1000; tick(g, idle, t);
   const hp = () => g.enemies[0].hp, dealt = [];
-  for (let i = 0; i < 3; i++) { t += 150; const before = hp(); tick(g, press('attack'), t); t += 50; tick(g, idle, t); t += 50; tick(g, idle, t); dealt.push(before - hp()); } // 2026-11-13: 250 ms apart, past each step's gate
+  for (let i = 0; i < 3; i++) { t += 150; const before = hp(); tick(g, press('attack'), t); t += 50; tick(g, idle, t); t += 50; tick(g, idle, t); t += 50; tick(g, idle, t); /* 2026-11-14: the fists' contact delay runs in every area */ dealt.push(before - hp()); } // 2026-11-13: 250 ms apart, past each step's gate
   assert.ok(dealt.every((d) => d > 0), `all three landed: ${dealt}`);
   assert.equal(g.fistCombo?.step, 3); assert.equal(g.fistNextStep(t), 1, 'the chain loops to the cross (2026-11-13: it ended here before)');
   assert.ok(dealt[2] > dealt[0] * 1.5, `the uppercut finisher hits hardest (${dealt})`);
@@ -59,13 +59,13 @@ test('the combo resets when the window closes; the jab cannot be charged', () =>
 });
 
 test('release 491: the dash punch rushes to a foe in range and stops beside it; charging keeps you in place and hits harder', () => {
-  const near = arena([['foe', 13, 10]]); let t = 1000; tick(near.g, idle, t); t += 50; tick(near.g, press('attack'), t); t += 50; tick(near.g, idle, t); // the press resolves on the next frame
+  const near = arena([['foe', 13, 10]]); let t = 1000; tick(near.g, idle, t); t += 50; tick(near.g, press('attack'), t); t += 50; tick(near.g, idle, t); t += 100; tick(near.g, idle, t); // the press resolves on the next frame; /* 2026-11-14: the fists' contact delay runs in every area */
   const gap = Math.hypot(near.g.enemies[0].x - near.g.player.x, near.g.enemies[0].y - near.g.player.y);
   assert.ok(gap <= IRON_FISTS.punches[0].stop + .3 && gap > .4, `rushed up beside it (gap ${gap.toFixed(2)})`); const tapDmg = 50000 - near.g.enemies[0].hp;
   const tapDealt = 50000 - near.g.enemies[0].hp;
   const full = arena([['foe', 13, 10]]); let u = 1000; tick(full.g, idle, u); u += 50; tick(full.g, pressHold('attack'), u);
   for (let i = 0; i < 30; i++) { u += 50; tick(full.g, holding, u); assert.equal(full.g.player.x, 10, 'stays in place while charging'); }
-  u += 50; tick(full.g, idle, u); u += 50; tick(full.g, idle, u);
+  u += 50; tick(full.g, idle, u); u += 50; tick(full.g, idle, u); u += 100; tick(full.g, idle, u); /* 2026-11-14: the fists' contact delay runs in every area */
   assert.ok(50000 - full.g.enemies[0].hp > tapDealt * 1.8, `charged hits harder (${tapDealt} -> ${50000 - full.g.enemies[0].hp})`); assert.equal(fistCharge(10), 1);
 });
 

@@ -1,7 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata } from './actor-presentation.ts';
 import { canopyGateDestination } from './trees.ts';
 import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
-import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, circleTouchesSector, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
+import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
 import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
 import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.ts";
@@ -7893,25 +7893,30 @@ export class Game {
   cancelPendingMeleeContact(_reason='cancelled'){const droppedCut=this.dropDaggerCut(),q=this.pendingMeleeContact;if(!q)return droppedCut;this.pendingMeleeContact=null;if(q.payload?.kind==='fist'&&this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed)&&this.fistCombo.landed.length)this.fistCombo.landed[this.fistCombo.landed.length-1]=false;const v=this.player?.attackVisual;if(v?.meleeAction?.v===1||v?.meleeAction?.v===2)v.presentationCancelled=true;if(q.v===3&&this.player){this.player.meleeStrike=null;if(v?.meleeAction?.v===3)v.presentationCancelled=true;}return true;} // a cancelled swing: no strike to draw; its body action is marked cancelled (the clocks stay, as a cancelled contact's do)
   // ---- Weighted swings (melee-swing.ts PRIMARY_SWINGS; Tim 2026-11-14). The same clock, hit and root motion in every area
   // and in both views. The record lives on pendingMeleeContact at version 3 and saves with the journey (exact resume).
-  swingWeaponKind(){const p=this.save.equipment?.primary;return(p?.id==='primary-verge-cleaver'||p?.name==='Verge Cleaver')&&swingSpec('verge-cleaver')?'verge-cleaver':null;}
+  // The weapons that swing this way (melee-swing.ts PRIMARY_SWINGS): the Verge Cleaver, the Fourfold Daggers and the Cinder Pike.
+  swingWeaponKind(){const p=this.save.equipment?.primary;if(!p)return null;const kind=p.id==='primary-verge-cleaver'||p.name==='Verge Cleaver'?'verge-cleaver':isFourfoldDaggers(p)?'fourfold-daggers':p.id==='primary-cinder-pike'||p.name==='Cinder Pike'?'cinder-pike':null;return kind&&swingSpec(kind)?kind:null;}
+  // The step a chained press starts (the Cleaver keeps its own combo counter, advancePrimaryCombo): the next, looping after the last.
+  noteSwingChain(q){const n=PRIMARY_SWINGS[q.weapon]?.steps?.length||1;this._swingNext={weapon:q.weapon,step:q.step%n+1};}
   // A press while a swing is up: start the next step now if its chain point has passed, keep it (buffer) if it comes within
   // bufferMs of the chain point (or of the end of the finisher's recovery), otherwise let it go. True: start a new step now.
   swingChainDue(now){
     const q=this.pendingMeleeContact,spec=PRIMARY_SWINGS[q?.weapon],st=swingStep(spec,q?.step);if(!st){this.pendingMeleeContact=null;return true;}
     const T=swingTimes(st,q.tempo,this._swingT||(this._swingT={}),spec.lungeFrom),e=q.elapsedMs,at=T.chain??T.recovery;
-    if(T.chain!=null&&e>=T.chain){this.endSwing(q);return true;}
+    if(T.chain!=null&&e>=T.chain){this.noteSwingChain(q);this.endSwing(q);return true;}
     if(e>=at-spec.bufferMs*q.tempo){q.queued=true;}
     return false;
   }
   endSwing(q){if(this.pendingMeleeContact===q)this.pendingMeleeContact=null;}
   startSwing(now,kind,visual,profile,geometry,acceptedCooldown){
-    const spec=PRIMARY_SWINGS[kind],step=Math.max(1,Math.min(spec.steps.length,Number(visual.primaryMotion?.step)||1)),st=spec.steps[step-1],tempo=clampTempo(acceptedCooldown/420),T=swingTimes(st,tempo,{},spec.lungeFrom);
+    const chained=this._swingNext?.weapon===kind?this._swingNext.step:1;this._swingNext=null;
+    const spec=PRIMARY_SWINGS[kind],step=Math.max(1,Math.min(spec.steps.length,Number(kind==='verge-cleaver'?visual.primaryMotion?.step:kind==='cinder-pike'?visual.primaryStep/* the pike keeps its own three-thrust counter (advancePrimaryCombo) */:chained)||1)),st=spec.steps[step-1],tempo=clampTempo(acceptedCooldown/420),T=swingTimes(st,tempo,{},spec.lungeFrom);
+    if(kind!=='verge-cleaver')visual.primaryStep=step; // the Close View pose's step (the pike's three thrusts; the daggers' cuts)
     const armor=armorGlyphBonus(this.save),boxing=now<(this.boxingUntil||0)?BRAWLER['shadow-boxing']:null,p=this.player;
     visual.durationMs=T.recovery;visual.meleeAction={v:3,kind,move:'swing',step,durationMs:T.recovery,contactMs:T.windEnd,tempo};
     p.attackUntil=p.meleeUntil=p.actionVisualUntil=now+T.recovery;p.meleeStrike=null; // the strike geometry is set at contact
     this.pendingMeleeContact={v:3,id:`melee-${(this.save.effectCounter=(this.save.effectCounter||0)+1)}`,weapon:kind,step,tempo,elapsedMs:0,lastNow:now,stopLeft:0,stopUsed:false,lunged:0,lungeDone:false,contacted:false,queued:false,hits:[],
       area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:geometry.dx,y:geometry.dy},
-      payload:{kind:'swing',profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(visual.primaryMotion||null),support:this.playerLevel()}};
+      payload:{kind:'swing',weaponKind:kind,primaryStep:step,profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(visual.primaryMotion||null),support:this.playerLevel()}};
   }
   // One tick of the live swing: advance its clock (held during hit-stop), carry the lunge, test the swept sector and the body
   // bubble during the active window, then chain a buffered press or end. One pass over the foes per active tick; the hit and
@@ -7931,28 +7936,34 @@ export class Game {
       else{const bx=p.x,by=p.y,w=this.glyphWorld(now),nx=p.x+q.aim.x*step,ny=p.y+q.aim.y*step;if(!w.canStand(nx,ny)||!this.moveGuardedCombatStep(nx,ny)||Math.hypot(p.x-bx,p.y-by)<step*.5)q.lungeDone=true;}
       q.lunged=want;
     }
-    // The swept hit: only what the blade crossed since the last tick, hilt to tip, plus the body bubble, once each per swing.
+    // The swept hit: only what each blade crossed since the last tick, hilt to tip from its own hand's pivot (a thrust: the
+    // stretch of line its tip crossed, a thin capsule), plus the body bubble, once each per swing and blade.
     if(cur>T.windEnd&&prev<T.activeEnd){
-      const a0=Math.max(prev,T.windEnd),a1=Math.min(cur,T.activeEnd),aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180;
-      const from=aim+damageAngle(st,q.contacted?a0:T.windEnd,T)*deg,to=aim+damageAngle(st,a1,T)*deg,contact=!q.contacted;q.contacted=true;
-      const hits=(this._swingHits||=[]),bubble=(this._swingBubble||=[]);hits.length=0;bubble.length=0;
-      const cx=p.x+.5,cy=p.y+.45,tip=Number(q.payload.profile.range)||1,width=mapWidth(this.map,this.area);
-      const test=(e,id)=>{if(!id||q.hits.includes(id))return;const extra=Math.max(0,enemyBodyRadius(e)-.38),r=extra+spec.foePad,ex=e.x+.5,ey=e.y+.45,inBubble=Math.hypot(ex-cx,ey-cy)<=spec.bubble+extra;
-        if(!inBubble&&!circleTouchesSector(ex,ey,r,cx,cy,spec.hilt,tip,from,to))return;
-        const range=Math.hypot(ex-cx,ey-cy),n=Math.ceil(range*4);for(let i=1;i<n;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))return;
-        if(q.hits.length<64)q.hits.push(id);hits.push(e);if(inBubble)bubble.push(e);};
-      for(const e of this.enemies)if(!e.dead&&!e.untargetable&&this.bodyReach(e))test(e,String(e.id));
-      for(const o of this.map.objects||[])if(o.kind==='npc'&&this.save.consequences.npcs[o.id]?.status!=='dead')test(o,'npc:'+o.id);
-      if(hits.length||contact){
-        const dealt=this.primaryStrike(now,q.aim,{committed:q.payload,swing:{kind:q.weapon,hits,bubble,share:st.share,contact,aim:q.aim}});
-        this.recordPrimaryConsequences(dealt||[]);
-        for(const e of bubble)if(!e.dead&&!e.boss&&!e.eliteId&&!artAnchored(e)){const kx=e.x+.5-cx,ky=e.y+.45-cy,k=Math.hypot(kx,ky),ux=k>.05?kx/k:q.aim.x,uy=k>.05?ky/k:q.aim.y;this.moveGrounded(e,ux*spec.knockback,uy*spec.knockback);} // the body bubble: knocked off the Wayfarer (along the facing when right on top)
-        if(hits.some(e=>e.kind!=='npc')&&!q.stopUsed&&this.pendingMeleeContact===q){q.stopUsed=true;q.stopLeft=st.hitStopMs;const v=p.attackVisual;p.attackUntil+=st.hitStopMs;p.meleeUntil+=st.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+st.hitStopMs;if(v?.meleeAction?.v===3)v.hitStopMs=(Number(v.hitStopMs)||0)+st.hitStopMs;
-          for(const e of hits)if(!e.dead&&e.kind!=='npc')e.hitStun=Math.max(e.hitStun||0,st.hitStopMs/1000);} // hit-stop: the swing and the struck foes hold
+      const a0=Math.max(prev,T.windEnd),a1=Math.min(cur,T.activeEnd),aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,contact=!q.contacted,first=q.contacted?a0:T.windEnd;q.contacted=true;
+      const cx=p.x+.5,cy=p.y+.45,tip=Number(q.payload.profile.range)||1,width=mapWidth(this.map,this.area),rx=-q.aim.y,ry=q.aim.x,blades=swingBlades(st);
+      const bubble=(this._swingBubble||=[]);bubble.length=0;let struck=false,first_=true;
+      for(let b=0;b<blades;b++){
+        const m=b?-1:1,side=(Number(st.side)||0)*m,ox=cx+rx*side,oy=cy+ry*side,key=b?'~2':'';
+        const from=aim+m*damageAngle(st,first,T)*deg,to=aim+m*damageAngle(st,a1,T)*deg,r0=st.thrust?(contact?spec.hilt:damageReach(st,a0,T)*tip):0,r1=st.thrust?damageReach(st,a1,T)*tip:0;
+        const hits=(this._swingHits||=[]);hits.length=0;
+        const test=(e,id)=>{if(!id||q.hits.includes(id+key))return;const extra=Math.max(0,enemyBodyRadius(e)-.38),r=extra+spec.foePad,ex=e.x+.5,ey=e.y+.45,inBubble=b===0&&Math.hypot(ex-cx,ey-cy)<=spec.bubble+extra;
+          if(!inBubble&&!(st.thrust?circleTouchesSegment(ex,ey,r+(spec.width||0),ox+q.aim.x*r0,oy+q.aim.y*r0,ox+q.aim.x*r1,oy+q.aim.y*r1):circleTouchesSector(ex,ey,r,ox,oy,spec.hilt,tip,from,to)))return;
+          const range=Math.hypot(ex-cx,ey-cy),n=Math.ceil(range*4);for(let i=1;i<n;i++)if(!tileOpen(this.map,width,cx+(ex-cx)*i/n,cy+(ey-cy)*i/n))return;
+          if(q.hits.length<64)q.hits.push(id+key);hits.push(e);if(inBubble)bubble.push(e);};
+        for(const e of this.enemies)if(!e.dead&&!e.untargetable&&this.bodyReach(e))test(e,String(e.id));
+        for(const o of this.map.objects||[])if(o.kind==='npc'&&this.save.consequences.npcs[o.id]?.status!=='dead')test(o,'npc:'+o.id);
+        if(hits.length||contact&&first_){
+          const dealt=this.primaryStrike(now,q.aim,{committed:q.payload,swing:{kind:q.weapon,hits,bubble:b===0?bubble:[],share:st.share,contact:contact&&first_,aim:q.aim}});first_=false;
+          this.recordPrimaryConsequences(dealt||[]);
+          if(hits.some(e=>e.kind!=='npc'))struck=true;
+          if(!q.stopUsed)for(const e of hits)if(!e.dead&&e.kind!=='npc')e.hitStun=Math.max(e.hitStun||0,st.hitStopMs/1000); // hit-stop: the struck foes hold with the swing
+        }
       }
+      for(const e of bubble)if(!e.dead&&!e.boss&&!e.eliteId&&!artAnchored(e)){const kx=e.x+.5-cx,ky=e.y+.45-cy,k=Math.hypot(kx,ky),ux=k>.05?kx/k:q.aim.x,uy=k>.05?ky/k:q.aim.y;this.moveGrounded(e,ux*spec.knockback,uy*spec.knockback);} // the body bubble: knocked off the Wayfarer (along the facing when right on top)
+      if(struck&&!q.stopUsed&&this.pendingMeleeContact===q){q.stopUsed=true;q.stopLeft=st.hitStopMs;const v=p.attackVisual;p.attackUntil+=st.hitStopMs;p.meleeUntil+=st.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+st.hitStopMs;if(v?.meleeAction?.v===3)v.hitStopMs=(Number(v.hitStopMs)||0)+st.hitStopMs;} // hit-stop: the swing holds once, on its first hit
     }
     if(this.pendingMeleeContact!==q)return;
-    if(q.queued&&(T.chain!=null?cur>=T.chain:cur>=T.recovery)){this.endSwing(q);this.attackAction='attack';try{this.primaryAttack(now);}finally{this.attackAction=null;}return;}
+    if(q.queued&&(T.chain!=null?cur>=T.chain:cur>=T.recovery)){if(T.chain!=null)this.noteSwingChain(q);this.endSwing(q);this.attackAction='attack';try{this.primaryAttack(now);}finally{this.attackAction=null;}return;}
     if(cur>=T.recovery)this.endSwing(q);
   }
   swingFoeAhead(q,spec){
@@ -7987,7 +7998,7 @@ export class Game {
   clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; }
   tickAttackBuffer(now = 0, input = null) {
     if (!(this.attackBufferUntil > 0)) return false;
-    const eligible=this.attackBufferToolUse?(this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)):this.closeViewAttackBufferEligible(now);
+    const eligible=this.attackBufferToolUse?((this.closeViewActionEligible()||this.fistsEquipped())&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)):this.closeViewAttackBufferEligible(now);
     if (now > this.attackBufferUntil || !eligible) { this.clearAttackBuffer(); return false; }
     if(this.toolUseBlocksPrimary())return false;
     if (now < (this.player.attackReadyAt || 0)) return false;
@@ -8019,14 +8030,14 @@ export class Game {
         profile,
         followCut ? echo.aim : swingCall ? swingCall.aim : this.player.meleeAim || this.save.lastAim,
       ),
-      daggers = !committed && profile.shape === "daggers"; // items.ts FOURFOLD_DAGGERS: two cuts a press, each `share` of a hit
+      daggerKind = profile.shape === "daggers", daggers = !committed && daggerKind; // items.ts FOURFOLD_DAGGERS: two cuts a press, each `share` of a hit (an echo); a swing (melee-swing.ts) cuts with one hand a step
     this.player.meleeStrike = { ...geometry };
     const priorAttackVisual = this.player.attackVisual;
     const attackVisual = !echo && stampAttackVisual(this.player, "melee", ACTION_MOTION.meleeMs, { x: geometry.dx, y: geometry.dy });
     if (attackVisual) {
       const primary = this.save.equipment.primary;
       attackVisual.weaponKind = primary?.id === "primary-cinder-pike" || primary?.name === "Cinder Pike" ? "cinder-pike"
-        : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(primary) ? FOURFOLD_DAGGERS.closeView.placeholder /* Close View roster hook: the daggers wear the Salvage Blade until their own model lands */ : "salvage-blade";
+        : primary?.id === "primary-verge-cleaver" || primary?.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(primary) ? FOURFOLD_DAGGERS.closeView.model /* a dagger in each hand (close-view-models.ts) */ : "salvage-blade";
       const logicalNow = now - (this.presentationPausedMs || 0);
       const newCleaverMotion=attackVisual.weaponKind==='verge-cleaver'&&(!!swingKind||this.attackAction==='attack'&&this.closeViewActionEligible()); // the weighted swing: always the clocked three-step combo
       const primaryStep = attackVisual.weaponKind === 'verge-cleaver'
@@ -8080,8 +8091,8 @@ export class Game {
       this.astralPlayerHit(e,Math.max(0,hpBefore-Math.max(0,e.hp)));
       if (dealt > 0) { this.tesseractHitHeal("melee", now); artMeleeHit(this); } // a Tesseract's health on a melee hit; weapon-arts.ts: Transpose's seal grows
       e.hitFlash = scattered ? 0 : 0.18;
-      e.recoil = scattered ? 0 : daggers ? FOURFOLD_DAGGERS.recoil : 0.2;
-      if (!scattered) e.hitStun = Math.max(e.hitStun || 0, daggers ? FOURFOLD_DAGGERS.stun[e.boss || e.eliteId ? "boss" : "ordinary"] : e.boss || e.eliteId ? 0.12 : 0.22); // the daggers: a slight stagger a cut (the stagger governor still holds)
+      e.recoil = scattered ? 0 : daggerKind ? FOURFOLD_DAGGERS.recoil : 0.2;
+      if (!scattered) e.hitStun = Math.max(e.hitStun || 0, daggerKind ? FOURFOLD_DAGGERS.stun[e.boss || e.eliteId ? "boss" : "ordinary"] : e.boss || e.eliteId ? 0.12 : 0.22); // the daggers: a slight stagger a cut (the stagger governor still holds)
       if (e.hp <= 0) {
         e.dead = true;
         this.defeatEnemy(e);
@@ -8099,7 +8110,7 @@ export class Game {
       this.projectiles.push({ id: `crescent-${now}`, x: this.player.x + .5 + geometry.dx * .4, y: this.player.y + .45 + geometry.dy * .4, dx: geometry.dx, dy: geometry.dy, speed: 9, life: .55, damage: Math.max(1, Math.round((profile.damage + (committed?committed.meleeBonus:this.weaponBonus())) * (1 + (committed?committed.attackDamage:armorGlyphBonus(this.save).attackDamage)) * .7)), damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 6, glyphHost: "melee", crescent: true /* release 341: armor Volatile, as on the swing */ });
     const plan = !isEcho && !followCut && contact && echoPlan(glyphs);
     if (plan) {
-      const memory=committed?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:'verge-cleaver',primaryMotion:structuredClone(committed.primaryMotion),support:committed.support}:attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
+      const memory=committed&&committed.weaponKind!=='fourfold-daggers'/* the daggers' echo is drawn as before (no memory) */?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:committed.weaponKind||'verge-cleaver',...(committed.primaryMotion?{primaryMotion:structuredClone(committed.primaryMotion)}:{primaryStep:Number(committed.primaryStep)||1}),support:committed.support}:!committed&&attackVisual&&['cinder-pike','verge-cleaver'].includes(attackVisual.weaponKind)?{x:geometry.x,y:geometry.y,dx:geometry.dx,dy:geometry.dy,range:profile.range,arc:profile.arc,shape:profile.shape,weaponKind:attackVisual.weaponKind,...(attackVisual.primaryMotion?{primaryMotion:structuredClone(attackVisual.primaryMotion)}:{primaryStep:attackVisual.primaryStep||1}),support:this.playerLevel()}:null;
       (this.glyphTimers ||= []).push({ at: now + plan.delay, kind: "strike", share: plan.share * extra, echoVisual:memory });
     }
     this.reconcileConsequences();
@@ -9993,7 +10004,7 @@ export class Game {
     const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0));
     const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (finisher ? F.finisher : 1) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
-    const delayed=this.closeViewActionEligible()&&(this.attackAction==='attack'||this._fistInputUpdate===true);
+    const delayed=this.attackAction==='attack'||this._fistInputUpdate===true; // Tim 2026-11-14: the Close View interior contact delay, in every area and both views
     if(!delayed)this.effects.push(effect);
     if (step === 1) this.save.fistOpeningHand = fistLead; // kept for older readers: always the right now
     this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead }; // the chain loops: after the last step the cross comes next
@@ -10752,7 +10763,7 @@ export class Game {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
       const plunged = this.airAttack(now); // jump attacks (2026-11-12)
-      const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&this.closeViewActionEligible()&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
+      const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&(this.closeViewActionEligible()||this.fistsEquipped()/* the fists' contact delay runs everywhere */)&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
       if(plunged){/* the press is the jump attack's */}
       else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
       else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;

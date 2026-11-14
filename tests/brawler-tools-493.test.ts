@@ -44,7 +44,7 @@ test('Shadow Boxing works with the Iron Fists: a longer rush, harder punches tha
   t += 50; plain.g.update(.05, press('attack'), t); assert.equal(plain.g.player.x, 10, 'beyond the plain rush: in place');
   const box = arena([['foe', 17, 10]], (s) => { s.equipment.primary = gear('Iron Fists'); }); let u = 1000; box.g.update(.05, idle, u);
   box.g.castSpell('shadow-boxing'); box.g.player.hp = 50;
-  u += 50; box.g.update(.05, press('attack'), u); u += 50; box.g.update(.05, idle, u);
+  u += 50; box.g.update(.05, press('attack'), u); u += 50; box.g.update(.05, idle, u); u += 100; box.g.update(.05, idle, u); // 2026-11-14: the punch lands after the fists' contact delay
   assert.ok(box.g.player.x > 14, `boxing rushes farther (${box.g.player.x})`); assert.ok(box.g.enemies[0].hp < 50000); assert.ok(box.g.player.hp > 50, 'and heals');
 });
 

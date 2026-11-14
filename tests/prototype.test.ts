@@ -1885,6 +1885,7 @@ test("explicit melee direction overrides closer automatic targets", () => {
     { id: "west", kind: "ashling", x: 9, y: 10, hp: 30, maxHp: 30 },
   ];
   g.primaryAttack(1, { x: -1, y: 0 });
+  for (let t = 9; g.pendingMeleeContact && t < 2000; t += 8) g.tickMeleeSwing(t); // 2026-11-14: the pike's thrust lands after its draw-back (melee-swing.ts)
   assert.equal(g.enemies[0].hp, 30);
   assert.ok(g.enemies[1].hp < 30);
 });

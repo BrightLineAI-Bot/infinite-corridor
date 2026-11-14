@@ -28,7 +28,10 @@ export const PRIMARY_PROFILES={'primary-iron-fists':{shape:'cone',range:1.3,arc:
 // hit (the profile's damage plus the weapon bonus), so two on one foe come to about one normal hit; each staggers a little
 // (`stun`, `recoil`; the stagger governor still applies). Obtained as the level-`milestone.level` milestone gear and, from a
 // separate seeded stream, as `loot.share` of the generated weapons that are not Iron Fists or a Salvage Blade.
-export const FOURFOLD_DAGGERS={name:'Fourfold Daggers',key:'primary-fourfold-daggers',property:'paired',cuts:2,gapMs:80,angle:25,offset:.3,half:10,inner:.55,share:.55,stun:{ordinary:.12,boss:.06},recoil:.1,loot:{share:.2},milestone:{level:12,power:10},closeView:{placeholder:'salvage-blade'}};
+// 2026-11-14: a press is now one weighted cut from one hand (melee-swing.ts PRIMARY_SWINGS['fourfold-daggers']: right, left,
+// then both crossing in an X); `stun` and `recoil` still apply to each cut. `cuts`, `gapMs`, `angle`, `offset`, `half`, `inner`
+// and `share` now shape only the Echo glyph's replay (daggerCutHits). `closeView.model`: a dagger drawn in each hand.
+export const FOURFOLD_DAGGERS={name:'Fourfold Daggers',key:'primary-fourfold-daggers',property:'paired',cuts:2,gapMs:80,angle:25,offset:.3,half:10,inner:.55,share:.55,stun:{ordinary:.12,boss:.06},recoil:.1,loot:{share:.2},milestone:{level:12,power:10},closeView:{model:'fourfold-daggers'}};
 export const isFourfoldDaggers=(item)=>!!item&&(item.id===FOURFOLD_DAGGERS.key||item.name===FOURFOLD_DAGGERS.name);
 // The Quandrix Staff (Tim, 2026-11-13): a magic primary that casts slow spectral hands (quandrix-staff.ts holds its rules and
 // numbers). The item's identity lives here, as the daggers' does: a level-16 milestone, and `loot.share` of the generated
