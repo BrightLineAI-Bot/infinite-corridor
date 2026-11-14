@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r949 (`8620d2d2e96d`); production serves `r949-8620d2d2e96d` (published 2026-11-13 after a Fable review of r948 to r949). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r950 (`399b10eae9b6`); production serves `r949-8620d2d2e96d` (published 2026-11-13 after a Fable review of r948 to r949). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 950 | Claude | claude/tower-fixes | Upwell towers: a raised door's floating steps (and the Wayfarer on them) draw over the tower face in Standard View; tower wall creatures no longer take the regional difficulty twice (an Eave Gargoyle far out had ~33x health, ~15x damage); old saves mended once | In flight. |
+| 951 | Claude | claude/weighty-cleaver | Verge Cleaver: three weighted steps (wind-up, step in, strike, follow-through) with hits only in the sector the blade crosses plus a body bubble, short hit-stop, no camera shake; identical in every area and both views; DPS kept; pending melee record v3 | In flight. |
+| 950 | Claude | claude/tower-fixes | Upwell towers: a raised door's floating steps (and the Wayfarer on them) draw over the tower face in Standard View; tower wall creatures no longer take the regional difficulty twice (an Eave Gargoyle far out had ~33x health, ~15x damage); old saves mended once | Merged as `399b10eae9b6` (#617). |
 | 949 | Claude | claude/compass-north | The compass dial stays north-up in both views; the objective needle points at the map bearing; in Close View a small rim marker shows the way the Wayfarer faces (replaces the 2026-11-11 dial that turned with the facing) | Merged as `8620d2d2e96d` (#616). Published 2026-11-13. |
 | 948 | Claude | claude/no-select-hud | Page-wide user-select: none and no long-press callout for the game UI (buttons, HUD, action diamond, menus); text inputs and contenteditable stay selectable | Merged as `c8651a95a1b1` (#615). |
 | 947 | Claude | claude/ki-slam-pause | r946 review note: kiSlamJump added to GAME_CLOCKS so a pause or app-background inside the Ki Blast leap no longer turns the slam into a plain plunge | Merged as `4da3a989e6d9` (#614). |
