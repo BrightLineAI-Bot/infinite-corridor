@@ -148,7 +148,8 @@ const playerOrrery = [
 ];
 
 // Presentation silhouettes only. Gameplay reach remains PRIMARY_PROFILES in items.ts.
-// Both recipes begin at the existing right-hand grip (.17,-.25,.79).
+// Both recipes begin at the existing right-hand grip (.17,-.25,.79). This bronze pike is now the native fallback's only
+// (playerCinderPike, with its pinned pose digests); the imported hero holds heroCinderPike (2026-11-14).
 const cinderPike = [
   block(.17,-.25,1.43,.026,.026,.66,bronze,-2,0,1.19),
   part(taper,.17,-.25,2.19,.068,.052,.16,visor,-2,0,1.19),
@@ -188,7 +189,10 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   // length, a narrow cross guard, a diamond blade to a needle point (a third of the Cleaver's length).
   dagger: Object.freeze({ grip: Object.freeze([.700, .800]), gripRadius: .018, pommel: Object.freeze([.672, .700]), pommelRadius: .022,
     guard: Object.freeze({ z: Object.freeze([.800, .822]), corner: Object.freeze([.016, .072]) }),
-    blade: Object.freeze({ base: .822, baseWidth: .034, baseThick: .013, shoulder: .90, width: .040, thick: .014, tip: 1.19 }) }),
+    blade: Object.freeze({ base: .822, baseWidth: .034, baseThick: .013, shoulder: .90, width: .040, thick: .014, tip: 1.19 }),
+    // The inlaid jewel (2026-11-14): `at` of the way from the blade's base to its shoulder, `length` and `width` its half-extents
+    // along and across the blade, `rise` how far its point stands proud of the ridge.
+    jewel: Object.freeze({ at: .5, length: .022, width: .014, rise: .006 }) }),
   // Carbine (the Spark Coil's upgraded form, 2026-11-12): a compact carbine with a long barrel. The bore axis rides just above
   // the fist (-X is up); a short stock behind the grip, a gunmetal receiver, the barrel, a cyan coil wound round its root with a
   // collar ahead of it, and a muzzle with a lit face at `muzzle[1]` (the shot's origin, TOOL_MUZZLE_LOCAL.carbine).
@@ -198,8 +202,17 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   // Quandrix Staff (2026-11-13): a long dark shaft through the fist with a wrapped grip, a brass collar, three brass prongs and
   // a lit arcane crystal between them at the head (the hands' colour). The head lies toward -Z (past the pommel side) and the
   // short butt toward +Z: the primary hand carries a blade point down, so the staff is carried head up and casts butt first.
-  staff: Object.freeze({ butt: 1.24, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([-.18, -.24]), collarRadius: .03,
-    prongTip: -.48, prongSpread: .055, crystal: Object.freeze([-.28, -.42, -.55]), crystalRadius: .045 }),
+  // Shortened (Tim, 2026-11-14: "a little bit shorter; it's really long right now") from 1.79 (1.47 world, taller than the
+  // 1.38 hero) to `length` 1.47 (1.21 world, about his shoulder), 18% shorter: the head slides .24 toward the fist and the butt
+  // loses .08. `length` is butt to crystal point; presentation only (its hands, range and damage are quandrix-staff.ts).
+  staff: Object.freeze({ length: 1.47, butt: 1.16, grip: Object.freeze([.70, .90]), gripRadius: .024, shaftRadius: Object.freeze([.019, .015]), collar: Object.freeze([.06, 0]), collarRadius: .03,
+    prongTip: -.24, prongSpread: .055, crystal: Object.freeze([-.04, -.18, -.31]), crystalRadius: .045 }),
+  // Cinder Pike (Tim, 2026-11-14: "borrow the model from the staff... the same length as the Quandrix Staff is right now, but be
+  // a pike. It could be wooden."): the staff's slim round shaft in wood, `length` 1.79 (the staff's length before it was shortened)
+  // from butt to point. The rear hand holds it at the canonical .79 grip with `trail` of butt behind; ahead, a small iron socket
+  // collar and a leaf-shaped iron point, widest `leaf.wide` above its base and faceted along a midrib, its lower facets ember-lit.
+  pike: Object.freeze({ length: 1.79, trail: .30, shaftRadius: Object.freeze([.019, .016]), collar: .05, collarRadius: .024,
+    leaf: Object.freeze({ length: .24, wide: .095, width: .046, rib: .013 }) }),
 });
 const RGB = c => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 // tris: [[point, normal], x3][]. Mesh rows follow part(): position minus (px=0, pz=1.19), normal, RGB.
@@ -331,6 +344,24 @@ const heroCarbine = (() => {
     heldTube([[X, Y, F.collar[0], F.collarRadius], [X, Y, F.collar[1], F.collarRadius]], 6, C.body),
     heldTube([[X, Y, F.muzzle[0], F.muzzleRadius], [X, Y, F.muzzle[1], F.muzzleRadius]], 6, C.body, { caps: 1 }),
     heldFacets(face, C.coil, () => [0, 0, 1]),
+  ]);
+})();
+// The Cinder Pike for the imported hero: 26 triangles, no more than the bronze pike it replaces. A four-sided wooden shaft
+// (its butt capped) from the butt through both hands, a four-sided iron socket collar, and an 8-facet leaf point whose lower
+// facets (from the collar to the widest) glow ember, the cinder. Its axis is the recipe +Z line through the canonical grip,
+// so both pike hands close on the shaft.
+export const CINDER_PIKE_COLOURS = Object.freeze({ shaft: 0x7a5a3c, iron: 0x8d918f, collar: 0x3a4246, ember: 0xf3a55c });
+const heroCinderPike = (() => {
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.pike, C = CINDER_PIKE_COLOURS, X = .17, Y = -.25, L = F.leaf;
+  const butt = .79 - F.trail, tip = butt + F.length, base = tip - L.length, neck = base - F.collar, wide = base + L.wide;
+  // The leaf: base and point on the axis, its two edges at the widest level, a midrib ridge either side of the blade.
+  const b = [X, Y, base], p = [X, Y, tip], e1 = [X + L.width, Y, wide], e2 = [X - L.width, Y, wide], r1 = [X, Y + L.rib, wide], r2 = [X, Y - L.rib, wide];
+  const away = c => [c[0] - X, c[1] - Y, 0];
+  return Object.freeze([
+    heldTube([[X, Y, butt, F.shaftRadius[0]], [X, Y, neck, F.shaftRadius[1]]], 4, C.shaft, { caps: 1 }),
+    heldTube([[X, Y, neck, F.collarRadius], [X, Y, base, F.collarRadius * .75]], 4, C.collar),
+    heldFacets([[b, e1, r1], [e2, b, r1], [b, r2, e1], [e2, r2, b]], C.ember, away),
+    heldFacets([[e1, p, r1], [p, e2, r1], [e1, r2, p], [p, r2, e2]], C.iron, away),
   ]);
 })();
 // The Quandrix Staff (quandrix-staff.ts): 92 triangles (the largest held gear is 96). The crystal is 0xb896cf, a lit actor colour (close-view-gl.ts emissive),
@@ -692,8 +723,10 @@ const heroSalvageBlade = (() => {
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-// Fourfold Daggers for the imported hero: 36 triangles a dagger, one in each hand (writeCloseViewHeroGear draws it on both
-// sockets), so the pair is 72, inside the largest held gear's 96. Same palette as the other held blades.
+// Fourfold Daggers for the imported hero: 44 triangles a dagger, one in each hand (writeCloseViewHeroGear draws it on both
+// sockets), so the pair is 88, inside the largest held gear's 96. Reskinned (Tim, 2026-11-14): white blades, each with a green
+// jewel inlaid on both faces, centred between the guard and the blade's shoulder: a rhombus raised to a point (4 facets a face).
+export const DAGGER_COLOURS = Object.freeze({ blade: 0xeeeeea, jewel: 0x2fc46a });
 const heroDagger = (() => {
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.dagger, B = F.blade, G = F.guard, X = .17, Y = -.25;
   const ring = (z, w, t) => [[X + t, Y, z], [X, Y + w, z], [X - t, Y, z], [X, Y - w, z]], tip = [X, Y, B.tip];
@@ -702,14 +735,21 @@ const heroDagger = (() => {
   const wrap = [], n = 4, R = F.gripRadius, ringAt = (z, turn) => Array.from({ length: n }, (_, i) => { const q = (i + .5 + turn) * 2 * Math.PI / n; return [X + R * Math.cos(q), Y + R * Math.sin(q), z]; });
   const lo = ringAt(F.grip[0], 0), hi = ringAt(F.grip[1], .5);
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; wrap.push([lo[i], lo[j], hi[j]], [lo[i], hi[j], hi[i]]); }
+  // The jewel sits on the blade's ridge (each broad face is the +-X side, rising to the thickness `t` on the centre line).
+  const J = F.jewel, jz = B.base + (B.shoulder - B.base) * J.at, k = (jz - B.base) / (B.shoulder - B.base), w = B.baseWidth + (B.width - B.baseWidth) * k, t = B.baseThick + (B.thick - B.baseThick) * k, jewel = [];
+  for (const side of [1, -1]) {
+    const at = (dy, dz, lift) => [X + side * (t * (1 - Math.abs(dy) / w) + lift), Y + dy, jz + dz], top = at(0, J.length, .0008), bottom = at(0, -J.length, .0008), left = at(J.width, 0, .0008), right = at(-J.width, 0, .0008), crown = at(0, 0, J.rise);
+    jewel.push([top, left, crown], [left, bottom, crown], [bottom, right, crown], [right, top, crown]);
+  }
   return Object.freeze([
-    heldFacets(blade, 0xc9ccc8, c => [c[0] - X, c[1] - Y, 0]),
+    heldFacets(blade, DAGGER_COLOURS.blade, c => [c[0] - X, c[1] - Y, 0]),
+    heldFacets(jewel, DAGGER_COLOURS.jewel, c => [c[0] - X, 0, 0]),
     heldTube([[X, Y, G.z[0], G.corner[0], G.corner[1]], [X, Y, G.z[1], G.corner[0], G.corner[1]]], 4, WAYFARER_GUNMETAL, { caps: 3, flat: true, phase: 0 }),
     heldFacets(wrap, WAYFARER_LEATHER, c => [c[0] - X, c[1] - Y, 0]),
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[1], F.pommelRadius]], 4, brass, { flat: true }),
   ]);
 })();
-const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'fourfold-daggers':heroDagger,'salvage-blade':heroSalvageBlade,'cinder-pike':cinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
+const HERO_GEAR = Object.freeze({melee:heroSalvageBlade,'fourfold-daggers':heroDagger,'salvage-blade':heroSalvageBlade,'cinder-pike':heroCinderPike,'verge-cleaver':heroVergeCleaver,'shovel-dig':wayfarerToolMaterials(shovelGear),'iron-shovel-dig':wayfarerToolMaterials(shovelGear),fist:fistGauntlet,'fistCharge':fistGauntlet,emitter:wayfarerToolMaterials(emitterGear),hammer:wayfarerToolMaterials(playerHammer.slice(-2)),mirage:playerMirage.slice(-2),'orrery-tap':playerOrrery.slice(-3),'orrery-release':playerOrrery.slice(-3),'rift-bombard':wayfarerToolMaterials(riftBombard),'great-sweep':wayfarerToolMaterials(greatSweep),blunderbuss:wayfarerToolMaterials(blunderbuss),'lumen-spindle':wayfarerToolMaterials(lumenSpindle),'spark-coil':wayfarerToolMaterials(sparkCoil),'needle-caster':wayfarerToolMaterials(needleCaster),carbine:heroCarbine,'quandrix-staff':heroQuandrixStaff});
 // Suit armor (124 solid-plate triangles) + the largest held gear (96). The suit's helmet and pack
 // (kit stream) take the hero past one 256-triangle actor slot, so the shared model buffer keeps a
 // fixed HERO_SLOT_EXTRA_TRIANGLES reservation for the imported hero.
