@@ -14,7 +14,7 @@ import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeView
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
-import { dronePos } from "./affixes.ts";
+import { dronePos, phaseShielded } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
@@ -477,9 +477,11 @@ export const CLOSE_VIEW = Object.freeze({
   // solid at once), so one walking out of the band thins into the fog smoothly, never pops. Farther creatures still materialise
   // at the fog's edge exactly as before. One flag per creature (kept with
   // its diagnostics record); no per-frame allocation. Only design makes a creature see-through (spectral kinds, illusions, a
-  // wall-phase, a departure, burrowing): the Phase Shield's ghosting and a Cinder Seraph's aloft fade are the standard view's
-  // cues and are not drawn in Close View (the shaman's tether and the seraph's height carry them there).
-  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8, solid: Object.freeze({ near: 4.5, engage: 7, hold: 1, ease: 5 }) }),
+  // wall-phase, a departure, burrowing, a Cinder Seraph aloft for its dive, as in the standard view) and a shaman's ward.
+  // `ward` (Tim, 2026-11-14: a warded creature stays somewhat spectral in Close View, a cue beyond the purple ring): a creature
+  // under the Phase Shield draws at `alpha`, and keeps it for `holdMs` after the ward last held, so a creature on the edge of the
+  // shaman's 11-tile ward never flickers. The solid band never overrides a ward (it only spares the fog's edge).
+  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8, solid: Object.freeze({ near: 4.5, engage: 7, hold: 1, ease: 5 }), ward: Object.freeze({ alpha: .6, holdMs: 500 }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -2253,7 +2255,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const meshTrees = useGL && plainWorld && g.area === "overworld" && closeViewOutdoorAvailable(); // standing trees are solids there (close-view-outdoor.ts), not cards
   const meshProps = useGL && (meshTrees || !(outdoor && flatWorld)) && closeViewPropsAvailable(); // and so are chests, caches, shrines, standing stones... (OUTDOOR.props)
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
-    if (d.enemy) noteSolidity(d.enemy, 'culled', 0);
+    if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); }
     const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer && !kept) continue;
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
@@ -2316,7 +2318,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     else if (packed) { if (boardPW[it] && (boardFoe[it] || draws[itemRef[it]] === capturedPlayer)) { // a creature or the Wayfarer stands on a soft shadow (objects carry their own)
         const Cs = CLOSE_VIEW.contact, k = boardK[it], rxs = Cs.radius * boardScale[it] * k, rys = Math.max(1, Math.min(rxs * Cs.flat, rxs * hc * k / F)); // the floor's foreshortening at that depth
         ctx.globalAlpha = Cs.alpha * Math.max(0, Math.min(1, boardB[it])); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(boardX[it], boardY[it] - rys * .35, rxs, rys, 0, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1;
-        if (boardFoe[it] && foeWindingUp(boardFoe[it])) windupCue(ctx, it, rxs, rys, now, reduce); }
+        if (boardFoe[it] && foeCueing(boardFoe[it])) windupCue(ctx, it, rxs, rys, now, reduce); }
       drawBillboard(ctx, it); if (boardFoe[it]?.hitFlash > 0) hitFlashCue(ctx, it, boardFoe[it]); } }
   // creatures a wall hides from the camera: drawn again over the walls, faint (eased in and out, never popping)
   if (packed) for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || !boardFoe[it] || !(boardOcc[it] > .01)) continue;
@@ -2381,7 +2383,8 @@ export function closeViewCreatureFog(depth, fogNear, fogFar) {
 // opacity of a spectral kind. Environment visibility (closeViewActorEnvironmentAlpha) multiplies this.
 export function closeViewCreatureIntrinsicAlpha(foe) {
   const p = foe ? actorProfile(foe) : null; if (!p) return 1;
-  return Math.max(0, Math.min(1, designedAlpha(foe, p, false) * (p.spectral ? CLOSE_VIEW.creatures.spectralAlpha : 1)));
+  const r = SOLIDITY.get(foe), ward = r && r.wardAt > -Infinity ? r.ward : phaseShielded(foe) ? CLOSE_VIEW.creatures.ward.alpha : 1;
+  return Math.max(0, Math.min(1, designedAlpha(foe, p, true) * ward * (p.spectral ? CLOSE_VIEW.creatures.spectralAlpha : 1)));
 }
 export function closeViewActorEnvironmentAlpha(capture, lit, fog, foreground = false) {
   const visibility = 1 - Math.max(0, Math.min(1, Number.isFinite(fog) ? fog : 0));
@@ -2501,7 +2504,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
     const p = g.player, wasFacing = p.facing, player = d === capturedPlayer, who = player ? p : boardFoe[it] || d.object, wx = who ? who.x : d.x, wy = who ? who.y : d.y, snx = Math.round(wx * s) / s, sny = Math.round(wy * s) / s;
     const sx0 = (snx + .5 - hw) * s, sy0 = (sny + .82 - top) * s; ac.setTransform(q, 0, 0, q, x - sx0 * q, Y0 + y - sy0 * q); // the closures draw in raw world pixels
     if (who) { who.x = snx; who.y = sny; } if (player) p.facing = facing;
-    if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1 && !d.enemy) ac.globalAlpha = d.alpha; /* a creature's capture alpha is the Phase Shield's standard-view ghosting: solid in Close View */
+    if (d.lift && !interiorTerrain(g.map)) ac.translate(0, -d.lift * s); if ((d.alpha ?? 1) < 1 && !d.enemy) ac.globalAlpha = d.alpha; else if (d.enemy) { const wa = SOLIDITY.get(d.enemy)?.ward ?? 1; if (wa < 1) ac.globalAlpha = wa; } /* a creature's capture alpha is the standard view's Phase Shield (.5): Close View holds its own steadier ward (CLOSE_VIEW.creatures.ward) */
     const art = foe && CLOSE_VIEW_HOOKS.art[foe.kind]; // (boardFoe is written afresh for every item each frame)
     // phase 2: a creature with close-view art draws itself, from the camera's side (view: where it stands relative to the camera)
     if (!foe && !player && !residual && !d.nativeAux && d.object) quietCardText(ac); // a creature's status words (BLOCKED, a pack's name) stay; a place's or a person's name does not
@@ -2520,7 +2523,14 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // opacity: 'model' (a native body), 'beast' (a skinned body on the beast rig), 'board' (its card) or 'none' (no room on the
 // card atlas). One small record per creature, kept with it; nothing is allocated per frame.
 const SOLIDITY = new WeakMap();
-const solidityOf = (foe) => { let r = SOLIDITY.get(foe); if (!r) { r = { path: "", alpha: 0, frame: -1, near: false, engaging: false, d: Infinity, w: 0, seen: -2, body: -2 }; SOLIDITY.set(foe, r); } return r; };
+const solidityOf = (foe) => { let r = SOLIDITY.get(foe); if (!r) { r = { path: "", alpha: 0, frame: -1, near: false, engaging: false, d: Infinity, w: 0, seen: -2, body: -2, wardAt: -Infinity, ward: 1 }; SOLIDITY.set(foe, r); } return r; };
+// CLOSE_VIEW.creatures.ward: a warded creature's Close View opacity this frame (`ward.alpha` while warded and for `ward.holdMs`
+// after, else 1), held in its record. `nowMs` is the render clock. Exported for tests.
+export function closeViewCreatureWard(foe, nowMs) {
+  if (!foe || typeof foe !== "object") return 1; const W = CLOSE_VIEW.creatures.ward, r = solidityOf(foe);
+  if (phaseShielded(foe)) r.wardAt = nowMs; const since = nowMs - r.wardAt;
+  r.ward = since >= 0 && since < W.holdMs ? W.alpha : 1; return r.ward;
+}
 function noteSolidity(foe, path, alpha) {
   if (!foe || typeof foe !== "object") return; const r = solidityOf(foe);
   r.path = path; r.alpha = alpha; r.frame = closeViewStats.frames; if (path === 'model') r.body = r.frame;
@@ -2576,6 +2586,8 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
+// The glow cue: winding up, or an elite's gravity module winding up (its body stays drawn through it; CREATURE_POSE.elite).
+const foeCueing = (e) => foeWindingUp(e) || e.eliteWindup > 0;
 const CUE = { glow: null, ao: null, failed: false, ring: `rgb(${CLOSE_VIEW.cues.glowRGB})` };
 function cueCanvases() {
   if (CUE.glow || CUE.failed) return; const Cu = CLOSE_VIEW.cues, M = CLOSE_VIEW.material.ao, g = makeCanvas(), gx = g?.getContext?.("2d"), a = makeCanvas(), ax = a?.getContext?.("2d"); if (!gx || !ax) { CUE.failed = true; return; }
@@ -3404,6 +3416,23 @@ export function stillworksWalkerRigPose(map, walker) {
   const blend = pack.phase === 'windup' ? 1 - remaining : remaining;
   return { gesture: blend * blend * (3 - 2 * blend), aim, phase: pack.phase, sequence: pack.seq };
 }
+// Creature root motion (close-view-models.ts CREATURE_POSE): which attack a creature is making, and that attack's real reach in
+// tiles (a lunge never travels past CREATURE_POSE.reachShare of it). A pack module's own range; an ordinary melee pattern's
+// threat range while it winds up and its strike geometry's range once it lands; a ranged creature's range. Read-only.
+export function closeViewRootAttack(who, monsterAction = null) {
+  if (!who || typeof who !== 'object') return '';
+  const s = monsterAction?.semantic?.action;
+  if (typeof s === 'string' && s) return s;
+  return who.meleePhase?.id || who.strikeGeometry?.patternId || (who.range >= 2.5 ? 'ranged' : '');
+}
+export function closeViewRootReach(who, id) {
+  if (!who || typeof who !== 'object') return 0;
+  const m = typeof id === 'string' && Object.hasOwn(ATTACK_MODULES, id) ? ATTACK_MODULES[id].range : null;
+  if (m && m[1] > 0) return m[1];
+  if (who.threatRange > 0) return who.threatRange;
+  if (who.strikeGeometry?.range > 0) return who.strikeGeometry.range;
+  return who.range > 0 ? who.range : 0;
+}
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
   const semantic = actorPresentation(who)?.action === 'pack' ? packActionPresentation(who, ATTACK_MODULES, BOSS_PACE.windup, now) : null;
@@ -3789,6 +3818,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       actionFamily: presentation?.stagger ? null : monsterAction?.semantic?.family,
       actionPhase: presentation?.stagger ? 'stunned' : monsterAction?.semantic?.phase,
       actionProgress: monsterAction?.semantic?.progress || 0,
+      // creature root motion (CREATURE_POSE): the attack, its reach, the elite gravity clocks and the Lantern's stillness clock
+      rootAttack: who === player ? '' : closeViewRootAttack(who, monsterAction),
+      attackReach: who === player ? 0 : closeViewRootReach(who, closeViewRootAttack(who, monsterAction)),
+      eliteWindup: who === player ? 0 : Number(who.eliteWindup) || 0, eliteActive: who === player ? 0 : Number(who.eliteActive) || 0,
+      stillness: who === player || who.pack?.attack ? 0 : Number(who.pack?.stillT) || 0,
       alpha: Math.max(0, Math.min(1, (who === player ? d.alpha ?? 1 : 1) * (who === player ? 1 - (1 - (reduce ? CLOSE_VIEW_SHADOW_FORMS.wraith.reducedAlpha : CLOSE_VIEW_SHADOW_FORMS.wraith.alpha)) * wraith : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       shadow: who === player && wraith > .5, charge: who === player ? state.shadowDash.charge : 0,
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
@@ -4346,7 +4380,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     }
     break;
   }
-  for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeWindingUp(foe)) continue;
+  for (let oi = 0; oi < n; oi++) { const it = order[oi]; const foe = boardFoe[it]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it)) || !foe || !foeCueing(foe)) continue;
     const sc = boardScale[it], X = boardWX[it], Y = boardWY[it], b = Math.max(0, Math.min(1, boardB[it])) * (MODEL_STATE.admitted.has(it) ? closeViewCreatureIntrinsicAlpha(foe) : 1), pulse = reduce ? .5 : .5 + .5 * Math.sin(now / Cu.pulseMs * 6.2832), a = (Cu.glow + (Cu.glowPeak - Cu.glow) * pulse) * b, hs = A.halfWidth * sc * 1.1, zc = A.height * .45 * sc;
     room(6); DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc - hs, 1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1);
     DV(X - RX * hs, Y - RY * hs, zc - hs, -1, -1, 2, a, 0, 1); DV(X + RX * hs, Y + RY * hs, zc + hs, 1, 1, 2, a, 0, 1); DV(X - RX * hs, Y - RY * hs, zc + hs, -1, 1, 2, a, 0, 1); }

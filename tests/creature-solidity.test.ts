@@ -4,7 +4,8 @@
 // (8.5 tiles of camera depth on the low tier), and the camera stands about four tiles behind the Wayfarer, so a creature a few
 // tiles past her took the creature fog's edge band and was dithered; walking round her it faded in and out. Now a creature near
 // her, or engaging her, is solid (CLOSE_VIEW.creatures.solid, with hysteresis); farther creatures materialise as before. Only
-// design makes a creature see-through, and the Phase Shield's ghosting and a Cinder Seraph's aloft fade stay in the standard view.
+// design makes a creature see-through. Tim's review the same day: a shaman-warded creature stays somewhat spectral in Close View
+// (CLOSE_VIEW.creatures.ward, held .5 s so the ward's edge never flickers), and a Cinder Seraph keeps its translucent dive.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
@@ -15,7 +16,7 @@ import { actorPresentation, ACTOR_ALPHA } from '../src/actor-presentation.ts';
 import { PHASE_SHIELD } from '../src/affixes.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewCamera, closeViewCreatureFog, closeViewCreatureFade, closeViewCreatureIntrinsicAlpha,
-  closeViewCreatureSolidity, closeViewCreatureSolidNear, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+  closeViewCreatureSolidity, closeViewCreatureSolidNear, closeViewCreatureWard, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
 
 class MockGL {
   program: any = null; sources: string[] = [];
@@ -130,7 +131,7 @@ test('a crowd past the low tier cap: the bodies stay with the creatures that hav
   assert.equal(swaps, 0, 'no creature swaps between its body and its card while the crowd jostles');
 }));
 
-test('ghost kinds stay ghostly; the Phase Shield and an aloft Seraph are solid in Close View', () => {
+test('ghost kinds stay ghostly; a warded creature and an aloft Seraph are translucent in Close View', () => {
   const sp = CLOSE_VIEW.creatures.spectralAlpha;
   for (const kind of ['lumenWraith', 'gloomwisp', 'gloomgorge']) assert.equal(closeViewCreatureIntrinsicAlpha(createCombatant(kind, 0, 0)), sp, kind);
   const clone = Object.assign(createCombatant('mirrorShade', 0, 0), { illusion: true });
@@ -140,19 +141,42 @@ test('ghost kinds stay ghostly; the Phase Shield and an aloft Seraph are solid i
   assert.equal(closeViewCreatureIntrinsicAlpha(Object.assign(createCombatant('ashling', 0, 0), { fleeFade: .4 })), .4, 'a departure');
   const seraph = Object.assign(createCombatant('cinderSeraph', 0, 0), { aloft: true });
   assert.equal(actorPresentation(seraph).alpha, ACTOR_ALPHA.aloftSeraph, 'the standard view keeps its aloft fade');
-  assert.equal(closeViewCreatureIntrinsicAlpha(seraph), 1, 'Close View: solid, its height shows it is aloft');
+  assert.equal(closeViewCreatureIntrinsicAlpha(seraph), ACTOR_ALPHA.aloftSeraph, 'Close View keeps the translucent dive too');
+  const W = CLOSE_VIEW.creatures.ward;
+  assert.ok(W.alpha >= PHASE_SHIELD.alpha && W.alpha < 1 && W.holdMs >= 400, 'a steadier ward opacity, held');
+  assert.equal(closeViewCreatureIntrinsicAlpha(Object.assign(createCombatant('voidSentinel', 0, 0), { warded: true })), W.alpha, 'warded');
   for (const kind of ['ashling', 'rootBrute', 'riftLynx', 'veilSpinner', 'thunderhorn', 'sparkWarden']) assert.equal(closeViewCreatureIntrinsicAlpha(createCombatant(kind, 0, 0)), 1, kind);
   assert.ok(PHASE_SHIELD.alpha < 1, 'the standard view still ghosts a warded creature');
 });
 
-test('a warded creature next to the Wayfarer is solid in Close View; a spectral one keeps its own opacity there', () => withGPU(() => {
+test('a warded creature next to the Wayfarer is translucent in Close View, steadily; a spectral one keeps its own opacity', () => withGPU(() => {
   const g = scene(); for (let i = 0; i < 30; i++) frame(g);
-  const at = ahead(g, 1.6, .6), w = pin(createCombatant('voidSentinel', at.x, at.y), at); w.id = 'warded'; w.warded = true; w.untargetable = true;
+  const W = CLOSE_VIEW.creatures.ward;
+  const at = ahead(g, 1.6, .6), w = pin(createCombatant('voidSentinel', at.x, at.y), at); w.id = 'warded';
   const at2 = ahead(g, 1.6, -.9), ghost = pin(createCombatant('lumenWraith', at2.x, at2.y), at2); ghost.id = 'wraith';
-  g.enemies = [w, ghost]; for (let k = 0; k < 3; k++) frame(g, () => { pin(w, at); w.warded = true; w.untargetable = true; pin(ghost, at2); });
-  assert.equal(closeViewCreatureSolidity(w)?.alpha, 1, 'warded: solid');
+  g.enemies = [w, ghost]; let ward = true;
+  const place = () => { pin(w, at); w.warded = ward; w.untargetable = ward; pin(ghost, at2); };
+  const alphas: number[] = [];
+  for (let k = 0; k < 6; k++) { frame(g, place); alphas.push(closeViewCreatureSolidity(w)?.alpha); }
+  assert.ok(alphas.every(a => Math.abs(a - W.alpha) < 1e-6), `warded and in the solid band: the ward wins (${alphas})`);
   assert.equal(closeViewCreatureSolidity(ghost)?.alpha, CLOSE_VIEW.creatures.spectralAlpha, 'the wraith: ghostly');
+  // the ward flickering at the edge of the shaman's range: held steady, no flicker
+  const held: number[] = [];
+  for (let k = 0; k < 24; k++) { ward = k % 3 !== 0; frame(g, place); held.push(closeViewCreatureSolidity(w)?.alpha); }
+  assert.ok(held.every(a => Math.abs(a - W.alpha) < 1e-6), `a ward toggling every few frames holds one opacity (${held})`);
+  // the ward truly gone: solid again once the hold has run out, and not before
+  ward = false; const after: number[] = [];
+  for (let k = 0; k < 50; k++) { frame(g, place); after.push(closeViewCreatureSolidity(w)?.alpha); }
+  const first = after.findIndex(a => a === 1);
+  assert.ok(first > 0 && first * 16 >= W.holdMs - 32 && after.slice(first).every(a => a === 1), `released after the hold (${first} frames)`);
 }));
+
+test('the ward hold, unit: on while warded, for holdMs after, then off', () => {
+  const W = CLOSE_VIEW.creatures.ward, e: any = createCombatant('ashling', 0, 0);
+  assert.equal(closeViewCreatureWard(e, 1000), 1);
+  e.warded = true; assert.equal(closeViewCreatureWard(e, 1100), W.alpha);
+  e.warded = false; assert.equal(closeViewCreatureWard(e, 1100 + W.holdMs - 1), W.alpha); assert.equal(closeViewCreatureWard(e, 1100 + W.holdMs), 1);
+});
 
 test('the occluder never cuts a creature next to the Wayfarer, between her and the camera', () => withGPU(() => {
   const g = scene(); for (let i = 0; i < 30; i++) frame(g);

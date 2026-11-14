@@ -164,7 +164,8 @@ export function nativeCreatureCoverage(actor, capture, { mesh = true, attachment
   if (actor.pack && p.action !== 'pack') return 'pack-action';
   if (actor.pack?.attack && !PACK_ACTION_FAMILIES[actor.pack.attack]) return 'pack-action';
   if (actor.pack?.attack && !PACK_PHASES.has(actor.pack.phase)) return 'pack-phase';
-  if (actor.eliteWindup > 0 || actor.eliteActive > 0) return 'elite-action';
+  // An elite's gravity windup and pull keep the 3D body (2026-11-14): its floor ring is drawn on the ground and its glow beside
+  // the body (close-view.ts foeCueing), and the body braces on CREATURE_POSE.elite. No swap to the card mid-action.
   if (p.action !== 'foundry' && (actor.segments > 1 && actor.segments !== p.segments || actor.tentacles > 0 && actor.tentacles !== p.tentacles)) return 'morphology';
   const decorated = actor.fracRank || actor.fracWarden || actor.fracShaman || actor.warded || actor.affixes?.length || actor.poiseBreak > 0;
   if (decorated && (!p.decoration || typeof capture.nativeDecorations !== 'function' || typeof capture.nativeFloor !== 'function')) return 'decorations';

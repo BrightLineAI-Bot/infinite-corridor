@@ -7,7 +7,7 @@ import { CLOSE_VIEW_ADVENTURE_MODELS } from './close-view-adventure-models.ts'; 
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
 import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.ts';
 import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
-import { sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
+import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.ts'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
 export { MESH_FLOATS } from './close-view-mesh.ts';
@@ -958,6 +958,164 @@ function nativeCleaverRig(frame) {
   };
 }
 
+// Creature root motion (Tim, 2026-11-14: ordinary creatures "don't really have good animations for attacks. They just stand
+// next to me"). Phase B step 0: one shared, data-driven layer under every ordinary 3D creature's limbs. It crouches or coils the
+// body in the windup, drives the whole root forward into the blow (the drawn model translates, not only its limbs), leans and
+// twists into the swing, kicks back on contact and settles. Every value is sampled from the creature's real clocks: the pack
+// attack's phase and its progress (windup, strike/lock, active, recover), the ordinary telegraph and e.strike countdown (pose
+// windup/attack), the elite gravity module's eliteWindup/eliteActive, and the Grave Lantern's stillness clock. Presentation only:
+// the creature's position for collision and hits is untouched; the offset moves the drawn model alone.
+//   families: per body plan, crouch (a vertical squash share, feet planted), lunge (tiles, never past reachShare of the
+//     attack's real reach), lean and twist (radians), recoil (tiles back at contact), lift (a scale on a style's rise), and the
+//     ease of the windup, the strike and the settle.
+//   styles: per kind of blow, multipliers of the family's numbers: crouch (coiled in the windup), back (the share of the lunge
+//     drawn back before it), rear (lean back while coiling), lunge, lean (forward at full extension), twist, windLift and lift
+//     (tiles, coiled and extended), land (squash at full extension), impact (squash at contact), recoil.
+//   tail: an attack with no strike phase of its own (most) strikes in the last `tail` of its windup, so the body is at full
+//     extension when the hit resolves; `phased` attacks (a strike, track or travel phase follows) strike in that phase instead.
+//   Reduced Motion: crouch, lean, twist and rise at `reduced.scale`, no lunge translation and no recoil kick (as the hero's
+//     cleaver load and the hit recoil already do); the attack still reads.
+const poseFamily = (crouch, lunge, lean, twist, recoil, lift, style, wind = 'smooth', strike = 'snap', settle = 'back') => Object.freeze({ crouch, lunge, lean, twist, recoil, lift, style, wind, strike, settle });
+const poseStyle = (crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil) => Object.freeze({ crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil });
+export const CREATURE_POSE = Object.freeze({
+  tail: .2, reachShare: .35, defaultReach: 1.2, recoilSpan: .45, ordinaryHold: .25, settleOvershoot: .18,
+  reduced: Object.freeze({ scale: .5, lunge: 0, recoil: 0 }),
+  // game.ts: an elite's gravity module winds up 1.1 s (eliteWindup), then pulls for 1.15 s (eliteActive); the body settles over
+  // the pull's last `settle` share.
+  elite: Object.freeze({ windup: 1.1, active: 1.15, settle: .25, style: 'pull' }),
+  // monster-pack.ts passiveStillness: the curse falls once the Wayfarer has stood still 1.25 s (pack.stillT).
+  stillness: Object.freeze({ fires: 1.25, style: 'dread' }),
+  families: Object.freeze({
+    biped: poseFamily(.12, .32, .20, .32, .08, 1, 'lunge'),
+    quadruped: poseFamily(.20, .42, .14, .14, .09, 1, 'lunge'),
+    crawler: poseFamily(.20, .34, .10, .16, .07, .8, 'lunge', 'smooth', 'snap', 'smooth'),
+    serpent: poseFamily(.22, .46, .26, .20, .09, .8, 'lunge', 'in'),
+    floating: poseFamily(.05, .30, .22, .20, .10, 1.4, 'cast', 'smooth', 'out', 'back'),
+    blob: poseFamily(.24, .26, .08, .06, .06, .6, 'lunge', 'smooth', 'out', 'back'),
+    construct: poseFamily(.07, .20, .12, .26, .05, .6, 'sweep', 'smooth', 'snap', 'smooth'),
+    plant: poseFamily(.14, .16, .28, .14, .04, .4, 'spray', 'in', 'snap', 'back'),
+  }),
+  styles: Object.freeze({
+    //               crouch back rear lunge lean twist windLift lift land impact recoil
+    lunge: poseStyle(1, .25, .5, 1, 1, .5, 0, 0, 0, .4, 1),
+    sweep: poseStyle(.7, .1, .5, .55, .6, 1.6, 0, 0, .2, .3, .8),
+    leap: poseStyle(1.6, .15, .3, .9, .7, 0, 0, .3, 0, 1.2, .6),
+    dive: poseStyle(.3, 0, .4, 1, 1.6, 0, .25, -.15, 0, .6, .8),
+    cast: poseStyle(.4, .3, 1.2, .15, .5, .4, .08, .04, 0, 0, .6),
+    ram: poseStyle(1, .3, .2, .8, 1.4, 0, 0, 0, .3, .5, 1.6),
+    burrow: poseStyle(1.8, 0, -.8, .3, .4, 0, -.2, .25, 0, .8, .5),
+    recoil: poseStyle(.9, 0, .3, -.35, -1.2, 0, 0, 0, .5, .6, 1.5),
+    pull: poseStyle(.6, 0, .2, -.15, -.8, 0, .05, .05, .4, 0, .4),
+    spray: poseStyle(.5, .2, .8, .1, .6, .3, 0, 0, 0, 0, .8),
+    dread: poseStyle(.5, 0, .9, 0, 0, .2, .1, 0, 0, 0, 0),
+    slam: poseStyle(.5, .2, 1.2, .6, 1, 0, .12, 0, 1, .8, .5),
+  }),
+  // Per-attack overrides (pack modules and the ordinary melee patterns); anything else takes its semantic family's style, and
+  // an attack with neither takes the body family's own style.
+  attacks: Object.freeze({
+    bite: 'lunge', longStab: 'lunge', poleThrust: 'lunge', clawSweep: 'sweep', heavySweep: 'sweep', giantSwing: 'sweep',
+    leapSlam: 'leap', vineVault: 'leap', diveBomb: 'dive', sigilScatter: 'cast', censerLob: 'cast', lampFlare: 'cast',
+    prismBeam: 'cast', sweepBeam: 'cast', ramCharge: 'ram', burrowAmbush: 'burrow', mortarVolley: 'recoil', devourPull: 'pull',
+    webSpit: 'spray', thornDarts: 'spray', stillnessCurse: 'dread',
+    firefall: 'cast', tendrilRain: 'cast', icicleLine: 'cast', fleshBloom: 'cast', mirrorSwap: 'cast', phaseStep: 'cast',
+    lunge: 'lunge', longReach: 'lunge', zigzag: 'sweep', hop: 'leap', slam: 'slam', ranged: 'cast',
+  }),
+  semantic: Object.freeze({ bite: 'lunge', stab: 'lunge', sweep: 'sweep', slam: 'slam', beam: 'cast', charge: 'ram', ranged: 'spray',
+    curse: 'cast', teleport: 'lunge', leap: 'leap', burrow: 'burrow', dive: 'dive', summon: 'cast', inhale: 'pull', howl: 'cast' }),
+  phased: Object.freeze(['blinkStrike', 'diveBomb', 'burrowAmbush']),
+  kinds: Object.freeze({
+    ashling: 'biped', hollowMarshal: 'biped', weepingSaint: 'biped', mirrorShade: 'biped', censerWarden: 'biped', lamplighter: 'biped', rimeSentinel: 'biped',
+    ashenHound: 'quadruped', riftLynx: 'quadruped', thunderhorn: 'quadruped', 'foundry-quadruped': 'quadruped',
+    glassMite: 'crawler', pallidCrawler: 'crawler', veilSpinner: 'crawler', siegeBeetle: 'crawler', galleryLurker: 'crawler', lakeGlider: 'crawler', hookhanger: 'crawler',
+    coilStalker: 'serpent', sunderjaw: 'serpent', sinkmaw: 'serpent', 'foundry-segmented': 'serpent',
+    cinderWisp: 'floating', veilMoth: 'floating', hangedChoir: 'floating', graveLantern: 'floating', cinderSeraph: 'floating', lumenWraith: 'floating',
+    gloomwisp: 'floating', cinderKite: 'floating', spindriftMedusa: 'floating', 'foundry-floating': 'floating',
+    amalgam: 'blob', gnawingMaw: 'blob', gloomgorge: 'blob', 'foundry-tentacled': 'blob', 'foundry-tentacled-3': 'blob', 'foundry-tentacled-6': 'blob',
+    sparkWarden: 'construct', voidSentinel: 'construct', knellkeeper: 'construct', prismStilt: 'construct', slagwright: 'construct',
+    'foundry-geometric': 'construct', 'foundry-biomechanical': 'construct', 'foundry-biomechanical-3': 'construct', 'foundry-biomechanical-6': 'construct',
+    rootBrute: 'plant', vinehookLeaper: 'plant', thornspitterBloom: 'plant',
+  }),
+});
+const POSE_PHASED = new Set(CREATURE_POSE.phased);
+export const creaturePoseFamily = (kind) => typeof kind === 'string' && Object.hasOwn(CREATURE_POSE.kinds, kind) ? CREATURE_POSE.kinds[kind] : null;
+// The motion style an attack takes on a body family (attack id, then its semantic family, then the body's own).
+export function creaturePoseStyle(family, id, semantic) {
+  const P = CREATURE_POSE;
+  if (typeof id === 'string' && Object.hasOwn(P.attacks, id)) return P.attacks[id];
+  if (typeof semantic === 'string' && Object.hasOwn(P.semantic, semantic)) return P.semantic[semantic];
+  return Object.hasOwn(P.families, family) ? P.families[family].style : 'lunge';
+}
+function poseEase(kind, t) {
+  if (kind === 'in') return t * t;
+  if (kind === 'out') return 1 - (1 - t) * (1 - t);
+  if (kind === 'snap') { const q = 1 - t; return 1 - q * q * q; }
+  // a smooth return that runs a little past rest late on and comes back (the settle)
+  if (kind === 'back') return t * t * (3 - 2 * t) + CREATURE_POSE.settleOvershoot * Math.sin(Math.PI * t) * t;
+  return t * t * (3 - 2 * t);
+}
+// One scratch record, rewritten by every call (no per-frame allocation). stage: 0 rest, 1 coil, 2 strike, 3 hold, 4 recover.
+const ROOT_POSE = { lunge: 0, squash: 0, lean: 0, twist: 0, lift: 0, stage: 0, u: 0, style: '', family: '' };
+// The root offset of an ordinary creature this frame (an actor as writeCloseViewModel takes it). Fields: lunge (tiles forward
+// along its facing; negative is back), squash (share of its height, feet planted), lean (radians, forward positive), twist
+// (radians of yaw), lift (tiles). `family` is '' for anything that is not an ordinary 3D creature (all zero).
+export function creatureRootPose(actor, out = ROOT_POSE) {
+  out.lunge = 0; out.squash = 0; out.lean = 0; out.twist = 0; out.lift = 0; out.stage = 0; out.u = 0; out.style = ''; out.family = '';
+  const family = creaturePoseFamily(actor?.kind);
+  if (!family) return out;
+  out.family = family;
+  const P = CREATURE_POSE, F = P.families[family], pose = actor.pose, phase = actor.actionPhase;
+  let stage = 0, u = 0, id = '', semantic = '', windup = -1;
+  // A pack attack's own phase clock wins; the Pallid Crawler's legacy bite and leap (pose windup/attack/jump) carry it too.
+  if (typeof phase === 'string' && phase && (pose === 'semantic' || (pose === 'windup' || pose === 'attack' || pose === 'jump') && typeof actor.action === 'string' && actor.action)) {
+    id = typeof actor.action === 'string' ? actor.action : ''; semantic = actor.actionFamily;
+    const p = Number.isFinite(actor.actionProgress) ? Math.max(0, Math.min(1, actor.actionProgress)) : 0;
+    if (phase === 'windup') windup = p;
+    else if (phase === 'track' || phase === 'travel') { stage = 1; u = 1; }
+    else if (phase === 'strike' || phase === 'lock') { stage = 2; u = p; }
+    else if (phase === 'active' || phase === 'erupt') stage = 3;
+    else if (phase === 'recover') { stage = 4; u = p; }
+  } else if (pose === 'windup' || pose === 'attack') {
+    id = typeof actor.action === 'string' && actor.action ? actor.action : typeof actor.rootAttack === 'string' ? actor.rootAttack : '';
+    const a = Number.isFinite(actor.amount) ? Math.max(0, Math.min(1, actor.amount)) : 0;
+    if (pose === 'windup') windup = a;
+    else {
+      // The ordinary e.strike pose begins at blade contact (ACTION_MOTION.monsterContact): hold the extension, then recover.
+      const c = ACTION_MOTION.monsterContact, v = Math.max(0, Math.min(1, (a - c) / (1 - c)));
+      if (v < P.ordinaryHold) stage = 3; else { stage = 4; u = (v - P.ordinaryHold) / (1 - P.ordinaryHold); }
+    }
+  } else if (pose === 'idle' || pose === 'walk') {
+    if (actor.eliteWindup > 0) { id = 'elite'; stage = 1; u = 1 - Math.min(1, actor.eliteWindup / P.elite.windup); }
+    else if (actor.eliteActive > 0) {
+      const v = 1 - Math.min(1, actor.eliteActive / P.elite.active); id = 'elite';
+      if (v < 1 - P.elite.settle) stage = 3; else { stage = 4; u = (v - (1 - P.elite.settle)) / P.elite.settle; }
+    }
+    // A slow dread pulse on the stillness clock, back at rest by the time the curse falls (the clock then starts again).
+    else if (actor.stillness > 0) { id = 'stillnessCurse'; stage = 1; u = Math.sin(Math.PI * Math.min(1, actor.stillness / P.stillness.fires)); }
+  }
+  if (windup >= 0) {
+    if (POSE_PHASED.has(id)) { stage = 1; u = windup; }
+    else if (windup < 1 - P.tail) { stage = 1; u = windup / (1 - P.tail); }
+    else { stage = 2; u = (windup - (1 - P.tail)) / P.tail; }
+  }
+  if (!stage) return out;
+  const styleId = id === 'elite' ? P.elite.style : creaturePoseStyle(family, id, semantic), S = P.styles[styleId] || P.styles.lunge;
+  let c = 0, e = 0, bump = 0;
+  if (stage === 1) { c = poseEase(F.wind, u); e = -S.back * c; }
+  else if (stage === 2) { const k = poseEase(F.strike, u); c = 1 - k; e = -S.back + (1 + S.back) * k; }
+  else if (stage === 3) e = 1;
+  else { e = 1 - poseEase(F.settle, u); bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0; }
+  const reduce = !!actor.reduceMotion, amp = reduce ? P.reduced.scale : 1;
+  const reach = Number.isFinite(actor.attackReach) && actor.attackReach > 0 ? actor.attackReach : P.defaultReach;
+  const lunge = Math.min(F.lunge * S.lunge, reach * P.reachShare);
+  out.lunge = e * lunge * (reduce ? P.reduced.lunge : 1) - F.recoil * S.recoil * bump * (reduce ? P.reduced.recoil : 1);
+  out.squash = Math.max(0, Math.min(.45, F.crouch * (S.crouch * c + S.land * Math.max(0, e) + S.impact * bump) * amp));
+  out.lean = F.lean * (S.lean * e - S.rear * c) * amp;
+  out.twist = F.twist * S.twist * (e - .6 * c) * amp;
+  out.lift = F.lift * (S.windLift * c + S.lift * e) * amp;
+  out.stage = stage; out.u = u; out.style = styleId;
+  return out;
+}
+
 export function writeCloseViewModel(out, offset, actor) {
   if (Object.hasOwn(MIRAGE_BLADE_MODELS, actor?.kind)) return writeMirageBladeModel(out, offset, actor); // the Mirage blades: spun in a plane tipped toward the camera (close-view-sweep-gear.ts)
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
@@ -1028,15 +1186,19 @@ export function writeCloseViewModel(out, offset, actor) {
   const primaryStep=[1,2,3].includes(actor.primaryStep)?actor.primaryStep:1,canonicalPrimary=kind==='playerCinderPike'||kind==='playerVergeCleaver';
   const cleaverRig = nativeCleaver ? nativeCleaverRig(cf) : null;
   const cleaverLoad = actor.reduceMotion ? .55 : 1;
-  const turn = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21) * strike + .08 * cast + turnLean;
+  // An ordinary 3D creature's attack takes its root motion from creatureRootPose (CREATURE_POSE) in place of the generic
+  // windup pitch and strike shove/lean/turn below (gen 0); its limbs keep their windup/strike swings.
+  const root = playerLike ? null : creatureRootPose(actor).family ? ROOT_POSE : null, gen = root ? 0 : 1;
+  const rootSquash = root ? 1 - root.squash : 1, rootLift = root ? root.lift : 0;
+  const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist : turn0;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
-  const pitch = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
+  const pitch0 = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup * gen + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29 * gen) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
     + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
-    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0); // Shadow Boxing charge lean
+    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0), pitch = root ? pitch0 + root.lean : pitch0; // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
     * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch;
+  const shift0 = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14 * gen) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch, shift = root ? shift0 + root.lunge / size : shift0;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -1203,7 +1365,7 @@ export function writeCloseViewModel(out, offset, actor) {
         f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
         nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
       }else if(kind==='playerHammerStomp')worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
-      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=z+worldZ*size;
+      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=root?z+worldZ*rootSquash*size+rootLift:z+worldZ*size;
       out[offset++]=nf*cy-nv*sy;out[offset++]=nf*sy+nv*cy;out[offset++]=nw;
       const poison = actor.poison ? .55 : 0;
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
