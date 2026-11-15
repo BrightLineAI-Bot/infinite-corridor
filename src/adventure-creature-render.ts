@@ -5,7 +5,7 @@
 const TAU = Math.PI * 2;
 export const ADVENTURE_SPRITE = Object.freeze({
   box: Object.freeze({ galleryLurker: [2.2, 2, 1.5], censerWarden: [2, 2.6, 2.15], vinehookLeaper: [2.3, 2.1, 1.6], thornspitterBloom: [2, 2.1, 1.65], sinkmaw: [2.6, 1.8, 1.25], cinderKite: [2.8, 1.6, 1.05],
-    lamplighter: [2.2, 2.9, 2.45], knellkeeper: [2.4, 2.3, 1.85], spindriftMedusa: [2, 2.3, 1.95], prismStilt: [2.2, 2.8, 2.4], rimeSentinel: [2.2, 2.6, 2.15], lakeGlider: [2.6, 1.5, 1.15], hookhanger: [2.2, 2.6, 1.6], slagwright: [2.4, 2.4, 1.95] }), // [width, height, feet] in body units
+    lamplighter: [2.2, 2.9, 2.45], knellkeeper: [2.4, 2.6, 2.2], spindriftMedusa: [2, 2.3, 1.95], prismStilt: [2.2, 2.8, 2.4], rimeSentinel: [2.2, 2.6, 2.15], lakeGlider: [2.6, 1.5, 1.15], hookhanger: [2.2, 2.6, 1.6], slagwright: [2.4, 2.4, 1.95] }), // [width, height, feet] in body units
   max: 64, bob: Object.freeze([1.5, .03]), lift: .55, shadow: .3,
 });
 const sprites = new Map();
@@ -185,9 +185,13 @@ function drawKnellkeeper(ctx, q) {
   const g = ctx.createLinearGradient(bx - u * .4, by, bx + u * .4, by); g.addColorStop(0, p[1]); g.addColorStop(.45, p[2]); g.addColorStop(1, p[1]);
   ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx - u * .18, by - u * .45); ctx.quadraticCurveTo(bx, by - u * .62, bx + u * .18, by - u * .45); ctx.quadraticCurveTo(bx + u * .3, by - u * .05, bx + u * .46, by + u * .32); ctx.lineTo(bx - u * .46, by + u * .32); ctx.quadraticCurveTo(bx - u * .3, by - u * .05, bx - u * .18, by - u * .45); ctx.fill();
   ctx.strokeStyle = p[3] + "88"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(bx - u * .4, by + u * .2); ctx.lineTo(bx + u * .4, by + u * .2); ctx.stroke();
-  const hx = k + f * u * .28, hy = b - u * .95; ctx.fillStyle = p[0]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .14, u * .12, 0, 0, TAU); ctx.fill(); eye(ctx, hx + f * u * .06, hy - u * .02, u * .025, p[3]);
-  const ax = hx + f * u * .1, ay = hy + u * .15, mx = ax + f * u * (raise ? .05 : .32), my = ay + u * (raise ? -.55 : .25);
-  limb(ctx, [[ax - f * u * .05, ay], [mx, my]], Math.max(2, u * .08), p[0]); ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(mx, my, u * .1, 0, TAU); ctx.fill();
+  // Realms pass: a hunched torso grows out of the bell's crown, so the head and the hammer arm belong to the bell; the hammer is
+  // raised high in the windup and driven down and forward on the strike.
+  const hit = strike(q), sx = bx + f * u * .02, sy = by - u * .52, hx = k + f * u * (.22 + hit * .06), hy = b - u * (1.42 - hit * .1);
+  limb(ctx, [[sx, sy + u * .04], [sx + f * u * .08, sy - u * .18], [hx - f * u * .06, hy + u * .06]], Math.max(3, u * .16), p[0]);
+  ctx.fillStyle = p[0]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .13, u * .11, f * .3, 0, TAU); ctx.fill(); eye(ctx, hx + f * u * .06, hy - u * .01, u * .025, "#f3a55c");
+  const ax = sx + f * u * .1, ay = sy - u * .14, mx = ax + f * u * (raise ? -.02 : hit ? .42 : .26), my = ay + u * (raise ? -.6 : hit ? .32 : .36);
+  limb(ctx, [[ax, ay], [(ax + mx) / 2 + f * u * .06, (ay + my) / 2], [mx, my]], Math.max(2, u * .08), p[0]); ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(mx, my, u * .1, 0, TAU); ctx.fill();
   ctx.restore();
 }
 // Spindrift Medusa: a glass bell of violet membrane lit from inside, a curtain of fine tendrils below.
@@ -251,7 +255,7 @@ function drawHookhanger(ctx, q) {
   ctx.strokeStyle = p[3]; ctx.lineWidth = Math.max(2, u * .05); ctx.beginPath(); ctx.arc(hx + f * u * .1, hy + u * .1, u * .12, f > 0 ? -Math.PI / 2 : Math.PI * 1.5, f > 0 ? Math.PI * .8 : Math.PI * .2, f < 0); ctx.stroke();
   ctx.restore();
 }
-// Slagwright: a riveted foundry hand with a long ladle that glows when it tips.
+// Slagwright: a riveted foundry hand with a long ladle that glows when it tips; the sweep hauls the ladle overhead and brings it down.
 function drawSlagwright(ctx, q) {
   const { k, b, u, flip, p } = q, f = flip, tip = q.pose.includes(":tip") ? 1 : 0, top = b - u * 1.5;
   ctx.save();
@@ -260,7 +264,7 @@ function drawSlagwright(ctx, q) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(k - u * .3, top + u * .25); ctx.lineTo(k + u * .3, top + u * .25); ctx.lineTo(k + u * .26, b - u * .55); ctx.lineTo(k - u * .26, b - u * .55); ctx.closePath(); ctx.fill();
   ctx.fillStyle = p[3] + "aa"; for (let i = 0; i < 4; i++) ctx.fillRect(k - u * .22 + i * u * .14, top + u * .32, u * .03, u * .03);
   ctx.fillStyle = p[1]; ctx.fillRect(k - u * .13, top, u * .26, u * .22); ctx.fillStyle = p[2]; ctx.fillRect(k - u * .1 + f * u * .02, top + u * .08, u * .2, u * .04);
-  const hx = k + f * u * .32, hy = top + u * .55, ang = tip ? .5 : -.35, ex = hx + f * Math.cos(ang) * u * .85, ey = hy + Math.sin(ang) * u * .85;
+  const sweep = q.pose.includes("heavySweep"), hx = k + f * u * .32, hy = top + u * .55, ang = tip ? .5 : sweep && wind(q) ? -1.3 : sweep && strike(q) ? .8 : -.35, ex = hx + f * Math.cos(ang) * u * .85, ey = hy + Math.sin(ang) * u * .85;
   limb(ctx, [[k + f * u * .2, top + u * .35], [hx, hy]], Math.max(2, u * .09), p[0]);
   ctx.strokeStyle = "#3a3028"; ctx.lineWidth = Math.max(2, u * .04); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
   ctx.fillStyle = "#3a3028"; ctx.beginPath(); ctx.ellipse(ex, ey + u * .05, u * .15, u * .1, f * ang, 0, Math.PI); ctx.fill();

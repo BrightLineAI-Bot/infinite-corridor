@@ -19,7 +19,7 @@ const galleryLurker = [
   part(ringLoft([[-.36, .14, -.07], [-.12, .23, .01], [.14, .22, .07], [.32, .12, .03]], 6), 0, 0, .7, 1, 1, 1, L.hide, 0, 0, .7, 0, true),
   part(E6, .44, 0, .86, .17, .15, .13, L.hide, 20, .3, .8, 0, true),
   part(taperX, .54, 0, .8, .15, .09, .05, L.eye, 21, .3, .8),
-  block(.58, -.06, .88, .025, .025, .025, L.eye, 20, .3, .8), block(.58, .06, .88, .025, .025, .025, L.eye, 20, .3, .8),
+  block(.58, -.06, .88, .025, .025, .025, 0xf3a55c, 20, .3, .8), block(.58, .06, .88, .025, .025, .025, 0xf3a55c, 20, .3, .8),
 ];
 for (let i = 0; i < 3; i++) galleryLurker.push(part(taper, -.22 + i * .2, 0, .93 + (i === 1 ? .03 : 0), .06, .05, .1, L.bone));
 for (const side of [-1, 1]) galleryLurker.push(
@@ -29,9 +29,9 @@ for (const side of [-1, 1]) galleryLurker.push(
 );
 
 // Censer Warden: a tall hooded robe, a dark face with two lamp-eyes, long sleeves, and a censer swung on a chain.
-const C = { robe: 0x5a5148, hood: 0x3f3832, dark: 0x1c1916, flame: 0xffb347, brass: 0xb08a4a };
+const C = { robe: 0x5a5148, hood: 0x3f3832, dark: 0x1c1916, flame: 0xf3a55c, brass: 0xb08a4a };
 const censerWarden = [
-  part(verticalLoft([[0, .28, 0], [-.02, .25, .5], [0, .19, 1.1], [.02, .16, 1.42]], 6), 0, 0, 0, 1, 1, 1, C.robe),
+  part(verticalLoft([[0, .30, 0], [-.03, .25, .55], [0, .23, 1.12], [.02, .17, 1.42]], 6), 0, 0, 0, 1, 1, 1, C.robe),
   part(verticalLoft([[0, .17, 0], [-.02, .19, .17], [-.06, .13, .34], [-.11, .02, .46]], 6), 0, 0, 1.42, 1, 1, 1, C.hood),
   part(E5, .13, 0, 1.6, .04, .1, .12, C.dark),
   block(.17, -.045, 1.62, .015, .022, .018, C.flame), block(.17, .045, 1.62, .015, .022, .018, C.flame),
@@ -43,7 +43,7 @@ for (const side of [-1, 1]) censerWarden.push(limb([[0, side * .2, 1.3, .065], [
 for (let i = 0; i < 4; i++) { const y = (i - 1.5) * .14; censerWarden.push(part(membrane([[-.05, y - .06, .2], [-.05, y + .06, .2], [-.16, y + .05, .02], [-.14, y - .05, -.02]]), 0, 0, 0, 1, 1, 1, i % 2 ? C.robe : C.hood, 60 + i, -.05, .2)); }
 
 // Vinehook Leaper: a crouched, long-armed climber; hooked forearms of green horn, a curling vine tail and a bright-eyed head.
-const V = { hide: 0x4f6b3a, dark: 0x1a2414, hook: 0xc9e86a, eye: 0xf2ffd0 };
+const V = { hide: 0x4f6b3a, dark: 0x1a2414, hook: 0xc9e86a, eye: 0xd1e86a };
 const vinehookLeaper = [
   part(E6, -.06, 0, .72, .27, .21, .3, V.hide, 0, -.06, .72, .35, true),
   part(E6, .12, 0, .98, .19, .26, .17, V.hide, 0, .12, .98, 0, true),
@@ -74,7 +74,7 @@ for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .8, cx = Math.cos(a), 
 for (const side of [-1, 1]) thornspitterBloom.push(part(membrane([[-.04, side * .02, .5], [-.1, side * .22, .58], [-.04, side * .34, .5], [0, side * .16, .44]]), 0, 0, 0, 1, 1, 1, T.leaf));
 
 // Sinkmaw: a squat sand-coloured bulk whose front is one wide ringed mouth, two hooked mandibles, feelers, and a trailing segment.
-const S = { sand: 0xc9a46a, dark: 0x3a2a18, ember: 0xff8a3a, tooth: 0xfff0d0 };
+const S = { sand: 0xc9a46a, dark: 0x3a2a18, ember: 0xff9d4a, tooth: 0xfff0d0 };
 const sinkmaw = [
   part(ringLoft([[-.6, .3, 0], [-.32, .44, 0], [.06, .5, 0], [.32, .43, 0]], 7), 0, 0, .38, 1, 1, 1, S.sand, 0, 0, .38, 0, true),
   part(ringLoft([[0, .42, 0], [.1, .47, 0], [.2, .28, 0]], 7), .32, 0, .4, 1, 1, 1, S.dark),
@@ -89,7 +89,7 @@ for (const i of [0, 2]) { const y = (i - 1) * .3; sinkmaw.push(limb([[.2, y, .78
 sinkmaw.push(part(E5, .4, 0, .4, .06, .3, .26, S.ember));
 
 // Cinder Kite: a narrow body under two rust sails stretched on bone ribs, a hooked beak, trailing tail ribbons and hanging talons.
-const K = { sail: 0xb0643a, dark: 0x2b1a12, rib: 0xf4e6cc, eye: 0xffd27a };
+const K = { sail: 0xb0643a, dark: 0x2b1a12, rib: 0xf4e6cc, eye: 0xffd25a };
 const cinderKite = [
   part(ringLoft([[-.36, .05, 0], [-.12, .12, 0], [.14, .1, 0], [.3, .05, 0]], 5), 0, 0, .62, 1, 1, 1, K.dark, 0, 0, .62, 0, true),
   part(E5, .34, 0, .64, .09, .075, .075, K.dark),
@@ -109,7 +109,7 @@ for (let i = 0; i < 3; i++) { const y = (i - 1) * .06; cinderKite.push(part(memb
 // ---- the second set (Tim, 2026-11-11: the other four themes)
 const E8 = ellipsoid(8, 3), taperDown = taper.map((t) => t.map(([x, y, z]) => [x, y, -z]));
 // Lamplighter: a long coat, a tall hat, and a lamp hung from a pole twice its height (the pole arm is 50).
-const LL = { coat: 0x4a4f58, dark: 0x16181c, lamp: 0xf0a840, glow: 0xfff0c8, wood: 0x3a3026 };
+const LL = { coat: 0x4a4f58, dark: 0x16181c, lamp: 0xefb15d, glow: 0xf3a55c, wood: 0x3a3026 };
 const lamplighter = [
   part(verticalLoft([[0, .22, 0], [-.01, .21, .4], [0, .18, .8], [.01, .15, 1.02]], 6), 0, 0, .45, 1, 1, 1, LL.coat),
   block(0, 0, 1.6, .2, .2, .02, LL.dark), part(bevel, 0, 0, 1.72, .11, .11, .12, LL.dark),
@@ -122,16 +122,20 @@ const lamplighter = [
 for (const side of [-1, 1]) lamplighter.push(limb([[0, side * .1, .5, .065], [.02, side * .11, .25, .055], [.06, side * .11, .03, .04]], LL.dark, side, 0, .5));
 // Knellkeeper: a hunched ringer grown into a bronze bell, a clapper-hammer in its fist (50).
 const KK = { hide: 0x5c5248, dark: 0x1e1a16, bronze: 0xc8a050, pale: 0xf2e4c0 };
+// Realms pass (2026-11-15): the bell is its skirt; a hunched torso grows out of the crown (paid for by membrane eyes in place of
+// two boxes), so the head and arms belong to the bell instead of floating beside it. The eyes are ember-lit.
 const knellkeeper = [
-  part(verticalLoft([[0, .47, 0], [-.01, .38, .1], [-.03, .3, .36], [-.06, .24, .6], [-.08, .08, .8]], 6), -.12, 0, .3, 1, 1, 1, KK.bronze),
-  part(E6, .3, 0, 1.08, .16, .15, .14, KK.hide, 82, .2, 1.0, 0, true),
-  block(.44, -.06, 1.1, .02, .025, .025, KK.pale, 82, .2, 1.0), block(.44, .06, 1.1, .02, .025, .025, KK.pale, 82, .2, 1.0),
-  limb([[.2, -.22, .95, .07], [.36, -.32, .78, .06], [.5, -.3, .62, .05]], KK.hide, 50, .2, .95), part(bevel, .58, -.3, .55, .1, .1, .1, KK.bronze, 50, .2, .95),
-  limb([[.2, .22, .95, .07], [.34, .3, .78, .06], [.44, .28, .66, .05]], KK.hide, 51, .2, .95),
+  part(verticalLoft([[0, .47, 0], [-.01, .41, .1], [-.03, .32, .34], [-.04, .25, .56], [-.04, .13, .72]], 6), -.08, 0, .26, 1, 1, 1, KK.bronze),
+  part(verticalLoft([[0, .15, 0], [.1, .16, .16], [.2, .11, .3]], 5), -.12, 0, .94, 1, 1, 1, KK.hide),
+  part(E6, .23, 0, 1.3, .15, .14, .13, KK.hide, 82, .12, 1.24, 0, true),
+  part(membrane([[.37, -.085, 1.33], [.37, -.03, 1.33], [.365, -.06, 1.29]]), 0, 0, 0, 1, 1, 1, 0xf3a55c, 82, .12, 1.24),
+  part(membrane([[.37, .03, 1.33], [.37, .085, 1.33], [.365, .06, 1.29]]), 0, 0, 0, 1, 1, 1, 0xf3a55c, 82, .12, 1.24),
+  limb([[.04, -.2, 1.18, .075], [.2, -.31, .98, .062], [.34, -.29, .8, .05]], KK.hide, 50, .04, 1.18), part(bevel, .42, -.29, .72, .11, .11, .11, KK.bronze, 50, .04, 1.18),
+  limb([[.04, .2, 1.18, .075], [.18, .3, .98, .062], [.3, .28, .84, .05]], KK.hide, 51, .04, 1.18),
 ];
 for (const side of [-1, 1]) knellkeeper.push(limb([[0, side * .16, .4, .08], [.04, side * .2, .2, .07], [.08, side * .2, .03, .05]], KK.dark, side, 0, .4, 3));
 // Spindrift Medusa: a glass bell of violet membrane, lit inside, frilled (22/23), trailing tendrils (60-65).
-const MD = { skin: 0x6c70c0, dark: 0x1a0e26, glow: 0x70e0f0, pale: 0xe8fbff };
+const MD = { skin: 0x6c70c0, dark: 0x1a0e26, glow: 0x7fe7ff, pale: 0xe8fbff };
 const spindriftMedusa = [part(E8, 0, 0, 1.05, .36, .36, .3, MD.skin, 0, 0, 1.05, 0, true), part(E5, 0, 0, .86, .24, .24, .1, MD.glow)];
 for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2, y = Math.sin(a) * .34, x = Math.cos(a) * .34; spindriftMedusa.push(part(membrane([[x * .9, y * .9, .9], [x * 1.15, y * 1.15 + .06, .82], [x * 1.25, y * 1.25, .72], [x * 1.1, y * 1.1 - .06, .8]]), 0, 0, 0, 1, 1, 1, i % 2 ? MD.pale : MD.glow, i % 2 ? 22 : 23, 0, .95)); }
 for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + .3, x = Math.cos(a) * .2, y = Math.sin(a) * .2; spindriftMedusa.push(limb([[x, y, .82, .025], [x * 1.3, y * 1.3, .45, .018], [x * 1.1, y * 1.1, .06, .008]], i % 2 ? MD.glow : 0x5a3a7a, 60 + i, x, .82, 3)); }
@@ -147,7 +151,7 @@ for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4; prismStilt.push(pa
 const RS = { frost: 0x6a7e94, dark: 0x1a2430, ice: 0xbfe8ff, white: 0xf4fbff };
 const rimeSentinel = [
   part(verticalLoft([[0, .22, 0], [0, .24, .35], [.01, .26, .6], [0, .16, .78]], 6), 0, 0, .55, 1, 1, 1, RS.frost),
-  part(E6, .02, 0, 1.48, .15, .15, .16, RS.frost, 0, .02, 1.48, 0, true), block(.15, 0, 1.47, .025, .1, .02, RS.dark), block(.17, 0, 1.47, .01, .06, .01, RS.ice),
+  part(E6, .02, 0, 1.48, .15, .15, .16, RS.frost, 0, .02, 1.48, 0, true), block(.15, 0, 1.47, .025, .1, .02, RS.dark), block(.17, 0, 1.47, .01, .06, .01, 0x7fe7ff),
   limb([[.06, -.26, 1.28, .06], [.24, -.32, 1.05, .05], [.34, -.3, .95, .045]], RS.frost, 50, .06, 1.28),
   limb([[.1, -.3, .7, .025], [.36, -.3, 1.3, .022], [.6, -.3, 1.9, .02]], 0x5a6672, 50, .06, 1.28, 3), part(taper, .63, -.3, 2.0, .05, .05, .12, RS.ice, 50, .06, 1.28),
   limb([[-.02, .26, 1.28, .06], [0, .32, 1.02, .05], [.06, .3, .88, .045]], RS.frost, 51, -.02, 1.28),
@@ -164,7 +168,7 @@ const lakeGlider = [
 ];
 for (const [x, sw] of [[.22, 2], [-.26, 1]]) for (const side of [-1, 1]) lakeGlider.push(limb([[x, side * .1, .28, .04], [x - .02, side * .26, .2, .03], [x + .02, side * .28, .05, .02]], LG.dark, side * sw, x, .28, 3), block(x + .03, side * .28, .025, .14, .012, .016, LG.ice, side * sw, x, .28));
 // Hookhanger: a soot-black body of chain and plate; a chain overhead (31), a great hook arm (70), a free arm (71), legs (±1).
-const HH = { soot: 0x5a4a40, dark: 0x1c1612, ember: 0xff8030, pale: 0xffd8b0 };
+const HH = { soot: 0x5a4a40, dark: 0x1c1612, ember: 0xff9d4a, pale: 0xffd8b0 };
 const hookhanger = [
   part(E6, 0, 0, .78, .2, .19, .3, HH.soot, 0, 0, .78, 0, true), part(E5, .08, 0, 1.12, .12, .11, .1, HH.dark), block(.19, 0, 1.13, .02, .07, .02, HH.ember),
   limb([[0, 0, 1.2, .025], [0, 0, 1.5, .022], [-.04, 0, 1.8, .02], [-.06, 0, 2.08, .02]], 0x6a6058, 31, 0, 1.2, 3),
@@ -174,7 +178,7 @@ const hookhanger = [
 for (let i = 0; i < 3; i++) hookhanger.push(block(.15, 0, .62 + i * .14, .03, .15, .02, i === 1 ? HH.ember : HH.dark));
 for (const side of [-1, 1]) hookhanger.push(limb([[0, side * .1, .52, .06], [.03, side * .12, .27, .05], [.06, side * .12, .03, .035]], HH.dark, side, 0, .52));
 // Slagwright: a riveted foundry hand with a long ladle (50) whose cup glows.
-const SW = { plate: 0x4a3a32, dark: 0x1a120e, molten: 0xff7a20, pale: 0xffe0a0 };
+const SW = { plate: 0x4a3a32, dark: 0x1a120e, molten: 0xff9d4a, pale: 0xffe0a0 };
 const slagwright = [
   part(verticalLoft([[0, .26, 0], [0, .28, .35], [.01, .29, .6], [0, .2, .75]], 6), 0, 0, .55, 1, 1, 1, SW.plate),
   block(.03, 0, 1.42, .13, .12, .11, SW.dark), block(.15, 0, 1.44, .02, .09, .02, SW.molten),
@@ -202,7 +206,7 @@ const rows = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, 
 export const ADVENTURE_JOINT_POSE = Object.freeze({
   // Long clawed arms (70 lead, 71 trailing) wind back and rake through; hind legs (74/75) drive; the head (20) dips in.
   galleryLurker: rows({
-    clawSweep: { 70: J(.75, -1.55, -.35), 71: J(.45, -1.05, -.25, .3), 74: J(-.2, .35), 75: J(-.2, .35, 0, .15), 20: J(-.15, .22) },
+    clawSweep: { 70: J(.8, -1.1, -.4), 71: J(.12, -.28, 0, .3), 74: J(-.12, .18), 75: J(-.12, .18, 0, .15), 20: J(-.3, .38, .1) },
     ledgeDrop: { 70: J(.5, -1.9, -.3), 71: J(.5, -1.9, -.3, .15), 74: J(-.45, .7), 75: J(-.45, .7), 20: J(-.25, .3) },
     ledgeClimb: { 70: J(-.6, -2.2), 71: J(-.6, -2.2, 0, .2), 74: J(-.5, .6), 75: J(-.5, .6) },
   }),
@@ -225,8 +229,8 @@ export const ADVENTURE_JOINT_POSE = Object.freeze({
   // Mandibles (20/21) lift wide and slam; feelers (55/57) reach; the trailing segment (82) lags.
   sinkmaw: rows({
     bite: { 20: J(-.55, .35, .1), 21: J(-.55, .35, .1, .1), 55: J(-.3, .45, 0, .2), 57: J(-.3, .45, 0, .25), 82: J(.25, -.3, 0, .35) },
-    burrowAmbush: { 20: J(-.6, .3), 21: J(-.6, .3), 55: J(.45, -.5), 57: J(.45, -.5), 82: J(.3, -.4, 0, .3) },
-    sinkFunnel: { 20: J(-.7, -.75), 21: J(-.7, -.75), 55: J(-.5, -.65), 57: J(-.5, -.65), 82: J(.2, .1) },
+    burrowAmbush: { 20: J(-.6, .4), 21: J(-.6, .4), 55: J(.45, -.6), 57: J(.45, -.6), 82: J(.3, -.45, 0, .3) },
+    sinkFunnel: { 20: J(-.8, -1.05), 21: J(-.8, -1.05), 55: J(-.6, -.9, 0, .1), 57: J(-.6, -.9, 0, .2), 82: J(.25, .15) },
   }),
   // Talons (±1) swing forward to rake on the bite; the beak (20) snaps; sails (22/23) cup; tail ribbons trail.
   cinderKite: rows({
@@ -240,8 +244,8 @@ export const ADVENTURE_JOINT_POSE = Object.freeze({
   }),
   // The clapper-hammer (50) is hauled back and swept round, or raised high and brought down on the bell.
   knellkeeper: rows({
-    heavySweep: { 50: J(.95, -1.45, -.35), 51: J(-.3, .4), 82: J(.15, -.2) },
-    bellToll: { 50: J(-2.1, .45, .2), 51: J(-.5, .2), 82: J(-.3, .35) },
+    heavySweep: { 50: J(1.0, -1.0, -.45), 51: J(-.35, .45), 82: J(.2, -.3, -.1) },
+    bellToll: { 50: J(-2.2, .55, .25), 51: J(-.6, .25), 82: J(-.4, .5, .15) },
   }),
   // Tendrils (60-65) draw in, then flare outward round the bell in the pulse, or sweep forward in a rippling curtain for the rain.
   spindriftMedusa: rows({
@@ -250,7 +254,7 @@ export const ADVENTURE_JOINT_POSE = Object.freeze({
   }),
   // The crystal head (82) tips back to gather, then aims down the beam or pecks; the rear legs (±1) brace.
   prismStilt: rows({
-    prismBeam: { 82: J(-.35, .42), [-1]: J(0, .14), 1: J(0, .14) },
+    prismBeam: { 82: J(-.55, .6, .1), [-1]: J(-.08, .2), 1: J(-.08, .2) },
     bite: { 82: J(-.5, .95, .15), [-1]: J(-.1, .2), 1: J(-.1, .2) },
     phaseStep: { 82: J(.3, -.3), [-1]: J(-.3, .3), 1: J(-.3, .3) },
   }),
@@ -272,8 +276,8 @@ export const ADVENTURE_JOINT_POSE = Object.freeze({
   }),
   // The ladle (50) is swung back and round, or lifted and tipped to pour; the free arm counters.
   slagwright: rows({
-    heavySweep: { 50: J(.7, -.95, -.25), 51: J(-.3, .3) },
-    slagPour: { 50: J(-.75, -.25, .12), 51: J(-.3, -.1) },
+    heavySweep: { 50: J(-1.25, .35, .3), 51: J(.35, -.4) },
+    slagPour: { 50: J(-.35, -.75, .12), 51: J(-.3, -.45) },
   }),
   ...FOUNDRY_JOINT_POSE,
   ...CORE_JOINT_POSE,
