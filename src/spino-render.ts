@@ -228,7 +228,7 @@ export function drawSpino(ctx, q, now = 0) {
   const walk = reduce ? 0 : Math.max(st.moving * (e.pack?.attack && !run ? .3 : 1), run ? 1 : 0), phase = reduce ? 0 : st.phase + (run && st.moving < .3 ? t * 9 : 0);
   const fossil = spinoFossilShare(e), shedding = e.spinoFossil && fossil < 1;
   const dying = st.deadAt == null ? 0 : Math.min(1, (now - st.deadAt) / 1400);
-  const air = Math.max(0, Number(e.spinoAir) || 0) * s, ground = q.b;
+  const air = Math.max(0, (Number(e.spinoAir) || 0) + (Number(e.dinoLift) || 0)) * s, ground = q.b; // dinoLift: hauled up by its tail in the stego's jaws (the dino duel)
   const shake = !reduce && V[K.shake] > .05 ? Math.sin(t * A.shake) * .012 * V[K.shake] : 0;
   const chew = V[K.chew] > .05 ? (reduce ? .5 : .5 + .5 * Math.sin(t * A.chew)) * V[K.chew] : 0;
   V[K.open] = Math.max(0, V[K.open] - chew * .28);
@@ -251,6 +251,7 @@ export function drawSpino(ctx, q, now = 0) {
   if (dying > 0) ctx.globalAlpha *= 1 - Math.max(0, (dying - .7) / .3) * .6;
   ctx.translate(k, ground - air); ctx.scale(flip, 1);
   if (dying > 0) { ctx.translate(0, 0); ctx.rotate(-dying * .18); }
+  if (e.stegoHeldBy && !e.dead) ctx.rotate(-(Number(e.dinoPitch) || 0)); // the dino duel: hanging nose down by its tail (the pitch the game sets)
   const lw = Math.max(1, u * .012);
   const X = (x) => x * u, Y = (y) => -y * u;
   // which arm and leg are on the viewer's side: facing right the right side shows, facing left the left

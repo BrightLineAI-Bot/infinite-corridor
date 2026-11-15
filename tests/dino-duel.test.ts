@@ -14,9 +14,10 @@ import { createCombatant } from '../src/combat.ts';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { ensureWorldBeasts } from '../src/world-beasts.ts';
-import { createStegoTrack, sampleStego, stegoBone } from '../src/close-view-beast-stego.ts';
-import { createSpinoTrack, sampleSpino, SPINO_RIG } from '../src/close-view-beast-spino.ts';
-import { holdInJaws, CLOSE_VIEW_BEASTS } from '../src/close-view-beasts.ts';
+import { stegoBone, stegoJawPoint, stegoHoldPoint } from '../src/close-view-beast-stego.ts';
+import { spinoJawPoint, spinoHoldPoint } from '../src/close-view-beast-spino.ts';
+import { CLOSE_VIEW_BEASTS } from '../src/close-view-beasts.ts';
+import { stageDuel, duelOverlap, duelLowest, DUEL_STAGE } from '../src/close-view-duel.ts';
 import { closeViewDuelPull, CLOSE_VIEW } from '../src/close-view.ts';
 
 // ------------------------------------------------------------------------------------------------ a headless arena
@@ -196,24 +197,31 @@ test('the Wild Stegosaurus lands its moves on the Spinosaurus: wheel, tail whack
   }
 });
 
-test('the grabs: the stego shakes the Spinosaurus in its jaws; the Spinosaurus lifts and slams the stego twice; poses for the art', () => {
+test('the grabs: the stego heaves the Spinosaurus by its tail and slams it, twice; the Spinosaurus lifts and slams the stego by the belly, twice', () => {
   const w = world({ player: { x: 2, y: 2 } }), [s, t] = pair(w, { hp: 1e6, at: [[16, 18], [19, 18]] }); s.packAttacks = []; t.packAttacks = [];
-  const phases = new Set(), held = []; run(w, 8, {}, () => { if (t.stegoGrab) phases.add(t.stegoGrab.phase); if (t.stegoPose === 'grabShake') held.push({ x: s.x, y: s.y, by: s.stegoHeldBy }); });
-  assert.deepEqual([...phases].sort(), ['bite', 'release', 'shake']); assert.ok(held.length > 30 && held.some((h) => h.by === t.id), 'held');
-  const ys = held.filter((h) => h.by).map((h) => h.y); assert.ok(Math.max(...ys) - Math.min(...ys) > 1.5, 'shaken side to side');
-  assert.ok(w.cues.filter((c) => c.move === 'stegoJaws' && c.phase === 'hit').length >= STEGO.jaws.swings - 1); assert.ok(w.cues.some((c) => c.phase === 'grab' && c.move === 'stegoJaws'));
+  const phases = new Set(), poses = new Set(), held = []; let lifted = 0, pitched = 0;
+  run(w, 8, {}, () => { if (t.stegoGrab) phases.add(t.stegoGrab.phase); poses.add(t.stegoPose); if (s.stegoHeldBy) { held.push({ d: Math.hypot(s.x - t.x, s.y - t.y), a: Math.atan2(s.y - t.y, s.x - t.x) }); lifted = Math.max(lifted, s.dinoLift || 0); pitched = Math.min(pitched, s.dinoPitch || 0); } });
+  assert.deepEqual([...phases].sort(), ['bite', 'heave', 'release', 'slam']); for (const p of ['grabHeave', 'grabSlam']) assert.ok(poses.has(p), p);
+  assert.ok(held.length > 60, 'held'); assert.ok(lifted >= STEGO.jaws.height * .95 && pitched <= -STEGO.jaws.pitch * .95, `hauled up (${lifted}), nose down (${pitched})`);
+  const angles = held.map((h) => h.a); assert.ok(Math.max(...angles) - Math.min(...angles) > STEGO.jaws.swing * 1.5, 'swung round in an arc, to one side and back across');
+  assert.ok(held.filter((h) => Math.abs(h.d - STEGO.jaws.held) < .05).length >= held.length - 2, 'held out at its tail\'s length (from the frame after the bite)');
+  assert.equal(w.cues.filter((c) => c.move === 'stegoJaws' && c.phase === 'hit').length, STEGO.jaws.slams, 'a blow each slam'); assert.equal(w.cues.filter((c) => c.phase === 'land' && c.move === 'stegoJawsSlam').length, STEGO.jaws.slams);
+  assert.ok(w.cues.some((c) => c.phase === 'grab' && c.move === 'stegoJaws')); assert.ok(!s.stegoHeldBy && !(s.dinoLift > 0) && !s.dinoPitch, 'let go, back on the ground');
   const v = world({ player: { x: 2, y: 2 } }), [a, b] = pair(v, { hp: 1e6, at: [[16, 18], [19.5, 18]] }); a.packAttacks = ['spinoGrab']; b.packAttacks = []; b.pack.cd.stegoJaws = 99;
-  const sp = new Set(), slams = []; run(v, 10, {}, () => { if (a.spinoGrab) { sp.add(a.spinoGrab.phase); if (a.spinoGrab.phase === 'slam') slams.push(a.spinoGrab.slams); } sp.add(a.spinoPose); });
+  const sp = new Set(), slams = []; let across = null; run(v, 10, {}, () => { if (a.spinoGrab) { sp.add(a.spinoGrab.phase); if (a.spinoGrab.phase === 'slam') slams.push(a.spinoGrab.slams); } sp.add(a.spinoPose); if (b.spinoHeldBy && across == null) { const h = a.spinoHeading, g = b.stegoHeading; across = Math.abs(h.x * g.x + h.y * g.y); } });
   for (const k of ['lift', 'slam', 'grabLift', 'grabSlam']) assert.ok(sp.has(k), k); assert.equal(Math.max(...slams), SPINO.grab.duel.slams, 'twice');
+  assert.ok(across < 1e-6, 'held across its jaws, by the belly');
   assert.equal(v.cues.filter((c) => c.phase === 'land' && c.move === 'spinoGrabSlam').length, SPINO.grab.duel.slams); assert.ok(v.cues.some((c) => c.phase === 'lift'));
 });
 
-test('collateral: the thrashing body and the slams hurt the Wayfarer only inside their telegraphed area, shown first', () => {
+test('collateral: each slam hurts the Wayfarer only inside its circle, shown at least 0.9 s before the impact', () => {
   for (const [inside, expect] of [[true, true], [false, false]]) {
-    const w = world({ player: inside ? { x: 19, y: 20 } : { x: 19, y: 25 } }), [s, t] = pair(w, { hp: 1e6, at: [[16, 18], [19, 18]] }); s.packAttacks = []; t.packAttacks = [];
-    let ring = null, first = null; run(w, 6, {}, () => { if (!ring && t.pack.tele?.type === 'ring' && t.pack.attack === 'stegoJaws') ring = w.now; const h = w.hurts.find((q) => q.source === 'stegoJaws'); if (h && first == null) first = h.t; });
-    assert.equal(w.hurts.some((h) => h.source === 'stegoJaws'), expect, `stego thrash, inside ${inside}`);
-    if (expect) { assert.ok(ring != null && first - ring >= 900, `the ring shows ${(first - ring) | 0} ms first`); assert.ok(w.hurts.filter((h) => h.source === 'stegoJaws').every((h) => Math.hypot(h.at.x - t.x, h.at.y - t.y) <= STEGO.jaws.sweep + .5)); }
+    const w = world({ player: { x: 2, y: 2 } }), [s, t] = pair(w, { hp: 1e6, at: [[16, 18], [19, 18]] }); s.packAttacks = []; t.packAttacks = [];
+    let shown = null, early = Infinity; const impacts = [];
+    run(w, 7, {}, () => { const tl = t.pack.tele; if (t.pack.attack === 'stegoJaws' && tl?.type === 'circle') { if (!shown || Math.hypot(tl.x - shown.x, tl.y - shown.y) > .01) shown = { x: tl.x, y: tl.y, at: w.now }; if (inside) { w.player.x = tl.x; w.player.y = tl.y; } else { w.player.x = tl.x + STEGO.jaws.radius + 1; w.player.y = tl.y; } }
+      const c = w.cues.at(-1); if (c?.phase === 'land' && c.move === 'stegoJawsSlam' && c.t * 1000 === w.now && shown) { impacts.push(w.now); early = Math.min(early, w.now - shown.at); } });
+    assert.equal(impacts.length, STEGO.jaws.slams); assert.ok(early >= 900, `the circle shows ${early | 0} ms first`);
+    assert.equal(w.hurts.some((h) => h.source === 'stegoJawsSlam'), expect, `stego slam, inside ${inside}`); assert.ok(!w.hurts.some((h) => h.source === 'stegoJaws'), 'no sweep any more');
   }
   for (const [inside, expect] of [[true, true], [false, false]]) {
     const w = world({ player: { x: 2, y: 2 } }), [s, t] = pair(w, { hp: 1e6, at: [[16, 18], [19.5, 18]] }); s.packAttacks = ['spinoGrab']; t.packAttacks = []; t.pack.cd.stegoJaws = 99;
@@ -342,20 +350,27 @@ test('the Wild Stegosaurus devours the Spinosaurus: its message, its feeding, no
 // ------------------------------------------------------------------------------------------------ Close View
 const cvEnv = (e, now, o = {}) => ({ x: e.x + .5, y: e.y + .82, z: 0, scale: (e.scale || 1) * CLOSE_VIEW_BEASTS[e.kind].scale, now, reduce: false, tier: 'full', target: { x: 30, y: e.y }, dead: false, ...o });
 function cvSample(e, flags, o = {}) { const spec = CLOSE_VIEW_BEASTS[e.kind], tr = spec.createTrack(); let f = null; Object.assign(e, flags); for (let k = 0, now = 1000; k < 30; k++, now += 16) f = spec.sample(tr, e, cvEnv(e, now, o)); tr.seen = 1000 + 29 * 16; return { tr, f }; }
-test('Close View: the stego thrashes its head with the shake (still under reduced motion); the lifted stego rises; held bodies sit in the jaws', () => {
+test('Close View: the stego heaves (rears, braced), the hauled Spinosaurus pitches and rises, the lifted stego rises; held bodies sit in the jaws, above the floor', () => {
   const mk = (kind, x = 0) => { const e = createCombatant(kind, x, 0, true, []); e.id = kind; e.hp = 1000; e.pack = { attack: null, data: {} }; return e; };
-  const shakeAt = (side, reduce = false) => { const e = mk('wildStego'); const { tr } = cvSample(e, { stegoPose: 'grabShake', stegoGrab: { phase: 'shake', where: 'tail', side, t: .5 } }, { reduce }); return stegoBone(tr, 'head'); };
-  const L = shakeAt(-1), R = shakeAt(1); assert.ok(Math.abs(L[1] - R[1]) > .5, `the head swings (${(L[1] - R[1]).toFixed(2)})`);
-  const Lq = shakeAt(-1, true), Rq = shakeAt(1, true); assert.ok(Math.abs(Lq[1] - Rq[1]) < 1e-6, 'held still under reduced motion');
+  const heave = cvSample(mk('wildStego'), { stegoPose: 'grabHeave' }).tr, rest = cvSample(mk('wildStego'), {}).tr; assert.ok(stegoBone(heave, 'head')[2] > stegoBone(rest, 'head')[2] + .5, 'it rears, its head up');
   const low = cvSample(mk('wildStego'), {}).f.air, up = cvSample(mk('wildStego'), { spinoHeldBy: 'spinoRex', dinoLift: 1.4 }).f.air; assert.ok(up >= 1.4 && low === 0, `lifted ${up}`);
-  // held in the jaws: the stego the Spinosaurus lifts moves to its jaws; the Spinosaurus the stego shakes, its tail to the stego's beak
+  const hang = cvSample(mk('spinoRex', 2.6), { stegoHeldBy: 'wildStego', dinoLift: 2, dinoPitch: -.6, spinoHeading: { x: 1, y: 0 } }), flat = cvSample(mk('spinoRex', 2.6), {});
+  assert.ok(hang.f.air >= 2, 'hauled up'); const P = hang.tr.pose, I = P.skeleton.index; assert.ok(P.wp[I.tail5 * 3 + 2] - P.wp[I.head * 3 + 2] > flat.tr.pose.wp[I.tail5 * 3 + 2] - flat.tr.pose.wp[I.head * 3 + 2] + 1, 'nose down, tail up');
+  // held in the jaws: the stego the Spinosaurus lifts by the belly comes to its jaws; the Spinosaurus the stego heaves, its tail to the beak
   const sp = mk('spinoRex'), st = mk('wildStego', 1.6); const A = cvSample(sp, { spinoPose: 'grabLift' }), B = cvSample(st, { spinoHeldBy: 'spinoRex', dinoLift: 1.4 });
-  const before = [B.f.x, B.f.y], skin = B.f.skin[3]; B.tr.seen = A.tr.seen; holdInJaws(new Map([[sp, A.tr], [st, B.tr]]), A.tr.seen);
-  assert.ok(Math.hypot(B.f.x - before[0], B.f.y - before[1]) > .01 && B.f.skin[3] !== skin, 'moved into the jaws'); assert.ok(B.f.air >= 0);
-  const y1 = mk('spinoRex', 2.6), y0 = mk('wildStego'); const C = cvSample(y0, { stegoPose: 'grabShake', stegoGrab: { phase: 'shake', where: 'tail', side: 1 } }), D = cvSample(y1, { stegoHeldBy: 'wildStego', dinoYank: 1 });
-  const x0 = D.f.x, yawHeld = D.f.yaw; D.tr.seen = C.tr.seen; holdInJaws(new Map([[y1, D.tr], [y0, C.tr]]), C.tr.seen); assert.notEqual(D.f.x, x0, 'its tail to the beak');
-  const still = cvSample(mk('spinoRex', 2.6), { stegoHeldBy: 'wildStego', dinoYank: 0 }); assert.ok(Math.abs(yawHeld - still.f.yaw) < 1e-9, 'the yank yaws the skin, not the heading');
-  assert.ok(SPINO_RIG.yank.yaw > 0);
+  const J = [0, 0, 0], H = [0, 0, 0], tracks = new Map([[sp, A.tr], [st, B.tr]]); B.tr.seen = A.tr.seen;
+  for (let k = 1; k <= 12; k++) { A.tr.seen = B.tr.seen = 2000 + k * 16; stageDuel(tracks, A.tr.seen); } // past the seizure's blend
+  spinoJawPoint(A.tr, J); stegoHoldPoint(B.tr, H); assert.ok(Math.hypot(J[0] - H[0], J[1] - H[1], J[2] - H[2]) < .05, 'the belly in the jaws'); assert.ok(duelLowest(B.tr, 'wildStego') >= -.01, 'never below the floor');
+  const y1 = mk('spinoRex', 8), y0 = mk('wildStego'); const C = cvSample(y0, { stegoPose: 'grabHeave' }), D = cvSample(y1, { stegoHeldBy: 'wildStego', dinoLift: 2, dinoPitch: -.6, spinoHeading: { x: 1, y: 0 } });
+  const t2 = new Map([[y1, D.tr], [y0, C.tr]]); for (let k = 1; k <= 12; k++) { C.tr.seen = D.tr.seen = 3000 + k * 16; stageDuel(t2, C.tr.seen); }
+  stegoJawPoint(C.tr, J); spinoHoldPoint(D.tr, H); assert.ok(Math.hypot(J[0] - H[0], J[1] - H[1]) < .05, 'its tail in the beak'); assert.ok(duelLowest(D.tr, 'spinoRex') >= -.01, 'never below the floor');
+});
+test('Close View: two duellists side by side are drawn apart until they no longer overlap; the striking part may reach', () => {
+  const mk = (kind, x) => { const e = createCombatant(kind, x, 0, true, []); e.id = kind; e.hp = 1000; e.pack = { attack: null, data: {} }; return e; };
+  const sp = mk('spinoRex', 10), st = mk('wildStego', 11.5), A = cvSample(sp, {}), B = cvSample(st, {}); const tracks = new Map([[sp, A.tr], [st, B.tr]]);
+  assert.ok(duelOverlap(A.tr, 'spinoRex', B.tr, 'wildStego').depth > .3, 'they overlap where the game stands them'); A.tr.seen = B.tr.seen = 5000; stageDuel(tracks, 5000);
+  assert.ok(duelOverlap(A.tr, 'spinoRex', B.tr, 'wildStego').depth < .02, 'drawn apart'); assert.ok(Math.abs(A.f.x - (sp.x + .5)) <= DUEL_STAGE.maxSep + 1e-9, 'within the spacing\'s reach');
+  assert.equal(sp.x, 10, 'the game\'s position untouched');
 });
 test('Close View camera: a duel near the Wayfarer pulls the boom back to frame all three, within the duel pull; none without one', () => {
   const D = CLOSE_VIEW.camera.threat.duel, s = { id: 's', kind: 'spinoRex', x: 10, y: 10, hp: 9, dinoDuel: { foe: 't' } }, t = { id: 't', kind: 'wildStego', x: 14, y: 10, hp: 9, dinoDuel: { foe: 's' } };

@@ -297,7 +297,7 @@ export const ATTACK_MODULES = {
   stegoPounce: { id: "stegoPounce", name: "Wild Pounce", range: [2.5, 10], cooldown: 6, windup: .55, active: 1.2, recover: .6, damage: 1.45, tags: ["ground", "leap"], text: "It crouches and springs, and comes down on you with all its weight. It pounces on other creatures too." },
   stegoTreeClub: { id: "stegoTreeClub", name: "Uprooted Club", range: [0, 9], cooldown: 50, windup: .2, active: 6.5, recover: .8, damage: 1.6, tags: ["melee", "rare"], text: "Near tall thin trees it bites one, tears it out by the roots, shakes it, and swings it as a club. The tree stays down." },
   stegoBreach: { id: "stegoBreach", name: "Breach", range: [2, 12], cooldown: 7, windup: .4, active: 2.2, recover: .6, damage: 1.5, tags: ["ground", "water"], text: "On water only: it dives, then bursts up out of the water across your path, or up and down on top of you." },
-  stegoJaws: { id: "stegoJaws", name: "Thrashing Jaws", range: [0, 4.5], cooldown: 16, windup: .6, active: 4.6, recover: .7, damage: .9, tags: ["grab", "melee", "duel"], text: "The dino duel only: it seizes the Spinosaurus by the tail or the belly and shakes it side to side; its thrashing body sweeps the ground round them." },
+  stegoJaws: { id: "stegoJaws", name: "Tail Heave", range: [0, 4.5], cooldown: 16, windup: .6, active: 4.6, recover: .7, damage: .9, tags: ["grab", "melee", "duel"], text: "The dino duel only: it seizes the Spinosaurus by the tail, heaves it up and slams it down, twice; each slam lands in the circle shown." },
   // The Spinosaurus (Tim, 2026-11-12: "The Hunter of Hunters"). Numbers other than these are in SPINO; `fossil` moves only once it is bone.
   spinoBite: { id: "spinoBite", name: "Snapping Jaws", range: [0, 3.6], cooldown: 3.2, windup: .55, active: 1.2, recover: .55, damage: .8, tags: ["melee", "bleed"], text: "One or two long snapping bites of its crocodile jaws, stepping in after you. They make you bleed." },
   spinoClaw: { id: "spinoClaw", name: "Hooked Claws", range: [0, 3], cooldown: 2.8, windup: .45, active: .9, recover: .5, damage: .6, tags: ["melee", "bleed"], text: "It rakes with one great clawed hand, then the other. They make you bleed." },
@@ -998,7 +998,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "wildStego") { enemy.stegoPose = null; enemy.stegoAir = 0; enemy.stegoRoll = 0; enemy.stegoTree = null; enemy.stegoClimb = 0; enemy.stegoClimbDir = null; enemy.stegoSwim = 0; } // a move, a hop or a climb never resumes mid-way; its tail, tail wear and plates are kept
   if (enemy.kind === "spinoRex") { enemy.spinoFossil = enemy.spinoFossil === true; Object.assign(enemy, spinoPoseDefaults(), { spinoFossil: enemy.spinoFossil, spinoShed: enemy.spinoFossil ? 1 : 0 }); delete enemy.spinoArriving; } // a move, a grab or the shed never resumes mid-way; once bone, it stays bone
   if (enemy.spinoHeldBy) delete enemy.spinoHeldBy; // a creature in the Spinosaurus's jaws is let go by a reload
-  if (enemy.stegoHeldBy) delete enemy.stegoHeldBy; if (enemy.kind === "wildStego") enemy.stegoGrab = null; // so is the Spinosaurus in the stego's (the dino duel)
+  if (enemy.stegoHeldBy) delete enemy.stegoHeldBy; if (enemy.kind === "wildStego") enemy.stegoGrab = null; if (enemy.dinoLift || enemy.dinoPitch || enemy.dinoRoll) dinoUnhang(enemy); // so is the Spinosaurus in the stego's (the dino duel)
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
   enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; /* release 706 */ enemy.dragonPose = null; enemy.dragonAir = 0; enemy.dragonCharge = 0; enemy.doomRays = null; enemy.doomBreath = null; // release 709 // release 245: no pose survives a reload
   return enemy;
@@ -1312,11 +1312,14 @@ export const STEGO = {
   // its walk, and holds its own blow while the Spinosaurus's blow at it is coming (`wait`), so the blows alternate.
   rival: { kinds: ["spinoRex"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .5, speed: .9, wait: true,
     moves: ["stegoWheel", "stegoTailWhack", "stegoTailSlam", "stegoRearSwipe", "stegoPounce", "stegoBite", "stegoClaw", "stegoTreeClub"], grabs: ["stegoJaws"] },
-  // Its duel grab (stegoJaws, on the Spinosaurus only): it lunges `reach` past its body in `bite` s and seizes the tail or the belly,
-  // shakes it side to side for `shake` s (`swings` times, `swing` tiles each way; each swing a blow of `chewShare` of the move's
-  // damage), then lets go over `release` s. The thrashing body sweeps `sweep` tiles round it (the ring shown from the wind-up on):
-  // the Wayfarer inside takes `sweepShare` of the move's damage a swing.
-  jaws: { reach: 1.6, bite: .45, shake: 3, swings: 6, swing: 1.1, chewShare: .6, release: .4, sweep: 3.6, sweepShare: .55, push: 1.5 },
+  // Its duel grab (stegoJaws, on the Spinosaurus only; Tim 2026-11-14: "picking him up by the tail and slamming him"): it lunges
+  // `reach` past its body in `bite` s and seizes the tail, then `slams` times heaves it up and round in an arc (`heave` s: `swing`
+  // radians to one side, then back across to the other; up to `height` tiles mid-arc, nose down by `pitch` radians, banked by `roll`)
+  // and slams it flat at the arc's end (`slam` s, the blow `share` of the move's damage), then lets go (`release` s). Held by the tip
+  // of its tail, its body swings round `held` tiles from the stego (where it is drawn, and where it can be struck). Each slam lands in
+  // a circle of `radius` tiles there at the arc's end, shown at least `heave` s first: the Wayfarer inside takes `collateral` of the
+  // move's damage.
+  jaws: { reach: 1.6, bite: .45, heave: 1, slam: .35, slams: 2, release: .4, swing: 1.1, height: 2.2, pitch: .6, roll: .4, share: .9, held: 7.5, radius: 3.2, collateral: .6 },
   baitSeconds: 30, /* the Stego Bait (stego-bait.ts): how long a placed bait holds every monster's attention */
   text: { severed: "Its tail comes away! The Wild Stegosaurus staggers, and the tail lies where it fell." },
 };
@@ -1355,7 +1358,7 @@ export const SPINO = {
   grab: { lockAt: .4, follow: 6, markMax: 8, radius: 1.15, reach: 1.4, lunge: .35, hold: 2.1, slack: .3, chews: 3, chewShare: .35, throwTime: .35, throwShare: .55, throw: 3, throwTurn: .6, lift: 1.2, creatureHold: 3.5, creatureChews: 4,
     // The dino duel: the Wild Stegosaurus lifted (`lift` s, `height` tiles) and slammed down `ahead` tiles before its body (`slam` s),
     // `slams` times; each slam a blow of `share` of the move's damage, and `collateral` of it to the Wayfarer inside its `radius`.
-    duel: { lift: .7, height: 1.4, slam: .35, slams: 2, ahead: 1.6, share: .8, radius: 2.1, collateral: .6 } },
+    duel: { lift: .7, height: 1.4, slam: .35, slams: 2, ahead: 3.2, share: .8, radius: 2.4, collateral: .6 } },
   bones: { count: 5, fan: .5, rise: .55, stagger: .22, speed: 6, turn: 2.4, life: 2.4, radius: .35, burst: 1.3, burstArm: .5, burstShare: .6, cap: 12 },
   ribs: { reach: 3.6, side: 2.8, width: .6, thrust: .45, outShare: .7, outArc: 200, inArc: 180 }, /* out to the sides (`outArc` shown), then in to a point in front, sweeping the ground between (`inArc` shown) */
   // Its prey (Tim: "wildStego and briarStag first"): within `sight` it turns on one, at `chance` % each time it chooses (it chooses again after `refocus` s on its prey, `refocusYou` s on you). A blow on
@@ -1699,8 +1702,8 @@ function dinoCue(w, e, phase, move, at = e, extra = null) {
 }
 // The duel's big moves (DINO_DUEL.shake, DINO_DUEL.rockfall): the screen shakes (capped, at most once each `gap` s from either
 // duellist; none under Reduced Motion: spino-rex.ts shakeOffset), and under a ceiling (w.indoors) rocks fall around a slam.
-const DINO_SHAKE = { land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock" };
-const DINO_SLAMS = new Set(["stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel"]);
+const DINO_SHAKE = { land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock" };
+const DINO_SLAMS = new Set(["stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel"]);
 function dinoBigMove(w, e, phase, move, x, y) {
   const S = DINO_DUEL.shake, d = duelOf(e), kind = phase === "land" ? DINO_SHAKE[move] || "land" : (phase === "roar" || phase === "rock") ? DINO_SHAKE[move] : phase === "hit" && move === "stegoWheel" ? "wheel" : null;
   const now = (Number(w.now) || 0) / 1000;
@@ -1784,7 +1787,7 @@ const START = {
   stegoClaw(e, s, w) { const C = STEGO.claw; stegoFace(e, s.data.aim); Object.assign(s.data, { n: 0, next: 0, swipes: C.swipes + (distance(stegoQuarry(s, w) || s.data.target, e) <= bodyRadius(e) + C.close ? 1 : 0) }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + C.reach, arc: C.arc }; e.stegoPose = "clawL"; },
   stegoRearSwipe(e, s) { const R = STEGO.rear; stegoFace(e, s.data.aim); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + R.reach + R.step, arc: R.arc }; e.stegoPose = "rear"; },
   stegoBuck(e, s) { s.tele = { type: "arc", aim: stegoBack(e), radius: bodyRadius(e) + STEGO.buck.reach, arc: STEGO.buck.arc }; e.stegoPose = "buck"; },
-  stegoJaws(e, s) { const where = hashSeed(`${e.id}:${s.seq}:jaws`) % 2 ? "tail" : "belly"; stegoFace(e, s.data.aim); Object.assign(s.data, { stage: "bite", where, n: 0 }); s.tele = { type: "ring", radius: STEGO.jaws.sweep }; e.stegoPose = "biteReady"; e.stegoGrab = { who: s.data.prey || null, phase: "bite", t: 0, where }; },
+  stegoJaws(e, s) { stegoFace(e, s.data.aim); Object.assign(s.data, { stage: "bite", slams: 0 }); e.stegoPose = "biteReady"; e.stegoGrab = { who: s.data.prey || null, phase: "bite", t: 0, slams: 0 }; },
   stegoPounce(e, s, w) { const to = stegoLanding(e, w, s.data.target); s.data.to = to; s.data.from = { x: e.x, y: e.y }; stegoFace(e, s.data.aim); s.tele = { type: "circle", x: to.x, y: to.y, radius: STEGO.pounce.radius, total: ATTACK_MODULES.stegoPounce.windup }; e.stegoPose = "crouch"; },
   stegoTreeClub(e, s, w) { const tree = clubTreeNear(w, e.x, e.y); Object.assign(s.data, { stage: "go", left: STEGO.tree.go, tree: tree ? tree.id : null, n: 0 }); s.tele = { type: "brace" }; e.stegoPose = "bite"; if (tree) { stegoFace(e, unit(tree.x - e.x, tree.y - e.y)); e.stegoTree = { phase: "grab", treeX: tree.x, treeY: tree.y }; } },
   stegoBreach(e, s, w) { const mode = hashSeed(`${e.id}:${s.seq}:breach`) % 2 ? "lane" : "slam", B = STEGO.breach; Object.assign(s.data, { mode, from: { x: e.x, y: e.y } }); e.stegoPose = "dive"; e.stegoSwim = 1; e.untargetable = true;
@@ -2658,41 +2661,53 @@ const RUN = {
     }
     if (d.n >= R.swipes && d.next <= 0 || s.t <= 0) { s.tele = null; e.stegoPose = null; toPhase(s, "recover", A.recover); }
   },
-  // The dino duel's grab (STEGO.jaws): a lunge and a bite (`bite`), the shaking (`shake`), the letting go (`release`). The Spinosaurus
-  // held (stegoHeldBy) does nothing; the stego's pose is grabShake with e.stegoGrab { who, phase: 'bite'|'shake'|'release', t, where }.
+  // The dino duel's grab (STEGO.jaws, Tim 2026-11-14: "picking him up by the tail and slamming him"): a lunge and a bite on the tail
+  // (`bite`), then `slams` times a heave (`heave` s: braced and rearing, the Spinosaurus hauled up by its tail, nose down) and a slam
+  // (`slam` s: the blow lands as it begins, flat on the ground, then it settles), then the letting go (`release`). Each slam's circle
+  // is shown from the wind-up (the first) or the heave (the next) on. The held Spinosaurus (stegoHeldBy) does nothing; it carries
+  // dinoLift (tiles), dinoPitch and dinoRoll (radians: nose up +, its right side down +) for the art. The stego's pose is grabHeave,
+  // then grabSlam, with e.stegoGrab { who, phase: 'bite'|'heave'|'slam'|'release', t, slams }.
   stegoJaws(e, s, w) {
-    const A = ATTACK_MODULES.stegoJaws, J = STEGO.jaws, d = s.data, prey = stegoPreyAlive(w, d.prey);
-    if (s.phase === "windup") { if (prey) { d.aim = unit(prey.x - e.x, prey.y - e.y); stegoFace(e, d.aim); } e.stegoPose = "biteReady"; e.stegoGrab = { who: d.prey || null, phase: "bite", t: 0, where: d.where }; if (s.t <= 0) { d.left = J.bite; toPhase(s, "active", A.active); } return; }
+    const A = ATTACK_MODULES.stegoJaws, J = STEGO.jaws, d = s.data, prey = stegoPreyAlive(w, d.prey), grab = (phase, t) => { e.stegoGrab = { who: d.prey || null, phase, t: Math.max(0, Math.min(1, t)), slams: d.slams || 0 }; };
+    if (s.phase === "windup") { if (prey) { d.aim = unit(prey.x - e.x, prey.y - e.y); stegoFace(e, d.aim); d.at = stegoJawsLanding(e, prey, Math.atan2(d.aim.y, d.aim.x) + J.swing); s.tele = { type: "circle", x: d.at.x, y: d.at.y, radius: J.radius, total: A.windup + J.bite + J.heave }; } e.stegoPose = "biteReady"; grab("bite", 0); if (s.t <= 0) { d.left = J.bite; toPhase(s, "active", A.active); } return; }
     if (s.phase === "recover") { e.stegoGrab = null; return; }
     if (s.phase !== "active") return;
     if (!prey) { stegoLetGo(e, s, w); e.stegoPose = null; s.tele = null; toPhase(s, "recover", A.recover); return; }
     d.left -= w.dt;
     if (d.stage === "bite") {
-      const k = Math.min(1, 1 - Math.max(0, d.left) / J.bite), gap = distance(prey, e) - bodyRadius(e) - bodyRadius(prey) * .5;
+      const k = 1 - Math.max(0, d.left) / J.bite, gap = distance(prey, e) - bodyRadius(e) - bodyRadius(prey) * .5;
       if (gap > 0) { const v = unit(prey.x - e.x, prey.y - e.y), st = Math.min(gap, J.reach / J.bite * 1.5 * w.dt); w.move(e, v.x * st, v.y * st); stegoFace(e, v); }
-      e.stegoPose = "bite"; e.stegoGrab = { who: d.prey, phase: "bite", t: k, where: d.where };
+      e.stegoPose = "bite"; grab("bite", k); if (d.at) s.tele = { type: "circle", x: d.at.x, y: d.at.y, radius: J.radius };
       if (d.left > 0) return;
       if (distance(prey, e) <= bodyRadius(e) + J.reach + bodyRadius(prey) && !prey.spinoHeldBy && !prey.stegoHeldBy && !prey.aloft) {
-        prey.stegoHeldBy = e.id; if (prey.pack?.attack) endAttack(prey, prey.pack); s.stegoHolding = prey.id;
-        Object.assign(d, { stage: "shake", left: J.shake, next: 0, base: unit(prey.x - e.x, prey.y - e.y), hold: Math.max(bodyRadius(e) + bodyRadius(prey) * .6, distance(prey, e)) });
-        dinoCue(w, e, "grab", "stegoJaws", prey, { victim: prey.kind });
+        prey.stegoHeldBy = e.id; if (prey.pack?.attack) endAttack(prey, prey.pack); s.stegoHolding = prey.id; spinoFace(prey, unit(prey.x - e.x, prey.y - e.y)); // held by the tail: its body away from the stego
+        const ang = Math.atan2(prey.y - e.y, prey.x - e.x);
+        Object.assign(d, { stage: "heave", left: J.heave, slams: 0, from: ang, to: ang + J.swing, ang0: ang, hold: J.held });
+        d.at = stegoJawsLanding(e, prey, d.to); dinoCue(w, e, "grab", "stegoJaws", prey, { victim: prey.kind }); dinoCue(w, e, "lift", "stegoJaws", prey);
       } else { e.stegoGrab = null; e.stegoPose = null; s.tele = null; toPhase(s, "recover", A.recover); }
       return;
     }
-    if (d.stage === "shake") {
-      const k = Math.min(1, 1 - Math.max(0, d.left) / J.shake), side = Math.sin(k * Math.PI * J.swings), across = { x: -d.base.y, y: d.base.x };
-      prey.x = e.x + d.base.x * d.hold + across.x * side * J.swing; prey.y = e.y + d.base.y * d.hold + across.y * side * J.swing; prey.dinoYank = side; // the art yaws the shaken body with it (close-view-beast-spino.ts)
-      e.stegoPose = "grabShake"; e.stegoGrab = { who: d.prey, phase: "shake", t: k, where: d.where, side };
-      d.next -= w.dt;
-      if (d.next <= 0 && d.n < J.swings) { d.n++; d.next = J.shake / J.swings;
-        stegoWoundRival(w, e, prey, Math.max(1, Math.ceil(damageOf(e, "stegoJaws") * J.chewShare)), DINO_DUEL.weight.stegoJaws); dinoCue(w, e, "hit", "stegoJaws", prey, { victim: prey.kind });
-        if (distance(center(w.player), e) <= J.sweep && (!w.los || w.los(e, w.player))) w.hurt(e, Math.max(1, Math.ceil(damageOf(e, "stegoJaws") * J.sweepShare)), { jumpable: false, source: "stegoJaws" }); }
+    if (d.stage === "heave") {
+      // round the arc at the end of its reach (the art hangs the body from the beak), turning with it; up and down again by its end
+      const k = Math.min(1, 1 - Math.max(0, d.left) / J.heave), a = d.from + (d.to - d.from) * k * k * (3 - 2 * k), dir = { x: Math.cos(a), y: Math.sin(a) }, up = Math.sin(Math.PI * Math.pow(k, .75));
+      prey.x = e.x + dir.x * d.hold; prey.y = e.y + dir.y * d.hold; spinoFace(prey, dir); stegoFace(e, dir); d.aim = dir;
+      prey.dinoLift = up * J.height; prey.dinoPitch = -up * J.pitch; prey.dinoRoll = up * J.roll * Math.sign(d.to - d.from);
+      e.stegoPose = "grabHeave"; grab("heave", k); s.tele = { type: "circle", x: d.at.x, y: d.at.y, radius: J.radius };
       if (d.left > 0) return;
-      d.stage = "release"; d.left = J.release; stegoLetGo(e, s, w);
-      for (let i = 0; i < 6; i++) if (!w.move(prey, d.base.x * J.push / 6, d.base.y * J.push / 6)) break;
-      return;
+      // the slam: the blow lands now, the Spinosaurus flat on the ground in the circle (and the Wayfarer in it hurt)
+      d.slams++; d.stage = "slam"; d.left = J.slam; prey.dinoLift = 0; prey.dinoPitch = 0; prey.dinoRoll = 0; s.tele = null;
+      stegoWoundRival(w, e, prey, Math.max(1, Math.ceil(damageOf(e, "stegoJaws") * J.share)));
+      dinoCue(w, e, "hit", "stegoJaws", prey, { victim: prey.kind }); dinoCue(w, e, "land", "stegoJawsSlam", d.at);
+      if (distance(center(w.player), d.at) <= J.radius + .2 && (!w.los || w.los(e, w.player))) w.hurt(e, Math.max(1, Math.ceil(damageOf(e, "stegoJaws") * J.collateral)), { jumpable: false, source: "stegoJawsSlam" });
+      e.stegoPose = "grabSlam"; grab("slam", 0); return;
     }
-    e.stegoPose = "grabShake"; e.stegoGrab = { who: d.prey, phase: "release", t: Math.min(1, 1 - Math.max(0, d.left) / J.release), where: d.where };
+    if (d.stage === "slam") {
+      e.stegoPose = "grabSlam"; grab("slam", 1 - Math.max(0, d.left) / J.slam);
+      if (d.left > 0) return;
+      if (d.slams < J.slams) { d.stage = "heave"; d.left = J.heave; d.from = d.to; d.to = d.ang0 - J.swing; d.at = stegoJawsLanding(e, prey, d.to); dinoCue(w, e, "lift", "stegoJaws", prey); return; }
+      d.stage = "release"; d.left = J.release; stegoLetGo(e, s, w); return;
+    }
+    e.stegoPose = "grabSlam"; grab("release", 1 - Math.max(0, d.left) / J.release);
     if (d.left <= 0 || s.t <= 0) { e.stegoGrab = null; e.stegoPose = null; s.tele = null; toPhase(s, "recover", A.recover); }
   },
   stegoBuck(e, s, w) {
@@ -2894,7 +2909,7 @@ const RUN = {
       if (d.left > 0) return;
       s.tele = null; const prey = spinoPreyAlive(w, d.prey);
       if (d.prey ? prey && distance(prey, d.mark) <= G.radius + bodyRadius(prey) * .5 : distance(center(w.player), d.mark) <= G.radius && (!w.los || w.los(e, w.player)) && w.spinoHold?.(e, G.hold + G.throwTime + G.slack)) {
-        if (prey) { prey.spinoHeldBy = e.id; if (prey.pack?.attack) endAttack(prey, prey.pack); if (dinoRivals(e, prey)) dinoCue(w, e, "grab", "spinoGrab", prey, { victim: prey.kind }); }
+        if (prey) { prey.spinoHeldBy = e.id; if (prey.pack?.attack) endAttack(prey, prey.pack); if (prey.kind === "wildStego") { const h = spinoHeading(e); stegoFace(prey, { x: -h.y, y: h.x }); } /* held by the belly: across its jaws */ if (dinoRivals(e, prey)) dinoCue(w, e, "grab", "spinoGrab", prey, { victim: prey.kind }); }
         const hold = prey ? G.creatureHold : G.hold, chews = prey ? G.creatureChews : G.chews;
         Object.assign(d, { stage: "hold", left: hold, hold, chews, n: 0, next: hold / (chews + 1) }); s.spinoHolding = who; e.spinoPose = "grabHold";
         if (prey && dinoRivals(e, prey) && duelOf(e)) Object.assign(d, { stage: "lift", left: G.duel.lift, slams: 0 }); // the dino duel: lifted and slammed down, twice
@@ -2909,7 +2924,7 @@ const RUN = {
       const D = G.duel, at = { x: e.x + h.x * (bodyRadius(e) + D.ahead), y: e.y + h.y * (bodyRadius(e) + D.ahead) };
       if (!prey) { d.stage = "throw"; d.left = G.throwTime; s.spinoHolding = null; s.tele = null; return; }
       if (d.stage === "lift") {
-        const k = Math.min(1, 1 - Math.max(0, d.left) / D.lift); prey.x = mouth.x; prey.y = mouth.y; prey.dinoLift = k * D.height;
+        const k = Math.min(1, 1 - Math.max(0, d.left) / D.lift); prey.x = at.x; prey.y = at.y; prey.dinoLift = k * D.height; // held out where its jaws are drawn
         if (!d.lifted) { d.lifted = true; dinoCue(w, e, "lift", "spinoGrab", prey); }
         e.spinoPose = "grabLift"; e.spinoGrab = { who, phase: "lift", t: k, slams: d.slams }; s.tele = { type: "circle", x: at.x, y: at.y, radius: D.radius, total: D.lift };
         if (d.left > 0) return;
@@ -4617,8 +4632,12 @@ function dinoFeeds(e, s, w) {
   return true;
 }
 // The Spinosaurus in the stego's jaws (stegoJaws): its holder alive, mid-grab, holding it. Else the hold is dropped.
-function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; q.dinoYank = 0; return false; }
-function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) { delete q.stegoHeldBy; q.dinoYank = 0; } }
+function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; dinoUnhang(q); return false; }
+// The art's hang of a held duellist (dinoLift, dinoPitch, dinoRoll) back to the ground when it is let go.
+function dinoUnhang(q) { if (q) { q.dinoLift = 0; q.dinoPitch = 0; q.dinoRoll = 0; } }
+// Where the stego slams the Spinosaurus it holds by the tail: the circle `ahead` past the held body, on its side of the stego.
+function stegoJawsLanding(e, prey, ang) { const r = STEGO.jaws.held; return { x: e.x + Math.cos(ang) * r, y: e.y + Math.sin(ang) * r }; }
+function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) { delete q.stegoHeldBy; dinoUnhang(q); } }
 // Is `foe`'s blow at `e` coming (its wind-up or its swing, aimed at e)? Then e holds its own, so the blows alternate.
 const dinoBlowComing = (foe, e) => !!foe?.pack?.attack && foe.pack.data?.prey === e.id && foe.pack.phase !== "recover";
 // Its choice, every `refocus` s (its moves pause the clock): the Spinosaurus in sight, or (now and then, with you close) you.
@@ -4823,11 +4842,11 @@ function spinoCan(e, s, w, id) {
   return true;
 }
 // Is a creature still in its jaws? (Its holder alive, mid-grab, holding this one.)
-function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; if (q.dinoLift) q.dinoLift = 0; return false; }
+function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; if (q.dinoLift) dinoUnhang(q); return false; }
 // Lets go of whatever it held (a grab broken off by a stagger, its death or a reload).
 function spinoLetGo(e, s, w) {
   const held = s.spinoHolding; s.spinoHolding = null; e.spinoGrab = null; if (!held) return;
-  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) { delete q.spinoHeldBy; q.dinoLift = 0; } }
+  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) { delete q.spinoHeldBy; dinoUnhang(q); } }
 }
 // Every fighting frame, before the shared brain: the shed, a broken-off grab, its prey first, then one-off jumps and grabs at other
 // creatures. True when it has spent the frame.

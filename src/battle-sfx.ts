@@ -55,13 +55,13 @@ export const DUEL_SOUNDS = {
   },
   roar: { spinoRoar: "roarBig", spinoArrive: "roarBig" },
   swing: { stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
-  land: { stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig" },
+  land: { stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig" },
   // A blow that connects with the other duellist (and only then).
   hit: {
     spinoBite: "biteSpino", spinoBodySlam: "biteSpino", spinoClaw: "rakeSpino", spinoTailSwipe: "tailSpino", spinoLeapSlam: "impact", spinoGrab: "chew", spinoRibSpears: "spear", spinoRoar: "roarHit",
     stegoBite: "biteStego", stegoClaw: "rakeStego", stegoRearSwipe: "rakeStego", stegoTailWhack: "tailStego", stegoTailSlam: "tailStego", stegoWheel: "wheelCrunch", stegoPounce: "impact", stegoTreeClub: "woodCrack", stegoBreach: "impact", stegoJaws: "thrash", spinoGrabSlam: "impact",
   },
-  grab: { spinoGrab: "crunch", stegoJaws: "crunch" }, lift: { spinoGrab: "strain" }, rock: { dinoRock: "rockfall" }, feed: { dinoFeed: "chew" },
+  grab: { spinoGrab: "crunch", stegoJaws: "crunch" }, lift: { spinoGrab: "strain", stegoJaws: "bellowShort" }, rock: { dinoRock: "rockfall" }, feed: { dinoFeed: "chew" },
   flee: { spinoRex: "growlSpino", wildStego: "bellowStego" }, shed: { spinoFossil: "shed" }, roll: { stegoWheel: "wheelRoll" },
   fling: { spinoDigFling: "fling" }, launch: { stegoPlateRockets: "rockets", spinoBoneVolley: "boneVolley" },
 };
@@ -378,7 +378,7 @@ const SYNTH = {
   roarHit(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L, 70, 36, .5), b = this.noiseBurst(p, t, out, L * .6, "lowpass", 140, .8, .04, 1).end; return { ...p, end: Math.max(a, b) }; },
   footSpino(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 58, 36, .34) }; },
   footStego(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 76, 48, .24) }; },
-  // the grabs: a shake of the held body (a swish and a heavy body thump), the lift's strain (a low, straining growl), and rockfall
+  // the grabs: the slammed body coming down (a swish and a heavy body thump), the lift's strain (a low, straining growl), and rockfall
   thrash(t, out, L) { const p = { src: [], nodes: [] }, a = this.sweep(p, t, out, L * .55, .22, 300, 1100), b = this.thump(p, t + .14, out, L, 88, 40, .34), d = this.noiseBurst(p, t + .14, out, L * .45, "bandpass", 520, 1.2, .004, .12).end; return { ...p, end: Math.max(a, b, d) }; },
   strain(t, out, L) { return this.roarVoice(t, out, L, { dur: .75, f0: 48, am: 19, f1: [300, 420, 340], f2: [800, 950, 820] }); },
   rockfall(t, out, L) {

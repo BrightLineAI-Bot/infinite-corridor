@@ -59,8 +59,10 @@ export const STEGO_POSES = Object.freeze({
   clubSlam: { head: -.55, pitch: -.14, crouch: .45, tree: .95, open: .1 },
   hop: { pitch: .12, tuck: .55, head: .1, tailUp: .1 },
   stagger: { head: -.45, crouch: .32, open: .45, pitch: -.06 },
-  // the dino duel's grab: the Spinosaurus in its jaws (the gameplay swings the held body itself side to side)
-  grabShake: { head: .1, reach: .45, open: .25, crouch: .2, pitch: -.06, tailSide: .35, tailUp: .2 },
+  // the dino duel's grab: the Spinosaurus's tail in its jaws, heaved up (braced on its hind legs, rearing, head up and back) and slammed
+  // down (head driven to the ground, weight thrown forward)
+  grabHeave: { pitch: .85, frontLift: .9, head: .9, reach: -.15, open: .2, crouch: .1, tailUp: -.3 },
+  grabSlam: { pitch: -.22, head: -.8, reach: .45, open: .2, crouch: .4, tailUp: .3 },
   dead: { crouch: 1, head: -.6, open: .4, tuck: .7 },
 });
 const KEYS = ["pitch", "head", "reach", "open", "crouch", "tailUp", "tailSide", "tailReach", "curl", "frontLift", "clawNear", "clawFar", "kick", "tuck", "flare", "tree"];

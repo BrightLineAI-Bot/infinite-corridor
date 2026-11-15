@@ -18,8 +18,8 @@ import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RI
 import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.ts";
 import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.ts";
 import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.ts";
-import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG, stegoJawPoint, stegoHoldPoint } from "./close-view-beast-stego.ts";
-import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG, spinoJawPoint, spinoHoldPoint } from "./close-view-beast-spino.ts";
+import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.ts";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
 import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.ts";
 
 // A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
@@ -108,27 +108,3 @@ export function closeViewBeastEligible(e, scene = null) {
     && !e.mount && !e.astralAllyOf && !e.seaKind && !e.foundryForm && CLOSE_VIEW_BEASTS[e.kind].eligible?.(e, scene) !== false;
 }
 export { BEAST_SLOT };
-// The dino duel (Tim, 2026-11-14): a beast held in the other's jaws is drawn in them. The Wild Stegosaurus the Spinosaurus lifts and
-// slams hangs from its jaws by the middle of its back (never below its own ground); the Spinosaurus the stego shakes has its tail or
-// belly in the stego's beak, so the stego's thrashing head yanks it side to side. The held body's whole frame moves (its skin's
-// translations and its place); the game's positions are untouched. `tracks`: this frame's admitted beasts (foe -> track, `seen`).
-const JAW = [0, 0, 0], HOLD = [0, 0, 0];
-export function shiftBeastFrame(f, dx, dy, dz) {
-  const s = f?.skin; if (!s) return;
-  for (let b = 0; b < f.boneCount; b++) { s[b * 12 + 3] += dx; s[b * 12 + 7] += dy; s[b * 12 + 11] += dz; }
-  f.x += dx; f.y += dy; f.air = Math.max(0, (f.air || 0) + dz);
-}
-export function holdInJaws(tracks, now) {
-  for (const [foe, tr] of tracks) {
-    const by = foe.spinoHeldBy || foe.stegoHeldBy; if (!by || tr.seen !== now || foe.dead) continue;
-    let holder = null, htr = null; for (const [q, t] of tracks) if (q.id === by && t.seen === now && !q.dead) { holder = q; htr = t; break; }
-    if (!holder) continue;
-    if (foe.spinoHeldBy && holder.kind === 'spinoRex' && foe.kind === 'wildStego') {
-      spinoJawPoint(htr, JAW); stegoHoldPoint(tr, HOLD);
-      shiftBeastFrame(tr.frame, JAW[0] - HOLD[0], JAW[1] - HOLD[1], Math.max(-(tr.frame.air || 0), JAW[2] - HOLD[2]));
-    } else if (foe.stegoHeldBy && holder.kind === 'wildStego' && foe.kind === 'spinoRex') {
-      stegoJawPoint(htr, JAW); spinoHoldPoint(tr, holder.stegoGrab?.where, HOLD, JAW);
-      shiftBeastFrame(tr.frame, JAW[0] - HOLD[0], JAW[1] - HOLD[1], 0);
-    }
-  }
-}

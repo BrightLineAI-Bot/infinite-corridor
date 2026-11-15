@@ -24,7 +24,8 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast, holdInJaws } from "./close-view-beasts.ts"; // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
+import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
 import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
@@ -3490,7 +3491,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); frame.fogCap = kept ? S.fog : 1; track.seen = now;
     B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); count(spec);
   }
-  holdInJaws(B.tracks, now); // the dino duel: a beast held in the other's jaws is drawn there (close-view-beasts.ts)
+  stageDuel(B.tracks, now); // the dino duel: the two bodies spaced, a held one drawn in the other's jaws (close-view-duel.ts)
   for (const [foe, track] of B.tracks) {
     if (track.seen === now) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind];
