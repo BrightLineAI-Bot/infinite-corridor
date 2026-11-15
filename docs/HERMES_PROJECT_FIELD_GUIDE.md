@@ -6,6 +6,22 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 970 — Combat follow-ups: freeze cancel, clap walls, Quandrix linger, Transpose, fist meter
+
+Tim, 2026-11-14/15: freezes cancel attacks being wound up, resistance stays at the third-freeze level; the clap's lines stop at walls, 20% longer, 1.5 tiles out, draw enemies in; a Quandrix hand or slam let go early stays until its charge timer, then explodes; Transpose buffs all magic damage including the Carbine; a fist meter that says Perfect Timing! and steps up to Perfect Rhythm!.
+
+**CODE:** Freeze: `game.ts` `cancelFrozenAttack` on freeze start (ordinary/elite fields; `monster-pack.ts` `cancelPackAttack` via `endAttack`; `resetGateAttack`; `stalker.ts` `cancelStalkerAct`; sea strikes to lurking; unarmed hazards removed); frozen foes skipped in the elite and rootbound loops; boss-kit and affix timers paused while frozen; `great-sweep.ts` `topTier` clamps the tier. Clap: `brawler-spells.ts` `HAMMER_CLAP` {length 2.88, spread 1.5, pull 4, samples 9, step .25}; `clipHammerClap` stores `back`/`fore`/`out` on the effect; `hammerClapCatches`/`hammerClapExtent` test the clipped band; `Game.clapClear` (line of sight via `updateEffects` `admits`); `Game.tickHammerClaps` pulls through `moveGrounded`, skipping `artAnchored`. Quandrix: `quandrix-staff.ts` `QUANDRIX.release`, `slam.burst.released` 1.6, `hold.released`; `tickHold` keeps a let-go hand working on its clock and bursts at `fist.time`/`slam.max`; `savedQuandrixHold`/`restoreQuandrixHold` at `playerRuntime.quandrixHold`. Transpose: `weapon-arts.ts` `MAGIC_DAMAGE_SOURCES`, `transposeMagic`; `quandrixPower` × (1 + transposeMagic). Fists: `brawler-spells.ts` `FIST_CALLOUT`, `fistCalloutLevel`, `fistStatusLevel`; `main.ts` writes `#fistStatus` through `hudSet`. Tests: sweep-freeze (13), hammerfall-clap (10), quandrix-release-hold (11), transpose-magic (6), fist-callouts (9).
+
+**BOUNDARY:** Shots already loosed and hazards already armed are not cancelled by a freeze; far-array listener, mirror, worm, skirmisher and leviathan brains pause and resume (Tim: that's good). The clap clip is fixed when cast; the hammer's own blow still ignores walls; anchored foes are never pulled. One held or let-go Quandrix hand at a time; a gold-window release still bursts at once. Transpose percentage unchanged (.25), applied once per source. The fist meter is presentation only, follows the chain's own window and the Damage numbers setting, and is never saved. Additive save fields only (`playerRuntime.quandrixHold`, effect clip fields); schema 14.
+
+## Release 969 — Arc Wave reach
+
+Tim, 2026-11-14: the great waves should shoot out quickly and dissipate rapidly, as they do; the smaller arc waves should continue on for a far distance.
+
+**CODE:** `tool-forms.ts` `ARC_WAVE.range` 20 tiles × reach (was 9.35); flight time from `arcWaveLife` is now 3.64 s at speed 5.5; the outer crescents end about 17 tiles apart. Great waves unchanged (`ARC_WAVE_ECHO` 24 tiles/s, 12.5 × reach). Tests: `blunderbuss-arc-echo` (13).
+
+**BOUNDARY:** Speed, cone, damage, pierce, hit-once, walls and Close View occlusion are unchanged; Arc Wave crescents (anything with `arcWave` or `waveHalf`) have their own cap, `ARC_WAVE.maxLive` (dungeon 60, overworld 72): they no longer count toward the shared 32/64 press cap (`sharedShotCount`), and `retireArcWaves` retires the oldest live crescents to make room, so a press is never refused because of them. The plain Blunderbuss without Arc Wave is unchanged. No save change (schema 14).
+
 ## Release 968 — Hammerfall awakened clap
 
 Tim, 2026-11-14: the awakened Hammerfall's ability is a clap: when the hammer lands, two lines of energy move apart from it and come back together and slap, in addition to the hammer's blow (two parallel lines, not two radii).

@@ -1674,6 +1674,14 @@ function endAttack(e, s) {
   if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
+// The awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE; Tim 2026-11-14: "if they get frozen, the attack gets
+// cancelled"): the attack in hand ends the way a poise break ends it (bossPoise), its telegraph and charge with it; the beast
+// starts afresh once it thaws. True when there was an attack to cancel.
+export function cancelPackAttack(e) {
+  const s = e?.pack; if (!s || typeof s !== "object") return false;
+  const had = !!s.attack || !!s.tele; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; if (s.data) s.data = null;
+  return had;
+}
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
