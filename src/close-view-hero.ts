@@ -937,8 +937,14 @@ function kickLeg(asset,state,pose,left,up,fwd,w){
   target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
 }
 const CYCLONE_SAMPLE={stage:'',turn:0,chamber:0,extend:0,weight:0};
-function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false,cycloneWindup=NaN,cycloneRecover=NaN){
+function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false,cycloneWindup=NaN,cycloneRecover=NaN,cycloneEnter=0){
   if(art==='roundhouse'){kickChain(asset,state,pose,p,contact,chained,0,reducedMotion);return;} // the chain's fourth step (FIST_CHAIN_POSE.kick)
+  if(art==='cyclone-heel'){ // its own envelope (sampleCycloneMotion): at rest at both ends, or already chambered on a Shadow Boxing blink's first frame
+    const A=AWAKENED_POSE[art],m=sampleCycloneMotion(p,cycloneWindup,cycloneRecover,CYCLONE_SAMPLE,undefined,cycloneEnter),c=m.chamber,x=m.extend;
+    if(m.weight>0){rotateX(pose,12,-A.guard*m.weight);rotateX(pose,22,-A.guard*m.weight);}if(c>0)rotateX(pose,27,-A.lean*x*c);
+    if(c>0)kickLeg(asset,state,pose,false,(A.chamber[0]+(A.out[0]-A.chamber[0])*x)*c,(A.chamber[1]+(A.out[1]-A.chamber[1])*x)*c,1); // full IK weight: the target itself starts at the planted ankle
+    if(!reducedMotion&&p<1)state.sweepSpin+=TAU*m.turn; // the turns that strike (whole turns by the end); reduced motion keeps the leg but does not turn
+    state.clip=AWAKENED_CLIP[art];state.clipTime=p;return;}
   const A=AWAKENED_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.2));if(!(env>0))return;
   if(art==='fissure'){const k=smoothstep((p-A.at)/A.len)*env;rotateX(pose,27,A.bend*k);rotateX(pose,24,A.chest*k);plantedCrouch(asset,state,pose,k*A.crouch,A.drop);}
   else if(art==='returning-blades'){const k=smoothstep(p/A.out)*(1-smoothstep((p-A.back)/A.len))*env;rotateX(pose,12,-A.fling*k);rotateX(pose,22,-A.fling*k);rotateZ(pose,12,-A.spread*k);rotateZ(pose,22,A.spread*k);}
@@ -946,10 +952,6 @@ function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chaine
   else if(art==='spell-runes'){const k=Math.sin(Math.PI*p)*env;rotateX(pose,12,-A.trace*k);rotateZ(pose,12,-A.out*k);}
   else if(art==='axe-kick'){const rise=smoothstep(p/A.riseEnd)*(1-smoothstep((p-A.fallAt)/A.fallLen))*env,down=smoothstep((p-A.fallAt)/A.fallLen)*env;
     rotateX(pose,12,-A.guard*env);rotateX(pose,22,-A.guard*env);rotateX(pose,27,-A.arch*rise+A.slam*down);kickLeg(asset,state,pose,false,A.up*rise,A.fwd*rise,rise);plantedCrouch(asset,state,pose,down*A.crouch,A.drop);}
-  else if(art==='cyclone-heel'){const m=sampleCycloneMotion(p,cycloneWindup,cycloneRecover,CYCLONE_SAMPLE),c=m.chamber,x=m.extend;
-    rotateX(pose,12,-A.guard*m.weight);rotateX(pose,22,-A.guard*m.weight);rotateX(pose,27,-A.lean*x*c);
-    if(c>0)kickLeg(asset,state,pose,false,(A.chamber[0]+(A.out[0]-A.chamber[0])*x)*c,(A.chamber[1]+(A.out[1]-A.chamber[1])*x)*c,1); // full IK weight: the target itself starts at the planted ankle
-    if(!reducedMotion)state.sweepSpin+=TAU*m.turn;} // the turns that strike; reduced motion keeps the leg but does not turn
   state.clip=AWAKENED_CLIP[art];state.clipTime=p;
 }
 // Planted crouch: the pelvis sinks while both soles stay where they are (flattening by k).
@@ -1095,7 +1097,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
-  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true,action.cycloneWindup,action.cycloneRecover);
+  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true,action.cycloneWindup,action.cycloneRecover,action.cycloneEnter);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(carbineHeld)carbineHoldPose(state,state.pose,input.carbineRecoil); // the Carbine shouldered (CARBINE_HOLD), over the gait and any carbine record
   if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm

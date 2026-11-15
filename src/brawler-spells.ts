@@ -196,12 +196,16 @@ export function normalizeShadowDash(raw) {
 //     covered in the first turns and the later turns drill into a foe met at the end. `spins` turns of `spinMs`; as each turn
 //     ends the leg strikes every foe within `radius` of her centre at that moment (padded by the foe's body), once each (one
 //     effect a turn): from 2.5 tiles away the last three of five land.
-//   With Shadow Boxing and a foe within `shadow.reach`: the wind-up is Shadow Boxing's own charge to it (SHADOW_DASH's clock,
-//     shadowDashMs, at least `windupMs`; the same mover, `shadow.stop` short, so never through a wall), travelled frame by
-//     frame rather than a pop (Tim, 2026-11-14: "I want to see him traversing the space"), its after-images drawn on arrival
-//     (markShadowTrail); then she spins in place for `shadow.spanMs`: every turn lands on that foe (`only`), and foes touching
-//     the leg take `shadow.splash` of the turn. She follows a stepping foe at up to `shadow.follow` tiles a second. Shadow
-//     Boxing's damage and heal ride on every turn.
+//   With Shadow Boxing and a foe within `shadow.reach`: a true blink to it (Tim, 2026-11-15), by Rift Step's rules (game.ts
+//     cycloneBlink: quarter steps stood by blinkFooting, never up a ledge, through solid props, stopped by walls, hazards,
+//     sealed gates and forbidden air; blinkPathClear), `shadow.stop` short. She leaves a vanish burst, a violet streak and
+//     Shadow Boxing's after-images (markShadowTrail) and arrives in an arrival flash already part-chambered (`shadow.enter` of
+//     the wind-up, so the body appears in the pose rather than popping into it). A blink that cannot get within `shadow.leash`
+//     of its stop is not taken: the travelled kick instead. Then she spins in place for `shadow.spanMs`: every turn lands on
+//     that foe (`only`) while she is within the leash of it, and foes touching the leg take `shadow.splash` of the turn. She
+//     follows a stepping foe at up to `shadow.follow` tiles a second. Shadow Boxing's damage and heal ride on every turn.
+//   The Shadow Clone (Tim, 2026-11-15) throws its arc swing with every turn, through the same hook as each chain step
+//     (game.ts cloneSwing; its own share and rules).
 //   Each turn: `share` × fistPower (the fists' power, glyph damage mods, Spellblade, armor), melee glyphs, Imbue, a `stun`.
 //     5 × .6 = 3.0, a little over the slam's 2.8 it replaces. Echo glyphs add no copies (no fist step has Echo copies) and
 //     do not gate the hold (it is a timing, not a charge). The press counts toward arming Ki Blast again (noteArtPress).
@@ -211,7 +215,7 @@ export function normalizeShadowDash(raw) {
 // `maxTiles`) and resumed exactly; the hold (a held button) is runtime only and a reload drops it.
 export const CYCLONE_HEEL = Object.freeze({
   v: 1, name: "Cyclone Heel", spins: 5, spinMs: 110, windupMs: 120, recoverMs: 170, tiles: 3.5, stop: .8, range: 6, radius: 1.3, share: .6, stun: .25,
-  shadow: Object.freeze({ spanMs: 1000, reach: 8, stop: .85, follow: 3, splash: .35 }),
+  shadow: Object.freeze({ spanMs: 1000, reach: 8, stop: .85, follow: 3, splash: .35, leash: 1, enter: .6, blink: Object.freeze({ vanish: .7, arrive: 1, life: .3 }) }),
   window: Object.freeze({ lead: .22, grace: .12 }), holdMs: 1500,
   minMs: 300, maxMs: 1500, maxTiles: 8, maxSpins: 12, maxPhaseMs: 400, // the saved record's bounds
   colors: Object.freeze({ ring: "#9ff0ff", leg: "#ffffff", shadow: "#b48cff" }),
@@ -224,7 +228,7 @@ export function normalizeCycloneHeel(raw) {
     || !finiteIn(raw.limit, 0, C.maxTiles) || !Number.isInteger(raw.spins) || raw.spins < 1 || raw.spins > C.maxSpins || !Number.isInteger(raw.spun) || raw.spun < 0 || raw.spun > raw.spins
     || !finiteIn(raw.power, 0, 1e9) || !finiteIn(raw.splash, 0, 1e9) || ![0, 1, 2].includes(raw.level)
     || !finiteIn(raw.windupMs, 0, C.maxPhaseMs) || !finiteIn(raw.recoverMs, 0, C.maxPhaseMs) || raw.windupMs + raw.recoverMs >= raw.durationMs) return null;
-  r.perfect = raw.perfect === true; return r;
+  r.perfect = raw.perfect === true; r.enter = finiteIn(raw.enter, 0, 1) ? raw.enter : 0; return r;
 }
 // The standard view (and Close View's floor layer), on the same motion as the Close View body (action-motion.ts
 // sampleCycloneMotion): the leg's line drawn round her as she turns, longer as it extends, a trailing arc whose length follows
@@ -235,7 +239,7 @@ const CYCLONE_DRAW = { stage: "", turn: 0, chamber: 0, extend: 0, weight: 0 };
 function drawCycloneHeel(ctx, game, toScreen, s, floor) {
   const q = game.cycloneHeel, p = game.player; if (!q || q.v !== CYCLONE_HEEL.v || !p || !(q.durationMs > 0)) return;
   const C = CYCLONE_HEEL, K = C.colors, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode), D = q.durationMs;
-  const m = sampleCycloneMotion(q.elapsedMs / D, q.windupMs / D, q.recoverMs / D, CYCLONE_DRAW); if (!(m.weight > 0)) return;
+  const m = sampleCycloneMotion(q.elapsedMs / D, q.windupMs / D, q.recoverMs / D, CYCLONE_DRAW, undefined, q.enter); if (!(m.weight > 0)) return;
   const [x, y] = toScreen({ x: p.x + .5, y: p.y + (floor ? FIST_STEP_VIEW.footY : FIST_STEP_VIEW.bodyY) }), R = C.radius * s, tint = q.mode === "shadow" ? K.shadow : K.ring;
   const head = Math.atan2(q.dirY, q.dirX), a = still ? head : head + m.turn * Math.PI * 2, trail = still ? .4 : m.stage === "spin" ? 2.4 * m.extend : m.stage === "recover" ? 2.4 * m.weight : 0;
   ctx.globalAlpha = .18 * m.weight; ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();

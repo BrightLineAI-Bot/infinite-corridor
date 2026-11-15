@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, GAME_NESTED_CLOCKS } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
-import { SHADOW_DASH, IRON_FISTS, CYCLONE_HEEL, normalizeCycloneHeel, FIST_CALLOUT, fistStatusLevel, drawBrawler, BRAWLER } from '../src/brawler-spells.ts';
+import { SHADOW_DASH, BRAWLER_ECHO, IRON_FISTS, CYCLONE_HEEL, normalizeCycloneHeel, FIST_CALLOUT, fistStatusLevel, drawBrawler, BRAWLER } from '../src/brawler-spells.ts';
 import { WEAPON_ARTS } from '../src/weapon-arts.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
 import { deserializeSave, serializeSave } from '../src/persistence.ts';
@@ -122,22 +122,50 @@ test('without Shadow Boxing: walls stop the travel, as other dashes', () => {
   const x0 = g.player.x; kick(g, clock); spinOut(g, clock); assert.ok(g.player.x - x0 < 2, `stopped at the wall (${g.player.x - x0})`); assert.ok(g.glyphWorld(clock.t).canStand(g.player.x, g.player.y));
 });
 
-test('with Shadow Boxing: a quick travelled approach on Shadow Boxing\'s charge clock, then every spin lands on it over about a second; a touch of splash', () => {
-  const { g, clock } = leap({ foes: [[5, 0], [4.4, .8]] }); g.boxingUntil = 1e12; g.lockTarget('foe-0'); const x0 = g.player.x;
+test('with Shadow Boxing: a true blink to the foe (vanish, streak, after-images, arrival flash), then every spin lands on it over about a second; a touch of splash', () => {
+  const { g, clock } = leap({ foes: [[5, 0], [4.4, .8]] }); g.boxingUntil = 1e12; g.lockTarget('foe-0'); const x0 = g.player.x, y0 = g.player.y;
   const hp = g.enemies.map((e: any) => e.hp); let n = 0, last = hp[0];
-  kick(g, clock); const q = g.cycloneHeel; assert.equal(q.mode, 'shadow'); assert.ok(q.windupMs >= C.windupMs && q.windupMs <= SHADOW_DASH.maxMs, `the approach: ${q.windupMs} ms`);
-  assert.equal(q.durationMs, q.windupMs + C.shadow.spanMs + C.recoverMs);
-  const xs: number[] = [g.player.x]; while (g.cycloneHeel && g.cycloneHeel.elapsedMs < g.cycloneHeel.windupMs) { frame(g, clock); xs.push(g.player.x); }
-  assert.ok(g.player.x - x0 > 3, `arrived (${g.player.x - x0})`); assert.ok(xs.length >= 4, 'travelled over several frames, not a pop');
-  for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] <= .75, `at most about half a tile a frame (${xs[i] - xs[i - 1]})`);
-  assert.ok(g.shadowTrail?.live, 'Shadow Boxing\'s after-images on arrival'); assert.equal(n, 0, 'no turn before she arrives'); last = g.enemies[0].hp;
-  const start = clock.t; let end = start;
-  while (g.cycloneHeel) { frame(g, clock); if (g.enemies[0].hp < last) { n++; last = g.enemies[0].hp; end = clock.t; } }
+  tap(g, clock); g.glyphVisuals = []; const before = g.player.x; frame(g, clock); // the let-go frame: the blink happens inside it
+  const q = g.cycloneHeel; assert.equal(q.mode, 'shadow'); assert.ok(before - x0 < .01, 'nothing moved before the blink');
+  assert.ok(g.player.x - x0 > 3, `blinked in one frame (${(g.player.x - x0).toFixed(2)} tiles)`); assert.ok(Math.abs(Math.hypot(g.enemies[0].x - g.player.x, g.enemies[0].y - g.player.y) - q.stop) < .3, 'stopped at its stop distance');
+  assert.equal(q.windupMs, C.windupMs, 'no travelled approach'); assert.equal(q.durationMs, C.windupMs + C.shadow.spanMs + C.recoverMs); assert.equal(q.enter, C.shadow.enter, 'arrives already chambered');
+  assert.equal(g.player.attackVisual.cycloneEnter, C.shadow.enter); assert.ok(normalizeAttackVisual(structuredClone(g.player.attackVisual), 100));
+  assert.ok(g.shadowTrail?.live && Math.abs(g.shadowTrail.fromX - x0) < 1e-9 && Math.abs(g.shadowTrail.fromY - y0) < 1e-9, 'Shadow Boxing\'s after-images from where she left');
+  const bursts = g.glyphVisuals.filter((v: any) => v.kind === 'burst'), arc = g.glyphVisuals.find((v: any) => v.kind === 'arc');
+  assert.equal(bursts.length, 2, 'a vanish and an arrival flash'); assert.ok(Math.abs(bursts[0].x - (x0 + .5)) < 1e-9 && Math.abs(bursts[1].x - (g.player.x + .5)) < 1e-9); assert.ok(arc && arc.color === C.colors.shadow);
+  const xs: number[] = []; const start = clock.t; let end = start;
+  while (g.cycloneHeel) { frame(g, clock); xs.push(g.player.x); if (g.enemies[0].hp < last) { n++; last = g.enemies[0].hp; end = clock.t; } }
+  for (let i = 1; i < xs.length; i++) assert.ok(Math.abs(xs[i] - xs[i - 1]) < .1, 'after the blink she stays at her foe');
   assert.equal(n, C.spins, 'every spin, each on its own tick'); assert.ok(end - start >= C.shadow.spanMs * .8, `over ${end - start} ms`);
   const per = (hp[0] - g.enemies[0].hp) / n, splash = hp[1] - g.enemies[1].hp; assert.ok(splash > 0 && splash < per * n * .5, `splash ${splash} vs ${per * n}`);
-  // a wall between: carried only to the wall, never through it
-  { const { g, clock } = leap({ foes: [[5, 0]] }); g.boxingUntil = 1e12; const px = Math.floor(g.player.x); for (let y = 0; y < 40; y++) g.map.tiles[y * 40 + px + 2].blocked = true;
-    kick(g, clock); assert.ok(g.player.x < px + 2, 'not through the wall'); spinOut(g, clock); }
+});
+
+test('the blink keeps Rift Step\'s rules: never through a wall or a sealed gate, never up a ledge; one that cannot reach is the travelled kick', () => {
+  const blocked = (kind: string, extra: any = {}) => { const { g, clock } = leap({ foes: [[5, 0]] }); g.boxingUntil = 1e12; const px = Math.floor(g.player.x);
+    for (let y = 0; y < 40; y++) Object.assign(g.map.tiles[y * 40 + px + 2], { blocked: true, kind, ...extra });
+    kick(g, clock); assert.ok(g.player.x < px + 2, `${kind}: not through it`); assert.equal(g.cycloneHeel.mode, 'travel', `${kind}: no blink, the travelled kick`); spinOut(g, clock);
+    assert.ok(g.player.x < px + 2, `${kind}: never past it`); };
+  blocked('stoneWall'); blocked('sealedGate');
+  // a ledge up: the foe stands on ground two levels higher; Rift Step never blinks up it
+  { const { g, clock } = leap({ foes: [[5, 0]] }); g.boxingUntil = 1e12; const px = Math.floor(g.player.x);
+    g.map.landscape = true; for (let y = 0; y < 40; y++) for (let x = px + 3; x < 40; x++) g.map.tiles[y * 40 + x].elev = 2; // elevation reads only on landscape ground
+    kick(g, clock); assert.ok(g.player.x < px + 3, 'not up the ledge'); assert.equal(g.cycloneHeel.mode, 'travel'); spinOut(g, clock); }
+  // the blink helper itself: nothing when the wall is the first step; the farthest point otherwise
+  { const { g, clock } = leap({ foes: [[5, 0]] }); const px = Math.floor(g.player.x); g.map.tiles[Math.floor(g.player.y) * 40 + px + 1].blocked = true; for (let y = 0; y < 40; y++) g.map.tiles[y * 40 + px + 1].blocked = true;
+    assert.equal(g.cycloneBlink(g.enemies[0], .85, clock.t), null); }
+});
+
+test('the Shadow Clone throws its arc swing with every spin, through the chain\'s own hook', () => {
+  for (const boxing of [false, true]) {
+    const { g, clock } = leap({ foes: [[2, 0]] }); if (boxing) g.boxingUntil = 1e12; let swings = 0, dmg = 0;
+    const own = g.cloneSwing.bind(g); g.cloneSwing = (profile: any, dir: any, now: number, ...rest: any[]) => { swings++; dmg = profile.damage; assert.ok(Number.isFinite(dir.x) && Number.isFinite(dir.y)); return own(profile, dir, now, ...rest); };
+    kick(g, clock); spinOut(g, clock); assert.equal(swings, C.spins, `${boxing ? 'shadow' : 'travel'}: one clone swing a spin`);
+    assert.equal(dmg, BRAWLER_ECHO.cloneArc.damage ?? dmg, 'the chain step\'s arc profile');
+  }
+  // with a clone out, its swings really land (the chain steps' share and rules: cloneSwing)
+  const { g, clock } = leap({ foes: [[1.2, 0]] }); g.shadowClone = { ox: 1, oy: 0, until: 1e12, boxing: true }; const hp = g.enemies[0].hp; let cloneHits = 0;
+  const own = g.cloneSwing.bind(g); g.cloneSwing = (...a: any[]) => { const b = g.enemies[0].hp; own(...a); if (g.enemies[0].hp < b) cloneHits++; };
+  kick(g, clock); spinOut(g, clock); assert.ok(g.enemies[0].hp < hp); assert.ok(cloneHits >= 1, `the clone's arc struck (${cloneHits})`);
 });
 
 test('the timing: a tap is the plain kick; let go in the pre-landing window, the perfect one; outside it, plain; held through landing resolves', () => {
@@ -272,20 +300,21 @@ test('Close View: one leg held out while the body turns once a spin; finite, the
 test('frame sequence, Close View: an eased wind-up, continuous spin speed, follow-through to rest on the heading; no body pop', () => {
   const st = createHeroPoseState(asset), f = createHeroFrame(asset), M: any = { stage: '', turn: 0, chamber: 0, extend: 0, weight: 0 };
   const pose = (action: any) => { sampleCloseViewHero(asset, st, { nowMs: 2000, reducedMotion: false, x: 0, y: 0, groundZ: 0, liftZ: 0, yaw: 0, height: 1.3776, speed: 0, gaitPhase: 0, heldProfile: null, handProfile: 'fist', action, alpha: 1, tint: [1, 1, 1], hitFlash: 0 }, f); return Float64Array.from(f.positionsNormals); };
-  for (const windup of [C.windupMs, SHADOW_DASH.maxMs]) for (const span of [C.spins * C.spinMs, C.shadow.spanMs]) {
+  for (const [windup, span, enter] of [[C.windupMs, C.spins * C.spinMs, 0], [C.windupMs, C.shadow.spanMs, 0], [C.windupMs, C.shadow.spanMs, C.shadow.enter], [SHADOW_DASH.maxMs, C.spins * C.spinMs, 0]]) {
     const D = windup + span + C.recoverMs, w = windup / D, r = C.recoverMs / D, n = Math.ceil(D / (1000 / 60)); let prev: any = null, prevStep = 0, prevTurn = 0, prevSpeed = 0;
     for (let i = 0; i <= n; i++) {
-      const p = i / n, m = sampleCycloneMotion(p, w, r, M), pos = pose({ kind: 'melee', profile: 'fist', awakenedArt: 'cyclone-heel', cycloneWindup: w, cycloneRecover: r, phase: p, durationMs: D, poseMs: 2000, fistStep: 4, fistLead: 'right' });
+      const p = i / n, m = sampleCycloneMotion(p, w, r, M, undefined, enter), pos = pose({ kind: 'melee', profile: 'fist', awakenedArt: 'cyclone-heel', cycloneWindup: w, cycloneRecover: r, cycloneEnter: enter || undefined, phase: p, durationMs: D, poseMs: 2000, fistStep: 4, fistLead: 'right' });
       const c = Math.cos(-2 * Math.PI * m.turn), s = Math.sin(-2 * Math.PI * m.turn); for (let k = 0; k < pos.length; k += 6) { const x = pos[k], y = pos[k + 1]; pos[k] = x * c - y * s; pos[k + 1] = x * s + y * c; }
       if (prev) { let d = 0; for (let k = 0; k < pos.length; k += 6) d = Math.max(d, Math.hypot(pos[k] - prev[k], pos[k + 1] - prev[k + 1], pos[k + 2] - prev[k + 2]));
         assert.ok(d < .25, `${windup}/${span} at ${p.toFixed(2)}: the body moves ${d.toFixed(3)} m in a frame`); assert.ok(Math.abs(d - prevStep) < .12, `${windup}/${span} at ${p.toFixed(2)}: no jolt (${prevStep.toFixed(3)} -> ${d.toFixed(3)})`); prevStep = d; }
       const speed = m.turn - prevTurn; if (i > 1) assert.ok(Math.abs(speed - prevSpeed) < .06, `${windup}/${span} at ${p.toFixed(2)}: the spin's speed is continuous`); prevSpeed = speed; prevTurn = m.turn; prev = pos;
-      if (i === 0 || i === n) assert.ok(Math.abs(m.turn - (i ? CYCLONE_MOTION.turns : 0)) < 1e-9 && Math.abs(speed) < .02, 'starts and ends at rest, on whole turns (her heading)');
+      if (i === n || (i === 0 && !enter)) assert.ok(Math.abs(m.turn - (i ? CYCLONE_MOTION.turns : 0)) < 1e-9 && Math.abs(speed) < .02, 'starts and ends at rest, on whole turns (her heading)');
+      if (i === 0 && enter) assert.ok(m.chamber > .5 && m.weight >= enter - 1e-9, 'the blink arrives already chambered');
     }
   }
 });
 
-test('frame sequence, gameplay and standard view: travel without jumps, a travelled Shadow Boxing approach, the drawn leg turning smoothly', () => {
+test('frame sequence, gameplay and standard view: travel without jumps, Shadow Boxing still at its foe after the blink, the drawn leg turning smoothly', () => {
   for (const boxing of [false, true]) {
     const { g, clock } = leap({ foes: [[4.5, 0]] }); if (boxing) g.boxingUntil = 1e12; const dt = 1 / 60;
     const angles: number[] = [], pos: number[][] = [];
@@ -296,7 +325,7 @@ test('frame sequence, gameplay and standard view: travel without jumps, a travel
       ctx._lx = NaN; drawBrawler(ctx, g, (q: any) => [q.x * 32, q.y * 32], 32, clock.t / 1000);
       if (Number.isFinite(ctx._lx)) angles.push(Math.atan2(ctx._ly - ctx._my, ctx._lx - ctx._mx));
     }
-    for (let i = 1; i < pos.length; i++) { const d = Math.hypot(pos[i][0] - pos[i - 1][0], pos[i][1] - pos[i - 1][1]); assert.ok(d <= .55, `${boxing ? 'approach' : 'travel'}: ${d.toFixed(3)} tiles in a frame`); }
+    for (let i = 1; i < pos.length; i++) { const d = Math.hypot(pos[i][0] - pos[i - 1][0], pos[i][1] - pos[i - 1][1]); assert.ok(d <= (boxing ? .1 : .55), `${boxing ? 'after the blink' : 'travel'}: ${d.toFixed(3)} tiles in a frame`); }
     assert.ok(pos.length > 30, `drawn over many frames (${pos.length})`);
     let big = 0; for (let i = 1; i < angles.length; i++) { let da = Math.abs(angles[i] - angles[i - 1]) % (2 * Math.PI); da = Math.min(da, 2 * Math.PI - da); big = Math.max(big, da); }
     assert.ok(big < Math.PI * .75, `the drawn leg never jumps more than ${(big * 180 / Math.PI).toFixed(0)} deg a frame (readable turns)`);

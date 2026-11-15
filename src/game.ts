@@ -8625,21 +8625,44 @@ export class Game {
     for (const e of this.enemies) { if (!autoAimable(e)) continue; const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= CYCLONE_HEEL.range && d < bd) { bd = d; best = e; } }
     return best;
   }
+  // The Shadow Boxing blink (Tim, 2026-11-15: "a true teleport"), by Rift Step's rules (constellation.ts riftStep): along the line
+  // to the foe in quarter steps, stood by blinkFooting from the level she leaves (never up a ledge or a higher roof; walls, lethal
+  // and hazardous ground end it), passing through solid props, to `stop` short of the foe; then blinkPathClear (no wall, sealed
+  // gate or forbidden air on the way). The farthest such point, or null. Bounded (at most reach / .25 + 1 samples).
+  cycloneBlink(foe, stop, now = this.lastUpdateNow || 0) {
+    const p = this.player, gap = Math.hypot(foe.x - p.x, foe.y - p.y), dist = Math.max(0, gap - stop); if (!(dist > 1e-6)) return null;
+    const ground = this.playerLevel(), level = Math.max(Number.isFinite(ground) ? ground : 0, this.skyAir != null && now < (this.jumpUntil || 0) ? this.skyAir : -Infinity), dx = (foe.x - p.x) / gap, dy = (foe.y - p.y) / gap;
+    let best = null;
+    for (let t = .25; ; t += .25) {
+      const s = Math.min(t, dist), x = p.x + dx * s, y = p.y + dy * s, footing = this.blinkFooting(x, y, level);
+      if (footing) best = { x, y }; else if (!this.blinkInProp(x, y)) break; // a solid prop is stepped through, never ended in
+      if (s >= dist - 1e-9) break;
+    }
+    return best && this.blinkPathClear(p.x, p.y, best.x, best.y, RIFT_AIM.samples, level) ? best : null;
+  }
   cycloneBegin(now, perfect = false, onBeat = false) {
     const C = CYCLONE_HEEL, F = IRON_FISTS, p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, foe = this.cycloneTarget();
     const rhythm = perfect && onBeat, level = fistCalloutLevel(perfect, onBeat);
     const share = rhythm ? C.share * F.beatShare + F.rhythmBonus / C.spins : C.share * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1);
     const power = Math.max(1, Math.round(this.fistPower() * share * (1 + (boxing?.damage || 0))));
     let d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(p.meleeAim?.x ?? this.save.lastAim?.x ?? 0, p.meleeAim?.y ?? this.save.lastAim?.y ?? 0, p.facing);
-    const extra = foe ? Math.max(0, enemyBodyRadius(foe) - .38) : 0, gap = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0, shadow = !!(foe && boxing && gap <= C.shadow.reach);
-    let track = "", stop = 0, limit = C.tiles, toX = p.x + d.x * C.tiles, toY = p.y + d.y * C.tiles, windupMs = C.windupMs;
-    if (shadow) { // the approach is Shadow Boxing's charge, travelled on its clock (SHADOW_DASH) as the knee chambers, through the same mover
-      track = String(foe.id); stop = C.shadow.stop + extra; limit = C.maxTiles; toX = foe.x; toY = foe.y; windupMs = Math.max(C.windupMs, shadowDashMs(Math.max(0, gap - stop)));
-    } else if (foe && gap - (C.stop + extra) <= C.tiles) { track = String(foe.id); stop = C.stop + extra; limit = Math.max(0, Math.min(C.tiles, gap - stop)); toX = foe.x; toY = foe.y; }
+    const extra = foe ? Math.max(0, enemyBodyRadius(foe) - .38) : 0, gap = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
+    const x0 = p.x, y0 = p.y; let shadow = false, track = "", stop = 0, limit = C.tiles, toX = p.x + d.x * C.tiles, toY = p.y + d.y * C.tiles, windupMs = C.windupMs, enter = 0;
+    if (boxing && foe && gap <= C.shadow.reach) { // Tim, 2026-11-15: a true blink to the foe, by Rift Step's rules (cycloneBlink); one that cannot reach it is the travelled kick
+      const at = this.cycloneBlink(foe, C.shadow.stop + extra, now);
+      if (at && Math.hypot(foe.x - at.x, foe.y - at.y) <= C.shadow.stop + extra + C.shadow.leash) {
+        shadow = true; p.x = at.x; p.y = at.y; track = String(foe.id); stop = C.shadow.stop + extra; limit = C.maxTiles; toX = foe.x; toY = foe.y; enter = C.shadow.enter;
+        markShadowTrail(this, x0, y0, now, "carry"); // Shadow Boxing's after-images, closing in from where she left
+        const V = (this.glyphVisuals ||= []), K = C.shadow.blink; // the vanish at the origin, the streak, the arrival flash (presentation only)
+        V.push({ kind: "burst", x: x0 + .5, y: y0 + .45, radius: K.vanish, life: K.life, max: K.life }, { kind: "arc", x: x0 + .5, y: y0 + .45, tx: p.x + .5, ty: p.y + .45, color: C.colors.shadow, life: K.life, max: K.life }, { kind: "burst", x: p.x + .5, y: p.y + .45, radius: K.arrive, life: K.life, max: K.life });
+        d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing);
+      }
+    }
+    if (!shadow && foe && gap - (C.stop + extra) <= C.tiles) { track = String(foe.id); stop = C.stop + extra; limit = Math.max(0, Math.min(C.tiles, gap - stop)); toX = foe.x; toY = foe.y; }
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     const span = shadow ? C.shadow.spanMs : C.spins * C.spinMs, ms = windupMs + span + C.recoverMs;
     this.cycloneHeel = { v: C.v, area: this.area, areaId: this.areaId(), levelId: String(this.map?.levelId || "root"), foe: track, mode: shadow ? "shadow" : "travel",
-      fromX: p.x, fromY: p.y, toX, toY, dirX: d.x, dirY: d.y, stop, limit, durationMs: ms, windupMs, recoverMs: C.recoverMs, elapsedMs: 0, travelled: 0, arrived: false, spins: C.spins, spun: 0,
+      fromX: x0, fromY: y0, toX, toY, dirX: d.x, dirY: d.y, stop, limit, durationMs: ms, windupMs, recoverMs: C.recoverMs, enter, elapsedMs: 0, travelled: 0, arrived: false, spins: C.spins, spun: 0,
       power, splash: shadow ? Math.max(1, Math.round(power * C.shadow.splash)) : 0, level, perfect: !!perfect };
     p.meleeAim = { x: d.x, y: d.y }; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs); // i-frames as the cross's rush
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + ms); this.fistBeat = null; this.fistQueued = null; this.clearAttackBuffer();
@@ -8648,7 +8671,7 @@ export class Game {
     this.cancelConsumeVisual("attack"); cancelCastVisual(p);
     p.attackUntil = now + ms; p.meleeUntil = now + ms;
     const visual = stampAttackVisual(p, "fist", ms, d);
-    if (visual) { p.actionVisualUntil = now + ms; const logicalNow = now - (this.presentationPausedMs || 0); visual.poseMs = Math.max(0, logicalNow); visual.facingYaw = Math.atan2(d.y, d.x); visual.fistStep = 4; visual.fistLead = "right"; visual.awakenedArt = "cyclone-heel"; visual.cycloneWindup = windupMs / ms; visual.cycloneRecover = C.recoverMs / ms; if (perfect) visual.fistPerfect = true; }
+    if (visual) { p.actionVisualUntil = now + ms; const logicalNow = now - (this.presentationPausedMs || 0); visual.poseMs = Math.max(0, logicalNow); visual.facingYaw = Math.atan2(d.y, d.x); visual.fistStep = 4; visual.fistLead = "right"; visual.awakenedArt = "cyclone-heel"; visual.cycloneWindup = windupMs / ms; visual.cycloneRecover = C.recoverMs / ms; if (enter > 0) visual.cycloneEnter = enter; /* blinked in already chambered */ if (perfect) visual.fistPerfect = true; }
     noteArtPress(this); // a press of the chain (Ki Blast arms again)
     this.message = `${C.name}!${rhythm ? " Perfect rhythm!" : perfect ? " Perfect!" : onBeat ? " Perfect timing!" : ""}`;
     return true;
@@ -8662,9 +8685,8 @@ export class Game {
     let foe = null; if (q.foe) { for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; } if (!foe || !(foe.hp > 0) || !autoAimable(foe)) { foe = null; q.foe = ""; q.toX = p.x; q.toY = p.y; q.stop = 0; } } // gone: she spins on where she is
     const tx = foe ? foe.x : q.toX, ty = foe ? foe.y : q.toY;
     if (q.mode === "travel") { if (e1 > W && e0 < W + S) this.dashCarry(q, tx, ty, Math.max(0, (e0 - W) / S), Math.min(1, (e1 - W) / S), q.limit, now, cycloneTravel); } // a beat of hang time to chamber, then across with the turns; still for the recovery
-    else if (e0 < W) { this.dashCarry(q, tx, ty, e0 / W, Math.min(1, e1 / W), q.limit, now); if (e1 >= W) markShadowTrail(this, q.fromX, q.fromY, now, "carry"); } // Shadow Boxing's approach (its eased charge), its after-images closing in on arrival
     if (Math.hypot(tx - p.x, ty - p.y) > .05 && (q.mode === "travel" || foe)) { const d = projectileDirection(tx - p.x, ty - p.y, p.facing); q.dirX = d.x; q.dirY = d.y; }
-    if (q.mode === "shadow" && foe && e0 >= W) { // Shadow Boxing: she keeps to her foe as it steps
+    if (q.mode === "shadow" && foe) { // Shadow Boxing: she keeps to her foe as it steps
       const w = this.glyphWorld(now); let budget = Math.min(C.shadow.follow * Math.max(0, Number(dt) || 0), q.limit - q.travelled);
       for (let i = 0; i < 16 && budget > 1e-6; i++) { const g = Math.hypot(foe.x - p.x, foe.y - p.y); if (g <= q.stop + 1e-6) break; const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), s = Math.min(.25, budget, g - q.stop), nx = p.x + d.x * s, ny = p.y + d.y * s; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; q.travelled = Math.min(q.limit, q.travelled + s); budget -= s; }
     }
@@ -8677,8 +8699,10 @@ export class Game {
   cycloneSpin(q, foe, now) {
     const p = this.player, C = CYCLONE_HEEL, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, imbue = this.imbueBonus(now), healShare = boxing?.heal || 0;
     const blow = (x, y, radius, damage, only, hits) => this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "cyclone-heel", brawler: true, swingHit: true, x, y, life: 1e-4, radius, pulse: 99, untilPulse: 0, damage, pulseIndex: 0, hits, glyphHost: "melee", healShare, imbue, stun: C.stun, ...(only ? { only } : {}) });
-    if (q.mode === "shadow" && foe) { blow(foe.x + .5, foe.y + .45, .5, q.power, [foe], {}); if (q.splash > 0) blow(p.x + .5, p.y + .45, C.radius, q.splash, null, { [`1:${foe.id}`]: true }); } // every turn on her foe; a touch of it on foes at her leg
+    const held = q.mode === "shadow" && foe && Math.hypot(foe.x - p.x, foe.y - p.y) <= q.stop + C.shadow.leash; // still at her foe (a foe carried off past the leash is not struck through the air)
+    if (held) { blow(foe.x + .5, foe.y + .45, .5, q.power, [foe], {}); if (q.splash > 0) blow(p.x + .5, p.y + .45, C.radius, q.splash, null, { [`1:${foe.id}`]: true }); } // every turn on her foe; a touch of it on foes at her leg
     else blow(p.x + .5, p.y + .45, C.radius, q.power, null, {});
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
   }
   cycloneFinish(now) {
     const q = this.cycloneHeel, F = IRON_FISTS; this.cycloneHeel = null; if (!q) return;

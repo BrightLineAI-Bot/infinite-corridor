@@ -563,12 +563,14 @@ export function advancePrimaryCombo(player, weaponKind, logicalNow, quick = fals
 export const CYCLONE_MOTION = Object.freeze({ turns: 5, coil: .1, extend: .2, knee: .55, ramp: .1, windup: .14, recover: .2 });
 const cySmooth = (t) => { t = t <= 0 ? 0 : t >= 1 ? 1 : t; return t * t * (3 - 2 * t); };
 function cyLeg(L, out, M) { out.chamber = Math.min(1, L / M.knee); out.extend = Math.max(0, (L - M.knee) / (1 - M.knee)); }
-export function sampleCycloneMotion(p, w, r, out, M = CYCLONE_MOTION) {
+// `enter` (0..1): the wind-up already that far along at p = 0 (the Shadow Boxing blink arrives chambered); 0 starts from rest.
+export function sampleCycloneMotion(p, w, r, out, M = CYCLONE_MOTION, enter = 0) {
   p = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : 0;
   w = Number.isFinite(w) ? Math.max(.02, Math.min(.45, w)) : M.windup; r = Number.isFinite(r) ? Math.max(.02, Math.min(.45, r)) : M.recover;
   const end = 1 - r, a = M.ramp, D = (end - w) * (1 - a / 2), f = M.turns * r / (2 * D + r); // f: the share of the turns the recovery carries, so the speed matches
-  if (p < end) cyLeg(cySmooth(p / (w + M.extend * (end - w))), out, M);
-  if (p < w) { const k = cySmooth(p / w); out.stage = "windup"; out.turn = -M.coil * k; out.weight = k; return out; }
+  const e0 = Number.isFinite(enter) ? Math.max(0, Math.min(1, enter)) : 0;
+  if (p < end) { const L0 = e0 * M.knee; cyLeg(L0 + (1 - L0) * cySmooth(p / (w + M.extend * (end - w))), out, M); }
+  if (p < w) { const k = e0 + (1 - e0) * cySmooth(p / w); out.stage = "windup"; out.turn = -M.coil * k; out.weight = k; return out; }
   if (p < end) {
     const u = (p - w) / Math.max(1e-6, end - w), e = (u < a ? u * u / (2 * a) : u - a / 2) / (1 - a / 2);
     out.stage = "spin"; out.turn = -M.coil * (1 - cySmooth(u / M.extend)) + (M.turns - f) * e; out.weight = 1; return out;
