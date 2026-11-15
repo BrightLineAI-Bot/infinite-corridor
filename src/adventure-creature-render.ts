@@ -179,27 +179,15 @@ function drawLamplighter(ctx, q) {
 }
 // Knellkeeper: a hunched ringer whose back is a bronze bell, a clapper-hammer in its fists.
 function drawKnellkeeper(ctx, q) {
-  // 2026-11-15 forms pass: the ringer grows out of its bell (as in Close View): the bell is its body to the floor, a crack down
-  // one flank; a hunched hide back leans out of the crown under a dark cowl with two lamp eyes; the long arm carries the clapper
-  // (raised overhead in the windup), the other braces on the bell's shoulder.
-  const { k, b, u, flip, p } = q, f = flip, raise = q.pose.includes(":raise") || wind(q) ? 1 : 0, bx = k - f * u * .06, top = b - u * .92;
+  const { k, b, u, flip, p } = q, f = flip, raise = q.pose.includes(":raise") || wind(q) ? 1 : 0, bx = k - f * u * .1, by = b - u * .78;
   ctx.save();
-  limb(ctx, [[k - u * .12, b - u * .12], [k - u * .14, b - u * .01]], Math.max(3, u * .09), p[1]); limb(ctx, [[k + u * .12, b - u * .12], [k + u * .15, b - u * .01]], Math.max(3, u * .09), p[1]);
-  const g = ctx.createLinearGradient(bx - u * .46, top, bx + u * .46, top); g.addColorStop(0, p[1]); g.addColorStop(.42, p[2]); g.addColorStop(.62, "#e6c47a"); g.addColorStop(1, p[1]);
-  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx - u * .17, top); ctx.quadraticCurveTo(bx, top - u * .07, bx + u * .17, top);
-  ctx.quadraticCurveTo(bx + u * .26, b - u * .45, bx + u * .48, b - u * .1); ctx.lineTo(bx - u * .48, b - u * .1); ctx.quadraticCurveTo(bx - u * .26, b - u * .45, bx - u * .17, top); ctx.fill();
-  ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(bx, b - u * .1, u * .48, u * .06, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = p[1]; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(bx + f * u * .22, b - u * .14); ctx.lineTo(bx + f * u * .15, b - u * .36); ctx.lineTo(bx + f * u * .19, b - u * .5); ctx.stroke();
-  ctx.strokeStyle = p[3] + "66"; ctx.beginPath(); ctx.moveTo(bx - u * .36, b - u * .24); ctx.quadraticCurveTo(bx, b - u * .2, bx + u * .36, b - u * .24); ctx.stroke();
-  // the hunched back and the cowled head, leaning out of the crown
-  ctx.fillStyle = p[0]; ctx.beginPath(); ctx.ellipse(k + f * u * .06, top - u * .1, u * .2, u * .17, f * .5, 0, TAU); ctx.fill();
-  const hx = k + f * u * .27, hy = top - u * .02;
-  ctx.fillStyle = p[1]; ctx.beginPath(); ctx.moveTo(hx - f * u * .2, hy - u * .1); ctx.quadraticCurveTo(hx, hy - u * .26, hx + f * u * .17, hy - u * .02); ctx.lineTo(hx + f * u * .12, hy + u * .09); ctx.quadraticCurveTo(hx - f * u * .04, hy + u * .1, hx - f * u * .2, hy - u * .1); ctx.fill();
-  eye(ctx, hx + f * u * .07, hy - u * .02, u * .022, "#ffc35a"); eye(ctx, hx + f * u * .12, hy - u * .015, u * .018, "#ffc35a");
-  limb(ctx, [[k - f * u * .06, top - u * .02], [bx - f * u * .2, top + u * .2]], Math.max(2, u * .07), p[0]);
-  const ax = k + f * u * .18, ay = top + u * .02, ex = ax + f * u * (raise ? .02 : .3), ey = ay + u * (raise ? -.48 : .32), cx = ex + f * u * (raise ? .02 : .08), cy = ey + u * (raise ? -.16 : .16);
-  limb(ctx, [[ax, ay], [ex, ey]], Math.max(2, u * .08), p[0]); limb(ctx, [[ex, ey], [cx, cy]], Math.max(1.5, u * .03), p[1]);
-  ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(cx, cy, u * .1, 0, TAU); ctx.fill(); ctx.fillStyle = "#e6c47a"; ctx.beginPath(); ctx.arc(cx - u * .03, cy - u * .03, u * .035, 0, TAU); ctx.fill();
+  limb(ctx, [[k - u * .12, b - u * .4], [k - u * .18, b - u * .02]], Math.max(3, u * .1), p[1]); limb(ctx, [[k + u * .12, b - u * .4], [k + u * .16, b - u * .02]], Math.max(3, u * .1), p[1]);
+  const g = ctx.createLinearGradient(bx - u * .4, by, bx + u * .4, by); g.addColorStop(0, p[1]); g.addColorStop(.45, p[2]); g.addColorStop(1, p[1]);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx - u * .18, by - u * .45); ctx.quadraticCurveTo(bx, by - u * .62, bx + u * .18, by - u * .45); ctx.quadraticCurveTo(bx + u * .3, by - u * .05, bx + u * .46, by + u * .32); ctx.lineTo(bx - u * .46, by + u * .32); ctx.quadraticCurveTo(bx - u * .3, by - u * .05, bx - u * .18, by - u * .45); ctx.fill();
+  ctx.strokeStyle = p[3] + "88"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(bx - u * .4, by + u * .2); ctx.lineTo(bx + u * .4, by + u * .2); ctx.stroke();
+  const hx = k + f * u * .28, hy = b - u * .95; ctx.fillStyle = p[0]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .14, u * .12, 0, 0, TAU); ctx.fill(); eye(ctx, hx + f * u * .06, hy - u * .02, u * .025, p[3]);
+  const ax = hx + f * u * .1, ay = hy + u * .15, mx = ax + f * u * (raise ? .05 : .32), my = ay + u * (raise ? -.55 : .25);
+  limb(ctx, [[ax - f * u * .05, ay], [mx, my]], Math.max(2, u * .08), p[0]); ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(mx, my, u * .1, 0, TAU); ctx.fill();
   ctx.restore();
 }
 // Spindrift Medusa: a glass bell of violet membrane lit from inside, a curtain of fine tendrils below.
@@ -265,28 +253,18 @@ function drawHookhanger(ctx, q) {
 }
 // Slagwright: a riveted foundry hand with a long ladle that glows when it tips.
 function drawSlagwright(ctx, q) {
-  // 2026-11-15 forms pass: a round welder's helm with a furnace slit, a riveted coat over a leather apron, heavy boots, and the
-  // ladle's cup holding a glowing slag pool (it tips and drips on the pour).
   const { k, b, u, flip, p } = q, f = flip, tip = q.pose.includes(":tip") ? 1 : 0, top = b - u * 1.5;
   ctx.save();
-  limb(ctx, [[k - u * .13, b - u * .6], [k - u * .15, b - u * .06]], Math.max(3, u * .12), p[1]); limb(ctx, [[k + u * .13, b - u * .6], [k + u * .15, b - u * .06]], Math.max(3, u * .12), p[1]);
-  ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(k - u * .16, b - u * .04, u * .1, u * .05, 0, 0, TAU); ctx.ellipse(k + u * .17, b - u * .04, u * .1, u * .05, 0, 0, TAU); ctx.fill();
-  const g = ctx.createLinearGradient(k - u * .3, top, k + u * .3, top); g.addColorStop(0, p[1]); g.addColorStop(.5, p[0]); g.addColorStop(1, p[1]);
-  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(k - u * .22, top + u * .28); ctx.quadraticCurveTo(k, top + u * .2, k + u * .22, top + u * .28); ctx.lineTo(k + u * .32, top + u * .42);
-  ctx.lineTo(k + u * .3, b - u * .52); ctx.lineTo(k - u * .3, b - u * .52); ctx.lineTo(k - u * .32, top + u * .42); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#6a4a30"; ctx.beginPath(); ctx.moveTo(k - u * .17, top + u * .45); ctx.lineTo(k + u * .17, top + u * .45); ctx.lineTo(k + u * .2, b - u * .5); ctx.quadraticCurveTo(k, b - u * .42, k - u * .2, b - u * .5); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = p[3] + "aa"; for (let i = 0; i < 3; i++) { ctx.fillRect(k - u * .27, top + u * (.5 + i * .16), u * .03, u * .03); ctx.fillRect(k + u * .24, top + u * (.5 + i * .16), u * .03, u * .03); }
-  const hx = k + f * u * .03, hy = top + u * .1;
-  ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .17, u * .16, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = "#ff9d4a33"; ctx.fillRect(hx - u * .14 + f * u * .03, hy - u * .05, u * .24, u * .1);
-  ctx.fillStyle = "#ff9d4a"; ctx.fillRect(hx - u * .11 + f * u * .04, hy - u * .025, u * .2, u * .04);
-  limb(ctx, [[k - f * u * .24, top + u * .35], [k - f * u * .3, top + u * .62], [k - f * u * .24, top + u * .78]], Math.max(2, u * .09), p[0]);
-  const sx = k + f * u * .24, sy = top + u * .35, hx2 = k + f * u * .3, hy2 = top + u * .62, ang = tip ? .55 : -.3, ex = hx2 + f * Math.cos(ang) * u * .72, ey = hy2 + Math.sin(ang) * u * .72;
-  limb(ctx, [[sx, sy], [hx2, hy2]], Math.max(2, u * .09), p[0]);
-  ctx.strokeStyle = "#3a3028"; ctx.lineWidth = Math.max(2, u * .04); ctx.beginPath(); ctx.moveTo(hx2, hy2); ctx.lineTo(ex, ey); ctx.stroke();
-  ctx.fillStyle = "#3a3028"; ctx.beginPath(); ctx.ellipse(ex, ey + u * .05, u * .16, u * .11, f * ang, 0, Math.PI); ctx.fill();
-  ctx.fillStyle = "#ff9d4a55"; ctx.beginPath(); ctx.ellipse(ex, ey + u * .02, u * .2, u * .09, f * ang, 0, TAU); ctx.fill();
-  ctx.fillStyle = p[3]; ctx.beginPath(); ctx.ellipse(ex, ey + u * .03, u * .12, u * .04, f * ang, 0, TAU); ctx.fill();
+  limb(ctx, [[k - u * .12, b - u * .6], [k - u * .16, b - u * .02]], Math.max(3, u * .11), p[1]); limb(ctx, [[k + u * .12, b - u * .6], [k + u * .16, b - u * .02]], Math.max(3, u * .11), p[1]);
+  const g = ctx.createLinearGradient(k, top, k, b - u * .5); g.addColorStop(0, p[0]); g.addColorStop(1, p[1]);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(k - u * .3, top + u * .25); ctx.lineTo(k + u * .3, top + u * .25); ctx.lineTo(k + u * .26, b - u * .55); ctx.lineTo(k - u * .26, b - u * .55); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = p[3] + "aa"; for (let i = 0; i < 4; i++) ctx.fillRect(k - u * .22 + i * u * .14, top + u * .32, u * .03, u * .03);
+  ctx.fillStyle = p[1]; ctx.fillRect(k - u * .13, top, u * .26, u * .22); ctx.fillStyle = p[2]; ctx.fillRect(k - u * .1 + f * u * .02, top + u * .08, u * .2, u * .04);
+  const hx = k + f * u * .32, hy = top + u * .55, ang = tip ? .5 : -.35, ex = hx + f * Math.cos(ang) * u * .85, ey = hy + Math.sin(ang) * u * .85;
+  limb(ctx, [[k + f * u * .2, top + u * .35], [hx, hy]], Math.max(2, u * .09), p[0]);
+  ctx.strokeStyle = "#3a3028"; ctx.lineWidth = Math.max(2, u * .04); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.fillStyle = "#3a3028"; ctx.beginPath(); ctx.ellipse(ex, ey + u * .05, u * .15, u * .1, f * ang, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = p[2]; ctx.beginPath(); ctx.ellipse(ex, ey + u * .03, u * .12, u * .04, f * ang, 0, TAU); ctx.fill();
   if (tip) { ctx.fillStyle = p[2] + "cc"; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(ex + f * u * .14, ey + u * (.15 + i * .12), u * (.05 - i * .01), 0, TAU); ctx.fill(); } }
   ctx.restore();
 }
