@@ -12,7 +12,7 @@ import { actorModelKey } from '../src/actor-presentation.ts';
 import { CLOSE_VIEW_ACTOR_LOOK } from '../src/close-view-gl.ts';
 import { CLOSE_VIEW_PENTAGON_KINDS, CLOSE_VIEW_PENTAGON_MODELS, PENTAGON_JOINT_POSE } from '../src/close-view-pentagon-models.ts';
 import { CLOSE_VIEW_ADVENTURE_KINDS, CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_POSE } from '../src/close-view-adventure-models.ts';
-import { ADVENTURE_BODIES } from '../src/adventure-creature-render.ts';
+import { ADVENTURE_BODIES, ADVENTURE_SPRITE } from '../src/adventure-creature-render.ts';
 import { modelTriangleCount, writeCloseViewModel, MODEL_FLOATS, MODEL_MAX_VERTICES } from '../src/close-view-models.ts';
 import { MESH_FLOATS } from '../src/close-view-mesh.ts';
 
@@ -104,5 +104,25 @@ test('standard view: the Knellkeeper raises its hammer in the windup and the Sla
   for (const [kind, attack] of [['knellkeeper', 'bellToll'], ['slagwright', 'heavySweep']]) {
     const idle = trace(kind, attack, 'idle'), wind = trace(kind, attack, 'windup'), hit = trace(kind, attack, 'attack');
     assert.notEqual(wind, idle, `${kind} windup`); assert.notEqual(hit, wind, `${kind} strike`); assert.notEqual(hit, idle, `${kind} strike reads`);
+  }
+});
+
+test('standard view limbs follow the attack clock: drawn back and held in the windup, struck, then settled; rest pose untouched', () => {
+  const trace = (kind: string, pack: any, state: string) => {
+    const calls: any[] = [], ctx: any = new Proxy({ createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }) },
+      { get: (o: any, k: string) => (k in o ? o[k] : (...a: any[]) => { calls.push([k, ...a.map((v) => typeof v === 'number' ? Math.round(v * 10) : v)]); }), set: (o: any, k: string, v: any) => (o[k] = v, true) });
+    ADVENTURE_BODIES[kind](ctx, { e: { kind, pack }, k: 100, b: 200, u: 50, flip: 1, p: MONSTER_PACK[kind].palette, state, t: 0 });
+    return JSON.stringify(calls);
+  };
+  assert.ok(ADVENTURE_SPRITE.limb.steps <= 4, 'a few frames per phase keeps the sprite cache small');
+  for (const [kind, id] of [['slagwright', 'heavySweep'], ['knellkeeper', 'bellToll'], ['rimeSentinel', 'poleThrust'], ['lamplighter', 'poleThrust'], ['galleryLurker', 'clawSweep']]) {
+    const A = ATTACK_MODULES[id], at = (phase: string, p: number) => ({ attack: id, phase, t: (phase === 'windup' ? A.windup : A.recover) * (1 - p) });
+    assert.equal(trace(kind, {}, 'idle'), trace(kind, { state: 'move' }, 'idle'), `${kind} rest`);
+    const early = trace(kind, at('windup', .3), 'windup'), held = trace(kind, at('windup', .8), 'windup');
+    assert.notEqual(early, held, `${kind} draws back over the windup`);
+    assert.equal(held, trace(kind, at('windup', .99), 'windup'), `${kind} holds the draw-back to the blow`);
+    const hit = trace(kind, at('recover', .05), 'attack'), settled = trace(kind, at('recover', .99), 'attack');
+    assert.notEqual(hit, held, `${kind} strikes`); assert.notEqual(settled, hit, `${kind} settles`);
+    assert.equal(hit, trace(kind, at('recover', .15), 'attack'), `${kind} follows through`);
   }
 });
