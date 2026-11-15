@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r981 (`7b136e96e1b8`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r982 (`1137a1096c7b`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 982 | Claude | claude/review-975-fixes | Fixes from the 975 review: rockfall limited to stego prey, held beasts set down on open floor, stale feint cleared, legacy wind-up only within reach (cadence restored), legacy aggro needs line of sight, stinger ducking kept; no save change | In flight. |
+| 983 | Claude | claude/creature-motion | Close View creature motion: phase model (anticipation hold, contact, follow-through, recovery), heavy and combo shapes, hit reactions (flinch, stagger, guard, dodge, feint, alert, arrival), idle life, card/body cross-fade and death fade; new module creature-motion; no save change | In flight. |
+| 982 | Claude | claude/review-975-fixes | Fixes from the 975 review: rockfall limited to stego prey, held beasts set down on open floor, stale feint cleared, legacy wind-up only within reach (cadence restored), legacy aggro needs line of sight, stinger ducking kept; no save change | Merged as `1137a1096c7b` (#650). |
 | 981 | Claude | claude/cyclone-heel-981 | With awakened Iron Fists and Ki Blast, the press after the uppercut's airborne blast becomes the Cyclone Heel: five spins across up to 3.5 tiles hitting only what the leg touches, or with Shadow Boxing an instant blink to the foe and five spins on it over about a second; releasing a hold just before landing gives the perfect version; the Shadow Clone swings with each spin | In flight. |
 | 980 | Claude | claude/fall-pose-980 | The Wayfarer gets a progressive, calm falling pose: a short fall shows only the onset arm motion, a long fall builds into a slow arm wheel and leg cycle, settling smoothly into the landing; Standard View raises his hands; not used while gliding, on the drone, on a rising jump or in a plunge; the pit fall-over is unchanged | Merged as `6dd7102d83fb` (#648). |
 | 979 | Claude | claude/cv-tree-blackout-979 | After leaving Close View through the Oculus (or changing the quality tier) beside a great tree, the Standard View no longer cuts off the trunk, crown and upper branches and leaves the top of the screen black; the ground image stops rebuilding on every frame of the Oculus leave zoom | Merged as `25bd8edd3b39` (#647). |
