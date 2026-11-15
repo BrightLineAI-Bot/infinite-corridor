@@ -509,6 +509,22 @@ export function fistBeatWindow(at, gateOpens = at + IRON_FISTS.gate * 1000) {
 }
 // Whether a press at `now` (ms) falls in the beat window `beat` ({ opens, closes }).
 export const fistOnBeat = (beat, now) => !!beat && Number.isFinite(beat.opens) && now >= beat.opens - 1e-6 && now <= beat.closes + 1e-6;
+// The fists' status meter (Tim, 2026-11-14: "If you only get perfect timing, it'll say 'Perfect Timing!' and just keep saying
+// Perfect Timing. But if you get perfect rhythm, it'll say 'Perfect Rhythm!' and keep saying Perfect Rhythm until you get perfect
+// timing again, and then it'll go back down. So it's like a meter showing what level you're at."). Presentation only: each step
+// records its level on the chain (`fistCombo.level`, runtime state, never saved): `rhythm` for a rhythm blow, `timing` for a
+// press on the beat or a charge let go in its perfect window, 0 for anything else, which clears the meter. The HUD (main.ts)
+// shows `text[level]` in the message line while the chain lasts (its `window`, or a charge held from it) and the fists are in hand.
+export const FIST_CALLOUT = { timing: 1, rhythm: 2, text: ["", "Perfect Timing!", "Perfect Rhythm!"] };
+// The level a step earns: rhythm (a charge started on the beat, let go perfectly), timing (one of the two), or none.
+export const fistCalloutLevel = (perfect, onBeat) => perfect === true && onBeat === true ? FIST_CALLOUT.rhythm : perfect === true || onBeat === true ? FIST_CALLOUT.timing : 0;
+// The meter's level now: while a charge is held, the level it was pressed from (`fistCharge.level`, kept as the chain loops to
+// the cross); otherwise the last step's level while its chain is alive; else 0. No allocation.
+export function fistStatusLevel(game, now) {
+  if (!game || game.damageNumbers === false) return 0;
+  const h = game.fistCharge, c = game.fistCombo, lv = h ? Number(h.level) || 0 : c && now <= c.until ? Number(c.level) || 0 : 0;
+  return lv > 0 && game.fistsEquipped?.() ? lv : 0;
+}
 // The ball at `ms` after the step (home at `homeMs`, the window's start; gone after `closesMs`, its end): `along` is how far out
 // along the blow (FIST_STEP_VIEW.reach at full), `side` how far toward the striking shoulder (0 at home), `home` whether it is
 // back at the centre. One shared record (no allocation per frame); null once the window has closed.
