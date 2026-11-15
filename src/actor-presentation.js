@@ -1,5 +1,5 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r962-a8bf3852db96';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r972-cede9b9fcf20';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.
@@ -127,14 +127,21 @@ export function shotVisualHeight(shot,age=shot?.age) {
   if(flight&&shot?.path==='grenade'){const u=Math.max(0,Math.min(1,finite(age,0)/flight.duration));return .66*(1-u)+.08*u+2.4*u*(1-u);}
   return Math.max(.05, Math.min(8, finite(shot?.visualHeight, DEFAULT_PROJECTILE_VISUAL_HEIGHT)));
 }
+// A creature's designed opacity: burrowed or hidden (0), phasing through a wall, a Cinder Seraph aloft out of reach, an illusion,
+// a departing fade. `aloft` false leaves out the Seraph's aloft fade (Close View draws it solid, its height shows it is aloft).
+export const ACTOR_ALPHA = Object.freeze({ phasing: .45, aloftSeraph: .35, illusion: .92 });
+export function designedAlpha(actor, p = actorProfile(actor), aloft = true) {
+  if (!p) return 1; const A = ACTOR_ALPHA;
+  return Math.max(0, Math.min(1, (actor.hidden && (p.hidden || burrowing(actor)) ? 0 : 1) * (actor.phasing || actor.phases && actor.untargetable ? A.phasing : aloft && actor.kind === 'cinderSeraph' && actor.aloft ? A.aloftSeraph : 1) *
+    (actor.illusion ? A.illusion : 1) * finite(actor.fleeFade, 1)));
+}
 export function actorPresentation(actor) {
   const p = actorProfile(actor);
   if (!p) return null;
   const scale = presentationScale(actor);
   const air = actor.kind === 'cinderSeraph' && actor.aloft ? .9 : 0;
   return { ...p, scale, bodyLift: (p.bodyLift + air) * scale, head: (p.bodyLift + air + p.head) * scale,
-    alpha: Math.max(0, Math.min(1, (actor.hidden && (p.hidden || burrowing(actor)) ? 0 : 1) * (actor.phasing || actor.phases && actor.untargetable ? .45 : actor.kind === 'cinderSeraph' && actor.aloft ? .35 : 1) *
-      (actor.illusion ? .92 : 1) * finite(actor.fleeFade, 1))), stagger: Math.max(0, Math.min(1, Math.max(finite(actor.poiseBreak, 0), actor.pack?.phase === 'stunned' ? finite(actor.pack.t, 0) / 1.4 : 0))) };
+    alpha: designedAlpha(actor, p, true), stagger: Math.max(0, Math.min(1, Math.max(finite(actor.poiseBreak, 0), actor.pack?.phase === 'stunned' ? finite(actor.pack.t, 0) / 1.4 : 0))) };
 }
 const AFFIXES = new Set(['volcanic', 'skyAssault', 'spiked', 'venomous', 'droneSwarm', 'enraged']);
 // A body alone is insufficient. New families opt in only after their action and body-embedded effects are covered.
@@ -157,7 +164,8 @@ export function nativeCreatureCoverage(actor, capture, { mesh = true, attachment
   if (actor.pack && p.action !== 'pack') return 'pack-action';
   if (actor.pack?.attack && !PACK_ACTION_FAMILIES[actor.pack.attack]) return 'pack-action';
   if (actor.pack?.attack && !PACK_PHASES.has(actor.pack.phase)) return 'pack-phase';
-  if (actor.eliteWindup > 0 || actor.eliteActive > 0) return 'elite-action';
+  // An elite's gravity windup and pull keep the 3D body (2026-11-14): its floor ring is drawn on the ground and its glow beside
+  // the body (close-view.ts foeCueing), and the body braces on CREATURE_POSE.elite. No swap to the card mid-action.
   if (p.action !== 'foundry' && (actor.segments > 1 && actor.segments !== p.segments || actor.tentacles > 0 && actor.tentacles !== p.tentacles)) return 'morphology';
   const decorated = actor.fracRank || actor.fracWarden || actor.fracShaman || actor.warded || actor.affixes?.length || actor.poiseBreak > 0;
   if (decorated && (!p.decoration || typeof capture.nativeDecorations !== 'function' || typeof capture.nativeFloor !== 'function')) return 'decorations';

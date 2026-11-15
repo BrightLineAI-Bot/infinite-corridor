@@ -1,9 +1,9 @@
 // Authored Foundry morphology recipes. These registry assets do not admit a creature to Close View;
 // presentation integration selects one only after the production Foundry candidate has been validated.
-import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part } from './close-view-mesh.js?v=r962-a8bf3852db96';
+import { bevel, taper, ellipsoid, ringLoft, curvedTube, membrane, part } from './close-view-mesh.js?v=r972-cede9b9fcf20';
 
-import { FOUNDRY_MODEL_KEYS, FOUNDRY_PALETTES } from './close-view-foundry-presentation.js?v=r962-a8bf3852db96';
-export { FOUNDRY_MODEL_KEYS, FOUNDRY_MODEL_METADATA, FOUNDRY_PALETTES, foundryPaletteIndex, foundryPaletteColor } from './close-view-foundry-presentation.js?v=r962-a8bf3852db96';
+import { FOUNDRY_MODEL_KEYS, FOUNDRY_PALETTES } from './close-view-foundry-presentation.js?v=r972-cede9b9fcf20';
+export { FOUNDRY_MODEL_KEYS, FOUNDRY_MODEL_METADATA, FOUNDRY_PALETTES, foundryPaletteIndex, foundryPaletteColor } from './close-view-foundry-presentation.js?v=r972-cede9b9fcf20';
 const [primary, shadow, accent] = FOUNDRY_PALETTES[0];
 
 // Low, muscular quadruped: arched body, wedge head, four jointed legs, tail and paired brow prongs.
@@ -79,3 +79,26 @@ export const CLOSE_VIEW_FOUNDRY_VARIANTS = Object.freeze(Object.fromEntries([3,6
   for(let i=0;i<count;i++){const y=(i-(count-1)/2)*.10;chassis.push(part(curvedTube([[-.18,y,.72,.038],[-.38,y*1.35,.46,.026],[-.48,y*1.6,.18,.008]],count===6?3:4),0,0,0,1,1,1,i%3===1?accent:shadow,75+i,-.18,.72));}
   return [[`foundry-tentacled-${count}`,tendrils],[`foundry-biomechanical-${count}`,chassis]];
 })));
+
+// Attack poses for the Foundry kin, evaluated with the adventure creatures' (close-view-adventure-models.ts adventureJointPose):
+// per model key, then root style (lunge for a stab, sweep, slam, spray for ranged), then Foundry-local joint, [coil, strike,
+// follow, lag] in radians. Forelegs reach and hind legs drive; segments and cables trail the head; tendrils, vanes and plates
+// draw in and flare out.
+const FJ = (coil, strike, follow = 0, lag = 0) => Object.freeze([coil, strike, follow, lag]);
+const quadrupedMelee = Object.freeze({ 20: FJ(.35, -.75, -.15), 21: FJ(.35, -.75, -.15, .12), 22: FJ(-.35, .55), 23: FJ(-.35, .55, 0, .1), 24: FJ(.3, -.45, 0, .3) });
+const segmentedMelee = Object.freeze({ 43: FJ(-.4, .6, .12), 42: FJ(-.12, .2, 0, .15), 41: FJ(.1, -.15, 0, .3), 40: FJ(.15, -.2, 0, .4),
+  44: FJ(-.2, .3), 45: FJ(-.2, .3, 0, .06), 46: FJ(-.2, .3, 0, .12), 47: FJ(-.2, .3, 0, .18), 48: FJ(-.2, .3, 0, .24), 49: FJ(-.2, .3, 0, .3) });
+const tendrilFlare = Object.freeze(Object.fromEntries(Array.from({ length: 6 }, (_, i) => [52 + i, FJ(.3, -.7, -.15, i * .06)])));
+const plateSnap = Object.freeze(Object.fromEntries(Array.from({ length: 6 }, (_, i) => [61 + i, FJ(i % 2 ? .3 : -.3, i % 2 ? -.6 : .6, 0, i * .05)])));
+const vaneFlare = Object.freeze({ 32: FJ(.3, -.6), 33: FJ(-.3, .6), 34: FJ(.3, -.6), 35: FJ(-.3, .6), 36: FJ(.2, -.4, 0, .3), 37: FJ(.2, -.4, 0, .35), 38: FJ(.2, -.4, 0, .4), 39: FJ(.2, -.4, 0, .45) });
+const chassisMelee = Object.freeze(Object.fromEntries([[71, FJ(0, -.3)], [72, FJ(0, .3)], [73, FJ(.6, -1.3, -.3)], [74, FJ(.45, -1.0, -.25, .2)],
+  ...Array.from({ length: 6 }, (_, i) => [75 + i, FJ(.2, -.5, 0, .3 + i * .05)])]));
+const chassisRanged = Object.freeze(Object.fromEntries([[73, FJ(.3, -1.1, -.15)], [74, FJ(.3, -1.1, -.15, .1)], ...Array.from({ length: 6 }, (_, i) => [75 + i, FJ(.25, -.4, 0, .2 + i * .05)])]));
+const all = (set) => Object.freeze({ '*': set });
+export const FOUNDRY_JOINT_POSE = Object.freeze({
+  'foundry-quadruped': Object.freeze({ '*': quadrupedMelee, spray: Object.freeze({ 20: FJ(.2, -.35), 21: FJ(.2, -.35), 22: FJ(-.25, .35), 23: FJ(-.25, .35), 24: FJ(.2, -.3, 0, .3) }) }),
+  'foundry-floating': all(vaneFlare), 'foundry-segmented': all(segmentedMelee), 'foundry-geometric': all(plateSnap),
+  'foundry-tentacled': all(tendrilFlare), 'foundry-tentacled-3': all(tendrilFlare), 'foundry-tentacled-6': all(tendrilFlare),
+  'foundry-biomechanical': Object.freeze({ '*': chassisMelee, spray: chassisRanged }), 'foundry-biomechanical-3': Object.freeze({ '*': chassisMelee, spray: chassisRanged }),
+  'foundry-biomechanical-6': Object.freeze({ '*': chassisMelee, spray: chassisRanged }),
+});

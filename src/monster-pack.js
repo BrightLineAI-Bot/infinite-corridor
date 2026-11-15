@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r962-a8bf3852db96";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r972-cede9b9fcf20";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,13 +8,13 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r962-a
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r962-a8bf3852db96";
-import { hashSeed, byHash } from "./random.js?v=r962-a8bf3852db96";
-import { updateAstralActor } from "./astral-worm.js?v=r962-a8bf3852db96";
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r962-a8bf3852db96"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.js?v=r962-a8bf3852db96";
-import { BLEED, tickCreatureBleed } from "./bleed.js?v=r962-a8bf3852db96"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r962-a8bf3852db96"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { stageOneBeastReference } from "./stages.js?v=r972-cede9b9fcf20";
+import { hashSeed, byHash } from "./random.js?v=r972-cede9b9fcf20";
+import { updateAstralActor } from "./astral-worm.js?v=r972-cede9b9fcf20";
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r972-cede9b9fcf20"; // adventure creatures (Tim, 2026-11-11)
+import { onStegoTailSevered } from "./stego-bait.js?v=r972-cede9b9fcf20";
+import { BLEED, tickCreatureBleed } from "./bleed.js?v=r972-cede9b9fcf20"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r972-cede9b9fcf20"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -1674,6 +1674,14 @@ function endAttack(e, s) {
   if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
+// The awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE; Tim 2026-11-14: "if they get frozen, the attack gets
+// cancelled"): the attack in hand ends the way a poise break ends it (bossPoise), its telegraph and charge with it; the beast
+// starts afresh once it thaws. True when there was an attack to cancel.
+export function cancelPackAttack(e) {
+  const s = e?.pack; if (!s || typeof s !== "object") return false;
+  const had = !!s.attack || !!s.tele; if (s.attack) endAttack(e, s); s.tele = null; s.vel = null; if (s.data) s.data = null;
+  return had;
+}
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {

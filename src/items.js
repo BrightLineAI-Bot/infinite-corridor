@@ -1,6 +1,6 @@
-import{normalizeSockets}from'./glyphs.js?v=r962-a8bf3852db96';
-import{rng,pick}from'./random.js?v=r962-a8bf3852db96';
-import{CARBINE,TOOL_RANGE}from'./tool-forms.js?v=r962-a8bf3852db96';
+import{normalizeSockets}from'./glyphs.js?v=r972-cede9b9fcf20';
+import{rng,pick}from'./random.js?v=r972-cede9b9fcf20';
+import{CARBINE,TOOL_RANGE}from'./tool-forms.js?v=r972-cede9b9fcf20';
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:TOOL_RANGE['lumen-spindle'].range/10,turnAfter:TOOL_RANGE['lumen-spindle'].range/10,legs:true,damageType:'magic',path:'boomerang'}/* 2026-11-14 (tool-forms.ts TOOL_RANGE): `lifetime` is one leg (was 1.8 s with a turn at .8 s); game.ts fireSecondary flies it in legs */,'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:TOOL_RANGE['rift-bombard'].range/8/* 2026-11-14 (tool-forms.ts TOOL_RANGE; was 1.4 s, 11.2 tiles): it lands and bursts at its range */,radius:2.15,damageType:'physical'/* release 533 (Tim: "a goblin bazooka"): physical, so Might */,path:'grenade'},

@@ -10,7 +10,7 @@
 // Proving Ground's combat lab put them in the world.
 //
 // Every number they use is in DUELISTS. Nothing here touches the save, the DOM or randomness: every choice is hashed from stable ids.
-import { hashSeed } from "./random.js?v=r962-a8bf3852db96";
+import { hashSeed } from "./random.js?v=r972-cede9b9fcf20";
 
 export const DUELIST_KINDS = Object.freeze(["gauntDuelist", "gauntCutthroat", "gauntLongarm"]);
 const TAU = Math.PI * 2;

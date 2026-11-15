@@ -14,8 +14,8 @@
 // changes timing, damage, reach or targeting. Kept small for the minion allowance (BEAST_SLOT.minion).
 import {
   BEAST_SLOT, defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, meshBuilder, clamp01, smooth, kick, wobble,
-} from "./close-view-beast-rig.js?v=r962-a8bf3852db96";
-import { buildTendril, lerpHex, TENTACLE_LOOK } from "./close-view-beast-worm.js?v=r962-a8bf3852db96";
+} from "./close-view-beast-rig.js?v=r972-cede9b9fcf20";
+import { buildTendril, lerpHex, TENTACLE_LOOK } from "./close-view-beast-worm.js?v=r972-cede9b9fcf20";
 
 const SEG = 7;
 export const TENTACLE_RIG = Object.freeze({

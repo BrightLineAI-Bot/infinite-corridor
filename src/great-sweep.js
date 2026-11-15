@@ -23,7 +23,7 @@
 // Angles are degrees relative to the aim, positive clockwise on screen (from +x toward +y, y down), as melee-swing.ts. The
 // Wayfarer holds the sweep in the right hand (CLOSE_VIEW_HELD_GEAR), so the forehand starts on the aim's right (+90) and turns
 // counter-clockwise (`turn` -360); the next press within its visual alternates (direction -1: mirrored, from -90, +360).
-import { circleTouchesSector } from './melee-swing.js?v=r962-a8bf3852db96';
+import { circleTouchesSector } from './melee-swing.js?v=r972-cede9b9fcf20';
 
 export const GREAT_SWEEP_SWING = Object.freeze({
   hilt: .3, // the blade's inner radius (tiles); the tip is BRAWLER['great-sweep'].radius (with Spellblade and Charged Air)
@@ -101,7 +101,7 @@ export function normalizeToolSwing(raw) {
     !inRange(p.damage, 0, 1e9) || !inRange(p.radius, 0, 20) || !inRange(Number(p.imbue) || 0, 0, 1e9) || !inRange(Number(p.healShare) || 0, 0, 4) ||
     !Array.isArray(p.echoCopies) || p.echoCopies.length > 8 || !p.echoCopies.every((c) => obj(c) && inRange(c.delayMs, 0, 10000) && inRange(c.share, 0, 4))) return null;
   const out = structuredClone(raw); delete out.lastNow;
-  out.stopLeft = Number(raw.stopLeft) || 0; out.aim = { x: aim.x / mag, y: aim.y / mag }; out.stopUsed = raw.stopUsed === true; out.contacted = raw.contacted === true;
+  out.stopLeft = Number(raw.stopLeft) || 0; out.aim = { x: aim.x / mag, y: aim.y / mag }; out.stopUsed = raw.stopUsed === true; out.contacted = raw.contacted === true; out.freeze = raw.freeze === true; // the awakened sweep's freeze (SWEEP_FREEZE), fixed when the swing began
   return out;
 }
 // The swing a renderer draws now (Standard View; the Close View floor): the blade's world angle, radii, the trail's start
@@ -136,4 +136,70 @@ export function drawSweepSwing(ctx, q, cx, cy, s) {
     ctx.beginPath(); ctx.moveTo(cx + Math.cos(q.angle) * H, cy + Math.sin(q.angle) * H); ctx.lineTo(cx + Math.cos(q.angle) * R, cy + Math.sin(q.angle) * R); ctx.stroke();
   }
   ctx.globalAlpha = 1;
+}
+
+// ---------------------------------------------------------------- the awakened Great Sweep: a freezing blade
+// Tim, 2026-11-14: "Great Sweep applies a freeze to enemies that it touches... the actual blade when you spin it, and, if you
+// have Mirage of Blades, the Mirage blades too... It should work on bosses... It may have diminishing returns and take a lot
+// to freeze them, similar to stagger". The game had no freeze before (its statuses were the glyph slow, hit-stun under the
+// stagger governor and the boss poise break), so this is the freeze, and only the awakened Great Sweep applies it.
+// Every foe has a freeze meter (e.sweepFreeze, saved with the foe, every clock in seconds counted down by dt, so a reload
+// resumes it exactly). Each touch adds `touch` (the swung blade, or a Mirage blade's cut, out or back). A full meter freezes
+// the foe in place for `hold` s (it neither moves nor attacks; blows still land), then `guard` s in which touches add nothing
+// (it cannot be held frozen). Each freeze raises its tier (diminishing returns): the next needs more and lasts less (`need`
+// and `hold` by tier; from the third freeze on the last entry, where the tier stops); every `calm` s without a freeze drops a tier again. Touches stop counting `forget`
+// s after the last one and the meter then drains `drain` per second. A partly filled meter slows the foe (glyph slow, at most
+// `slow` off its speed at a full meter). Classes follow the stagger governor (monster-pack.ts staggerClass): ordinary foes
+// freeze at a touch; elites take a few; bosses, guardians, world beasts and Gate Revenants take many.
+// Worst-case lock at the boss row: a 1.6 s freeze, then 8 s guarded, so at most about a sixth of the time, less each tier.
+export const SWEEP_FREEZE = Object.freeze({
+  touch: Object.freeze({ blade: 1, mirage: .5 }), // the Mirage blades cut far more often (out and back, every .55 s); one cut still freezes an ordinary foe (need .5)
+  classes: Object.freeze({
+    ordinary: Object.freeze({ need: Object.freeze([.5, .5, 1]), hold: Object.freeze([1.6, 1.3, 1]), guard: 1.2, forget: 2, drain: 1, calm: 6 }),
+    elite: Object.freeze({ need: Object.freeze([3, 4.5, 6]), hold: Object.freeze([1.6, 1.3, 1]), guard: 4, forget: 3, drain: .75, calm: 10 }),
+    boss: Object.freeze({ need: Object.freeze([6, 9, 13]), hold: Object.freeze([1.6, 1.2, .9]), guard: 8, forget: 4, drain: .6, calm: 15 }),
+  }),
+  slow: .45, // speed × (1 - slow × fill) while the meter fills
+  slowMs: 120, // the glyph slow is renewed for this long each frame (it lapses on its own once the meter is empty)
+  maxTier: 8,
+});
+const FZ = SWEEP_FREEZE;
+const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
+export const freezeRow = (cls) => FZ.classes[cls] || FZ.classes.ordinary;
+const pick = (list, tier) => list[Math.min(list.length - 1, tier)];
+// The highest tier: the table's last entry (Tim, 2026-11-14: "after bosses get frozen a third time, they just keep the same
+// high-level freeze resistance"), so from the third freeze on every freeze needs and holds that row's last entry, and a calm
+// spell eases it back one tier as from any other.
+const topTier = (R) => Math.min(FZ.maxTier, R.need.length - 1, R.hold.length - 1);
+// The meter (created on the first touch; never allocated again for that foe while it lasts). Clamps a stored record.
+function meter(e) {
+  const q = e.sweepFreeze;
+  if (!q || typeof q !== 'object') return (e.sweepFreeze = { build: 0, left: 0, hold: 0, guard: 0, tier: 0, idle: 0, calm: 0, fill: 0 });
+  q.build = num(q.build, 0, 100); q.left = num(q.left, 0, 30); q.hold = num(q.hold, 0, 30); q.guard = num(q.guard, 0, 60); q.tier = Math.round(num(q.tier, 0, FZ.maxTier)); q.idle = num(q.idle, 0, 1e6); q.calm = num(q.calm, 0, 1e6); q.fill = num(q.fill, 0, 1);
+  return q;
+}
+export const sweepFrozen = (e) => Number(e?.sweepFreeze?.left) > 0;
+// One touch. Returns true when it freezes the foe now. A frozen or guarded foe gains nothing.
+export function sweepFreezeTouch(e, cls, amount = FZ.touch.blade) {
+  if (!e || e.dead) return false;
+  const q = meter(e), R = freezeRow(cls); if (q.left > 0 || q.guard > 0) return false;
+  q.build += Math.max(0, Number(amount) || 0); q.idle = 0;
+  const need = pick(R.need, q.tier);
+  if (q.build + 1e-9 < need) { q.fill = Math.min(1, q.build / need); return false; }
+  q.left = q.hold = pick(R.hold, q.tier); q.build = 0; q.fill = 0; q.tier = Math.min(topTier(R), q.tier + 1); q.calm = 0;
+  return true;
+}
+// One frame (dt seconds). Returns the speed factor while the meter fills (1 when there is no slow); drops the record once it
+// has nothing left to count.
+export function tickSweepFreeze(e, cls, dt) {
+  if (!e?.sweepFreeze) return 1;
+  const q = meter(e), R = freezeRow(cls), d = Math.max(0, Number(dt) || 0);
+  if (q.tier > topTier(R)) q.tier = topTier(R); // a record kept from before the cap
+  if (q.left > 0) { q.left = Math.max(0, q.left - d); if (q.left <= 0) { q.left = 0; q.guard = R.guard; } return 1; }
+  if (q.guard > 0) q.guard = Math.max(0, q.guard - d);
+  q.idle += d; if (q.idle >= R.forget && q.build > 0) q.build = Math.max(0, q.build - R.drain * d);
+  if (q.tier > 0) { q.calm += d; if (q.calm >= R.calm) { q.tier--; q.calm = 0; } }
+  q.fill = q.build > 0 ? Math.min(1, q.build / pick(R.need, q.tier)) : 0;
+  if (q.build <= 0 && q.guard <= 0 && q.tier <= 0) { delete e.sweepFreeze; return 1; }
+  return q.fill > 0 ? 1 - FZ.slow * q.fill : 1;
 }

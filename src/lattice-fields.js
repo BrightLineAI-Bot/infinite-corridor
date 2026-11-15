@@ -7,10 +7,10 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r962-a8bf3852db96";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r962-a8bf3852db96";
-import { QUANDRIX } from "./quandrix-staff.js?v=r962-a8bf3852db96";
-import { WEAPON_ARTS } from "./weapon-arts.js?v=r962-a8bf3852db96";
+import { latticePassives } from "./transit-lattice.js?v=r972-cede9b9fcf20";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r972-cede9b9fcf20";
+import { QUANDRIX } from "./quandrix-staff.js?v=r972-cede9b9fcf20";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r972-cede9b9fcf20";
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -29,7 +29,7 @@ export const TOOL_FORMS = {
   "lumen-sunburst": { name: "Sunburst Ricochet", text: `A Lumen Spindle shot that strikes a wall ricochets off it, cutting on through foes, and breaks into a sunburst of ${SUNBURST.shards} small shards, each striking a foe once for ${Math.round(SUNBURST.share * 100)}% of the shot. Up to ${SUNBURST.ricochets} ricochets a shot; one that ricocheted on its way out comes back the same way and bursts again. Still magic (Focus).` }, // tool-forms.ts SUNBURST
   "continuous-assault": { name: "Continuous Assault", text: `With the Carbine: a charged beam released at least ${Math.round(CONTINUOUS_ASSAULT.threshold * 100)}% full calls ${CONTINUOUS_ASSAULT.count} lasers down from the sky, ${CONTINUOUS_ASSAULT.gap} s apart, onto the foe it strikes (or the one nearest where it ends). Each tracks its foe and strikes everything within ${CONTINUOUS_ASSAULT.radius} tile for ${Math.round(CONTINUOUS_ASSAULT.share * 100)}% of the beam. Nothing with any other tool. Grows with Finesse, as the Carbine does.` }, // tool-forms.ts CONTINUOUS_ASSAULT; 2026-11-12 replaces the Lumen Carbine (now the Carbine tool)
 
-  "mages-hand": { name: "Mage's Hand", text: `With the Quandrix Staff: a tap still casts a hand; hold Attack and the hand you cast last clenches into a fist. It grabs every foe it touches (up to ${QUANDRIX.fist.maxGrab}) and drags them toward you, then bursts after ${QUANDRIX.fist.time} s wherever it is, or at once when you let go, for ${Math.round(QUANDRIX.fist.burst.share * 100)}% of the staff within ${QUANDRIX.fist.burst.radius} tiles. Bosses, world beasts and elites hold their ground but take the burst. Awakened, the slammed hand becomes a suction cup instead. Nothing with any other weapon. Grows with Focus, as the staff does.` }, // quandrix-staff.ts QUANDRIX.fist (2026-11-13)
+  "mages-hand": { name: "Mage's Hand", text: `With the Quandrix Staff: a tap still casts a hand; hold Attack and the hand you cast last clenches into a fist. It grabs every foe it touches (up to ${QUANDRIX.fist.maxGrab}) and drags them toward you, then bursts after ${QUANDRIX.fist.time} s wherever it is (let go early and it keeps dragging until then while you fight on), for ${Math.round(QUANDRIX.fist.burst.share * 100)}% of the staff within ${QUANDRIX.fist.burst.radius} tiles. Bosses, world beasts and elites hold their ground but take the burst. Awakened, the slammed hand becomes a suction cup instead. Nothing with any other weapon. Grows with Focus, as the staff does.` }, // quandrix-staff.ts QUANDRIX.fist (2026-11-13)
   nanoknives: { name: "Mirage of Blades", text: "Each Great Sweep throws a great spinning blade (a great sword, then a great axe, then a great shuriken) that cuts through every foe out to 5 tiles, then homes back to you, cutting again, for up to 2.5 s. Up to 3 at once; Echo in the tool throws more. Bursts with Volatile, grows with Charged Air. Still physical (Might)." }, // release 649: was Nanoknives (the key stays for saves)
 };
 // Weapon arts (weapon-arts.ts, Tim 2026-11-13): one per primary weapon, each doing nothing with another weapon. Three presses
@@ -40,7 +40,7 @@ Object.assign(TOOL_FORMS, {
   "blade-stream": { name: ART["blade-stream"].name, text: `With the Fourfold Daggers: ${ARM} A storm of ${ART["blade-stream"].hits} light slashes cuts every foe within ${ART["blade-stream"].radius} tiles of you over ${ART["blade-stream"].span} s. Scales with Finesse.` },
   "cinder-javelin": { name: ART["cinder-javelin"].name, text: `With the Cinder Pike: ${ARM} You wind up and hurl the pike ${ART["cinder-javelin"].range} tiles, through up to ${ART["cinder-javelin"].pierce} foes; it returns to your hand. Scales with Finesse.` },
   "ki-blast": { name: ART["ki-blast"].name, text: `With the Iron Fists: ${ARM} Your next punch fires a ki blast ${ART["ki-blast"].range} tiles ahead; on the uppercut you leap and fire it from the air for ${Math.round((ART["ki-blast"].air - 1) * 100)}% more. Scales with Might.` },
-  transpose: { name: ART.transpose.name, text: `With the Salvage Blade: ${ARM} You set a seal on the ground (${ART.transpose.radius}-tile radius) for ${ART.transpose.base} s (${ART.transpose.perfectBase} s from a perfect release); each melee hit adds ${ART.transpose.perHit} s, up to ${ART.transpose.cap} s. Standing in it your spells deal ${Math.round(ART.transpose.spellDamage * 100)}% more and you take ${Math.round(ART.transpose.damageTaken * 100)}% more damage, for ${ART.transpose.linger} s after you step out. One seal at a time.` },
+  transpose: { name: ART.transpose.name, text: `With the Salvage Blade: ${ARM} You set a seal on the ground (${ART.transpose.radius}-tile radius) for ${ART.transpose.base} s (${ART.transpose.perfectBase} s from a perfect release); each melee hit adds ${ART.transpose.perHit} s, up to ${ART.transpose.cap} s. Standing in it all your magic damage is ${Math.round(ART.transpose.spellDamage * 100)}% greater (spells, Imbue Weapon, dodge bursts, and the Carbine, Spark Coil, Lumen Spindle, Aether Orrery and Quandrix Staff) and you take ${Math.round(ART.transpose.damageTaken * 100)}% more damage, for ${ART.transpose.linger} s after you step out. One seal at a time.` },
 });
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
 export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
