@@ -51,20 +51,57 @@ export const BRAWLER = {
 //     line's half-thickness) and the foe's body. `share` of the tool's power (Game.toolPower, as the hammer's blow), a `stun`
 //     (a quarter of it on bosses and elites, as the hammer);
 //   `fade` s: the shut lines and the flash of the slap along them fade.
+// Walls (Tim, 2026-11-14: release 968 follow-up). The lines never pass a wall: when the clap is laid (game.ts clapClip), the
+// centre line is cut where a wall stops it, each way from the impact (`back`, `fore` on the effect, at most `length` / 2), and at
+// `samples` points along it each line's sideways travel is cut at the first wall (`out` on the effect: `samples` numbers for the
+// side of negative across (hammerClapOut), then as many for positive, each at most `spread`). The clip is stored on the effect, so a resumed
+// clap keeps its shape. A line is drawn through its clipped points, bending where a wall stops part of it; it still slams shut
+// along its whole length. Only foes inside the clipped band are struck (the nearer of the two samples about them), and only
+// those the game can see from the centre line (game.ts clapClear): never one past a wall.
+// Pull: while the lines close, each foe in the band is drawn toward the centre line at `pull` tiles a second (never past it),
+// through the collision mover (walls, bodies and lethal ground stop it); foes that hold their ground (weapon-arts.ts
+// artAnchored: bosses, elites, world beasts...) are not moved.
 // Pure numbers and geometry; drawHammerClap below draws it on the floor (both views: Close View projects this layer).
-export const HAMMER_CLAP = Object.freeze({ share: .6, length: 2.4, spread: 1.3, width: .3, extend: .12, hold: .1, sweep: .1, fade: .2, stun: .3,
+export const HAMMER_CLAP = Object.freeze({ share: .6, length: 2.88, spread: 1.5, width: .3, extend: .12, hold: .1, sweep: .1, fade: .2, stun: .3,
+  pull: 4, samples: 9, step: .25,
   colors: Object.freeze({ glow: "#ffcf7a", core: "#fff6dc", band: "#ffd58a", flash: "#fffbe8" }),
-  text: "when the hammer lands, two parallel lines of energy slide apart from it and slam back together" });
+  text: "when the hammer lands, two parallel lines of energy slide apart from it and slam back together, drawing foes in" });
 // When the clap strikes and how long it lasts, from the moment the hammer lands (seconds).
 export const hammerClapStrikeAt = () => HAMMER_CLAP.extend + HAMMER_CLAP.hold + HAMMER_CLAP.sweep;
 export const hammerClapSpan = () => hammerClapStrikeAt() + HAMMER_CLAP.fade;
-// Whether a foe whose middle is (ex, ey) is caught by the clap `fx` (x, y: the impact; ax, ay: the unit aim, along the lines;
-// radius: the lines' length; spread: how far each slides out). `body`: how much wider than a common foe it is (as
-// updateEffects reckons radii). The rectangle between the lines, padded by `width` and the body.
+// How far the clap `fx` reaches along the aim behind (-1) or ahead of (+1) the impact: its clip, else half its length.
+export const hammerClapEnd = (fx, dir) => { const v = dir < 0 ? fx.back : fx.fore, half = fx.radius / 2; return Number.isFinite(v) ? Math.max(0, Math.min(half, v)) : half; };
+// Where along the aim sample `i` of the clap lies (from the impact).
+export const hammerClapSampleAt = (fx, i) => { const b = hammerClapEnd(fx, -1), f = hammerClapEnd(fx, 1), n = HAMMER_CLAP.samples; return -b + (b + f) * i / (n - 1); };
+// How far the line on `side` (the sign of across = ry·ax − rx·ay, i.e. along ∓(−ay, ax)) travels out at sample `i`.
+export const hammerClapOut = (fx, side, i) => { const spread = Number.isFinite(fx.spread) ? fx.spread : HAMMER_CLAP.spread, o = Array.isArray(fx.out) ? Number(fx.out[(side < 0 ? 0 : HAMMER_CLAP.samples) + i]) : NaN; return Number.isFinite(o) ? Math.max(0, Math.min(spread, o)) : spread; };
+// Clip a clap against the map (game.ts calls it once, when the clap is laid). `open(x, y)`: whether a world point is open.
+// Writes `back`, `fore` and `out` (one array of 2 × `samples`, made once here) on `fx`.
+export function clipHammerClap(fx, open) {
+  const C = HAMMER_CLAP, half = fx.radius / 2, nx = -fx.ay, ny = fx.ax, spread = Number.isFinite(fx.spread) ? fx.spread : C.spread;
+  const run = (x, y, dx, dy, max) => { let d = 0; while (d + C.step <= max + 1e-9 && open(x + dx * (d + C.step), y + dy * (d + C.step))) d += C.step; if (d < max - 1e-9 && d + C.step > max && open(x + dx * max, y + dy * max)) d = max; return d; };
+  fx.back = run(fx.x, fx.y, -fx.ax, -fx.ay, half); fx.fore = run(fx.x, fx.y, fx.ax, fx.ay, half); fx.out = new Array(2 * C.samples);
+  for (let i = 0; i < C.samples; i++) {
+    const a = hammerClapSampleAt(fx, i), px = fx.x + fx.ax * a, py = fx.y + fx.ay * a;
+    fx.out[i] = run(px, py, -nx, -ny, spread); fx.out[C.samples + i] = run(px, py, nx, ny, spread);
+  }
+  return fx;
+}
+// The band's extent on `side` at `along` (the nearer of the two samples about it, so a wall between samples is never crossed).
+export function hammerClapExtent(fx, side, along) {
+  const b = hammerClapEnd(fx, -1), f = hammerClapEnd(fx, 1), n = HAMMER_CLAP.samples, span = b + f;
+  if (!(span > 1e-9)) return hammerClapOut(fx, side, 0);
+  const u = Math.max(0, Math.min(n - 1, (along + b) / span * (n - 1))), i = Math.floor(u), j = Math.min(n - 1, i + 1);
+  return Math.min(hammerClapOut(fx, side, i), hammerClapOut(fx, side, j));
+}
+// Whether a foe whose middle is (ex, ey) is inside the clap `fx`'s band (x, y: the impact; ax, ay: the unit aim, along the
+// lines): between the clipped ends along the aim and within the clipped travel of the line on its side, each padded by
+// `width` (the line's half-thickness) and `body` (how much wider than a common foe it is, as updateEffects reckons radii).
 export function hammerClapCatches(fx, ex, ey, body = 0) {
   const rx = ex - fx.x, ry = ey - fx.y, slack = HAMMER_CLAP.width + Math.max(0, Number(body) || 0);
-  const along = rx * fx.ax + ry * fx.ay, across = ry * fx.ax - rx * fx.ay, spread = Number.isFinite(fx.spread) ? fx.spread : HAMMER_CLAP.spread;
-  return Math.abs(along) <= fx.radius / 2 + slack && Math.abs(across) <= spread + slack;
+  const along = rx * fx.ax + ry * fx.ay, across = ry * fx.ax - rx * fx.ay;
+  if (along < -hammerClapEnd(fx, -1) - slack || along > hammerClapEnd(fx, 1) + slack) return false;
+  return Math.abs(across) <= hammerClapExtent(fx, across < 0 ? -1 : 1, along) + slack;
 }
 // The lines' shape at `t` s after the hammer landed (null before it lands or once it has faded): `apart` (0..1 of the spread:
 // 0 together on the centre line, 1 out at the spread), `flash` (1 at the slap, fading) and `phase`: "apart" (sliding out),
@@ -503,30 +540,38 @@ export function hammerfallPresentation(fx, map) {
 }
 // The awakened Hammerfall's clap (HAMMER_CLAP), on the floor at the impact (x, y: screen). Two straight lines of the hammer's
 // gold light along the aim, a soft glow under a white core, sliding apart parallel and slamming back; while they are apart the
-// band between them (where the slap lands) glows faintly; at the slap a flash along the line where they meet. Nothing drawn
-// before the hammer lands. `still` (reduced motion, safe mode) drops the hum and the flash's swell. No allocation.
-function drawHammerClap(ctx, fx, x, y, s, still) {
-  if (fx.delay > 0 || !fx.clap) return;
-  const K = HAMMER_CLAP.colors, q = hammerClapPose(hammerClapSpan() - fx.life); if (!q) return;
-  const ax = Number(fx.ax) || 0, ay = Number(fx.ay) || 0, nx = -ay, ny = ax, hx = ax * fx.radius * s / 2, hy = ay * fx.radius * s / 2;
-  const off = (Number.isFinite(fx.spread) ? fx.spread : HAMMER_CLAP.spread) * s * q.apart, alpha = q.phase === "clap" ? q.flash : 1;
-  const hum = still || q.phase !== "hold" ? 1 : .85 + .15 * Math.sin(fx.life * 90);
-  if (off > 0) { // the band between the lines
-    ctx.globalAlpha = .14 * hum; ctx.fillStyle = K.band; ctx.beginPath();
-    ctx.moveTo(x - hx + nx * off, y - hy + ny * off); ctx.lineTo(x + hx + nx * off, y + hy + ny * off);
-    ctx.lineTo(x + hx - nx * off, y + hy - ny * off); ctx.lineTo(x - hx - nx * off, y - hy - ny * off); ctx.closePath(); ctx.fill();
+// band between them (where the slap lands) glows faintly; at the slap a flash along the line where they meet. Each line is a
+// polyline through its `samples` points, each out by the lesser of the pose's travel and that sample's wall clip; between two
+// samples it runs at the lesser of theirs (the band hammerClapExtent strikes), stepping in or out at a sample, so a line bends
+// where a wall stops part of it, never cuts a wall's corner, and is straight where nothing does. Nothing drawn before the
+// hammer lands. `still` (reduced motion, safe mode) drops the hum and the flash's swell. No allocation.
+function clapPoint(ctx, fx, x, y, s, a, o, first) { const px = x + (fx.ax * a - fx.ay * o) * s, py = y + (fx.ay * a + fx.ax * o) * s; if (first) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+function clapPath(ctx, fx, x, y, s, side, off, n, reverse = false, joined = false) { // one line (screen), near end to far (or back)
+  const at = (k) => Math.min(off, hammerClapOut(fx, side, k)) * side;
+  for (let k = 0; k < n; k++) {
+    const i = reverse ? n - 1 - k : k, a = hammerClapSampleAt(fx, i), o = at(i); clapPoint(ctx, fx, x, y, s, a, o, k === 0 && !joined);
+    if (k < n - 1) { const j = reverse ? i - 1 : i + 1, m = Math.abs(o) < Math.abs(at(j)) ? o : at(j); clapPoint(ctx, fx, x, y, s, a, m, false); clapPoint(ctx, fx, x, y, s, hammerClapSampleAt(fx, j), m, false); }
   }
-  ctx.lineCap = "round";
+}
+function drawHammerClap(ctx, fx, x, y, s, still) {
+  if (fx.delay > 0 || !fx.clap || !Number.isFinite(fx.ax) || !Number.isFinite(fx.ay)) return;
+  const C = HAMMER_CLAP, K = C.colors, n = C.samples, q = hammerClapPose(hammerClapSpan() - fx.life); if (!q) return;
+  const off = (Number.isFinite(fx.spread) ? fx.spread : C.spread) * q.apart, alpha = q.phase === "clap" ? q.flash : 1;
+  const hum = still || q.phase !== "hold" ? 1 : .85 + .15 * Math.sin(fx.life * 90);
+  if (off > 0) { // the band between the lines: out along one, back along the other
+    ctx.globalAlpha = .14 * hum; ctx.fillStyle = K.band; ctx.beginPath(); clapPath(ctx, fx, x, y, s, 1, off, n);
+    clapPath(ctx, fx, x, y, s, -1, off, n, true, true); ctx.closePath(); ctx.fill();
+  }
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   if (q.phase === "clap") { // the slap: a flash along the line where they met
     ctx.globalAlpha = .5 * q.flash; ctx.strokeStyle = K.flash; ctx.lineWidth = s * (.5 + (still ? .4 : .9 * (1 - q.flash)));
-    ctx.beginPath(); ctx.moveTo(x - hx, y - hy); ctx.lineTo(x + hx, y + hy); ctx.stroke();
+    ctx.beginPath(); clapPath(ctx, fx, x, y, s, 1, 0, n); ctx.stroke();
   }
   for (let side = -1; side <= 1; side += 2) {
-    const ox = nx * off * side, oy = ny * off * side;
-    ctx.globalAlpha = .45 * alpha * hum; ctx.strokeStyle = K.glow; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); ctx.moveTo(x - hx + ox, y - hy + oy); ctx.lineTo(x + hx + ox, y + hy + oy); ctx.stroke();
-    ctx.globalAlpha = .95 * alpha; ctx.strokeStyle = K.core; ctx.lineWidth = Math.max(1.5, s * .07); ctx.beginPath(); ctx.moveTo(x - hx + ox, y - hy + oy); ctx.lineTo(x + hx + ox, y + hy + oy); ctx.stroke();
+    ctx.globalAlpha = .45 * alpha * hum; ctx.strokeStyle = K.glow; ctx.lineWidth = Math.max(3, s * .22); ctx.beginPath(); clapPath(ctx, fx, x, y, s, side, off, n); ctx.stroke();
+    ctx.globalAlpha = .95 * alpha; ctx.strokeStyle = K.core; ctx.lineWidth = Math.max(1.5, s * .07); ctx.beginPath(); clapPath(ctx, fx, x, y, s, side, off, n); ctx.stroke();
   }
-  ctx.globalAlpha = 1; ctx.lineCap = "butt";
+  ctx.globalAlpha = 1; ctx.lineCap = "butt"; ctx.lineJoin = "miter";
 }
 function drawFallingHammer(ctx, x, y, s, delay) {
   const hy = y - s * 2.2 * Math.max(0, delay / BRAWLER.hammerfall.delay), w = s * .9, h = s * .5;
