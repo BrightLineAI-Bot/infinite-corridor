@@ -104,7 +104,10 @@ export const FRAME_TOOLS = Object.freeze(["robot", "drone"]);
 // It never changes the darkness itself: where an area is dark (`places`), the renderer lifts that darkness by lanternLift(d)
 // around the Wayfarer, `strength` at the heart out to `inner` of `radius`, easing to nothing at `radius` and beyond. Close
 // View's torch reaches `closeReach` times as far. The Gloomvast's Dark and the Stormkraken's ink are a boss's moves, not a
-// place's dark, and are left as they are.
+// place's dark, and are left as they are. Outdoors (Tim, 2026-11-15: "the Lantern can still give a little glow around you if
+// you're outside on a dark night"): under a night sky (close-view.ts outdoorNight, the section's sky mood) a lit Lantern lays a
+// fainter warm glow (`night.glow`) in Standard View and lengthens Close View's carried light `night.reach` times; by day outdoors
+// it does nothing.
 export const LANTERN = Object.freeze({
   name: "Lantern", symbol: "☼", color: "#f2c46a",
   places: Object.freeze(["dungeon"]), // the areas it lights: every dungeon (caves, the Deep, Pentagons, chasms, labyrinths)
@@ -115,6 +118,7 @@ export const LANTERN = Object.freeze({
   closeReach: 1.4, // Close View: the torch reaches this many times as far while it is lit
   maskPx: 96, // the one cached light mask (pixels a side)
   maskStops: 8, // gradient stops sampled from lanternLift
+  night: Object.freeze({ glow: .16, reach: 1.4 }), // outdoors at night: the glow's alpha (Standard View), the carried light's reach (Close View)
 });
 // How much of the darkness the lit lantern lifts `d` tiles from the Wayfarer: 0..strength, exactly 0 at radius and beyond.
 export function lanternLift(d) {
@@ -132,6 +136,8 @@ export const lanternLit = (save) => save?.lantern?.lit === true;
 export const lanternShines = (save, area) => lanternLit(save) && LANTERN.places.includes(area);
 // Close View: the torch's reach times this (1 unless the lantern shines here).
 export const lanternReach = (save, area) => (lanternShines(save, area) ? LANTERN.closeReach : 1);
+// Outdoors: the carried light's reach times this (1 unless the lantern is lit and it is night).
+export const lanternNightReach = (save, night) => (night && lanternLit(save) ? LANTERN.night.reach : 1);
 export function ensureLantern(save) {
   if (!save || typeof save !== "object") return null;
   const raw = save.lantern && typeof save.lantern === "object" && !Array.isArray(save.lantern) ? save.lantern : {};
