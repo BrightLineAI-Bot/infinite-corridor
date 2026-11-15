@@ -61,7 +61,7 @@ export const STEGO_POSES = Object.freeze({
   stagger: { head: -.45, crouch: .32, open: .45, pitch: -.06 },
   // the dino duel's grab: the Spinosaurus's tail in its jaws, heaved up (braced on its hind legs, rearing, head up and back) and slammed
   // down (head driven to the ground, weight thrown forward)
-  grabHeave: { pitch: .85, frontLift: .9, head: .9, reach: -.15, open: .2, crouch: .1, tailUp: -.3 },
+  grabHeave: { pitch: 1, frontLift: 1, head: 1.05, reach: -.2, open: .2, crouch: .14, tailUp: -.35 },
   grabSlam: { pitch: -.22, head: -.8, reach: .45, open: .2, crouch: .4, tailUp: .3 },
   dead: { crouch: 1, head: -.6, open: .4, tuck: .7 },
 });

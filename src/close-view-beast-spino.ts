@@ -30,7 +30,7 @@ export const SPINO_RIG = Object.freeze({
   // the dino duel: the body yawed and rolled (radians) at the end of each swing of the stego's shake
   // hauled up by its tail in the stego's jaws: the game's pitch and roll (e.dinoPitch, dinoRoll) turn the whole body by these shares
   // (`pitchSign` the rig's sense of nose up), and its neck and head lag the haul (`lag` radians per radian a second, eased `lagEase`)
-  hang: Object.freeze({ pitch: 1, roll: 1, pitchSign: -1, lag: .16, lagEase: 6, lagMax: .6 }),
+  hang: Object.freeze({ pitch: 1, roll: 1, pitchSign: -1, lag: .16, lagEase: 6, lagMax: .6, squash: .35 }), // squash: the slam's extra crouch on landing
   // and where its jaws hold the stego it lifts: forward and up from the head bone (model units)
   jawHold: Object.freeze([.3, -.06]),
   // ground the snout: the plough drags the jaw along it, the dig drives it under
@@ -313,6 +313,7 @@ export function sampleSpino(tr, e, env) {
   for (let k = 0; k < NK; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
   if (blend >= 1) tr.from.set(V);
   W.set(tr.shown);
+  if (held) { W[KI.arms] = -.4; W[KI.open] = Math.max(W[KI.open], .35); } // hauled up by its tail: arms and jaw hang slack
   const stun = dead ? 0 : clamp01(Number(e.poiseBreak) || 0);
   if (stun > 0) { spinoPoseVector('dazed', 1, D); for (let k = 0; k < NK; k++) W[k] += (D[k] - W[k]) * stun; }
   // impact: a jolt through the body on a blow; a hit: a flinch away from it
@@ -323,9 +324,9 @@ export function sampleSpino(tr, e, env) {
   tr.hp = e.hp;
   const hitT = (now - tr.hitAt) / 1000, hit = !reduce && hitT < G.hitMs / 1000 ? kick(hitT, 16, 10) : 0;
   const air = dead ? 0 : Math.max(0, (Number(e.spinoAir) || 0) + (held ? Number(e.dinoLift) || 0 : 0));
-  if (tr.airWas > .15 && air <= .15) tr.landAt = now; tr.airWas = air;
+  if (tr.airWas > .15 && air <= .15) { tr.landAt = now; tr.landSlam = held ? 1 : 0; } tr.airWas = air; // slammed down by the stego: it squashes harder
   const landT = (now - tr.landAt) / 1000, land = !reduce && landT < G.landMs / 1000 ? Math.max(0, kick(landT, 9, 7)) : 0;
-  W[KI.crouch] += .12 * land + .03 * Math.abs(impact); W[KI.pitch] -= .06 * impact;
+  W[KI.crouch] += (.12 + G.hang.squash * (tr.landSlam || 0)) * land + .03 * Math.abs(impact); W[KI.pitch] -= .06 * impact;
   // gait
   tr.run += ((running ? 1 : 0) - tr.run) * Math.min(1, dt * 6);
   const gs = running ? G.run : G.walk;

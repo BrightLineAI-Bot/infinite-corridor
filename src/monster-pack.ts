@@ -1319,7 +1319,7 @@ export const STEGO = {
   // of its tail, its body swings round `held` tiles from the stego (where it is drawn, and where it can be struck). Each slam lands in
   // a circle of `radius` tiles there at the arc's end, shown at least `heave` s first: the Wayfarer inside takes `collateral` of the
   // move's damage.
-  jaws: { reach: 1.6, bite: .45, heave: 1, slam: .35, slams: 2, release: .4, swing: 1.1, height: 2.2, pitch: .6, roll: .4, share: .9, held: 7.5, radius: 3.2, collateral: .6 },
+  jaws: { reach: 1.6, bite: .45, heave: 1, slam: .35, slams: 2, release: .4, swing: 1.1, height: 3, pitch: .15, roll: .4, share: .9, held: 7.5, radius: 3.2, collateral: .6 },
   baitSeconds: 30, /* the Stego Bait (stego-bait.ts): how long a placed bait holds every monster's attention */
   text: { severed: "Its tail comes away! The Wild Stegosaurus staggers, and the tail lies where it fell." },
 };
@@ -1358,7 +1358,7 @@ export const SPINO = {
   grab: { lockAt: .4, follow: 6, markMax: 8, radius: 1.15, reach: 1.4, lunge: .35, hold: 2.1, slack: .3, chews: 3, chewShare: .35, throwTime: .35, throwShare: .55, throw: 3, throwTurn: .6, lift: 1.2, creatureHold: 3.5, creatureChews: 4,
     // The dino duel: the Wild Stegosaurus lifted (`lift` s, `height` tiles) and slammed down `ahead` tiles before its body (`slam` s),
     // `slams` times; each slam a blow of `share` of the move's damage, and `collateral` of it to the Wayfarer inside its `radius`.
-    duel: { lift: .7, height: 1.4, slam: .35, slams: 2, ahead: 3.2, share: .8, radius: 2.4, collateral: .6 } },
+    duel: { lift: .7, height: 3, slam: .35, slams: 2, ahead: 3.2, share: .8, radius: 2.4, collateral: .6 } },
   bones: { count: 5, fan: .5, rise: .55, stagger: .22, speed: 6, turn: 2.4, life: 2.4, radius: .35, burst: 1.3, burstArm: .5, burstShare: .6, cap: 12 },
   ribs: { reach: 3.6, side: 2.8, width: .6, thrust: .45, outShare: .7, outArc: 200, inArc: 180 }, /* out to the sides (`outArc` shown), then in to a point in front, sweeping the ground between (`inArc` shown) */
   // Its prey (Tim: "wildStego and briarStag first"): within `sight` it turns on one, at `chance` % each time it chooses (it chooses again after `refocus` s on its prey, `refocusYou` s on you). A blow on
@@ -1685,12 +1685,15 @@ function beginAttack(e, s, id, w, prey = null) {
   const attack = ATTACK_MODULES[id];
   s.attack = id; s.phase = "windup"; s.t = (attack.windup || .5) * (s.paced ? BOSS_PACE.windup : 1); s.seq++; s.data = prey ? { prey: prey.id } : {}; s.hitOnce = false; // release 421 (the Wild Stegosaurus: a one-off blow at another creature, `prey`)
   s.cd[id] = attack.cooldown * cooldownScale(e);
-  const p = center(prey || w.player);
+  const p = prey && dinoRivals(e, prey) ? duelReachPoint(e, prey) : center(prey || w.player); // the dino duel: aimed at the near side of the other's bulk
   s.data.aim = unit(p.x - e.x, p.y - e.y);
   s.data.target = { ...p };
   START[id]?.(e, s, w, attack);
   dinoCue(w, e, "windup", id);
 }
+// The dino duel (DINO_DUEL.spacing): the two big bodies stand farther apart than other foes, so a blow between them is measured to
+// the near side of the other's bulk: its centre moved `reach` tiles toward the striker (never past it).
+function duelReachPoint(e, q) { const d = distance(q, e), k = d > 1e-6 ? Math.min(DINO_DUEL.spacing.reach, d) / d : 0; return { x: q.x + (e.x - q.x) * k, y: q.y + (e.y - q.y) * k }; }
 // The dino duel's sounds (battle-sfx.ts, Tim 2026-11-14): a cue to the game's sound hook (w.dinoSfx) for what the Spinosaurus or
 // the Wild Stegosaurus does: a wind-up, a swing, a roar, a landing, a blow that lands on the other. Sound only: it changes nothing.
 const DINO_SFX_KINDS = ["spinoRex", "wildStego"];
@@ -2879,7 +2882,7 @@ const RUN = {
       const step = B.speed * (e.speedMultiplier || 1) * w.dt, near = distance(q, e) <= B.lungeAt + bodyRadius(e); d.left -= w.dt;
       if (!near) w.move(e, d.aim.x * step, d.aim.y * step);
       s.tele = { type: "lane", aim: d.aim, length: rayLength(w, e, d.aim, Math.min(distance(q, e) + B.radius, B.max + B.lungeAt)), width: bodyRadius(e) * 1.6 };
-      if (near || d.left <= 0) { d.stage = "lunge"; d.from = { x: e.x, y: e.y }; d.to = spinoLanding(e, w, spinoReach(e, q, B.max)); d.left = B.lunge; e.aloft = true; e.spinoPose = "lunge"; s.tele = { type: "circle", x: d.to.x, y: d.to.y, radius: B.radius, total: B.lunge }; }
+      if (near || d.left <= 0) { d.stage = "lunge"; d.from = { x: e.x, y: e.y }; d.to = spinoLanding(e, w, spinoReach(e, (() => { const r = spinoPreyAlive(w, d.prey); return r && dinoRivals(e, r) ? duelReachPoint(e, r) : q; })(), B.max)); /* the dino duel: onto the near side of its bulk */ d.left = B.lunge; e.aloft = true; e.spinoPose = "lunge"; s.tele = { type: "circle", x: d.to.x, y: d.to.y, radius: B.radius, total: B.lunge }; }
       return;
     }
     d.left -= w.dt; const k = Math.min(1, 1 - Math.max(0, d.left) / B.lunge);
@@ -2924,7 +2927,7 @@ const RUN = {
       const D = G.duel, at = { x: e.x + h.x * (bodyRadius(e) + D.ahead), y: e.y + h.y * (bodyRadius(e) + D.ahead) };
       if (!prey) { d.stage = "throw"; d.left = G.throwTime; s.spinoHolding = null; s.tele = null; return; }
       if (d.stage === "lift") {
-        const k = Math.min(1, 1 - Math.max(0, d.left) / D.lift); prey.x = at.x; prey.y = at.y; prey.dinoLift = k * D.height; // held out where its jaws are drawn
+        const k = Math.min(1, 1 - Math.max(0, d.left) / D.lift); prey.x = at.x; prey.y = at.y; prey.dinoLift = Math.sin(Math.PI / 2 * Math.min(1, k * 1.6)) * D.height; // up fast, held at the top // held out where its jaws are drawn
         if (!d.lifted) { d.lifted = true; dinoCue(w, e, "lift", "spinoGrab", prey); }
         e.spinoPose = "grabLift"; e.spinoGrab = { who, phase: "lift", t: k, slams: d.slams }; s.tele = { type: "circle", x: at.x, y: at.y, radius: D.radius, total: D.lift };
         if (d.left > 0) return;
@@ -4605,7 +4608,7 @@ function stegoLanding(e, w, t) {
 function stegoStrike(e, s, w, id, test, share = 1) {
   const dmg = Math.max(1, Math.ceil(damageOf(e, id) * share)), prey = stegoPreyAlive(w, s.data?.prey); let landed = false;
   if (test(center(w.player)) && (!w.los || w.los(e, w.player))) landed = !!w.hurt(e, dmg, { jumpable: false, source: id });
-  if (prey && test(center(prey))) {
+  if (prey && test(dinoRivals(e, prey) ? duelReachPoint(e, prey) : center(prey))) {
     if (dinoRivals(e, prey)) { stegoWoundRival(w, e, prey, Math.max(dmg, Math.ceil((Number(prey.maxHp) || 1) * STEGO.rival.share))); dinoCue(w, e, "hit", id, prey, { victim: prey.kind }); }
     else w.hurtCreature?.(e, prey, Math.max(dmg, Math.ceil((Number(prey.maxHp) || 1) * STEGO.infight.share)));
     landed = true;
@@ -4658,10 +4661,11 @@ function stegoRivalStep(e, s, w, rival) {
   const R = STEGO.rival, fd = distance(rival, e);
   if (s.gap <= 0 && !(R.wait && dinoBlowComing(rival, e))) {
     // its own moves, its duel grab (R.grabs: the duel's alone), and the tree club where a club tree stands near
-    const ready = [...R.moves, ...R.grabs].filter((id) => { const A = ATTACK_MODULES[id]; return ((e.packAttacks || []).includes(id) || R.grabs.includes(id)) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) && (id !== "stegoTreeClub" || (!e.stegoSwim && !!clubTreeNear(w, e.x, e.y))) && (id !== "stegoJaws" || !rival.spinoHeldBy); });
+    const ready = [...R.moves, ...R.grabs].filter((id) => { const A = ATTACK_MODULES[id]; return ((e.packAttacks || []).includes(id) || R.grabs.includes(id)) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + DINO_DUEL.spacing.reach && (id !== "stegoTreeClub" || (!e.stegoSwim && !!clubTreeNear(w, e.x, e.y))) && (id !== "stegoJaws" || !rival.spinoHeldBy); });
     if (ready.length) { const id = ready[hashSeed(`${e.id}:rival-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, rival); return true; }
   }
-  if (fd > bodyRadius(e) + bodyRadius(rival) + R.gap) { const v = unit(rival.x - e.x, rival.y - e.y), step = .82 * R.speed * (e.speedMultiplier || 1) * w.dt; w.move(e, v.x * step, v.y * step); }
+  const want = bodyRadius(e) + bodyRadius(rival) + R.gap + DINO_DUEL.spacing.gap, v = unit(rival.x - e.x, rival.y - e.y), step = .82 * R.speed * (e.speedMultiplier || 1) * w.dt;
+  if (fd > want) w.move(e, v.x * step, v.y * step); else if (fd < want - DINO_DUEL.spacing.slack) w.move(e, -v.x * step, -v.y * step); // too close: it backs off
   return true;
 }
 // What it will turn on besides you: ordinary creatures and wildlife, never a boss, a beast, a guardian, an elite or anything hidden.
@@ -4825,7 +4829,7 @@ function spinoStrike(e, s, w, id, test, o = {}) {
     landed = !!w.hurt(e, dmg, { jumpable: false, source: id, ...(o.piercing ? { piercing: true } : {}), ...(o.beam ? { beam: true } : {}) });
     if (landed && o.bleed) w.bleed?.(e); if (landed && o.bite) w.biteMark?.(e);
   }
-  if (prey && test(center(prey))) { spinoWound(w, e, prey, spinoPreyBlow(prey, dmg)); if (o.bleed) spinoBleedCreature(prey); landed = true; if (dinoRivals(e, prey)) dinoCue(w, e, "hit", id, prey, { victim: prey.kind }); }
+  if (prey && test(dinoRivals(e, prey) ? duelReachPoint(e, prey) : center(prey))) { spinoWound(w, e, prey, spinoPreyBlow(prey, dmg)); if (o.bleed) spinoBleedCreature(prey); landed = true; if (dinoRivals(e, prey)) dinoCue(w, e, "hit", id, prey, { victim: prey.kind }); }
   return landed;
 }
 // The prey it hunts first: the Wild Stegosaurus or the Briar Stag, standing its ground within sight (the nearest).
@@ -4880,10 +4884,11 @@ function spinoTick(e, s, w, p, d) {
     const duel = S.duel.kinds.includes(focus.kind);
     if (s.gap <= 0 && !(duel && S.duel.wait && dinoBlowComing(focus, e))) {
       const moves = duel ? S.duel.moves.filter((id) => e.spinoFossil || !S.fossilOnly.includes(id)) : S.hunt.moves;
-      const ready = moves.filter((id) => { const A = ATTACK_MODULES[id]; return (e.packAttacks || []).includes(id) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e); });
+      const ready = moves.filter((id) => { const A = ATTACK_MODULES[id]; return (e.packAttacks || []).includes(id) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + (duel ? DINO_DUEL.spacing.reach : 0); });
       if (ready.length) { const id = ready[hashSeed(`${e.id}:prey-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, focus); return true; }
     }
-    if (fd > bodyRadius(e) + bodyRadius(focus) + .8) { const v = unit(focus.x - e.x, focus.y - e.y), step = .82 * S.hunt.speed * (e.speedMultiplier || 1) * dt; w.move(e, v.x * step, v.y * step); }
+    { const want = bodyRadius(e) + bodyRadius(focus) + .8 + (duel ? DINO_DUEL.spacing.gap : 0), v = unit(focus.x - e.x, focus.y - e.y), step = .82 * S.hunt.speed * (e.speedMultiplier || 1) * dt;
+      if (fd > want) w.move(e, v.x * step, v.y * step); else if (duel && fd < want - DINO_DUEL.spacing.slack) w.move(e, -v.x * step, -v.y * step); } // the dino duel: too close, it backs off
     return true;
   }
   // a creature it sees: a one-off jump or grab

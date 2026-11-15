@@ -186,6 +186,12 @@ test('they seek each other out and trade blows: each mostly on the other, the Wa
   assert.ok(onRival > onYou * 3, `${onRival} frames on each other, ${onYou} not`); assert.ok(closest < 3.5, `they closed in (${closest.toFixed(2)})`);
   const by = (id) => w.creatureHits.filter((h) => h.by === id).length; assert.ok(by(s.id) >= 5 && by(t.id) >= 5, `blows ${by(s.id)} / ${by(t.id)}`);
 });
+test('spacing: through the fight the two stand farther apart (their big bodies), and their blows still land from there', () => {
+  const w = world({ player: { x: 2, y: 2 } }), [s, t] = pair(w, { hp: 1e6 }); let sum = 0, n = 0;
+  run(w, 40, {}, () => { if (!s.stegoHeldBy && !t.spinoHeldBy && w.now > 8000) { sum += Math.hypot(s.x - t.x, s.y - t.y); n++; } });
+  const near = s.bodyRadius + t.bodyRadius + .9; assert.ok(n > 200 && sum / n > near, `${(sum / n).toFixed(2)} apart on average over ${n} frames, radii ${s.bodyRadius}+${t.bodyRadius} (their blows pull them in; without the spacing about 1.8)`);
+  assert.ok(w.creatureHits.filter((h) => h.by === s.id).length >= 5 && w.creatureHits.filter((h) => h.by === t.id).length >= 5, 'the blows land');
+});
 
 test('the Wild Stegosaurus lands its moves on the Spinosaurus: wheel, tail whack, tail slam, rear swipe, pounce, its jaws', () => {
   for (const id of ['stegoWheel', 'stegoTailWhack', 'stegoTailSlam', 'stegoRearSwipe', 'stegoPounce', 'stegoJaws']) {

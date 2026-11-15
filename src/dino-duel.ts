@@ -30,6 +30,10 @@ export const DINO_DUEL = {
   endings: { kill: 50, escape: 50 }, /* % of verdicts */
   feed: 3.5,
   escape: { speed: 3.4 },
+  // Spacing (Tim, 2026-11-14: "not clipping in and out of each other"): their Close View bodies are several tiles long, so in the duel
+  // they stand `gap` tiles farther apart than their bodies' radii ask, and a blow between them reaches `reach` tiles farther (it is
+  // measured to the near side of the other's bulk: monster-pack.ts duelReachPoint).
+  spacing: { gap: 2.5, reach: 2.5, slack: .8 }, /* closer than `slack` inside its spacing, each backs off */
   // Screen shake (game.ts spinoShake through w.shake; spino-rex.ts shakeOffset gives none under Reduced Motion): its power by kind of
   // big move, never above `max`, at most once each `gap` s from either duellist, lasting `seconds`.
   shake: { land: .45, big: .6, roar: .5, slam: .55, wheel: .4, rock: .22, max: .7, gap: .35, seconds: .55 },

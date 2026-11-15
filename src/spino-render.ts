@@ -61,8 +61,8 @@ export const SPINO_POSES = Object.freeze({
   grabHold: { pitch: .2, neck: .66, head: .32, open: .62, chew: 1, arms: .4 },
   grabThrow: { pitch: .04, neck: .2, head: -.1, swing: 1, open: .95, pre: { pitch: .26, neck: .72, head: .5, swing: -1, open: .45 } },
   // the dino duel: the Wild Stegosaurus lifted high in its jaws, then slammed down before it
-  grabLift: { pitch: .38, neck: .9, head: .6, open: .55, chew: .3, arms: .6, tailUp: -.15, shake: .4 },
-  grabSlam: { low: .8, pitch: -.3, neck: -.85, head: -.55, crouch: .26, open: .5, lean: .12, pre: { pitch: .38, neck: .9, head: .6, open: .55, arms: .6 } },
+  grabLift: { pitch: .62, neck: 1, head: .75, open: .55, chew: .3, arms: .8, tailUp: -.45, crouch: -.05, shake: .4 },
+  grabSlam: { low: .8, pitch: -.32, neck: -.9, head: -.55, crouch: .3, open: .5, lean: .16, tailUp: .25, pre: { pitch: .62, neck: 1, head: .75, open: .55, arms: .8 } },
   boneLaunch: { pitch: .3, neck: .5, head: .4, open: .9, arms: .7, flare: 1, pre: { crouch: .2, pitch: -.1, neck: -.1, flare: .4 } },
   ribsOut: { crouch: .12, pitch: .05, open: .6, ribs: 1, arms: .5 },
   ribsThrust: { crouch: .08, pitch: -.12, lean: .15, open: .8, ribs: 1, thrust: 1, neck: -.1, pre: { crouch: .12, pitch: .05, open: .6, ribs: 1, arms: .5 } },
