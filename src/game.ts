@@ -2521,6 +2521,9 @@ export function enemyProjectilePattern(shooter,aim,now=0,options={}) {
 // enemy-behaviour.ts (Tim, 2026-11-14): with a squad board (the game passes one), an ordinary creature also notices before it
 // engages, waits its turn for an attack token on its ring, varies its blows (heavy, combos, feints), flinches, guards, dodges,
 // steps back and retreats. Without one (`squad` null) it behaves exactly as before.
+// How far a legacy close blow really reaches (combat.ts enemyMeleeGeometry): a slam's circle round its body, or a stab's or a
+// sweep's length, plus any dash it makes first.
+function legacyBlowReach(e, pattern) { return (pattern.shape === "slam" ? (pattern.radius || 1.2) + enemyBodyRadius(e) : pattern.range) + (pattern.dash || 0); }
 function legacyDrop(e, b) { e.telegraph = 0; e.meleePhase = null; e.threatRange = null; if (b) { b.press = 0; b.comboLeft = 0; b.feintAt = 0; } }
 export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null, squad=null) {
   const displace = move || ((subject, dx, dy) => moveAxis(subject, dx, dy, map, width));
@@ -2537,7 +2540,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   const B = squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, squad) : null;
   if (B) {
     squad.w = null; squad.disp = displace;
-    if (!e.aggro && toPlayer < 6) e.aggro = true; // it sees the Wayfarer: the notice beat comes first (behaviourGate)
+    if (!e.aggro && toPlayer < 6 && hasLineOfSight(e, player, map, width)) e.aggro = true; // it sees the Wayfarer (review 975: in sight, not through a wall): the notice beat comes first (behaviourGate)
     if (behaviourGate(e, b, B, squad, legacyDrop)) { if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; } ai.mode = e.aggro ? "alert" : ai.mode; return false; }
     if (e.aggro && behaviourReact(e, b, B, squad, toPlayer, e.telegraph > 0, false, legacyDrop)) { ai.mode = "react"; return false; }
   }
@@ -2559,9 +2562,10 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
-    if (B && b.feintAt > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
+    if (B && b.feintAt > 0 && b.wind > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
     if (e.telegraph === 0) {
       e.windupStagger = null; // release 561: the next windup may be held again
+      if (B) b.feintAt = 0; // review 975: the windup is over, the blow committed; a feint never carries over to a later one
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
       if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!displace(e,dx/steps,dy/steps))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
@@ -2577,7 +2581,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   let tx,
     ty,
     speed = 0.42;
-  if (toPlayer < 6 || e.aggro) {
+  if (e.aggro || !B && toPlayer < 6) { // review 975: an ordinary creature (B) notices the Wayfarer only in sight, above
     e.aggro=true;
     ai.mode = "chase";
     tx = player.x - e.x;
@@ -2614,7 +2618,8 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if(sanctuary)enforceSanctuary(e,sanctuary);
   const moves=B&&B.moves&&e.range<2.5&&e.meleePatterns?.length?B.moves:e.meleePatterns,patternStartRange=e.range<2.5&&moves?.length?Math.max(...moves.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
   if (B && b.comboLeft > 0 && !(e.cooldown > 0) && !(toPlayer <= patternStartRange + enemyBodyRadius(e) + .6 && hasLineOfSight(e, player, map, width))) { b.comboLeft = 0; afterBlow(e, b, B); } // out of reach: the chain ends
-  const inReach=(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
+  const spaced=!!(B&&B.spacing&&e.range<2.5&&moves?.length&&!(b.comboLeft>0)),nextBlow=spaced&&MELEE_PATTERNS[moves[(e.meleePatternIndex||0)%moves.length]]; // review 975: a creature on its ring winds up only once its next blow can land (BEHAVIOUR.spacing.reach), not from the ring's edge
+  const inReach=(nextBlow?toPlayer<=legacyBlowReach(e,nextBlow)*BEHAVIOUR.spacing.reach:(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e))) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
   if (B && !inReach && B.spacing && e.range < 2.5 && ai.mode === "circle" && !(e.cooldown > 0) && !(b.press > 0) && !(b.rest > 0) && !(b.retreat > 0) && squadRequest(squad, e, b, B.pool)) b.press = B.press; // its turn: close in
   if (B && inReach && !(b.comboLeft > 0) && (b.rest > 0 || b.retreat > 0 || !(b.press > 0 && b.pool === (e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool)) && !squadRequest(squad, e, b, e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool))) return false; // no token: it waits
   if (
