@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SONGS, STINGERS, LINER_NOTES, MUSIC_SELECTION, MUSIC_CONTEXTS, validateSong, chordPcs, MODES, pc, barSeconds } from '../src/soundtrack-songs.ts';
+import { SONGS, STINGERS, LINER_NOTES, MUSIC_SELECTION, MUSIC_CONTEXTS, validateSong, chordPcs, MODES, pc, barSeconds, MENACE_TIERS, MENACE_DEVICES, menaceDevices } from '../src/soundtrack-songs.ts';
 import { createSoundtrack, SOUNDTRACK, voiceLead, bridgeTone } from '../src/soundtrack.ts';
 import { MusicDirector, DIRECTOR, BOSS_THEMES, bossSongFor, bossKey, musicContext, journeyChapter, songsFor, sampleMusic } from '../src/soundtrack-director.ts';
 import { WORLD_BEASTS, WORLD_BEAST_IDS } from '../src/world-beasts.ts';
@@ -378,6 +378,83 @@ test('the voice budget holds over a 3-minute render of every boss theme, on both
     assert.ok(eng.stats.dropped <= eng.stats.notes * (quality === 'low' ? .15 : .03), `${song.id} ${quality}: dropped ${eng.stats.dropped} of ${eng.stats.notes}`);
     assert.equal(ctx.pastStarts, 0, song.id);
   }
+});
+
+// Darker boss themes (Tim, 2026-11-15: "make them darker and unsafe ... some of the disturbance understated, some more overt.
+// Some can remain relatively peaceful and calm").
+test('boss themes have a menace tier: overt ones use overt devices, understated ones hide theirs, calm ones keep an undertone', () => {
+  const tierOf = (id) => LINER_NOTES.find((n) => n.id === id)?.menace;
+  const count = { overt: 0, understated: 0, calm: 0 };
+  for (const song of themeSongs()) {
+    const tier = tierOf(song.id), used = menaceDevices(song);
+    assert.ok(MENACE_TIERS.includes(tier), `${song.id} has a menace tier`);
+    count[tier]++;
+    const overt = used.filter((x) => MENACE_DEVICES.overt.includes(x)), hidden = used.filter((x) => MENACE_DEVICES.understated.includes(x));
+    assert.ok(song.dark.shade > 0 && song.dark.sub > 0, `${song.id}: colder and with a sub, like every boss theme`);
+    if (tier === 'overt') assert.ok(overt.length >= 2, `${song.id}: overt devices ${overt}`);
+    if (tier === 'understated') assert.ok(hidden.length >= 2 && overt.length === 0, `${song.id}: understated ${hidden}, overt ${overt}`);
+    if (tier === 'calm') assert.ok(song.dark.shadow?.length && overt.length === 0 && hidden.length <= 2, `${song.id}: gentle, with a shadow under it`);
+    assert.ok(!song.chords.some((c) => c.endsWith(':add9')), `${song.id}: no warm add9 stacks`);
+  }
+  assert.deepEqual(count, { overt: 9, understated: 9, calm: 4 });
+  assert.equal(tierOf('fernsAndPlates'), 'calm', 'the stegosaurus stays a romp');
+  assert.ok(!LINER_NOTES.some((n) => n.menace && !SONGS[n.id]?.boss), 'only boss themes are tiered');
+  // The validator: deliberate dissonance only where a song lists it, and well-formed devices.
+  const glow = SONGS.glassMind;
+  assert.deepEqual(validateSong(glow), []);
+  assert.ok(validateSong({ ...glow, dissonance: [] }).some((b) => /no perfect fifth/.test(b)), 'a diminished chord needs the tritone listed');
+  assert.ok(validateSong({ ...SONGS.gloomRises, dissonance: [1] }).some((b) => /bass tone T/.test(b)), 'so does a tritone bass');
+  assert.ok(validateSong({ ...SONGS.moonlitTower, dissonance: [0] }).includes('moonlitTower: dissonance'));
+  for (const dark of [{ shade: 2 }, { cluster: 5 }, { lurch: 'X..' }, { toll: { every: 3, steps: [], ints: [1] } }, { vowel: 'ee' }, { wobble: 1 }, { tritone: true }]) assert.ok(validateSong({ ...glow, dark }).length > 0, JSON.stringify(dark));
+});
+
+test('the menace devices play through the engine, inside the voice budget, and every note is cleaned up', () => {
+  const calls = {
+    shadow: 'drone', sub: 'sub', beat: 'sub', rumble: 'rumble', cluster: 'cluster', growl: 'choir', pont: 'pont', dive: 'dive', sag: 'sag',
+    toll: 'bell', heart: 'timp', lurch: 'tom', skip: 'drum',
+  };
+  for (const song of themeSongs()) for (const quality of ['balanced', 'low']) {
+    const { ctx, eng } = engine({ quality }), seen = {};
+    for (const name of new Set(Object.values(calls))) { const f = eng[name].bind(eng); eng[name] = (...a) => { seen[name] = (seen[name] || 0) + 1; return f(...a); }; }
+    let drops = 0;
+    eng.start();
+    run(ctx, eng, 0, 180, (t) => {
+      eng.setTarget({ songId: song.id, intensity: t < 40 ? 0 : t < 90 ? .5 : t < 150 ? 1 : .3, change: 'boss' });
+      const d = eng.current(); if (d?.dropped) drops++;
+    });
+    const max = quality === 'low' ? SOUNDTRACK.lowMaxVoices : SOUNDTRACK.maxVoices;
+    assert.ok(eng.stats.peakVoices <= max, `${song.id} ${quality}: peak ${eng.stats.peakVoices}`);
+    for (const device of menaceDevices(song)) {
+      if (device === 'shade' || device === 'vowel' || device === 'tritone' || device === 'drop') continue;
+      // The low tier leaves out the sub, the rumble, the ponticello and the growl.
+      if (quality === 'low' && ['sub', 'beat', 'rumble', 'pont'].includes(device)) { if (device === 'rumble' || device === 'pont') assert.ok(!seen[calls[device]], `${song.id}: no ${device} on low`); continue; }
+      if (quality === 'low' && device === 'growl') continue;
+      assert.ok(seen[calls[device]] > 0, `${song.id} ${quality}: ${device} plays`);
+    }
+    if (song.dark.drop) {
+      const duck = eng.duck.gain.events, fall = duck.findIndex((e) => e.v === SOUNDTRACK.menace.drop);
+      assert.ok(drops > 0 && fall > 0 && duck.slice(fall).some((e) => e.v === 1 && e.t > duck[fall].t), `${song.id}: the bar drops to near silence and comes back`);
+    }
+    run(ctx, eng, 180, 200, () => eng.setTarget({ songId: 'moonlitTower', change: 'context' }));
+    const ended = ctx.sources.filter((s) => s.onended && s.stopAt != null && s.stopAt <= 195);
+    assert.ok(ended.length > 500 && ended.every((s) => s.ended && s.disconnected), `${song.id}: every ended note is disconnected`);
+    assert.equal(ctx.pastStarts, 0); assert.equal(ctx.pastParams, 0);
+  }
+  // The tritone in the bass, a cold bell and a sag, note by note.
+  const { ctx, eng } = engine(), d = { song: SONGS.gloomRises, key: SONGS.gloomRises, chordSpec: '1', bar: 0, tier: 1, bassNote: null, stems: { groove: eng.mix } };
+  eng.bassNote(d, 1, 'R', 1); const root = d.bassNote; eng.bassNote(d, 2, 'T', 1);
+  assert.equal(pc(d.bassNote - root), 6, 'T walks the bass to the tritone');
+  const before = ctx.sources.length; eng.bell(eng.mix, 3, 76, 1, 1);
+  const bell = ctx.sources.slice(before);
+  assert.ok(Math.abs(bell[1].frequency.events[0].v / bell[0].frequency.events[0].v - 4.41) < 1e-9, 'a cold bell rings inharmonic');
+  const osc = ctx.createOscillator(); osc.detune.value = 5; eng.sag([osc], 4, 2, .5);
+  assert.deepEqual(osc.detune.events.map((e) => [e.type, e.t, e.v]), [['set', 5, 5], ['linear', 6, 5 - 42.5]], 'a held note sags 25-60 cents over its second half');
+});
+
+test('dark themes are deterministic and leave the other songs as they were', () => {
+  const play = (id, seed) => { const { ctx, eng } = engine({ seed }); eng.setTarget({ songId: id, intensity: .8 }); eng.start(); run(ctx, eng, 0, 60); return ctx.sources.map((s) => `${s.startAt}:${s.detune?.events.map((e) => e.v).join('/') || ''}`).join(','); };
+  for (const id of ['shapeless', 'eyesBehind', 'riverStalker', 'revenantsReturn']) { assert.equal(play(id, 42), play(id, 42), id); assert.notEqual(play(id, 42), play(id, 43), `${id}: the seed matters`); }
+  for (const song of Object.values(SONGS)) if (!song.boss || song.id === 'boss') assert.ok(!song.dark && !song.dissonance, `${song.id} keeps its colour`);
 });
 
 test('the director tells the story: departure, rest, a new land, death', () => {
