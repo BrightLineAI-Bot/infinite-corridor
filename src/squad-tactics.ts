@@ -222,7 +222,7 @@ export function tacticsMove(e, b, B, board, d) {
   const S = TACTICS.roles;
   if (t.regroup > 0 && T.cover && T.cover !== e) { steer(e, board, Math.atan2(T.coverY - board.py, T.coverX - board.px), Math.hypot(T.coverX - board.px, T.coverY - board.py) + TACTICS.regroup.behind, 1.2, 30); V.speed = .9; return V; }
   if (t.role === "swarm") { const R = S.swarm; t.place = steer(e, board, t.slot, R.radius, R.steer, 30); V.speed = d > R.radius + 1.2 || !t.place ? 1 : .6; return V; }
-  if (t.role !== "ranged") return null;
+  if (t.role !== "ranged" || e.instantStrike) return null; // an instant striker (the Veil Moth) closes to strike: no range to keep
   const R = S.ranged, w = board.w;
   if (w && w.los && !w.los(e, w.player, true)) { t.blocked = false; return null; } // out of sight: its own brain finds a way
   const reach = Number(e.range) >= 2.5 ? Number(e.range) - R.margin : B.band[1], far = Math.min(R.band[1], reach), near = Math.min(R.band[0], far - .6), radius = (near + far) / 2;
