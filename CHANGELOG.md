@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 978: The Oculus has its own small button under the compass: one tap switches Close View on or off (key O). The utility button is a fourth slot in every preset, and the four slot buttons now read A B C D left to right (keys F G C B). Any slot can hold spells, Build, the item, the Lantern, the Robot or the Drone.
 - Release 977: Room light mix: rooms inside keeps, towers, great buildings and dungeons are now lit, gloomy or dark (about 30/45/25, lived-in places brighter, hives and root cellars darker, the Deep mostly dark), blending smoothly as you walk between them. A lit Lantern now gives a warm glow outdoors at night.
 - Release 976: Brighter interiors: Close View now leaves 40% less darkness in keeps, towers, great buildings, hives, arcologies, labyrinths and the Pentagon; the Deep is lightened only slightly and the Pentagon's dread a little. The Lantern still lengthens the torch.
 - Release 975: Ordinary creatures fight with more intelligence. They notice you with a short alert and call their kin, and creatures that appear near you mid-fight arrive instead of popping in. Melee creatures that are waiting circle you instead of crowding in, and only a few strike at once. Blows vary: heavy wind-ups that leave them open, light combos and, for the clever ones, feints. They flinch when hit, and a hard enough hit breaks a wind-up and staggers them. Some guard or sidestep, skirmishers step back after a blow, and the cowardly back off when badly hurt and return with their kin. Bosses, elites and world beasts are unchanged.
