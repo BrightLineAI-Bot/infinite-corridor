@@ -23,7 +23,7 @@ import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, cl
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
-import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
+import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
 import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
@@ -2479,6 +2479,7 @@ function robotTag(save, item) {
 function hudSet(el,key,value){if(!el)return;let m=hudLast.get(el);if(!m)hudLast.set(el,m={});if(m[key]===value)return;m[key]=value;
   if(key==="text")el.textContent=value;else if(key==="max"||key==="value")el[key]=value;else if(key.startsWith("--")||key==="transform")key==="transform"?el.style.transform=value:el.style.setProperty(key,value);else if(key.startsWith("class:"))el.classList.toggle(key.slice(6),value);else if(key.startsWith("data-"))el.dataset[key.slice(5)]=value;else el.setAttribute(key,value)}
 function updateHud(now) { closePan.sync(); // Close View's crescent and lock button: shown only while Close View is
+  { const lv = fistStatusLevel(game, game.lastUpdateNow ?? now), el = hudEl("#fistStatus"); hudSet(el,"text",FIST_CALLOUT.text[lv]); hudSet(el,"class:off",!lv); hudSet(el,"class:rhythm",lv===FIST_CALLOUT.rhythm); } // the Iron Fists' status meter (brawler-spells.ts FIST_CALLOUT): written only when its level changes, in both views
   const health = Math.max(0, Math.ceil(game.player.hp)),
     stamina = Math.max(0, Math.ceil(game.player.stamina)),
     next = Math.max(1, save.nextXp || 30);
