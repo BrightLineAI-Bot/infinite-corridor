@@ -28,8 +28,8 @@ import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CL
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.ts";
+import { lanternReach, lanternNightReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.ts";
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
@@ -757,24 +757,99 @@ const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|
 // Stillworks and the boss Darks are not interiors here and are left as they were. `dread`: the Standard View's Pentagon dread
 // overlay keeps this share of its darkness (a mechanic: it still closes in as the dread grows).
 // The Lantern (spell-slots.ts) is untouched: the torch's reach it lengthens now lights rooms that are no longer black beyond it.
+// Version 2, a mix of rooms (Tim, 2026-11-15: "there should be a mix of dark rooms and light rooms... dungeons and rooms that are
+// well lit, rooms that are gloomy, dark rooms... The Deep could be darker, fine, we have the Lantern. It just shouldn't be all
+// dark"). Every room or section of an interior takes a light tier, `tiers` (0 lit, 1 gloomy, 2 dark), and each tier its own
+// `keep` and `fogNear` (gloomy is version 1's level; lit is brighter; dark is close to the old dark, where the Lantern matters).
+// The rooms are read from the floor itself, once a map (roomLightField): a tile's distance to the nearest wall marks room cores
+// (`regions.core` tiles or more from a wall), so a door or passage narrower than that separates two rooms; a core bigger than
+// `regions.split` tiles (a cave, a great hall) is cut into `regions.section`-tile sections; the rest of the floor joins the
+// nearest core. A room's tier is a hash of the map's identity and the room's first tile, picked by its theme's `shares`
+// (`shares.deep` for the Deep, `shares.default` where a theme has none). Presentation only: nothing generated, stored or played
+// changes. The tiers are blurred `regions.blur` tiles each way across every boundary, and the light is read at the Wayfarer's feet
+// (bilinear), so walking from a lit room into a dark one darkens smoothly, never at once. Open-air tiles (a yard, a roof) are lit.
+// Standard View had no dark in its rooms: there a dark room alone takes a faint dim (`dim.alpha` at the dark tier, nothing at
+// gloomy or lit), one cached image a map, one copy a frame. Maps over `regions.maxTiles` keep version 1's even gloom.
 export const INTERIOR_LIGHT = frozen({
-  version: 1,
-  keep: { interior: .6, deep: .85 }, // share of the darkness left (interior: 40% less; deep: 15% less)
-  fogNear: { interior: 1.2, deep: .4 }, // tiles the fog's near edge moves out (always short of its far edge)
+  version: 2,
+  tiers: ["lit", "gloomy", "dark"],
+  keep: { interior: [.4, .6, .92], deep: [.7, .85, .95] }, // share of the darkness left, by tier (gloomy: version 1's .6 and .85)
+  fogNear: { interior: [2, 1.2, .3], deep: [1, .5, .15] }, // tiles the fog's near edge moves out, by tier (always short of its far edge)
+  // the share of rooms in each tier (lit, gloomy, dark), by theme id
+  shares: { default: [.3, .45, .25], livedIn: [.5, .4, .1], starship: [.55, .35, .1], arcology: [.2, .45, .35], hive: [.15, .45, .4], rootCellar: [.15, .45, .4], deep: [.04, .26, .7] },
+  regions: { core: 2, split: 180, section: 10, blur: 2, maxTiles: 40000, salt: "room-light" },
+  dim: { alpha: .3, levels: 16, soft: { low: false, balanced: true, full: true } }, // Standard View: a dark room's dim
   dread: .85, // Standard View: the Pentagon's dread overlay at this share of its alpha
 });
-// The darkness (0..1) left where the ambient was `amb` (0..1) in a place of `kind` (none: unchanged).
-export const interiorDarkness = (amb, kind) => (1 - amb) * (INTERIOR_LIGHT.keep[kind] ?? 1);
+// A tier table's value at tier position `s` (0 lit .. 2 dark, fractional between rooms): piecewise linear.
+export function tierValue(table, s = 1) { const x = Math.max(0, Math.min(table.length - 1, Number.isFinite(s) ? s : 1)), i = Math.min(table.length - 2, Math.floor(x)); return table[i] + (table[i + 1] - table[i]) * (x - i); }
+// The darkness (0..1) left where the ambient was `amb` (0..1) in a place of `kind` at tier position `s` (no kind: unchanged).
+export const interiorDarkness = (amb, kind, s = 1) => (1 - amb) * (INTERIOR_LIGHT.keep[kind] ? tierValue(INTERIOR_LIGHT.keep[kind], s) : 1);
 // The lifted ambient: a number (0..1), or an rgb array (0..255 or 0..1, as given) scaled to the lifted mean, its tint kept.
-export function interiorAmbient(amb, kind, scale = 1) {
+export function interiorAmbient(amb, kind, scale = 1, s = 1) {
   if (!(kind in INTERIOR_LIGHT.keep)) return amb;
-  if (typeof amb === "number") return 1 - interiorDarkness(amb, kind);
-  const m = (amb[0] + amb[1] + amb[2]) / 3 / scale; if (!(m > 0)) return amb.map(() => (1 - interiorDarkness(0, kind)) * scale);
-  const k = (1 - interiorDarkness(m, kind)) / m; return amb.map((v) => v * k);
+  if (typeof amb === "number") return 1 - interiorDarkness(amb, kind, s);
+  const m = (amb[0] + amb[1] + amb[2]) / 3 / scale; if (!(m > 0)) return amb.map(() => (1 - interiorDarkness(0, kind, s)) * scale);
+  const k = (1 - interiorDarkness(m, kind, s)) / m; return amb.map((v) => v * k);
 }
 const DEEP_THEMES = new Set(Object.values(CLOSE_VIEW_DEEP.themes));
 // Which interior light a theme takes: "deep" for the Deep's, else "interior".
 export const interiorLightKind = (th) => (DEEP_THEMES.has(th) ? "deep" : "interior");
+// The tier shares of a map's theme.
+export function roomLightShares(themeId, kind) { const S = INTERIOR_LIGHT.shares; return S[themeId] || (kind === "deep" ? S.deep : S.default); }
+// A room's tier from a roll in 0..1 and the shares.
+export const roomTierFor = (roll, shares) => (roll < shares[0] ? 0 : roll < shares[0] + shares[1] ? 1 : 2);
+// The map's rooms and their light (see INTERIOR_LIGHT version 2): built once a map (cached), null where it cannot be (no
+// tiles, too big). W, H; room: each tile's room (-1 a wall or unreached); tier: each room's tier; s: each tile's blurred tier
+// position (walls take their open neighbours'); rooms: how many.
+const ROOM_LIGHT = new WeakMap();
+const OPEN_AIR_TILE = (t) => !!t && (t.courtyard === true || t.openAir === true || t.pentRoof === true || t.pentBalcony === true || t.kind === "yardGrass");
+export function roomLightField(map) {
+  if (!map || typeof map !== "object") return null; const known = ROOM_LIGHT.get(map); if (known && known.tiles === map.tiles) return known.field;
+  const R = INTERIOR_LIGHT.regions, W = Math.floor(Number(map.width) || 0), T = map.tiles, H = W > 0 && Array.isArray(T) ? Math.floor(T.length / W) : 0, N = W * H;
+  let field = null;
+  if (W > 0 && H > 0 && N <= R.maxTiles) {
+    const th = themeOf(map), kind = interiorLightKind(th), shares = roomLightShares(THEME_OF.get(map), kind), key = `${map.id ?? ""}:${map.seed ?? ""}:${map.name ?? ""}`;
+    const open = new Uint8Array(N), dist = new Uint8Array(N), room = new Int32Array(N).fill(-1), q = new Int32Array(N); let qh = 0, qt = 0;
+    for (let i = 0; i < N; i++) { open[i] = T[i] && !isWall(T[i]) ? 1 : 0; if (!open[i]) dist[i] = 0; else dist[i] = 255; }
+    // distance from the walls (8 neighbours; the map's edge is a wall), capped at the core
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (!open[i]) continue; if (x === 0 || y === 0 || x === W - 1 || y === H - 1) { dist[i] = 1; q[qt++] = i; continue; }
+      for (let dy = -1; dy <= 1 && dist[i] !== 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!open[i + dy * W + dx]) { dist[i] = 1; q[qt++] = i; break; } }
+    while (qh < qt) { const i = q[qh++], d = dist[i]; if (d >= R.core) continue; const x = i % W, y = (i - x) / W;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const j = Y * W + X; if (open[j] && dist[j] > d + 1) { dist[j] = d + 1; q[qt++] = j; } } }
+    // the cores, 4-connected; a big one cut into sections (a maze of narrow passages has no core: all of its floor is core)
+    let core = R.core; { let any = false; for (let i = 0; i < N && !any; i++) any = open[i] === 1 && dist[i] >= core; if (!any) core = 1; }
+    let rooms = 0; const anchors = [];
+    for (let i0 = 0; i0 < N; i0++) { if (!open[i0] || dist[i0] < core || room[i0] >= 0) continue;
+      const first = rooms; qh = qt = 0; q[qt++] = i0; room[i0] = first;
+      while (qh < qt) { const i = q[qh++], x = i % W; for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) if (j >= 0 && j < N && open[j] && dist[j] >= core && room[j] < 0) { room[j] = first; q[qt++] = j; } }
+      if (qt > R.split) { const cols = Math.ceil(W / R.section), local = new Map(); // the core's tiles (q[0..qt)) by section, in tile order
+        for (let k = 0; k < qt; k++) { const i = q[k], x = i % W, c = Math.floor((i - x) / W / R.section) * cols + Math.floor(x / R.section); if (!local.has(c)) local.set(c, rooms + local.size); room[i] = local.get(c); }
+        const ids = [...local.values()]; for (let k = 0; k < ids.length; k++) anchors.push(-1); rooms += ids.length;
+        for (let k = 0; k < qt; k++) { const i = q[k], r = room[i]; if (anchors[r] < 0 || i < anchors[r]) anchors[r] = i; } }
+      else { anchors.push(i0); rooms++; } }
+    // the rest of the floor joins the nearest core (4-connected, through open tiles)
+    qh = qt = 0; for (let i = 0; i < N; i++) if (room[i] >= 0) q[qt++] = i;
+    while (qh < qt) { const i = q[qh++], x = i % W; for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) if (j >= 0 && j < N && open[j] && room[j] < 0) { room[j] = room[i]; q[qt++] = j; } }
+    const tier = new Uint8Array(rooms); for (let r = 0; r < rooms; r++) tier[r] = roomTierFor((strHash(`${R.salt}:${INTERIOR_LIGHT.version}:${key}:${anchors[r]}`) % 10000) / 10000, shares);
+    // the blurred tier position (open tiles only count; a tile no room reached is gloomy; open air is lit)
+    const raw = new Float32Array(N), hs = new Float32Array(N), hc = new Float32Array(N), s = new Float32Array(N), B = R.blur;
+    for (let i = 0; i < N; i++) raw[i] = !open[i] ? 0 : OPEN_AIR_TILE(T[i]) ? 0 : room[i] >= 0 ? tier[room[i]] : 1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let a = 0, c = 0; for (let k = Math.max(0, x - B); k <= Math.min(W - 1, x + B); k++) { const j = y * W + k; if (open[j]) { a += raw[j]; c++; } } hs[y * W + x] = a; hc[y * W + x] = c; }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let a = 0, c = 0; for (let k = Math.max(0, y - B); k <= Math.min(H - 1, y + B); k++) { a += hs[k * W + x]; c += hc[k * W + x]; } s[y * W + x] = c > 0 ? a / c : 1; }
+    field = { W, H, room, tier, s, rooms, kind };
+  }
+  ROOM_LIGHT.set(map, { tiles: T, field }); return field;
+}
+// The tier position (0 lit .. 2 dark) at world point (x, y): the blurred field read bilinearly (tile centres at i + .5), so it
+// is continuous as the Wayfarer walks; 1 (gloomy, version 1's light) where the map has no field. No allocation.
+export function roomLightAt(map, x, y) {
+  const F = roomLightField(map); if (!F || !Number.isFinite(x) || !Number.isFinite(y)) return 1;
+  const gx = Math.max(0, Math.min(F.W - 1, x - .5)), gy = Math.max(0, Math.min(F.H - 1, y - .5)), x0 = Math.floor(gx), y0 = Math.floor(gy), x1 = Math.min(F.W - 1, x0 + 1), y1 = Math.min(F.H - 1, y0 + 1), fx = gx - x0, fy = gy - y0, S = F.s;
+  return (S[y0 * F.W + x0] * (1 - fx) + S[y0 * F.W + x1] * fx) * (1 - fy) + (S[y1 * F.W + x0] * (1 - fx) + S[y1 * F.W + x1] * fx) * fy;
+}
+// Outdoors at night (close-view-outdoor.ts: the section's sky mood is night): the dark a lit Lantern glows in.
+export const outdoorNight = (g) => !!g && g.area === "overworld" && !!g.map && outdoorMoodId(g.map) === "night";
 const STILLWORKS_AIR = Object.freeze({ near: 9, far: 22, ambient: [.32, .39, .50], fog: [.038, .051, .077], haze: [.14, .19, .27], hazeBand: [.08, .42] });
 const WORLD_AIR = Object.freeze({ ambient: [.82, .86, .89], fog: [.19, .24, .28], haze: [.30, .36, .41], hazeBand: [.04, .25] });
 const EMPTY_GEOMETRY = new Float32Array(0);
@@ -868,6 +943,7 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
   threat: 0, threatV: 0, threatFor: 0, threatPull: 0, duelPull: 0, duelPullV: 0, // duelPull: the dino duel's boom length (threat.duel)
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
+const ROOM_FRAME = { kind: null, s: 1, steps: 64 }; // this frame's interior light (INTERIOR_LIGHT version 2), for the GPU scene
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, torchA: NaN, failed: false };
 // cached screen gradients, each rebuilt only when the canvas or its size changes (keys are numbers: nothing is built per frame)
 const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0, vault: null, vaultH: 0, vaultY: NaN };
@@ -2032,8 +2108,10 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const plainWorld = outdoor && flatWorld && !g.map.building;
   cameraScene(g);
   const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, boomReach(g), mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
-  const lightKind = flatWorld || outdoor || stillworksCloseView(g.map) ? null : interiorLightKind(themeOf(g.map)), amb = interiorAmbient(Lt.ambient, lightKind); // INTERIOR_LIGHT: indoors, a lighter dark
-  const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : Math.min(fogFar - 1, air.near + fogShift + (lightKind ? INTERIOR_LIGHT.fogNear[lightKind] : 0));
+  const lightKind = flatWorld || outdoor || stillworksCloseView(g.map) ? null : interiorLightKind(themeOf(g.map)); // INTERIOR_LIGHT: indoors, a lighter dark
+  const roomS = lightKind ? roomLightAt(g.map, footX(p), footY(p)) : 1; ROOM_FRAME.kind = lightKind; ROOM_FRAME.s = roomS; // version 2: the light of the room underfoot (blended across its edges)
+  const amb = lightKind ? Math.round(interiorAmbient(Lt.ambient, lightKind, 1, roomS) * ROOM_FRAME.steps) / ROOM_FRAME.steps : Lt.ambient; // the 2D fallback's ambient, in steps (its torch gradient is rebuilt only on a step)
+  const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : Math.min(fogFar - 1, air.near + fogShift + (lightKind ? tierValue(INTERIOR_LIGHT.fogNear[lightKind], roomS) : 0));
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
@@ -2091,7 +2169,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (capturedPlayer) deckFeetLift(g, capturedPlayer); // roof decks: on (or hopping over) a roof, the feet on its drawn surface
   HERO_FEET.z = capturedPlayer ? surfaceZ(g.map, footX(p), footY(p)) + closeViewActorLift(capturedPlayer) : NaN; // where the Wayfarer's feet are drawn (tests)
   const dread = Math.max(0, Math.min(1, Number(g.map?.building?.dread) || 0));
-  const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
+  const flick = reduce ? 1 : 1 + Lt.flicker * Math.sin(now / Lt.flickerMs) * Math.sin(now / (Lt.flickerMs * 2.7) + 1.3), lightR = Lt.radius * (1 - dread * Lt.dreadShrink) * flick * lanternReach(g.save, g.area) * lanternNightReach(g.save, outdoorNight(g)); /* the Lantern (spell-slots.ts LANTERN.closeReach): lit in a dark place, the torch reaches further (both paths read lightR) */
   const t1 = tm ? performance.now() : 0;
   // the floor's boundaries (the shadow along every wall's foot, the rims of holes and lava), built once a floor, one copy a frame
   if (!useGL) { const geo0 = wallGeometry(g.map), ec = geo0.edges || (geo0.edges = edgeCanvas(g.map, geo0)); if (ec) { const k0 = s * ts / CLOSE_VIEW.edges.px; gc.save(); gc.imageSmoothingEnabled = true; gc.setTransform(k0, 0, 0, k0, Tx * ts + gox, Ty * ts + goy); gc.drawImage(ec, 0, 0); gc.restore(); gc.setTransform(ts, 0, 0, ts, gox, goy); } }
@@ -2750,7 +2828,7 @@ const THEME_GL = new Map(); // theme id -> its colours as 0..1 arrays (made once
 function themeGL(th) {
   let t = THEME_GL.get(th); if (t) return t; const W = th.wall, Fl = th.floor, L = th.light;
   t = { wall: rgb01(W.rgb), mortar: rgb01(W.mortar), damp: rgb01(W.dampRGB), floor: rgb01(Fl.rgb), joint: rgb01(Fl.joint), rug: rgb01(Fl.rug), ceil: rgb01(th.ceiling.rgb), deco1: rgb01(th.deco1), deco2: rgb01(th.deco2), glow: rgb01(th.glow || [255, 150, 80]),
-    torch: rgb01(L.torch), amb: rgb01(L.ambient), ambIn: rgb01(interiorAmbient(L.ambient, interiorLightKind(th), 255)) /* INTERIOR_LIGHT: indoors */, fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
+    torch: rgb01(L.torch), amb: rgb01(L.ambient), ambMean: (L.ambient[0] + L.ambient[1] + L.ambient[2]) / 765 /* INTERIOR_LIGHT: indoors the ambient is lifted to its room's light, each frame without allocation */, fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
     caveA: Float32Array.from((th.cave || []).slice(0, 4).concat([0, 0, 0, 0]).slice(0, 4)), caveB: Float32Array.from([th.cave?.[4] || 0, th.cave?.[5] || 1.5, 0, 0]) }; // 2026-11-11: the Deep's living rock
   THEME_GL.set(th, t); return t;
 }
@@ -4282,7 +4360,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
   F.fogNear = air || flatWorld ? fogNear : Fo.near + fogK; F.fogFar = air || flatWorld ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
-  F.amb.set(air?.ambient || (flatWorld ? tg.amb : tg.ambIn)); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
+  if (air || flatWorld || !ROOM_FRAME.kind) F.amb.set(air?.ambient || tg.amb); else { const m = Math.max(1e-4, tg.ambMean), k = (1 - interiorDarkness(m, ROOM_FRAME.kind, ROOM_FRAME.s)) / m; F.amb[0] = tg.amb[0] * k; F.amb[1] = tg.amb[1] * k; F.amb[2] = tg.amb[2] * k; } F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);

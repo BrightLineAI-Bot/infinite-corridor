@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r975 (`6689d7c92177`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r976 (`1d36206e0fd5`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 976 | Claude | claude/brighter-interiors | Close View interiors (keeps, towers, great buildings, hives, arcologies, labyrinths, the Pentagon) keep 40% less darkness; the Deep is lightened only slightly; the Pentagon dread overlay a little; the Lantern still lengthens the torch | In flight. |
+| 977 | Claude | claude/room-light-mix-977 | Interior rooms get a deterministic light tier (lit ~30%, gloomy ~45%, dark ~25%; themed shares, the Deep mostly dark) blended smoothly across doorways in both views; a lit Lantern glows outdoors on a night sky | In flight. |
+| 976 | Claude | claude/brighter-interiors | Close View interiors (keeps, towers, great buildings, hives, arcologies, labyrinths, the Pentagon) keep 40% less darkness; the Deep is lightened only slightly; the Pentagon dread overlay a little; the Lantern still lengthens the torch | Merged as `1d36206e0fd5` (#643). |
 | 975 | Claude | claude/enemy-behaviour | Ordinary creature behaviour (OoT-remake style): awareness and kin calls, arrival for mid-fight spawns, attack tokens and spacing rings, heavy/light/combo/feint blows, poise and flinch, guard and sidestep, retreat and regroup; new module enemy-behaviour; no save change | Merged as `6689d7c92177` (#642). |
 | 974 | Claude | claude/dino-duel-sound | The dino duel: music hushed for battle SFX, a 90 s cap ending in a kill (no reward from the eaten) or an escape, shake, indoor rockfall, camera pull-out, Close View tail-heave and belly-lift grabs without clipping; new modules dino-duel, battle-sfx, close-view-duel; no save change | Merged as `df6aeeaf1bcf` (#641). |
 | 973 | Claude | claude/boss-themes-dark | Soundtrack phase 2: an original, dark theme per world boss in three menace tiers (20 themes + chrysalis and fossil-Spinosaurus variants); boss detection for the chrysalis, Gate Revenants and Tyrant Mosasaur; music only | Merged as `a4a3315fe51a` (#639). |

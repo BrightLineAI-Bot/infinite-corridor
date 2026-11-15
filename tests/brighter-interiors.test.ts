@@ -16,12 +16,12 @@ const falloff = (d: number, R: number) => { const x = d / R, k = Math.max(0, 1 -
 
 test('INTERIOR_LIGHT: one frozen table with the chosen numbers', () => {
   assert.ok(Object.isFrozen(INTERIOR_LIGHT) && Object.isFrozen(INTERIOR_LIGHT.keep) && Object.isFrozen(INTERIOR_LIGHT.fogNear));
-  assert.equal(INTERIOR_LIGHT.version, 1);
-  assert.deepEqual({ ...INTERIOR_LIGHT.keep }, { interior: .6, deep: .85 });
-  assert.deepEqual({ ...INTERIOR_LIGHT.fogNear }, { interior: 1.2, deep: .4 });
+  assert.equal(INTERIOR_LIGHT.version, 2); // version 2 (room-light-mix.test.ts): by tier, lit / gloomy / dark; gloomy is version 1's
+  assert.deepEqual(JSON.parse(JSON.stringify(INTERIOR_LIGHT.keep)), { interior: [.4, .6, .92], deep: [.7, .85, .95] });
+  assert.deepEqual(JSON.parse(JSON.stringify(INTERIOR_LIGHT.fogNear)), { interior: [2, 1.2, .3], deep: [1, .5, .15] });
   assert.equal(INTERIOR_LIGHT.dread, .85);
-  assert.ok(INTERIOR_LIGHT.keep.interior >= 1 / 2 && INTERIOR_LIGHT.keep.interior <= 2 / 3, 'interiors: a third to a half less darkness');
-  assert.ok(INTERIOR_LIGHT.keep.deep > INTERIOR_LIGHT.keep.interior && INTERIOR_LIGHT.keep.deep >= .8, 'the Deep: only a little lighter');
+  assert.ok(INTERIOR_LIGHT.keep.interior[1] >= 1 / 2 && INTERIOR_LIGHT.keep.interior[1] <= 2 / 3, 'gloomy interiors: a third to a half less darkness');
+  assert.ok(INTERIOR_LIGHT.keep.deep[1] > INTERIOR_LIGHT.keep.interior[1] && INTERIOR_LIGHT.keep.deep[1] >= .8, 'the Deep: only a little lighter');
 });
 
 test('every interior theme keeps 60% of its darkness, its tint kept, brighter than before', () => {
@@ -30,7 +30,7 @@ test('every interior theme keeps 60% of its darkness, its tint kept, brighter th
     if (deep.has(t)) continue; n++;
     assert.equal(interiorLightKind(t), 'interior', id);
     const before = mean(t.light.ambient) / 255, lifted = interiorAmbient(t.light.ambient, 'interior', 255), after = mean(lifted) / 255;
-    assert.ok(Math.abs((1 - after) / (1 - before) - INTERIOR_LIGHT.keep.interior) < 1e-9, `${id}: darkness x ${INTERIOR_LIGHT.keep.interior}`);
+    assert.ok(Math.abs((1 - after) / (1 - before) - INTERIOR_LIGHT.keep.interior[1]) < 1e-9, `${id}: darkness x ${INTERIOR_LIGHT.keep.interior[1]} (gloomy)`);
     assert.ok(after > before * 5 && after < .5, `${id}: brighter (${before.toFixed(3)} -> ${after.toFixed(3)}), never washed out`);
     for (let c = 0; c < 3; c++) assert.ok(Math.abs(lifted[c] / lifted[0] - t.light.ambient[c] / t.light.ambient[0]) < 1e-9, `${id}: tint kept`);
     assert.ok(lifted.every((v: number) => v <= 255), id);
@@ -56,9 +56,9 @@ test('the deliberately dark places stay dark: the Deep only 15% lighter, darker 
   }
   assert.equal(n, Object.keys(CLOSE_VIEW_DEEP.themes).length);
   assert.ok(deepMax < interiorMin, 'the Deep stays darker than every other interior');
-  assert.ok(INTERIOR_LIGHT.fogNear.deep < INTERIOR_LIGHT.fogNear.interior);
-  for (const [id, t] of themes) assert.ok(t.fog.near + INTERIOR_LIGHT.fogNear[interiorLightKind(t)] < t.fog.far - 1, `${id}: the fog still closes in before its far edge`);
-  assert.ok(CLOSE_VIEW.fog.near + INTERIOR_LIGHT.fogNear.interior < CLOSE_VIEW.fog.far - 1);
+  for (let i = 0; i < 3; i++) assert.ok(INTERIOR_LIGHT.fogNear.deep[i] < INTERIOR_LIGHT.fogNear.interior[i]);
+  for (const [id, t] of themes) assert.ok(t.fog.near + Math.max(...INTERIOR_LIGHT.fogNear[interiorLightKind(t)]) < t.fog.far - 1, `${id}: the fog still closes in before its far edge`);
+  assert.ok(CLOSE_VIEW.fog.near + Math.max(...INTERIOR_LIGHT.fogNear.interior) < CLOSE_VIEW.fog.far - 1);
   assert.ok(INTERIOR_LIGHT.dread >= .8 && INTERIOR_LIGHT.dread < 1, 'the Pentagon dread: a little lighter, still closing in');
 });
 
@@ -77,11 +77,11 @@ test('the Lantern still lifts the darkness and visibly lengthens the torch indoo
 
 test('wiring: Close View reads INTERIOR_LIGHT indoors only; the Standard View dread reads it; no per-frame allocation', () => {
   const cv = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8'), rd = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
-  assert.match(cv, /const lightKind = flatWorld \|\| outdoor \|\| stillworksCloseView\(g\.map\) \? null : interiorLightKind\(themeOf\(g\.map\)\), amb = interiorAmbient\(Lt\.ambient, lightKind\);/);
-  assert.match(cv, /air\.near \+ fogShift \+ \(lightKind \? INTERIOR_LIGHT\.fogNear\[lightKind\] : 0\)/);
-  assert.match(cv, /ambIn: rgb01\(interiorAmbient\(L\.ambient, interiorLightKind\(th\), 255\)\)/, 'the lifted colour is made once a theme (themeGL)');
-  assert.match(cv, /F\.amb\.set\(air\?\.ambient \|\| \(flatWorld \? tg\.amb : tg\.ambIn\)\)/);
-  assert.equal((cv.match(/Lt\.ambient/g) || []).length, 1, 'the 2D fallback reads the lifted ambient everywhere');
+  assert.match(cv, /const lightKind = flatWorld \|\| outdoor \|\| stillworksCloseView\(g\.map\) \? null : interiorLightKind\(themeOf\(g\.map\)\);/);
+  assert.match(cv, /air\.near \+ fogShift \+ \(lightKind \? tierValue\(INTERIOR_LIGHT\.fogNear\[lightKind\], roomS\) : 0\)/);
+  assert.match(cv, /ambMean: \(L\.ambient\[0\] \+ L\.ambient\[1\] \+ L\.ambient\[2\]\) \/ 765/, 'the theme\'s mean is made once a theme (themeGL)');
+  assert.match(cv, /if \(air \|\| flatWorld \|\| !ROOM_FRAME\.kind\) F\.amb\.set\(air\?\.ambient \|\| tg\.amb\);/);
+  assert.equal((cv.match(/Lt\.ambient/g) || []).length, 2, 'the 2D fallback reads the lifted ambient everywhere (made once, kept as is outdoors)');
   assert.match(cv, /GROUND\.torchA !== amb/, 'the cached torch gradient is rebuilt only when the ambient changes');
   assert.match(rd, /const D = INTERIOR_LIGHT\.dread;/);
   assert.match(rd, /\(\.5 \+ share \* \.35\) \* D/);
