@@ -115,7 +115,7 @@ export class Soundtrack {
     const ctx = this.ctx, S = SOUNDTRACK, low = this.quality === "low";
     // One high-pass at the output: nothing below 40 Hz (phones cannot play it and it only spends headroom).
     this.floor = ctx.createBiquadFilter(); this.floor.type = "highpass"; this.floor.frequency.value = 40; this.floor.Q.value = .7; this.floor.connect(out); out = this.floor;
-    this.out = out; this.mix = ctx.createGain(); this.duck = ctx.createGain(); this.pauseGain = ctx.createGain(); this.stingBus = ctx.createGain();
+    this.out = out; this.mix = ctx.createGain(); this.duck = ctx.createGain(); this.pauseGain = ctx.createGain(); this.stingBus = ctx.createGain(); this.stingUntil = 0;
     // `hush` (setHush): the score's own level, faded out while the dinosaurs duel; story beats (the stingBus) pass it by.
     this.hush = ctx.createGain(); this.hushLevel = 1;
     this.mix.connect(this.duck); this.duck.connect(this.hush); this.hush.connect(this.pauseGain); this.stingBus.connect(this.pauseGain);
@@ -624,7 +624,7 @@ export class Soundtrack {
       if (i >= 0) this.bell(d.stems.motion, t, into(song.root + k.toll.ints[i % k.toll.ints.length], 74, 86), M.toll, 1);
     }
     if (k.dive && s === 8 && d.bar % k.dive === k.dive - 1) this.dive(d.stems.bed, t, into(song.root + 7, 67, 78), 24 * d.stepDur, d.tier > 1 ? 19 : 12);
-    if (k.drop && idx === 7 && s === 4 && d.bar >= 4 && d.endAt === Infinity && Math.floor(d.bar / 8) % k.drop === k.drop - 1) {
+    if (k.drop && idx === 7 && s === 4 && d.bar >= 4 && d.endAt === Infinity && Math.floor(d.bar / 8) % k.drop === k.drop - 1 && !(t < this.stingUntil)) { // review 975: a stinger owns the duck until its release is done
       // The whole score, its reverb and echo tails too (the duck), falls away and comes back on the bar line, whatever happens meanwhile.
       const g = this.duck.gain, back = t + 12 * d.stepDur;
       g.cancelScheduledValues(t); g.setValueAtTime(1, t); g.linearRampToValueAtTime(M.drop, t + .12); g.setValueAtTime(M.drop, back - .02); g.linearRampToValueAtTime(1, back);
@@ -706,6 +706,7 @@ export class Soundtrack {
       else for (const n of notes) this[inst](dest, t, n, vel);
     }
     const seconds = last + 1.2, g = this.duck.gain;
+    this.stingUntil = Math.max(this.stingUntil, now + seconds + S.duck.release); // the menace drop leaves the duck alone until then
     g.cancelScheduledValues(now); g.setTargetAtTime(S.duck.level, now, S.duck.attack / 3); g.setTargetAtTime(1, now + Math.max(.5, seconds - 1.2), S.duck.release / 3);
     this.emit({ type: "stinger", kind, at: t0, seconds });
     return seconds;

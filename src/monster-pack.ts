@@ -2951,7 +2951,7 @@ const RUN = {
       prey.x = at.x; prey.y = at.y; e.spinoPose = "grabSlam"; e.spinoGrab = { who, phase: "slam", t: Math.min(1, 1 - Math.max(0, d.left) / D.slam), slams: d.slams };
       if (d.left > 0) return;
       if (d.slams < D.slams) { d.stage = "lift"; d.left = D.lift; return; }
-      delete prey.spinoHeldBy; prey.dinoLift = 0; s.spinoHolding = null; d.stage = "throw"; d.left = G.throwTime; e.spinoPose = "grabThrow"; e.spinoGrab = { who, phase: "throw", t: 0 };
+      delete prey.spinoHeldBy; prey.dinoLift = 0; dinoSetDown(w, prey, e); s.spinoHolding = null; d.stage = "throw"; d.left = G.throwTime; e.spinoPose = "grabThrow"; e.spinoGrab = { who, phase: "throw", t: 0 };
       return;
     }
     if (d.stage === "hold") {
@@ -2965,7 +2965,7 @@ const RUN = {
       if (d.left > 0) return;
       d.stage = "throw"; d.left = G.throwTime; e.spinoPose = "grabThrow"; e.spinoGrab = { who, phase: "throw", t: 0 };
       const dir = unit(h.x - h.y * G.throwTurn, h.y + h.x * G.throwTurn);
-      if (d.prey) { if (prey) { delete prey.spinoHeldBy; for (let i = 0; i < 8; i++) if (!w.move(prey, dir.x * G.throw / 8, dir.y * G.throw / 8)) break; spinoWound(w, e, prey, spinoPreyBlow(prey, Math.ceil(damageOf(e, "spinoGrab") * G.throwShare))); if (dinoRivals(e, prey)) dinoCue(w, e, "land", "spinoGrabThrow", prey, { victim: prey.kind }); } }
+      if (d.prey) { if (prey) { delete prey.spinoHeldBy; dinoSetDown(w, prey, e); for (let i = 0; i < 8; i++) if (!w.move(prey, dir.x * G.throw / 8, dir.y * G.throw / 8)) break; spinoWound(w, e, prey, spinoPreyBlow(prey, Math.ceil(damageOf(e, "spinoGrab") * G.throwShare))); if (dinoRivals(e, prey)) dinoCue(w, e, "land", "spinoGrabThrow", prey, { victim: prey.kind }); } }
       else if (w.held?.(e)) { w.release?.(e); w.throwPlayer?.(e, dir, G.throw); w.hurt(e, Math.max(1, Math.ceil(damageOf(e, "spinoGrab") * G.throwShare)), { jumpable: false, source: "spinoGrab", piercing: true, beam: true }); }
       s.spinoHolding = null; return;
     }
@@ -4646,12 +4646,23 @@ function dinoFeeds(e, s, w) {
   return true;
 }
 // The Spinosaurus in the stego's jaws (stegoJaws): its holder alive, mid-grab, holding it. Else the hold is dropped.
-function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; dinoUnhang(q); return false; }
+function stegoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.stegoHeldBy); if (h && !h.dead && h.pack?.stegoHolding === q.id) return true; delete q.stegoHeldBy; dinoUnhang(q); dinoSetDown(w, q, h); return false; }
 // The art's hang of a held duellist (dinoLift, dinoPitch, dinoRoll) back to the ground when it is let go.
 function dinoUnhang(q) { if (q) { q.dinoLift = 0; q.dinoPitch = 0; q.dinoRoll = 0; } }
+// Review 975: a held beast (the stego's tail heave holds it `STEGO.jaws.held` tiles out, the Spinosaurus's belly lift ahead of its
+// jaws) is set down where it can stand: where it hangs if that floor is open (w.open; the sea too for the Wild Stegosaurus, which
+// swims), else the nearest open spot its holder can see, searched out as far as the holder; failing that, beside the holder.
+function dinoSetDown(w, q, holder) {
+  if (!q || !w.open) return;
+  const open = q.kind === "wildStego" && w.marineOpen ? w.marineOpen : w.open;
+  if (open.call(w, q.x, q.y)) return;
+  const seen = (x, y) => open.call(w, x, y) && (!holder || !w.los || w.los(holder, { x, y })), reach = holder ? distance(q, holder) + 1 : 3;
+  const spot = nearestOpen(w, q.x, q.y, reach, seen) || (holder ? nearestOpen(w, holder.x, holder.y, 2, open) || { x: holder.x, y: holder.y } : null);
+  if (spot) { q.x = spot.x; q.y = spot.y; }
+}
 // Where the stego slams the Spinosaurus it holds by the tail: the circle `ahead` past the held body, on its side of the stego.
 function stegoJawsLanding(e, prey, ang) { const r = STEGO.jaws.held; return { x: e.x + Math.cos(ang) * r, y: e.y + Math.sin(ang) * r }; }
-function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) { delete q.stegoHeldBy; dinoUnhang(q); } }
+function stegoLetGo(e, s, w) { const held = s.stegoHolding; s.stegoHolding = null; e.stegoGrab = null; const q = held && (w.enemies || []).find((x) => x.id === held); if (q?.stegoHeldBy === e.id) { delete q.stegoHeldBy; dinoUnhang(q); dinoSetDown(w, q, e); } }
 // Is `foe`'s blow at `e` coming (its wind-up or its swing, aimed at e)? Then e holds its own, so the blows alternate.
 const dinoBlowComing = (foe, e) => !!foe?.pack?.attack && foe.pack.data?.prey === e.id && foe.pack.phase !== "recover";
 // Its choice, every `refocus` s (its moves pause the clock): the Spinosaurus in sight, or (now and then, with you close) you.
@@ -4857,11 +4868,11 @@ function spinoCan(e, s, w, id) {
   return true;
 }
 // Is a creature still in its jaws? (Its holder alive, mid-grab, holding this one.)
-function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; if (q.dinoLift) dinoUnhang(q); return false; }
+function spinoHolds(q, w) { const h = (w.enemies || []).find((x) => x.id === q.spinoHeldBy); if (h && !h.dead && h.pack?.spinoHolding === q.id) { q.aloft = false; return true; } delete q.spinoHeldBy; if (q.dinoLift) dinoUnhang(q); dinoSetDown(w, q, h); return false; }
 // Lets go of whatever it held (a grab broken off by a stagger, its death or a reload).
 function spinoLetGo(e, s, w) {
   const held = s.spinoHolding; s.spinoHolding = null; e.spinoGrab = null; if (!held) return;
-  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) { delete q.spinoHeldBy; dinoUnhang(q); } }
+  if (held === "player") w.release?.(e); else { const q = (w.enemies || []).find((x) => x.id === held); if (q?.spinoHeldBy === e.id) { delete q.spinoHeldBy; dinoUnhang(q); dinoSetDown(w, q, e); } }
 }
 // Every fighting frame, before the shared brain: the shed, a broken-off grab, its prey first, then one-off jumps and grabs at other
 // creatures. True when it has spent the frame.
@@ -4987,8 +4998,9 @@ export function updatePackMonster(e, w) {
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && s.attack !== "dragonColonize" && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
-    if (B && b.feintAt > 0 && s.phase === "windup" && s.t <= (s.data.wind || 0) * b.feintAt) { const id = s.attack; endAttack(e, s); s.cd[id] = Math.min(s.cd[id] || 0, .6); s.gap = 0; startFeint(e, b, B, w.squad); return; } // a feint breaks off into a sidestep
+    if (B && b.feintAt > 0 && s.phase === "windup" && s.data.wind > 0 && s.t <= s.data.wind * b.feintAt) { const id = s.attack; endAttack(e, s); s.cd[id] = Math.min(s.cd[id] || 0, .6); s.gap = 0; startFeint(e, b, B, w.squad); return; } // a feint breaks off into a sidestep
     RUN[s.attack]?.(e, s, w);
+    if (B && b.feintAt > 0 && s.phase !== "windup") b.feintAt = 0; // review 975: past its windup the blow is committed; a feint never carries over
     if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; if (packCombo(e, s, w, B, b)) return; if (e.heavy) s.t *= B.heavy.recover; } // the next blow of a combo; a heavy blow leaves it open
     if (s.attack && s.phase === "recover" && s.t <= 0) { if (B) afterBlow(e, b, B); endAttack(e, s); }
     return;
@@ -5625,7 +5637,7 @@ export function tickPackEffects(effects, world) {
     } else if (f.kind === "dinoRock") { /* the dino duel's rockfall (DINO_DUEL.rockfall): a rock down from the ceiling where its circle showed */
       if (!f.detonated) { f.detonated = true; const owner = w.enemies.find((q) => q.id === f.owner) || null;
         if (distance(p, f) <= f.radius + .3) w.hurt(owner, f.damage, { jumpable: false, source: "dinoRock" });
-        for (const q of w.enemies || []) if (!q.dead && !DINO_DUEL.kinds.includes(q.kind) && !q.boss && !q.worldBeast && !q.untargetable && distance(q, f) <= f.radius + bodyRadius(q) * .5) w.hurtCreature?.(owner, q, f.damage);
+        for (const q of w.enemies || []) if (!DINO_DUEL.kinds.includes(q.kind) && stegoPrey(q, owner) && distance(q, f) <= f.radius + bodyRadius(q) * .5) w.hurtCreature?.(owner, q, f.damage); // review 975: only what the Wild Stegosaurus may prey on (never a guardian, an elite or a companion)
         if (owner) dinoCue(w, owner, "rock", "dinoRock", f); }
     } else if (f.kind === "stegoSpike" || f.kind === "stegoBlade") { /* straight, stopped by walls, one hit each */
       const before = { x: f.x, y: f.y }; f.x += f.vx * w.dt; f.y += f.vy * w.dt;
