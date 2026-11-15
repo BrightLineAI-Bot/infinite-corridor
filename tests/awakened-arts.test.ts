@@ -165,11 +165,13 @@ test('Ki Blast: still in the air after the uppercut blast, a press drops into th
     const { g, clock } = arena('roundhouse', { foes: [[1, .2], [6, 0]], passive: true, awakened }); for (let i = 0; i < 3; i++) { press(g, clock); idle(g, clock, 40); }
     idle(g, clock, 40); press(g, clock); idle(g, clock, 13); press(g, clock); idle(g, clock, 13); // the cross and jab: the uppercut is next
     charge(g, clock, 1.15); idle(g, clock, 6); /* 2026-11-14: the fists' contact delay runs in every area */ assert.ok(clock.t < g.jumpUntil, 'the uppercut blast pops her up'); assert.equal(g.kiSlamReady(clock.t), true);
-    const hp = g.enemies[0].hp; press(g, clock); assert.ok(g.plunge?.kiSlam, 'the press is the slam'); assert.match(g.message, /Ground slam/); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick');
+    const hp = g.enemies[0].hp; press(g, clock);
+    if (awakened) { assert.ok(g.cycloneHeel && !g.plunge, 'awakened with Ki Blast (2026-11-15): the press is the Cyclone Heel'); assert.match(g.message, /Cyclone Heel/); assert.equal(g.player.attackVisual.awakenedArt, 'cyclone-heel'); }
+    else { assert.ok(g.plunge?.kiSlam, 'the press is the slam'); assert.match(g.message, /Ground slam/); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick'); }
     idle(g, clock, 40); slams[awakened] = hp - g.enemies[0].hp; assert.ok(slams[awakened] > 0, 'it lands');
-    assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross'); assert.equal(g.plunge, null);
+    assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross'); assert.ok(!g.plunge);
   }
-  assert.ok(Math.abs(slams.true - slams.false) <= 1e-6 * Math.max(1, slams.true), `Tim 2026-11-13: the slam has parity with the kick, awakened or not (${slams.true} = ${slams.false})`);
+  assert.ok(slams.true >= slams.false, `2026-11-15: the Cyclone Heel that replaces the awakened slam is never weaker (${slams.true} >= ${slams.false})`);
 });
 
 test('Spell runes: the third swing runes the nearest struck foe (unruned first); a spell that strikes one detonates it; one a foe; they fade', () => {

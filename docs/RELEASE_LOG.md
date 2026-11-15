@@ -15,13 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r977 (`49b16fd01d2b`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r982 (`1137a1096c7b`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 978 | Claude | claude/oculus-slot-d-978 | The Oculus gets its own one-tap button under the top-right compass (key O); the old utility button becomes a fourth assignable slot in every preset; the four slot buttons read A B C D left to right; Robot and Drone can go in any slot; old utility choices migrate into the new slot | In flight. |
+| 983 | Claude | claude/creature-motion | Close View creature motion: phase model (anticipation hold, contact, follow-through, recovery), heavy and combo shapes, hit reactions (flinch, stagger, guard, dodge, feint, alert, arrival), idle life, card/body cross-fade and death fade; new module creature-motion; no save change | In flight. |
+| 982 | Claude | claude/review-975-fixes | Fixes from the 975 review: rockfall limited to stego prey, held beasts set down on open floor, stale feint cleared, legacy wind-up only within reach (cadence restored), legacy aggro needs line of sight, stinger ducking kept; no save change | Merged as `1137a1096c7b` (#650). |
+| 981 | Claude | claude/cyclone-heel-981 | With awakened Iron Fists and Ki Blast, the press after the uppercut's airborne blast becomes the Cyclone Heel: five spins across up to 3.5 tiles hitting only what the leg touches, or with Shadow Boxing an instant blink to the foe and five spins on it over about a second; releasing a hold just before landing gives the perfect version; the Shadow Clone swings with each spin | In flight. |
+| 980 | Claude | claude/fall-pose-980 | The Wayfarer gets a progressive, calm falling pose: a short fall shows only the onset arm motion, a long fall builds into a slow arm wheel and leg cycle, settling smoothly into the landing; Standard View raises his hands; not used while gliding, on the drone, on a rising jump or in a plunge; the pit fall-over is unchanged | Merged as `6dd7102d83fb` (#648). |
+| 979 | Claude | claude/cv-tree-blackout-979 | After leaving Close View through the Oculus (or changing the quality tier) beside a great tree, the Standard View no longer cuts off the trunk, crown and upper branches and leaves the top of the screen black; the ground image stops rebuilding on every frame of the Oculus leave zoom | Merged as `25bd8edd3b39` (#647). |
+| 978 | Claude | claude/oculus-slot-d-978 | The Oculus gets its own one-tap button under the top-right compass (key O); the old utility button becomes a fourth assignable slot in every preset; the four slot buttons read A B C D left to right; Robot and Drone can go in any slot; old utility choices migrate into the new slot | Merged as `19ee665e9517` (#646). |
 | 977 | Claude | claude/room-light-mix-977 | Interior rooms get a deterministic light tier (lit ~30%, gloomy ~45%, dark ~25%; themed shares, the Deep mostly dark) blended smoothly across doorways in both views; a lit Lantern glows outdoors on a night sky | Merged as `49b16fd01d2b` (#645). |
 | 976 | Claude | claude/brighter-interiors | Close View interiors (keeps, towers, great buildings, hives, arcologies, labyrinths, the Pentagon) keep 40% less darkness; the Deep is lightened only slightly; the Pentagon dread overlay a little; the Lantern still lengthens the torch | Merged as `1d36206e0fd5` (#643). |
 | 975 | Claude | claude/enemy-behaviour | Ordinary creature behaviour (OoT-remake style): awareness and kin calls, arrival for mid-fight spawns, attack tokens and spacing rings, heavy/light/combo/feint blows, poise and flinch, guard and sidestep, retreat and regroup; new module enemy-behaviour; no save change | Merged as `6689d7c92177` (#642). |

@@ -167,7 +167,7 @@ import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
 import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
-import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
@@ -188,7 +188,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */ };
+export const GAME_NESTED_CLOCKS = { golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
@@ -2521,6 +2521,9 @@ export function enemyProjectilePattern(shooter,aim,now=0,options={}) {
 // enemy-behaviour.ts (Tim, 2026-11-14): with a squad board (the game passes one), an ordinary creature also notices before it
 // engages, waits its turn for an attack token on its ring, varies its blows (heavy, combos, feints), flinches, guards, dodges,
 // steps back and retreats. Without one (`squad` null) it behaves exactly as before.
+// How far a legacy close blow really reaches (combat.ts enemyMeleeGeometry): a slam's circle round its body, or a stab's or a
+// sweep's length, plus any dash it makes first.
+function legacyBlowReach(e, pattern) { return (pattern.shape === "slam" ? (pattern.radius || 1.2) + enemyBodyRadius(e) : pattern.range) + (pattern.dash || 0); }
 function legacyDrop(e, b) { e.telegraph = 0; e.meleePhase = null; e.threatRange = null; if (b) { b.press = 0; b.comboLeft = 0; b.feintAt = 0; } }
 export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null, squad=null) {
   const displace = move || ((subject, dx, dy) => moveAxis(subject, dx, dy, map, width));
@@ -2537,7 +2540,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   const B = squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, squad) : null;
   if (B) {
     squad.w = null; squad.disp = displace;
-    if (!e.aggro && toPlayer < 6) e.aggro = true; // it sees the Wayfarer: the notice beat comes first (behaviourGate)
+    if (!e.aggro && toPlayer < 6 && hasLineOfSight(e, player, map, width)) e.aggro = true; // it sees the Wayfarer (review 975: in sight, not through a wall): the notice beat comes first (behaviourGate)
     if (behaviourGate(e, b, B, squad, legacyDrop)) { if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; } ai.mode = e.aggro ? "alert" : ai.mode; return false; }
     if (e.aggro && behaviourReact(e, b, B, squad, toPlayer, e.telegraph > 0, false, legacyDrop)) { ai.mode = "react"; return false; }
   }
@@ -2559,9 +2562,10 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
-    if (B && b.feintAt > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
+    if (B && b.feintAt > 0 && b.wind > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
     if (e.telegraph === 0) {
       e.windupStagger = null; // release 561: the next windup may be held again
+      if (B) b.feintAt = 0; // review 975: the windup is over, the blow committed; a feint never carries over to a later one
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
       if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!displace(e,dx/steps,dy/steps))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
@@ -2577,7 +2581,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   let tx,
     ty,
     speed = 0.42;
-  if (toPlayer < 6 || e.aggro) {
+  if (e.aggro || !B && toPlayer < 6) { // review 975: an ordinary creature (B) notices the Wayfarer only in sight, above
     e.aggro=true;
     ai.mode = "chase";
     tx = player.x - e.x;
@@ -2614,7 +2618,8 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   if(sanctuary)enforceSanctuary(e,sanctuary);
   const moves=B&&B.moves&&e.range<2.5&&e.meleePatterns?.length?B.moves:e.meleePatterns,patternStartRange=e.range<2.5&&moves?.length?Math.max(...moves.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
   if (B && b.comboLeft > 0 && !(e.cooldown > 0) && !(toPlayer <= patternStartRange + enemyBodyRadius(e) + .6 && hasLineOfSight(e, player, map, width))) { b.comboLeft = 0; afterBlow(e, b, B); } // out of reach: the chain ends
-  const inReach=(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
+  const spaced=!!(B&&B.spacing&&e.range<2.5&&moves?.length&&!(b.comboLeft>0)),nextBlow=spaced&&MELEE_PATTERNS[moves[(e.meleePatternIndex||0)%moves.length]]; // review 975: a creature on its ring winds up only once its next blow can land (BEHAVIOUR.spacing.reach), not from the ring's edge
+  const inReach=(nextBlow?toPlayer<=legacyBlowReach(e,nextBlow)*BEHAVIOUR.spacing.reach:(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e))) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
   if (B && !inReach && B.spacing && e.range < 2.5 && ai.mode === "circle" && !(e.cooldown > 0) && !(b.press > 0) && !(b.rest > 0) && !(b.retreat > 0) && squadRequest(squad, e, b, B.pool)) b.press = B.press; // its turn: close in
   if (B && inReach && !(b.comboLeft > 0) && (b.rest > 0 || b.retreat > 0 || !(b.press > 0 && b.pool === (e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool)) && !squadRequest(squad, e, b, e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool))) return false; // no token: it waits
   if (
@@ -2799,6 +2804,7 @@ export class Game {
     { const w = normalizeToolSwing(s.playerRuntime.toolSwing); this.toolSwing = w && w.area === this.area && w.areaId === this.areaId() && w.levelId === String(this.map?.levelId || 'root') && this.player.hp > 0 ? { ...w, lastNow: now } : null; } // the Great Sweep resumes mid-swing
     { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
     { const r = normalizeArtRush(s.playerRuntime.artRush), R = LAVA_RUSH; this.artRush = r?.v === R.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // the Lava Slash rush resumes where it stood
+    { const r = normalizeCycloneHeel(s.playerRuntime.cycloneHeel); this.cycloneHeel = r?.v === CYCLONE_HEEL.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // the Cyclone Heel resumes mid-spin
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
     restoreQuandrixHold(this, s.playerRuntime.quandrixHold); // the Quandrix Staff's held or let-go hand resumes as let go, on its clock (quandrix-staff.ts)
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
@@ -3303,7 +3309,7 @@ export class Game {
     this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
-    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.kiSlam=false; // the fists' chain belongs to where it was thrown
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.kiSlam=false;this.cycloneHeel=null;this.cycloneHold=null; // the fists' chain belongs to where it was thrown
     this.attackBufferUntil = 0;
     this.season = null; // release 679: set again below for a section of the woods
     this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (snapshotArea ends it too)
@@ -3888,6 +3894,7 @@ export class Game {
         toolSwing:this.toolSwing?normalizeToolSwing(this.toolSwing):(Number.isInteger(this.save.session.playerRuntime.toolSwing?.v)&&this.save.session.playerRuntime.toolSwing.v>GREAT_SWEEP_RECORD_VERSION?structuredClone(this.save.session.playerRuntime.toolSwing):null), // the Great Sweep mid-swing (great-sweep.ts; additive, schema 14; a newer record kept opaque)
         artRush:this.artRush?normalizeArtRush(this.artRush):(Number.isInteger(this.save.session.playerRuntime.artRush?.v)&&this.save.session.playerRuntime.artRush.v>LAVA_RUSH.v?structuredClone(this.save.session.playerRuntime.artRush):null), // the Lava Slash rush mid-way (additive, schema 14; a newer record kept opaque)
         quandrixHold:savedQuandrixHold(this)??(Number.isInteger(this.save.session.playerRuntime.quandrixHold?.v)&&this.save.session.playerRuntime.quandrixHold.v>QUANDRIX.release.record?structuredClone(this.save.session.playerRuntime.quandrixHold):null), // the Quandrix Staff's held or let-go hand (additive, schema 14; a newer record kept opaque)
+        cycloneHeel:this.cycloneHeel?normalizeCycloneHeel(this.cycloneHeel):(Number.isInteger(this.save.session.playerRuntime.cycloneHeel?.v)&&this.save.session.playerRuntime.cycloneHeel.v>CYCLONE_HEEL.v?structuredClone(this.save.session.playerRuntime.cycloneHeel):null), // the Cyclone Heel mid-spin (additive, schema 14; a newer record kept opaque)
         shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -4052,7 +4059,7 @@ export class Game {
     this.cancelPendingToolUse('world-reset');
     this.toolSwing = null;
     this.clearHammerfallStartup('world-reset');
-    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.fistCharge=null;this.kiSlam=false;
+    this.fistReleaseIntent=null;this.fistQueued=null;this.fistCombo=null;this.fistBeat=null;this.fistFlash=null;this.fistCharge=null;this.kiSlam=false;this.cycloneHeel=null;this.cycloneHold=null;
     const p = this.player;
     p.heldUntil = p.stunnedUntil = p.slowUntil = p.confusedUntil = 0; p.heldBy = null; p.slowFactor = 1;
     p.sailVx = p.sailVy = 0;
@@ -8591,6 +8598,128 @@ export class Game {
   // Still up in the Ki Blast's leap with the fists on: a press drops into the ground slam.
   kiSlamReady(now = this.lastUpdateNow || 0) { if (this.kiSlam && (!(now < (this.jumpUntil || 0)) || this.jumpStart !== this.kiSlamJump)) this.kiSlam = false; // landed, or a later jump: an ordinary plunge (r945 review)
     return !!this.kiSlam && this.fistsEquipped(); }
+  // The Cyclone Heel (brawler-spells.ts CYCLONE_HEEL; Tim, 2026-11-15). In the slam's place only with awakened fists AND Ki Blast
+  // selected (awakenedUp "roundhouse"), still up in the uppercut's Ki Blast leap (kiSlamReady) and inside the chain's window.
+  // `cycloneHold` { action, start, onBeat } is the held press (runtime; its start a nested clock); `cycloneHeel` the spin
+  // (saved at playerRuntime.cycloneHeel).
+  cycloneReady(now = this.lastUpdateNow || 0) { return this.kiSlamReady(now) && awakenedUp(this.save, "roundhouse") && !!this.fistCombo && now <= this.fistCombo.until; }
+  // The press: no button to hold (a world tap), the plain kick at once; held, the ball goes out and is home as the landing window opens.
+  cyclonePress(now, action = null) {
+    const C = CYCLONE_HEEL, p = this.player, onBeat = !this._fistBuffered && fistOnBeat(this.fistBeat, now);
+    this.kiSlam = false; this.plungeSpent = true; this.clearAttackBuffer(); this.fistQueued = null;
+    if (!action) return this.cycloneBegin(now, false, onBeat);
+    this.cycloneHold = { action, start: now, ...(onBeat ? { onBeat: true } : {}) };
+    const a = projectileDirection(p.meleeAim?.x ?? this.save.lastAim?.x ?? 0, p.meleeAim?.y ?? this.save.lastAim?.y ?? 0, p.facing), land = this.jumpUntil || now;
+    const opens = Math.max(now + 1, land - C.window.lead * 1000); this.fistBeat = { at: now, opens, closes: Math.max(opens, land), step: 4, ax: a.x, ay: a.y }; // the release cue: the gauntlet ball (drawFistStep)
+    if (onBeat) this.fistFlash = { at: now, rhythm: false };
+    return true;
+  }
+  // Each frame while held: let go in the window before the landing, the perfect kick; let go earlier, or landed still holding
+  // (or held `holdMs`), the plain one. A dodge, a stun, death or the fists put away drops it.
+  tickCycloneHold(now, held) {
+    const h = this.cycloneHold, p = this.player, C = CYCLONE_HEEL; if (!h) return;
+    if (!(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || !this.fistsEquipped()) { this.cycloneHold = null; this.fistBeat = null; return; }
+    const landed = !(now < (this.jumpUntil || 0)); if (held && !landed && now - h.start < C.holdMs) return;
+    this.cycloneHold = null;
+    const perfect = !held && !landed && (now - h.start) / 1000 >= C.window.grace - 1e-9 && ((this.jumpUntil || 0) - now) / 1000 <= C.window.lead + 1e-9;
+    this.cycloneBegin(now, perfect, h.onBeat === true);
+  }
+  // Its foe: the lock, else the nearest within `range` (no allocation).
+  cycloneTarget() {
+    const p = this.player, t = this.lockedTarget(); if (t && autoAimable(t)) return t;
+    let best = null, bd = Infinity;
+    for (const e of this.enemies) { if (!autoAimable(e)) continue; const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= CYCLONE_HEEL.range && d < bd) { bd = d; best = e; } }
+    return best;
+  }
+  // The Shadow Boxing blink (Tim, 2026-11-15: "a true teleport"), by Rift Step's rules (constellation.ts riftStep): along the line
+  // to the foe in quarter steps, stood by blinkFooting from the level she leaves (never up a ledge or a higher roof; walls, lethal
+  // and hazardous ground end it), passing through solid props, to `stop` short of the foe; then blinkPathClear (no wall, sealed
+  // gate or forbidden air on the way). The farthest such point, or null. Bounded (at most reach / .25 + 1 samples).
+  cycloneBlink(foe, stop, now = this.lastUpdateNow || 0) {
+    const p = this.player, gap = Math.hypot(foe.x - p.x, foe.y - p.y), dist = Math.max(0, gap - stop); if (!(dist > 1e-6)) return null;
+    const ground = this.playerLevel(), level = Math.max(Number.isFinite(ground) ? ground : 0, this.skyAir != null && now < (this.jumpUntil || 0) ? this.skyAir : -Infinity), dx = (foe.x - p.x) / gap, dy = (foe.y - p.y) / gap;
+    let best = null;
+    for (let t = .25; ; t += .25) {
+      const s = Math.min(t, dist), x = p.x + dx * s, y = p.y + dy * s, footing = this.blinkFooting(x, y, level);
+      if (footing) best = { x, y }; else if (!this.blinkInProp(x, y)) break; // a solid prop is stepped through, never ended in
+      if (s >= dist - 1e-9) break;
+    }
+    return best && this.blinkPathClear(p.x, p.y, best.x, best.y, RIFT_AIM.samples, level) ? best : null;
+  }
+  cycloneBegin(now, perfect = false, onBeat = false) {
+    const C = CYCLONE_HEEL, F = IRON_FISTS, p = this.player, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, foe = this.cycloneTarget();
+    const rhythm = perfect && onBeat, level = fistCalloutLevel(perfect, onBeat);
+    const share = rhythm ? C.share * F.beatShare + F.rhythmBonus / C.spins : C.share * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1);
+    const power = Math.max(1, Math.round(this.fistPower() * share * (1 + (boxing?.damage || 0))));
+    let d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(p.meleeAim?.x ?? this.save.lastAim?.x ?? 0, p.meleeAim?.y ?? this.save.lastAim?.y ?? 0, p.facing);
+    const extra = foe ? Math.max(0, enemyBodyRadius(foe) - .38) : 0, gap = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
+    const x0 = p.x, y0 = p.y; let shadow = false, track = "", stop = 0, limit = C.tiles, toX = p.x + d.x * C.tiles, toY = p.y + d.y * C.tiles, windupMs = C.windupMs, enter = 0;
+    if (boxing && foe && gap <= C.shadow.reach) { // Tim, 2026-11-15: a true blink to the foe, by Rift Step's rules (cycloneBlink); one that cannot reach it is the travelled kick
+      const at = this.cycloneBlink(foe, C.shadow.stop + extra, now);
+      if (at && Math.hypot(foe.x - at.x, foe.y - at.y) <= C.shadow.stop + extra + C.shadow.leash) {
+        shadow = true; p.x = at.x; p.y = at.y; track = String(foe.id); stop = C.shadow.stop + extra; limit = C.maxTiles; toX = foe.x; toY = foe.y; enter = C.shadow.enter;
+        markShadowTrail(this, x0, y0, now, "carry"); // Shadow Boxing's after-images, closing in from where she left
+        const V = (this.glyphVisuals ||= []), K = C.shadow.blink; // the vanish at the origin, the streak, the arrival flash (presentation only)
+        V.push({ kind: "burst", x: x0 + .5, y: y0 + .45, radius: K.vanish, life: K.life, max: K.life }, { kind: "arc", x: x0 + .5, y: y0 + .45, tx: p.x + .5, ty: p.y + .45, color: C.colors.shadow, life: K.life, max: K.life }, { kind: "burst", x: p.x + .5, y: p.y + .45, radius: K.arrive, life: K.life, max: K.life });
+        d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing);
+      }
+    }
+    if (!shadow && foe && gap - (C.stop + extra) <= C.tiles) { track = String(foe.id); stop = C.stop + extra; limit = Math.max(0, Math.min(C.tiles, gap - stop)); toX = foe.x; toY = foe.y; }
+    if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
+    const span = shadow ? C.shadow.spanMs : C.spins * C.spinMs, ms = windupMs + span + C.recoverMs;
+    this.cycloneHeel = { v: C.v, area: this.area, areaId: this.areaId(), levelId: String(this.map?.levelId || "root"), foe: track, mode: shadow ? "shadow" : "travel",
+      fromX: x0, fromY: y0, toX, toY, dirX: d.x, dirY: d.y, stop, limit, durationMs: ms, windupMs, recoverMs: C.recoverMs, enter, elapsedMs: 0, travelled: 0, arrived: false, spins: C.spins, spun: 0,
+      power, splash: shadow ? Math.max(1, Math.round(power * C.shadow.splash)) : 0, level, perfect: !!perfect };
+    p.meleeAim = { x: d.x, y: d.y }; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + F.guardMs); // i-frames as the cross's rush
+    this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + ms); this.fistBeat = null; this.fistQueued = null; this.clearAttackBuffer();
+    this.fistCombo = { step: this.fistSteps(), until: now + ms + F.window * 1000, landed: [], lead: "right", level }; // the HUD meter; the cross comes next
+    if (perfect || onBeat) this.fistFlash = { at: now, rhythm };
+    this.cancelConsumeVisual("attack"); cancelCastVisual(p);
+    p.attackUntil = now + ms; p.meleeUntil = now + ms;
+    const visual = stampAttackVisual(p, "fist", ms, d);
+    if (visual) { p.actionVisualUntil = now + ms; const logicalNow = now - (this.presentationPausedMs || 0); visual.poseMs = Math.max(0, logicalNow); visual.facingYaw = Math.atan2(d.y, d.x); visual.fistStep = 4; visual.fistLead = "right"; visual.awakenedArt = "cyclone-heel"; visual.cycloneWindup = windupMs / ms; visual.cycloneRecover = C.recoverMs / ms; if (enter > 0) visual.cycloneEnter = enter; /* blinked in already chambered */ if (perfect) visual.fistPerfect = true; }
+    noteArtPress(this); // a press of the chain (Ki Blast arms again)
+    this.message = `${C.name}!${rhythm ? " Perfect rhythm!" : perfect ? " Perfect!" : onBeat ? " Perfect timing!" : ""}`;
+    return true;
+  }
+  // Each frame before the move: she travels (or follows her foe) and every turn whose time has come strikes.
+  cycloneSteer(dt, now) {
+    const q = this.cycloneHeel, p = this.player, C = CYCLONE_HEEL; if (!q) return;
+    if (q.v !== C.v) { this.cycloneHeel = null; return; }
+    if (q.area !== this.area || q.areaId !== this.areaId() || q.levelId !== String(this.map?.levelId || "root") || !(p.hp > 0) || now < (p.stunnedUntil || 0) || now < (p.dodgeUntil || 0) || !this.fistsEquipped()) { this.cancelCyclone(now); return; }
+    const W = q.windupMs, S = q.durationMs - q.windupMs - q.recoverMs, e0 = q.elapsedMs; q.elapsedMs = Math.min(q.durationMs, q.elapsedMs + Math.max(0, Number(dt) || 0) * 1000); const e1 = q.elapsedMs;
+    let foe = null; if (q.foe) { for (const e of this.enemies) if (String(e.id) === q.foe) { foe = e; break; } if (!foe || !(foe.hp > 0) || !autoAimable(foe)) { foe = null; q.foe = ""; q.toX = p.x; q.toY = p.y; q.stop = 0; } } // gone: she spins on where she is
+    const tx = foe ? foe.x : q.toX, ty = foe ? foe.y : q.toY;
+    if (q.mode === "travel") { if (e1 > W && e0 < W + S) this.dashCarry(q, tx, ty, Math.max(0, (e0 - W) / S), Math.min(1, (e1 - W) / S), q.limit, now, cycloneTravel); } // a beat of hang time to chamber, then across with the turns; still for the recovery
+    if (Math.hypot(tx - p.x, ty - p.y) > .05 && (q.mode === "travel" || foe)) { const d = projectileDirection(tx - p.x, ty - p.y, p.facing); q.dirX = d.x; q.dirY = d.y; }
+    if (q.mode === "shadow" && foe) { // Shadow Boxing: she keeps to her foe as it steps
+      const w = this.glyphWorld(now); let budget = Math.min(C.shadow.follow * Math.max(0, Number(dt) || 0), q.limit - q.travelled);
+      for (let i = 0; i < 16 && budget > 1e-6; i++) { const g = Math.hypot(foe.x - p.x, foe.y - p.y); if (g <= q.stop + 1e-6) break; const d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing), s = Math.min(.25, budget, g - q.stop), nx = p.x + d.x * s, ny = p.y + d.y * s; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; q.travelled = Math.min(q.limit, q.travelled + s); budget -= s; }
+    }
+    p.meleeAim = { x: q.dirX, y: q.dirY }; if (Math.abs(q.dirX) > .15 || Math.abs(q.dirY) > .15) p.facing = Math.abs(q.dirX) > Math.abs(q.dirY) ? (q.dirX < 0 ? "left" : "right") : (q.dirY < 0 ? "up" : "down");
+    const every = S / q.spins; // the turns strike evenly through the spin span, the last as it ends; then the recovery
+    while (q.spun < q.spins && q.elapsedMs + 1e-6 >= W + (q.spun + 1) * every) { q.spun++; this.cycloneSpin(q, foe, now); }
+    if (q.spun >= q.spins && q.elapsedMs >= q.durationMs - 1e-6) this.cycloneFinish(now);
+  }
+  // One turn's blow: an effect resolved this frame by updateEffects (each foe once; melee glyphs, Imbue, Shadow Boxing's heal).
+  cycloneSpin(q, foe, now) {
+    const p = this.player, C = CYCLONE_HEEL, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null, imbue = this.imbueBonus(now), healShare = boxing?.heal || 0;
+    const blow = (x, y, radius, damage, only, hits) => this.effects.push({ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: "cyclone-heel", brawler: true, swingHit: true, x, y, life: 1e-4, radius, pulse: 99, untilPulse: 0, damage, pulseIndex: 0, hits, glyphHost: "melee", healShare, imbue, stun: C.stun, ...(only ? { only } : {}) });
+    const held = q.mode === "shadow" && foe && Math.hypot(foe.x - p.x, foe.y - p.y) <= q.stop + C.shadow.leash; // still at her foe (a foe carried off past the leash is not struck through the air)
+    if (held) { blow(foe.x + .5, foe.y + .45, .5, q.power, [foe], {}); if (q.splash > 0) blow(p.x + .5, p.y + .45, C.radius, q.splash, null, { [`1:${foe.id}`]: true }); } // every turn on her foe; a touch of it on foes at her leg
+    else blow(p.x + .5, p.y + .45, C.radius, q.power, null, {});
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
+  }
+  cycloneFinish(now) {
+    const q = this.cycloneHeel, F = IRON_FISTS; this.cycloneHeel = null; if (!q) return;
+    this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000);
+    this.fistCombo = { step: this.fistSteps(), until: now + F.window * 1000, landed: [], lead: "right", level: q.level }; // the chain starts again at the cross, on the beat
+    this.fistBeat = { at: now, ...fistBeatWindow(now, this.fistRecoverUntil), step: 4, ax: q.dirX, ay: q.dirY };
+  }
+  cancelCyclone(now = this.lastUpdateNow || 0) {
+    const had = !!(this.cycloneHeel || this.cycloneHold); this.cycloneHeel = null; this.cycloneHold = null; if (!had) return false;
+    this.fistCombo = null; this.fistBeat = null; this.cancelFistPresentation(now); return true;
+  }
   // The Iron Fists' waiting press: the step it throws is the combo's next as the press is made (fistNextStep), fixed there however
   // long the charge is held. A tap throws it as ever; a release throws it with the blast. Returns the step.
   artFistStep(now) { return this.fistNextStep(now); }
@@ -8959,12 +9088,14 @@ export class Game {
   // an ordinary jump, with no slam); `plungeSpent` holds one plunge per jump; `plungeRecoverUntil` is the landing recovery.
   plungeBlocked() { return !!(this.mechUp() || this.droneUp() || this.droneLift || this.mechBoosting || this.mountRide() || aboard(this.save) || this.glide || this.swimming || this.map?.underwater || this.save.activeWeaponSlot === "secondary"); }
   // Attack pressed: true when the press belongs to a jump attack (one starts, one is under way, or its recovery holds).
-  airAttack(now = this.lastUpdateNow || 0) {
+  airAttack(now = this.lastUpdateNow || 0, action = null) {
     const p = this.player;
     if (this.plunge || now < (this.plungeRecoverUntil || 0)) return true;
     if (this.artRush) return true; // the airborne Lava Slash rush (2026-11-14) owns the press until its slam: no plunge
+    if (this.cycloneHeel || this.cycloneHold) return true; // the Cyclone Heel (held or spinning) owns the press
     if (!(now < (this.jumpUntil || 0)) || this.plungeSpent || !(p.hp > 0) || this.plungeBlocked()) return false;
     if (this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.fistCharge) return false;
+    if (this.cycloneReady(now)) return this.cyclonePress(now, action); // awakened fists with Ki Blast: the Cyclone Heel in the slam's place
     const kiSlam = this.kiSlamReady(now); this.kiSlam = false; // Ki Blast's ground slam (2026-11-13): straight down, the fists' own blow on landing
     const kind = plungeKind(this.save.equipment?.primary), foe = !kiSlam && now < (this.boxingUntil || 0) ? this.plungeDiveTarget() : null;
     const dist = foe ? Math.hypot(foe.x - p.x, foe.y - p.y) : 0;
@@ -9081,9 +9212,9 @@ export class Game {
   // time fraction t0 to t1) of what is left between the Wayfarer and (tx, ty) less the record's stop, in SHADOW_DASH.step
   // steps through canStand and moveGuardedCombatStep (shadowBoxStep's mover: walls, solid props, bodies, lethal ground and
   // ledges stop it), never more than `maxTiles` in all (q.travelled). True when something stopped it.
-  dashCarry(q, tx, ty, t0, t1, maxTiles, now) {
-    const p = this.player, D = SHADOW_DASH, w = this.glyphWorld(now), gap = () => Math.hypot(tx - p.x, ty - p.y), e0 = shadowDashTravel(t0);
-    let budget = Math.min(t1 >= 1 ? Infinity : Math.max(0, gap() - q.stop) * (shadowDashTravel(t1) - e0) / Math.max(1e-6, 1 - e0), maxTiles - q.travelled), blocked = false;
+  dashCarry(q, tx, ty, t0, t1, maxTiles, now, ease = shadowDashTravel) { // `ease`: the path's share at a time fraction (the Cyclone Heel's own, cycloneTravel)
+    const p = this.player, D = SHADOW_DASH, w = this.glyphWorld(now), gap = () => Math.hypot(tx - p.x, ty - p.y), e0 = ease(t0);
+    let budget = Math.min(t1 >= 1 ? Infinity : Math.max(0, gap() - q.stop) * (ease(t1) - e0) / Math.max(1e-6, 1 - e0), maxTiles - q.travelled), blocked = false;
     for (let i = 0; i < 64 && budget > 1e-6 && gap() > q.stop + 1e-6; i++) {
       const d = projectileDirection(tx - p.x, ty - p.y, p.facing), s = Math.min(D.step, budget, gap() - q.stop), bx = p.x, by = p.y, nx = p.x + d.x * s, ny = p.y + d.y * s;
       if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) { blocked = true; break; }
@@ -10431,7 +10562,8 @@ export class Game {
   fistPress(now = this.lastUpdateNow || 0, direction = null, action = null) {
     if(!this._fistInputUpdate)this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return false;
     if (this.fistCharge) return false;
-    if (this.kiSlamReady(now)) return this.airAttack(now); // Ki Blast: still up in the uppercut's leap, the ground slam
+    if (this.cycloneHeel || this.cycloneHold) return false; // the Cyclone Heel holds the chain until it ends
+    if (this.kiSlamReady(now)) return this.airAttack(now, action); // Ki Blast: still up in the uppercut's leap, the ground slam
     const onBeat = !this._fistBuffered && fistOnBeat(this.fistBeat, now); // the rhythm (brawler-spells.ts): a fresh press while the ball is home; a press held over by the gate or the buffer never is
     if (now < (this.fistRecoverUntil || 0)) { // the gate: a press in its last `buffer` s is thrown as it opens
       if (this.fistRecoverUntil - now <= IRON_FISTS.buffer * 1000 + 1e-6) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs };
@@ -10930,6 +11062,7 @@ export class Game {
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
+    if (this.cycloneHold) this.tickCycloneHold(now, input.held?.(this.cycloneHold.action) === true); // the Cyclone Heel: let go (or landed), it spins
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
     if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
@@ -10939,7 +11072,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ this.cancelCyclone(now); /* and the Cyclone Heel, held or spinning */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -10949,7 +11082,7 @@ export class Game {
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
       else { this.cancelConsumeVisual('dodge'); echoEvent(this, "dodge", now); onConstellationDodge(this); if (fieldOn(this.save, "drift-field")) { const q = this.player, cx = q.x + .5, cy = q.y + .45, f = this.ownSpellFx(true).filter((e) => Math.hypot(e.x - cx, e.y - cy) <= FIELD_PASSIVES["drift-field"].reach).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (f) this.driftField = { id: f.id, at: q.dodgeUntil || now }; } /* release 515: Drift Field */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "shadowStep") && !this.shadowCloneActive(now)) { const o = cloneOffset({ x: Number(x) || p.lastMoveVector?.x || 0, y: Number(y) || p.lastMoveVector?.y || 1 }, this.save.lastAim, SHADOW_STEP.behind); this.shadowClone = { ox: o.x, oy: o.y, until: now + SHADOW_STEP.seconds * 1000, marginalia: true }; } /* release 461: Shadow Step */ if (this.area === "dungeon" && runHas(this.save, this.areaId(), "emberWake")) this.dodgeBurst(p.x + .5, p.y + .45, EMBER_WAKE.radius, EMBER_WAKE.base + EMBER_WAKE.perLevel * (Number(this.save.level) || 1), now); /* release 459; 481: dodgeBurst */ if (this.area === "overworld" && aboard(this.save) && submersible(this.save)) { this.subDiveUntil = now + BOAT.sub.dive * 1000; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, this.subDiveUntil); } } // release 311: aboard a submersible a dodge is a dive
     }
-    if (this.plunge || now < (this.plungeRecoverUntil || 0)) input.consume("jump"); // jump attacks: no jump (nor glider) while plunging or recovering
+    if (this.plunge || now < (this.plungeRecoverUntil || 0) || this.cycloneHeel) input.consume("jump"); // the Cyclone Heel too // jump attacks: no jump (nor glider) while plunging or recovering
     if (input.consume("jump")) {
       // Release 641 (Tim: "you should be able to deploy, and I guess stow, the glider in the air by hitting the jump button"):
       // falling or gliding, Jump opens or folds the glider; mid-jump, high enough over what is below, it opens one.
@@ -11018,6 +11151,7 @@ export class Game {
     if (!dodging && (this.plunge || now < (this.plungeRecoverUntil || 0))) { x = 0; y = 0; } this.plungeSteer(dt, now); // jump attacks: the plunge drops straight (a dodge is never held back); the dive flies on
     if (!dodging && this.shadowDash) { x = 0; y = 0; } this.shadowDashSteer(dt, now); // Shadow Boxing's charge carries the Wayfarer (a dodge cancels it)
     if (!dodging && this.artRush) { x = 0; y = 0; } this.artRushSteer(dt, now); // the Lava Slash rush (2026-11-14): the same, its own clock
+    if (!dodging && this.cycloneHeel) { x = 0; y = 0; } this.cycloneSteer(dt, now); // the Cyclone Heel: she spins across (or in place, Shadow Boxing), turns striking on its clock
     if (TREE_FOOTING.straightHop && this.area === "overworld" && this.map?.canopy && !this.droneLift && this.skyAir != null && now < (this.jumpUntil || 0)) { // release 759: never under the drone's booster (it flies where the stick points) // great-tree footing: a sky hop flies straight over the gap
       const u = tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y);
       if (u && !u.canopy && (u.elev || 0) <= this.skyAir - TREE_FOOTING.gapBelow) { if (Math.abs(x) >= Math.abs(y)) y = 0; else x = 0; }
@@ -11234,14 +11368,14 @@ export class Game {
     }
     this.reconcileHeldTool(now);
     shadowTrailTick(this, now); /* presentation only: a dodge's trail follows him and closes when it ends */
-    if(p.hp<=0){this.cancelShadowDash(now);this.cancelArtRush(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.artRushLand(now);/* the Lava Slash rush: the slam on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
+    if(p.hp<=0){this.cancelShadowDash(now);this.cancelCyclone(now);this.cancelArtRush(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.artRushLand(now);/* the Lava Slash rush: the slam on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";
       this.save.toolMode = false;
-      const plunged = this.airAttack(now); // jump attacks (2026-11-12)
+      const plunged = this.airAttack(now, "attack"); // jump attacks (2026-11-12); "attack": the button a Cyclone Heel press is held on
       const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&(this.closeViewActionEligible()||this.fistsEquipped()/* the fists' contact delay runs everywhere */)&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
       if(plunged){/* the press is the jump attack's */}
       else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
