@@ -6,6 +6,17 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 973 — A theme for every world boss
+
+Tim, 2026-11-14: phase 2 of the soundtrack. Each world boss gets its own original track in the album's dungeon-synth style; Tim listened to the full-length renders, asked for them darker and "unsafe" ("too calm, comforting"), and approved the darker versions ("dark music is great").
+
+**CODE:** `soundtrack-songs.ts` `BOSS_SONGS` (merged into `SONGS`, each with `boss: true`) holds one theme per world boss, plus forms marked `variantOf` (`cinderSleep` for the Ash Chrysalis, `bonesHunt` for the fossil Spinosaurus). Each `LINER_NOTES` row carries `beast`, `title` and `story`. Each theme's `LINER_NOTES` row also has a `menace` tier (`calm`, `understated` or `overt`), and its `dark` devices (shadow, beat, sag, skip, cold bell, cluster, tritone bass, ponticello, growl, dive, drop, rumble, heartbeat; `menaceDevices`) run through the `soundtrack.ts` menace section (`menaceBar`, `menaceBed`, `menaceStep`). A per-song `dissonance` allow-list lets `validateSong` accept deliberate dissonance without loosening its global rules. A song may set `tremolo` (Hz, a string-pad LFO) and `modes` (one mode per phrase; `validateSong` checks the song in each). `soundtrack-director.ts`:
+- `BOSS_THEMES` maps `bossKey(e)` to a theme. The key is the world-beast id, else the sea or creature kind, with `:fossil` added for the bone Spinosaurus.
+- `bossSongFor` falls back from a variant to the beast's own theme, then to the shared `boss` track.
+- `sampleMusic` also detects `gatePredator`, the `mothChrysalis` (quietly, with no beast stinger) and `DIRECTOR.seaBosses` within `seaRange`.
+
+**BOUNDARY:** Music only: no save, generator or gameplay change, and no `Math.random`. A broken chrysalis or a single Revenant killed is not a victory. Each theme stays within the 40-voice budget (28 on the low tier); the low tier drops the sub, rumble, ponticello and growl. Songs without `dark` (the album and the shared boss track) play exactly as before. Every theme is original and quotes nothing.
+
 ## Release 972 — Arc Wave resume fix
 
 Fable review of r962→r971 (pre-publish, 2026-11-15): normalizePendingToolUse rejected the 5.5-speed Arc Wave crescents (release 966), so a pending Close View press was dropped on save.
