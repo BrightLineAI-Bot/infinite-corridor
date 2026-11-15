@@ -6,6 +6,23 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 971 — Close View creatures: solid, posed and refined
+
+Tim, 2026-11-14: ordinary creatures "appear too spectral", "fade in and out of view too frequently", several are cardboard cutouts, and "they just stand next to me" with no real windups or swings. He asked for a couple of visual refinement passes per creature, with no added phone cost.
+
+**CODE:**
+- **Solidity:**
+  - `close-view.ts` `CLOSE_VIEW.creatures.solid` (near 4.5, engage 7, hold 1, ease 5) with `closeViewCreatureSolidNear`/`Weight` spares nearby or engaging creatures the open-world fog edge, which used to dither them 2–4 tiles from the Wayfarer.
+  - Model admission (`modelRank`) gives engaging creatures first claim on the model cap and keeps last frame's bodies.
+  - `CLOSE_VIEW.creatures.ward` (alpha .6, held for 500 ms) keeps warded creatures steadily translucent.
+  - `actor-presentation.ts` `designedAlpha` keeps the aloft Cinder Seraph at .35 and the designed ghosts ghostly.
+  - The `elite-action` card fallback is removed.
+- **Attack root motion:** `close-view-models.ts` `CREATURE_POSE` holds the families (biped, quadruped, crawler, serpent, floating, blob, construct, plant), the motion styles (lunge, sweep, leap, dive, cast, ram, burrow, recoil, pull, spray, dread, slam) and the per-attack overrides. `creatureRootPose(actor)` turns the real attack clocks into lunge, squash, lean, twist and lift, and `writeCloseViewModel` applies them.
+- **Limb motion:** joint rows `J(coil, strike, follow, lag)` live in `ADVENTURE_JOINT_POSE` (merged from `CORE_JOINT_POSE`, `PENTAGON_JOINT_POSE` and `FOUNDRY_JOINT_POSE`) and are evaluated by `adventureJointPose` through one guarded hook in `writeCloseViewModel`.
+- **Models:** the refined bodies are in `close-view-models.ts`, `close-view-arcology-models.ts`, `close-view-pentagon-models.ts` and `close-view-adventure-models.ts`. Each fits its `ACTOR_BODY_HEIGHT` envelope; the Hollow Marshal's halberd is drawn at .8 length.
+
+**BOUNDARY:** Presentation only. Hit positions, reach, contact heights and gameplay are unchanged, and a lunge never passes 35% of the attack's reach. Every creature's triangle count is at or below its previous count (the pins only went down), with no added draw calls and no per-frame allocation. Reduced Motion halves the root pose, with no lunge or recoil translation and no follow-through. Distant materialisation is unchanged. Gameplay ghosts (wraiths, wisps, illusions, wall phasing, burrowers) stay translucent.
+
 ## Release 970 — Combat follow-ups: freeze cancel, clap walls, Quandrix linger, Transpose, fist meter
 
 Tim, 2026-11-14/15: freezes cancel attacks being wound up, resistance stays at the third-freeze level; the clap's lines stop at walls, 20% longer, 1.5 tiles out, draw enemies in; a Quandrix hand or slam let go early stays until its charge timer, then explodes; Transpose buffs all magic damage including the Carbine; a fist meter that says Perfect Timing! and steps up to Perfect Rhythm!.
