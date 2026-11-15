@@ -361,7 +361,7 @@ export function awaken(save, slot) {
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
   item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst. Let go early and it stays, working, until its charge runs out." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
 }
 // An awakened tool: the Hammerfall claps (brawler-spells.ts HAMMER_CLAP), the Great Sweep freezes what its blades touch (great-sweep.ts SWEEP_FREEZE); every other tool fans its shots.
 function awakenedToolText(item, sentence = false) {
