@@ -33,7 +33,7 @@ import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./af
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
-import { drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
@@ -2955,8 +2955,10 @@ export function render(ctx, g, w, h, now) {
             ctx.restore(); }
           const f = e.ai?.facing || "down",
             q = e.recoil > 0 && !["astralWorm","astralMirage"].includes(e.kind) ? 0.12 : 0,
-            ox = f === "left" ? q : f === "right" ? -q : 0,
-            oy = f === "up" ? q : f === "down" ? -q : 0;
+            cueQuiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), /* enemy-behaviour.ts cues: a flinch's jolt and an arrival's rise or drop */
+            ox = (f === "left" ? q : f === "right" ? -q : 0) + behaviourJolt(e, f, cueQuiet, "x"),
+            oy = (f === "up" ? q : f === "down" ? -q : 0) + behaviourJolt(e, f, cueQuiet, "y") + behaviourCueOffset(e, cueQuiet);
+          drawBehaviourCues(ctx, e, s, now, cueQuiet); // the alert "!", a guard's arc, the ground breaking as it arrives (only while a flag is up)
           if (e.hitFlash > 0 && e.kind !== "psychicCrystal") {
             ctx.save();
             ctx.globalAlpha = 0.45;
