@@ -1,0 +1,161 @@
+{
+  "fps": 12,
+  "triangles": 232,
+  "minShare": 0.025,
+  "maxParts": 14,
+  "kinds": {
+    "crystalCrab": {
+      "source": "quaternius-cute-animated-monsters/Crab.gltf",
+      "pack": "Quaternius Cute Animated Monsters Pack",
+      "author": "Quaternius",
+      "license": "CC0 1.0 Universal (pack page: \"License CC0\")",
+      "url": "https://quaternius.com/packs/cutemonsters.html",
+      "forward": "+z",
+      "up": "+y",
+      "height": 0.62,
+      "clips": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Bite_Front"
+      },
+      "attacks": {
+        "leapSlam": "Jump"
+      },
+      "slots": [
+        [
+          "#6e2b2b",
+          0,
+          1
+        ],
+        [
+          "#141414",
+          1,
+          1
+        ],
+        [
+          "#c9c38e",
+          3,
+          1
+        ],
+        [
+          "#5c1f55",
+          2,
+          1
+        ]
+      ],
+      "licenseQuote": "Pack page, \"Formats ... License CC0\" (linked to https://creativecommons.org/publicdomain/zero/1.0/); the FAQ at https://quaternius.com/faq.html: \"These assets are licensed under CC0, allowing you to use them without giving credit, even for commercial purposes.\" (this pack's Drive folder has no License.txt)"
+    },
+    "strataEel": {
+      "source": "quaternius-easy-enemy/Snake.fbx",
+      "pack": "Quaternius Easy Enemy Pack",
+      "author": "Quaternius",
+      "license": "CC0 1.0 Universal (pack License.txt and pack page)",
+      "url": "https://quaternius.com/packs/easyenemy.html",
+      "forward": "+z",
+      "up": "+y",
+      "height": 0.9,
+      "clips": {
+        "idle": "Snake_Idle",
+        "walk": "Snake_Walk",
+        "attack": "Snake_Attack"
+      },
+      "attacks": {
+        "phaseCharge": "Snake_Jump"
+      },
+      "slots": [
+        [
+          "#000000",
+          0,
+          1
+        ]
+      ],
+      "materialSlots": {
+        "DarkGreen": [
+          0,
+          0.82
+        ],
+        "LightGreen": [
+          0,
+          1.18
+        ],
+        "Yellow": [
+          2,
+          1
+        ],
+        "DarkRed": [
+          1,
+          1.6
+        ],
+        "Red": [
+          2,
+          0.8
+        ],
+        "Teeth": [
+          3,
+          1
+        ],
+        "Purple": [
+          1,
+          1
+        ]
+      },
+      "licenseQuote": "Pack page, \"Formats ... License CC0\" (linked to https://creativecommons.org/publicdomain/zero/1.0/); the FAQ at https://quaternius.com/faq.html: \"These assets are licensed under CC0, allowing you to use them without giving credit, even for commercial purposes.\" Pack License.txt: \"License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication https://creativecommons.org/publicdomain/zero/1.0/\""
+    },
+    "groveStag": {
+      "source": "quaternius-ultimate-animated-animals/Stag.gltf",
+      "pack": "Quaternius Ultimate Animated Animal Pack",
+      "author": "Quaternius",
+      "license": "CC0 1.0 Universal (pack License.txt and pack page)",
+      "url": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "forward": "+z",
+      "up": "+y",
+      "height": 1.55,
+      "clips": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Attack_Headbutt"
+      },
+      "attacks": {
+        "stagGore": {
+          "clip": "Attack_Headbutt",
+          "repeats": 3
+        },
+        "stagStomp": {
+          "clip": "Attack_Kick",
+          "repeats": 2
+        }
+      },
+      "slots": [
+        [
+          "#000000",
+          0,
+          1
+        ]
+      ],
+      "materialSlots": {
+        "Material": [
+          0,
+          1
+        ],
+        "Material.010": [
+          0,
+          0.72
+        ],
+        "Material.003": [
+          3,
+          0.8
+        ],
+        "Material.001": [
+          1,
+          1.9
+        ],
+        "Material.011": [
+          1,
+          1
+        ]
+      },
+      "licenseQuote": "Pack page, \"Formats ... License CC0\" (linked to https://creativecommons.org/publicdomain/zero/1.0/); the FAQ at https://quaternius.com/faq.html: \"These assets are licensed under CC0, allowing you to use them without giving credit, even for commercial purposes.\" Pack License.txt: \"License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication https://creativecommons.org/publicdomain/zero/1.0/\""
+    }
+  },
+  "_note": "triangles: 256 less room for the three 8-triangle drone attachments (MODEL_MAX_ATTACHMENTS), so a droneSwarm affix keeps the body"
+}

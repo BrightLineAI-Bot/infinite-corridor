@@ -713,13 +713,158 @@ const modelVertices = Object.fromEntries(Object.entries(models).map(([kind, part
 export const MODEL_ATTACHMENT_TRIANGLES = 8, MODEL_MAX_ATTACHMENTS = 3;
 export const MODEL_MAX_VERTICES = 256 * 3;
 
-export function modelTriangleCount(kind) { return modelSupported(kind) ? modelVertices[kind] / 3 : 0; }
+export function modelTriangleCount(kind) { return creatureAssets.has(kind) ? creatureAssets.get(kind).triangles : modelSupported(kind) ? modelVertices[kind] / 3 : 0; }
 export function modelSupportsAttachments(kind, count = 0) {
   return modelSupported(kind) && Number.isSafeInteger(count) && count >= 0 && count <= MODEL_MAX_ATTACHMENTS && modelTriangleCount(kind) + count * MODEL_ATTACHMENT_TRIANGLES <= 256;
 }
 
+// An imported creature body counts once its asset has loaded (closeViewCreatureAsset).
 export function modelSupported(kind) {
-  return Object.hasOwn(models, kind);
+  return Object.hasOwn(models, kind) || creatureAssets.has(kind);
+}
+
+// Imported CC0 creature bodies (assets/creatures/<kind>.json + .bin, made offline by tools/creature-import). Each is at most
+// IMPORTED_CREATURE.triangles rigid-part triangles in Close View model space (x forward, y left, z up, feet on z = 0), with
+// idle, walk and attack clips baked to one 3x4 transform per part per frame. They draw through this batched model path and
+// recolour to the kind's monster-pack.ts palette (slot 0 body, 1 dark, 2 accent, 3 light, times a per-triangle shade).
+// Until a kind's files have loaded (or if they fail) the kind is not modelSupported and keeps its standard-view card.
+//   Attack: the clip follows creatureRootPose's own stage and u (the pack's phase clock): coil plays [0, coil], strike
+//     [coil, strike], hold stays at strike (a multi-blow `repeats` attack replays strike..end on its active progress), recover
+//     [strike, 1]. Walk follows the gait phase (movement), idle the presentation clock when still.
+//   Reduced Motion: the idle clip holds its first frame (no ambient motion); walk and the attack still play, with the
+//     root pose's own reduced lean, lunge and recoil.
+export const IMPORTED_CREATURE = Object.freeze({
+  kinds: Object.freeze(['crystalCrab', 'strataEel', 'groveStag']),
+  // each body's CREATURE_POSE family (its root crouch, lunge and lean)
+  families: Object.freeze({ crystalCrab: 'crawler', strataEel: 'serpent', groveStag: 'quadruped' }),
+  triangles: 256 - MODEL_MAX_ATTACHMENTS * MODEL_ATTACHMENT_TRIANGLES, maxParts: 32, maxFrames: 240,
+  rootLean: .5, walkBlend: 2.5, deathLean: 1.52, deathDrop: .36,
+});
+const creatureAssets = new Map();
+let creatureAssetLoad = null, creatureAssetState = 'not-requested';
+export const closeViewCreatureAssetStatus = () => creatureAssetState;
+export const closeViewCreatureAsset = (kind) => creatureAssets.get(kind) || null;
+export function closeViewCreatureAssetUrl(kind, moduleUrl = import.meta.url) {
+  const url = new URL(moduleUrl), match = /^(.*\/)src\/[^/]+\.(?:js|ts)$/.exec(url.pathname);
+  if (!match || !IMPORTED_CREATURE.kinds.includes(kind)) throw new Error('Unsupported creature asset');
+  url.pathname = `${match[1]}assets/creatures/${kind}.json`; url.search = ''; url.hash = '';
+  return url;
+}
+const hexColor = (s) => typeof s === 'string' && /^#[0-9a-f]{6}$/i.test(s) ? parseInt(s.slice(1), 16) : null;
+export function decodeCreatureAsset(meta, binary) {
+  const T = IMPORTED_CREATURE;
+  if (meta?.version !== 1 || !T.kinds.includes(meta.kind) || !(binary instanceof ArrayBuffer)) throw new Error('Invalid creature asset header');
+  const tris = meta.triangles, parts = meta.parts;
+  if (!Number.isInteger(tris) || tris < 1 || tris > T.triangles || !Number.isInteger(parts) || parts < 1 || parts > T.maxParts) throw new Error('Invalid creature asset size');
+  const palette = Array.isArray(meta.palette) && meta.palette.length === 4 ? meta.palette.map(hexColor) : [];
+  if (palette.length !== 4 || palette.some((c) => c === null)) throw new Error('Invalid creature palette');
+  const types = { f32: Float32Array, u8: Uint8Array }, arrays = Object.create(null);
+  for (const [key, d] of Object.entries(meta.arrays || {})) {
+    const Type = types[d.componentType];
+    if (!Type || !Number.isSafeInteger(d.count) || d.count < 0 || !Number.isSafeInteger(d.byteOffset) || d.byteOffset < 0 || d.byteOffset % Type.BYTES_PER_ELEMENT || d.byteOffset + d.count * Type.BYTES_PER_ELEMENT > binary.byteLength) throw new Error('Invalid creature array ' + key);
+    const a = arrays[key] = new Type(binary, d.byteOffset, d.count);
+    if (Type === Float32Array) for (let i = 0; i < a.length; i++) if (!Number.isFinite(a[i])) throw new Error('Nonfinite creature array ' + key);
+  }
+  for (const [key, width] of Object.entries({ positions: 9, normals: 9, parts: 1, slots: 1, shades: 1 })) if (arrays[key]?.length !== tris * width) throw new Error('Invalid creature ' + key);
+  for (let i = 0; i < tris; i++) if (arrays.parts[i] >= parts || arrays.slots[i] > 3) throw new Error('Invalid creature triangle ' + i);
+  const clips = Object.create(null);
+  for (const [key, c] of Object.entries(meta.clips || {})) {
+    const data = arrays[c.array];
+    if (!(key === 'idle' || key === 'walk' || key === 'attack' || /^attack\.[A-Za-z]+$/.test(key))) throw new Error('Invalid creature clip ' + key);
+    if (!Number.isInteger(c.frames) || c.frames < 2 || c.frames > T.maxFrames || !(c.duration > 0) || !Number.isFinite(c.duration) || data?.length !== c.frames * parts * 12) throw new Error('Invalid creature clip ' + key);
+    const attack = key !== 'idle' && key !== 'walk';
+    if (attack && !(c.coil >= 0 && c.coil < c.strike && c.strike <= 1)) throw new Error('Invalid creature attack marks ' + key);
+    clips[key] = Object.freeze({ frames: c.frames, duration: c.duration, data, loop: !attack, coil: attack ? c.coil : 0, strike: attack ? c.strike : 0, repeats: Number.isInteger(c.repeats) && c.repeats > 1 && c.repeats <= 6 ? c.repeats : 1 });
+  }
+  if (!clips.idle || !clips.walk || !clips.attack) throw new Error('Creature asset lacks idle, walk or attack');
+  // Recolour once per palette: slot colour times shade, as RGB floats per triangle.
+  const colors = new Float32Array(tris * 3);
+  for (let i = 0; i < tris; i++) { const c = palette[arrays.slots[i]], k = arrays.shades[i] / 100; colors[i * 3] = Math.min(1, ((c >> 16) / 255) * k); colors[i * 3 + 1] = Math.min(1, (((c >> 8) & 255) / 255) * k); colors[i * 3 + 2] = Math.min(1, ((c & 255) / 255) * k); }
+  return Object.freeze({ kind: meta.kind, triangles: tris, parts, positions: arrays.positions, normals: arrays.normals, partOf: arrays.parts, colors, clips, palette: Object.freeze(palette), source: meta.source || null });
+}
+export function registerCreatureAsset(asset) { if (asset && IMPORTED_CREATURE.kinds.includes(asset.kind)) creatureAssets.set(asset.kind, asset); return asset; }
+// One request per kind, once; a failed kind keeps its card (no retry), the others still load.
+export function loadCloseViewCreatureAssets(fetcher = globalThis.fetch) {
+  if (creatureAssetLoad) return creatureAssetLoad;
+  if (typeof fetcher !== 'function') { creatureAssetState = 'unavailable'; return Promise.resolve(0); }
+  creatureAssetState = 'loading';
+  creatureAssetLoad = Promise.all(IMPORTED_CREATURE.kinds.map(async (kind) => {
+    try {
+      const url = closeViewCreatureAssetUrl(kind), metaResponse = await fetcher(url);
+      if (!metaResponse.ok) throw new Error('creature asset ' + metaResponse.status);
+      const meta = await metaResponse.json(), binResponse = await fetcher(new URL(meta.binary, url));
+      if (!binResponse.ok) throw new Error('creature binary ' + binResponse.status);
+      registerCreatureAsset(decodeCreatureAsset(meta, await binResponse.arrayBuffer()));
+      return 1;
+    } catch { return 0; }
+  })).then((loaded) => { const n = loaded.reduce((a, b) => a + b, 0); creatureAssetState = n === IMPORTED_CREATURE.kinds.length ? 'ready' : n ? 'partial' : 'failed'; return n; });
+  return creatureAssetLoad;
+}
+// The clip and its time this frame. Scratch record, rewritten every call.
+const CREATURE_CLIP = { attack: null, attackTime: 0, walk: 0, walkTime: 0, idleTime: 0 };
+export function creatureAssetClip(asset, actor, root = creatureRootPose(actor)) {
+  const C = CREATURE_CLIP, clips = asset.clips;
+  C.attack = null; C.attackTime = 0;
+  if (root.stage) {
+    const id = typeof actor.action === 'string' && actor.action ? actor.action : typeof actor.rootAttack === 'string' ? actor.rootAttack : '';
+    const clip = Object.hasOwn(clips, 'attack.' + id) ? clips['attack.' + id] : clips.attack, u = Math.max(0, Math.min(1, root.u));
+    let share = 0;
+    if (root.stage === 1) share = clip.coil * u;
+    else if (root.stage === 2) share = clip.coil + (clip.strike - clip.coil) * u;
+    else if (root.stage === 3) {
+      const p = Number.isFinite(actor.actionProgress) ? Math.max(0, Math.min(1, actor.actionProgress)) : 0;
+      share = clip.repeats > 1 && actor.actionPhase === 'active' ? clip.strike + (1 - clip.strike) * ((p * clip.repeats) % 1) : clip.strike;
+    } else share = clip.strike + (1 - clip.strike) * u;
+    C.attack = clip; C.attackTime = share * clip.duration;
+  }
+  const moving = Number.isFinite(actor.pace) ? Math.max(0, Math.min(1, actor.pace)) : 0, phase = Number.isFinite(actor.phase) ? actor.phase : 0;
+  C.walk = Math.min(1, moving * IMPORTED_CREATURE.walkBlend);
+  C.walkTime = (((phase / (Math.PI * 2)) % 1) + 1) % 1 * clips.walk.duration;
+  C.idleTime = actor.reduceMotion || !Number.isFinite(actor.effectTime) ? 0 : (actor.effectTime / 1000) % clips.idle.duration;
+  return C;
+}
+const PART_A = new Float32Array(IMPORTED_CREATURE.maxParts * 12), PART_B = new Float32Array(IMPORTED_CREATURE.maxParts * 12);
+function sampleCreatureClip(out, clip, time, parts) {
+  const f = Math.max(0, Math.min(clip.frames - 1, time / clip.duration * (clip.frames - 1))), a = Math.floor(f), b = Math.min(clip.frames - 1, a + 1), k = f - a, n = parts * 12;
+  for (let i = 0; i < n; i++) out[i] = clip.data[a * n + i] + (clip.data[b * n + i] - clip.data[a * n + i]) * k;
+}
+function blendParts(out, other, k, parts) { if (k <= 0) return; if (k >= 1) { out.set(other.subarray(0, parts * 12)); return; } for (let i = 0; i < parts * 12; i++) out[i] += (other[i] - out[i]) * k; }
+export function writeCreatureAssetModel(out, offset, actor, asset = creatureAssets.get(actor?.kind)) {
+  if (!asset) return offset;
+  const { x, y, z, yaw, pose } = actor, T = IMPORTED_CREATURE;
+  const attachments = Array.isArray(actor.attachments) ? actor.attachments.slice(0, MODEL_MAX_ATTACHMENTS).filter((q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && Number.isFinite(q.z)) : [];
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset + (asset.triangles * 3 + attachments.length * MODEL_ATTACHMENT_TRIANGLES * 3) * MODEL_FLOATS > out.length) return offset;
+  if (![x, y, z, yaw].every(Number.isFinite)) return offset;
+  const size = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1, progress = Number.isFinite(actor.amount) ? Math.max(0, Math.min(1, actor.amount)) : 0;
+  const root = creatureRootPose(actor), clip = creatureAssetClip(asset, actor, root), parts = asset.parts;
+  sampleCreatureClip(PART_A, asset.clips.idle, clip.idleTime, parts);
+  if (clip.walk > 0) { sampleCreatureClip(PART_B, asset.clips.walk, clip.walkTime, parts); blendParts(PART_A, PART_B, clip.walk, parts); }
+  if (clip.attack) { sampleCreatureClip(PART_B, clip.attack, clip.attackTime, parts); blendParts(PART_A, PART_B, 1, parts); }
+  const fall = pose === 'death' ? progress : 0, flinch = pose === 'hit' ? progress : 0, stagger = Number.isFinite(actor.stagger) ? Math.max(0, Math.min(1, actor.stagger)) : 0;
+  const alpha = Number.isFinite(actor.alpha) ? Math.max(0, Math.min(1, actor.alpha)) : 1;
+  const pitch = (root.family ? root.lean * T.rootLean : 0) + T.deathLean * fall + .16 * stagger - .24 * flinch, cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const heading = yaw + (root.family ? root.twist : 0), cy = Math.cos(heading), sy = Math.sin(heading);
+  const squash = 1 - root.squash, lift = root.lift, shift = root.lunge / size, base = T.deathDrop * fall - .10 * stagger;
+  const poison = actor.poison ? .55 : 0, P = asset.positions, N = asset.normals, C = asset.colors;
+  for (let t = 0; t < asset.triangles; t++) {
+    const m = asset.partOf[t] * 12;
+    let r = C[t * 3], g = C[t * 3 + 1], b = C[t * 3 + 2];
+    r += (.32 - r) * poison; g += (.82 - g) * poison; b += (.24 - b) * poison;
+    r += (.96 - r) * flinch * .6; g += (.34 - g) * flinch * .6; b += (.23 - b) * flinch * .6;
+    for (let v = 0; v < 3; v++) {
+      const i = t * 9 + v * 3, px = P[i], py = P[i + 1], pz = P[i + 2], nx0 = N[i], ny0 = N[i + 1], nz0 = N[i + 2], M = PART_A;
+      const u = M[m] * px + M[m + 3] * py + M[m + 6] * pz + M[m + 9], w0 = M[m + 1] * px + M[m + 4] * py + M[m + 7] * pz + M[m + 10], h = M[m + 2] * px + M[m + 5] * py + M[m + 8] * pz + M[m + 11];
+      let nu = M[m] * nx0 + M[m + 3] * ny0 + M[m + 6] * nz0, nv = M[m + 1] * nx0 + M[m + 4] * ny0 + M[m + 7] * nz0, nw = M[m + 2] * nx0 + M[m + 5] * ny0 + M[m + 8] * nz0;
+      const nl = Math.hypot(nu, nv, nw) || 1; nu /= nl; nv /= nl; nw /= nl;
+      // lean about the feet (the generic model path's pitch), then the root's lunge, squash and rise
+      const f = u * cp + h * sp + shift, up = base + h * cp - u * sp, nf = nu * cp + nw * sp, nup = nw * cp - nu * sp;
+      out[offset++] = x + (f * cy - w0 * sy) * size; out[offset++] = y + (f * sy + w0 * cy) * size; out[offset++] = z + up * squash * size + lift;
+      out[offset++] = nf * cy - nv * sy; out[offset++] = nf * sy + nv * cy; out[offset++] = nup;
+      out[offset++] = r; out[offset++] = g; out[offset++] = b; out[offset++] = alpha;
+    }
+  }
+  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, size);
+  return offset;
 }
 
 // Imported hero equipment: use existing authored parts, with no procedural torso/limbs.
@@ -1055,6 +1200,7 @@ export const CREATURE_POSE = Object.freeze({
     webSpit: 'spray', thornDarts: 'spray', stillnessCurse: 'dread',
     firefall: 'cast', tendrilRain: 'cast', icicleLine: 'cast', fleshBloom: 'cast', mirrorSwap: 'cast', phaseStep: 'cast',
     lunge: 'lunge', longReach: 'lunge', zigzag: 'sweep', hop: 'leap', slam: 'slam', ranged: 'cast',
+    stagGore: 'sweep', stagCharge: 'ram', stagThorns: 'cast', stagStomp: 'slam',
   }),
   semantic: Object.freeze({ bite: 'lunge', stab: 'lunge', sweep: 'sweep', slam: 'slam', beam: 'cast', charge: 'ram', ranged: 'spray',
     curse: 'cast', teleport: 'lunge', leap: 'leap', burrow: 'burrow', dive: 'dive', summon: 'cast', inhale: 'pull', howl: 'cast' }),
@@ -1073,7 +1219,9 @@ export const CREATURE_POSE = Object.freeze({
   }),
 });
 const POSE_PHASED = new Set(CREATURE_POSE.phased);
-export const creaturePoseFamily = (kind) => typeof kind === 'string' && Object.hasOwn(CREATURE_POSE.kinds, kind) ? CREATURE_POSE.kinds[kind] : null;
+// (an imported body's family is in IMPORTED_CREATURE.families, apart from the pinned authored roster)
+export const creaturePoseFamily = (kind) => typeof kind !== 'string' ? null : Object.hasOwn(CREATURE_POSE.kinds, kind) ? CREATURE_POSE.kinds[kind]
+  : Object.hasOwn(IMPORTED_CREATURE.families, kind) ? IMPORTED_CREATURE.families[kind] : null;
 // The motion style an attack takes on a body family (attack id, then its semantic family, then the body's own).
 export function creaturePoseStyle(family, id, semantic) {
   const P = CREATURE_POSE;
@@ -1153,6 +1301,7 @@ export function creatureRootPose(actor, out = ROOT_POSE) {
 }
 
 export function writeCloseViewModel(out, offset, actor) {
+  if (creatureAssets.has(actor?.kind)) return writeCreatureAssetModel(out, offset, actor); // an imported CC0 body (IMPORTED_CREATURE)
   if (Object.hasOwn(MIRAGE_BLADE_MODELS, actor?.kind)) return writeMirageBladeModel(out, offset, actor); // the Mirage blades: spun in a plane tipped toward the camera (close-view-sweep-gear.ts)
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");

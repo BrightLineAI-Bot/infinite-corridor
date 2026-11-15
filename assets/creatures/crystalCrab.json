@@ -1,0 +1,116 @@
+{
+ "version": 1,
+ "kind": "crystalCrab",
+ "triangles": 230,
+ "palette": [
+  "#a8607a",
+  "#2a1620",
+  "#8ff2ff",
+  "#e6fbff"
+ ],
+ "parts": 4,
+ "partBones": [
+  "Body",
+  "Eyebrow.R",
+  "Eyebrow.L",
+  "Head"
+ ],
+ "height": 0.62,
+ "source": {
+  "pack": "Quaternius Cute Animated Monsters Pack",
+  "file": "Crab.gltf",
+  "sha256": "603fbbbb83b940f71a37af09047949894b0f20ef28a198d76d43fcdf40529736",
+  "author": "Quaternius",
+  "license": "CC0 1.0 Universal (pack page: \"License CC0\")",
+  "url": "https://quaternius.com/packs/cutemonsters.html",
+  "sourceTriangles": 1820,
+  "sourceBones": 7
+ },
+ "clips": {
+  "idle": {
+   "source": "Idle",
+   "duration": 2.5,
+   "fps": 12,
+   "frames": 31,
+   "array": "clip_idle",
+   "loop": true
+  },
+  "walk": {
+   "source": "Walk",
+   "duration": 0.5417,
+   "fps": 12,
+   "frames": 8,
+   "array": "clip_walk",
+   "loop": true
+  },
+  "attack": {
+   "source": "Bite_Front",
+   "duration": 0.5,
+   "fps": 12,
+   "frames": 7,
+   "array": "clip_attack",
+   "loop": false,
+   "coil": 0.3333,
+   "strike": 0.6667
+  },
+  "attack.leapSlam": {
+   "source": "Jump",
+   "duration": 0.5417,
+   "fps": 12,
+   "frames": 8,
+   "array": "clip_attack_leapSlam",
+   "loop": false,
+   "coil": 0.35,
+   "strike": 0.55
+  }
+ },
+ "binary": "crystalCrab.bin",
+ "binarySha256": "c8398d0c6debe4b433d2a48add8a22ed4ee1bb24e8b4045a0c06d0bb102df303",
+ "arrays": {
+  "positions": {
+   "byteOffset": 0,
+   "count": 2070,
+   "componentType": "f32"
+  },
+  "normals": {
+   "byteOffset": 8280,
+   "count": 2070,
+   "componentType": "f32"
+  },
+  "parts": {
+   "byteOffset": 16560,
+   "count": 230,
+   "componentType": "u8"
+  },
+  "slots": {
+   "byteOffset": 16792,
+   "count": 230,
+   "componentType": "u8"
+  },
+  "shades": {
+   "byteOffset": 17024,
+   "count": 230,
+   "componentType": "u8"
+  },
+  "clip_idle": {
+   "byteOffset": 17256,
+   "count": 1488,
+   "componentType": "f32"
+  },
+  "clip_walk": {
+   "byteOffset": 23208,
+   "count": 384,
+   "componentType": "f32"
+  },
+  "clip_attack": {
+   "byteOffset": 24744,
+   "count": 336,
+   "componentType": "f32"
+  },
+  "clip_attack_leapSlam": {
+   "byteOffset": 26088,
+   "count": 384,
+   "componentType": "f32"
+  }
+ }
+}

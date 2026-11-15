@@ -1,0 +1,140 @@
+{
+ "version": 1,
+ "kind": "groveStag",
+ "triangles": 220,
+ "palette": [
+  "#6a5236",
+  "#22180e",
+  "#b8ff8a",
+  "#f0ffe0"
+ ],
+ "parts": 11,
+ "partBones": [
+  "Head",
+  "Neck2",
+  "FrontUpperLeg.L",
+  "FrontUpperLeg.R",
+  "Torso2",
+  "Tail1",
+  "Back",
+  "IKBackLeg.L",
+  "IKFrontLeg.L",
+  "IKBackLeg.R",
+  "IKFrontLeg.R"
+ ],
+ "height": 1.55,
+ "source": {
+  "pack": "Quaternius Ultimate Animated Animal Pack",
+  "file": "Stag.gltf",
+  "sha256": "170b964909d16d1ab4d428b1d714f25016913d32481acd9c3d62923192583be6",
+  "author": "Quaternius",
+  "license": "CC0 1.0 Universal (pack License.txt and pack page)",
+  "url": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+  "sourceTriangles": 3670,
+  "sourceBones": 38
+ },
+ "clips": {
+  "idle": {
+   "source": "Idle",
+   "duration": 3.3333,
+   "fps": 12,
+   "frames": 41,
+   "array": "clip_idle",
+   "loop": true
+  },
+  "walk": {
+   "source": "Walk",
+   "duration": 1.1667,
+   "fps": 12,
+   "frames": 15,
+   "array": "clip_walk",
+   "loop": true
+  },
+  "attack": {
+   "source": "Attack_Headbutt",
+   "duration": 0.8,
+   "fps": 12,
+   "frames": 11,
+   "array": "clip_attack",
+   "loop": false,
+   "coil": 0.3,
+   "strike": 0.5
+  },
+  "attack.stagGore": {
+   "source": "Attack_Headbutt",
+   "duration": 0.8,
+   "fps": 12,
+   "frames": 11,
+   "array": "clip_attack_stagGore",
+   "loop": false,
+   "coil": 0.3,
+   "strike": 0.5,
+   "repeats": 3
+  },
+  "attack.stagStomp": {
+   "source": "Attack_Kick",
+   "duration": 0.8,
+   "fps": 12,
+   "frames": 11,
+   "array": "clip_attack_stagStomp",
+   "loop": false,
+   "coil": 0.3,
+   "strike": 0.5,
+   "repeats": 2
+  }
+ },
+ "binary": "groveStag.bin",
+ "binarySha256": "3e1798d9fecfda0e950caf7f6a0a69531d143c446a108b1fd5acbc4b1ee70e67",
+ "arrays": {
+  "positions": {
+   "byteOffset": 0,
+   "count": 1980,
+   "componentType": "f32"
+  },
+  "normals": {
+   "byteOffset": 7920,
+   "count": 1980,
+   "componentType": "f32"
+  },
+  "parts": {
+   "byteOffset": 15840,
+   "count": 220,
+   "componentType": "u8"
+  },
+  "slots": {
+   "byteOffset": 16060,
+   "count": 220,
+   "componentType": "u8"
+  },
+  "shades": {
+   "byteOffset": 16280,
+   "count": 220,
+   "componentType": "u8"
+  },
+  "clip_idle": {
+   "byteOffset": 16500,
+   "count": 5412,
+   "componentType": "f32"
+  },
+  "clip_walk": {
+   "byteOffset": 38148,
+   "count": 1980,
+   "componentType": "f32"
+  },
+  "clip_attack": {
+   "byteOffset": 46068,
+   "count": 1452,
+   "componentType": "f32"
+  },
+  "clip_attack_stagGore": {
+   "byteOffset": 51876,
+   "count": 1452,
+   "componentType": "f32"
+  },
+  "clip_attack_stagStomp": {
+   "byteOffset": 57684,
+   "count": 1452,
+   "componentType": "f32"
+  }
+ }
+}

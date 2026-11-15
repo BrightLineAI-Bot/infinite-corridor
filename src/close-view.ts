@@ -6,7 +6,7 @@ import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorT
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, loadCloseViewCreatureAssets, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
@@ -3361,7 +3361,7 @@ const MODEL_STATE = {
   vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   folk: { count: 0, items: [], tracks: new Map(), map: null }, // 2026-11-13: the townsfolk's skinned bodies this frame (close-view-folk.ts), drawn with the beasts
-  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
+  playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, creatureAssetsRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
   heroInput: { tint: new Float32Array([1, 1, 1]), action: null, carbineHold: false, carbineRecoil: 0 },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   consumeCurrent:{area:'overworld',areaId:'',levelId:'root'},consumeSample:{active:false,kind:'',itemKind:'',phase:0,elapsedMs:0,remainingMs:0,durationMs:0},
@@ -3623,6 +3623,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     state.heroRequested = true;
     loadCloseViewHero().catch(() => null); // Existing model remains until data and GPU texture are ready.
   }
+  if (!state.creatureAssetsRequested && typeof globalThis.Image === 'function' && typeof globalThis.fetch === 'function') { state.creatureAssetsRequested = true; loadCloseViewCreatureAssets().catch(() => null); } // imported creature bodies: cards until loaded
   closeViewGLStats.modelFallbacks = Object.create(null);
   if (state.map !== g.map) { state.map = g.map; state.tracks.clear(); state.lastMeleeHit = -Infinity; state.heroPose = null; state.cleaverTrail.count = 0; resetShadowDash(state.shadowDash); }
   if (!reduce && player.meleeUntil > now) {

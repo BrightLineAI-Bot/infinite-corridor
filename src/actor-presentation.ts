@@ -74,6 +74,10 @@ export const ACTOR_PRESENTATION = Object.freeze({
   lakeGlider: profile(0, .6, .45, 'pack'),
   hookhanger: profile(0, 1.1, .8, 'pack'),
   slagwright: profile(0, 1.6, 1.0, 'pack'),
+  // Imported CC0 bodies (close-view-models.ts IMPORTED_CREATURE): shots keep the default height they had as cards.
+  crystalCrab: profile(0, .65, .66, 'pack'),
+  strataEel: profile(0, 1.0, .66, 'pack', true, { segments: 5 }),
+  groveStag: profile(0, 1.6, .66, 'pack'),
 });
 export function actorProfile(actor) {
   const p = ACTOR_PRESENTATION[actor?.kind];
@@ -95,6 +99,8 @@ export const PACK_ACTION_FAMILIES = Object.freeze({
   devourPull: 'inhale', broodBirth: 'summon', fleshBloom: 'ranged', wispBewilder: 'howl', gorgeHowl: 'howl',
   // Adventure creatures' own modules (adventure-creatures.ts).
   ledgeDrop: 'leap', ledgeClimb: 'leap', vineVault: 'leap', vineRetreat: 'leap', censerLob: 'ranged', thornDarts: 'ranged', sinkFunnel: 'inhale', glassStrafe: 'dive',
+  // The Grove Stag's own modules (monster-pack.ts; its imported body).
+  stagGore: 'sweep', stagCharge: 'charge', stagThorns: 'ranged', stagStomp: 'slam',
   lampFlare: 'ranged', bellToll: 'slam', tendrilRain: 'ranged', membranePulse: 'howl', phaseStep: 'teleport', icicleLine: 'ranged', glideRake: 'charge', pendulumSwing: 'sweep', slagPour: 'ranged', heavySweep: 'sweep', poleThrust: 'stab', prismBeam: 'beam',
 });
 const PACK_PHASES = new Set(['windup', 'strike', 'active', 'recover', 'track', 'lock', 'travel', 'erupt', 'stunned']);

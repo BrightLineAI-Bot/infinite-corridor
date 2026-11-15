@@ -1,0 +1,119 @@
+{
+ "version": 1,
+ "kind": "strataEel",
+ "triangles": 227,
+ "palette": [
+  "#2f6f73",
+  "#10282b",
+  "#7ff5d8",
+  "#e6fff8"
+ ],
+ "parts": 7,
+ "partBones": [
+  "Chest",
+  "Head",
+  "Tail",
+  "Tail1",
+  "Tail3",
+  "Mouth",
+  "LowerMouth"
+ ],
+ "height": 0.9,
+ "source": {
+  "pack": "Quaternius Easy Enemy Pack",
+  "file": "Snake.fbx",
+  "sha256": "553092a2e1c68ab4e49ce5c139942228a77a911b25c78635aca7901db0a8d53d",
+  "author": "Quaternius",
+  "license": "CC0 1.0 Universal (pack License.txt and pack page)",
+  "url": "https://quaternius.com/packs/easyenemy.html",
+  "sourceTriangles": 1618,
+  "sourceBones": 15
+ },
+ "clips": {
+  "idle": {
+   "source": "Snake_Idle",
+   "duration": 2.0833,
+   "fps": 12,
+   "frames": 26,
+   "array": "clip_idle",
+   "loop": true
+  },
+  "walk": {
+   "source": "Snake_Walk",
+   "duration": 0.8333,
+   "fps": 12,
+   "frames": 11,
+   "array": "clip_walk",
+   "loop": true
+  },
+  "attack": {
+   "source": "Snake_Attack",
+   "duration": 0.6667,
+   "fps": 12,
+   "frames": 9,
+   "array": "clip_attack",
+   "loop": false,
+   "coil": 0.25,
+   "strike": 0.625
+  },
+  "attack.phaseCharge": {
+   "source": "Snake_Jump",
+   "duration": 0.9583,
+   "fps": 12,
+   "frames": 13,
+   "array": "clip_attack_phaseCharge",
+   "loop": false,
+   "coil": 0.1667,
+   "strike": 0.5833
+  }
+ },
+ "binary": "strataEel.bin",
+ "binarySha256": "9aa2590e1659b2e1fb08160c173dbc22833e21c0a91450a91ff6d4f4f2d87954",
+ "arrays": {
+  "positions": {
+   "byteOffset": 0,
+   "count": 2043,
+   "componentType": "f32"
+  },
+  "normals": {
+   "byteOffset": 8172,
+   "count": 2043,
+   "componentType": "f32"
+  },
+  "parts": {
+   "byteOffset": 16344,
+   "count": 227,
+   "componentType": "u8"
+  },
+  "slots": {
+   "byteOffset": 16572,
+   "count": 227,
+   "componentType": "u8"
+  },
+  "shades": {
+   "byteOffset": 16800,
+   "count": 227,
+   "componentType": "u8"
+  },
+  "clip_idle": {
+   "byteOffset": 17028,
+   "count": 2184,
+   "componentType": "f32"
+  },
+  "clip_walk": {
+   "byteOffset": 25764,
+   "count": 924,
+   "componentType": "f32"
+  },
+  "clip_attack": {
+   "byteOffset": 29460,
+   "count": 756,
+   "componentType": "f32"
+  },
+  "clip_attack_phaseCharge": {
+   "byteOffset": 32484,
+   "count": 1092,
+   "componentType": "f32"
+  }
+ }
+}
