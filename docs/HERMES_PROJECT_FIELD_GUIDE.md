@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 978 — Oculus button and slots A to D
+
+Tim, 2026-11-15: give the Oculus its own button, make the utility button a fourth preset slot, and letter the slots A, B, C, D in on-screen order.
+
+**CODE:** `src/oculus.ts`: `OCULUS.button` ("switch"; "dais" restores the release-874 dais); `pressOculusButton` checks `oculusAvailable`, keeps the cooldown, then `oculusSwitch` and `oculusWarp`. `src/spell-slots.ts`: `SLOTS` gains `d` (`SLOT_ACTIONS.d = "utility"`); `SLOT_ORDER` and `SLOT_LABELS` (d→A, a→B, b→C, c→D) with `slotLabel`; `SLOT_TOOLS` gains robot and drone (`FRAME_TOOLS`); `UTILITY.slot` maps a stored utility to D; `presetSlot` and `setPresetSlot`; `presetUtility`, `setPresetUtility` and `activeUtility` read and write D; `togglePreset` swaps D. `src/game.ts`: `castSlot(slot, now, moving)` sends robot and drone to `pressFrame`; `pressUtility` is `castSlot("d")`; `pressOculus`; the update loop presses D through `pressSlot` and consumes `oculus`; `actionReadiness.utility`. `src/input.ts`: F, G, C, B for slots A–D; O for the Oculus. `src/main.ts`: `#oculusButton` state (availability in the 100 ms slow refresh); all four slots drawn alike; Arcanum rows A–D. `styles.css`: `.oculus-button` under the compass. Tests: `oculus-slot-d` (11); `oculus-utility-874`, `robot-drone-utility-875`, `spell-slots` and `lantern` updated to the four-slot layout.
+
+**BOUNDARY:** Schema 14, additive. Presets and `magicSkills.slots` gain `d`, filled from `utility` only when `d` is absent (build→Build, robot/drone/frame→that frame, oculus→empty, unknown→Build; a duplicate of A–C leaves D empty). `utility` and all unknown fields are kept; the migration is idempotent. The slot letters are display only: save keys, input actions and the Pairing (keys a+b) are unchanged. The Oculus dais code is kept and tested but no HUD control opens it while `OCULUS.button` is "switch". Look mode exits are unchanged. Drone still needs the fourth Gate.
+
 ## Release 977 — Room light mix and the Lantern at night
 
 Tim, 2026-11-15: a mix of lit, gloomy and dark rooms indoors, the Deep darker, and the Lantern glowing outside at night.
