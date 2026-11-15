@@ -6,6 +6,30 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 979 — Great-tree Standard View blackout fix
+
+Tim, 2026-11-15 (save at section -186,-115): toggling the Oculus at a great tree left the top half of the Standard View black.
+
+**CODE:** `renderer.ts` `drawGroundCache` (CV_TREE_BLACKOUT) keeps the cached ground image's band above row 0 (`top`, where lifted tiles such as a great tree's trunk and crown are drawn) whenever the image is rebuilt with unchanged tiles and tile size; before, a rebuild for a new scale alone measured no band and clipped everything lifted above row 0. Close View's leave blend draws the Standard View under `ctx.scale(z)`; `close-view.ts` exports `closeViewLeaving()` for the duration of that zoom, and while it is true a scale change alone keeps the current image and draws it scaled instead of rebuilding it every frame. Test: `cv-tree-blackout` (2).
+
+**BOUNDARY:** Presentation only: generation, saves, the tree package and Close View's own scene are unchanged. Reduced Motion skips the blend as before. The band is still measured from scratch whenever any tile, the tile size, the map, the building or the scar surface changes. During the ~0.42 s leave zoom the ground is upscaled under the fading snapshot. The void-scar overlay still rebuilds on a scale change (it has no band to lose).
+
+## Release 978 — Oculus button and slots A to D
+
+Tim, 2026-11-15: give the Oculus its own button, make the utility button a fourth preset slot, and letter the slots A, B, C, D in on-screen order.
+
+**CODE:** `src/oculus.ts`: `OCULUS.button` ("switch"; "dais" restores the release-874 dais); `pressOculusButton` checks `oculusAvailable`, keeps the cooldown, then `oculusSwitch` and `oculusWarp`. `src/spell-slots.ts`: `SLOTS` gains `d` (`SLOT_ACTIONS.d = "utility"`); `SLOT_ORDER` and `SLOT_LABELS` (d→A, a→B, b→C, c→D) with `slotLabel`; `SLOT_TOOLS` gains robot and drone (`FRAME_TOOLS`); `UTILITY.slot` maps a stored utility to D; `presetSlot` and `setPresetSlot`; `presetUtility`, `setPresetUtility` and `activeUtility` read and write D; `togglePreset` swaps D. `src/game.ts`: `castSlot(slot, now, moving)` sends robot and drone to `pressFrame`; `pressUtility` is `castSlot("d")`; `pressOculus`; the update loop presses D through `pressSlot` and consumes `oculus`; `actionReadiness.utility`. `src/input.ts`: F, G, C, B for slots A–D; O for the Oculus. `src/main.ts`: `#oculusButton` state (availability in the 100 ms slow refresh); all four slots drawn alike; Arcanum rows A–D. `styles.css`: `.oculus-button` under the compass. Tests: `oculus-slot-d` (11); `oculus-utility-874`, `robot-drone-utility-875`, `spell-slots` and `lantern` updated to the four-slot layout.
+
+**BOUNDARY:** Schema 14, additive. Presets and `magicSkills.slots` gain `d`, filled from `utility` only when `d` is absent (build→Build, robot/drone/frame→that frame, oculus→empty, unknown→Build; a duplicate of A–C leaves D empty). `utility` and all unknown fields are kept; the migration is idempotent. The slot letters are display only: save keys, input actions and the Pairing (keys a+b) are unchanged. The Oculus dais code is kept and tested but no HUD control opens it while `OCULUS.button` is "switch". Look mode exits are unchanged. Drone still needs the fourth Gate.
+
+## Release 977 — Room light mix and the Lantern at night
+
+Tim, 2026-11-15: a mix of lit, gloomy and dark rooms indoors, the Deep darker, and the Lantern glowing outside at night.
+
+**CODE:** `INTERIOR_LIGHT` version 2 (`close-view.ts`): per-tier `keep` (interior lit .4 / gloomy .6 / dark .92; Deep .7 / .85 / .95) and `fogNear` (interior 2 / 1.2 / .3; Deep 1 / .5 / .15), and per-theme tier shares (default .30/.45/.25 … deep .04/.26/.70). `roomLightField(map)` finds rooms once per map from the floor (cores ≥2 tiles from walls, big caves cut into 10-tile sections, mazes use their whole floor, open-air tiles always lit), picks each room's tier from a hash of the map identity and the room's first tile, blurs tiers 2 tiles across boundaries and caches the field; `roomLightAt` reads it bilinearly at the Wayfarer's feet. Close View writes the GPU ambient in place once per frame and moves the fog's near edge; the 2D fallback steps its ambient in 1/64ths so the cached torch gradient rebuilds rarely. Standard View dims dark rooms only (≤ .30 alpha) from one tiny per-map image drawn as one scaled copy. `LANTERN.night = { glow: .16, reach: 1.4 }` (`spell-slots.ts`) with `outdoorNight(g)` and `lanternNightReach(save, night)`. Tests: `room-light-mix` (8), `brighter-interiors` updated to version 2.
+
+**BOUNDARY:** Presentation only: the field never mutates the map, the save or generation (checked by hash). Maps over 40,000 tiles keep the even 976 gloom. Chasm crossings, labyrinth chambers and the Stillworks keep their own darkness in Standard View. Ambient is per frame, not per pixel, so a room seen from a doorway takes on its light as you cross (about 4 tiles). By day or shuttered the Lantern is unchanged outdoors. No save change (schema 14).
+
 ## Release 976 — Brighter interiors
 
 Tim, 2026-11-15: every room inside dungeons, keeps and towers is a little too dark to see the world around you or interact with it.

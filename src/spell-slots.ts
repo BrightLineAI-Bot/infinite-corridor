@@ -65,9 +65,22 @@ export const PAIRINGS = {
 // what A and B hold (a spell, a discipline, Build or the preset's item); all three may be spells. Like B, C is open at once.
 // The Pairing stays the attributes of A and B. Additive at schema 14: a save without C gets an empty C (or what its preset's
 // Build button held, below).
-export const SLOTS = ["a", "b", "c"];
-// The input action each slot's button sends (input.ts keys F, G and C).
-export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3" });
+// Slot D (Tim, 2026-11-15: "the utility button becomes a fourth assignable slot, D, in every preset, alongside A, B and C"):
+// the fixed utility button bottom left is slot D. D, like A, B and C, holds anything a slot holds (a spell, a discipline, Build,
+// the preset's item, the Lantern) and the Robot and the Drone, which only the utility button held before. All four slots are
+// equal, so A, B and C take the Robot and the Drone too. The Oculus left the presets for its own button under the compass
+// (oculus.ts OCULUS.button). The Pairing stays the attributes of A and B.
+export const SLOTS = ["a", "b", "c", "d"];
+// The input action each slot's button sends. D keeps the utility button's own action ("utility"; "build" is its older name).
+export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3", d: "utility" });
+// Tim, 2026-11-15: "instead of D A B C, switch it over so it's A B C D", then "we can do a b c and d... so they know there's no
+// overlap". The player sees and is told letters in the buttons' on-screen reading order (left to right: the utility place, the
+// two quick buttons, then the diamond's lower left): save key d shows as A, a as B, b as C, c as D. DISPLAY ONLY: the save keys,
+// input actions and the Pairing (keys a and b, shown B and C) are unchanged, so nothing migrates. Keys F, G, C and B press them
+// in that order (input.ts).
+export const SLOT_ORDER = Object.freeze(["d", "a", "b", "c"]);
+export const SLOT_LABELS = Object.freeze({ d: "A", a: "B", b: "C", c: "D" });
+export const slotLabel = (q) => SLOT_LABELS[q] || String(q).toUpperCase();
 // Release 874: the fixed utility button where the compass sat (bottom left). Each preset chooses what it does. "frame" is the
 // Submersible Frame ashore: the robot, its Empowered (power armor) mode and the drone are one control, the same frame
 // cycled by the same button (vehicle-gates.ts toggleMech; robot or drone is the frame's mode, chosen in Supplies).
@@ -75,19 +88,26 @@ export const SLOT_ACTIONS = Object.freeze({ a: "spell", b: "spell2", c: "spell3"
 // can have one or the other"): the frame's two forms are separate choices, "robot" (the suit, with its power armor) and "drone".
 // Only one is ever out: the button calls up its own form and puts the other away first. A stored "frame" (release 874) reads as
 // the form the frame was set to (save.mech.mode).
-export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "robot", "drone"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", robot: "Robot", drone: "Drone" }) });
+// Since slot D (2026-11-15) this is the migration table for a stored `utility`: `slot` is what D holds in its place. The Oculus
+// has its own button now, so a preset that chose it gets an empty D (the Oculus is still one tap away and nothing is lost).
+export const UTILITY = Object.freeze({ choices: Object.freeze(["oculus", "build", "robot", "drone"]), default: "build", names: Object.freeze({ oculus: "Oculus", build: "Build", robot: "Robot", drone: "Drone" }), slot: Object.freeze({ oculus: null, build: "build", robot: "robot", drone: "drone" }) });
 export const frameForm = (save) => (save?.mech?.mode === "drone" ? "drone" : "robot");
 // Release 309 (Tim: "I want you to be able to put build in any one of those positions... items... spells... or build"): A and
 // B may also hold "build" or "item" (the preset's item), and the Build button may hold a castable. Additive at schema 14.
 // Lantern (2026-11-11): "lantern" joins them, so A, B or C can hold it.
-export const SLOT_TOOLS = ["build", "item", "lantern"];
+// Slot D (2026-11-15): "robot" and "drone", the Submersible Frame's two forms (Game.pressFrame), go in any slot too.
+export const SLOT_TOOLS = ["build", "item", "lantern", "robot", "drone"];
+export const FRAME_TOOLS = Object.freeze(["robot", "drone"]);
 // The Lantern (Tim, 2026-11-11: "a lantern... the Wayfarer can put on... assignable to one of the A/B/C option buttons...
 // Toggling it illuminates the area around the Wayfarer more"). Carried from the start: no source, no cost. Its slot's button
 // lights or shutters it (`save.lantern.lit`, additive at schema 14, normalised by ensureLantern from freshSave and migrateSave).
 // It never changes the darkness itself: where an area is dark (`places`), the renderer lifts that darkness by lanternLift(d)
 // around the Wayfarer, `strength` at the heart out to `inner` of `radius`, easing to nothing at `radius` and beyond. Close
 // View's torch reaches `closeReach` times as far. The Gloomvast's Dark and the Stormkraken's ink are a boss's moves, not a
-// place's dark, and are left as they are.
+// place's dark, and are left as they are. Outdoors (Tim, 2026-11-15: "the Lantern can still give a little glow around you if
+// you're outside on a dark night"): under a night sky (close-view.ts outdoorNight, the section's sky mood) a lit Lantern lays a
+// fainter warm glow (`night.glow`) in Standard View and lengthens Close View's carried light `night.reach` times; by day outdoors
+// it does nothing.
 export const LANTERN = Object.freeze({
   name: "Lantern", symbol: "☼", color: "#f2c46a",
   places: Object.freeze(["dungeon"]), // the areas it lights: every dungeon (caves, the Deep, Pentagons, chasms, labyrinths)
@@ -98,6 +118,7 @@ export const LANTERN = Object.freeze({
   closeReach: 1.4, // Close View: the torch reaches this many times as far while it is lit
   maskPx: 96, // the one cached light mask (pixels a side)
   maskStops: 8, // gradient stops sampled from lanternLift
+  night: Object.freeze({ glow: .16, reach: 1.4 }), // outdoors at night: the glow's alpha (Standard View), the carried light's reach (Close View)
 });
 // How much of the darkness the lit lantern lifts `d` tiles from the Wayfarer: 0..strength, exactly 0 at radius and beyond.
 export function lanternLift(d) {
@@ -115,6 +136,8 @@ export const lanternLit = (save) => save?.lantern?.lit === true;
 export const lanternShines = (save, area) => lanternLit(save) && LANTERN.places.includes(area);
 // Close View: the torch's reach times this (1 unless the lantern shines here).
 export const lanternReach = (save, area) => (lanternShines(save, area) ? LANTERN.closeReach : 1);
+// Outdoors: the carried light's reach times this (1 unless the lantern is lit and it is night).
+export const lanternNightReach = (save, night) => (night && lanternLit(save) ? LANTERN.night.reach : 1);
 export function ensureLantern(save) {
   if (!save || typeof save !== "object") return null;
   const raw = save.lantern && typeof save.lantern === "object" && !Array.isArray(save.lantern) ? save.lantern : {};
@@ -126,7 +149,7 @@ export function toggleLantern(save) {
   return { ok: true, lit: l.lit, message: l.lit ? "The lantern is lit: the dark draws back around you." : "You shutter the lantern." };
 }
 // The name of a slot tool, for messages and labels.
-export const slotToolName = (t) => (t?.tool === "build" ? "Build" : t?.tool === "lantern" ? LANTERN.name : "Item");
+export const slotToolName = (t) => (t?.tool === "build" ? "Build" : t?.tool === "lantern" ? LANTERN.name : FRAME_TOOLS.includes(t?.tool) ? UTILITY.names[t.tool] : "Item");
 export const pairKey = (x, y) => [x, y].sort().join("+");
 
 // Castables the Wayfarer can slot now: every spell, every discipline with a rank, Aerial Step once learned.
@@ -151,19 +174,28 @@ export function ensureSlots(save) {
     const legacy = q.button === "item" ? "item" : CASTABLES[q.button] ? q.button : "build", item = BUTTON_ITEMS.includes(q.item) ? q.item : null, frame = legacy === "item" && item === "submersible";
     const c = Object.hasOwn(q, "c") ? valid(q.c) : legacy === "build" || frame ? null : legacy;
     const utility = UTILITY.choices.includes(q.utility) ? q.utility : q.utility === "frame" || (!Object.hasOwn(q, "utility") && frame) ? frameForm(save) : UTILITY.default; // release 875: "frame" became its form
-    const out = { ...q, a: valid(q.a), b: valid(q.b), c, utility, item }; // release 874: other fields (an older `button`, unknown ones) are kept
+    // Slot D (2026-11-15): a preset without `d` takes it from its utility choice (UTILITY.slot: Build, Robot and Drone stay on
+    // the button, the Oculus leaves D empty). `utility` is kept as it was, no longer read, like `button`; a `d` already there wins.
+    // D already held by A, B or C (Build twice, say) is left empty: a slot holds a thing once.
+    let d = Object.hasOwn(q, "d") ? valid(q.d) : UTILITY.slot[utility] ?? null;
+    if (d && [valid(q.a), valid(q.b), c].includes(d)) d = null;
+    const out = { ...q, a: valid(q.a), b: valid(q.b), c, d, utility, item }; // release 874: other fields (an older `button`, unknown ones) are kept
     if (!(q.build && typeof q.build === "object")) delete out.build; // release 393: `build` (build-presets.ts) rides along
     return out;
   };
   const list = Array.isArray(ms.presets) ? ms.presets.slice(0, PRESETS).map(pair) : [];
   ms.preset = ms.preset === 1 ? 1 : 0;
-  ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b), c: Object.hasOwn(raw, "c") ? valid(raw.c) : list[ms.preset]?.c ?? null } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null, c: null };
+  // Slot D: the loadout in hand takes D from its preset (migrated from that preset's utility above); a save with no presets
+  // gets the old default utility, Build.
+  const dNow = list[ms.preset] ? list[ms.preset].d : UTILITY.slot[UTILITY.default];
+  ms.slots = raw ? { a: valid(raw.a), b: valid(raw.b), c: Object.hasOwn(raw, "c") ? valid(raw.c) : list[ms.preset]?.c ?? null, d: Object.hasOwn(raw, "d") ? valid(raw.d) : dNow } : { a: `spell:${SPELLS[save.equippedSpell] ? save.equippedSpell : "ember-ring"}`, b: ms.selected && CASTABLES[`skill:${ms.selected}`] ? `skill:${ms.selected}` : null, c: null, d: dNow };
   if (ms.slots.a && ms.slots.a === ms.slots.b) ms.slots.b = null;
   if (ms.slots.c && (ms.slots.c === ms.slots.a || ms.slots.c === ms.slots.b)) ms.slots.c = null;
+  if (ms.slots.d && (ms.slots.d === ms.slots.a || ms.slots.d === ms.slots.b || ms.slots.d === ms.slots.c)) ms.slots.d = null;
   ms.pairingsSeen = { ...(ms.pairingsSeen || {}) };
   // Release 489/493: a retired spell's glyph sockets give their glyphs back (Iron Fist became a weapon, Hammerfall and Great Sweep tools).
   for (const id of RETIRED_SPELLS) { const g = save.spellGlyphs?.[id]; if (!Array.isArray(g)) continue; save.glyphs ||= {}; for (const q of g) if (q) save.glyphs[q] = (Number(save.glyphs[q]) || 0) + 1; delete save.spellGlyphs[id]; if (save.equippedSpell === id) save.equippedSpell = "ember-ring"; }
-  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, utility: UTILITY.default, item: null });
+  ms.presets = Array.from({ length: PRESETS }, (_, i) => list[i] || { ...ms.slots, item: null }); // slot D: a new preset's D is the loadout's (no `utility`: D replaced it)
   ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...ms.slots };
   return ms.slots;
 }
@@ -182,25 +214,37 @@ export function setPresetButton(save, i, mode) {
   ensureSlots(save); const ms = save.magicSkills, p = ms.presets[i]; if (!p) return null;
   if (CASTABLES[mode] && !availableCastables(save).includes(mode)) return legacyButton(p.c);
   const key = mode === "item" ? "item" : CASTABLES[mode] ? mode : null;
-  if (i === (ms.preset || 0)) setSlot(save, "c", key); else { p.c = key; if (key && (p.a === key || p.b === key)) p.c = null; }
+  if (i === (ms.preset || 0)) setSlot(save, "c", key); else { p.c = key; if (key && (p.a === key || p.b === key || p.d === key)) p.c = null; }
   return legacyButton(ms.presets[i].c);
 }
 // Gives `type` to preset i's item (used by every slot set to Item); again, takes it off.
 export function assignPresetItem(save, i, type) {
   ensureSlots(save); const p = save.magicSkills.presets[i];
   if (!p || !BUTTON_ITEMS.includes(type)) return { ok: false, message: "That item cannot go on a button." };
-  const where = SLOTS.filter((q) => p[q] === "item").map((q) => q.toUpperCase()); // release 309: any slot set to Item uses it
-  if (!where.length) return { ok: false, message: `Preset ${i + 1} has no Item slot. Set A, B or C to Item in the Arcanum first.` };
+  const where = SLOT_ORDER.filter((q) => p[q] === "item").map(slotLabel); // release 309: any slot set to Item uses it
+  if (!where.length) return { ok: false, message: `Preset ${i + 1} has no Item slot. Set slot A, B, C or D to Item in the Arcanum first.` };
   p.item = p.item === type ? null : type; return { ok: true, message: p.item ? `Preset ${i + 1}: its item is now this one (on ${where.join(", ")}).` : `Preset ${i + 1}: no item.` };
 }
 // What slot C does now, the release-291 way: { mode: "build" }, { mode: "item", item } or { mode: "cast", key }.
 export function activeButton(save) { const b = presetButton(save); return b.button === "item" ? { mode: "item", item: b.item } : CASTABLES[b.button] ? { mode: "cast", key: b.button } : { mode: "build" }; }
-// Release 874: the utility button of preset i ("oculus", "build", "robot" or "drone"), and setting it. The active preset's applies.
-export function presetUtility(save, i = save?.magicSkills?.preset || 0) { ensureSlots(save); const u = save.magicSkills.presets[i]?.utility; return UTILITY.choices.includes(u) ? u : UTILITY.default; }
+// Slot `slot` of preset i, and setting it (the active preset's goes through setSlot, so the HUD follows at once). Setting what
+// another slot of that preset holds swaps the two, as setSlot does.
+export function presetSlot(save, i, slot) { ensureSlots(save); return save.magicSkills.presets[i]?.[slot] ?? null; }
+export function setPresetSlot(save, i, slot, key) {
+  ensureSlots(save); const ms = save.magicSkills, p = ms.presets[i];
+  if (!p || !SLOTS.includes(slot)) return { ok: false, message: "Unknown slot." };
+  if (key && !SLOT_TOOLS.includes(key) && !availableCastables(save).includes(key)) return { ok: false, message: "Not learned yet." };
+  if (i === (ms.preset || 0)) return setSlot(save, slot, key);
+  const other = key ? SLOTS.find((q) => q !== slot && p[q] === key) : null; if (other) p[other] = p[slot] ?? null;
+  p[slot] = key || null; return { ok: true, message: `Preset ${i + 1}: slot ${slotLabel(slot)} ${key ? "set" : "emptied"}.` };
+}
+// Release 874's utility button is slot D (2026-11-15). These keep their callers working: what D of preset i holds (a slot key or
+// null), and setting it, by a slot key or a stored utility choice (UTILITY.slot: "oculus" empties D).
+export function presetUtility(save, i = save?.magicSkills?.preset || 0) { return presetSlot(save, i, "d"); }
 export function setPresetUtility(save, i, choice) {
-  ensureSlots(save); const p = save.magicSkills.presets[i];
-  if (!p || !UTILITY.choices.includes(choice)) return { ok: false, message: "That cannot go on the utility button." };
-  p.utility = choice; return { ok: true, message: `Preset ${i + 1}: the utility button is now ${UTILITY.names[choice]}.` };
+  const key = Object.hasOwn(UTILITY.slot, choice) ? UTILITY.slot[choice] : choice;
+  if (key && !SLOT_TOOLS.includes(key) && !CASTABLES[key]) return { ok: false, message: `That cannot go in slot ${slotLabel("d")}.` };
+  return setPresetSlot(save, i, "d", key);
 }
 export const activeUtility = (save) => presetUtility(save);
 // What slot A or B holds when it is not a castable: "build", "item" (with the preset's item), or null.
@@ -211,9 +255,10 @@ export function togglePreset(save) {
   ms.presets[ms.preset] = { ...ms.presets[ms.preset], ...slots }; ms.preset = next;
   const ok = (k) => k && (SLOT_TOOLS.includes(k) || have.includes(k)); slots.a = ok(p.a) ? p.a : null; slots.b = ok(p.b) && p.b !== slots.a ? p.b : null;
   slots.c = ok(p.c) && p.c !== slots.a && p.c !== slots.b ? p.c : null; // release 874
+  slots.d = ok(p.d) && p.d !== slots.a && p.d !== slots.b && p.d !== slots.c ? p.d : null; // slot D (2026-11-15): one tap swaps all four
   ms.presets[next] = { ...p, ...slots }; syncLegacy(save);
   const name = (q) => { const c = slotted(save, q), t = !c && slotTool(save, q); return c ? c.name : t ? slotToolName(t) : "empty"; };
-  return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: A ${name("a")} · B ${name("b")} · C ${name("c")}.` };
+  return { ok: true, preset: next + 1, message: `Spell preset ${next + 1}: ${SLOT_ORDER.map((q) => `${slotLabel(q)} ${name(q)}`).join(" · ")}.` };
 }
 export function slotted(save, slot) {
   const k = ensureSlots(save)[slot], c = CASTABLES[k];
@@ -235,7 +280,8 @@ export function setSlot(save, slot, key) {
   const p = activePairing(save);
   if (p && !save.magicSkills.pairingsSeen[p.key]) { save.magicSkills.pairingsSeen[p.key] = true; return { ok: true, message: `Pairing found: ${p.name} — ${p.text}`, pairing: p }; }
   const c = slotted(save, slot), t = slotTool(save, slot);
-  return { ok: true, message: c ? `${c.name} set in slot ${slot.toUpperCase()}.` : t ? `${t.tool === "item" ? "The preset's item" : slotToolName(t)} set in slot ${slot.toUpperCase()}.` : `Slot ${slot.toUpperCase()} emptied.` };
+  const n = slotLabel(slot); // 2026-11-15: the player is told the slot's on-screen letter (SLOT_LABELS)
+  return { ok: true, message: c ? `${c.name} set in slot ${n}.` : t ? `${t.tool === "item" ? "The preset's item" : slotToolName(t)} set in slot ${n}.` : `Slot ${n} emptied.` };
 }
 // Older systems read `equippedSpell` (spell glyph host) and `selected` (bound discipline); keep them following the slots.
 function syncLegacy(save) {
