@@ -466,7 +466,7 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
 // e.stegoClimb and e.stegoTree; nothing moves on its own clock under reduced motion.
 const STEGO_LOOK = { body: "#2f6fd6", dark: "#163a7a", plate: "#a9dcff", belly: "#6f9fe6", eye: "#ffd23a", wood: "#6a4a2a", leaf: "#3f7a3a", water: "rgba(40,90,160,.55)" };
 function drawWildStegoPlaceholder(ctx, q) {
-  const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, Number(e.stegoAir) || 0), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
+  const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, (Number(e.stegoAir) || 0) + (Number(e.dinoLift) || 0)), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
   const b = q.b - air * u * .45, quiet = !!e.reduceMotion;
   ctx.save(); ctx.translate(k, b); ctx.scale(flip, 1);
   if (climb > 0) ctx.rotate(-climb * .9);
@@ -510,13 +510,17 @@ function drawStegoEffect(ctx, f, s, now, presentation = {}) {
   } else { const spin = quiet ? 0 : now / 120; ctx.strokeStyle = "rgba(190,170,130,.7)"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x, y - i * r * .5, r * (1 - i * .2), r * .35, spin + i, 0, TAU * .75); ctx.stroke(); } }
   ctx.restore();
 }
-export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh"]);
+export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh", "dinoRock"]);
 function drawSpinoEffect(ctx, f, s, now, presentation = {}) {
   const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || .4) * s, quiet = !!(presentation?.reduceMotion || presentation?.safeMode);
   ctx.save();
   if (f.kind === "spinoRock") { ctx.fillStyle = "#7a5a3a"; ctx.beginPath(); ctx.arc(x, y - s * .3, Math.max(2, r), 0, TAU); ctx.fill(); }
   else if (f.kind === "spinoBone") { const a = quiet ? Math.atan2(f.vy || 0, f.vx || 1) : now / 90; ctx.translate(x, y - s * .5); ctx.rotate(a); ctx.strokeStyle = "#ece6d6"; ctx.lineWidth = Math.max(2, s * .1); ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke(); }
   else if (f.kind === "spinoBoneBurst") { if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.strokeStyle = "rgba(236,230,214,.85)"; ctx.fillStyle = `rgba(74,70,64,${(.15 + .3 * k).toFixed(3)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); } else glow(ctx, x, y, r * 1.3, "#ece6d6", .5); }
+  else if (f.kind === "dinoRock") { /* the dino duel's rockfall: its circle while it falls (a shadow growing, the rock above), then dust */
+    if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.fillStyle = `rgba(40,30,20,${(.2 + .35 * k).toFixed(3)})`; ctx.strokeStyle = "rgba(240,200,140,.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      if (!presentation?.capture) { ctx.fillStyle = "#6b5a48"; ctx.beginPath(); ctx.arc(x, y - (1 - k) * s * 5 - s * .3, Math.max(2, r * .6), 0, TAU); ctx.fill(); } }
+    else glow(ctx, x, y, r * 1.4, "#b8a184", .5); }
   else if (f.kind === "spinoFurrow") { const k = Math.max(0, f.life / (f.total || 1)); ctx.translate(x, y); ctx.rotate(f.angle || 0); ctx.strokeStyle = `rgba(60,40,24,${(.7 * k).toFixed(3)})`; ctx.lineWidth = Math.max(2, s * .12); ctx.beginPath(); ctx.moveTo(-s * .5, 0); ctx.lineTo(s * .5, 0); ctx.stroke(); }
   else { ctx.fillStyle = "#c4561a"; ctx.beginPath(); ctx.arc(x, y - s * .2, Math.max(2, r * .8), 0, TAU); ctx.fill(); }
   ctx.restore();

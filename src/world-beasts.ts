@@ -674,6 +674,13 @@ export function worldBeastCaught(save, id) {
   q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
   return { cooldown: q.cooldown };
 }
+// The dino duel (dino-duel.ts, Tim 2026-11-14): devoured by the other beast. Its hunt ends as a fall does (a new cycle, the slain
+// cooldown), so it is not out there any more, but nothing is paid and it is no kill of the Wayfarer's: `eaten` counts it (additive).
+export function worldBeastEaten(save, id) {
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; if (!B || !q?.active) return null;
+  q.cycle++; q.active = null; q.cooldown = B.cooldownSlain; q.eaten = (Math.max(0, Math.floor(Number(q.eaten) || 0))) + 1;
+  return { cooldown: q.cooldown, eaten: q.eaten };
+}
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {
   ensureWorldBeasts(save, false);

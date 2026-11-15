@@ -9,6 +9,8 @@
 // - Intensity 0-1: rises quickly with hostiles engaged or near and with damage dealt or taken, holds a moment, then decays
 //   over about ten seconds. "Calm only" (the Soundtrack setting) holds it at 0.
 // - A world beast or boss in the fight switches to its own theme (BOSS_THEMES, by bossKey), or the shared boss track.
+// - The dino duel (DUEL): while the Spinosaurus and the Wild Stegosaurus fight near the Wayfarer, the score is hushed (`hush`)
+//   and battle-sfx.ts carries the fight; no boss theme starts until it is over.
 import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.ts";
 import { apertureTier } from "./world.ts";
 import { seededRandom } from "./soundtrack.ts";
@@ -30,6 +32,28 @@ export const CHAPTERS = [
   { chapter: 2, name: "Wandering", tier: 1, slain: 1 },
   { chapter: 1, name: "Departure" },
 ];
+// The dino duel (Tim, 2026-11-14: "This is literally the only place in the game where there are sounds of battle"). A living
+// Spinosaurus and a living Wild Stegosaurus within `range` tiles of each other and of the Wayfarer, at least one targeting or striking
+// the other (or both roused), is a duel: any of them, a world beast, a big room's or an interloper. The music fades out over
+// `fadeOut` s (the lead-in, `leadIn` s, before the duel is fully on), the battle-sfx.ts sounds carry it, and no boss theme starts.
+// It ends `linger` s after one falls, they part or the Wayfarer leaves (at once when the Wayfarer lands the kill: the victory
+// stinger then plays), and the music fades back in over `fadeIn` s. `undercurrent`: true keeps one sub drone and a slow heartbeat
+// (battle-sfx.ts BATTLE_SFX.undercurrent, -30 dB or less) under the battle; false is silence.
+export const DUEL = { kinds: ["spinoRex", "wildStego"], range: 16, leadIn: 1.5, linger: 4, fadeOut: 1.5, fadeIn: 2.5, undercurrent: true };
+const duelAlive = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.passingBeast && !e.fleeTo && !e.illusion;
+// Is `a` going for `b`: its focus (SPINO hunt, STEGO rival) or the blow it is throwing?
+const duelTargets = (a, b) => !!a?.pack && (a.pack.spinoFocus === b.id || a.pack.stegoRival === b.id || (!!a.pack.attack && a.pack.data?.prey === b.id));
+// The duelling pair near the Wayfarer, or null: the nearest Spinosaurus and Wild Stegosaurus that meet the rule above.
+export function sampleDuel(game, range = DUEL.range) {
+  const p = game?.player || {}, near = (e) => Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0)) <= range;
+  const spinos = [], stegos = [];
+  for (const e of game?.enemies || []) { if (!duelAlive(e) || !near(e)) continue; if (e.kind === DUEL.kinds[0]) spinos.push(e); else if (e.kind === DUEL.kinds[1]) stegos.push(e); }
+  for (const spino of spinos) for (const stego of stegos) {
+    if (Math.hypot(spino.x - stego.x, spino.y - stego.y) > range) continue;
+    if (duelTargets(spino, stego) || duelTargets(stego, spino) || (spino.aggro && stego.aggro)) return { spino, stego };
+  }
+  return null;
+}
 // Each world boss's own theme (Phase 2, Tim 2026-11-14): bossKey -> a song id in SONGS with boss: true (soundtrack-songs.ts,
 // LINER_NOTES tells each one's story). Keys are world beast ids (WORLD_BEASTS) or, for bosses that are not world beasts,
 // creature kinds; "kind:variant" is a form a beast turns into mid-fight. Any other boss plays the shared "boss" track.
@@ -108,13 +132,20 @@ export function sampleMusic(game, memo = {}) {
   // chrysalis is a hatching, and one Revenant of a hunt is not the hunt: neither is a victory.
   let bossDefeated = false;
   const was = memo.boss;
-  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator) bossDefeated = true;
+  // A duellist felled by the other beast (its kill pays nothing: noRewards) is no victory of the Wayfarer's either.
+  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator && !(DUEL.kinds.includes(was.kind) && was.noRewards)) bossDefeated = true;
   memo.boss = boss;
+  // The dino duel: the pair (kept in memo for battle-sfx.ts), and a fall of one of the last pair: by the Wayfarer, or by a beast.
+  const pair = sampleDuel(game), last = memo.duelPair;
+  let duelFall = null;
+  if (last && !pair) for (const e of [last.spino, last.stego]) if (e.dead || !(e.hp > 0)) duelFall = e.noRewards ? "beast" : "wayfarer";
+  memo.duelPair = pair;
   const cp = save.activeCheckpoint, home = save.hometowns?.home || "0,0";
   return {
     context: musicContext(game), chapter: journeyChapter(save), paused: !!game?.paused,
     engaged, near, foeHp, playerHp: Number(p.hp) || 0, dead: !(Number(p.hp) > 0) || !!game?.fallen,
     boss: boss ? { id: String(boss.id ?? ""), kind: bossKey(boss), ...(boss.mothChrysalis ? { quiet: true } : {}) } : null, bossDefeated,
+    duel: !!pair, duelFall,
     checkpoint: cp ? `${cp.rx},${cp.ry},${cp.x},${cp.y}` : null,
     region: game?.area === "overworld" ? (game.farRealm?.type ? `far:${game.farRealm.type}` : game.map?.landscape?.biome || null) : null,
     atHome: game?.area === "overworld" && `${game.rx},${game.ry}` === home,
@@ -127,6 +158,7 @@ export class MusicDirector {
     this.songId = null; this.previous = null; this.since = 0; this.dwell = this.nextDwell();
     this.intensity = 0; this.lastHot = -Infinity; this.lastHurt = -Infinity; this.lastHit = -Infinity; this.lastTime = null;
     this.last = null; this.bossId = null; this.bossQuiet = false; this.bossSeen = -Infinity; this.cool = {}; this.context = null; this.chapter = null;
+    this.duel = "off"; this.duelSince = -Infinity; this.duelSeen = -Infinity;
   }
   nextDwell() { const [a, b] = DIRECTOR.dwell; return a + (b - a) * this.rand(); }
   ready(kind, now) { const c = DIRECTOR.cooldowns[kind] ?? 0; if (this.cool[kind] != null && (c === Infinity || now - this.cool[kind] < c)) return false; this.cool[kind] = now; return true; }
@@ -154,8 +186,18 @@ export class MusicDirector {
     if (target >= this.intensity) { this.intensity = Math.min(target, this.intensity + D.rise * dt); this.lastHot = now; }
     else if (now - this.lastHot > D.hold || snap.dead) this.intensity = Math.max(target, this.intensity - D.decay * dt);
     if (this.calmOnly) this.intensity = 0;
-    // Bosses.
-    if (snap.boss) {
+    // The dino duel (DUEL): off -> lead (the music fading) -> on -> tail (`linger` s after the pair parts) -> off; a kill by the
+    // Wayfarer ends it at once, with the victory beat.
+    const raw = !!snap.duel; let duelEnded = false;
+    if (raw) this.duelSeen = now;
+    if (this.duel === "off") { if (raw) { this.duel = "lead"; this.duelSince = now; } }
+    else if (snap.duelFall === "wayfarer" || (!raw && now - this.duelSeen >= DUEL.linger)) { this.duel = "off"; duelEnded = true; }
+    else if (!raw) this.duel = "tail";
+    else if (this.duel === "tail" || now - this.duelSince >= DUEL.leadIn) this.duel = "on";
+    const dueling = this.duel !== "off";
+    if (duelEnded && snap.duelFall === "wayfarer" && !snap.bossDefeated) stingers.push("victory");
+    // Bosses (never while the dinosaurs duel: their theme waits until it is over).
+    if (snap.boss && !dueling) {
       // A quiet boss (the chrysalis) wakes no beast beat; what hatches from it does.
       const quiet = !!snap.boss.quiet;
       if (!quiet && this.bossId !== snap.boss.id && (this.bossQuiet || now - this.bossSeen > D.bossLinger) && this.ready("beast", now)) stingers.push("beast");
@@ -163,7 +205,7 @@ export class MusicDirector {
       this.choose(bossSongFor(snap.boss.kind, this.bossThemes, this.songs), now, "boss");
     }
     if (snap.bossDefeated) { stingers.push("victory"); this.bossSeen = -Infinity; }
-    const bossOn = snap.boss || now - this.bossSeen < D.bossLinger;
+    const bossOn = !dueling && (snap.boss || now - this.bossSeen < D.bossLinger);
     // Places and chapters.
     if (!bossOn) {
       this.bossId = null; this.bossQuiet = false;
@@ -178,12 +220,15 @@ export class MusicDirector {
     // Story beats.
     if (prev) {
       if (snap.dead && !prev.dead) stingers.push("death");
-      if (snap.checkpoint && prev.checkpoint !== snap.checkpoint && !snap.dead && this.ready("rest", now)) stingers.push("rest");
-      if (prev.atHome && !snap.atHome && snap.chapter === 1 && this.ready("departure", now)) stingers.push("departure");
+      if (dueling) { /* no story beat but death over the duel */ }
+      else if (snap.checkpoint && prev.checkpoint !== snap.checkpoint && !snap.dead && this.ready("rest", now)) stingers.push("rest");
+      if (dueling) { /* nor a departure or a region */ }
+      else if (prev.atHome && !snap.atHome && snap.chapter === 1 && this.ready("departure", now)) stingers.push("departure");
       else if (snap.region && prev.region && snap.region !== prev.region && !bossOn && this.intensity < .3 && this.ready("region", now)) stingers.push("region");
     }
     this.context = snap.context; this.chapter = snap.chapter; this.last = snap;
-    return { songId: this.songId, intensity: this.intensity, change: this.change || "context", stingers };
+    // `hush`: the score's level (soundtrack.ts setHush), 0 while the dinosaurs duel.
+    return { songId: this.songId, intensity: this.intensity, change: this.change || "context", stingers, duel: this.duel, hush: dueling ? 0 : 1 };
   }
 }
 export { MUSIC_CONTEXTS };

@@ -15,15 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r972 (`cede9b9fcf20`); production serves `r962-a8bf3852db96` (published 2026-11-14 after a Fable review of r961 to r962). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r973 (`a4a3315fe51a`); production serves `r972-cede9b9fcf20` (published 2026-11-15 after Fable reviews of r962 to r971 and r971 to r972). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 973 | Claude | claude/boss-themes-dark | Soundtrack phase 2: an original, dark theme per world boss in three menace tiers (20 themes + chrysalis and fossil-Spinosaurus variants); boss detection for the chrysalis, Gate Revenants and Tyrant Mosasaur; music only | In flight. |
-| 972 | Claude | claude/arc-resume-fix | Review fix: an Arc Wave Blunderbuss press saved during its Close View startup resumes and fires (the pending tool-use validator now admits the 5.5-speed crescents) | In flight. |
-| 971 | Claude | claude/creatures-fit | Close View creatures: near/engaging creatures solid (wards .6, Seraph dive .35), attack root poses + joint swings on real clocks, ~40 refined models within triangle and contact-height budgets; presentation only | Merged as `78e6e0e7e9ca` (#638). |
+| 974 | Claude | claude/dino-duel-sound | The dino duel: music hushed for battle SFX, a 90 s cap ending in a kill (no reward from the eaten) or an escape, shake, indoor rockfall, camera pull-out, Close View tail-heave and belly-lift grabs without clipping; new modules dino-duel, battle-sfx, close-view-duel; no save change | In flight. |
+| 973 | Claude | claude/boss-themes-dark | Soundtrack phase 2: an original, dark theme per world boss in three menace tiers (20 themes + chrysalis and fossil-Spinosaurus variants); boss detection for the chrysalis, Gate Revenants and Tyrant Mosasaur; music only | Merged as `a4a3315fe51a` (#639). |
+| 972 | Claude | claude/arc-resume-fix | Review fix: an Arc Wave Blunderbuss press saved during its Close View startup resumes and fires (the pending tool-use validator now admits the 5.5-speed crescents) | Merged as `cede9b9fcf20` (#640); published 2026-11-15. |
+| 971 | Claude | claude/creatures-fit | Close View creatures: near/engaging creatures solid (wards .6, Seraph dive .35), attack root poses + joint swings on real clocks, ~40 refined models within triangle and contact-height budgets; presentation only | Merged as `78e6e0e7e9ca` (#638); published in r972. |
 | 970 | Claude | claude/combat-followups | Five of Tim's follow-ups: (1) a Great Sweep freeze cancels the foe's wind-up and freeze resistance holds at the third tier; (2) the Hammerfall clap's lines stop at walls, are 20% longer (2.88), spread 1.5 each side and draw foes in as they close (bosses hold); (3) Quandrix Staff: letting go of the Mage's Hand fist, awakened slam or suction cup early leaves it working until its charge runs out, then it bursts where it is; (4) Transpose buffs all magic damage (newly the Quandrix Staff; text says all magic damage); (5) Iron Fists HUD meter: Perfect Timing! / Perfect Rhythm! | In flight. |
 | 969 | Claude | claude/arc-wave-reach | Arc Wave: the three small crescents carry on much farther (20 tiles × reach, was 9.35), still slow (5.5 tiles/s) and spreading in the ±0.45 rad cone, long after the fast great waves (unchanged) have dissipated | Merged as `480c22419bd8` (#636). |
 | 968 | Claude | claude/hammerfall-clap | Awakened Hammerfall claps: when the hammer lands, two parallel lines of energy along the aim slide apart sideways from the impact, hold, and slam back together on the centre line; one extra slap on every foe between them, on top of the hammer's blow, its Echo copies and the Corridor Golem | Merged as `0e129b0365a0` (#635). |

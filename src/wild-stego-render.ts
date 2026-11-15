@@ -59,6 +59,10 @@ export const STEGO_POSES = Object.freeze({
   clubSlam: { head: -.55, pitch: -.14, crouch: .45, tree: .95, open: .1 },
   hop: { pitch: .12, tuck: .55, head: .1, tailUp: .1 },
   stagger: { head: -.45, crouch: .32, open: .45, pitch: -.06 },
+  // the dino duel's grab: the Spinosaurus's tail in its jaws, heaved up (braced on its hind legs, rearing, head up and back) and slammed
+  // down (head driven to the ground, weight thrown forward)
+  grabHeave: { pitch: 1, frontLift: 1, head: 1.05, reach: -.2, open: .2, crouch: .14, tailUp: -.35 },
+  grabSlam: { pitch: -.22, head: -.8, reach: .45, open: .2, crouch: .4, tailUp: .3 },
   dead: { crouch: 1, head: -.6, open: .4, tuck: .7 },
 });
 const KEYS = ["pitch", "head", "reach", "open", "crouch", "tailUp", "tailSide", "tailReach", "curl", "frontLift", "clawNear", "clawFar", "kick", "tuck", "flare", "tree"];
@@ -92,7 +96,7 @@ export function drawWildStego(ctx, q, now = 0) {
   // eased pose values (snappier for the bites and claws)
   const rate = /bite|claw|swipe|tail[LR]|whip|buck|Slam/.test(poseName) ? A.ease * 2 : A.ease, V = M.v;
   for (const key of KEYS) { let target = P0[key] || 0; if (stun) target += ((STEGO_POSES.dazed[key] || 0) - target) * stun; const prev = V[key]; V[key] = !Number.isFinite(prev) || !(dt > 0) || reduce ? target : prev + (target - prev) * Math.min(1, dt * rate); }
-  const roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), curl = Math.max(V.curl, roll), air = Math.max(0, Number(e.stegoAir) || 0) / Math.max(.6, Number(e.scale) || 1), swim = Number(e.stegoSwim) || 0;
+  const roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), curl = Math.max(V.curl, roll), air = Math.max(0, (Number(e.stegoAir) || 0) + (Number(e.dinoLift) || 0)) / Math.max(.6, Number(e.scale) || 1) /* dinoLift: lifted in the Spinosaurus's jaws (the dino duel) */, swim = Number(e.stegoSwim) || 0;
   const climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0)), cut = e.stegoTail === "cut", plates = Number.isFinite(Number(e.stegoPlates)) && e.stegoPlates != null ? Math.max(0, Math.min(1, Number(e.stegoPlates))) : 1;
   const tree = e.stegoTree && (e.stegoTree.phase === "pull" || e.stegoTree.phase === "swing") ? e.stegoTree : null;
   const moving = e.stegoPose && poseName !== "walk" ? 0 : M.moving, ph = M.phase;
