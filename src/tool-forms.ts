@@ -43,9 +43,32 @@ export const CLUSTER = { count: 2, speed: 7, share: .45, radius: .55 };
 // Release 549: per wave, three waves (was one wave at 2.2, grow .75). Tempo (Tim, 2026-11-14: "the arc wave should be slower
 // and the great wave should fly faster. So the two great waves fly out and overtake the arc waves, and then the arc waves keep
 // flying slowly... the smaller waves spread into a cone"): the three crescents fly `speed` tiles/s (was 11) for `range` tiles
-// × the reach stat (the 9.35 they flew before: 11 × the Blunderbuss's .85 s), so they stay out longer, in a cone `spread`
-// radians to a side (the plain Blunderbuss's is .26, unchanged without Arc Wave). The awakened fan's copies share the tempo.
-export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 5.5, range: 9.35, spread: .45 };
+// × the reach stat in a cone `spread` radians to a side (the plain Blunderbuss's is .26, unchanged without Arc Wave). The
+// awakened fan's copies share the tempo. Reach (Tim, 2026-11-14: "The great waves should shoot out pretty quickly but dissipate
+// rapidly... But the smaller arc waves should continue on for a far distance"): `range` 20 (was 9.35, release 549's 11 × .85 s),
+// 1.6 × the great waves' 12.5 (ARC_WAVE_ECHO), so the crescents linger 3.6 s and keep spreading, ~17 tiles apart at the end,
+// long after the great waves are gone; still inside a 32-tile section, so in the open they end there, not at its edge. Longer
+// flight means more crescents alive at once: the press cap (fireSecondary: 32 live shots in a dungeon, 64 outside) bounds them.
+// Their own cap (Tim, 2026-11-14: "give the crescents their own cap"): Arc Wave's crescents (the cone's, the awakened fan's,
+// the Shadow Clone's copy and the Echo great waves: any shot with `arcWave` or `waveHalf`) do not count toward the shared
+// live-shot cap a tool press checks (game.ts sharedShotCount: 32 in a dungeon, 64 elsewhere), as Sunburst shards do not.
+// At most `maxLive` of them fly at once instead, and a press is never refused for them: a volley that would pass the cap
+// retires the oldest live crescents first (retireArcWaves). 2026-11-14's 30 s hold with no walls peaked at 30 live crescents
+// at the base cadence and 57 at a 40% faster one (two Echo glyphs), so both values sit above that.
+export const ARC_WAVE = { share: 1, grow: .5, pierce: 12, speed: 5.5, range: 20, spread: .45, maxLive: Object.freeze({ dungeon: 60, overworld: 72 }) };
+// Whether a shot is one of Arc Wave's crescents.
+export const isArcCrescent = (p) => !p?.hostile && (p?.arcWave === true || Number(p?.waveHalf) > 0);
+// Live shots that count toward the shared press cap: not Sunburst shards, not Arc Wave crescents. No allocation.
+export function sharedShotCount(list) { let n = 0; for (const p of list) if (!p.dead && !p.shard && !isArcCrescent(p)) n++; return n; }
+// Keeps at most ARC_WAVE.maxLive crescents alive in `area`: past it the oldest (earliest in the list, which keeps launch order)
+// are retired (dead; they simply vanish, as a spent crescent does). Returns how many. No allocation.
+export function retireArcWaves(list, area) {
+  const cap = area === "dungeon" ? ARC_WAVE.maxLive.dungeon : ARC_WAVE.maxLive.overworld; let live = 0;
+  for (const p of list) if (!p.dead && isArcCrescent(p)) live++;
+  let over = live - cap, retired = 0;
+  for (const p of list) { if (over <= 0) break; if (!p.dead && isArcCrescent(p)) { p.dead = true; p.retired = true; over--; retired++; } }
+  return retired;
+}
 // A crescent's flight time (s) at reach multiplier `reach` (1 + characterStats().attackReach).
 export const arcWaveLife = (reach) => ARC_WAVE.range * Math.max(0, Number(reach) || 1) / ARC_WAVE.speed;
 // The crescent as drawn (both views: Close View draws drawToolForms on its floor through combat-visuals.ts): an arc `span`

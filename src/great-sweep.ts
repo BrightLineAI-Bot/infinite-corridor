@@ -147,7 +147,7 @@ export function drawSweepSwing(ctx, q, cx, cy, s) {
 // resumes it exactly). Each touch adds `touch` (the swung blade, or a Mirage blade's cut, out or back). A full meter freezes
 // the foe in place for `hold` s (it neither moves nor attacks; blows still land), then `guard` s in which touches add nothing
 // (it cannot be held frozen). Each freeze raises its tier (diminishing returns): the next needs more and lasts less (`need`
-// and `hold` by tier, the last repeating); every `calm` s without a freeze drops a tier again. Touches stop counting `forget`
+// and `hold` by tier; from the third freeze on the last entry, where the tier stops); every `calm` s without a freeze drops a tier again. Touches stop counting `forget`
 // s after the last one and the meter then drains `drain` per second. A partly filled meter slows the foe (glyph slow, at most
 // `slow` off its speed at a full meter). Classes follow the stagger governor (monster-pack.ts staggerClass): ordinary foes
 // freeze at a touch; elites take a few; bosses, guardians, world beasts and Gate Revenants take many.
@@ -167,6 +167,10 @@ const FZ = SWEEP_FREEZE;
 const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
 export const freezeRow = (cls) => FZ.classes[cls] || FZ.classes.ordinary;
 const pick = (list, tier) => list[Math.min(list.length - 1, tier)];
+// The highest tier: the table's last entry (Tim, 2026-11-14: "after bosses get frozen a third time, they just keep the same
+// high-level freeze resistance"), so from the third freeze on every freeze needs and holds that row's last entry, and a calm
+// spell eases it back one tier as from any other.
+const topTier = (R) => Math.min(FZ.maxTier, R.need.length - 1, R.hold.length - 1);
 // The meter (created on the first touch; never allocated again for that foe while it lasts). Clamps a stored record.
 function meter(e) {
   const q = e.sweepFreeze;
@@ -182,7 +186,7 @@ export function sweepFreezeTouch(e, cls, amount = FZ.touch.blade) {
   q.build += Math.max(0, Number(amount) || 0); q.idle = 0;
   const need = pick(R.need, q.tier);
   if (q.build + 1e-9 < need) { q.fill = Math.min(1, q.build / need); return false; }
-  q.left = q.hold = pick(R.hold, q.tier); q.build = 0; q.fill = 0; q.tier = Math.min(FZ.maxTier, q.tier + 1); q.calm = 0;
+  q.left = q.hold = pick(R.hold, q.tier); q.build = 0; q.fill = 0; q.tier = Math.min(topTier(R), q.tier + 1); q.calm = 0;
   return true;
 }
 // One frame (dt seconds). Returns the speed factor while the meter fills (1 when there is no slow); drops the record once it
@@ -190,6 +194,7 @@ export function sweepFreezeTouch(e, cls, amount = FZ.touch.blade) {
 export function tickSweepFreeze(e, cls, dt) {
   if (!e?.sweepFreeze) return 1;
   const q = meter(e), R = freezeRow(cls), d = Math.max(0, Number(dt) || 0);
+  if (q.tier > topTier(R)) q.tier = topTier(R); // a record kept from before the cap
   if (q.left > 0) { q.left = Math.max(0, q.left - d); if (q.left <= 0) { q.left = 0; q.guard = R.guard; } return 1; }
   if (q.guard > 0) q.guard = Math.max(0, q.guard - d);
   q.idle += d; if (q.idle >= R.forget && q.build > 0) q.build = Math.max(0, q.build - R.drain * d);

@@ -196,3 +196,86 @@ test('exact resume: the meter, the freeze and its clock come back as they were; 
   const { g: a } = arena(); a.enemies = []; a.update(.008, once('tool'), 1000); const rec = structuredClone(a.toolSwing); delete rec.lastNow;
   assert.equal(normalizeToolSwing(rec).freeze, true); assert.equal(normalizeToolSwing({ ...rec, freeze: 'yes' }).freeze, false);
 });
+
+// ---------------------------------------------------------------- Tim's follow-up (2026-11-14): a freeze cancels the attack;
+// from the third freeze on the resistance stays at the third tier.
+import { cancelStalkerAct } from '../src/stalker.ts';
+
+// Frames with the Wayfarer standing still beside the foe (damage taken counted), the foe free to act.
+function fight(g: any, from: number, frames: number, each: (t: number, hurt: number) => boolean | void = () => {}) {
+  let t = from; const px = g.player.x, py = g.player.y;
+  const full = () => Number(g.player.maxHp) || Number(g.save.maxHp) || 100;
+  for (let i = 0; i < frames; i++) { g.player.x = px; g.player.y = py; g.player.hp = full(); g.update(.016, calm, t); const hurt = Math.max(0, full() - g.player.hp); g.player.hp = full(); t += 16; if (each(t, hurt) === true) break; }
+  return t;
+}
+
+test('a freeze cancels an ordinary foe\'s wind-up: the blow never lands, during the freeze or after the thaw', () => {
+  const { g } = arena(), foe = Object.assign(createCombatant('rootBrute', 10.9, 10), { id: 'brute', hp: 1e6, maxHp: 1e6, damage: 9, cooldown: 0, aggro: true }); g.enemies = [foe];
+  assert.ok(foe.meleePatterns.length, 'a melee foe');
+  let t = fight(g, 1000, 600, () => foe.telegraph > .05); assert.ok(foe.telegraph > .05, 'winding up');
+  assert.ok(g.sweepFreezeHit(foe, 1)); assert.equal(foe.telegraph, 0); assert.equal(foe.meleePhase, null); assert.equal(foe.threatRange, null);
+  let hurt = 0; const hold = foe.sweepFreeze.left;
+  t = fight(g, t, Math.floor(hold * 1000 / 16) - 2, (_, h) => { hurt += h; assert.equal(foe.telegraph, 0); }); assert.equal(hurt, 0, 'nothing lands while frozen');
+  // thawed: no queued blow; any blow after this needs a whole new wind-up first
+  let sawFresh = false, landedBeforeFresh = 0;
+  fight(g, t, 400, (_, h) => { if (!sweepFrozen(foe) && foe.telegraph > 0) sawFresh = true; if (h > 0 && !sawFresh) landedBeforeFresh += h; });
+  assert.equal(landedBeforeFresh, 0, 'the cancelled blow never lands after the thaw'); assert.ok(!sweepFrozen(foe));
+});
+
+test('a freeze cancels a world beast\'s attack and takes back its unarmed hazards; it starts afresh after the thaw', () => {
+  const caught: string[] = [];
+  for (const kind of ['briarStag', 'crimsonTyrant', 'ashenMoth', 'lightningGiant']) {
+    const { g } = arena(), beast = Object.assign(createCombatant(kind, 12.5, 10, true), { id: `wb-${kind}`, worldBeast: kind, hp: 1e6, maxHp: 1e6, aggro: true }); g.enemies = [beast];
+    let t = fight(g, 1000, 2500, () => beast.pack?.attack && beast.pack.phase === 'windup');
+    if (!(beast.pack?.attack && beast.pack.phase === 'windup')) continue; // this beast chose no attack in time from here
+    const id = beast.pack.attack;
+    g.packEffects = g.packEffects || []; g.packEffects.push({ id: 'pend', owner: beast.id, kind: 'psyRing', x: 10, y: 10, radius: 3, arming: .5, life: 1, total: 1, damage: 50 }, { id: 'live', owner: beast.id, kind: 'psyRing', x: 30, y: 30, radius: 1, arming: 0, life: 1, total: 1, damage: 0 });
+    assert.ok(g.sweepFreezeHit(beast, SWEEP_FREEZE.classes.boss.need[0]), kind); // a full meter at a stroke
+    assert.ok(sweepFrozen(beast)); assert.equal(beast.pack.attack, null, `${kind}: ${id} cancelled`); assert.equal(beast.pack.tele, null);
+    assert.ok(!g.packEffects.some((f: any) => f.id === 'pend'), 'its unarmed hazard is taken back'); assert.ok(g.packEffects.some((f: any) => f.id === 'live'), 'an armed one stays');
+    let hurt = 0; t = fight(g, t, Math.floor(beast.sweepFreeze.left * 1000 / 16) - 2, (_, h) => { hurt += h; assert.equal(beast.pack.attack, null); });
+    assert.equal(hurt, 0, `${kind}: nothing lands while frozen`);
+    // after the thaw any attack is a new one, from its wind-up
+    let first: any = null; fight(g, t, 500, () => { if (!first && beast.pack?.attack) first = { phase: beast.pack.phase }; });
+    if (first) assert.equal(first.phase, 'windup', `${kind}: a fresh attack`);
+    caught.push(kind); if (caught.length >= 2) return; // two beasts caught mid-wind-up are enough
+  }
+  assert.ok(caught.length >= 1, 'a beast was caught mid-wind-up');
+});
+
+test('every brain\'s cancel: elite wind-up, Gate Revenant, Stalker, pending hazards; armed ones and loosed shots stay', () => {
+  const { g } = arena(), now = 5000; g.lastUpdateNow = now;
+  const elite = foeAt(g, 0, 2, 'elite', { eliteId: 'vesperwing', eliteModules: ['gravity'], eliteWindup: .6, telegraph: .3 });
+  g.enemies = [elite]; g.eliteHazards = [{ id: 'eh1', owner: 'elite', kind: 'root-eruption', arming: .8, life: 2 }, { id: 'eh2', owner: 'elite', kind: 'ooze', life: 4 }];
+  g.affixHazards = [{ kind: 'x', by: 'elite', armAt: now + 400, until: now + 900 }, { kind: 'y', by: 'elite', armAt: now - 10, until: now + 500 }, { kind: 'z', by: 'other', armAt: now + 400, until: now + 900 }];
+  elite.sweepFreeze = { build: 99, left: 0, hold: 0, guard: 0, tier: 0, idle: 0, calm: 0, fill: 0 }; assert.ok(g.sweepFreezeHit(elite, 1));
+  assert.equal(elite.eliteWindup, 0); assert.equal(elite.telegraph, 0);
+  assert.deepEqual(g.eliteHazards.map((h: any) => h.id), ['eh2']); assert.deepEqual(g.affixHazards.map((h: any) => h.kind), ['y', 'z']);
+  // a frozen elite runs no elite move (the gravity wind-up does not restart while frozen)
+  let t = 6000; for (let i = 0; i < 40; i++) { g.update(.016, calm, t); t += 16; assert.equal(elite.eliteWindup, 0); assert.equal(elite.eliteActive || 0, 0); }
+  // boss-kit and affix clocks wait out the freeze
+  const kit = foeAt(g, 90, 2, 'kit', { boss: true, kitClock: { quake: t + 100 }, affixClock: { burn: t + 50 } }); g.enemies.push(kit); kit.sweepFreeze = { build: 99, left: 0, hold: 0, guard: 0, tier: 0, idle: 0, calm: 0, fill: 0 }; g.sweepFreezeHit(kit, 1);
+  const k0 = kit.kitClock.quake, a0 = kit.affixClock.burn; for (let i = 0; i < 20; i++) { g.update(.016, calm, t); t += 16; } assert.ok(Math.abs(kit.kitClock.quake - k0 - 320) < 1e-6 && Math.abs(kit.affixClock.burn - a0 - 320) < 1e-6);
+  // Gate Revenant and Stalker
+  const rev = foeAt(g, 180, 2, 'rev', { gatePredator: true, gateAttack: { kind: 'breath', t: .3 }, telegraph: .3 }); g.cancelFrozenAttack(rev, t); assert.equal(rev.gateAttack, null); assert.equal(rev.telegraph, 0);
+  const st: any = { id: 'st', stalker: true, stalkAct: { kind: 'slamWarn', t: .2, total: .5 }, telegraph: .2, stalkStrike: { t: .1 }, stalkFists: [{}], stalkErupts: [{ t: .3, struck: false }, { t: -.1, struck: true }] };
+  cancelStalkerAct(st); assert.equal(st.stalkAct, null); assert.equal(st.telegraph, 0); assert.equal(st.stalkStrike, null); assert.equal(st.stalkErupts.length, 1);
+  const kin: any = { id: 'k', stalkerKin: true, stalkAct: { kind: 'swipeWarn', t: .2 }, telegraph: .2 }; g.cancelFrozenAttack(kin, t); assert.equal(kin.stalkAct, null); assert.equal(kin.telegraph, 0);
+});
+
+test('from the third freeze on a foe keeps the third tier: the 4th and 5th freeze need and hold exactly the third entry', () => {
+  for (const cls of ['boss', 'elite', 'ordinary'] as const) {
+    const R = SWEEP_FREEZE.classes[cls], e: any = { id: 'tier', hp: 1 }, rows: Array<[number, number, number]> = [];
+    for (let k = 0; k < 5; k++) {
+      let n = 0; while (!sweepFreezeTouch(e, cls, .5)) { n++; assert.ok(n < 200); } rows.push([(n + 1) * .5, e.sweepFreeze.left, e.sweepFreeze.tier]);
+      while (e.sweepFreeze.left > 0) tickSweepFreeze(e, cls, .01); while (e.sweepFreeze.guard > 0) tickSweepFreeze(e, cls, .01);
+    }
+    const third = [Math.ceil(R.need[2] / .5) * .5, R.hold[2]];
+    for (const k of [2, 3, 4]) { assert.equal(rows[k][0], third[0], `${cls} freeze ${k + 1} need`); assert.ok(Math.abs(rows[k][1] - third[1]) < 1e-9, `${cls} freeze ${k + 1} hold`); assert.equal(rows[k][2], R.need.length - 1, 'the tier stops at the third'); }
+    if (cls === 'boss') { assert.equal(rows[3][0], 13); assert.equal(rows[4][0], 13); assert.equal(rows[3][1], .9); assert.equal(rows[4][1], .9); }
+    // calm still eases it back one tier at a time
+    for (let i = 0; i < Math.ceil(R.calm / .1) + 2; i++) tickSweepFreeze(e, cls, .1); assert.equal(e.sweepFreeze.tier, R.need.length - 2);
+  }
+  // a record saved with a higher tier (before the cap) comes back to the third
+  const old: any = { id: 'o', hp: 1, sweepFreeze: { build: 0, left: 0, hold: 0, guard: 0, tier: 7, idle: 0, calm: 0, fill: 0 } }; tickSweepFreeze(old, 'boss', .01); assert.equal(old.sweepFreeze.tier, 2);
+});
