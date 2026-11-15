@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, BRAWLER_GEAR, updateEffects } from '../src/game.ts';
 import { createCombatant } from '../src/combat.ts';
-import { BRAWLER, HAMMER_CLAP, hammerClapCatches, hammerClapPose, hammerClapSpan, hammerClapStrikeAt, drawBrawler } from '../src/brawler-spells.ts';
+import { BRAWLER, HAMMER_CLAP, hammerClapCatches, hammerClapPose, hammerClapSpan, hammerClapStrikeAt, drawBrawler, clipHammerClap, hammerClapExtent } from '../src/brawler-spells.ts';
 import { GOLEM } from '../src/tool-forms.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { awakenedText } from '../src/constellation.ts';
@@ -23,23 +23,25 @@ function arena(awakened, foes) {
   g.enemies = foes.map(([id, x, y]) => foe(id, x, y)); g.effects = []; g.projectiles = []; g.targetId = 'target'; // locked: the hammer lands on it
   return g;
 }
-// Foes as placed round the impact (12.5, 10.45), middles at (x + .5, y + .45); a rootBrute's body pads every bound by .096, so
-// the hammer reaches 1.596 and the clap's rectangle 1.2 + .3 + .096 = 1.596 along the aim and 1.3 + .3 + .096 = 1.696 across:
+// Foes as placed round the impact (12.5, 10.45): a foe at (12 + along, 10 + across) has its middle `along` ahead of the impact
+// and `across` to the side. A rootBrute's body pads every bound by .096, so the hammer reaches 1.596 and the clap's rectangle
+// 1.44 + .3 + .096 = 1.836 along the aim and 1.5 + .3 + .096 = 1.896 across:
 //   target   at the impact (the hammer's foe, locked);
-//   side     1.65 across the aim: outside the hammer, inside the lines' spread;
-//   corner   1.3 ahead and 1.2 across: outside the hammer, inside the rectangle;
+//   side     1.8 across the aim: outside the hammer, inside the lines' spread;
+//   corner   1.6 ahead and 1.6 across: outside the hammer, inside the rectangle;
 //   wide     2.1 across: past where the lines slide to;
-//   far      1.8 ahead: past the lines' ends;
-//   aft      1.9 behind: past the lines' other ends.
-const ROSTER = [['target', 12, 10], ['side', 12, 8.35], ['corner', 13.3, 11.2], ['wide', 12, 12.1], ['far', 14.3, 10], ['aft', 10.1, 10.3]];
+//   far      2.1 ahead: past the lines' ends;
+//   aft      2.1 behind: past the lines' other ends.
+const ROSTER = [['target', 12, 10], ['side', 12, 11.8], ['corner', 13.6, 11.6], ['wide', 12, 7.9], ['far', 14.1, 10], ['aft', 9.9, 10.3]];
 function hold(g) { for (const e of g.enemies) { e.x = e.homeX ??= e.x; e.y = e.homeY ??= e.y; } } // the test's foes stand still
 function run(g, from, seconds, each = () => {}) { let t = from; for (let i = 0; i < Math.round(seconds / DT); i++) { t += DT * 1000; hold(g); g.update(DT, idle, t); hold(g); each(g, t); } return t; }
 const hp = (g) => Object.fromEntries(g.enemies.map((e) => [e.id, e.hp]));
 
 test('the clap: its numbers live in one table, and the rectangle between the parallel lines is all it catches', () => {
   const C = HAMMER_CLAP;
-  for (const k of ['share', 'length', 'spread', 'width', 'extend', 'hold', 'sweep', 'fade', 'stun']) assert.ok(Number.isFinite(C[k]) && C[k] > 0, k);
-  assert.ok(C.spread >= 1.2 && C.spread <= 1.5, 'about 1.2-1.5 tiles each side');
+  for (const k of ['share', 'length', 'spread', 'width', 'extend', 'hold', 'sweep', 'fade', 'stun', 'pull', 'samples', 'step']) assert.ok(Number.isFinite(C[k]) && C[k] > 0, k);
+  assert.equal(C.length, 2.88, 'about a fifth longer than 2.4'); assert.equal(C.spread, 1.5, '1.5 tiles each side');
+  assert.ok(C.pull * C.sweep <= .5, 'a modest pull: at most half a tile over the close'); assert.ok(Number.isInteger(C.samples) && C.samples >= 3);
   assert.ok(Math.abs(hammerClapStrikeAt() - (C.extend + C.hold + C.sweep)) < 1e-12); assert.ok(Math.abs(hammerClapSpan() - hammerClapStrikeAt() - C.fade) < 1e-12);
   assert.ok(BRAWLER.hammerfall.delay + hammerClapSpan() < BRAWLER.hammerfall.cooldown, 'at the tool\'s own cooldown one clap is alive at a time');
   const half = C.length / 2, edge = C.spread + C.width, end = half + C.width;
@@ -150,10 +152,10 @@ test('exact resume mid-clap: a save in the hold resumes the lines where they wer
   place(g); place(back);
   const p0 = { x: g.player.x, y: g.player.y }; Object.assign(back.player, p0);
   let u = 200000; const t0 = t;
-  for (let i = 0; i < 30; i++) { t += DT * 1000; u += DT * 1000; for (const game of [g, back]) for (const e of game.enemies) { e.x = clap.x - .5; e.y = clap.y - .45 + (e.id === 'side' ? 1.5 : 2.2); } g.update(DT, idle, t); back.update(DT, idle, u); }
+  let pulled = false; for (let i = 0; i < 30; i++) { t += DT * 1000; u += DT * 1000; for (const game of [g, back]) for (const e of game.enemies) { e.x = clap.x - .5; e.y = clap.y - .45 + (e.id === 'side' ? 1.5 : 2.2); } g.update(DT, idle, t); back.update(DT, idle, u); const where = (game) => game.enemies.map((e) => [e.id, e.x, e.y]); assert.deepEqual(where(back), where(g), 'the closing lines draw the foes in exactly as before the save'); if (where(g)[0][2] < clap.y - .45 + 1.5 - .01) pulled = true; }
   assert.ok(t > t0);
   assert.deepEqual(hp(back), hp(g), 'the resumed slap struck exactly as the original');
-  assert.ok(hp(g).side < 50000, 'the foe between the lines was slapped'); assert.equal(hp(g).wide, 50000, 'the one beyond them was not');
+  assert.ok(hp(g).side < 50000, 'the foe between the lines was slapped'); assert.equal(hp(g).wide, 50000, 'the one beyond them was not'); assert.ok(pulled, 'and was drawn in after the resume');
 });
 
 test('stress: an awakened Hammerfall pressed every frame for 60 s with its cooldown wiped stays finite and bounded, and draws', () => {
@@ -178,4 +180,68 @@ test('stress: an awakened Hammerfall pressed every frame for 60 s with its coold
   const h = arena(true, ROSTER); let u = 1000, most = 0; h.update(DT, idle, u);
   for (let i = 0; i < 20 / DT; i++) { u += DT * 1000; h.brawlerTool('hammerfall', u, { x: 1, y: 0 }); h.update(DT, idle, u); most = Math.max(most, h.effects.filter((e) => e.kind === 'hammer-clap').length); }
   assert.equal(most, 1);
+});
+
+// Walls (Tim, 2026-11-14, after release 968): the lines stop at walls, never strike past one, and still slam shut.
+const wall = (g, cells) => { for (const [x, y] of cells) { const t = g.map.tiles[y * 32 + x]; t.blocked = true; t.kind = 'wall'; } };
+// A recording canvas: every stroked or filled path's points, in world tiles (the test draws at 32 px a tile).
+function recorder() {
+  const paths = []; let cur = []; const st = { globalAlpha: 1, strokeStyle: '', fillStyle: '', lineWidth: 1 };
+  const ctx = new Proxy(st, { get: (o, k) => k in o ? o[k] : k === 'beginPath' ? () => { cur = []; } : k === 'moveTo' || k === 'lineTo' ? (x, y) => { cur.push([x / 32, y / 32]); } : k === 'stroke' ? () => paths.push({ op: 'stroke', color: o.strokeStyle, pts: cur.slice() }) : k === 'fill' ? () => paths.push({ op: 'fill', color: o.fillStyle, pts: cur.slice() }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
+  return { ctx, paths };
+}
+
+test('clipping is pure and stored: each line stops at the first wall sideways, the centre line at walls along the aim', () => {
+  const C = HAMMER_CLAP, open = (x, y) => !(y >= 11 && y < 12 && x >= 10 && x < 14) && !(x >= 13.5 && x < 14.5);
+  const fx = clipHammerClap({ x: 12.5, y: 10.45, ax: 1, ay: 0, radius: C.length, spread: C.spread }, open);
+  assert.equal(fx.back, C.length / 2, 'nothing behind'); assert.equal(fx.fore, .75, 'the wall ahead cuts the centre line');
+  assert.equal(fx.out.length, 2 * C.samples, 'one array, laid once');
+  for (let i = 0; i < C.samples; i++) { assert.equal(fx.out[i], C.spread, 'the open side runs out to the spread'); assert.ok(fx.out[C.samples + i] <= .55, 'the walled side stops at the wall'); }
+  assert.deepEqual(clipHammerClap({ x: 12.5, y: 10.45, ax: 1, ay: 0, radius: C.length, spread: C.spread }, open), fx, 'deterministic');
+  assert.ok(hammerClapExtent(fx, 1, 0) <= .55); assert.equal(hammerClapExtent(fx, -1, 0), C.spread);
+  assert.equal(hammerClapCatches(fx, 12.5, 12.2), false, 'past the side wall'); assert.equal(hammerClapCatches(fx, 12.5, 8.8), true, 'the open side');
+  assert.equal(hammerClapCatches(fx, 14.9, 10.45), false, 'past the wall ahead'); assert.equal(hammerClapCatches(fx, 11.4, 10.6), true, 'the near side of the band');
+});
+
+test('awakened Hammerfall by a wall: no slap past it, the near side still slapped, and the clipped line still slams shut', () => {
+  // A wall along row 11 (x 10..12) just across from the impact, and a short wall ahead at column 13 (rows 9..10).
+  const roster = [['target', 12, 10], ['open', 11.5, 8.7], ['under', 11, 10.1], ['beyond', 11.5, 11.6], ['past', 13.6, 10]];
+  const g = arena(true, roster); wall(g, [[10, 11], [11, 11], [12, 11], [13, 9], [13, 10]]);
+  let t = 1000; g.update(DT, idle, t); t += DT * 1000; assert.equal(g.brawlerTool('hammerfall', t, { x: 1, y: 0 }), true);
+  const clap = g.effects.find((e) => e.kind === 'hammer-clap'); assert.ok(clap.fore < 1 && clap.back === HAMMER_CLAP.length / 2, `clipped ahead (${clap.fore})`);
+  assert.ok(clap.out.slice(HAMMER_CLAP.samples).every((o) => o <= .55), 'the walled side is cut'); assert.ok(clap.out.slice(0, HAMMER_CLAP.samples).some((o) => o === HAMMER_CLAP.spread), 'the open side is not');
+  const start = hp(g), { ctx, paths } = recorder(); let shut = null;
+  t = run(g, t, BRAWLER.hammerfall.delay + hammerClapSpan() + .1, (g) => {
+    const c = g.effects.find((e) => e.kind === 'hammer-clap'); if (!c || c.delay > 0) return; paths.length = 0; drawBrawler(ctx, g, (q) => [q.x * 32, q.y * 32], 32, 0);
+    const lines = paths.filter((p) => p.op === 'stroke' && p.color === HAMMER_CLAP.colors.core);
+    for (const l of lines) for (const [x, y] of l.pts) { assert.ok(!(y >= 11 && x >= 10 && x < 13), `a line never crosses the side wall (${x.toFixed(2)}, ${y.toFixed(2)})`); assert.ok(x < 13.01, 'nor the wall ahead'); }
+    if (hammerClapPose(hammerClapSpan() - c.life)?.phase === 'clap' && !shut) shut = lines.map((l) => l.pts.map(([, y]) => y));
+  });
+  assert.ok(shut && shut.length === 2, 'drawn shut');
+  for (const ys of shut) for (const y of ys) assert.ok(Math.abs(y - clap.y) < 1e-9, 'both lines, the clipped one too, slam onto the centre line');
+  const end = hp(g);
+  assert.deepEqual(Object.keys(clap.hits).sort(), ['1:open', '1:target', '1:under'], 'struck: the target, the open side, the near side of the wall');
+  assert.ok(end.open < start.open && end.under < start.under);
+  assert.equal(end.beyond, start.beyond, 'past the side wall: untouched'); assert.equal(end.past, start.past, 'past the wall ahead: untouched');
+});
+
+test('the closing lines draw foes toward the centre line, modestly; anchored foes (bosses) hold their ground', () => {
+  const across = (g, id) => { const e = g.enemies.find((q) => q.id === id); return e.y + .45 - 10.45; };
+  const make = (awakened, boss) => { const g = arena(awakened, [['target', 12, 10], ['drawn', 13, 11.2], ['still', 11, 8.9]]); for (const e of g.enemies) e.hitStun = 99; if (boss) Object.assign(g.enemies[1], { boss: true }); g.update(DT, idle, 1000); g.brawlerTool('hammerfall', 1020, { x: 1, y: 0 }); return g; };
+  const step = (g, from, s) => { let t = from; for (let i = 0; i < Math.round(s / DT); i++) { t += DT * 1000; for (const e of g.enemies) e.hitStun = 99; g.update(DT, idle, t); } return t; };
+  const g = make(true, false), plain = make(false, false), boss = make(true, true), C = HAMMER_CLAP;
+  const a0 = across(g, 'drawn'), b0 = across(g, 'still'), lead = BRAWLER.hammerfall.delay + C.extend + C.hold - DT;
+  let t = step(g, 1020, lead); const u = step(plain, 1020, lead);
+  assert.ok(Math.abs(across(g, 'drawn') - a0) < 1e-9, 'nothing moves before the lines close');
+  step(g, t, C.sweep + 2 * DT); step(plain, u, C.sweep + 2 * DT);
+  const moved = a0 - across(g, 'drawn'), movedUp = across(g, 'still') - b0, control = a0 - across(plain, 'drawn');
+  assert.ok(moved > .15, `drawn in toward the centre line (${moved.toFixed(3)})`); assert.ok(movedUp > .15, `from the other side too (${movedUp.toFixed(3)})`);
+  assert.ok(moved <= C.pull * (C.sweep + DT) + 1e-9, 'modest: no more than the pull over the close');
+  assert.ok(across(g, 'drawn') > 0, 'never past the centre line'); assert.ok(moved - control > .15, `the pull, beyond any drift without the awakening (${control.toFixed(3)})`);
+  step(boss, 1020, BRAWLER.hammerfall.delay + hammerClapStrikeAt() + DT);
+  assert.ok(Math.abs(across(boss, 'drawn') - a0) < .1, `a boss holds its ground (${(across(boss, 'drawn') - a0).toFixed(3)})`); assert.ok(across(boss, 'still') - b0 > .15, 'the others are still drawn');
+  // A wall between the band and the centre line: a foe the lines cannot see is never drawn.
+  const w = arena(true, [['target', 12, 10], ['walled', 11.5, 11.6]]); wall(w, [[10, 11], [11, 11], [12, 11]]); for (const e of w.enemies) e.hitStun = 99;
+  w.update(DT, idle, 1000); w.brawlerTool('hammerfall', 1020, { x: 1, y: 0 }); const c0 = across(w, 'walled'); step(w, 1020, BRAWLER.hammerfall.delay + hammerClapSpan());
+  assert.ok(Math.abs(across(w, 'walled') - c0) < .1, `past the wall: not drawn (only the same drift as without a clap: ${(across(w, 'walled') - c0).toFixed(3)})`);
 });

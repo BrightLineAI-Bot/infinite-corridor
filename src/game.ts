@@ -73,13 +73,13 @@ import {
 } from "./interactions.ts";
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
-import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
-import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
+import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
@@ -142,7 +142,7 @@ import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, join
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
+import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -164,8 +164,8 @@ import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./lis
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts";
 import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.ts";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
-import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.ts"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch } from "./orbit-volley.ts"; // release 487
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
@@ -2094,7 +2094,7 @@ export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, lev
   }
   return objects;
 }
-export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageFor = (fx) => fx.damage, onHit = () => {}, landed = (n) => n) {
+export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageFor = (fx) => fx.damage, onHit = () => {}, landed = (n) => n, admits = null) { // admits(fx, e): an extra say over a clap's hits (game.ts clapClear: never past a wall)
   for (const fx of effects) {
     const stepDt=fx.toolUseNewborn===true?0:dt;if(fx.toolUseNewborn===true)delete fx.toolUseNewborn;
     if (fx.delay > 0) { fx.delay -= stepDt; continue; }
@@ -2108,7 +2108,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
         if (fx.only && !fx.only.includes(e)) continue; // great-sweep.ts: a swing's blow lands only on the foes its blade crossed
         if (
           e.dead || e.untargetable ||
-          (fx.clap ? !hammerClapCatches(fx, e.x + 0.5, e.y + 0.45, Math.max(0, enemyBodyRadius(e) - 0.38)) /* the awakened Hammerfall's clap: the rectangle between its closing lines (brawler-spells.ts HAMMER_CLAP) */ :
+          (fx.clap ? !hammerClapCatches(fx, e.x + 0.5, e.y + 0.45, Math.max(0, enemyBodyRadius(e) - 0.38)) || (admits && !admits(fx, e)) /* the awakened Hammerfall's clap: the rectangle between its closing lines (brawler-spells.ts HAMMER_CLAP) */ :
           Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
             fx.radius + Math.max(0, enemyBodyRadius(e) - 0.38))
         )
@@ -2797,6 +2797,7 @@ export class Game {
     { const r = normalizeShadowDash(s.playerRuntime.shadowDash); this.shadowDash = r?.v === SHADOW_DASH.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // Shadow Boxing's charge resumes where it stood
     { const r = normalizeArtRush(s.playerRuntime.artRush), R = LAVA_RUSH; this.artRush = r?.v === R.v && r.area === this.area && r.areaId === this.areaId() && r.levelId === String(this.map?.levelId || "root") && this.player.hp > 0 ? r : null; } // the Lava Slash rush resumes where it stood
     this.restoreHammerfallStartup(s.playerRuntime.hammerfallStartup);
+    restoreQuandrixHold(this, s.playerRuntime.quandrixHold); // the Quandrix Staff's held or let-go hand resumes as let go, on its clock (quandrix-staff.ts)
     { const w = mapWidth(this.map, this.area), h = Math.floor((this.map?.tiles?.length || 0) / (w || 1)) || w, p = this.player; // release 736 (S9): a position far outside the map moved the Wayfarer a section on
       if (w > 0) { p.x = Math.max(-.24, Math.min(w - .76, Number.isFinite(p.x) ? p.x : 16)); p.y = Math.max(-.5, Math.min(h - .88, Number.isFinite(p.y) ? p.y : 16)); /* the footprint's own bounds (footprintOpen) */ } }
 
@@ -3883,6 +3884,7 @@ export class Game {
         hammerfallStartup:this.savedHammerfallStartup(),
         toolSwing:this.toolSwing?normalizeToolSwing(this.toolSwing):(Number.isInteger(this.save.session.playerRuntime.toolSwing?.v)&&this.save.session.playerRuntime.toolSwing.v>GREAT_SWEEP_RECORD_VERSION?structuredClone(this.save.session.playerRuntime.toolSwing):null), // the Great Sweep mid-swing (great-sweep.ts; additive, schema 14; a newer record kept opaque)
         artRush:this.artRush?normalizeArtRush(this.artRush):(Number.isInteger(this.save.session.playerRuntime.artRush?.v)&&this.save.session.playerRuntime.artRush.v>LAVA_RUSH.v?structuredClone(this.save.session.playerRuntime.artRush):null), // the Lava Slash rush mid-way (additive, schema 14; a newer record kept opaque)
+        quandrixHold:savedQuandrixHold(this)??(Number.isInteger(this.save.session.playerRuntime.quandrixHold?.v)&&this.save.session.playerRuntime.quandrixHold.v>QUANDRIX.release.record?structuredClone(this.save.session.playerRuntime.quandrixHold):null), // the Quandrix Staff's held or let-go hand (additive, schema 14; a newer record kept opaque)
         shadowDash:this.shadowDash?normalizeShadowDash(this.shadowDash):(Number.isInteger(this.save.session.playerRuntime.shadowDash?.v)&&this.save.session.playerRuntime.shadowDash.v>SHADOW_DASH.v?structuredClone(this.save.session.playerRuntime.shadowDash):null), // Shadow Boxing's charge mid-way (additive, schema 14; a newer record kept opaque)
         ...(Number.isFinite(this.player.actionVisualUntil) ? { actionVisualMotion: remaining(attackVisualDeadline(this.player,this.player.attackVisual,{effects:this.effects,now:clock,pendingToolUse:this.pendingToolUse}), clock) } : {}),
         castVisual: normalizeCastVisual(this.player.castVisual, remaining(this.player.castUntil,clock)),
@@ -4510,7 +4512,7 @@ export class Game {
           list.push({kind:'primaryEcho',life:PRIMARY_ECHO_VISUAL.life,max:PRIMARY_ECHO_VISUAL.life,actual:{x:g.x,y:g.y,dx:g.dx,dy:g.dy,range:p.range,arc:p.arc,shape:p.shape},memory:t.echoVisual||null});}
       }
       else if (t.kind === "daggerCut") { if (this.primaryStrike && this.player.hp > 0 && t.areaId === this.areaId() && isFourfoldDaggers(this.save.equipment.primary)) this.recordPrimaryConsequences(this.primaryStrike(now, null, { daggerCut: 1, aim: t.aim, share: t.share, echoed: t.echoed }) || []); } // the Fourfold Daggers' second cut
-      else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
+      else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); if (isArcCrescent(t.shot)) retireArcWaves(this.projectiles, this.area); } // an Echo's great wave: room under ARC_WAVE.maxLive
     }
     this.glyphVisuals = (this.glyphVisuals || []).filter((v) => (v.life -= dt) > 0);
     if (this.glyphNotice) { this.message = this.glyphNotice; this.glyphNotice = null; }
@@ -8004,7 +8006,7 @@ export class Game {
     if(this.paused)return{released:false,cancelled:false};
     if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')){this.cancelPendingToolUse('invalid-owner');return{released:false,cancelled:true};}
     this.pendingToolUse=null;const cap=this.area==='dungeon'?32:64;
-    if(q.payload.family==='shot'&&this.projectiles.filter(p=>!p.dead&&!p.shard).length>=cap){const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return{released:false,cancelled:true};}
+    if(q.payload.family==='shot'&&sharedShotCount(this.projectiles)>=cap){const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return{released:false,cancelled:true};}
     let base=null;
     if(q.payload.family==='shot'){
       const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
@@ -8012,6 +8014,7 @@ export class Game {
       for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:originX,y:originY,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
       for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true,...arcWaveEcho(q.payload.shot,q.payload.spread)/* tool-forms.ts ARC_WAVE_ECHO */}});
       if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
+      retireArcWaves(this.projectiles,this.area); // tool-forms.ts ARC_WAVE.maxLive: the oldest crescents make room
       echoEvent(this,'shot',now,{shot:base});
     }else{
       const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
@@ -8146,12 +8149,30 @@ export class Game {
   sweepFreezeHit(e,amount){
     if(!e||e.dead||e.untargetable||e.hidden||e.kind==='npc'||e.retreating||e.fleeTo||e.passingBeast||e.playing||e.astralMount?.status==='mounted')return false;
     const on=sweepFreezeTouch(e,this.sweepFreezeClass(e),amount);
-    if(on){const p=this.player;if(p&&p.heldBy===e.id){p.heldUntil=0;p.heldFirm=false;}} // frozen, it lets go of a held Wayfarer
+    if(on){const p=this.player;if(p&&p.heldBy===e.id){p.heldUntil=0;p.heldFirm=false;}this.cancelFrozenAttack(e,this.lastUpdateNow||0);} // frozen, it lets go of a held Wayfarer and drops its attack
     return on;
+  }
+  // Tim, 2026-11-14: "Freezes cancel the attacks they're winding up." A freeze ends whatever the foe was preparing or doing, by
+  // each brain's own cancel: an ordinary or elite foe's telegraph, strike, melee pattern and elite wind-up; a pack beast's
+  // attack as a poise break ends it (monster-pack.ts cancelPackAttack); a Gate Revenant's (resetGateAttack); the Stalker's act
+  // (stalker.ts cancelStalkerAct); a surfaced sea creature's telegraphed strike. Hazards it laid that have not yet armed (pack
+  // effects, elite and domain hazards, affix and boss-kit hazards) are taken back, so nothing of the cancelled attack lands.
+  // Shots already loosed fly on. Once thawed it starts afresh (its boss-kit and affix clocks are held while frozen).
+  cancelFrozenAttack(e,now){
+    e.telegraph=0;e.strike=0;e.meleePhase=null;e.threatRange=null;e.windupStagger=null;e.strikeGeometry=null;e.attackAim=null;e.eliteWindup=0;e.eliteActive=0;
+    if(e.packKind)cancelPackAttack(e);
+    if(e.gatePredator)resetGateAttack(e);
+    if(e.stalker||e.stalkerKin||e.stalkerDecoy)cancelStalkerAct(e);
+    const sea=e.seaKind&&e.sea,sd=sea&&SEA_CREATURES[e.seaKind];if(sea&&sea.phase==='telegraph'&&['line','leap','ambush'].includes(sd?.pattern)){sea.phase='lurk';sea.t=0;}if(e.seaKind)e.seaTele=null;
+    const id=e.id,keep=(list,pending)=>{if(!Array.isArray(list)||!list.length)return list;let n=0;for(const q of list)if(!pending(q))list[n++]=q;list.length=n;return list;};
+    keep(this.packEffects,(f)=>f.owner===id&&f.arming>0);
+    keep(this.eliteHazards,(h)=>h.owner===id&&h.arming>0);
+    keep(this.affixHazards,(h)=>h.by===id&&now<h.armAt);
   }
   // Every frame: count the meters down; a filling meter slows its foe through the glyph slow (its own record, renewed briefly).
   tickSweepFreezes(dt,now){
     for(const e of this.enemies){if(!e.sweepFreeze)continue;if(e.dead){delete e.sweepFreeze;continue;}
+      if(sweepFrozen(e)){const ms=dt*1000,a=e.kitClock,b=e.affixClock;if(a)for(const k in a)if(Number.isFinite(a[k]))a[k]+=ms;if(b)for(const k in b)if(Number.isFinite(b[k]))b[k]+=ms;} // its boss-kit and affix moves wait out the freeze
       const f=tickSweepFreeze(e,this.sweepFreezeClass(e),dt);if(!(f<1))continue;const g=e.glyphSlow,until=now+SWEEP_FREEZE.slowMs;
       if(g?.frost){g.until=until;g.factor=f;}else if(g&&(g.until||0)>now){g.until=Math.max(g.until,until);g.factor=Math.min(Number(g.factor)||1,f);}else e.glyphSlow={until,factor:f,frost:true};}
   }
@@ -8338,7 +8359,7 @@ export class Game {
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
     if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts CARBINE: the Spark Coil at +CARBINE_RANK, a beam carbine
     if (this.isOrrery()) { const accepted=orreryPress(this, now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts: the Aether Orrery's own tap, halo and charge
-    if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
+    if (sharedShotCount(this.projectiles)/* Sunburst shards (SUNBURST.maxLive) and Arc Wave crescents (ARC_WAVE.maxLive) have their own caps */ >= (this.area==="dungeon"?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
     const acceptedToolKind = weapon.name === "Rift Bombard" ? "rift-bombard" : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
@@ -8423,6 +8444,7 @@ export class Game {
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
     const great = arcWaveEcho(shot, cone); // tool-forms.ts ARC_WAVE_ECHO: with Arc Wave each Echo is one great, fast crescent
     if (!delayed&&plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true, ...great } })); // release 507: a third shot with two Echo glyphs
+    if (!delayed && shot.arcWave) retireArcWaves(this.projectiles, this.area); // tool-forms.ts ARC_WAVE.maxLive: the oldest crescents make room
     if(delayed){
       const counter=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,members=preparedProjectiles.map(p=>{const{x,y,id:_id,hits,age,toolUseNewborn,...rest}=p;return{...rest};}),echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:c.delay,share:c.share,index:i+1}));
@@ -8444,10 +8466,10 @@ export class Game {
     }
     return n;
   }
-  // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix, never saved.
+  // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix; only the held or let-go hand is saved (playerRuntime.quandrixHold).
   quandrixEquipped() { return isQuandrixStaff(this.save.equipment?.primary); }
   quandrixMageHand() { return this.quandrixEquipped() && fieldOn(this.save, QUANDRIX.passive); } // the Mage's Hand passive works only with the staff
-  quandrixPower() { return this.meleePower(); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage
+  quandrixPower() { return this.meleePower() * (1 + transposeMagic(this.save, "quandrix-staff")); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage; x Transpose's seal (weapon-arts.ts MAGIC_DAMAGE_SOURCES: the staff's damage is magic)
   quandrixEchoPlan() { return echoPlan(this.glyphLoadout("melee")); } // a weapon Echo: an echo hand at the swing's delay and share
   quandrixClone(now) { // the Shadow Clone, while out: its hand from where it stands, toward the lock (else the Wayfarer's way), at its share
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return null;
@@ -8567,7 +8589,7 @@ export class Game {
   carbinePress(now, direction, action = null) {
     const K = this.carbineState(); if (K.charge) return false;
     if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
-    if (this.projectiles.filter((p) => !p.dead && !p.shard).length >= (this.area === "dungeon" ? 32 : 64)) return false;
+    if (sharedShotCount(this.projectiles) >= (this.area === "dungeon" ? 32 : 64)) return false;
     const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
     const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
     if (!action) return this.carbineFire(now, d, 0);
@@ -9203,7 +9225,7 @@ export class Game {
     { const plan = echoPlan(this.glyphLoadout("tool")); if (plan && main) plan.copies.forEach((c, i) => this.effects.push({ ...main, id: main.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, delay: (main.delay || 0) + BRAWLER_ECHO.toolGap * (i + 1), damage: Math.max(1, Math.round(main.damage * c.share)), imbue: (main.imbue || 0) * c.share, echo: true })); } // release 503: Echo in the tool repeats the blow; 507: one more per Echo glyph, bang, bang, boom
     // The awakened Hammerfall's clap (brawler-spells.ts HAMMER_CLAP; Tim, 2026-11-14): one per press, in addition to the hammer's
     // blow and its Echo copies, waiting with the hammer and then on its own clock (saved with the area's effects).
-    if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, spread: C.spread, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); }
+    if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, spread: C.spread, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); clipHammerClap(this.effects[this.effects.length - 1], (x, y) => this.quandrixOpen(x, y)); } // the lines never pass a wall: clipped once, here, and kept on the effect
     this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
     const hammerDurationMs=B.delay*1000+B.lifetime*1000;
@@ -10300,6 +10322,28 @@ export class Game {
   }
   // Release 539: what shortens a tool's cooldown (its glyphs, armor's attack speed); Wellspring Ground also runs it down faster.
   toolCooldownScale() { return this.glyphLoadout("tool").mods.cooldown * (1 - armorGlyphBonus(this.save).attackSpeed); }
+  // The awakened Hammerfall's clap (brawler-spells.ts HAMMER_CLAP). clapClear: whether foe `e` can be seen from the clap's
+  // centre line, at the point level with it (clamped to the clipped ends): a clap never strikes or draws in a foe past a wall.
+  clapClear(fx, e) {
+    if (!fx?.clap || !e) return true;
+    const ex = e.x + .5, ey = e.y + .45, a = Math.max(-hammerClapEnd(fx, -1), Math.min(hammerClapEnd(fx, 1), (ex - fx.x) * fx.ax + (ey - fx.y) * fx.ay));
+    return hasLineOfSight({ x: fx.x + fx.ax * a, y: fx.y + fx.ay * a }, { x: ex, y: ey }, this.map, mapWidth(this.map, this.area), true);
+  }
+  // While a clap's lines close, each foe in its band is drawn toward the centre line at `pull` tiles a second (never past it),
+  // through the collision mover; anchored foes (bosses, elites, world beasts...) hold their ground. Called each frame before
+  // updateEffects; nothing allocated.
+  tickHammerClaps(dt) {
+    if (!(dt > 0)) return;
+    for (const fx of this.effects) {
+      if (!fx.clap || fx.delay > 0 || !(fx.life > 0) || hammerClapPose(hammerClapSpan() - fx.life)?.phase !== "close") continue;
+      for (const e of this.enemies) {
+        if (e.dead || e.untargetable || artAnchored(e)) continue;
+        const ex = e.x + .5, ey = e.y + .45; if (!hammerClapCatches(fx, ex, ey, Math.max(0, enemyBodyRadius(e) - .38)) || !this.clapClear(fx, e)) continue;
+        const across = (ey - fx.y) * fx.ax - (ex - fx.x) * fx.ay, m = Math.min(Math.abs(across), HAMMER_CLAP.pull * dt); if (!(m > 1e-6)) continue;
+        const k = across > 0 ? -m : m; this.moveGrounded(e, -fx.ay * k, fx.ax * k); // toward the centre line, across the aim
+      }
+    }
+  }
   // Release 535 (tool-forms.ts GOLEM): the Hammerfall's Corridor Golem. `golem` and `golemReadyAt` are runtime only.
   raiseGolem(at, start) {
     if (this.golem || start < (this.golemReadyAt || 0)) return false;
@@ -10354,9 +10398,10 @@ export class Game {
     this.fistQueued = null;
     if (artFistIntercept(this, now, direction, action)) return true; // weapon-arts.ts Ki Blast: armed, the step waits for the let-go
     const step = this.fistNextStep(now);
+    const shown = this.fistCombo && now <= this.fistCombo.until && this.fistCombo.level > 0 ? this.fistCombo.level : 0; // the HUD meter (FIST_CALLOUT) holds through the charge, even as the chain loops to the cross
     if (step === 1) this.fistCombo = null;
     if (onBeat) this.fistFlash = { at: now, rhythm: false };
-    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step, ...(onBeat ? { onBeat: true } : {}), scale: this.chargeQuicken(IRON_FISTS.perfect[0]) };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
+    if (action && this.fistChargeable(step)) { this.fistCharge = { action, start: now, direction, step, ...(onBeat ? { onBeat: true } : {}), ...(shown ? { level: shown } : {}), scale: this.chargeQuicken(IRON_FISTS.perfect[0]) };this.cancelConsumeVisual('charge');if(this.player.attackVisual?.hammerEffectId)this.cancelAttackPresentation(now); return true; } // release 503: Echo glyphs let later steps charge
     return this.fistPunch(step, 0, now, direction, false, onBeat);
   }
   // A press that waited out the gate (fistPress): thrown as the gate opens, charging if Attack is still held.
@@ -10390,7 +10435,7 @@ export class Game {
     const delayed=this.attackAction==='attack'||this._fistInputUpdate===true; // Tim 2026-11-14: the Close View interior contact delay, in every area and both views
     if(!delayed)this.effects.push(effect);
     if (step === 1) this.save.fistOpeningHand = fistLead; // kept for older readers: always the right now
-    this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead }; // the chain loops: after the last step the cross comes next
+    this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, level: fistCalloutLevel(perfect, onBeat) /* the HUD status meter (FIST_CALLOUT): presentation only */ }; // the chain loops: after the last step the cross comes next
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
     this.fistBeat = { at: now, ...fistBeatWindow(now, this.fistRecoverUntil), step, ax: d.x, ay: d.y }; if (rhythm) this.fistFlash = { at: now, rhythm: true }; // the next beat: the ball goes out with this step and is home as its window opens
     if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each step
@@ -11212,6 +11257,7 @@ export class Game {
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
     for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();p.invulnerableUntil=now+700}}
     const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
+    if(this.effects.length)this.tickHammerClaps(dt); // the awakened Hammerfall's clap: its closing lines draw foes in (brawler-spells.ts HAMMER_CLAP.pull)
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
     if(this.effects.length)this.effects = updateEffects(
       this.effects,
@@ -11223,6 +11269,7 @@ export class Game {
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
       (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ },
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
+      (fx, e) => this.clapClear(fx, e), // the awakened Hammerfall's clap strikes only foes it can see from its centre line
     );
     const hammerTransition=this.reconcileHammerfallStartup(hammerObserved);this._hammerfallObserved=null;
     if(hammerTransition.released&&p.hp>0&&!this.paused){let accepted=false;if(this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{accepted=this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true)===true;}finally{this._fistInputUpdate=false;}}}if(!accepted)this.tickAttackBuffer(now,input);}
@@ -11239,8 +11286,8 @@ export class Game {
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
-    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e))continue;e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
-    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e))continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
+    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = this.fall && this.fallArea() && this.fall.z > this.elevationHere(p.x, p.y) + FALL.minDrop ? null : tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind; // FALL: in the air, the ground's murk is not touched
