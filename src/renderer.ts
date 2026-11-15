@@ -47,10 +47,10 @@ import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
 import { roofDeckById } from "./roof-decks.ts"; // roof decks: the roof stood on keeps its roof drawn
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
-import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2312,9 +2312,9 @@ function lanternMask() {
   x.fillStyle = gr; x.fillRect(0, 0, D, D); return (lanternRender.mask = c);
 }
 // Its warm light on the floor round the Wayfarer at (x, y) (world or screen pixels), added over what is drawn.
-function drawLanternGlow(ctx, x, y, s) {
+function drawLanternGlow(ctx, x, y, s, alpha = LANTERN.glow) {
   const m = lanternMask(); if (!m) return; const R = LANTERN.radius * s;
-  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = LANTERN.glow; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = alpha; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
 }
 // A screen darkness overlay (`draw(ctx, w, h, arg)`): unlit, drawn as it always was; lit, drawn into the layer, the lantern's
 // light taken out of it round (x, y) in screen pixels (destination-out: lanternLift of the darkness, none beyond the radius),
@@ -3275,7 +3275,9 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (g.area === "dungeon" && !closeViewCapturing()) drawRoomDim(ctx, g, s, budget.quality); // INTERIOR_LIGHT (version 2): a dark room's faint dim, under the Lantern's light
   if (!closeViewCapturing() && lanternShines(g.save, g.area)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s); // LANTERN: its warm light on the floor (under the fog of war)
+  else if (!closeViewCapturing() && outdoorNight(g) && lanternIsLit(g.save)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s, LANTERN.night.glow); // LANTERN outdoors: a fainter glow under a night sky
   if (g.area === "dungeon") drawLabFog(ctx, g, s, { l, t, r, b }, budget.quality); // LAB_FOG: a labyrinth chamber's fog of war, over everything on its floor
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
@@ -3384,6 +3386,21 @@ export function render(ctx, g, w, h, now) {
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; renderTimings.endedAt = t3; }
 }
 
+// INTERIOR_LIGHT (close-view.ts, version 2): in Standard View a dark room alone takes a faint dim, from the map's room field
+// (roomLightField: the tier position blurred across room edges; nothing at gloomy or lit, `dim.alpha` at dark), painted once a
+// map into a tiny image, one pixel a tile, in `dim.levels` steps; each frame one scaled copy (blurred on the balanced and full
+// tiers). Nothing moves in it. Without an offscreen canvas (tests) nothing is drawn; a labyrinth chamber keeps its fog of war alone,
+// a chasm its penumbra.
+const roomDimImage = { canvas: null, field: null };
+export function roomDimAlpha(sPos) { const D = INTERIOR_LIGHT.dim, k = Math.max(0, Math.min(1, sPos - 1)); return Math.round(k * D.levels) / D.levels * D.alpha; }
+export function drawRoomDim(ctx, g, s, quality) {
+  if (g.map?.chasm || g.map?.stillworks || labFogOf(g.map) || typeof ctx.drawImage !== "function") return false; const F = roomLightField(g.map); if (!F) return false;
+  const I = roomDimImage, c = I.canvas || (I.canvas = makeGroundCanvas()), gc = c?.getContext?.("2d"); if (!gc) return false;
+  if (I.field !== F) { if (c.width !== F.W || c.height !== F.H) { c.width = F.W; c.height = F.H; } gc.clearRect(0, 0, F.W, F.H);
+    for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) { const a = roomDimAlpha(F.s[y * F.W + x]); if (a > 0) { gc.fillStyle = `rgba(4,4,8,${a.toFixed(3)})`; gc.fillRect(x, y, 1, 1); } }
+    I.field = F; renderCacheStats.roomDimBuilds = (renderCacheStats.roomDimBuilds || 0) + 1; }
+  ctx.save(); ctx.imageSmoothingEnabled = INTERIOR_LIGHT.dim.soft[quality] !== false; ctx.drawImage(c, 0, 0, F.W, F.H, 0, 0, F.W * s, F.H * s); ctx.restore(); return true;
+}
 // LAB_FOG (labyrinths.ts): a labyrinth chamber's fog of war. The fog is a tiny image, one pixel a tile (the dark over tiles never
 // seen, the dim over tiles seen and out of sight, clear in sight), painted in runs of a row and redrawn only when the sight
 // changes (the Wayfarer steps onto another tile); each frame it is one scaled copy, blurred across a tile's width on the
