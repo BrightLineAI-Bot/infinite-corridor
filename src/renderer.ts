@@ -1669,7 +1669,9 @@ function actor(
     ctx.lineCap="round";
     for(let i=0;i<7;i++){
       const side=i%2?-1:1,a=-Math.PI*.15+(i/6)*Math.PI*1.3,wave=Math.sin(Number(frame)*.18+i*1.7)*.18,len=(.48+(i%3)*.12)*s*sc;
+      const t=limbTurn(ctx,k,base-s*.38*sc,(i%2?1:-1)*coreLimbAngle(limbs,"tentacle")); // each tentacle curls on its root on the attack clocks
       ctx.strokeStyle=i===0&&state==="attack"?"#ff6e89":p[i%2];ctx.lineWidth=Math.max(2,s*.07*sc);ctx.beginPath();ctx.moveTo(k,base-s*.38*sc);ctx.quadraticCurveTo(k+Math.cos(a+wave)*len*.55+side*s*.08,base-s*.38*sc+Math.sin(a+wave)*len*.45,k+Math.cos(a+wave)*len,base-s*.38*sc+Math.sin(a+wave)*len);ctx.stroke();
+      if(t)ctx.restore();
     }
   }
   if (kind === "player") {
@@ -1697,8 +1699,13 @@ function actor(
     if (t) ctx.restore();
   } else if (kind === "sparkWarden") {
     rect(p[1], -0.15, -0.7, 0.3, 0.65);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.7) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.2, -0.78, 0.4, 0.16);
+    if (t) ctx.restore();
+    // the staff, turned about the fist toward the side it faces
+    t = limbTurn(ctx, k + (-.275) * s * sc, base + (-.35) * s * sc - bob, fl * coreLimbAngle(limbs, "staff"));
     rect(p[2], -0.3, -0.75, 0.05, 0.7);
+    if (t) ctx.restore();
     for (let q = 0; q < 3; q++) rect(p[2], -0.1, -0.57 + q * 0.15, 0.2, 0.04);
   } else if (kind === "ashenHound") {
     // drawn facing right, as always: the tail, hind leg and foreleg on their joints, the head on its neck with a hinged jaw
@@ -1711,9 +1718,15 @@ function actor(
     rect(p[0],.12,-.48,.3,.23);rect(p[2],.34,-.42,.06,.06);
     if (t) ctx.restore();
   } else if (kind === "veilMoth") {
-    rect(p[1],-.07,-.55,.14,.5);rect(p[0],-.42,-.62,.34,.35);rect(p[0],.08,-.62,.34,.35);rect(p[2],-.03,-.7,.06,.08);
+    // the wings beat on their roots, the far one mirroring the near
+    for (const side of [-1, 1]) { const t = limbTurn(ctx, k + (side * .08) * s * sc, base + (-.5) * s * sc - bob, side * coreLimbAngle(limbs, "wing")); rect(p[0], side < 0 ? -.42 : .08, -.62, .34, .35); if (t) ctx.restore(); }
+    rect(p[1],-.07,-.55,.14,.5);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[2],-.03,-.7,.06,.08); if (t) ctx.restore();
   } else if (kind === "rootBrute") {
-    rect(p[1],-.34,-.62,.68,.6);rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05);rect(p[0],-.47,-.5,.16,.52);rect(p[0],.31,-.5,.16,.52);
+    rect(p[1],-.34,-.62,.68,.6);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05); if (t) ctx.restore();
+    // the knotted arms on their shoulders (the one on the side it faces leads)
+    for (const side of [-1, 1]) { t = limbTurn(ctx, k + (side * .39) * s * sc, base + (-.48) * s * sc - bob, fl * coreLimbAngle(limbs, side === fl ? "lead" : "off")); rect(p[0], side < 0 ? -.47 : .31, -.5, .16, .52); if (t) ctx.restore(); }
   } else if (kind === "coilStalker") {
     // the head strikes on its neck toward the side it faces; two fangs gape under it and shut
     rect(p[1],-.28,-.5,.56,.42);rect(p[2],-.34,-.4,.68,.06);
@@ -1722,7 +1735,9 @@ function actor(
     rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.04,-.62,.08,.08);
     if (t) ctx.restore();
   } else if (kind === "cinderWisp") {
-    rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.2) * s * sc - bob, fl * coreLimbAngle(limbs, "tail")); rect(p[2],-.1,-.18,.2,.12); if (t) ctx.restore();
+    rect(p[1],-.18,-.55,.36,.38);
+    t = limbTurn(ctx, k + (0) * s * sc, base + (-.52) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12); if (t) ctx.restore();
   } else if (kind === "voidSentinel") {
     ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.42*sc,s*.3*sc,s*.36*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.lineWidth=Math.max(2,s*.04);ctx.stroke();rect(p[0],-.2,-.66,.4,.22);rect(p[2],-.07,-.57,.14,.08);
   } else if (kind === "gateRevenant") {
@@ -1740,17 +1755,23 @@ function actor(
     rect(p[2], fl > 0 ? 0.28 : -0.41, -0.66, 0.13, 0.07);
     if (t) ctx.restore();
   } else if (kind === "riftColossus") {
+    // drawn as always (the great arm on the right): each arm on its shoulder, the head on its neck
+    let t = limbTurn(ctx, k + (-.32) * s * sc, base + (-.55) * s * sc - bob, coreLimbAngle(limbs, "off")); rect(p[0], -0.49, -0.57, 0.35, 0.48); if (t) ctx.restore();
     rect(p[1], -0.41, -0.72, 0.7, 0.68);
-    rect(p[0], -0.49, -0.57, 0.35, 0.48);
-    rect(p[0], 0.13, -0.88, 0.38, 0.75);
-    rect("#22191a", -0.18, -0.8, 0.28, 0.22);
-    rect(p[2], -0.09, -0.7, 0.08, 0.07);
+    t = limbTurn(ctx, k + (.32) * s * sc, base + (-.82) * s * sc - bob, coreLimbAngle(limbs, "lead")); rect(p[0], 0.13, -0.88, 0.38, 0.75); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (-.04) * s * sc, base + (-.6) * s * sc - bob, coreLimbAngle(limbs, "head")); rect("#22191a", -0.18, -0.8, 0.28, 0.22); rect(p[2], -0.09, -0.7, 0.08, 0.07); if (t) ctx.restore();
   } else if (kind === "mossGrazer") {
-    rect(p[1], -.34, -.35, .62, .28); rect(p[0], .16, -.52, .27, .25); rect(p[2], .33, -.45, .06, .06); rect(p[1], -.24, -.13, .07, .18); rect(p[1], .18, -.13, .07, .18);
+    let t = limbTurn(ctx, k + (-.2) * s * sc, base + (-.13) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1], -.24, -.13, .07, .18); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.215) * s * sc, base + (-.13) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1], .18, -.13, .07, .18); if (t) ctx.restore();
+    rect(p[1], -.34, -.35, .62, .28);
+    t = limbTurn(ctx, k + (.2) * s * sc, base + (-.35) * s * sc - bob, coreLimbAngle(limbs, "head")); rect(p[0], .16, -.52, .27, .25); rect(p[2], .33, -.45, .06, .06); if (t) ctx.restore();
   } else if (kind === "lanternDoe") {
-    rect(p[1], -.28, -.39, .55, .3); rect(p[0], .12, -.62, .25, .28); rect(p[2], .25, -.55, .07, .07); rect(p[1], -.2, -.14, .06, .22); rect(p[1], .16, -.14, .06, .22); rect(p[2], .19, -.79, .04, .21); rect(p[2], .31, -.79, .04, .21);
+    let t = limbTurn(ctx, k + (-.17) * s * sc, base + (-.14) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1], -.2, -.14, .06, .22); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.19) * s * sc, base + (-.14) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1], .16, -.14, .06, .22); if (t) ctx.restore();
+    rect(p[1], -.28, -.39, .55, .3);
+    t = limbTurn(ctx, k + (.18) * s * sc, base + (-.38) * s * sc - bob, coreLimbAngle(limbs, "head")); rect(p[0], .12, -.62, .25, .28); rect(p[2], .25, -.55, .07, .07); rect(p[2], .19, -.79, .04, .21); rect(p[2], .31, -.79, .04, .21); if (t) ctx.restore();
   } else if (kind === "hushling") {
-    ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);
+    ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);const t=limbTurn(ctx,k + (0) * s * sc, base + (-.52) * s * sc - bob,fl*coreLimbAngle(limbs,"head"));rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);if(t)ctx.restore();
   } else if (kind === "ashling") {
     rect(p[1], -0.2, -0.55, 0.4, 0.5);
     let t = limbTurn(ctx, k + (0) * s * sc, base + (-.5) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));

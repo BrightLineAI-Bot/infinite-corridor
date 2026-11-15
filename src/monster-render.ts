@@ -2154,7 +2154,7 @@ export function drawPackPortrait(ctx, kind, size, now = 0) {
   ctx.restore(); return true;
 }
 
-// The core bestiary's Standard View limbs (creature visual pass, Tim 2026-11-15: keep the flat blocky figures of renderer.ts
+// The ordinary creatures' Standard View limbs (creature visual pass, Tim 2026-11-15: keep the flat blocky figures of renderer.ts
 // actor() - "they fit with the theme of the game" - and give them limbs that swing at you; no whole-body leaning). Each kind's
 // arms, claws, jaws, weapon and tail are their own blocks turned about a joint, in the same palette and style. The clocks are
 // the ones the Close View rows use (close-view-arcology-models.ts CORE_JOINT_POSE): the wind-up is e.telegraph against its full
@@ -2167,7 +2167,8 @@ const rowsOf = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k
 export const CORE_LIMBS = Object.freeze({
   snapAt: .8, hold: .25, follow: .45, idleRate: 1.6, flinch: .45, windupDefault: .8,
   windups: Object.freeze({ longReach: 1, lunge: .8, zigzag: .95, hop: 1.05, slam: 1.25 }), // combat.ts MELEE_PATTERNS telegraphs
-  // limbs: lead and off arm (the lead is the one on the side it faces), head, jaw, weapon, tail, fore and hind legs
+  // limbs: lead and off arm (the lead is the one on the side it faces), head, jaw, weapon or staff, tail, fore and hind legs,
+  // wings and tentacles
   kinds: Object.freeze({
     // the Lunge: the lead claw rears overhead and rakes down across; the Long Reach: both claws rear up and rake in together
     ashling: rowsOf({ '*': { lead: L(-2.3, .7, .35, .06), off: L(.35, -.3, 0, .06), head: L(-.12, .16, .05) },
@@ -2187,6 +2188,24 @@ export const CORE_LIMBS = Object.freeze({
     // Lunge dips it toward the foe to stalk, then springs it further out
     coilStalker: rowsOf({ '*': { head: L(-.32, .42, -.1, .04), jaw: L(.55, 0, .2) },
       lunge: { head: L(.32, .8, -.15, .04), jaw: L(.6, .05, .2) } }),
+    // the Heavy Slam: both knotted arms rise over the head and hammer down; the Long Reach is a one-arm haymaker
+    rootBrute: rowsOf({ '*': { lead: L(-2.6, .35, .3, .04), off: L(2.6, -.35, -.3, .04), head: L(-.08, .1) },
+      longReach: { lead: L(-1.4, .9, .3, .04), off: L(.3, -.2, 0, .04), head: L(-.06, .1) } }),
+    // the bolt: the staff is drawn back, then levelled across at the foe as the bolt leaves
+    sparkWarden: rowsOf({ '*': { staff: L(-.45, 1.2, .15, .04), head: L(-.06, .08) } }),
+    // the cast: the flame crown leans back to gather and flares forward; the trailing wisp whips the other way
+    cinderWisp: rowsOf({ '*': { head: L(-.35, .5, -.15, .12), tail: L(.4, -.5, .15, .12) } }),
+    // the cast: both wings rise, then clap down to throw the force (the far wing mirrors the near); the antennae dip in
+    veilMoth: rowsOf({ '*': { wing: L(-.55, .6, -.2, .15), head: L(-.1, .12, 0, .05) } }),
+    // the bolt: alternate tentacles curl in and flare out round the eye
+    voidSentinel: rowsOf({ '*': { tentacle: L(.35, -.6, .25) } }),
+    // the Heavy Slam: the great arm is hauled up and brought down, the other braces; the Long Reach swings it out level
+    riftColossus: rowsOf({ '*': { lead: L(-1.3, .6, .3, .03), off: L(.5, -.3, 0, .03), head: L(-.05, .08) },
+      longReach: { lead: L(-.4, 1.3, .2, .03), off: L(.2, -.2, 0, .03), head: L(-.04, .06) } }),
+    // the quiet creatures never attack: the head grazes and bobs, and a blow throws it up (the coil only sets the flinch's way)
+    mossGrazer: rowsOf({ '*': { head: L(-.3, 0, 0, .1), fore: L(.3, 0, 0, .03), hind: L(-.2, 0) } }),
+    lanternDoe: rowsOf({ '*': { head: L(-.3, 0, 0, .06), fore: L(.3, 0), hind: L(-.2, 0) } }),
+    hushling: rowsOf({ '*': { head: L(-.25, .2, 0, .08) } }),
   }),
 });
 // One scratch record, rewritten by every call (no per-frame allocation). `row` is the creature's limb row ('' for other kinds).

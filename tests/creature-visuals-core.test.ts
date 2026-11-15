@@ -95,7 +95,7 @@ test('Standard View: limbs wind up, strike and recover on the attack clocks, and
     assert.ok(limbs.some((l) => Math.abs(coreLimbAngle(coreLimbPose(f, 0, true), l) - coreLimbAngle(coreLimbPose(rest, 0, true), l)) > .1), `${kind} flinches`);
   }
   // other kinds, and no pose at all, leave the figure still
-  assert.equal(coreLimbAngle(coreLimbPose({ kind: 'rootBrute', telegraph: .5 }), 'lead'), 0);
+  assert.equal(coreLimbAngle(coreLimbPose({ kind: 'gateRevenant', telegraph: .5 }), 'lead'), 0);
   assert.equal(coreLimbAngle(null, 'lead'), 0);
   // Reduced Motion: no idle sway, half the swing
   const e = { kind: 'ashling', x: 1, y: 2, telegraph: .16, meleePhase: { id: 'lunge' } };
@@ -107,6 +107,23 @@ test('Standard View: limbs wind up, strike and recover on the attack clocks, and
   const fn = (file, name) => { const src = readFileSync(new URL(file, import.meta.url), 'utf8'), i = src.indexOf(`function ${name}(`); assert.ok(i >= 0, name); let d = 0, j = src.indexOf('{', src.indexOf(')', i)); const s0 = j; for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(s0, j + 1); };
   for (const [file, name] of [['../src/monster-render.ts', 'coreLimbPose'], ['../src/monster-render.ts', 'coreLimbAngle'], ['../src/renderer.ts', 'limbTurn']])
     assert.ok(!/\bnew\s|=>|\[\s*\]|\.map\(|\.filter\(|\.slice\(|\.\.\./.test(fn(file, name)), `${name} allocates nothing`);
+});
+
+test('Standard View: the other ordinary kinds drawn by actor() have jointed limbs too, and no boss or world beast does', () => {
+  const STRIKE = ACTION_MOTION.monsterStrikeMs / 1000;
+  const attackers = { rootBrute: 'lead', sparkWarden: 'staff', cinderWisp: 'head', veilMoth: 'wing', voidSentinel: 'tentacle', riftColossus: 'lead' };
+  for (const [kind, limb] of Object.entries(attackers)) {
+    assert.ok(Object.hasOwn(CORE_LIMBS.kinds, kind), kind);
+    const e: any = { kind, x: 2, y: 5, telegraph: 0, strike: 0, flinch: 0, meleePhase: null }, at = (o) => { Object.assign(e, { telegraph: 0, strike: 0, flinch: 0 }, o); return coreLimbAngle(coreLimbPose(e, 0, true), limb); };
+    const rest = at({}), coil = at({ telegraph: CORE_LIMBS.windupDefault * (1 - CORE_LIMBS.snapAt) }), hit = at({ strike: STRIKE * .95 }), done = at({ strike: STRIKE * .01 }), hurt = at({ flinch: 1 });
+    assert.ok(Math.abs(coil - rest) > .15 && Math.abs(hit - coil) > .3 && Math.abs(done - rest) < Math.abs(hit - rest), `${kind} winds up, strikes and recovers`);
+    assert.ok(Math.abs(hurt - rest) > .05, `${kind} flinches`);
+  }
+  for (const kind of ['mossGrazer', 'lanternDoe', 'hushling']) {
+    const rest = coreLimbAngle(coreLimbPose({ kind, x: 1, y: 1 }, 0, true), 'head'), hurt = coreLimbAngle(coreLimbPose({ kind, x: 1, y: 1, flinch: 1 }, 0, true), 'head');
+    assert.ok(Math.abs(hurt - rest) > .05, `${kind}: a quiet creature flinches`);
+  }
+  for (const kind of ['gateRevenant', 'vesperwing', 'gravitantBell', 'mireApostle', 'knifeChoir', 'spinoRex', 'wildStego']) assert.ok(!Object.hasOwn(CORE_LIMBS.kinds, kind), `${kind} untouched`);
 });
 
 test('the bizarro-world style: the rounded core bodies draw and cache boundedly, and the normal renderer never calls them', () => {
