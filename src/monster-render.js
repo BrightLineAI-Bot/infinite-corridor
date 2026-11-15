@@ -1,26 +1,26 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r972-cede9b9fcf20"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r972-cede9b9fcf20"; // adventure creatures
-import { DUELIST_BODIES } from "./duelist-render.js?v=r972-cede9b9fcf20"; // the Gaunt (duelists.ts)
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r972-cede9b9fcf20";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r972-cede9b9fcf20";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r975-6689d7c92177"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r975-6689d7c92177"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.js?v=r975-6689d7c92177"; // the Gaunt (duelists.ts)
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r975-6689d7c92177";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r975-6689d7c92177";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r972-cede9b9fcf20"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r972-cede9b9fcf20";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r975-6689d7c92177"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r975-6689d7c92177";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r972-cede9b9fcf20";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r972-cede9b9fcf20";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r972-cede9b9fcf20";
-import { drawWildStego } from "./wild-stego-render.js?v=r972-cede9b9fcf20"; // the Wild Stegosaurus (Tim, 2026-11-12)
-import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r972-cede9b9fcf20";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r972-cede9b9fcf20";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r972-cede9b9fcf20";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r972-cede9b9fcf20";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r972-cede9b9fcf20";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r975-6689d7c92177";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r975-6689d7c92177";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r975-6689d7c92177";
+import { drawWildStego } from "./wild-stego-render.js?v=r975-6689d7c92177"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r975-6689d7c92177";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r975-6689d7c92177";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r975-6689d7c92177";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r975-6689d7c92177";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r975-6689d7c92177";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r972-cede9b9fcf20";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r975-6689d7c92177";
 
 const TAU = Math.PI * 2;
 
@@ -466,7 +466,7 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
 // e.stegoClimb and e.stegoTree; nothing moves on its own clock under reduced motion.
 const STEGO_LOOK = { body: "#2f6fd6", dark: "#163a7a", plate: "#a9dcff", belly: "#6f9fe6", eye: "#ffd23a", wood: "#6a4a2a", leaf: "#3f7a3a", water: "rgba(40,90,160,.55)" };
 function drawWildStegoPlaceholder(ctx, q) {
-  const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, Number(e.stegoAir) || 0), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
+  const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, (Number(e.stegoAir) || 0) + (Number(e.dinoLift) || 0)), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
   const b = q.b - air * u * .45, quiet = !!e.reduceMotion;
   ctx.save(); ctx.translate(k, b); ctx.scale(flip, 1);
   if (climb > 0) ctx.rotate(-climb * .9);
@@ -510,13 +510,17 @@ function drawStegoEffect(ctx, f, s, now, presentation = {}) {
   } else { const spin = quiet ? 0 : now / 120; ctx.strokeStyle = "rgba(190,170,130,.7)"; ctx.lineWidth = Math.max(1.5, s * .06); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x, y - i * r * .5, r * (1 - i * .2), r * .35, spin + i, 0, TAU * .75); ctx.stroke(); } }
   ctx.restore();
 }
-export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh"]);
+export const SPINO_EFFECT_KINDS = new Set(["spinoRock", "spinoBone", "spinoBoneBurst", "spinoFurrow", "spinoFlesh", "dinoRock"]);
 function drawSpinoEffect(ctx, f, s, now, presentation = {}) {
   const x = (f.x + .5) * s, y = (f.y + .62) * s, r = (f.radius || .4) * s, quiet = !!(presentation?.reduceMotion || presentation?.safeMode);
   ctx.save();
   if (f.kind === "spinoRock") { ctx.fillStyle = "#7a5a3a"; ctx.beginPath(); ctx.arc(x, y - s * .3, Math.max(2, r), 0, TAU); ctx.fill(); }
   else if (f.kind === "spinoBone") { const a = quiet ? Math.atan2(f.vy || 0, f.vx || 1) : now / 90; ctx.translate(x, y - s * .5); ctx.rotate(a); ctx.strokeStyle = "#ece6d6"; ctx.lineWidth = Math.max(2, s * .1); ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke(); }
   else if (f.kind === "spinoBoneBurst") { if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.strokeStyle = "rgba(236,230,214,.85)"; ctx.fillStyle = `rgba(74,70,64,${(.15 + .3 * k).toFixed(3)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); } else glow(ctx, x, y, r * 1.3, "#ece6d6", .5); }
+  else if (f.kind === "dinoRock") { /* the dino duel's rockfall: its circle while it falls (a shadow growing, the rock above), then dust */
+    if (f.arming > 0) { const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1); ctx.fillStyle = `rgba(40,30,20,${(.2 + .35 * k).toFixed(3)})`; ctx.strokeStyle = "rgba(240,200,140,.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      if (!presentation?.capture) { ctx.fillStyle = "#6b5a48"; ctx.beginPath(); ctx.arc(x, y - (1 - k) * s * 5 - s * .3, Math.max(2, r * .6), 0, TAU); ctx.fill(); } }
+    else glow(ctx, x, y, r * 1.4, "#b8a184", .5); }
   else if (f.kind === "spinoFurrow") { const k = Math.max(0, f.life / (f.total || 1)); ctx.translate(x, y); ctx.rotate(f.angle || 0); ctx.strokeStyle = `rgba(60,40,24,${(.7 * k).toFixed(3)})`; ctx.lineWidth = Math.max(2, s * .12); ctx.beginPath(); ctx.moveTo(-s * .5, 0); ctx.lineTo(s * .5, 0); ctx.stroke(); }
   else { ctx.fillStyle = "#c4561a"; ctx.beginPath(); ctx.arc(x, y - s * .2, Math.max(2, r * .8), 0, TAU); ctx.fill(); }
   ctx.restore();
@@ -1628,6 +1632,43 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   const drawn = drawPackSprite(ctx, e, s, now, facing, def) || paintPackMonster(ctx, e, s, now, facing, def, false);
   if (stun > 0) { ctx.restore(); drawDazed(ctx, e, s, now, stun); }
   return drawn;
+}
+// Ordinary creature behaviour cues in Standard View (enemy-behaviour.ts flags; Close View reads the same flags itself): the alert
+// "!" over its head, a guard's bright arc on the side it braces, and the ground breaking (or a shadow, for a flier) as it arrives.
+// Flat strokes and one glyph, only while a flag is up: no gradients, nothing cached, nothing drawn for a creature at rest.
+export const BEHAVIOUR_CUES = { alert: "#ffe27a", guard: "rgba(190,225,255,", arrive: "rgba(70,52,36,", drop: "rgba(0,0,0," };
+export function behaviourCueOffset(e, reduceMotion = false) {
+  const a = Number(e?.arrive) || 0; if (!(a > 0)) return 0;
+  return reduceMotion ? 0 : e.arriveStyle === "drop" ? -a * .9 : e.arriveStyle === "emerge" ? a * .35 : 0;
+}
+// A flinch's jolt, away from the way it faces (a pack creature's facingX, an older creature's facing), in tiles.
+export function behaviourJolt(e, facing, reduceMotion = false, axis = "x") {
+  const j = Number(e?.flinch) || 0; if (!(j > 0) || reduceMotion) return 0;
+  const k = j * .1;
+  if (axis === "x") return e.facingX ? -Math.sign(e.facingX) * k : facing === "left" ? k : facing === "right" ? -k : 0;
+  return e.facingX ? 0 : facing === "up" ? k : facing === "down" ? -k : 0;
+}
+export function drawBehaviourCues(ctx, e, s, now, reduceMotion = false) {
+  const alert = Number(e.alert) || 0, guard = Number(e.guard) || 0, arrive = Number(e.arrive) || 0;
+  if (!(alert > 0 || guard > 0 || arrive > 0)) return false;
+  const scale = Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s;
+  ctx.save();
+  if (arrive > 0) {
+    if (e.arriveStyle === "drop") { ctx.fillStyle = BEHAVIOUR_CUES.drop + (.35 * (1 - arrive) + .1) + ")"; ctx.beginPath(); ctx.ellipse(k, b, s * scale * .45 * (1.4 - arrive * .6), s * scale * .16, 0, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.strokeStyle = BEHAVIOUR_CUES.arrive + (.75 * arrive) + ")"; ctx.lineWidth = Math.max(2, s * .07); const r = s * scale * (.35 + (1 - arrive) * .45); ctx.beginPath(); ctx.ellipse(k, b, r, r * .32, 0, 0, Math.PI * 2); ctx.stroke();
+      if (!reduceMotion) for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + (e.x + e.y), d = r * (1.1 + (1 - arrive) * .4); ctx.fillStyle = BEHAVIOUR_CUES.arrive + (.8 * arrive) + ")"; ctx.fillRect(k + Math.cos(a) * d - s * .04, b + Math.sin(a) * d * .32 - s * (.08 + (1 - arrive) * .2), s * .08, s * .08); } }
+  }
+  if (alert > 0) { /* a short "!" that pops up and holds */
+    const top = b - s * scale * 1.25 - (reduceMotion ? 0 : (1 - Math.min(1, (1 - alert) * 5)) * s * .15), size = Math.max(10, s * .42);
+    ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.lineWidth = 3; ctx.strokeStyle = "#000c"; ctx.fillStyle = BEHAVIOUR_CUES.alert;
+    ctx.strokeText("!", k, top); ctx.fillText("!", k, top);
+  }
+  if (guard > 0) { /* the brace: a bright arc on its front */
+    const dir = e.facingX ? (e.facingX < 0 ? Math.PI : 0) : ({ left: Math.PI, right: 0, up: -Math.PI / 2, down: Math.PI / 2 })[e.ai?.facing] ?? 0, r = s * scale * .55;
+    ctx.strokeStyle = BEHAVIOUR_CUES.guard + (.45 + .45 * guard) + ")"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.arc(k, b - s * scale * .45, r, dir - .9, dir + .9); ctx.stroke();
+  }
+  ctx.restore();
+  return true;
 }
 // Stars circling over a staggered boss, and a cracked ring at its feet that closes as it recovers.
 export function drawDazed(ctx, e, s, now, stun, layer = 'all', head = null) {

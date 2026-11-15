@@ -1,26 +1,26 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r972-cede9b9fcf20";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r972-cede9b9fcf20";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r972-cede9b9fcf20";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r972-cede9b9fcf20";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r972-cede9b9fcf20";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r972-cede9b9fcf20";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r972-cede9b9fcf20";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r972-cede9b9fcf20";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r972-cede9b9fcf20";
-import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r972-cede9b9fcf20";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r972-cede9b9fcf20";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r972-cede9b9fcf20";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r972-cede9b9fcf20";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r972-cede9b9fcf20";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r972-cede9b9fcf20";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r972-cede9b9fcf20";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r972-cede9b9fcf20";
-import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r972-cede9b9fcf20";
-import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r972-cede9b9fcf20";
-import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r972-cede9b9fcf20";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r975-6689d7c92177";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r975-6689d7c92177";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r975-6689d7c92177";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r975-6689d7c92177";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r975-6689d7c92177";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r975-6689d7c92177";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r975-6689d7c92177";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r975-6689d7c92177";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r975-6689d7c92177";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r975-6689d7c92177";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r975-6689d7c92177";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r975-6689d7c92177";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r975-6689d7c92177";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r975-6689d7c92177";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r975-6689d7c92177";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r975-6689d7c92177";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r975-6689d7c92177";
+import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r975-6689d7c92177";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r975-6689d7c92177";
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r975-6689d7c92177";
 
 // A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
 // visible whenever they're in the same section as you... You should know where they are"). The Close View had kept every

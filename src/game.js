@@ -1,14 +1,14 @@
-import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.js?v=r972-cede9b9fcf20';
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r972-cede9b9fcf20'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
-import { canopyGateDestination } from './trees.js?v=r972-cede9b9fcf20';
-import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.js?v=r972-cede9b9fcf20";
-import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.js?v=r972-cede9b9fcf20";
-import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.js?v=r972-cede9b9fcf20";
-import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.js?v=r972-cede9b9fcf20";
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r972-cede9b9fcf20";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r972-cede9b9fcf20";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r972-cede9b9fcf20";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r972-cede9b9fcf20";
+import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.js?v=r975-6689d7c92177';
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r975-6689d7c92177'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
+import { canopyGateDestination } from './trees.js?v=r975-6689d7c92177';
+import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.js?v=r975-6689d7c92177";
+import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.js?v=r975-6689d7c92177";
+import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.js?v=r975-6689d7c92177";
+import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.js?v=r975-6689d7c92177";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r975-6689d7c92177";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r975-6689d7c92177";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r975-6689d7c92177";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r975-6689d7c92177";
 import {
   generateRegion,
   regionSettled,
@@ -34,7 +34,7 @@ import {
   cacheLootText,
   HEARTLAND_SHACK,
   heartlandShackSection,
-} from "./world.js?v=r972-cede9b9fcf20";
+} from "./world.js?v=r975-6689d7c92177";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -45,21 +45,21 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.js?v=r972-cede9b9fcf20";
-import { pressOculus, tickOculus } from "./oculus.js?v=r972-cede9b9fcf20"; // release 874: the Oculus, a utility-button choice
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r972-cede9b9fcf20";
-import { beastCatchUp } from "./stages.js?v=r972-cede9b9fcf20";
-import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.js?v=r972-cede9b9fcf20";
-import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.js?v=r972-cede9b9fcf20";
-import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r972-cede9b9fcf20";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.js?v=r972-cede9b9fcf20";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r972-cede9b9fcf20";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.js?v=r972-cede9b9fcf20";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r972-cede9b9fcf20";
-import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r972-cede9b9fcf20";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r972-cede9b9fcf20";
-import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r972-cede9b9fcf20";
-import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee, wayfarerDamage, WAYFARER_DAMAGE } from "./combat.js?v=r972-cede9b9fcf20";
+import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.js?v=r975-6689d7c92177";
+import { pressOculus, tickOculus } from "./oculus.js?v=r975-6689d7c92177"; // release 874: the Oculus, a utility-button choice
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r975-6689d7c92177";
+import { beastCatchUp } from "./stages.js?v=r975-6689d7c92177";
+import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.js?v=r975-6689d7c92177";
+import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.js?v=r975-6689d7c92177";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r975-6689d7c92177";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.js?v=r975-6689d7c92177";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r975-6689d7c92177";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.js?v=r975-6689d7c92177";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r975-6689d7c92177";
+import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r975-6689d7c92177";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r975-6689d7c92177";
+import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r975-6689d7c92177";
+import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee, wayfarerDamage, WAYFARER_DAMAGE } from "./combat.js?v=r975-6689d7c92177";
 import {
   applyInteraction,
   validActions,
@@ -70,114 +70,116 @@ import {
   gainAperture,
   APERTURE_TIER_DUE,
   progressLead,
-} from "./interactions.js?v=r972-cede9b9fcf20";
-import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.js?v=r972-cede9b9fcf20";
-import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r972-cede9b9fcf20";
-import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.js?v=r972-cede9b9fcf20"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.js?v=r972-cede9b9fcf20"; // weapon arts (2026-11-13)
-import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.js?v=r972-cede9b9fcf20"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.js?v=r972-cede9b9fcf20"; // and the Aether Orrery (a magic tool)
-import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.js?v=r972-cede9b9fcf20";
-import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r972-cede9b9fcf20";
-import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.js?v=r972-cede9b9fcf20"; // release 678: the Stalker
-import { applyBossKit, tickBossKit } from "./boss-kit.js?v=r972-cede9b9fcf20";
-import { wonderRumour, wonderAt } from "./wonders.js?v=r972-cede9b9fcf20";
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r972-cede9b9fcf20";
-import { sectionAtlasColor } from "./atlas-colors.js?v=r972-cede9b9fcf20";
-import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.js?v=r972-cede9b9fcf20"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.js?v=r972-cede9b9fcf20"; // roof decks (Tim, 2026-11-12)
-import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.js?v=r972-cede9b9fcf20";
-import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.js?v=r972-cede9b9fcf20";
-import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.js?v=r972-cede9b9fcf20"; // the Great Sweep's 360° swing; its awakened freeze
-import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.js?v=r972-cede9b9fcf20";
-import { SMITHY } from "./smithy.js?v=r972-cede9b9fcf20"; // release 607: one salvage table
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.js?v=r972-cede9b9fcf20";
-import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.js?v=r972-cede9b9fcf20";
-import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r972-cede9b9fcf20";
-import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r972-cede9b9fcf20";
-import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r972-cede9b9fcf20";
-import { hashSeed, rng, byHash } from "./random.js?v=r972-cede9b9fcf20";
-import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.js?v=r972-cede9b9fcf20"; // release 748: penning catches, the stable and riding
-import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.js?v=r972-cede9b9fcf20";
-import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r972-cede9b9fcf20";
-import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.js?v=r972-cede9b9fcf20";
-import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r972-cede9b9fcf20";
-import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r972-cede9b9fcf20";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,eliteStateInPlace,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r972-cede9b9fcf20';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r972-cede9b9fcf20';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r972-cede9b9fcf20';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r972-cede9b9fcf20';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r972-cede9b9fcf20';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r972-cede9b9fcf20';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r972-cede9b9fcf20";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r972-cede9b9fcf20";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r972-cede9b9fcf20";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r972-cede9b9fcf20";
-import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.js?v=r972-cede9b9fcf20";
-import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.js?v=r972-cede9b9fcf20";
-import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.js?v=r972-cede9b9fcf20";
-import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay } from "./tall-towers.js?v=r972-cede9b9fcf20"; // tall towers (the Upwells)
-import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.js?v=r972-cede9b9fcf20";
-import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.js?v=r972-cede9b9fcf20"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
-import { outdoorLevelHeight } from "./close-view-outdoor.js?v=r972-cede9b9fcf20"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.js?v=r972-cede9b9fcf20";
-import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.js?v=r972-cede9b9fcf20";
-import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.js?v=r972-cede9b9fcf20";
-import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.js?v=r972-cede9b9fcf20"; // the Mountain Turtle's shell and its labyrinth
-import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.js?v=r972-cede9b9fcf20";
-import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.js?v=r972-cede9b9fcf20"; // the Pentagon's finale arena, the Stillworks
-import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.js?v=r972-cede9b9fcf20";
-import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interloperCame, noteInterloper, interloperPrey, interloperSpot, SPINO_SCREEN } from "./spino-rex.js?v=r972-cede9b9fcf20"; // the Spinosaurus: big rooms and the interloper
-import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.js?v=r972-cede9b9fcf20"; // the Spinosaurus's bleed (the Wayfarer's status)
-import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.js?v=r972-cede9b9fcf20"; // the Wild Stegosaurus in the big rooms
-import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.js?v=r972-cede9b9fcf20"; // the Stego Bait: the severed tail, the item and its lure
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.js?v=r972-cede9b9fcf20";
-import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.js?v=r972-cede9b9fcf20"; // release 795: the grand halls' murals
-import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.js?v=r972-cede9b9fcf20"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
+} from "./interactions.js?v=r975-6689d7c92177";
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.js?v=r975-6689d7c92177";
+import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r975-6689d7c92177";
+import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.js?v=r975-6689d7c92177"; // the Quandrix Staff (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.js?v=r975-6689d7c92177"; // weapon arts (2026-11-13)
+import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.js?v=r975-6689d7c92177"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.js?v=r975-6689d7c92177"; // and the Aether Orrery (a magic tool)
+import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.js?v=r975-6689d7c92177";
+import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r975-6689d7c92177";
+import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.js?v=r975-6689d7c92177"; // release 678: the Stalker
+import { applyBossKit, tickBossKit } from "./boss-kit.js?v=r975-6689d7c92177";
+import { wonderRumour, wonderAt } from "./wonders.js?v=r975-6689d7c92177";
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r975-6689d7c92177";
+import { sectionAtlasColor } from "./atlas-colors.js?v=r975-6689d7c92177";
+import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.js?v=r975-6689d7c92177"; // seed realms
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.js?v=r975-6689d7c92177"; // roof decks (Tim, 2026-11-12)
+import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.js?v=r975-6689d7c92177";
+import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.js?v=r975-6689d7c92177";
+import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.js?v=r975-6689d7c92177"; // the Great Sweep's 360° swing; its awakened freeze
+import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.js?v=r975-6689d7c92177";
+import { SMITHY } from "./smithy.js?v=r975-6689d7c92177"; // release 607: one salvage table
+import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.js?v=r975-6689d7c92177";
+import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.js?v=r975-6689d7c92177";
+import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r975-6689d7c92177";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r975-6689d7c92177";
+import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r975-6689d7c92177";
+import { hashSeed, rng, byHash } from "./random.js?v=r975-6689d7c92177";
+import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.js?v=r975-6689d7c92177"; // release 748: penning catches, the stable and riding
+import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.js?v=r975-6689d7c92177";
+import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r975-6689d7c92177";
+import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.js?v=r975-6689d7c92177";
+import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r975-6689d7c92177";
+import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r975-6689d7c92177";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,eliteStateInPlace,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r975-6689d7c92177';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r975-6689d7c92177';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r975-6689d7c92177';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r975-6689d7c92177';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.js?v=r975-6689d7c92177';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r975-6689d7c92177';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r975-6689d7c92177";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r975-6689d7c92177";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r975-6689d7c92177";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r975-6689d7c92177";
+import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.js?v=r975-6689d7c92177";
+import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.js?v=r975-6689d7c92177";
+import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.js?v=r975-6689d7c92177";
+import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay } from "./tall-towers.js?v=r975-6689d7c92177"; // tall towers (the Upwells)
+import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.js?v=r975-6689d7c92177";
+import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.js?v=r975-6689d7c92177"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { outdoorLevelHeight } from "./close-view-outdoor.js?v=r975-6689d7c92177"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.js?v=r975-6689d7c92177";
+import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.js?v=r975-6689d7c92177";
+import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.js?v=r975-6689d7c92177";
+import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.js?v=r975-6689d7c92177"; // the Mountain Turtle's shell and its labyrinth
+import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.js?v=r975-6689d7c92177";
+import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.js?v=r975-6689d7c92177"; // the Pentagon's finale arena, the Stillworks
+import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.js?v=r975-6689d7c92177";
+import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interloperCame, noteInterloper, interloperPrey, interloperSpot, SPINO_SCREEN } from "./spino-rex.js?v=r975-6689d7c92177"; // the Spinosaurus: big rooms and the interloper
+import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.js?v=r975-6689d7c92177"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
+import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.js?v=r975-6689d7c92177"; // the Spinosaurus's bleed (the Wayfarer's status)
+import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.js?v=r975-6689d7c92177"; // the Wild Stegosaurus in the big rooms
+import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.js?v=r975-6689d7c92177"; // the Stego Bait: the severed tail, the item and its lure
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.js?v=r975-6689d7c92177";
+import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.js?v=r975-6689d7c92177"; // release 795: the grand halls' murals
+import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.js?v=r975-6689d7c92177"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
-import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.js?v=r972-cede9b9fcf20";
-import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.js?v=r972-cede9b9fcf20";
-import { trackSeason, noteSeasonDiscovery } from "./seasons.js?v=r972-cede9b9fcf20";
-import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.js?v=r972-cede9b9fcf20";
-import { GREAT_MUSHROOMS } from "./great-mushrooms.js?v=r972-cede9b9fcf20";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.js?v=r972-cede9b9fcf20";
-import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.js?v=r972-cede9b9fcf20";
-import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.js?v=r972-cede9b9fcf20";
-import { addStrange, touchStrange } from "./strange.js?v=r972-cede9b9fcf20";
-import { creditFind } from "./digging.js?v=r972-cede9b9fcf20"; // seed realms: a cache's find
-import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.js?v=r972-cede9b9fcf20";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r972-cede9b9fcf20";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r972-cede9b9fcf20";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r972-cede9b9fcf20";
-import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.js?v=r972-cede9b9fcf20";
-import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.js?v=r972-cede9b9fcf20";
-import { buildDomain, domainWait, domainArrival } from "./far-domains.js?v=r972-cede9b9fcf20";
-import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.js?v=r972-cede9b9fcf20"; // the Pentagon roofs' dwellers
-import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.js?v=r972-cede9b9fcf20";
-import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r972-cede9b9fcf20";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.js?v=r972-cede9b9fcf20";
-import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r972-cede9b9fcf20";
-import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r972-cede9b9fcf20";
-import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r972-cede9b9fcf20";
-import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r972-cede9b9fcf20";
-import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r972-cede9b9fcf20";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r972-cede9b9fcf20";
-import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r972-cede9b9fcf20";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.js?v=r972-cede9b9fcf20"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
-import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.js?v=r972-cede9b9fcf20"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
-import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush } from "./brawler-spells.js?v=r972-cede9b9fcf20"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
-import { ORBIT, orbitLaunch } from "./orbit-volley.js?v=r972-cede9b9fcf20"; // release 487
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.js?v=r972-cede9b9fcf20";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r972-cede9b9fcf20";
-import { addIlse, meetIlse } from "./ilse.js?v=r972-cede9b9fcf20";
-import { addBell, ringBell, BELL_GLIMPSES } from "./bells.js?v=r972-cede9b9fcf20";
-import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.js?v=r972-cede9b9fcf20"; // release 595
-import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.js?v=r972-cede9b9fcf20"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
-import { addMargin, readMargin } from "./margins.js?v=r972-cede9b9fcf20";
-import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.js?v=r972-cede9b9fcf20"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.js?v=r972-cede9b9fcf20"; // release 505; 551: part two
-import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius } from "./lore.js?v=r972-cede9b9fcf20";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r972-cede9b9fcf20";
+import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.js?v=r975-6689d7c92177";
+import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.js?v=r975-6689d7c92177";
+import { trackSeason, noteSeasonDiscovery } from "./seasons.js?v=r975-6689d7c92177";
+import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.js?v=r975-6689d7c92177";
+import { GREAT_MUSHROOMS } from "./great-mushrooms.js?v=r975-6689d7c92177";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.js?v=r975-6689d7c92177";
+import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.js?v=r975-6689d7c92177"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.js?v=r975-6689d7c92177";
+import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.js?v=r975-6689d7c92177";
+import { addStrange, touchStrange } from "./strange.js?v=r975-6689d7c92177";
+import { creditFind } from "./digging.js?v=r975-6689d7c92177"; // seed realms: a cache's find
+import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.js?v=r975-6689d7c92177";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r975-6689d7c92177";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r975-6689d7c92177";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r975-6689d7c92177";
+import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.js?v=r975-6689d7c92177";
+import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.js?v=r975-6689d7c92177";
+import { buildDomain, domainWait, domainArrival } from "./far-domains.js?v=r975-6689d7c92177";
+import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.js?v=r975-6689d7c92177"; // the Pentagon roofs' dwellers
+import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.js?v=r975-6689d7c92177";
+import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r975-6689d7c92177";
+import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.js?v=r975-6689d7c92177";
+import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r975-6689d7c92177";
+import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r975-6689d7c92177";
+import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r975-6689d7c92177";
+import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r975-6689d7c92177";
+import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r975-6689d7c92177";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r975-6689d7c92177";
+import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r975-6689d7c92177";
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.js?v=r975-6689d7c92177"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.js?v=r975-6689d7c92177"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush } from "./brawler-spells.js?v=r975-6689d7c92177"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
+import { ORBIT, orbitLaunch } from "./orbit-volley.js?v=r975-6689d7c92177"; // release 487
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.js?v=r975-6689d7c92177";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r975-6689d7c92177";
+import { addIlse, meetIlse } from "./ilse.js?v=r975-6689d7c92177";
+import { addBell, ringBell, BELL_GLIMPSES } from "./bells.js?v=r975-6689d7c92177";
+import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.js?v=r975-6689d7c92177"; // release 595
+import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.js?v=r975-6689d7c92177"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
+import { addMargin, readMargin } from "./margins.js?v=r975-6689d7c92177";
+import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.js?v=r975-6689d7c92177"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.js?v=r975-6689d7c92177"; // release 505; 551: part two
+import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius } from "./lore.js?v=r975-6689d7c92177";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r975-6689d7c92177";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
@@ -433,6 +435,7 @@ function interiorTerrainVersion(history, fresh) {
 }
 const terrainPinned = (save, id) => save.consequences?.dungeons?.[id]?.terrainVersion ?? 1;
 
+const DINO_CUES_KEPT = 48; // the dino duel's sound cues waiting for main.ts (packWorld.dinoSfx), the newest kept
 const INERT_KEEP_HISTORY = new Map([["discovered", false], ["bypassed", false], ["guardianDefeated", false], ["resolved", false], ["visitOpen", false], ["visits", 0], ["abandoned", 0]]);
 const ROOM_PADDING_CANDIDATE = Symbol("roomPaddingCandidate");
 const ROOM_PADDING_VERSION = 1;
@@ -2514,7 +2517,11 @@ export function alertEnemy(e) {
 export function enemyProjectilePattern(shooter,aim,now=0,options={}) {
   return buildEnemyProjectilePattern(shooter,aim,now,options);
 }
-export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null) {
+// enemy-behaviour.ts (Tim, 2026-11-14): with a squad board (the game passes one), an ordinary creature also notices before it
+// engages, waits its turn for an attack token on its ring, varies its blows (heavy, combos, feints), flinches, guards, dodges,
+// steps back and retreats. Without one (`squad` null) it behaves exactly as before.
+function legacyDrop(e, b) { e.telegraph = 0; e.meleePhase = null; e.threatRange = null; if (b) { b.press = 0; b.comboLeft = 0; b.feintAt = 0; } }
+export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null, squad=null) {
   const displace = move || ((subject, dx, dy) => moveAxis(subject, dx, dy, map, width));
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
@@ -2526,6 +2533,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   staggerGovernor(e, dt); // release 377: bosses and elites cannot be stagger-locked
+  const B = squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, squad) : null;
+  if (B) {
+    squad.w = null; squad.disp = displace;
+    if (!e.aggro && toPlayer < 6) e.aggro = true; // it sees the Wayfarer: the notice beat comes first (behaviourGate)
+    if (behaviourGate(e, b, B, squad, legacyDrop)) { if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; } ai.mode = e.aggro ? "alert" : ai.mode; return false; }
+    if (e.aggro && behaviourReact(e, b, B, squad, toPlayer, e.telegraph > 0, false, legacyDrop)) { ai.mode = "react"; return false; }
+  }
   if(e.passiveBehavior==='practice'){
     ai.mode='idle';e.telegraph=0;e.strike=0;e.meleePhase=null;e.threatRange=null;return false;
   }
@@ -2544,12 +2558,14 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
+    if (B && b.feintAt > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
     if (e.telegraph === 0) {
       e.windupStagger = null; // release 561: the next windup may be held again
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
       if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!displace(e,dx/steps,dy/steps))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
       e.cooldown = (pattern?.recovery|| (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9))*(e.attackCooldownScale||1)*(bossPaced(e)?BOSS_PACE.cooldown:1); // release 421
+      if (B) { if (b.comboLeft > 0 && pattern) e.cooldown = 0; else { if (e.heavy) e.cooldown *= B.heavy.recover; afterBlow(e, b, B); } } // a combo's next blow follows at once; a heavy blow leaves it open
       e.strike = 0.24;
       const ranged=!pattern&&e.range>=2.5&&!e.instantStrike,clear=(geometry?pointInEnemyMelee(geometry,player):attackInRange(e,player))&&hasLineOfSight(e,player,map,width,ranged)&&(!geometry||hasLineOfSight({x:geometry.x-.5,y:geometry.y-.45},player,map,width));
       if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));e.meleePhase=null;e.threatRange=null;return false}
@@ -2566,6 +2582,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     tx = player.x - e.x;
     ty = player.y - e.y;
     speed = 0.78;
+    if (B && B.spacing && !(b.press > 0) && !(b.comboLeft > 0) && e.range < 2.5) { const v = ringVector(e, b, B, squad); tx = v.x; ty = v.y; speed = 0.78 * v.speed; ai.mode = "circle"; } // waiting its turn on its ring
   } else if (fromHome > 3.5) {
     ai.mode = "return";
     tx = ai.homeX - e.x;
@@ -2594,13 +2611,16 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;displace(e,px/pm*speed*dt,py/pm*speed*dt)}
   }
   if(sanctuary)enforceSanctuary(e,sanctuary);
-  const patternStartRange=e.range<2.5&&e.meleePatterns?.length?Math.max(...e.meleePatterns.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
+  const moves=B&&B.moves&&e.range<2.5&&e.meleePatterns?.length?B.moves:e.meleePatterns,patternStartRange=e.range<2.5&&moves?.length?Math.max(...moves.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
+  if (B && b.comboLeft > 0 && !(e.cooldown > 0) && !(toPlayer <= patternStartRange + enemyBodyRadius(e) + .6 && hasLineOfSight(e, player, map, width))) { b.comboLeft = 0; afterBlow(e, b, B); } // out of reach: the chain ends
+  const inReach=(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
+  if (B && !inReach && B.spacing && e.range < 2.5 && ai.mode === "circle" && !(e.cooldown > 0) && !(b.press > 0) && !(b.rest > 0) && !(b.retreat > 0) && squadRequest(squad, e, b, B.pool)) b.press = B.press; // its turn: close in
+  if (B && inReach && !(b.comboLeft > 0) && (b.rest > 0 || b.retreat > 0 || !(b.press > 0 && b.pool === (e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool)) && !squadRequest(squad, e, b, e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool))) return false; // no token: it waits
   if (
-    (attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) &&
-    e.cooldown <= 0 &&
-    hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
+    inReach
   )
-    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=e.meleePatterns||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}}
+    {const followUp=!!(B&&b.comboLeft>0);if(B){b.press=0;if(followUp){b.comboLeft--;b.combo++}}const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=moves||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}
+    if(B){const k=shapeBlow(e,b,B,!!pattern,followUp);if(followUp)e.telegraph=Math.max(BEHAVIOUR.react.comboWindup,e.minimumAttackWindup||0,.48);else if(k>1)e.telegraph*=k;b.wind=e.telegraph;e.comboStep=b.combo;e.comboOf=b.comboOf}}
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -4714,6 +4734,42 @@ export class Game {
     this.spinoShake = { at: now, until: now + SPINO.roar.shakeSeconds * 1000, power: SPINO.roar.shake };
     this.message = SPINO_INTERLOPER.text.arrive;
     return c;
+  }
+  // The dino duel (dino-duel.ts DINO_DUEL, Tim 2026-11-14): the Spinosaurus and the Wild Stegosaurus fight each other, and by 90 s one
+  // has the other: eaten (dinoEaten: nothing is the Wayfarer's) or fled (dinoEscape). Duels live on the creatures (e.dinoDuel), so the
+  // area snapshot carries one in progress; a loser fled off the area's edge is gone once it is over it.
+  dinoDuelTick(dt) {
+    if (!(dt > 0)) return [];
+    if (this.enemies.some((e) => e.dinoFled && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.dinoFled && e.fleeDone));
+    if (!this.enemies.some((e) => e.kind === "spinoRex" && (!e.dead || e.dinoDuel))) return []; // (a Spinosaurus just eaten still has its duel to close)
+    const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
+    return tickDinoDuels(this.enemies, dt, {
+      clock: Number(this.save.playSeconds) || 0, width, height,
+      eaten: (loser, winner) => this.dinoEaten(loser, winner), escape: (loser) => this.dinoEscape(loser),
+      kill: (winner, loser) => { loser.hp = 0; loser.dead = true; loser.noRewards = true; loser.hitFlash = .18; this.defeatEnemy(loser); },
+      say: (text) => { this.message = text; }, cue: (c) => { const q = this.dinoCues ||= []; if (q.length >= DINO_CUES_KEPT) q.shift(); q.push(c); },
+    });
+  }
+  // Devoured by the other beast: no reward, no Echo, no first-kill spoils and no `slain` record for the Wayfarer (its fall carries
+  // noRewards); a world beast's hunt ends all the same, so it is never back as never slain (world-beasts.ts worldBeastEaten). The
+  // winner feeds on it a few seconds before it turns on her.
+  dinoEaten(loser, winner) {
+    loser.noRewards = true; loser.rewarded = true; const text = duelText("eaten", winner, loser); this.message = text;
+    const id = loser.worldBeast;
+    if (id && WORLD_BEASTS[id] && this.save.worldBeasts?.[id]?.active) { const cycle = this.save.worldBeasts[id].cycle; worldBeastEaten(this.save, id); journalOnce(this.save, `world-beast-eaten:${id}:${cycle}`, `${text} (${this.rx},${this.ry})`, WORLD_BEASTS[id].name); }
+    if (winner && !winner.dead) winner.dinoFeed = DINO_DUEL.feed;
+  }
+  // The loser breaks off, wounded: a world beast takes its own retreat (its wounds kept on its hunt, so it is still out there); any
+  // other runs off the nearest edge of the area and is gone.
+  dinoEscape(e) {
+    const id = e.worldBeast, q = id && WORLD_BEASTS[id] ? this.save.worldBeasts?.[id]?.active : null;
+    if (q && !q.retreat && !q.astralJoined && id !== "astralWorm") {
+      const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) q.wounds = Math.round(f * 1e4) / 1e4;
+      if (q.dungeon && this.area === "dungeon") { beginDungeonRetreat(this.save, id, this.map); e.retreating = true; return; }
+      if (!q.dungeon && this.area === "overworld") { beginRetreat(this.save, id, this.rx, this.ry, this.retreatProbe()); e.retreating = true; return; }
+    }
+    if (e.pack?.attack) { e.pack.attack = null; e.pack.phase = null; e.pack.data = null; e.pack.tele = null; }
+    Object.assign(e, dinoFleeEdge(e, mapWidth(this.map, this.area), mapHeight(this.map, this.area)));
   }
   applyBeastWounds() {
     for (const e of this.enemies) if (e.kind === "wildStego" && e.worldBeast && this.save.worldBeasts?.[e.worldBeast]?.active?.tailCut) { e.stegoTail = "cut"; e.stegoTailHp = 0; } // its tail stays cut for the rest of this hunt
@@ -6899,6 +6955,10 @@ export class Game {
       // then thrown (the collision mover, as a push); its fossil shed, kept on its hunt.
       bleed() { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (applyBleed(game.save)) game.message = BLEED.text.start; return true; },
       biteMark() { game.spinoBiteMark = 1; }, // the screen's bite mark (decays in update)
+      indoors: game.area === "dungeon", // the dino duel's rockfall: every interior has a ceiling (monster-pack.ts dinoBigMove)
+      // The dino duel's sound cues (monster-pack.ts dinoCue): kept for main.ts to hand to battle-sfx.ts each frame, the newest
+      // DINO_CUES_KEPT at most. Runtime only, never saved; sound only, so the fight is the same with or without it.
+      dinoSfx(cue) { const q = game.dinoCues ||= []; if (q.length >= DINO_CUES_KEPT) q.shift(); q.push(cue); },
       shake(power, seconds) { const was = game.spinoShake && now < game.spinoShake.until ? game.spinoShake.power : 0; game.spinoShake = { at: now, until: now + seconds * 1000, power: Math.max(power, was) }; },
       spinoHold(source, seconds) { if (now < (p.dodgeUntil || 0) || p.hp <= 0 || sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return false; p.heldUntil = now + seconds * 1000; p.heldBy = source.id; p.heldFirm = true; game.cancelPendingMeleeContact?.("held"); return true; },
       carry(x, y) { if (footprintOpen(map, width, x, y)) { p.x = x; p.y = y; } },
@@ -6925,7 +6985,7 @@ export class Game {
         const c = createCombatant(kind, x, y, false, []);
         Object.assign(c, { id: `${owner.id}:brood:${Math.round(now)}:${index}`, noRewards: true, summonedBy: owner.id, broodOf: owner.id, aggro: true });
         if (game.area === "dungeon") tuneDungeonThreat(c);
-        ensureAI(c); game.enemies.push(c); return c;
+        ensureAI(c); markArrival(c); game.enemies.push(c); return c; // enemy-behaviour.ts: born, it climbs free first
       },
       spawnIllusion(owner, x, y, index) {
         const c = createCombatant(owner.kind, x, y, false, []);
@@ -7230,7 +7290,7 @@ export class Game {
       // Release 696: the Enclosure trap.
       penBreak: (id) => { const b = (game.builds || []).find((q) => q.id === id); if (b) breakBuild(game, b); },
       penOut: (e) => game.stalkerBreaksOut(e), // release 699: it tears free and leaves, still on the Wayfarer's trail
-      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.js?v=r972-cede9b9fcf20's sea-fog code
+      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.js?v=r975-6689d7c92177's sea-fog code
         game.stalkFog = { until: now + time * 1000, level: game.stalkFog?.level || 0, fog: [0, 1, 2, 3, 4].map((i) => ({ x: p.x + Math.cos(i * 1.257) * (i ? 4.5 : 0), y: p.y + Math.sin(i * 1.257) * (i ? 3.5 : 0), radius: i ? 5 : 6, swirl: i * 1.1 })) };
         game.message = "A fog rolls in, and the Stalker is gone into it."; },
       // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
@@ -10115,7 +10175,7 @@ export class Game {
       const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0) + Math.floor(P.size * pace)), roll = ((hk >>> 9) % 1000) / 1000;
       const rank = elite ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null; rare ||= rank === "rare";
       const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
-      for (const q of pack.slice(0, left)) { const c = this.scaleToRegion(this.createEnemyFromSpawn(q)); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
+      for (const q of pack.slice(0, left)) { const c = markArrival(this.scaleToRegion(this.createEnemyFromSpawn(q))); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
     }
     st.nextAt = now + (came ? mode.press * P.press[pace] : 2) * 1000; // a wave left standing is joined by the next
     if (came) { if (!st.wave) st.waveAt = now; st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
@@ -10145,7 +10205,7 @@ export class Game {
       const kinds = [...new Set(this.enemies.filter((e) => !e.fracWarden && (e.fractured || fracturedOrdinary(e))).map((e) => e.kind))].filter((k) => k !== "npc");
       const rank = st.calls % W.adds.championEvery === 0 ? "champion" : null;
       const pack = packSpawns(`${this.save.seed}:fracture-call:${key}:${st.calls}`, kinds.length ? kinds : FRACTURED.fallback, warden.x, warden.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-wa-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true, fracWardenAdd: true });
-      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = this.scaleToRegion(this.createEnemyFromSpawn(q)); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
+      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = markArrival(this.scaleToRegion(this.createEnemyFromSpawn(q))); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
       if (pack.length) this.message = W.messages.call;
     }
     return true;
@@ -10198,7 +10258,7 @@ export class Game {
   respawnCreature(q) {
     const c = this.createEnemyFromSpawn(q), B = this.map.building;
     if (B && !c.buildingScaled) { const k = buildingScale(B.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.buildingScaled = true; }
-    c.respawned = true; return this.scaleToRegion(c);
+    c.respawned = true; markArrival(c); return this.scaleToRegion(c); // enemy-behaviour.ts: it climbs out where it stirs
   }
   // Where a pack may come in: tiles the Wayfarer can walk to on their own level (open, not lethal, no hole or lethal ground
   // beside, not a doorway, RESPAWN.objectClear from every object and the arrival), at least RESPAWN.minDistance away and
@@ -11267,6 +11327,7 @@ export class Game {
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
+    this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
     for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e))continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
     for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
@@ -11306,9 +11367,12 @@ export class Game {
     else { const ag = armorGlyphBonus(this.save), drain = ag.staminaDrain > 0 && this.stagMireMoving ? (p.maxStamina || this.save.maxStamina) * ag.staminaDrain : 0; /* a Tesseract's cost: stamina drained while you move */ p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * (1 + ag.staminaRegen) * dt - drain * dt); if (drain) p.stamina = Math.max(0, p.stamina); }
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
+    // enemy-behaviour.ts (Tim, 2026-11-14): one squad board for the ordinary creatures (awareness calls, attack tokens, rings).
+    const squad=(this.squad||=createSquad());squadFrame(squad,activeEnemySet,p,now,dt,now<(p.meleeUntil||0),this.enemies);packWorld.squad=squad;
     // The Stego Bait (stego-bait.ts): while one is down here, every creature it lures sees it as the Wayfarer (lureWorld), and
     // their ground effects strike it, not you (monster-pack.ts tickPackEffects asks lureWorldFor).
     const lure=this.stegoBaitTick(dt),lureWorld=lure?this.stegoLureWorld(packWorld,lure,now):null;let stalkLure=null;
+    if(lureWorld)lureWorld.squad=null; // a lured creature goes for the bait the old way
     packWorld.lureWorldFor=lure?(owner)=>lure.ids.has(owner)?lureWorld:null:null;
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
@@ -11361,7 +11425,7 @@ export class Game {
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, lured ? lure.target : p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,lured?(shooter)=>{this.biteStegoBait(shooter,shooter.damage)}:(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
+        updateEnemyAI(e, lured ? lure.target : p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,lured?(shooter)=>{this.biteStegoBait(shooter,shooter.damage)}:(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy), lured ? null : squad) &&
         !(lured && (this.biteStegoBait(e, e.damage), true)) && // a lured blow lands on the bait, never on you
         now > (p.invulnerableUntil || 0) &&
         // Stegosaur's Grip: holding a wall is not a leap; a body blow that reaches the height (bodyReach) lands.
@@ -11373,7 +11437,7 @@ export class Game {
         p.hp -= Math.max(
           1,
           Math.ceil(
-            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421 */
+            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );

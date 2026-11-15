@@ -1,17 +1,17 @@
-import { mealLure } from "./meals.js?v=r972-cede9b9fcf20";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r972-cede9b9fcf20";
-import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r972-cede9b9fcf20";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r972-cede9b9fcf20";
+import { mealLure } from "./meals.js?v=r975-6689d7c92177";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r975-6689d7c92177";
+import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r975-6689d7c92177";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r975-6689d7c92177";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
 // cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed, byHash } from "./random.js?v=r972-cede9b9fcf20";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r972-cede9b9fcf20";
-import { sectionExits, apertureTier } from "./world.js?v=r972-cede9b9fcf20";
-import { stageOneBeastReference } from "./stages.js?v=r972-cede9b9fcf20";
+import { hashSeed, byHash } from "./random.js?v=r975-6689d7c92177";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r975-6689d7c92177";
+import { sectionExits, apertureTier } from "./world.js?v=r975-6689d7c92177";
+import { stageOneBeastReference } from "./stages.js?v=r975-6689d7c92177";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -634,7 +634,7 @@ export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - 
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-export { BEAST_GUARD_HOLD } from "./stages.js?v=r972-cede9b9fcf20"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
+export { BEAST_GUARD_HOLD } from "./stages.js?v=r975-6689d7c92177"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
 export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
@@ -673,6 +673,13 @@ export function worldBeastCaught(save, id) {
   ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; if (!B || !q) return null;
   q.cycle++; q.active = null; q.cooldown = B.cooldownSlain;
   return { cooldown: q.cooldown };
+}
+// The dino duel (dino-duel.ts, Tim 2026-11-14): devoured by the other beast. Its hunt ends as a fall does (a new cycle, the slain
+// cooldown), so it is not out there any more, but nothing is paid and it is no kill of the Wayfarer's: `eaten` counts it (additive).
+export function worldBeastEaten(save, id) {
+  ensureWorldBeasts(save, false); const B = WORLD_BEASTS[id], q = save.worldBeasts[id]; if (!B || !q?.active) return null;
+  q.cycle++; q.active = null; q.cooldown = B.cooldownSlain; q.eaten = (Math.max(0, Math.floor(Number(q.eaten) || 0))) + 1;
+  return { cooldown: q.cooldown, eaten: q.eaten };
 }
 // The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
 export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {

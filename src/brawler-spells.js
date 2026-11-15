@@ -1,6 +1,6 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r972-cede9b9fcf20';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r972-cede9b9fcf20';
-import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r972-cede9b9fcf20';
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r975-6689d7c92177';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r975-6689d7c92177';
+import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r975-6689d7c92177';
 const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes

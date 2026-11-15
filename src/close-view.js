@@ -1,35 +1,36 @@
-import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r972-cede9b9fcf20"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon, FOURFOLD_DAGGERS, isFourfoldDaggers } from './items.js?v=r972-cede9b9fcf20';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r972-cede9b9fcf20";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r972-cede9b9fcf20";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r972-cede9b9fcf20";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r972-cede9b9fcf20";
-import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r972-cede9b9fcf20";
-import { swingVisualProgress } from "./melee-swing.js?v=r972-cede9b9fcf20"; // the weighted swing's clock (2026-11-14)
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r972-cede9b9fcf20";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r972-cede9b9fcf20';
-import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r972-cede9b9fcf20";
-import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r972-cede9b9fcf20'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r972-cede9b9fcf20';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r972-cede9b9fcf20';
-import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r972-cede9b9fcf20';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r972-cede9b9fcf20';
-import { dronePos, phaseShielded } from "./affixes.js?v=r972-cede9b9fcf20";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r972-cede9b9fcf20";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r972-cede9b9fcf20";
-import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r972-cede9b9fcf20"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r972-cede9b9fcf20";
-import { knockdownPose } from "./lightning-giant-render.js?v=r972-cede9b9fcf20";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r972-cede9b9fcf20";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r972-cede9b9fcf20";
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r972-cede9b9fcf20";
-import { SIGIL_CELLS } from "./watcher.js?v=r972-cede9b9fcf20";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r972-cede9b9fcf20"; // release 891: world beasts' skinned bodies (and the Gaunt's)
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r972-cede9b9fcf20"; // version 4: the GPU scene
-import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r972-cede9b9fcf20"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach } from "./spell-slots.js?v=r972-cede9b9fcf20"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r972-cede9b9fcf20";
-import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r972-cede9b9fcf20"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r975-6689d7c92177"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
+import { rangedWeapon, FOURFOLD_DAGGERS, isFourfoldDaggers } from './items.js?v=r975-6689d7c92177';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r975-6689d7c92177";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r975-6689d7c92177";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r975-6689d7c92177";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r975-6689d7c92177";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r975-6689d7c92177";
+import { swingVisualProgress } from "./melee-swing.js?v=r975-6689d7c92177"; // the weighted swing's clock (2026-11-14)
+import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r975-6689d7c92177";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.js?v=r975-6689d7c92177';
+import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r975-6689d7c92177";
+import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r975-6689d7c92177'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
+import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r975-6689d7c92177';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r975-6689d7c92177';
+import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r975-6689d7c92177';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r975-6689d7c92177';
+import { dronePos, phaseShielded } from "./affixes.js?v=r975-6689d7c92177";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r975-6689d7c92177";
+import { standardProjectile, standardProjectileColor } from "./combat-visuals.js?v=r975-6689d7c92177";
+import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r975-6689d7c92177"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r975-6689d7c92177";
+import { knockdownPose } from "./lightning-giant-render.js?v=r975-6689d7c92177";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r975-6689d7c92177";
+import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.js?v=r975-6689d7c92177";
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r975-6689d7c92177";
+import { SIGIL_CELLS } from "./watcher.js?v=r975-6689d7c92177";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r975-6689d7c92177";
+import { stageDuel } from "./close-view-duel.js?v=r975-6689d7c92177"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r975-6689d7c92177"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r975-6689d7c92177"; // 2026-11-13: the townsfolk's skinned bodies
+import { lanternReach } from "./spell-slots.js?v=r975-6689d7c92177"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir } from "./close-view-outdoor.js?v=r975-6689d7c92177";
+import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r975-6689d7c92177"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -280,6 +281,10 @@ export const CLOSE_VIEW = Object.freeze({
     // `heads`: the drawn head height (tiles) of the big Close View bodies by kind, where scale alone under-reads them (the region
     // scales a Giant to 1.9; its Close View body stands far taller); any of these counts as big at any scale.
     threat: Object.freeze({ range: 8, band: 2, minScale: 1.8, headPerScale: 1.5, fits: 2, tall: 4, pull: 2.5, focal: .82, lift: 1.2, easeIn: 2.5, easeOut: 1.2, hold: .8,
+      // The dino duel (Tim, 2026-11-14): while the Spinosaurus and the Wild Stegosaurus duel (their e.dinoDuel) within `range` tiles of
+      // the Wayfarer, the framing asks for all of itself, and the boom pulls back by `perTile` a tile the farther duellist stands past
+      // `fits` tiles from her, up to `pull` tiles (walls still bound it, as the threat's own `pull`), so both and she stay in view.
+      duel: Object.freeze({ range: 16, fits: 4, perTile: .45, pull: 5 }),
       heads: Object.freeze({ lightningGiant: 5, crimsonTyrant: 4.5, doomChaser: 4.5, mountainTurtle: 4, questingBeast: 3.5, briarStag: 3.5, voidWalker: 4.5, astralWorm: 4.5, tremorWorm: 4, gloomvast: 4.5, morphingBlob: 3, ashenMoth: 3.5, groveMoth: 3.5, nanobotKnight: 3 }) }),
     // Look mode (Tim, 2026-11-13: "hold down on the compass to activate pinch-to-zoom... if you're talking to someone you can
     // zoom in on their face or body to see what they look like"). Runtime only (closeViewLook*; nothing is saved). A press on
@@ -543,7 +548,7 @@ export const CLOSE_VIEW = Object.freeze({
   // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r972-cede9b9fcf20's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r975-6689d7c92177's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -717,7 +722,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r972-cede9b9fcf20's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r975-6689d7c92177's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -830,7 +835,7 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
   // before), the eye's height they are measured against (last frame's), and whether what lies between may be faded this frame
   solidTop: null, solidMap: null, solidW: 0, solidH: 0, eyeZ: -Infinity, seeThrough: false,
   // big threats in frame (CLOSE_VIEW.camera.threat): the eased share asked (0..1), its rate, how long it has wanted less, and the boom's extra length
-  threat: 0, threatV: 0, threatFor: 0, threatPull: 0,
+  threat: 0, threatV: 0, threatFor: 0, threatPull: 0, duelPull: 0, duelPullV: 0, // duelPull: the dino duel's boom length (threat.duel)
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
 const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
@@ -849,7 +854,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r972-cede9b9fcf20's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r975-6689d7c92177's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, terrainPulls: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1102,13 +1107,24 @@ export function closeViewThreatWant(g) {
     if (near * tall > want) want = near * tall; }
   return want;
 }
-// Eases the share toward what is asked (in at once when more is wanted, out only after `hold`); paused, it holds.
+// The dino duel's framing (CLOSE_VIEW.camera.threat.duel): the boom's extra length (tiles) the duel near the Wayfarer asks for, or 0.
+export function closeViewDuelPull(g) {
+  const D = CLOSE_VIEW.camera.threat.duel, p = g?.player, list = g?.enemies; if (!p || !Array.isArray(list)) return 0; const px = footX(p), py = footY(p); let far = -1;
+  for (let i = 0; i < list.length; i++) { const e = list[i]; if (!e || e.dead || !(e.hp > 0) || !e.dinoDuel || typeof e.dinoDuel.foe !== "string") continue;
+    const d = Math.hypot(e.x + .5 - px, e.y + .75 - py); if (d >= D.range) continue;
+    let foe = null; for (let j = 0; j < list.length; j++) if (list[j]?.id === e.dinoDuel.foe) { foe = list[j]; break; }
+    if (!foe || foe.dead || !(foe.hp > 0)) continue; far = Math.max(far, d, Math.hypot(foe.x + .5 - px, foe.y + .75 - py)); }
+  return far < 0 ? 0 : Math.max(.001, Math.min(D.pull, (far - D.fits) * D.perTile));
+}
+// Eases the share toward what is asked (in at once when more is wanted, out only after `hold`); paused, it holds. A dino duel asks
+// for all of it, and its own boom length while that is longer than the threat's.
 function threatFrame(g, dt) {
-  const T = CLOSE_VIEW.camera.threat, want = closeViewThreatWant(g);
+  const T = CLOSE_VIEW.camera.threat, duel = closeViewDuelPull(g), want = duel > 0 ? 1 : closeViewThreatWant(g);
+  if (dt > 0) spring(CAM, "duelPull", "duelPullV", duel, duel >= CAM.duelPull ? T.easeIn : T.easeOut, dt); else if (!Number.isFinite(CAM.duelPull)) CAM.duelPull = 0;
   if (!(dt > 0)) { if (!Number.isFinite(CAM.threat)) CAM.threat = 0; }
   else if (want >= CAM.threat) { CAM.threatFor = 0; spring(CAM, "threat", "threatV", want, T.easeIn, dt); }
   else if ((CAM.threatFor += dt) >= T.hold) spring(CAM, "threat", "threatV", want, T.easeOut, dt);
-  CAM.threat = Math.max(0, Math.min(1, CAM.threat)); CAM.threatPull = CAM.threat * T.pull;
+  CAM.threat = Math.max(0, Math.min(1, CAM.threat)); CAM.threatPull = CAM.threat * Math.max(T.pull, Math.max(0, Math.min(T.duel.pull, CAM.duelPull)));
 }
 function turnCamera(g, now) {
   // The Game lifecycle records elapsed pause time even if no camera/input callback ran during it.
@@ -1508,7 +1524,7 @@ export function closeViewSteer(g, state, now = NaN) {
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
+export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
 // ------------------------------------------------------------------------------------------------ Look mode (CLOSE_VIEW.camera.look)
 // Runtime only: nothing here is saved, and a reload starts with it off. `s` is the eased zoom, `want` the asked one; the subject
 // (`key`: its game object, null for the Wayfarer) and its aim point (tx, ty, tz, eased) are chosen after each frame's actors are
@@ -1822,7 +1838,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r972-cede9b9fcf20's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r975-6689d7c92177's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -3521,6 +3537,7 @@ export function resolveCloseViewPlayerFacing(trackYaw, desiredYaw, { elapsed = 0
 // beast's track plays its death to the end from where it fell. Render-only: nothing here touches the game.
 const BEAST_SIGHT_FRAME = { far: Infinity }; // this frame's fog far edge, for a kept beast's distant mesh (CLOSE_VIEW_BEAST_SIGHT.lod)
 const BEAST_FADE = 2.4, BEAST_TARGET = { x: 0, y: 0 }, BEAST_ENV = { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: BEAST_TARGET, dead: false };
+const DINO_ROCK_DRAW = Object.freeze({ from: 4.5, still: 1.6, size: .6, alpha: .92 }); // the dino duel's falling rock: from `from` tiles up, a disc `size` of its ring (drawn with the spell lights and shots)
 // Close View worm pass 2: small minions (the Tremor Worm's field tentacles: `minion` in the roster) count against their own allowance
 // (BEAST_SLOT.minion.maxMinions), so they never crowd a beast out of its slot; the frame's total stays bounded by both.
 function admitBeasts(g, draws, n, Q, now, reduce) {
@@ -3550,6 +3567,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); frame.fogCap = kept ? S.fog : 1; track.seen = now;
     B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); count(spec); noteSolidity(foe, 'beast', frame.alpha);
   }
+  stageDuel(B.tracks, now); // the dino duel: the two bodies spaced, a held one drawn in the other's jaws (close-view-duel.ts)
   for (const [foe, track] of B.tracks) {
     if (track.seen === now) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind];
@@ -4438,6 +4456,11 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // The Shadow Clone charging with her (tool-forms.ts CLONE_CARBINE): her charge glow at its muzzle, in its violet.
   { const q = g.cloneCarbineGlow?.(); if (q && finite(q.x) && finite(q.y)) { const V = CLONE_CARBINE.colors, z = SHOT_DRAW.height, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55 + 1.3), r = (.045 + .07 * q.k) * pulse;
     card(q.x, q.y, z - r * 1.9, z + r * 1.9, r * 1.9, 11, .3 + .3 * q.k, V.glow, 0); card(q.x, q.y, z - r * .7, z + r * .7, r * .7, 11, .95, V.flash, 0); } }
+  // The dino duel's rockfall (monster-pack.ts dinoRock): its ring is on the floor (the ground capture); the rock itself drops onto it
+  // from the ceiling here as a dark stone, landing as its warning runs out (held still above the ring under reduced motion).
+  for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
+    const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
+    card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }
     const k = Math.max(0, Math.min(1, fx.life / A.life)), w = A.width * (.4 + .6 * k); card(fx.x, fx.y, 0, A.height, w, 11, .85 * k, A.colors.glow, 0); card(fx.x, fx.y, 0, A.height, w * .4, 11, k, A.colors.flash, 0);

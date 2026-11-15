@@ -6,11 +6,11 @@
 // here reads attack timing or changes the game.
 //
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = e.scale x closeViewScale.
-import { STEGO_ART, STEGO_POSES } from "./wild-stego-render.js?v=r972-cede9b9fcf20";
+import { STEGO_ART, STEGO_POSES } from "./wild-stego-render.js?v=r975-6689d7c92177";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r972-cede9b9fcf20";
+} from "./close-view-beast-rig.js?v=r975-6689d7c92177";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const STEGO_RIG = Object.freeze({
@@ -23,6 +23,12 @@ export const STEGO_RIG = Object.freeze({
   breathe: Object.freeze({ rate: 1.4, chest: .012 }),
   // the wielded tree's sideways sweep (yaw, + to its right) by pose; its lift is the standard view's `tree` angle
   treeYaw: Object.freeze({ swingL: -.85, swingR: .55 }),
+  // the dino duel: lifted by the belly in the Spinosaurus's jaws it hangs near level (`liftHang` radians nose down at a `liftFull`-tile
+  // lift); its neck and tail lag the lift and swing back after it (`lag`: radians per tile a second of the lift's speed, eased at
+  // `lagEase`, never past `lagMax`), its legs dangle; slammed down it squashes into the floor (`slamSquash` of its height) and settles. `jawHold` (head-local f, u):
+  // where its beak closes on the Spinosaurus's tail; `belly` (spine-local u): where the Spinosaurus's jaws close round its middle, under
+  // the plates (the body crosswise in them, its legs hanging either side of the snout).
+  liftFull: 1.2, liftHang: .12, slamSquash: .22, lag: .32, lagEase: 6, lagMax: .7, jawHold: Object.freeze([.14, -.03]), belly: -.12,
   // the plate positions along the back (body units forward of the hips) and their parents
   plates: Object.freeze([[-.47, 'tail2'], [-.31, 'tail1'], [-.16, 'pelvis'], [0, 'pelvis'], [.16, 'pelvis'], [.31, 'spine'], [.47, 'chest'], [.62, 'neck1']]),
 });
@@ -198,20 +204,27 @@ export function sampleStego(tr, e, env) {
   const want = POSE_VEC[name], dz = POSE_VEC.dazed; for (let k = 0; k < K; k++) TV[k] = want[k] + (dz[k] - want[k]) * stun;
   const rate = /bite|claw|swipe|tail[LR]|whip|buck|Slam/.test(name) ? G.strikeEase : G.ease, V = tr.v, first = !Number.isFinite(tr.yaw);
   for (let k = 0; k < K; k++) V[k] = first || reduce || !(dt > 0) ? TV[k] : V[k] + (TV[k] - V[k]) * Math.min(1, dt * rate);
-  const roll = dead ? 0 : clamp01(Number(e.stegoRoll) || 0), curl = Math.max(V[KI.curl], roll), cw = smooth(curl), air = dead ? 0 : Math.max(0, Number(e.stegoAir) || 0);
+  const roll = dead ? 0 : clamp01(Number(e.stegoRoll) || 0), curl = Math.max(V[KI.curl], roll), cw = smooth(curl), air = dead ? 0 : Math.max(0, (Number(e.stegoAir) || 0) + (Number(e.dinoLift) || 0));
   const swim = dead ? 0 : Number(e.stegoSwim) || 0, climb = dead ? 0 : clamp01(Number(e.stegoClimb) || 0), climbing = climb > 0 || name === 'climb', cut = e.stegoTail === 'cut';
   const plates = e.stegoPlates != null && Number.isFinite(Number(e.stegoPlates)) ? clamp01(Number(e.stegoPlates)) : 1;
+  // the dino duel: held by the belly in the Spinosaurus's jaws (e.spinoHeldBy, e.dinoLift tiles): near level, the neck and tail lagging
+  // the lift (tr.lag, eased from the lift's speed) and the legs dangling; set down hard it squashes and settles (the land kick, below)
+  const heldUp = !dead && !!e.spinoHeldBy, liftNow = heldUp ? Math.max(0, Number(e.dinoLift) || 0) : 0, lifted = clamp01(liftNow / G.liftFull), hang = lifted * G.liftHang;
+  { const v = dt > 0 && Number.isFinite(tr.liftWas) ? (liftNow - tr.liftWas) / dt : 0; tr.liftWas = liftNow; const want = reduce ? 0 : Math.max(-G.lagMax, Math.min(G.lagMax, v * G.lag));
+    tr.lag = !(dt > 0) || reduce ? want : (tr.lag || 0) + (want - (tr.lag || 0)) * Math.min(1, dt * G.lagEase); }
+  const lag = heldUp || Math.abs(tr.lag || 0) > 1e-3 ? tr.lag || 0 : 0;
   const holding = !dead && !!e.stegoTree && (e.stegoTree.phase === 'pull' || e.stegoTree.phase === 'swing');
   const sinkTo = !dead && ((swim === 1 && air < .05 && name !== 'breach') || name === 'dive') ? 1 : 0; tr.sink = first || reduce || !(dt > 0) ? sinkTo : tr.sink + (sinkTo - tr.sink) * Math.min(1, dt * G.sinkEase);
   // facing: up the wall it climbs; else where it goes; standing, the Wayfarer
   const dx = env.x - tr.gait.x, dy = env.y - tr.gait.y; let aim = tr.yaw;
-  if (climbing && e.stegoClimbDir && Math.hypot(e.stegoClimbDir.x, e.stegoClimbDir.y) > .01) aim = Math.atan2(e.stegoClimbDir.y, e.stegoClimbDir.x);
+  if (!dead && e.spinoHeldBy && e.stegoHeading && Math.hypot(e.stegoHeading.x, e.stegoHeading.y) > .01) aim = Math.atan2(e.stegoHeading.y, e.stegoHeading.x); // held across the Spinosaurus's jaws (the game turns it)
+  else if (climbing && e.stegoClimbDir && Math.hypot(e.stegoClimbDir.x, e.stegoClimbDir.y) > .01) aim = Math.atan2(e.stegoClimbDir.y, e.stegoClimbDir.x);
   else if (e.pack?.data?.aim && Math.hypot(e.pack.data.aim.x, e.pack.data.aim.y) > .01) aim = Math.atan2(e.pack.data.aim.y, e.pack.data.aim.x);
   else if (Number.isFinite(dx) && Math.hypot(dx, dy) > .004 * Math.max(1, dt * 60) && cw < .5) aim = Math.atan2(dy, dx);
   else if (env.target && !dead && cw < .5) { const tx = env.target.x - x, ty = env.target.y - y; if (Math.hypot(tx, ty) > .3) aim = Math.atan2(ty, tx); }
   if (!Number.isFinite(aim)) aim = e.facingX < 0 ? Math.PI : 0;
-  if (first) tr.yaw = aim;
-  if (!dead) { const delta = Math.atan2(Math.sin(aim - tr.yaw), Math.cos(aim - tr.yaw)), attacking = !!e.pack?.attack || !!e.stegoPose; let turn = Math.max(-1, Math.min(1, dt * (attacking ? G.attackTurnRate : tr.gait.moving < .1 ? G.standTurnRate : G.turnRate))) * delta;
+  if (first || (!dead && !!e.spinoHeldBy && !tr.heldWas)) tr.yaw = aim; tr.heldWas = !dead && !!e.spinoHeldBy; // seized, it turns with the jaws at once
+  if (!dead) { const delta = Math.atan2(Math.sin(aim - tr.yaw), Math.cos(aim - tr.yaw)), attacking = !!e.pack?.attack || !!e.stegoPose || !!e.spinoHeldBy; let turn = Math.max(-1, Math.min(1, dt * (attacking ? G.attackTurnRate : tr.gait.moving < .1 ? G.standTurnRate : G.turnRate))) * delta;
     if (!attacking && tr.gait.moving < .1) turn = Math.max(-G.standTurnMax * dt, Math.min(G.standTurnMax * dt, turn)); tr.yaw += turn; }
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // the wheel turns by the ground it covers
@@ -220,7 +233,7 @@ export function sampleStego(tr, e, env) {
   // hits and landings
   if (!dead && Number.isFinite(tr.hp) && e.hp < tr.hp) { tr.hitAt = now; const px = env.target?.x ?? x, py = env.target?.y ?? y; tr.hitSide = Math.sign((px - x) * -sf + (py - y) * cf) || 1; }
   tr.hp = e.hp;
-  if (tr.airWas > .1 && air <= .1) { tr.landAt = now; tr.landHard = Math.min(1, tr.airWas / 2 + .3); }
+  if (tr.airWas > .1 && air <= .1) { tr.landAt = now; tr.landHard = Math.min(1, tr.airWas / 2 + .3); tr.landSlam = heldUp ? 1 : 0; } // slammed down in the Spinosaurus's jaws: it squashes harder
   tr.airWas = air;
   const hitT = (now - tr.hitAt) / 1000, hit = hitT < G.hitMs / 1000 ? kick(hitT, 16, 10) : 0, landT = (now - tr.landAt) / 1000, land = landT < G.landMs / 1000 ? Math.max(0, kick(landT, 8, 6)) * tr.landHard : 0;
   const daze = stun > 0 && !reduce ? stun * Math.sin(t * 3.6) : 0;
@@ -245,12 +258,12 @@ export function sampleStego(tr, e, env) {
     const bob = moving * G.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = reduce ? 0 : moving * .012 * Math.sin(cyc), breathe = reduce ? 0 : Math.sin(t * Math.PI * 2 * G.breathe.rate / 3);
     // nose up turns about the hips; nose down about the shoulders (the hips rise to keep the chest where it stands)
     const nd = Math.max(0, -pitch), chestF = SPINE_AT.chest[0];
-    setOffset(P, BI.pelvis, -(1 - Math.cos(nd)) * chestF * 0, sway, -V[KI.crouch] * G.crouchDrop - bob + Math.sin(nd) * chestF - .03 * Math.abs(hit) - .05 * land);
+    setOffset(P, BI.pelvis, -(1 - Math.cos(nd)) * chestF * 0, sway, -V[KI.crouch] * G.crouchDrop - bob + Math.sin(nd) * chestF - .03 * Math.abs(hit) - (.05 + G.slamSquash * (tr.landSlam || 0)) * land);
     setEuler(P, BI.pelvis, (reduce ? 0 : -moving * .03 * Math.sin(cyc)), -pitch - .02 * land, -sway * 1.4 + daze * .05); resolveBone(P, BI.pelvis);
     const cj = G.curlJoint * cw, look = env.target && !dead && cw < .5 ? (() => { const a = Math.atan2(env.target.y - y, env.target.x - x) - yaw; return Math.max(-.6, Math.min(.6, Math.atan2(Math.sin(a), Math.cos(a)))) * .5; })() : 0;
     setEuler(P, BI.spine, 0, cj, 0); resolveBone(P, BI.spine);
     setEuler(P, BI.chest, 0, cj, 0); P.scl[BI.chest] = 1 + breathe * G.breathe.chest; resolveBone(P, BI.chest);
-    const head = V[KI.head] + .25 * hit, shake = name === 'shake' && !reduce ? Math.sin(t * 26) * .45 : 0, reach = V[KI.reach] * (1 - cw);
+    const head = V[KI.head] + .25 * hit - lag * .8, shake = name === 'shake' && !reduce ? Math.sin(t * 26) * .45 : 0, reach = V[KI.reach] * (1 - cw);
     const treeYaw = (G.treeYaw[name] || 0) * (holding ? 1 : 0);
     setOffset(P, BI.neck1, reach * .05, 0, 0); setEuler(P, BI.neck1, look * .35 + shake * .4 + treeYaw * .3, -head * .32 + cj, 0); resolveBone(P, BI.neck1);
     setOffset(P, BI.neck2, reach * .06, 0, 0); setEuler(P, BI.neck2, look * .3 + shake * .4 + treeYaw * .3, -head * .32 + cj + bob * 3, 0); resolveBone(P, BI.neck2);
@@ -263,7 +276,7 @@ export function sampleStego(tr, e, env) {
     // in the wheel; nose-up poses keep it level (it props the body as it rears)
     const tailUp = V[KI.tailUp], tailSide = V[KI.tailSide], tailReach = V[KI.tailReach];
     for (let i = 0; i < TAIL.length; i++) {
-      const w = (i + 1) / TAIL.length, lift = tailUp * (i < 2 ? .62 : .32) + tailReach * (i >= 2 ? .32 : 0) + (i === 0 && !climbing ? pitch * .85 : 0) - (climbing ? .08 : 0) + (i === 0 ? V[KI.kick] * .15 : 0) - cj * 1.05;
+      const w = (i + 1) / TAIL.length, lift = tailUp * (i < 2 ? .62 : .32) + tailReach * (i >= 2 ? .32 : 0) + (i === 0 && !climbing ? pitch * .85 : 0) - (climbing ? .08 : 0) + (i === 0 ? V[KI.kick] * .15 : 0) - cj * 1.05 - lag * (i < 2 ? .5 : .3);
       const swing = tailSide * .34 * (1 - cw) + (reduce ? 0 : (.05 * Math.sin(t * 1.7 - i * .6) * w) * (1 - stun) * (1 - cw));
       setEuler(P, BI[TAIL[i]], swing, lift, 0); if (cut && i === 2) P.scl[BI[TAIL[i]]] = .001; resolveBone(P, BI[TAIL[i]]);
     }
@@ -272,7 +285,7 @@ export function sampleStego(tr, e, env) {
     for (let i = 0; i < G.plates.length; i++) { const b = BI['plate' + i], sw = reduce ? 0 : (climbing ? .12 : tr.sink > .5 ? .05 : .025) * Math.sin(t * 3 + i * .7);
       setEuler(P, b, 0, 0, sw); P.scl[b] = G.plateMin + (1 - G.plateMin) * plates; resolveBone(P, b); }
   };
-  pose(0, x, y, rootZ);
+  pose(hang, x, y, rootZ);
   // the wheel: the trunk and tail curl round (above); set the ring's centre at its rolling height and turn it about that centre
   if (cw > 1e-3) {
     let cx = 0, cy = 0, cz = 0; for (const n of [...TRUNK, ...TAIL]) { const i = BI[n] * 3; cx += P.wp[i]; cy += P.wp[i + 1]; cz += P.wp[i + 2]; } cx /= 11; cy /= 11; cz /= 11;
@@ -291,6 +304,7 @@ export function sampleStego(tr, e, env) {
     const body = L.hind ? 'pelvis' : 'chest', bodyAt = (f, u, w) => { const p = boneLocalToWorld(P, body, f, L.side * (L.hind ? G.hipWidth : G.shoulderWidth) + 0, u, TMP); fx += (p[0] - fx) * w; fy += (p[1] - fy) * w; fz += (p[2] - fz) * w; };
     const jf = STEGO_SKELETON.bindWorld[hi] - STEGO_SKELETON.bindWorld[BI[body] * 3], ju = STEGO_SKELETON.bindWorld[hi + 2] - STEGO_SKELETON.bindWorld[BI[body] * 3 + 2];
     if (air > .1 || tr.sink > .3 && swim !== 2) bodyAt(jf + (L.hind ? -.05 : .06), ju - len / S * .9, 1);
+    if (heldUp && !reduce) bodyAt(jf + .12 * Math.sin(t * 8 + k * 1.7), ju - len / S * (.78 + .1 * Math.sin(t * 6 + k)), .6); // held up, its legs flail
     if (climbing) bodyAt(jf + (L.hind ? -.02 : .06) + (reduce ? 0 : .08 * Math.sin(t * 4.2 + (L.hind ? Math.PI : 0) + (L.side > 0 ? 0 : Math.PI))), ju - len / S * .84, Math.max(climb, .6));
     if (!L.hind) { const c = L.side > 0 ? V[KI.clawNear] : V[KI.clawFar], lifted = Math.max(V[KI.frontLift], c); if (lifted > .01) bodyAt(jf + .16 + .24 * c, ju - .24 + .42 * c, Math.min(1, lifted)); }
     if (L.hind && V[KI.kick] > .01) bodyAt(jf - .48, ju - .2, V[KI.kick]);
@@ -315,3 +329,7 @@ export function sampleStego(tr, e, env) {
   return F;
 }
 export const stegoBone = (tr, name) => { const i = BI[name]; return [tr.pose.wp[i * 3], tr.pose.wp[i * 3 + 1], tr.pose.wp[i * 3 + 2]]; };
+// The dino duel (close-view-duel.ts holdInJaws): where its beak closes on the Spinosaurus's tail, and where the
+// Spinosaurus's jaws hold it (the belly's underside, mid-body under the plates), in world units, from this frame's pose.
+export const stegoJawPoint = (tr, out) => boneLocalToWorld(tr.pose, 'head', STEGO_RIG.jawHold[0], 0, STEGO_RIG.jawHold[1], out);
+export const stegoHoldPoint = (tr, out) => boneLocalToWorld(tr.pose, 'spine', 0, 0, STEGO_RIG.belly, out); // its belly, under the plates
