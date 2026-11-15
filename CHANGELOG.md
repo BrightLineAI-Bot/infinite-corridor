@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 980: The Wayfarer now has a falling pose. At the start of a fall his arms come out a little; the longer he falls, the more he moves into a slow, calm wheel of arms and legs, chest leading and limbs trailing, and near the ground he settles into the landing without a pop. Reduced Motion holds a still arms-out pose. Standard View raises his hands with a small flap on long falls. The pit fall-over is unchanged.
 - Release 979: Great trees: after leaving Close View through the Oculus (or changing the quality tier), the Standard View no longer cuts off the trunk, crown and upper branches, which used to leave the top of the screen black. The ground image also stops rebuilding on every frame of the Oculus's leave zoom.
 - Release 978: The Oculus has its own small button under the compass: one tap switches Close View on or off (key O). The utility button is a fourth slot in every preset, and the four slot buttons now read A B C D left to right (keys F G C B). Any slot can hold spells, Build, the item, the Lantern, the Robot or the Drone.
 - Release 977: Room light mix: rooms inside keeps, towers, great buildings and dungeons are now lit, gloomy or dark (about 30/45/25, lived-in places brighter, hives and root cellars darker, the Deep mostly dark), blending smoothly as you walk between them. A lit Lantern now gives a warm glow outdoors at night.
