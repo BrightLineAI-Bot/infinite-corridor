@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 977 — Room light mix and the Lantern at night
+
+Tim, 2026-11-15: a mix of lit, gloomy and dark rooms indoors, the Deep darker, and the Lantern glowing outside at night.
+
+**CODE:** `INTERIOR_LIGHT` version 2 (`close-view.ts`): per-tier `keep` (interior lit .4 / gloomy .6 / dark .92; Deep .7 / .85 / .95) and `fogNear` (interior 2 / 1.2 / .3; Deep 1 / .5 / .15), and per-theme tier shares (default .30/.45/.25 … deep .04/.26/.70). `roomLightField(map)` finds rooms once per map from the floor (cores ≥2 tiles from walls, big caves cut into 10-tile sections, mazes use their whole floor, open-air tiles always lit), picks each room's tier from a hash of the map identity and the room's first tile, blurs tiers 2 tiles across boundaries and caches the field; `roomLightAt` reads it bilinearly at the Wayfarer's feet. Close View writes the GPU ambient in place once per frame and moves the fog's near edge; the 2D fallback steps its ambient in 1/64ths so the cached torch gradient rebuilds rarely. Standard View dims dark rooms only (≤ .30 alpha) from one tiny per-map image drawn as one scaled copy. `LANTERN.night = { glow: .16, reach: 1.4 }` (`spell-slots.ts`) with `outdoorNight(g)` and `lanternNightReach(save, night)`. Tests: `room-light-mix` (8), `brighter-interiors` updated to version 2.
+
+**BOUNDARY:** Presentation only: the field never mutates the map, the save or generation (checked by hash). Maps over 40,000 tiles keep the even 976 gloom. Chasm crossings, labyrinth chambers and the Stillworks keep their own darkness in Standard View. Ambient is per frame, not per pixel, so a room seen from a doorway takes on its light as you cross (about 4 tiles). By day or shuttered the Lantern is unchanged outdoors. No save change (schema 14).
+
 ## Release 976 — Brighter interiors
 
 Tim, 2026-11-15: every room inside dungeons, keeps and towers is a little too dark to see the world around you or interact with it.
