@@ -90,16 +90,19 @@ for (const side of [-1, 1]) weepingSaint.push(
 );
 
 // Hanged Choir (standard view: four pale shrouded bodies hung by cords from a dark beam, green eyes, toes dangling). Each singer
-// is one wrapped shroud swinging from its own cord.
+// is a hooded head over one wrapped shroud, lamp-green eyes and a dark open singing mouth, swinging from its own cord (32-35).
+// 2026-11-15 forms pass: a head and shoulders of its own instead of one sack.
 const hangedChoir = [block(0, 0, 1.86, .07, .64, .05, 0x151312), limb([[0, 0, 2.03, .03], [0, 0, 1.88, .025]], 0x6b6358, 31, 0, 1.86)];
 for (let i = 0; i < 4; i++) {
-  const y = (i - 1.5) * .30, swing = 32 + i, top = 1.60 - (i % 2) * .06, shroud = i % 2 ? 0xc6bba3 : 0xd8cfb8;
+  const y = (i - 1.5) * .30, swing = 32 + i, top = 1.60 - (i % 2) * .06, shroud = i % 2 ? 0xc6bba3 : 0xd8cfb8, hood = i % 2 ? 0xd8cfb8 : 0xe6dfcc;
   hangedChoir.push(
-    part(curvedTube([[0, y, 1.82, .014], [.02, y, top, .012]], 3), 0, 0, 0, 1, 1, 1, 0x8b8172, swing, .01, 1.82),
-    part(verticalLoft([[0, .05, 0], [.005, .125, -.10], [-.01, .105, -.55], [-.02, .015, -.88]], 5), .02, y, top, 1, 1, 1, shroud, swing, .01, 1.82),
-    part(membrane([[.152, y - .085, top - .12], [.152, y - .015, top - .12], [.146, y - .05, top - .18]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
-    part(membrane([[.152, y + .015, top - .12], [.152, y + .085, top - .12], [.146, y + .05, top - .18]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
-    part(curvedTube([[.0, y, top - .84, .022], [.05, y, top - .97, .01]], 3), 0, 0, 0, 1, 1, 1, 0x5b5550, swing, .01, 1.82),
+    part(curvedTube([[0, y, 1.82, .014], [.01, y, top - .02, .012]], 3), 0, 0, 0, 1, 1, 1, 0x8b8172, swing, .01, 1.82),
+    part(ellipsoid(4, 1), .02, y, top - .1, .1, .095, .11, hood, swing, .01, 1.82, 0, true),
+    part(verticalLoft([[0, .075, 0], [-.012, .13, -.26], [-.025, .025, -.74]], 5), .02, y, top - .17, 1, 1, 1, shroud, swing, .01, 1.82),
+    part(membrane([[.12, y - .03, top - .135], [.12, y + .03, top - .135], [.115, y, top - .175]]), 0, 0, 0, 1, 1, 1, 0x241c18, swing, .01, 1.82),
+    part(membrane([[.115, y - .072, top - .07], [.118, y - .018, top - .078], [.114, y - .045, top - .112]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
+    part(membrane([[.118, y + .018, top - .078], [.115, y + .072, top - .07], [.114, y + .045, top - .112]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
+    part(curvedTube([[.0, y, top - .9, .022], [.05, y, top - 1.0, .01]], 3), 0, 0, 0, 1, 1, 1, 0x5b5550, swing, .01, 1.82),
   );
 }
 
@@ -140,18 +143,21 @@ for (let i = 0; i < 3; i++) {
 }
 
 // The Amalgam (standard view: a lumpy pale-flesh mound, several small screaming faces set in it, thin pale limbs splayed out).
-const fleshHead = ellipsoid(5, 2), flesh = 0xd7a597, fleshShade = 0xb47f74, fleshFace = 0xf2d0c4, fleshMouth = 0x3a1a1c, fleshLimb = 0xe3c2b6;
+// 2026-11-15 forms pass: three fused lumps instead of one ball, sallow flesh with darker folds, the faces as swollen knots
+// with a howling mouth and one eye each, six jointed arms and two stunted ones.
+const fleshHead = ellipsoid(5, 2), flesh = 0xbfa09a, fleshShade = 0x86686a, fleshFace = 0xdcc2b8, fleshMouth = 0x3a1a1c, fleshLimb = 0xcfb4ac;
 const amalgam = [
-  part(E8, -.05, 0, .60, .50, .42, .40, flesh, 0, -.05, .60, 0, true),
+  part(ellipsoid(7, 2), -.05, 0, .56, .5, .42, .38, flesh, 0, -.05, .56, 0, true),
+  part(ellipsoid(5, 2), -.24, .06, .84, .3, .28, .25, fleshShade, 0, -.24, .84, 0, true),
 ];
-for (const [y, z, s, swing] of [[-.18, .78, .13, 56], [.20, .86, .12, 57], [.03, .56, .11, 56]]) { const x = front(-.05, .60, .46, .39, .37, y, z, 0) - s * .35; amalgam.push(
-  part(fleshHead, x, y, z, s * .7, s, s * 1.15, fleshFace, swing, .10, .70, 0, true),
-  part(membrane([[x + s * .72, y - s * .35, z - s * .1], [x + s * .72, y + s * .35, z - s * .1], [x + s * .74, y, z - s * .75]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
-  part(membrane([[x + s * .7, y - s * .45, z + s * .45], [x + s * .7, y - s * .12, z + s * .45], [x + s * .7, y - s * .28, z + s * .2]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
+for (const [y, z, s, swing] of [[-.17, .74, .13, 56], [.2, .8, .12, 57], [.04, .5, .11, 56]]) { const x = front(-.05, .56, .46, .39, .35, y, z, 0) - s * .25; amalgam.push(
+  part(fleshHead, x, y, z, s * .75, s, s * 1.2, fleshFace, swing, .10, .70, 0, true),
+  part(membrane([[x + s * .74, y - s * .38, z - s * .15], [x + s * .74, y + s * .38, z - s * .15], [x + s * .78, y, z - s * .85]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
+  part(membrane([[x + s * .7, y - s * .5, z + s * .5], [x + s * .7, y - s * .12, z + s * .48], [x + s * .72, y - s * .3, z + s * .22]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
 ); }
 for (let i = 0; i < 3; i++) for (const side of [-1, 1]) {
-  const x = .24 - i * .26, s = 50 + i * 2 + (side > 0 ? 1 : 0);
-  amalgam.push(limb([[x, side * .32, .58, .055], [x + (i === 0 ? .20 : i === 1 ? .02 : -.14), side * .60, .44, .04], [x + (i === 0 ? .26 : i === 1 ? .04 : -.20), side * .72, .03, .018]], i === 1 ? fleshShade : fleshLimb, s, x, .58, 3));
+  const x = .24 - i * .26, s = 50 + i * 2 + (side > 0 ? 1 : 0), reach = i === 0 ? .22 : i === 1 ? .03 : -.16;
+  amalgam.push(limb([[x, side * .32, .56, .055], [x + reach, side * .62, .5, .04], [x + reach * 1.3, side * .76, .03, .016]], i === 1 ? fleshShade : fleshLimb, s, x, .56, 3));
 }
 
 // Gnawing Maw (standard view: a brick wall set with an oval red maw, a ring of white teeth and a dark throat).
@@ -191,15 +197,21 @@ for (const side of [-1, 1]) for (const level of [0, 1]) cinderSeraph.push(part(s
 for (const side of [-1, 1]) cinderSeraph.push(part(side > 0 ? seraphSmall : mirrorY(seraphSmall), -.05, 0, .52, 1, 1, 1, seraphAsh, side > 0 ? 22 : 23, -.08, 1.00));
 
 // Lumen Wraith (standard view: a pale hooded shroud with a ragged hem, one great cyan lens for a face, four cyan ribbons).
+// 2026-11-15 forms pass: a shroud that flares to its hem and narrows to sloped shoulders, a deep cowl (64) carrying the dark
+// face and lens, two long sleeves (50/51) that reach for the bite and frame the beam, and four flat light ribbons (60-63).
 const wraithShroud = 0xdcecf2, wraithHood = 0xc9e2ec, wraithFace = 0x2c3b52, wraithCyan = 0x7fe7ff;
+const ribbon = (y) => { const c = [[-.16, y, .98], [-.34, y * 1.25, .52], [-.4, y * 1.55, 0]], w = [.05, .04, .015];
+  return membrane([c[0].map((q, k) => k === 1 ? q - w[0] : q), c[1].map((q, k) => k === 1 ? q - w[1] : q), c[2].map((q, k) => k === 1 ? q - w[2] : q),
+    c[2].map((q, k) => k === 1 ? q + w[2] : q), c[1].map((q, k) => k === 1 ? q + w[1] : q), c[0].map((q, k) => k === 1 ? q + w[0] : q)]); };
 const lumenWraith = [
-  part(verticalLoft([[0, .31, 0], [-.03, .34, .30], [.01, .30, .68], [.07, .21, 1.02]], 7), 0, 0, .34, 1, 1, 1, wraithShroud),
-  part(E6, .10, 0, 1.50, .22, .21, .22, wraithHood, 64, .04, 1.26, 0, true),
-  part(membrane([[.322, 0, 1.64], [.322, -.12, 1.57], [.322, -.12, 1.43], [.322, 0, 1.36], [.322, .12, 1.43], [.322, .12, 1.57]]), 0, 0, 0, 1, 1, 1, wraithFace, 64, .04, 1.26),
-  part(axisX(hex), .33, 0, 1.50, .02, .10, .10, wraithCyan, 64, .04, 1.26),
-  part(E5, .355, 0, 1.50, .03, .05, .05, 0xf6fdff, 64, .04, 1.26),
+  part(verticalLoft([[0, .34, 0], [-.05, .27, .36], [.0, .26, .7], [.06, .17, .98]], 7), 0, 0, .3, 1, 1, 1, wraithShroud),
+  part(E6, .05, 0, 1.47, .24, .2, .23, wraithHood, 64, .04, 1.26, 0, true),
+  part(membrane([[.292, 0, 1.6], [.292, -.11, 1.54], [.292, -.11, 1.4], [.292, 0, 1.34], [.292, .11, 1.4], [.292, .11, 1.54]]), 0, 0, 0, 1, 1, 1, wraithFace, 64, .04, 1.26),
+  part(axisX(hex), .3, 0, 1.47, .02, .09, .09, wraithCyan, 64, .04, 1.26),
+  part(E5, .322, 0, 1.47, .028, .045, .045, 0xf6fdff, 64, .04, 1.26),
 ];
-for (let i = 0; i < 4; i++) { const y = (i - 1.5) * .14; lumenWraith.push(limb([[-.16, y, .42, .04], [-.26, y * 1.1, .22, .03], [-.36, y * 1.4, .02, .012]], i % 2 ? wraithCyan : 0xa8eefa, 60 + i, -.16, .42, 3)); }
+for (const side of [-1, 1]) lumenWraith.push(limb([[.04, side * .22, 1.16, .085], [.3, side * .27, .8, .03]], wraithHood, side < 0 ? 50 : 51, .04, 1.16));
+for (let i = 0; i < 4; i++) lumenWraith.push(part(ribbon((i - 1.5) * .13), 0, 0, 0, 1, 1, 1, i % 2 ? wraithCyan : 0xa8eefa, 60 + i, -.16, .98));
 
 // Veil Spinner (standard view: a dark violet abdomen with a red diamond, a small head with a cluster of pink eyes, eight dark legs
 // whose knees ride above the body). The abdomen (24) tips on its waist for the web spit.
@@ -357,13 +369,17 @@ export const PENTAGON_JOINT_POSE = Object.freeze({
   }),
   // The faces (56/57) rear back and lunge out to bite; the limbs (50-55) gather under the mass and shove it forward.
   amalgam: P({
-    bite: { 56: PJ(-.45, .75, .2), 57: PJ(-.4, .7, .2, .1), 50: PJ(-.3, .45), 51: PJ(-.3, .45), 52: PJ(.15, -.25), 53: PJ(.15, -.25), 54: PJ(.3, -.45, 0, .2), 55: PJ(.3, -.45, 0, .2) },
+    bite: { 56: PJ(-.42, .5, .18), 57: PJ(-.38, .46, .18, .1), 50: PJ(-.45, .6, .1), 51: PJ(-.45, .6, .1, .06), 52: PJ(.15, -.25), 53: PJ(.15, -.25), 54: PJ(.35, -.5, 0, .2), 55: PJ(.35, -.5, 0, .2) },
+    // The bloom: front arms reach up and forward, rear arms up and back, the faces strain upward, then everything slams down
+    // and out as the flesh bursts. The brood birth: the arms dig in and the faces turn down to the floor as the mass heaves.
+    fleshBloom: { 56: PJ(-.4, .32, .14), 57: PJ(-.36, .3, .14, .1), 50: PJ(-.95, .4, .15), 51: PJ(-.95, .4, .15, .05), 52: PJ(-.55, .3), 53: PJ(.55, -.3), 54: PJ(.9, -.35, -.1, .1), 55: PJ(.9, -.35, -.1, .15) },
+    broodBirth: { 56: PJ(.4, -.5, -.1), 57: PJ(.4, -.5, -.1, .1), 50: PJ(.35, -.6), 51: PJ(.35, -.6, 0, .08), 52: PJ(.3, -.4), 53: PJ(.3, -.4, 0, .08), 54: PJ(-.4, .5, 0, .15), 55: PJ(-.4, .5, 0, .2) },
     '*': { 56: PJ(-.3, -.5), 57: PJ(-.3, -.5, 0, .1), 50: PJ(-.4, -.55), 51: PJ(-.4, -.55), 52: PJ(.3, -.45), 53: PJ(-.3, .45), 54: PJ(.4, -.6, 0, .2), 55: PJ(.4, -.6, 0, .2) },
   }),
   // The jaws gape and slam; the inhale holds them wide while the feelers reach out and drag in.
   gnawingMaw: P({
-    bite: { 20: PJ(-.55, .2, .1), 21: PJ(.55, -.2, -.1), 55: PJ(.3, -.4), 56: PJ(.3, -.4), 57: PJ(-.3, .4), 58: PJ(-.3, .4) },
-    '*': { 20: PJ(-.25, -.32), 21: PJ(.25, .32), 55: PJ(-.6, .5, 0, .2), 56: PJ(-.6, .5, 0, .25), 57: PJ(.6, -.5, 0, .3), 58: PJ(.6, -.5, 0, .35) },
+    bite: { 20: PJ(-.7, .25, .12), 21: PJ(.7, -.25, -.12), 55: PJ(.35, -.45), 56: PJ(.35, -.45), 57: PJ(-.35, .45), 58: PJ(-.35, .45) },
+    '*': { 20: PJ(-.45, -.6, -.1), 21: PJ(.45, .6, .1), 55: PJ(-.7, .6, 0, .2), 56: PJ(-.7, .6, 0, .25), 57: PJ(.7, -.6, 0, .3), 58: PJ(.7, -.6, 0, .35) },
   }),
   // Wings cup forward before the dive and sweep back to streamline it, then flare to brake; the cast lifts and beats down.
   cinderSeraph: P({
@@ -372,8 +388,8 @@ export const PENTAGON_JOINT_POSE = Object.freeze({
   }),
   // The hooded lens rears and snaps down to bite or aims along the beam; the ribbons stream behind.
   lumenWraith: P({
-    bite: { 64: PJ(-.45, .7, .2), 60: PJ(-.3, .45, 0, .2), 61: PJ(-.3, .45, 0, .25), 62: PJ(-.3, .45, 0, .3), 63: PJ(-.3, .45, 0, .35) },
-    '*': { 64: PJ(-.3, .2), 60: PJ(-.2, .55, 0, .1), 61: PJ(.2, .45, 0, .15), 62: PJ(-.2, .45, 0, .2), 63: PJ(.2, .55, 0, .25) },
+    bite: { 64: PJ(-.5, .8, .22), 50: PJ(.45, -1.15, -.25), 51: PJ(.35, -1.0, -.2, .12), 60: PJ(-.3, .45, .1, .2), 61: PJ(-.3, .45, .1, .25), 62: PJ(-.3, .45, .1, .3), 63: PJ(-.3, .45, .1, .35) },
+    '*': { 64: PJ(-.32, .24, .08), 50: PJ(-.7, -1.35, .15), 51: PJ(-.7, -1.35, .15, .08), 60: PJ(-.2, .55, 0, .1), 61: PJ(.2, .45, 0, .15), 62: PJ(-.2, .45, 0, .2), 63: PJ(.2, .55, 0, .25) },
   }),
   // Spit: the abdomen cocks up and the body kicks back on release. Bite: forelegs rear, head and fangs drive down. Leap: all
   // legs fold for the spring and splay in the air.
