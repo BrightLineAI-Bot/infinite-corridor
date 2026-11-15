@@ -5,6 +5,7 @@
 // cooldowns (`magicSkills.cooldowns["spell:<id>"]`), so two spells can share the buttons.
 // Data and pure rules; game.ts casts, main.ts draws the buttons and the Arcanum.
 import { SPELLS, APERTURE_SKILLS, skillRank, spellOpen } from "./items.ts";
+import { aerialChargesNow } from "./constellation.ts";
 
 export const ATTRIBUTES = {
   // icon (release 157): the element's mark beside every spell and discipline in the Arcanum.
@@ -273,5 +274,6 @@ export function slotReadiness(save, slot, legacySpellRemaining = 0) {
   if (!c) return { remaining: 0, duration: 0, empty: !slotTool(save, slot) };
   const cd = save.magicSkills.cooldowns || {};
   if (c.kind === "spell") return { remaining: Math.max(cd[`spell:${c.id}`] || 0, c.id === save.equippedSpell ? legacySpellRemaining : 0), duration: SPELLS[c.id].cooldown };
+  if (c.id === "aerial-step") { const charges = aerialChargesNow(save); return { remaining: charges > 0 ? 0 : cd[c.id] || 0, duration: APERTURE_SKILLS[c.id].cooldown, charges }; } // its charges (2026-11-15): ready while one is held
   return { remaining: cd[c.id] || 0, duration: APERTURE_SKILLS[c.id].cooldown };
 }

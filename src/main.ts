@@ -2528,7 +2528,9 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
           ? `${state.cost} STA`
           : state.essence != null
             ? `${state.essence} STA` // Essence Walk: a recovering spell casts for this much stamina
-            : "READY";
+            : state.charges != null
+              ? `×${state.charges}` // Aerial Step's charges held (spell-slots.ts slotReadiness)
+              : "READY";
     hudSet(button,"--cooldown",`${Math.round(fraction * 100)}%`);
     hudSet(button,"class:cooling",cooling);
     hudSet(button,"class:unavailable",state.available === false);
@@ -3023,7 +3025,7 @@ function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphe
 // Release 157: element badges and Active/Passive tags so it is clear what each entry is and what it touches.
 function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.icon} ${a.name}`);b.style.setProperty('--elem',a.color);return b}
 function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
-function nodeKind(n,skill){if(n.id==='active')return['Active · cast it from slot A, B or C',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B or C',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name} is active`,false]}
+function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B or C',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B or C',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name} is active`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
@@ -3067,7 +3069,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
   const attr=CASTABLES[`skill:${skill.id}`]?.attr,head=el('header','arc-branch-head'),slotOf=inSlot(`skill:${skill.id}`)||(bid==='motion'?inSlot('skill:aerial-step'):null),bound=!!slotOf;if(attr){card.dataset.elem=attr;card.style.setProperty('--elem',ATTRIBUTES[attr].color)}head.append(el('h3','',b.name),...(attr?[elemBadge(attr)]:[]),el('span','arc-branch-state',`${bound?`◉ Slot ${slotOf.toUpperCase()} · `:''}${!open?`Opens at Aperture ${skill.threshold}`:caps.length===2?'Fully crowned':mastered?'Mastered':`${rank}/${skill.maxRank}`}`));if(bound)card.classList.add('bound');
   const path=el('div','arc-path'),detail=el('div','arc-detail');
-  const nodes=[{id:'active',name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
+  const nodes=[{id:'active',...(ALT_PASSIVES[skill.id]?.discipline?{ref:skill.id}:{}),name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
    {id:'mod',ref:b.mod.id,name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
    ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'}))];
   // Release 359: a passive whose secondary form is chosen shows that form (name, text and kind).
@@ -3081,13 +3083,13 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const show=focus||nodes.find(n=>n.can)||nodes[0];
   {const[label,active]=nodeKind(show,skill),tags=el('div','arc-tags');if(attr)tags.append(elemBadge(attr));tags.append(kindTag(label,active));detail.append(el('strong','',show.name),tags,el('p','',show.text));if(NODE_EFFECTS[show.ref]?.spells)detail.append(el('small','arc-hint',`Also affects your spells: ${NODE_EFFECTS[show.ref].spells}`))}
   // Release 359: the other form of a passive, and the button that swaps them (from Infinite III, once learned).
-  if(show.ref&&ALT_PASSIVES[show.ref]){const A=ALT_PASSIVES[show.ref],learned=show.state==='owned',open=altUnlocked(save),other=show.alt?{name:show.primaryName,text:show.primaryText,label:'Primary'}:{name:A.name,text:A.text,label:'Secondary'};
+  if(show.ref&&ALT_PASSIVES[show.ref]){const A=ALT_PASSIVES[show.ref],learned=show.id==='active'?rank>0:show.state==='owned',open=altUnlocked(save),/* 2026-11-15: Quickening's own secondary form, Quickened Stride, once it has a rank */other=show.alt?{name:show.primaryName,text:show.primaryText,label:'Primary'}:{name:A.name,text:A.text,label:'Secondary'};
    const box=el('div','arc-alt');box.append(el('small','arc-hint',`${show.alt?'Secondary form in use.':'Primary form in use.'} ${other.label} form: ${other.name} — ${other.text}`));
    const swap=uiButton(`⇄ Use ${other.label.toLowerCase()}: ${other.name}`,()=>{const r=toggleAlt(save,show.ref);game.message=r.message;syncCharacterStats(save);persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});
    if(!open||!learned){swap.disabled=true;swap.title=!open?`Opens at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`:'Learn it first.'}box.append(swap);if(!open)box.append(el('small','arc-why',`Secondary forms open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`));detail.append(box)}
   if(show.can){const go=uiButton(`${show.verb} · ${show.cost} pt${show.cost>1?'s':''}`,()=>{const r=show.act();game.message=r.message;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
   // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
-  const castId=show.id==='active'&&rank>0?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
+  const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
   if(castId)detail.append(...slotButtons(`skill:${castId}`,()=>{arcanumFocus={branch:bid,node:show.id}}));
   if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
   card.append(head,path,detail);sky.append(card)}

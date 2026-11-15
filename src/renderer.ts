@@ -1,6 +1,7 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts";
+import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.ts"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
 import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
@@ -50,7 +51,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } fro
 import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -64,6 +65,38 @@ export function nativeWindupDuration(e) {
 }
 export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
 // Native player bodies replace only the body. These existing state-owned cues remain in the residual atlas.
+// Aerial Step's rings in the standard view (close-view.ts AERIAL_RINGS, aerialRingState): two thin blue ellipses round the feet at
+// (x, foot) in pixels, gliding up to the shins and back half a cycle apart; the far half fainter, behind the legs. `half` 0 draws the
+// far halves (before the body), 1 the near halves (after it). No allocation.
+export function drawAerialRingsStd(ctx, g, x, foot, s, now, half) {
+  const S = aerialRingState(g, now); if (!S || !(S.a > 0)) return; const R = AERIAL_RINGS, D = R.std;
+  ctx.save(); ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) { const y = foot - (k ? S.h1 : S.h0) * D.shin * s;
+    if (!half) { ctx.globalAlpha = S.a * R.back; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, Math.PI, 2 * Math.PI); ctx.stroke(); }
+    else { ctx.globalAlpha = S.a; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, 0, Math.PI); ctx.stroke(); ctx.strokeStyle = R.core; ctx.lineWidth = Math.max(.6, D.width * s / 80); ctx.stroke(); } }
+  ctx.restore();
+}
+// Aerial Step's cast in the standard view (close-view-hero.ts AERIAL_CAST_POSE draws it on the rig in Close View): the sprite
+// leans into its facing and two arms sweep back behind the shoulders, hands flat (palms down), over the sweep's own eased envelope
+// (aerialCastLead). Cut short, it eases out over AERIAL_CAST_POSE.outMs. Runtime only (AERIAL_STD); nothing allocated.
+const AERIAL_STD = { p: 1, at: -Infinity };
+export function aerialCastStd(g, now) {
+  const p = g.player, v = p?.castVisual, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (v?.spellKind === "aerial-step" && v.cancelled !== true && clock < (p.castUntil || 0)) { AERIAL_STD.p = 1 - ((p.castUntil || 0) - clock) / (Number(v.durationMs) || ACTION_MOTION.castMs); AERIAL_STD.at = clock; return aerialCastLead(AERIAL_STD.p); }
+  const age = clock - AERIAL_STD.at; if (!(age >= 0 && age < AERIAL_CAST_POSE.outMs) || AERIAL_STD.p >= 1) return 0;
+  const u = age / AERIAL_CAST_POSE.outMs; return aerialCastLead(AERIAL_STD.p) * (1 - u * u * (3 - 2 * u));
+}
+const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
+function drawAerialArmsStd(ctx, x, y, s, facing, k) {
+  const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
+  ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let i = -1; i <= 1; i += 2) {
+    const sx = cx + (side ? i * .05 : i * .15) * s, sy = cy + (side ? 0 : .02 * s);
+    const hx = side ? sx - side * A.back * k * s + i * .03 * s : sx + i * A.spread * k * s, hy = sy + A.hang * (1 - k) * s + (side ? -A.up * k * s : up ? A.up * k * s : -A.up * 1.5 * k * s);
+    ctx.strokeStyle = A.arm; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo((sx + hx) / 2, (sy + hy) / 2 + .02 * s); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = A.hand; ctx.beginPath(); ctx.ellipse(hx, hy, Math.max(1.5, s * .06), Math.max(1, s * .03), 0, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
 export function drawNativePlayerDecorations(ctx, g, s, now) {
   const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
   const x=(p.x+.5)*s,foot=(p.y+.82)*s;
@@ -2661,7 +2694,7 @@ export function render(ctx, g, w, h, now) {
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? Math.max(g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0), g.aerialHeld?.() ? g.fall.z : 0) : 0, /* Aerial Step: the held air's height */ floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
     if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
@@ -3064,8 +3097,11 @@ export function render(ctx, g, w, h, now) {
       const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      const rushLean = kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
+      const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 0); // Aerial Step: the rings' far halves, behind the legs
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x + (seatInfo ? seatInfo.dx / s : 0), // release 748: on the mount's back
@@ -3076,7 +3112,9 @@ export function render(ctx, g, w, h, now) {
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
       );
-      if (rushLean) { ctx.restore(); drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
+      if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
+      if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them
       if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
@@ -3372,7 +3410,7 @@ export function render(ctx, g, w, h, now) {
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
-    label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
+    label = hasLevels ? `${place} · ${levelName(g.aerialHeld?.() ? Math.floor(g.fall.z + 1e-6) : elevationAt(g.map, mw, g.player.x, g.player.y))}` : place; // Aerial Step: the held level
   ctx.fillStyle = "#151411ee";
   // Sits just beneath Map and Pack (release 183), aligned with them, never wider than the space before the next control.
   const labelY = h - (g.labelInset ?? 122), labelX = g.labelX ?? 8,
