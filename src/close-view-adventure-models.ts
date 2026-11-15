@@ -61,7 +61,7 @@ for (const side of [-1, 1]) vinehookLeaper.push(
   limb([[.16, side * .26, 1.02, .055], [.34, side * .4, .7, .045], [.5, side * .36, .36, .035], [.52, side * .3, .14, .03]], V.hide, side < 0 ? 70 : 71, .16, 1.02),
   part(taperX, .6, side * .3, .1, .12, .04, .06, V.hook, side < 0 ? 70 : 71, .16, 1.02),
   limb([[-.12, side * .14, .55, .06], [.04, side * .22, .28, .05], [-.06, side * .2, .03, .035]], V.dark, side, -.12, .55),
-  part(membrane([[-.02, side * .1, 1.06], [-.16, side * .24, 1.12], [-.36, side * .25, 1.0], [-.26, side * .16, .9], [-.1, side * .1, .94]]), 0, 0, 0, 1, 1, 1, V.leaf),
+  part(membrane(((f) => side > 0 ? [f[0], ...f.slice(1).reverse()] : f)([[-.02, side * .1, 1.06], [-.16, side * .24, 1.12], [-.36, side * .25, 1.0], [-.26, side * .16, .9], [-.1, side * .1, .94]])), 0, 0, 0, 1, 1, 1, V.leaf),
 );
 
 // crawling roots. 2026-11-15 forms pass: the whole bloom (stalk, bulb, maw, fanged jaws, petals, leaves and thorns) rides the
@@ -143,7 +143,7 @@ const knellkeeper = [
   part(membrane([[.37, -.18, .1], [.27, -.13, .46], [.31, -.16, .28]]), 0, 0, 0, 1, 1, 1, KK.dark),
   part(E6, .05, 0, .93, .2, .2, .22, KK.hide, 0, .05, .93, .55, true),
   part(ellipsoid(5, 2), .3, 0, 1.0, .12, .12, .11, KK.hide, 82, .2, .95, 0, true),
-  part(membrane([[.18, 0, 1.17], [.3, -.15, 1.08], [.43, -.12, 1.04], [.44, .12, 1.04], [.3, .15, 1.08]]), 0, 0, 0, 1, 1, 1, KK.dark, 82, .2, .95),
+  part(membrane([[.2, 0, 1.15], [.3, .13, 1.08], [.42, .1, 1.05], [.42, -.1, 1.05], [.3, -.13, 1.08]]), 0, 0, 0, 1, 1, 1, KK.dark, 82, .2, .95),
   part(membrane([[.415, -.075, 1.02], [.42, -.025, 1.02], [.412, -.05, .99]]), 0, 0, 0, 1, 1, 1, KK.pale, 82, .2, .95),
   part(membrane([[.42, .025, 1.02], [.415, .075, 1.02], [.412, .05, .99]]), 0, 0, 0, 1, 1, 1, KK.pale, 82, .2, .95),
   limb([[.12, -.2, .98, .07], [.32, -.33, .8, .058], [.5, -.32, .64, .048]], KK.hide, 50, .12, .98),
@@ -157,7 +157,7 @@ for (const side of [-1, 1]) knellkeeper.push(limb([[0, side * .17, .32, .075], [
 const MD = { skin: 0x6c70c0, dark: 0x1a0e26, glow: 0x7fe7ff, pale: 0xe8fbff, rim: 0x4a3f8a };
 const spindriftMedusa = [
   part(verticalLoft([[0, .4, 0], [0, .37, .13], [0, .29, .28], [0, .1, .4]], 8), 0, 0, .8, 1, 1, 1, MD.skin),
-  part(E5, 0, 0, .98, .2, .2, .16, MD.glow, 0, 0, .98, 0, true),
+  part(E5, 0, 0, 1.03, .17, .17, .13, MD.glow, 0, 0, 1.03, 0, true),
 ];
 for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, y = Math.sin(a) * .4, x = Math.cos(a) * .4; spindriftMedusa.push(part(membrane([[x * .92, y * .92, .82], [x * 1.12 - y * .22, y * 1.12 + x * .22, .76], [x * 1.18, y * 1.18, .66], [x * 1.12 + y * .22, y * 1.12 - x * .22, .76]]), 0, 0, 0, 1, 1, 1, i % 2 ? MD.pale : MD.rim, i % 2 ? 22 : 23, 0, .82)); }
 for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + .3, x = Math.cos(a) * .27, y = Math.sin(a) * .27; spindriftMedusa.push(limb([[x, y, .82, .028], [x * 1.25 - .05, y * 1.25, .45, .02], [x * .9 - .12, y * .9, .06, .006]], i % 2 ? MD.glow : 0x5a3a7a, 60 + i, x, .82, 3)); }
@@ -169,7 +169,7 @@ const prismStilt = [
   part(prism(6, .08), 0, 0, 2.0, .2, .2, .14, PS.light, 82, 0, 1.6),
   part(prism(6, .1), 0, 0, 1.5, .2, .2, .12, PS.deep, 82, 0, 1.6, Math.PI),
   part(E5, .2, 0, 1.76, .04, .08, .08, 0x7fe7ff, 82, 0, 1.6, 0, true),
-  part(E5, 0, 0, 1.38, .08, .08, .06, PS.dark, 0, 0, 1.38, 0, true),
+  part(E5, 0, 0, 1.42, .1, .1, .08, PS.dark, 0, 0, 1.42, 0, true),
 ];
 for (const [a, sw] of [[0, 0], [2.1, 1], [-2.1, -1]]) { const x = Math.cos(a), y = Math.sin(a); prismStilt.push(limb([[x * .06, y * .06, 1.38, .035], [x * .34, y * .34, .9, .026], [x * .46, y * .46, .03, .012]], sw ? PS.glass : PS.dark, sw, 0, 1.38, 3)); }
 for (let i = 0; i < 2; i++) { const a = i * Math.PI + .9; prismStilt.push(part(taper, Math.cos(a) * .3, Math.sin(a) * .3, 1.86, .045, .045, .11, i ? PS.light : PS.white, 82, 0, 1.6)); }

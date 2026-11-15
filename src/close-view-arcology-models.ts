@@ -55,20 +55,22 @@ sparkWarden.push(
   part(membrane([[.21, -.36, 1.5], [.29, -.36, 1.59], [.23, -.36, 1.54], [.13, -.36, 1.595]]), 0, 0, 0, 1, 1, 1, wardGlow, -2, 0, 1.15),
 );
 
-// Cinder Wisp, a fragile ember spirit: a lit core under a cracked coal crust and horn (lifted with the outer flames), two
-// slanted dark eyes, four flame tongues streaming up and back in two counter-flickering sets (joints 124 inner, 125 outer),
-// a cinder tail trailing below and one loose spark. Group 8 breathes. 136 triangles.
+// Cinder Wisp, a fragile ember spirit: a lit core under a cracked coal crust and fin (lifted with the outer flames), two
+// slanted dark eyes, six flame tongues (a tall inner pair and a long streaming rear pair on 124, a flaring outer pair on 125)
+// that rise and stream back like a comet's head, a cinder tail trailing below and three loose sparks. Group 8 breathes.
+// 136 triangles.
 const cinderWisp = [
   part(ellipsoid(6, 2), 0, 0, .58, .17, .17, .19, ember, 8, 0, .58, 0, true),
-  jointed(part(ellipsoid(6, 1), -.08, 0, .66, .15, .17, .095, char, 0, -.08, .66, -.42, true), 125, 0, .6),
-  jointed(part(taper, -.15, 0, .79, .045, .035, .09, char, 0, -.15, .79, -.65), 125, 0, .6),
+  jointed(part(ellipsoid(5, 1), -.09, 0, .66, .14, .16, .09, char, 0, -.09, .66, -.42, true), 125, 0, .6),
+  part(membrane([[-.08, 0, .74], [-.26, 0, .84], [-.18, 0, .7]]), 0, 0, 0, 1, 1, 1, char, 125, 0, .6),
   part(curvedTube([[0, 0, .44, .07], [-.04, 0, .3, .045], [-.1, 0, .18, .025], [-.2, 0, .08, .004]], 3), 0, 0, 0, 1, 1, 1, cinder, 8, 0, .58),
-  part(membrane([[.31, .16, .78], [.3, .2, .8], [.33, .19, .75]]), 0, 0, 0, 1, 1, 1, 0xf3a55c, 124, 0, .6),
 ];
+for (const [x, y, z] of [[.31, .16, .78], [.24, -.2, .9], [-.36, .1, 1.0]]) cinderWisp.push(part(membrane([[x, y, z], [x - .01, y + .035, z + .02], [x + .02, y + .03, z - .03]]), 0, 0, 0, 1, 1, 1, 0xf3a55c, 124, 0, .6));
 for (const side of [-1, 1]) cinderWisp.push(part(membrane([[.168, side * .025, .62], [.15, side * .115, .66], [.163, side * .1, .595]]), 0, 0, 0, 1, 1, 1, char, 8, 0, .58));
-for (const [y, inner] of [[-.055, 1], [.055, 1], [-.13, 0], [.13, 0]]) cinderWisp.push(part(curvedTube(inner
-  ? [[.03, y, .7, .08], [-.02, y * 1.2, .92, .05], [-.16, y * .6, 1.08, .006]]
-  : [[0, y, .64, .065], [-.08, y * 1.5, .82, .04], [-.22, y * 1.6, .93, .006]], 4), 0, 0, 0, 1, 1, 1, inner ? ember : cinder, inner ? 124 : 125, 0, .6));
+for (const [y, kind] of [[-.05, 0], [.05, 0], [-.12, 1], [.12, 1], [-.07, 2], [.07, 2]]) cinderWisp.push(part(curvedTube(
+  kind === 0 ? [[.04, y, .7, .075], [.0, y * 1.2, .92, .045], [-.12, y * .6, 1.1, .006]]
+  : kind === 1 ? [[0, y, .64, .06], [-.08, y * 1.5, .8, .036], [-.2, y * 1.65, .92, .005]]
+  : [[-.08, y, .66, .07], [-.24, y * 1.3, .76, .04], [-.46, y * .8, .78, .005]], 3), 0, 0, 0, 1, 1, 1, kind === 1 ? cinder : ember, kind === 1 ? 125 : 124, 0, .6));
 
 // Veil Moth, a drifting predator: a furred thorax with a pale ruff, an abdomen hanging back from it (6), a dark head
 // (joint 82) with two lit lilac eyes and feathered antennae, broad forewings carrying lit eyespots and smaller hindwings raised
