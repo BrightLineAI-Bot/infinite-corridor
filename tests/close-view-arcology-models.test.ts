@@ -4,7 +4,7 @@ import { MESH_FLOATS, ellipsoid, curvedTube, membrane, part } from '../src/close
 import { CLOSE_VIEW_ARCOLOGY_KINDS } from '../src/close-view-arcology-models.ts';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelTriangleCount, modelSupportsAttachments, writeCloseViewModel } from '../src/close-view-models.ts';
 
-const expectedTriangles = { glassMite: 168, sparkWarden: 196, cinderWisp: 140, veilMoth: 120, voidSentinel: 204 };
+const expectedTriangles = { glassMite: 166, sparkWarden: 184, cinderWisp: 136, veilMoth: 116, voidSentinel: 198 };
 const actor = (kind, extra = {}) => ({ kind, x: 0, y: 0, z: 0, yaw: 0, phase: .7, pace: 0, pose: 'idle', amount: 0, ...extra });
 function written(kind, extra = {}) {
   const out = new Float32Array(MODEL_MAX_VERTICES * MODEL_FLOATS), end = writeCloseViewModel(out, 0, actor(kind, extra));
@@ -44,7 +44,7 @@ test('compiled alpha, actor scale, stagger and world-space drone attachments obe
   const base=written('glassMite'), doubled=written('glassMite',{scale:2}), b=bounds(base), d=bounds(doubled);for(let i=0;i<3;i++)assert.ok(Math.abs(d.span[i]/b.span[i]-2)<1e-4);
   const stagger=bounds(written('glassMite',{stagger:1}));assert.ok(stagger.lo[2]<b.lo[2]);
   const attachments=[{x:4,y:5,z:6},{x:5,y:5,z:6},{x:6,y:5,z:6}], data=written('voidSentinel',{alpha:2,attachments});
-  assert.equal(data.length/MODEL_FLOATS/3,228);for(let i=0;i<data.length;i+=MODEL_FLOATS)assert.equal(data[i+9],1);
+  assert.equal(data.length/MODEL_FLOATS/3,222);for(let i=0;i<data.length;i+=MODEL_FLOATS)assert.equal(data[i+9],1);
   const tail=data.slice(modelTriangleCount('voidSentinel')*3*MODEL_FLOATS), q=bounds(tail);assert.ok(q.lo[0]>3.8&&q.hi[0]<6.2&&q.lo[2]>5.8,'attachments remain at world positions');
 });
 

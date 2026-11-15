@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelTriangleCount, modelSupportsAttachments, writeCloseViewModel } from '../src/close-view-models.ts';
 
-const triangles={ashling:160,rootBrute:204,pallidCrawler:178,hollowMarshal:224,ashenHound:224,coilStalker:176};
+const triangles={ashling:158,rootBrute:204,pallidCrawler:168,hollowMarshal:220,ashenHound:216,coilStalker:172};
 const actor=(kind,extra={})=>({kind,x:0,y:0,z:0,yaw:0,phase:.7,pace:0,pose:'idle',amount:0,...extra});
 function written(kind,extra={}){const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS),end=writeCloseViewModel(out,0,actor(kind,extra));return out.slice(0,end);}
 function bounds(data){const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];for(let i=0;i<data.length;i+=MODEL_FLOATS)for(let q=0;q<3;q++){lo[q]=Math.min(lo[q],data[i+q]);hi[q]=Math.max(hi[q],data[i+q]);}return{lo,hi,span:hi.map((v,i)=>v-lo[i])};}

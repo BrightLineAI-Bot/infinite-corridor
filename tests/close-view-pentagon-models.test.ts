@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CLOSE_VIEW_PENTAGON_KINDS } from '../src/close-view-pentagon-models.ts';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelTriangleCount, modelSupportsAttachments, writeCloseViewModel } from '../src/close-view-models.ts';
 
-const triangles={weepingSaint:148,hangedChoir:204,graveLantern:160,mirrorShade:104,amalgam:192,gnawingMaw:168,cinderSeraph:232,lumenWraith:154,veilSpinner:202,riftLynx:192,sunderjaw:200,thunderhorn:176,siegeBeetle:220,gloomwisp:180,gloomgorge:220};
+const triangles={weepingSaint:148,hangedChoir:204,graveLantern:152,mirrorShade:96,amalgam:192,gnawingMaw:158,cinderSeraph:214,lumenWraith:152,veilSpinner:192,riftLynx:188,sunderjaw:178,thunderhorn:176,siegeBeetle:214,gloomwisp:166,gloomgorge:208};
 const actor=(kind,extra={})=>({kind,x:0,y:0,z:0,yaw:0,phase:.7,pace:0,pose:'idle',amount:0,...extra});
 function written(kind,extra={}){const out=new Float32Array(MODEL_MAX_VERTICES*MODEL_FLOATS);const end=writeCloseViewModel(out,0,actor(kind,extra));return out.slice(0,end);}
 function bounds(data){const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];for(let i=0;i<data.length;i+=MODEL_FLOATS)for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],data[i+k]);hi[k]=Math.max(hi[k],data[i+k]);}return{lo,hi,span:hi.map((v,i)=>v-lo[i])};}
@@ -23,7 +23,8 @@ test('source silhouettes retain their identifying spatial landmarks',()=>{
   assert.ok(b.weepingSaint.span[2]>1.7&&b.weepingSaint.span[2]>b.weepingSaint.span[1]*2,'tall bowed saint');
   assert.ok(b.hangedChoir.lo[2]>.4&&b.hangedChoir.span[1]>1.2,'suspended three-wide choir');
   assert.ok(b.graveLantern.hi[2]>1.9&&b.graveLantern.lo[2]>.15,'chained floating cage');
-  assert.ok(b.mirrorShade.span[0]<.3&&b.mirrorShade.span[1]>.9,'thin orbiting mirror planes');
+  // Refinement pass (Tim, 2026-11-14): the Shade gains its standard-view arms and levelled blade, so it is no longer thin in X.
+  assert.ok(b.mirrorShade.hi[0]>.7&&b.mirrorShade.span[1]>.7&&b.mirrorShade.span[2]>1.2,'cone robe, mirror face, orbiting shards and a levelled blade');
   assert.ok(b.amalgam.span[1]>1.2&&b.amalgam.span[0]>.9,'many-limbed flesh mass');
   assert.ok(b.gnawingMaw.span[1]>.9&&b.gnawingMaw.span[2]>1,'radial masonry maw');
   assert.ok(b.cinderSeraph.span[1]>1.25&&b.cinderSeraph.hi[2]>1.5,'six-wing seraph and knife halo');

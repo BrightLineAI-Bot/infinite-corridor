@@ -105,11 +105,14 @@ function normalizePreparedPayload(raw){
   if(raw.cloneEligible&&raw.cloneProfile!=null&&(!finiteObject(raw.cloneProfile)||raw.cloneProfile.shape!=='arc'||raw.cloneProfile.range!==1.75||raw.cloneProfile.arc!==160||!boundedNumber(raw.cloneProfile.damage,1,1e9)))return null;
   return {...raw,v:1,family:raw.family,[key]:{...body},...(members?{members}:{}),pellets,spread,awakenedFan:raw.awakenedFan,echoCopies:echoCopies.map(c=>({...c,delayMs:Number(c.delayMs),share:Number(c.share)})),cloneEligible:raw.cloneEligible,...(finiteObject(raw.cloneProfile)?{cloneProfile:{...raw.cloneProfile}}:{})};
 }
+// A Blunderbuss prepared shot's speed: 14 plain, 11 the pre-966 Arc Wave crescent (records saved by r549–r965), and the
+// current Arc Wave crescent (tool-forms.ts ARC_WAVE.speed, 5.5 since release 966; tests/arc-wave-resume.test.ts keeps them equal).
+export const BLUNDERBUSS_SHOT_SPEEDS = Object.freeze([14, 11, 5.5]);
 export function normalizePendingToolUse(raw){
   if(!finiteObject(raw))return null;const v=Number(raw.v);if(Number.isInteger(v)&&v>1)return structuredClone(raw);if(v!==1||!TOOL_USE_KINDS.includes(raw.toolKind)||!validUseId(raw.id)||!['area','areaId','levelId'].every(k=>typeof raw[k]==='string'&&raw[k].length<=512)||!finiteObject(raw.aim))return null;
   const ax=Number(raw.aim.x),ay=Number(raw.aim.y),mag=Math.hypot(ax,ay),startupMs=Number(raw.startupMs),elapsedMs=Number(raw.elapsedMs),remainingMs=Number(raw.remainingMs),normal=TOOL_USE_STARTUP_MS[raw.toolKind],payload=normalizePreparedPayload(raw.payload);
   if(!Number.isFinite(mag)||Math.abs(mag-1)>1e-5||!boundedNumber(startupMs,1,normal)||!boundedNumber(elapsedMs,0,startupMs)||!boundedNumber(remainingMs,0,startupMs)||Math.abs(elapsedMs+remainingMs-startupMs)>1e-5||!payload||(raw.toolKind==='great-sweep')!==(payload.family==='sweep'))return null;
-  if(payload.family==='shot'){const spec=raw.toolKind==='rift-bombard'?['grenade','physical',8,[1,3]]:raw.toolKind==='blunderbuss'?['straight','physical',null,[3,5]]:['boomerang','magic',10,[1,3]],members=payload.members,executed=[payload.shot,...members];if(!spec[3].includes(members.length)||executed.some(m=>m.path!==spec[0]||m.damageType!==spec[1]||(spec[2]!=null&&m.speed!==spec[2])||(raw.toolKind==='blunderbuss'&&m.speed!==14&&m.speed!==11)))return null;}
+  if(payload.family==='shot'){const spec=raw.toolKind==='rift-bombard'?['grenade','physical',8,[1,3]]:raw.toolKind==='blunderbuss'?['straight','physical',null,[3,5]]:['boomerang','magic',10,[1,3]],members=payload.members,executed=[payload.shot,...members];if(!spec[3].includes(members.length)||executed.some(m=>m.path!==spec[0]||m.damageType!==spec[1]||(spec[2]!=null&&m.speed!==spec[2])||(raw.toolKind==='blunderbuss'&&!BLUNDERBUSS_SHOT_SPEEDS.includes(m.speed))))return null;}
   return {...raw,v:1,id:raw.id,toolKind:raw.toolKind,startupMs,elapsedMs,remainingMs,aim:{...raw.aim,x:ax,y:ay},payload};
 }
 export function normalizePendingMeleeContact(raw){
