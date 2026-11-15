@@ -1819,6 +1819,8 @@ export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && 
 // it has drawn the frame (Close View, or a blend); false lets the ordinary view draw as it always has, at no extra cost.
 const MODE = { cur: 0, wanted: false, failed: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1 };
 let bypass = false;
+// True while the leave blend draws the ordinary view zoomed (renderer.ts drawGroundCache keeps its ground image through it).
+export const closeViewLeaving = () => bypass;
 export const closeViewBlend = () => ({ mode: MODE.cur ? "close" : "ordinary", blending: MODE.to >= 0, mix: MODE.mix });
 export function closeViewFrame(ctx, g, w, h, now, baseRender) {
   if (bypass || !g?.player) return false;
