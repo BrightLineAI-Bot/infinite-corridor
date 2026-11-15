@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r973 (`a4a3315fe51a`); production serves `r972-cede9b9fcf20` (published 2026-11-15 after Fable reviews of r962 to r971 and r971 to r972). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r974 (`df6aeeaf1bcf`); production serves `r972-cede9b9fcf20` (published 2026-11-15 after Fable reviews of r962 to r971 and r971 to r972). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 974 | Claude | claude/dino-duel-sound | The dino duel: music hushed for battle SFX, a 90 s cap ending in a kill (no reward from the eaten) or an escape, shake, indoor rockfall, camera pull-out, Close View tail-heave and belly-lift grabs without clipping; new modules dino-duel, battle-sfx, close-view-duel; no save change | In flight. |
+| 975 | Claude | claude/enemy-behaviour | Ordinary creature behaviour (OoT-remake style): awareness and kin calls, arrival for mid-fight spawns, attack tokens and spacing rings, heavy/light/combo/feint blows, poise and flinch, guard and sidestep, retreat and regroup; new module enemy-behaviour; no save change | In flight. |
+| 974 | Claude | claude/dino-duel-sound | The dino duel: music hushed for battle SFX, a 90 s cap ending in a kill (no reward from the eaten) or an escape, shake, indoor rockfall, camera pull-out, Close View tail-heave and belly-lift grabs without clipping; new modules dino-duel, battle-sfx, close-view-duel; no save change | Merged as `df6aeeaf1bcf` (#641). |
 | 973 | Claude | claude/boss-themes-dark | Soundtrack phase 2: an original, dark theme per world boss in three menace tiers (20 themes + chrysalis and fossil-Spinosaurus variants); boss detection for the chrysalis, Gate Revenants and Tyrant Mosasaur; music only | Merged as `a4a3315fe51a` (#639). |
 | 972 | Claude | claude/arc-resume-fix | Review fix: an Arc Wave Blunderbuss press saved during its Close View startup resumes and fires (the pending tool-use validator now admits the 5.5-speed crescents) | Merged as `cede9b9fcf20` (#640); published 2026-11-15. |
 | 971 | Claude | claude/creatures-fit | Close View creatures: near/engaging creatures solid (wards .6, Seraph dive .35), attack root poses + joint swings on real clocks, ~40 refined models within triangle and contact-height budgets; presentation only | Merged as `78e6e0e7e9ca` (#638); published in r972. |

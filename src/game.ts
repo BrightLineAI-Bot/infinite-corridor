@@ -142,6 +142,7 @@ import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
+import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -2516,7 +2517,11 @@ export function alertEnemy(e) {
 export function enemyProjectilePattern(shooter,aim,now=0,options={}) {
   return buildEnemyProjectilePattern(shooter,aim,now,options);
 }
-export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null) {
+// enemy-behaviour.ts (Tim, 2026-11-14): with a squad board (the game passes one), an ordinary creature also notices before it
+// engages, waits its turn for an attack token on its ring, varies its blows (heavy, combos, feints), flinches, guards, dodges,
+// steps back and retreats. Without one (`squad` null) it behaves exactly as before.
+function legacyDrop(e, b) { e.telegraph = 0; e.meleePhase = null; e.threatRange = null; if (b) { b.press = 0; b.comboLeft = 0; b.feintAt = 0; } }
+export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onRanged=()=>{}, move=null, squad=null) {
   const displace = move || ((subject, dx, dy) => moveAxis(subject, dx, dy, map, width));
   if(sanctuary){enforceSanctuary(e,sanctuary);if(Math.hypot(player.x-sanctuary.x,player.y-sanctuary.y)<sanctuary.radius){e.telegraph=0;return false}}
   const ai = ensureAI(e),
@@ -2528,6 +2533,13 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   staggerGovernor(e, dt); // release 377: bosses and elites cannot be stagger-locked
+  const B = squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, squad) : null;
+  if (B) {
+    squad.w = null; squad.disp = displace;
+    if (!e.aggro && toPlayer < 6) e.aggro = true; // it sees the Wayfarer: the notice beat comes first (behaviourGate)
+    if (behaviourGate(e, b, B, squad, legacyDrop)) { if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; } ai.mode = e.aggro ? "alert" : ai.mode; return false; }
+    if (e.aggro && behaviourReact(e, b, B, squad, toPlayer, e.telegraph > 0, false, legacyDrop)) { ai.mode = "react"; return false; }
+  }
   if(e.passiveBehavior==='practice'){
     ai.mode='idle';e.telegraph=0;e.strike=0;e.meleePhase=null;e.threatRange=null;return false;
   }
@@ -2546,12 +2558,14 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   }
   if (e.telegraph > 0) {
     e.telegraph = Math.max(0, e.telegraph - dt);
+    if (B && b.feintAt > 0 && e.telegraph > 0 && e.telegraph <= b.wind * b.feintAt) { legacyDrop(e, b); e.cooldown = Math.min(e.cooldown || 0, .6); startFeint(e, b, B, squad); return false; } // a feint breaks off into a sidestep
     if (e.telegraph === 0) {
       e.windupStagger = null; // release 561: the next windup may be held again
       const pattern=e.meleePhase&&MELEE_PATTERNS[e.meleePhase.id], geometry=pattern?enemyMeleeGeometry(e):null;
       e.strikeGeometry = geometry;
       if(pattern?.dash){const aim=e.meleePhase.aim||projectileDirection(player.x-e.x,player.y-e.y),lateral=e.meleePhase.stage===1?{x:-aim.y,y:aim.x}:{x:0,y:0},distance=pattern.dash,dx=(aim.x+lateral.x*.65)*distance,dy=(aim.y+lateral.y*.65)*distance,steps=Math.ceil(Math.hypot(dx,dy)*5);for(let i=0;i<steps;i++)if(!displace(e,dx/steps,dy/steps))break;if(pattern.stages===2&&e.meleePhase.stage===0){e.meleePhase.stage=1;e.telegraph=.42;e.threatRange=1.9;return false}}
       e.cooldown = (pattern?.recovery|| (e.kind==='voidSentinel'?.82:e.kind==='cinderWisp'?1.35:1.9))*(e.attackCooldownScale||1)*(bossPaced(e)?BOSS_PACE.cooldown:1); // release 421
+      if (B) { if (b.comboLeft > 0 && pattern) e.cooldown = 0; else { if (e.heavy) e.cooldown *= B.heavy.recover; afterBlow(e, b, B); } } // a combo's next blow follows at once; a heavy blow leaves it open
       e.strike = 0.24;
       const ranged=!pattern&&e.range>=2.5&&!e.instantStrike,clear=(geometry?pointInEnemyMelee(geometry,player):attackInRange(e,player))&&hasLineOfSight(e,player,map,width,ranged)&&(!geometry||hasLineOfSight({x:geometry.x-.5,y:geometry.y-.45},player,map,width));
       if(clear&&ranged){onRanged(e,e.attackAim||projectileDirection(player.x-e.x,player.y-e.y));e.meleePhase=null;e.threatRange=null;return false}
@@ -2568,6 +2582,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     tx = player.x - e.x;
     ty = player.y - e.y;
     speed = 0.78;
+    if (B && B.spacing && !(b.press > 0) && !(b.comboLeft > 0) && e.range < 2.5) { const v = ringVector(e, b, B, squad); tx = v.x; ty = v.y; speed = 0.78 * v.speed; ai.mode = "circle"; } // waiting its turn on its ring
   } else if (fromHome > 3.5) {
     ai.mode = "return";
     tx = ai.homeX - e.x;
@@ -2596,13 +2611,16 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     if(step){ai.detourX=step[0];ai.detourY=step[1];ai.detourUntil=now+3000;const px=step[0]-e.x,py=step[1]-e.y,pm=Math.hypot(px,py)||1;displace(e,px/pm*speed*dt,py/pm*speed*dt)}
   }
   if(sanctuary)enforceSanctuary(e,sanctuary);
-  const patternStartRange=e.range<2.5&&e.meleePatterns?.length?Math.max(...e.meleePatterns.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
+  const moves=B&&B.moves&&e.range<2.5&&e.meleePatterns?.length?B.moves:e.meleePatterns,patternStartRange=e.range<2.5&&moves?.length?Math.max(...moves.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
+  if (B && b.comboLeft > 0 && !(e.cooldown > 0) && !(toPlayer <= patternStartRange + enemyBodyRadius(e) + .6 && hasLineOfSight(e, player, map, width))) { b.comboLeft = 0; afterBlow(e, b, B); } // out of reach: the chain ends
+  const inReach=(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
+  if (B && !inReach && B.spacing && e.range < 2.5 && ai.mode === "circle" && !(e.cooldown > 0) && !(b.press > 0) && !(b.rest > 0) && !(b.retreat > 0) && squadRequest(squad, e, b, B.pool)) b.press = B.press; // its turn: close in
+  if (B && inReach && !(b.comboLeft > 0) && (b.rest > 0 || b.retreat > 0 || !(b.press > 0 && b.pool === (e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool)) && !squadRequest(squad, e, b, e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool))) return false; // no token: it waits
   if (
-    (attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e)) &&
-    e.cooldown <= 0 &&
-    hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike)
+    inReach
   )
-    {const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=e.meleePatterns||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}}
+    {const followUp=!!(B&&b.comboLeft>0);if(B){b.press=0;if(followUp){b.comboLeft--;b.combo++}}const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=moves||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}
+    if(B){const k=shapeBlow(e,b,B,!!pattern,followUp);if(followUp)e.telegraph=Math.max(BEHAVIOUR.react.comboWindup,e.minimumAttackWindup||0,.48);else if(k>1)e.telegraph*=k;b.wind=e.telegraph;e.comboStep=b.combo;e.comboOf=b.comboOf}}
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -6967,7 +6985,7 @@ export class Game {
         const c = createCombatant(kind, x, y, false, []);
         Object.assign(c, { id: `${owner.id}:brood:${Math.round(now)}:${index}`, noRewards: true, summonedBy: owner.id, broodOf: owner.id, aggro: true });
         if (game.area === "dungeon") tuneDungeonThreat(c);
-        ensureAI(c); game.enemies.push(c); return c;
+        ensureAI(c); markArrival(c); game.enemies.push(c); return c; // enemy-behaviour.ts: born, it climbs free first
       },
       spawnIllusion(owner, x, y, index) {
         const c = createCombatant(owner.kind, x, y, false, []);
@@ -10157,7 +10175,7 @@ export class Game {
       const size = Math.min(left, mode.pack[0] + hk % (mode.pack[1] - mode.pack[0] + 1) + (elite ? mode.surge : 0) + Math.floor(P.size * pace)), roll = ((hk >>> 9) % 1000) / 1000;
       const rank = elite ? (roll < .35 ? "rare" : "champion") : roll < mode.rare * .5 ? "rare" : roll < mode.champion ? "champion" : null; rare ||= rank === "rare";
       const pack = packSpawns(`${this.save.seed}:frac-wave:${key}:${st.n}:p${k}`, kinds.length ? kinds : F.fallback, at.x, at.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-r-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true });
-      for (const q of pack.slice(0, left)) { const c = this.scaleToRegion(this.createEnemyFromSpawn(q)); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
+      for (const q of pack.slice(0, left)) { const c = markArrival(this.scaleToRegion(this.createEnemyFromSpawn(q))); c.aggro = true; this.enemies.push(c); left--; came++; } // never past the room (657: a shaman counts)
     }
     st.nextAt = now + (came ? mode.press * P.press[pace] : 2) * 1000; // a wave left standing is joined by the next
     if (came) { if (!st.wave) st.waveAt = now; st.wave = true; this.message = elite ? F.messages.elite : rare ? F.messages.rare : F.messages.wave; }
@@ -10187,7 +10205,7 @@ export class Game {
       const kinds = [...new Set(this.enemies.filter((e) => !e.fracWarden && (e.fractured || fracturedOrdinary(e))).map((e) => e.kind))].filter((k) => k !== "npc");
       const rank = st.calls % W.adds.championEvery === 0 ? "champion" : null;
       const pack = packSpawns(`${this.save.seed}:fracture-call:${key}:${st.calls}`, kinds.length ? kinds : FRACTURED.fallback, warden.x, warden.y, size, rank, (x, y) => this.fracturedOpen(x, y, w), `frac-wa-${(this.fracSeq = (this.fracSeq || 0) + 1)}`, { fracReinforcement: true, fracWardenAdd: true });
-      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = this.scaleToRegion(this.createEnemyFromSpawn(q)); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
+      for (const q of pack.filter((q) => !q.fracShaman).slice(0, size)) { const e = markArrival(this.scaleToRegion(this.createEnemyFromSpawn(q))); Object.assign(e, { aggro: true, fracWardenAdd: true }); this.enemies.push(e); }
       if (pack.length) this.message = W.messages.call;
     }
     return true;
@@ -10240,7 +10258,7 @@ export class Game {
   respawnCreature(q) {
     const c = this.createEnemyFromSpawn(q), B = this.map.building;
     if (B && !c.buildingScaled) { const k = buildingScale(B.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.buildingScaled = true; }
-    c.respawned = true; return this.scaleToRegion(c);
+    c.respawned = true; markArrival(c); return this.scaleToRegion(c); // enemy-behaviour.ts: it climbs out where it stirs
   }
   // Where a pack may come in: tiles the Wayfarer can walk to on their own level (open, not lethal, no hole or lethal ground
   // beside, not a doorway, RESPAWN.objectClear from every object and the arrival), at least RESPAWN.minDistance away and
@@ -11349,9 +11367,12 @@ export class Game {
     else { const ag = armorGlyphBonus(this.save), drain = ag.staminaDrain > 0 && this.stagMireMoving ? (p.maxStamina || this.save.maxStamina) * ag.staminaDrain : 0; /* a Tesseract's cost: stamina drained while you move */ p.stamina = Math.min(p.maxStamina, p.stamina + (9 + pairingMods(this.save).stamina) * (1 + ag.staminaRegen) * dt - drain * dt); if (drain) p.stamina = Math.max(0, p.stamina); }
     this.performanceStats.totalDungeonEncounterRecords=this.area==="dungeon"?(this.map.encounterGroups||[]).length:0;this.performanceStats.activeEnemies=0;this.performanceStats.dormantEnemies=0;this.performanceStats.activeProjectiles=this.projectiles.length;this.performanceStats.activeHazardsAndEffects=this.eliteHazards.length+this.effects.length;this.performanceStats.pathfindingWork=0;this.performanceStats.ambientTicks=0;if(dt>1/30)this.performanceStats.updateBudgetViolations++;
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
+    // enemy-behaviour.ts (Tim, 2026-11-14): one squad board for the ordinary creatures (awareness calls, attack tokens, rings).
+    const squad=(this.squad||=createSquad());squadFrame(squad,activeEnemySet,p,now,dt,now<(p.meleeUntil||0),this.enemies);packWorld.squad=squad;
     // The Stego Bait (stego-bait.ts): while one is down here, every creature it lures sees it as the Wayfarer (lureWorld), and
     // their ground effects strike it, not you (monster-pack.ts tickPackEffects asks lureWorldFor).
     const lure=this.stegoBaitTick(dt),lureWorld=lure?this.stegoLureWorld(packWorld,lure,now):null;let stalkLure=null;
+    if(lureWorld)lureWorld.squad=null; // a lured creature goes for the bait the old way
     packWorld.lureWorldFor=lure?(owner)=>lure.ids.has(owner)?lureWorld:null:null;
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
@@ -11404,7 +11425,7 @@ export class Game {
       if (
         !fellIntoHazard&&
         !e.dead &&
-        updateEnemyAI(e, lured ? lure.target : p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,lured?(shooter)=>{this.biteStegoBait(shooter,shooter.damage)}:(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy)) &&
+        updateEnemyAI(e, lured ? lure.target : p, this.map, width, simulationDt, now, /^(ashling|glassMite|sparkWarden|ashenHound|veilMoth|rootBrute|coilStalker|cinderWisp|hollowMarshal|riftColossus|voidSentinel)-/.test(e.id)?sanctuary:null,lured?(shooter)=>{this.biteStegoBait(shooter,shooter.damage)}:(shooter,aim)=>{const cap=this.area==="dungeon"?32:64,room=Math.max(0,cap-this.projectiles.length);if(room)this.projectiles.push(...enemyProjectilePattern(shooter,aim,now,{activeCount:this.projectiles.length,cap}).slice(0,room).map(q=>bossPaced(shooter)?{...q,damage:q.damage*BOSS_PACE.damage}:q))/* release 421 */}, (subject, dx, dy) => this.moveGrounded(subject, dx, dy), lured ? null : squad) &&
         !(lured && (this.biteStegoBait(e, e.damage), true)) && // a lured blow lands on the bait, never on you
         now > (p.invulnerableUntil || 0) &&
         // Stegosaur's Grip: holding a wall is not a leap; a body blow that reaches the height (bodyReach) lands.
@@ -11416,7 +11437,7 @@ export class Game {
         p.hp -= Math.max(
           1,
           Math.ceil(
-            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421 */
+            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );

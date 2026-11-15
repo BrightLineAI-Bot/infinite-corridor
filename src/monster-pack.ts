@@ -16,6 +16,7 @@ import { onStegoTailSevered } from "./stego-bait.ts";
 import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner } from "./dino-duel.ts"; // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
 import { BLEED, tickCreatureBleed } from "./bleed.ts"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
 import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 
 export const MONSTER_PACK_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -1000,6 +1001,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.spinoHeldBy) delete enemy.spinoHeldBy; // a creature in the Spinosaurus's jaws is let go by a reload
   if (enemy.stegoHeldBy) delete enemy.stegoHeldBy; if (enemy.kind === "wildStego") enemy.stegoGrab = null; if (enemy.dinoLift || enemy.dinoPitch || enemy.dinoRoll) dinoUnhang(enemy); // so is the Spinosaurus in the stego's (the dino duel)
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
+  resetBehaviour(enemy); if (enemy.strikeScale) enemy.strikeScale = 1; if (enemy.heavy) enemy.heavy = false; // enemy-behaviour.ts: no token, combo, feint, guard or dodge resumes
   enemy.untargetable = false; enemy.hidden = false; enemy.aloft = false; enemy.phasing = false; enemy.iceShield = false; enemy.spinning = false; enemy.tucked = false; enemy.sliding = false; enemy.mist = false; enemy.thrusting = null; enemy.swing = null; enemy.giantPose = null; enemy.giantCharged = 0; enemy.giantAir = 0; enemy.giantThrust = false; enemy.giantDash = null; enemy.stagPose = null; enemy.stagAir = 0; enemy.stagHunt = 0; enemy.stagMending = false; /* release 705; 708 */ enemy.mothPose = null; enemy.mothAir = 0; enemy.mothKindled = 0; enemy.mothCocoon = false; /* release 706 */ enemy.dragonPose = null; enemy.dragonAir = 0; enemy.dragonCharge = 0; enemy.doomRays = null; enemy.doomBreath = null; // release 709 // release 245: no pose survives a reload
   return enemy;
 }
@@ -1037,7 +1039,7 @@ export function bodyHitFootprint(e) {
   const extra = pad === "spin" ? TURTLE.spinRadius : pad === "stomp" ? TURTLE.stompRadius : pad;
   return { radius: bodyRadius(e) + extra, armed: s.phase !== "windup" };
 }
-function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) || 1) * (ATTACK_MODULES[attackId]?.damage ?? 1))); }
+function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) || 1) * (ATTACK_MODULES[attackId]?.damage ?? 1) * (Number(e.strikeScale) || 1))); } // strikeScale: an ordinary creature's heavy blow or combo follow-up (enemy-behaviour.ts shapeBlow)
 // Release 421 (Tim: "the bosses do too much damage... they need to have slightly more wind ups for their attacks... reduce their
 // damage by... 15%... more cool down between their attacks... they attack way too aggressively"): every boss and Revenant
 // (staggerClass) hits for `damage` of before, winds up `windup` times longer, waits `cooldown` times longer before an attack
@@ -1728,6 +1730,7 @@ function endAttack(e, s) {
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
   s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false; e.advPose = null; e.duelPose = null;
+  if (e.strikeScale) e.strikeScale = 1; if (e.heavy) e.heavy = false; if (s.combo) { s.combo = 0; s.comboOf = 0; } // enemy-behaviour.ts: a blow's shape ends with it
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
   if (e.kind === "wildStego") { e.stegoPose = null; e.stegoAir = 0; e.stegoRoll = 0; e.stegoTree = null; e.stegoGrab = null; } // its water, tail, plates and climb are its own state, not the move's
   if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
@@ -4943,11 +4946,14 @@ export function updatePackMonster(e, w) {
   // Release 287 (Tim: "the crystal doesn't have to aggro to you, he can just be wandering around... if you touch him, or if
   // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).
   const calmCrystal = roaming && e.kind === "psychicCrystal";
+  const B = w.squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, w.squad) : null; // enemy-behaviour.ts: its record, before it looks for the Wayfarer
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
   else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
+  // enemy-behaviour.ts (Tim, 2026-11-14): ordinary creatures, when the game hands a squad board: arrival, blows, calls, the alert beat.
+  if (B) { w.squad.w = w; w.squad.disp = null; if (behaviourGate(e, b, B, w.squad, packDrop)) return; }
   if (!e.aggro) {
     if (def.adventureKin && advIdle(e, s, w)) return; // adventure-creatures.ts: a loop, a burial, a perch
     if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }
@@ -4963,6 +4969,7 @@ export function updatePackMonster(e, w) {
   if (e.kind === "wildStego" && stegoTick(e, s, w, p, d)) return; // STEGO: its tail, water, climbing, hops, buck and infighting
   if (e.kind === "spinoRex" && spinoTick(e, s, w, p, d)) return; // SPINO: the fossil shed, its prey first, one-off jumps and grabs
   if (def.duelistKin && duelHopStep(e, s, w)) return; // the Gaunt: a hop in flight always lands
+  if (B && behaviourReact(e, b, B, w.squad, d, !!s.attack && s.phase !== "recover", !!s.attack && s.phase === "recover", packDrop)) return; // a stagger, a flinch's jolt, a sidestep, a backstep, a guard, the retreat
   if (e.hitStun > 0 && s.state === "move") return;
   if (e.hitStun > 0 && s.attack && s.phase === "windup" && !e.untargetable && windupHeld(e, s.data ||= {}, dt)) return; // release 561: held, never cancelled
   if (def.duelistKin && duelTick(e, s, w, p, d)) return; // the Gaunt: hops in, out, aside and up (never while stunned)
@@ -4980,8 +4987,10 @@ export function updatePackMonster(e, w) {
   if (e.kind === "voidWalker" ? voidEvade(e, s, w, p, d) : e.evasive && s.attack !== "dragonColonize" && evade(e, s, w, p, d)) return;
   if (s.attack) {
     s.t -= dt;
+    if (B && b.feintAt > 0 && s.phase === "windup" && s.t <= (s.data.wind || 0) * b.feintAt) { const id = s.attack; endAttack(e, s); s.cd[id] = Math.min(s.cd[id] || 0, .6); s.gap = 0; startFeint(e, b, B, w.squad); return; } // a feint breaks off into a sidestep
     RUN[s.attack]?.(e, s, w);
-    if (s.attack && s.phase === "recover" && s.t <= 0) endAttack(e, s);
+    if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; if (packCombo(e, s, w, B, b)) return; if (e.heavy) s.t *= B.heavy.recover; } // the next blow of a combo; a heavy blow leaves it open
+    if (s.attack && s.phase === "recover" && s.t <= 0) { if (B) afterBlow(e, b, B); endAttack(e, s); }
     return;
   }
   if (e.kind === "crimsonTyrant" && w.dragonDue?.(e)) { s.state = "attack"; s.last = "dragonColonize"; beginAttack(e, s, "dragonColonize", w); return; } // release 709: its clock, not its choice
@@ -4992,19 +5001,60 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : def.duelistKin ? duelVector(e, s, w, p, d) : brainVector(e, s, w, def), v =e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * (e.stegoSwim === 1 ? STEGO.water.swimSpeed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : B && B.spacing ? (b.press > 0 ? pressVector(e, b, B, w.squad) : ringVector(e, b, B, w.squad)) : def.duelistKin ? duelVector(e, s, w, p, d) : brainVector(e, s, w, def), v =e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * (e.stegoSwim === 1 ? STEGO.water.swimSpeed : 1) * dt;
   const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   s.moveFailed = !moved; if (!moved && !move.phases) w.detour?.(e, speed);
   if (def.duelistKin) s.duelStuck = moved ? 0 : (s.duelStuck || 0) + dt; // the Gaunt: walled in on foot for a while, it hops (duelTick)
   e.facingX = e.kind === "wildStego" ? (stegoHeading(e).x >= 0 ? 1 : -1) : e.kind === "spinoRex" ? (spinoHeading(e).x >= 0 ? 1 : -1) : (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
   if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
+  if (B) { packTokenAttack(e, s, w, B, b, d); return; } // enemy-behaviour.ts: the attack tokens, and the shape of the blow
   const ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
   if (!ready.length) return;
   const preferred = ready.filter((id) => id !== s.last), pool = preferred.length ? preferred : ready, id = pool[hashSeed(`${e.id}:pick:${s.seq}`) % pool.length];
   s.last = id; s.state = "attack";
   beginAttack(e, s, id, w);
 }
+
+// ---------------------------------------------------------------- ordinary creature behaviour (enemy-behaviour.ts)
+// The simple close blows that can be heavy, chained into a combo or feinted: one windup, one hit, a recovery.
+export const COMBO_MOVES = new Set(["bite", "clawSweep", "longStab", "golemPunch", "heavySweep", "poleThrust"]);
+// Close attacks draw from the creature's close pool; everything else (shots, beams, marks on the floor, summons) from "ranged".
+const CLOSE_TAGS = ["melee", "charge", "leap", "burrow", "air"];
+export function closeAttack(id) { const tags = ATTACK_MODULES[id]?.tags || []; return CLOSE_TAGS.some((t) => tags.includes(t)); }
+function packDrop(e, b) { const s = e.pack; if (s?.attack) endAttack(e, s); if (b) { b.press = 0; b.comboLeft = 0; b.feintAt = 0; } }
+// With a token it may begin an attack in range; without one it waits on its ring. A spacing creature with a close attack ready
+// to use but out of reach asks for a token to close in (`press`).
+function packTokenAttack(e, s, w, B, b, d) {
+  if (b.rest > 0 || b.retreat > 0) return;
+  const board = w.squad, ready = availableAttacks(e).filter((id) => attackReady(e, s, w, id, d));
+  if (!ready.length) {
+    if (B.spacing && !(b.press > 0) && availableAttacks(e).some((id) => closeAttack(id) && !ATTACK_MODULES[id].passive && !((s.cd[id] || 0) > 0)) && squadRequest(board, e, b, B.pool)) b.press = B.press;
+    return;
+  }
+  const preferred = ready.filter((id) => id !== s.last), choice = preferred.length ? preferred : ready, id = choice[hashSeed(`${e.id}:pick:${s.seq}`) % choice.length];
+  const close = closeAttack(id), pool = close ? B.pool : "ranged";
+  if (!(b.press > 0 && b.pool === pool) && !squadRequest(board, e, b, pool)) return;
+  b.press = 0; s.last = id; s.state = "attack";
+  beginAttack(e, s, id, w);
+  const k = shapeBlow(e, b, B, COMBO_MOVES.has(id));
+  if (k > 1) s.t *= k; // a heavy blow: a longer windup (never a shorter one)
+  s.data.wind = s.t; s.rangedPool = !close; s.combo = b.combo; s.comboOf = b.comboOf;
+}
+// The next blow of a light combo, straight out of the last one's recovery (a step in, the full windup again, a lighter hit).
+function packCombo(e, s, w, B, b) {
+  if (!(b.comboLeft > 0) || !COMBO_MOVES.has(s.attack)) return false;
+  const p = center(w.player), d = distance(p, e), last = s.attack, A = ATTACK_MODULES[last];
+  if (d > A.range[1] + bodyRadius(e) + .6 || !w.los(e, w.player)) { b.comboLeft = 0; return false; } // out of reach: the chain ends
+  const others = availableAttacks(e).filter((id) => COMBO_MOVES.has(id) && id !== last), next = others.length && b.combo % 2 ? others[0] : last;
+  b.comboLeft--; b.combo++;
+  endAttack(e, s); s.gap = 0; s.state = "attack"; s.last = next;
+  const to = unit(p.x - e.x, p.y - e.y); w.move(e, to.x * .3, to.y * .3, NO_PHASE);
+  beginAttack(e, s, next, w); shapeBlow(e, b, B, true, true);
+  s.data.wind = s.t; s.rangedPool = false; s.combo = b.combo; s.comboOf = b.comboOf;
+  return true;
+}
+const NO_PHASE = { phase: false };
 
 // Returns true when this is a Walker effect. Each promised activation is one-shot and every lifetime is finite.
 function tickVoidEffect(f, w, dt) {

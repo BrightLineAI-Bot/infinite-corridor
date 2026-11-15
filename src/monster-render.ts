@@ -1633,6 +1633,43 @@ export function drawPackMonster(ctx, e, s, now, facing = "down") {
   if (stun > 0) { ctx.restore(); drawDazed(ctx, e, s, now, stun); }
   return drawn;
 }
+// Ordinary creature behaviour cues in Standard View (enemy-behaviour.ts flags; Close View reads the same flags itself): the alert
+// "!" over its head, a guard's bright arc on the side it braces, and the ground breaking (or a shadow, for a flier) as it arrives.
+// Flat strokes and one glyph, only while a flag is up: no gradients, nothing cached, nothing drawn for a creature at rest.
+export const BEHAVIOUR_CUES = { alert: "#ffe27a", guard: "rgba(190,225,255,", arrive: "rgba(70,52,36,", drop: "rgba(0,0,0," };
+export function behaviourCueOffset(e, reduceMotion = false) {
+  const a = Number(e?.arrive) || 0; if (!(a > 0)) return 0;
+  return reduceMotion ? 0 : e.arriveStyle === "drop" ? -a * .9 : e.arriveStyle === "emerge" ? a * .35 : 0;
+}
+// A flinch's jolt, away from the way it faces (a pack creature's facingX, an older creature's facing), in tiles.
+export function behaviourJolt(e, facing, reduceMotion = false, axis = "x") {
+  const j = Number(e?.flinch) || 0; if (!(j > 0) || reduceMotion) return 0;
+  const k = j * .1;
+  if (axis === "x") return e.facingX ? -Math.sign(e.facingX) * k : facing === "left" ? k : facing === "right" ? -k : 0;
+  return e.facingX ? 0 : facing === "up" ? k : facing === "down" ? -k : 0;
+}
+export function drawBehaviourCues(ctx, e, s, now, reduceMotion = false) {
+  const alert = Number(e.alert) || 0, guard = Number(e.guard) || 0, arrive = Number(e.arrive) || 0;
+  if (!(alert > 0 || guard > 0 || arrive > 0)) return false;
+  const scale = Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s;
+  ctx.save();
+  if (arrive > 0) {
+    if (e.arriveStyle === "drop") { ctx.fillStyle = BEHAVIOUR_CUES.drop + (.35 * (1 - arrive) + .1) + ")"; ctx.beginPath(); ctx.ellipse(k, b, s * scale * .45 * (1.4 - arrive * .6), s * scale * .16, 0, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.strokeStyle = BEHAVIOUR_CUES.arrive + (.75 * arrive) + ")"; ctx.lineWidth = Math.max(2, s * .07); const r = s * scale * (.35 + (1 - arrive) * .45); ctx.beginPath(); ctx.ellipse(k, b, r, r * .32, 0, 0, Math.PI * 2); ctx.stroke();
+      if (!reduceMotion) for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + (e.x + e.y), d = r * (1.1 + (1 - arrive) * .4); ctx.fillStyle = BEHAVIOUR_CUES.arrive + (.8 * arrive) + ")"; ctx.fillRect(k + Math.cos(a) * d - s * .04, b + Math.sin(a) * d * .32 - s * (.08 + (1 - arrive) * .2), s * .08, s * .08); } }
+  }
+  if (alert > 0) { /* a short "!" that pops up and holds */
+    const top = b - s * scale * 1.25 - (reduceMotion ? 0 : (1 - Math.min(1, (1 - alert) * 5)) * s * .15), size = Math.max(10, s * .42);
+    ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.lineWidth = 3; ctx.strokeStyle = "#000c"; ctx.fillStyle = BEHAVIOUR_CUES.alert;
+    ctx.strokeText("!", k, top); ctx.fillText("!", k, top);
+  }
+  if (guard > 0) { /* the brace: a bright arc on its front */
+    const dir = e.facingX ? (e.facingX < 0 ? Math.PI : 0) : ({ left: Math.PI, right: 0, up: -Math.PI / 2, down: Math.PI / 2 })[e.ai?.facing] ?? 0, r = s * scale * .55;
+    ctx.strokeStyle = BEHAVIOUR_CUES.guard + (.45 + .45 * guard) + ")"; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.arc(k, b - s * scale * .45, r, dir - .9, dir + .9); ctx.stroke();
+  }
+  ctx.restore();
+  return true;
+}
 // Stars circling over a staggered boss, and a cracked ring at its feet that closes as it recovers.
 export function drawDazed(ctx, e, s, now, stun, layer = 'all', head = null) {
   const scale = Math.max(.6, Number(e.scale) || 1), k = (e.x + .5) * s, b = (e.y + .82) * s, top = b - s * scale * 1.15, t = now / 1000, r = s * scale * .42;
