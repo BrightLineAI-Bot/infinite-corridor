@@ -1,6 +1,7 @@
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.ts';
 import { PRIMARY_PROFILES, primaryProfile } from './items.ts';
 import { sweepIndicator, drawSweepSwing } from './great-sweep.ts';
+import { sampleCycloneMotion } from './action-motion.ts'; // the Cyclone Heel's motion, shared with Close View
 const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
@@ -167,6 +168,82 @@ export function normalizeDashCore(raw, D) {
 export function normalizeShadowDash(raw) {
   const r = normalizeDashCore(raw, SHADOW_DASH); if (!r || r.v !== SHADOW_DASH.v) return r;
   r.action = raw.action === 'attack' ? 'attack' : null; return r;
+}
+// Cyclone Heel (Tim, 2026-11-15: "If you have the ki blast passive active and your Iron Fists are awakened: after the uppercut,
+// while you're in the air, do the ki blast. Then if you hit the next button, it does a spinning leg kick: one leg out, spinning
+// while travelling toward the enemy... If you have Shadow Boxing, you teleport there and all the spins' damage is applied on the
+// enemy you teleported to, over a second or so"). Only with awakened Iron Fists AND the Ki Blast passive (weapon-arts.ts
+// awakenedUp(save, "roundhouse")): still up in the Ki Blast's own leap (game.ts kiSlamReady: the uppercut released the blast and
+// popped her up) and inside the chain's `window`, the next Attack press is the Cyclone Heel in place of Ki Blast's ground slam.
+// Anything missing and the chain is exactly as before (the slam, or the ordinary plunge).
+//   The press (game.ts cyclonePress). A tap (or a press with no button to hold) spins at once: the plain kick. Held, the
+//     gauntlet ball (FIST_STEP_VIEW, game.fistBeat) goes out and comes home as the landing window opens: let go within
+//     `window.lead` s before the predicted landing (the leap's jumpUntil), having held at least `window.grace` s, and it is a
+//     perfect release. Let go earlier, or still held as she lands, and it is the plain kick (on the ground; never stuck: a
+//     hold never outlasts the landing or `holdMs`).
+//   The rewards are the chain's own (IRON_FISTS): perfect, every spin × `perfectShare`; a press made on the beat (the ball home
+//     after the uppercut), every spin × `beatShare`; both (a rhythm release), every spin × `beatShare` plus `rhythmBonus` ×
+//     fistPower shared over the spins: the flat bonus a rhythm step earns. The HUD meter (FIST_CALLOUT) takes the same level.
+//   Target: the lock, else the nearest foe within `range` tiles (game.ts cycloneTarget), else forward along the aim.
+//   The clock (2026-11-15 quality pass: "AAA feel... eased wind-up and recovery, readable spins with follow-through"): a
+//     wind-up of `windupMs` (a beat of hang time while the knee chambers), the spin span, then `recoverMs` while the leg comes
+//     down and the last turn runs out onto her heading. The record carries the phase lengths and the attack record their
+//     shares (cycloneWindup, cycloneRecover), so both views draw the same motion (action-motion.ts sampleCycloneMotion):
+//     continuous turning speed, whole turns, no pop (measured frame by frame in tests/fist-cyclone-kick.test.ts).
+//   Without Shadow Boxing she travels through the spin span: to `stop` tiles short of a foe within reach (followed as it
+//     steps), else `tiles` along the heading, through Shadow Boxing's quarter-tile mover (game.ts dashCarry: walls, bodies,
+//     lethal ground and ledges stop it) on its own path, cycloneTravel: fast out and slowing in, so most of the ground is
+//     covered in the first turns and the later turns drill into a foe met at the end. `spins` turns of `spinMs`; as each turn
+//     ends the leg strikes every foe within `radius` of her centre at that moment (padded by the foe's body), once each (one
+//     effect a turn): from 2.5 tiles away the last three of five land.
+//   With Shadow Boxing and a foe within `shadow.reach`: the wind-up is Shadow Boxing's own charge to it (SHADOW_DASH's clock,
+//     shadowDashMs, at least `windupMs`; the same mover, `shadow.stop` short, so never through a wall), travelled frame by
+//     frame rather than a pop (Tim, 2026-11-14: "I want to see him traversing the space"), its after-images drawn on arrival
+//     (markShadowTrail); then she spins in place for `shadow.spanMs`: every turn lands on that foe (`only`), and foes touching
+//     the leg take `shadow.splash` of the turn. She follows a stepping foe at up to `shadow.follow` tiles a second. Shadow
+//     Boxing's damage and heal ride on every turn.
+//   Each turn: `share` × fistPower (the fists' power, glyph damage mods, Spellblade, armor), melee glyphs, Imbue, a `stun`.
+//     5 × .6 = 3.0, a little over the slam's 2.8 it replaces. Echo glyphs add no copies (no fist step has Echo copies) and
+//     do not gate the hold (it is a timing, not a charge). The press counts toward arming Ki Blast again (noteArtPress).
+//   I-frames as the cross's rush: IRON_FISTS.guardMs from the start. A dodge, a stun, death, a new area or the fists put
+//     away end it; the chain then starts again at the cross on its gate.
+// Saved mid-spin at playerRuntime.cycloneHeel (additive, schema 14; normalizeDashCore's fields against `v`, `minMs`, `maxMs`,
+// `maxTiles`) and resumed exactly; the hold (a held button) is runtime only and a reload drops it.
+export const CYCLONE_HEEL = Object.freeze({
+  v: 1, name: "Cyclone Heel", spins: 5, spinMs: 110, windupMs: 120, recoverMs: 170, tiles: 3.5, stop: .8, range: 6, radius: 1.3, share: .6, stun: .25,
+  shadow: Object.freeze({ spanMs: 1000, reach: 8, stop: .85, follow: 3, splash: .35 }),
+  window: Object.freeze({ lead: .22, grace: .12 }), holdMs: 1500,
+  minMs: 300, maxMs: 1500, maxTiles: 8, maxSpins: 12, maxPhaseMs: 400, // the saved record's bounds
+  colors: Object.freeze({ ring: "#9ff0ff", leg: "#ffffff", shadow: "#b48cff" }),
+});
+// The share of the travel covered at time fraction t: fast out, slowing in (ease-out).
+export function cycloneTravel(t) { t = clamp01(t); return 1 - (1 - t) * (1 - t); }
+export function normalizeCycloneHeel(raw) {
+  const C = CYCLONE_HEEL, r = normalizeDashCore(raw, C); if (!r || r.v !== C.v) return r;
+  if ((raw.mode !== "travel" && raw.mode !== "shadow") || !finiteIn(raw.toX, -1e4, 1e5) || !finiteIn(raw.toY, -1e4, 1e5) || !finiteIn(raw.dirX, -1, 1) || !finiteIn(raw.dirY, -1, 1)
+    || !finiteIn(raw.limit, 0, C.maxTiles) || !Number.isInteger(raw.spins) || raw.spins < 1 || raw.spins > C.maxSpins || !Number.isInteger(raw.spun) || raw.spun < 0 || raw.spun > raw.spins
+    || !finiteIn(raw.power, 0, 1e9) || !finiteIn(raw.splash, 0, 1e9) || ![0, 1, 2].includes(raw.level)
+    || !finiteIn(raw.windupMs, 0, C.maxPhaseMs) || !finiteIn(raw.recoverMs, 0, C.maxPhaseMs) || raw.windupMs + raw.recoverMs >= raw.durationMs) return null;
+  r.perfect = raw.perfect === true; return r;
+}
+// The standard view (and Close View's floor layer), on the same motion as the Close View body (action-motion.ts
+// sampleCycloneMotion): the leg's line drawn round her as she turns, longer as it extends, a trailing arc whose length follows
+// the turning speed (the follow-through visible as it shortens), and a faint disc of its reach that fades in with the wind-up
+// and out with the recovery; violet with Shadow Boxing. Still (reduced motion, safe mode): the disc and the leg along the
+// heading. No allocation.
+const CYCLONE_DRAW = { stage: "", turn: 0, chamber: 0, extend: 0, weight: 0 };
+function drawCycloneHeel(ctx, game, toScreen, s, floor) {
+  const q = game.cycloneHeel, p = game.player; if (!q || q.v !== CYCLONE_HEEL.v || !p || !(q.durationMs > 0)) return;
+  const C = CYCLONE_HEEL, K = C.colors, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode), D = q.durationMs;
+  const m = sampleCycloneMotion(q.elapsedMs / D, q.windupMs / D, q.recoverMs / D, CYCLONE_DRAW); if (!(m.weight > 0)) return;
+  const [x, y] = toScreen({ x: p.x + .5, y: p.y + (floor ? FIST_STEP_VIEW.footY : FIST_STEP_VIEW.bodyY) }), R = C.radius * s, tint = q.mode === "shadow" ? K.shadow : K.ring;
+  const head = Math.atan2(q.dirY, q.dirX), a = still ? head : head + m.turn * Math.PI * 2, trail = still ? .4 : m.stage === "spin" ? 2.4 * m.extend : m.stage === "recover" ? 2.4 * m.weight : 0;
+  ctx.globalAlpha = .18 * m.weight; ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+  ctx.lineCap = "round";
+  if (trail > .05) { ctx.globalAlpha = .85 * m.weight; ctx.strokeStyle = tint; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.arc(x, y, R * .9, a - trail, a); ctx.stroke(); }
+  const reach = R * (.35 + .55 * m.extend); ctx.globalAlpha = m.chamber; ctx.strokeStyle = K.leg; ctx.lineWidth = Math.max(2, s * .1);
+  ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .2, y + Math.sin(a) * R * .2); ctx.lineTo(x + Math.cos(a) * reach, y + Math.sin(a) * reach); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.lineCap = "butt";
 }
 // The Verge Cleaver's Lava Slash rush (weapon-arts.ts WEAPON_ARTS.arts["lava-slash"]; Tim, 2026-11-14: "The charged dash for
 // the Verge Cleaver just lunges you, it teleports you to the enemy. It should be like the other dash moves"). The art's dash is
@@ -752,6 +829,7 @@ export function drawBrawler(ctx, game, toScreen, s, t, capture = null) {
   }
   { const q = sweepIndicator(game, SWEEP_DRAW); if (q) { const [x, y] = toScreen(q); drawSweepSwing(ctx, q, x, y, s); } } // the Great Sweep's 360° swing (great-sweep.ts)
   drawFistStep(ctx, game, toScreen, s, capture != null); // Close View passes its capture (the floor layer)
+  drawCycloneHeel(ctx, game, toScreen, s, capture != null); // the awakened Ki Blast's spinning kick (CYCLONE_HEEL)
   const c = game.fistCharge;
   if (c) { // charging: a ring tightening round the Wayfarer, brighter as it fills; the perfect window marked on it, flashing inside it
     const [x, y] = toScreen({ x: game.player.x + .5, y: game.player.y + .45 }), held = fistHeld(c, game.lastUpdateNow || 0), k = fistCharge(held), F = IRON_FISTS;
