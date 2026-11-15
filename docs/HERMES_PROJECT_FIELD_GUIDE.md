@@ -6,6 +6,50 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 974 — The dino duel
+
+Tim asked for this on 2026-11-14: no music while the two dinosaurs fight, only the sounds of battle; at most 90 s; either a winner or an escape; a beast that is eaten gives no reward; either can eat the other; screen shake, rockfall indoors, a camera pull-out and Look mode kept; Close View grabs that read as lifts (the stego's tail heave and the spino's belly lift), with no clipping, over at least six visual passes.
+
+**CODE:** `dino-duel.ts` holds the `DINO_DUEL` table: range and parting; the 90 s `cap` with a verdict at 50 s; escalating blows; the loser score (health, the Wayfarer's share and a hashed coin); `endings` (50% kill, 50% escape); `spacing`, `shake` and `rockfall`. It also holds `tickDinoDuels`, `duelBlow`, `duelText` and `dinoFleeEdge`. Duels live on the creatures (`e.dinoDuel`, `e.dinoFled`). `game.ts` `dinoDuelTick` marks an eaten loser `noRewards` and `rewarded`, and it runs the flight off the map and the sound cues (`packWorld.dinoSfx`, the newest 48 kept). `monster-pack.ts` runs the duel AI and `duelReachPoint`. `battle-sfx.ts` (`BATTLE_SFX`, `DUEL_SOUNDS`) synthesises the battle sounds. `soundtrack-director.ts` hushes the music for the duel (`DUEL`), and `main.ts` plays the cues. `close-view-duel.ts` (`DUEL_STAGE`, `DUEL_STRIKES`, `DUEL_CAPSULES`) stages the two bodies: `holdInJaws`, `spaceDuellists` and `stageDuel` keep their capsules from overlapping. `close-view-beast-stego.ts` and `close-view-beast-spino.ts` have the tail-heave and belly-lift poses, and `close-view.ts` handles the camera pull-out. The new modules are in `scripts/build.mjs` and both `sw.js` lists.
+
+**BOUNDARY:** No save change: a duel is transient state on the two creatures. Only the Spinosaurus and the Wild Stegosaurus duel; bosses, finale beasts and other creatures are untouched. A creature killed by the Wayfarer still gives its reward; only a loser eaten by the other dinosaur gives none. Falling rock never hits the duellists, is bounded (`live` 6), and falls only under a ceiling. Shake is capped and skipped under Reduced Motion. The SFX are synthesised (no assets), and no other combat sounds were added. Close View staging is presentation only and never changes positions in the simulation.
+
+## Release 973 — A theme for every world boss
+
+Tim, 2026-11-14: phase 2 of the soundtrack. Each world boss gets its own original track in the album's dungeon-synth style; Tim listened to the full-length renders, asked for them darker and "unsafe" ("too calm, comforting"), and approved the darker versions ("dark music is great").
+
+**CODE:** `soundtrack-songs.ts` `BOSS_SONGS` (merged into `SONGS`, each with `boss: true`) holds one theme per world boss, plus forms marked `variantOf` (`cinderSleep` for the Ash Chrysalis, `bonesHunt` for the fossil Spinosaurus). Each `LINER_NOTES` row carries `beast`, `title` and `story`. Each theme's `LINER_NOTES` row also has a `menace` tier (`calm`, `understated` or `overt`), and its `dark` devices (shadow, beat, sag, skip, cold bell, cluster, tritone bass, ponticello, growl, dive, drop, rumble, heartbeat; `menaceDevices`) run through the `soundtrack.ts` menace section (`menaceBar`, `menaceBed`, `menaceStep`). A per-song `dissonance` allow-list lets `validateSong` accept deliberate dissonance without loosening its global rules. A song may set `tremolo` (Hz, a string-pad LFO) and `modes` (one mode per phrase; `validateSong` checks the song in each). `soundtrack-director.ts`:
+- `BOSS_THEMES` maps `bossKey(e)` to a theme. The key is the world-beast id, else the sea or creature kind, with `:fossil` added for the bone Spinosaurus.
+- `bossSongFor` falls back from a variant to the beast's own theme, then to the shared `boss` track.
+- `sampleMusic` also detects `gatePredator`, the `mothChrysalis` (quietly, with no beast stinger) and `DIRECTOR.seaBosses` within `seaRange`.
+
+**BOUNDARY:** Music only: no save, generator or gameplay change, and no `Math.random`. A broken chrysalis or a single Revenant killed is not a victory. Each theme stays within the 40-voice budget (28 on the low tier); the low tier drops the sub, rumble, ponticello and growl. Songs without `dark` (the album and the shared boss track) play exactly as before. Every theme is original and quotes nothing.
+
+## Release 972 — Arc Wave resume fix
+
+Fable review of r962→r971 (pre-publish, 2026-11-15): normalizePendingToolUse rejected the 5.5-speed Arc Wave crescents (release 966), so a pending Close View press was dropped on save.
+
+**CODE:** `action-motion.ts` `BLUNDERBUSS_SHOT_SPEEDS` [14, 11, 5.5] (plain, pre-966 Arc Wave, current `ARC_WAVE.speed`); `normalizePendingToolUse` admits any of them for a Blunderbuss prepared shot. Tests: `arc-wave-resume` (2: the table includes `ARC_WAVE.speed`; a saved pending Arc Wave press survives a snapshot and reload and fires its crescents).
+
+**BOUNDARY:** Validator only; no gameplay, numbers or save shape change (schema 14). Older pending records (speed 14 or 11) still load.
+
+## Release 971 — Close View creatures: solid, posed and refined
+
+Tim, 2026-11-14: ordinary creatures "appear too spectral", "fade in and out of view too frequently", several are cardboard cutouts, and "they just stand next to me" with no real windups or swings. He asked for a couple of visual refinement passes per creature, with no added phone cost.
+
+**CODE:**
+- **Solidity:**
+  - `close-view.ts` `CLOSE_VIEW.creatures.solid` (near 4.5, engage 7, hold 1, ease 5) with `closeViewCreatureSolidNear`/`Weight` spares nearby or engaging creatures the open-world fog edge, which used to dither them 2–4 tiles from the Wayfarer.
+  - Model admission (`modelRank`) gives engaging creatures first claim on the model cap and keeps last frame's bodies.
+  - `CLOSE_VIEW.creatures.ward` (alpha .6, held for 500 ms) keeps warded creatures steadily translucent.
+  - `actor-presentation.ts` `designedAlpha` keeps the aloft Cinder Seraph at .35 and the designed ghosts ghostly.
+  - The `elite-action` card fallback is removed.
+- **Attack root motion:** `close-view-models.ts` `CREATURE_POSE` holds the families (biped, quadruped, crawler, serpent, floating, blob, construct, plant), the motion styles (lunge, sweep, leap, dive, cast, ram, burrow, recoil, pull, spray, dread, slam) and the per-attack overrides. `creatureRootPose(actor)` turns the real attack clocks into lunge, squash, lean, twist and lift, and `writeCloseViewModel` applies them.
+- **Limb motion:** joint rows `J(coil, strike, follow, lag)` live in `ADVENTURE_JOINT_POSE` (merged from `CORE_JOINT_POSE`, `PENTAGON_JOINT_POSE` and `FOUNDRY_JOINT_POSE`) and are evaluated by `adventureJointPose` through one guarded hook in `writeCloseViewModel`.
+- **Models:** the refined bodies are in `close-view-models.ts`, `close-view-arcology-models.ts`, `close-view-pentagon-models.ts` and `close-view-adventure-models.ts`. Each fits its `ACTOR_BODY_HEIGHT` envelope; the Hollow Marshal's halberd is drawn at .8 length.
+
+**BOUNDARY:** Presentation only. Hit positions, reach, contact heights and gameplay are unchanged, and a lunge never passes 35% of the attack's reach. Every creature's triangle count is at or below its previous count (the pins only went down), with no added draw calls and no per-frame allocation. Reduced Motion halves the root pose, with no lunge or recoil translation and no follow-through. Distant materialisation is unchanged. Gameplay ghosts (wraiths, wisps, illusions, wall phasing, burrowers) stay translucent.
+
 ## Release 970 — Combat follow-ups: freeze cancel, clap walls, Quandrix linger, Transpose, fist meter
 
 Tim, 2026-11-14/15: freezes cancel attacks being wound up, resistance stays at the third-freeze level; the clap's lines stop at walls, 20% longer, 1.5 tiles out, draw enemies in; a Quandrix hand or slam let go early stays until its charge timer, then explodes; Transpose buffs all magic damage including the Carbine; a fist meter that says Perfect Timing! and steps up to Perfect Rhythm!.
