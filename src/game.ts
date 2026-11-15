@@ -76,7 +76,7 @@ import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
@@ -4492,7 +4492,7 @@ export class Game {
           list.push({kind:'primaryEcho',life:PRIMARY_ECHO_VISUAL.life,max:PRIMARY_ECHO_VISUAL.life,actual:{x:g.x,y:g.y,dx:g.dx,dy:g.dy,range:p.range,arc:p.arc,shape:p.shape},memory:t.echoVisual||null});}
       }
       else if (t.kind === "daggerCut") { if (this.primaryStrike && this.player.hp > 0 && t.areaId === this.areaId() && isFourfoldDaggers(this.save.equipment.primary)) this.recordPrimaryConsequences(this.primaryStrike(now, null, { daggerCut: 1, aim: t.aim, share: t.share, echoed: t.echoed }) || []); } // the Fourfold Daggers' second cut
-      else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); }
+      else if (t.kind === "shot") { const p = this.player; this.projectiles.push({ ...t.shot, x: p.x + .5 + t.shot.dx * .35, y: p.y + .45 + t.shot.dy * .35 }); if (isArcCrescent(t.shot)) retireArcWaves(this.projectiles, this.area); } // an Echo's great wave: room under ARC_WAVE.maxLive
     }
     this.glyphVisuals = (this.glyphVisuals || []).filter((v) => (v.life -= dt) > 0);
     if (this.glyphNotice) { this.message = this.glyphNotice; this.glyphNotice = null; }
@@ -7986,7 +7986,7 @@ export class Game {
     if(this.paused)return{released:false,cancelled:false};
     if(!(this.player?.hp>0)||q.area!==this.area||q.areaId!==this.areaId()||q.levelId!==String(this.map?.levelId||'root')){this.cancelPendingToolUse('invalid-owner');return{released:false,cancelled:true};}
     this.pendingToolUse=null;const cap=this.area==='dungeon'?32:64;
-    if(q.payload.family==='shot'&&this.projectiles.filter(p=>!p.dead&&!p.shard).length>=cap){const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return{released:false,cancelled:true};}
+    if(q.payload.family==='shot'&&sharedShotCount(this.projectiles)>=cap){const v=this.player?.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id){v.toolUse={...v.toolUse,phase:'cancelled'};delete v.toolUse.releaseOffsetMs;v.presentationCancelled=true;}return{released:false,cancelled:true};}
     let base=null;
     if(q.payload.family==='shot'){
       const members=Array.isArray(q.payload.members)?q.payload.members:[q.payload.shot];
@@ -7994,6 +7994,7 @@ export class Game {
       for(let i=0;i<members.length;i++){const src=executablePreparedShot(members[i]),p={...src,id:i?`${q.id}-child-${i}`:`${q.id}-base`,x:originX,y:originY,hits:{},age:0,toolUseNewborn:true};this.projectiles.push(p);if(!i)base=p;}
       for(const e of q.payload.echoCopies||[])(this.glyphTimers||=[]).push({at:now+e.delayMs,kind:'shot',shot:{...executablePreparedShot(q.payload.shot),id:`${q.id}-echo-${e.index||1}`,hits:{},damage:Math.max(1,Math.round(q.payload.shot.damage*e.share)),echo:true,...arcWaveEcho(q.payload.shot,q.payload.spread)/* tool-forms.ts ARC_WAVE_ECHO */}});
       if(q.payload.cloneEligible&&this.shadowCloneActive(now)&&!this.shadowClone.charging&&!this.shadowClone.boxing){const at=clonePosition(this.player,this.shadowClone),d=this.cloneAimFrom(at)||q.aim;this.projectiles.push({...executablePreparedShot(q.payload.shot),id:`${q.id}-shadow`,x:at.x+.5+d.x*.35,y:at.y+.45+d.y*.35,dx:d.x,dy:d.y,hits:{},age:0,damage:Math.max(1,Math.round(q.payload.shot.damage*SHADOW_CLONE.share)),glyphHost:null,shadow:true,toolUseNewborn:true});}
+      retireArcWaves(this.projectiles,this.area); // tool-forms.ts ARC_WAVE.maxLive: the oldest crescents make room
       echoEvent(this,'shot',now,{shot:base});
     }else{
       const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
@@ -8320,7 +8321,7 @@ export class Game {
     if (this.cursed("shoot", now)) return false; // release 737: NO SHOOT
     if (this.carbineOn()) { const accepted=this.carbinePress(now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts CARBINE: the Spark Coil at +CARBINE_RANK, a beam carbine
     if (this.isOrrery()) { const accepted=orreryPress(this, now, direction, action); if(accepted)this.cancelConsumeVisual('tool'); return accepted; } // tool-forms.ts: the Aether Orrery's own tap, halo and charge
-    if (this.projectiles.filter(p=>!p.dead&&!p.shard/* Sunburst shards have their own cap (SUNBURST.maxLive) */).length >= (this.area==='dungeon'?32:64)) return false;
+    if (sharedShotCount(this.projectiles)/* Sunburst shards (SUNBURST.maxLive) and Arc Wave crescents (ARC_WAVE.maxLive) have their own caps */ >= (this.area==="dungeon"?32:64)) return false;
     const weapon = rangedWeapon(this.save.equipment.secondary), glyphs = this.glyphLoadout("tool");
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
     const acceptedToolKind = weapon.name === "Rift Bombard" ? "rift-bombard" : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
@@ -8405,6 +8406,7 @@ export class Game {
     if (this.save.equipment.secondary?.awakened) for (const a of [-.21, .21]) { const c = Math.cos(a), sn = Math.sin(a); preparedProjectiles.push({ ...shot, id: `${shot.id}-fan${a}`, dx: shot.dx * c - shot.dy * sn, dy: shot.dx * sn + shot.dy * c, hits: {}, damage: Math.max(1, Math.round(shot.damage * .5)) }); } // awakened tool: a three-shot fan
     const great = arcWaveEcho(shot, cone); // tool-forms.ts ARC_WAVE_ECHO: with Arc Wave each Echo is one great, fast crescent
     if (!delayed&&plan) plan.copies.forEach((c, i) => (this.glyphTimers ||= []).push({ at: now + c.delay, kind: "shot", shot: { ...shot, id: shot.id + (i ? `-echo${i + 1}` : "-echo"), hits: {}, damage: Math.max(1, Math.round(shot.damage * c.share)), echo: true, ...great } })); // release 507: a third shot with two Echo glyphs
+    if (!delayed && shot.arcWave) retireArcWaves(this.projectiles, this.area); // tool-forms.ts ARC_WAVE.maxLive: the oldest crescents make room
     if(delayed){
       const counter=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,members=preparedProjectiles.map(p=>{const{x,y,id:_id,hits,age,toolUseNewborn,...rest}=p;return{...rest};}),echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:c.delay,share:c.share,index:i+1}));
@@ -8549,7 +8551,7 @@ export class Game {
   carbinePress(now, direction, action = null) {
     const K = this.carbineState(); if (K.charge) return false;
     if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
-    if (this.projectiles.filter((p) => !p.dead && !p.shard).length >= (this.area === "dungeon" ? 32 : 64)) return false;
+    if (sharedShotCount(this.projectiles) >= (this.area === "dungeon" ? 32 : 64)) return false;
     const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
     const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
     if (!action) return this.carbineFire(now, d, 0);
