@@ -227,19 +227,27 @@ function solveLeg(state,pose,left,target,weight,data) {
 // tucked and arms lifted out for balance through the rise and hang, then legs reaching down,
 // arms settling and the chest leaning in to meet the ground. Legs read only the fixed rise/fall
 // clocks; every layer is scaled by the connection envelope, so both ends are the ground pose.
-const FALL_SAMPLE = new Float64Array(4); // sampleFallPose's output, reused every frame
+const slew=(a,b,step)=>b>a?Math.min(b,a+step):Math.max(b,a-step*FALL_POSE.slewMs/FALL_POSE.slewDownMs); // a fall: slow rises, quicker falls (still faster than its own settle curve)
+const FALL_SAMPLE = new Float64Array(6); // sampleFallPose's output, reused every frame
 const AIR_POSE = Object.freeze({ tuck: .19, tuckLead: .03, tuckBack: .06, armRaise: .34, armOut: .22, elbow: .30, arch: .05, landLean: .09 });
-function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
+function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false,nowMs=NaN){
   if(air?.v!==1)return;
   const elapsed=Number(air.elapsedMs),remaining=Number(air.remainingMs),duration=Number(air.durationMs),rise=Number(air.rise),fall=Number(air.fall),lift=Number(air.lift);
   if(!Number.isFinite(elapsed)||!Number.isFinite(remaining)||!Number.isFinite(duration)||!Number.isFinite(rise)||!Number.isFinite(fall)||!Number.isFinite(lift)||elapsed<0||remaining<0||duration<=0||elapsed>duration||remaining>duration||rise<0||rise>1||fall<0||fall>1||lift<0)return;
-  const connection=smoothstep(elapsed/60)*smoothstep(remaining/60);if(!(connection>0))return;
-  // FALL_POSE: a real fall (not a plunge) grows from a small arms-out reaction into a slow arm wheel and leg cycle on its own clock.
-  const flail=air.falling===true&&air.flail!==false?sampleFallPose(elapsed,remaining,reducedMotion,FALL_SAMPLE):null,F=FALL_POSE;
-  const fold=flail?flail[1]*(1-smoothstep((fall-.3)/.45)):smoothstep(rise/.55)*(1-smoothstep(fall/.75));
-  const takeoff=smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
-  const raise=flail?flail[0]*connection:smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish,land=smoothstep((fall-.35)/.55)*connection*flourish,A=AIR_POSE;
-  const loop=flail?flail[2]*connection:0,ph=flail?flail[3]:0;
+  // FALL_POSE: a real fall (not a plunge) grows from a small arms-out reaction into a slow arm wheel and leg cycle on its own clock;
+  // it meets the ground over FALL_POSE.endMs (a frame's step of the fall never leaves more than a sliver of the pose at touchdown).
+  const falling=air.falling===true&&air.flail!==false,F=FALL_POSE;
+  const connection=smoothstep(elapsed/60)*smoothstep(remaining/(falling?F.endMs:60));if(!(connection>0))return;
+  const flail=falling?sampleFallPose(elapsed,remaining,reducedMotion,FALL_SAMPLE):null;
+  let fold=flail?flail[1]*(1-smoothstep((fall-.3)/.45)):smoothstep(rise/.55)*(1-smoothstep(fall/.75));
+  const takeoff=flail?0:smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
+  let raise=flail?flail[0]*connection:smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish;let land=smoothstep((fall-.35)/.55)*connection*flourish,legs=connection;const A=AIR_POSE;
+  let loop=flail?flail[2]*connection:0,torso=flail?flail[4]*connection:0,head=flail?flail[5]*connection:0;const ph=flail?flail[3]:0;
+  if(flail){ // FALL_POSE.slewMs: the drawn weights never jump frame to frame (state.fallLast: at, raise, loop, phase, fold, torso, head, live, land, legs)
+    const L=state.fallLast,dt=nowMs-L[0],step=L[7]===1&&dt>0&&dt<=100?dt/F.slewMs:Infinity;
+    raise=slew(L[1],raise,step);loop=slew(L[2],loop,step);fold=slew(L[4],fold,step);torso=slew(L[5],torso,step);head=slew(L[6],head,step);land=slew(L[8],land,step);legs=slew(L[9],legs,step);
+    if(Number.isFinite(nowMs)){L[0]=nowMs;L[1]=raise;L[2]=loop;L[3]=ph;L[4]=fold;L[5]=torso;L[6]=head;L[7]=1;L[8]=land;L[9]=legs;}
+  }
   const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
   layer.set(pose);build(asset,state,pose);
   // Preserve each current source sole/ankle frame before solving the independent foot roots.
@@ -247,9 +255,10 @@ function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
   rotateX(layer,27,.07*takeoff*flourish-A.arch*raise*(1-land)+A.landLean*land);rotateX(layer,24,.045*takeoff*flourish+.04*land);rotateX(layer,4,-.03*takeoff*flourish-.04*land);
   // Arms lift forward and out for balance, elbows soften; a two-handed polearm keeps its frame.
   // A fall's loop: the arms wheel slowly in turn (each half a cycle apart), up and out; each leg cycles opposite its own arm.
+  if(flail)fallTorso(layer,torso,head,loop,ph);
   if(!twoHanded&&flail&&raise>0)fallArms(asset,state,layer,raise,loop,ph);
   else if(!twoHanded&&raise>0)for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,out=k?1:-1;rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
-  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0),w=ph+(left?Math.PI:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold+F.legLift*loop*(.5+.5*Math.sin(w));target[2]=data[o+2]-A.tuckBack*fold+F.legStride*loop*Math.cos(w);solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
+  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0),w=ph+(left?Math.PI:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold+F.legLift*loop*(.5+.5*Math.sin(w));target[2]=data[o+2]-A.tuckBack*fold+F.legStride*loop*Math.cos(w);solveLeg(state,layer,left,target,legs,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
 }
 // FALL_POSE arms, in the model's frame (x across, y up, z forward): each upper arm turns from where it hangs toward a direction out
@@ -264,8 +273,22 @@ function fallArms(asset,state,pose,raise,loop,ph){
     let dx=side*sa*Math.cos(c),dy=-ca*Math.cos(F.armFwd),dz=sa*Math.sin(c)+Math.abs(ca)*Math.sin(F.armFwd);const dl=Math.hypot(dx,dy,dz)||1;
     dx=rx+(dx/dl-rx)*raise;dy=ry+(dy/dl-ry)*raise;dz=rz+(dz/dl-rz)*raise;const bl=Math.hypot(dx,dy,dz)||1;
     alignJoint(state,pose,shoulder,elbow,sx+dx/bl*len,sy+dy/bl*len,sz+dz/bl*len);
-    rotateX(pose,elbow,-F.elbow*raise-F.elbowCycle*loop*(.5+.5*Math.sin(w)));
+    rotateX(pose,elbow,-F.elbow*raise-F.elbowCycle*loop*(.5+.5*Math.sin(w-F.elbowLag))); // the forearm trails the upper arm
   }
+}
+// FALL_POSE torso: the chest opens first at the onset, then sways (pitch and a little roll) ahead of the arm wheel; the head tips to
+// look down as a long fall goes on. Body 27, chest 24, head 4.
+function fallTorso(pose,torso,head,loop,ph){
+  const F=FALL_POSE,w=Math.sin(ph+F.swayLead);
+  rotateX(pose,27,-F.chestOpen*torso);rotateX(pose,24,F.sway*loop*w);rotateZ(pose,24,F.roll*loop*Math.cos(ph+F.swayLead));rotateX(pose,4,F.headDown*head);
+}
+// FALL_POSE.releaseMs: when the falling pose stops without a landing (the drone's catch, a roof met before the ground under it), the
+// last arms and chest ease down over the next pose instead of vanishing. Only over the plain body or a jump's hang; any action of its
+// own (a dodge or roll, a cast, a hit, a defeat) owns the body at once and ends the release.
+function fallRelease(asset,state,kind,profile,nowMs,twoHanded){
+  const L=state.fallLast;if(L[7]!==1)return;const dt=nowMs-L[0];if(!(dt>0))return;
+  if(kind&&!(kind==='jump'&&profile!=='cling')||!(dt<FALL_POSE.releaseMs)){L[7]=0;return;}
+  const k=1-smoothstep(dt/FALL_POSE.releaseMs);fallTorso(state.pose,L[5]*k,L[6]*k,L[2]*k,L[3]);if(!twoHanded&&L[1]*k>0)fallArms(asset,state,state.pose,L[1]*k,L[2]*k,L[3]);
 }
 // Stegosaur's Grip (game.ts wallCling): the still cling pose's arm reach and elbow bend, the body's lean in and the head's look up
 // (radians on the source's shoulders 12/22, elbows 11/21, body 27 and head 4).
@@ -627,7 +650,7 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
@@ -990,7 +1013,9 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // The Carbine in hand (close-view.ts input.carbineHold): carried, charging or firing, only over the plain carry or its own
   // record. Its idle is held still too, so a charge starting from the carry does not jump the shoulders (CARBINE_HOLD).
   const carbineHeld=input.carbineHold===true&&!knocked&&(!action||!action.kind||action.kind==='ranged'&&action.profile==='emitter');
-  const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer, idleSec = idleFrozen ? 0 : idleMs / 1000;
+  // FALL_POSE: a real fall keeps the idle breathing under it, so neither its start nor its touchdown jumps the body to a frozen idle.
+  const airFall=action?.kind==='jump'&&action.jumpAir?.falling===true&&action.jumpAir.flail!==false;
+  const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer&&!airFall, idleSec = idleFrozen ? 0 : idleMs / 1000;
   clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
@@ -1098,11 +1123,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
       else if (profile === 'cling') { const A = CLING_POSE; for (const [shoulder, elbow] of CLING_ARMS) { rotateX(state.pose, shoulder, -A.reach * weight); rotateX(state.pose, elbow, -A.elbow * weight); } rotateX(state.pose, 27, A.lean * weight); rotateX(state.pose, 4, -A.look * weight); state.clip = 'derived-cling'; state.clipTime = .5; }
       else { // Legacy jumps keep their brace; reviewed ordinary-air records add connected legs.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
-        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike');
+        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike',input.nowMs);
       }
       if(state.clip!=='derived-ordinary-jump'&&state.clip!=='derived-cling'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
+  fallRelease(asset,state,action?.kind||'',action?.profile,input.nowMs,input.heldProfile==='cinder-pike');
   // The Great Sweep stays drawn between uses (input.heldTool): the carry rides over walking, running,
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);

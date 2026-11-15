@@ -403,28 +403,37 @@ export function ordinaryFallPresentation(game, now, lift) {
 
 // FALL_POSE (Tim 2026-11-15: "a fall animation when he starts falling ... the longer he falls, the more he gets into a loop of moving
 // his arms and legs; not frantic"). Read only from the fall's own clock (game.fall.t, held by a pause and saved with the fall), so the
-// same fall time always draws the same pose. Onset: the arms start out over onsetMs (to `onset` of the full reach). Building: over
-// buildMs more the arms rise and the slow wheel and the gentle leg cycle grow in. Long falls: a steady loop of periodMs. Over the last
-// FALL_REACH_MS before the ground the loop and the arms settle, so the legs reach down into the existing landing absorb or roll.
-// Reduced Motion: a smaller, static arms-out pose (no loop). Radians on the hero's shoulders/elbows; leg offsets in model metres.
+// same fall time always draws the same pose. Onset: the chest reacts first (torsoMs), then the arms ease out over onsetMs (to `onset`
+// of the full reach). Building: overlapping the onset (from buildFrom, so the arms never stall between the two), over buildMs the arms
+// rise and the slow wheel and the gentle leg cycle grow in. Long falls: a steady loop of periodMs; the chest sways ahead of the arms
+// (swayLead), the forearms trail the upper arms (elbowLag) and each leg trails its opposite arm. Over the last settleMs before the ground
+// the arms, chest and loop settle (the legs reach down over FALL_REACH_MS), so the legs reach down into the existing landing absorb or roll. Reduced Motion: a
+// smaller, still arms-out pose (no loop, no sway). Radians on the hero's joints; leg offsets in model metres.
 export const FALL_POSE = Object.freeze({
-  onsetMs: 240, onset: .35, buildMs: 1300, periodMs: 1300, minPeriodMs: 900,
-  armOut: .9, armRise: .55, armFwd: .25, armWheelOut: .22, armSwing: .35, elbow: .35, elbowCycle: .2,
+  torsoMs: 160, onsetMs: 240, onset: .35, buildFrom: 140, buildMs: 1300, periodMs: 1300, minPeriodMs: 900,
+  armOut: .9, armRise: .55, armFwd: .25, armWheelOut: .22, armSwing: .35, elbow: .35, elbowCycle: .2, elbowLag: .6,
   legRest: .45, legBend: .80, legLift: .07, legStride: .05,
+  chestOpen: .07, headDown: .12, sway: .035, swayLead: .5, roll: .05,
   reducedArms: .6,
+  settleMs: 500, // the arms, chest and loop settle over the last settleMs before the ground (the legs reach over FALL_REACH_MS)
+  endMs: 120, // the falling pose meets the ground pose over the last endMs
+  slewMs: 300, slewDownMs: 60, // the fastest a drawn weight may rise / drop (0 to 1), so a jump in the ground's distance never pops; the drop stays quicker than the settle and endMs curves
+  releaseMs: 200, // when something else takes the fall over mid-air (the drone's catch, a roof landing), the arms ease down over this
   // Standard View: the sprite's hands, out and up (tile units), with a small flap at the loop's tempo
   std: Object.freeze({ reachX: .26, reachY: -.16, flap: .05, line: .07, hand: .045 }),
 });
 const fallSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
-// out[0] arms-out weight, out[1] leg-bend weight, out[2] loop amplitude, out[3] loop phase (radians), all 0..1 but the phase.
-// No allocation: the caller owns `out` (four numbers).
+// out[0] arms-out weight, out[1] leg-bend weight, out[2] loop amplitude, out[3] loop phase (radians), out[4] chest reaction weight,
+// out[5] the long fall's look down; all 0..1 but the phase. No allocation: the caller owns `out` (six numbers).
 export function sampleFallPose(fallMs, remainingMs, reducedMotion, out) {
-  const F=FALL_POSE,t=Math.max(0,Number(fallMs)||0),r=Number(remainingMs),settle=Number.isFinite(r)?fallSmooth(r/FALL_REACH_MS):1;
-  const engage=fallSmooth(t/F.onsetMs),build=fallSmooth((t-F.onsetMs)/F.buildMs);
-  out[0]=engage*(F.onset+(1-F.onset)*build)*settle*(reducedMotion?F.reducedArms:1);
-  out[1]=engage*(F.legRest+(1-F.legRest)*build)*F.legBend;
+  const F=FALL_POSE,t=Math.max(0,Number(fallMs)||0),r=Number(remainingMs),settle=Number.isFinite(r)?fallSmooth(r/F.settleMs):1;
+  const engage=fallSmooth(t/F.onsetMs),build=fallSmooth((t-F.buildFrom)/F.buildMs);
+  out[0]=Math.min(1,engage*F.onset+(1-F.onset)*build)*settle*(reducedMotion?F.reducedArms:1);
+  out[1]=Math.min(1,engage*F.legRest+(1-F.legRest)*build)*F.legBend;
   out[2]=reducedMotion?0:build*settle;
-  out[3]=2*Math.PI*(Math.max(0,t-F.onsetMs)%F.periodMs)/F.periodMs;
+  out[3]=2*Math.PI*(Math.max(0,t-F.buildFrom)%F.periodMs)/F.periodMs;
+  out[4]=fallSmooth(t/F.torsoMs)*settle*(reducedMotion?F.reducedArms:1);
+  out[5]=build*settle*(reducedMotion?F.reducedArms:1);
   return out;
 }
 
