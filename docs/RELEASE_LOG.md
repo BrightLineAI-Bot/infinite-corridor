@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r974 (`df6aeeaf1bcf`); production serves `r972-cede9b9fcf20` (published 2026-11-15 after Fable reviews of r962 to r971 and r971 to r972). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r975 (`6689d7c92177`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 975 | Claude | claude/enemy-behaviour | Ordinary creature behaviour (OoT-remake style): awareness and kin calls, arrival for mid-fight spawns, attack tokens and spacing rings, heavy/light/combo/feint blows, poise and flinch, guard and sidestep, retreat and regroup; new module enemy-behaviour; no save change | In flight. |
+| 976 | Claude | claude/brighter-interiors | Close View interiors (keeps, towers, great buildings, hives, arcologies, labyrinths, the Pentagon) keep 40% less darkness; the Deep is lightened only slightly; the Pentagon dread overlay a little; the Lantern still lengthens the torch | In flight. |
+| 975 | Claude | claude/enemy-behaviour | Ordinary creature behaviour (OoT-remake style): awareness and kin calls, arrival for mid-fight spawns, attack tokens and spacing rings, heavy/light/combo/feint blows, poise and flinch, guard and sidestep, retreat and regroup; new module enemy-behaviour; no save change | Merged as `6689d7c92177` (#642). |
 | 974 | Claude | claude/dino-duel-sound | The dino duel: music hushed for battle SFX, a 90 s cap ending in a kill (no reward from the eaten) or an escape, shake, indoor rockfall, camera pull-out, Close View tail-heave and belly-lift grabs without clipping; new modules dino-duel, battle-sfx, close-view-duel; no save change | Merged as `df6aeeaf1bcf` (#641). |
 | 973 | Claude | claude/boss-themes-dark | Soundtrack phase 2: an original, dark theme per world boss in three menace tiers (20 themes + chrysalis and fossil-Spinosaurus variants); boss detection for the chrysalis, Gate Revenants and Tyrant Mosasaur; music only | Merged as `a4a3315fe51a` (#639). |
 | 972 | Claude | claude/arc-resume-fix | Review fix: an Arc Wave Blunderbuss press saved during its Close View startup resumes and fires (the pending tool-use validator now admits the 5.5-speed crescents) | Merged as `cede9b9fcf20` (#640); published 2026-11-15. |
@@ -333,6 +334,8 @@ Main is at r974 (`df6aeeaf1bcf`); production serves `r972-cede9b9fcf20` (publish
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 975 | r975-6689d7c92177 | 2026-11-15 | Includes r973 (dark boss themes) and r974 (dino duel). Fable review (972→975): no blockers; full npm test 4851/4851. Publish run 43699675820; gh-pages release-identity and the in-game string name the candidate. Non-blocking notes passed to the other session (duel rockfall collateral, duel grab placement, stale feint, legacy hit rate, legacy aggro LOS, menace duck). |
+| 972 | r972-cede9b9fcf20 | 2026-11-15 | Includes r963–r971. Fable review r962→r971 found one blocker (Arc Wave pending press dropped on resume), fixed in r972; delta review r971→r972: no blockers. Publish run 43667381434. |
 | 962 | r962-a8bf3852db96 | 2026-11-14 | Magma Rivers. Fable review (961→962): no blockers; versions 1–26 byte-identical (3,744 maps), 785 magma sections loaded with no crash, no lethal spawn and no lost exits. Publish run 43634257401 succeeded; gh-pages release-identity and the in-game release string name the candidate. Non-blocking: a rim cache can be walled in by a later great building (1 in 84); decorative objects can sit on lava; the non-WebGL fallback rims cinder ground like lava. |
 | 961 | r961-2b574429348b | 2026-11-14 | Includes r952–r960. Fable review (951→961): no blockers. Publish run 43625993906 succeeded; gh-pages release-identity names the candidate. Non-blocking notes: the soundtrack's CPU cost on a real phone is unmeasured; audio resumes only on visibilitychange or unmute; a rollback to r951 after Gathered Breath is socketed needs care. |
 | 951 | r951-4925ab3898c1 | 2026-11-14 | Includes r950 (tower steps, gargoyle ×2). Fable review (949→951): no blockers. Cleaver weighted swings. |

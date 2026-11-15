@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 976 — Brighter interiors
+
+Tim, 2026-11-15: every room inside dungeons, keeps and towers is a little too dark to see the world around you or interact with it.
+
+**CODE:** `INTERIOR_LIGHT` (`close-view.ts`; `keep: { interior: .6, deep: .85 }`, `fogNear: { interior: 1.2, deep: .4 }`, `dread: .85`) and helpers `interiorDarkness`, `interiorAmbient`, `interiorLightKind`. Darkness is 1 minus a place's ambient (mean, 0..1); indoors the ambient is lifted so only `keep` of it is left, the theme's tint kept. The GPU colour is made once per theme (`themeGL` `ambIn`, used by `glScene` when no open air or world applies); the 2D fallback reads the lifted `amb` for faces, creatures and the cached torch gradient (`GROUND.torchA`). The fog's near edge moves out by `fogNear` tiles. Standard View `drawDread` is scaled by `dread`. Tests: `brighter-interiors` (5).
+
+**BOUNDARY:** Theme tables, the torch, placed sources and the fog's far edge (the view's reach) are unchanged, so nothing more is drawn per frame. The open world, world capture, the Stillworks, the chasm penumbra, labyrinth fog of war, unexplored-chunk fog, boss Darks and Glimpses are untouched. The Deep keeps 85% of its darkness. The Lantern is unchanged. No save change (schema 14).
+
 ## Release 975 — Ordinary creature behaviour
 
 Tim asked for this on 2026-11-14: enemies that "swing, act and behave, with more attacks and motions, windups and intelligence… not just stand there and take damage". The model is the Ocarina of Time remake: awareness, arrival, attack tokens, varied attacks, hit reactions and regrouping. Defaults Tim was told about: a wind-up can be broken; fights run about 30% longer; arrival plays only for mid-fight spawns; a guard never saves a creature from a lethal blow.
