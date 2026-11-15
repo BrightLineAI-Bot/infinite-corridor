@@ -45,8 +45,8 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, activeUtility, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.ts";
-import { pressOculus, tickOculus } from "./oculus.ts"; // release 874: the Oculus, a utility-button choice
+import { ensureSlots, slotted, pairingMods, slotReadiness, slotLabel, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.ts";
+import { pressOculusButton, tickOculus } from "./oculus.ts"; // release 874: the Oculus; 2026-11-15: its own button
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
@@ -2321,6 +2321,7 @@ export function actionReadiness(game, now = 0) {
     spell: essenceReadiness(game, "a", slotReadiness(game.save, "a", spell)),
     spell2: essenceReadiness(game, "b", slotReadiness(game.save, "b", spell)),
     spell3: essenceReadiness(game, "c", slotReadiness(game.save, "c", spell)), // release 874: slot C
+    utility: essenceReadiness(game, "d", slotReadiness(game.save, "d", spell)), // 2026-11-15: slot D, the utility button
     potion: {
       remaining: 0,
       duration: 0,
@@ -5840,7 +5841,7 @@ export class Game {
   }
   // Release 329: the pause after a world beast fells the Wayfarer. No control; beasts wander near where they stood.
   tickFallen(dt, input, now) {
-    for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact", "build", "utility", "preset"]) input.consume?.(action);
+    for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact", "build", "utility", "oculus", "preset"]) input.consume?.(action);
     const width = mapWidth(this.map, this.area);
     for (const e of this.enemies) {
       if (e.dead || !(e.worldBeast || e.questingBeast || (this.fallen.live && e.stalker))) continue;
@@ -7053,7 +7054,7 @@ export class Game {
     if (this._mirrorWorld?.now === now) return this._mirrorWorld;
     const width = mapWidth(this.map, this.area), s = this.save, slot = (q) => slotted(s, q)?.kind === "spell";
     return (this._mirrorWorld = { now, dt, enemies: this.enemies, projectiles: this.projectiles, player: this.player,
-      kit: { tool: !!rangedWeapon(s.equipment?.secondary), spell: slot("a") || slot("b") || slot("c") }, // release 874: slot C too
+      kit: { tool: !!rangedWeapon(s.equipment?.secondary), spell: slot("a") || slot("b") || slot("c") || slot("d") }, // release 874: slot C too; 2026-11-15: D
       open: (x, y) => { const t = this.map.tiles[Math.floor(y + .6) * width + Math.floor(x + .5)]; return !!t && !t.blocked && !t.environment; },
       spawn: (owner, x, y, i, f) => {
         const c = createCombatant("listener", x, y, false, []), hp = Math.max(1, Math.round(owner.maxHp * f.hpShare)), damage = Math.max(1, Math.round(owner.damage * MIRROR_FORM.cloneDamage)), scale = (owner.scale || 1) * MIRROR_FORM.cloneScale;
@@ -8750,19 +8751,21 @@ export class Game {
   // within RIFT_AIM.hold seconds and it is the plain step along the way you move; hold it that long and it arms the aim (the reach
   // ring, then a tap on the world picks the point: placeRiftAim). A press already let go (a key tap inside one frame) steps at once.
   // Everything else casts on the press, as before.
-  pressSlot(slot, action, input, now = this.lastUpdateNow || 0) {
+  pressSlot(slot, action, input, now = this.lastUpdateNow || 0, moving = false) {
     const c = slotTool(this.save, slot) ? null : slotted(this.save, slot);
     if (c?.kind === "skill" && c.id === "rift-step" && input?.held?.(action) === true) { this.riftPress = { slot, action, held: 0 }; return false; }
-    return this.castSlot(slot, now);
+    return this.castSlot(slot, now, moving);
   }
   // Rift Step held (RIFT_AIM.hold): arm the aim through the slot's own checks (castSlot: an empty slot, a curse).
   aimRiftStep(now = this.lastUpdateNow || 0, slot = null) { this._riftArm = true; try { return slot ? this.castSlot(slot, now) : this.activateApertureSkill("rift-step"); } finally { this._riftArm = false; } }
-  castSlot(slot, now = this.lastUpdateNow || 0) {
+  // `moving`: Build pressed while the stick is pushed (the utility button always passed it; slot D keeps that).
+  castSlot(slot, now = this.lastUpdateNow || 0, moving = false) {
     const t = slotTool(this.save, slot);
     if (t?.tool === "lantern") { const r = toggleLantern(this.save); this.message = r.message; return true; } // the Lantern (spell-slots.ts LANTERN): light or shutter it
-    if (t) return t.tool === "build" ? this.pressBuild(false) : this.useButtonItem(t.item, now);
+    if (t?.tool === "robot" || t?.tool === "drone") return this.pressFrame(t.tool, now); // slot D (2026-11-15): the frame's forms, in any slot
+    if (t) return t.tool === "build" ? this.pressBuild(moving) : this.useButtonItem(t.item, now);
     const c = slotted(this.save, slot);
-    if (!c) { this.message = `Slot ${slot.toUpperCase()} is empty — fill it in the Arcanum.`; return false; }
+    if (!c) { this.message = `Slot ${slotLabel(slot)} is empty — fill it in the Arcanum.`; return false; }
     if (c.kind !== "skill" && this.penned(now)) return false; // release 697 (Tim: "you should be able to use items" in a pen): only spells are refused there
     this.castAction = SLOT_ACTIONS[slot] || "spell"; try { return this.castCost(c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id)); } finally { this.castAction = null; } // release 417: the button a held Shadow Clone listens to
   }
@@ -8780,14 +8783,11 @@ export class Game {
     if (c.kind !== "skill" && this.penned(this.lastUpdateNow || 0)) return false; // release 697
     return this.castCost(c.kind === "skill" ? this.activateApertureSkill(c.id) : this.castSpell(c.id));
   }
-  // Release 874: the fixed utility button does what the active preset chose: Build (as the Build button did), the
-  // Submersible Frame (as the frame on an item button did: robot, Empowered, drone) or the Oculus.
-  pressUtility(now = this.lastUpdateNow || 0, moving = false) {
-    const u = activeUtility(this.save);
-    if (u === "robot" || u === "drone") return this.pressFrame(u, now);
-    if (u === "oculus") return pressOculus(this, now, (x, y) => footprintOpen(this.map, mapWidth(this.map, this.area), x, y));
-    return this.pressBuild(moving);
-  }
+  // Release 874's fixed utility button is slot D (2026-11-15): it does what D holds, as A, B and C do theirs. Build and the
+  // Robot or Drone answer exactly as the utility button did (pressBuild with `moving`, pressFrame).
+  pressUtility(now = this.lastUpdateNow || 0, moving = false) { return this.castSlot("d", now, moving); }
+  // The Oculus button (2026-11-15, under the compass; key O): one tap switches Close View (oculus.ts pressOculusButton).
+  pressOculus(now = this.lastUpdateNow || 0) { return pressOculusButton(this, now, (x, y) => footprintOpen(this.map, mapWidth(this.map, this.area), x, y)); }
   // Release 875 (Tim: the robot suit or the drone, "either, or... one or the other"): the utility button names one form. Ashore,
   // when the frame is set to the other form, the press first puts that one away (if it is out) and turns the frame to this
   // form: a second press calls it up; with nothing out, one press does both. At sea the frame is the robot as before.
@@ -10998,10 +10998,13 @@ export class Game {
     if (input.consume("preset")) { this.cancelPendingMeleeContact('equipment-switch'); this.cancelConsumeVisual('equipment-switch'); this.message = swapPreset(this.save).message; this.refreshDerivedStats(); } /* release 541: preset armor changes the maxima */ // release 261: swap spell presets 1 and 2; 393: with the whole build
     // Release 874: the fixed utility button ("utility"; "build" is its older action name, kept for key B and old callers).
     // Release 291/309's Build button is slot C now ("spell3" above).
-    { const pressed = input.consume("utility"), legacy = input.consume("build"); if (pressed || legacy) this.pressUtility(now, Math.hypot(x, y) > .15); }
+    // 2026-11-15: it is slot D, pressed like A, B and C (a held Rift Step aims there too); a castable clears the attack buffer as
+    // theirs do, while Build and the Robot or Drone answer as the utility button did.
+    { const pressed = input.consume("utility"), legacy = input.consume("build"); if (pressed || legacy) { if (slotted(this.save, "d")) this.clearAttackBuffer(); this.pressSlot("d", pressed ? "utility" : "build", input, now, Math.hypot(x, y) > .15); } }
+    if (input.consume("oculus")) this.pressOculus(now); // 2026-11-15: the Oculus's own button under the compass (key O)
     tickOculus(this, now); // release 874: a dais stepped onto switches the view; one left alone fades
     // Release 269 (Tim: "if you hold the build button while you're at sea, it will apply the hull shield"): held aboard.
-    if (this.area === "overworld" && aboard(this.save) && ((input.held?.("utility") || input.held?.("build")) && activeUtility(this.save) === "build" || SLOTS.some((q) => input.held?.(SLOT_ACTIONS[q]) && slotTool(this.save, q)?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
+    if (this.area === "overworld" && aboard(this.save) && (input.held?.("build") && slotTool(this.save, "d")?.tool === "build" || SLOTS.some((q) => input.held?.(SLOT_ACTIONS[q]) && slotTool(this.save, q)?.tool === "build"))) { this.buildHold = (this.buildHold || 0) + dt; if (this.buildHold >= BOAT.mend.shieldHold && !this.buildHoldDone) { this.buildHoldDone = true; this.message = deployHullShield(this.save).message; } }
     else { this.buildHold = 0; this.buildHoldDone = false; } // release 265: raise a wood wall or stone block in front
     const dodging = now < (p.dodgeUntil || 0);
     if (!dodging && now < (p.confusedUntil || 0)) { x = -x; y = -y; } // release 731: confused by a haunt, forward is back

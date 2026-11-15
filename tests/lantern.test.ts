@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
 import { serializeSave, deserializeSave } from '../src/save-codec.ts';
-import { LANTERN, LANTERN_STOPS, SLOTS, SLOT_TOOLS, UTILITY, ensureLantern, ensureSlots, lanternLift, lanternLit, lanternReach, lanternShines, litDarkness, setSlot, slotTool, slotted, toggleLantern, togglePreset } from '../src/spell-slots.ts';
+import { LANTERN, LANTERN_STOPS, SLOTS, slotLabel, SLOT_TOOLS, UTILITY, ensureLantern, ensureSlots, lanternLift, lanternLit, lanternReach, lanternShines, litDarkness, setSlot, slotTool, slotted, toggleLantern, togglePreset } from '../src/spell-slots.ts';
 import { drawLanternDark } from '../src/renderer.ts';
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
@@ -14,7 +14,7 @@ const roundTrip = (s) => deserializeSave(serializeSave(s));
 function world(seed = 'LANTERN') { const s = freshSave(); s.seed = seed; const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld', false); g.enemies = []; return { s, g }; }
 
 test('the Lantern is data: a slot tool beside Build and Item, carried from the start, with its light in a table', () => {
-  assert.deepEqual(SLOT_TOOLS, ['build', 'item', 'lantern']);
+  assert.deepEqual(SLOT_TOOLS, ['build', 'item', 'lantern', 'robot', 'drone']); // 2026-11-15: slot D brought the Robot and Drone into the slot tools
   assert.ok(!UTILITY.choices.includes('lantern'), 'the utility button keeps its four choices');
   for (const k of ['radius', 'inner', 'strength', 'glow', 'closeReach', 'maskPx']) assert.ok(Number.isFinite(LANTERN[k]) && LANTERN[k] > 0, k);
   assert.ok(LANTERN.strength < 1, 'the dark still reads at the heart'); assert.ok(LANTERN.inner > 0 && LANTERN.inner < 1);
@@ -26,7 +26,7 @@ test('the Lantern is data: a slot tool beside Build and Item, carried from the s
 test('assignment: the Lantern goes in A, B or C, moves between them, and survives preset swaps', () => {
   const s = freshSave(); ensureSlots(s);
   for (const q of SLOTS) {
-    const r = setSlot(s, q, 'lantern'); assert.equal(r.ok, true); assert.match(r.message, new RegExp(`Lantern set in slot ${q.toUpperCase()}`));
+    const r = setSlot(s, q, 'lantern'); assert.equal(r.ok, true); assert.match(r.message, new RegExp(`Lantern set in slot ${slotLabel(q)}`)); // 2026-11-15: told by its on-screen letter
     assert.deepEqual(slotTool(s, q), { tool: 'lantern', item: null }); assert.equal(slotted(s, q), null, 'not a castable');
     for (const o of SLOTS) if (o !== q) assert.notEqual(s.magicSkills.slots[o], 'lantern', `only one slot holds it (${o})`);
   }
