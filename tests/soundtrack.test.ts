@@ -3,9 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SONGS, STINGERS, LINER_NOTES, MUSIC_SELECTION, MUSIC_CONTEXTS, validateSong, chordPcs, MODES, pc, barSeconds } from '../src/soundtrack-songs.ts';
+import { SONGS, STINGERS, LINER_NOTES, MUSIC_SELECTION, MUSIC_CONTEXTS, validateSong, chordPcs, MODES, pc, barSeconds, MENACE_TIERS, MENACE_DEVICES, menaceDevices } from '../src/soundtrack-songs.ts';
 import { createSoundtrack, SOUNDTRACK, voiceLead, bridgeTone } from '../src/soundtrack.ts';
-import { MusicDirector, DIRECTOR, BOSS_THEMES, bossSongFor, musicContext, journeyChapter, songsFor, sampleMusic } from '../src/soundtrack-director.ts';
+import { MusicDirector, DIRECTOR, BOSS_THEMES, bossSongFor, bossKey, musicContext, journeyChapter, songsFor, sampleMusic } from '../src/soundtrack-director.ts';
+import { WORLD_BEASTS, WORLD_BEAST_IDS } from '../src/world-beasts.ts';
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/persistence.ts';
 
 class FakeParam {
@@ -218,13 +219,14 @@ test('the director rotates songs every 2-4 minutes, never the same twice running
 });
 
 test('bosses: the shared boss track, BOSS_THEMES per beast, the beast and victory beats, then the song from before', () => {
-  assert.deepEqual(BOSS_THEMES, {}, 'Phase 1: one shared boss track');
-  assert.equal(bossSongFor('briarStag'), 'boss');
+  assert.equal(BOSS_THEMES.briarStag, 'briarHunt', 'Phase 2: each world boss has its own theme');
+  assert.equal(bossSongFor('briarStag'), 'briarHunt');
+  assert.equal(bossSongFor('briarStag', {}), 'boss', 'no theme: the shared track');
   assert.equal(bossSongFor('briarStag', { briarStag: 'missing' }), 'boss', 'an unknown theme falls back');
   const songs = { ...SONGS, briarTheme: { ...SONGS.boss, id: 'briarTheme' } };
   assert.equal(bossSongFor('briarStag', { briarStag: 'briarTheme' }, songs), 'briarTheme');
   const base = { context: 'dungeon', chapter: 1, engaged: 0, near: 0, foeHp: 0, playerHp: 100, dead: false, boss: null, bossDefeated: false, checkpoint: null, region: null, atHome: false };
-  for (const [themes, want] of [[undefined, 'boss'], [{ briarStag: 'briarTheme' }, 'briarTheme']]) {
+  for (const [themes, want] of [[{}, 'boss'], [undefined, 'briarHunt'], [{ briarStag: 'briarTheme' }, 'briarTheme']]) {
     const d = new MusicDirector({ songs, bossThemes: themes });
     let out = d.update(base, 0); const before = out.songId;
     out = d.update({ ...base, boss: { id: 'b1', kind: 'briarStag' }, engaged: 1, foeHp: 900 }, 1);
@@ -236,6 +238,223 @@ test('bosses: the shared boss track, BOSS_THEMES per beast, the beast and victor
     out = d.update(base, 3 + DIRECTOR.bossLinger + .5);
     assert.equal(out.songId, before, 'the song from before picks up again');
   }
+});
+
+// Phase 2 (Tim, 2026-11-14): every world boss has its own theme. The bosses as the game makes them (world-beasts.ts, questing-beast.ts,
+// game.ts, far-array.ts, haunts.ts, revenant hordes, tyrant-hunt.ts): the fields sampleMusic reads.
+const BOSS_FOES = {
+  ...Object.fromEntries(WORLD_BEAST_IDS.map((id) => [id, { id: `world-beast:${id}:1`, kind: WORLD_BEASTS[id].kind, worldBeast: id, boss: true, aggro: true }])),
+  mothChrysalis: { id: 'moth-chrysalis:1:3,4', kind: 'mothChrysalis', mothChrysalis: true, boss: false, aggro: true },
+  questingBeast: { id: 'questing-beast:1', kind: 'questingBeast', questingBeast: true, boss: true, aggro: true },
+  stalker: { id: 'stalker-1-0', kind: 'stalker', stalker: true, boss: true, aggro: true },
+  listener: { id: 'array:1:listener', kind: 'listener', farArrayBoss: 'listener', boss: true, aggro: true },
+  gloomvast: { id: 'gloom:1', kind: 'gloomvast', gloomFinale: { v: 1 }, boss: true, aggro: true },
+  gateRevenant: { id: 'horde-d1-1', kind: 'gateRevenant', gatePredator: true, hordeOf: 'd1', aggro: true },
+  tyrantMosasaur: { id: 'tyrant-hunt-1-2-0-9', kind: 'tyrantMosasaur', seaKind: 'tyrantMosasaur', boss: true, hunting: true, leviathan: true },
+};
+const LISTED = ['ashenMoth', 'mothChrysalis', 'briarStag', 'crimsonTyrant', 'doomChaser', 'lightningGiant', 'morphingBlob', 'mountainTurtle', 'nanobotKnight', 'psychicCrystal', 'tremorWorm', 'voidWalker', 'wildStego', 'spinoRex', 'questingBeast', 'stalker', 'astralWorm', 'listener', 'gloomvast', 'gateRevenant', 'tyrantMosasaur'];
+const themeSongs = () => Object.values(SONGS).filter((s) => s.boss && s.id !== 'boss');
+const bossWorld = (enemies) => ({ area: 'overworld', rx: 3, ry: 4, map: { landscape: { biome: 'forest' } }, player: { x: 0, y: 0, hp: 90 }, save: { session: {}, activeCheckpoint: { rx: 0, ry: 0, x: 1, y: 1 } }, enemies });
+
+test('boss themes: every world boss maps to its own theme, with its liner notes', () => {
+  for (const id of WORLD_BEAST_IDS) assert.ok(LISTED.includes(id), `world beast ${id} is covered`);
+  const own = new Map();
+  for (const key of LISTED) {
+    const id = bossSongFor(key), song = SONGS[id];
+    assert.notEqual(id, 'boss', key); assert.ok(song?.boss, `${key} -> ${id}`);
+    if (!song.variantOf) { assert.ok(!own.has(id), `${key} shares ${id} with ${own.get(id)}`); own.set(id, key); }
+  }
+  assert.equal(own.size, LISTED.length - 1, 'one theme each; only the chrysalis borrows (a hushed form of the Ashen Moth\'s)');
+  assert.equal(SONGS[bossSongFor('mothChrysalis')].variantOf, bossSongFor('ashenMoth'));
+  assert.equal(SONGS[bossSongFor('spinoRex:fossil')].variantOf, bossSongFor('spinoRex'), 'the Spinosaurus turns to bone');
+  // Every theme is reached from BOSS_THEMES and has its liner notes: title, beast and story.
+  const mapped = new Set(Object.values(BOSS_THEMES));
+  for (const song of themeSongs()) {
+    assert.ok(mapped.has(song.id), `${song.id} is some beast's`);
+    const note = LINER_NOTES.find((n) => n.id === song.id);
+    assert.ok(note && note.title === song.name && note.beast && note.story.length > 60, song.id);
+  }
+  for (const id of Object.values(BOSS_THEMES)) assert.ok(SONGS[id]?.boss, id);
+  // The keys: world beast id, else sea or creature kind; a fossil Spinosaurus has its own.
+  assert.equal(bossKey(BOSS_FOES.briarStag), 'briarStag');
+  assert.equal(bossKey({ kind: 'doomChaser', pentFinaleBeast: 'doomChaser', boss: true }), 'doomChaser', 'the Stillworks finale beast is the same beast');
+  assert.equal(bossKey({ ...BOSS_FOES.spinoRex, spinoFossil: true }), 'spinoRex:fossil');
+  assert.equal(bossKey(BOSS_FOES.tyrantMosasaur), 'tyrantMosasaur');
+});
+
+test('boss themes are valid, keep the album palette and are distinct: no shared lead motif or chord progression', () => {
+  const themes = themeSongs(), own = themes.filter((s) => !s.variantOf), winds = ['flute', 'recorder', 'ney'];
+  assert.ok(own.length >= 20 && themes.length >= 22);
+  // Against each other and against every other song on the album.
+  for (const song of own) for (const other of Object.values(SONGS)) {
+    if (other === song || other.variantOf) continue;
+    assert.notDeepEqual(song.chords, other.chords, `${song.id} repeats the chords of ${other.id}`);
+    for (const [name, notes] of Object.entries(song.motifs)) for (const [on, theirs] of Object.entries(other.motifs)) assert.notDeepEqual(notes, theirs, `${song.id}.${name} repeats ${other.id}.${on}`);
+  }
+  for (const song of themes) {
+    assert.deepEqual(validateSong(song), [], song.id);
+    assert.ok(song.bpm >= 58 && song.bpm <= 84, `${song.id} ${song.bpm} BPM`);
+    for (const tier of ['calm', 'combat', 'drive']) assert.ok(song.drums[tier], `${song.id} ${tier} drums`);
+    for (const tier of ['calm', 'combat']) assert.ok(Array.isArray(song.bass[tier]), `${song.id} ${tier} bass`);
+    assert.ok(song.leads.filter((v) => winds.includes(v)).length / song.leads.length <= .25, `${song.id}: winds stay a small share`);
+    assert.ok(song.intensityFloor >= 0 && song.intensityFloor <= .72, song.id);
+    if (song.variantOf) {
+      const base = SONGS[song.variantOf];
+      assert.deepEqual(song.chords, base.chords); assert.deepEqual(song.motifs, base.motifs, `${song.id} keeps ${base.id}'s lines`);
+    }
+  }
+  assert.equal(SONGS.cinderSleep.intensityFloor, 0, 'the chrysalis plays at a quieter tier');
+  assert.equal(new Set(own.map((s) => `${s.root}:${s.mode}:${s.bpm}`)).size, own.length, 'each its own key and tempo');
+  assert.ok(new Set(themes.map((s) => s.mode)).size === 4 && themes.some((s) => s.modes), 'Dorian, Phrygian, Aeolian, Hijaz, and one shape-shifter');
+  assert.ok(validateSong({ ...SONGS.shapeless, modes: ['dorian', 'hijaz'] }).length > 0, 'the shape-shifter is checked in every mode it takes');
+});
+
+test('boss themes in the engine: the shape-shifter turns its mode each phrase, the moth\'s strings tremble', () => {
+  const { ctx, eng } = engine();
+  eng.setTarget({ songId: 'shapeless', intensity: .5 }); eng.start();
+  const modes = [];
+  run(ctx, eng, 0, 3 * 8 * barSeconds(SONGS.shapeless) + 1, () => { const d = eng.current(); if (d?.key && modes.at(-1) !== d.key.mode) modes.push(d.key.mode); });
+  assert.deepEqual(modes.slice(0, 3), ['dorian', 'aeolian', 'phrygian']);
+  // Tremolo: an LFO at the song's rate on each string pad, stopped with it.
+  const t = engine(), before = t.ctx.sources.length;
+  t.eng.strings(t.eng.mix, 1, [60, 64, 67], 4, 1, 1, SONGS.cinderWings.tremolo);
+  const made = t.ctx.sources.slice(before), lfo = made.find((o) => o.frequency?.events?.[0]?.v === SONGS.cinderWings.tremolo);
+  assert.ok(lfo && lfo.stopAt != null, 'the tremolo LFO stops with its notes');
+  assert.equal(made.length, 7, 'three notes of two saws, and one LFO');
+});
+
+test('a fight with each world boss switches to its theme, plays its beats, and goes back to the song from before', () => {
+  for (const key of LISTED) {
+    const foe = { ...BOSS_FOES[key], hp: 400, maxHp: 400, x: 6, y: 0 }, d = new MusicDirector({ seed: 4 }), memo = {}, beats = [];
+    let out = d.update(sampleMusic(bossWorld([]), memo), 0);
+    const before = out.songId;
+    for (let t = .5; t <= 20; t += .5) { out = d.update(sampleMusic(bossWorld([foe]), memo), t); beats.push(...out.stingers); if (t === 10) foe.hp = 200; }
+    assert.equal(out.songId, BOSS_THEMES[key], key);
+    assert.equal(out.change, 'boss');
+    assert.deepEqual(beats, key === 'mothChrysalis' ? [] : ['beast'], `${key} wakes with the beast beat (the chrysalis only hangs there)`);
+    foe.hp = 0; foe.dead = true;
+    out = d.update(sampleMusic(bossWorld([foe]), memo), 20.5);
+    assert.deepEqual(out.stingers, ['mothChrysalis', 'gateRevenant'].includes(key) ? [] : ['victory'], `${key}: a fall (a hatching, or one Revenant of the hunt, is not)`);
+    for (let t = 21; t < 21 + DIRECTOR.bossLinger + 2; t += .5) out = d.update(sampleMusic(bossWorld([foe]), memo), t);
+    assert.equal(out.songId, before, `${key}: the song from before picks up again`);
+  }
+  // A boss with no theme of its own still gets the shared track.
+  const d = new MusicDirector(), memo = {};
+  d.update(sampleMusic(bossWorld([]), memo), 0);
+  assert.equal(d.update(sampleMusic(bossWorld([{ id: 'elite', kind: 'hollowMarshal', boss: true, aggro: true, hp: 50, x: 3, y: 0 }]), memo), 1).songId, 'boss');
+  assert.equal(bossSongFor('spinoRex:shedding'), BOSS_THEMES.spinoRex, 'an unknown form plays the beast\'s own theme');
+  assert.equal(bossSongFor(null), 'boss'); assert.equal(bossSongFor('nobody'), 'boss');
+});
+
+test('boss forms: the chrysalis hatches into the moth, the Spinosaurus turns to bone, the Tyrant Mosasaur is heard when it hunts', () => {
+  // The chrysalis: its hushed theme, no beast beat; it breaks and the moth bursts out: the moth's theme and the beast beat, no victory.
+  let d = new MusicDirector(), memo = {}, out;
+  const chrysalis = { ...BOSS_FOES.mothChrysalis, hp: 40, x: 5, y: 0 }, moth = { ...BOSS_FOES.ashenMoth, hp: 500, x: 5, y: 0 };
+  d.update(sampleMusic(bossWorld([]), memo), 0);
+  out = d.update(sampleMusic(bossWorld([chrysalis]), memo), 1); assert.equal(out.songId, 'cinderSleep'); assert.deepEqual(out.stingers, []);
+  chrysalis.hp = 0; chrysalis.dead = true;
+  out = d.update(sampleMusic(bossWorld([chrysalis, moth]), memo), 2); assert.equal(out.songId, 'cinderWings'); assert.deepEqual(out.stingers, ['beast']);
+  // The Spinosaurus sheds its flesh at half health: the same fight crossfades to its bone form, with no second beast beat.
+  d = new MusicDirector(); memo = {};
+  const spino = { ...BOSS_FOES.spinoRex, hp: 600, x: 6, y: 0 };
+  d.update(sampleMusic(bossWorld([]), memo), 0);
+  out = d.update(sampleMusic(bossWorld([spino]), memo), 1); assert.equal(out.songId, 'riverStalker'); assert.deepEqual(out.stingers, ['beast']);
+  spino.spinoFossil = true; spino.hp = 290;
+  out = d.update(sampleMusic(bossWorld([spino]), memo), 2); assert.equal(out.songId, 'bonesHunt'); assert.equal(out.change, 'boss'); assert.deepEqual(out.stingers, []);
+  // The Tyrant Mosasaur keeps no aggro flag: within DIRECTOR.seaRange it is being fought; beyond it, it is only out there.
+  const tyrant = { ...BOSS_FOES.tyrantMosasaur, hp: 480, x: DIRECTOR.seaRange + 3, y: 0 }, sea = bossWorld([tyrant]);
+  assert.equal(sampleMusic(sea, {}).boss, null);
+  tyrant.x = 8; assert.equal(sampleMusic(sea, {}).boss.kind, 'tyrantMosasaur');
+  assert.equal(sampleMusic(bossWorld([{ ...tyrant, kind: 'reefKraken', seaKind: 'reefKraken' }]), {}).boss, null, 'other sea creatures as before');
+});
+
+test('the voice budget holds over a 3-minute render of every boss theme, on both quality tiers', () => {
+  for (const song of themeSongs()) for (const quality of ['balanced', 'low']) {
+    const { ctx, eng } = engine({ quality });
+    eng.start();
+    run(ctx, eng, 0, 180, (t) => eng.setTarget({ songId: song.id, intensity: t < 40 ? 0 : t < 90 ? .5 : t < 150 ? 1 : .3, change: 'boss' }));
+    const max = quality === 'low' ? SOUNDTRACK.lowMaxVoices : SOUNDTRACK.maxVoices;
+    assert.ok(eng.stats.peakVoices <= max, `${song.id} ${quality}: peak ${eng.stats.peakVoices} of ${max}`);
+    assert.ok(eng.stats.dropped <= eng.stats.notes * (quality === 'low' ? .15 : .03), `${song.id} ${quality}: dropped ${eng.stats.dropped} of ${eng.stats.notes}`);
+    assert.equal(ctx.pastStarts, 0, song.id);
+  }
+});
+
+// Darker boss themes (Tim, 2026-11-15: "make them darker and unsafe ... some of the disturbance understated, some more overt.
+// Some can remain relatively peaceful and calm").
+test('boss themes have a menace tier: overt ones use overt devices, understated ones hide theirs, calm ones keep an undertone', () => {
+  const tierOf = (id) => LINER_NOTES.find((n) => n.id === id)?.menace;
+  const count = { overt: 0, understated: 0, calm: 0 };
+  for (const song of themeSongs()) {
+    const tier = tierOf(song.id), used = menaceDevices(song);
+    assert.ok(MENACE_TIERS.includes(tier), `${song.id} has a menace tier`);
+    count[tier]++;
+    const overt = used.filter((x) => MENACE_DEVICES.overt.includes(x)), hidden = used.filter((x) => MENACE_DEVICES.understated.includes(x));
+    assert.ok(song.dark.shade > 0 && song.dark.sub > 0, `${song.id}: colder and with a sub, like every boss theme`);
+    if (tier === 'overt') assert.ok(overt.length >= 2, `${song.id}: overt devices ${overt}`);
+    if (tier === 'understated') assert.ok(hidden.length >= 2 && overt.length === 0, `${song.id}: understated ${hidden}, overt ${overt}`);
+    if (tier === 'calm') assert.ok(song.dark.shadow?.length && overt.length === 0 && hidden.length <= 2, `${song.id}: gentle, with a shadow under it`);
+    assert.ok(!song.chords.some((c) => c.endsWith(':add9')), `${song.id}: no warm add9 stacks`);
+  }
+  assert.deepEqual(count, { overt: 9, understated: 9, calm: 4 });
+  assert.equal(tierOf('fernsAndPlates'), 'calm', 'the stegosaurus stays a romp');
+  assert.ok(!LINER_NOTES.some((n) => n.menace && !SONGS[n.id]?.boss), 'only boss themes are tiered');
+  // The validator: deliberate dissonance only where a song lists it, and well-formed devices.
+  const glow = SONGS.glassMind;
+  assert.deepEqual(validateSong(glow), []);
+  assert.ok(validateSong({ ...glow, dissonance: [] }).some((b) => /no perfect fifth/.test(b)), 'a diminished chord needs the tritone listed');
+  assert.ok(validateSong({ ...SONGS.gloomRises, dissonance: [1] }).some((b) => /bass tone T/.test(b)), 'so does a tritone bass');
+  assert.ok(validateSong({ ...SONGS.moonlitTower, dissonance: [0] }).includes('moonlitTower: dissonance'));
+  for (const dark of [{ shade: 2 }, { cluster: 5 }, { lurch: 'X..' }, { toll: { every: 3, steps: [], ints: [1] } }, { vowel: 'ee' }, { wobble: 1 }, { tritone: true }]) assert.ok(validateSong({ ...glow, dark }).length > 0, JSON.stringify(dark));
+});
+
+test('the menace devices play through the engine, inside the voice budget, and every note is cleaned up', () => {
+  const calls = {
+    shadow: 'drone', sub: 'sub', beat: 'sub', rumble: 'rumble', cluster: 'cluster', growl: 'choir', pont: 'pont', dive: 'dive', sag: 'sag',
+    toll: 'bell', heart: 'timp', lurch: 'tom', skip: 'drum',
+  };
+  for (const song of themeSongs()) for (const quality of ['balanced', 'low']) {
+    const { ctx, eng } = engine({ quality }), seen = {};
+    for (const name of new Set(Object.values(calls))) { const f = eng[name].bind(eng); eng[name] = (...a) => { seen[name] = (seen[name] || 0) + 1; return f(...a); }; }
+    let drops = 0;
+    eng.start();
+    run(ctx, eng, 0, 180, (t) => {
+      eng.setTarget({ songId: song.id, intensity: t < 40 ? 0 : t < 90 ? .5 : t < 150 ? 1 : .3, change: 'boss' });
+      const d = eng.current(); if (d?.dropped) drops++;
+    });
+    const max = quality === 'low' ? SOUNDTRACK.lowMaxVoices : SOUNDTRACK.maxVoices;
+    assert.ok(eng.stats.peakVoices <= max, `${song.id} ${quality}: peak ${eng.stats.peakVoices}`);
+    for (const device of menaceDevices(song)) {
+      if (device === 'shade' || device === 'vowel' || device === 'tritone' || device === 'drop') continue;
+      // The low tier leaves out the sub, the rumble, the ponticello and the growl.
+      if (quality === 'low' && ['sub', 'beat', 'rumble', 'pont'].includes(device)) { if (device === 'rumble' || device === 'pont') assert.ok(!seen[calls[device]], `${song.id}: no ${device} on low`); continue; }
+      if (quality === 'low' && device === 'growl') continue;
+      assert.ok(seen[calls[device]] > 0, `${song.id} ${quality}: ${device} plays`);
+    }
+    if (song.dark.drop) {
+      const duck = eng.duck.gain.events, fall = duck.findIndex((e) => e.v === SOUNDTRACK.menace.drop);
+      assert.ok(drops > 0 && fall > 0 && duck.slice(fall).some((e) => e.v === 1 && e.t > duck[fall].t), `${song.id}: the bar drops to near silence and comes back`);
+    }
+    run(ctx, eng, 180, 200, () => eng.setTarget({ songId: 'moonlitTower', change: 'context' }));
+    const ended = ctx.sources.filter((s) => s.onended && s.stopAt != null && s.stopAt <= 195);
+    assert.ok(ended.length > 500 && ended.every((s) => s.ended && s.disconnected), `${song.id}: every ended note is disconnected`);
+    assert.equal(ctx.pastStarts, 0); assert.equal(ctx.pastParams, 0);
+  }
+  // The tritone in the bass, a cold bell and a sag, note by note.
+  const { ctx, eng } = engine(), d = { song: SONGS.gloomRises, key: SONGS.gloomRises, chordSpec: '1', bar: 0, tier: 1, bassNote: null, stems: { groove: eng.mix } };
+  eng.bassNote(d, 1, 'R', 1); const root = d.bassNote; eng.bassNote(d, 2, 'T', 1);
+  assert.equal(pc(d.bassNote - root), 6, 'T walks the bass to the tritone');
+  const before = ctx.sources.length; eng.bell(eng.mix, 3, 76, 1, 1);
+  const bell = ctx.sources.slice(before);
+  assert.ok(Math.abs(bell[1].frequency.events[0].v / bell[0].frequency.events[0].v - 4.41) < 1e-9, 'a cold bell rings inharmonic');
+  const osc = ctx.createOscillator(); osc.detune.value = 5; eng.sag([osc], 4, 2, .5);
+  assert.deepEqual(osc.detune.events.map((e) => [e.type, e.t, e.v]), [['set', 5, 5], ['linear', 6, 5 - 42.5]], 'a held note sags 25-60 cents over its second half');
+});
+
+test('dark themes are deterministic and leave the other songs as they were', () => {
+  const play = (id, seed) => { const { ctx, eng } = engine({ seed }); eng.setTarget({ songId: id, intensity: .8 }); eng.start(); run(ctx, eng, 0, 60); return ctx.sources.map((s) => `${s.startAt}:${s.detune?.events.map((e) => e.v).join('/') || ''}`).join(','); };
+  for (const id of ['shapeless', 'eyesBehind', 'riverStalker', 'revenantsReturn']) { assert.equal(play(id, 42), play(id, 42), id); assert.notEqual(play(id, 42), play(id, 43), `${id}: the seed matters`); }
+  for (const song of Object.values(SONGS)) if (!song.boss || song.id === 'boss') assert.ok(!song.dark && !song.dissonance, `${song.id} keeps its colour`);
 });
 
 test('the director tells the story: departure, rest, a new land, death', () => {

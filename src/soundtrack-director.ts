@@ -8,7 +8,7 @@
 //   to another eligible song, never the same one twice running.
 // - Intensity 0-1: rises quickly with hostiles engaged or near and with damage dealt or taken, holds a moment, then decays
 //   over about ten seconds. "Calm only" (the Soundtrack setting) holds it at 0.
-// - A world beast or boss in the fight switches to BOSS_THEMES[kind], or the shared boss track.
+// - A world beast or boss in the fight switches to its own theme (BOSS_THEMES, by bossKey), or the shared boss track.
 import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.ts";
 import { apertureTier } from "./world.ts";
 import { seededRandom } from "./soundtrack.ts";
@@ -19,6 +19,8 @@ export const DIRECTOR = {
   hurtHold: 4, hitHold: 3,
   rise: 1.4, hold: 2.5, decay: .1,
   dwell: [120, 240], bossLinger: 5,
+  // Sea bosses keep no aggro flag (sea-creatures.ts runs their hunt): within seaRange of the Wayfarer they count as fought.
+  seaBosses: ["tyrantMosasaur"], seaRange: 14,
   cooldowns: { region: 90, beast: 45, rest: 20, departure: Infinity },
 };
 // Chapters of the journey, from progress the save already holds. The first matching row, from the top, wins.
@@ -28,12 +30,29 @@ export const CHAPTERS = [
   { chapter: 2, name: "Wandering", tier: 1, slain: 1 },
   { chapter: 1, name: "Departure" },
 ];
-// Per-beast boss themes for Phase 2: world beast id (or creature kind) -> a song id in SONGS with boss: true. Empty for now:
-// every beast falls back to the shared "boss" track.
-export const BOSS_THEMES = {};
+// Each world boss's own theme (Phase 2, Tim 2026-11-14): bossKey -> a song id in SONGS with boss: true (soundtrack-songs.ts,
+// LINER_NOTES tells each one's story). Keys are world beast ids (WORLD_BEASTS) or, for bosses that are not world beasts,
+// creature kinds; "kind:variant" is a form a beast turns into mid-fight. Any other boss plays the shared "boss" track.
+export const BOSS_THEMES = {
+  ashenMoth: "cinderWings", mothChrysalis: "cinderSleep",
+  briarStag: "briarHunt", crimsonTyrant: "crimsonCrown", doomChaser: "longPursuit", lightningGiant: "thunderEngine",
+  morphingBlob: "shapeless", mountainTurtle: "mountainWalks", nanobotKnight: "clockworkOath", psychicCrystal: "glassMind",
+  tremorWorm: "underTheFloor", voidWalker: "walkerBetween", wildStego: "fernsAndPlates",
+  spinoRex: "riverStalker", "spinoRex:fossil": "bonesHunt",
+  astralWorm: "coilOfStars", questingBeast: "quarryBays", stalker: "eyesBehind", listener: "whatListens",
+  gloomvast: "gloomRises", gateRevenant: "revenantsReturn", tyrantMosasaur: "deepTide",
+};
+// The key a boss's music is chosen by: its world beast id, else its sea or creature kind; with ":fossil" once the Spinosaurus
+// has shed its flesh (e.spinoFossil), so its theme turns to bone.
+export function bossKey(e) {
+  const kind = typeof e?.worldBeast === "string" ? e.worldBeast : e?.seaKind || e?.kind || null;
+  return kind && e.spinoFossil ? `${kind}:fossil` : kind;
+}
+// A variant key with no theme of its own plays the beast's theme; an unknown key, or a theme missing from songs, the shared track.
 export function bossSongFor(kind, themes = BOSS_THEMES, songs = SONGS) {
-  const id = kind != null ? themes[kind] : null;
-  return id && songs[id] ? id : "boss";
+  if (kind == null) return "boss";
+  for (const k of [kind, String(kind).split(":")[0]]) { const id = themes[k]; if (id && songs[id]) return id; }
+  return "boss";
 }
 
 const DARK = new Set(["swamp", "blight", "fog", "volcanic", "obsidian", "fungal", "marrow", "biomech", "petrified", "reckoning"]);
@@ -78,21 +97,24 @@ export function sampleMusic(game, memo = {}) {
   for (const e of game?.enemies || []) {
     if (!e || e.dead || !(e.hp > 0) || e.ambient) continue;
     const d = Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0));
-    const bossLike = e.boss || e.worldBeast || e.questingBeast;
-    if (bossLike && (e.aggro || e.pentArenaAwake) && d < D.bossRange && d < bossD) { boss = e; bossD = d; }
+    // Also the Gate Revenants' hunt (gatePredator) and the Ashen Moth's chrysalis, whose quiet theme waits for the hatching.
+    const bossLike = e.boss || e.worldBeast || e.questingBeast || e.gatePredator || e.mothChrysalis;
+    const fought = e.aggro || e.pentArenaAwake || (D.seaBosses.includes(e.seaKind) && d < D.seaRange);
+    if (bossLike && fought && d < D.bossRange && d < bossD) { boss = e; bossD = d; }
     if (e.aggro && d < D.engagedRange) { engaged++; foeHp += Number(e.hp) || 0; }
     else if (d < D.nearRange) near++;
   }
-  // A boss being fought that is now dead (still in the list, or its hp gone) is a fall; one that left the list is not.
+  // A boss being fought that is now dead (still in the list, or its hp gone) is a fall; one that left the list is not. A broken
+  // chrysalis is a hatching, and one Revenant of a hunt is not the hunt: neither is a victory.
   let bossDefeated = false;
   const was = memo.boss;
-  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was)) bossDefeated = true;
+  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator) bossDefeated = true;
   memo.boss = boss;
   const cp = save.activeCheckpoint, home = save.hometowns?.home || "0,0";
   return {
     context: musicContext(game), chapter: journeyChapter(save), paused: !!game?.paused,
     engaged, near, foeHp, playerHp: Number(p.hp) || 0, dead: !(Number(p.hp) > 0) || !!game?.fallen,
-    boss: boss ? { id: String(boss.id ?? ""), kind: typeof boss.worldBeast === "string" ? boss.worldBeast : boss.kind || null } : null, bossDefeated,
+    boss: boss ? { id: String(boss.id ?? ""), kind: bossKey(boss), ...(boss.mothChrysalis ? { quiet: true } : {}) } : null, bossDefeated,
     checkpoint: cp ? `${cp.rx},${cp.ry},${cp.x},${cp.y}` : null,
     region: game?.area === "overworld" ? (game.farRealm?.type ? `far:${game.farRealm.type}` : game.map?.landscape?.biome || null) : null,
     atHome: game?.area === "overworld" && `${game.rx},${game.ry}` === home,
@@ -104,7 +126,7 @@ export class MusicDirector {
     this.rand = seededRandom(seed); this.calmOnly = calmOnly; this.songs = songs; this.selection = selection; this.bossThemes = bossThemes;
     this.songId = null; this.previous = null; this.since = 0; this.dwell = this.nextDwell();
     this.intensity = 0; this.lastHot = -Infinity; this.lastHurt = -Infinity; this.lastHit = -Infinity; this.lastTime = null;
-    this.last = null; this.bossId = null; this.bossSeen = -Infinity; this.cool = {}; this.context = null; this.chapter = null;
+    this.last = null; this.bossId = null; this.bossQuiet = false; this.bossSeen = -Infinity; this.cool = {}; this.context = null; this.chapter = null;
   }
   nextDwell() { const [a, b] = DIRECTOR.dwell; return a + (b - a) * this.rand(); }
   ready(kind, now) { const c = DIRECTOR.cooldowns[kind] ?? 0; if (this.cool[kind] != null && (c === Infinity || now - this.cool[kind] < c)) return false; this.cool[kind] = now; return true; }
@@ -134,15 +156,17 @@ export class MusicDirector {
     if (this.calmOnly) this.intensity = 0;
     // Bosses.
     if (snap.boss) {
-      if (this.bossId !== snap.boss.id && now - this.bossSeen > D.bossLinger && this.ready("beast", now)) stingers.push("beast");
-      this.bossId = snap.boss.id; this.bossSeen = now;
+      // A quiet boss (the chrysalis) wakes no beast beat; what hatches from it does.
+      const quiet = !!snap.boss.quiet;
+      if (!quiet && this.bossId !== snap.boss.id && (this.bossQuiet || now - this.bossSeen > D.bossLinger) && this.ready("beast", now)) stingers.push("beast");
+      this.bossId = snap.boss.id; this.bossQuiet = quiet; this.bossSeen = now;
       this.choose(bossSongFor(snap.boss.kind, this.bossThemes, this.songs), now, "boss");
     }
     if (snap.bossDefeated) { stingers.push("victory"); this.bossSeen = -Infinity; }
     const bossOn = snap.boss || now - this.bossSeen < D.bossLinger;
     // Places and chapters.
     if (!bossOn) {
-      this.bossId = null;
+      this.bossId = null; this.bossQuiet = false;
       const wasBoss = this.songs[this.songId]?.boss, moved = snap.context !== this.context, turned = snap.chapter !== this.chapter;
       const list = songsFor(snap.context, snap.chapter, this.selection).map((s) => s.id);
       if (!this.songId || wasBoss || moved) {

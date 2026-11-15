@@ -27,6 +27,8 @@ export const SOUNDTRACK = {
   pause: { level: .3, time: .25 },
   hiss: .0022,
   wobble: { base: .012, depth: .0008, rate: .45 },
+  // Depth of a song's string tremolo (soundtrack-songs.ts `tremolo`): the level swings between 1 - 2 * depth and 1.
+  tremolo: .35,
   reverb: { seconds: 2.6, decay: 2.4, return: .55 },
   echoFeedback: .36,
   pad: [50, 74], bass: [36, 50], drone: [38, 49],
@@ -47,6 +49,14 @@ export const SOUNDTRACK = {
   velocity: { X: 1, x: .75, o: .4 },
   // Stem sends to the shared reverb and echo.
   sends: { reverb: { bed: .8, groove: .25, motion: .8, lead: .9 }, echo: { bed: 0, groove: 0, motion: 1, lead: .7 } },
+  // Choir formants (Hz) by vowel: a boss theme's `dark.vowel` darkens its choir.
+  vowels: { aah: [720, 1180], oh: [480, 860], oo: [340, 740] },
+  // The boss themes' menace devices (soundtrack-songs.ts MENACE_DEVICES; Tim, 2026-11-15: "darker and unsafe"). Peak gains of
+  // the menace voices, how much brightness a fully shaded pad loses, the level a drop falls to, and a sag's depth in cents.
+  menace: {
+    sub: .05, beat: .028, shadow: .6, cluster: .036, growl: .55, pont: .02, rumble: .16, dive: .045, toll: .4, heart: .75, lurch: .7,
+    shade: .5, drop: .05, sag: [25, 60],
+  },
 };
 const STEMS = ["bed", "groove", "motion", "lead"];
 const DRUM_SET = ["calm", "combat", "drive"];
@@ -257,7 +267,8 @@ export class Soundtrack {
       for (const voice in drums) { const c = drums[voice][s]; if (c && c !== ".") this.drum(d, voice, at, c); }
       for (const [start, tone, len] of song.bass[d.tier ? "combat" : "calm"]) if (start === s) this.bassNote(d, at, tone, len * d.stepDur);
       if (d.motionOn) { const ch = song.arps[d.tier >= 2 ? "busy" : "calm"][s]; if (ch && ch !== ".") this.arpNote(d, at + d.rand() * .006, Number(ch), s === 0); }
-      if (d.lead) for (const [, step, len] of d.leadSteps.get((d.bar % 2) * 16 + s) || []) this.leadNote(d, at + d.rand() * .008, song.root + 12 * song.leadOct + stepToSemi(song.mode, step), len * d.stepDur);
+      if (d.lead) for (const [, step, len] of d.leadSteps.get((d.bar % 2) * 16 + s) || []) this.leadNote(d, at + d.rand() * .008, song.root + 12 * song.leadOct + stepToSemi((d.key || song).mode, step), len * d.stepDur);
+      if (song.dark) this.menaceStep(d, at, s);
     } else this.stats.pastSkips++;
     this.advance(d);
   }
@@ -274,6 +285,9 @@ export class Soundtrack {
       const phrase = Math.floor(d.bar / 8);
       d.form = song.forms[phrase === 0 ? 0 : Math.floor(d.rand() * song.forms.length)];
       d.leadPhrase = !!song.leadPlan[phrase % song.leadPlan.length] || d.tier > 0;
+      // A song with `modes` (a shape-shifter) turns to the next mode each phrase: its chords and lines keep their degrees, their colour shifts.
+      const mode = song.modes ? song.modes[phrase % song.modes.length] : song.mode;
+      d.key = mode === song.mode ? song : { root: song.root, mode };
       this.emit({ type: "phrase", songId: song.id, at: t, phrase, form: d.form });
     }
     if (d.tier > 0 && !d.leadPhrase && idx % 2 === 0) d.leadPhrase = true;
@@ -290,6 +304,7 @@ export class Soundtrack {
       d.chordSpec = spec;
     }
     if (song.pedal && (idx === 0 || d.needBed)) this.drone(d.stems.bed, t, into(song.root, S.drone[0], S.drone[1]), 8 * barDur + 1.5, 1, 2);
+    if (song.dark) this.menaceBar(d, t, idx, barDur);
     d.needBed = false;
     this.emit({ type: "bar", songId: song.id, at: t, bar: d.bar, tier: d.tier });
   }
@@ -309,21 +324,25 @@ export class Soundtrack {
   bridge(from, to, t, xf) {
     const tone = bridgeTone(from, to), S = SOUNDTRACK;
     this.drone(this.mix, t, into(tone + 48, S.drone[0] + 6, S.drone[1] + 6), xf + 2.5, .8, 1.2, 3);
-    this.bell(this.mix, t + .02, into(tone + 72, 72, 83), .7);
+    // Into a dark boss theme the bell is quieter and colder: no sweet tone over its tonic.
+    this.bell(this.mix, t + .02, into(tone + 72, 72, 83), to.dark ? .45 : .7, to.dark ? 1 : 0);
   }
 
   // ---- parts ----
   bed(d, t, spec, dur) {
-    const song = d.song, S = SOUNDTRACK, semis = chordSemis(song, spec), pcs = semis.map((s) => pc(song.root + s));
+    const song = d.song, S = SOUNDTRACK, semis = chordSemis(d.key || song, spec), pcs = semis.map((s) => pc(song.root + s));
     d.voicing = voiceLead(d.voicing, pcs, S.pad[0], S.pad[1]);
-    const bright = 1 + .3 * d.tier, dest = d.stems.bed;
-    if (song.pad !== "choir") this.strings(dest, t, d.voicing, dur + .3, song.pad === "both" ? .8 : 1, bright);
-    if (song.pad !== "strings") this.choir(dest, t, d.voicing, dur + .3, song.pad === "both" ? .7 : 1);
+    // A dark theme's pads lose part of their top (`dark.shade`).
+    const bright = (1 + .3 * d.tier) * (1 - S.menace.shade * (song.dark?.shade || 0)), dest = d.stems.bed;
+    if (song.pad !== "choir") this.strings(dest, t, d.voicing, dur + .3, song.pad === "both" ? .8 : 1, bright, song.tremolo || 0);
+    if (song.pad !== "strings") this.choir(dest, t, d.voicing, dur + .3, song.pad === "both" ? .7 : 1, song.dark?.vowel);
     if (!song.pedal) this.drone(dest, t, into(song.root + semis[0], S.drone[0], S.drone[1]), dur + .6, .8, 1.5);
+    if (song.dark) this.menaceBed(d, t, semis, dur);
   }
   bassNote(d, t, tone, dur) {
-    const song = d.song, S = SOUNDTRACK, semis = chordSemis(song, d.chordSpec || song.chords[d.bar % 8]);
-    const semi = tone === "P" ? 0 : tone === "3" ? semis[1] : tone === "5" ? semis[2] : tone === "7" ? (semis[3] ?? semis[2]) : semis[0];
+    const song = d.song, S = SOUNDTRACK, semis = chordSemis(d.key || song, d.chordSpec || song.chords[d.bar % 8]);
+    // T and b (a dark theme's listed dissonance): the tritone and the minor 2nd over the chord root.
+    const semi = tone === "P" ? 0 : tone === "3" ? semis[1] : tone === "5" ? semis[2] : tone === "7" ? (semis[3] ?? semis[2]) : tone === "T" ? semis[0] + 6 : tone === "b" ? semis[0] + 1 : semis[0];
     let n = into(song.root + semi, S.bass[0], S.bass[1]);
     if (d.bassNote != null && tone !== "P") { const alt = n + 12 <= S.bass[1] + 2 ? n + 12 : n - 12; if (alt >= S.bass[0] - 2 && Math.abs(alt - d.bassNote) < Math.abs(n - d.bassNote)) n = alt; }
     d.bassNote = n;
@@ -332,21 +351,28 @@ export class Soundtrack {
   arpNote(d, t, i, accent) {
     const song = d.song, tones = d.voicing || [song.root + 12], lift = 12 * (song.arpOct ?? 1), n = tones.length;
     const midi = tones[i % n] + lift + 12 * Math.floor(i / n), vel = (accent ? 1 : .78) * (.92 + d.rand() * .16);
-    this[song.arp](d.stems.motion, t, midi, vel);
+    // A dark theme's bells ring colder (the other plucks take no fifth argument).
+    this[song.arp](d.stems.motion, t, midi, vel, song.dark?.shade || 0);
   }
   leadNote(d, t, midi, dur) {
-    this.playLead(d.stems.lead, t, midi, dur, .9 + d.rand() * .1, d.leadKind || d.song.leads[0]);
+    // `dark.sag`: the chance a held note (over a second) sags in pitch as it fades; its oscillators are collected to bend them.
+    const k = d.song.dark, sag = k?.sag && dur > 1 && d.rand() < k.sag ? [] : null;
+    this.made = sag;
+    this.playLead(d.stems.lead, t, midi, dur, .9 + d.rand() * .1, d.leadKind || d.song.leads[0], k);
+    this.made = null;
+    if (sag?.length) this.sag(sag, t, dur, d.rand());
   }
-  // One melody note in a given voice, dropped by octaves into that voice's range.
-  playLead(dest, t, midi, dur, vel, kind) {
+  // One melody note in a given voice, dropped by octaves into that voice's range. `dark`: a boss theme's devices (vowel, cold bells).
+  playLead(dest, t, midi, dur, vel, kind, dark = null) {
     const top = SOUNDTRACK.leadCeiling[kind] ?? 88;
     while (midi > top) midi -= 12;
     if (WINDS.includes(kind)) this.wind(dest, t, midi, dur * .8, vel, kind);
-    else if (kind === "choir") this.choirLine(dest, t, midi, dur, vel);
+    // A dark theme's sung melody darkens only to "oh", so it still carries over the pad.
+    else if (kind === "choir") this.choirLine(dest, t, midi, dur, vel, dark?.vowel ? "oh" : "aah");
     else if (kind === "strings" || kind === "cello") this.stringLine(dest, t, midi, dur, vel, kind === "cello");
     else if (kind === "horn") this.horn(dest, t, midi, dur, vel);
     else if (kind === "celesta") this.celesta(dest, t, midi, vel);
-    else if (kind === "bell") this.bell(dest, t, midi, vel * SOUNDTRACK.leadGain.bell);
+    else if (kind === "bell") this.bell(dest, t, midi, vel * SOUNDTRACK.leadGain.bell, dark?.shade || 0);
     else {
       // A plucked melody (harpsichord, lute, dulcimer): a long note is struck again halfway, softer.
       const v = vel * (SOUNDTRACK.leadGain[kind] || 1);
@@ -355,6 +381,9 @@ export class Soundtrack {
     }
   }
   drum(d, voice, t, c) {
+    // `dark.skip`: now and then a soft hit of the pulse is missing (never an accent).
+    const skip = d.song.dark?.skip;
+    if (skip && c !== "X" && d.rand() < skip) return;
     const v = SOUNDTRACK.velocity[c] || .7, dest = d.stems.groove;
     if (voice === "frame") { if (c === "o") this.edge(dest, t, v); else this.frame(dest, t, v); }
     else if (voice === "tom") this.tom(dest, t, v);
@@ -378,7 +407,7 @@ export class Soundtrack {
     sources[0].onended = () => { for (const n of nodes) try { n.disconnect(); } catch { /* gone */ } this.stats.liveNodes -= nodes.length; };
     this.emit({ type: "note", at: sources[0]._startedAt, end, nodes: nodes.length });
   }
-  osc(type, freq, t) { const o = this.ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t); o.start(t); o._startedAt = t; return o; }
+  osc(type, freq, t) { const o = this.ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t); o.start(t); o._startedAt = t; this.made?.push(o); return o; }
   gain(v = 1) { const g = this.ctx.createGain(); g.gain.value = v; return g; }
   filter(type, f, q = .7) { const b = this.ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; }
   noiseSource(t) { const n = this.ctx.createBufferSource(); n.buffer = this.noise; n.loop = true; n.start(t, this.rand() * .8); n._startedAt = t; return n; }
@@ -387,20 +416,28 @@ export class Soundtrack {
   // Sustained envelope: up in `a`, held, released over `rel` before `end`.
   swell(param, t, a, peak, end, rel) { param.setValueAtTime(0, t); param.linearRampToValueAtTime(peak, t + Math.min(a, (end - t) * .5)); param.setValueAtTime(peak, Math.max(t + Math.min(a, (end - t) * .5), end - rel)); param.linearRampToValueAtTime(0, end); }
 
-  strings(dest, t, notes, dur, vel, bright) {
+  // `trem` (Hz): bowed tremolo, one LFO on the section's level (not a voice of its own).
+  strings(dest, t, notes, dur, vel, bright, trem = 0) {
     const L = SOUNDTRACK.level.strings * vel / Math.sqrt(notes.length), end = t + dur + 1.4, f = this.filter("lowpass", 700 * bright, .5), g = this.gain(0), src = [];
     f.frequency.setValueAtTime(900 * bright, t); f.frequency.linearRampToValueAtTime(2600 * bright, t + Math.min(dur, 4));
-    this.swell(g.gain, t, 1.2, L, end, 1.4); f.connect(g); g.connect(dest);
+    this.swell(g.gain, t, 1.2, L, end, 1.4); f.connect(g);
+    const extra = [];
+    if (trem > 0) {
+      const D = SOUNDTRACK.tremolo, tg = this.gain(1 - D), lfo = this.osc("sine", trem, t), lg = this.gain(D);
+      lfo.connect(lg); lg.connect(tg.gain); g.connect(tg); tg.connect(dest); extra.push(lfo, lg, tg);
+    } else g.connect(dest);
     for (const m of notes) {
       if (!this.claim(2, t, end)) continue;
       for (const cents of [-7, 6]) { const o = this.osc("sawtooth", mtof(m), t); o.detune.value = cents + (this.rand() - .5) * 4; o.connect(f); src.push(o); }
     }
-    if (src.length) this.finish(src, [...src, f, g], end); else { f.disconnect(); g.disconnect(); }
+    if (src.length) this.finish([...src, ...extra.slice(0, 1)], [...src, f, g, ...extra], end);
+    else { if (extra.length) extra[0].stop(t); for (const n of [f, g, ...extra]) n.disconnect(); }
   }
   // A choir "aah": a saw stack through two vowel formants.
-  choir(dest, t, notes, dur, vel) {
-    const L = SOUNDTRACK.level.choir * vel / Math.sqrt(notes.length), end = t + dur + 1.8, g = this.gain(0), f1 = this.filter("bandpass", 720, 3.5), f2 = this.filter("bandpass", 1180, 5), g2 = this.gain(.6), src = [];
-    this.swell(g.gain, t, 1.6, L * 2.6, end, 1.8); f1.connect(g); f2.connect(g2); g2.connect(g); g.connect(dest);
+  choir(dest, t, notes, dur, vel, vowel = "aah", rel = 1.8) {
+    const [v1, v2] = SOUNDTRACK.vowels[vowel] || SOUNDTRACK.vowels.aah;
+    const L = SOUNDTRACK.level.choir * vel / Math.sqrt(notes.length), end = t + dur + rel, g = this.gain(0), f1 = this.filter("bandpass", v1, 3.5), f2 = this.filter("bandpass", v2, 5), g2 = this.gain(.6), src = [];
+    this.swell(g.gain, t, 1.6, L * 2.6, end, rel); f1.connect(g); f2.connect(g2); g2.connect(g); g.connect(dest);
     for (const m of notes) {
       if (!this.claim(2, t, end)) continue;
       const o = this.osc("sawtooth", mtof(m), t); o.detune.value = (this.rand() - .5) * 10; o.connect(f1); o.connect(f2); src.push(o);
@@ -446,12 +483,13 @@ export class Soundtrack {
     this.hit(g.gain, t, .002, SOUNDTRACK.level.dulcimer * vel, 1.8);
     this.finish([c1, c2, m], [c1, c2, m, mg, g], end);
   }
-  bell(dest, t, midi, vel) {
-    const end = t + 3.4; if (!this.claim(1, t, end)) return;
-    const f0 = mtof(midi), c = this.osc("sine", f0, t), m = this.osc("sine", f0 * 3.5, t), mg = this.gain(0), p = this.osc("sine", f0 * 2.76, t), pg = this.gain(0), g = this.gain(0);
-    this.hit(mg.gain, t, .001, f0 * 1.6, 2.2); this.hit(pg.gain, t, .001, .35, 1.1);
+  // `cold` (0-1, a dark theme's shade): an inharmonic, shorter, less sweet ring.
+  bell(dest, t, midi, vel, cold = 0) {
+    const decay = 3.3 * (1 - .4 * cold), end = t + decay + .1; if (!this.claim(1, t, end)) return;
+    const f0 = mtof(midi), c = this.osc("sine", f0, t), m = this.osc("sine", f0 * (3.5 + .91 * cold), t), mg = this.gain(0), p = this.osc("sine", f0 * (2.76 + .45 * cold), t), pg = this.gain(0), g = this.gain(0);
+    this.hit(mg.gain, t, .001, f0 * 1.6 * (1 - .35 * cold), 2.2 * (1 - .4 * cold)); this.hit(pg.gain, t, .001, .35 + .2 * cold, 1.1);
     m.connect(mg); mg.connect(c.frequency); c.connect(g); p.connect(pg); pg.connect(g); g.connect(dest);
-    this.hit(g.gain, t, .003, SOUNDTRACK.level.bell * vel, 3.3);
+    this.hit(g.gain, t, .003, SOUNDTRACK.level.bell * vel, decay);
     this.finish([c, m, p], [c, m, mg, p, pg, g], end);
   }
   // Flute, recorder and ney: a soft wave with delayed vibrato and a breath of noise.
@@ -468,9 +506,10 @@ export class Soundtrack {
     this.finish([o, lfo, nz], [o, lfo, lg, nz, bp, bg, f, g], end);
   }
   // A slow sung melody: two detuned saws through the same "aah" formants as the choir pad.
-  choirLine(dest, t, midi, dur, vel) {
+  choirLine(dest, t, midi, dur, vel, vowel = "aah") {
     const end = t + dur + .6; if (!this.claim(3, t, end)) return;
-    const f0 = mtof(midi), a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0, t), f1 = this.filter("bandpass", 720, 3.5), f2 = this.filter("bandpass", 1180, 5), g2 = this.gain(.6), g = this.gain(0);
+    const [v1, v2] = SOUNDTRACK.vowels[vowel] || SOUNDTRACK.vowels.aah;
+    const f0 = mtof(midi), a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0, t), f1 = this.filter("bandpass", v1, 3.5), f2 = this.filter("bandpass", v2, 5), g2 = this.gain(.6), g = this.gain(0);
     a.detune.value = -6; b.detune.value = 6;
     a.connect(f1); b.connect(f1); a.connect(f2); b.connect(f2); f1.connect(g); f2.connect(g2); g2.connect(g); g.connect(dest);
     this.swell(g.gain, t, Math.min(.35, dur * .4), SOUNDTRACK.level.choirLine * vel, end, .55);
@@ -528,13 +567,117 @@ export class Soundtrack {
     this.hit(g.gain, t, .004, SOUNDTRACK.level.tom * vel, .7); this.hit(ng.gain, t, .002, .4, .08);
     this.finish([o, nz], [o, g, nz, lp, ng], end);
   }
-  timp(dest, t, midi, vel) {
-    const end = t + 2.4; if (!this.claim(3, t, end)) return;
+  // `decay` (s): the menace heartbeat uses a short one.
+  timp(dest, t, midi, vel, decay = 2.3) {
+    const end = t + decay + .1; if (!this.claim(3, t, end)) return;
     const f0 = mtof(midi), a = this.osc("sine", f0 * 1.03, t), b = this.osc("sine", f0 * 1.5, t), bg = this.gain(.3), g = this.gain(0), nz = this.noiseSource(t), lp = this.filter("lowpass", 380), ng = this.gain(0);
     a.frequency.exponentialRampToValueAtTime(f0, t + .15);
     a.connect(g); b.connect(bg); bg.connect(g); nz.connect(lp); lp.connect(ng); ng.connect(g); g.connect(dest);
-    this.hit(g.gain, t, .006, SOUNDTRACK.level.timp * vel, 2.3); this.hit(ng.gain, t, .002, .7, .1);
+    this.hit(g.gain, t, .006, SOUNDTRACK.level.timp * vel, decay); this.hit(ng.gain, t, .002, .7, .1);
     this.finish([a, b, nz], [a, b, bg, g, nz, lp, ng], end);
+  }
+
+  // ---- menace: a boss theme's `dark` devices (soundtrack-songs.ts MENACE_DEVICES; Tim, 2026-11-15) ----
+  // Each device is one bounded voice claimed like any other, or a change to a note already playing. No voice outlives its phrase
+  // by more than a breath, and no note starts beyond the step being played (a drop's return is a gain ramp on the bar line).
+  // The low tier leaves out the sub, the rumble, the ponticello and the growl, and keeps the cluster to two notes.
+  // Once a phrase: the sub (and its beating pair) and the rumble. A drop ends on the next bar line with a hit.
+  menaceBar(d, t, idx, barDur) {
+    const k = d.song.dark, root = d.song.root;
+    if (d.dropped) {
+      d.dropped = false;
+      this.timp(d.stems.groove, t, into(root, 38, 49), 1); this.tom(d.stems.groove, t + .01, 1);
+      if (k.cluster) this.cluster(d.stems.bed, t, into(root, 50, 59), k.cluster, barDur * .5, 1.6, .02);
+    }
+    if (idx !== 0 && !d.needBed) return;
+    const len = (8 - idx) * barDur + 1.5;
+    // The low tier (phones that cannot sound a sub) leaves it out, and its beating pair with it.
+    if ((k.sub || k.beat) && this.quality !== "low") this.sub(d.stems.bed, t, into(root, 33, 44), len, k.sub || 0, k.beat || 0);
+    if (k.rumble && this.quality !== "low") this.rumble(d.stems.bed, t, len, k.rumble * (.75 + .25 * d.tier));
+  }
+  // Under each chord: the hidden shadow tone, the cluster, and in a fight the growl and the ponticello.
+  menaceBed(d, t, semis, dur) {
+    const k = d.song.dark, M = SOUNDTRACK.menace, low = this.quality === "low", root = d.song.root + semis[0], dest = d.stems.bed;
+    for (const iv of k.shadow || []) this.drone(dest, t, into(root + iv, 50, 61), dur + .6, M.shadow, 2);
+    if (k.cluster) this.cluster(dest, t, into(root, 50, 59), low ? 2 : k.cluster, dur);
+    if (k.growl && d.tier > 0 && !low) { const n = into(root, 40, 47); this.choir(dest, t, [n, n + 1], dur, M.growl * k.growl, "oo", .7); }
+    if (k.pont && d.tier > 0 && !low && d.voicing) this.pont(dest, t, d.voicing.slice(-2).map((n) => n + 12), dur + .3, k.pont);
+  }
+  // On the grid: the heartbeat, the off-meter accents, the cold bell figure, the dives, and the fall into a drop.
+  menaceStep(d, t, s) {
+    const k = d.song.dark, M = SOUNDTRACK.menace, song = d.song, idx = d.bar % 8, groove = d.stems.groove;
+    const timp = song.drums[DRUM_SET[d.tier]]?.timp;
+    if (k.heart && (s === 0 || s === 2) && (d.tier > 0 || d.bar % 2 === 0) && !(timp && timp[s] !== ".")) this.timp(groove, t, into(song.root, 38, 49), M.heart * k.heart * (s ? .55 : 1) * (d.tier ? 1 : .7), .8);
+    if (k.lurch && d.tier > 0 && k.lurch[s] !== ".") this.tom(groove, t, M.lurch * (SOUNDTRACK.velocity[k.lurch[s]] || .7));
+    if (k.toll && d.bar % k.toll.every === k.toll.every - 1) {
+      const i = k.toll.steps.indexOf(s);
+      if (i >= 0) this.bell(d.stems.motion, t, into(song.root + k.toll.ints[i % k.toll.ints.length], 74, 86), M.toll, 1);
+    }
+    if (k.dive && s === 8 && d.bar % k.dive === k.dive - 1) this.dive(d.stems.bed, t, into(song.root + 7, 67, 78), 24 * d.stepDur, d.tier > 1 ? 19 : 12);
+    if (k.drop && idx === 7 && s === 4 && d.bar >= 4 && d.endAt === Infinity && Math.floor(d.bar / 8) % k.drop === k.drop - 1) {
+      // The whole score, its reverb and echo tails too (the duck), falls away and comes back on the bar line, whatever happens meanwhile.
+      const g = this.duck.gain, back = t + 12 * d.stepDur;
+      g.cancelScheduledValues(t); g.setValueAtTime(1, t); g.linearRampToValueAtTime(M.drop, t + .12); g.setValueAtTime(M.drop, back - .02); g.linearRampToValueAtTime(1, back);
+      d.dropped = true;
+    }
+  }
+  // Bend the oscillators of a held lead note down by 25-60 cents over its second half.
+  sag(oscs, t, dur, r) {
+    const [lo, hi] = SOUNDTRACK.menace.sag, cents = lo + (hi - lo) * r;
+    for (const o of oscs) { const v = o.detune.value; o.detune.setValueAtTime(v, t + dur * .5); o.detune.linearRampToValueAtTime(v - cents, t + dur); }
+  }
+  // A low sine under the drone (vel 0: none); with `beat` (Hz), two voices an octave up beating slowly. One voice.
+  sub(dest, t, midi, dur, vel, beat) {
+    const end = t + dur; if (!this.claim(2, t, end)) return;
+    const M = SOUNDTRACK.menace, f = mtof(midi), rel = Math.min(2, dur * .3), a = this.osc("sine", f, t), g = this.gain(0), src = [a], nodes = [a, g];
+    a.connect(g); g.connect(dest); this.swell(g.gain, t, 3, M.sub * vel, end, rel);
+    if (beat > 0) {
+      const b = this.osc("triangle", f * 2, t), c = this.osc("triangle", f * 2 + beat, t), bg = this.gain(0);
+      b.connect(bg); c.connect(bg); bg.connect(dest); this.swell(bg.gain, t, 4, M.beat, end, rel);
+      src.push(b, c); nodes.push(b, c, bg);
+    }
+    this.finish(src, nodes, end);
+  }
+  // Low noise through two low-passes, breathing slowly. One voice.
+  rumble(dest, t, dur, vel) {
+    const end = t + dur; if (!this.claim(2, t, end)) return;
+    const nz = this.noiseSource(t), lp = this.filter("lowpass", 140, 1), lp2 = this.filter("lowpass", 160, .7), g = this.gain(0), lfo = this.osc("sine", .13, t), lg = this.gain(.35), out = this.gain(1);
+    nz.connect(lp); lp.connect(lp2); lp2.connect(g); g.connect(out); out.connect(dest); lfo.connect(lg); lg.connect(out.gain);
+    this.swell(g.gain, t, 3, SOUNDTRACK.menace.rumble * vel, end, Math.min(2.5, dur * .3));
+    this.finish([nz, lfo], [nz, lp, lp2, g, lfo, lg, out], end);
+  }
+  // Notes a semitone apart, low and murky. A short one (`attack` small) is the stab after a drop.
+  cluster(dest, t, base, size, dur, vel = 1, attack = 1.4) {
+    const end = t + dur + .6, f = this.filter("lowpass", 850, .6), g = this.gain(0), src = [];
+    this.swell(g.gain, t, Math.min(attack, dur * .5), SOUNDTRACK.menace.cluster * vel / Math.sqrt(size), end, .6); f.connect(g); g.connect(dest);
+    for (let i = 0; i < size; i++) {
+      if (!this.claim(2, t, end)) continue;
+      const o = this.osc("sawtooth", mtof(base + i), t); o.detune.value = (this.rand() - .5) * 6; o.connect(f); src.push(o);
+    }
+    if (src.length) this.finish(src, [...src, f, g], end); else for (const n of [f, g]) n.disconnect();
+  }
+  // Sul ponticello: thin, bright, nervous; saws through a high band with a fast tremolo on the level.
+  pont(dest, t, notes, dur, rate) {
+    const end = t + dur + .8, hp = this.filter("highpass", 1500, .8), lp = this.filter("lowpass", 4800, .7), g = this.gain(0), tg = this.gain(.5), lfo = this.osc("sine", rate, t), lg = this.gain(.5), src = [];
+    this.swell(g.gain, t, .8, SOUNDTRACK.menace.pont / Math.sqrt(notes.length), end, .8);
+    hp.connect(lp); lp.connect(g); g.connect(tg); tg.connect(dest); lfo.connect(lg); lg.connect(tg.gain);
+    for (const m of notes) {
+      if (!this.claim(2, t, end)) continue;
+      const o = this.osc("sawtooth", mtof(m), t); o.detune.value = (this.rand() - .5) * 14; o.connect(hp); src.push(o);
+    }
+    if (src.length) this.finish([...src, lfo], [...src, hp, lp, g, tg, lfo, lg], end);
+    else { lfo.stop(t); for (const n of [hp, lp, g, tg, lfo, lg]) n.disconnect(); }
+  }
+  // A falling glissando swell: two saws sliding down `depth` semitones as the filter closes. One voice.
+  dive(dest, t, midi, dur, depth) {
+    const end = t + dur; if (!this.claim(2, t, end)) return;
+    const f0 = mtof(midi), f1 = f0 / Math.pow(2, depth / 12), a = this.osc("sawtooth", f0, t), b = this.osc("sawtooth", f0, t), f = this.filter("lowpass", 1800, .8), g = this.gain(0);
+    b.detune.value = 9;
+    for (const o of [a, b]) { o.frequency.setValueAtTime(f0, t + dur * .2); o.frequency.exponentialRampToValueAtTime(f1, end); }
+    f.frequency.setValueAtTime(1800, t); f.frequency.exponentialRampToValueAtTime(380, end);
+    a.connect(f); b.connect(f); f.connect(g); g.connect(dest);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(SOUNDTRACK.menace.dive, t + dur * .4); g.gain.linearRampToValueAtTime(0, end);
+    this.finish([a, b], [a, b, f, g], end);
   }
 
   // ---- stingers: story beats over the ducked score ----
