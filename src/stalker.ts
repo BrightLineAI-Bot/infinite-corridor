@@ -245,6 +245,14 @@ function unit(x, y) { const m = Math.hypot(x, y) || 1; return { x: x / m, y: y /
 const chance = (key) => (hashSeed(key) % 1000) / 1000;
 
 function setAct(e, kind, t, extra = {}) { e.stalkAct = { kind, t, total: t, ...extra }; }
+// The awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): whatever it was winding up or doing is dropped, and the
+// tendrils it called up that have not yet broken the ground never do; once thawed it begins its form afresh (updateStalker
+// begins a form when it has no act; its kin run again).
+export function cancelStalkerAct(e) {
+  if (!e) return;
+  e.stalkAct = null; e.telegraph = 0; e.stalkStrike = null; e.stalkSlash = null; e.stalkFists = null; e.stalkLift = 0;
+  if (e.stalkErupts?.length) e.stalkErupts = e.stalkErupts.filter((q) => q.struck);
+}
 // Walk (or slide) toward a point; true when it moved.
 function step(e, w, to, speed, dt) {
   const v = unit(to.x - e.x, to.y - e.y), d = dist(e, to), s = Math.min(d, speed * (e.speedMultiplier || 1) * dt);
