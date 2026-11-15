@@ -50,7 +50,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } fro
 import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -2294,9 +2294,9 @@ function drawPentSeal(ctx, o, s, now) {
 }
 // The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
 function drawDread(ctx, w, h, share) {
-  if (!(share > 0)) return; let o = render.dread; const key = `${w}x${h}:${share.toFixed(2)}`;
-  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
-    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
+  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread; // INTERIOR_LIGHT (close-view.ts): a little lighter, still closing in const key = `${w}x${h}:${share.toFixed(2)}`;
+  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5 * D})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
+    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${(.5 + share * .35) * D})`); v.addColorStop(1, `rgba(2,2,6,${(.8 + share * .18) * D})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
 }
 // Release 593: the Starfield penumbra, clear to `inner` tiles round the screen's centre and `dark` by `outer`: the same

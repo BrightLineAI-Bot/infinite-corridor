@@ -745,6 +745,36 @@ export function closeViewMeleeVisualRoute(record, active = false) {
 }
 
 const WALL_EXEMPT = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i;
+// Brighter interiors (Tim, 2026-11-15: "Every room as soon as you go inside is really dark, maybe a little too dark... we can't
+// really see the world around us or interact with it. We have a Lantern, so that's fine"). Close View lights an interior from
+// its theme (CLOSE_VIEW.themes, CLOSE_VIEW_DEEP; the 2D fallback from CLOSE_VIEW.light): the ambient, the carried torch, the
+// placed sources and the fog. A room's darkness is what every surface lacks with no torch or source near: 1 - the ambient (its
+// mean over r, g, b, 0..1). Indoors the ambient is lifted so that only `keep` of that darkness is left (the theme's tint kept),
+// and the fog's near edge moves `fogNear` tiles further out. The fog's far edge (the view's reach, what is drawn at all), the
+// torch, the sources and the theme tables are unchanged, so nothing costs more a frame (one lifted colour a theme, made once).
+// `interior`: keeps, castles, tall towers, great buildings, hives, arcologies, labyrinths, the Pentagon (its dread still
+// shrinks the torch). `deep`: the Deep's floors (CLOSE_VIEW_DEEP), dark by design, lightened only a little. The open world, the
+// Stillworks and the boss Darks are not interiors here and are left as they were. `dread`: the Standard View's Pentagon dread
+// overlay keeps this share of its darkness (a mechanic: it still closes in as the dread grows).
+// The Lantern (spell-slots.ts) is untouched: the torch's reach it lengthens now lights rooms that are no longer black beyond it.
+export const INTERIOR_LIGHT = frozen({
+  version: 1,
+  keep: { interior: .6, deep: .85 }, // share of the darkness left (interior: 40% less; deep: 15% less)
+  fogNear: { interior: 1.2, deep: .4 }, // tiles the fog's near edge moves out (always short of its far edge)
+  dread: .85, // Standard View: the Pentagon's dread overlay at this share of its alpha
+});
+// The darkness (0..1) left where the ambient was `amb` (0..1) in a place of `kind` (none: unchanged).
+export const interiorDarkness = (amb, kind) => (1 - amb) * (INTERIOR_LIGHT.keep[kind] ?? 1);
+// The lifted ambient: a number (0..1), or an rgb array (0..255 or 0..1, as given) scaled to the lifted mean, its tint kept.
+export function interiorAmbient(amb, kind, scale = 1) {
+  if (!(kind in INTERIOR_LIGHT.keep)) return amb;
+  if (typeof amb === "number") return 1 - interiorDarkness(amb, kind);
+  const m = (amb[0] + amb[1] + amb[2]) / 3 / scale; if (!(m > 0)) return amb.map(() => (1 - interiorDarkness(0, kind)) * scale);
+  const k = (1 - interiorDarkness(m, kind)) / m; return amb.map((v) => v * k);
+}
+const DEEP_THEMES = new Set(Object.values(CLOSE_VIEW_DEEP.themes));
+// Which interior light a theme takes: "deep" for the Deep's, else "interior".
+export const interiorLightKind = (th) => (DEEP_THEMES.has(th) ? "deep" : "interior");
 const STILLWORKS_AIR = Object.freeze({ near: 9, far: 22, ambient: [.32, .39, .50], fog: [.038, .051, .077], haze: [.14, .19, .27], hazeBand: [.08, .42] });
 const WORLD_AIR = Object.freeze({ ambient: [.82, .86, .89], fog: [.19, .24, .28], haze: [.30, .36, .41], hazeBand: [.04, .25] });
 const EMPTY_GEOMETRY = new Float32Array(0);
@@ -838,7 +868,7 @@ const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffse
   threat: 0, threatV: 0, threatFor: 0, threatPull: 0, duelPull: 0, duelPullV: 0, // duelPull: the dino duel's boom length (threat.duel)
   // the last frame's projection (for taps): camera, basis, focal length, principal point, pitch
   cx: 0, cy: 0, fx: 0, fy: -1, rx: 1, ry: 0, F: 1, ppx: 0, ppy: 0, cosP: 1, sinP: 0, hc: 1, w: 0, h: 0, valid: false };
-const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, failed: false };
+const GROUND = { atlasY: 0, canvas: null, ctx: null, W: 0, H: 0, ts: 1, torch: null, torchX: NaN, torchY: NaN, torchR: NaN, torchA: NaN, failed: false };
 // cached screen gradients, each rebuilt only when the canvas or its size changes (keys are numbers: nothing is built per frame)
 const SCREEN = { ctx: null, fog: null, fogEnd: 0, fogW: 0, fogH: 0, fogY: NaN, vignette: null, vigW: 0, vigH: 0, warm: null, warmW: 0, warmH: 0, vault: null, vaultH: 0, vaultY: NaN };
 let capturing = false, captured = null, capturedPlayer = null, bareFloor = false, worldCapture = false;
@@ -2000,7 +2030,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const plainWorld = outdoor && flatWorld && !g.map.building;
   cameraScene(g);
   const Cp = closeViewPreset(g), camH = lerp(E.height, outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : Cp.height, mix), camD = lerp(E.distance, boomReach(g), mix), fogShift = (1 - mix) * CLOSE_VIEW.blend.fogShift + mix * (Number(Cp.fogPush) || 0) /* the longer boom pushes the fog out with it */, air = stillworksCloseView(g.map) ? STILLWORKS_AIR : Fg;
-  const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : air.near + fogShift;
+  const lightKind = flatWorld || outdoor || stillworksCloseView(g.map) ? null : interiorLightKind(themeOf(g.map)), amb = interiorAmbient(Lt.ambient, lightKind); // INTERIOR_LIGHT: indoors, a lighter dark
+  const fogFar = flatWorld ? Q.radius + 2 : air.far + fogShift, fogNear = flatWorld ? fogFar * .65 : Math.min(fogFar - 1, air.near + fogShift + (lightKind ? INTERIOR_LIGHT.fogNear[lightKind] : 0));
   const s = CLOSE_VIEW.groundTilePx, R = Q.radius, W = Math.max(12 * s, Math.ceil(2 * (R + 1) * s)), H = W, ts = Q.texScale;
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
@@ -2067,7 +2098,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // GPU scene lights the floor itself, per pixel.
   if (!useGL) { gc.setTransform(ts, 0, 0, ts, gox, goy);
   const fxp = Tx + footX(p) * s, fyp = Ty + footY(p) * s, base = Lt.radius * s;
-  if (!GROUND.torch || GROUND.torchX !== fxp || GROUND.torchY !== fyp || GROUND.torchR !== base) { const gr = gc.createRadialGradient(fxp, fyp, 0, fxp, fyp, base); gr.addColorStop(0, fogA(0)); gr.addColorStop(Lt.inner, fogA(0)); gr.addColorStop(.75, fogA((1 - Lt.ambient) * .7)); gr.addColorStop(1, fogA(1 - Lt.ambient)); GROUND.torch = gr; GROUND.torchX = fxp; GROUND.torchY = fyp; GROUND.torchR = base; }
+  if (!GROUND.torch || GROUND.torchX !== fxp || GROUND.torchY !== fyp || GROUND.torchR !== base || GROUND.torchA !== amb) { const gr = gc.createRadialGradient(fxp, fyp, 0, fxp, fyp, base); gr.addColorStop(0, fogA(0)); gr.addColorStop(Lt.inner, fogA(0)); gr.addColorStop(.75, fogA((1 - amb) * .7)); gr.addColorStop(1, fogA(1 - amb)); GROUND.torch = gr; GROUND.torchX = fxp; GROUND.torchY = fyp; GROUND.torchR = base; GROUND.torchA = amb; }
   const lk = lightR / Lt.radius; gc.translate(fxp, fyp); gc.scale(lk, lk); gc.translate(-fxp, -fyp); gc.fillStyle = GROUND.torch; gc.fillRect(fxp - W / lk, fyp - H / lk, 2 * W / lk, 2 * H / lk); gc.setTransform(ts, 0, 0, ts, gox, goy); }
   // the camera for this frame. Version 4: the boom hangs from the follow point (CLOSE_VIEW.camera.follow), not the feet
   let fx = Math.cos(CAM.yaw), fy = Math.sin(CAM.yaw), rx = -fy, ry = fx; const dt = CAM.valid ? CAM.dt : 1; let followSnapped = false;
@@ -2255,7 +2286,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       // antialiased seams between separately filled quads showed as hairlines that shimmered as the view moved)
       const sm = CLOSE_VIEW.edges.seam, bl = Math.hypot(s1x - s0x, s1y - s0y) || 1, tl = Math.hypot(s2x - s3x, s2y - s3y) || 1, bux = (s1x - s0x) / bl * sm, buy = (s1y - s0y) / bl * sm, tux = (s2x - s3x) / tl * sm, tuy = (s2y - s3y) / tl * sm;
       const fo = n * 8; faceXY[fo] = s0x - bux; faceXY[fo + 1] = s0y - buy; faceXY[fo + 2] = s1x + bux; faceXY[fo + 3] = s1y + buy; faceXY[fo + 4] = s2x + tux; faceXY[fo + 5] = s2y + tuy; faceXY[fo + 6] = s3x - tux; faceXY[fo + 7] = s3y - tuy;
-      const dl = Math.hypot(mx - ox, my - oy) / lightR, depthMid = (d0 + d1) / 2, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (depthMid - fogNear) / (fogFar - fogNear)));
+      const dl = Math.hypot(mx - ox, my - oy) / lightR, depthMid = (d0 + d1) / 2, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (depthMid - fogNear) / (fogFar - fogNear)));
       faceLevel[n] = Math.round(Math.pow(Math.max(0, lit * (1 - fog)), Fg.gamma) * (L - 1)); faceStyle[n] = faces[o + 8]; faceOrient[n] = nx !== 0 ? 0 : 1; faceLow[n] = faces[o + 9]; faceGeo[n] = fi; faceU0[n] = u0; faceU1[n] = u1;
       // the cut-away: only a face across (or within cutPad of) the line from the camera to the Wayfarer. It used to be any face
       // nearer than the Wayfarer whose screen box overlapped theirs: close to a wall that ghosted whole runs of the walls
@@ -2276,7 +2307,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     if (q.sx + A.halfWidth * sc * k < 0 || q.sx - A.halfWidth * sc * k > w || q.sy - nativeBoardTop(d.enemy, sc, d.nativeHeight) * k > h || q.sy + A.below * k < 0) continue;
     if (n >= N) grow();
-    const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - Lt.ambient) + Lt.ambient, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
+    const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
     boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? (kept ? 0 : closeViewCreatureFog(q.depth, fogNear, fogFar) * (d.enemy ? 1 - closeViewCreatureSolidWeight(d.enemy, g, g.paused ? 0 : CAM.dt) : 1)) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy || LOOK.key === d.nativeAux?.source))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
@@ -2717,7 +2748,7 @@ const THEME_GL = new Map(); // theme id -> its colours as 0..1 arrays (made once
 function themeGL(th) {
   let t = THEME_GL.get(th); if (t) return t; const W = th.wall, Fl = th.floor, L = th.light;
   t = { wall: rgb01(W.rgb), mortar: rgb01(W.mortar), damp: rgb01(W.dampRGB), floor: rgb01(Fl.rgb), joint: rgb01(Fl.joint), rug: rgb01(Fl.rug), ceil: rgb01(th.ceiling.rgb), deco1: rgb01(th.deco1), deco2: rgb01(th.deco2), glow: rgb01(th.glow || [255, 150, 80]),
-    torch: rgb01(L.torch), amb: rgb01(L.ambient), fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
+    torch: rgb01(L.torch), amb: rgb01(L.ambient), ambIn: rgb01(interiorAmbient(L.ambient, interiorLightKind(th), 255)) /* INTERIOR_LIGHT: indoors */, fog: rgb01(th.fog.rgb), haze: rgb01(th.fog.hazeRGB),
     caveA: Float32Array.from((th.cave || []).slice(0, 4).concat([0, 0, 0, 0]).slice(0, 4)), caveB: Float32Array.from([th.cave?.[4] || 0, th.cave?.[5] || 1.5, 0, 0]) }; // 2026-11-11: the Deep's living rock
   THEME_GL.set(th, t); return t;
 }
@@ -4249,7 +4280,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const Lth = th.light, Fo = th.fog, shrink = lightR / Lt.radius, fogK = fogNear - CLOSE_VIEW.fog.near;
   F.fogNear = air || flatWorld ? fogNear : Fo.near + fogK; F.fogFar = air || flatWorld ? fogFar : Fo.far + fogK; F.reach = F.fogFar + 2;
   F.fog.set(air?.fog || tg.fog); F.haze.set(air?.haze || tg.haze); F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar; F.fogP[2] = (air?.hazeBand || Fo.haze)[0]; F.fogP[3] = (air?.hazeBand || Fo.haze)[1];
-  F.amb.set(air?.ambient || tg.amb); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
+  F.amb.set(air?.ambient || (flatWorld ? tg.amb : tg.ambIn)); F.torch.set(tg.torch); F.torchP[0] = Lth.reach * shrink; F.torchP[1] = Lth.strength; F.torchP[2] = Lth.height + surfaceZ(g.map, footX(p), footY(p)); F.torchP[3] = .3;
   F.grade[0] = th.grade[0]; F.grade[1] = th.grade[1]; F.grade[2] = th.grade[2]; F.grade[3] = 1 / th.grade[3]; F.finish[0] = Q.vignette ? th.vignette : th.vignette * .6; F.finish[1] = .2; F.finish[2] = Q.relief ? 1 : 0; // finish: vignette, the haze's glow, fine detail (off on the low tier)
   { const S2 = At.silhouette, S3 = At.silhouetteFoe; F.sil[0] = S2[0] / 255; F.sil[1] = S2[1] / 255; F.sil[2] = S2[2] / 255; F.silFoe[0] = S3[0] / 255; F.silFoe[1] = S3[1] / 255; F.silFoe[2] = S3[2] / 255; }
   F.time = reduce ? 0 : now; F.gmapK = s * ts; F.gmapX = Tx * ts + gox; F.gmapY = Ty * ts + goy; F.atlasY = GROUND.atlasY; F.mip = Q.mip !== false; F.aniso = Q.aniso || 1; F.ceilH = hallHeight(g.map); F.terrain = interiorTerrain(g.map);
