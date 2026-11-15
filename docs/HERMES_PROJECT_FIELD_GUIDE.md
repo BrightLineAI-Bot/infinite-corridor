@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 972 — Arc Wave resume fix
+
+Fable review of r962→r971 (pre-publish, 2026-11-15): normalizePendingToolUse rejected the 5.5-speed Arc Wave crescents (release 966), so a pending Close View press was dropped on save.
+
+**CODE:** `action-motion.ts` `BLUNDERBUSS_SHOT_SPEEDS` [14, 11, 5.5] (plain, pre-966 Arc Wave, current `ARC_WAVE.speed`); `normalizePendingToolUse` admits any of them for a Blunderbuss prepared shot. Tests: `arc-wave-resume` (2: the table includes `ARC_WAVE.speed`; a saved pending Arc Wave press survives a snapshot and reload and fires its crescents).
+
+**BOUNDARY:** Validator only; no gameplay, numbers or save shape change (schema 14). Older pending records (speed 14 or 11) still load.
+
 ## Release 971 — Close View creatures: solid, posed and refined
 
 Tim, 2026-11-14: ordinary creatures "appear too spectral", "fade in and out of view too frequently", several are cardboard cutouts, and "they just stand next to me" with no real windups or swings. He asked for a couple of visual refinement passes per creature, with no added phone cost.
