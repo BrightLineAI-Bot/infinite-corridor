@@ -1,7 +1,8 @@
 // Realms creature pass (Tim, 2026-11-15: a second visual pass on every ordinary creature to a "triple-A feel" without exceeding
 // the phone budget). The Pentagon and adventure bodies keep their exact triangle counts; every own attack now has its own authored
 // joint row (no shared '*' fallback); the Weeping Saint's head rides a neck joint; the Knellkeeper is one body grown out of its bell;
-// eyes and lamps use the shared emissive colours so they are lit from within like the rest of the bestiary.
+// eyes and lamps use the shared emissive colours so they are lit from within like the rest of the bestiary. Standard View keeps
+// the existing art (Tim, 2026-11-15); only the Knellkeeper strike and the Slagwright sweep gain motion, the rest pose unchanged.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatant } from '../src/combat.ts';
