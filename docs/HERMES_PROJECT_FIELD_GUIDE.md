@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 979 — Great-tree Standard View blackout fix
+
+Tim, 2026-11-15 (save at section -186,-115): toggling the Oculus at a great tree left the top half of the Standard View black.
+
+**CODE:** `renderer.ts` `drawGroundCache` (CV_TREE_BLACKOUT) keeps the cached ground image's band above row 0 (`top`, where lifted tiles such as a great tree's trunk and crown are drawn) whenever the image is rebuilt with unchanged tiles and tile size; before, a rebuild for a new scale alone measured no band and clipped everything lifted above row 0. Close View's leave blend draws the Standard View under `ctx.scale(z)`; `close-view.ts` exports `closeViewLeaving()` for the duration of that zoom, and while it is true a scale change alone keeps the current image and draws it scaled instead of rebuilding it every frame. Test: `cv-tree-blackout` (2).
+
+**BOUNDARY:** Presentation only: generation, saves, the tree package and Close View's own scene are unchanged. Reduced Motion skips the blend as before. The band is still measured from scratch whenever any tile, the tile size, the map, the building or the scar surface changes. During the ~0.42 s leave zoom the ground is upscaled under the fading snapshot. The void-scar overlay still rebuilds on a scale change (it has no band to lose).
+
 ## Release 978 — Oculus button and slots A to D
 
 Tim, 2026-11-15: give the Oculus its own button, make the utility button a fourth preset slot, and letter the slots A, B, C, D in on-screen order.
