@@ -126,3 +126,22 @@ test('standard view limbs follow the attack clock: drawn back and held in the wi
     assert.equal(hit, trace(kind, at('recover', .15), 'attack'), `${kind} follows through`);
   }
 });
+
+test('Pentagon standard view: limbs draw back and hold, strike, follow through and settle on the attack clock', async () => {
+  const { drawPackMonster } = await import('../src/monster-render.ts');
+  const trace = (kind: string, pack: any) => {
+    const calls: any[] = [], ctx: any = new Proxy({ globalAlpha: 1, createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }), measureText: () => ({ width: 1 }) },
+      { get: (o: any, k: string) => (k in o ? o[k] : (...a: any[]) => { calls.push([k, ...a.map((v) => typeof v === 'number' ? Math.round(v * 10) : v)]); }), set: (o: any, k: string, v: any) => (o[k] = v, true) });
+    drawPackMonster(ctx, { kind, x: 2, y: 2, hp: 10, maxHp: 10, ai: {}, facingX: 1, pack }, 60, 0, 'right');
+    return JSON.stringify(calls);
+  };
+  for (const [kind, id] of [['weepingSaint', 'clawSweep'], ['mirrorShade', 'longStab'], ['thunderhorn', 'bite'], ['veilSpinner', 'bite'], ['siegeBeetle', 'mortarVolley'], ['hangedChoir', 'sigilScatter']]) {
+    const A = ATTACK_MODULES[id], at = (phase: string, p: number) => ({ attack: id, phase, t: (phase === 'windup' ? A.windup : A.recover) * (1 - p) });
+    const idle = trace(kind, { state: 'move' }), early = trace(kind, at('windup', .3)), held = trace(kind, at('windup', .8));
+    assert.notEqual(early, idle, `${kind} draws back`); assert.notEqual(held, early, `${kind} keeps drawing back`);
+    assert.equal(held, trace(kind, at('windup', .99)), `${kind} holds to the blow`);
+    const hit = trace(kind, at('recover', .05));
+    assert.notEqual(hit, held, `${kind} strikes`); assert.equal(hit, trace(kind, at('recover', .15)), `${kind} follows through`);
+    assert.notEqual(trace(kind, at('recover', .99)), hit, `${kind} settles`);
+  }
+});

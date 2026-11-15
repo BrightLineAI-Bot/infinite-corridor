@@ -41,6 +41,8 @@ function stamp(ctx, q, draw) {
 }
 // d (draw-back) and h (strike), 0..1 in `steps` frames, from the pack attack's own phase clock; without one, the state alone.
 const smooth = (t) => t * t * (3 - 2 * t);
+// Shared with monster-render.ts (the Pentagon creatures): writes d, h and the frame key dq into `out` and returns it.
+export function attackLimbs(e, state, out) { limbClock(e, state, out); return out; }
 function limbClock(e, state, r) {
   const L = ADVENTURE_SPRITE.limb, s0 = e?.pack, spec = s0?.attack ? ATTACK_MODULES[s0.attack] : null, t = Number(s0?.t);
   let d = state === "windup" ? 1 : 0, h = state === "attack" ? 1 : 0;
