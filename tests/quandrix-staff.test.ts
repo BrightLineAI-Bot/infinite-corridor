@@ -106,7 +106,7 @@ test('Mage\'s Hand: hold clenches only the last hand, drags foes toward the Wayf
   assert.ok(Math.hypot(e.x + .5 - (r.g.player.x + .5), e.y - r.g.player.y) < 2, 'brought in to the Wayfarer');
 });
 
-test('Mage\'s Hand: a far fist bursts where it is; letting go bursts at once; the grab cap; bosses hold their ground', () => {
+test('Mage\'s Hand: a far fist bursts where it is; letting go early leaves it working until its time (2026-11-14); the grab cap; bosses hold their ground', () => {
   // far: the hand has drifted over four tiles; the fist cannot get home in its hold, and bursts out there
   { const { g } = arena([[4.1, 0]], { mageHand: true }), e = g.enemies[0]; let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, 2600);
     g.player.attackReadyAt = 0; press(g, t); const h = latestHand(g); t = run(g, t, t + 220 + F.time * 1000 + 100, () => true);
@@ -115,7 +115,8 @@ test('Mage\'s Hand: a far fist bursts where it is; letting go bursts at once; th
   // early release
   { const { g } = arena([[2.4, 0]], { mageHand: true }), e = g.enemies[0]; let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + 300);
     g.player.attackReadyAt = 0; press(g, t); t = run(g, t, t + 240, () => true); assert.equal(g.quandrix.hold.mode, 'fist'); const before = taken(e);
-    run(g, t, t + 40, () => false); assert.equal(g.quandrix.hold.on, false, 'let go: it bursts at once'); assert.ok(taken(e) > before); }
+    t = run(g, t, t + 40, () => false); assert.ok(g.quandrix.hold.on && g.quandrix.hold.released, 'let go: it stays (Tim, 2026-11-14)'); assert.equal(taken(e), before, 'no burst yet');
+    run(g, t, t + F.time * 1000, () => false); assert.equal(g.quandrix.hold.on, false); assert.ok(taken(e) > before, 'it bursts when its time is up'); }
   // the grab cap
   { const foes = Array.from({ length: 7 }, (_, i) => [2.4 + (i % 2) * .15, -.45 + i * .15]); const { g } = arena(foes, { mageHand: true }); let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + 500);
     g.player.attackReadyAt = 0; press(g, t); t = run(g, t, t + 700, () => true); assert.equal(g.quandrix.hold.n, F.maxGrab, `${g.quandrix.hold.n} held`); }
@@ -151,7 +152,8 @@ test('awakened with Mage\'s Hand: a suction cup pulls foes in while it is reeled
   assert.ok(h.x < h0 - .5, `reeled toward the Wayfarer (${h0} -> ${h.x})`);
   for (const e of [b, c]) assert.ok(Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) < 1.2, `${e.id} pulled into the hand`);
   assert.ok(Math.abs(boss.x - bx) < 1e-3, 'the boss is not pulled');
-  const before = taken(a); run(g, t, t + 60, () => false); assert.equal(g.quandrix.hold.on, false); assert.ok(taken(a) > before, 'then it bursts');
+  const before = taken(a); t = run(g, t, t + 60, () => false); assert.ok(g.quandrix.hold.released, 'let go early: it lingers (2026-11-14)');
+  run(g, t, t + S.max * 1000, () => false); assert.equal(g.quandrix.hold.on, false); assert.ok(taken(a) > before, 'then it bursts');
 });
 
 test('Mage\'s Hand is a staff-only passive; a plain staff simply casts', () => {
@@ -193,7 +195,7 @@ function roundTrip(g, now) {
   const v = validateJourney(assembleSave(structuredClone(main), new Map(structuredClone(puts))));
   assert.equal(v.health, 'healthy', v.error); return v.save;
 }
-test('saves: the staff is an ordinary item; a reload mid-hold resolves safely with no hand, no hold and no burst', () => {
+test('saves: the staff is an ordinary item; a reload mid-hold resumes the hand as let go (2026-11-14), with no other hands', () => {
   const s = freshSave(); s.equipment.primary = staff(12, { awakened: { resonance: 'x', version: 1 }, extra: 'kept' });
   const back = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(back.version, 14); assert.ok(isQuandrixStaff(back.equipment.primary)); assert.equal(back.equipment.primary.extra, 'kept');
   assert.equal(primaryProfile(back.equipment.primary), PRIMARY_PROFILES[QUANDRIX_STAFF.key]);
@@ -203,10 +205,10 @@ test('saves: the staff is an ordinary item; a reload mid-hold resolves safely wi
   const e = Object.assign(createCombatant('ashling', g.player.x + 1.3, g.player.y), { id: 'qs-held', hp: 1e6, maxHp: 1e6 }); g.enemies = [e];
   let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + 200);
   g.player.attackReadyAt = 0; press(g, t); t = run(g, t, t + 500, () => true); assert.ok(g.quandrix.hold.on, 'holding');
-  const saved = roundTrip(g, t); assert.ok(!JSON.stringify(saved).includes('"quandrix"'), 'nothing of the hold is saved');
-  const h = new Game(saved, 50000); assert.equal(h.quandrix, undefined); assert.ok(h.quandrixEquipped());
+  const saved = roundTrip(g, t); assert.ok(!JSON.stringify(saved).includes('"quandrix"'), 'no runtime pools are saved'); assert.equal(saved.session.playerRuntime.quandrixHold?.mode, 'fist', 'the hold is');
+  const h = new Game(saved, 50000); assert.ok(h.quandrix?.hold.on && h.quandrix.hold.released, 'restored as let go'); assert.ok(h.quandrixEquipped());
   const foe = h.enemies.find((q) => q.id === e.id); if (foe) { assert.ok(Number.isFinite(foe.x) && Number.isFinite(foe.y)); }
-  h.update(.02, { state: { x: 0, y: 0 }, consume: () => false, held: () => true }, 50020); assert.ok(!h.quandrix || !h.quandrix.hold.on, 'no hold resumes');
+  h.update(.02, { state: { x: 0, y: 0 }, consume: () => false, held: () => true }, 50020); assert.ok(h.quandrix.hold.on && h.quandrix.hold.released, 'it resumes as let go'); assert.equal(liveHands(h), 1, 'only the held hand');
   // pause: everything runs on frame time, so a paused game holds still
   g.setPaused(true, t); const x = g.quandrix.hold.hand.x, held = g.quandrix.hold.held; g.setPaused(false, t + 5000);
   assert.equal(g.quandrix.hold.hand.x, x); assert.equal(g.quandrix.hold.held, held);

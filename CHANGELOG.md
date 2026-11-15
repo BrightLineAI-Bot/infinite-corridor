@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release 970: Great Sweep freeze cancels the foe's wind-up, and freeze resistance stops climbing at the third freeze. Hammerfall clap: walls stop the lines, which are a fifth longer and slide out 1.5 tiles, and they draw foes in as they slam shut (bosses and elites hold). Quandrix Staff: let go of the Mage's Hand fist, the awakened slam or the suction cup early and it stays, working, until its charge runs out, then bursts where it is (a gold-window release still bursts at once). Transpose buffs all magic damage, now including the Quandrix Staff. Iron Fists: a HUD meter shows Perfect Timing! or Perfect Rhythm! for the chain's current level.
+- Release 969: Arc Wave: the three small crescents now carry on much farther (20 tiles), still spreading, long after the fast great waves have dissipated, with their own live cap so they never block other shots or a press.
 - Release 968: Awakened Hammerfall claps: when the hammer lands, two parallel lines of energy slide apart from it, hold, and slam back together. One extra hit on every foe between them, on top of the hammer's blow, its Echo copies and the Corridor Golem.
 - Release 967: The awakened Great Sweep freezes whatever its blade touches, and with Mirage of Blades whatever the thrown blades cut. Ordinary foes freeze at a touch. Elites and bosses (guardians, world beasts, Gate Revenants) fill a freeze meter, are slowed as it fills, and freeze for a moment when it is full. Each later freeze takes more and lasts less, and a guard after every thaw means nothing can be held frozen.
 - Release 966: Arc Wave: the Blunderbuss's three crescents now fly slower and fan out in a wider cone; with Echo glyphs, the great waves race out much faster, overtaking the crescents within a couple of tiles.

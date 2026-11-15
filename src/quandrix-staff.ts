@@ -10,13 +10,21 @@
 // - Mage's Hand (a selectable Lattice passive, lattice-fields.ts TOOL_FORMS["mages-hand"]; nothing with another weapon):
 //   holding Attack past `hold.grace` s clenches the most recently cast live hand into a fist. The fist grabs every foe it
 //   touches (at most `fist.maxGrab`) and drags them toward the Wayfarer; after `fist.time` s it bursts wherever it is (far away,
-//   it never got home), and letting go of Attack bursts it at once. The burst strikes everything within `fist.burst.radius`.
+//   it never got home). The burst strikes everything within `fist.burst.radius`. Letting go early (Tim, 2026-11-14) no longer
+//   ends it: see "Let go" below.
 // - Awakened (constellation.ts awaken; this replaces the crescent for the staff): holding Attack slams the most recent hand
 //   down where it is. While held it strikes everything under it every `slam.tick` s. A ring round the Wayfarer fills toward the
-//   perfect window (`slam.perfect`, s after the slam); letting go inside it gives the strongest burst; letting go early or late
-//   a weaker one, and holding to `slam.max` overcharges it and it bursts on its own for less than a perfect release.
+//   perfect window (`slam.perfect`, s after the slam); letting go inside it bursts at once for the strongest burst, and holding
+//   to `slam.max` overcharges it and it bursts on its own for less than a perfect release.
 // - Awakened with Mage's Hand: the slammed hand becomes a suction cup: it pulls foes within `suction.radius` into itself (at
 //   most `suction.maxPull`) while it is reeled back toward the Wayfarer, then bursts by the same release rules.
+// - Let go (Tim, 2026-11-14: "if you let go of the charge, the slam will just stay there, and then it'll explode once its timer
+//   is up"): letting go of Attack before the charge is done (any time for the fist; outside the gold window for the slam and
+//   the suction cup) leaves the hand live (`hold.released`). It goes on exactly as while held (the fist grabs, drags and is
+//   reeled home, the slam ticks, the suction cup pulls and is reeled home) on the same charge clock, and when that clock runs
+//   out (`fist.time`, `slam.max`) it bursts where it is, home or not, for the full charge's burst (`fist.burst.share`,
+//   `slam.burst.released`). The Wayfarer is free at once: a press while it lingers casts an ordinary hand (never a second
+//   hold; `release.tapWhileLive`), and a knock-down no longer drops a hand already let go.
 // - Bosses, world beasts, elites and the other anchored foes (`anchored`) are never grabbed, dragged or pulled (as the
 //   Gravity Well's boss rule holds them); they still take every blow and the burst.
 // - Echo glyphs and the Shadow Clone (Tim, 2026-11-13: yes to both): an Echo in the weapon casts an echo hand from the
@@ -25,8 +33,9 @@
 //   and dissipate by the same rules, drawn fainter, in their own small pool (`extra.maxLive`, the oldest giving way), so the
 //   Wayfarer's five and their oldest-gives-way rule never change; a hold never takes one (latestHand reads only her own).
 // - Bounded: hands, the hold and the burst flashes are fixed pools made once (game.quandrix), reused, never grown; nothing
-//   is allocated per frame. Everything runs on frame time (dt), so pause and background stop it exactly. Runtime only: a
-//   reload drops the hands and any hold, and grabbed foes simply stay where they were dragged (no burst, no damage).
+//   is allocated per frame. Everything runs on frame time (dt), so pause and background stop it exactly. A reload drops the
+//   drifting hands; the held or let-go hand is saved (playerRuntime.quandrixHold, `release.record`, savedQuandrixHold) and
+//   resumes as let go (the button is up after a reload), on its charge clock, with the foes it holds, and bursts on time.
 // combat.ts enemyBodyRadius, restated so this module stays a leaf (lattice-fields.ts reads its numbers).
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38);
 
@@ -35,10 +44,14 @@ export const QUANDRIX = Object.freeze({
   damageType: "magic", // every blow (hands, ticks, bursts) is magic: never scattered as plain steel is
   hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .32, maxLive: 5, lift: .45, stun: .08, step: .2 }),
   hold: Object.freeze({ grace: .2 }),
+  // Let go before the charge is done (Tim, 2026-11-14): the hand lingers, keeps working and bursts when its clock runs out.
+  // `tapWhileLive`: while one lingers a held press is a plain hand (one hold at a time). `record`: its saved shape's version.
+  release: Object.freeze({ tapWhileLive: true, record: 1 }),
   fist: Object.freeze({ time: 1.4, speed: 2, arrive: 1, grab: .35, maxGrab: 4, pull: 9, hug: .3, slip: 2.5,
     burst: Object.freeze({ radius: 1.6, share: 2.2, stun: .5 }) }),
   slam: Object.freeze({ tick: .25, radius: 1.4, tickShare: .22, perfect: Object.freeze([1, 1.3]), max: 2, stun: .1,
-    burst: Object.freeze({ radius: 1.8, early: Object.freeze([.8, 1.4]), perfect: 2.6, late: 1.4, overcharge: 1.6, stun: .6 }) }),
+    burst: Object.freeze({ radius: 1.8, early: Object.freeze([.8, 1.4]), perfect: 2.6, late: 1.4, overcharge: 1.6, stun: .6,
+      released: 1.6 }) }), // `released`: a slam let go outside the gold window bursts at `max` for this (the full charge's, as an overcharge)
   suction: Object.freeze({ radius: 3.2, pull: 3.2, maxPull: 6, reel: 2.6, arrive: 1, hug: .35 }),
   // Foes that hold their ground (the Gravity Well's boss rule, widened to every heavy kind): never grabbed or pulled.
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
@@ -49,7 +62,7 @@ export const QUANDRIX = Object.freeze({
   view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35, staff: .89 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff }),
-  messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches." }),
+  messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches.", released: "The hand you let go bursts." }),
 });
 
 // ---------------------------------------------------------------- pure rules
@@ -76,14 +89,14 @@ export function quandrixState(game) {
     seq: 0, where: "",
     hands: Array.from({ length: QUANDRIX.hand.maxLive }, newHand),
     press: { on: false, held: 0, action: "", dx: 1, dy: 0 },
-    hold: { on: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull) }, () => ""), n: 0 },
+    hold: { on: false, released: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull) }, () => ""), n: 0 },
     flashes: Array.from({ length: QUANDRIX.flash.max }, () => ({ life: 0, x: 0, y: 0, r: 0, kind: "" })),
     extras: Array.from({ length: QUANDRIX.extra.maxLive }, newHand), // echo and clone hands (never a hold's)
     queue: Array.from({ length: QUANDRIX.extra.queue }, () => ({ on: false, left: 0, dx: 1, dy: 0, power: 0 })), // Echo hands to come
   });
 }
 const clearHits = (h) => { for (const k in h.hits) delete h.hits[k]; };
-function endHold(K) { const H = K.hold; H.on = false; H.mode = ""; H.hand = null; H.held = 0; H.tick = 0; H.n = 0; for (let i = 0; i < H.grab.length; i++) H.grab[i] = ""; }
+function endHold(K) { const H = K.hold; H.on = false; H.released = false; H.mode = ""; H.hand = null; H.held = 0; H.tick = 0; H.n = 0; for (let i = 0; i < H.grab.length; i++) H.grab[i] = ""; }
 // Drops every hand and any hold (an area change, the staff put away, a fall): nothing bursts.
 export function clearQuandrix(game) {
   const K = game.quandrix; if (!K) return;
@@ -151,13 +164,13 @@ function castCopies(game, now, ux, uy, power) {
 // `hold.grace` and it is a tap (a hand); hold on and the hold begins (tickQuandrix). Otherwise a hand at once.
 export function quandrixPress(game, now, dir, action = null) {
   const K = quandrixState(game), p = game.player;
-  if (K.press.on || K.hold.on || !(p.hp > 0) || now < (p.attackReadyAt || 0)) return false;
-  const d = game.quandrixAim(dir); K.where = game.orreryWhere();
-  if (!action || !holdMode(game)) return !!castHand(game, now, d.x, d.y);
+  if (K.press.on || (K.hold.on && !K.hold.released) || !(p.hp > 0) || now < (p.attackReadyAt || 0)) return false;
+  const d = game.quandrixAim(dir); if (!K.hold.on) K.where = game.orreryWhere();
+  if (!action || !holdMode(game) || (K.hold.on && QUANDRIX.release.tapWhileLive)) return !!castHand(game, now, d.x, d.y); // a hand let go still lingering: a plain hand
   const P = K.press; P.on = true; P.held = 0; P.action = action; P.dx = d.x; P.dy = d.y; return true;
 }
 function beginHold(game, now) {
-  const K = game.quandrix, P = K.press, mode = holdMode(game); if (!mode) return false;
+  const K = game.quandrix, P = K.press, mode = holdMode(game); if (!mode || K.hold.on) return false;
   const hand = latestHand(game) || castHand(game, now, P.dx, P.dy); if (!hand) return false;
   const H = K.hold; endHold(K);
   H.on = true; H.mode = mode; H.hand = hand; H.held = 0; H.tick = QUANDRIX.slam.tick; H.power = Number(game.quandrixPower()) || 0; H.action = P.action;
@@ -207,6 +220,7 @@ function burst(game, x, y, radius, share, stun, now, kind) {
 function finish(game, now, held) {
   const K = game.quandrix, H = K.hold, h = H.hand, S = QUANDRIX.slam;
   if (H.mode === "fist") burst(game, h.x, h.y, QUANDRIX.fist.burst.radius, QUANDRIX.fist.burst.share, QUANDRIX.fist.burst.stun, now, "fist");
+  else if (H.released) { burst(game, h.x, h.y, S.burst.radius, S.burst.released, S.burst.stun, now, "released"); game.message = QUANDRIX.messages.released; } // let go early: its clock ran out
   else { const w = slamWindow(held); burst(game, h.x, h.y, S.burst.radius, slamBurstShare(held), S.burst.stun, now, w);
     if (w === "perfect") game.message = QUANDRIX.messages.perfect; else if (w === "overcharge") game.message = QUANDRIX.messages.overcharge; }
   h.on = false; clearHits(h); endHold(K);
@@ -214,12 +228,16 @@ function finish(game, now, held) {
 function tickHold(game, dt, now, held) {
   const K = game.quandrix, H = K.hold, h = H.hand, F = QUANDRIX.fist, S = QUANDRIX.slam, U = QUANDRIX.suction;
   if (!h?.on) { endHold(K); return; }
+  if (!held && !H.released) { // let go: a slam in the gold window bursts now (the perfect release); anything else lingers on its clock
+    if (H.mode !== "fist" && slamWindow(H.held) === "perfect") { finish(game, now, H.held); return; }
+    H.released = true;
+  }
   H.held += H.mode === "fist" ? dt : dt / (game.chargeQuicken ? game.chargeQuicken(S.perfect[0]) : 1); // the slam's charge (not the fist's grab time) fills sooner with Gathered Breath
   if (H.mode === "fist") {
     reel(game, h, F.speed, F.arrive, dt);
     for (const e of game.enemies) { if (H.n >= F.maxGrab) break; if (hittable(e) && !staffAnchored(e) && !hasGrab(H, e.id) && touching(e, h.x, h.y, F.grab)) H.grab[H.n++] = e.id; }
     dragHeld(game, H, h.x, h.y, F.pull, F.hug, F.slip, dt, now);
-    if (!held || H.held >= F.time) finish(game, now, H.held);
+    if (H.held >= F.time) finish(game, now, H.held);
     return;
   }
   if (H.mode === "suction") {
@@ -229,7 +247,7 @@ function tickHold(game, dt, now, held) {
   }
   H.tick += dt;
   while (H.tick >= S.tick) { H.tick -= S.tick; for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= S.radius + Math.max(0, enemyBodyRadius(e) - .38)) game.quandrixBlow(e, H.power * S.tickShare, now, S.stun, h.x, h.y); }
-  if (H.held >= S.max || !held) finish(game, now, H.held);
+  if (H.held >= S.max) finish(game, now, H.held);
 }
 // Every frame while game.quandrix exists. `held`: whether the press's (or hold's) button is still down.
 export function tickQuandrix(game, dt, now, held) {
@@ -237,7 +255,7 @@ export function tickQuandrix(game, dt, now, held) {
   const p = game.player;
   if (K.where !== game.orreryWhere() || !game.quandrixEquipped() || !(p.hp > 0)) { clearQuandrix(game); K.where = game.orreryWhere(); return; }
   for (const f of K.flashes) if (f.life > 0) f.life = Math.max(0, f.life - dt);
-  if (now < (p.stunnedUntil || 0)) { K.press.on = false; if (K.hold.on) { const h = K.hold.hand; if (h) { h.on = false; clearHits(h); } endHold(K); } } // knocked down: the hold is lost, nothing bursts
+  if (now < (p.stunnedUntil || 0)) { K.press.on = false; if (K.hold.on && !K.hold.released) { const h = K.hold.hand; if (h) { h.on = false; clearHits(h); } endHold(K); } } // knocked down: a hold still held is lost, nothing bursts (a hand let go keeps on)
   const P = K.press;
   if (P.on) {
     if (!held) { P.on = false; castHand(game, now, P.dx, P.dy); }
@@ -247,6 +265,41 @@ export function tickQuandrix(game, dt, now, held) {
   for (const q of K.queue) { if (!q.on) continue; q.left -= dt; if (q.left <= 0) { q.on = false; const c = centre(game); castExtra(game, c.x, c.y, q.dx, q.dy, q.power, "echo"); } } // as the swing's Echo: from where the Wayfarer is now
   for (const h of K.hands) if (h.on && h.mode === "drift") driftHand(game, h, dt, now);
   for (const h of K.extras) if (h.on) driftHand(game, h, dt, now);
+}
+
+// ---------------------------------------------------------------- exact resume (playerRuntime.quandrixHold)
+// The live hold (held or let go) as saved: where it is, its heading, its charge clock, the staff's power it was made with and
+// the foes it holds. Times are dt clocks (no absolute ms), so the record needs no rebasing. Null when there is none.
+const HOLD_MODES = Object.freeze(["fist", "slam", "suction"]);
+const foeId = (v) => typeof v === "string" ? v.slice(0, 120) : Number.isFinite(v) ? v : null;
+export function savedQuandrixHold(game) {
+  const H = game.quandrix?.hold, h = H?.hand;
+  if (!H?.on || !h?.on || !HOLD_MODES.includes(H.mode) || ![h.x, h.y, h.dx, h.dy, H.held, H.tick, H.power].every(Number.isFinite)) return null;
+  const grab = []; for (let i = 0; i < H.n; i++) { const id = foeId(H.grab[i]); if (id !== null) grab.push(id); }
+  return { v: QUANDRIX.release.record, where: game.orreryWhere(), levelId: String(game.map?.levelId || "root"), mode: H.mode,
+    x: h.x, y: h.y, dx: h.dx, dy: h.dy, held: H.held, tick: H.tick, power: H.power, grab };
+}
+export function normalizeQuandrixHold(raw) {
+  if (!raw || typeof raw !== "object" || raw.v !== QUANDRIX.release.record || typeof raw.where !== "string" || typeof raw.levelId !== "string" || !HOLD_MODES.includes(raw.mode)) return null;
+  const n = (v) => Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : NaN, [x, y, dx, dy, held, tick, power] = [raw.x, raw.y, raw.dx, raw.dy, raw.held, raw.tick, raw.power].map(n);
+  if (![x, y, dx, dy, held, tick, power].every(Number.isFinite) || !(Math.hypot(dx, dy) > 0)) return null;
+  const cap = Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull), grab = [];
+  for (const id of Array.isArray(raw.grab) ? raw.grab : []) { const k = foeId(id); if (k !== null && grab.length < cap && !grab.includes(k)) grab.push(k); }
+  const m = Math.hypot(dx, dy), end = raw.mode === "fist" ? QUANDRIX.fist.time : QUANDRIX.slam.max;
+  return { v: raw.v, where: raw.where, levelId: raw.levelId, mode: raw.mode, x, y, dx: dx / m, dy: dy / m, held: Math.max(0, Math.min(end, held)),
+    tick: Math.max(0, Math.min(QUANDRIX.slam.tick, tick)), power: Math.max(0, power), grab };
+}
+// After the area loads: the saved hold, in the same place, as let go (the button is up after a reload). Only with the staff
+// still in hand, the Wayfarer alive and in the same area and level; otherwise nothing (and nothing bursts).
+export function restoreQuandrixHold(game, raw) {
+  const q = normalizeQuandrixHold(raw), p = game.player;
+  if (!q || q.where !== game.orreryWhere() || q.levelId !== String(game.map?.levelId || "root") || !game.quandrixEquipped() || !(p?.hp > 0)) return false;
+  const K = quandrixState(game); clearQuandrix(game); K.where = q.where;
+  const h = K.hands[0], H = K.hold;
+  h.on = true; h.mode = q.mode === "fist" ? "fist" : "slam"; h.kind = "own"; h.seq = ++K.seq; h.x = q.x; h.y = q.y; h.dx = q.dx; h.dy = q.dy; h.age = 0; h.life = 0; h.power = q.power; clearHits(h);
+  H.on = true; H.released = true; H.mode = q.mode; H.hand = h; H.held = q.held; H.tick = q.tick; H.power = q.power; H.action = "attack"; H.n = 0;
+  for (const id of q.grab) if (H.n < H.grab.length) H.grab[H.n++] = id;
+  return true;
 }
 
 // ---------------------------------------------------------------- presentation
@@ -328,9 +381,12 @@ export function drawQuandrix(ctx, game, toScreen, s, t, capture = null) {
       if (captured) { if (h.mode !== "slam") { ctx.fillStyle = "#0000002e"; ctx.beginPath(); ctx.ellipse(x, y, s * V.shadow, s * V.shadow * .45, 0, 0, 7); ctx.fill(); } continue; }
       if (h.mode === "fist") fist(ctx, x, y, a, s, C); else palm(ctx, x, y, h.mode === "slam" ? a : a, s, C, q?.alpha ?? 1);
     }
-    if (H.on && H.hand?.on && H.mode !== "fist") { const P = game.player, [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }), [hx, hy] = toScreen(H.hand);
+    if (H.on && H.released && H.hand?.on) { const [hx, hy] = toScreen(H.hand), end = H.mode === "fist" ? QUANDRIX.fist.time : QUANDRIX.slam.max, k = Math.max(0, Math.min(1, H.held / end)), R = s * QUANDRIX.slam.radius * .45; // let go: its clock round the hand (no gold window: the release is spent)
+      ctx.lineCap = "butt"; ctx.globalAlpha = .45; ctx.strokeStyle = C.deep; ctx.lineWidth = Math.max(3, R * .12); ctx.beginPath(); ctx.arc(hx, hy, R, 0, 7); ctx.stroke();
+      ctx.globalAlpha = .95; ctx.strokeStyle = C.core; ctx.lineWidth = Math.max(2, R * .07); ctx.beginPath(); ctx.arc(hx, hy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); ctx.globalAlpha = 1; }
+    else if (H.on && H.hand?.on && H.mode !== "fist") { const P = game.player, [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }), [hx, hy] = toScreen(H.hand);
       drawSlamRing(ctx, px, py, s * V.ring, H.held, C, still, t); drawSlamRing(ctx, hx, hy, s * QUANDRIX.slam.radius * .45, H.held, C, still, t); }
-    if (H.on && H.hand?.on && H.mode === "fist") { const P = game.player, [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }), k = Math.min(1, H.held / QUANDRIX.fist.time);
+    if (H.on && !H.released && H.hand?.on && H.mode === "fist") { const P = game.player, [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }), k = Math.min(1, H.held / QUANDRIX.fist.time);
       ctx.strokeStyle = C.core; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * V.ring, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
   } finally { ctx.restore(); }
 }
