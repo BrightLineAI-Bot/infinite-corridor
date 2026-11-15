@@ -4,7 +4,7 @@ const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_V
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.ts'; // the Carbine's stock, for its shouldered hold
 import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
-import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame, sampleCycloneMotion } from './action-motion.ts';
 import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
@@ -968,16 +968,27 @@ const AWAKENED_POSE = Object.freeze({
   'spell-runes': Object.freeze({ trace: 1.1, out: .3 }),
   roundhouse: Object.freeze({ up: .42, fwd: .3, guard: .55, lean: .15, kickAt: .1, kickLen: .2, holdEnd: .65, spinEnd: .85 }),
   'axe-kick': Object.freeze({ up: .55, fwd: .22, guard: .4, arch: .12, slam: .3, riseEnd: .35, fallAt: .4, fallLen: .2, crouch: .35, drop: .12 }),
+  // The Cyclone Heel (brawler-spells.ts CYCLONE_HEEL) on its shared clock (action-motion.ts sampleCycloneMotion): the right knee
+  // chambers (`chamber` [up, fwd]) as the body coils, the leg drives out level (`out`) and is held while she turns, arms tucked to
+  // the guard and a lean back against the leg, then the leg is drawn back and set down as the turn runs out on her heading.
+  'cyclone-heel': Object.freeze({ chamber: Object.freeze([.42, .1]), out: Object.freeze([.38, .44]), guard: .5, lean: .12 }),
 });
-const AWAKENED_KICKS = new Set(['roundhouse', 'axe-kick']), AWAKENED_CLIP = Object.freeze(Object.fromEntries(Object.keys(AWAKENED_POSE).map((k) => [k, `derived-${k}`])));
+const AWAKENED_KICKS = new Set(['roundhouse', 'axe-kick', 'cyclone-heel']), AWAKENED_CLIP = Object.freeze(Object.fromEntries(Object.keys(AWAKENED_POSE).map((k) => [k, `derived-${k}`])));
 // One leg's ankle lifted `up` and carried `fwd` (heights of the hero), weighted by w; the other sole stays put.
 function kickLeg(asset,state,pose,left,up,fwd,w){
   if(!(w>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget,side=left?0:1,o=side*10,foot=left?1:36,H=state.referenceHeight;
   build(asset,state,pose);anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);
   target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
 }
-function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false){
+const CYCLONE_SAMPLE={stage:'',turn:0,chamber:0,extend:0,weight:0};
+function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false,cycloneWindup=NaN,cycloneRecover=NaN,cycloneEnter=0){
   if(art==='roundhouse'){kickChain(asset,state,pose,p,contact,chained,0,reducedMotion);return;} // the chain's fourth step (FIST_CHAIN_POSE.kick)
+  if(art==='cyclone-heel'){ // its own envelope (sampleCycloneMotion): at rest at both ends, or already chambered on a Shadow Boxing blink's first frame
+    const A=AWAKENED_POSE[art],m=sampleCycloneMotion(p,cycloneWindup,cycloneRecover,CYCLONE_SAMPLE,undefined,cycloneEnter),c=m.chamber,x=m.extend;
+    if(m.weight>0){rotateX(pose,12,-A.guard*m.weight);rotateX(pose,22,-A.guard*m.weight);}if(c>0)rotateX(pose,27,-A.lean*x*c);
+    if(c>0)kickLeg(asset,state,pose,false,(A.chamber[0]+(A.out[0]-A.chamber[0])*x)*c,(A.chamber[1]+(A.out[1]-A.chamber[1])*x)*c,1); // full IK weight: the target itself starts at the planted ankle
+    if(!reducedMotion&&p<1)state.sweepSpin+=TAU*m.turn; // the turns that strike (whole turns by the end); reduced motion keeps the leg but does not turn
+    state.clip=AWAKENED_CLIP[art];state.clipTime=p;return;}
   const A=AWAKENED_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.2));if(!(env>0))return;
   if(art==='fissure'){const k=smoothstep((p-A.at)/A.len)*env;rotateX(pose,27,A.bend*k);rotateX(pose,24,A.chest*k);plantedCrouch(asset,state,pose,k*A.crouch,A.drop);}
   else if(art==='returning-blades'){const k=smoothstep(p/A.out)*(1-smoothstep((p-A.back)/A.len))*env;rotateX(pose,12,-A.fling*k);rotateX(pose,22,-A.fling*k);rotateZ(pose,12,-A.spread*k);rotateZ(pose,22,A.spread*k);}
@@ -1133,7 +1144,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
-  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
+  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true,action.cycloneWindup,action.cycloneRecover,action.cycloneEnter);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(carbineHeld)carbineHoldPose(state,state.pose,input.carbineRecoil); // the Carbine shouldered (CARBINE_HOLD), over the gait and any carbine record
   if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
