@@ -57,6 +57,24 @@ Close View should carry the same depth already expressed by the wider world. Its
 
 The normal Wayfarer is a protected traveller: a face covering and a suit, not someone casually exposed to the Corridor. The suit may be flexible, fabric and flowing; this is a fantasy world in which technology is indistinguishable from magic. Keep the existing muted green/gray, leather and bronze visual identity, with adult rather than cutesy proportions. Protection need not look like a rigid contemporary spacesuit. What it protects against, and how it works, stay unspoken; this appearance adds no oxygen, pressure or toxicity mechanic. The normal protective suit is distinct from the explicitly activated robot or empowered forms. The current asset direction and source provenance are tracked in [the Wayfarer asset manifest](wayfarer-rogue-asset-manifest.md).
 
+### The Wayfarer as the thing the Corridor fears (Tim, 2026-11-15)
+
+An undercurrent, not the main theme. The Corridor is full of unimaginable horrors, but the Wayfarer is one too: a single figure who walks
+through, cannot stay dead (every death ends back at the Refuge and the walk goes on), and in time breaks world beasts, Listeners and the
+gods at the foundations of its peoples' myths. By the late game the most frightening thing in the corridor may be the one reading it.
+
+How to use it, lightly:
+- **Most things still fight.** The great majority of creatures attack as they always have. Rats are never afraid; neither are beasts,
+  guardians or anything proud. Fear is the exception that makes the theme felt, never the rule.
+- **A few cower.** Now and then a lesser creature, or one that has watched its kin fall, hesitates, backs off or flees, more often as the
+  Wayfarer grows stronger. Never a whole pack, never bosses, and never in a way that empties a fight.
+- **Some voices hush.** Occasional reciters, travellers and townsfolk speak of the Wayfarer in low or wary tones: a figure who keeps coming
+  back, who walked out of places no one walks out of. Mixed with gratitude and indifference; most people treat the Wayfarer as anyone else.
+- **Glimpses may turn it around.** A rare Glimpse can show the Corridor's own dwellers dreading a figure that keeps returning, told so the
+  player recognises themselves only at the end.
+
+Never make the Wayfarer the centre of the world's story, and never preach it. It should be something the player notices for themselves.
+
 ### What the Corridor is made of (Tim, 2026-10-29)
 
 Tim's words, lightly edited for reading: "The dungeon water is not water... it's the classic trope of: this is what your mind can perceive them as. The dungeon water is just a very different state of... the composition of the corridor in those places, that we perceive as water... it's more fluid and less concrete than the surrounding sections of the corridor. Some sections of the corridor are more concrete than others. The shovel is just a mental tool... a manifestation of the idea of burrowing and tunneling... into the density of the corridor. All these creatures and all these things are just manifestations in the Wayfarer's viewport. He's jacked in in some way... it doesn't necessarily even matter if he's experiencing it like us, through a game, or if his consciousness is inhabiting the Wayfarer, because that's essentially the same thing: you are dictating motion through consciousness and interacting with literally ones and zeros, or electrical signals, that have been configured in a way to indicate water and land and monsters."

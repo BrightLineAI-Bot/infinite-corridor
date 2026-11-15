@@ -19,7 +19,7 @@ test('Robot and Drone are separate utility choices; a release-874 "frame" become
   assert.ok(UTILITY.choices.includes('robot') && UTILITY.choices.includes('drone')); assert.ok(!UTILITY.choices.includes('frame'));
   for (const [mode, want] of [['drone', 'drone'], ['robot', 'robot'], [undefined, 'robot']]) {
     const s = freshSave(); ensureSlots(s); const old = JSON.parse(JSON.stringify(s));
-    old.magicSkills.presets[1].utility = 'frame'; if (mode) old.mech = { mode };
+    old.magicSkills.presets[1].utility = 'frame'; delete old.magicSkills.presets[1].d; /* 2026-11-15: a release-875 save has no slot D yet */ if (mode) old.mech = { mode };
     const m = migrateSave(old); assert.equal(presetUtility(m, 1), want, `frame set to ${mode} → ${want}`); assert.equal(presetUtility(m, 0), 'build');
   }
   const s = freshSave(); ensureSlots(s); setPresetUtility(s, 0, 'robot'); setPresetUtility(s, 1, 'drone');
