@@ -13,7 +13,7 @@ import { CREATURE_POSE, modelTriangleCount, writeCloseViewModel, MODEL_FLOATS, M
 import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_POSE } from '../src/close-view-adventure-models.ts';
 import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, FOUNDRY_PALETTES } from '../src/close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS } from '../src/close-view-pentagon-models.ts';
-import { adventureLimbSwing, LIMB_SWING } from '../src/adventure-creature-render.ts';
+import { ADVENTURE_BODIES, ADVENTURE_SPRITE, attackLimbs } from '../src/adventure-creature-render.ts';
 
 const PINS: Record<string, number> = { cinderWisp: 136, veilMoth: 116, hangedChoir: 204, graveLantern: 152, cinderSeraph: 214, lumenWraith: 152, gloomwisp: 166,
   cinderKite: 176, spindriftMedusa: 146, amalgam: 192, gnawingMaw: 158, gloomgorge: 208, sparkWarden: 184, voidSentinel: 198, knellkeeper: 172, prismStilt: 160,
@@ -90,14 +90,21 @@ test('the per-frame path is unchanged: no new allocation in the joint evaluator'
   assert.ok(!/\bnew\s|\[\s*\]|\.map\(|\.filter\(|\.slice\(|\.\.\./.test(body), 'adventureJointPose allocates nothing');
 });
 
-test('Standard View limbs: drawn back and held in the wind-up, through on the strike, settled at rest (rest unchanged)', () => {
-  const at = (attack: string, phase: string, p: number) => { const spec = ATTACK_MODULES[attack]; const d = phase === 'windup' ? spec.windup : spec.recover;
-    return adventureLimbSwing({ pack: { ...freshPackState(), attack, phase, t: d * (1 - p) } }); };
-  assert.equal(adventureLimbSwing({ pack: freshPackState() }), 0, 'at rest the limb is where it always was');
-  assert.equal(adventureLimbSwing({}), 0);
-  assert.equal(at('heavySweep', 'windup', .9), -1, 'held back late in the wind-up');
-  assert.ok(at('heavySweep', 'windup', .1) > -1 && at('heavySweep', 'windup', .1) < 0, 'drawing back');
-  assert.equal(at('heavySweep', 'recover', .1), 1, 'through on the strike');
-  assert.equal(at('heavySweep', 'recover', 1), 0, 'settled');
-  for (let p = 0; p <= 1; p += .05) assert.ok(Number.isInteger(at('slagPour', 'recover', p) * LIMB_SWING.steps), 'quantised, so the sprite cache stays bounded');
+test('Standard View limbs on the shared limb clock: the forms pivots draw back, strike and settle, and the rest pose is unchanged', () => {
+  const trace = (kind: string, pack: any, state: string) => {
+    const calls: any[] = [], ctx: any = new Proxy({ createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }) },
+      { get: (o: any, k: string) => (k in o ? o[k] : (...a: any[]) => { calls.push([k, ...a.map((v) => typeof v === 'number' ? Math.round(v * 10) : v)]); }), set: (o: any, k: string, v: any) => (o[k] = v, true) });
+    ADVENTURE_BODIES[kind](ctx, { e: { kind, pack }, k: 100, b: 200, u: 50, flip: 1, p: MONSTER_PACK[kind].palette, state, t: 0 });
+    return JSON.stringify(calls);
+  };
+  // The stalk, talons, tendrils and front leg pivot on the shared clock (adventure-creature-render.ts attackLimbs).
+  for (const [kind, id] of [['thornspitterBloom', 'thornDarts'], ['cinderKite', 'bite'], ['spindriftMedusa', 'tendrilRain'], ['prismStilt', 'bite'], ['slagwright', 'slagPour']]) {
+    const A = ATTACK_MODULES[id], at = (phase: string, p: number) => ({ attack: id, phase, t: (phase === 'windup' ? A.windup : A.recover) * (1 - p) });
+    const rest = trace(kind, {}, 'idle'), held = trace(kind, at('windup', .9), 'windup'), hit = trace(kind, at('recover', .05), 'attack');
+    assert.equal(rest, trace(kind, { state: 'move' }, 'idle'), `${kind} rest`);
+    assert.notEqual(held, rest, `${kind} draws back`); assert.notEqual(hit, held, `${kind} strikes`);
+    assert.equal(trace(kind, at('recover', .99), 'attack'), trace(kind, at('recover', .995), 'attack'), `${kind} settles`);
+  }
+  const out: any = {}; attackLimbs({}, 'idle', out); assert.equal(out.dq, 0, 'no frame key at rest, so the cache key is today\'s');
+  assert.ok(ADVENTURE_SPRITE.limb.steps <= 4);
 });
