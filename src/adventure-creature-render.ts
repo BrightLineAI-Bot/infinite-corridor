@@ -2,6 +2,7 @@
 // and drawn size into a small canvas (at t = 0) and stamped every frame, lifted by its hop (`hopLift`) over a plain ground shadow, so a
 // screen of them costs a few drawImage calls; the cache is bounded (`max`). Without a DOM canvas (tests) a body is painted directly.
 // Their effects (pots, smoke, darts, glass) are plain paths, no gradients. Reduced motion holds the bob and the flicker still.
+import { ATTACK_MODULES } from "./monster-pack.ts";
 const TAU = Math.PI * 2;
 export const ADVENTURE_SPRITE = Object.freeze({
   box: Object.freeze({ galleryLurker: [2.2, 2, 1.5], censerWarden: [2, 2.6, 2.15], vinehookLeaper: [2.3, 2.1, 1.6], thornspitterBloom: [2, 2.1, 1.65], sinkmaw: [2.6, 1.8, 1.25], cinderKite: [2.8, 1.6, 1.05],
@@ -17,10 +18,28 @@ export function adventurePose(e, state) {
   const a = e?.pack?.attack || "", stance = e?.advBuried ? "buried" : e?.advCling ? "cling" : e?.aloft ? "air" : "ground";
   return `${state === "windup" ? `w:${a}` : state === "attack" ? `a:${a}` : "idle"}:${e?.advPose || ""}:${stance}`;
 }
+// Limb articulation (Tim, 2026-11-15: the blocky Standard View creatures stay as they are, but their limbs swing at you).
+// The attacking limb (an arm, the clapper, the ladle, the talons, the stalk, the tendrils) is drawn as its own block about its
+// joint and turned by `swing` (-1 drawn back and held, +1 swung through), read from the creature's real attack clock: it draws
+// back over the first `drawn` share of the wind-up and holds, is through for the strike and active phases and the first `strike`
+// share of the recovery, then settles back. Quantised to `steps` levels so the sprite cache stays bounded; at rest it is 0 and
+// the sprite and its cache key are exactly today's.
+export const LIMB_SWING = Object.freeze({ steps: 4, drawn: .45, strike: .3 });
+export function adventureLimbSwing(e) {
+  const s = e?.pack, spec = s?.attack && ATTACK_MODULES[s.attack];
+  if (!spec || !s.phase) return 0;
+  const done = (d) => 1 - Math.max(0, Math.min(1, (Number(s.t) || 0) / (d > 0 ? d : 1)));
+  let v = 1;
+  if (s.phase === "windup") v = -Math.min(1, done(spec.windup) / LIMB_SWING.drawn);
+  else if (s.phase === "recover") { const p = done(spec.recover); v = p < LIMB_SWING.strike ? 1 : 1 - (p - LIMB_SWING.strike) / (1 - LIMB_SWING.strike); }
+  return Math.round(v * LIMB_SWING.steps) / LIMB_SWING.steps;
+}
+// Turn what is drawn next about (x, y) by a (inside the caller's save/restore).
+function about(ctx, x, y, a) { if (a) { ctx.translate(x, y); ctx.rotate(a); ctx.translate(-x, -y); } }
 function stamp(ctx, q, draw) {
   const e = q.e, box = ADVENTURE_SPRITE.box[e.kind], lift = Math.max(0, Number(e.hopLift) || 0) * q.u * ADVENTURE_SPRITE.lift, quiet = !!e.reduceMotion;
   if (!e.advBuried) { ctx.fillStyle = `rgba(0,0,0,${ADVENTURE_SPRITE.shadow / (1 + lift / q.u)})`; ctx.beginPath(); ctx.ellipse(q.k, q.b, q.u * (e.kind === "sinkmaw" ? .55 : e.kind === "cinderKite" ? .4 : .32), q.u * .1, 0, 0, TAU); ctx.fill(); }
-  const pose = adventurePose(e, q.state), r = { ...q, pose, b: q.b - lift };
+  const swing = adventureLimbSwing(e), pose = adventurePose(e, q.state) + (swing ? `:s${swing}` : ""), r = { ...q, pose, swing, b: q.b - lift };
   if (!canMake()) return draw(ctx, r);
   const u = Math.max(4, Math.round(q.u)), key = `${e.kind}:${pose}:${q.flip}:${u}`;
   let sprite = sprites.get(key);
@@ -92,7 +111,7 @@ function drawVinehookLeaper(ctx, q) {
   const hx = k + f * u * .2, hy = b - u * (1.05 - crouch);
   ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .14, u * .12, 0, 0, TAU); ctx.fill();
   eye(ctx, hx + f * u * .07, hy - u * .02, u * .026, p[3]);
-  const arm = (dx, lift, col) => { const sx = k + f * u * (.14 + dx), sy = b - u * (.9 - crouch), ex = sx + f * u * (air ? .5 : .35), ey = air ? sy - u * .35 : b - u * (.12 + lift); limb(ctx, [[sx, sy], [(sx + ex) / 2 + f * u * .1, (sy + ey) / 2 - u * .1], [ex, ey]], Math.max(2, u * .07), col); ctx.strokeStyle = p[2]; ctx.lineWidth = Math.max(2, u * .05); ctx.beginPath(); ctx.arc(ex + f * u * .06, ey, u * .07, f > 0 ? Math.PI : 0, f > 0 ? Math.PI * 2.4 : -Math.PI * 1.4, f < 0); ctx.stroke(); };
+  const arm = (dx, lift, col) => { const sx = k + f * u * (.14 + dx), sy = b - u * (.9 - crouch); ctx.save(); about(ctx, sx, sy, -f * (q.swing || 0) * (dx < 0 ? .7 : .95)); const ex = sx + f * u * (air ? .5 : .35), ey = air ? sy - u * .35 : b - u * (.12 + lift); limb(ctx, [[sx, sy], [(sx + ex) / 2 + f * u * .1, (sy + ey) / 2 - u * .1], [ex, ey]], Math.max(2, u * .07), col); ctx.strokeStyle = p[2]; ctx.lineWidth = Math.max(2, u * .05); ctx.beginPath(); ctx.arc(ex + f * u * .06, ey, u * .07, f > 0 ? Math.PI : 0, f > 0 ? Math.PI * 2.4 : -Math.PI * 1.4, f < 0); ctx.stroke(); ctx.restore(); };
   arm(-.06, .05, p[1]); arm(.04, 0, p[0]);
   ctx.restore();
 }
@@ -102,6 +121,7 @@ function drawThornspitterBloom(ctx, q) {
   ctx.save();
   ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(k, b - u * .06, u * .36, u * .13, 0, 0, TAU); ctx.fill();
   for (let i = 0; i < 4; i++) limb(ctx, [[k + (i - 1.5) * u * .16, b - u * .05], [k + (i - 1.5) * u * .34, b - u * .01]], Math.max(1.5, u * .04), p[1]);
+  about(ctx, k, b - u * .12, f * (q.swing || 0) * .32);
   limb(ctx, [[k, b - u * .12], [k - f * u * .1, b - u * .55], [bx, by + u * .15]], Math.max(3, u * .1), p[0]);
   ctx.fillStyle = p[0]; ctx.beginPath(); ctx.moveTo(k - f * u * .05, b - u * .5); ctx.quadraticCurveTo(k - f * u * .35, b - u * .7, k - f * u * .3, b - u * .4); ctx.fill(); // a leaf
   for (let i = 0; i < 5; i++) { const a = i * TAU / 5 - Math.PI / 2, r = u * (.26 + open * .14), x = bx + Math.cos(a) * r, y = by + Math.sin(a) * r;
@@ -155,7 +175,8 @@ function drawCinderKite(ctx, q) {
   ctx.fillStyle = p[1]; ctx.beginPath(); ctx.arc(k + f * u * .2, cy - u * .02, u * .07, 0, TAU); ctx.fill();
   ctx.fillStyle = p[3]; ctx.beginPath(); ctx.moveTo(k + f * u * .26, cy - u * .04); ctx.lineTo(k + f * u * .36, cy + u * .02); ctx.lineTo(k + f * u * .25, cy + u * .02); ctx.fill();
   eye(ctx, k + f * u * .22, cy - u * .04, u * .018, p[2]);
-  limb(ctx, [[k - f * u * .02, cy + u * .06], [k + f * u * .03, cy + u * (.2 + strike(q) * .1)]], Math.max(1, u * .025), p[3]);
+  ctx.save(); about(ctx, k - f * u * .02, cy + u * .06, -f * (q.swing || 0) * .8);
+  limb(ctx, [[k - f * u * .02, cy + u * .06], [k + f * u * .03, cy + u * (.2 + strike(q) * .1)]], Math.max(1, u * .025), p[3]); ctx.restore();
   ctx.restore();
 }
 
@@ -187,14 +208,16 @@ function drawKnellkeeper(ctx, q) {
   ctx.strokeStyle = p[3] + "88"; ctx.lineWidth = Math.max(1, u * .025); ctx.beginPath(); ctx.moveTo(bx - u * .4, by + u * .2); ctx.lineTo(bx + u * .4, by + u * .2); ctx.stroke();
   const hx = k + f * u * .28, hy = b - u * .95; ctx.fillStyle = p[0]; ctx.beginPath(); ctx.ellipse(hx, hy, u * .14, u * .12, 0, 0, TAU); ctx.fill(); eye(ctx, hx + f * u * .06, hy - u * .02, u * .025, p[3]);
   const ax = hx + f * u * .1, ay = hy + u * .15, mx = ax + f * u * (raise ? .05 : .32), my = ay + u * (raise ? -.55 : .25);
-  limb(ctx, [[ax - f * u * .05, ay], [mx, my]], Math.max(2, u * .08), p[0]); ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(mx, my, u * .1, 0, TAU); ctx.fill();
+  ctx.save(); about(ctx, ax - f * u * .05, ay, raise ? 0 : -f * Math.max(0, q.swing || 0) * .6);
+  limb(ctx, [[ax - f * u * .05, ay], [mx, my]], Math.max(2, u * .08), p[0]); ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(mx, my, u * .1, 0, TAU); ctx.fill(); ctx.restore();
   ctx.restore();
 }
 // Spindrift Medusa: a glass bell of violet membrane lit from inside, a curtain of fine tendrils below.
 function drawSpindriftMedusa(ctx, q) {
   const { k, b, u, p } = q, swell = wind(q) ? 1 : 0, cy = b - u * 1.15, r = u * (.38 + swell * .06);
   ctx.save();
-  for (let i = 0; i < 9; i++) { const x = k + (i - 4) * r * .2; limb(ctx, [[x, cy + r * .3], [x + (i % 2 ? 1 : -1) * u * .05, cy + r * .9], [x + (i % 3 - 1) * u * .06, b - u * .15]], Math.max(1, u * .02), i % 2 ? p[2] + "aa" : p[0] + "cc"); }
+  const lash = (q.flip || 1) * (q.swing || 0) * u;
+  for (let i = 0; i < 9; i++) { const x = k + (i - 4) * r * .2; limb(ctx, [[x, cy + r * .3], [x + (i % 2 ? 1 : -1) * u * .05 + lash * .1, cy + r * .9], [x + (i % 3 - 1) * u * .06 + lash * .28, b - u * .15 - Math.abs(lash) * .08]], Math.max(1, u * .02), i % 2 ? p[2] + "aa" : p[0] + "cc"); }
   const g = ctx.createRadialGradient(k, cy, r * .1, k, cy, r * 1.1); g.addColorStop(0, p[3] + "ee"); g.addColorStop(.4, p[2] + "aa"); g.addColorStop(1, p[0] + "cc");
   ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(k, cy, r, r * .8, 0, Math.PI, TAU); ctx.quadraticCurveTo(k + r * .5, cy + r * .45, k, cy + r * .3); ctx.quadraticCurveTo(k - r * .5, cy + r * .45, k - r, cy); ctx.fill();
   ctx.strokeStyle = p[3] + "88"; ctx.lineWidth = Math.max(1, u * .015); for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(k, cy - r * .78); ctx.quadraticCurveTo(k + i * r * .35, cy - r * .3, k + i * r * .42, cy + r * .2); ctx.stroke(); }
@@ -204,7 +227,8 @@ function drawSpindriftMedusa(ctx, q) {
 function drawPrismStilt(ctx, q) {
   const { k, b, u, flip, p } = q, f = flip, hy = b - u * 1.75, charge = wind(q) || strike(q) ? 1 : 0;
   ctx.save();
-  for (const [dx, lean] of [[-.32, -.1], [.32, .1], [0, 0]]) limb(ctx, [[k + u * dx * .2, hy + u * .2], [k + u * (dx * .7 + lean), b - u * .8], [k + u * dx, b - u * .02]], Math.max(1.5, u * .04), dx === 0 ? p[0] : p[1]);
+  for (const [dx, lean] of [[-.32, -.1], [.32, .1], [0, 0]]) { ctx.save(); if (dx === 0) about(ctx, k, hy + u * .2, -f * (q.swing || 0) * .22);
+    limb(ctx, [[k + u * dx * .2, hy + u * .2], [k + u * (dx * .7 + lean), b - u * .8], [k + u * dx, b - u * .02]], Math.max(1.5, u * .04), dx === 0 ? p[0] : p[1]); ctx.restore(); }
   const pts = [[0, -.32], [.26, -.08], [.18, .2], [-.18, .2], [-.26, -.08]], g = ctx.createLinearGradient(k - u * .3, hy - u * .3, k + u * .3, hy + u * .2); g.addColorStop(0, p[3]); g.addColorStop(.5, p[2]); g.addColorStop(1, p[0]);
   ctx.fillStyle = g; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(k + x * u, hy + y * u) : ctx.moveTo(k + x * u, hy + y * u))); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = p[3] + "aa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(k, hy - u * .32); ctx.lineTo(k + f * u * .05, hy + u * .2); ctx.stroke();
@@ -260,12 +284,14 @@ function drawSlagwright(ctx, q) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(k - u * .3, top + u * .25); ctx.lineTo(k + u * .3, top + u * .25); ctx.lineTo(k + u * .26, b - u * .55); ctx.lineTo(k - u * .26, b - u * .55); ctx.closePath(); ctx.fill();
   ctx.fillStyle = p[3] + "aa"; for (let i = 0; i < 4; i++) ctx.fillRect(k - u * .22 + i * u * .14, top + u * .32, u * .03, u * .03);
   ctx.fillStyle = p[1]; ctx.fillRect(k - u * .13, top, u * .26, u * .22); ctx.fillStyle = p[2]; ctx.fillRect(k - u * .1 + f * u * .02, top + u * .08, u * .2, u * .04);
+  ctx.save(); about(ctx, k + f * u * .2, top + u * .35, f * (q.swing || 0) * (tip ? .25 : .55));
   const hx = k + f * u * .32, hy = top + u * .55, ang = tip ? .5 : -.35, ex = hx + f * Math.cos(ang) * u * .85, ey = hy + Math.sin(ang) * u * .85;
   limb(ctx, [[k + f * u * .2, top + u * .35], [hx, hy]], Math.max(2, u * .09), p[0]);
   ctx.strokeStyle = "#3a3028"; ctx.lineWidth = Math.max(2, u * .04); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
   ctx.fillStyle = "#3a3028"; ctx.beginPath(); ctx.ellipse(ex, ey + u * .05, u * .15, u * .1, f * ang, 0, Math.PI); ctx.fill();
   ctx.fillStyle = p[2]; ctx.beginPath(); ctx.ellipse(ex, ey + u * .03, u * .12, u * .04, f * ang, 0, TAU); ctx.fill();
   if (tip) { ctx.fillStyle = p[2] + "cc"; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(ex + f * u * .14, ey + u * (.15 + i * .12), u * (.05 - i * .01), 0, TAU); ctx.fill(); } }
+  ctx.restore();
   ctx.restore();
 }
 export const ADVENTURE_BODIES = {
