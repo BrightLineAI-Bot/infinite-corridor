@@ -10,7 +10,7 @@ import { rangedWeapon, normalizeItemUpgrade } from '../src/items.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
 import { normalizeSockets, socketGlyph, GLYPHS } from '../src/glyphs.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { ARC_WAVE, ARC_WAVE_ECHO, ARC_WAVE_SHAPE, arcWaveEchoHalf, arcWaveTouches, arcWaveLife } from '../src/tool-forms.ts';
+import { ARC_WAVE, ARC_WAVE_ECHO, ARC_WAVE_SHAPE, arcWaveEchoHalf, arcWaveTouches, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent } from '../src/tool-forms.ts';
 
 const BUSS = { id: 't', name: 'Blunderbuss', slot: 'secondary', property: 'quick', tier: 'relic', affixes: [], basePower: 5, power: 11, upgradeRank: 6 };
 
@@ -214,11 +214,51 @@ test('sixty seconds of waves fired every frame stay bounded and finite', () => {
   for (let f = 0; f < 3600; f++) {
     now += 1000 / 60; g.player.attackReadyAt = 0; g.fireSecondary(now, { x: 1, y: 0 }); g.tickGlyphs(1 / 60, now);
     g.projectiles = updateProjectiles(g.projectiles, g.enemies, g.map, 32, 1 / 60);
-    // A press is refused at the dungeon's 32 live shots and adds 3; Echo copies land later outside that check (as for every
-    // tool Echo): at most 2 a press, over the 300 ms the second waits (19 frames). Observed peak with the cooldown wiped: 55.
-    max = Math.max(max, g.projectiles.length); assert.ok(g.projectiles.length <= 32 + 3 + 2 * 19, `bounded: ${g.projectiles.length}`);
+    // 2026-11-14: crescents have their own cap (ARC_WAVE.maxLive), the oldest retired to make room; every shot here is one.
+    let live = 0; for (const p of g.projectiles) if (!p.dead) live++;
+    max = Math.max(max, live); assert.ok(live <= ARC_WAVE.maxLive.dungeon, `bounded: ${live}`);
     assert.ok((g.glyphTimers || []).length <= 64, 'echo timers bounded');
   }
   for (const p of g.projectiles) assert.ok([p.x, p.y, p.life, p.damage, p.waveHalf ?? 0].every(Number.isFinite));
   for (const e of g.enemies) assert.ok(Number.isFinite(e.hp));
+});
+
+// Tim, 2026-11-14: "give the crescents their own cap" (tool-forms.ts ARC_WAVE.maxLive).
+const crescent = (i: number) => ({ id: `old-${i}`, x: 3, y: 3, dx: 1, dy: 0, speed: ARC_WAVE.speed, life: 3, damage: 1, damageType: 'physical', path: 'straight', age: 0, hits: {}, pierce: 12, arcWave: true });
+const plain = (i: number) => ({ id: `plain-${i}`, x: 3, y: 3, dx: 1, dy: 0, speed: 14, life: 3, damage: 1, damageType: 'physical', path: 'straight', age: 0, hits: {} });
+
+test('crescents do not count toward the shared cap, and the shared cap still holds for other shots', () => {
+  const { g } = arena(false, 0); g.takeRound = () => 'belt';
+  g.projectiles = Array.from({ length: 40 }, (_, i) => crescent(i));
+  assert.equal(sharedShotCount(g.projectiles), 0);
+  assert.equal(g.fireSecondary(T0, { x: 1, y: 0 }), true, 'a plain Blunderbuss fires past 40 live crescents');
+  const { g: h } = arena(false, 0); h.takeRound = () => 'belt'; h.projectiles = Array.from({ length: 32 }, (_, i) => plain(i));
+  assert.equal(h.fireSecondary(T0, { x: 1, y: 0 }), false, 'the dungeon\'s 32 other shots still refuse a press');
+  const { g: k } = arena(true, 0); k.takeRound = () => 'belt'; k.projectiles = Array.from({ length: 20 }, (_, i) => plain(i));
+  assert.equal(k.fireSecondary(T0, { x: 1, y: 0 }), true); assert.equal(sharedShotCount(k.projectiles), 20, 'its crescents add nothing to the shared count');
+});
+
+test('a full crescent cap retires the oldest crescents and the press is accepted', () => {
+  const { g } = arena(true, 0); g.takeRound = () => 'belt'; const cap = ARC_WAVE.maxLive.dungeon;
+  g.projectiles = [plain(0), ...Array.from({ length: cap }, (_, i) => crescent(i))];
+  assert.equal(g.fireSecondary(T0, { x: 1, y: 0 }), true);
+  const old = g.projectiles.filter((p: any) => String(p.id).startsWith('old-'));
+  assert.deepEqual(old.filter((p: any) => p.dead).map((p: any) => p.id), ['old-0', 'old-1', 'old-2'], 'the three oldest make room');
+  assert.ok(old.filter((p: any) => p.dead).every((p: any) => p.retired));
+  assert.ok(!g.projectiles[0].dead, 'other shots are never retired');
+  assert.equal(g.projectiles.filter((p: any) => !p.dead && isArcCrescent(p)).length, cap);
+  assert.equal(retireArcWaves(g.projectiles, 'overworld'), 0, 'the overworld cap is larger');
+});
+
+for (const area of ['dungeon', 'overworld']) test(`a 30 s hold at a fast cadence keeps the ${area} crescents under their cap and refuses no press`, () => {
+  const { g } = arena(true, 2); g.area = area; g.takeRound = () => 'belt'; const cap = (ARC_WAVE.maxLive as any)[area];
+  let now = T0, presses = 0, refused = 0, peak = 0;
+  for (let f = 0; f < 1800; f++) {
+    now += 1000 / 60;
+    if (now >= (g.player.attackReadyAt || 0)) { presses++; if (g.fireSecondary(now, { x: 1, y: 0 })) g.player.attackReadyAt = now + 360 * .6; else refused++; } // 40% faster than the base 360 ms
+    g.tickGlyphs(1 / 60, now); g.projectiles = updateProjectiles(g.projectiles, [], g.map, 32, 1 / 60);
+    let live = 0; for (const p of g.projectiles) if (!p.dead && isArcCrescent(p)) live++;
+    peak = Math.max(peak, live); assert.ok(live <= cap, `${live} live crescents`);
+  }
+  assert.ok(presses > 100); assert.equal(refused, 0, 'no press refused'); assert.ok(peak > 20, `peak ${peak}`);
 });
