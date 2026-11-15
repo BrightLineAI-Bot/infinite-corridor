@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 982 — Fixes from the 975 review
+
+The Fable review of r972→r975 left six non-blocking notes. Tim chose to restore the older creatures' attack cadence (2026-11-15).
+
+**CODE:** `monster-pack.ts` `dinoRock` filters by `stegoPrey`. `dinoSetDown`, built on `nearestOpen` and `w.open` / `w.marineOpen` and limited to spots the holder can see, runs on every release from the stego's tail heave and the Spinosaurus's grab or lift, and when a holder dies. A feint is cleared when a windup ends, in both brains and in `afterBlow`, and the pack brain feints only a blow whose windup it recorded (`s.data.wind`). `BEHAVIOUR.spacing.reach` (0.85): a legacy ring creature winds up only within that share of its next blow's real reach (`game.ts` `legacyBlowReach`); otherwise it presses in with a token. With a squad board, legacy aggro needs line of sight (`hasLineOfSight`). `soundtrack.ts` `stingUntil` holds back the menace drop during a stinger. Tests are in `tests/review-975-fixes.test.ts`.
+
+**BOUNDARY:** No change to saves, generation or modules. Without a squad board the legacy brain behaves exactly as before. Setting a beast down is one bounded search, run only on release, never per frame. Measured over 40 s against a standing Wayfarer, legacy hit counts are back to between 0.83× and 1.0× of their pre-975 values. The Ashen Hound and Void Sentinel stay above their old rates (Tim wants harder mobs).
+
 ## Release 981 — Iron Fists: the Cyclone Heel
 
 Tim, 2026-11-15: an aerial spinning leg kick after the uppercut and the airborne Ki Blast, for awakened Iron Fists with the Ki Blast passive; Shadow Boxing teleports to the target and lands every spin on it; tap for the plain kick, release just before landing for perfect rhythm.
