@@ -14,7 +14,7 @@ import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
-import { playerFormPresentation } from './close-view-player-presentation.ts';
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.ts';
 import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.ts";
 import { enemyPatternWindup } from "./enemy-patterns.ts";
 import { ruleRows } from "./elders.ts";
@@ -95,6 +95,26 @@ function drawClingGrip(ctx, x, y, s, nx, ny) {
     const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
     ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
     ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// FALL_POSE (Standard View): a real fall raises both hands out to the sides, more as it goes on, with a small slow flap on a long
+// fall (the same clock and weights as Close View's falling pose; Reduced Motion holds them still). When the fall is taken over in the
+// air (the drone's catch, a roof met first) the hands ease back down over FALL_POSE.releaseMs rather than vanishing (FALL_STD_LAST:
+// at, arms, loop, phase). Nothing else is drawn differently.
+const FALL_STD = new Float64Array(6), FALL_STD_LAST = new Float64Array(4);
+function drawFallArms(ctx, g, x, y, s, now) {
+  const air = g.fall ? ordinaryFallPresentation(g, now, 0) : null, L = FALL_STD_LAST, S = FALL_POSE.std, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  let arms = 0, loop = 0, ph = 0;
+  if (air && air.flail !== false) { const f = sampleFallPose(air.elapsedMs, air.remainingMs, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), FALL_STD); arms = f[0]; loop = f[2]; ph = f[3]; L[0] = clock; L[1] = arms; L[2] = loop; L[3] = ph; }
+  else { const u = (clock - L[0]) / FALL_POSE.releaseMs; if (!(L[1] > 0) || !(u > 0) || u >= 1) { L[1] = 0; return; } const k = 1 - u * u * (3 - 2 * u); arms = L[1] * k; loop = L[2] * k; ph = L[3]; }
+  if (!(arms > .02)) return;
+  const cx = (x + .5) * s, cy = (y + .36) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * S.line);
+  for (let k = -1; k <= 1; k += 2) {
+    const flap = S.flap * loop * Math.sin(ph + (k > 0 ? Math.PI : 0)), ox = k * .12 * s, hx = cx + ox + k * S.reachX * arms * s, hy = cy + (S.reachY * arms + flap) * s;
+    ctx.beginPath(); ctx.moveTo(cx + ox, cy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * S.hand), 0, 7); ctx.fill();
   }
   ctx.restore();
 }
@@ -3088,6 +3108,7 @@ export function render(ctx, g, w, h, now) {
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
       if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
+      if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);

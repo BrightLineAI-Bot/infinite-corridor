@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 980 — Falling pose
+
+Tim, 2026-11-15: the character should have a fall animation — the longer he falls, the more he moves his arms and legs, not frantic; pits keep their fall-over.
+
+**CODE:** `FALL_POSE` and `sampleFallPose(fallMs, remainingMs, reducedMotion, out)` (`close-view-player-presentation.ts`) are pure, read the fall's own clock (`game.fall.t`, saved with the fall and held by pause) and the time to the ground (`fallRemainingMs`), and write six weights (arm weight, leg bend, loop amplitude, loop phase, chest reaction, look-down) into an array the caller owns. `ordinaryFallPresentation` marks plunges `flail:false`. In `close-view-hero.ts`, `ordinaryAirPose` applies `fallTorso`, `fallArms` (upper arms aimed in model space with `alignJoint`, half a cycle apart) and an opposite-phase leg cycle; it skips the jump push-off, keeps the idle breathing under the fall, and meets the ground over `endMs`. Drawn weights are slew-limited through `state.fallLast`; `fallRelease` eases arms and chest out over `releaseMs` when a fall ends in the air (drone catch, roof). Standard View `drawFallArms` (`renderer.ts`) uses the same sampler. Test: `fall-pose` (8).
+
+**BOUNDARY:** Presentation only: no simulation, save or schema change. Applies only to an ordinary on-foot fall under the fall model with `fallPoseDue` (a drop of 1.5 levels or more); never in a jump's rise, gliding (closed freefall included), the drone lift, mech, boat or mount, or forms other than Iron Fists; a plunge keeps the hang; a dodge, cast, hit or defeat takes the body at once; the pit/defeat fall-over is untouched. The native Close View fallback body (used while the hero model loads) keeps the plain hang. Loop period at least `minPeriodMs` (one cycle every 1.3 s).
+
 ## Release 979 — Great-tree Standard View blackout fix
 
 Tim, 2026-11-15 (save at section -186,-115): toggling the Oculus at a great tree left the top half of the Standard View black.

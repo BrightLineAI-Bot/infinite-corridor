@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r978 (`19ee665e9517`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r979 (`25bd8edd3b39`); production serves `r975-6689d7c92177` (published 2026-11-15 after a Fable review of r972 to r975). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 979 | Claude | claude/cv-tree-blackout-979 | After leaving Close View through the Oculus (or changing the quality tier) beside a great tree, the Standard View no longer cuts off the trunk, crown and upper branches and leaves the top of the screen black; the ground image stops rebuilding on every frame of the Oculus leave zoom | In flight. |
+| 980 | Claude | claude/fall-pose-980 | The Wayfarer gets a progressive, calm falling pose: a short fall shows only the onset arm motion, a long fall builds into a slow arm wheel and leg cycle, settling smoothly into the landing; Standard View raises his hands; not used while gliding, on the drone, on a rising jump or in a plunge; the pit fall-over is unchanged | In flight. |
+| 979 | Claude | claude/cv-tree-blackout-979 | After leaving Close View through the Oculus (or changing the quality tier) beside a great tree, the Standard View no longer cuts off the trunk, crown and upper branches and leaves the top of the screen black; the ground image stops rebuilding on every frame of the Oculus leave zoom | Merged as `25bd8edd3b39` (#647). |
 | 978 | Claude | claude/oculus-slot-d-978 | The Oculus gets its own one-tap button under the top-right compass (key O); the old utility button becomes a fourth assignable slot in every preset; the four slot buttons read A B C D left to right; Robot and Drone can go in any slot; old utility choices migrate into the new slot | Merged as `19ee665e9517` (#646). |
 | 977 | Claude | claude/room-light-mix-977 | Interior rooms get a deterministic light tier (lit ~30%, gloomy ~45%, dark ~25%; themed shares, the Deep mostly dark) blended smoothly across doorways in both views; a lit Lantern glows outdoors on a night sky | Merged as `49b16fd01d2b` (#645). |
 | 976 | Claude | claude/brighter-interiors | Close View interiors (keeps, towers, great buildings, hives, arcologies, labyrinths, the Pentagon) keep 40% less darkness; the Deep is lightened only slightly; the Pentagon dread overlay a little; the Lantern still lengthens the torch | Merged as `1d36206e0fd5` (#643). |
