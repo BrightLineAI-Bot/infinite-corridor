@@ -12,7 +12,7 @@ Tim, 2026-11-14: the great waves should shoot out quickly and dissipate rapidly,
 
 **CODE:** `tool-forms.ts` `ARC_WAVE.range` 20 tiles × reach (was 9.35); flight time from `arcWaveLife` is now 3.64 s at speed 5.5; the outer crescents end about 17 tiles apart. Great waves unchanged (`ARC_WAVE_ECHO` 24 tiles/s, 12.5 × reach). Tests: `blunderbuss-arc-echo` (13).
 
-**BOUNDARY:** Speed, cone, damage, pierce, hit-once, walls and Close View occlusion are unchanged; the press cap (32 live shots in dungeons, 64 elsewhere) is unchanged, so with a fast cadence in an open dungeon room some presses can be refused at the cap. The plain Blunderbuss without Arc Wave is unchanged. No save change (schema 14).
+**BOUNDARY:** Speed, cone, damage, pierce, hit-once, walls and Close View occlusion are unchanged; Arc Wave crescents (anything with `arcWave` or `waveHalf`) have their own cap, `ARC_WAVE.maxLive` (dungeon 60, overworld 72): they no longer count toward the shared 32/64 press cap (`sharedShotCount`), and `retireArcWaves` retires the oldest live crescents to make room, so a press is never refused because of them. The plain Blunderbuss without Arc Wave is unchanged. No save change (schema 14).
 
 ## Release 968 — Hammerfall awakened clap
 
