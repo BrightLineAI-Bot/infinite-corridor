@@ -34,11 +34,12 @@ test('the utility choices are data: Oculus, Build and Robot and Drone (release 8
 test('each preset keeps its utility choice through a save and a preset swap; an unknown choice falls back to Build', () => {
   const s = freshSave(); ensureSlots(s);
   assert.equal(presetUtility(s, 0), 'build'); assert.equal(presetUtility(s, 1), 'build'); assert.equal(activeUtility(s), 'build');
+  // 2026-11-15: the utility button is slot D and the Oculus has its own button, so choosing the Oculus empties D
   assert.equal(setPresetUtility(s, 1, 'oculus').ok, true); assert.equal(setPresetUtility(s, 0, 'robot').ok, true);
   assert.equal(setPresetUtility(s, 0, 'zap').ok, false); assert.equal(presetUtility(s, 0), 'robot', 'unchanged');
-  const back = roundTrip(s); assert.equal(presetUtility(back, 0), 'robot'); assert.equal(presetUtility(back, 1), 'oculus');
-  togglePreset(back); assert.equal(activeUtility(back), 'oculus'); togglePreset(back); assert.equal(activeUtility(back), 'robot');
-  const odd = freshSave(); odd.magicSkills.presets[0].utility = 'teleporter'; ensureSlots(odd); assert.equal(presetUtility(odd, 0), 'build');
+  const back = roundTrip(s); assert.equal(presetUtility(back, 0), 'robot'); assert.equal(presetUtility(back, 1), null);
+  togglePreset(back); assert.equal(activeUtility(back), null); togglePreset(back); assert.equal(activeUtility(back), 'robot');
+  const odd = freshSave(); odd.magicSkills.presets[0].utility = 'teleporter'; delete odd.magicSkills.presets[0].d; delete odd.magicSkills.slots.d; ensureSlots(odd); assert.equal(presetUtility(odd, 0), 'build');
 });
 
 test('an old save migrates: A and B kept, C empty, utility Build; a Build button that held something keeps it', () => {
@@ -50,10 +51,10 @@ test('an old save migrates: A and B kept, C empty, utility Build; a Build button
     { a: 'spell:cinder-dart', b: null, button: 'item', item: 'submersible' },
   ];
   const m = migrateSave(old), p = m.magicSkills.presets;
-  assert.deepEqual(m.magicSkills.slots, { a: 'spell:ember-ring', b: 'skill:quickening', c: null }, 'A and B kept, C empty');
+  assert.deepEqual(m.magicSkills.slots, { a: 'spell:ember-ring', b: 'skill:quickening', c: null, d: 'build' }, 'A and B kept, C empty, D the utility (2026-11-15)');
   assert.equal(m.version, 14); assert.equal(m.magicSkills.futureSlotThing, 'kept', 'unknown fields kept');
   assert.equal(p[0].utility, 'build'); assert.equal(p[0].c, null); assert.equal(p[0].button, 'build', 'the old field is kept'); assert.equal(p[0].extra, 7);
-  assert.equal(p[1].utility, 'robot', 'the robot on the old Build button moves to the utility button'); assert.equal(p[1].c, null); assert.equal(p[1].item, 'submersible');
+  assert.equal(p[1].utility, 'robot', 'the robot on the old Build button moves to the utility button'); assert.equal(p[1].d, 'robot', 'and so to slot D'); assert.equal(p[1].c, null); assert.equal(p[1].item, 'submersible');
   assert.deepEqual([p[1].a, p[1].b], ['spell:cinder-dart', null]);
   // a spell or an item on the old Build button moves to C
   const o2 = JSON.parse(JSON.stringify(learned)); o2.magicSkills.slots = { a: 'spell:cinder-dart', b: null }; o2.magicSkills.preset = 0;
@@ -68,17 +69,17 @@ test('an old save migrates: A and B kept, C empty, utility Build; a Build button
 test('three spells at once in A, B and C: each casts with its own cooldown, from its own button, and survives a save', () => {
   const s = freshSave(); s.perception.aperture = 72; const g = new Game(s, 0); g.rx = 3; g.ry = 3; g.loadArea('overworld', false); g.enemies = [];
   assert.equal(setSlot(s, 'a', 'spell:cinder-dart').ok, true); assert.equal(setSlot(s, 'b', 'spell:ember-ring').ok, true); assert.equal(setSlot(s, 'c', 'spell:grave-sun').ok, true);
-  assert.deepEqual(SLOTS.map((q) => slotted(s, q)?.kind), ['spell', 'spell', 'spell']);
+  assert.deepEqual(['a', 'b', 'c'].map((q) => slotted(s, q)?.kind), ['spell', 'spell', 'spell']); assert.deepEqual(SLOTS, ['a', 'b', 'c', 'd']);
   assert.equal(g.castSlot('c'), true, 'C casts'); assert.equal(g.castSlot('c'), false, 'C recovers');
   assert.equal(g.castSlot('a'), true, 'A is its own spell'); assert.equal(g.castSlot('b'), true, 'B is its own spell');
   const r = actionReadiness(g, 0); assert.ok(r.spell3.remaining > 0, 'C shows its cooldown'); assert.ok(r.spell.remaining > 0 && r.spell2.remaining > 0);
   // the C button (input action spell3, key C) casts slot C
   s.magicSkills.cooldowns = {}; g.update(.016, once('spell3'), 9000); assert.ok((s.magicSkills.cooldowns['spell:grave-sun'] || 0) > 0, 'the C button cast Grave Sun');
-  const back = roundTrip(s); assert.deepEqual(back.magicSkills.slots, { a: 'spell:cinder-dart', b: 'spell:ember-ring', c: 'spell:grave-sun' });
+  const back = roundTrip(s); assert.deepEqual(back.magicSkills.slots, { a: 'spell:cinder-dart', b: 'spell:ember-ring', c: 'spell:grave-sun', d: 'build' });
   // moving a spell already in C into A swaps them, as A and B always did
-  setSlot(back, 'a', 'spell:grave-sun'); assert.deepEqual(back.magicSkills.slots, { a: 'spell:grave-sun', b: 'spell:ember-ring', c: 'spell:cinder-dart' });
-  setSlot(back, 'c', null); assert.match(setSlot(back, 'c', null).message, /Slot C emptied/);
-  g.save.magicSkills.slots.c = null; assert.equal(g.castSlot('c'), false); assert.match(g.message, /Slot C is empty/);
+  setSlot(back, 'a', 'spell:grave-sun'); assert.deepEqual(back.magicSkills.slots, { a: 'spell:grave-sun', b: 'spell:ember-ring', c: 'spell:cinder-dart', d: 'build' });
+  setSlot(back, 'c', null); assert.match(setSlot(back, 'c', null).message, /Slot D emptied/); // 2026-11-15: save key c shows as D
+  g.save.magicSkills.slots.c = null; assert.equal(g.castSlot('c'), false); assert.match(g.message, /Slot D is empty/);
 });
 
 test('C holds Build or the preset item like A and B; the item reaches C; presets carry C', () => {
@@ -101,10 +102,10 @@ test('the utility button: Build builds (and keeps the old Build key), the frame 
 });
 
 test('Oculus: the dais opens one tile ahead (or the nearest free tile), lasts 5 s, and a second press does nothing', () => {
-  const { s, g, open, at } = world('OC-1'); setPresetUtility(s, 0, 'oculus');
+  const { s, g, open, at } = world('OC-1'); // 2026-11-15: the dais opens through pressOculus (OCULUS.button 'dais')
   withGpu(true, () => {
     assert.equal(oculusTarget(g), 'close'); assert.equal(oculusAvailable(g).ok, true);
-    g.update(.016, once('utility'), 1000); assert.deepEqual({ x: g.oculus.x, y: g.oculus.y }, { x: at.x + 1, y: at.y }, 'one tile ahead (facing right)');
+    pressOculus(g, 1000, open); assert.deepEqual({ x: g.oculus.x, y: g.oculus.y }, { x: at.x + 1, y: at.y }, 'one tile ahead (facing right)');
     assert.equal(g.oculus.to, 'close'); const first = g.oculus;
     assert.equal(pressOculus(g, 1500, open), false); assert.equal(g.oculus, first, 'a press while it stands does nothing');
     g.update(.016, idle, 1000 + OCULUS.seconds * 1000 - 20); assert.ok(g.oculus, 'still there just before 5 s');
@@ -119,13 +120,13 @@ test('Oculus: the dais opens one tile ahead (or the nearest free tile), lasts 5 
 });
 
 test('Oculus: stepping onto it switches to Close View, and a second dais switches back (overworld switch)', () => {
-  const { s, g, at } = world('OC-2'); setPresetUtility(s, 0, 'oculus'); const was = s.closeView;
+  const { s, g, at, open } = world('OC-2'); const was = s.closeView;
   withGpu(true, () => {
-    g.update(.016, once('utility'), 1000); assert.ok(g.oculus);
+    pressOculus(g, 1000, open); assert.ok(g.oculus);
     Object.assign(g.player, { x: at.x + 1, y: at.y }); g.update(.016, idle, 1200);
     assert.equal(g.oculus, null, 'the dais is used up'); assert.equal(s.overworldCloseView, true, 'Close View on'); assert.equal(s.closeView, was, 'the indoor switch untouched');
     assert.equal(g.oculusWarp?.to, 'close'); assert.equal(oculusTarget(g), 'top');
-    const t = 1200 + OCULUS.cooldown * 1000 + 10; g.player.facing = 'left'; g.update(.016, once('utility'), t); assert.equal(g.oculus?.to, 'top');
+    const t = 1200 + OCULUS.cooldown * 1000 + 10; g.player.facing = 'left'; pressOculus(g, t, open); assert.equal(g.oculus?.to, 'top');
     Object.assign(g.player, { x: at.x, y: at.y }); g.update(.016, idle, t + 100); // the dais is at at.x, ahead to the left of at.x + 1
     assert.equal(s.overworldCloseView, false, 'back to the top-down view'); assert.equal(g.oculusWarp?.to, 'top');
   });
@@ -145,31 +146,31 @@ test('Oculus indoors flips the indoor Close View switch, both ways', () => {
 });
 
 test('Oculus: no dais where Close View is unavailable (no WebGL2 outdoors, a map past its bounds)', () => {
-  const { s, g } = world('OC-3'); setPresetUtility(s, 0, 'oculus');
-  withGpu(false, () => { g.update(.016, once('utility'), 1000); assert.equal(g.oculus ?? null, null); assert.match(g.message, /WebGL2/); });
+  const { s, g } = world('OC-3'); // 2026-11-15: the Oculus button (action oculus) gives the same refusal
+  withGpu(false, () => { g.update(.016, once('oculus'), 1000); assert.equal(g.oculus ?? null, null); assert.match(g.message, /WebGL2/); });
   const big = { area: 'overworld', map: { width: 200, height: 200, tiles: Array.from({ length: 40000 }, () => ({ kind: 'grass' })) }, player: { x: 5, y: 5, facing: 'down' }, save: { closeView: false, overworldCloseView: false }, message: '' };
   withGpu(true, () => { assert.equal(oculusAvailable(big).ok, false); assert.equal(pressOculus(big, 0, () => true), false); assert.equal(big.oculus ?? null, null); assert.match(big.message, /cannot show/); });
 });
 
 test('the dais is runtime only: never saved, dropped on a change of map or when a pause outlasts it', () => {
-  const { s, g } = world('OC-4'); setPresetUtility(s, 0, 'oculus');
+  const { s, g, open } = world('OC-4');
   withGpu(true, () => {
-    g.update(.016, once('utility'), 1000); assert.ok(g.oculus);
+    pressOculus(g, 1000, open); assert.ok(g.oculus);
     const text = serializeSave(s); assert.doesNotMatch(text, /"oculus"\s*:\s*\{/, 'no dais in the save'); assert.equal(new Game(deserializeSave(text), 0).oculus ?? null, null);
     g.update(.016, idle, 1000 + 60000); assert.equal(g.oculus, null, 'a long pause: the dais is simply gone'); assert.equal(s.overworldCloseView, false);
-    g.update(.016, once('utility'), 70000); assert.ok(g.oculus); g.loadArea('overworld', false); g.update(.016, idle, 70100); assert.equal(g.oculus, null, 'a new map drops it');
+    pressOculus(g, 70000, open); assert.ok(g.oculus); g.loadArea('overworld', false); g.update(.016, idle, 70100); assert.equal(g.oculus, null, 'a new map drops it');
   });
 });
 
 test('the HUD: a fixed utility button where the compass was, C where Build was, the compass kept (top right)', () => {
   for (const file of ['../index.html', '../proving-ground/index.html']) {
     const html = readFileSync(new URL(file, import.meta.url), 'utf8'), left = html.slice(html.indexOf('class="left-controls'), html.indexOf('class="action-diamond')), diamond = html.slice(html.indexOf('class="action-diamond'));
-    assert.match(left, /data-action="utility"/); assert.match(diamond, /class="core spell spell-c" data-action="spell3" data-slot="C"/); assert.doesNotMatch(html, /data-action="build"/);
+    assert.match(left, /data-action="utility"/); assert.match(diamond, /class="core spell spell-c" data-action="spell3" data-slot="D"/); // 2026-11-15: lettered A-D on screen assert.doesNotMatch(html, /data-action="build"/);
     assert.match(html, /id="navCompass"[\s\S]*id="navGuidanceArrow"[\s\S]*id="navManualArrow"/, 'the compass and its arrows stay');
   }
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   assert.match(css, /\.left-controls \.compass-slot \{ position: fixed;[^}]*top:[^}]*right:/, 'the compass sits at the top right');
-  const input = readFileSync(new URL('../src/input.ts', import.meta.url), 'utf8'); assert.match(input, /c: "spell3"/); assert.match(input, /b: "utility"/);
+  const input = readFileSync(new URL('../src/input.ts', import.meta.url), 'utf8'); assert.match(input, /b: "spell3"/); assert.match(input, /f: "utility"/); // 2026-11-15: F G C B press A B C D on screen
   for (const sw of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(sw, import.meta.url), 'utf8'), /src\/oculus\.js\?v=\d+/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'oculus'/);
 });

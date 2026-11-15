@@ -35,7 +35,8 @@ export function createInput(root, host = globalThis, options = {}) {
       preset: false,
       build: false,
       spell3: false, // release 874: slot C
-      utility: false, // release 874: the fixed utility button (Build, Robot / Drone or the Oculus)
+      utility: false, // release 874: the fixed utility button; 2026-11-15: save slot d, shown as slot A
+      oculus: false, // 2026-11-15: the Oculus's own button under the compass
     },
     target = { x: 0, y: 0 },
     keys = new Set(),
@@ -48,8 +49,10 @@ export function createInput(root, host = globalThis, options = {}) {
     j: "attack",
     q: "tool",
     r: "tool",
-    f: "spell",
-    g: "spell2",
+    // 2026-11-15: the slot keys follow the on-screen letters (spell-slots.ts SLOT_LABELS) as F, G and C followed A, B and C
+    // before: F presses slot A (the utility place), G slot B, C slot C, and B (the utility's old key) slot D.
+    f: "utility",
+    g: "spell",
     " ": "dodge",
     k: "jump",
     e: "interact",
@@ -60,8 +63,9 @@ export function createInput(root, host = globalThis, options = {}) {
     i: "menu",
     l: "journal",
     t: "preset",
-    b: "utility", // release 874: the utility button (it was Build, still its default)
-    c: "spell3", // release 874: slot C
+    c: "spell2",
+    b: "spell3",
+    o: "oculus", // 2026-11-15: the Oculus button (it had no key of its own; B reached it while it was on the utility button)
   };
   function clearPointer() {
     movementPointer = null;
