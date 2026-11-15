@@ -398,7 +398,34 @@ export function ordinaryFallPresentation(game, now, lift) {
   const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
   if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
   const elapsedMs=Math.max(0,(Number(f.t)||0)*1000),remainingMs=Math.max(0,Number(g.fallRemainingMs?.())||0),durationMs=Math.max(1,elapsedMs+remainingMs);
-  return {v:1,elapsedMs,remainingMs,durationMs,lift:Math.max(0,Number(lift)||0),rise:1,fall:unit(.3+.7*(1-remainingMs/FALL_REACH_MS)),falling:true};
+  return {v:1,elapsedMs,remainingMs,durationMs,lift:Math.max(0,Number(lift)||0),rise:1,fall:unit(.3+.7*(1-remainingMs/FALL_REACH_MS)),falling:true,flail:!g.plunge}; // a plunge is an attack: it keeps the plain hang
+}
+
+// FALL_POSE (Tim 2026-11-15: "a fall animation when he starts falling ... the longer he falls, the more he gets into a loop of moving
+// his arms and legs; not frantic"). Read only from the fall's own clock (game.fall.t, held by a pause and saved with the fall), so the
+// same fall time always draws the same pose. Onset: the arms start out over onsetMs (to `onset` of the full reach). Building: over
+// buildMs more the arms rise and the slow wheel and the gentle leg cycle grow in. Long falls: a steady loop of periodMs. Over the last
+// FALL_REACH_MS before the ground the loop and the arms settle, so the legs reach down into the existing landing absorb or roll.
+// Reduced Motion: a smaller, static arms-out pose (no loop). Radians on the hero's shoulders/elbows; leg offsets in model metres.
+export const FALL_POSE = Object.freeze({
+  onsetMs: 240, onset: .35, buildMs: 1300, periodMs: 1300, minPeriodMs: 900,
+  armOut: .9, armRise: .55, armFwd: .25, armWheelOut: .22, armSwing: .35, elbow: .35, elbowCycle: .2,
+  legRest: .45, legBend: .80, legLift: .07, legStride: .05,
+  reducedArms: .6,
+  // Standard View: the sprite's hands, out and up (tile units), with a small flap at the loop's tempo
+  std: Object.freeze({ reachX: .26, reachY: -.16, flap: .05, line: .07, hand: .045 }),
+});
+const fallSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
+// out[0] arms-out weight, out[1] leg-bend weight, out[2] loop amplitude, out[3] loop phase (radians), all 0..1 but the phase.
+// No allocation: the caller owns `out` (four numbers).
+export function sampleFallPose(fallMs, remainingMs, reducedMotion, out) {
+  const F=FALL_POSE,t=Math.max(0,Number(fallMs)||0),r=Number(remainingMs),settle=Number.isFinite(r)?fallSmooth(r/FALL_REACH_MS):1;
+  const engage=fallSmooth(t/F.onsetMs),build=fallSmooth((t-F.onsetMs)/F.buildMs);
+  out[0]=engage*(F.onset+(1-F.onset)*build)*settle*(reducedMotion?F.reducedArms:1);
+  out[1]=engage*(F.legRest+(1-F.legRest)*build)*F.legBend;
+  out[2]=reducedMotion?0:build*settle;
+  out[3]=2*Math.PI*(Math.max(0,t-F.onsetMs)%F.periodMs)/F.periodMs;
+  return out;
 }
 
 // Read-only touchdown handoff: the short absorb after an ordinary jump, read from the jump's own

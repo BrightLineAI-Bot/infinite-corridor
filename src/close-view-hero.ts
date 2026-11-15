@@ -5,7 +5,7 @@ import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.ts'; // the Carbine's stock, for its shouldered hold
 import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -227,24 +227,45 @@ function solveLeg(state,pose,left,target,weight,data) {
 // tucked and arms lifted out for balance through the rise and hang, then legs reaching down,
 // arms settling and the chest leaning in to meet the ground. Legs read only the fixed rise/fall
 // clocks; every layer is scaled by the connection envelope, so both ends are the ground pose.
+const FALL_SAMPLE = new Float64Array(4); // sampleFallPose's output, reused every frame
 const AIR_POSE = Object.freeze({ tuck: .19, tuckLead: .03, tuckBack: .06, armRaise: .34, armOut: .22, elbow: .30, arch: .05, landLean: .09 });
 function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
   if(air?.v!==1)return;
   const elapsed=Number(air.elapsedMs),remaining=Number(air.remainingMs),duration=Number(air.durationMs),rise=Number(air.rise),fall=Number(air.fall),lift=Number(air.lift);
   if(!Number.isFinite(elapsed)||!Number.isFinite(remaining)||!Number.isFinite(duration)||!Number.isFinite(rise)||!Number.isFinite(fall)||!Number.isFinite(lift)||elapsed<0||remaining<0||duration<=0||elapsed>duration||remaining>duration||rise<0||rise>1||fall<0||fall>1||lift<0)return;
   const connection=smoothstep(elapsed/60)*smoothstep(remaining/60);if(!(connection>0))return;
-  const fold=smoothstep(rise/.55)*(1-smoothstep(fall/.75));
+  // FALL_POSE: a real fall (not a plunge) grows from a small arms-out reaction into a slow arm wheel and leg cycle on its own clock.
+  const flail=air.falling===true&&air.flail!==false?sampleFallPose(elapsed,remaining,reducedMotion,FALL_SAMPLE):null,F=FALL_POSE;
+  const fold=flail?flail[1]*(1-smoothstep((fall-.3)/.45)):smoothstep(rise/.55)*(1-smoothstep(fall/.75));
   const takeoff=smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
-  const raise=smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish,land=smoothstep((fall-.35)/.55)*connection*flourish,A=AIR_POSE;
+  const raise=flail?flail[0]*connection:smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish,land=smoothstep((fall-.35)/.55)*connection*flourish,A=AIR_POSE;
+  const loop=flail?flail[2]*connection:0,ph=flail?flail[3]:0;
   const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
   layer.set(pose);build(asset,state,pose);
   // Preserve each current source sole/ankle frame before solving the independent foot roots.
   for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}matrixQuat(data,o+6,g,foot*16);}
   rotateX(layer,27,.07*takeoff*flourish-A.arch*raise*(1-land)+A.landLean*land);rotateX(layer,24,.045*takeoff*flourish+.04*land);rotateX(layer,4,-.03*takeoff*flourish-.04*land);
   // Arms lift forward and out for balance, elbows soften; a two-handed polearm keeps its frame.
-  if(!twoHanded&&raise>0)for(const [shoulder,elbow,out] of [[12,11,-1],[22,21,1]]){rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
-  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold;target[2]=data[o+2]-A.tuckBack*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
+  // A fall's loop: the arms wheel slowly in turn (each half a cycle apart), up and out; each leg cycles opposite its own arm.
+  if(!twoHanded&&flail&&raise>0)fallArms(asset,state,layer,raise,loop,ph);
+  else if(!twoHanded&&raise>0)for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,out=k?1:-1;rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
+  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0),w=ph+(left?Math.PI:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold+F.legLift*loop*(.5+.5*Math.sin(w));target[2]=data[o+2]-A.tuckBack*fold+F.legStride*loop*Math.cos(w);solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
+}
+// FALL_POSE arms, in the model's frame (x across, y up, z forward): each upper arm turns from where it hangs toward a direction out
+// and up (abduction armOut, plus armRise as the loop builds), wheeling slowly around it: up/down by armWheelOut and fore/aft by
+// armSwing, the two arms half a cycle apart. `raise` blends from the hanging arm (0) to that direction (1); elbows soften with it.
+function fallArms(asset,state,pose,raise,loop,ph){
+  const F=FALL_POSE,g=state.global;build(asset,state,pose);const cx=g[27*16+12];
+  for(let k=0;k<2;k++){
+    const shoulder=k?22:12,elbow=k?21:11,so=shoulder*16,eo=elbow*16,sx=g[so+12],sy=g[so+13],sz=g[so+14];
+    let rx=g[eo+12]-sx,ry=g[eo+13]-sy,rz=g[eo+14]-sz;const len=Math.hypot(rx,ry,rz);if(!(len>1e-6))continue;rx/=len;ry/=len;rz/=len;
+    const side=sx>=cx?1:-1,w=ph+k*Math.PI,a=F.armOut+F.armRise*loop+F.armWheelOut*loop*Math.cos(w),c=F.armSwing*loop*Math.sin(w),sa=Math.sin(a),ca=Math.cos(a);
+    let dx=side*sa*Math.cos(c),dy=-ca*Math.cos(F.armFwd),dz=sa*Math.sin(c)+Math.abs(ca)*Math.sin(F.armFwd);const dl=Math.hypot(dx,dy,dz)||1;
+    dx=rx+(dx/dl-rx)*raise;dy=ry+(dy/dl-ry)*raise;dz=rz+(dz/dl-rz)*raise;const bl=Math.hypot(dx,dy,dz)||1;
+    alignJoint(state,pose,shoulder,elbow,sx+dx/bl*len,sy+dy/bl*len,sz+dz/bl*len);
+    rotateX(pose,elbow,-F.elbow*raise-F.elbowCycle*loop*(.5+.5*Math.sin(w)));
+  }
 }
 // Stegosaur's Grip (game.ts wallCling): the still cling pose's arm reach and elbow bend, the body's lean in and the head's look up
 // (radians on the source's shoulders 12/22, elbows 11/21, body 27 and head 4).
