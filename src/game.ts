@@ -4200,7 +4200,9 @@ export class Game {
   aerialFloor() { return this.aerialHeld() ? Math.floor(this.fall.z + 1e-6) : null; }
   // At a cast: one more this airtime; in a fall, the fall stops where it is and counts afresh from there.
   aerialCast() {
-    const a = this.save.magicSkills.active, f = this.fall && this.fallApplies() ? this.fall : null; this.aerialCasts = (this.aerialCasts || 0) + 1;
+    const a = this.save.magicSkills.active; this.aerialCasts = (this.aerialCasts || 0) + 1;
+    { const gl = this.glide; if (gl && this.area === "overworld" && this.fallApplies() && Number.isFinite(gl.z)) { this.glide = null; this.fall = { z: gl.z, vz: 0, from: gl.z, scale: tileLiftScale({ canopy: !!this.map?.canopy }), t: 0 }; } } // a great tree's freefall (or glide) is caught too: the held air takes over from it (glideHome stays: it ends when the feet touch ground)
+    const f = this.fall && this.fallApplies() ? this.fall : null;
     if (f) { f.hold = f.z; f.vz = 0; f.from = f.z; f.t = 0; delete f.rollT; a.hold = f.z; } else a.hold = this.playerLevel();
   }
   // FALL, for Close View's falling pose: is this a fall from FALL.pose levels or more over the ground below, and how long until it lands

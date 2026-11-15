@@ -59,6 +59,13 @@ test('off a great tree with the glider owned, Aerial Step still holds the height
     if (held) { assert.equal(g.glide, null, 'no glide'); assert.equal(g.aerialHeld(), true); assert.equal(g.fall.z, 6); } else assert.ok(g.glide, 'the freefall glide, as before'); }
 });
 
+test('cast in a great tree\'s freefall (the glider owned) it catches too: the freefall becomes held air, then a fall from there', () => {
+  const g = wayfarer(); g.save.glider = true; ledge(g, 9); const d = drive(g);
+  for (let i = 0; i < 80 && !(g.glide && g.glide.z < 8); i++) { g.lastCrownAt = d.now(); d.step(1); } assert.ok(g.glide && g.glide.open === false, 'a closed freefall');
+  const z = g.glide.z; assert.equal(cast(g, d.now()), true); assert.equal(g.glide, null); assert.ok(g.fall && g.fall.hold === z && g.fall.vz === 0 && g.fall.from === z);
+  for (let i = 0; i < 30; i++) d.step(0); assert.equal(g.fall.z, z, 'held');
+});
+
 test('without Aerial Step the same walk off six levels is a fall, and lethal (the terror is kept)', () => {
   const g = wayfarer(); ledge(g, 6); const d = drive(g); let i = 0;
   for (; i < 400 && !dead(g); i++) d.step(i < 90 ? 1 : 0); assert.ok(dead(g), 'six levels kill');
