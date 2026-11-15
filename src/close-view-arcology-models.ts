@@ -47,8 +47,8 @@ for (const side of [-1, 1]) sparkWarden.push(
 for (const z of [.72, .87, 1.02]) sparkWarden.push(part(membrane([[.198, -.14, z + .027], [.198, .14, z + .027], [.198, .14, z - .027], [.198, -.14, z - .027]]), 0, 0, 0, 1, 1, 1, wardGlow));
 sparkWarden.push(
   block(.11, -.34, .72, .027, .027, .69, wardStaff, -2, 0, 1.15, .08),
-  part(taper, .16, -.34, 1.42, .09, .07, .17, wardGlow, -2, 0, 1.15, .08),
-  part(membrane([[.19, -.34, 1.50], [.27, -.34, 1.64], [.21, -.34, 1.56], [.12, -.34, 1.66]]), 0, 0, 0, 1, 1, 1, wardGlow, -2, 0, 1.15),
+  part(taper, .16, -.34, 1.42, .09, .07, .14, wardGlow, -2, 0, 1.15, .08),
+  part(membrane([[.19, -.34, 1.47], [.27, -.34, 1.57], [.21, -.34, 1.51], [.12, -.34, 1.575]]), 0, 0, 0, 1, 1, 1, wardGlow, -2, 0, 1.15),
 );
 
 // Cinder Wisp, a fragile ember spirit: a lit core with two dark eyes, six flame tongues rising and streaming back from it in

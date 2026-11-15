@@ -75,12 +75,12 @@ const mirrorY = (tris) => tris.map((t) => [t[0], t[2], t[1]].map(([x, y, z]) => 
 // the floor like a plinth instead of standing on dark legs; long sleeved arms end in hands that cover the face at rest.
 const saintHand = ellipsoid(5, 2), saintStone = 0xc9c1b4, saintShade = 0xa79f93, saintPale = 0xe2dbcf, saintTear = 0x8a1a1a;
 const weepingSaint = [
-  part(verticalLoft([[0, .40, 0], [-.03, .29, .40], [.02, .20, .86], [.10, .15, 1.26]], 6), 0, 0, .02, 1, 1, 1, saintStone),
-  part(E6, .17, 0, 1.53, .18, .17, .21, saintPale, 0, .17, 1.53, 0, true),
+  part(verticalLoft([[0, .40, 0], [-.03, .29, .40], [.02, .20, .86], [.10, .15, 1.26]], 6), 0, 0, 0, 1, 1, 1, saintStone),
+  part(E6, .17, 0, 1.51, .18, .17, .17, saintPale, 0, .17, 1.53, 0, true),
   // the veil falls from the crown down the back of the head to the shoulders
-  part(membrane([[.21, 0, 1.75], [.08, -.23, 1.56], [-.12, -.16, 1.16], [-.12, .16, 1.16], [.08, .23, 1.56]]), 0, 0, 0, 1, 1, 1, saintShade),
+  part(membrane([[.21, 0, 1.705], [.08, -.23, 1.54], [-.12, -.16, 1.16], [-.12, .16, 1.16], [.08, .23, 1.54]]), 0, 0, 0, 1, 1, 1, saintShade),
   // a cloak train behind the hem
-  part(membrane([[-.12, 0, .90], [-.30, -.20, .30], [-.40, -.10, .02], [-.40, .10, .02], [-.30, .20, .30]]), 0, 0, 0, 1, 1, 1, saintShade),
+  part(membrane([[-.12, 0, .90], [-.30, -.20, .30], [-.40, -.10, 0], [-.40, .10, 0], [-.30, .20, .30]]), 0, 0, 0, 1, 1, 1, saintShade),
 ];
 for (const side of [-1, 1]) weepingSaint.push(
   // red tears run from beneath the covering hands down the cheeks
@@ -91,7 +91,7 @@ for (const side of [-1, 1]) weepingSaint.push(
 
 // Hanged Choir (standard view: four pale shrouded bodies hung by cords from a dark beam, green eyes, toes dangling). Each singer
 // is one wrapped shroud swinging from its own cord.
-const hangedChoir = [block(0, 0, 1.86, .07, .64, .05, 0x151312), limb([[0, 0, 2.10, .03], [0, 0, 1.88, .025]], 0x6b6358, 31, 0, 1.86)];
+const hangedChoir = [block(0, 0, 1.86, .07, .64, .05, 0x151312), limb([[0, 0, 2.03, .03], [0, 0, 1.88, .025]], 0x6b6358, 31, 0, 1.86)];
 for (let i = 0; i < 4; i++) {
   const y = (i - 1.5) * .30, swing = 32 + i, top = 1.60 - (i % 2) * .06, shroud = i % 2 ? 0xc6bba3 : 0xd8cfb8;
   hangedChoir.push(
@@ -106,7 +106,7 @@ for (let i = 0; i < 4; i++) {
 // Grave Lantern (standard view: a peaked iron cage on a chain, green glass, a white flame-face, two glowing green orbs below).
 const lanternIron = 0x1b1e24, lanternBar = 0x4d5560;
 const graveLantern = [
-  limb([[0, 0, 2.05, .022], [.02, 0, 1.82, .02], [0, 0, 1.62, .018]], lanternBar, 31, 0, 1.55),
+  limb([[0, 0, 1.92, .022], [.02, 0, 1.77, .02], [0, 0, 1.62, .018]], lanternBar, 31, 0, 1.55),
   part(taper, 0, 0, 1.50, .25, .25, .11, lanternIron, 31, 0, 1.55),
   part(hex, 0, 0, 1.37, .27, .26, .04, 0x2a2e36, 31, 0, 1.55),
   part(bevel, 0, 0, .74, .29, .27, .08, lanternIron, 31, 0, 1.55),
@@ -158,7 +158,7 @@ for (let i = 0; i < 3; i++) for (const side of [-1, 1]) {
 const mawFlesh = 0x7a2e33, mawTooth = 0xeee3cc;
 const lipTeeth = (from, to, n) => Array.from({ length: n + 1 }, (_, i) => { const a = from + (to - from) * i / n; return [.13, Math.cos(a) * .39, .72 + Math.sin(a) * .30]; });
 const gnawingMaw = [
-  block(-.30, 0, .70, .08, .64, .62, 0x4a3a2e),
+  block(-.30, 0, .665, .08, .64, .585, 0x4a3a2e),
   part(ringLoft([[0, .40, 0], [.10, .44, 0], [.20, .34, 0]], 8), -.08, 0, .72, 1, 1, .78, mawFlesh, 0, -.08, .72),
   part(E6, -.12, 0, .72, .10, .32, .25, 0x1a0a0b),
   part(axisX(taper), .02, 0, .58, .17, .08, .04, 0xb8404a, 21, -.26, .44),
@@ -174,21 +174,21 @@ for (let i = 0; i < 4; i++) {
 // The halo spins on the Close View effect clock (axialSpin; still in Reduced Motion).
 const seraphEmber = 0xe9824e, seraphGold = 0xffc35a, seraphPale = 0xffe6b0, seraphAsh = 0xa8452c;
 const halo = [];
-for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, cy = Math.cos(a), cz = Math.sin(a); halo.push(...spike([-.04, cy * .25, 1.44 + cz * .25], [-.04, cy * .43, 1.44 + cz * .43], .045)); }
+for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, cy = Math.cos(a), cz = Math.sin(a); halo.push(...spike([-.04, cy * .21, 1.26 + cz * .21], [-.04, cy * .33, 1.26 + cz * .33], .04)); }
 const seraphWing = membrane([[0, 0, 0], [.04, .16, .14], [-.06, .36, .20], [-.20, .56, .14], [-.36, .68, -.02], [-.30, .48, -.10], [-.10, .20, -.10]]);
 const seraphSmall = membrane([[0, 0, 0], [-.06, .26, .06], [-.20, .42, -.02], [-.18, .30, -.10], [-.05, .10, -.08]]);
 const cinderSeraph = [
-  part(E8, 0, 0, .92, .17, .15, .36, seraphEmber, 0, 0, .92, 0, true),
-  part(E5, .13, 0, .98, .06, .08, .17, 0xfff3c9, 0, .13, .98, 0, true),
-  part(E6, .05, 0, 1.44, .14, .13, .15, seraphPale, 0, .05, 1.44, 0, true),
-  part(membrane([[.192, -.06, 1.445], [.192, .06, 1.445], [.19, .06, 1.43], [.19, -.06, 1.43]]), 0, 0, 0, 1, 1, 1, 0x2d120c),
-  { ...part(halo, 0, 0, 0, 1, 1, 1, seraphGold, 0, -.04, 1.44), axialSpin: true },
-  part(ringLoft([[-.025, .26, 0], [.025, .26, 0]], 10), -.04, 0, 1.44, 1, 1, 1, 0xfff3c9, 0, -.04, 1.44),
-  part(taper, 0, 0, .80, .11, .10, .22, seraphGold, 24, 0, .60, Math.PI),
-  part(taper, -.04, 0, .86, .07, .06, .18, seraphAsh, 24, 0, .60, Math.PI),
+  part(E8, 0, 0, .74, .17, .15, .36, seraphEmber, 0, 0, .74, 0, true),
+  part(E5, .13, 0, .80, .06, .08, .17, 0xfff3c9, 0, .13, .80, 0, true),
+  part(E6, .05, 0, 1.26, .14, .13, .15, seraphPale, 0, .05, 1.26, 0, true),
+  part(membrane([[.192, -.06, 1.265], [.192, .06, 1.265], [.19, .06, 1.25], [.19, -.06, 1.25]]), 0, 0, 0, 1, 1, 1, 0x2d120c),
+  { ...part(halo, 0, 0, 0, 1, 1, 1, seraphGold, 0, -.04, 1.26), axialSpin: true },
+  part(ringLoft([[-.025, .22, 0], [.025, .22, 0]], 10), -.04, 0, 1.26, 1, 1, 1, 0xfff3c9, 0, -.04, 1.26),
+  part(taper, 0, 0, .62, .11, .10, .22, seraphGold, 24, 0, .42, Math.PI),
+  part(taper, -.04, 0, .68, .07, .06, .18, seraphAsh, 24, 0, .42, Math.PI),
 ];
-for (const side of [-1, 1]) for (const level of [0, 1]) cinderSeraph.push(part(side > 0 ? seraphWing : mirrorY(seraphWing), -.08, 0, 1.24 - level * .30, 1, 1, 1, level ? seraphAsh : seraphGold, side > 0 ? 22 : 23, -.08, 1.18));
-for (const side of [-1, 1]) cinderSeraph.push(part(side > 0 ? seraphSmall : mirrorY(seraphSmall), -.05, 0, .70, 1, 1, 1, seraphAsh, side > 0 ? 22 : 23, -.08, 1.18));
+for (const side of [-1, 1]) for (const level of [0, 1]) cinderSeraph.push(part(side > 0 ? seraphWing : mirrorY(seraphWing), -.08, 0, 1.06 - level * .30, 1, 1, 1, level ? seraphAsh : seraphGold, side > 0 ? 22 : 23, -.08, 1.00));
+for (const side of [-1, 1]) cinderSeraph.push(part(side > 0 ? seraphSmall : mirrorY(seraphSmall), -.05, 0, .52, 1, 1, 1, seraphAsh, side > 0 ? 22 : 23, -.08, 1.00));
 
 // Lumen Wraith (standard view: a pale hooded shroud with a ragged hem, one great cyan lens for a face, four cyan ribbons).
 const wraithShroud = 0xdcecf2, wraithHood = 0xc9e2ec, wraithFace = 0x2c3b52, wraithCyan = 0x7fe7ff;
@@ -260,7 +260,7 @@ const thunderhorn = [
   part(membrane([[.60, -.11, .86], [.58, -.15, .87], [.59, -.13, .83]]), 0, 0, 0, 1, 1, 1, 0xfff2a0, 24, .30, .80),
   part(membrane([[.60, .11, .86], [.59, .13, .83], [.58, .15, .87]]), 0, 0, 0, 1, 1, 1, 0xfff2a0, 24, .30, .80),
 ];
-for (const side of [-1, 1]) thunderhorn.push(part(curvedTube([[.42, side * .12, .97, .07], [.24, side * .26, 1.10, .065], [.16, side * .37, .88, .055], [.36, side * .40, .70, .04], [.87, side * .26, .80, .012]], 3), 0, 0, 0, 1, 1, 1, ramHorn, 24, .30, .80));
+for (const side of [-1, 1]) thunderhorn.push(part(curvedTube([[.42, side * .12, .97, .07], [.24, side * .26, 1.04, .065], [.16, side * .37, .88, .055], [.36, side * .40, .70, .04], [.87, side * .26, .80, .012]], 3), 0, 0, 0, 1, 1, 1, ramHorn, 24, .30, .80));
 for (const [x, s] of [[.20, 2], [-.40, 1]]) for (const side of [-1, 1]) thunderhorn.push(
   limb([[x, side * .19, .52, .075], [x + .02, side * .21, .12, .06]], ramLeg, side * s, x, .55),
   part(tri3, x + .03, side * .21, .06, .08, .08, .06, ramHoof, side * s, x, .55),
@@ -307,8 +307,8 @@ const gf = (y, z, lift) => front(-.04, .74, .50, .48, .52, y, z, lift);
 const gorgeGum = (n, z0, bend, w) => Array.from({ length: n + 1 }, (_, i) => { const y = -w + i * 2 * w / n; return [gf(y, z0 + bend * (y / w) ** 2, .02), y, z0 + bend * (y / w) ** 2]; });
 const gloomgorge = [
   part(E8, -.04, 0, .74, .50, .48, .52, gorgeBody, 0, -.04, .74, 0, true),
-  part(spikes([[[-.04, 0, 1.22], [-.08, 0, 1.42], .08], [[-.30, -.22, 1.10], [-.42, -.34, 1.28], .07], [[-.30, .22, 1.10], [-.42, .34, 1.28], .07],
-    [[-.46, 0, .92], [-.68, 0, 1.02], .08], [[-.42, -.30, .70], [-.62, -.44, .74], .07], [[-.42, .30, .70], [-.62, .44, .74], .07], [[.10, 0, 1.22], [.16, 0, 1.40], .06]]), 0, 0, 0, 1, 1, 1, gorgeDark),
+  part(spikes([[[-.04, 0, 1.21], [-.20, 0, 1.33], .08], [[-.30, -.22, 1.10], [-.42, -.34, 1.28], .07], [[-.30, .22, 1.10], [-.42, .34, 1.28], .07],
+    [[-.46, 0, .92], [-.68, 0, 1.02], .08], [[-.42, -.30, .70], [-.62, -.44, .74], .07], [[-.42, .30, .70], [-.62, .44, .74], .07], [[.10, 0, 1.21], [.14, 0, 1.32], .06]]), 0, 0, 0, 1, 1, 1, gorgeDark),
   part(membrane([[gf(0, .66, .02), 0, .66], ...[-.36, -.22, 0, .22, .36].map((y, i) => [gf(y, .82 + (i % 4 ? 0 : .07), .02), y, .82 + (i % 4 ? 0 : .07)])]), 0, 0, 0, 1, 1, 1, 0x070a18, 20, .0, .76),
   part(teeth(gorgeGum(10, .82, .07, .34), [0, 0, -1], .07), 0, 0, 0, 1, 1, 1, gorgeTooth, 20, .0, .76),
   part(teeth(gorgeGum(8, .68, .04, .26), [0, 0, 1], .06), 0, 0, 0, 1, 1, 1, gorgeTooth, 21, .0, .76),

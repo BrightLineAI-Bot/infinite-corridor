@@ -643,7 +643,7 @@ const coilStalker = [
   part(ellipsoid(8, 2), .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19, true),
   part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],5), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
   part(ellipsoid(6, 2), .2, 0, .735, .25, .19, .145, coilShell, 82, .1, .62, 0, true),
-  part(membrane([[.02, 0, .70], [-.07, 0, .93], [.05, 0, .91], [.12, 0, .84]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62),
+  part(membrane([[.02, 0, .70], [-.07, 0, .87], [.05, 0, .86], [.12, 0, .81]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62),
   jointed(part(taper, .28, 0, .645, .05, .11, .15, coilLight, 0, .28, .645, Math.PI / 2), 30, .17, .66),
 ];
 for (const side of [-1, 1]) coilStalker.push(part(membrane([[.39, side * .085, .77], [.33, side * .14, .78], [.37, side * .12, .745]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62));
