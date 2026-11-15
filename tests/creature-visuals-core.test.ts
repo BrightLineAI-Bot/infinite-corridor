@@ -6,7 +6,8 @@ import { CORE_JOINT_POSE } from '../src/close-view-arcology-models.ts';
 import { ACTOR_BODY_HEIGHT } from '../src/actor-contact.ts';
 import { meleePatternsFor } from '../src/combat.ts';
 import { BEHAVIOUR } from '../src/enemy-behaviour.ts';
-import { CORE_SPRITE, drawCoreCreature, coreSpriteCount, isCoreSpriteKind } from '../src/monster-render.ts';
+import { CORE_LIMBS, coreLimbPose, coreLimbAngle, CORE_SPRITE, drawCoreCreature, coreSpriteCount, isCoreSpriteKind } from '../src/monster-render.ts';
+import { ACTION_MOTION } from '../src/action-motion.ts';
 
 // Creature visual pass (Tim, 2026-11-15): the core bestiary's per-attack signatures, its budgets and its Standard View bodies.
 const KINDS = { ashling: 158, hollowMarshal: 220, ashenHound: 216, coilStalker: 172, glassMite: 166, pallidCrawler: 168 };
@@ -73,17 +74,53 @@ test("the Marshal's halberd turns about its fist: the chop raises it behind the 
   assert.ok(down > rest[1] + .2, `the chop lands in front (${down.toFixed(2)} from ${rest[1].toFixed(2)})`);
 });
 
-test('Standard View: five core kinds are drawn as posed bodies, cached and bounded', () => {
-  const calls = { ellipse: 0, stroke: 0, fill: 0 };
-  const ctx = new Proxy({}, { get: (t, k) => k in calls ? () => { calls[k]++; } : typeof k === 'string' && /^(save|restore|translate|scale|rotate|beginPath|moveTo|lineTo|closePath|quadraticCurveTo|drawImage|fillRect)$/.test(k) ? () => {} : k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : t[k], set: (t, k, v) => { t[k] = v; return true; } });
+test('Standard View: limbs wind up, strike and recover on the attack clocks, and flinch back', () => {
+  const STRIKE = ACTION_MOTION.monsterStrikeMs / 1000;
+  for (const kind of ORDINARY) {
+    const limbs = Object.keys(CORE_LIMBS.kinds[kind]['*']);
+    assert.ok(limbs.length >= 2, `${kind} has articulated limbs`);
+    for (const id of moves(kind)) {
+      const e: any = { kind, x: 3, y: 4, telegraph: 0, strike: 0, flinch: 0, meleePhase: { id } };
+      const at = (o, limb, quiet = true) => { Object.assign(e, { telegraph: 0, strike: 0, flinch: 0 }, o); return coreLimbAngle(coreLimbPose(e, 0, false), limb) - (quiet ? coreLimbAngle(coreLimbPose({ ...e, telegraph: 0, strike: 0, flinch: 0 }, 0, false), limb) : 0); };
+      const full = CORE_LIMBS.windups[id], lead = limbs[0];
+      const early = at({ telegraph: full * .9 }, lead), coil = at({ telegraph: full * (1 - CORE_LIMBS.snapAt) }, lead), hit = at({ strike: STRIKE * .95 }, lead), done = at({ strike: STRIKE * .01 }, lead);
+      assert.ok(Math.abs(coil) > Math.abs(early) && Math.abs(coil) > .25, `${kind}/${id} the ${lead} draws back and holds`);
+      assert.ok(Math.abs(hit - coil) > .4, `${kind}/${id} the ${lead} swings through at contact`);
+      assert.ok(Math.abs(done) < Math.abs(hit) * .3 + .05, `${kind}/${id} the ${lead} recovers`);
+      // the snap runs from the coil to the strike inside the wind-up's last share
+      const snap = at({ telegraph: full * (1 - CORE_LIMBS.snapAt) * .5 }, lead);
+      assert.ok(Math.min(coil, hit) - 1e-9 <= snap && snap <= Math.max(coil, hit) + 1e-9, `${kind}/${id} snaps between coil and strike`);
+    }
+    const f: any = { kind, x: 3, y: 4, flinch: 1, meleePhase: null }, rest: any = { kind, x: 3, y: 4 };
+    assert.ok(limbs.some((l) => Math.abs(coreLimbAngle(coreLimbPose(f, 0, true), l) - coreLimbAngle(coreLimbPose(rest, 0, true), l)) > .1), `${kind} flinches`);
+  }
+  // other kinds, and no pose at all, leave the figure still
+  assert.equal(coreLimbAngle(coreLimbPose({ kind: 'rootBrute', telegraph: .5 }), 'lead'), 0);
+  assert.equal(coreLimbAngle(null, 'lead'), 0);
+  // Reduced Motion: no idle sway, half the swing
+  const e = { kind: 'ashling', x: 1, y: 2, telegraph: .16, meleePhase: { id: 'lunge' } };
+  assert.equal(coreLimbAngle(coreLimbPose({ kind: 'ashling', x: 1, y: 2 }, 777, true), 'lead'), 0);
+  assert.ok(Math.abs(coreLimbAngle(coreLimbPose(e, 0, true), 'lead')) < Math.abs(coreLimbAngle(coreLimbPose(e, 0, false), 'lead')));
+  // one scratch record and nothing built per call, in the pose, the angle and the renderer's joint
+  const a = { kind: 'ashling', telegraph: .4 }, first = coreLimbPose(a);
+  for (let i = 0; i < 50; i++) { a.telegraph = i / 100; assert.equal(coreLimbPose(a), first); }
+  const fn = (file, name) => { const src = readFileSync(new URL(file, import.meta.url), 'utf8'), i = src.indexOf(`function ${name}(`); assert.ok(i >= 0, name); let d = 0, j = src.indexOf('{', src.indexOf(')', i)); const s0 = j; for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(s0, j + 1); };
+  for (const [file, name] of [['../src/monster-render.ts', 'coreLimbPose'], ['../src/monster-render.ts', 'coreLimbAngle'], ['../src/renderer.ts', 'limbTurn']])
+    assert.ok(!/\bnew\s|=>|\[\s*\]|\.map\(|\.filter\(|\.slice\(|\.\.\./.test(fn(file, name)), `${name} allocates nothing`);
+});
+
+test('the bizarro-world style: the rounded core bodies draw and cache boundedly, and the normal renderer never calls them', () => {
+  const calls = { fill: 0, stroke: 0 };
+  const ctx = new Proxy({}, { get: (t, k) => k in calls ? () => { calls[k]++; } : typeof k === 'string' && /^(save|restore|translate|scale|rotate|beginPath|moveTo|lineTo|closePath|quadraticCurveTo|ellipse|drawImage|fillRect)$/.test(k) ? () => {} : k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : t[k], set: (t, k, v) => { t[k] = v; return true; } });
   for (const kind of ORDINARY) {
     assert.ok(isCoreSpriteKind(kind));
     for (const state of ['walk', 'telegraph', 'attack']) assert.equal(drawCoreCreature(ctx, { kind, scale: 1, segments: kind === 'coilStalker' ? 3 : 1, segmentSpacing: .31 }, 3, 4, 48, 'right', state, 0), true);
   }
   assert.ok(calls.fill > 50 && calls.stroke > 20);
-  assert.equal(drawCoreCreature(ctx, { kind: 'rootBrute' }, 0, 0, 48, 'right', 'walk'), false, 'other kinds keep their own drawing');
+  assert.equal(drawCoreCreature(ctx, { kind: 'rootBrute' }, 0, 0, 48, 'right', 'walk'), false, 'other kinds are not drawn');
   assert.equal(coreSpriteCount(), 0, 'without a DOM canvas nothing is cached');
   assert.ok(CORE_SPRITE.max > 0 && CORE_SPRITE.max <= 64);
-  const src = readFileSync(new URL('../src/monster-render.ts', import.meta.url), 'utf8'), at = src.indexOf('export function drawCoreCreature');
-  assert.match(src.slice(at, at + 3000), /coreSprites\.size > CORE_SPRITE\.max/, 'the sprite cache is bounded');
+  const mr = readFileSync(new URL('../src/monster-render.ts', import.meta.url), 'utf8'), at = mr.indexOf('export function drawCoreCreature');
+  assert.match(mr.slice(at, at + 3000), /coreSprites\.size > CORE_SPRITE\.max/, 'the sprite cache is bounded');
+  assert.doesNotMatch(readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), /drawCoreCreature/, 'the normal Standard View keeps its blocky figures');
 });

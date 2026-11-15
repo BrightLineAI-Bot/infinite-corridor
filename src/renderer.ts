@@ -33,7 +33,7 @@ import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./af
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
-import { drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
@@ -1605,6 +1605,12 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
   ctx.fill();
   ctx.restore();
 }
+// Turns what is drawn next about the joint (x, y) by `angle` radians (clockwise); returns whether the caller must restore.
+function limbTurn(ctx, x, y, angle) {
+  if (!angle) return false;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.translate(-x, -y);
+  return true;
+}
 function actor(
   ctx,
   x,
@@ -1619,6 +1625,7 @@ function actor(
   segments = 1,
   segmentSpacing = 0,
   palette = null, // release 679: a tree's seasonal colours
+  limbs = null, // the core bestiary's limb pose (monster-render.ts coreLimbPose): arms, jaws, weapons and tails swing on their joints
 ) {
   const p = palette || COLORS[kind] || COLORS.ashling,
     k = x * s + s / 2,
@@ -1657,6 +1664,7 @@ function actor(
       Math.max(2, Math.round(h * s * sc)),
     );
   };
+  const fl = facing === "left" ? -1 : 1; // limb joints below are at (k + a * s * sc, base + b * s * sc - bob) for body units (a, b)
   if(kind==="voidSentinel" || kind==="gateRevenant"){
     ctx.lineCap="round";
     for(let i=0;i<7;i++){
@@ -1678,24 +1686,41 @@ function actor(
   else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
   else if(kind==='knifeChoir'){rect(p[1],-.2,-.72,.4,.68);for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.strokeStyle=p[0];ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(k,base-s*.4*sc);ctx.lineTo(k+Math.cos(a)*s*.55*sc,base-s*.4*sc+Math.sin(a)*s*.45*sc);ctx.stroke()}rect(p[2],-.08,-.62,.16,.14)}
   else if (kind === "glassMite") {
+    // legs splay and gather on their hips (the pair on the side it faces leads); the crystal crown and the mandibles move apart
+    for (const q of [-0.3, -0.1, 0.12, 0.3]) { const t = limbTurn(ctx, k + (q + .025) * s * sc, base + (-.12) * s * sc - bob, fl * coreLimbAngle(limbs, (q > 0) === (fl > 0) ? "lead" : "off")); rect(p[0], q, -0.12, 0.05, 0.19); if (t) ctx.restore(); }
+    for (const side of [-1, 1]) { const t = limbTurn(ctx, k + (side * .045) * s * sc, base + (-.1) * s * sc - bob, -side * coreLimbAngle(limbs, "jaw")); rect(p[2], side < 0 ? -.08 : .04, -0.1, 0.04, 0.09); if (t) ctx.restore(); }
     rect(p[1], -0.31, -0.29, 0.62, 0.22);
-    for (const q of [-0.3, -0.1, 0.12, 0.3]) rect(p[0], q, -0.12, 0.05, 0.19);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.29) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.17, -0.48, 0.18, 0.25);
     rect(p[2], -0.09, -0.43, 0.04, 0.1);
     rect(p[0], 0.04, -0.42, 0.15, 0.19);
+    if (t) ctx.restore();
   } else if (kind === "sparkWarden") {
     rect(p[1], -0.15, -0.7, 0.3, 0.65);
     rect(p[0], -0.2, -0.78, 0.4, 0.16);
     rect(p[2], -0.3, -0.75, 0.05, 0.7);
     for (let q = 0; q < 3; q++) rect(p[2], -0.1, -0.57 + q * 0.15, 0.2, 0.04);
   } else if (kind === "ashenHound") {
-    rect(p[1],-.32,-.34,.62,.3);rect(p[0],.12,-.48,.3,.28);rect(p[2],.34,-.42,.06,.06);rect(p[0],-.38,-.45,.2,.09);rect(p[1],-.25,-.12,.08,.18);rect(p[1],.18,-.12,.08,.18);
+    // drawn facing right, as always: the tail, hind leg and foreleg on their joints, the head on its neck with a hinged jaw
+    let t = limbTurn(ctx, k + (-.18) * s * sc, base + (-.41) * s * sc - bob, coreLimbAngle(limbs, "tail")); rect(p[0],-.38,-.45,.2,.09); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (-.21) * s * sc, base + (-.12) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1],-.25,-.12,.08,.18); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.22) * s * sc, base + (-.12) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1],.18,-.12,.08,.18); if (t) ctx.restore();
+    rect(p[1],-.32,-.34,.62,.3);
+    t = limbTurn(ctx, k + (.15) * s * sc, base + (-.36) * s * sc - bob, coreLimbAngle(limbs, "head"));
+    const j = limbTurn(ctx, k + (.2) * s * sc, base + (-.22) * s * sc - bob, coreLimbAngle(limbs, "jaw")); rect(p[1],.2,-.25,.2,.06); if (j) ctx.restore();
+    rect(p[0],.12,-.48,.3,.23);rect(p[2],.34,-.42,.06,.06);
+    if (t) ctx.restore();
   } else if (kind === "veilMoth") {
     rect(p[1],-.07,-.55,.14,.5);rect(p[0],-.42,-.62,.34,.35);rect(p[0],.08,-.62,.34,.35);rect(p[2],-.03,-.7,.06,.08);
   } else if (kind === "rootBrute") {
     rect(p[1],-.34,-.62,.68,.6);rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05);rect(p[0],-.47,-.5,.16,.52);rect(p[0],.31,-.5,.16,.52);
   } else if (kind === "coilStalker") {
-    rect(p[1],-.28,-.5,.56,.42);rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.34,-.4,.68,.06);rect(p[2],-.04,-.62,.08,.08);
+    // the head strikes on its neck toward the side it faces; two fangs gape under it and shut
+    rect(p[1],-.28,-.5,.56,.42);rect(p[2],-.34,-.4,.68,.06);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.5) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
+    for (const side of [-1, 1]) { const f = limbTurn(ctx, k + (side * .085) * s * sc, base + (-.48) * s * sc - bob, -side * coreLimbAngle(limbs, "jaw")); rect(p[2], side < 0 ? -.1 : .07, -.48, .03, .07); if (f) ctx.restore(); }
+    rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.04,-.62,.08,.08);
+    if (t) ctx.restore();
   } else if (kind === "cinderWisp") {
     rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
   } else if (kind === "voidSentinel") {
@@ -1705,9 +1730,15 @@ function actor(
   } else if (kind === "hollowMarshal") {
     rect(p[1], -0.29, -0.66, 0.58, 0.62);
     rect(p[0], -0.36, -0.62, 0.72, 0.18);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.23, -0.83, 0.46, 0.23);
     rect("#181717", -0.15, -0.75, 0.3, 0.07);
-    rect(p[2], 0.3, -0.57, 0.09, 0.48);
+    if (t) ctx.restore();
+    // the halberd, carried on the side it faces and turned about the fist: levelled, reaped up from low or chopped down
+    t = limbTurn(ctx, k + (fl * .345) * s * sc, base + (-.2) * s * sc - bob, fl * coreLimbAngle(limbs, "weapon"));
+    rect(p[2], fl > 0 ? 0.3 : -0.39, -0.57, 0.09, 0.48);
+    rect(p[2], fl > 0 ? 0.28 : -0.41, -0.66, 0.13, 0.07);
+    if (t) ctx.restore();
   } else if (kind === "riftColossus") {
     rect(p[1], -0.41, -0.72, 0.7, 0.68);
     rect(p[0], -0.49, -0.57, 0.35, 0.48);
@@ -1722,11 +1753,19 @@ function actor(
     ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);
   } else if (kind === "ashling") {
     rect(p[1], -0.2, -0.55, 0.4, 0.5);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.5) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.16, -0.72, 0.32, 0.24);
     rect(p[0], -0.25, -0.83, 0.08, 0.2);
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
-    rect(p[1], -0.28, -0.28, 0.12, 0.25);
+    if (t) ctx.restore();
+    // two clawed arms on their shoulders (the one on the side it faces leads the swing)
+    for (const side of [-1, 1]) {
+      t = limbTurn(ctx, k + (side * .23) * s * sc, base + (-.44) * s * sc - bob, fl * coreLimbAngle(limbs, side === fl ? "lead" : "off"));
+      rect(p[0], side < 0 ? -0.29 : 0.17, -0.46, 0.12, 0.27);
+      rect(p[2], side < 0 ? -0.28 : 0.18, -0.2, 0.1, 0.05);
+      if (t) ctx.restore();
+    }
   } else if (kind === "npc" || kind === "shipwright" || kind === "villager" || kind === "militia" || TRAVELER_LOOKS.has(kind)) {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
@@ -2983,6 +3022,8 @@ export function render(ctx, g, w, h, now) {
             e.scale,
             e.segments,
             e.segmentSpacing,
+            null,
+            coreLimbPose(e, now, cueQuiet), // the core bestiary's limbs swing on its attack clocks (monster-render.ts)
           );
           if (e.strike > 0) {
             ctx.strokeStyle = "#c28152cc";

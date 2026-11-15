@@ -21,6 +21,7 @@ import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser
 import { ASTRAL, astralBeamAnchors } from "./astral-worm.ts";
 
 import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
+import { ACTION_MOTION } from "./action-motion.ts"; // the ordinary strike's length, for the core bestiary's Standard View motion
 
 const TAU = Math.PI * 2;
 
@@ -2153,12 +2154,77 @@ export function drawPackPortrait(ctx, kind, size, now = 0) {
   ctx.restore(); return true;
 }
 
-// The core bestiary in Standard View (creature visual pass, Tim 2026-11-15: "even trash mobs should feel real"): the Ashling,
-// Hollow Marshal, Ashen Hound, Glass Mite and Coil Stalker were blocks of colour. Each is now drawn as a shaded side-on body in
-// its Close View palette, with a pose for rest, the wind-up (cocked back: the anticipation its Close View attack shows) and the
-// strike (extended). Like the haunts (cachedHaunt), each kind/pose/facing/size is painted once into a small canvas and only
-// stamped each frame (bounded by CORE_SPRITE.max); a walking creature bobs a pixel as before. Without a DOM canvas (tests) the
-// body is painted directly. The Coil Stalker's trailing coils stay live ellipses, as before.
+// The core bestiary's Standard View limbs (creature visual pass, Tim 2026-11-15: keep the flat blocky figures of renderer.ts
+// actor() - "they fit with the theme of the game" - and give them limbs that swing at you; no whole-body leaning). Each kind's
+// arms, claws, jaws, weapon and tail are their own blocks turned about a joint, in the same palette and style. The clocks are
+// the ones the Close View rows use (close-view-arcology-models.ts CORE_JOINT_POSE): the wind-up is e.telegraph against its full
+// length (the behaviour record's `wind`, else the move's own telegraph), coiling over the first `snapAt` of it and snapping
+// through in the rest; the strike is e.strike against ACTION_MOTION.monsterStrikeMs, held for `hold`, then settled back with a
+// follow-through; e.flinch flings the limbs back. Rows are J(coil, strike, follow) in radians, clockwise positive, for a figure
+// facing right (actor() mirrors them facing left); `idle` is a slow sway of that amplitude (none under Reduced Motion).
+const L = (coil, strike, follow = 0, idle = 0) => Object.freeze([coil, strike, follow, idle]);
+const rowsOf = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Object.freeze(v)])));
+export const CORE_LIMBS = Object.freeze({
+  snapAt: .8, hold: .25, follow: .45, idleRate: 1.6, flinch: .45, windupDefault: .8,
+  windups: Object.freeze({ longReach: 1, lunge: .8, zigzag: .95, hop: 1.05, slam: 1.25 }), // combat.ts MELEE_PATTERNS telegraphs
+  // limbs: lead and off arm (the lead is the one on the side it faces), head, jaw, weapon, tail, fore and hind legs
+  kinds: Object.freeze({
+    // the Lunge: the lead claw rears overhead and rakes down across; the Long Reach: both claws rear up and rake in together
+    ashling: rowsOf({ '*': { lead: L(-2.3, .7, .35, .06), off: L(.35, -.3, 0, .06), head: L(-.12, .16, .05) },
+      longReach: { lead: L(-2.5, .55, .3, .06), off: L(2.5, -.55, -.3, .06), head: L(0, .1, .05) } }),
+    // the halberd turns about its fist: the thrust levels it at the foe, the reap swings it up from low, the chop brings it
+    // over the helm and down
+    hollowMarshal: rowsOf({ '*': { weapon: L(-.35, 1.57, .12, .04), head: L(-.05, .08) },
+      lunge: { weapon: L(2.3, .7, -.25, .04), head: L(.06, -.08) },
+      slam: { weapon: L(-1.3, 2.1, .15, .04), head: L(-.1, .12) } }),
+    // the head drops to stalk with the jaw agape, then snaps up and shut; the foreleg tucks and rakes out, the hind leg drives
+    ashenHound: rowsOf({ '*': { head: L(.3, -.3, .1, .03), jaw: L(.6, 0, .3), fore: L(.5, -.95, .2), hind: L(-.3, .5), tail: L(-.35, .2, 0, .15) },
+      lunge: { head: L(.35, -.4, .12, .03), jaw: L(.7, 0, .35), fore: L(.55, -1.1, .25), hind: L(-.4, .6), tail: L(-.4, .25, 0, .15) } }),
+    // the legs gather and splay for the hop; the mandibles spread wide and clamp
+    glassMite: rowsOf({ '*': { lead: L(-.7, .35, 0, .05), off: L(.7, -.35, 0, .05), jaw: L(.55, -.15, .1), head: L(0, .08) },
+      longReach: { lead: L(-.32, .26, 0, .05), off: L(.32, -.26, 0, .05), jaw: L(.7, -.2, .12), head: L(-.08, .14) } }),
+    // the Long Reach rears the head to the far side with the fangs agape, then strikes out toward the foe as they shut; the
+    // Lunge dips it toward the foe to stalk, then springs it further out
+    coilStalker: rowsOf({ '*': { head: L(-.32, .42, -.1, .04), jaw: L(.55, 0, .2) },
+      lunge: { head: L(.32, .8, -.15, .04), jaw: L(.6, .05, .2) } }),
+  }),
+});
+// One scratch record, rewritten by every call (no per-frame allocation). `row` is the creature's limb row ('' for other kinds).
+const CORE_LIMB_POSE = { kind: '', row: null, c: 0, s: 0, f: 0, flinch: 0, idle: 0, amp: 1 };
+export function coreLimbPose(e, now = 0, reduceMotion = false, out = CORE_LIMB_POSE) {
+  const K = CORE_LIMBS, rows = e && Object.hasOwn(K.kinds, e.kind) ? K.kinds[e.kind] : null;
+  out.kind = rows ? e.kind : ''; out.row = null; out.c = 0; out.s = 0; out.f = 0; out.flinch = 0; out.idle = 0; out.amp = reduceMotion ? .5 : 1;
+  if (!rows) return out;
+  const id = typeof e.meleePhase?.id === 'string' ? e.meleePhase.id : '';
+  out.row = Object.hasOwn(rows, id) ? rows[id] : rows['*'];
+  const telegraph = Number(e.telegraph) || 0, strike = Number(e.strike) || 0;
+  if (strike > 0) {
+    const v = 1 - Math.min(1, strike * 1000 / ACTION_MOTION.monsterStrikeMs);
+    if (v < K.hold) out.s = 1; else { const t = (v - K.hold) / (1 - K.hold); out.s = 1 - t * t * (3 - 2 * t); out.f = reduceMotion || t >= K.follow ? 0 : Math.sin(Math.PI * t / K.follow); }
+  } else if (telegraph > 0) {
+    const full = Math.max(telegraph, Number(e.bhv?.wind) || 0, Object.hasOwn(K.windups, id) ? K.windups[id] : K.windupDefault), u = 1 - telegraph / full;
+    if (u < K.snapAt) { const t = u / K.snapAt; out.c = t * t * (3 - 2 * t); }
+    else { const q = 1 - (u - K.snapAt) / (1 - K.snapAt), k = 1 - q * q * q; out.c = 1 - k; out.s = k; }
+  }
+  out.flinch = Math.max(0, Math.min(1, Number(e.flinch) || 0));
+  out.idle = reduceMotion ? 0 : Math.sin(now / 1000 * K.idleRate + (Number(e.x) || 0) * 1.7 + (Number(e.y) || 0) * 2.3);
+  return out;
+}
+// The angle of `limb` for pose `P` (coreLimbPose) facing right, or 0 when it has no row.
+export function coreLimbAngle(P, limb) {
+  const r = P?.row && Object.hasOwn(P.row, limb) ? P.row[limb] : null;
+  if (!r) return 0;
+  // a flinch flings each limb back the way it winds up, as far as its wind-up goes (at most `flinch`)
+  return P.amp * (r[0] * P.c + r[1] * P.s) + r[2] * P.f + r[3] * P.idle + CORE_LIMBS.flinch * P.flinch * Math.max(-1, Math.min(1, r[0]));
+}
+
+// The bizarro-world style (Tim, 2026-11-15): the core bestiary drawn as rounded, shaded side-on bodies instead of the usual
+// blocky figures (renderer.ts actor()), kept for rare special realms and pockets where creatures look strange. Nothing on the
+// normal Standard View path calls it; the realm that wants it calls drawCoreCreature in place of actor(). It covers the Ashling,
+// Hollow Marshal, Ashen Hound, Glass Mite and Coil Stalker in their Close View palettes, with a pose for rest, the wind-up
+// (cocked back) and the strike (extended). Like the haunts (cachedHaunt), each kind/pose/facing/size is painted once into a small
+// canvas and only stamped each frame (bounded by CORE_SPRITE.max); a walking creature bobs a pixel. Without a DOM canvas (tests)
+// the body is painted directly. The Coil Stalker's trailing coils are live ellipses.
 export const CORE_SPRITE = Object.freeze({
   max: 40, box: Object.freeze({ w: 3.7, h: 2.6, foot: 2.3 }),
   kinds: Object.freeze({
