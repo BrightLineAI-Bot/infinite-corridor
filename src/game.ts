@@ -74,7 +74,7 @@ import {
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
 import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.ts"; // and the Aether Orrery (a magic tool)
 import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.ts";
@@ -8449,7 +8449,7 @@ export class Game {
   // The Quandrix Staff (quandrix-staff.ts QUANDRIX): the hooks its rules call. Runtime game.quandrix; only the held or let-go hand is saved (playerRuntime.quandrixHold).
   quandrixEquipped() { return isQuandrixStaff(this.save.equipment?.primary); }
   quandrixMageHand() { return this.quandrixEquipped() && fieldOn(this.save, QUANDRIX.passive); } // the Mage's Hand passive works only with the staff
-  quandrixPower() { return this.meleePower(); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage
+  quandrixPower() { return this.meleePower() * (1 + transposeMagic(this.save, "quandrix-staff")); } // (8 x glyph damage + weaponBonus: Focus at 2 a rank, as every primary's own stat) x armor attack damage; x Transpose's seal (weapon-arts.ts MAGIC_DAMAGE_SOURCES: the staff's damage is magic)
   quandrixEchoPlan() { return echoPlan(this.glyphLoadout("melee")); } // a weapon Echo: an echo hand at the swing's delay and share
   quandrixClone(now) { // the Shadow Clone, while out: its hand from where it stands, toward the lock (else the Wayfarer's way), at its share
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return null;
