@@ -11011,11 +11011,11 @@ export class Game {
       scale = m > 1 ? 1 / m : 1,
       x = rawX * scale,
       y = rawY * scale;
-    if (now < (p.heldUntil || 0) && p.heldFirm) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); } // the Spinosaurus's jaws: held fast, nothing to do but wait
+    if (now < (p.heldUntil || 0) && p.heldFirm) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "utility", "build", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); } // the Spinosaurus's jaws: held fast, nothing to do but wait
     else if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
     if (p.shockCount && now - (p.shockAt || 0) > GIANT.shockDecay * 1000) p.shockCount = 0; // the shock counter fades
-    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
+    if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "utility", "build", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
     if (p.hp <= 0) this.clearAttackBuffer();
     if (Math.hypot(x, y) > 0.15)
       this.save.lastAim = projectileDirection(x, y, p.facing);
