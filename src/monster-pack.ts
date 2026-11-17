@@ -19,6 +19,32 @@ import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClo
 import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 
 export const MONSTER_PACK_VERSION = 1;
+// A separate content pin: generic pack selectors still exclude this species.
+export const TRICERATOPS_HERDS = { version: 1, perThousand: 150, min: 2, max: 4, separation: 3, radius: 7,
+  grounds: ["grass", "forestFloor", "jungleFloor", "savannaGrass", "amberLitter"] };
+export function triceratopsHerdSpawns(map, seed, rx, ry, version = 0) {
+  const C = TRICERATOPS_HERDS;
+  if (version !== 1 || !map || Math.abs(rx) + Math.abs(ry) < 3 || map.settlement || map.hamlet || map.farDomain || map.canopy || map.greatBuilding || map.building || map.keep || map.pentagon || map.underwater) return [];
+  const key = `${seed}:triceratops-herd:v1:${rx}:${ry}`, h = hashSeed(key);
+  if (h % 1000 >= C.perThousand) return [];
+  const width = 32, tiles = map.tiles || [], occupied = [...(map.objects || []), ...(map.enemySpawns || [])];
+  const clear = (x, y) => {
+    const t = tiles[y * width + x];
+    return t && !t.blocked && !t.structure && !t.buildingId && !t.canopy && !t.chasm && !t.environment && C.grounds.includes(t.kind);
+  };
+  const spots = tiles.filter(t => t.x >= 3 && t.x <= 28 && t.y >= 3 && t.y <= 28 &&
+    occupied.every(o => Math.hypot(o.x - t.x, o.y - t.y) >= C.separation) &&
+    [-1, 0, 1].every(dx => [-1, 0, 1].every(dy => clear(t.x + dx, t.y + dy) && (Number(tiles[(t.y + dy) * width + t.x + dx].elev) || 0) === (Number(t.elev) || 0))))
+    .sort((a, b) => hashSeed(`${key}:${a.x}:${a.y}`) - hashSeed(`${key}:${b.x}:${b.y}`) || a.y - b.y || a.x - b.x);
+  const herd = [], count = C.min + (h >>> 10) % (C.max - C.min + 1), disposition = ["good", "silly", "bad"][(h >>> 16) % 3];
+  for (const t of spots) {
+    if (herd.length && (Math.hypot(t.x - herd[0].x, t.y - herd[0].y) > C.radius || herd.some(o => Math.hypot(t.x - o.x, t.y - o.y) < C.separation))) continue;
+    herd.push({ id: `${key}:${herd.length}`, kind: "triceratops", x: t.x, y: t.y, triceratopsDisposition: disposition, triceratopsHerd: key });
+    if (herd.length === count) break;
+  }
+  return herd.length >= C.min ? herd : [];
+}
+
 const TAU = Math.PI * 2;
 
 // ---------------------------------------------------------------- attribute tables
@@ -535,8 +561,8 @@ export const MONSTER_PACK = {
     lore: "A stegosaurus as big as a house, blue, striped dark along its flanks, its two rows of tall plates barred with pale light, its eyes a fierce yellow. Its beak has turned to teeth, and it is always hungry. It eats the trees as it goes, but it would rather eat you: it snaps and rakes and rears, swings and slams its spiked tail, rolls at you as a wheel of plates, fires its plates into the sky to fall on you, and swims with only its plates above the water. Cut off its tail and it fights the weaker for it.",
   },
   // First playable Triceratops slice. Runtime placement supplies triceratopsDisposition; all
-  // dispositions deliberately share this body and palette. Kept prototype-only until a
-  // versioned producer admits it to ordinary world generation.
+  // dispositions deliberately share this body and palette. Generic selectors exclude it;
+  // only the separate versioned herd producer admits it to ordinary world generation.
   triceratops: {
     id: "triceratops", prototypeOnly: true, noEcho: true, name: "Triceratops", epithet: "Three Horns, One Bright Hide",
     stats: [150, 14, 0], form: { scale: 1.65 }, sizeClass: "huge", movement: "walk", brain: "juggernaut",

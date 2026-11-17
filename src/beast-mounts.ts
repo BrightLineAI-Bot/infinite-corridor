@@ -30,6 +30,11 @@ export const MOUNT_BEASTS = {
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
 MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.7, seat: 1.65, saddle: "strap", speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
+// Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.
+export const TRICERATOPS_ATTACKS = {
+  dash: { range: 1.8, arc: 85, damage: 24, stun: .2 },
+  landing: { range: 3, arc: 360, damage: 32, stun: .4 },
+};
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
 export const triceratopsVariant = (actor) => actor?.triceratopsDisposition === "silly" || actor?.variant === "silly" ? "silly" : "normal";

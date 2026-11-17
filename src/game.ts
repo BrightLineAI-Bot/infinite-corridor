@@ -98,7 +98,7 @@ import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND,
 import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
-import { persistentMount, TRICERATOPS_RIDE, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
+import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.ts";
@@ -144,7 +144,7 @@ import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, join
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
+import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -3314,6 +3314,7 @@ export class Game {
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
     if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
+    this.triceratopsDash = null; this.triceratopsJump = null; // accepted attacks belong to this area
     this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
@@ -3472,6 +3473,7 @@ export class Game {
         ...(prior ? (prior.guideVersion ? { guideVersion: prior.guideVersion } : {}) : { guideVersion: WAYMARK_GUIDES.version }), // waymark guides: the marks lead to hosts, and hosts hold their destinations, on ground first seen from now on
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
+        ...(!prior && !this.save.explored?.[key] && !this.save.session.areas?.[this.areaStateId()] ? { triceratopsHerdVersion: TRICERATOPS_HERDS.version } : {}),
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
         ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
@@ -3498,6 +3500,7 @@ export class Game {
     }
     if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
+    if (area === "overworld") this.map.enemySpawns.push(...triceratopsHerdSpawns(this.map, this.save.seed, this.rx, this.ry, this.save.atlas?.[`${this.rx},${this.ry}`]?.triceratopsHerdVersion));
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
     if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
@@ -7233,6 +7236,42 @@ export class Game {
   // takes the lift off again, so a knock still moves the mount's feet. Terrain, water, mire and lethal ground stay at the feet.
   riderUp() { const p = this.player, m = this.mountRide(); if (!m || p.riderShift) return; const h = riderLiftOf(m); if (h > 0) { p.y -= h; p.riderShift = h; } }
   riderDown() { const p = this.player; if (p.riderShift) { p.y += p.riderShift; p.riderShift = 0; } }
+  beginTriceratopsDash(now) {
+    const m = this.mountRide(), p = this.player;
+    if (!persistentMount(m) || !(p.hp > 0) || !(now < p.dodgeUntil)) return false;
+    this.triceratopsDash = { mount: m.id, until: p.dodgeUntil, x: p.dodgeX, y: p.dodgeY, hits: [] };
+    return true;
+  }
+  beginTriceratopsJump(now) {
+    const m = this.mountRide();
+    if (!persistentMount(m) || !(this.player.hp > 0) || !(now < this.jumpUntil)) return false;
+    this.triceratopsJump = { mount: m.id, start: this.jumpStart, until: this.jumpUntil };
+    return true;
+  }
+  triceratopsBlow(kind, now, direction, hitIds = []) {
+    const C = TRICERATOPS_ATTACKS[kind], p = this.player;
+    const foes = this.enemies.filter(e => !e.dead && !e.hidden && !e.untargetable && !e.passingBeast && e.kind !== "npc" &&
+      !(e.kind === "triceratops" && e.triceratopsDisposition !== "bad" && !e.triceratopsBetrayed) && this.bodyReach(e) && !hitIds.includes(e.id));
+    const hits = primaryAttackHits(p, foes, this.map, mapWidth(this.map, this.area), C, direction);
+    for (const e of hits) { hitIds.push(e.id); this.artBlow(e, C.damage, now, C.stun, p.x + .5, p.y + .45); }
+    if (kind === "landing") this.effects.push({ id: `triceratops-land-${now}`, kind: "plunge-slam", brawler: true, x: p.x + .5, y: p.y + .45, radius: C.range, life: .35, pulse: 99, untilPulse: 99, pulseIndex: 0, damage: 0, hits: {} });
+    return hits;
+  }
+  tickTriceratopsAttacks(now) {
+    const m = this.mountRide(), p = this.player;
+    if (!persistentMount(m) || !(p.hp > 0) || this.fallen || this.swimming) { this.triceratopsDash = null; this.triceratopsJump = null; return; }
+    const dash = this.triceratopsDash;
+    if (dash) {
+      if (dash.mount !== m.id || !(now < dash.until) || this.cursed("attack", now)) this.triceratopsDash = null;
+      else this.triceratopsBlow("dash", now, { x: dash.x, y: dash.y }, dash.hits);
+    }
+    const jump = this.triceratopsJump;
+    if (jump && (jump.mount !== m.id || jump.start !== this.jumpStart || jump.until !== this.jumpUntil)) this.triceratopsJump = null;
+    else if (jump && now >= jump.until && !p.jumping && !this.fall && !this.glide && !this.droneLift) {
+      this.triceratopsJump = null;
+      if (!this.cursed("attack", now) && !footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y)) this.triceratopsBlow("landing", now, { x: 0, y: 1 });
+    }
+  }
   mountLeap(now) { return !!this.mountRide() && now < (this.jumpUntil || 0); } // airborne on a mount: chasms and water pass under
   mountBlock(m = ridingMount(this.save)) {
     const p = this.player;
@@ -7257,7 +7296,7 @@ export class Game {
     return { ok: true, message: (this.message = `${mountName(m)} answers your call, and you climb onto its back. ${mountLifeText(m)} left.`) };
   }
   dismount(message = null) {
-    const m = stopRide(this.save); this._mountHp = null; if (!m) return { ok: false, message: this.message };
+    const m = stopRide(this.save); this._mountHp = null; this.triceratopsDash = null; this.triceratopsJump = null; if (!m) return { ok: false, message: this.message };
     return { ok: true, message: (this.message = message || `You climb down from ${mountName(m).replace(/^The /, "the ")}, and it is gone back to your stable. ${mountLifeText(m)} left.`) };
   }
   // Act with nothing near in the open world: get down, or call the mount ridden last.
@@ -7531,7 +7570,7 @@ export class Game {
   }
   createEnemyFromSpawn(e, area = this.area) {
       const c = createCombatant(e.kind, e.x, e.y, e.boss, e.traits || []);
-      if (e.kind === "triceratops") Object.assign(c, { triceratopsDisposition: ["good", "silly", "bad"].includes(e.triceratopsDisposition) ? e.triceratopsDisposition : "good", triceratopsBetrayed: e.triceratopsBetrayed === true, beastHotelOpponent: e.beastHotelOpponent || null });
+      if (e.kind === "triceratops") Object.assign(c, { triceratopsDisposition: ["good", "silly", "bad"].includes(e.triceratopsDisposition) ? e.triceratopsDisposition : "good", triceratopsBetrayed: e.triceratopsBetrayed === true, beastHotelOpponent: e.beastHotelOpponent || null, triceratopsHerd: e.triceratopsHerd || null });
       if (e.id) c.id = e.id;
       if(e.kind === "astralWorm")c.astralSeed=hashSeed(`${this.save.seed}:${c.id}:astral-v1`);
       if (e.packGuardian) c.packGuardian = true;
@@ -11159,7 +11198,7 @@ export class Game {
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ this.cancelCyclone(now); /* and the Cyclone Heel, held or spinning */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.beginTriceratopsDash(now); if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ this.cancelCyclone(now); /* and the Cyclone Heel, held or spinning */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -11196,6 +11235,7 @@ export class Game {
         if (mount) this.jumpDur *= MOUNT_BEASTS[mount.beast].jump;
         this.jumpStart = now;
         this.jumpUntil = now + this.jumpDur;
+        this.beginTriceratopsJump(now);
         this.resolveToolSwing(now); // great-sweep.ts: a jump cancels the swing; the rest of its blow lands at once
         this.jumpHold = true; // JUMP.liftAt: Jump held from the ground hands over to the drone at the jump's peak
         if (deckFrom != null) { this.skyAir = deckFrom; this.skyAirScale = 1; this.deckHop = true; this.setRoofDeck(null); } // held over the roof (and over its edge) until it lands
@@ -11458,6 +11498,7 @@ export class Game {
     if(p.hp<=0){this.cancelShadowDash(now);this.cancelCyclone(now);this.cancelArtRush(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.artRushLand(now);/* the Lava Slash rush: the slam on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
+    if (!fellIntoHazard) this.tickTriceratopsAttacks(now);
     this.tickAttackBuffer(now,input);
     if (!fellIntoHazard&&input.consume("attack")) {
       this.save.aimMode = "attack";

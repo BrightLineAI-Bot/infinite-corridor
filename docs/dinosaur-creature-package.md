@@ -18,3 +18,9 @@ Before handoff, exercise capture for each disposition, persistent mounts across 
 In Proving Ground, open Creature Assets and choose Triceratops Good, Silly Goose, Bad, or Beast Hotel recovery. The capture cases supply building materials and a living animal in a clear outdoor area. For the hotel case, use Act at the door, visit the bed, defeat the hostile occupant, and visit the bed again. Standard View draws the mount and the sick or healthy bedside scene. Save state stays within the scratch fixture.
 
 This milestone includes persistent capture, standard riding and rider actions, health, admission after horn puncture or three depletions, and early or later hotel retrieval. Progress counts area transitions that are absent from the six most recent locations. Dedicated mounted attacks, ally support in battle, severable tails, production herd placement, and the flying creature remain queued. Spinosaurus keeps its existing name, internal ID, and tail rules.
+
+### Wild herd and mounted contact draft
+
+Newly discovered eligible overworld sections may receive deterministic herds of two to four Triceratops of one disposition. Existing Atlas pins, explored ground and legacy snapshots keep their previous layouts. An accepted mounted Dodge can deal horn contact once per enemy per dash. An accepted mounted Jump can create one shockwave on a safe landing. Both use the existing geometry checks.
+
+Next: tune mounted attacks in gameplay, then add held horn tiers, Silly Goose tail drill, roar and tail interactions, followed by allied combat and the flying creature. Hosted visual and physical-phone playtesting remain open.
