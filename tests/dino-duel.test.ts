@@ -289,7 +289,7 @@ test('the duel\'s blows: a growing share, no 8% floor for a doomed loser, the ho
   assert.equal(duelBlow(s, t, 5).amount, Math.ceil(1000 * DINO_DUEL.escalate.from)); t.dinoDuel.t = 60; assert.equal(duelBlow(s, t, 5).amount, Math.ceil(1000 * DINO_DUEL.escalate.to));
   t.hp = 310; assert.equal(duelBlow(s, t, 5).amount, 10, 'held at the floor before the verdict');
   t.dinoDuel.verdict = { loser: 't', winner: 's', end: 'kill' }; t.hp = 50; assert.equal(duelBlow(s, t, 5).amount, 50, 'the loser can die'); assert.equal(duelBlow({ id: 'x' }, t, 5), null, 'not its foe');
-  assert.match(duelText('eaten', s, t), /^The Spinosaurus devours the Wild Stegosaurus\. Its spoils are lost\.$/);
+  assert.match(duelText('eaten', s, t), /^The Titan Spinosaurus devours the Wild Stegosaurus\. Its spoils are lost\.$/);
 });
 
 test('determinism: the same duel twice is the same, to the frame', () => {
@@ -319,7 +319,7 @@ test('eaten by the other: no reward, no Echo, no spoils, no slain record; its hu
   const { g, s, st, sp } = gameWith(); const marks = s.currency || 0, echoes = JSON.stringify(s.echoes?.owned || {});
   st.dinoDuel = { foe: sp.id, start: 0, t: 40, hp: 900, byRival: 0, rivalSeen: 0, byYou: 0, apart: 0, verdict: { loser: st.id, winner: sp.id, end: 'kill' } }; sp.dinoDuel = { ...st.dinoDuel, foe: st.id };
   const w = g.packWorld(1 / 30, 1000); w.hurtCreature(sp, st, 5000); assert.ok(st.dead && st.noRewards);
-  g.dinoDuelTick(1 / 30); assert.equal(g.message, 'The Spinosaurus devours the Wild Stegosaurus. Its spoils are lost.');
+  g.dinoDuelTick(1 / 30); assert.equal(g.message, 'The Titan Spinosaurus devours the Wild Stegosaurus. Its spoils are lost.');
   assert.equal(s.currency || 0, marks, 'no bounty'); assert.equal(JSON.stringify(s.echoes?.owned || {}), echoes, 'no Echo'); assert.equal(s.worldBeasts.wildStego.slain, 0, 'not her kill');
   assert.equal(s.worldBeasts.wildStego.active, null, 'its hunt is over: it is not back as never slain'); assert.equal(s.worldBeasts.wildStego.eaten, 1); assert.ok(!s.worldBeasts.wildStego.spoils);
   assert.ok(sp.dinoFeed > 0, 'the winner feeds');
@@ -347,7 +347,7 @@ test('the Wild Stegosaurus devours the Spinosaurus: its message, its feeding, no
   const { g, s, st, sp } = gameWith(); s.worldBeasts.spinoRex.active = { rx: g.rx, ry: g.ry, tries: 0 }; sp.worldBeast = 'spinoRex'; const marks = s.currency || 0;
   st.dinoDuel = { foe: sp.id, start: 0, t: 40, hp: 900, byRival: 0, rivalSeen: 0, byYou: 0, apart: 0, verdict: { loser: sp.id, winner: st.id, end: 'kill' } }; sp.dinoDuel = { ...st.dinoDuel, foe: st.id };
   g.packWorld(1 / 30, 1000).hurtCreature(st, sp, 99999); g.dinoDuelTick(1 / 30);
-  assert.equal(g.message, 'The Wild Stegosaurus devours the Spinosaurus. Its spoils are lost.');
+  assert.equal(g.message, 'The Wild Stegosaurus devours the Titan Spinosaurus. Its spoils are lost.');
   assert.equal(s.currency || 0, marks); assert.equal(s.worldBeasts.spinoRex.slain, 0); assert.equal(s.worldBeasts.spinoRex.active, null); assert.equal(s.worldBeasts.spinoRex.eaten, 1);
   assert.ok(st.dinoFeed > 0); const w = world({ player: { x: 40, y: 40 } }); w.enemies = [st]; st.pack.attack = null; updatePackMonster(st, w); assert.equal(st.stegoPose, 'graze', 'it feeds');
   assert.ok(w.cues.some((c) => c.phase === 'feed'));

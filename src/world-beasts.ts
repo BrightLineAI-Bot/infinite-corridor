@@ -160,14 +160,14 @@ export const WORLD_BEASTS = {
   // home to the deep woods; it is never seen passing. It is also met in big rooms and as the interloper in a stego or stag fight
   // (spino-rex.ts). Its numbers: monster-pack.ts SPINO.
   spinoRex: {
-    kind: "spinoRex", name: "The Spinosaurus", chance: .015, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
+    kind: "spinoRex", name: "The Titan Spinosaurus", chance: .015, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
     hitsToKill: 58, hpPerLevel: 27, damageShare: .21, speed: 1.1, attackGap: .26, staggerResistance: .95, rewardMarks: 200, rewardPerLevel: 20,
     patience: 180, home: "forest", retreatMoves: "walk",
-    flee: "The Spinosaurus snaps its jaws once more, turns, and stalks off toward the deep woods to hunt something else.",
-    homeLine: "The Spinosaurus wades in among the trees, its sail the last of it you see.",
-    arrive: "Something has torn through here: great three-toed tracks, the ground ploughed up in furrows, and the smell of blood. The Spinosaurus is hunting, and it has found you.",
-    slain: "The Spinosaurus crashes down, and lies still, its sail sinking last of all.",
-    gone: "The Spinosaurus has hunted you enough, and goes looking for other prey. In time it will hunt somewhere else.",
+    flee: "The Titan Spinosaurus snaps its jaws once more, turns, and stalks off toward the deep woods to hunt something else.",
+    homeLine: "The Titan Spinosaurus wades in among the trees, its sail the last of it you see.",
+    arrive: "Something has torn through here: great three-toed tracks, the ground ploughed up in furrows, and the smell of blood. The Titan Spinosaurus is hunting, and it has found you.",
+    slain: "The Titan Spinosaurus crashes down, and lies still, its sail sinking last of all.",
+    gone: "The Titan Spinosaurus has hunted you enough, and goes looking for other prey. In time it will hunt somewhere else.",
   },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);

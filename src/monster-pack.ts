@@ -298,7 +298,7 @@ export const ATTACK_MODULES = {
   stegoPounce: { id: "stegoPounce", name: "Wild Pounce", range: [2.5, 10], cooldown: 6, windup: .55, active: 1.2, recover: .6, damage: 1.45, tags: ["ground", "leap"], text: "It crouches and springs, and comes down on you with all its weight. It pounces on other creatures too." },
   stegoTreeClub: { id: "stegoTreeClub", name: "Uprooted Club", range: [0, 9], cooldown: 50, windup: .2, active: 6.5, recover: .8, damage: 1.6, tags: ["melee", "rare"], text: "Near tall thin trees it bites one, tears it out by the roots, shakes it, and swings it as a club. The tree stays down." },
   stegoBreach: { id: "stegoBreach", name: "Breach", range: [2, 12], cooldown: 7, windup: .4, active: 2.2, recover: .6, damage: 1.5, tags: ["ground", "water"], text: "On water only: it dives, then bursts up out of the water across your path, or up and down on top of you." },
-  stegoJaws: { id: "stegoJaws", name: "Tail Heave", range: [0, 4.5], cooldown: 16, windup: .6, active: 4.6, recover: .7, damage: .9, tags: ["grab", "melee", "duel"], text: "The dino duel only: it seizes the Spinosaurus by the tail, heaves it up and slams it down, twice; each slam lands in the circle shown." },
+  stegoJaws: { id: "stegoJaws", name: "Tail Heave", range: [0, 4.5], cooldown: 16, windup: .6, active: 4.6, recover: .7, damage: .9, tags: ["grab", "melee", "duel"], text: "The dino duel only: it seizes the Titan Spinosaurus by the tail, heaves it up and slams it down, twice; each slam lands in the circle shown." },
   // The Spinosaurus (Tim, 2026-11-12: "The Hunter of Hunters"). Numbers other than these are in SPINO; `fossil` moves only once it is bone.
   spinoBite: { id: "spinoBite", name: "Snapping Jaws", range: [0, 3.6], cooldown: 3.2, windup: .55, active: 1.2, recover: .55, damage: .8, tags: ["melee", "bleed"], text: "One or two long snapping bites of its crocodile jaws, stepping in after you. They make you bleed." },
   spinoClaw: { id: "spinoClaw", name: "Hooked Claws", range: [0, 3], cooldown: 2.8, windup: .45, active: .9, recover: .5, damage: .6, tags: ["melee", "bleed"], text: "It rakes with one great clawed hand, then the other. They make you bleed." },
@@ -537,7 +537,7 @@ export const MONSTER_PACK = {
   // The Spinosaurus (Tim, 2026-11-12): a world beast of the land (never the sea), the big rooms of keeps, arcologies and adventure
   // Pentagons, and the interloper in a fight with the Wild Stegosaurus or the Briar Stag (spino-rex.ts). Its numbers and pose fields: SPINO.
   spinoRex: {
-    id: "spinoRex", name: "The Spinosaurus", epithet: "The Hunter of Hunters", unique: true,
+    id: "spinoRex", name: "The Titan Spinosaurus", epithet: "The Hunter of Hunters", unique: true,
     stats: [380, 19, 0], form: { scale: 2.1 }, sizeClass: "huge", movement: "walk", brain: "hunter",
     attacks: ["spinoBite", "spinoClaw", "spinoLeapSlam", "spinoDigFling", "spinoRoar", "spinoTailSwipe", "spinoBodySlam", "spinoGrab", "spinoBoneVolley", "spinoRibSpears"], bossAttacks: [],
     palette: ["#f2a35e", "#c4561a", "#a8481e", "#f6c48e"], render: "spinoRex", tags: ["beast", "elder", "dinosaur", "predator"],
@@ -1374,7 +1374,7 @@ export const SPINO = {
   duel: { kinds: ["wildStego"], close: 6, youChance: 22, wait: true,
     moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam", "spinoTailSwipe", "spinoRoar", "spinoDigFling", "spinoRibSpears"] },
   arrive: { time: 1.4 }, /* an interloper roars this long as it comes in (game.ts) */
-  text: { fossil: "Its flesh splits and falls away! The Spinosaurus fights on as bare bone.", grabbed: "Its jaws close on you! You are lifted off your feet." },
+  text: { fossil: "Its flesh splits and falls away! The Titan Spinosaurus fights on as bare bone.", grabbed: "Its jaws close on you! You are lifted off your feet." },
 };
 export const spinoPoseDefaults = () => ({ spinoPose: null, spinoAir: 0, spinoGrab: null, spinoDig: 0, spinoFossil: false, spinoShed: 0 });
 // Tuned to the Wayfarer like the roaming beast, with no hunt: one met in a big room, or come in as an interloper (spino-rex.ts).
