@@ -139,9 +139,14 @@ test("the selected hometown's hotel opens, persists its fight, and retrieves a c
   assert.equal(game.map.beastHotel, true);
   assert.equal(game.enemies[0].id, opponentId);
   assert.equal(game.enemies[0].hp, 37);
-  game.enemies[0].hp = 0;
-  game.enemies[0].dead = true;
-  game.defeatEnemy(game.enemies[0]);
+  const opponent = game.enemies[0];
+  opponent.hp = 1;
+  Object.assign(game.player, { x: opponent.x, y: opponent.y - 1, facing: "down" });
+  const actions = new Set(["attack"]);
+  const input = { state: { x: 0, y: 0 }, consume: action => actions.delete(action), held: () => false };
+  for (let now = 1100; now < 2350 && !opponent.dead; now += 25) game.update(.025, input, now);
+  assert.equal(opponent.dead, true);
+  Object.assign(game.player, { x: bed.x, y: bed.y });
   assert.equal(game.interact("visit", bed.id).ok, true);
   assert.equal(mountById(save, id)?.recovery, null);
   assert.equal(game.mountRide()?.id, id);
