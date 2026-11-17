@@ -10823,3 +10823,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
   - `tests/revenant-horde.test.ts`;
   - `tests/wood-boats.test.ts` (repairs, the guard);
   - `tests/building.test.ts` (costs).
+
+## Release 984 — Fourth-slot action locks
+
+**CODE:** Game.update consumes fourth-slot utility and legacy build presses during shock knockdown and firm grabs, alongside the other slotted actions.
+
+**BOUNDARY:** A blocked press is discarded and a fresh press works after recovery. Slot assignments and save schema are unchanged.
