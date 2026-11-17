@@ -7300,6 +7300,10 @@ export class Game {
     this.map.objects.push({ id: `beast-hotel-door:${homeKey(this.save)}`, kind: "dungeon", beastHotelDoor: true, dungeonId: beastHotelId(homeKey(this.save)), name: "Beast Hotel", ...at, state: "open", actions: ["enter"] });
   }
   enterBeastHotel(door) {
+    if (this.rite && this.area === "overworld") {
+      const why = riteExit(door, "enter");
+      if (why) return { ok: false, message: (this.message = why), riteSealed: true };
+    }
     if (this.area !== "overworld" || `${this.rx},${this.ry}` !== homeKey(this.save) || !door?.beastHotelDoor || door.dungeonId !== beastHotelId(homeKey(this.save))) return { ok: false, message: (this.message = "The Beast Hotel is at your selected hometown.") };
     this.save.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
     this.save.session.activeDungeonId = door.dungeonId; this.save.session.activeDungeonLevelId = null;
