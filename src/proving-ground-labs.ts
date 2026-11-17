@@ -1,3 +1,4 @@
+import { stableMount, startRide, damagePersistentMount } from "./beast-mounts.ts";
 import { RECOVERY_CONTEXT } from './proving-ground-recovery.ts';
 import { ordinaryContactEnemy } from './actor-contact.ts';
 import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.ts";
@@ -163,6 +164,10 @@ const ORDINARY_ASSET_PALETTES={ashling:["#87503f","#342727","#b78a62"],glassMite
 const ORDINARY_ASSET_ACTIONS={ashling:["lunge"],ashenHound:["zigzag"],rootBrute:["slam"],coilStalker:["ranged"],hollowMarshal:["longReach","lunge"],glassMite:["hop"],sparkWarden:["arc","straightBolt"],cinderWisp:["threeShotCone"],veilMoth:["instantStrike"],voidSentinel:["grenade","threeShotCone"]};
 const CREATURE_ASSETS = [
   ...CREATURE_ASSET_KINDS.map((kind) => ({ id: kind, label: MONSTER_PACK[kind]?.name || kind.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase()), kind, source: ["gloomwisp","gloomgorge"].includes(kind) ? "haunt-pack" : ["latticeHunter","archiveBehemoth","riftGrazer"].includes(kind) ? "admitted-foundry" : MONSTER_PACK[kind] ? "monster-pack" : "ordinary" })),
+  { id: "triceratops-hotel", label: "Triceratops · Beast Hotel recovery", kind: "triceratops", source: "monster-pack", hotel: true },
+  { id: "triceratops-good", label: "Triceratops · Good", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "good" },
+  { id: "triceratops-silly", label: "Triceratops · Silly Goose", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "silly" },
+  { id: "triceratops-bad", label: "Triceratops · Bad", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "bad" },
   ...FOUNDRY_BODIES.map((body) => ({ id: `foundry-${body}`, label: `Foundry morphology: ${body}`, kind: "latticeHunter", source: "admitted-foundry", foundryBody: body })),
   { id: "spark-shaman-ward", label: "Decorated: Spark Warden shaman + warded rare", kind: "sparkWarden", source: "affix-scene", variant: "shaman-ward" },
   { id: "rare-drone-swarm", label: "Decorated: rare Void Sentinel + Drone Swarm", kind: "voidSentinel", source: "affix-scene", variant: "drone-swarm" },
@@ -710,7 +715,41 @@ function admittedGallerySpawn(save,spec,at){
   throw new Error(`No deterministic admitted Foundry witness for ${spec.id}.`);
 }
 
+function triceratopsLab(spec, seed, now) {
+  const { save, game } = gameForOverworld(seed, 0, 0, now);
+  if (spec.hotel) {
+    const { mount } = stableMount(save, "triceratops", { triceratopsDisposition: "good" });
+    startRide(save, mount.id);
+    damagePersistentMount(save, 1, { puncture: true, home: "0,0", location: "world:0,0" });
+    game.loadArea("overworld", false);
+    game.enemies = [];
+    const door = game.map.objects.find(o => o.beastHotelDoor);
+    if (door) Object.assign(game.player, { x: door.x, y: door.y + 1 });
+  } else {
+    Object.assign(save.materials, { wood: 80, stone: 80, cinderIron: 80 });
+    for (let y = 3; y <= 16; y++) for (let x = 5; x <= 19; x++) {
+      Object.assign(game.map.tiles[y * (game.map.width || 32) + x], {
+        kind: "grass", blocked: false, structure: null, buildingId: null,
+        slope: false, elev: 0, chasm: false, hole: false, environment: null,
+      });
+    }
+    game.map.objects = game.map.objects.filter(o => o.x < 5 || o.x > 19 || o.y < 3 || o.y > 16);
+    Object.assign(game.player, { x: 10, y: 6, facing: "down" });
+    const beast = game.createEnemyFromSpawn({
+      id: "pg-triceratops:" + spec.triceratopsDisposition,
+      kind: "triceratops", triceratopsDisposition: spec.triceratopsDisposition, x: 11.5, y: 8.5,
+    }, "overworld");
+    beast.hp = Math.max(1, Math.floor(beast.maxHp / 8));
+    game.enemies = [beast];
+    game.message = "Build an enclosure around the living Triceratops, then close the opening with another enclosure.";
+  }
+  game.sync();
+  return { lab: "creature-assets", scenario: spec.id, label: spec.label, seed, save, game, production: true,
+    diagnostics: { triceratops: { scratch: true, stage: spec.hotel ? "hotel" : "capture", disposition: spec.triceratopsDisposition || null } } };
+}
 function creatureAssetFixture(scenario,seed,now){
+  const triceratops = CREATURE_ASSETS.find(q => q.id === scenario && q.kind === "triceratops");
+  if (triceratops) return triceratopsLab(triceratops, seed, now);
   const spec=CREATURE_ASSETS.find((q)=>q.id===scenario)||CREATURE_ASSETS[0],fixture=closeViewFixture("grand-hall",seed,now),{game,save}=fixture,placement=assetLane(game),at={x:placement.foe.x,y:placement.foe.y};
   Object.assign(game.player,{x:placement.player.x,y:placement.player.y,facing:placement.dx<0?"left":placement.dx>0?"right":placement.dy<0?"up":"down"});save.lastAim={x:placement.dx,y:placement.dy};
   if(spec.actor){
@@ -754,7 +793,8 @@ function creatureAssetFixture(scenario,seed,now){
   }else if(spec.variant==="drone-swarm")spawns=[{id:"proving:creature-assets:drone-rare",kind:spec.kind,x:at.x,y:at.y,fractured:true,fracRank:"rare",affixes:["droneSwarm"]}];
   else if(spec.variant==="guardian-volcanic")spawns=[{id:"proving:creature-assets:volcanic-guardian",kind:spec.kind,x:at.x,y:at.y,dungeonRole:"gateWarden",fractured:true,fracRank:"rare",affixes:["volcanic"]}];
   else spawns=[{id:`proving:creature-assets:${spec.id}`,kind:spec.kind,x:at.x,y:at.y}];
-  game.enemies=spawns.map((spawn)=>game.createEnemyFromSpawn(spawn,"dungeon"));game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];game.message=`${spec.label}. Production creature state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
+  game.enemies=spawns.map((spawn)=>game.createEnemyFromSpawn(spawn,"dungeon"));
+  game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];game.message=`${spec.label}. Production creature state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
   const enemy=game.enemies[0],pack=MONSTER_PACK[enemy.kind],hauntBlocked=spec.source==="haunt-pack"&&!enemy.packKind;
   return{...fixture,lab:"creature-assets",scenario:spec.id,label:spec.label,primary:placement.player,diagnostics:{roster:{kind:enemy.kind,name:enemy.packName||enemy.foundryName||spec.label,form:enemy.foundryBody||pack?.render||enemy.kind,scale:enemy.scale,palette:foundry?.candidate.palette??pack?.palette??ORDINARY_ASSET_PALETTES[enemy.kind]??null,movement:enemy.foundryMovement||enemy.movement||(enemy.range>0?"ranged":"grounded"),actions:enemy.foundryAttack?[enemy.foundryAttack]:[...(enemy.packAttacks||enemy.meleePatterns?.length?enemy.packAttacks||enemy.meleePatterns:ORDINARY_ASSET_ACTIONS[enemy.kind]||[])],source:spec.source,resolvedSource:foundry?{pipeline:"admittedFoundrySpawn",key:foundry.key,candidate:foundry.candidate,validation:foundry.validation}:"createEnemyFromSpawn",capability:hauntBlocked?"blocked: production haunt pack fields did not construct":"fixture witness only; native body/action/attachments/FX evidence remains separate",variant:spec.variant||null,affixes:[...(enemy.affixes||[])],wardBy:enemy.wardBy||null,foundryValidated:enemy.foundryValidated===true},placement:{player:{x:placement.player.x,y:placement.player.y,elev:placement.player.elev||0},foe:{x:placement.foe.x,y:placement.foe.y,elev:placement.foe.elev||0},unobstructedTiles:5},sceneEnemies:game.enemies.map((q)=>({id:q.id,kind:q.kind,fracRank:q.fracRank||null,fracShaman:!!q.fracShaman,affixes:[...(q.affixes||[])],wardBy:q.wardBy||null}))}};
 }

@@ -40,7 +40,7 @@ export const DINO_DUEL = {
   // Rockfall under a ceiling (any interior): `rocks` telegraphed for `warn` s in a ring around a slam, at most `live` at once, the
   // next slam's at least `gap` s later; each takes `share` of the slammer's damage from whatever stands under it (never the duellists).
   rockfall: { rocks: 3, live: 6, ring: [1.2, 4.2], warn: 1.1, radius: .75, share: .5, gap: .8 },
-  names: { spinoRex: "the Titan Spinosaurus", wildStego: "the Wild Stegosaurus" },
+  names: { spinoRex: "the Spinosaurus", wildStego: "the Wild Stegosaurus" },
   text: { eaten: "{winner} devours {loser}. Its spoils are lost.", escape: "{loser} breaks off, badly wounded, and flees." },
 };
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);

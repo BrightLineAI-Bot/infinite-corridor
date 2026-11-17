@@ -24,7 +24,7 @@ export const SPINO_INTERLOPER = {
   range: 12, /* the Wayfarer within this of the prey, and the prey roused: a fight */
   arrive: 11, /* how far from the Wayfarer it comes in (off screen) */
   keep: 24, /* fights remembered */
-  text: { arrive: "A roar shakes the ground. Something has smelled the blood: the Titan Spinosaurus is coming for the kill!" },
+  text: { arrive: "A roar shakes the ground. Something has smelled the blood: the Spinosaurus is coming for the kill!" },
 };
 // The spawn a floor holds, or null. `kind`: "building" or "pentagon" (anything else holds none). `taken`: a stego already there.
 export function spinoRoomSpawn(seed, id, map, kind, V = SPINO_ROOMS.version, taken = false) {

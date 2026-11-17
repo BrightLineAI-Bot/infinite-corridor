@@ -26,7 +26,13 @@ export const MOUNT_BEASTS = {
   crimsonTyrant: { name: "The Crimson Tyrant", pen: 4, scale: 3.51, seat: 2.75, seatX: .8, saddle: "frame", speed: 1.7, jump: 1.75 },
   doomChaser: { name: "The Doom Chaser", pen: 4, scale: 3.38, seat: 2.65, seatX: .78, saddle: "frame", speed: 1.75, jump: 1.75 },
 };
+// Legacy hunt mounts retain their capacity and expiry contract.
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
+MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.7, seat: 1.65, saddle: "strap", speed: 1.65, jump: 1.5 };
+export const PERSISTENT_MOUNT_IDS = ["triceratops"];
+export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
+export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
+export const triceratopsVariant = (actor) => actor?.triceratopsDisposition === "silly" || actor?.variant === "silly" ? "silly" : "normal";
 export const SADDLE_NAMES = { strap: "Saddled", harness: "Harnessed", frame: "Riding frame", bowl: "Riding bowl", girth: "Girth-strapped" };
 // Never penned or caught (Tim, 2026-11-04; the Nanobot Knight the same day: "not rideable").
 export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "lightningGiant", "nanobotKnight"];
@@ -45,13 +51,14 @@ export const riderLiftOf = (m) => Number(MOUNT_BEASTS[m?.beast]?.seat) || 0;
 // Which mount a live actor would be, or null. `never` names an excluded beast.
 export function mountIdFor(e) {
   if (!e) return null;
+  if (e.kind === "triceratops") return "triceratops";
   if (e.stalker && !e.stalkerKin && !e.stalkerDecoy) return "stalker";
   if (e.worldBeast && MOUNT_BEASTS[e.worldBeast]) return e.worldBeast;
   return null;
 }
 export function neverCaught(e) { return !!e && (e.questingBeast || MOUNT_NEVER.includes(e.worldBeast)); }
 // A real hunt actor (never a copy, decoy, mirage, summon, passing beast or one already leaving).
-export const catchableActor = (e) => !!e && !e.dead && !e.summonedBy && !e.illusion && !e.astralCompanionOf && !e.astralOwner && !e.passingBeast && !e.noRewards && !!mountIdFor(e);
+export const catchableActor = (e) => !!e && !e.dead && e.hp > 0 && !e.summonedBy && !e.illusion && !e.astralCompanionOf && !e.astralOwner && !e.passingBeast && !e.noRewards && !e.beastHotelOpponent && !!mountIdFor(e);
 // Why a beast in a closed pen gets away, or null when the roll may be tried.
 export function catchRefusal(e, pen) {
   if (neverCaught(e)) return `${e.questingBeast ? "The Questing Beast" : nameOf(e.worldBeast)} cannot be penned: it is through the walls before they close.`;
@@ -73,40 +80,59 @@ function cleanMount(m) {
   if (!m || typeof m !== "object" || typeof m.id !== "string" || !MOUNT_BEASTS[m.beast]) return null;
   const left = Math.max(0, Math.min(MOUNT_RIDE.seconds, Number.isFinite(Number(m.left)) ? Number(m.left) : MOUNT_RIDE.seconds));
   const seen = (Array.isArray(m.seen) ? m.seen : []).filter((k, i, a) => typeof k === "string" && /^-?\d+,-?\d+$/.test(k) && a.indexOf(k) === i).slice(0, MOUNT_RIDE.sections);
-  if (left <= 0 || seen.length >= MOUNT_RIDE.sections) return null;
+  if (persistentMount(m)) {
+    m.variant = triceratopsVariant(m);
+    m.hp = Math.max(0, Math.min(TRICERATOPS_RIDE.health, Number.isFinite(Number(m.hp)) ? Number(m.hp) : TRICERATOPS_RIDE.health));
+    m.defeats = Math.max(0, Math.min(TRICERATOPS_RIDE.defeats, Math.floor(Number(m.defeats) || 0)));
+    if (m.recovery && typeof m.recovery === "object" && !Array.isArray(m.recovery)) {
+      const r = m.recovery;
+      r.progress = Math.max(0, Math.min(TRICERATOPS_RIDE.recoveryTransitions, Math.floor(Number(r.progress) || 0)));
+      r.recent = (Array.isArray(r.recent) ? r.recent : []).filter(k => typeof k === "string").slice(-TRICERATOPS_RIDE.recentLocations);
+      r.opponentId = typeof r.opponentId === "string" ? r.opponentId : `hotel-opponent:${m.id}`;
+      r.encounterStarted = r.encounterStarted === true; r.encounterComplete = r.encounterComplete === true;
+    } else m.recovery = null;
+  } else if (left <= 0 || seen.length >= MOUNT_RIDE.sections) return null;
   return Object.assign(m, { left, seen, caughtAt: Math.max(0, Number(m.caughtAt) || 0) }); // in place: callers keep their record
 }
 export function ensureMounts(save) {
   const q = save.mounts && typeof save.mounts === "object" && !Array.isArray(save.mounts) ? save.mounts : {};
-  const stable = (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i).slice(-MOUNT_RIDE.cap);
+  const all = (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i);
+  const temporary = all.filter(m => !persistentMount(m)).slice(-MOUNT_RIDE.cap);
+  const permanent = all.filter(persistentMount).filter((m, i, a) => a.findIndex(o => o.beast === m.beast && o.variant === m.variant) === i);
+  const stable = all.filter(m => temporary.includes(m) || permanent.includes(m));
   const caught = q.caught && typeof q.caught === "object" ? Object.fromEntries(Object.entries(q.caught).map(([k, v]) => [k, Math.max(0, Math.floor(Number(v) || 0))])) : {};
-  save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
+  save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding && !m.recovery && (!persistentMount(m) || m.hp > 0)) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
   return save.mounts;
 }
 export const mountById = (save, id) => ensureMounts(save).stable.find((m) => m.id === id) || null;
 export const ridingMount = (save) => { const q = save.mounts; return q?.riding ? q.stable?.find((m) => m.id === q.riding) || null : null; };
-export const mountName = (m) => MOUNT_BEASTS[m?.beast]?.name || "Your mount";
+export const mountName = (m) => persistentMount(m) && m.variant === "silly" ? "The Silly Goose Triceratops" : MOUNT_BEASTS[m?.beast]?.name || "Your mount";
 export const mountSectionsLeft = (m) => MOUNT_RIDE.sections - (m?.seen?.length || 0);
 // "12:00 · 35 sections" style remaining-life text.
-export function mountLifeText(m) { const s = Math.ceil(m.left), mm = Math.floor(s / 60), ss = String(s % 60).padStart(2, "0"); const n = mountSectionsLeft(m); return `${mm}:${ss} of riding · ${n} section${n === 1 ? "" : "s"}`; }
+export function mountLifeText(m) { if (persistentMount(m)) return m.recovery ? `Beast Hotel · ${m.recovery.progress}/${TRICERATOPS_RIDE.recoveryTransitions} recovery` : `permanent companion · ${Math.ceil(m.hp)}/${TRICERATOPS_RIDE.health} health · ${m.defeats}/${TRICERATOPS_RIDE.defeats} defeats`; const s = Math.ceil(m.left), mm = Math.floor(s / 60), ss = String(s % 60).padStart(2, "0"); const n = mountSectionsLeft(m); return `${mm}:${ss} of riding · ${n} section${n === 1 ? "" : "s"}`; }
 
 // A catch goes into the stable. Full, the oldest is let go. Returns { mount, released }.
-export function stableMount(save, beast) {
+export function stableMount(save, beast, actor = null) {
   const q = ensureMounts(save); if (!MOUNT_BEASTS[beast]) return { mount: null, released: null };
   q.caught[beast] = (q.caught[beast] || 0) + 1;
+  const permanent = PERSISTENT_MOUNT_IDS.includes(beast), variant = triceratopsVariant(actor);
+  const owned = permanent && q.stable.find(m => m.beast === beast && m.variant === variant);
+  if (owned) return { mount: owned, released: null };
   let released = null;
-  while (q.stable.length >= MOUNT_RIDE.cap) { const i = q.stable.findIndex((m) => m.id !== q.riding); released = q.stable.splice(i < 0 ? 0 : i, 1)[0]; if (released.id === q.riding) q.riding = null; }
+  while (!permanent && q.stable.filter(m => !persistentMount(m)).length >= MOUNT_RIDE.cap) { let i = q.stable.findIndex((m) => !persistentMount(m) && m.id !== q.riding); if (i < 0) i = q.stable.findIndex(m => !persistentMount(m)); released = q.stable.splice(i, 1)[0]; if (released.id === q.riding) q.riding = null; }
   const mount = { id: `mount-${(q.seq += 1)}`, beast, caughtAt: Number(save.playSeconds) || 0, left: MOUNT_RIDE.seconds, seen: [] };
+  if (permanent) Object.assign(mount, { variant, hp: TRICERATOPS_RIDE.health, defeats: 0, recovery: null });
   q.stable.push(mount);
   return { mount, released };
 }
 export function releaseMount(save, id) {
   const q = ensureMounts(save), i = q.stable.findIndex((m) => m.id === id); if (i < 0) return null;
+  if (persistentMount(q.stable[i])) return null; // an earned permanent unlock cannot be discarded
   const [m] = q.stable.splice(i, 1); if (q.riding === id) q.riding = null; return m;
 }
 // Mounting in section `key`: it counts as ridden. Returns the mount, or null.
 export function startRide(save, id, key = null) {
-  const q = ensureMounts(save), m = q.stable.find((o) => o.id === id); if (!m) return null;
+  const q = ensureMounts(save), m = q.stable.find((o) => o.id === id); if (!m || m.recovery || persistentMount(m) && m.hp <= 0) return null;
   q.riding = m.id; q.last = m.id; if (key) noteRideSection(save, key); return ridingMount(save);
 }
 export function stopRide(save) { const q = ensureMounts(save), m = ridingMount(save); q.riding = null; return m; }
@@ -114,15 +140,43 @@ export function stopRide(save) { const q = ensureMounts(save), m = ridingMount(s
 function spend(save, m, why) { releaseMount(save, m.id); return `${mountName(m)} has carried you as far as it will ${why}: it leaves you, and is gone from your stable.`; }
 // Riding time runs while mounted (never while paused). Returns a message when the mount is spent, else null.
 export function tickRide(save, dt) {
-  const m = ridingMount(save); if (!m || !(dt > 0)) return null;
+  const m = ridingMount(save); if (!m || persistentMount(m) || !(dt > 0)) return null;
   m.left = Math.max(0, m.left - dt);
   return m.left <= 0 ? spend(save, m, "in time") : null;
 }
 // A section ridden into. Returns a message when that spends the mount, else null.
 export function noteRideSection(save, key) {
-  const m = ridingMount(save); if (!m || typeof key !== "string") return null;
+  const m = ridingMount(save); if (!m || persistentMount(m) || typeof key !== "string") return null;
   if (!m.seen.includes(key)) m.seen.push(key);
   return m.seen.length >= MOUNT_RIDE.sections ? spend(save, m, "across the land") : null;
 }
 // The mount to call when none is named: the one ridden last, else the newest.
-export function defaultMount(save) { const q = ensureMounts(save); return q.stable.find((m) => m.id === q.last) || q.stable[q.stable.length - 1] || null; }
+export function defaultMount(save) { const q = ensureMounts(save), ready = q.stable.filter(m => !m.recovery); return ready.find((m) => m.id === q.last) || ready[ready.length - 1] || null; }
+
+export const beastHotelId = (home) => `beast-hotel:v1:${home}`;
+export const isBeastHotelId = (id) => /^beast-hotel:v1:-?\d+,-?\d+$/.test(id || "");
+// Depletions are counted at the health crossing, never again on reload or a later frame.
+export function damagePersistentMount(save, amount, { puncture = false, home = "0,0", location = null } = {}) {
+  const m = ridingMount(save); if (!persistentMount(m) || m.recovery || !(m.hp > 0) || !(amount > 0)) return null;
+  m.hp = Math.max(0, m.hp - amount);
+  if (!puncture && m.hp > 0) return { mount: m, defeated: false, admitted: false };
+  if (m.hp <= 0) m.defeats = Math.min(TRICERATOPS_RIDE.defeats, m.defeats + 1);
+  save.mounts.riding = null;
+  const admitted = puncture || m.defeats >= TRICERATOPS_RIDE.defeats;
+  if (admitted) m.recovery = { reason: puncture ? "puncture" : "defeats", admittedAt: Number(save.playSeconds) || 0, homeAtAdmission: home, progress: 0, recent: location ? [location] : [], lastLocation: location, opponentId: `hotel-opponent:${m.id}:${Number(save.playSeconds) || 0}`, encounterStarted: false, encounterComplete: false };
+  else m.hp = TRICERATOPS_RIDE.health;
+  return { mount: m, defeated: true, admitted };
+}
+export function noteBeastRecoveryTransition(save, location) {
+  if (typeof location !== "string" || !location) return;
+  for (const m of ensureMounts(save).stable) {
+    const r = m.recovery; if (!r || r.lastLocation === location) continue;
+    if (r.lastLocation && !r.recent.includes(location) && !isBeastHotelId(location)) r.progress = Math.min(TRICERATOPS_RIDE.recoveryTransitions, r.progress + 1);
+    r.lastLocation = location; r.recent = [...r.recent, location].slice(-TRICERATOPS_RIDE.recentLocations);
+  }
+}
+export function retrieveBeast(save, id) {
+  const m = mountById(save, id), r = m?.recovery;
+  if (!r || !r.encounterComplete) return null;
+  m.hp = TRICERATOPS_RIDE.health; m.defeats = 0; m.recovery = null; return m;
+}
