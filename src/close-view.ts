@@ -6,7 +6,7 @@ import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorT
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
-import { MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { creaturePoseFamily, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
@@ -19,6 +19,9 @@ import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
+import { behaviourProfile } from "./enemy-behaviour.ts"; // a heavy blow's real recovery (creature motion, 2026-11-15)
+import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } from "./creature-motion.ts"; // the shared creature motion layers (2026-11-15)
+import { hashSeed } from "./random.ts";
 import { knockdownPose } from "./lightning-giant-render.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
@@ -954,10 +957,10 @@ let faceCorner = new Int8Array(N), faceXY = new Float32Array(N * 8), faceLevel =
 let faceGeo = new Int32Array(N), faceU0 = new Float32Array(N), faceU1 = new Float32Array(N); // the face's index in its floor's geometry, and the share of its width on screen (after the near-plane cut)
 const boardFoe = []; // the creature each billboard is (or null), by item: what the art hook draws
 let boardSX = new Int32Array(N), boardSY = new Int32Array(N), boardPW = new Int32Array(N), boardPH = new Int32Array(N), boardX = new Float32Array(N), boardY = new Float32Array(N), boardK = new Float32Array(N), boardB = new Float32Array(N), boardScale = new Float32Array(N);
-let boardWX = new Float32Array(N), boardWY = new Float32Array(N), boardOcc = new Float32Array(N); // a billboard's foot in the world, and how much of it a wall hides from the camera (eased, 0..1)
+let boardWX = new Float32Array(N), boardWY = new Float32Array(N), boardOcc = new Float32Array(N), boardFade = new Float32Array(N), swapCard = new Uint8Array(N); // boardFade: a card's share of a card <-> body cross-fade (1: the card alone); swapCard: a body still drawing its card as it fades in (creature-motion.ts swap) // a billboard's foot in the world, and how much of it a wall hides from the camera (eased, 0..1)
 function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n); b.set(A); return b; };
   faceCorner = re(faceCorner, N); itemKind = re(itemKind, N); itemRef = re(itemRef, N); itemDepth = re(itemDepth, N); order = re(order, N); faceXY = re(faceXY, N * 8); faceLevel = re(faceLevel, N); faceAlpha = re(faceAlpha, N); faceStyle = re(faceStyle, N); faceOrient = re(faceOrient, N); faceLow = re(faceLow, N); faceGeo = re(faceGeo, N); faceU0 = re(faceU0, N); faceU1 = re(faceU1, N);
-  boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); }
+  boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); boardFade = re(boardFade, N); swapCard = re(swapCard, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
 // Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.ts's renderTimings).
@@ -2390,7 +2393,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
     boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? (kept ? 0 : closeViewCreatureFog(q.depth, fogNear, fogFar) * (d.enemy ? 1 - closeViewCreatureSolidWeight(d.enemy, g, g.paused ? 0 : CAM.dt) : 1)) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy || LOOK.key === d.nativeAux?.source))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
-    boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0;
+    boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0; boardFade[n] = 1; swapCard[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused, reduce, g.map);
   lookPick(g, draws, capturedPlayer); // Look mode: the next frame's subject (CLOSE_VIEW.camera.look)
@@ -2614,7 +2617,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
   ac.setTransform(1, 0, 0, 1, 0, 0); ac.clearRect(0, Y0, AW, AH);
   try {
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
-    const d = draws[itemRef[it]], nativeBody = native?.has(it), foe = boardFoe[it];
+    const d = draws[itemRef[it]], swapIn = !!native?.has(it) && swapCard[it] === 1, nativeBody = native?.has(it) && !swapIn, foe = boardFoe[it]; // swapIn: its whole card, fading out under the body
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
     if (nativeBody && !residual) { boardPW[it] = 0; continue; }
     const sc = boardScale[it], k = boardK[it], hw = A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc, d.nativeHeight) : Math.max(A.height * sc,d.nativeHeight||0), bw = 2 * hw, bh = top + A.below;
@@ -2650,7 +2653,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // opacity: 'model' (a native body), 'beast' (a skinned body on the beast rig), 'board' (its card) or 'none' (no room on the
 // card atlas). One small record per creature, kept with it; nothing is allocated per frame.
 const SOLIDITY = new WeakMap();
-const solidityOf = (foe) => { let r = SOLIDITY.get(foe); if (!r) { r = { path: "", alpha: 0, frame: -1, near: false, engaging: false, d: Infinity, w: 0, seen: -2, body: -2, wardAt: -Infinity, ward: 1 }; SOLIDITY.set(foe, r); } return r; };
+const solidityOf = (foe) => { let r = SOLIDITY.get(foe); if (!r) { r = { path: "", alpha: 0, frame: -1, near: false, engaging: false, d: Infinity, w: 0, seen: -2, body: -2, card: -2, m: NaN, mf: -2, wardAt: -Infinity, ward: 1 }; SOLIDITY.set(foe, r); } return r; };
 // CLOSE_VIEW.creatures.ward: a warded creature's Close View opacity this frame (`ward.alpha` while warded and for `ward.holdMs`
 // after, else 1), held in its record. `nowMs` is the render clock. Exported for tests.
 export function closeViewCreatureWard(foe, nowMs) {
@@ -2660,7 +2663,7 @@ export function closeViewCreatureWard(foe, nowMs) {
 }
 function noteSolidity(foe, path, alpha) {
   if (!foe || typeof foe !== "object") return; const r = solidityOf(foe);
-  r.path = path; r.alpha = alpha; r.frame = closeViewStats.frames; if (path === 'model') r.body = r.frame;
+  r.path = path; r.alpha = alpha; r.frame = closeViewStats.frames; if (path === 'model') r.body = r.frame; else if (path === 'board') r.card = r.frame;
 }
 const foeEngaging = (e, g) => foeWindingUp(e) || e.pack?.phase === "strike" || e.pack?.phase === "active" || e.pack?.phase === "recover"
   || e.gateAttack?.phase === "active" || e.eliteWindup > 0 || e.eliteActive > 0 || (!!g.lockedTarget && g.lockedTarget() === e);
@@ -3485,7 +3488,7 @@ export function closeViewPrimaryWeaponKind(item) {
 export const CLOSE_VIEW_HERO_WAIT = Object.freeze({ maxMs: 6000, fadeMs: 240 });
 const MODEL_STATE = {
   map: null, lastMeleeHit: -Infinity, admitted: new Set(), tracks: new Map(),
-  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
+  vertices: new Float32Array(((MODEL_LIMIT.full + CLOSE_VIEW_PROPS.cap + CLOSE_VIEW_SHADOW_FORMS.trail.max + CREATURE_MOTION.swap.out) * MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS), glint: new Float32Array(7), glintOn: false, props: 0, // + props (2026-11-11), the native body's Shadow Boxing afterimages and the imported hero's suit reservation
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   folk: { count: 0, items: [], tracks: new Map(), map: null }, // 2026-11-13: the townsfolk's skinned bodies this frame (close-view-folk.ts), drawn with the beasts
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
@@ -3499,7 +3502,7 @@ const MODEL_STATE = {
   muzzle:new Float32Array(3),muzzleReady:false,nativeMuzzle:new Float32Array(4),
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
   // Shadow Boxing's drawn charge (close-view-shadow-forms.ts) and one pooled actor for the native body's afterimages.
-  shadowDash: createShadowDash(), shadowGhost: {},
+  shadowDash: createShadowDash(), shadowGhost: {}, swapGhost: {}, // creature-motion.ts: one pooled actor for a body fading out
 };
 export const closeViewShadowDash = () => MODEL_STATE.shadowDash; // for tests: the drawn charge (read only)
 
@@ -3560,10 +3563,27 @@ export function closeViewRootReach(who, id) {
   if (who.strikeGeometry?.range > 0) return who.strikeGeometry.range;
   return who.range > 0 ? who.range : 0;
 }
+// A pack attack's progress on its real clock (creature motion, 2026-11-15). packActionPresentation measures each phase against
+// the module's own length; a heavy blow's windup is longer (monster-pack.ts packTokenAttack: pack.data.wind) and so is its
+// recovery (BEHAVIOUR heavy.recover), so the pose would wait at rest, then run late. Rewrites `semantic.progress` in place.
+export function creatureClock(who, semantic) {
+  const s = who?.pack, spec = semantic && ATTACK_MODULES[semantic.action];
+  if (!s || !spec || s.attack !== semantic.action) return semantic;
+  const t = Math.max(0, Number(s.t) || 0);
+  if (semantic.phase === 'windup') {
+    const base = (spec.windup || .5) * (s.paced ? BOSS_PACE.windup : 1), wind = Number(s.data?.wind);
+    if (wind > base && t <= wind + 1e-6) semantic.progress = 1 - Math.min(1, t / wind);
+  } else if (semantic.phase === 'recover' && who.heavy === true && spec.recover > 0) {
+    const k = behaviourProfile(who)?.heavy?.recover;
+    if (k > 1) semantic.progress = 1 - Math.min(1, t / (spec.recover * k));
+  }
+  return semantic;
+}
 export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0, actionShape = null) {
   const pack = who.pack;
   const semantic = actorPresentation(who)?.action === 'pack' ? packActionPresentation(who, ATTACK_MODULES, BOSS_PACE.windup, now) : null;
   const legacyCrawler = kind === 'pallidCrawler' && ['bite', 'leapSlam'].includes(semantic?.action);
+  if (semantic) creatureClock(who, semantic);
   if (semantic && !legacyCrawler) return {
     semantic, semanticPose: true, attack: semantic.active || semantic.contact, winding: semantic.winding,
     leapActive: semantic.airborne, packRecovery: semantic.contact, aim: semantic.aim,
@@ -3596,8 +3616,11 @@ export function closeViewMonsterAction(who, kind, windupDuration = null, now = 0
     ? 1 - Math.min(1, Math.max(0, Number(pack.t) || 0) / ATTACK_MODULES.leapSlam.active)
     : null;
   let windupAmount = null;
-  if (winding && Number.isFinite(windupDuration) && windupDuration > 0 && who.telegraph > 0)
-    windupAmount = 1 - Math.min(1, Math.max(0, who.telegraph) / windupDuration);
+  // The windup's real length (creature motion, 2026-11-15): a heavy blow's longer telegraph, or a combo follow-up's shorter one,
+  // is the one enemy-behaviour.ts set (e.bhv.wind), so the coil starts at its start and strikes on the hit, never before or after.
+  const wind = who.bhv?.wind, real = who.meleePhase?.stage !== 1 && wind > 0 && who.telegraph <= wind + 1e-6 ? wind : windupDuration;
+  if (winding && Number.isFinite(real) && real > 0 && who.telegraph > 0)
+    windupAmount = 1 - Math.min(1, Math.max(0, who.telegraph) / real);
   if (actorPresentation(who)?.action === 'foundry') {
     const shape = winding ? actionShape : who.strikeGeometry?.kind;
     const melee = !!shape || !!who.meleePhase || who.range < 2.5;
@@ -3782,8 +3805,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     let track = state.tracks.get(who);
     if (!track) track = { x: who.x, y: who.y, yaw: facing ? Math.atan2(facing[1], facing[0]) : CAM.yaw,
       phase: Number.isFinite(who.walkPhase) ? who.walkPhase * Math.PI : 0, pace: 0, at: now,
-      hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null, winding: false, attacking: false };
+      hitAt: -Infinity, hp: who.hp, deathAt: null, actor: null, winding: false, attacking: false,
+      // creature motion (creature-motion.ts): a stable seed for its idle rhythms, and its continuity state (made once per creature)
+      seed: who === player ? 0 : hashSeed(who.id ?? `${who.kind}:${Math.round(who.x * 8)}:${Math.round(who.y * 8)}`) % 100000, motion: who === player ? null : new Float32Array(MOTION_STATE_FLOATS) };
     const dx = who.x - track.x, dy = who.y - track.y, dist = Math.hypot(dx, dy);
+    const layered = who !== player && !!creaturePoseFamily(presentation?.modelKey || kind); // an ordinary 3D creature on the shared motion layers
     const elapsed = Math.max(0, Math.min(.1, (now - track.at) / 1000));
     const visualProfile = visualAttack ? visualRecord.profile : null;
     const acceptedTool = visualAttack && KNOWN_TOOL_VISUAL.has(visualRecord?.toolKind) ? visualRecord.toolKind : null;
@@ -3802,6 +3828,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     let targetYaw = track.yaw;
     if (!stunned && dist > .005) targetYaw = Math.atan2(dy, dx);
     else if (!stunned && facing) targetYaw = Math.atan2(facing[1], facing[0]);
+    // standing still, a creature that looks up, braces or arrives turns to face the Wayfarer (its head leads the turn)
+    if (layered && dist <= .005 && (who.alert > 0 || who.guard > 0 || who.arrive > 0)) targetYaw = Math.atan2(player.y - who.y, player.x - who.x);
     const committedAim = walkerRig?.aim || aim;
     const ax = committedAim?.dx ?? committedAim?.x, ay = committedAim?.dy ?? committedAim?.y;
     if (!stunned && Math.hypot(ax || 0, ay || 0) > .01) targetYaw = Math.atan2(ay, ax);
@@ -3810,7 +3838,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (who === player) {
       const resolved = resolveCloseViewPlayerFacing(track.yaw, targetYaw, { elapsed, snap: attack || charge != null || dist > 3, stunned, overrideYaw: importedDodge && Number.isFinite(dodgeSeed?.facingYaw) ? dodgeSeed.facingYaw : stunned ? NaN : toolFacingYaw, transient: stunned || attack || cast || jump || charge != null || importedDodge });
       targetYaw = resolved.desiredYaw; track.yaw = resolved.displayedYaw;
-    } else if (!stunned && (attack || winding || walkerRig?.aim || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
+    } else if (layered && winding && !attack && !monsterAction?.leapActive && dist <= 3) track.yaw += yawDelta * (1 - Math.exp(-elapsed * CREATURE_MOTION.turn.wind)); // squaring up to the blow quickly, never in one frame
+    else if (!stunned && (attack || winding || walkerRig?.aim || charge != null || monsterAction?.leapActive || dist > 3)) track.yaw = targetYaw;
     else if (stunned) targetYaw = track.yaw;
     else track.yaw += yawDelta * (1 - Math.exp(-elapsed * MODEL_TIMING.turnRate));
     if(importedDodge&&Number.isFinite(dodgeSeed?.gaitPhase)){track.dodgeUntil=player.dodgeUntil;track.phase=dodgeSeed.gaitPhase;track.pace=Math.max(0,Math.min(1,(Number(dodgeSeed.speed)||0)/MODEL_TIMING.strideSpeed));}
@@ -3838,7 +3867,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       hurtPhase = sampleHurtVisual(player.hurtVisual, logicalNow, g.areaId(), String(g.map?.levelId || 'root'));
     }
     const bodyHit = ordinary ? hurtPhase !== null : hit > 0;
-    let pose = defeat ? "death" : stunned ? "knockdown" : presentation?.stagger ? "idle" : bodyHit ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    let pose = defeat ? "death" : stunned ? "knockdown" : presentation?.stagger ? "idle" : bodyHit && !layered ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
     let drink=null;
     if (who === player && (!form || form.kind === 'playerIronFists') &&
         (pose === 'idle' || pose === 'walk') && player.consumeVisual?.v === 1 && !player.consumeVisual.cancelled) {
@@ -3879,7 +3908,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       ? monsterAction.leapAmount
       : 1 - Math.min(1, (g.jumpUntil - now) / (g.jumpDur || 420));
     if (hurtPhase !== null) amount = Math.sin(Math.PI * hurtPhase) * (reduce ? .65 : 1);
-    else if (bodyHit) amount = hit;
+    else if (bodyHit && !layered) amount = hit; // a layered creature keeps its attack pose and takes the blow as a reaction layer
     if(drink?.active)amount=drink.phase;
     if(pickupPhase!==null)amount=pickupPhase;
     if (who === player && attack && (meleeAction?.v === 3 || visualAttack && visualRecord?.meleeAction?.v === 3)) { const sp = swingVisualProgress(g, now); if (sp != null) amount = sp; }
@@ -3930,6 +3959,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     // Special native forms retain their existing tool recipe. Only the normal imported
     // stomp (and its normal native fallback) has empty held gear in this pass.
     const formKind = who === player && form ? playerFormModelKey(form, visualProfile==='hammer'?'hammer':held) : null;
+    // creature motion (creature-motion.ts): the enemy-behaviour.ts flags, the push of the last blow (from the Wayfarer), the
+    // sidestep's side, the heavy blow's punish window, the combo step, its rhythm seed and continuity state. Read-only.
+    const bhv = layered ? who.bhv : null, pushL = layered ? Math.hypot(who.x - player.x, who.y - player.y) : 0, cyaw = Math.cos(track.yaw), syaw = Math.sin(track.yaw);
+    const stepSide = bhv && (bhv.side > 0 || bhv.dodge > 0) ? (-(Number(bhv.sx) || 0) * syaw + (Number(bhv.sy) || 0) * cyaw < 0 ? -1 : 1) : 1;
+    const spent = !layered || who.heavy !== true ? 0 : pack ? (pack.attack && pack.phase === 'recover' ? 1 - (monsterAction?.semantic?.progress ?? 1) : 0) : who.telegraph > 0 ? 0 : Math.min(1, (Number(who.cooldown) || 0) / CREATURE_MOTION.heavy.spent.window);
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
@@ -3952,11 +3986,24 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       attackReach: who === player ? 0 : closeViewRootReach(who, closeViewRootAttack(who, monsterAction)),
       eliteWindup: who === player ? 0 : Number(who.eliteWindup) || 0, eliteActive: who === player ? 0 : Number(who.eliteActive) || 0,
       stillness: who === player || who.pack?.attack ? 0 : Number(who.pack?.stillT) || 0,
+      flinch: layered ? Number(who.flinch) || 0 : 0, reeling: !!(bhv && bhv.stagger > 0), hitReact: layered ? hit : 0,
+      hitX: pushL > 1e-6 ? (who.x - player.x) / pushL : 0, hitY: pushL > 1e-6 ? (who.y - player.y) / pushL : 0,
+      guard: layered ? Number(who.guard) || 0 : 0, dodge: layered ? Number(who.dodge) || 0 : 0, dodgeSide: stepSide, feint: layered ? Number(who.feint) || 0 : 0, feintSide: stepSide,
+      alert: layered ? Number(who.alert) || 0 : 0, arrive: layered ? Number(who.arrive) || 0 : 0, arriveStyle: layered ? who.arriveStyle : '',
+      heavy: layered && who.heavy === true, comboStep: !layered ? 0 : pack ? pack.combo | 0 : who.comboStep | 0, spent,
+      seed: track.seed || 0, accel: Number.isFinite(track.lean) ? track.lean : 0, motionState: layered ? track.motion : null, motionDetail: Q.glScale === 1 ? 2 : Q.relief ? 1 : 0,
       alpha: Math.max(0, Math.min(1, (who === player ? d.alpha ?? 1 : 1) * (who === player ? 1 - (1 - (reduce ? CLOSE_VIEW_SHADOW_FORMS.wraith.reducedAlpha : CLOSE_VIEW_SHADOW_FORMS.wraith.alpha)) * wraith : closeViewCreatureIntrinsicAlpha(who) * boardB[it]))),
       shadow: who === player && wraith > .5, charge: who === player ? state.shadowDash.charge : 0,
       attachments: who.affixes?.includes('droneSwarm') ? Array.from({ length: 3 }, (_, i) => { const at = dronePos(who, i, now / 1000); return { ...at, z: surfaceZ(g.map, at.x, at.y) + projectileVisualHeight(who, 'drone'), color: 0xc8ff7a }; }) : null,
       poison: who === player && g.save.elites?.status?.poison > 0, muzzleOut: who === player ? state.nativeMuzzle : null };
     if (pose === 'jump' && !actor.jumpAir && fallAir) actor.jumpAir = fallAir; // FALL: the falling pose (the jump's hang, legs reaching down near the ground)
+    if (layered) { // creature motion (CREATURE_MOTION.swap): a creature drawn as a card last frame fades into its body, its card fading out
+      const r = solidityOf(who), Fr = closeViewStats.frames;
+      if (r.mf !== Fr) { const wasBody = r.body === Fr - 1, wasCard = r.card === Fr - 1;
+        if (wasCard && !wasBody) { if (!(r.m < 1)) r.m = 0; } else if (!Number.isFinite(r.m) || !wasBody && r.mf !== Fr - 1) r.m = 1; // new, or back after a while unseen: whole at once
+        r.m = g.paused ? 1 : swapStep(r.m, 1, CAM.dt * 1000); r.mf = Fr; } // a paused scene changes body at once (nothing moves)
+      if (r.m < 1) { const k = swapEase(r.m); actor.alpha *= k; swapCard[it] = 1; boardFade[it] = 1 - k; }
+    }
     if (who === player) { CAM.bodyYaw = actor.yaw; CAM.bodyDesiredYaw = targetYaw; CAM.bodyTransient = stunned || hit > 0 || attack || cast || jump || charge != null || importedDodge; }
     track.winding = winding;
     track.attacking = attack;
@@ -4148,12 +4195,26 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const o = draws[itemRef[it]]?.object, kind = o && PR.objects[o.kind]; if (!kind || !Number.isFinite(Number(o.x)) || !Number.isFinite(Number(o.y))) continue;
     if (prop(kind, Number(o.x) + .5, Number(o.y) + .5, o)) state.admitted.add(it); }
   state.props = closeViewGLStats.props = props;
+  // creature motion (CREATURE_MOTION.swap): a creature that lost its body this frame (the model cap, a fallback) keeps it a moment,
+  // fading out over its card, at most `swap.out` of them, outside the cap (room is kept for them in the vertex buffer)
+  let fading = 0; closeViewGLStats.swapOut = 0;
+  for (let oi = n - 1; oi >= 0 && fading < CREATURE_MOTION.swap.out; oi--) {
+    const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null; if (!foe || state.admitted.has(it) || foe.dead) continue;
+    const r = SOLIDITY.get(foe), Fr = closeViewStats.frames, track = r && state.tracks.get(foe); if (!r || !track?.actor) continue;
+    if (r.mf !== Fr) { if (r.body === Fr - 1) r.m = Number.isFinite(r.m) ? r.m : 1; else if (!(r.mf === Fr - 1 && r.m > 0 && r.m < 1)) continue;
+      r.m = g.paused ? 0 : swapStep(r.m, 0, CAM.dt * 1000); r.mf = Fr; }
+    if (!(r.m > 0)) continue;
+    const k = swapEase(r.m), ghost = Object.assign(state.swapGhost, track.actor); ghost.x = track.actor.x + foe.x - track.x; ghost.y = track.actor.y + foe.y - track.y; ghost.alpha = (track.actor.alpha ?? 1) * k; ghost.attachments = null; ghost.motionState = null;
+    const next = writeCloseViewModel(state.vertices, offset, ghost); if (next === offset) continue;
+    offset = next; fading++; track.at = now; boardFade[it] = 1 - k;
+  }
+  closeViewGLStats.swapOut = fading;
   for (const [who, track] of state.tracks) {
     if (who.kind === 'voidWalker' && who.dead) { state.tracks.delete(who); continue; }
     if (who.dead && who.hp <= 0 && !who.noRewards) {
       track.deathAt ??= now;
       const amount = (now - track.deathAt) / MODEL_TIMING.deathMs;
-      if (amount < 1 && !who.hidden && !who.gloomVeil) append({ ...track.actor, attachments: null, pose: "death", amount });
+      if (amount < 1 && !who.hidden && !who.gloomVeil) append({ ...track.actor, attachments: null, pose: "death", amount, alpha: (track.actor.alpha ?? 1) * deathAlpha(amount) }); // fades out over the fall's end (creature-motion.ts death.fade)
       else state.tracks.delete(who);
     } else if (now - track.at > 120 || who.dead) state.tracks.delete(who);
   }
@@ -4461,17 +4522,18 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : surfaceZ(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
   const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
-    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = MODEL_STATE.admitted.has(it) ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? (LOOK.k > 0 && LOOK.key ? Math.min(At.nearFade, LOOK.heroAlpha) : At.nearFade) : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
+    const cardBody = MODEL_STATE.admitted.has(it) && swapCard[it] !== 1; // a body fading in draws its whole card under it (creature-motion.ts swap)
+    const sc = boardScale[it], hw = A.halfWidth * sc, foe = boardFoe[it], top = cardBody ? nativeBoardTop(foe, sc, draws[itemRef[it]].nativeHeight) : Math.max(A.height * sc,draws[itemRef[it]].nativeHeight||0), X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? (LOOK.k > 0 && LOOK.key ? Math.min(At.nearFade, LOOK.heroAlpha) : At.nearFade) : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
     if (foe && !MODEL_STATE.admitted.has(it)) noteSolidity(foe, boardPW[it] ? 'board' : 'none', b);
     boardBase = surfaceZ(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
-      + (interiorTerrain(g.map) ? closeViewActorLift(draw, MODEL_STATE.admitted.has(it)) : 0);
+      + (interiorTerrain(g.map) ? closeViewActorLift(draw, cardBody) : 0);
     const u0 = boardSX[it] / tw, u1 = (boardSX[it] + boardPW[it]) / tw, v0 = boardSY[it] / th2, v1 = (boardSY[it] + boardPH[it]) / th2;
-    const residual = MODEL_STATE.admitted.has(it);
+    const residual = cardBody, cb = b * boardFade[it]; // cb: the card's own opacity, its share of a cross-fade with the body
     const statusAlpha = residual && foe ? closeViewCreatureIntrinsicAlpha(foe) : 1;
     const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -A.below;
-    BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, zb, u1, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, zb, u0, v1, b, fl, gh, li); BV(rxp, ryp, top, u1, v0, b, fl, gh, li); BV(lx, ly, top, u0, v0, b, fl, gh, li); }
+    const gc = gh * boardFade[it]; BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, zb, u1, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, top, u0, v0, cb, fl, gc, li); }
     if (foe || isPlayer) { const SD = MODEL_STATE.shadowDash, dash = isPlayer && MODEL_STATE.admitted.has(it) && SD.active, SX = dash ? X + SD.x - g.player.x : X, SY = dash ? Y + SD.y - g.player.y : Y, SA = dash ? 1 - .6 * SD.wraith : statusAlpha; // a charging wraith's shadow goes with it
       if (MODEL_STATE.admitted.has(it)) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
