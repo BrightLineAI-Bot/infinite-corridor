@@ -96,3 +96,50 @@ test("ordinary update reaches a single mounted landing and safely retires its vi
   assert.equal(g.triceratopsJump, null);
   assert.equal(g.effects.filter(e => e.kind === "plunge-slam").length, 0);
 });
+
+
+test("pause resumes horn contact with the dodge clock and preserves already-hit enemies", () => {
+  const g = mounted(), first = target(g, "first"), idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
+  g.update(.01, input("dodge"), 1000);
+  assert.ok(first.hp < 1000);
+  const firstHp = first.hp, remaining = g.player.dodgeUntil - 1010, before = structuredClone(g.triceratopsDash);
+  g.setPaused(true, 1010);
+  g.update(.05, idle, 4010);
+  assert.deepEqual(g.triceratopsDash, before);
+  assert.equal(first.hp, firstHp);
+  g.setPaused(false, 5010);
+  assert.equal(g.triceratopsDash.until, g.player.dodgeUntil);
+  assert.equal(g.triceratopsDash.until - 5010, remaining);
+  const second = target(g, "second", g.player.x + 1.2, g.player.y);
+  g.update(.01, idle, 5020);
+  assert.equal(first.hp, firstHp);
+  assert.ok(second.hp < 1000, "remaining dash can contact a new foe after resume");
+  const secondHp = second.hp;
+  g.update(.01, idle, 5030);
+  assert.equal(second.hp, secondHp);
+  g.update(.01, idle, g.player.dodgeUntil + 1);
+  assert.equal(g.triceratopsDash, null);
+});
+
+test("pause resumes the same mounted leap and lands exactly one shockwave", () => {
+  const g = mounted(), idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
+  let waves = 0;
+  const blow = g.triceratopsBlow.bind(g);
+  g.triceratopsBlow = (kind, ...args) => { if (kind === "landing") waves++; return blow(kind, ...args); };
+  g.update(.01, { ...idle, consume: k => k === "jump" }, 1000);
+  g.update(.05, idle, 1050);
+  const remaining = g.jumpUntil - 1050, before = structuredClone(g.triceratopsJump);
+  g.setPaused(true, 1050);
+  g.update(.05, idle, 4050);
+  assert.deepEqual(g.triceratopsJump, before);
+  assert.equal(waves, 0);
+  g.setPaused(false, 5050);
+  assert.equal(g.triceratopsJump.start, g.jumpStart);
+  assert.equal(g.triceratopsJump.until, g.jumpUntil);
+  assert.equal(g.triceratopsJump.until - 5050, remaining);
+  const until = g.jumpUntil;
+  for (let now = 5100; now <= until + 1000; now += 50) g.update(.05, idle, now);
+  assert.equal(waves, 1);
+  assert.equal(g.triceratopsJump, null);
+  assert.equal(g.effects.filter(e => e.kind === "plunge-slam").length, 0);
+});
