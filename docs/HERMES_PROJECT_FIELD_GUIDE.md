@@ -6,6 +6,18 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 983 — Close View creature motion and Pentagon dread
+
+**CODE:** Standard View's positive-dread overlay in `renderer.ts` uses its dimensions and intensity as a cache key again. The lighting regression exercises the first draw, reuse, and rebuild.
+
+**BOUNDARY:** The repair restores drawing and does not change dungeon state or dread strength.
+
+This is the first part of Tim's second creature pass (2026-11-15): a triple-A feel for every creature except world beasts and bosses, within the phone budget. It is the shared motion layer every ordinary Close View rig gets for free.
+
+**CODE:** `creature-motion.ts` holds the `CREATURE_MOTION` table (phase, heavy, combo, react, families, bend, carry, turn, death, swap, arms), `creatureMotion` (reaction layers driven by the enemy-behaviour.ts flags on the real clocks) and `motionCarry` (continuity, using per-track `MOTION_STATE_FLOATS`). In `close-view-models.ts`, `creatureRootPose` handles the phase model: a wind-up peak at 78% held with a tremble, follow-through, deeper heavy blows and alternating combos. `creatureRigFrame`, `bendFrame` and the vertex-loop bend handle torso, head and tail. `close-view.ts` has `creatureClock` and `e.bhv.wind`, so heavy and combo poses use the game's clocks. It also has `boardFade`, `swapCard` and the pooled `swapGhost` for the 220 ms card/body cross-fade, `deathAlpha` for the death fall, and a turn toward the target at 26/s. Quality tiers gate the layers (`motionDetail`).
+
+**BOUNDARY:** This is presentation only. No gameplay number, save field (schema 14), generation or triangle changes. It applies to `CREATURE_POSE.kinds` only, never world beasts or bosses. Strikes are drawn exactly on the hit frame; in a 40 s fight, all 83 melee hits landed at or past contact. Under Reduced Motion, reactions play at half strength with no translation, and there is no idle life or tremble. A paused scene swaps instantly, and a new spawn is opaque on its first frame. At most 2 bodies fade out beyond the cap. On desktop, the model write for 20 creatures went from about 0.45 ms to 0.58–0.78 ms per frame.
+
 ## Release 982 — Fixes from the 975 review
 
 The Fable review of r972→r975 left six non-blocking notes. Tim chose to restore the older creatures' attack cadence (2026-11-15).

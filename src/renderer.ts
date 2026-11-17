@@ -2352,8 +2352,9 @@ function drawPentSeal(ctx, o, s, now) {
   ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
 }
 // The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
-function drawDread(ctx, w, h, share) {
-  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread; // INTERIOR_LIGHT (close-view.ts): a little lighter, still closing in const key = `${w}x${h}:${share.toFixed(2)}`;
+export function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread;
+  const key = `${w}x${h}:${share.toFixed(2)}`;
   if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5 * D})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
     const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${(.5 + share * .35) * D})`); v.addColorStop(1, `rgba(2,2,6,${(.8 + share * .18) * D})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);

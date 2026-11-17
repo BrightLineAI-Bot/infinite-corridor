@@ -5020,7 +5020,10 @@ export function updatePackMonster(e, w) {
     if (B && b.feintAt > 0 && s.phase === "windup" && s.data.wind > 0 && s.t <= s.data.wind * b.feintAt) { const id = s.attack; endAttack(e, s); s.cd[id] = Math.min(s.cd[id] || 0, .6); s.gap = 0; startFeint(e, b, B, w.squad); return; } // a feint breaks off into a sidestep
     RUN[s.attack]?.(e, s, w);
     if (B && b.feintAt > 0 && s.phase !== "windup") b.feintAt = 0; // review 975: past its windup the blow is committed; a feint never carries over
-    if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; if (packCombo(e, s, w, B, b)) return; if (e.heavy) s.t *= B.heavy.recover; } // the next blow of a combo; a heavy blow leaves it open
+    // Keep the contact pose for this frame before a combo replaces it with the next windup. Besides making the hit readable,
+    // this keeps the presentation clock on the blow that actually dealt damage; the pending combo starts on the next tick.
+    if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; s.data.comboPending = true; if (e.heavy) s.t *= B.heavy.recover; }
+    else if (B && s.attack && s.phase === "recover" && s.data.comboPending) { s.data.comboPending = false; if (packCombo(e, s, w, B, b)) return; }
     if (s.attack && s.phase === "recover" && s.t <= 0) { if (B) afterBlow(e, b, B); endAttack(e, s); }
     return;
   }
