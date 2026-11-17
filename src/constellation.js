@@ -8,13 +8,13 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.js?v=r975-6689d7c92177";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r975-6689d7c92177"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r975-6689d7c92177";
-import { pairingMods } from "./spell-slots.js?v=r975-6689d7c92177";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r975-6689d7c92177";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r975-6689d7c92177";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r975-6689d7c92177"; // awakened arts: each primary's own move (2026-11-13)
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.js?v=r984-93a51644afcb";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r984-93a51644afcb"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r984-93a51644afcb";
+import { pairingMods } from "./spell-slots.js?v=r984-93a51644afcb";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r984-93a51644afcb";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r984-93a51644afcb";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r984-93a51644afcb"; // awakened arts: each primary's own move (2026-11-13)
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 

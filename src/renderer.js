@@ -1,56 +1,56 @@
-import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r975-6689d7c92177"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { ACTION_MOTION } from "./action-motion.js?v=r975-6689d7c92177"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r975-6689d7c92177"; // a dodge's after-images replace the single dodge ghost
-import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r975-6689d7c92177"; // the weighted Cleaver swing (2026-11-14)
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r984-93a51644afcb"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { ACTION_MOTION } from "./action-motion.js?v=r984-93a51644afcb"; // the Cinder Pike's standard-view thrust clock
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r984-93a51644afcb"; // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r984-93a51644afcb"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
-import { drawQuandrixStaff } from "./quandrix-staff.js?v=r975-6689d7c92177";
-import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r975-6689d7c92177"; // the Stego Bait (Tim, 2026-11-12)
-import { shakeOffset } from "./spino-rex.js?v=r975-6689d7c92177";
-import { drawBleedIcon } from "./bleed.js?v=r975-6689d7c92177";
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r975-6689d7c92177"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r975-6689d7c92177";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r975-6689d7c92177"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r975-6689d7c92177";
-import { astralBeamAnchors } from "./astral-worm.js?v=r975-6689d7c92177";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r975-6689d7c92177";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r975-6689d7c92177";
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r975-6689d7c92177';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r975-6689d7c92177";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r975-6689d7c92177";
-import { ruleRows } from "./elders.js?v=r975-6689d7c92177";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r975-6689d7c92177";
-import { BOAT } from "./boats.js?v=r975-6689d7c92177";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r975-6689d7c92177";
-import { isMarineTile } from "./world-beasts.js?v=r975-6689d7c92177";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r975-6689d7c92177"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r975-6689d7c92177";
-import { setTreeSeason } from "./landscape-render.js?v=r975-6689d7c92177";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r975-6689d7c92177";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r975-6689d7c92177";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r975-6689d7c92177";
-import { TREES } from "./trees.js?v=r975-6689d7c92177";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r975-6689d7c92177";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r975-6689d7c92177";
-import { KIT_MOVES } from "./boss-kit.js?v=r975-6689d7c92177";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r975-6689d7c92177"; // release 587; travel seeds
-import { drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r975-6689d7c92177";
-import { drawSpinoBiteOverlay } from "./spino-render.js?v=r975-6689d7c92177";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r975-6689d7c92177"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r975-6689d7c92177"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r975-6689d7c92177";
-import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r975-6689d7c92177"; // Close View: a beast in your section is captured wherever it stands in it
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r975-6689d7c92177"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r975-6689d7c92177"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r975-6689d7c92177"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r975-6689d7c92177";
-import { drawRelayNode } from "./relay-network.js?v=r975-6689d7c92177";
-import { structureOccupancy } from "./world.js?v=r975-6689d7c92177";
-import { roofDeckById } from "./roof-decks.js?v=r975-6689d7c92177"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r975-6689d7c92177";
-import { LANTERN, LANTERN_STOPS, lanternShines } from "./spell-slots.js?v=r975-6689d7c92177"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r975-6689d7c92177";
-import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r975-6689d7c92177"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd } from "./close-view.js?v=r975-6689d7c92177"; // Close View: three hooks below, marked CLOSE VIEW
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r984-93a51644afcb";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r984-93a51644afcb"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r984-93a51644afcb";
+import { drawBleedIcon } from "./bleed.js?v=r984-93a51644afcb";
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r984-93a51644afcb"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r984-93a51644afcb";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r984-93a51644afcb"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r984-93a51644afcb";
+import { astralBeamAnchors } from "./astral-worm.js?v=r984-93a51644afcb";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r984-93a51644afcb";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r984-93a51644afcb";
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r984-93a51644afcb';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r984-93a51644afcb";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r984-93a51644afcb";
+import { ruleRows } from "./elders.js?v=r984-93a51644afcb";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r984-93a51644afcb";
+import { BOAT } from "./boats.js?v=r984-93a51644afcb";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r984-93a51644afcb";
+import { isMarineTile } from "./world-beasts.js?v=r984-93a51644afcb";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r984-93a51644afcb"; // 613: Starfield rafts
+import { SEASONS, treeSeason } from "./seasons.js?v=r984-93a51644afcb";
+import { setTreeSeason } from "./landscape-render.js?v=r984-93a51644afcb";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r984-93a51644afcb";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r984-93a51644afcb";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r984-93a51644afcb";
+import { TREES } from "./trees.js?v=r984-93a51644afcb";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r984-93a51644afcb";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r984-93a51644afcb";
+import { KIT_MOVES } from "./boss-kit.js?v=r984-93a51644afcb";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r984-93a51644afcb"; // release 587; travel seeds
+import { drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r984-93a51644afcb";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r984-93a51644afcb";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r984-93a51644afcb"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r984-93a51644afcb"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r984-93a51644afcb";
+import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r984-93a51644afcb"; // Close View: a beast in your section is captured wherever it stands in it
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r984-93a51644afcb"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r984-93a51644afcb"; // release 748: pens sized for the beast
+import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r984-93a51644afcb"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r984-93a51644afcb";
+import { drawRelayNode } from "./relay-network.js?v=r984-93a51644afcb";
+import { structureOccupancy } from "./world.js?v=r984-93a51644afcb";
+import { roofDeckById } from "./roof-decks.js?v=r984-93a51644afcb"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r984-93a51644afcb";
+import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r984-93a51644afcb"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r984-93a51644afcb";
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r984-93a51644afcb"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving } from "./close-view.js?v=r984-93a51644afcb"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -95,6 +95,26 @@ function drawClingGrip(ctx, x, y, s, nx, ny) {
     const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
     ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
     ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// FALL_POSE (Standard View): a real fall raises both hands out to the sides, more as it goes on, with a small slow flap on a long
+// fall (the same clock and weights as Close View's falling pose; Reduced Motion holds them still). When the fall is taken over in the
+// air (the drone's catch, a roof met first) the hands ease back down over FALL_POSE.releaseMs rather than vanishing (FALL_STD_LAST:
+// at, arms, loop, phase). Nothing else is drawn differently.
+const FALL_STD = new Float64Array(6), FALL_STD_LAST = new Float64Array(4);
+function drawFallArms(ctx, g, x, y, s, now) {
+  const air = g.fall ? ordinaryFallPresentation(g, now, 0) : null, L = FALL_STD_LAST, S = FALL_POSE.std, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  let arms = 0, loop = 0, ph = 0;
+  if (air && air.flail !== false) { const f = sampleFallPose(air.elapsedMs, air.remainingMs, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), FALL_STD); arms = f[0]; loop = f[2]; ph = f[3]; L[0] = clock; L[1] = arms; L[2] = loop; L[3] = ph; }
+  else { const u = (clock - L[0]) / FALL_POSE.releaseMs; if (!(L[1] > 0) || !(u > 0) || u >= 1) { L[1] = 0; return; } const k = 1 - u * u * (3 - 2 * u); arms = L[1] * k; loop = L[2] * k; ph = L[3]; }
+  if (!(arms > .02)) return;
+  const cx = (x + .5) * s, cy = (y + .36) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * S.line);
+  for (let k = -1; k <= 1; k += 2) {
+    const flap = S.flap * loop * Math.sin(ph + (k > 0 ? Math.PI : 0)), ox = k * .12 * s, hx = cx + ox + k * S.reachX * arms * s, hy = cy + (S.reachY * arms + flap) * s;
+    ctx.beginPath(); ctx.moveTo(cx + ox, cy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * S.hand), 0, 7); ctx.fill();
   }
   ctx.restore();
 }
@@ -2293,10 +2313,11 @@ function drawPentSeal(ctx, o, s, now) {
   ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
 }
 // The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
-function drawDread(ctx, w, h, share) {
-  if (!(share > 0)) return; let o = render.dread; const key = `${w}x${h}:${share.toFixed(2)}`;
-  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
-    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${.5 + share * .35})`); v.addColorStop(1, `rgba(2,2,6,${.8 + share * .18})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
+export function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread;
+  const key = `${w}x${h}:${share.toFixed(2)}`;
+  if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5 * D})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
+    const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${(.5 + share * .35) * D})`); v.addColorStop(1, `rgba(2,2,6,${(.8 + share * .18) * D})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
 }
 // Release 593: the Starfield penumbra, clear to `inner` tiles round the screen's centre and `dark` by `outer`: the same
@@ -2312,9 +2333,9 @@ function lanternMask() {
   x.fillStyle = gr; x.fillRect(0, 0, D, D); return (lanternRender.mask = c);
 }
 // Its warm light on the floor round the Wayfarer at (x, y) (world or screen pixels), added over what is drawn.
-function drawLanternGlow(ctx, x, y, s) {
+function drawLanternGlow(ctx, x, y, s, alpha = LANTERN.glow) {
   const m = lanternMask(); if (!m) return; const R = LANTERN.radius * s;
-  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = LANTERN.glow; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = alpha; ctx.drawImage(m, x - R, y - R, 2 * R, 2 * R); ctx.restore();
 }
 // A screen darkness overlay (`draw(ctx, w, h, arg)`): unlit, drawn as it always was; lit, drawn into the layer, the lantern's
 // light taken out of it round (x, y) in screen pixels (destination-out: lanternLift of the darkness, none beyond the radius),
@@ -2440,10 +2461,17 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
   const dungeon = g.area === "dungeon", reveal = dungeon ? (g.map._dungeonRevealMode === "full" ? "full" : g.map._dungeonRevealed || null) : null, revealSize = reveal && reveal !== "full" ? reveal.size : 0;
   let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length || ground.scarSurface !== scarSurface;
   if (!dirty) for (let i = 0; i < T.length; i++) { const q = T[i]; if (q !== ground.refs[i] || q.kind !== ground.kinds[i] || q.blocked !== ground.blocked[i] || q.elev !== ground.elev[i]) { dirty = true; break; } }
-  let top = 0; if (dirty) for (const q of T) top = Math.max(top, landscapeTileLift(q, s));
-  const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
+  // CV_TREE_BLACKOUT (Tim, r975: after the Oculus took him into Close View and back beside a great tree, "the top half of the
+  // screen of the tree doesn't load in... It was a black screen"): the headroom above row 0 that lifted tiles are drawn into
+  // (`top`) was measured only when the tiles had changed, so a rebuild for a new scale alone (Close View's leave zoom changes the
+  // transform) built the image with no headroom, and the great tree's trunk, crown and upper branches were cut off for as long as
+  // the image lived. Unchanged tiles at the same tile size keep the headroom the last build measured.
+  let top = ground.top; if (dirty) { top = 0; for (const q of T) top = Math.max(top, landscapeTileLift(q, s)); }
+  const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + top))), scale = Math.min(want, fit);
   if (dungeon && fit < want) return false; // a large dungeon at high pixel density would cache blurred: draw it per tile
-  if (!dirty && Math.abs(scale - ground.scale) > 1e-6) dirty = true;
+  // A scale that changes only for Close View's leave zoom (a few tenths of a second, a new scale each frame) keeps the image it
+  // has, drawn scaled, rather than rebuilding the whole section every frame of the blend and once more as it ends.
+  if (!dirty && Math.abs(scale - ground.scale) > 1e-6 && !closeViewLeaving()) dirty = true;
   // Release 165: exploring a dungeon reveals chunks one at a time. Redrawing the whole image for each (up to 4096
   // tiles, about once a second while exploring) was a visible hitch, so newly revealed chunks are repainted in place.
   let added = null;
@@ -3081,6 +3109,7 @@ export function render(ctx, g, w, h, now) {
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
       if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
+      if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
@@ -3275,7 +3304,9 @@ export function render(ctx, g, w, h, now) {
       ctx.arc(cx + Math.cos(spin) * s * 0.52, cy + Math.sin(spin) * s * 0.52, 2, 0, 7);
       ctx.fill();
     }
+  if (g.area === "dungeon" && !closeViewCapturing()) drawRoomDim(ctx, g, s, budget.quality); // INTERIOR_LIGHT (version 2): a dark room's faint dim, under the Lantern's light
   if (!closeViewCapturing() && lanternShines(g.save, g.area)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s); // LANTERN: its warm light on the floor (under the fog of war)
+  else if (!closeViewCapturing() && outdoorNight(g) && lanternIsLit(g.save)) drawLanternGlow(ctx, (p.x + .5) * s, (p.y + .55 - viewLift) * s, s, LANTERN.night.glow); // LANTERN outdoors: a fainter glow under a night sky
   if (g.area === "dungeon") drawLabFog(ctx, g, s, { l, t, r, b }, budget.quality); // LAB_FOG: a labyrinth chamber's fog of war, over everything on its floor
   if (g.area === "dungeon") drawWayMarks(ctx, g, s, now); // which way is down and which is out, plainly marked
   ctx.restore();
@@ -3384,6 +3415,21 @@ export function render(ctx, g, w, h, now) {
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; renderTimings.endedAt = t3; }
 }
 
+// INTERIOR_LIGHT (close-view.ts, version 2): in Standard View a dark room alone takes a faint dim, from the map's room field
+// (roomLightField: the tier position blurred across room edges; nothing at gloomy or lit, `dim.alpha` at dark), painted once a
+// map into a tiny image, one pixel a tile, in `dim.levels` steps; each frame one scaled copy (blurred on the balanced and full
+// tiers). Nothing moves in it. Without an offscreen canvas (tests) nothing is drawn; a labyrinth chamber keeps its fog of war alone,
+// a chasm its penumbra.
+const roomDimImage = { canvas: null, field: null };
+export function roomDimAlpha(sPos) { const D = INTERIOR_LIGHT.dim, k = Math.max(0, Math.min(1, sPos - 1)); return Math.round(k * D.levels) / D.levels * D.alpha; }
+export function drawRoomDim(ctx, g, s, quality) {
+  if (g.map?.chasm || g.map?.stillworks || labFogOf(g.map) || typeof ctx.drawImage !== "function") return false; const F = roomLightField(g.map); if (!F) return false;
+  const I = roomDimImage, c = I.canvas || (I.canvas = makeGroundCanvas()), gc = c?.getContext?.("2d"); if (!gc) return false;
+  if (I.field !== F) { if (c.width !== F.W || c.height !== F.H) { c.width = F.W; c.height = F.H; } gc.clearRect(0, 0, F.W, F.H);
+    for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) { const a = roomDimAlpha(F.s[y * F.W + x]); if (a > 0) { gc.fillStyle = `rgba(4,4,8,${a.toFixed(3)})`; gc.fillRect(x, y, 1, 1); } }
+    I.field = F; renderCacheStats.roomDimBuilds = (renderCacheStats.roomDimBuilds || 0) + 1; }
+  ctx.save(); ctx.imageSmoothingEnabled = INTERIOR_LIGHT.dim.soft[quality] !== false; ctx.drawImage(c, 0, 0, F.W, F.H, 0, 0, F.W * s, F.H * s); ctx.restore(); return true;
+}
 // LAB_FOG (labyrinths.ts): a labyrinth chamber's fog of war. The fog is a tiny image, one pixel a tile (the dark over tiles never
 // seen, the dim over tiles seen and out of sight, clear in sight), painted in runs of a row and redrawn only when the sight
 // changes (the Wayfarer steps onto another tile); each frame it is one scaled copy, blurred across a tile's width on the

@@ -6,11 +6,11 @@
 // here reads attack timing or changes the game.
 //
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = e.scale x closeViewScale.
-import { STEGO_ART, STEGO_POSES } from "./wild-stego-render.js?v=r975-6689d7c92177";
+import { STEGO_ART, STEGO_POSES } from "./wild-stego-render.js?v=r984-93a51644afcb";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r975-6689d7c92177";
+} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const STEGO_RIG = Object.freeze({

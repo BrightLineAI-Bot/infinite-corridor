@@ -1,16 +1,17 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.js?v=r975-6689d7c92177'; // adventure creatures
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r975-6689d7c92177';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r975-6689d7c92177';
-import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r975-6689d7c92177';
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r975-6689d7c92177';
-import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.js?v=r975-6689d7c92177'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
-export { MESH_FLOATS } from './close-view-mesh.js?v=r975-6689d7c92177';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.js?v=r984-93a51644afcb'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r984-93a51644afcb';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r984-93a51644afcb';
+import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r984-93a51644afcb';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r984-93a51644afcb';
+import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.js?v=r984-93a51644afcb'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
+import { CREATURE_MOTION, creatureMotion, motionCarry } from './creature-motion.js?v=r984-93a51644afcb'; // the shared creature motion layers (2026-11-15)
+export { MESH_FLOATS } from './close-view-mesh.js?v=r984-93a51644afcb';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;
@@ -1011,6 +1012,10 @@ function nativeCleaverRig(frame) {
 //     extension when the hit resolves; `phased` attacks (a strike, track or travel phase follows) strike in that phase instead.
 //   Reduced Motion: crouch, lean, twist and rise at `reduced.scale`, no lunge translation and no recoil kick (as the hero's
 //     cleaver load and the hit recoil already do); the attack still reads.
+//   Phase model (2026-11-15, creature-motion.ts CREATURE_MOTION.phase/heavy/combo): the coil peaks at `phase.peak` of its window
+//     and holds (trembling, never under Reduced Motion) until the strike; recovery carries a follow-through past full extension
+//     before it settles; a heavy blow (e.heavy) coils, extends and follows through further; combo follow-ups alternate their
+//     twist. close-view.ts creatureClock and the e.bhv.wind windup put every phase on the creature's real clock.
 const poseFamily = (crouch, lunge, lean, twist, recoil, lift, style, wind = 'smooth', strike = 'snap', settle = 'back') => Object.freeze({ crouch, lunge, lean, twist, recoil, lift, style, wind, strike, settle });
 const poseStyle = (crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil) => Object.freeze({ crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil });
 export const CREATURE_POSE = Object.freeze({
@@ -1090,12 +1095,12 @@ function poseEase(kind, t) {
   return t * t * (3 - 2 * t);
 }
 // One scratch record, rewritten by every call (no per-frame allocation). stage: 0 rest, 1 coil, 2 strike, 3 hold, 4 recover.
-const ROOT_POSE = { lunge: 0, squash: 0, lean: 0, twist: 0, lift: 0, stage: 0, u: 0, style: '', family: '' };
+const ROOT_POSE = { lunge: 0, squash: 0, lean: 0, twist: 0, lift: 0, stage: 0, u: 0, hold: 0, heavy: false, style: '', family: '' };
 // The root offset of an ordinary creature this frame (an actor as writeCloseViewModel takes it). Fields: lunge (tiles forward
 // along its facing; negative is back), squash (share of its height, feet planted), lean (radians, forward positive), twist
 // (radians of yaw), lift (tiles). `family` is '' for anything that is not an ordinary 3D creature (all zero).
 export function creatureRootPose(actor, out = ROOT_POSE) {
-  out.lunge = 0; out.squash = 0; out.lean = 0; out.twist = 0; out.lift = 0; out.stage = 0; out.u = 0; out.style = ''; out.family = '';
+  out.lunge = 0; out.squash = 0; out.lean = 0; out.twist = 0; out.lift = 0; out.stage = 0; out.u = 0; out.hold = 0; out.heavy = false; out.style = ''; out.family = '';
   const family = creaturePoseFamily(actor?.kind);
   if (!family) return out;
   out.family = family;
@@ -1128,28 +1133,91 @@ export function creatureRootPose(actor, out = ROOT_POSE) {
     // A slow dread pulse on the stillness clock, back at rest by the time the curse falls (the clock then starts again).
     else if (actor.stillness > 0) { id = 'stillnessCurse'; stage = 1; u = Math.sin(Math.PI * Math.min(1, actor.stillness / P.stillness.fires)); }
   }
+  // Anticipation (creature-motion.ts CREATURE_MOTION.phase): a windup's coil reaches its peak at `peak` of the coil window and
+  // holds there (out.hold, 0..1 through the hold) until the strike, so the blow reads before it lands.
+  const MP = CREATURE_MOTION.phase;
+  let hold = 0;
   if (windup >= 0) {
     if (POSE_PHASED.has(id)) { stage = 1; u = windup; }
     else if (windup < 1 - P.tail) { stage = 1; u = windup / (1 - P.tail); }
     else { stage = 2; u = (windup - (1 - P.tail)) / P.tail; }
+    if (stage === 1) { if (u > MP.peak) hold = (u - MP.peak) / (1 - MP.peak); u = Math.min(1, u / MP.peak); }
   }
   if (!stage) return out;
   const styleId = id === 'elite' ? P.elite.style : creaturePoseStyle(family, id, semantic), S = P.styles[styleId] || P.styles.lunge;
-  let c = 0, e = 0, bump = 0;
+  // A heavy blow (enemy-behaviour.ts shapeBlow: e.heavy) coils deeper, extends, kicks and follows through further; a combo's
+  // follow-ups (step 2, 3: e.comboStep or the pack's combo) are a little lighter and swing back the other way every other blow.
+  const H = CREATURE_MOTION.heavy, heavy = actor.heavy === true, step = Number.isInteger(actor.comboStep) ? actor.comboStep : 0;
+  const light = step > 1 ? CREATURE_MOTION.combo.amp : 1, side = step > 1 && step % 2 === 0 ? -1 : 1;
+  const kc = (heavy ? H.coil : 1) * light, ke = (heavy ? H.extend : 1) * light, kr = heavy ? H.recoil : 1;
+  let c = 0, e = 0, bump = 0, fo = 0;
   if (stage === 1) { c = poseEase(F.wind, u); e = -S.back * c; }
   else if (stage === 2) { const k = poseEase(F.strike, u); c = 1 - k; e = -S.back + (1 + S.back) * k; }
   else if (stage === 3) e = 1;
-  else { e = 1 - poseEase(F.settle, u); bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0; }
+  else {
+    e = 1 - poseEase(F.settle, u); bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0;
+    // follow-through: the body carries on past full extension just after contact, then settles back over the real recovery
+    if (u < MP.followSpan) fo = MP.follow * (heavy ? H.follow : 1) * Math.sin(Math.PI * u / MP.followSpan);
+  }
   const reduce = !!actor.reduceMotion, amp = reduce ? P.reduced.scale : 1;
   const reach = Number.isFinite(actor.attackReach) && actor.attackReach > 0 ? actor.attackReach : P.defaultReach;
-  const lunge = Math.min(F.lunge * S.lunge, reach * P.reachShare);
-  out.lunge = e * lunge * (reduce ? P.reduced.lunge : 1) - F.recoil * S.recoil * bump * (reduce ? P.reduced.recoil : 1);
-  out.squash = Math.max(0, Math.min(.45, F.crouch * (S.crouch * c + S.land * Math.max(0, e) + S.impact * bump) * amp));
-  out.lean = F.lean * (S.lean * e - S.rear * c) * amp;
-  out.twist = F.twist * S.twist * (e - .6 * c) * amp;
-  out.lift = F.lift * (S.windLift * c + S.lift * e) * amp;
-  out.stage = stage; out.u = u; out.style = styleId;
+  const lunge = Math.min(F.lunge * S.lunge * ke, reach * P.reachShare), drawn = e < 0 ? e * kc : e;
+  out.lunge = drawn * lunge * (reduce ? P.reduced.lunge : 1) - F.recoil * S.recoil * bump * kr * (reduce ? P.reduced.recoil : 1);
+  out.squash = Math.max(0, Math.min(.45, F.crouch * (S.crouch * c * kc + S.land * Math.max(0, e) * ke + S.impact * bump * kr) * amp));
+  out.lean = F.lean * (S.lean * (e + fo) * ke - S.rear * c * kc) * amp;
+  out.twist = side * F.twist * S.twist * ((e + fo) * ke - .6 * c * kc) * amp;
+  out.lift = F.lift * (S.windLift * c * kc + S.lift * (e + fo) * ke) * amp;
+  // the held peak trembles with the effort (never under Reduced Motion)
+  if (hold > 0 && !reduce && Number.isFinite(actor.effectTime)) out.lean += MP.tremble * Math.min(1, hold * 3) * Math.sin(actor.effectTime / 1000 * 6.2832 * MP.trembleHz);
+  out.stage = stage; out.u = u; out.hold = hold; out.heavy = heavy; out.style = styleId;
   return out;
+}
+
+// The rest-pose frame of a creature's body (model units, measured once per kind from its parts): top and bottom, back and front,
+// and its half width. creature-motion.ts weights its bend bands from it, and a fall settles on it. Read-only, cached per kind.
+const RIG_FRAMES = new Map();
+export function creatureRigFrame(kind) {
+  const known = RIG_FRAMES.get(kind); if (known !== undefined) return known;
+  const parts = Object.hasOwn(models, kind) ? models[kind] : null; if (!parts) return null;
+  let top = -Infinity, bot = Infinity, back = Infinity, front = -Infinity, half = 0;
+  for (const item of parts) { const mesh = item.mesh; for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
+    const f = mesh[i] + item.px, h = mesh[i + 2] + item.pz, y = Math.abs(mesh[i + 1]);
+    if (h > top) top = h; if (h < bot) bot = h; if (f < back) back = f; if (f > front) front = f; if (y > half) half = y; } }
+  const family = creaturePoseFamily(kind), axis = family && CREATURE_MOTION.families[family] ? CREATURE_MOTION.families[family].axis : 'up', B = CREATURE_MOTION.bend;
+  const H = Math.max(1e-3, top - bot), L = Math.max(1e-3, front - back), mid = bot + .55 * H;
+  // band origins and spans: up (heights) or front (lengths along the body), and each band's pivot (forward, up)
+  const frame = Object.freeze(axis === 'front'
+    ? { axis, top, bot, back, front, half, tFrom: back + B.hip * L, tSpan: (1 - B.hip) * L, hFrom: back + B.head * L, hSpan: (1 - B.head) * L, lFrom: back + B.tail * L, lSpan: B.tail * L,
+      tf: back + B.hip * L, tz: mid, hf: back + B.head * L, hz: mid, lf: back + B.tail * L, lz: mid }
+    : { axis, top, bot, back, front, half, tFrom: bot + B.hip * H, tSpan: (1 - B.hip) * H, hFrom: bot + B.head * H, hSpan: (1 - B.head) * H, lFrom: bot + B.hang * H, lSpan: B.hang * H,
+      tf: 0, tz: bot + B.hip * H, hf: 0, hz: bot + B.head * H, lf: 0, lz: bot + B.hang * H });
+  RIG_FRAMES.set(kind, frame); return frame;
+}
+const UPRIGHT = new Set(['biped', 'construct', 'plant']), MOTION_ARMS = new Set(CREATURE_MOTION.arms);
+// The fall's clock: it drops with gravity and lands with a little bounce.
+function deathFall(p) { return p < .72 ? (p / .72) * (p / .72) : 1 - .07 * Math.sin(Math.PI * (p - .72) / .28); }
+// How far a falling body rises so what it falls onto rests on the floor (its front or back for a pitch, its side for a roll).
+function deathSink(rig, pitch, roll) {
+  if (!rig) return 0; const reach = pitch >= 0 ? Math.max(0, rig.front) : Math.max(0, -rig.back);
+  return Math.max(reach * Math.abs(Math.sin(pitch)), rig.half * Math.abs(Math.sin(roll)));
+}
+// The motion bend this frame (creature-motion.ts), worked out once per creature: each band's span on the rest pose (up: heights;
+// front: lengths along the body), its pivot, and each of its angles as a sine and 1 - cosine that the vertex loop scales by the
+// vertex's weight in the band. One scratch record (no allocation).
+const BEND_FRAME = { up: true, tFrom: 0, tInv: 0, hFrom: 0, hInv: 0, lFrom: 0, lInv: 0, tf: 0, tz: 0, hf: 0, hz: 0, lf: 0, lz: 0, tOn: false, hOn: false, lOn: false,
+  tP: false, tPS: 0, tPC: 0, tY: false, tYS: 0, tYC: 0, tR: false, tRS: 0, tRC: 0, hP: false, hPS: 0, hPC: 0, hY: false, hYS: 0, hYC: 0, lP: false, lPS: 0, lPC: 0, lY: false, lYS: 0, lYC: 0 };
+function bendFrame(B, mo, rig) {
+  B.up = rig.axis === 'up'; B.tFrom = rig.tFrom; B.tInv = 1 / rig.tSpan; B.hFrom = rig.hFrom; B.hInv = 1 / rig.hSpan; B.lFrom = rig.lFrom; B.lInv = 1 / rig.lSpan;
+  B.tf = rig.tf; B.tz = rig.tz; B.hf = rig.hf; B.hz = rig.hz; B.lf = rig.lf; B.lz = rig.lz;
+  B.tP = mo.bendPitch !== 0; B.tPS = Math.sin(mo.bendPitch); B.tPC = 1 - Math.cos(mo.bendPitch);
+  B.tY = mo.bendYaw !== 0; B.tYS = Math.sin(mo.bendYaw); B.tYC = 1 - Math.cos(mo.bendYaw);
+  B.tR = mo.bendRoll !== 0; B.tRS = Math.sin(mo.bendRoll); B.tRC = 1 - Math.cos(mo.bendRoll);
+  B.hP = mo.headPitch !== 0; B.hPS = Math.sin(mo.headPitch); B.hPC = 1 - Math.cos(mo.headPitch);
+  B.hY = mo.headYaw !== 0; B.hYS = Math.sin(mo.headYaw); B.hYC = 1 - Math.cos(mo.headYaw);
+  B.lP = mo.tailPitch !== 0; B.lPS = Math.sin(mo.tailPitch); B.lPC = 1 - Math.cos(mo.tailPitch);
+  B.lY = mo.tailYaw !== 0; B.lYS = Math.sin(mo.tailYaw); B.lYC = 1 - Math.cos(mo.tailYaw);
+  B.tOn = B.tP || B.tY || B.tR; B.hOn = B.hP || B.hY; B.lOn = B.lP || B.lY;
+  return B;
 }
 
 export function writeCloseViewModel(out, offset, actor) {
@@ -1225,16 +1293,26 @@ export function writeCloseViewModel(out, offset, actor) {
   // An ordinary 3D creature's attack takes its root motion from creatureRootPose (CREATURE_POSE) in place of the generic
   // windup pitch and strike shove/lean/turn below (gen 0); its limbs keep their windup/strike swings.
   const root = playerLike ? null : creatureRootPose(actor).family ? ROOT_POSE : null, gen = root ? 0 : 1;
-  const rootSquash = root ? 1 - root.squash : 1, rootLift = root ? root.lift : 0;
-  const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist : turn0;
+  // The shared motion layers (creature-motion.ts): continuity across a broken-off or chained attack, the hit reactions, idle and
+  // locomotion life, the arrival, and a per-family fall; rigid offsets here, the three-band bend in the vertex loop below.
+  if (root) motionCarry(actor.motionState, root, root.stage, actor.effectTime);
+  const mo = root ? creatureMotion(actor, root.family, root) : null, rig = mo && (mo.bend || fall > 0) ? creatureRigFrame(kind) : null;
+  const fallR = root && fall > 0 ? deathFall(fall) : 0, D = fallR ? CREATURE_MOTION.death[root.family] : null;
+  const deathPitch = D ? (mo.push < 0 ? -D.pitch : D.pitch) * fallR : 0, deathRoll = D ? (mo.pushSide < 0 ? -D.roll : D.roll) * fallR : 0;
+  const rootSquash = root ? 1 - Math.max(-.12, Math.min(.75, root.squash + mo.squash + (D ? D.squash * fallR : 0))) : 1, rootLift = root ? root.lift + mo.lift : 0;
+  const roll = mo ? mo.roll + deathRoll : 0, rollOn = roll !== 0, rollC = rollOn ? Math.cos(roll) : 1, rollS = rollOn ? Math.sin(roll) : 0;
+  const B = rig && mo.bend ? bendFrame(BEND_FRAME, mo, rig) : null;
+  // a layered creature's blow tints it as the hit pose did; its arrival fades it in
+  const tint = root && Number.isFinite(actor.hitReact) ? Math.max(flinch, Math.max(0, Math.min(1, actor.hitReact))) : flinch, drawnAlpha = mo ? alpha * mo.alpha : alpha;
+  const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist + mo.twist : turn0;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch0 = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup * gen + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29 * gen) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
-    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0), pitch = root ? pitch0 + root.lean : pitch0; // Shadow Boxing charge lean
+    + .09 * jumpSettle - .24 * flinch + (root ? 0 : 1.52 * fall) - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
+    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0), pitch = root ? pitch0 + root.lean + mo.lean + deathPitch : pitch0; // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
-    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift0 = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14 * gen) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch, shift = root ? shift0 + root.lunge / size : shift0;
+    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (D ? deathSink(rig, deathPitch, deathRoll) : (kind === "pallidCrawler" ? .61 : .36) * fall) + .35 * knocked;
+  const shift0 = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14 * gen) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch, shift = root ? shift0 + (root.lunge + mo.lunge) / size : shift0;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -1317,6 +1395,8 @@ export function writeCloseViewModel(out, offset, actor) {
       const a = adventureJointPose(kind, swing, actor.action || actor.rootAttack, root.style, root.stage, root.u, actor.reduceMotion ? CREATURE_POSE.reduced.scale : 1);
       if (a !== null) angle = (semanticAngle(kind, swing, '', '', '', 0, 0, beat, moving, phase, secondary) ?? -Math.sign(swing) * beat * stride) + a;
     }
+    // creature-motion.ts: the upright families' arms (CREATURE_MOTION.arms) come up into a guard and fling with a flinch.
+    if (mo && mo.arm !== 0 && MOTION_ARMS.has(swing) && UPRIGHT.has(root.family)) angle = (angle ?? 0) + mo.arm;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
@@ -1340,12 +1420,33 @@ export function writeCloseViewModel(out, offset, actor) {
       if(levelS!==0){const dx=mx0-heldTool[0],dz=mz0-heldTool[1],n0=nx0;mx0=heldTool[0]+dx*levelC+dz*levelS;mz0=heldTool[1]+dz*levelC-dx*levelS;nx0=n0*levelC+nz0*levelS;nz0=nz0*levelC-n0*levelS;}
       let forward = mx0 * c + mz0 * s + px;
       let lateral = localY + coilSway;
-      const u = forward * cc - (lateral - pivotY) * sc;
-      const v = forward * sc + (lateral - pivotY) * cc + pivotY;
+      let u = forward * cc - (lateral - pivotY) * sc;
+      let v = forward * sc + (lateral - pivotY) * cc + pivotY;
       let w = mz0 * c - mx0 * s + pz;
-      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
       const armNormal=nx0*c+nz0*s;
       let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=nz0*c-nx0*s;
+      // creature-motion.ts: the torso, head and tail bands bend from each vertex's rest place, then the whole body rolls
+      if(B){
+        // each band turns by its angle times the vertex's weight in it (k): sin(ka) ~ k sin a, 1 - cos(ka) ~ k^2 (1 - cos a)
+        const at=B.up?mesh[i+2]+pz:mesh[i]+px;let k=(at-B.tFrom)*B.tInv,s=0,cs=0,x=0;
+        if(k>0&&B.tOn){if(k>1)k=1;const q=k*k;let du=u-B.tf,dw=w-B.tz;
+          if(B.tP){s=k*B.tPS;cs=1-q*B.tPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.tY){s=k*B.tYS;cs=1-q*B.tYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          if(B.tR){s=k*B.tRS;cs=1-q*B.tRC;x=v*cs+dw*s;dw=dw*cs-v*s;v=x;x=nv*cs+nw*s;nw=nw*cs-nv*s;nv=x;}
+          u=B.tf+du;w=B.tz+dw;}
+        k=(at-B.hFrom)*B.hInv;
+        if(k>0&&B.hOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.hf,dw=w-B.hz;
+          if(B.hP){s=k*B.hPS;cs=1-q*B.hPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.hY){s=k*B.hYS;cs=1-q*B.hYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          u=B.hf+du;w=B.hz+dw;}
+        k=(B.lFrom-at)*B.lInv;
+        if(k>0&&B.lOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.lf,dw=w-B.lz;
+          if(B.lP){s=k*B.lPS;cs=1-q*B.lPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.lY){s=k*B.lYS;cs=1-q*B.lYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          u=B.lf+du;w=B.lz+dw;}
+      }
+      if(rollOn){const x=v*rollC+w*rollS;w=w*rollC-v*rollS;v=x;const y=nv*rollC+nw*rollS;nw=nw*rollC-nv*rollS;nv=y;}
+      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
       let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
       if(jumpPart){
         let a=u,b=v,d=w,na=nu,nb=nv,nd=normalZ*c-mesh[i+3]*s;
@@ -1417,10 +1518,10 @@ export function writeCloseViewModel(out, offset, actor) {
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;
-      out[offset++] = red + (.96 - red) * flinch * .6;
-      out[offset++] = green + (.34 - green) * flinch * .6;
-      out[offset++] = blue + (.23 - blue) * flinch * .6;
-      const bodyAlpha = kind === 'gloomgorge' ? alpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : alpha;
+      out[offset++] = red + (.96 - red) * tint * .6;
+      out[offset++] = green + (.34 - green) * tint * .6;
+      out[offset++] = blue + (.23 - blue) * tint * .6;
+      const bodyAlpha = kind === 'gloomgorge' ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
       out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
     }
     if(muzzle&&muzzleOut){
@@ -1430,7 +1531,7 @@ export function writeCloseViewModel(out, offset, actor) {
       muzzleOut[0]=x+(ff*cy-mv*sy)*size;muzzleOut[1]=y+(ff*sy+mv*cy)*size;muzzleOut[2]=z+fz*size;muzzleOut[3]=Number.isFinite(muzzleOut[0]+muzzleOut[1]+muzzleOut[2])?1:0;
     }
   }
-  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, actorScale);
+  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, drawnAlpha, actorScale);
   return offset;
 }
 

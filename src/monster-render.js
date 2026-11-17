@@ -1,26 +1,26 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r975-6689d7c92177"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r975-6689d7c92177"; // adventure creatures
-import { DUELIST_BODIES } from "./duelist-render.js?v=r975-6689d7c92177"; // the Gaunt (duelists.ts)
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r975-6689d7c92177";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r975-6689d7c92177";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r984-93a51644afcb"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple } from "./adventure-creature-render.js?v=r984-93a51644afcb"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.js?v=r984-93a51644afcb"; // the Gaunt (duelists.ts)
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r984-93a51644afcb";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r984-93a51644afcb";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r975-6689d7c92177"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r975-6689d7c92177";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r984-93a51644afcb"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r984-93a51644afcb";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r975-6689d7c92177";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r975-6689d7c92177";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r975-6689d7c92177";
-import { drawWildStego } from "./wild-stego-render.js?v=r975-6689d7c92177"; // the Wild Stegosaurus (Tim, 2026-11-12)
-import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r975-6689d7c92177";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r975-6689d7c92177";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r975-6689d7c92177";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r975-6689d7c92177";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r975-6689d7c92177";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r984-93a51644afcb";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r984-93a51644afcb";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r984-93a51644afcb";
+import { drawWildStego } from "./wild-stego-render.js?v=r984-93a51644afcb"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r984-93a51644afcb";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r984-93a51644afcb";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r984-93a51644afcb";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r984-93a51644afcb";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r984-93a51644afcb";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r975-6689d7c92177";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r984-93a51644afcb";
 
 const TAU = Math.PI * 2;
 

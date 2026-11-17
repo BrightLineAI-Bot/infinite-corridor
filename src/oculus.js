@@ -1,7 +1,7 @@
 // The Oculus (release 874; Tim, 2026-11-10: "Make a close view button. The button should make the character spawn a dais
 // that you can step through and it will take you to close view, or vice versa. The dais will persist for 5 seconds and it
 // will warp you to close view if you step on it, or warp you to abstract view when in close view. It will be called the
-// Oculus"). One of the utility button's choices (spell-slots.ts UTILITY).
+// Oculus"). Release 874 put it on the utility button; since 2026-11-15 it has its own button under the compass (pressOculusButton).
 //
 // Pressing it opens a dais one tile ahead of where the Wayfarer faces (release 875: eight directions) (the nearest free walkable tile when that one is blocked).
 // Stepping onto it switches the camera through the existing Close View settings: inside interiors the indoor switch
@@ -9,9 +9,9 @@
 // blend (close-view.ts closeViewFrame) is the warp, with a short flash in the HUD; both are skipped under Reduced Motion.
 // The dais is presentation and a toggle only: no combat effect. It lives on the Game as runtime state (`game.oculus`), is
 // never saved, and is dropped on a change of map or when a pause outlasts it.
-import { buildSpot } from "./building.js?v=r975-6689d7c92177";
-import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_PLACES, closeViewPlaceAllowed, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r975-6689d7c92177";
-import { closeViewGLStats } from "./close-view-gl.js?v=r975-6689d7c92177";
+import { buildSpot } from "./building.js?v=r984-93a51644afcb";
+import { CLOSE_VIEW_HOOKS, CLOSE_VIEW_PLACES, closeViewPlaceAllowed, interiorMap, overworldCloseViewApplies, closeViewWanted } from "./close-view.js?v=r984-93a51644afcb";
+import { closeViewGLStats } from "./close-view-gl.js?v=r984-93a51644afcb";
 
 export const OCULUS = Object.freeze({
   seconds: 5, // the dais stands this long, then it is gone
@@ -22,6 +22,11 @@ export const OCULUS = Object.freeze({
   warpMs: 700, // the HUD's warp flash (main.ts), not shown under Reduced Motion
   radius: .42, // drawn size, in tiles
   spin: .5, // turns of its rays a second (still under Reduced Motion)
+  // Tim, 2026-11-15: "The Oculus gets its own small dedicated button just under the top-right compass... One tap toggles Close
+  // View on and off... no holds, multi-taps or hidden gestures". "switch": a tap switches the view at once (pressOculusButton),
+  // with the warp flash, under the same availability (oculusAvailable) and the same cooldown. "dais" would open the release-874
+  // dais instead (kept, with its drawing, for the lab and in case Tim wants it back).
+  button: "switch",
   colors: Object.freeze({ close: Object.freeze({ glow: "#5fe0d8", rim: "#1c4a52", iris: "#9ff4ee", lens: "#e8fffd" }), top: Object.freeze({ glow: "#f0b45a", rim: "#4f3618", iris: "#ffd890", lens: "#fff4dc" }) }),
 });
 // Test and lab seam: `gpu` replaces the WebGL2 check (a function returning true or false).
@@ -80,6 +85,18 @@ export function pressOculus(g, now, open) {
   const at = oculusSpot(g.player, open); if (!at) { g.message = "No open ground ahead for the Oculus."; return false; }
   g.oculus = { x: at.x, y: at.y, born: now, until: now + OCULUS.seconds * 1000, to: a.to, setting: a.setting, map: g.map };
   g.message = a.to === "close" ? "An Oculus opens ahead: step onto it for Close View." : "An Oculus opens ahead: step onto it to return to the top-down view.";
+  return true;
+}
+// The Oculus button (2026-11-15, under the compass): one tap switches Close View on or off (OCULUS.button "switch"). It answers
+// where a dais could open (oculusAvailable: the same places, the same refusals and messages) and keeps the dais's cooldown, so a
+// double tap cannot flicker the view. True when the view switched (or, with "dais", a dais opened).
+export function pressOculusButton(g, now, open) {
+  if (OCULUS.button === "dais") return pressOculus(g, now, open);
+  if (g.oculus) g.oculus = null; // a dais left standing (the lab) gives way
+  if (now < (g.oculusReadyAt || 0)) { g.message = `The Oculus is still closing (${Math.ceil((g.oculusReadyAt - now) / 1000)}s).`; return false; }
+  const a = oculusAvailable(g); if (!a.ok) { g.message = a.why; return false; }
+  const to = oculusSwitch(g, a.to); g.oculusReadyAt = now + OCULUS.cooldown * 1000; g.oculusWarp = { at: now, to };
+  g.message = to === "close" ? "Through the Oculus: Close View." : "Through the Oculus: the top-down view.";
   return true;
 }
 // Switches the view as a step onto the dais does. Returns the view it switched to.

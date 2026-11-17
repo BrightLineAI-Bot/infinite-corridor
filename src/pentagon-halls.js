@@ -25,8 +25,8 @@
 // 2 a lit line). A mural is read with Act at the floor before it (a `pentMural` object): its title and caption, journalled
 // once per mural (save.lore.murals, additive at schema 14, normalised in lore.ts ensureLore). Pure: hashes of the Pentagon
 // and the chamber, nothing else. Older Pentagons never call in here, so they regenerate byte for byte.
-import { hashSeed, byHash } from "./random.js?v=r975-6689d7c92177";
-import { SIGIL_BOUNDS, sigilFits, inlaySigil } from "./watcher.js?v=r975-6689d7c92177";
+import { hashSeed, byHash } from "./random.js?v=r984-93a51644afcb";
+import { SIGIL_BOUNDS, sigilFits, inlaySigil } from "./watcher.js?v=r984-93a51644afcb";
 
 export const PENTAGON_HALLS = {
   since: 8, // the Pentagon version that first has halls
