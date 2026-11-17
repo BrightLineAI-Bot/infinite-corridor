@@ -16,7 +16,7 @@ import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawle
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
 import { dronePos, phaseShielded } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
-import { standardProjectile, standardProjectileColor } from "./combat-visuals.ts";
+import { standardProjectile, standardProjectileColor, triceratopsHornVertices } from "./combat-visuals.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
 import { behaviourProfile } from "./enemy-behaviour.ts"; // a heavy blow's real recovery (creature motion, 2026-11-15)
@@ -3368,6 +3368,7 @@ const SHOT_DRAW = Object.freeze({ low: 12, balanced: 20, full: 28, maxRange: 14,
   minSize: .075, magicSize: .12, maxTrail: .9, trailSeconds: .058, trailAlpha: .46, headAlpha: .95 });
 const CONTACT_GLINT = Object.freeze({ max: 8, height: .84, radius: .08, spread: .17, front: .28, alpha: .9, color: 0xffbd7e });
 const PROJECTED_SHOTS = new Set();
+const HORN_VERTICES = new Float32Array(36); // bounded presentation geometry; no per-frame GPU objects
 const PROJECTED_ENTRIES = [];
 const SHOT_COLORS = new Map();
 const finite = Number.isFinite;
@@ -3387,7 +3388,7 @@ export function selectProjectedShots(g, q, reduce = false) {
     if (PROJECTED_SHOTS.size === limit) break;
     if (!p.dead && standardProjectile(p) && (p.path !== "grenade" || !!readProjectileVisualFlight(p.visualFlight)) &&
         Math.hypot(p.x - g.player.x, p.y - g.player.y) < (p.carbine === true ? SHOT_DRAW.beamRange : SHOT_DRAW.maxRange) &&
-        dungeonPointDiscovered(g.map, p)) admit("projectile", p, reduce ? 6 : 12);
+        dungeonPointDiscovered(g.map, p)) admit("projectile", p, p.triceratopsHorn || !reduce ? 12 : 6);
   }
   for (const p of g.projectiles || []) {
     if (PROJECTED_ENTRIES.length === limit) break;
@@ -4656,6 +4657,12 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
     const color = SHOT_COLORS.get(hue);
+    if (shot.triceratopsHorn && !fire) {
+      const vertices = triceratopsHornVertices(shot, X, Y, z, HORN_VERTICES); room(12);
+      // Existing RGB projectile material, sampled at its solid centre; retain depth, fog and discovery masking.
+      for (let i = 0; i < 36; i += 3) DV(vertices[i], vertices[i + 1], vertices[i + 2], 0, 0, 11, SHOT_DRAW.headAlpha * .5, color, 0, true);
+      continue;
+    }
     if (!reduce) {
       const d = Math.hypot(shot.dx, shot.dy);
       if (d > 1e-4) {
