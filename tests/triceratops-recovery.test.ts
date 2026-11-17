@@ -158,7 +158,11 @@ test("the selected hometown's hotel opens, persists its fight, and retrieves a c
 test("the scratch capture and hotel fixtures expose ordinary entry points", () => {
   const dispositions = ["good", "silly", "bad"];
   const actors = dispositions.map(disposition => {
-    const { game } = createLabFixture({ lab: "triceratops-recovery", scenario: "triceratops-" + disposition, seed: "TRIKE-LAB" });
+    const { game } = createLabFixture({ lab: "triceratops-recovery", scenario: "triceratops-" + disposition, seed: "TRIKE-LAB", now: 1000 });
+    const actions = new Set(["utility"]);
+    const input = { state: { x: 0, y: 0 }, consume: action => actions.delete(action), held: () => false };
+    game.update(0, input, 1100);
+    assert.equal(game.builds[0]?.kind, "enclosure", "the HUD Build input places the required capture pen");
     assert.equal(game.area, "overworld");
     assert.equal(game.enemies.length, 1);
     return game.enemies[0];
