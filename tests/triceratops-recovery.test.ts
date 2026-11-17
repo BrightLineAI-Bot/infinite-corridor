@@ -153,14 +153,14 @@ test("the selected hometown's hotel opens, persists its fight, and retrieves a c
 test("the scratch capture and hotel fixtures expose ordinary entry points", () => {
   const dispositions = ["good", "silly", "bad"];
   const actors = dispositions.map(disposition => {
-    const { game } = createLabFixture({ lab: "creature-assets", scenario: "triceratops-" + disposition, seed: "TRIKE-LAB" });
+    const { game } = createLabFixture({ lab: "triceratops-recovery", scenario: "triceratops-" + disposition, seed: "TRIKE-LAB" });
     assert.equal(game.area, "overworld");
     assert.equal(game.enemies.length, 1);
     return game.enemies[0];
   });
   assert.deepEqual(actors.map(e => e.triceratopsDisposition), dispositions);
   assert.equal(new Set(actors.map(e => e.scale)).size, 1);
-  const { game, save } = createLabFixture({ lab: "creature-assets", scenario: "triceratops-hotel", seed: "TRIKE-LAB" });
+  const { game, save } = createLabFixture({ lab: "triceratops-recovery", scenario: "triceratops-hotel", seed: "TRIKE-LAB" });
   const mount = save.mounts.stable[0];
   for(let i = 1; i <= TRICERATOPS_RIDE.recoveryTransitions; i++) noteBeastRecoveryTransition(save, "world:" + i + ",0");
   const door = game.map.objects.find(o => o.beastHotelDoor);
@@ -172,7 +172,7 @@ test("the scratch capture and hotel fixtures expose ordinary entry points", () =
 });
 
 test("an accepted hostile horn contact admits a ridden Triceratops", () => {
-  const { game, save } = createLabFixture({ lab: "creature-assets", scenario: "triceratops-bad", seed: "TRIKE-HORN" });
+  const { game, save } = createLabFixture({ lab: "triceratops-recovery", scenario: "triceratops-bad", seed: "TRIKE-HORN" });
   const mount = capture(save);
   assert.equal(game.summonMount(mount.id).ok, true);
   const foe = game.enemies[0];

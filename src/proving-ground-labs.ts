@@ -107,6 +107,7 @@ export const LABORATORIES = [
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Pick an environment and a creature, then press Start test." },
   { id: "combat-assets", label: "Combat Asset Lab", status: "implemented", description: "Close View production gallery for representative weapons, tools, spells, and monster forms in a generated interior." },
   { id: "creature-assets", label: "Creature Asset Lab", status: "implemented", description: "Close View production roster, Foundry morphology, and decorated-variant witnesses in generated interior geometry." },
+  { id: "triceratops-recovery", label: "Triceratops Recovery Lab", status: "implemented", description: "Scratch capture dispositions, riding injury, and Beast Hotel recovery for the Triceratops." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
   { id: "hunts", label: "Hunt, Domain & Boss Arena Lab", status: "implemented", description: "Scratch Viewport lifecycle, creature, elite, and boss-arena fixtures." },
@@ -164,10 +165,6 @@ const ORDINARY_ASSET_PALETTES={ashling:["#87503f","#342727","#b78a62"],glassMite
 const ORDINARY_ASSET_ACTIONS={ashling:["lunge"],ashenHound:["zigzag"],rootBrute:["slam"],coilStalker:["ranged"],hollowMarshal:["longReach","lunge"],glassMite:["hop"],sparkWarden:["arc","straightBolt"],cinderWisp:["threeShotCone"],veilMoth:["instantStrike"],voidSentinel:["grenade","threeShotCone"]};
 const CREATURE_ASSETS = [
   ...CREATURE_ASSET_KINDS.map((kind) => ({ id: kind, label: MONSTER_PACK[kind]?.name || kind.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase()), kind, source: ["gloomwisp","gloomgorge"].includes(kind) ? "haunt-pack" : ["latticeHunter","archiveBehemoth","riftGrazer"].includes(kind) ? "admitted-foundry" : MONSTER_PACK[kind] ? "monster-pack" : "ordinary" })),
-  { id: "triceratops-hotel", label: "Triceratops · Beast Hotel recovery", kind: "triceratops", source: "monster-pack", hotel: true },
-  { id: "triceratops-good", label: "Triceratops · Good", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "good" },
-  { id: "triceratops-silly", label: "Triceratops · Silly Goose", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "silly" },
-  { id: "triceratops-bad", label: "Triceratops · Bad", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "bad" },
   ...FOUNDRY_BODIES.map((body) => ({ id: `foundry-${body}`, label: `Foundry morphology: ${body}`, kind: "latticeHunter", source: "admitted-foundry", foundryBody: body })),
   { id: "spark-shaman-ward", label: "Decorated: Spark Warden shaman + warded rare", kind: "sparkWarden", source: "affix-scene", variant: "shaman-ward" },
   { id: "rare-drone-swarm", label: "Decorated: rare Void Sentinel + Drone Swarm", kind: "voidSentinel", source: "affix-scene", variant: "drone-swarm" },
@@ -181,6 +178,12 @@ const CREATURE_ASSETS = [
   { id: "aether-orrery", label: "Visible actor: Aether Orrery orbital tool", source: "fireSecondary", actor: "tool" },
   { id: "dungeon-reciter", label: "Visible actor: dungeon Reciter", source: "addDungeonReciter", actor: "traveler" },
   { id: "elder-wanderer", label: "Visible actor: Elder Wanderer", source: "addDungeonElder", actor: "traveler" },
+];
+const TRICERATOPS_RECOVERY = [
+  { id: "triceratops-hotel", label: "Triceratops · Beast Hotel recovery", kind: "triceratops", source: "monster-pack", hotel: true },
+  { id: "triceratops-good", label: "Triceratops · Good", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "good" },
+  { id: "triceratops-silly", label: "Triceratops · Silly Goose", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "silly" },
+  { id: "triceratops-bad", label: "Triceratops · Bad", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "bad" },
 ];
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
@@ -201,6 +204,7 @@ export function scenariosForLab(lab) {
   if (lab === "combat") return CREATURES;
   if (lab === "combat-assets") return COMBAT_ASSETS;
   if (lab === "creature-assets") return CREATURE_ASSETS;
+  if (lab === "triceratops-recovery") return TRICERATOPS_RECOVERY;
   if(lab==="wayglass")return WAYGLASS_SCENARIOS;
   if(lab==="environment")return ENVIRONMENTS;
   if(lab==="hunts")return HUNTS;
@@ -744,12 +748,10 @@ function triceratopsLab(spec, seed, now) {
     game.message = "Build an enclosure around the living Triceratops, then close the opening with another enclosure.";
   }
   game.sync();
-  return { lab: "creature-assets", scenario: spec.id, label: spec.label, seed, save, game, production: true,
+  return { lab: "triceratops-recovery", scenario: spec.id, label: spec.label, seed, save, game, production: true,
     diagnostics: { triceratops: { scratch: true, stage: spec.hotel ? "hotel" : "capture", disposition: spec.triceratopsDisposition || null } } };
 }
 function creatureAssetFixture(scenario,seed,now){
-  const triceratops = CREATURE_ASSETS.find(q => q.id === scenario && q.kind === "triceratops");
-  if (triceratops) return triceratopsLab(triceratops, seed, now);
   const spec=CREATURE_ASSETS.find((q)=>q.id===scenario)||CREATURE_ASSETS[0],fixture=closeViewFixture("grand-hall",seed,now),{game,save}=fixture,placement=assetLane(game),at={x:placement.foe.x,y:placement.foe.y};
   Object.assign(game.player,{x:placement.player.x,y:placement.player.y,facing:placement.dx<0?"left":placement.dx>0?"right":placement.dy<0?"up":"down"});save.lastAim={x:placement.dx,y:placement.dy};
   if(spec.actor){
@@ -1109,6 +1111,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
   if(lab==="combat-assets")return combatAssetFixture(scenario,cleanSeed,now);
   if(lab==="creature-assets")return creatureAssetFixture(scenario,cleanSeed,now);
+  if(lab==="triceratops-recovery")return triceratopsLab(TRICERATOPS_RECOVERY.find(q=>q.id===scenario)||TRICERATOPS_RECOVERY[0],cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);
