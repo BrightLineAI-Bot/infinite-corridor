@@ -275,6 +275,45 @@ export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // `ground` (its checks, any rebuild or patch, and the copy to the screen); main.ts adds what it draws after render(). Every part
 // is reset when a timed render begins, so a frame that returns early never reports the frame before's numbers.
 export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0, view: 0, groundImage: 0, endedAt: 0 }; // endedAt: when the last timed render returned
+function drawBeastHotelBed(ctx, bed, tileSize, now, reducedMotion) {
+  const x = (bed.x + .5) * tileSize;
+  const y = (bed.y + .75) * tileSize;
+  const u = tileSize;
+  ctx.save();
+  ctx.fillStyle = "#4a3729";
+  ctx.fillRect(x - .83*u, y - .72*u, 1.66*u, .72*u);
+  ctx.fillStyle = "#dfd5bd";
+  ctx.fillRect(x - .73*u, y - .66*u, 1.46*u, .55*u);
+  if (bed.recovering) {
+    const breath = reducedMotion ? 0 : Math.sin(now / 540) * .026*u;
+    ctx.fillStyle = "#597467";
+    ctx.beginPath();
+    ctx.ellipse(x - .13*u, y - .37*u, .55*u, .24*u + breath, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#f2cf35";
+    ctx.beginPath();
+    ctx.ellipse(x + .42*u, y - .53*u, .26*u, .18*u, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#fff0a0";
+    for (const offset of [-.11, .02, .12]) {
+      ctx.beginPath();
+      ctx.moveTo(x+(.4+offset)*u,y-.59*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.77*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.56*u);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#f4f6ef";
+    ctx.fillRect(x + .58*u, y - .49*u, .23*u, .05*u);
+    ctx.fillStyle = "#b94143";
+    ctx.fillRect(x + .76*u, y - .49*u, .05*u, .05*u);
+  } else {
+    drawPackMonster(ctx, {
+      id: bed.id, kind: "triceratops", packKind: "triceratops",
+      x: bed.x, y: bed.y - .23, scale: 1.38, facingX: 1, reduceMotion: reducedMotion,
+    }, tileSize, now, "right");
+  }
+  ctx.restore();
+}
 function renderableObject(g,o){
   // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
   const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
@@ -2824,7 +2863,8 @@ export function render(ctx, g, w, h, now) {
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
-          if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
@@ -3082,7 +3122,7 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      const ride = g.area === "overworld" ? g.mountRide?.() : null, seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      const ride = g.mountRide?.(), seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }

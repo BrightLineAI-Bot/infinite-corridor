@@ -10829,3 +10829,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 **CODE:** Game.update consumes fourth-slot utility and legacy build presses during shock knockdown and firm grabs, alongside the other slotted actions.
 
 **BOUNDARY:** A blocked press is discarded and a fresh press works after recovery. Slot assignments and save schema are unchanged.
+
+## Release 985 — Triceratops capture and recovery
+
+**CODE:** Capture through enclosures grants persistent normal or Silly Goose mounts. Puncture or repeated depletion admits an injured mount to the selected hometown's Beast Hotel. The four Triceratops lab fixtures exercise capture and bedside recovery through the ordinary game actions.
+
+**BOUNDARY:** Save state is additive at schema 14. The fixtures use scratch state. Natural herd placement and dedicated mounted combat are separate work.
