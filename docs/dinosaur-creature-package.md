@@ -23,4 +23,4 @@ This milestone includes persistent capture, standard riding and rider actions, h
 
 Newly discovered eligible overworld sections may receive deterministic herds of two to four Triceratops of one disposition. Existing Atlas pins, explored ground and legacy snapshots keep their previous layouts. An accepted mounted Dodge can deal horn contact once per enemy per dash. An accepted mounted Jump can create one shockwave on a safe landing. Both use the existing geometry checks.
 
-Next: tune mounted attacks in gameplay, then add held horn tiers, Silly Goose tail drill, roar and tail interactions, followed by allied combat and the flying creature. Hosted visual and physical-phone playtesting remain open.
+Next: tune mounted attacks in gameplay, then prototype a held-input split between a telegraphed forward horn bash and a horn projectile. Keep the ordinary mounted dash and rider melee and spells. Give Silly Goose an enemy-seeking spinning tail drill in place of the standard airborne slam. The exact binding and hold thresholds need playtesting. Roar, tail interactions, allied combat and the flying creature follow. Hosted visual and physical-phone playtesting remain open.
