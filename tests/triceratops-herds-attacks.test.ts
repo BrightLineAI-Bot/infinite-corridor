@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Game } from "../src/game.ts";
+import { Game, updateProjectiles } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { stableMount, startRide } from "../src/beast-mounts.ts";
+import { stableMount, startRide, TRICERATOPS_ATTACKS } from "../src/beast-mounts.ts";
 import { triceratopsHerdSpawns, TRICERATOPS_HERDS } from "../src/monster-pack.ts";
 
 const flat = () => ({ tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: "savannaGrass", elev: 0, blocked: false })), objects: [], enemySpawns: [] });
@@ -142,4 +142,115 @@ test("pause resumes the same mounted leap and lands exactly one shockwave", () =
   assert.equal(waves, 1);
   assert.equal(g.triceratopsJump, null);
   assert.equal(g.effects.filter(e => e.kind === "plunge-slam").length, 0);
+});
+
+
+const holdInput = (action = null, held = true) => ({ state: { x: 0, y: 0 }, consume: k => k === action, held: k => held && k === "dodge" });
+function chargeGame(beast = "triceratops") {
+  const g = mounted(beast); g.player.lastMoveVector = { x: 1, y: 0 };
+  g.update(.01, holdInput("dodge"), 1000);
+  return g;
+}
+
+test("held Dodge thresholds select no extra hit, forward bash or one horn projectile", () => {
+  const C = TRICERATOPS_ATTACKS;
+  for (const [ms, expected] of [[C.charge.shortMs - 1, null], [C.charge.shortMs, "bash"], [C.charge.longMs - 1, "bash"], [C.charge.longMs, "horn"]]) {
+    const g = chargeGame(); g.player.stamina = 100;
+    const foe = target(g, "charged", g.player.x + 1.2, g.player.y);
+    const before = foe.hp;
+    g.tickTriceratopsCharge(1000 + ms, false);
+    if (!expected) { assert.equal(g.triceratopsCharge, null); assert.equal(foe.hp, before); continue; }
+    assert.equal(g.triceratopsCharge.kind, expected);
+    assert.equal(foe.hp, before, "release starts a windup, never immediate damage");
+    assert.equal(g.player.stamina, 100 - C[expected].stamina);
+    const contact = g.triceratopsCharge.contactAt;
+    g.tickTriceratopsCharge(contact - 1, false); assert.equal(foe.hp, before); assert.equal(g.projectiles.length, 0);
+    g.tickTriceratopsCharge(contact, false);
+    assert.equal(g.triceratopsCharge, null);
+    if (expected === "bash") { assert.ok(foe.hp < before); assert.equal(g.projectiles.length, 0); }
+    else { assert.equal(foe.hp, before); assert.equal(g.projectiles.filter(p => p.triceratopsHorn).length, 1); }
+    const hp = foe.hp, shots = g.projectiles.length;
+    g.tickTriceratopsCharge(contact + 100, false);
+    assert.equal(foe.hp, hp); assert.equal(g.projectiles.length, shots);
+  }
+});
+
+test("a continuous held Dodge and release runs through actual input updates", () => {
+  const g = chargeGame();
+  for (let now = 1050; now <= 1950; now += 50) g.update(.05, holdInput(), now);
+  assert.equal(g.projectiles.filter(p => p.triceratopsHorn).length, 0);
+  g.update(.01, holdInput(null, false), 1960);
+  assert.equal(g.triceratopsCharge?.phase, "windup");
+  for (let now = 2010; now <= 2160; now += 50) g.update(.05, holdInput(null, false), now);
+  assert.equal(g.triceratopsCharge, null);
+  assert.equal(g.projectiles.filter(p => p.triceratopsHorn).length, 1);
+});
+
+test("refused and legacy Dodge cannot charge; release with insufficient stamina cannot attack", () => {
+  const refused = mounted(); refused.player.stamina = 0;
+  refused.update(.01, holdInput("dodge"), 1000); assert.equal(refused.triceratopsCharge, null);
+  assert.equal(chargeGame("briarStag").triceratopsCharge, null);
+  const g = chargeGame(); g.player.stamina = 0; g.tickTriceratopsCharge(1950, false);
+  assert.equal(g.triceratopsCharge, null); assert.equal(g.projectiles.length, 0); assert.equal(g.player.stamina, 0);
+});
+
+test("pause, stun, dismount, new jump, area change and excessive hold cancel without firing", () => {
+  for (const interrupt of [
+    g => { g.setPaused(true, 1400); g.setPaused(false, 5000); },
+    g => { g.player.stunnedUntil = 3000; },
+    g => { g.dismount(); },
+    g => { g.jumpStart = 1400; g.jumpUntil = 3000; },
+    g => { g.loadArea("overworld", false); },
+    g => { g.tickTriceratopsCharge(1001 + TRICERATOPS_ATTACKS.charge.maxMs, true); },
+  ]) {
+    const g = chargeGame(); interrupt(g); g.tickTriceratopsCharge(2000, false); g.tickTriceratopsCharge(2200, false);
+    assert.equal(g.triceratopsCharge, null); assert.equal(g.projectiles.filter(p => p.triceratopsHorn).length, 0);
+  }
+  const g = chargeGame(); g.tickTriceratopsCharge(1950, false); assert.equal(g.triceratopsCharge.phase, "windup");
+  g.setPaused(true, 2000); g.setPaused(false, 6000); g.tickTriceratopsCharge(6010, false);
+  assert.equal(g.triceratopsCharge, null); assert.equal(g.projectiles.length, 0);
+});
+
+function chargedHorn(g) {
+  g.tickTriceratopsCharge(1950, false); g.tickTriceratopsCharge(2130, false);
+  const shot = g.projectiles.find(p => p.triceratopsHorn); assert.ok(shot); return shot;
+}
+test("horn projectile uses ordinary wall collision and bounded lifetime, skipping friendly bodies", () => {
+  const g = chargeGame(), shot = chargedHorn(g), start = shot.x;
+  const friend = g.createEnemyFromSpawn({ id: "friendly", kind: "triceratops", triceratopsDisposition: "good", x: g.player.x + 1, y: g.player.y });
+  const foe = target(g, "far-target", g.player.x + 3, g.player.y); const hp = friend.hp;
+  let shots = updateProjectiles([shot], [friend, foe], g.map, 32, .05);
+  for (let i = 0; i < 12 && shots.length; i++) shots = updateProjectiles(shots, [friend, foe], g.map, 32, .05);
+  assert.equal(friend.hp, hp); assert.notEqual(friend.aggro, true); assert.ok(foe.hp < 1000); assert.equal(shots.length, 0);
+  assert.ok(shot.x - start <= TRICERATOPS_ATTACKS.horn.range);
+  const blocked = chargeGame(), wallShot = chargedHorn(blocked), behind = target(blocked, "behind-wall", blocked.player.x + 3, blocked.player.y);
+  blocked.map.tiles[Math.floor(wallShot.y) * 32 + Math.floor(wallShot.x + 1)].blocked = true;
+  shots = updateProjectiles([wallShot], [behind], blocked.map, 32, .01);
+  for (let i = 0; i < 12 && shots.length; i++) shots = updateProjectiles(shots, [behind], blocked.map, 32, .05);
+  assert.equal(shots.length, 0); assert.equal(behind.hp, 1000);
+  const empty = chargeGame(), loneShot = chargedHorn(empty);
+  shots = updateProjectiles([loneShot], [], empty.map, 32, .01);
+  for (let i = 0; i < 20 && shots.length; i++) shots = updateProjectiles(shots, [], empty.map, 32, .05);
+  assert.equal(shots.length, 0);
+});
+
+test("projectile cap refuses release before charging stamina", () => {
+  const g = chargeGame(); g.player.stamina = 100;
+  g.projectiles = Array.from({ length: TRICERATOPS_ATTACKS.horn.maxProjectiles }, (_, i) => ({ id: "prior-" + i, triceratopsHorn: true }));
+  g.tickTriceratopsCharge(1950, false);
+  assert.equal(g.triceratopsCharge, null); assert.equal(g.player.stamina, 100);
+  assert.equal(g.projectiles.length, TRICERATOPS_ATTACKS.horn.maxProjectiles);
+});
+
+test("charging does not intercept ordinary rider Attack or spell input", () => {
+  const g = chargeGame();
+  const foe = target(g, "rider-melee", g.player.x + 1, g.player.y);
+  g.player.attackReadyAt = 0; g.player.meleeAim = { x: 1, y: 0 };
+  g.update(.01, holdInput("attack"), 1400);
+  assert.ok(foe.hp < 1000); assert.equal(g.triceratopsCharge?.phase, "hold");
+  let spellPressed = false;
+  const press = g.pressSlot.bind(g);
+  g.pressSlot = (slot, action, ...rest) => { if (slot === "a" && action === "spell") spellPressed = true; return press(slot, action, ...rest); };
+  g.update(.01, holdInput("spell"), 1450);
+  assert.equal(spellPressed, true); assert.equal(g.triceratopsCharge?.phase, "hold");
 });

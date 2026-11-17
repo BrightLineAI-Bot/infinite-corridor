@@ -34,6 +34,9 @@ export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 export const TRICERATOPS_ATTACKS = {
   dash: { range: 1.8, arc: 85, damage: 24, stun: .2 },
   landing: { range: 3, arc: 360, damage: 32, stun: .4 },
+  charge: { shortMs: 450, longMs: 950, maxMs: 2500 },
+  bash: { range: 2.4, arc: 75, damage: 40, stun: .3, stamina: 8, windupMs: 120 },
+  horn: { range: 8, speed: 12, damage: 48, stamina: 14, windupMs: 180, maxProjectiles: 2 },
 };
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
