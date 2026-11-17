@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 985: The Triceratops Proving Ground lab exercises enclosure capture, persistent riding, injury and Beast Hotel recovery.
 - Release 984: The fourth action slot obeys the same shock knockdown and firm-grab restrictions as the other three.
 - Release 983: Restore the Standard View Pentagon dread overlay and improve Close View creature motion. Creatures move like they mean it: wind-ups that peak and hold, strikes that land on the hit frame, follow-through and real recovery (longer after a heavy blow), combos that alternate, flinches that snap the head away from the blow, poise-break staggers, guards, sidesteps, feints that break off, alert look-ups, arrivals that rise in, breathing and trailing tails, and no popping between card and body or at death.
 - Release 982: Fixes from the 975 review. The dino duel's falling rock strikes only creatures the Wild Stegosaurus may prey on. A beast let go from a grab lands on open floor. Feints no longer cancel later attacks. Older creature types wind up only when their blow can reach you, so they strike about as often as before 975, and they notice the Wayfarer only in line of sight. Boss-theme drops no longer cut into a stinger's ducking.
