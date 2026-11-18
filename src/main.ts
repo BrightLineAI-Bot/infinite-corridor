@@ -27,7 +27,7 @@ import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDunge
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
-import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
+import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.ts";
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
@@ -2016,7 +2016,7 @@ function openPack(tab) {
   for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item sphere-row';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
   if (packTab === "supplies") try{ // travel seeds (skylands.ts SEEDS): rare, found lying in the open, in crossing chests and in the Skylands
-  const held = SEEDS.kinds.filter((k) => seedCount(save, k) > 0), row = document.createElement('div'); row.className = 'item seed-row';
+  const held = ALL_SEED_KINDS.filter((k) => seedCount(save, k) > 0), row = document.createElement('div'); row.className = 'item seed-row';
   if (!held.length) row.textContent = 'Seeds: none yet. They are rare: some lie in the open, some in crossing chests and the Skylands.';
   else { const name = document.createElement('strong'); name.textContent = 'Seeds'; row.append(name); for (const k of held) { const line = document.createElement('small'); line.style.display = 'block'; line.textContent = `${SEEDS[k].name} ×${seedCount(save, k)} · ${SEEDS[k].text}`; row.append(line); } }
   body.append(row);

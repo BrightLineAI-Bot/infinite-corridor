@@ -2244,14 +2244,25 @@ export function coreLimbAngle(P, limb) {
 // (cocked back) and the strike (extended). Like the haunts (cachedHaunt), each kind/pose/facing/size is painted once into a small
 // canvas and only stamped each frame (bounded by CORE_SPRITE.max); a walking creature bobs a pixel. Without a DOM canvas (tests)
 // the body is painted directly. The Coil Stalker's trailing coils are live ellipses.
+// The bizarro world (Tim, 2026-11-15) fills the bestiary out to twelve: the Spark Warden, Veil Moth, Cinder Wisp, Void Sentinel,
+// Rift Colossus, Moss Grazer and Lantern Doe join the five, in the same rounded, shaded style and their usual palettes. They are
+// drawn only where drawsBizarro says (the Askew, seed-realms.ts, and a bizarro pocket, strange.ts BIZARRO); everywhere else every
+// one of them keeps its blocky figure. The cache stays bounded at `max` stamps (oldest out first).
 export const CORE_SPRITE = Object.freeze({
-  max: 40, box: Object.freeze({ w: 3.7, h: 2.6, foot: 2.3 }),
+  max: 64, box: Object.freeze({ w: 3.7, h: 2.6, foot: 2.3 }),
   kinds: Object.freeze({
     ashling: Object.freeze({ unit: .62, body: "#87503f", dark: "#372927", lit: "#b0705a", claw: "#b78a62", glow: "#f3a55c" }),
     hollowMarshal: Object.freeze({ unit: .44, body: "#78434a", dark: "#3a2a32", lit: "#9c5a62", claw: "#c6a46f", glow: "#c7e6c6" }),
     ashenHound: Object.freeze({ unit: .62, body: "#765244", dark: "#302724", lit: "#94695a", claw: "#c18a63", glow: "#f3a55c" }),
     glassMite: Object.freeze({ unit: .8, body: "#607c79", dark: "#283b3b", lit: "#8fa9a3", claw: "#aab7aa", glow: "#d8f4ee" }),
     coilStalker: Object.freeze({ unit: .72, body: "#47716d", dark: "#263a39", lit: "#6a9a92", claw: "#87c0ad", glow: "#c9ffe8" }),
+    sparkWarden: Object.freeze({ unit: .5, body: "#6b6472", dark: "#35313d", lit: "#8f8799", claw: "#c09b58", glow: "#9fe0ff" }),
+    veilMoth: Object.freeze({ unit: .62, body: "#786887", dark: "#302c39", lit: "#a596b6", claw: "#b8a7cd", glow: "#f0e4ff" }),
+    cinderWisp: Object.freeze({ unit: .62, body: "#a95d3c", dark: "#4b2923", lit: "#d98a55", claw: "#efb15d", glow: "#fff0b0" }),
+    voidSentinel: Object.freeze({ unit: .5, body: "#645375", dark: "#282333", lit: "#8d7aa0", claw: "#b896cf", glow: "#f2d8ff" }),
+    riftColossus: Object.freeze({ unit: .46, body: "#713841", dark: "#2b2022", lit: "#99545e", claw: "#c18352", glow: "#ffb070" }),
+    mossGrazer: Object.freeze({ unit: .62, body: "#667052", dark: "#303629", lit: "#8a9670", claw: "#a3b978", glow: "#e2f0b0" }),
+    lanternDoe: Object.freeze({ unit: .58, body: "#8b7654", dark: "#39332a", lit: "#b09a74", claw: "#c9b48a", glow: "#e8c66d" }),
   }),
 });
 const coreSprites = new Map();
@@ -2354,7 +2365,87 @@ const CORE_BODIES = {
     corePath(g, [.16, -.06, .25, -.05, .2, -.02], P.glow);
     g.restore();
   },
+  sparkWarden(g, P, w, a) { // a hooded conductor in a rounded robe; the coil-topped staff is drawn back, then levelled at the foe
+    coreLimb(g, [-.08, -.5, -.11, -.24, -.09, 0], P.dark, .1); coreLimb(g, [.07, -.5, .11 + .04 * a, -.24, .1 + .06 * a, 0], P.dark, .1);
+    const ang = w ? -2.1 : a ? -.3 : -1.35, ca = Math.cos(ang), sa = Math.sin(ang), hx = .24, hy = -.86, L = 1.0;
+    coreLimb(g, [hx - ca * .35, hy - sa * .35, hx + ca * L, hy + sa * L], "#2a2530", .05); // the staff, behind the robe's near side
+    coreBlob(g, 0, -.74, .26, .38, .04 * a, P.body, P.lit);
+    corePath(g, [-.26, -.56, .26, -.56, .22, -.36, -.22, -.36], P.dark);
+    corePath(g, [-.05, -1.02, .05, -1.02, .02, -.5], P.claw); // a brass seam down the front
+    coreBlob(g, .05, -1.2, .16, .16, 0, P.dark);
+    corePath(g, [-.15, -1.1, .05, -1.42, .23, -1.1], P.body, P.dark, .02); // the hood
+    corePath(g, [.12, -1.22, .2, -1.22, .17, -1.17], P.glow);
+    const tx = hx + ca * L, ty = hy + sa * L; coreBlob(g, tx, ty, .11, .11, 0, P.claw); coreBlob(g, tx, ty, .05 + .04 * (w + a), .05 + .04 * (w + a), 0, P.glow);
+    g.strokeStyle = P.glow; g.lineWidth = .025; g.beginPath(); g.ellipse(tx, ty, .17, .07, ang, 0, TAU); g.stroke(); // the coil
+    coreLimb(g, [.08, -.98, .18, -.92, hx, hy], P.body, .09);
+  },
+  veilMoth(g, P, w, a) { // a soft-bodied moth hanging in the air; both wings rise to gather, then clap down to throw
+    const cy = -.95, up = w ? -1 : a ? 1 : 0;
+    for (const [far, c] of [[1, P.dark], [0, P.body]]) { const rot = (far ? -.5 : -.2) - .55 * up, x = far ? -.12 : -.02;
+      coreBlob(g, x - .26, cy - .2 + .12 * up, .4, .2, rot, c, far ? null : P.lit); coreBlob(g, x - .18, cy + .1, .24, .12, .4 - .2 * up, c); }
+    g.strokeStyle = P.claw; g.lineWidth = .02; g.beginPath(); g.ellipse(-.2, cy - .18 + .12 * up, .2, .08, -.2 - .55 * up, 0, TAU); g.stroke(); // an eye on the wing
+    coreBlob(g, .05, cy, .14, .26, .25, P.body, P.lit);
+    coreBlob(g, .2, cy - .26, .1, .1, 0, P.dark);
+    coreLimb(g, [.22, -1.29, .32, -1.48, .4, -1.5], P.claw, .02); coreLimb(g, [.18, -1.3, .22, -1.5, .3, -1.56], P.claw, .02); // the antennae
+    corePath(g, [.25, -1.24, .3, -1.24, .28, -1.2], P.glow);
+    for (const x of [-.02, .08]) coreLimb(g, [x, cy + .22, x + .02, cy + .38, x + .06, cy + .44], P.dark, .025);
+  },
+  cinderWisp(g, P, w, a) { // a rounded ember with a face, flame for a crown and a wisp for a tail; it leans back to gather and flares
+    const cy = -.82, lean = .2 * a - .15 * w;
+    g.save(); g.translate(0, cy); g.rotate(lean);
+    corePath(g, [-.18, .05, -.5, .3 + .1 * w, -.62, .18, -.34, .02], P.dark); // the trailing wisp
+    coreBlob(g, 0, 0, .28, .3, 0, P.body, P.lit);
+    corePath(g, [-.2, -.16, -.12, -.52 - .12 * w, -.02, -.24, .06, -.6 - .14 * a, .14, -.24, .2, -.46, .22, -.12], P.claw); // the flame crown
+    coreBlob(g, .04, .04, .14, .14, 0, P.glow);
+    corePath(g, [.08, -.06, .16, -.06, .12, -.01], P.dark); corePath(g, [.18, -.05, .23, -.05, .21, -.01], P.dark);
+    g.restore();
+  },
+  voidSentinel(g, P, w, a) { // a hovering orb with one great eye; its tentacles curl in, then flare out round it
+    const cy = -1.2, flare = .25 * a - .2 * w;
+    for (let i = 0; i < 5; i++) { const x = -.24 + i * .12, k = (i % 2 ? 1 : -1) * (.12 + flare); coreLimb(g, [x, cy + .2, x + k, cy + .55, x - k * .6, cy + .85, x + k * .4, cy + 1.05], i % 2 ? P.dark : P.body, .05); }
+    coreBlob(g, 0, cy, .36, .32, 0, P.body, P.lit);
+    corePath(g, [-.34, cy + .04, .34, cy + .04, .26, cy + .18, -.26, cy + .18], P.dark);
+    coreBlob(g, .1, cy - .04, .16, .14, 0, "#f6f0ff"); coreBlob(g, .15, cy - .04, .07 + .03 * w, .09, 0, P.dark); coreBlob(g, .17, cy - .07, .025, .025, 0, P.glow);
+    for (const x of [-.2, 0, .2]) corePath(g, [x - .05, cy - .28, x, cy - .44, x + .05, cy - .28], P.claw);
+  },
+  riftColossus(g, P, w, a) { // a hunched mass with a small head sunk between its shoulders and one great arm hauled up and brought down
+    coreLimb(g, [-.3, -.7, -.36, -.35, -.3, 0], P.dark, .2); coreLimb(g, [.22, -.7, .3, -.35, .28 + .08 * a, 0], P.dark, .2);
+    coreLimb(g, [-.3, -1.5, -.6, -1.1, -.5, -.72], P.dark, .18); // the far arm, braced
+    coreBlob(g, -.04, -1.2, .52, .56, .1 * a - .08 * w, P.body, P.lit);
+    corePath(g, [-.4, -1.0, -.1, -.86, .3, -1.0, .1, -.78, -.3, -.8], P.dark); // a seam of the rift across its middle
+    corePath(g, [-.32, -1.02, .24, -1.0, .1, -.92], P.glow);
+    coreBlob(g, .26, -1.66, .2, .18, 0, P.dark); corePath(g, [.32, -1.7, .44, -1.7, .4, -1.64], P.glow);
+    for (const x of [-.36, -.14, .08]) corePath(g, [x, -1.62, x + .08, -1.94, x + .16, -1.62], P.claw); // ridges along the shoulders
+    const arm = w ? [.3, -1.5, .42, -2.0, .2, -2.15] : a ? [.3, -1.5, .7, -1.1, .9, -.5] : [.3, -1.5, .56, -1.1, .58, -.66];
+    coreLimb(g, arm, P.body, .22); coreBlob(g, arm[4], arm[5], .2, .18, 0, P.dark, P.body); // the great fist
+  },
+  mossGrazer(g, P, w, a) { // a round, low browser with moss on its back and its head down to graze; a blow throws the head up
+    const nod = .1 * w - .12 * a;
+    for (const [x, c] of [[-.32, P.dark], [.26, P.dark], [-.22, P.body], [.36, P.body]]) coreLimb(g, [x, -.4, x + .02, -.18, x, 0], c, .09);
+    coreBlob(g, 0, -.52, .5, .28, 0, P.body, P.lit);
+    for (const [x, r] of [[-.28, .1], [-.08, .13], [.14, .11]]) coreBlob(g, x, -.76, r, r * .7, 0, P.claw);
+    coreLimb(g, [.38, -.58, .52, -.5 + nod, .6, -.36 + nod], P.body, .14);
+    coreBlob(g, .66, -.32 + nod, .15, .12, .3, P.body, P.lit); corePath(g, [.7, -.38 + nod, .76, -.38 + nod, .73, -.34 + nod], P.dark);
+    corePath(g, [.52, -.44 + nod, .58, -.62 + nod, .62, -.44 + nod], P.dark); // an ear
+  },
+  lanternDoe(g, P, w, a) { // a slim, rounded doe; a small light hangs from the fork of its antlers
+    for (const [x, c, k] of [[-.28, P.dark, 0], [.22, P.dark, 0], [-.2, P.body, 1], [.3, P.body, 1]]) coreLimb(g, [x, -.6, x + .04 * k, -.3, x, 0], c, .06);
+    coreBlob(g, 0, -.7, .42, .22, 0, P.body, P.lit);
+    coreBlob(g, -.36, -.76, .07, .1, 0, P.claw); // the tail
+    const lift = .08 * a - .06 * w; coreLimb(g, [.3, -.78, .4, -1.0 + lift, .44, -1.12 + lift], P.body, .11);
+    const hx = .5, hy = -1.16 + lift; coreBlob(g, hx, hy, .13, .1, .3, P.body, P.lit); corePath(g, [hx + .08, hy - .02, hx + .13, hy - .02, hx + .1, hy + .02], P.dark);
+    coreLimb(g, [hx - .04, hy - .08, hx - .1, hy - .3, hx - .02, hy - .42], P.claw, .025); coreLimb(g, [hx - .1, hy - .3, hx - .22, hy - .38], P.claw, .02);
+    coreLimb(g, [hx - .02, hy - .42, hx - .02, hy - .32], P.claw, .015); coreBlob(g, hx - .02, hy - .28, .06, .07, 0, P.glow); // the lantern
+  },
 };
+// The bizarro world (Tim, 2026-11-15): is `e`, in `map` (the Game's `area`), drawn in the rounded style? Only a kind the style
+// covers, and only in the Askew (an Abyssal Seed's realm) or an overworld section that is a bizarro pocket. Pure.
+export function drawsBizarro(map, area, e) {
+  if (!e || !isCoreSpriteKind(e.kind)) return false;
+  return area === "dungeon" ? map?.seedRealm?.realm === "abyss" : area === "overworld" && !!map?.bizarro;
+}
+// The renderer's way in to the rounded bodies (it never draws them otherwise): drawn and true, or false (draw the usual figure).
+export function drawBizarroCreature(ctx, e, x, y, s, facing, state, frame = 0) { return drawCoreCreature(ctx, e, x, y, s, facing, state, frame); }
 // Draws `e` at tile (x, y) and returns true, or returns false for a kind it does not draw (the caller falls back to actor()).
 export function drawCoreCreature(ctx, e, x, y, s, facing, state, frame = 0) {
   const P = CORE_SPRITE.kinds[e?.kind], body = CORE_BODIES[e?.kind];

@@ -352,7 +352,13 @@ export const SEEDS = {
   opal: { name: "Opal Seed", color: "#cfe6ee", glint: "#ffd9f2", text: "Milky and cool, and it shifts like water when turned. A Tide Bearer at the far end of a buoy's deep takes one, and the line then carries you up beside another buoy, far off." },
   pumice: { name: "Pumice Seed", color: "#9a948c", glint: "#e2ddd4", text: "Light as ash and full of small holes. The teleportation shrines are said to know what it is for." },
   crimson: { name: "Crimson Seed", color: "#b0303a", glint: "#ff9a8a", text: "Warm to the touch and red all through. The teleportation shrines are said to know what it is for." },
+  // The bizarro world (Tim, 2026-11-15): rarer than any other seed. Kept out of `kinds` so the pouch only gains an `abyssal`
+  // count once one is found (older saves and fresh pouches keep their exact shape); grantSeed, consumeSeed and seedCount take it.
+  rare: ["abyssal"],
+  abyssal: { name: "Abyssal Seed", color: "#2a1f3d", glint: "#7dffd8", text: "Heavy, and the wrong colour from every side you turn it. The teleportation shrines are said to know what it is for, though not gladly." },
 };
+// Every seed the pouch can hold: the common kinds, then the rare ones.
+export const ALL_SEED_KINDS = Object.freeze([...SEEDS.kinds, ...SEEDS.rare]);
 // Where seeds turn up (rolled by seed and place, so a place gives the same answer every time; a win is kept in worldFlags so it
 // is given once). `overworld`: a seed lying in a section first seen from this release (pinned per Atlas section as
 // `seedFindVersion`). `dungeon`: an opened crossing chest. `skyland`: a cleared Skyland. Conservative rates; tune here.
@@ -369,21 +375,22 @@ export const SEED_TRAVEL = {
   fossilized: { hop: [8, 24], radius: 6, near: 16, loads: 6 },
   opal: { hop: [6, 18], radius: 6, loads: 10, near: 12 },
 };
-const SEED_KINDS = new Set(SEEDS.kinds);
+const SEED_KINDS = new Set(ALL_SEED_KINDS);
 export function ensureSeeds(save) {
   const q = save.seedPouch && typeof save.seedPouch === "object" && !Array.isArray(save.seedPouch) ? save.seedPouch : (save.seedPouch = {});
   for (const k of SEEDS.kinds) q[k] = n0(q[k]);
   const u = q.used && typeof q.used === "object" && !Array.isArray(q.used) ? q.used : (q.used = {});
   for (const k of SEEDS.kinds) u[k] = n0(u[k]);
+  for (const k of SEEDS.rare) { if (Object.hasOwn(q, k)) q[k] = n0(q[k]); if (Object.hasOwn(u, k)) u[k] = n0(u[k]); } // rare kinds: only once held
   return q;
 }
 export const seedCount = (save, kind) => SEED_KINDS.has(kind) ? n0(save?.seedPouch?.[kind]) : 0;
 // Add `n` seeds of `kind`. Returns the new count (0 and nothing changed for an unknown kind).
-export function grantSeed(save, kind, n = 1) { if (!SEED_KINDS.has(kind)) return 0; const q = ensureSeeds(save); q[kind] += n0(n); return q[kind]; }
+export function grantSeed(save, kind, n = 1) { if (!SEED_KINDS.has(kind)) return 0; const q = ensureSeeds(save); q[kind] = n0(q[kind]) + n0(n); return q[kind]; }
 // Spend one seed of `kind`. Returns true when one was held and is now gone (and counted in `used`), false otherwise.
 export function consumeSeed(save, kind) {
-  if (!SEED_KINDS.has(kind)) return false; const q = ensureSeeds(save); if (q[kind] < 1) return false;
-  q[kind] -= 1; q.used[kind] += 1; return true;
+  if (!SEED_KINDS.has(kind)) return false; const q = ensureSeeds(save); if (n0(q[kind]) < 1) return false;
+  q[kind] -= 1; q.used[kind] = n0(q.used[kind]) + 1; return true;
 }
 // Which seed (if any) the find `source` at `key` holds. Pure: the same seed, source and key always answer the same.
 export function seedFindRoll(seed, source, key) {
