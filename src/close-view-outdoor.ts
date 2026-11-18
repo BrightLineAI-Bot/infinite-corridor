@@ -39,6 +39,11 @@ export const OUTDOOR = f({
     // the wet band on land and the foam on the water (tiles wide, and the foam's strength); deep water darkened by `deep`,
     // shallow water lifted by `shallow`; clouds in the reflection (balanced and full tiers only)
     wander: .5, shore: .2, foam: .6, deep: .42, shallow: .16 }),
+  // the open sea (a section the atlas made sea or coast: map.openSea, map.landscape.openSea; Tim's report 2026-11-18: Close View's sea read as a flat
+  // plane): a long swell of two wave trains rolling across the deep water, `swell` its slope, `wavenumber` radians a tile (about
+  // seven tiles crest to crest), `speed` radians a millisecond; whitecaps on its crests (balanced and full tiers). `reach`: the sea
+  // runs on past the section's edge and the ground's fog toward the horizon, its fog stretched this many times (relief tiers only)
+  sea: f({ swell: .2, wavenumber: .9, speed: .0011, reach: 8 }),
   // the ordinary art near the Wayfarer: how much of its tile-scale detail stays (the rest is its own colour, smoothed), so the
   // ground reads as one surface and not a board of squares; the per-tile colour beyond is unchanged
   ground: f({ art: .6 }),

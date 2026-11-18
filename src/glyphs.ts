@@ -222,6 +222,18 @@ export function giftResonances(save) {
   for (const id of added) save.glyphCodex.resonances[id] = true;
   return added;
 }
+// Unreleased (Tim: triads should "just be unlocked for current saves"): the same one-time gift for the six triads. A journey
+// already under way (past level 1) when it is first opened in this release has every triad written into its codex, once; a new
+// journey is only marked and discovers them in play. Triads always worked by socketing; this only fills the codex.
+// State: save.triadGift (additive). Returns the ids it wrote.
+export function giftTriads(save) {
+  if (!save?.glyphCodex || save.triadGift) return [];
+  save.triadGift = 1;
+  if (!((Number(save.level) || 1) > 1)) return [];
+  const added = Object.keys(TRIADS).filter((id) => !save.glyphCodex.resonances[id]);
+  for (const id of added) save.glyphCodex.resonances[id] = true;
+  return added;
+}
 export function discoverResonances(save, loadout) {
   const fresh = loadout.resonances.filter((id) => !save.glyphCodex.resonances[id]);
   for (const id of fresh) save.glyphCodex.resonances[id] = true;
@@ -353,5 +365,9 @@ export function craftGlyph(save, id) {
 }
 export function describeHost(save, host) {
   const l = hostLoadout(save, host);
-  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances: host === "armor" ? [] : l.resonances.map((id) => ({ id, ...RESONANCES[id] })) }; // armor glyphs do not resonate
+  // Pairs never resonate in armor, but armor triads do (armorGlyphBonus), so the armor card lists those with their armor text.
+  // Unreleased (Tim's log: triads read "✦ undefined: undefined"): entries resolve through resonanceInfo, which knows triads.
+  const resonances = host === "armor" ? triadsOf(l.glyphs).map((id) => ({ id, name: TRIADS[id].name, pair: TRIADS[id].pair, text: TRIADS[id].armorText }))
+    : l.resonances.map((id) => resonanceInfo(id) && { id, ...resonanceInfo(id) }).filter(Boolean);
+  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances };
 }

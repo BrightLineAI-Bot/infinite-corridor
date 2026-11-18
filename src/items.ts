@@ -76,9 +76,14 @@ export const APERTURE_SKILLS={
  'quickening':{id:'quickening',name:'Quickening',branch:'Motion',threshold:6,maxRank:3,cooldown:14,duration:6,description:'Move faster and lengthen the ordinary leap.'},
  'veil-guard':{id:'veil-guard',name:'Veil Guard',branch:'Veil',threshold:18,maxRank:3,cooldown:20,duration:6,description:'Harden a veil that reduces incoming damage.'},
  'force-channel':{id:'force-channel',name:'Force Channel',branch:'Force',threshold:18,maxRank:3,cooldown:16,duration:6,description:'Empower weapons, projectiles, and spell pulses.'},
- 'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,description:'Briefly cross water, canyons, and pits without granting true flight.'},
+ // Aerial Step (Tim, 2026-11-15): `charges` it holds (each recharges on `cooldown`; Quickening's secondary form, Quickened Stride,
+ // adds constellation.ts ALT_PASSIVES.quickening.charges), `airCasts` at most between touches of the ground (game.ts AERIAL hold).
+ 'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,charges:1,airCasts:2,description:'Walk on air at the height you cast it: step off a branch, ledge or cliff and stay level, jump and land back on it, or cast it falling to stop the fall. It never lifts you; when it ends you fall from there. Twice at most before your feet touch ground.'},
  'rift-step':{id:'rift-step',name:'Rift Step',branch:'Rift',threshold:18,maxRank:3,cooldown:9,duration:0,description:'Blink 3 tiles (+1 per rank) the way you are moving, never up a ledge or into a hazard.'},
 };
+// Aerial Step's saved charge count (magicSkills.aerialCharges, additive at schema 14): a whole number from 0 to its most (its own
+// charges and Quickened Stride's one, constellation.ts ALT_PASSIVES.quickening), or absent (read as full: constellation.ts aerialChargesNow).
+export function normalizeAerialCharges(ms){if(!ms||typeof ms!=='object'||!('aerialCharges' in ms))return ms;const n=Number(ms.aerialCharges);if(ms.aerialCharges==null||!Number.isFinite(n))delete ms.aerialCharges;else ms.aerialCharges=Math.max(0,Math.min(APERTURE_SKILLS['aerial-step'].charges+1,Math.floor(n)));return ms}
 // Aperture bands. The first four are the original manifestations; from release 136 Aperture keeps going: each further
 // band needs about half as much again plus 20, so the gaps widen (72, 124, 200, 310, 470, 702, 1038, 1525, 2231, ...).
 // Bands past Resonant grant Resonance (see game.ts characterStats) and harden Aperture encounters (world.ts).
@@ -90,6 +95,11 @@ export function primaryProfile(item){if(!item)return PRIMARY_PROFILES['salvage-b
 export function rangedWeapon(item){if(!item)return null;if(item.name==='Carbine'||sparkCoilRanked(item))return RANGED_WEAPONS['secondary-carbine'];if(item.name==='Blunderbuss'||(item.name==='Needle Caster'||item.id==='secondary-needle-caster')&&(Number(item.upgradeRank)||0)>=BLUNDERBUSS_RANK)return RANGED_WEAPONS['secondary-blunderbuss'];if(RANGED_WEAPONS[item.id])return RANGED_WEAPONS[item.id];if(item.name==='Hammerfall')return RANGED_WEAPONS['secondary-hammerfall'];if(item.name==='Great Sweep')return RANGED_WEAPONS['secondary-great-sweep'];if(item.name==='Lumen Spindle')return RANGED_WEAPONS['secondary-lumen-spindle'];if(item.name==='Needle Caster')return RANGED_WEAPONS['secondary-needle-caster'];if(item.name==='Rift Bombard')return RANGED_WEAPONS['secondary-rift-bombard'];if(item.name==='Aether Orrery')return RANGED_WEAPONS['secondary-aether-orrery'];if(sparkCoilItem(item))return RANGED_WEAPONS['spark-coil'];return null}
 // The keys of WEAPON_SCALING / TOOL_SCALING an item answers to (its profile or ranged entry, as the rest of the game reads it).
 export function weaponKey(item){const p=primaryProfile(item),k=Object.keys(PRIMARY_PROFILES).find(q=>PRIMARY_PROFILES[q]===p)||'salvage-blade';return k.replace(/^primary-/,'')}
+// The Close View carry of each primary the game knows (weaponKey), kept here so the Game can stamp it on an accepted tool use
+// (toolMotion.carry) and close-view.ts can draw it. Unreleased (Tim's log: the power armor held the salvage blade): every primary
+// not listed used to fall to 'salvage-blade', the Iron Fists included. A primary the game does not know (or none) is 'melee'.
+export const PRIMARY_CARRY_MODEL=Object.freeze({'salvage-blade':'salvage-blade','cinder-pike':'cinder-pike','verge-cleaver':'verge-cleaver','quandrix-staff':'quandrix-staff','fourfold-daggers':FOURFOLD_DAGGERS.closeView.model,'iron-fists':'fist'});
+export function primaryCarryKind(item){if(!item)return'melee';const key=weaponKey(item),known=key!=='salvage-blade'||item.id==='salvage-blade'||item.name==='Salvage Blade';return known&&PRIMARY_CARRY_MODEL[key]||'melee'}
 export function toolKey(item){const w=rangedWeapon(item),k=w?Object.keys(RANGED_WEAPONS).find(q=>RANGED_WEAPONS[q]===w):null;return k?k.replace(/^secondary-/,''):null}
 export const weaponScaling=(item)=>WEAPON_SCALING[weaponKey(item)]||'might';
 export const toolScaling=(item)=>{const k=toolKey(item);return k?TOOL_SCALING[k]||null:null};

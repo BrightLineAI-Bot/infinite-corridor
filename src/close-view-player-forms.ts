@@ -255,6 +255,20 @@ for (const side of [-1,1]) emberForm.push(
   part(bevel,.24,side*.46,.84,.16,.13,.18,ember,side*2,0,1.48,-.08,true),
 );
 
+// The skiff (renderer.ts drawSkiff), drawn on the water under the Wayfarer aboard in Close View (close-view-player-presentation.ts
+// CLOSE_VIEW_WATER.boat): an open clinker hull, a pointed bow (+X) and a square transom, floorboards and a thwart. Below the
+// waterline the scene cuts it (close-view-gl.ts u_water), so it sits in the sea rather than on it.
+const skiffWood = 0x6b4a2f, skiffDark = 0x4a3220, skiffFloor = 0x8a6a45;
+const skiffStations = [[-.8, .30], [-.52, .42], [-.15, .47], [.22, .45], [.55, .33], [.84, .015]];
+const skiffRing = ([x, w]) => [[x, -w, .36], [x, -w * .78, .1], [x, 0, -.04], [x, w * .78, .1], [x, w, .36]];
+const skiffHull = [];
+for (let i = 0; i < skiffStations.length - 1; i++) { const a = skiffRing(skiffStations[i]), b = skiffRing(skiffStations[i + 1]);
+  for (let k = 0; k < 4; k++) skiffHull.push([a[k], b[k], b[k + 1]], [a[k], b[k + 1], a[k + 1]]); }
+const skiffTransom = (() => { const r = skiffRing(skiffStations[0]); return [[r[0], r[2], r[1]], [r[0], r[4], r[2]], [r[2], r[4], r[3]]]; })();
+const skiff = [part(skiffHull, 0, 0, 0, 1, 1, 1, skiffWood), part(skiffTransom, 0, 0, 0, 1, 1, 1, skiffDark),
+  block(-.02, 0, .12, .66, .3, .02, skiffFloor), block(-.18, 0, .27, .05, .4, .025, skiffDark), block(.5, 0, .25, .04, .26, .02, skiffDark)];
+export const CLOSE_VIEW_SKIFF_MODEL = Object.freeze(skiff);
+
 export const CLOSE_VIEW_PLAYER_FORM_MODELS = Object.freeze({
   playerIronFists: ironFists,
   playerRobot: robot,
