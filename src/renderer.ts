@@ -42,7 +42,7 @@ import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beas
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
 import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
-import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -3131,11 +3131,12 @@ export function render(ctx, g, w, h, now) {
       }
       // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
       if (drillPose) {
+        drawMountShadow(ctx, mountRide, p, s, lift); // r988 review: at the feet, outside the roll (it never turns with the body or floats over it)
         const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
         const frame = triceratopsDrillFrame(drillPose, aim, lift / s);
         ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
       }
-      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3562,7 +3563,7 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
     if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
-    if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
+    if(v.kind==="arc"){if(v.z>0&&(bareFloor||closeViewCapturing()))continue;/* a raised arc (the Triceratops's Bash, at its horns: TRICERATOPS_HORN_SHOT.bashArc) is drawn lifted by Close View itself */const lz=v.z>0?(v.z-.37)*s:0;ctx.globalAlpha=a;ctx.beginPath();ctx.moveTo(v.x*s,v.y*s-lz);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15-lz;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s-lz);if(lz){ctx.strokeStyle="rgba(58,38,10,.7)";ctx.lineWidth=Math.max(3,s*.12);ctx.stroke();}/* raised over the beast: a dark edge so it reads against the hide */ctx.strokeStyle=v.color;ctx.lineWidth=Math.max(1.5,s*(lz?.07:.06));ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */

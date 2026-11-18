@@ -52,6 +52,13 @@ export const TRICERATOPS_CONTROLS = Object.freeze({
   spell3: Object.freeze({ attack: "horn", name: "Horn Shot", charge: 2 }),
   jump: Object.freeze({ normal: "Stomp", silly: "Drill" }),
 });
+// Where the Horn Shot leaves the horns (the r988 review: it had left under the belly at ground height, hidden behind the mount from the
+// rear). Its gameplay origin is `forward` tiles along its aim from the Wayfarer's centre (no point-blank gap: a foe at the horns is still
+// met); it is drawn leaving the brow horns' tips, `tip` tiles out and `height` tiles up, and settles onto its true path within `settle`
+// seconds (a visual launch, actor-presentation.ts; never so fast that it seems to slide back). `step`: a wall between the body and either
+// point stops that point short of it, so neither the shot nor its drawing ever passes through a wall. Damage, speed, range and lifetime
+// are TRICERATOPS_ATTACKS.horn's, unchanged. `bashArc`: the Bash's contact arc is drawn at the horns' height.
+export const TRICERATOPS_HORN_SHOT = Object.freeze({ forward: 1.4, tip: 2.65, height: .85, settle: .2, step: .25, bashArc: 1.2 });
 // Presentation reads accepted gameplay phases; the short contact receipt uses the pause-adjusted clock.
 // halfWidth / height: the ridden composite's bounds in tiles (mount, saddle and rider at MOUNT_BEASTS.triceratops.scale).
 export const TRICERATOPS_HORN_POSE = Object.freeze({ recoverMs: 240, halfWidth: 3.1, height: 3.05 });

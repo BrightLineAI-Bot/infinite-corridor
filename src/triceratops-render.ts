@@ -36,21 +36,47 @@ export const TRI_POSES = Object.freeze({
   sweep: { tailSide: 1, tailUp: .18, head: .15, open: .3 },
   rear: { frontLift: 1, pitch: .36, head: .32, open: .55, tailUp: -.1 },
   stomp: { crouch: .4, pitch: -.12, head: -.3 },
-  hornHold: { crouch: .18, tailUp: .12 },
-  leap: { tuck: .7, pitch: .1, head: .15, tailUp: .12 },
+  hornHold: {}, // its brace is the horn overlay (TRI_HORN_BODY), on the accepted clock
+  leap: { tuck: .85, pitch: .17, head: .22, tailUp: -.08, frontLift: .3 }, // springing up: nose high, forefeet drawn up
+  fall: { tuck: .3, pitch: -.1, head: .28, tailUp: .25 }, // coming down: forefeet reaching for the ground, tail up for balance
+  drill: { tuck: 1, pitch: 0, head: .1, tailUp: -.2 }, // the Silly Goose's tail drill: tucked tight, the tail stretched out behind as the bit
   land: { crouch: .45, pitch: -.06, head: -.2 },
   dazed: { head: -.5, crouch: .3, open: .3 },
   dead: { crouch: 1, head: -.6, tuck: .8, open: .3 },
 });
 export const TRI_KEYS = Object.freeze(["pitch", "head", "reach", "open", "crouch", "tailUp", "tailSide", "frontLift", "tuck", "lean"]);
+// The ridden horn attacks' body (2026-11-18 pass 2: "a real wind-up ... a body brace, and a recoil on release"; the dash and bash "real
+// head-down charges and shoves"). Added to the pose per unit of the accepted horn pose's own amount (beast-mounts.ts triceratopsHornPose:
+// its pitch over the phase's largest), so it follows the gameplay clocks exactly and never eases behind them. The neck keeps the
+// accepted pitch itself; these move the head further, the legs, the tail and (a little: the saddle and rider stay on their anchor) the
+// body. hold/windup: braced back on the hind legs, head down and horns aimed; horn: the release's recoil; bash: the shove; dash: the charge.
+export const TRI_HORN_BODY = Object.freeze({
+  full: Object.freeze({ hold: .25, windup: .25, horn: .12, bash: .1, dash: .12 }),
+  hold: Object.freeze({ crouch: .45, lean: -.35, head: -.32, tailUp: .3, open: .1 }),
+  windup: Object.freeze({ crouch: .6, lean: -.45, head: -.45, tailUp: .4, open: .2 }),
+  horn: Object.freeze({ lean: -.5, head: .12, crouch: .25, open: .45, tailUp: .3 }),
+  bash: Object.freeze({ lean: .5, head: -.55, crouch: .3, tailUp: .45, reach: .35 }),
+  dash: Object.freeze({ lean: .4, head: -.5, crouch: .25, tailUp: .35, open: .15 }),
+});
+// The overlay's amount for a horn pose (0..1), and its numbers into `out` (indexed as TRI_KEYS). No allocation.
+export function triceratopsHornAmount(horn) {
+  if (!horn || !TRI_HORN_BODY[horn.phase]) return 0;
+  return Math.max(0, Math.min(1, Math.abs(Number(horn.pitch) || 0) / TRI_HORN_BODY.full[horn.phase]));
+}
+export function triceratopsHornOverlay(horn, out) {
+  const k = triceratopsHornAmount(horn), B = k > 0 ? TRI_HORN_BODY[horn.phase] : null;
+  for (let i = 0; i < TRI_KEYS.length; i++) out[i] = B ? (B[TRI_KEYS[i]] || 0) * k : 0;
+  return out;
+}
 // The pose a Triceratops shows from its accepted state. `air`: the ridden leap's lift in tiles; `moving`: 0..1.
-export function triceratopsPoseName(e, air = 0, moving = 0) {
+export function triceratopsPoseName(e, air = 0, moving = 0, rising = true) {
   if (e?.dead || e?.hp <= 0 && e?.maxHp > 0) return "dead";
   const a = e?.pack?.attack, wind = e?.pack?.phase === "windup";
   if (a === "ramCharge") return wind ? "chargeReady" : "charge";
   if (a === "heavySweep") return wind ? "sweepReady" : "sweep";
   if (a === "shockwave") return wind ? "rear" : "stomp";
-  if (air > .05) return "leap";
+  if (e?.mountDrill) return "drill";
+  if (air > .05) return rising ? "leap" : "fall";
   const h = e?.mountHornPose?.phase; if (h === "hold" || h === "windup") return "hornHold";
   return moving > .3 ? "walk" : "idle";
 }
@@ -67,11 +93,11 @@ const MEMO = new Map(), MEMO_MAX = 24;
 export const triceratopsRenderMemorySize = () => MEMO.size;
 function memo(e, now) {
   const id = e.id || "triceratops"; let m = MEMO.get(id);
-  if (!m) { m = { phase: 0, moving: 0, at: null, x: null, y: null, v: Object.create(null), air: 0, landAt: -Infinity }; MEMO.set(id, m); if (MEMO.size > MEMO_MAX) MEMO.delete(MEMO.keys().next().value); }
+  if (!m) { m = { phase: 0, moving: 0, at: null, x: null, y: null, v: Object.create(null), w: Object.create(null), air: 0, airV: 0, landAt: -Infinity }; MEMO.set(id, m); if (MEMO.size > MEMO_MAX) MEMO.delete(MEMO.keys().next().value); }
   return m;
 }
 const N = TRI_ART.spine, PX = new Float64Array(N + 1), PY = new Float64Array(N + 1), PZ = new Float64Array(N + 1), NX = new Float64Array(N + 1), NY = new Float64Array(N + 1), DT = new Float64Array(N + 1), VT = new Float64Array(N + 1);
-const LEG = new Float64Array(14), LEGW = new Float64Array(7);
+const LEG = new Float64Array(14), LEGW = new Float64Array(7), OV = new Float64Array(TRI_KEYS.length);
 const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
 export function drawTriceratopsBody(ctx, q, now = 0) {
@@ -82,12 +108,15 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   M.at = now; M.x = x; M.y = y;
   if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (2 * A.stride * 1.6 * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
+  if (dt > 0) M.airV = (air - M.air) / dt;
   if (M.air > .05 && air <= .05) M.landAt = now; M.air = air;
-  const poseName = triceratopsPoseName(e, air, M.moving), stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0));
+  const poseName = triceratopsPoseName(e, air, M.moving, M.airV >= 0), stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0));
   const land = poseName === "idle" || poseName === "walk" ? Math.max(0, 1 - (now - M.landAt) / A.landMs) : 0;
-  const P0 = TRI_POSES[poseName], rate = /charge|sweep|stomp|rear/.test(poseName) ? A.strikeEase : A.ease, V = M.v;
+  const P0 = TRI_POSES[poseName], rate = /charge|sweep|stomp|rear|leap|fall|drill/.test(poseName) ? A.strikeEase : A.ease, E = M.v, V = M.w;
   for (const key of TRI_KEYS) { let target = P0[key] || 0; if (land) target += ((TRI_POSES.land[key] || 0) - target) * land; if (stun) target += ((TRI_POSES.dazed[key] || 0) - target) * stun;
-    const prev = V[key]; V[key] = !Number.isFinite(prev) || !(dt > 0) || reduce ? target : prev + (target - prev) * Math.min(1, dt * rate); }
+    const prev = E[key]; E[key] = !Number.isFinite(prev) || !(dt > 0) || reduce ? target : prev + (target - prev) * Math.min(1, dt * rate); }
+  // the ridden horn attack's body, straight from the accepted horn pose (no easing: locked to the gameplay clock)
+  triceratopsHornOverlay(e.mountView ? e.mountHornPose : null, OV); for (let i = 0; i < TRI_KEYS.length; i++) V[TRI_KEYS[i]] = E[TRI_KEYS[i]] + OV[i];
   const moving = /^(idle|walk)$/.test(poseName) ? M.moving : 0, ph = M.phase, pitch = V.pitch;
   const bounce = triceratopsTailBounces(e) ? (reduce ? A.quietBounce : Math.sin(t * 20) * A.tailBounce) : 0;
   const wobble = reduce ? 0 : .02 * Math.sin(t * 1.3);
@@ -106,7 +135,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // pitch about the hips (nose up) or the shoulders (nose down), then the hips set at their height
   const pvx = pitch >= 0 ? PX[ih] : PX[is], pvy = pitch >= 0 ? PY[ih] : PY[is], cp = Math.cos(pitch), sp = Math.sin(pitch);
   for (let i = 0; i <= N; i++) { const dx = PX[i] - pvx, dy = PY[i] - pvy; PX[i] = pvx + dx * cp - dy * sp; PY[i] = pvy + dx * sp + dy * cp; }
-  const hipX = -.3, lift = A.hip - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead ? .22 : 0);
+  const hipX = -.3, lift = A.hip - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead ? .22 : 0) + Math.abs(bounce) * .35; // the sweep's bounce lifts the hindquarters with the tail
   for (let i = 0; i <= N; i++) { PX[i] += hipX; PY[i] += lift; PY[i] -= PZ[i] * .4; }
   for (let i = 0; i <= N; i++) { const a = Math.max(0, i - 1), c = Math.min(N, i + 1), tx = PX[c] - PX[a], ty = PY[c] - PY[a], l = Math.hypot(tx, ty) || 1; NX[i] = -ty / l; NY[i] = tx / l;
     const sN = i / N, depth = 1 + PZ[i] * .3; DT[i] = table(THICK, sN, 1) * depth; VT[i] = table(THICK, sN, 2) * depth; }
@@ -115,7 +144,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   ctx.save(); ctx.translate(kx, q.b); ctx.save(); ctx.scale(flip * u, u);
   const lw = Math.max(1 / u, .012), mv = (xx, yy) => ctx.moveTo(xx, -yy), ln = (xx, yy) => ctx.lineTo(xx, -yy), qc = (ax, ay, bx, by) => ctx.quadraticCurveTo(ax, -ay, bx, -by);
   // the ground shadow (a leap draws it smaller and lighter: the body is already lifted by the renderer)
-  { const sh = Math.max(.45, 1 - air * .25), gy = air / Math.max(.6, Number(e.scale) || 1); ctx.fillStyle = `rgba(4,4,6,${(.42 * sh).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(-.04, gy, .8 * sh, .15 * sh, 0, 0, TAU); ctx.fill(); }
+  if (!e.noShadow) { const sh = Math.max(.45, 1 - air * .25), gy = air / Math.max(.6, Number(e.scale) || 1); ctx.fillStyle = `rgba(4,4,6,${(.42 * sh).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(-.04, gy, .8 * sh, .15 * sh, 0, 0, TAU); ctx.fill(); }
 
   // ---------------------------------------------------------------- legs
   const legAt = (hind, near) => { // hip/shoulder joint, foot target, bone lengths
@@ -198,6 +227,12 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName);
   ctx.restore();
   // a charge's dust, and the stomp's ring at the forefeet
+  const dashing = e.mountView && (e.mountHornPose?.phase === "dash" || e.mountHornPose?.phase === "bash" && triceratopsHornAmount(e.mountHornPose) > .3);
+  if (!reduce && dashing) { ctx.fillStyle = "rgba(185,168,136,.42)"; for (let i = 0; i < 4; i++) { const f = (t * 2.6 + i / 4) % 1; ctx.beginPath(); ctx.arc(-flip * (.2 + f * .75) * u, -(.04 + f * .2) * u, (.05 + f * .1) * u, 0, TAU); ctx.fill(); } }
+  if (land > .05) { ctx.fillStyle = `rgba(185,168,136,${(.5 * land).toFixed(3)})`; for (let i = 0; i < 6; i++) { const sx = (i - 2.5) * .26, f = 1 - land; ctx.beginPath(); ctx.arc(flip * (sx + Math.sign(sx) * f * .35) * u, -(.03 + f * .12) * u, (.06 + f * .08) * u, 0, TAU); ctx.fill(); } }
+  if (poseName === "drill") { const tx = PX[0], ty = PY[0], spin = reduce ? 0 : t * 22; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, u * .022);
+    for (let i = 0; i < 5; i++) { const f = i / 5, x0 = flip * (tx + .1 + f * .55) * u, r = (.05 + f * .18) * u, a = spin + i * 1.3; ctx.strokeStyle = `rgba(255,248,214,${(.75 * (1 - f)).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(flip * (tx - .1 - f * .5) * u, -ty * u, r * .45, r, 0, a, a + 2.4); ctx.stroke(); void x0; }
+    ctx.lineCap = "butt"; }
   if (!reduce && poseName === "charge") { ctx.fillStyle = "rgba(185,168,136,.45)"; for (let i = 0; i < 4; i++) { const f = (t * 2.4 + i / 4) % 1; ctx.beginPath(); ctx.arc(-flip * (.4 + f * .7) * u, -(.05 + f * .18) * u, (.05 + f * .09) * u, 0, TAU); ctx.fill(); } }
   if (poseName === "stomp") { ctx.strokeStyle = "rgba(255,240,160,.7)"; ctx.lineWidth = Math.max(1.5, u * .03); const r = (reduce ? .5 : .35 + .3 * ((t * 3) % 1)) * u; ctx.beginPath(); ctx.ellipse(flip * .3 * u, 0, r, r * .3, 0, 0, TAU); ctx.stroke(); }
   if (e.pack?.attack === "heavySweep" && poseName === "sweep") { ctx.strokeStyle = "rgba(255,240,160,.65)"; ctx.lineWidth = Math.max(2, u * .045); ctx.beginPath(); ctx.arc(-flip * .55 * u, -(.48 * u) + bounce * u, u * .55, flip > 0 ? 2.6 : -.9, flip > 0 ? 4.2 : .55); ctx.stroke(); }
@@ -225,29 +260,38 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
     const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, near ? A.hornBase : A.shade); g.addColorStop(.35, near ? A.horn : A.hornBase); g.addColorStop(1, near ? A.hornTip : A.horn);
     ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); };
   brow(-.035, .03, false);
-  // the lower jaw first (the skull overlaps it), opening with the pose, the mouth's dark inside behind it
+  // the lower jaw first (the skull and the upper beak overlap it), opening with the pose; the mouth's dark inside behind it
   const open = Math.max(0, Math.min(1, V.open + (dead ? .2 : 0))), jaw = open * .35;
-  if (open > .05) { ctx.fillStyle = A.mouth; shape([[.12, -.05], [.4, -.06], [.36, -.07 - jaw * .5], [.14, -.1 - jaw * .2]]); ctx.fill(); }
-  ctx.save(); const hinge = H(.08, -.09); ctx.translate(hinge[0], -hinge[1]); ctx.rotate(jaw); ctx.translate(-hinge[0], hinge[1]);
-  shape([[.04, -.07], [.3, -.055], [.37, -.07], [.33, -.115], [.2, -.13], [.04, -.13]]); ctx.fillStyle = A.bodyDark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
-  shape([[.3, -.06], [.375, -.072], [.335, -.112], [.29, -.1]]); ctx.fillStyle = A.beak; ctx.fill();
+  if (open > .05) { ctx.fillStyle = A.mouth; shape([[.1, -.05], [.42, -.06], [.38, -.07 - jaw * .5], [.12, -.1 - jaw * .2]]); ctx.fill(); }
+  ctx.save(); const hinge = H(.06, -.08); ctx.translate(hinge[0], -hinge[1]); ctx.rotate(jaw); ctx.translate(-hinge[0], hinge[1]);
+  shape([[.02, -.07], [.3, -.055], [.33, -.07], [.3, -.1], [.18, -.108], [.03, -.105]]); ctx.fillStyle = A.bodyDark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  // the lower beak (the predentary): a dark wedge that meets the hook
+  shape([[.29, -.052], [.41, -.074], [.37, -.104], [.29, -.1]]); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   ctx.restore();
-  // the skull: deep and long, a hooked beak at its front and a cheek horn at its back corner
-  const skull = [[-.06, .11], [.06, .15], [.18, .13], [.3, .075], [.39, .02], [.43, -.04], [.39, -.065], [.3, -.07], [.18, -.085], [.06, -.12], [-.04, -.12], [-.08, -.02]];
+  // the skull: deep at the cheeks, the brow high behind the eye, the snout narrowing to the beak; a cheek horn at its back corner
+  const skull = [[-.06, .11], [.06, .15], [.18, .13], [.29, .085], [.35, .05], [.35, -.035], [.24, -.055], [.12, -.075], [.02, -.11], [-.05, -.12], [-.09, -.02]];
   ctx.beginPath(); mv(H(...skull[0])); for (let i = 1; i <= skull.length; i++) { const a = skull[i - 1], b = skull[i % skull.length]; qc(H(...a), H((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)); } ctx.closePath();
   { const g0 = H(.15, .15), g1 = H(.15, -.12), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.bodyLight); g.addColorStop(.55, A.body); g.addColorStop(1, A.bodyDark); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
-  // the cheek horn (jugal), pointing down and back
   shape([[-.03, -.07], [-.1, -.17], [.04, -.11]]); ctx.fillStyle = A.hornBase; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
-  ctx.beginPath(); mv(H(.31, .065)); qc(H(.43, .04), H(.445, -.06)); qc(H(.41, -.05), H(.37, -.085)); qc(H(.34, -.02), H(.29, -.02)); ctx.closePath(); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
-  ctx.fillStyle = "rgba(255,240,200,.35)"; ctx.beginPath(); ctx.ellipse(...(() => { const p = H(.37, .035); return [p[0], -p[1]]; })(), .03, .012, -ha, 0, TAU); ctx.fill();
-  // the friendly smile line back from the beak, and a nostril
-  { const a = H(.3, -.07), m = H(.2, -.085), b = H(.12, -.05); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.1; ctx.lineCap = "round"; ctx.beginPath(); mv(a); qc(m, b); ctx.stroke(); ctx.lineCap = "butt"; }
-  { const p = H(.31, .03); ctx.fillStyle = A.outline; ctx.beginPath(); ctx.ellipse(p[0], -p[1], .016, .01, -ha, 0, TAU); ctx.fill(); }
+  // the upper beak: a big hooked parrot beak of dark keratin, curling down over the lower one, a pale cutting edge and a sheen on top
+  ctx.beginPath(); mv(H(.3, .078)); qc(H(.43, .075), H(.475, -.035)); qc(H(.47, -.09), H(.43, -.105)); qc(H(.425, -.06), H(.37, -.05)); ln(H(.31, -.04)); qc(H(.29, .02), H(.3, .078)); ctx.closePath();
+  { const g0 = H(.36, .08), g1 = H(.4, -.1), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.beakLight); g.addColorStop(.45, A.beak); g.addColorStop(1, A.outline); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.strokeStyle = "rgba(255,236,190,.55)"; ctx.lineWidth = lw * 1.1; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.335, .058)); qc(H(.42, .055), H(.45, -.01)); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,236,190,.4)"; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.43, -.095)); qc(H(.415, -.06), H(.37, -.052)); ctx.stroke();
+  // the cheek line: from the corner of the beak back under the eye, turning up at its end (a friendly smile)
+  { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.3; ctx.beginPath(); mv(H(.31, -.045)); qc(H(.19, -.075), H(.07, -.04)); qc(H(.035, -.025), H(.03, -.005)); ctx.stroke(); ctx.lineCap = "butt"; }
+  { const p = H(.285, .035); ctx.fillStyle = A.outline; ctx.beginPath(); ctx.ellipse(p[0], -p[1], .017, .01, -ha, 0, TAU); ctx.fill(); }
   // the Silly Goose, ridden, pokes out its tongue
-  if (e.mountView && e.triceratopsDisposition === "silly" && !dead) { const wag = reduce ? 0 : .015 * Math.sin(t * 6); shape([[.33, -.085], [.42, -.1 + wag], [.44, -.13 + wag], [.36, -.12]]); ctx.fillStyle = A.tongue; ctx.fill(); ctx.strokeStyle = A.mouth; ctx.lineWidth = lw * .7; ctx.stroke(); }
+  if (e.mountView && e.triceratopsDisposition === "silly" && !dead) { const wag = reduce ? 0 : .015 * Math.sin(t * 6); ctx.beginPath(); mv(H(.37, -.085)); qc(H(.44, -.09 + wag), H(.47, -.125 + wag)); qc(H(.44, -.145 + wag), H(.39, -.115)); ctx.closePath(); ctx.fillStyle = A.tongue; ctx.fill(); ctx.strokeStyle = A.mouth; ctx.lineWidth = lw * .7; ctx.stroke(); }
   // the nose horn: short and blunt
-  { const b0 = H(.26, .085), b1 = H(.34, .055), tip = H(.35, .19); ctx.beginPath(); mv(b0); qc(H(.27, .16), tip); qc(H(.335, .12), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
+  { const b0 = H(.235, .095), b1 = H(.31, .075), tip = H(.33, .205); ctx.beginPath(); mv(b0); qc(H(.25, .17), tip); qc(H(.31, .13), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   brow(0, 0, true);
+  // the Horn Shot: a glint on the tips as the wind-up aims them, then the release's flash and streaks off the tips
+  const hp = e.mountView ? e.mountHornPose : null, hk = triceratopsHornAmount(hp);
+  if (hk > 0 && hp.phase === "windup") { /* the release's flash is drawn with the shot itself, where it leaves the horns (combat-visuals.ts) */ const tp = H(.5, .4), ta = Math.atan2(.4 - .3, .5 - .3) + ha, tx = tp[0], ty = -tp[1], r = hp.phase === "horn" ? .2 * hk : .06 + (reduce ? 0 : .02 * Math.sin(t * 30));
+    const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, r * 1.6); g.addColorStop(0, `rgba(255,252,230,${(.95 * hk).toFixed(3)})`); g.addColorStop(.4, `rgba(255,236,170,${(.6 * hk).toFixed(3)})`); g.addColorStop(1, "rgba(255,220,140,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx, ty, r * 1.6, 0, TAU); ctx.fill();
+    if (hp.phase === "horn") { ctx.strokeStyle = `rgba(255,246,210,${(.85 * hk).toFixed(3)})`; ctx.lineWidth = lw * 1.4; ctx.lineCap = "round"; for (const d of [-.25, 0, .25]) { const a = ta + d; ctx.beginPath(); ctx.moveTo(tx + Math.cos(a) * r * .5, ty - Math.sin(a) * r * .5); ctx.lineTo(tx + Math.cos(a) * r * 2.2, ty - Math.sin(a) * r * 2.2); ctx.stroke(); } ctx.lineCap = "butt"; } }
   // the eye: big, round and bright, a brow ridge over it; narrowed while it attacks, crossed out in death
   const ep = H(.12, .045), ex = ep[0], ey = -ep[1], angry = !!e.pack?.attack;
   if (dead) { ctx.strokeStyle = A.pupil; ctx.lineWidth = lw * 1.4; ctx.beginPath(); ctx.moveTo(ex - .02, ey - .02); ctx.lineTo(ex + .02, ey + .02); ctx.moveTo(ex - .02, ey + .02); ctx.lineTo(ex + .02, ey - .02); ctx.stroke(); return; }

@@ -16,7 +16,8 @@ import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawle
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
 import { dronePos, phaseShielded } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
-import { standardProjectile, standardProjectileColor, triceratopsHornVertices } from "./combat-visuals.ts";
+import { standardProjectile, standardProjectileColor, triceratopsHornVertices, TRICERATOPS_HORN_TRAIL } from "./combat-visuals.ts";
+const HORN_TRAIL_COLOR = 0xfff7dc, HORN_FLASH_COLOR = 0xfffbe8; // the horn shot's trail and muzzle flash (distinct from its body colour)
 import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose } from "./beast-mounts.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
@@ -3743,8 +3744,8 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
 // whose saddle and rider stay on it (MOUNT_DRAW.skipBody leaves only the mount's body off the card). It stands where the card stands,
 // at the mount's own scale, and follows only the accepted pose fields: its heading, the horn pose, the Silly Goose's drill roll (an axial
 // turn about its middle, kept above its support) and the leap's lift. The lowest quality setting keeps the whole card.
-const RIDDEN = { track: null, mount: '', actor: { id: '', kind: 'triceratops', mountView: true, triceratopsDisposition: 'good', hp: 1, mountHornPose: null, pack: null, facingX: 1 },
-  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0 }, yaw: NaN, x: NaN, y: NaN, pitch: null };
+const RIDDEN = { track: null, mount: '', actor: { id: '', kind: 'triceratops', mountView: true, mountDrill: false, triceratopsDisposition: 'good', hp: 1, mountHornPose: null, pack: null, facingX: 1 },
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0, pivot: 1 }, yaw: NaN, x: NaN, y: NaN, pitch: null };
 const RIDDEN_FACING_YAW = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
 function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null;
@@ -3756,12 +3757,13 @@ function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, horn = triceratopsHornPose(g, ride, clock, reduce), drill = triceratopsDrillPose(g, ride, clock, reduce);
   const x = p.x + .5, y = p.y + .82;
   // its heading: the accepted aim of a horn or drill pose, else the way it walks, else the Wayfarer's facing
-  if (drill || horn) RIDDEN.yaw = Math.atan2(drill ? drill.y : horn.y, drill ? drill.x : horn.x);
+  if (drill) RIDDEN.yaw = Math.atan2(drill.y, drill.x) + Math.PI; // the Silly Goose drills tail first (as the standard view's composite)
+  else if (horn) RIDDEN.yaw = Math.atan2(horn.y, horn.x);
   else if (Number.isFinite(RIDDEN.x) && Math.hypot(x - RIDDEN.x, y - RIDDEN.y) > .004) RIDDEN.yaw = Math.atan2(y - RIDDEN.y, x - RIDDEN.x);
   else if (!Number.isFinite(RIDDEN.yaw)) RIDDEN.yaw = RIDDEN_FACING_YAW[p.facing] ?? 0;
   RIDDEN.x = x; RIDDEN.y = y;
   const q = g.triceratopsJump, T = TRICERATOPS_DRILL_POSE;
-  RIDDEN.drill.angle = drill && !reduce && q ? Math.PI * 2 * T.turns * Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))) : 0;
+  RIDDEN.drill.pivot = T.pivot; a.mountDrill = !!drill; RIDDEN.drill.angle = drill && !reduce && q ? Math.PI * 2 * T.turns * Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))) : 0;
   a.id = `mount:${ride.id}`; a.hp = p.hp; a.mountHornPose = horn;
   E.x = x; E.y = y; E.air = Math.max(0, Number(d.jumpLift) || 0); E.z = surfaceZ(g.map, x, y - .07) + Math.max(0, Number(d.lift) || 0) + E.air; E.scale = Number(MOUNT_BEASTS.triceratops.scale) || 1;
   E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
@@ -4702,6 +4704,10 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=surfaceZ(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
+  // the Triceratops's Bash arc at its horns' height (glyphVisuals `z`: renderer.ts leaves it off the floor layer): two ribbon segments
+  for (const v of g.glyphVisuals || []) { if (v?.kind !== "arc" || !(v.z > 0) || !(v.max > 0)) continue;
+    const a = Math.max(0, v.life / v.max) * .8, t = reduce ? 0 : now / 1000, ax = v.x, ay = v.y + .37, bx = v.tx, by = v.ty + .37, mx = (ax + bx) / 2 + Math.sin(t * 40) * .15, my = (ay + by) / 2 + Math.cos(t * 37) * .15, w = .05, col = SHOT_COLORS.get(v.color) ?? (SHOT_COLORS.set(v.color, parseInt(String(v.color).slice(1), 16)), SHOT_COLORS.get(v.color));
+    room(12); for (const [x0, y0, x1, y1] of [[ax, ay, mx, my], [mx, my, bx, by]]) { DV(x0, y0, v.z - w, 0, 0, 11, a, col, 1); DV(x1, y1, v.z - w, 0, 0, 11, a, col, 1); DV(x1, y1, v.z + w, 0, 0, 11, a, col, 1); DV(x0, y0, v.z - w, 0, 0, 11, a, col, 1); DV(x1, y1, v.z + w, 0, 0, 11, a, col, 1); DV(x0, y0, v.z + w, 0, 0, 11, a, col, 1); } }
   for (const entry of shots?.entries || []) {
     const shot=entry.source;
     if(entry.kind==="orbit"){
@@ -4717,6 +4723,12 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const vertices = triceratopsHornVertices(shot, X, Y, z, HORN_VERTICES); room(12);
       // Existing RGB projectile material, sampled at its solid centre; retain depth, fog and discovery masking.
       for (let i = 0; i < 36; i += 3) DV(vertices[i], vertices[i + 1], vertices[i + 2], 0, 0, 11, SHOT_DRAW.headAlpha * .5, color, 0, true);
+      // its trail: two crossed ribbons fading back along its flight from the horn's base; and the flash it leaves the horns with
+      { const T = TRICERATOPS_HORN_TRAIL, n = Math.hypot(shot.dx, shot.dy) || 1, fx = shot.dx / n, fy = shot.dy / n, age = Number(shot.age) || 0, L = T.length * Math.min(1, age / T.flashAge + .25), w = T.width;
+        const bx = X - fx * .18, by = Y - fy * .18, ex = bx - fx * L, ey = by - fy * L, a0 = SHOT_DRAW.headAlpha * .45; room(12);
+        for (const [sx, sy, sz] of [[0, 0, w], [-fy * w, fx * w, 0]]) { DV(bx - sx, by - sy, z - sz, 0, 0, 11, a0, HORN_TRAIL_COLOR, 0, true); DV(bx + sx, by + sy, z + sz, 0, 0, 11, a0, HORN_TRAIL_COLOR, 0, true); DV(ex, ey, z, 0, 0, 11, 0, HORN_TRAIL_COLOR, 0, true);
+          DV(bx - sx, by - sy, z - sz, 0, 0, 11, a0, HORN_TRAIL_COLOR, 0, true); DV(ex, ey, z, 0, 0, 11, 0, HORN_TRAIL_COLOR, 0, true); DV(bx + sx, by + sy, z + sz, 0, 0, 11, a0, HORN_TRAIL_COLOR, 0, true); }
+        if (age < T.flashAge && !reduce) { const k = 1 - age / T.flashAge, r = T.flash * (.6 + .4 * k); card(X, Y, z - r, z + r, r, 11, SHOT_DRAW.headAlpha * .6 * k, HORN_FLASH_COLOR, 0, true); } }
       continue;
     }
     if (!reduce) {

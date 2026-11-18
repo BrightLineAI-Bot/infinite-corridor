@@ -13,11 +13,11 @@ export const MOUNT_DRAW = { skipBody: false };
 const seatOut = { up: 0, dx: 0 }, front = { style: null, x: 0, y: 0, u: 0, drop: 0, face: 1 };
 // Draws the mount of `m` under the Wayfarer at `p` (raised `liftPx` by a jump). Returns where the Wayfarer sits: { up, dx } in pixels
 // (up from their feet; along the screen, + right). drawMountFront, after the rider, adds anything that goes in front of them.
-export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false, hornPose = null, mountFacing = p.facing) {
+export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false, hornPose = null, mountFacing = p.facing, drillPose = null) {
   const B = MOUNT_BEASTS[m?.beast]; front.style = null; if (!B) { seatOut.up = 0; seatOut.dx = 0; return seatOut; }
   const moving = (p.walkPhase || 0) % 2, face = mountFacing === "left" ? -1 : mountFacing === "right" ? 1 : (p.mountFace || 1); p.mountFace = face;
   const barrel = B.tack === "barrel"; // the Triceratops: a heavy body that does not hop; its leap tucks its legs (mountAir)
-  Object.assign(actor, { id: `mount:${m.id}`, kind: m.beast, packKind: m.beast, x: p.x, y: p.y - liftPx / s, scale: B.scale, facingX: face, mountHornPose: m.beast === "triceratops" ? hornPose : null, triceratopsDisposition: m.variant === "silly" ? "silly" : "good", hopLift: reduceMotion || barrel ? 0 : Math.abs(Math.sin(moving * Math.PI)) * .5, mountAir: barrel ? Math.max(0, liftPx / s) : 0, reduceMotion });
+  Object.assign(actor, { id: `mount:${m.id}`, kind: m.beast, packKind: m.beast, x: p.x, y: p.y - liftPx / s, scale: B.scale, facingX: face, mountHornPose: m.beast === "triceratops" ? hornPose : null, triceratopsDisposition: m.variant === "silly" ? "silly" : "good", hopLift: reduceMotion || barrel ? 0 : Math.abs(Math.sin(moving * Math.PI)) * .5, mountAir: barrel ? Math.max(0, liftPx / s) : 0, reduceMotion, mountDrill: barrel && !!drillPose, noShadow: barrel && !!drillPose }); // the drill's shadow is drawn at the feet, outside its roll (drawMountShadow)
   try {
     if (MOUNT_DRAW.skipBody && m.beast === "triceratops") { /* Close View draws its skinned body (TRICERATOPS_CLOSE_VIEW.riddenBody) */ }
     else if (m.beast === "stalker") drawStalker(ctx, actor, s, now, reduceMotion);
@@ -26,12 +26,20 @@ export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false, h
   const bob = reduceMotion ? 0 : (Number(B.bob) || 0) * Math.sin(now / 420) * s, seat = B.seat * s + bob, dx = (Number(B.seatX) || 0) * face * s;
   const u = s * Math.max(.8, Math.min(1.6, B.scale * .5)), sx = (p.x + .5) * s + dx, sy = (p.y + .8) * s - liftPx - seat;
   if (B.saddle === "girth") { drawSaddle(ctx, "girth", sx + (Number(B.bandX) || 0) * face * s, sy, (Number(B.band) || 1.4) * s / 1.6, B.seat * s, face); drawSaddle(ctx, "girthSeat", sx, sy, u, B.seat * s, face); } // the band round the body's axis; the seat on its back
-  else if (barrel && MOUNT_DRAW.skipBody) drawSaddle(ctx, "barrelSeat", sx, sy, u, 0, face); // Close View's skinned body wears the blanket and girth: the card keeps the seat under the rider
+  else if (barrel && MOUNT_DRAW.skipBody) { drawSaddle(ctx, "barrelSeat", sx, sy, u, 0, face); Object.assign(front, { style: "barrelGrip", x: sx, y: sy, u, drop: 0, face }); } // Close View's skinned body wears the blanket and girth: the card keeps the seat (and the rider's grip) under the rider
   else if (barrel) { const style = m.variant === "silly" ? "barrelSilly" : "barrel", drop = Math.max(0, B.seat - (Number(B.belly) || 0)) * s; // the girth round the barrel, never below the belly
     drawSaddle(ctx, style, sx, sy, u, drop, face); Object.assign(front, { style: style + "Front", x: sx, y: sy, u, drop, face }); }
   else drawSaddle(ctx, B.saddle, sx, sy, B.saddle === "bowl" ? u * 1.35 : u, B.seat * s, face); // the drop without the bob: one cached image
   if (B.saddle === "bowl") Object.assign(front, { style: "bowlFront", x: sx, y: sy, u: u * 1.35, drop: B.seat * s, face });
   seatOut.up = seat; seatOut.dx = dx; return seatOut;
+}
+// The ridden Triceratops's ground shadow at its feet, for the drill (renderer.ts draws it before the roll, so it never turns with the
+// body or floats above it): the same ellipse the body draws standing, shrinking and fading with the leap's height.
+export function drawMountShadow(ctx, m, p, s, liftPx = 0) {
+  const B = MOUNT_BEASTS[m?.beast]; if (!B || B.tack !== "barrel" || MOUNT_DRAW.skipBody) return false; // (the skinned body's shadow is on the ground layer)
+  const u = s * B.scale, air = Math.max(0, liftPx / s), sh = Math.max(.45, 1 - air * .25);
+  ctx.fillStyle = `rgba(4,4,6,${(.42 * sh).toFixed(3)})`; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82) * s, .8 * sh * u, .15 * sh * u, 0, 0, Math.PI * 2); ctx.fill();
+  return true;
 }
 export function drawMountFront(ctx) { if (front.style) drawSaddle(ctx, front.style, front.x, front.y, front.u, front.drop, front.face); front.style = null; }
 
@@ -110,6 +118,12 @@ function paintSaddle(g, style, x, y, u, drop, face) {
 function paintBarrel(g, style, x, y, u, drop, face) {
   const silly = style.startsWith("barrelSilly"), frontLayer = style.endsWith("Front"), leather = "#6b3f22", dark = "#3a2112", brass = "#c9a05a", iron = "#4a4f57";
   const cloth = silly ? "#2f9aa6" : "#8a2c34", clothDark = silly ? "#1d6a74" : "#5a1a20", trim = silly ? "#ffd84a" : brass, F = (dx) => x + dx * face;
+  if (style === "barrelGrip" || frontLayer) { // the rider's hand on the grab strap at the pommel: they hold on through the drill, the leap and the charge
+    g.lineCap = "round"; g.strokeStyle = dark; g.lineWidth = u * .05; g.beginPath(); g.moveTo(F(.3 * u), y - u * .12); g.quadraticCurveTo(F(.26 * u), y - u * .34, F(.1 * u), y - u * .36); g.stroke();
+    g.strokeStyle = leather; g.lineWidth = u * .03; g.stroke();
+    g.fillStyle = "#d9b48a"; g.beginPath(); g.arc(F(.1 * u), y - u * .36, u * .045, 0, Math.PI * 2); g.fill(); g.strokeStyle = dark; g.lineWidth = u * .015; g.stroke(); // the gloved hand
+    if (style === "barrelGrip") return;
+  }
   if (frontLayer) { // the near flap over the rider's leg, its stirrup hanging below it
     g.fillStyle = leather; g.beginPath(); g.moveTo(F(-.16 * u), y + u * .02); g.lineTo(F(.12 * u), y + u * .02); g.quadraticCurveTo(F(.16 * u), y + u * .2, F(.1 * u), y + u * .34); g.lineTo(F(-.12 * u), y + u * .34); g.quadraticCurveTo(F(-.19 * u), y + u * .18, F(-.16 * u), y + u * .02); g.closePath(); g.fill();
     g.strokeStyle = dark; g.lineWidth = u * .025; g.stroke();
