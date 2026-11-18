@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Unreleased: Close View on the sea looks like water and the Wayfarer is in it. The sea has a rolling swell with whitecaps and runs on to the horizon; the Wayfarer treads water and swims a front crawl with the water at his chest, the robot's water form rides low in the sea, the power armor hovers over it, the robot and the suit wade, and aboard the skiff is drawn under him. A ring of foam and spreading ripples mark where each meets the water.
+- Release 990: The core creatures look and attack better. In Close View, the Ashling, Hollow Marshal, Ashen Hound, Coil Stalker, Pallid Crawler and Glass Mite each have their own attack for every move, with clearer wind-ups and follow-through, on reshaped bodies at the same triangle counts. The Marshal's halberd thrusts, reaps and chops; the Coil Stalker rears a hooded neck and strikes. In the normal view the creatures keep their blocky art, but their claws, halberd, jaws, legs, wings, staffs and tentacles now swing on joints, with a wind-up, a strike, a recovery and a flinch.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
