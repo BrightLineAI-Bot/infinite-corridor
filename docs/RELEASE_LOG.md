@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r985 (`312642995f8a`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r985 (`20b10f334`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 985 | Codex | claude/triceratops-package / #653 | Triceratops capture, persistent riding and Beast Hotel recovery; isolated Proving Ground lab | Merged as `312642995f8a` (#653); Preview pending. |
+| 986 | Codex | codex/triceratops-capture-preview / #657 | Equip Enclosure in the isolated Triceratops capture fixtures | In flight. |
+| 985 | Codex | claude/triceratops-package / #653 | Triceratops capture, persistent riding and Beast Hotel recovery; isolated Proving Ground lab | Merged as `312642995f8a` (#653); hosted Preview `r985-312642995f8a` verified. Capture loadout correction follows in r986. |
 | 983 | Claude | claude/creature-motion | Close View creature motion: phase model (anticipation hold, contact, follow-through, recovery), heavy and combo shapes, hit reactions (flinch, stagger, guard, dodge, feint, alert, arrival), idle life, card/body cross-fade and death fade; new module creature-motion; restore the Standard View Pentagon dread cache key; no save change | Merged as `278f3773979b` (#651), Preview `r983-278f3773979b`. Published in r984 after the fourth-slot correction. |
 | 982 | Claude | claude/review-975-fixes | Fixes from the 975 review: rockfall limited to stego prey, held beasts set down on open floor, stale feint cleared, legacy wind-up only within reach (cadence restored), legacy aggro needs line of sight, stinger ducking kept; no save change | Merged as `1137a1096c7b` (#650). Published in r984. |
 | 981 | Claude | claude/cyclone-heel-981 | With awakened Iron Fists and Ki Blast, the press after the uppercut's airborne blast becomes the Cyclone Heel: five spins across up to 3.5 tiles hitting only what the leg touches, or with Shadow Boxing an instant blink to the foe and five spins on it over about a second; releasing a hold just before landing gives the perfect version; the Shadow Clone swings with each spin | Merged as `7b136e96e` (#649). Published in r984. |

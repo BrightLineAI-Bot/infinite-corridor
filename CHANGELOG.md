@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 986: The Triceratops capture fixtures start with Enclosure selected so the Build button places the required pen.
 - Release 985: The Triceratops Proving Ground lab exercises enclosure capture, persistent riding, injury and Beast Hotel recovery.
 - Release 984: The fourth action slot obeys the same shock knockdown and firm-grab restrictions as the other three.
 - Release 983: Restore the Standard View Pentagon dread overlay and improve Close View creature motion. Creatures move like they mean it: wind-ups that peak and hold, strikes that land on the hit frame, follow-through and real recovery (longer after a heavy blow), combos that alternate, flinches that snap the head away from the blow, poise-break staggers, guards, sidesteps, feints that break off, alert look-ups, arrivals that rise in, breathing and trailing tails, and no popping between card and body or at death.
