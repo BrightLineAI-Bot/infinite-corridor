@@ -35,7 +35,7 @@ const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 
 test('registry: a forest world beast with eight attacks, its own home, poise, Echo and Aperture gate', () => {
   const B = WORLD_BEASTS.briarStag, def = MONSTER_PACK.briarStag;
-  assert.equal(B.kind, 'briarStag'); assert.equal(B.home, 'forest'); assert.equal(B.tries, 4); assert.ok(BEAST_HOMES.forest);
+  assert.equal(B.kind, 'briarStag'); assert.equal(B.home, 'forest'); assert.equal(B.tries, undefined); /* 2026-11-18 (Tim): the 15-minute engagement window is the only limit; world beasts have no tries */ assert.ok(BEAST_HOMES.forest);
   assert.equal(def.attacks.length, 12); // release 708: the grove, the mend, the birds and the mire for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.briarStag); assert.ok(BOSS_POISE.briarStag); assert.equal(BEAST_APERTURE.briarStag, 6); assert.ok(PLACEMENT.bigBeasts.includes('briarStag'));
   assert.ok(BEAST_HOMES.forest.object({ kind: 'tree', forest: true })); assert.equal(BEAST_HOMES.forest.object({ kind: 'tree' }), false);

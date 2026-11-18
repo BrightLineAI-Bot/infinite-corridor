@@ -9,7 +9,7 @@
 //
 // Body units are the standard view's (a tile times the actor's scale). monster-pack.ts reaches close-view.ts, which loads this
 // module before monster-pack.ts has finished loading, so its tables are read lazily (never at module load).
-import { ATTACK_MODULES, BOSS_PACE, KNIGHT } from "./monster-pack.ts";
+import { ATTACK_MODULES, packWindupScale, KNIGHT } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
@@ -180,7 +180,7 @@ const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
 function lerpVec(o, a, b, t) { const A = POSE_VEC[a] || POSE_VEC.idle, Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
 function lerpInto(o, b, t) { const Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
 function phaseOf(pack, id) {
-  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? m.active || 0 : pack.phase === 'recover' ? m.recover || .5 : 0;
+  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? m.active || 0 : pack.phase === 'recover' ? m.recover || .5 : 0;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 // skid: the feet slide with the body (slides, dashes, thrusts); mist: dissolved to the swarm (0..1); charge: the cannon's glow

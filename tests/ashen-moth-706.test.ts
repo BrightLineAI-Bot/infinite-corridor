@@ -34,7 +34,7 @@ const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 
 test('registry: a flying world beast with seven attacks and a lantern beam, its own home, poise, Echo and Aperture gate', () => {
   const B = WORLD_BEASTS.ashenMoth, def = MONSTER_PACK.ashenMoth;
-  assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(B.retreatMoves, 'through'); assert.equal(def.movement, 'hover');
+  assert.equal(B.home, 'firelands'); assert.equal(B.tries, undefined); /* 2026-11-18 (Tim): the 15-minute engagement window is the only limit; world beasts have no tries */ assert.equal(B.retreatMoves, 'through'); assert.equal(def.movement, 'hover');
   assert.equal(def.attacks.length, 10); // release 708: Silk Threads, Silk Burst, Ash Gale assert.deepEqual(def.bossAttacks, ['sweepBeam']); for (const id of [...def.attacks, ...def.bossAttacks]) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.ashenMoth); assert.ok(BOSS_POISE.ashenMoth); assert.equal(BEAST_APERTURE.ashenMoth, 7);
   assert.ok(BEAST_HOMES.firelands.tile({ kind: 'ash' })); assert.equal(BEAST_HOMES.firelands.tile({ kind: 'grass' }), false);

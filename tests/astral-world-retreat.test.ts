@@ -8,6 +8,7 @@ import { addReciter } from '../src/travelers.ts';
 import { linkedExit } from '../src/linked-dungeons.ts';
 import { installCompletionExit } from '../src/dungeon-completion.ts';
 import { stepAstralWayglassSearch } from '../src/astral-worm-retreat.ts';
+import { BEAST_ENGAGEMENT } from '../src/world-beasts.ts'; // 2026-11-18
 import { astralRetreatPositionOpen, astralRetreatSegmentOpen, astralRetreatScene, astralRetreatSceneMatches, beginAstralWorldRetreat, createAstralWorldGraph, tickAstralWorldRetreat, astralRetreatSpawn, previewAstralScene } from '../src/astral-world-retreat.ts';
 const clone=x=>JSON.parse(JSON.stringify(x));
 function map(width=32,height=32,{open=true,objects=[]}={}){return {width,height,objects:clone(objects),enemySpawns:[],tiles:Array.from({length:width*height},(_,i)=>({x:i%width,y:Math.floor(i/width),kind:open?'floor':'wall',blocked:!open}))};}
@@ -93,7 +94,7 @@ test('native retreat schema-14 migration preserves exact frontier, carried healt
   const g=game(sealed(map(32,32,{objects:[wayglass('goal',20,20)]}))),{e,s}=start(g);s.futureExtension={opaque:'keep'};tickAstralWorldRetreat(g,e,.1,{budget:9});const saved=clone(g.save),migrated=migrateSave(saved);assert.equal(migrated.version,14);assert.deepEqual(migrated.worldBeasts.astralWorm.active.astralRetreat,s);assert.equal(migrated.worldBeasts.astralWorm.active.tries,1);
 });
 test('real Game shared patience enters only native Wayglass retreat and escape is one-time/no bounty',()=>{
-  const save=freshSave();save.seed='astral-real-game';save.worldBeasts.astralWorm.active={rx:8,ry:8,tries:1,patience:179.999};const g=new Game(save,0);g.rx=8;g.ry=8;g.loadArea('overworld');const e=g.enemies.find(e=>e.worldBeast==='astralWorm');assert(e);Object.assign(e,{x:5,y:5,hp:91,aggro:true});g.map=sealed(map(32,32,{objects:[wayglass('fixture-wayglass',6,5)]}));const currency=g.save.currency,xp=g.save.xp;
+  const save=freshSave();save.seed='astral-real-game';/* 2026-11-18 (Tim): the per-fight `patience` clock (180 s) became the 15-minute engagement window (BEAST_ENGAGEMENT, `engagedAt` on save.playSeconds); once loaded, the fixture's window has just run out (tickWorldBeasts does not advance save.playSeconds). */save.worldBeasts.astralWorm.active={rx:8,ry:8,tries:1};const g=new Game(save,0);g.rx=8;g.ry=8;g.loadArea('overworld');const e=g.enemies.find(e=>e.worldBeast==='astralWorm');assert(e);Object.assign(e,{x:5,y:5,hp:91,aggro:true});save.worldBeasts.astralWorm.active.engagedAt=(Number(save.playSeconds)||0)-BEAST_ENGAGEMENT.seconds;g.map=sealed(map(32,32,{objects:[wayglass('fixture-wayglass',6,5)]}));const currency=g.save.currency,xp=g.save.xp;
   g.tickWorldBeasts(.01);assert(e.retreating);assert(g.save.worldBeasts.astralWorm.active.astralRetreat);assert.equal(e.fleeTo,undefined);assert.equal(e.fleePath,undefined);
   for(let i=0;i<120&&!e.dead;i++)g.tickWorldBeasts(1/60);assert(e.dead);assert.equal(e.hp,91);assert(e.noRewards);assert.equal(e.x,6);assert.equal(g.save.worldBeasts.astralWorm.escaped,1);assert.equal(g.save.worldBeasts.astralWorm.active,null);assert.equal(g.save.currency,currency);assert.equal(g.save.xp,xp);for(let i=0;i<10;i++)g.tickWorldBeasts(.1);assert.equal(g.save.worldBeasts.astralWorm.escaped,1);
 });
