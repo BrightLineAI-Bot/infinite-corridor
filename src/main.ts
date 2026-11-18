@@ -314,7 +314,7 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1001)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     attack?.classList.toggle("art-armed", !!game.weaponArtArmed?.()); // weapon-arts.ts: the weapon's art is armed (a light glint)
@@ -630,7 +630,7 @@ function openChallengeSections(){
 }
 function objectiveList(){
   // Release 159: a cheap key first (section and one-second bucket), so the frame loop does no counting between rebuilds.
-  const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1000)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
+  const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1001)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
   const resolvedCount=Object.values(save.consequences?.dungeons||{}).filter((h)=>h?.resolved).length,
     key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000)].join(":");
   if(objectiveCache.key===key){objectiveCache.quick=quick;return objectiveCache.list}
@@ -691,7 +691,7 @@ const navCompassDial = (() => { const dial = document.createElement("span"); dia
 const navCompassFacing = (() => { const m = document.createElement("span"); m.className = "nav-facing"; m.setAttribute("aria-hidden", "true"); navCompass.prepend(m); return m; })();
 function updateCompassFrame(now) {
   if (compassFrame.map !== game.map) { compassFrame.map = game.map; compassFrame.ready = false; compassFrame.target = NaN; }
-  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1000 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
+  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1001 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
   /* the facing marker (Close View only): the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
   compassFrame.target = !close ? NaN : Number.isFinite(body) ? body : compassFrame.target;
   if (Number.isFinite(compassFrame.target)) compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode)); else compassFrame.ready = false;
@@ -1153,7 +1153,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
 // Release 523: the new traps and the sigil orbs, on the live combat layer.
 function drawNewTraps(s, sx, sy, ctx = screenCtx()) {
   if (game.area !== "dungeon") return;
-  const t = performance.now() / 1000;
+  const t = performance.now() / 1001;
   for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t, ctx);
   for (const q of game.trapSeeds || []) { // the sigil orbs, landing and spinning
     const x = sx(q.x), y = sy(q.y), landed = q.t >= DUNGEON_TRAPS.sigil.flight, r = s * (landed ? .22 : .16);
@@ -1355,7 +1355,7 @@ addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
 const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
-function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1001)}
 const journeyOperation=createExclusiveOperation();
 async function switchJourney(slot){if(slot===getActiveSlot()&&!saveBlocked()){resume();return}/* release 734: a blocked slot reloads, so a recovered or imported journey is what plays */try{const result=await journeyOperation.run(async()=>{await persist();await flushSaves();setActiveSlot(slot)});if(result.busy)return optionMessage("Another journey operation is already finishing.",true);location.reload()}catch(error){optionMessage(`Journey switch failed: ${error?.message||error}`,true)}}
 function journeyInput(label,value="",placeholder=""){const row=document.createElement("label"),caption=document.createElement("strong"),input=document.createElement("input");row.className="setting-row journey-input";caption.textContent=label;input.type="text";input.value=value;input.placeholder=placeholder;input.autocomplete="off";row.append(caption,input);return{row,input}}
@@ -1379,7 +1379,7 @@ function toggleSetting(key){const input=document.createElement("input");input.ty
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
 // The Far Gate (Journal tab, release 139): the Gate drawn as a ring of pieces that light as Listeners fall (guardians until 2026-11-05), with
 // its tier, the Listener's form, chosen boons, any pending boon or ending choice, and the run history.
-function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesToUnlock(f.gate),have=f.toNext||0,seals=piecesNeeded(f.gate),open=!f.quiet&&(!LISTENER_CYCLE.sealsCall||f.pieces>=seals),t=performance.now()/1000;/* 2026-11-05: the ring is the Gate's pieces (Listener kills and broken hordes); the centre, where the Listener is */
+function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesToUnlock(f.gate),have=f.toNext||0,seals=piecesNeeded(f.gate),open=!f.quiet&&(!LISTENER_CYCLE.sealsCall||f.pieces>=seals),t=performance.now()/1001;/* 2026-11-05: the ring is the Gate's pieces (Listener kills and broken hordes); the centre, where the Listener is */
   ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(cx,cy,R*.2,cx,cy,R*1.5);bg.addColorStop(0,open?"#3a2a5a":"#1a1722");bg.addColorStop(1,"#0b0a10");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
   for(let i=0;i<need;i++){const a0=-Math.PI/2+i*2*Math.PI/need+.04,a1=a0+2*Math.PI/need-.08,lit=i<have;ctx.beginPath();ctx.arc(cx,cy,R,a0,a1);ctx.arc(cx,cy,R*.72,a1,a0,true);ctx.closePath();ctx.fillStyle=lit?(open?"#d9b8ff":"#9f7ad9"):"#2a2633";ctx.fill();ctx.strokeStyle=lit?"#f3eaff":"#4a4458";ctx.lineWidth=2;ctx.stroke();
     if(lit){const am=(a0+a1)/2;ctx.fillStyle="#fff8";ctx.beginPath();ctx.arc(cx+Math.cos(am)*R*.86,cy+Math.sin(am)*R*.86,3,0,7);ctx.fill()}}
@@ -1504,7 +1504,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1000,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1001,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1528,7 +1528,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1000,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1000\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1001,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1001\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1540,7 +1540,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1000,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1001,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1575,7 +1575,7 @@ function drawDungeonMap() {
   for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell,lab=fog?labFogAt(fog,tile.x,tile.y):2,visibility=lab===0?"unseen":dungeonTileVisibility(map,tile.x,tile.y);mctx.fillStyle=visibility==="unseen"?(fog?LAB_FOG.map.unseen:"#05080b"):tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(lab===1){mctx.fillStyle=`rgba(0,0,0,${1-LAB_FOG.map.remembered})`;mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell))}if(visibility!=="unseen"&&!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
   const wayfinding=dungeonWayfinding(save,map,game.player,{current:map===game.map,areaId:game.areaId(),previous:game.pentagonPrevious,candidates:map===game.map&&(map.building?.labyrinth||map.building?.pentagon)?currentDungeonDoors(map,game.areaId()):[]});
   renderDungeonWayfinding(wayfinding,map);
-  const colors={warpDais:"#c9a6ff",pentShortcut:"#9fd0ae",annexStair:"#f2e6a8",buildingStair:"#f2e6a8",labKey:"#e8c45a",/* great buildings, labyrinths *//* release 675 */deepStair:"#e8c2ff",emberDoor:"#ffb35a",/* release 677 *//* release 401 (Tim: "the teleportation daises in dungeons should show on the map once you find them") */exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc1000",relayTerminal:"#b28cda",relayNode:"#ff7a7a",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
+  const colors={warpDais:"#c9a6ff",pentShortcut:"#9fd0ae",annexStair:"#f2e6a8",buildingStair:"#f2e6a8",labKey:"#e8c45a",/* great buildings, labyrinths *//* release 675 */deepStair:"#e8c2ff",emberDoor:"#ffb35a",/* release 677 *//* release 401 (Tim: "the teleportation daises in dungeons should show on the map once you find them") */exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc1001",relayTerminal:"#b28cda",relayNode:"#ff7a7a",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
   for(const o of map.objects||[]){if(map.building?.pentagon&&["buildingStair","pentShortcut","exit"].includes(o.kind)&&!wayfinding?.doors.some(q=>q.id===o.id))continue;if(wayfinding&&o.secretDoor&&!wayfinding.doors.some(q=>q.id===o.id))continue;if(!colors[o.kind]||o.state==="hidden"||!dungeonPointDiscovered(map,o)||(fog&&labFogState(map,o.x,o.y)===0))continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"||o.kind==="deepShortcut"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else if(o.kind==="warpDais"){mctx.arc(x,y,Math.max(4,cell*.42),0,7);mctx.fill();mctx.stroke();mctx.beginPath();mctx.fillStyle="#f3eaff";mctx.arc(x,y,Math.max(1.5,cell*.13),0,7)}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke();const route=wayfinding?.doors.find(q=>q.id===o.id),tag=route?`${wayfinding.doors.indexOf(route)+1} · ${route.tag}`:dungeonMapTag(o);if(tag){mctx.font="bold 11px monospace";const tw=mctx.measureText(tag).width,tx=x+cell*.6+tw>w-4?x-cell*.6-tw:x+cell*.6;mctx.lineWidth=3;mctx.strokeStyle="#0b1014";mctx.fillStyle=colors[o.kind];mctx.strokeText(tag,tx,y+4);mctx.fillText(tag,tx,y+4)}}
   if(map===game.map)for(const e of game.enemies||[]){const k=staggerClass(e);if(e.dead||(k!=="boss"&&k!=="revenant"))continue;const x=ox+(e.x+.5)*cell,y=oy+(e.y+.5)*cell,r=Math.max(5,cell*.5);mctx.fillStyle="#ff5ab4";mctx.strokeStyle="#1a0710";mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y);mctx.lineTo(x,y+r);mctx.lineTo(x-r,y);mctx.closePath();mctx.fill();mctx.stroke();mctx.fillStyle="#1a0710";mctx.beginPath();mctx.arc(x,y,Math.max(1.5,r*.28),0,7);mctx.fill()} // release 403 (Tim: "the Psychic Crystal and the Void Walker... any bosses... should be indicated in the dungeon, where they are"): every living boss on this level, wherever it is
   drawDungeonDoorPins(map===game.map?activeDungeonDoors(game):[],ox,oy,cell);
@@ -2526,7 +2526,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
-  const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
+  const short=(n)=>n>=10000?`${(n/1001).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
   const states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`), slotOf = SLOT_OF_ACTION[action];
@@ -2594,7 +2594,7 @@ function spellOrSkillLeft(key) { const c = CASTABLES[key]; return c?.kind === "s
 function setBuffFill(button, f) {
   let fill = button.querySelector(".buff-fill");
   if (f > 0 && !fill) { fill = document.createElement("span"); fill.className = "buff-fill"; fill.setAttribute("aria-hidden", "true"); button.append(fill); }
-  hudSet(button, "class:buffing", f > 0); if (fill) fill.style.width = `${Math.round(f * 1000) / 10}%`;
+  hudSet(button, "class:buffing", f > 0); if (fill) fill.style.width = `${Math.round(f * 1001) / 10}%`;
 }
 let nextSlowUiRefresh = 0;
 const sceneRuntime={active:null,plan:null,shot:0,started:0,revealSkip:false,image:null,wasPaused:false};
@@ -2680,7 +2680,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 788's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1001); // release 788's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
@@ -2688,7 +2688,7 @@ function viewportFrame(dt, now) {
 function frame(now) {
   try {
   probeInterval = now - last;
-  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1001)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
   recordPerf("frame", now - last);
   last = now;
   measured("input",()=>input.update(dt));
@@ -2709,7 +2709,7 @@ function frame(now) {
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
-  const viewportStage = viewportFrame(probeInterval / 1000, now);
+  const viewportStage = viewportFrame(probeInterval / 1001, now);
   warmCompassSignals();
   warmSpillTerrain();
   warmCrossingTerrain();
@@ -2755,7 +2755,7 @@ function frame(now) {
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
     if(save.bleed?.left>0)buffs.push(`BLEED ${Math.ceil(save.bleed.left)}s · STILL ${Math.floor(save.bleed.still||0)}/${BLEED.stillSeconds}`); // the Spinosaurus's bleed (bleed.ts): stand still to stop it
-    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1000)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1001)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1001)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }

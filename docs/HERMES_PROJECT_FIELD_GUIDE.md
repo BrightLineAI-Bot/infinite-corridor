@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — World-boss engagement window and pacing
+## Release 1001 — World-boss engagement window and pacing
 
 Tim (2026-11-18) on the world bosses: "they make really good fights, but they leave too soon... each world boss can persist for maybe 15 minutes once you engage it; if you keep coming back to the same tile to fight it, it persists for 15 minutes and then it retreats", and, having fought the Wild Stegosaurus, "I think he attacks too quickly... give their attacks more wind-up". Their blows still nearly one- or two-shot the Wayfarer. Asked about tries, Tim answered the same day: the 15-minute window is the only limit (no more four tries), the Crimson Tyrant's lava claim still ends a hunt inside it, and the Questing Beast gets the same window in place of its tries.
 

@@ -612,7 +612,7 @@ test("game defensively caps movement input and uses deliberate pacing", () => {
   g.update(1, { state: { x: 5, y: 0 }, consume: () => false }, 1);
   assert.ok(Math.abs(g.player.x - x - 2.4) < 1e-9);
   assert.equal(g.player.y, y);
-  g.player.dodgeUntil = 1000;
+  g.player.dodgeUntil = 1001;
   g.player.dodgeX = 1;
   g.player.dodgeY = 0;
   const before = g.player.x;
@@ -764,7 +764,7 @@ test("jump ignores melee impact while spark ranged attacks launch visible bolts"
         ai: { homeX: g.player.x, homeY: g.player.y, phase: 0 },
       },
     ];
-    g.jumpUntil = 1000;
+    g.jumpUntil = 1001;
     return g;
   };
   const melee = make("ashling"),
@@ -812,7 +812,7 @@ test("enemy strike is persisted as remaining-time state", () => {
   e.strike = 0.2;
   const restored = new Game(
     deserializeSave(serializeSave(g.exportSnapshot(10))),
-    1000,
+    1001,
   );
   assert.equal(restored.enemies[0].strike, 0.2);
 });
@@ -1275,7 +1275,7 @@ test("Attack and Tool are exclusive persistent aim modes", () => {
 test("Attack and Tool buttons execute immediately and keep their selected mode",()=>{
   const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
   g.enemies=[];g.map.tiles.forEach(t=>t.blocked=false);g.save.lastAim={x:1,y:0};
-  g.update(.016,press("attack"),1000);
+  g.update(.016,press("attack"),1001);
   assert.equal(g.save.aimMode,"attack");assert.ok(g.player.meleeStrike);
   g.player.attackReadyAt=0;g.update(.016,press("tool"),2000);
   assert.equal(g.save.aimMode,"tool");assert.equal(g.save.toolMode,true);assert.equal(g.projectiles.length,1);
@@ -1290,13 +1290,13 @@ test("constellation combat presses automatically face the nearest valid enemy",(
   g.save.equipment.primary={id:"primary-cinder-pike",name:"Cinder Pike",slot:"primary",power:1};
   g.enemies=[{id:"far",kind:"ashling",x:14,y:10,hp:30,maxHp:30},{id:"near",kind:"ashling",x:10,y:13,hp:30,maxHp:30}];
   assert.deepEqual(selectRangedAim(g.player,g.enemies,g.map,32,20),{x:0,y:1});
-  g.update(.016,press("tool"),1000);assert.equal(g.projectiles.length,1);assert.deepEqual({x:g.projectiles[0].dx,y:g.projectiles[0].dy},{x:0,y:1});
+  g.update(.016,press("tool"),1001);assert.equal(g.projectiles.length,1);assert.deepEqual({x:g.projectiles[0].dx,y:g.projectiles[0].dy},{x:0,y:1});
   g.enemies[1].y=11;g.player.attackReadyAt=0;g.update(.016,press("attack"),2000);assert.ok(g.enemies[1].hp<30);assert.equal(g.enemies[0].hp,30);
   g.player.attackReadyAt=0;g.enemies[1].dead=true;g.update(.016,press("tool"),3000);const shot=g.projectiles.at(-1);assert.deepEqual({x:shot.dx,y:shot.dy},{x:1,y:0});
 });
 test("Act executes immediately stays selected and supports targeted world taps",()=>{
   const g=new Game(freshSave(),0),press=(action)=>({state:{x:0,y:0},consume:key=>key===action});
-  g.update(.016,press("interact"),1000);
+  g.update(.016,press("interact"),1001);
   assert.equal(g.save.aimMode,"act");assert.equal(g.save.toolMode,false);assert.ok(g.interactionRequested);
   const vela=g.map.objects.find(o=>o.id==="vendor-vela");
   g.interactionRequested=null;const result=g.interactAt(vela.x,vela.y);
@@ -1673,7 +1673,7 @@ test("v8 paused save roundtrip retains wounds choices active visit and effect de
   ];
   g.setPaused(true, 20);
   g.player.attackReadyAt = 220;
-  const snapshot = structuredClone(g.exportSnapshot(1000));
+  const snapshot = structuredClone(g.exportSnapshot(1001));
   const restored = deserializeSave(serializeSave(snapshot));
   snapshot.consequences.dungeons["dungeon:CINDER-VERGE-47:g1"].discovery = { schema: 1, levels: {} };
   const expectedConsequences=structuredClone(snapshot.consequences);for(const history of Object.values(expectedConsequences.dungeons))history.layoutVersion??=0;
@@ -2405,12 +2405,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 1000 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 1001 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "1000"/);assert.match(html,/styles\.css\?v=1000/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1000`/);assert.match(sw,/styles\.css\?v=1000/);assert.match(sw,/proving-ground-labs\.js\?v=1000/);assert.match(sw,/dungeon-framework\.js\?v=1000/);assert.match(sw,/renderer\.js\?v=1000/);
-  assert.match(build,/release='1000'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "1001"/);assert.match(html,/styles\.css\?v=1001/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1001`/);assert.match(sw,/styles\.css\?v=1001/);assert.match(sw,/proving-ground-labs\.js\?v=1001/);assert.match(sw,/dungeon-framework\.js\?v=1001/);assert.match(sw,/renderer\.js\?v=1001/);
+  assert.match(build,/release='1001'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2429,9 +2429,9 @@ test("Shelter Gallery uses six deterministic production shelter families",()=>{
 
 test("Proving Ground resets scratch state and cannot import persistence",()=>{
   const first=createShelterFixture("timber",0),second=createShelterFixture("timber",0);
-  first.save.currency=1000;
+  first.save.currency=1001;
   assert.notEqual(first.save,second.save);
-  assert.notEqual(second.save.currency,1000);
+  assert.notEqual(second.save.currency,1001);
   const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8");
   assert.doesNotMatch(source,/persistence|saveGame|loadSave|main\.ts/);
   assert.match(source,/visibilitychange/);
@@ -2572,7 +2572,7 @@ test("elite journal art is bundled and release build includes the elite module",
 
 test("rare gate predators alone can carry aggro through a dungeon exit",()=>{
   const s=freshSave();let id=null;
-  for(let i=0;i<5000&&!id;i++){const q=`dungeon:${s.seed}:g1:rare:${i}`;if(hashSeed(`${s.seed}:gate-predator:v1:${q}`)%1000<12)id=q;}
+  for(let i=0;i<5000&&!id;i++){const q=`dungeon:${s.seed}:g1:rare:${i}`;if(hashSeed(`${s.seed}:gate-predator:v1:${q}`)%1001<12)id=q;}
   assert.ok(id);const g=new Game(s,0);g.save.session.activeDungeonId=id;g.save.session.dungeonReturn={rx:2,ry:3,x:9,y:10};g.loadArea("dungeon",false);
   const predator=g.enemies.find(e=>e.gatePredator);assert.ok(predator);assert.equal(predator.maxHp,499);assert.equal(predator.damage,40);assert.ok(predator.scale>1.8);predator.aggro=true;
   assert.equal(g.leaveDungeon(),true);assert.equal(g.area,"overworld");const escaped=g.enemies.find(e=>e.gatePredator&&!e.dead);assert.ok(escaped);assert.equal(escaped.aggro,true);assert.match(g.message,/GATE REMAINS OPEN/);
@@ -2621,7 +2621,7 @@ test("Map defaults to a bounded dungeon floor plan and toggles simply to the Cor
 test("provoked enemies pursue to the section gate regardless of their old home leash",()=>{
   const map={tiles:Array.from({length:32*32},(_,i)=>({x:i%32,y:Math.floor(i/32),kind:'ash',blocked:false}))};
   const enemy=createCombatant('ashling',2,16),player={x:29,y:16};
-  alertEnemy(enemy);const before=enemy.x;updateEnemyAI(enemy,player,map,32,1,1000);
+  alertEnemy(enemy);const before=enemy.x;updateEnemyAI(enemy,player,map,32,1,1001);
   assert.equal(enemy.aggro,true);assert.equal(enemy.ai.mode,'chase');assert.ok(enemy.x>before);
 });
 
@@ -3008,7 +3008,7 @@ test("district roof ownership uses the grounded player body center and hides und
 test("walking into water, deep ocean or canyon triggers death consistently without widening the shore kill box",()=>{
   for(const [kind,dt] of [["river",1/60],["dungeonWater",1/60],["ocean",1/60],["canyon",1/20]]){
     const s=freshSave(),g=new Game(s,0);g.map={...g.map,width:8,height:8,exits:null,objects:[],enemySpawns:[],tiles:Array.from({length:64},(_,i)=>{const x=i%8,y=Math.floor(i/8),hazard=x>=4;return{x,y,kind:hazard?kind:"ash",environment:hazard?kind:undefined,blocked:hazard}})};g.area="dungeon";g.player.x=2;g.player.y=2;
-    const input={state:{x:1,y:0},consume:()=>false};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,input,i*dt*1000);
+    const input={state:{x:1,y:0},consume:()=>false};for(let i=0;i<180&&!s.worldFlags.deaths;i++)g.update(dt,input,i*dt*1001);
     assert.equal(s.worldFlags.deaths,1,`${kind} should be enterable and lethal at ${dt}s`);
   }
 });
@@ -3110,7 +3110,7 @@ test("runtime discovery persists per level and Proving Ground exposes safe dunge
   const fixture=createLabFixture({lab:"ordinary-dungeon",scenario:"hollow",seed:"LAB-FOG",variant:3,sizeProfile:"extended",revealMode:"normal",now:0}),before=labReport(fixture);assert.equal(before.sizeProfile,"extended");assert.ok(before.topologyHash);assert.equal(before.discovery.revealedChunks,1);const far=teleportTargets(fixture).find(q=>q.label==="gateWarden");fixture.game.player.x=far.x;fixture.game.player.y=far.y;fixture.game.updateDungeonDiscovery(true);const after=labReport(fixture);assert.ok(after.discovery.revealedChunks>before.discovery.revealedChunks);const copy=migrateSave(JSON.parse(JSON.stringify(fixture.save))),history=copy.consequences.dungeons[fixture.game.areaId()];assert.ok(Object.values(history.discovery.levels)[0].length>=after.discovery.revealedChunks);const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8"),labs=readFileSync(new URL("../src/proving-ground-labs.ts",import.meta.url),"utf8");assert.match(source,/Compare same seed/);assert.match(source,/Full diagnostic topology/);assert.match(source,/worldtap/);assert.match(source,/screenToWorld/);assert.doesNotMatch(labs,/from "\.\/persistence\.ts"/)
 });
 
-test("ordinary dungeon death returns to its real entrance on traversable ground",()=>{const s=freshSave(),id="dungeon:CINDER-VERGE-47:g1:8:9:hollow";s.session.activeDungeonId=id;s.session.dungeonReturn={rx:8,ry:9,x:10,y:10};const g=new Game(s,0);g.loadArea("dungeon",false);assert.equal(g.map.generatorVersion,5);g.player.hp=0;g.update(.016,idle(),1000);assert.equal(g.area,"dungeon");assert.deepEqual([g.player.x,g.player.y],[g.map.entry.x,g.map.entry.y]);assert.equal(footprintOpen(g.map,g.map.width,g.player.x,g.player.y),true);assert.equal(dungeonTileVisibility(g.map,g.player.x,g.player.y),"visible")});
+test("ordinary dungeon death returns to its real entrance on traversable ground",()=>{const s=freshSave(),id="dungeon:CINDER-VERGE-47:g1:8:9:hollow";s.session.activeDungeonId=id;s.session.dungeonReturn={rx:8,ry:9,x:10,y:10};const g=new Game(s,0);g.loadArea("dungeon",false);assert.equal(g.map.generatorVersion,5);g.player.hp=0;g.update(.016,idle(),1001);assert.equal(g.area,"dungeon");assert.deepEqual([g.player.x,g.player.y],[g.map.entry.x,g.map.entry.y]);assert.equal(footprintOpen(g.map,g.map.width,g.player.x,g.player.y),true);assert.equal(dungeonTileVisibility(g.map,g.player.x,g.player.y),"visible")});
 
 test("dungeon renderer and Atlas suppress undiscovered tiles objects and enemies",()=>{const renderer=readFileSync(new URL("../src/renderer.ts",import.meta.url),"utf8"),main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(renderer,/dungeonTileVisibility/);assert.match(renderer,/discoveredInDungeon\(g,e\)/);assert.match(renderer,/discoveredInDungeon\(g,o\)/);assert.match(main,/dungeonTileVisibility\(map,tile\.x,tile\.y\)/);assert.match(main,/dungeonPointDiscovered\(map,o\)/)});
 test("dungeon overlay geometry does not leak silhouettes from unrevealed cards",()=>{const main=readFileSync(new URL("../src/main.ts",import.meta.url),"utf8");assert.match(main,/dungeonPointDiscovered\(game\.map,e\)/);assert.match(main,/dungeonPointDiscovered\(game\.map,o\)/);const effects=readFileSync(new URL("../src/combat-visuals.ts",import.meta.url),"utf8");assert.match(effects,/dungeonPointDiscovered\(game\.map,p\)/);assert.doesNotMatch(activeDungeonEnemies.toString(),/dungeonPointDiscovered/,"undiscovered enemies may still roam into a revealed card")});
@@ -3130,7 +3130,7 @@ test("archiving a temporary hunt removes its runtime area and instance record",(
 test("Aperture rite is retry-safe exactly-once and choreography degrades to still tableaux",()=>{const s=migrateSave(freshSave());assert.equal(apertureRitualState(s).ready,false);s.perception.aperture=12;s.narrative.facts["crossing.complete"]=true;s.viewport.contracts["viewport-direct-vesperwing"].status="completed";assert.equal(apertureRitualState(s).ready,true);assert.equal(requestApertureRitual(s).queued,true);s.scenes.pending.shot=1;const full=scenePlaybackPlan(s,"aperture-rite",{quality:"high"}),low=scenePlaybackPlan(s,"aperture-rite",{quality:"low",reduceMotion:true});assert.equal(full.startShot,1);assert.ok(full.shots.some(q=>q.choreography.some(c=>c.cue!=="hold")));assert.ok(low.shots.every(q=>q.camera==="still"&&q.choreography.every(c=>c.cue==="hold")));assert.equal(commitScene(s,"aperture-rite"),true);const before=s.narrative.journal.length;assert.equal(commitScene(s,"aperture-rite"),false);assert.equal(s.narrative.journal.length,before);assert.equal(s.narrative.facts["scene.apertureRite"],true)});
 test("ordinary v3 families expose materially different deterministic topologies",()=>{for(const family of ["hollow","cistern","kiln"]){const signatures=new Set;for(let i=0;i<20;i++){const m=generateVariedDungeon("S",`dungeon:S:g1:${i}:2:${family}`,family);assert.equal(m.diagnostic.traversalValidation,"pass");assert.ok(m.enemySpawns.every(e=>!m.tiles[e.y*m.width+e.x].blocked));signatures.add(`${m.diagnostic.layoutGrammar}:${m.diagnostic.branchCount}:${m.diagnostic.loopCount}`)}assert.ok(signatures.size>=3)}});
 test("ordinary dungeon ecologies are deterministic populated themed and spawn-safe",()=>{const themes={hollow:new Set(["ashling","veilMoth","coilStalker","rootBrute","hollowMarshal"]),cistern:new Set(["rootBrute","coilStalker","veilMoth","ashling","hollowMarshal"]),kiln:new Set(["ashling","glassMite","sparkWarden","cinderWisp","ashenHound","hollowMarshal"])};for(const family of Object.keys(themes)){const id=`dungeon:DENSITY:g1:7:-3:${family}`,a=generateVariedDungeon("DENSITY",id,family),b=generateVariedDungeon("DENSITY",id,family);assert.deepEqual(a,b);assert.ok(a.enemySpawns.length>=8&&a.enemySpawns.length<=16);assert.ok(a.enemySpawns.every(e=>themes[family].has(e.kind)));for(const e of a.enemySpawns){assert.equal(a.tiles[e.y*a.width+e.x].blocked,false);assert.ok(Math.hypot(e.x-a.entry.x,e.y-a.entry.y)>=4)}}});
-test("infested dungeons remain rare and obey population and active simulation caps",()=>{let infested=0,example=null;for(let i=0;i<1000;i++){const m=generateVariedDungeon("MOB",`dungeon:MOB:g1:${i}:0:kiln`,"kiln");if(m.encounterProfile==="infested"){infested++;example||=m}}assert.ok(infested>=55&&infested<=105,`infested count ${infested}`);assert.ok(example.enemySpawns.length<=16);const actors=example.enemySpawns.map(e=>({...createCombatant(e.kind,e.x,e.y,e.boss,e.traits),id:e.id,encounterGroup:e.encounterGroup,aggro:true})),active=activeDungeonEnemies(actors,{x:14,y:14},example);assert.ok(active.length<=DUNGEON_ACTIVE_CAP.infested)});
+test("infested dungeons remain rare and obey population and active simulation caps",()=>{let infested=0,example=null;for(let i=0;i<1001;i++){const m=generateVariedDungeon("MOB",`dungeon:MOB:g1:${i}:0:kiln`,"kiln");if(m.encounterProfile==="infested"){infested++;example||=m}}assert.ok(infested>=55&&infested<=105,`infested count ${infested}`);assert.ok(example.enemySpawns.length<=16);const actors=example.enemySpawns.map(e=>({...createCombatant(e.kind,e.x,e.y,e.boss,e.traits),id:e.id,encounterGroup:e.encounterGroup,aggro:true})),active=activeDungeonEnemies(actors,{x:14,y:14},example);assert.ok(active.length<=DUNGEON_ACTIVE_CAP.infested)});
 test("deep dungeon levels carry bounded ambient populations and reachable pre-shortcut objectives",()=>{for(const archetype of DEEP_ARCHETYPE_IDS){const id=deepV2Id("DEEP-POP",1,4,-5,archetype),maps=["descent","fortress"].includes(archetype)?deepV2Levels(id).map(level=>generateDeepV2Dungeon("DEEP-POP",id,{levelId:level.id})):[generateDeepV2Dungeon("DEEP-POP",id)];for(const map of maps){assert.ok(map.enemySpawns.length>=12&&map.enemySpawns.length<=24,`${archetype}:${map.levelId} population ${map.enemySpawns.length}`);assert.equal(map.activeEnemyCap,map.encounterProfile==="infested"?9:7);const reach=reachableDungeonCells(map,map.entry);for(const objective of map.objectives||[]){const target=objective.type==="guardian"?map.enemySpawns.find(e=>e.objectiveId===objective.id):map.objects.find(o=>o.objectiveId===objective.id);assert.ok(reach.has(`${target.x},${target.y}`),`${archetype}:${map.levelId}:${objective.id}`)}}}});
 test("dungeon combat profiles wake on all damage paths and strengthen final revenants",()=>{const s=freshSave(),id=deepV2Id(s.seed,s.worldGeneration,3,-4,"threefold");s.session.activeDungeonId=id;s.session.dungeonReturn={rx:3,ry:-4,x:8,y:8};const g=new Game(s,0);g.loadArea("dungeon",false);const revenant=g.enemies.find(e=>e.kind==="gateRevenant"&&e.dungeonRole==="finalBoss");assert.ok(revenant.maxHp>=532);assert.ok(revenant.damage>=26);const target=g.enemies.find(e=>e.encounterSpawn);target.aggro=false;alertEnemy(target);assert.equal(target.aggro,true);const fx={id:"test",kind:"spell",x:target.x,y:target.y,life:1,radius:1,pulse:.1,untilPulse:0,damage:1,hits:{}};updateEffects([fx],[target],.2);assert.equal(target.aggro,true)});
 test("last death captures pre-respawn dungeon identity and remains independent",()=>{const s=freshSave(),g=new Game(s,0);s.manualWaypoint={kind:"section",area:"overworld",rx:3,ry:4,label:"Mine"};s.session.dungeonReturn={rx:0,ry:0,x:5,y:5};s.session.activeDungeonId=dungeonId(s.seed,s.worldGeneration);g.loadArea("dungeon");g.player.x=11.25;g.player.y=8.75;const record=g.captureLastDeath("trap");assert.equal(record.areaKind,"dungeon");assert.equal(record.x,11.25);assert.equal(record.dungeonId,s.session.activeDungeonId);assert.equal(s.manualWaypoint.rx,3);g.area="overworld";g.rx=2;g.ry=-3;g.player.x=6;g.player.y=7;const second=g.captureLastDeath("water");assert.equal(second.sequence,2);assert.equal(second.rx,2);assert.equal(s.activeCheckpoint.rx,0)});
