@@ -118,7 +118,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
-import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
+import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
@@ -5920,7 +5920,7 @@ export class Game {
     const list = seedHuntCandidates(this.save.seed, id, P.rx, P.ry, this.save.explored, busy).filter((c) => !this.save.atlas?.[`${c.rx},${c.ry}`]).slice(0, H.loads);
     const target = list.find((c) => seedHuntGround(walkerCrossingMap(this.save, c.rx, c.ry)));
     if (!target) return { hunt: null, fresh: true, text: M.none };
-    const kind = seedHuntKind(this.save.seed, id, SEED_FINDS.overworld.weights), S = SEEDS[kind], dx = target.rx - P.rx, dy = target.ry - P.ry;
+    const kind = seedHuntKind(this.save.seed, id, seedHuntWeights(SEED_FINDS.overworld.weights, SEEDS)), S = SEEDS[kind], dx = target.rx - P.rx, dy = target.ry - P.ry;
     const hunt = (hunts[id] = { v: 1, tower: id, from: { rx: P.rx, ry: P.ry }, rx: target.rx, ry: target.ry, kind, state: "active" });
     const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
     journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");

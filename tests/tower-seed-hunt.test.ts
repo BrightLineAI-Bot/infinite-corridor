@@ -169,3 +169,14 @@ test('several towers, several hunts: each its own section, marked on the Atlas a
   if (hh.where === 'crossing') assert.deepEqual([g2.x, g2.y], [hh.door.x, hh.door.y]); else assert.deepEqual([g2.x, g2.y], [hh.x, hh.y]);
   assert.equal(seedHuntGuidance({ ...hh, state: 'found' }), null);
 });
+
+// Tim (2026-11-18): the Abyssal seed joins the hunt as its rarest kind, but only once the kind exists (the Bizarro world's branch).
+test('the Abyssal seed is the hunt\'s rarest kind, and inert until it exists', async () => {
+  const { seedHuntWeights, TALL_TOWERS } = await import('../src/tall-towers.ts');
+  const W = SEED_FINDS.overworld.weights;
+  assert.deepEqual(seedHuntWeights(W, {}), [...W], 'without the kind the weights are the travel seeds\' own');
+  const withAbyssal = seedHuntWeights(W, { abyssal: { name: 'Abyssal Seed' } }), ab = withAbyssal.find(([k]) => k === 'abyssal');
+  assert.ok(ab, 'with the kind defined it joins'); assert.ok(W.every(([, w]) => w > ab[1]), 'and it is the rarest');
+  assert.deepEqual(seedHuntWeights([...W, ['abyssal', 5]], { abyssal: {} }).filter(([k]) => k === 'abyssal').length, 1, 'never added twice');
+  assert.ok(TALL_TOWERS.seedHunt.rare.length >= 1);
+});

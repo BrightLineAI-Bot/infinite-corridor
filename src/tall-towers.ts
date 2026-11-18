@@ -70,6 +70,9 @@ export const TALL_TOWERS = f({
     crossingSteps: f([3, 18]), // walking steps from a crossing's entry (on its own level) a seed inside lies within
     groundFrom: 3, // tiles kept between an open-ground seed and the ground the section's reach is measured from
     marker: "#ffd36a", // its pin on the Atlas (main.ts drawAtlasPins), whatever the seed
+    // Tim (2026-11-18): the Abyssal seed (the Bizarro world's) joins the hunt as its rarest kind. These are added to the travel
+    // seeds' overworld weights only for a hunt, and only once the kind exists (skylands.ts SEEDS[kind]); until then they are inert.
+    rare: f([f(["abyssal", 1])]),
     messages: f({
       glimpse: "From the lip you glimpse a glint far off to the {dir}, {n} sections away: {a} {seed}, lying somewhere in the land at {rx},{ry} that you have not yet walked. You mark it on your Atlas.",
       lore: "The well draws the distance down, and sometimes what the distance was keeping.",
@@ -362,6 +365,7 @@ export function huntDraw(key, weights) {
   const list = (weights || []).filter(([, w]) => w > 0), total = list.reduce((n, [, w]) => n + w, 0); if (!total) return null;
   let r = hashSeed(key) % total; for (const [k, w] of list) { if (r < w) return k; r -= w; } return list[0][0];
 }
+export const seedHuntWeights = (base, seeds) => [...(base || []), ...TALL_TOWERS.seedHunt.rare.filter(([k]) => seeds?.[k] && !(base || []).some(([b]) => b === k))];
 export const seedHuntKind = (seed, id, weights) => huntDraw(`${seed}:seed-hunt-kind:v${TALL_TOWERS.seedHunt.version}:${id}`, weights);
 // Which kind of spot the hunt's seed lies in, among those the section offers ({ ground, tree, crossing }: true where offered).
 export const seedHuntWhere = (seed, id, offered) => huntDraw(`${seed}:seed-hunt-where:v${TALL_TOWERS.seedHunt.version}:${id}`, TALL_TOWERS.seedHunt.where.filter(([k]) => offered[k]));
