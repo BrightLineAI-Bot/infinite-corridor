@@ -41,7 +41,7 @@ import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
-import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, TRICERATOPS_DRILL_POSE } from "./beast-mounts.ts";
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
@@ -3078,7 +3078,9 @@ export function render(ctx, g, w, h, now) {
   const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
   const mountRide = g.mountRide?.(), mountPose = triceratopsHornPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
   const drillPose = triceratopsDrillPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), mountBounds = drillPose ? TRICERATOPS_DRILL_POSE : TRICERATOPS_HORN_POSE;
-  const mountComposite = mountRide?.beast === "triceratops" ? { halfWidth: mountBounds.halfWidth, height: mountBounds.height + Math.max(0, lift / s), below: mountBounds.below, aim: drillPose || mountPose, viewFacing: null, viewAim: null } : null;
+  // Reserve the whole rotating portrait, including its support clearance, in the
+  // atlas. The fixed camera envelope also prevents zoom pulses during a drill.
+  const mountComposite = mountRide?.beast === "triceratops" ? { halfWidth: drillPose ? TRICERATOPS_COMPOSITE.halfWidth : mountBounds.halfWidth, height: (drillPose ? TRICERATOPS_COMPOSITE.drillHeight : mountBounds.height) + Math.max(0, lift / s), below: 0, frameHalfWidth: TRICERATOPS_COMPOSITE.halfWidth, frameHeight: mountRide.variant === "silly" ? TRICERATOPS_COMPOSITE.frameHeight : TRICERATOPS_COMPOSITE.normalHeight, aim: drillPose || mountPose, viewFacing: null, viewAim: null } : null;
   const playerDraw = {
     mountComposite,
     nativeLift: playerFormPresentation(g)?.lift || 0,
@@ -3130,7 +3132,8 @@ export function render(ctx, g, w, h, now) {
       // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
       if (drillPose) {
         const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
-        ctx.save(); ctx.translate(pivotX, pivotY); ctx.rotate(Math.atan2(aim.y, aim.x) + drillPose.bank); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
+        const frame = triceratopsDrillFrame(drillPose, aim, lift / s);
+        ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
       }
       const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.

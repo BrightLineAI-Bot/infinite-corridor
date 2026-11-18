@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
 - Release 986: The Triceratops capture fixtures start with Enclosure selected so the Build button places the required pen.
 - Release 985: The Triceratops Proving Ground lab exercises enclosure capture, persistent riding, injury and Beast Hotel recovery.
