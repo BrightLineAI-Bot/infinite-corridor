@@ -108,7 +108,7 @@ import{ELITE_KINDS,eliteVariant,ensureEliteState,eliteStateInPlace,recordPortalP
 import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.ts';
 import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.ts';
 import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.ts';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt}from'./dungeon-framework.ts';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt,DUNGEON_CHARTING,chartableGround,chartProgress,chartRecord,chartOwed}from'./dungeon-framework.ts';
 import{ensureSceneState,queueScene}from'./scenes.ts';
 import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.ts";
 import { varyDungeonLayout } from "./dungeon-variation.ts";
@@ -137,7 +137,7 @@ import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonI
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
 import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
-import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
+import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
@@ -353,6 +353,29 @@ export function pinDungeonLayout(save, id) {
   return history;
 }
 // Release 677 (the-deep.ts): every floor of the Deep has an Ember Door where you arrive; only floor 1 keeps its free way out.
+// A lair of the Deep (the-deep.ts DEEP_SPECIALS, DEEP_FLOOR_GEN 3): its beast is the floor's guardian, in the guardian's place. The
+// Poison Crypt's theme has already made the guardian its Mire Heart (underlands.ts mireCrypt); the floor's history takes the Crypt's
+// state (wiped with the floor, game.ts resetDeepFloor), so the seeplings and the lair work as in any Poison Crypt.
+// DUNGEON_CHARTING: the body the walkable ground is worked out for (the Wayfarer on foot: a jump of one step up, any drop down), and the
+// ways onto a floor it starts from besides its entry.
+const CHART_WALKER = Object.freeze({ isPlayer: true, jumping: true });
+const CHART_WAYS = new Set(["exit", "emberDoor", "buildingStair", "labGate", "pentShortcut", "warpDais", "deepShortcut"]);
+function dressDeepLair(map, row, history) {
+  const guardian = (map.enemySpawns || []).find((e) => e.dungeonRole === "gateWarden"); if (!guardian) return map;
+  if (row.heart) { if (!guardian.mireHeart) return map; if (history && !(history.mire && typeof history.mire === "object")) history.mire ={ version: MIRE_CRYPT.version, merged: 0, found: false }; }
+  else { Object.assign(guardian, { kind: row.beast }); delete guardian.packGuardian; }
+  // The Crystal's water: in the odd river floor whose channel found no open ground (about 1 in 200), the walls
+  // nearest its place that border the floor seep into a pool (`pool` of them; wall to water, so no way is closed or opened on foot).
+  if (row.pool && !map.tiles.some((t) => t.kind === "dungeonWater")) {
+    const w = map.width, h = map.height || Math.floor(map.tiles.length / w), floorAt = (x, y) => { const t = map.tiles[y * w + x]; return !!t && !t.blocked; };
+    const walls = map.tiles.filter((t) => t.blocked && t.x > 0 && t.y > 0 && t.x < w - 1 && t.y < h - 1 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => floorAt(t.x + dx, t.y + dy)));
+    walls.sort((a, b) => Math.hypot(a.x - guardian.x, a.y - guardian.y) - Math.hypot(b.x - guardian.x, b.y - guardian.y) || a.y - b.y || a.x - b.x);
+    for (const t of walls.slice(0, row.pool)) map.tiles[t.y * w + t.x] = { ...t, kind: "dungeonWater", environment: "river", blocked: false, landscape: "underlands" };
+  }
+  guardian.deepLair = row.id; map.deepLair = { id: row.id, beast: row.beast, x: guardian.x, y: guardian.y };
+  map.name = `The Deep · Floor ${map.deepFloor} · ${row.name}`;
+  return map;
+}
 function dressDeepFloor(map, floor) {
   const w = map.width || Math.round(Math.sqrt(map.tiles.length)), exit = map.objects.find((o) => o.kind === "exit") || map.entry; if (!exit) return map;
   if (floor > 1) map.objects = map.objects.filter((o) => o.kind !== "exit");
@@ -568,7 +591,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
     history.gatePredatorSpawnThreshold = 0;
   }
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
-  else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard', ...(deepFloorGen(history) >= 2 ? { warpAny: true } : {}) }); map.deepGen = deepFloorGen(history); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
+  else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor), lair = floorSpecial(save.seed, id, floor, deepFloorGen(history)); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: lair?.theme || plan.theme || 'none', sizeProfile: 'standard', ...(deepFloorGen(history) >= 2 ? { warpAny: true } : {}) }); map.deepGen = deepFloorGen(history); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); if (lair) dressDeepLair(map, lair, history); } // release 677: a floor of the Deep; DEEP_FLOOR_GEN 3: a lair (the-deep.ts DEEP_SPECIALS)
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -985,10 +1008,10 @@ export function ordinaryThreat(ring) {
 }
 // Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
 // elites included, so they stay proportionally above the trash around them.
-export function wayfarerTuned(e) { return !!(e.worldBeast || e.stegoRoom || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.deepLair || e.stegoRoom || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
-  if (e.pentFinaleBeast) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
+  if (e.pentFinaleBeast || e.deepLair) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // a lair of the Deep too (tuneDeepLair); the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
   const beast = !!(e.worldBeast || e.stegoRoom || spinoTuned(e) || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
@@ -3261,6 +3284,7 @@ export class Game {
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
   snapshotArea(leaving = true) {
     if (!this.map) return;
+    if (leaving && this.area === "dungeon") this.tickCharting(); // DUNGEON_CHARTING: Aperture gained on the frame you leave still counts for the floor
     if (this.map.beastHotel) for (const e of this.enemies) if (e.beastHotelOpponent && !e.dead) { const r = mountById(this.save, e.beastHotelOpponent)?.recovery; if (r?.opponentId === e.id) r.opponentState = { ...e, ai: { ...ensureAI(e) } }; }
     if (leaving) this.endGloomDarks(); // the Gloomvast's Dark never follows you out, nor waits for you to come back (a save made in place keeps it: exportSnapshot)
     for(const e of this.enemies)this.syncAstralClone(e);
@@ -3291,22 +3315,53 @@ export class Game {
   // A level's spawns are kept for the session per dungeon, level and the history's pins (DUNGEON_LEVEL_KEEP entries);
   // the progress records that change in play (discovery, combat clear, visits, deep progress) are not part of the key.
   levelSpawns(history, levelId) {
-    const id = this.areaId(), { discovery, combatClear, visits, visitOpen, abandoned, deep, labFog, ...pins } = history || {}, key = JSON.stringify([this.save.seed, id, levelId, pins]);
+    const id = this.areaId(), { discovery, combatClear, visits, visitOpen, abandoned, deep, labFog, charted, ...pins } = history || {}, key = JSON.stringify([this.save.seed, id, levelId, pins]);
     const memo = this._levelSpawns ||= new Map(), kept = memo.get(key); if (kept) return kept;
     const map = generatePinnedDungeon(this.save, id, { levelId }), spawns = { enemySpawns: map.enemySpawns || [] };
     // Kept under the history as it is after this generation, so a history whose pins (interior, deep placement, canyon
     // generator...) a first generation has just laid, or that was reset, never finds another's spawns.
-    const { discovery: _d, combatClear: _c, visits: _v, visitOpen: _o, abandoned: _a, deep: _p, labFog: _f, ...after } = history || {}, key2 = JSON.stringify([this.save.seed, id, levelId, after]);
+    const { discovery: _d, combatClear: _c, visits: _v, visitOpen: _o, abandoned: _a, deep: _p, labFog: _f, charted: _h, ...after } = history || {}, key2 = JSON.stringify([this.save.seed, id, levelId, after]);
     if (memo.size >= DUNGEON_LEVEL_KEEP) memo.delete(memo.keys().next().value);
     memo.set(key2, spawns); return spawns;
   }
   // Release 419: lands the Wayfarer soundly on the dungeon floor after any arrival (settleDungeonArrival).
   settleArrival(guardians=true){if(this.area!=="dungeon"||!this.map?.tiles?.length)return false;const to=settleDungeonArrival(this.map,mapWidth(this.map,"dungeon"),this.player,this.enemies,guardians);if(to){this.player.x=to.x;this.player.y=to.y}this.updateDungeonDiscovery(true);return!!to}
+  // DUNGEON_CHARTING (dungeon-framework.ts): this floor's charting, or null where it has no fog to chart. The walkable ground is worked
+  // out once per map (from the ways in and where the Wayfarer stands); the share charted is read from the floor's own fog record.
+  chartFloor(history = this.save.consequences?.dungeons?.[this.areaId()]) {
+    const map = this.map; if (this.area !== "dungeon" || !map?.tiles?.length || !history) return null;
+    const lab = labFogOn(map); if (!lab && !map.dungeonContract?.discoveryEnabled) return null;
+    const w = mapWidth(map, "dungeon"), p = this.player, at = { x: Math.floor(p.x + .5), y: Math.floor(p.y + .75) };
+    const ground = chartableGround(map, (t) => !!t && (!t.blocked || t.kind === "sealedGate") && !LETHAL_KINDS.has(t.kind) && !t.pit, (fx, fy, tx, ty) => canStep(CHART_WALKER, map, w, fx, fy, tx, ty), [map.entry, at, ...(map.objects || []).filter((o) => CHART_WAYS.has(o.kind))]);
+    const level = lab ? "root" : String(map.levelStableId || map.levelId || "root");
+    const st = lab ? chartProgress(ground, { seen: labFogOf(map)?.seen || null }) : chartProgress(ground, { revealed: history.discovery?.levels?.[level] || [] });
+    return (this._chartState = { map, level, ...st });
+  }
+  // Each frame on a dungeon floor: the Aperture gained since the last frame is earned on this floor, and once the floor is charted the
+  // bonus owed is paid (once; topped up if more is earned there later). A new map, or the floor's history reset (the Deep), starts over.
+  tickCharting() {
+    if (this.area !== "dungeon" || !this.map) { this._chartTally = null; return null; }
+    const map = this.map, id = this.areaId(), history = this.save.consequences?.dungeons?.[id], ap = Number(this.save.perception?.aperture) || 0;
+    let T = this._chartTally;
+    if (!T || T.map !== map || T.history !== history) { T = this._chartTally = { map, history, v: ap }; this._chartDirty = true; }
+    if (!history) return null;
+    if (ap > T.v) { const st = this.chartFloor(history); if (st?.total) { chartRecord(history, st.level).earned += ap - T.v; this._chartDirty = true; } }
+    T.v = ap;
+    if (!this._chartDirty) return this._chartState?.map === map ? this._chartState : null;
+    this._chartDirty = false; const st = this.chartFloor(history); if (!st?.total) return null;
+    const rec = chartRecord(history, st.level), first = st.done && !rec.done; if (st.done) rec.done = true;
+    const owed = chartOwed(rec), C = DUNGEON_CHARTING;
+    if (owed > 0) { gainAperture(this.save, owed, `charted:${id}:${st.level}`, `${C.message}: the floor's Aperture opens wider.`, false); rec.paid += owed; T.v = Number(this.save.perception?.aperture) || 0; }
+    if (first) this.message = owed > 0 ? `${C.message}: +${owed} Aperture.` : `${C.message}.`; else if (owed > 0) this.message = `${C.topUp}: +${owed} Aperture.`;
+    return st;
+  }
+  // The dungeon map's line for it: "Charted 87%", or null where the floor has nothing to chart.
+  chartLine() { const st = this.area === "dungeon" && this._chartState?.map === this.map ? this._chartState : this.chartFloor(); return st?.total ? `Charted ${st.pct}%` : null; }
   updateDungeonDiscovery(force=false){
     if(this.area!=="dungeon"||!this.map?.dungeonContract?.discoveryEnabled)return false;
     const chunk=dungeonChunkId(this.map,this.player.x,this.player.y);if(!force&&chunk===this._dungeonChunkId)return false;
     this._dungeonChunkId=chunk;const history=dungeonHistory(this.save,this.areaId()),prior=discoveryForLevel(history,this.map),next=revealDungeonAt(this.map,prior,this.player.x,this.player.y,0),changed=next.length!==prior.length||next.some((q,i)=>q!==prior[i]);
-    if(changed)history.discovery.levels[this.map.levelStableId||this.map.levelId||"root"]=next;
+    if(changed){history.discovery.levels[this.map.levelStableId||this.map.levelId||"root"]=next;this._chartDirty=true}
     applyDungeonDiscovery(this.map,next,this.map._dungeonRevealMode||"normal");return changed;
   }
   loadArea(area, capture = true) {
@@ -6907,7 +6962,7 @@ export class Game {
       walkerPatrol: (e, s) => game.walkWalkerRoute(e, s, dt),
       walkerRetreat: (e, s) => game.walkWalkerRoute(e, s, dt, true),
       consumeVoidTerrain(e, center, radius) {
-        if (map.pentArena) return { ok: false, reason: "arena", changed: 0, visualChanged: false, cells: [], protected: [], rejected: [] }; // the Stillworks' stone is never scarred: the Supernova burns, the floor stays
+        if (map.pentArena || map.deepLair) return { ok: false, reason: "arena", changed: 0, visualChanged: false, cells: [], protected: [], rejected: [] }; // the Stillworks' stone is never scarred: the Supernova burns, the floor stays (and a lair of the Deep: one record named every floor of a shaft)
         // Match the native Supernova's continuous world-space disk, not rounded tile centers.
         const result = consumeVoidTerrain(game.save, map, game.areaStateId(), { x: center.x + .5, y: center.y + .62, visualLift: liftAt(map, width, center.x, center.y) }, radius, [p, ...game.enemies.filter(q => !q.dead)]);
         if (result.changed) { game._walkerLandingGraph = null; game._walkerRoutes = new WeakMap(); map.wallGlints = (map.wallGlints || []).filter(q => map.tiles[q.y * width + q.x]?.blocked); }
@@ -7689,7 +7744,7 @@ export class Game {
       if (e.realmThreat) { c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * (Number(e.realmThreat.hp) || 1))); c.damage = Math.max(1, Math.round(c.damage * (Number(e.realmThreat.damage) || 1))); } // SEED_REALMS.threat
       if (e.skirmishId) Object.assign(c, skirmishFields(e));
       if (e.questingBeast) tuneQuestingBeast(c, this.save, characterStats(this.save));
-      if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save));
+      if (e.worldBeast) tuneWorldBeast(c, this.save, e.worldBeast, characterStats(this.save)); if (e.deepLair) Object.assign(c, { deepLair: e.deepLair, deepScaled: true }); // a lair of the Deep (the-deep.ts DEEP_SPECIALS): tuned below (tuneDeepLair), never by the floor
       if (e.mothChrysalis) { c.mothChrysalis = true; c.maxHp = c.hp = Math.max(40, Math.round(liveBeastReference(this.save, characterStats(this.save)).perHit * CHRYSALIS.hits)); c.damage = 0; c.aggro = true; } // release 708
       if (e.skyEcho && WORLD_BEASTS[e.skyEcho]) { tuneWorldBeast(c, this.save, e.skyEcho, characterStats(this.save)); delete c.worldBeast; const n = Math.max(1, Math.min(3, e.skyEchoes || 1)) - 1, S = SKY_MODES.echoShare; c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * S.hp[n])); c.damage = Math.max(1, Math.round(c.damage * S.damage[n])); c.skyEcho = e.skyEcho; } // release 589: an echo, not the beast
       if (e.dungeonRole === "skyland") Object.assign(c, { skyRole: skyRoleOf(e), skyEchoes: Math.max(1, Math.min(3, e.skyEchoes || 1)) }); // release 688: set from the Wayfarer's level in scaleSkyFoe
@@ -7758,8 +7813,8 @@ export class Game {
         if (c.packKind) { c.packAttacks = wardenAttacks(this.save.seed, e.fracKey || c.id); c.packBossAttacks = []; }
         c.affixes = rollAffixes(`${this.save.seed}:fracture-warden:${c.id}`, W.affixes);
       }
-      if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
-      if (!e.fracWardenAdd && !e.fracReinforcement && !e.kitAddOf) applyBossKit(c, this.save.seed, (k) => !!MONSTER_PACK[k]); // release 668: guardians and elites fight like boss moments
+      if (GUARDIAN_ROLES.includes(c.dungeonRole) && !c.affixes && !c.deepLair && !c.farArrayBoss && !String(this.save.session?.activeDungeonId || '').startsWith('far-array:')) c.affixes = rollAffixes(`${this.save.seed}:guardian:${c.id}`, 1); // release 657: every crossing guardian carries an affix
+      if (!e.fracWardenAdd && !e.fracReinforcement && !e.kitAddOf && !e.deepLair) applyBossKit(c, this.save.seed, (k) => !!MONSTER_PACK[k]); // release 668: guardians and elites fight like boss moments
       if (area === "dungeon" && this.map?.deepFloor && !c.deepScaled) { const f = this.map.deepFloor, k = floorScale(f); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.deepScaled = true; // release 677: harder each floor
         if (GUARDIAN_ROLES.includes(c.dungeonRole)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, guardianAffixes(f)); else if (!c.affixes && !c.ambient && (hashSeed(`${this.save.seed}:deep-affix:${f}:${c.id}`) % 1000) / 1000 < floorAffixShare(f)) c.affixes = rollAffixes(`${this.save.seed}:deep:${f}:${c.id}`, 1); }
       if (area === "dungeon" && this.map?.annexFloor?.floor > 1 && !c.annexScaled) { const k = annexScale(this.map.annexFloor.floor); c.maxHp = c.hp = Math.max(1, Math.round(c.maxHp * k.hp)); c.damage = Math.max(1, Math.round(c.damage * k.damage)); if (c.baseDamage) c.baseDamage = c.damage; c.annexScaled = true; } // release 675: each annex floor is harder
@@ -7768,6 +7823,7 @@ export class Game {
       if (e.adventureCreature) { c.adventureCreature = e.adventureCreature; this.scaleToRegion(c); } // Pentagon v11: an adventure creature (adventure-creatures.ts) takes its region's threat
       if (e.stegoRoom) tuneStegoRoom(c, this.save, characterStats(this.save)); // the Wild Stegosaurus in a big room (wild-stego.ts)
       if (e.spinoRoom) tuneSpinoBeast(c, this.save, characterStats(this.save), { spinoRoom: true }); // the Spinosaurus in a big room (spino-rex.ts)
+      if (e.deepLair) this.tuneDeepLair(c, e.deepLair); // a lair of the Deep: the beast as its kin, by floor (the-deep.ts DEEP_SPECIALS.lair)
       if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
       if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
       else if (e.kind === GLOOM_FINALE.kind) this.gloomInit(c); // a Gloomvast an arena tuned itself (the Stillworks' roster): its vitals kept, its kit and Dark made ready
@@ -10261,7 +10317,7 @@ export class Game {
       return;
     }
     if (!labFogOn(this.map)) return; const h = dungeonHistory(this.save, this.areaId()), t = labFogTile(this.player);
-    this.map.lightRadius = lightRadius(this.save, LAB_FOG.radius); /* 2026-11-11: Lamplighter's Light */ labFogLook(this.map, t.x, t.y, h.labFog); labFogStore(this.map, h);
+    this.map.lightRadius = lightRadius(this.save, LAB_FOG.radius); /* 2026-11-11: Lamplighter's Light */ labFogLook(this.map, t.x, t.y, h.labFog); if (labFogStore(this.map, h)) this._chartDirty = true; /* DUNGEON_CHARTING: the fog grew */
   }
   // HOLE_DROPS (labyrinths.ts): where the Wayfarer came onto this building floor (`save.session.floorEntry`), noted on the first
   // frame on a floor, however they came: a door, a ladder, a hatch, a safe drop or a reload.
@@ -10436,14 +10492,14 @@ export class Game {
     pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0; h.deepGen = DEEP_FLOOR_GEN.version; /* the-deep.ts: this floor's generation */
     this.loadArea("dungeon"); this.settleArrival();
     this.defeatNotice = { title: `THE DEEP · FLOOR ${floor}`, detail: floor > 1 ? "no way back up but a Return Ember · fell the guardian to go deeper" : "fell the guardian to go deeper · burn a Return Ember to come back up", kind: "danger" };
-    this.message = `You climb down into the Deep${floor > 1 ? ` and on to floor ${floor}` : ""}.`; this.sync(); return { ok: true, message: this.message };
+    this.message = `You climb down into the Deep${floor > 1 ? ` and on to floor ${floor}` : ""}.`; this.announceDeepLair(); this.sync(); return { ok: true, message: this.message };
   }
   descendDeep(o) {
     const id = this.areaId(), rec = deepShaft(this.save, id); rec.floor = (this.map.deepFloor || rec.floor) + 1; this.resetDeepFloor(id);
     pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0; h.deepGen = DEEP_FLOOR_GEN.version; /* the-deep.ts: this floor's generation */
     this.loadArea("dungeon", false); this.settleArrival(); this.projectiles = [];
     this.defeatNotice = { title: `THE DEEP · FLOOR ${rec.floor}`, detail: rec.floor % THE_DEEP.checkpointEvery === 0 ? "a checkpoint: you may start here next time" : `deepest ${Math.max(rec.best, rec.floor - 1)} · ${this.save.theDeep.embers} Return Ember${this.save.theDeep.embers === 1 ? "" : "s"}`, kind: "danger" };
-    this.message = `You go down the Deep Stair to floor ${rec.floor}.`; this.sync(); return { ok: true, message: this.message };
+    this.message = `You go down the Deep Stair to floor ${rec.floor}.`; this.announceDeepLair(); this.sync(); return { ok: true, message: this.message };
   }
   // A floor of the Deep cleared: the record, an ember, the stair. Returns whether this floor was cleared for the first time.
   deepFloorCleared() {
@@ -10453,6 +10509,21 @@ export class Game {
     this.placeDeepStair(dungeonHistory(this.save, id));
     this.defeatNotice = { title: `FLOOR ${f} CLEARED`, detail: `a Return Ember (${D.embers} held) · the Deep Stair opens${first ? " · a new deepest floor" : ""}`, kind: "discovery" };
     return first;
+  }
+  // The floor's banner and word name its lair, when it is one (the-deep.ts DEEP_SPECIALS).
+  announceDeepLair() {
+    const row = this.area === "dungeon" && this.map?.deepLair && deepSpecialRow(this.map.deepLair.id); if (!row) return null;
+    this.defeatNotice = { ...(this.defeatNotice || {}), detail: `${row.name}'s lair · fell it to go deeper`, kind: "danger" }; this.message = row.lore; return row;
+  }
+  // A lair beast of the Deep (the-deep.ts DEEP_SPECIALS): its world beast's vitals measured against the Wayfarer, with the region's
+  // beast ramp where it is higher (pentagon-arena.ts pentagonArenaVitals), times the floor's lair factors (lairScale); the Mire Heart at
+  // its Crypt share, swollen by each seepling that reached it. Its own moves and body; no hunt, affix or boss kit, and the floor's own
+  // +hp/+damage is not applied (createEnemyFromSpawn marks it deepScaled).
+  tuneDeepLair(c, id) {
+    const row = deepSpecialRow(id), v = row && WORLD_BEASTS[row.beast] && pentagonArenaVitals({ beast: row.beast, hp: 1, damage: 1 }, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); if (!v) return c;
+    const k = lairScale(this.map?.deepFloor || 1), merged = row.heart ? Math.max(0, Number(this.mireHere()?.state.merged) || 0) : 0, heart = row.heart ? MIRE_CRYPT.heartHp * (1 + merged * MIRE_CRYPT.mergeHp) : 1, hp = Math.max(1, Math.round(v.hp * k.hp * heart));
+    Object.assign(c, { deepLair: id, deepScaled: true, boss: true, hp, maxHp: hp, damage: Math.max(1, Math.round(v.damage * k.damage)), staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: row.name });
+    if (c.baseDamage) c.baseDamage = c.damage; delete c.worldBeast; return c;
   }
   placeDeepStair(history) {
     if (this.area !== "dungeon" || !this.map?.deepFloor || !history?.combatClear?.completed || this.map.objects.some((o) => o.kind === "deepStair")) return null;
@@ -11283,6 +11354,7 @@ export class Game {
     if (this.awakenedArts) tickAwakenedArts(this, dt, now); // awakened-arts.ts: fissures, blades, lances, runes, the axe kick and the seal's pulse
     if (this.area === "overworld" && (this.map?.canopy || this.map?.keep)) this.touchCrownRest(); // a great tree's crown, or a keep's
     if (this.area === "dungeon" && this.map?.canyon) this.canyonTick(dt, now); // Canyon craters
+    if (this.area === "dungeon") this.tickCharting(); // DUNGEON_CHARTING (dungeon-framework.ts): the floor's Aperture and its charting
     if (this.area === "dungeon" && this.map?.building) { this.noteFloorEntry(); this.labFogTick(); if (now >= this.jumpUntil) this.buildingFall(); } // great buildings: a step into a hole drops you a floor (a safe drop) or is a death (HOLE_DROPS)
     if (this.area === "dungeon" && this.map?.building?.boss && this.enemies.some((e) => e.buildingGuard) && !this.enemies.some((e) => e.pentBoss && !e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentBosses || []).includes(B.node)) { const name = this.enemies.find((e) => e.pentBoss)?.packName || "Its keeper"; H.pentBosses = [...(H.pentBosses || []), B.node]; this.message = `${name} ${PENTAGON.messages.bossDown}.`; this.defeatNotice = { title: String(name).toUpperCase(), detail: "falls", kind: "discovery" }; } } // the Pentagon's lords and keepers (v2)
     if (this.area === "dungeon" && this.map?.building?.trial && this.enemies.some((e) => e.buildingGuard) && this.enemies.every((e) => !e.buildingGuard || e.dead)) { const B = this.map.building, H = dungeonHistory(this.save, `${B.base}:f1`); if (!(H.pentTrials || []).includes(B.node)) { H.pentTrials = [...(H.pentTrials || []), B.node]; const n = H.pentTrials.length; this.message = `${PENTAGON.messages.trial} (${n} of ${B.trials}).${n >= B.trials ? " Somewhere at the centre, the Heart unseals." : ""}`; this.defeatNotice = { title: "A TRIAL CLEARED", detail: `${n} of ${B.trials}`, kind: "discovery" }; } } // the Pentagon's trials
