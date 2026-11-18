@@ -10847,3 +10847,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 **CODE:** New eligible areas can spawn deterministic herds. Mounted Dodge supports horn contact and held charge releases. Silly Goose uses a bounded airborne drill in place of the ordinary landing shockwave.
 
 **BOUNDARY:** Old explored areas keep their layouts. Drill state resumes through additive schema-14 data without repeating spent pulses. The mount and rider share one rendered composite.
+
+## Release 988 — Mounted Triceratops framing
+
+**CODE:** Fit the mounted composite to the Close View viewport through the existing wall-safe camera. Keep the rolling silhouette above its support.
+
+**BOUNDARY:** Presentation only. Collision, contact and save state follow the existing game rules.

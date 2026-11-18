@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { stableMount, startRide, triceratopsHornPose, triceratopsDrillPose, TRICERATOPS_DRILL_POSE } from '../src/beast-mounts.ts';
+import { stableMount, startRide, triceratopsHornPose, triceratopsDrillPose, triceratopsDrillFrame } from '../src/beast-mounts.ts';
 import { drawMount } from '../src/beast-mounts-render.ts';
 import { render } from '../src/renderer.ts';
 import { drawRangedEffects, standardProjectile, standardProjectileColor, TRICERATOPS_HORN_VISUAL, triceratopsHornFrame, triceratopsHornVertices } from '../src/combat-visuals.ts';
-import { CLOSE_VIEW_HOOKS, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewRenderDiagnostics } from '../src/close-view.ts';
-import { closeViewGLStats, GLB, BOARD_FLOATS, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewRenderDiagnostics, closeViewPan, closeViewCamera, closeViewWallAt } from '../src/close-view.ts';
+import { closeViewGLStats, GLB, GLF, BOARD_FLOATS, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 
 class TransactionGL {
   lost=false; error=0; fault=''; nullKind=''; created:any={program:0,buffer:0,vao:0,texture:0};
@@ -53,11 +53,11 @@ function fixture(reduce = false) {
   g.projectiles=[{id:'horn-shape',triceratopsHorn:true,x:g.player.x+.5,y:g.player.y+.45,dx:1,dy:0,life:1,age:.1,speed:12,path:'straight',damageType:'physical',damage:48,hits:{},pierce:0,glyphHost:'melee'}];
   return g;
 }
-function frame(h,g){
+function frame(h,g,w=390,height=844){
   h.log.length=0;let plan=null;
   const layer=(ctx,w,height,p)=>{plan=p;drawRangedEffects(ctx,g,w,height,p);};
   CLOSE_VIEW_HOOKS.groundLayers.push(layer);
-  try { render(h.screen,g,390,844,g.lastUpdateNow); if(!closeViewShowing(g))drawRangedEffects(h.screen,g,390,844); }
+  try { render(h.screen,g,w,height,g.lastUpdateNow); if(!closeViewShowing(g))drawRangedEffects(h.screen,g,w,height); }
   finally { CLOSE_VIEW_HOOKS.groundLayers.splice(CLOSE_VIEW_HOOKS.groundLayers.indexOf(layer),1); }
   return plan;
 }
@@ -138,7 +138,7 @@ test('Close View preserves the posed Triceratops composite and falls back withou
 }));
 
 
-test('Silly Goose rolls mount, saddle and rider together with below bounds and reduced-motion banking',()=>withGPU({},h=>{
+test('Silly Goose rolls mount, saddle and rider together above its support and with reduced-motion banking',()=>withGPU({},h=>{
   const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-silly',now:100000}).game;
   const m=stableMount(g.save,'triceratops',{triceratopsDisposition:'silly'}).mount;startRide(g.save,m.id);
   g.enemies=[];g.effects=[];g.glyphVisuals=[];g.projectiles=[];g.save.closeView=true;g.save.overworldCloseView=true;
@@ -147,8 +147,60 @@ test('Silly Goose rolls mount, saddle and rider together with below bounds and r
   const group=(tag,roll)=>{const at=h.log.findIndex(q=>q[0]===tag&&q[1]==='scale'&&q[2]===1&&Math.abs(q[3]-roll)<1e-9);assert.ok(at>=0,'accepted axial roll');let depth=0,end=at+1;for(;end<h.log.length;end++){const q=h.log[end];if(q[0]!==tag)continue;if(q[1]==='save')depth++;if(q[1]==='restore'){if(!depth)break;depth--;}}const drawn=h.log.slice(at,end);assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle inside transform');assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#171817'),'rider inside transform');};
   const pose=triceratopsDrillPose(g,m,g.lastUpdateNow);assert.ok(pose.roll<0);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',pose.roll);
   assert.equal(closeViewRenderDiagnostics().player,'billboard');assert.equal(g.player.facing,'right');
-  const bottoms=[];for(let i=0;i<GLB.nBoard;i++)bottoms.push(GLB.board[i*BOARD_FLOATS+2]);
-  assert.ok(bottoms.some(z=>Math.abs(z+TRICERATOPS_DRILL_POSE.below)<1e-4),'GPU card retains the below-pivot composite');
+  const bottoms=[];for(let i=0;i<GLB.nBoard;i++)if(GLB.board[i*BOARD_FLOATS+7]>1)bottoms.push(GLB.board[i*BOARD_FLOATS+2]);
+  assert.equal(bottoms.length,6);assert.ok(bottoms.every(z=>z>=0),'mounted card never extends beneath its ground support');
   h.gl.fault='draw';frame(h,g);assert.equal(closeViewShowing(g),false);group('screen',pose.roll);
   h.gl.fault='';g.presentation.reduceMotion=true;const quiet=triceratopsDrillPose(g,m,g.lastUpdateNow,true);assert.equal(quiet.roll,1);assert.ok(Math.abs(quiet.bank)<.1);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',1);
+}));
+
+test('drill clearance bounds the complete transformed body at every heading and phase',()=>{
+  for(const reduce of [false,true])for(let i=0;i<=120;i++)for(let heading=0;heading<16;heading++){
+    const t=i/120,angle=heading*Math.PI/8,roll=Math.cos(t*Math.PI*4);
+    const pose={x:Math.cos(angle),y:Math.sin(angle),bank:reduce?.08:.12*Math.sin(t*Math.PI*2),roll:reduce?1:Math.sign(roll||1)*Math.max(.2,Math.abs(roll)),pivot:1.25,turnIn:Math.min(1,t/.15,(1-t)/.15)};
+    const before=structuredClone(pose),jump=.42*Math.sin(t*Math.PI),f=triceratopsDrillFrame(pose,pose,jump);
+    assert.ok(f.bottom<=1e-9);assert.ok(f.halfWidth<=4.6);assert.ok(f.height+jump<=9.7);assert.deepEqual(pose,before);
+    if(i===0||i===120)assert.ok(f.clearance<=.021,'entry and exit meet the ground without a pose-height pop');
+  }
+});
+
+test('mounted portrait fits phone and landscape frames through the whole drill',()=>withGPU({},h=>{
+  for(const variant of ['normal','silly'])for(const preset of ['close','standard','wide'])for(const [w,height] of [[390,844],[844,390]]){
+    const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-silly',now:100000}).game;
+    for(const t of g.map.tiles)Object.assign(t,{kind:'grass',blocked:false,structure:null,buildingId:null,elev:0,environment:null,chasm:false});
+    g.map.objects=[];g.enemies=[];g.builds=[];g.effects=[];g.glyphVisuals=[];g.projectiles=[];
+    const m=stableMount(g.save,'triceratops',{triceratopsDisposition:variant==='silly'?'silly':'good'}).mount;startRide(g.save,m.id);
+    g.save.closeView=true;g.save.overworldCloseView=true;g.save.closeViewPreset=preset;g.presentation={effectiveQuality:'full'};
+    Object.assign(g.player,{x:16,y:16,facing:'right',hp:g.save.maxHp});g.save.lastAim={x:1,y:0};resetCloseViewCamera();
+    g.update(.01,{state:{x:0,y:0},consume:k=>k==='jump',held:()=>false},100000);
+    for(const elapsed of [0,100,195,390,600,760]){
+      g.lastUpdateNow=100000+elapsed;frame(h,g,w,height);assert.equal(closeViewShowing(g),true);
+      let count=0;
+      for(let i=0;i<GLB.nBoard;i++){
+        const a=i*BOARD_FLOATS;if(GLB.board[a+7]<=1)continue;count++;
+        const dx=GLB.board[a]-GLF.cx,dy=GLB.board[a+1]-GLF.cy,dz=GLB.board[a+2]-GLF.hc,v=dx*GLF.fx+dy*GLF.fy,u=dx*GLF.rx+dy*GLF.ry;
+        const depth=v*GLF.cosP-dz*GLF.sinP,x=GLF.ppx+GLF.F*u/depth,y=GLF.ppy-GLF.F*(v*GLF.sinP+dz*GLF.cosP)/depth;
+        assert.ok(depth>.2);assert.ok(x>=w*.099&&x<=w*.901,`${variant}/${preset}/${w}/${elapsed}: x=${x}`);assert.ok(y>=height*.099&&y<=height*.901,`${variant}/${preset}/${w}/${elapsed}: y=${y}`);
+      }
+      assert.equal(count,6);
+    }
+  }
+}));
+
+test('mounted composition keeps the eye on clear floor at a compressed indoor wall',()=>withGPU({},h=>{
+  const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-good',now:100000}).game;
+  const m=stableMount(g.save,'triceratops',{triceratopsDisposition:'silly'}).mount;startRide(g.save,m.id);
+  g.placeBeastHotel();assert.equal(g.enterBeastHotel(g.map.objects.find(o=>o.beastHotelDoor)).ok,true);
+  // The real hotel uses Standard View. Admit its rectangular geometry here only
+  // to stress the renderer's existing indoor wall compression with a large card.
+  g.map.building={style:'keep'};
+  g.save.closeView=true;g.save.closeViewAutoFollow=false;g.presentation={effectiveQuality:'full'};
+  Object.assign(g.player,{x:1.05,y:1.05,facing:'down'});g.lastUpdateNow=100000;frame(h,g);
+  closeViewPan((Math.PI/2-closeViewCamera().yaw)/CLOSE_VIEW.crescent.yaw,0,100000);
+  for(let i=1;i<=80;i++){
+    g.lastUpdateNow=100000+i*16;frame(h,g);const c=closeViewCamera();
+    assert.equal(closeViewWallAt(g.map,c.x,c.y),false);
+    if(closeViewShowing(g))assert.ok(Number.isFinite(GLF.F)&&GLF.F>0);
+    else assert.equal(GLB.nBoard,0,'fallback leaves no partial mounted GPU geometry');
+  }
+  assert.ok(closeViewCamera().distance<1,'the body fit never forces the camera through the hotel wall');
 }));

@@ -17,6 +17,7 @@ import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowD
 import { dronePos, phaseShielded } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor, triceratopsHornVertices } from "./combat-visuals.ts";
+import { TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
 import { behaviourProfile } from "./enemy-behaviour.ts"; // a heavy blow's real recovery (creature motion, 2026-11-15)
@@ -1205,7 +1206,8 @@ function cameraScene(g) {
   if (CAM.solidMap !== g.map || !open) { CAM.solidTop = null; CAM.solidMap = null; CAM.seeThrough = false; }
 }
 // The preset's boom: a tile longer in the open overworld (CLOSE_VIEW.presets version 5, `outdoorDistance`).
-function boomReach(g) { const P = closeViewPreset(g); return (CAM.outdoorBoom && Number.isFinite(P.outdoorDistance) ? P.outdoorDistance : P.distance) + CAM.threatPull + lookOut(); } // + Look mode's zoom out (CLOSE_VIEW.camera.look.out) // + a big threat's pull (CLOSE_VIEW.camera.threat)
+const mountCameraPull = g => g.mountRide?.()?.beast === "triceratops" ? TRICERATOPS_COMPOSITE.cameraPull : 0;
+function boomReach(g) { const P = closeViewPreset(g); return (CAM.outdoorBoom && Number.isFinite(P.outdoorDistance) ? P.outdoorDistance : P.distance) + CAM.threatPull + lookOut() + mountCameraPull(g); } // the mounted portrait still uses the normal wall-safe boom
 // How much more view a big threat asks for this frame (CLOSE_VIEW.camera.threat): the most any aggroed creature big enough and
 // near enough asks, by its height and nearness, 0 to 1. One pass over the creatures (bounded by the game's actor caps), no allocation.
 export function closeViewThreatWant(g) {
@@ -2208,7 +2210,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
   const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
   spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
-  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.threatPull - lookOut() - CAM.dist) * C.crane); /* the threat's (and Look mode's) pull is not a wall's: no crane for it */ if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
+  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.threatPull - lookOut() - mountCameraPull(g) - CAM.dist) * C.crane); /* extra framing distance is not wall compression */ if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
     spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
   const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
@@ -2308,6 +2310,24 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (FIT.foot + FIT.head) / 2));
   // Look mode zoomed in (CLOSE_VIEW.camera.look): the eye leaves the rig for an orbit round the subject, its line to it clear
   if (lookRig(g, CAM.cx, CAM.cy, terrainCameraZ, terrainPitch, fx, fy, cap)) { CAM.cx = LR.x; CAM.cy = LR.y; terrainCameraZ = LR.z; terrainPitch = LR.pitch; fx = LR.fx; fy = LR.fy; rx = -fy; ry = fx; F *= LR.lens; }
+  // A large mounted card needs both width and height framing. Preserve the safe
+  // eye/boom, including compressed indoor corners, and widen only this lens.
+  // Centre the fixed drill envelope vertically; it never follows the rolling pixels.
+  const composite = capturedPlayer?.mountComposite;
+  if (composite && !(LOOK.k > 0)) {
+    const bodyX = capturedPlayer.x + .5, bodyY = capturedPlayer.y + .82;
+    const base = surfaceZ(g.map, bodyX, bodyY - .07), dx = bodyX - CAM.cx, dy = bodyY - CAM.cy;
+    const v = Math.max(.03, dx * fx + dy * fy), side = dx * rx + dy * ry;
+    terrainPitch = Math.max(C.framing.pitchMin, Math.min(C.limits.maxPitch * DEG, Math.atan2(terrainCameraZ - base - composite.frameHeight / 2, v) + CAM.pitchUser * mix));
+    if (Math.min(...[base, base + composite.frameHeight].map(z => v * Math.cos(terrainPitch) - (z - terrainCameraZ) * Math.sin(terrainPitch))) <= CLOSE_VIEW.near) terrainPitch = 0;
+    const cp = Math.cos(terrainPitch), sp = Math.sin(terrainPitch), margin = TRICERATOPS_COMPOSITE.margin;
+    for (const z of [base, base + composite.frameHeight]) {
+      const dz = z - terrainCameraZ, depth = v * cp - dz * sp, up = v * sp + dz * cp;
+      if (depth <= CLOSE_VIEW.near) return useGL ? abortCloseViewGLFrame() : false;
+      F = Math.min(F, w * (.5 - margin) * depth / (Math.abs(side) + composite.frameHalfWidth));
+      if (Math.abs(up) > 1e-6) F = Math.min(F, h * (up > 0 ? C.center - margin : 1 - C.center - margin) * depth / Math.abs(up));
+    }
+  }
   CAM.fx = fx; CAM.fy = fy; CAM.rx = rx; CAM.ry = ry; CAM.F = F; CAM.ppx = w / 2; CAM.ppy = h * C.center;
   CAM.cosP = Math.cos(terrainPitch); CAM.sinP = Math.sin(terrainPitch); CAM.hc = terrainCameraZ; CAM.w = w; CAM.h = h; CAM.valid = true; CAM.snapNext = false;
   // the occluder window's cone (CLOSE_VIEW.camera.occlude): from the eye to the Wayfarer's body, where their feet are drawn
@@ -2619,7 +2639,7 @@ function packBillboards(g, draws, n, s, facing, native = null) {
   let first = true; for (let oi = n - 1; oi >= 0; oi--) { const it = order[oi]; if (itemKind[it] !== 1) continue; // nearest first: they get the room
     const d = draws[itemRef[it]], swapIn = !!native?.has(it) && swapCard[it] === 1, nativeBody = native?.has(it) && !swapIn, foe = boardFoe[it]; // swapIn: its whole card, fading out under the body
     const residual = nativeBody && typeof d.nativeDecorations === 'function' && (d.nativeEffects || foe?.fracRank === 'rare' && foe.packName || foe?.fracWarden || foe?.warded || foe?.affixes?.length || foe?.poiseBreak > 0 || foe?.pack?.phase === 'stunned');
-    const sc = boardScale[it], k = boardK[it], hw = d.mountComposite?.halfWidth || A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc, d.nativeHeight) : Math.max(A.height * sc,d.nativeHeight||0,d.mountComposite ? d.mountComposite.height + Math.max(0,d.lift||0) : 0), below = d.mountComposite?.below || A.below, bw = 2 * hw, bh = top + below;
+    const sc = boardScale[it], k = boardK[it], hw = d.mountComposite?.halfWidth || A.halfWidth * sc, top = nativeBody ? nativeBoardTop(foe, sc, d.nativeHeight) : Math.max(A.height * sc,d.nativeHeight||0,d.mountComposite ? d.mountComposite.height + Math.max(0,d.lift||0) : 0), below = d.mountComposite?.below ?? A.below, bw = 2 * hw, bh = top + below;
     boardHalfWidth[it] = hw; boardTop[it] = top; boardBelow[it] = below;
     if (nativeBody && !residual) { boardPW[it] = 0; continue; }
     let q = k * spriteDpr / s; q = Math.min(q, (AW - 2) / (bw * s), (AH * (first && closeViewStats.gl ? CLOSE_VIEW.atmosphere.sprite.nearShare : 1 / 3)) / (bh * s)); first = false; // version 5: the nearest (the Wayfarer, mostly) may take more // a third of the atlas at most: room for every actor in view
