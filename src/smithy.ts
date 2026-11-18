@@ -9,7 +9,7 @@
 // - Masterwork: one rank past the tier's upgrade cap (item.masterwork, once per item; items.ts itemCap).
 // The item fields are additive and kept by normalizeItemUpgrade. Pure rules: no DOM.
 import { hashSeed, rng } from "./random.ts";
-import { AFFIX_POOLS, rollAffixValue, affixRange, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.ts";
+import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.ts";
 import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.ts";
 
 export const SMITHY = {
@@ -91,22 +91,30 @@ export function reforgeAffix(save, slot, index) {
   const item = save.equipment?.[slot], list = Array.isArray(item?.affixes) ? item.affixes : [];
   if (!item || !list[index]) return { ok: false, message: "That has no such affix to reforge." };
   const cost = asMaterials(SMITHY.reforge); if (!has(save, cost)) return { ok: false, message: `Reforging takes ${costText(SMITHY.reforge)}.` };
+  const before = list[index], after = reforgeRoll(save, item, index); // the roll the smith showed (reforgePreview)
   pay(save, cost); item.reforged = (Number(item.reforged) || 0) + 1;
-  const r = rng(`${save.seed}:reforge:${item.id}:${item.reforged}`), pool = AFFIX_POOLS[item.slot] || ["attack"], others = list.filter((_, i) => i !== index).map((a) => a.id);
-  const choices = pool.filter((id) => !others.includes(id)), id = choices.length ? choices[Math.floor(r() * choices.length) % choices.length] : list[index].id, before = list[index];
-  list[index] = { id, value: rollAffixValue(r, id, Math.max(1, ITEM_TIERS.indexOf(itemTier(item)))) };
-  return { ok: true, before, after: list[index], message: `The smith reforges ${item.name}: ${before.id} ${before.value} becomes ${id} ${list[index].value}.` };
+  list[index] = after;
+  return { ok: true, before, after, message: `The smith reforges ${item.name}: ${before.id} ${before.value} becomes ${after.id} ${after.value}.` };
 }
-// What reforging affix `index` of the slot's piece can give (2026-11-18: the smith shows it before you pay): each affix kind
-// the roll may pick (its slot's pool less the kinds the piece's other affixes hold, as reforgeAffix picks) with the lowest and
-// highest value for the piece's tier. The roll itself stays hidden until paid: it is seeded by the piece and its reforge count,
-// so showing it would let the next roll be read and steered.
-export function reforgeChoices(save, slot, index) {
-  const item = save?.equipment?.[slot], list = Array.isArray(item?.affixes) ? item.affixes : [];
+// The affix the next reforge of `index` gives: seeded by the save, the piece's id and its next reforge count (item.reforged + 1),
+// with the kind drawn from the slot's pool less the kinds the piece's other affixes hold. Pure: reading it changes nothing.
+// 2026-11-18 (Tim: "show the exact result before I tap"): the smith shows this roll on the button. Seeing it costs nothing and
+// cannot move it: only a paid reforge of the piece advances the count (to the next seeded roll), so reopening the menu, an
+// upgrade, a masterwork, a socket, a reload or anything else shows the same roll again.
+export function reforgeRoll(save, item, index) {
+  const list = Array.isArray(item?.affixes) ? item.affixes : [];
   if (!item || !list[index]) return null;
-  const pool = AFFIX_POOLS[item.slot] || ["attack"], others = list.filter((_, i) => i !== index).map((a) => a.id), tier = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)));
-  const ids = pool.filter((id) => !others.includes(id));
-  return { current: list[index], choices: (ids.length ? ids : [list[index].id]).map((id) => ({ id, ...affixRange(id, tier) })) };
+  const r = rng(`${save.seed}:reforge:${item.id}:${(Number(item.reforged) || 0) + 1}`), pool = AFFIX_POOLS[item.slot] || ["attack"], others = list.filter((_, i) => i !== index).map((a) => a.id);
+  const choices = pool.filter((id) => !others.includes(id)), id = choices.length ? choices[Math.floor(r() * choices.length) % choices.length] : list[index].id;
+  return { id, value: rollAffixValue(r, id, Math.max(1, ITEM_TIERS.indexOf(itemTier(item)))) };
+}
+// The next reforge of the slot's affix `index`: { before, after, direction } (direction "up" | "down" | "same" | "other", a
+// different kind of affix), or null. Pure.
+export function reforgePreview(save, slot, index) {
+  const item = save?.equipment?.[slot], before = Array.isArray(item?.affixes) ? item.affixes[index] : null, after = before ? reforgeRoll(save, item, index) : null;
+  if (!after) return null;
+  const a = Number(after.value) || 0, b = Number(before.value) || 0;
+  return { before, after, direction: after.id !== before.id ? "other" : a > b ? "up" : a < b ? "down" : "same" };
 }
 export function addSocket(save, slot) {
   if (!smithOpen(save, "socket")) return { ok: false, message: lockedWhy("socket") };

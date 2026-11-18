@@ -60,3 +60,38 @@ test('unowned brawler gear is never salvaged to make room, and equipped gear is 
   assert.equal(r.salvaged.id, 'p0', 'a relic made room for it, though it is a weak common');
   assert.deepEqual(s.equipment, equipped, 'equipment is never salvaged');
 });
+
+// 2026-11-18 (Tim: "keep the best few of each slot"): slots are never weighed against each other.
+const kind = (slot) => ({ primary: ['Cinder Pike', 'reach'], secondary: ['Needle Caster', 'quick'], armor: ['Kiln Mantle', 'guard'], charm: ['Quiet Compass', 'discovery'] })[slot];
+const gearOf = (id, slot, tier, power) => { const [name, property] = kind(slot); return { ...piece(id, tier, power), name, property, slot }; };
+
+test('the table names the slots, the few kept per slot and the slot tiebreak', () => {
+  assert.deepEqual([...PACK_KEEP.slots], ['primary', 'secondary', 'armor', 'charm']);
+  assert.ok(Number.isInteger(PACK_KEEP.few) && PACK_KEEP.few > 0 && PACK_KEEP.few * PACK_KEEP.slots.length <= EQUIPMENT_CAPACITY);
+  assert.equal(PACK_KEEP.slotTie, 'weakest');
+});
+
+test('a high-power charm pile no longer outlasts the only weapon: the most crowded slot gives up its weakest', () => {
+  const s = full((i) => (i === 0 ? gearOf('only-weapon', 'primary', 'common', 1) : gearOf(`c${i}`, 'charm', 'relic', 80 + i)));
+  assert.equal(packVictim(s), 1, 'the weakest charm goes, not the weak lone weapon');
+  const r = storeInventoryItem(s, gearOf('charm-new', 'charm', 'relic', 200));
+  assert.equal(r.salvaged.id, 'c1'); assert.ok(s.inventory.some((q) => q.id === 'only-weapon'));
+  const w = storeInventoryItem(s, gearOf('weapon-2', 'primary', 'common', 1));
+  assert.equal(w.stored, true, 'a weak weapon still joins a pack crowded with charms'); assert.notEqual(w.salvaged.slot, 'primary');
+});
+
+test('a slot holding the few or fewer is never chosen while another holds more; slots at an equal count give up the weaker', () => {
+  const few = PACK_KEEP.few, s = full((i) => i < few ? gearOf(`w${i}`, 'primary', 'common', 1) : gearOf(`a${i}`, 'armor', 'relic', 99));
+  assert.equal(s.inventory[packVictim(s)].slot, 'armor', 'the weapons (exactly the few) are safe');
+  const half = EQUIPMENT_CAPACITY / 2, t = full((i) => i < half ? gearOf(`w${i}`, 'primary', 'epic', 30) : gearOf(`a${i}`, 'armor', 'epic', 20));
+  assert.equal(t.inventory[packVictim(t)].id, `a${half}`, 'equal counts: the slot whose weakest is weaker');
+  const u = full((i) => i < half ? gearOf(`w${i}`, 'primary', 'epic', 20) : gearOf(`a${i}`, 'armor', 'epic', 20));
+  assert.equal(u.inventory[packVictim(u)].id, 'w0', 'a full tie: the earlier slot in PACK_KEEP.slots');
+});
+
+test('a drop into the most crowded slot below its weakest is salvaged; a drop into a thin slot is kept', () => {
+  const s = full((i) => i < 50 ? gearOf(`t${i}`, 'secondary', 'relic', 50) : gearOf(`p${i}`, 'primary', 'relic', 60));
+  const low = storeInventoryItem(s, gearOf('low-tool', 'secondary', 'rare', 5)); assert.equal(low.stored, false);
+  const thin = storeInventoryItem(s, gearOf('low-weapon', 'primary', 'rare', 5)); assert.equal(thin.stored, true); assert.equal(thin.salvaged.slot, 'secondary');
+  const bought = storeInventoryItem(s, gearOf('bought-tool', 'secondary', 'common', 1), true); assert.equal(bought.stored, true, 'a purchase is kept'); assert.notEqual(bought.salvaged.id, 'bought-tool');
+});

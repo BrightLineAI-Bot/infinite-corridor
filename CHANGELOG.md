@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Unreleased: A full pack now keeps gear by tier, then power, and salvages the weakest piece. Salvage can yield lumen dust instead of cinder iron; choose at the Sphere Forge or the smith. Pack → Equipped shows each piece's damage, reach, pace and defence, and the smith previews masterwork, socket and reforge before you confirm.
+- Unreleased: A full pack keeps the best of each kind of gear: it salvages from whichever kind (weapons, tools, armor, charms) it holds most of, that kind's weakest piece by tier, then power. Salvage can yield lumen dust instead of cinder iron; choose at the Sphere Forge or the smith. Pack → Equipped shows each piece's damage, reach, pace and defence. Every smith button shows its outcome and acts on one tap: Reforge names the exact new affix (green if better, red if worse), and Masterwork and Add socket show their before → after.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.

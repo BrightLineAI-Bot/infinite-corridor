@@ -91,7 +91,7 @@ import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, s
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
-import { SMITHY, paySalvage, salvagePaidText } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
+import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -921,7 +921,11 @@ const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.second
 // power (item.power, the Power the Pack shows; it already counts every upgrade rank), then by the work a smith put in that power
 // does not show (a masterwork or an added socket; an upgraded piece too, for a piece whose power was never brought up to its
 // rank), and only then the oldest (lowest index: the pack only appends). PACK_KEEP.order lists the keys, most important first.
-export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]) });
+// 2026-11-18 (Tim: "keep the best few of each slot"): pieces are never weighed against another slot's. A full pack salvages from
+// the slot holding the most pieces (`slots`: weapons, tools, armor, charms), that slot's least-kept piece by `order`. A slot
+// holding `few` or fewer is never chosen while another holds more. Slots holding the same count: the one whose least-kept piece
+// is kept least goes (`slotTie` "weakest"), then the earlier in `slots`. So a high-power charm never outlasts your only weapon.
+export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]), slots: Object.freeze(["primary", "secondary", "armor", "charm"]), few: 10, slotTie: "weakest" });
 const KEEP_KEYS = {
   tier: (q) => ITEM_TIERS.indexOf(itemTier(q)),
   power: (q) => Math.max(0, Number(q?.power) || 0),
@@ -932,10 +936,27 @@ export function packKeepCompare(a, b) {
   for (const k of PACK_KEEP.order) { const d = KEEP_KEYS[k](a) - KEEP_KEYS[k](b); if (d) return d; }
   return 0;
 }
+// The index (0..length-1, piece `at(i)`) that a full pack salvages: in the most crowded slot (PACK_KEEP), its least-kept piece, the oldest at an
+// equal keep; only pieces `may(q, i)` allows are chosen (a slot with none is passed over), though every piece counts toward
+// its slot. -1 when none may go. No allocation beyond two small maps (it runs once per drop into a full pack).
+function packVictimIn(length, at, may) {
+  const K = PACK_KEEP, count = new Map(), weakest = new Map();
+  for (let i = 0; i < length; i++) { const q = at(i), s = String(q?.slot); count.set(s, (count.get(s) || 0) + 1);
+    if (may(q, i)) { const w = weakest.get(s); if (w === undefined || packKeepCompare(q, at(w)) < 0) weakest.set(s, i); } }
+  const order = (s) => { const k = K.slots.indexOf(s); return k < 0 ? K.slots.length : k; }, crowded = [...weakest.keys()].some((s) => count.get(s) > K.few);
+  let pick = null;
+  for (const s of weakest.keys()) {
+    if (crowded && count.get(s) <= K.few) continue;
+    if (pick === null) { pick = s; continue; }
+    const dc = count.get(s) - count.get(pick); if (dc) { if (dc > 0) pick = s; continue; }
+    const dk = K.slotTie === "weakest" ? packKeepCompare(at(weakest.get(s)), at(weakest.get(pick))) : 0; if (dk) { if (dk < 0) pick = s; continue; }
+    if (order(s) < order(pick)) pick = s;
+  }
+  return pick === null ? -1 : weakest.get(pick);
+}
 export function packVictim(save, spareBrawler = false) {
-  let at = -1;
-  for (let i = 0; i < save.inventory.length; i++) if ((!spareBrawler || !isBrawlerGear(save.inventory[i])) && (at < 0 || packKeepCompare(save.inventory[i], save.inventory[at]) < 0)) at = i;
-  return at < 0 ? 0 : at;
+  const inv = save.inventory, i = packVictimIn(inv.length, (k) => inv[k], (q) => !spareBrawler || !isBrawlerGear(q));
+  return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
 export function storeInventoryItem(save, item, keep = false) {
@@ -947,8 +968,11 @@ export function storeInventoryItem(save, item, keep = false) {
   // Release 513: a full pack never salvages brawler gear you do not have (Iron Fists, Hammerfall, Great Sweep): it takes the
   // place of another piece instead.
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
-  const weakest = packVictim(save, fresh);
-  if (!fresh && !keep && packKeepCompare(item, save.inventory[weakest]) < 0) { // release 545: a drop below everything you keep is salvaged (2026-11-18: tier, then power); at the same keep the oldest goes instead
+  // 2026-11-18: the drop is weighed with the pack (it is the newest piece, counted in its slot): when its slot is the most
+  // crowded and it is that slot's least-kept piece, it is salvaged on arrival; a purchase (`keep`) or fresh brawler gear never is.
+  const inv = save.inventory, n = inv.length, victim = packVictimIn(n + 1, (k) => (k === n ? item : inv[k]), (q, i) => (i === n ? !fresh && !keep : !fresh || !isBrawlerGear(q)));
+  const weakest = victim < 0 || victim === n ? packVictim(save, fresh) : victim;
+  if (victim === n) { // release 545: a drop below everything you keep is salvaged (2026-11-18: within its slot, tier then power); at the same keep the oldest goes instead
     const paid = paySalvage(save, autoSalvageIron(item)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
     return { stored: false, salvaged: item, iron: paid.iron, lumenDust: paid.lumenDust };
@@ -1156,17 +1180,19 @@ export function compareReadouts(before, after) {
   for (const b of prior.values()) out.push({ ...b, before: b.text, after: "—", delta: -b.value, direction: b.better === "lower" ? "up" : "down" });
   return out;
 }
-// What a deterministic forge or smith action would make of the slot's piece (the same changes upgradeEquipment, masterwork
-// and addSocket make), or null when it cannot be done to it. Reforge is random and has no outcome here (smithy.ts reforgeChoices).
-export function forgeOutcome(save, slot, action) {
+// What a forge or smith action would make of the slot's piece (the same changes upgradeEquipment, masterwork, addSocket and
+// reforgeAffix make: a reforge of affix `index` takes its exact next seeded roll, smithy.ts reforgeRoll), or null when it
+// cannot be done to it. Pure: the piece and the save are not changed.
+export function forgeOutcome(save, slot, action, index = 0) {
   const item = save?.equipment?.[slot]; if (!item) return null;
   if (action === "upgrade") { const n = normalizeItemUpgrade(item); return normalizeItemUpgrade({ ...n, power: n.power + 1, upgradeRank: n.upgradeRank + 1 }); }
   if (action === "masterwork") return item.masterwork === true ? null : normalizeItemUpgrade({ ...item, masterwork: true });
   if (action === "socket") return item.extraSockets === 1 || !socketCount(item) ? null : normalizeSockets({ ...item, extraSockets: 1 });
+  if (action === "reforge") { const after = reforgeRoll(save, item, index); if (!after) return null; const affixes = item.affixes.slice(); affixes[index] = after; return { ...item, affixes, reforged: (Number(item.reforged) || 0) + 1 }; } // smithy.ts reforgeRoll: the exact next roll
   return null;
 }
-export function forgePreview(save, slot, action) {
-  const next = forgeOutcome(save, slot, action); if (!next) return null;
+export function forgePreview(save, slot, action, index = 0) {
+  const next = forgeOutcome(save, slot, action, index); if (!next) return null;
   return compareReadouts(gearReadout(save, slot), gearReadout(save, slot, next));
 }
 export function syncCharacterStats(save) {

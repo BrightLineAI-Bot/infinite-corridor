@@ -1,12 +1,13 @@
 // 2026-11-18 (Tim): Pack → Equipped shows each piece's effective stats, and the smith and the Sphere Forge show what an action
 // does before it is confirmed: before → after for deterministic work (upgrade, masterwork, socket), coloured like the Pack's
-// compare; for a reforge, the current stats and the range each possible affix may roll (never the roll itself).
+// compare. Then (Tim, same day): no confirm step; the reforge button shows the exact next seeded roll and its colour.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { freshSave } from '../src/types.ts';
 import { gearReadout, compareReadouts, forgePreview, forgeOutcome, characterStats, PRIMARY_PRESS, TOOL_PRESS } from '../src/game.ts';
-import { reforgeChoices, reforgeAffix, addSocket, masterwork } from '../src/smithy.ts';
+import { reforgePreview, reforgeRoll, reforgeAffix, addSocket, masterwork } from '../src/smithy.ts';
+import { generateItem } from '../src/items.ts';
 import { rollAffixValue, affixRange, AFFIX_ROLLS, upgradeEquipment, PRIMARY_PROFILES, RANGED_WEAPONS } from '../src/items.ts';
 import { rng } from '../src/random.ts';
 import { socketCount } from '../src/glyphs.ts';
@@ -68,14 +69,42 @@ test('compare colours follow each stat: higher is green, lower red, pace improve
   assert.deepEqual(compareReadouts(before, after).map((q) => q.direction), ['down', 'up', 'same']);
 });
 
-test('the reforge preview gives each possible affix and its range, and every real roll lands inside it', () => {
-  const s = freshSave(); s.equipment.primary = cleaver(); s.farArray.listeners = 5; s.materials.cinderIron = 9999; s.currency = 99999;
-  const c = reforgeChoices(s, 'primary', 0);
-  assert.deepEqual(c.current, { id: 'attack', value: 4 });
-  assert.deepEqual(c.choices.map((q) => q.id), ['attack'], 'the other affix (reach) is held by the piece, so the roll stays attack');
-  assert.deepEqual(c.choices[0], { id: 'attack', min: 3, max: 5 });
-  for (let i = 0; i < 40; i++) { const r = reforgeAffix(s, 'primary', 0); assert.equal(r.ok, true); const lim = reforgeChoices(s, 'primary', 0).choices.find((q) => q.id === r.after.id); assert.ok(r.after.value >= lim.min && r.after.value <= lim.max, JSON.stringify(r.after)); }
-  assert.equal(reforgeChoices(s, 'primary', 9), null);
+test('the reforge preview is the exact roll the smith then makes, across many pieces and repeated reforges', () => {
+  const s = freshSave(); s.seed = 'REFORGE-PIN'; s.farArray.listeners = 5; s.materials.cinderIron = 1e6; s.currency = 1e7;
+  let checked = 0;
+  for (let n = 0; n < 60; n++) {
+    const item = generateItem(`reforge:${n}`, 20); if (!item.affixes.length) continue; s.equipment[item.slot] = item;
+    for (let k = 0; k < 4; k++) { const i = k % item.affixes.length, pv = reforgePreview(s, item.slot, i), predicted = gearReadout(s, item.slot, forgeOutcome(s, item.slot, 'reforge', i));
+      const r = reforgeAffix(s, item.slot, i); assert.equal(r.ok, true, r.message);
+      assert.deepEqual(r.after, pv.after, `${item.name} affix ${i} reforge ${k}`); assert.deepEqual(r.before, pv.before);
+      assert.deepEqual(gearReadout(s, item.slot), predicted, 'the shown stats are the stats after'); checked++; }
+  }
+  assert.ok(checked >= 100, `${checked} reforges checked`);
+});
+
+test('looking is pure: previews never change the save, the roll, or the next roll', () => {
+  const s = freshSave(); s.equipment.primary = cleaver(); s.farArray.listeners = 5; s.materials.cinderIron = 9999; s.materials.lumenDust = 99; s.currency = 99999;
+  characterStats(s); // characterStats settles preset defaults on first read (its own long-standing normalisation), so the snapshot starts settled
+  const before = JSON.stringify(s), first = reforgePreview(s, 'primary', 0);
+  for (let i = 0; i < 25; i++) { reforgePreview(s, 'primary', 0); reforgePreview(s, 'primary', 1); forgePreview(s, 'primary', 'reforge', 0); forgePreview(s, 'primary', 'masterwork'); gearReadout(s, 'primary'); }
+  assert.equal(JSON.stringify(s), before, 'nothing in the save moved');
+  assert.deepEqual(reforgePreview(s, 'primary', 0), first, 'the same roll every time it is looked at');
+  // A reload shows the same roll; other work on the piece does not move it; only a paid reforge does, to the next seeded one.
+  const reloaded = JSON.parse(before); assert.deepEqual(reforgePreview(reloaded, 'primary', 0), first);
+  assert.equal(masterwork(s, 'primary').ok, true); assert.equal(addSocket(s, 'primary').ok, true); assert.deepEqual(reforgePreview(s, 'primary', 0).after, first.after);
+  const paid = reforgeAffix(s, 'primary', 0); assert.deepEqual(paid.after, first.after);
+  assert.equal(s.equipment.primary.reforged, 1);
+  assert.deepEqual(reforgePreview(s, 'primary', 0).after, reforgeRoll(s, s.equipment.primary, 0), 'the next preview is the next seeded roll');
+  assert.equal(reforgePreview(s, 'primary', 9), null);
+});
+
+test('the reforge colour: up when the affix rises, down when it falls, same when it holds, other for a new kind', () => {
+  const s = freshSave(), seen = new Set();
+  for (let n = 0; n < 400 && seen.size < 4; n++) { const item = generateItem(`colour:${n}`, 20); if (!item.affixes.length) continue; s.equipment[item.slot] = item;
+    const pv = reforgePreview(s, item.slot, 0), a = pv.after, b = pv.before; seen.add(pv.direction);
+    assert.equal(pv.direction, a.id !== b.id ? 'other' : a.value > b.value ? 'up' : a.value < b.value ? 'down' : 'same');
+    if (pv.direction === 'up' || pv.direction === 'down') { const row = forgePreview(s, item.slot, 'reforge', 0).find((q) => q.id === `affix-${a.id}`); assert.equal(row.direction, pv.direction, 'the stat chip agrees'); } }
+  assert.ok(seen.has('up') && seen.has('down'), [...seen].join());
 });
 
 test('the roll table reproduces the old reforge arithmetic exactly', () => {
@@ -86,11 +115,15 @@ test('the roll table reproduces the old reforge arithmetic exactly', () => {
   }
 });
 
-test('the Pack, the smith and the Sphere Forge use the preview views', () => {
+test('the Pack, the smith and the Sphere Forge use the preview views, with no confirm step', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   assert.match(main, /card\.append\(gearStatList\(gearReadout\(save, slot, item\)\)\)/, 'equipped cards list their stats');
-  assert.match(main, /Confirm reforge ·/); assert.match(main, /Confirm socket ·/); assert.match(main, /Confirm masterwork ·/);
+  assert.match(main, /Reforge \$\{affixText\(a\)\} → \$\{affixText\(pv\.after\)\}/, 'the reforge button names the exact result');
+  assert.match(main, /reforge-\$\{pv\.direction\}/, 'and is coloured by it');
+  assert.match(main, /forgePreview\(save,slot,'socket'\)/); assert.match(main, /forgePreview\(save,slot,'masterwork'\)/);
   assert.match(main, /forgePreview\(save,slot,'upgrade'\)/, 'the Sphere Forge uses the same before → after');
-  assert.match(main, /The new roll is random/);
+  assert.doesNotMatch(main, /Confirm (reforge|socket|masterwork)|smithyPick/, 'one tap: no confirm card');
   assert.doesNotMatch(main, /q\.textContent=`↑ \$\{stat\.label\}/, 'no more always-up arrows in the Forge');
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.smith-action>button\.reforge-up\{color:#91d79a/); assert.match(css, /\.smith-action>button\.reforge-down\{color:#e58c87/);
 });
