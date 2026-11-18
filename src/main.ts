@@ -14,7 +14,7 @@ import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } f
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
 import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.ts";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount } from "./beast-mounts.ts"; // release 748: the stable
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.ts"; // release 748: the stable
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -213,6 +213,13 @@ const UTILITY_ICONS = {
 };
 // Slot D (2026-11-15): the tools that draw as an icon on whichever slot holds them (the utility button's three), and each slot
 // button's input action back to its slot.
+// Tim, 2026-11-18: the Triceratops's own slot icons while riding (TRICERATOPS_CONTROLS): a horn lunge, a lowered-head bash, a flying horn.
+const MOUNT_CONTROL_COLOR = "#e0b45a";
+const MOUNT_CONTROL_ICONS = {
+  dash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h6M2 12h6M3 16h6" stroke="#e0b45a" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><path d="M10 17c0-5 3-9 8-10l3-3-1 5c1 3 0 7-4 9z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M18 7l4-4M17 10l5-1" stroke="#f4ead2" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  bash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c0-6 4-10 10-10 3 0 5 2 5 5 0 3-3 5-7 5z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M14 9l6-5M17 13l6-2M6 12l-3-4" stroke="#f4ead2" stroke-width="1.6" stroke-linecap="round"/><path d="M20 16l2 1M19 19l2 2M17 20l0 3" stroke="#ffe08a" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  horn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9" stroke="#e0b45a" stroke-width="1.4" stroke-dasharray="2 2" stroke-linecap="round"/><path d="M10 9.5l11 2.5-11 2.5c-1-1.6-1-3.4 0-5z" fill="#f4ead2" stroke="#4a3418" stroke-width=".8"/><circle cx="21" cy="12" r="1.2" fill="#ffe08a"/></svg>',
+};
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
@@ -2521,10 +2528,10 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
   const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
-  const states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
+  const mountJump = game.triceratopsControls?.(), states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`), slotOf = SLOT_OF_ACTION[action];
-    if (!button || (slotOf && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
+    if (!button || (slotOf && !state.mount && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
 
     const cooling = state.remaining > 0,
       fraction = cooling ? Math.min(1, state.remaining / state.duration) : 0,
@@ -2534,6 +2541,8 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
       ? `${state.remaining.toFixed(state.remaining < 1 ? 1 : 0)}s`
       : action === "potion"
         ? `×${state.count}`
+        : state.mount
+          ? state.name // Tim, 2026-11-18: a Triceratops attack names itself under its icon
         : action === "dodge"
           ? `${state.cost} STA`
           : state.essence != null
@@ -2544,8 +2553,11 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"class:unavailable",state.available === false);
     hudSet(button,"data-cooldown",label);
     if (action === "tool") hudSet(button,"class:empowered",state.empowered === true && !!state.rounds); /* gold count while empowered rounds are held */
-    hudSet(button,"aria-label",`${action} ${label}`);
+    hudSet(button,"aria-label",action === "jump" && mountJump ? `Jump: Triceratops ${mountJump.jump} ${label}` : `${action} ${label}`);
   }
+  // Tim, 2026-11-18: riding a Triceratops, Jump reads as its landing (Stomp; the Silly Goose's Drill), and back to Jump on getting down.
+  { const ab = hudEl('[data-action="interact"]'), h = game.mountHoldProgress?.() || 0; if (ab) { hudSet(ab, "class:holding", h > 0); hudSet(ab, "--hold", `${Math.round(h * 100)}%`); } } // hold Act: the call fills the button (MOUNT_RIDE.callHold)
+  { const jb = hudEl('[data-action="jump"]'); if (jb) { hudSet(jb, "text", mountJump ? mountJump.jump : "Jump"); hudSet(jb, "class:mount-control", !!mountJump); } }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots (the slots are lettered, so no clash).
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
@@ -2562,7 +2574,14 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   for (const slot of SLOTS) { const action = SLOT_ACTIONS[slot], n = slotLabel(slot), util = slot === "d";
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot), t = !c && slotTool(save, slot); // release 309: Build or the item in A or B
     if (!button) continue;
+    const mc = states[action]?.mount && TRICERATOPS_CONTROLS[action]; // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks
+    if (mc) { const key = `mount:${mc.attack}`;
+      if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; const sym = Object.assign(document.createElement("span"), { className: "slot-sym mount-sym" }); sym.innerHTML = MOUNT_CONTROL_ICONS[mc.attack]; button.replaceChildren(sym, Object.assign(document.createElement("span"), { className: "slot-letter", textContent: n })); button.style.setProperty("--slot", MOUNT_CONTROL_COLOR); hudSet(button, "class:spent", false); hudSet(button, "data-kind", ""); }
+      hudSet(button, "class:mount-control", true); hudSet(button, "class:mount-active", states[action].active === true); hudSet(button, "class:lantern-lit", false); setBuffFill(button, 0);
+      hudSet(button, "aria-label", `Slot ${n}: Triceratops ${mc.name}, ${states[action].cost} stamina${states[action].available === false ? ", not ready" : ""}`); continue; }
+    hudSet(button, "class:mount-control", false); hudSet(button, "class:mount-active", false);
     const key = c ? c.key : t ? `tool:${t.tool}:${t.item || ""}` : "empty", toolIcon = t && UTILITY_TOOL_ICONS[t.tool];
+    if (toolIcon) { hudSet(button, "class:cooling", false); hudSet(button, "class:unavailable", false); hudSet(button, "--cooldown", "0%"); } // never set for these, unless the Triceratops borrowed the slot
     if (button.dataset.slotKey !== key) { button.dataset.slotKey = key;
       const sym = Object.assign(document.createElement("span"), { className: toolIcon && util ? "utility-icon" : "slot-sym", textContent: c ? c.symbol : t?.tool === "lantern" ? LANTERN.symbol : t ? "" : "+" });
       if (toolIcon) sym.innerHTML = toolIcon(); else if (t?.tool === "item") sym.innerHTML = ITEM_ICONS[t.item] || "?";
