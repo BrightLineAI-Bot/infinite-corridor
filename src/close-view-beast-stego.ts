@@ -299,7 +299,7 @@ export function sampleStego(tr, e, env) {
   // ------------------------------------------------------------------ the legs
   for (let k = 0; k < 4; k++) {
     const L = LEGS[k], top = BI[L.top], hi = top * 3, can = (L.hind ? G.hindCannon : G.foreCannon) * S, footH = (G.foot + .01) * S, len = ((L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon)) * S;
-    H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2];
+    resolveBone(P, top); H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2]; // the hip or shoulder where its body is this frame (not last frame's)
     const lift = tr.gait.out[k * 4 + 2]; let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], fz = env.z + footH + lift * G.footLift * S + (swim === 2 ? 0 : 0);
     const body = L.hind ? 'pelvis' : 'chest', bodyAt = (f, u, w) => { const p = boneLocalToWorld(P, body, f, L.side * (L.hind ? G.hipWidth : G.shoulderWidth) + 0, u, TMP); fx += (p[0] - fx) * w; fy += (p[1] - fy) * w; fz += (p[2] - fz) * w; };
     const jf = STEGO_SKELETON.bindWorld[hi] - STEGO_SKELETON.bindWorld[BI[body] * 3], ju = STEGO_SKELETON.bindWorld[hi + 2] - STEGO_SKELETON.bindWorld[BI[body] * 3 + 2];
