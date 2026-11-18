@@ -90,7 +90,8 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
-import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
+import { itemCap } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
+import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -158,8 +159,8 @@ import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, gianti
 import { buildDomain, domainWait, domainArrival } from "./far-domains.ts";
 import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.ts"; // the Pentagon roofs' dwellers
 import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.ts";
-import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastTriesLeft, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
-import { QUESTING_BEAST, questingBeastFor, questingBeastTriesLeft, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
+import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastHoldNote, BEAST_ENGAGEMENT, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beastEngaged, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.ts";
+import { questingBeastFor, questingBeastHoldNote, questingBeastWindow, questingBeastLeaves, questingBeastLost, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
 import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.ts";
@@ -968,29 +969,61 @@ export function salvageInventoryItem(save, index, auto = false) {
   const item = save.inventory?.[index];
   if (!item) return null;
   save.inventory.splice(index, 1);
-  const iron = auto ? autoSalvageIron(item) : salvageIron(item);
-  save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  const paid = paySalvage(save, auto ? autoSalvageIron(item) : salvageIron(item)); // 2026-11-18: cinder iron or lumen dust (smithy.ts SALVAGE_YIELD)
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
-  return { item, iron };
+  return { item, iron: paid.iron, lumenDust: paid.lumenDust };
 }
 // Release 469 (Tim: "a select all in the gear menu... everything will be highlighted... click something, it'll become
 // deselected... then salvage"): salvages the given carried items (by identity) at once. Returns { count, iron }.
 export function salvageInventoryItems(save, items) {
-  const pick = new Set(items || []); let count = 0, iron = 0;
-  for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; } }
-  return { count, iron };
+  const pick = new Set(items || []); let count = 0, iron = 0, lumenDust = 0;
+  for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; lumenDust += r.lumenDust; } }
+  return { count, iron, lumenDust };
 }
 const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.secondary].some(([n, p]) => n === item?.name && p === item?.property);
 // Release 545 (Tim: "first in first out... ranks it by [tier] first. So the most powerful ones don't get salvaged... leave the
-// relic and higher quality... if they're all the same tier... salvage the first one that you got"): how much a full pack
-// wants to keep a piece: its tier, then whether you have worked on it (upgraded, masterworked, an added socket). Within the
-// same keep, the oldest (lowest index: the pack only appends) goes first.
-const packKeep = (q) => ITEM_TIERS.indexOf(itemTier(q)) * 2 + ((Number(q?.upgradeRank) || 0) > 0 || q?.masterwork || q?.extraSockets ? 1 : 0);
+// relic and higher quality... if they're all the same tier... salvage the first one that you got"): a full pack keeps by tier.
+// 2026-11-18 (Tim: auto-salvage kept a weaker piece and salvaged a stronger one of the same tier): keep by tier first, then by
+// power (item.power, the Power the Pack shows; it already counts every upgrade rank), then by the work a smith put in that power
+// does not show (a masterwork or an added socket; an upgraded piece too, for a piece whose power was never brought up to its
+// rank), and only then the oldest (lowest index: the pack only appends). PACK_KEEP.order lists the keys, most important first.
+// 2026-11-18 (Tim: "keep the best few of each slot"): pieces are never weighed against another slot's. A full pack salvages from
+// the slot holding the most pieces (`slots`: weapons, tools, armor, charms), that slot's least-kept piece by `order`. A slot
+// holding `few` or fewer is never chosen while another holds more. Slots holding the same count: the one whose least-kept piece
+// is kept least goes (`slotTie` "weakest"), then the earlier in `slots`. So a high-power charm never outlasts your only weapon.
+export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]), slots: Object.freeze(["primary", "secondary", "armor", "charm"]), few: 6 /* Tim 2026-11-18: about six of a kind is plenty */, slotTie: "weakest" });
+const KEEP_KEYS = {
+  tier: (q) => ITEM_TIERS.indexOf(itemTier(q)),
+  power: (q) => Math.max(0, Number(q?.power) || 0),
+  worked: (q) => ((Number(q?.upgradeRank) || 0) > 0 || q?.masterwork === true || q?.extraSockets ? 1 : 0),
+};
+// Negative when a is kept less than b (a goes first), positive when more, 0 at an equal keep.
+export function packKeepCompare(a, b) {
+  for (const k of PACK_KEEP.order) { const d = KEEP_KEYS[k](a) - KEEP_KEYS[k](b); if (d) return d; }
+  return 0;
+}
+// The index (0..length-1, piece `at(i)`) that a full pack salvages: in the most crowded slot (PACK_KEEP), its least-kept piece, the oldest at an
+// equal keep; only pieces `may(q, i)` allows are chosen (a slot with none is passed over), though every piece counts toward
+// its slot. -1 when none may go. No allocation beyond two small maps (it runs once per drop into a full pack).
+function packVictimIn(length, at, may) {
+  const K = PACK_KEEP, count = new Map(), weakest = new Map();
+  for (let i = 0; i < length; i++) { const q = at(i), s = String(q?.slot); count.set(s, (count.get(s) || 0) + 1);
+    if (may(q, i)) { const w = weakest.get(s); if (w === undefined || packKeepCompare(q, at(w)) < 0) weakest.set(s, i); } }
+  const order = (s) => { const k = K.slots.indexOf(s); return k < 0 ? K.slots.length : k; }, crowded = [...weakest.keys()].some((s) => count.get(s) > K.few);
+  let pick = null;
+  for (const s of weakest.keys()) {
+    if (crowded && count.get(s) <= K.few) continue;
+    if (pick === null) { pick = s; continue; }
+    const dc = count.get(s) - count.get(pick); if (dc) { if (dc > 0) pick = s; continue; }
+    const dk = K.slotTie === "weakest" ? packKeepCompare(at(weakest.get(s)), at(weakest.get(pick))) : 0; if (dk) { if (dk < 0) pick = s; continue; }
+    if (order(s) < order(pick)) pick = s;
+  }
+  return pick === null ? -1 : weakest.get(pick);
+}
 export function packVictim(save, spareBrawler = false) {
-  let at = -1;
-  for (let i = 0; i < save.inventory.length; i++) if ((!spareBrawler || !isBrawlerGear(save.inventory[i])) && (at < 0 || packKeep(save.inventory[i]) < packKeep(save.inventory[at]))) at = i;
-  return at < 0 ? 0 : at;
+  const inv = save.inventory, i = packVictimIn(inv.length, (k) => inv[k], (q) => !spareBrawler || !isBrawlerGear(q));
+  return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
 export function storeInventoryItem(save, item, keep = false) {
@@ -1002,16 +1035,18 @@ export function storeInventoryItem(save, item, keep = false) {
   // Release 513: a full pack never salvages brawler gear you do not have (Iron Fists, Hammerfall, Great Sweep): it takes the
   // place of another piece instead.
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
-  const weakest = packVictim(save, fresh);
-  if (!fresh && !keep && packKeep(item) < packKeep(save.inventory[weakest])) { // release 545: a drop below everything you keep is salvaged; at the same keep the oldest goes instead
-    const iron = autoSalvageIron(item); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none)
-    save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  // 2026-11-18: the drop is weighed with the pack (it is the newest piece, counted in its slot): when its slot is the most
+  // crowded and it is that slot's least-kept piece, it is salvaged on arrival; a purchase (`keep`) or fresh brawler gear never is.
+  const inv = save.inventory, n = inv.length, victim = packVictimIn(n + 1, (k) => (k === n ? item : inv[k]), (q, i) => (i === n ? !fresh && !keep : !fresh || !isBrawlerGear(q)));
+  const weakest = victim < 0 || victim === n ? packVictim(save, fresh) : victim;
+  if (victim === n) { // release 545: a drop below everything you keep is salvaged (2026-11-18: within its slot, tier then power); at the same keep the oldest goes instead
+    const paid = paySalvage(save, autoSalvageIron(item)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
-    return { stored: false, salvaged: item, iron };
+    return { stored: false, salvaged: item, iron: paid.iron, lumenDust: paid.lumenDust };
   }
   const salvaged = salvageInventoryItem(save, weakest, true); // release 607: automatic
   save.inventory.push(item);
-  return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
+  return { stored: true, salvaged: salvaged.item, iron: salvaged.iron, lumenDust: salvaged.lumenDust };
 }
 // Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
 export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
@@ -1156,6 +1191,76 @@ export function scaledBonus(save, scaling, channel = "melee", derived = characte
   const magic = channel === "magic", base = magic ? derived.magicBonus : derived.meleeBonus, k = SCALING_STRENGTH[magic ? "magic" : "melee"];
   if (!SCALING_STATS[scaling]) return base;
   return base + (statRank(save, SCALING_STATS[scaling]) - statRank(save, magic ? "Focus" : "Might")) * k;
+}
+// The cadence of an ordinary press (a weapon without a weighted swing) and of a tool shot, before glyphs and armor speed.
+export const PRIMARY_PRESS = Object.freeze({ ms: 420 }), TOOL_PRESS = Object.freeze({ ms: 360 });
+// Gear readout (Tim, 2026-11-18: Pack → Equipped showed tier, power, scaling and affixes, but not what the piece does). The
+// effective numbers of one piece as the Wayfarer wears it now: the hit before glyphs, timed buffs and the foe's own defence
+// (the same sums primaryAttack, fistPower and fireSecondary use), its reach and arc or its range, its pace, and for armor and
+// charms what they give to resistance. `item` replaces the slot's piece (a smith's preview reads its outcome the same way).
+// Each row is { id, label, value, text, better }: `value` is the number compared, `better` "higher" or "lower".
+const GEAR_SHAPES = { cone: "sweep", thrust: "thrust", arc: "arc", daggers: "paired cuts", staff: "spectral hands" };
+const r2 = (n) => Math.round(n * 100) / 100;
+export function gearReadout(save, slot, item = save?.equipment?.[slot]) {
+  if (!item) return [];
+  const s = { ...save, equipment: { ...(save.equipment || {}), [slot]: item } }, d = characterStats(s), rows = [];
+  const row = (id, label, value, text, better = "higher") => rows.push({ id, label, value: Number(value) || 0, text: text ?? String(r2(Number(value) || 0)), better });
+  const rank = Math.max(0, Number(item.upgradeRank) || 0);
+  row("power", "Power", Number(item.power) || 0);
+  if (slot === "primary") {
+    const p = primaryProfile(item), fists = !!p.fist, kind = item.id === "primary-verge-cleaver" || item.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(item) ? "fourfold-daggers" : item.id === "primary-cinder-pike" || item.name === "Cinder Pike" ? "cinder-pike" : null, swing = kind ? swingSpec(kind) : null;
+    const bonus = scaledBonus(s, weaponScaling(item), "melee", d), base = fists ? IRON_FISTS.base + Math.max(1, Number(item.power) || 1) * IRON_FISTS.perPower : p.damage, hit = wayfarerDamage(base + bonus);
+    row("hit", "Damage a hit", hit, `${hit}`);
+    const shares = fists ? IRON_FISTS.punches.map((q) => q.share) : swing ? swing.steps.map((q) => q.share) : null;
+    if (shares) row("combo", fists ? "Punches" : "Combo", shares.reduce((a, b) => a + b, 0), shares.map((q) => `×${q}`).join(" · "));
+    row("reach", "Reach", p.range * (1 + d.attackReach), `${r2(p.range * (1 + d.attackReach))} tiles`);
+    row("arc", "Arc", p.arc, `${p.arc}° ${GEAR_SHAPES[p.shape] || p.shape}`);
+    if (swing) { const ms = swing.steps.reduce((t, q) => t + (q.chainMs ?? q.recoveryMs), 0) / swing.steps.length; row("pace", "Pace", ms / 1000, `${r2(ms / 1000)} s a step`, "lower"); }
+    else if (!fists && !p.staff) row("pace", "Pace", PRIMARY_PRESS.ms / 1000, `${PRIMARY_PRESS.ms / 1000} s a press`, "lower");
+  } else if (slot === "secondary") {
+    const w = rangedWeapon(item);
+    if (w) {
+      const magic = w.damageType === "magic", bonus = scaledBonus(s, toolScaling(item), magic ? "magic" : "melee", d);
+      const shot = w.brawlerTool ? Math.round(IRON_FISTS.base + Math.max(1, Number(item.power) || 1) * IRON_FISTS.perPower + bonus) : Math.round(w.damage + bonus), n = Math.max(1, Number(w.pellets) || 1);
+      row("hit", w.brawlerTool ? "Damage a blow" : "Damage a shot", shot * n, `${shot}${n > 1 ? ` ×${n}` : ""} ${magic ? "magic" : "physical"}`);
+      if (!w.brawlerTool && !w.orrery && w.speed > 0) row("range", "Range", w.speed * w.lifetime * (1 + d.attackReach), `${r2(w.speed * w.lifetime * (1 + d.attackReach))} tiles`);
+      if (!w.brawlerTool && !w.orrery) { const sec = w.cooldown ?? TOOL_PRESS.ms / 1000; row("pace", "Pace", sec, `${r2(sec)} s a shot`, "lower"); }
+      if (w.radius) row("blast", "Blast", w.radius, `${w.radius} tiles`);
+    }
+  } else {
+    const own = slot === "armor" ? (Number(item.power) || 0) * 2.5 : Number(item.power) || 0;
+    row("guard", slot === "armor" ? "Armor resistance" : "Charm resistance", own, `${r2(own)}%`);
+  }
+  for (const [id, label] of [["attack", "Attack"], ["reach", "Reach bonus"], ["movement", "Move speed"], ["ward", "Ward"]]) { const v = affixValue(item, id); if (v) row(`affix-${id}`, label, v, id === "attack" ? `+${v}` : `+${Math.round(v * 100)}%`); }
+  if (slot === "armor" || slot === "charm") row("reduction", "Total damage cut", d.damageReduction * 100, `${Math.round(d.damageReduction * 100)}%`);
+  if (slot !== "charm") row("sockets", "Sockets", socketCount(item));
+  const cap = itemCap(item, save);
+  row("rank", "Rank", rank, `+${rank}`);
+  row("cap", "Rank cap", cap, `+${cap}`);
+  return rows;
+}
+// Before → after for each row of two readouts, coloured as the Pack's compare: `direction` "up" (better: green), "down"
+// (worse: red) or "same", following each row's `better`.
+export function compareReadouts(before, after) {
+  const prior = new Map(before.map((q) => [q.id, q])), out = [];
+  for (const q of after) { const b = prior.get(q.id), delta = r2(q.value - (b?.value ?? 0)), good = q.better === "lower" ? -delta : delta; out.push({ ...q, before: b?.text ?? "—", after: q.text, delta, direction: good > 0 ? "up" : good < 0 ? "down" : "same" }); prior.delete(q.id); }
+  for (const b of prior.values()) out.push({ ...b, before: b.text, after: "—", delta: -b.value, direction: b.better === "lower" ? "up" : "down" });
+  return out;
+}
+// What a forge or smith action would make of the slot's piece (the same changes upgradeEquipment, masterwork, addSocket and
+// reforgeAffix make: a reforge of affix `index` takes its exact next seeded roll, smithy.ts reforgeRoll), or null when it
+// cannot be done to it. Pure: the piece and the save are not changed.
+export function forgeOutcome(save, slot, action, index = 0) {
+  const item = save?.equipment?.[slot]; if (!item) return null;
+  if (action === "upgrade") { const n = normalizeItemUpgrade(item); return normalizeItemUpgrade({ ...n, power: n.power + 1, upgradeRank: n.upgradeRank + 1 }); }
+  if (action === "masterwork") return item.masterwork === true ? null : normalizeItemUpgrade({ ...item, masterwork: true });
+  if (action === "socket") return item.extraSockets === 1 || !socketCount(item) ? null : normalizeSockets({ ...item, extraSockets: 1 });
+  if (action === "reforge") { const after = reforgeRoll(save, item, index); if (!after) return null; const affixes = item.affixes.slice(); affixes[index] = after; return { ...item, affixes, reforged: (Number(item.reforged) || 0) + 1 }; } // smithy.ts reforgeRoll: the exact next roll
+  return null;
+}
+export function forgePreview(save, slot, action, index = 0) {
+  const next = forgeOutcome(save, slot, action, index); if (!next) return null;
+  return compareReadouts(gearReadout(save, slot), gearReadout(save, slot, next));
 }
 export function syncCharacterStats(save) {
   const oldHp = Math.max(0, Number(save.maxHp) || 60),
@@ -2301,7 +2406,7 @@ export function buyFromVela(save, id, quantity = 1) {
   save.currency -= price;
   const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${salvagePaidText(save, kept)}.` : ""}` };
 }
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
@@ -2372,7 +2477,7 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
   save.currency -= price;
   const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${salvagePaidText(save, kept)}.` : ""}` };
 }
 export function actionReadiness(game, now = 0) {
   const attack = Math.max(0, (game.player.attackReadyAt || 0) - now),
@@ -3469,6 +3574,7 @@ export class Game {
     this.area = area;
     this.mountArea(); // release 748
     const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry, area === "dungeon" ? this.areaId() : null); // release 239: a retreating beast not followed is gone
+    if (questingBeastLost(this.save, area, this.rx, this.ry)) journalOnce(this.save, `questing-beast-away:${this.save.questingBeast.cycle}`, "The Questing Beast tired of waiting and is gone. In time it will hunt somewhere else.", "The Questing Beast"); // 2026-11-18: its window ran out unseen
     for (const id of lostBeasts) journalOnce(this.save, `world-beast-away:${id}:${this.save.worldBeasts[id].cycle}`, `${WORLD_BEASTS[id].name} got away to ${BEAST_HOMES[WORLD_BEASTS[id].home].name}.`, "World beasts");
     if (area === "overworld") for (const r of retreatsUnderWay(this.save)) { const dx = r.rx - this.rx, dy = r.ry - this.ry; if (!dx && !dy) continue; const told = `${this.save.worldBeasts[r.id].cycle}:${r.rx},${r.ry}`; if ((this._tracksTold ||= {})[r.id] === told) continue; this._tracksTold[r.id] = told; /* sightings (2026-11-11): the trail is told once for each section the beast reaches, not again on every section load */ const dir = `${dy < 0 ? "north" : dy > 0 ? "south" : ""}${dx && dy ? "-" : ""}${dx > 0 ? "east" : dx < 0 ? "west" : ""}`, far = Math.max(Math.abs(dx), Math.abs(dy)); (this.questNotices ||= []).push({ title: "FRESH TRACKS", detail: `${WORLD_BEASTS[r.id].name} · ${far} section${far > 1 ? "s" : ""} ${dir} · bound for ${BEAST_HOMES[WORLD_BEASTS[r.id].home].name}`, kind: "discovery" }); } // release 605: the trail of a retreat
     const loadingId=area==="dungeon"?this.areaId():null,history=loadingId?dungeonHistory(this.save,loadingId):null;
@@ -3651,9 +3757,9 @@ export class Game {
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry)?.mouth)this.raiseMouthTown(); // release 373 (after every Mouth, old ones too)
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry))this.raiseTownAmenities(); // release 441
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
-    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);this.claimGuideLair();const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastTriesLeft(this.save,worldBeast.worldBeast)} of ${B.tries} tries remain.`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */if(!beast&&!worldBeast){const chrys=mothChrysalisFor(this.save,this.map,this.rx,this.ry);if(chrys){this.map.enemySpawns.push(chrys);this.message=CHRYSALIS.found}}/* release 708: the Ashen Moth's chrysalis on a great tree */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastTriesLeft(this.save)} of ${QUESTING_BEAST.tries} tries remain.`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`],guidedSky=!!seenSky?.guideVersion&&guideHost(this.save.seed,"skyway",this.rx,this.ry);if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&(skylandSection(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1)||guidedSky)&&!this.map.objects.some(o=>o.kind==='skyStair')){const skyV=seenSky?.skyVersion||SKYLANDS.version,disc=skyV>=3?buildSkyDiscs(this.map,this.save.seed,this.rx,this.ry,guidedSky):null,top=disc?{x:disc.x-.5,y:disc.y-.75,elev:disc.level,disc:true}:skyV===2?buildSkyway(this.map,this.save.seed,this.rx,this.ry):null;/* release 585: the skyway ascent; 587: floating discs; waymark guides: a guided host with no room for the discs keeps the plain Sky Stair */const spot=skyV>=2&&(top||!guidedSky)?top:this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot&&top)this.map.objects.push({id:`skyway-${this.rx}-${this.ry}`,kind:'skyStair',name:'Skyway',skyway:true,elev:top.elev,...(top.disc?{disc:true}:{}),lore:'At the top of the floating steps a door of pale stone stands in the open air, and behind it is sky.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});else if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const annex=spot&&skyAnnexStair(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1),st=annex&&this.map.objects.find(o=>o.kind==='skyStair');if(st){Object.assign(st,{skyAnnex:true,name:`${st.name} · ${SKY_ANNEX.name}`,lore:SKY_ANNEX.messages.stair});this.message=SKY_ANNEX.messages.stair}/* release 678: the Skylands Deep Annex, named before you climb */const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:st?st.name:top?'Skyway':'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);passingSeen(this.save);/* sightings (2026-11-11): one passer between meetings */this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind: it is only passing through, a sight, not a hunt you can follow.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);this.claimGuideLair();const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastHoldNote(this.save,worldBeast.worldBeast)}`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */if(!beast&&!worldBeast){const chrys=mothChrysalisFor(this.save,this.map,this.rx,this.ry);if(chrys){this.map.enemySpawns.push(chrys);this.message=CHRYSALIS.found}}/* release 708: the Ashen Moth's chrysalis on a great tree */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastHoldNote(this.save)}`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`],guidedSky=!!seenSky?.guideVersion&&guideHost(this.save.seed,"skyway",this.rx,this.ry);if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&(skylandSection(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1)||guidedSky)&&!this.map.objects.some(o=>o.kind==='skyStair')){const skyV=seenSky?.skyVersion||SKYLANDS.version,disc=skyV>=3?buildSkyDiscs(this.map,this.save.seed,this.rx,this.ry,guidedSky):null,top=disc?{x:disc.x-.5,y:disc.y-.75,elev:disc.level,disc:true}:skyV===2?buildSkyway(this.map,this.save.seed,this.rx,this.ry):null;/* release 585: the skyway ascent; 587: floating discs; waymark guides: a guided host with no room for the discs keeps the plain Sky Stair */const spot=skyV>=2&&(top||!guidedSky)?top:this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot&&top)this.map.objects.push({id:`skyway-${this.rx}-${this.ry}`,kind:'skyStair',name:'Skyway',skyway:true,elev:top.elev,...(top.disc?{disc:true}:{}),lore:'At the top of the floating steps a door of pale stone stands in the open air, and behind it is sky.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});else if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const annex=spot&&skyAnnexStair(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1),st=annex&&this.map.objects.find(o=>o.kind==='skyStair');if(st){Object.assign(st,{skyAnnex:true,name:`${st.name} · ${SKY_ANNEX.name}`,lore:SKY_ANNEX.messages.stair});this.message=SKY_ANNEX.messages.stair}/* release 678: the Skylands Deep Annex, named before you climb */const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:st?st.name:top?'Skyway':'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);passingSeen(this.save);/* sightings (2026-11-11): one passer between meetings */this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind: it is only passing through, a sight, not a hunt you can follow.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
-    if(area==="dungeon"&&!this.map.seedRealm/* seed realms: no world beasts */){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastTriesLeft(this.save,haunt.worldBeast)} of ${B.tries} tries remain.`}} /* release 249: the Psychic Crystal haunts dungeons with water */
+    if(area==="dungeon"&&!this.map.seedRealm/* seed realms: no world beasts */){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastHoldNote(this.save,haunt.worldBeast)}`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
     if (area === "dungeon") this.placeDuelists(); // the Gaunt (duelists.ts): new ground only, over the floor as generated (before the wardens, which keep off their tiles)
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.marginWarden)) for (const w of wardenSpawns(this.save, this.map, this.areaId(), dungeonHistory(this.save, this.areaId()).wardensSlain || [])) this.map.enemySpawns.push(w); // release 459: Margin Wardens; 473: the slain stay slain
@@ -6042,8 +6148,8 @@ export class Game {
     for (const e of this.enemies) if (!e.dead && e.maxHp > 0 && (e.worldBeast || e.questingBeast)) { const q = e.worldBeast ? this.save.worldBeasts?.[e.worldBeast]?.active : this.save.questingBeast?.active; if (q) q.hpShare = Math.max(.01, Math.min(1, e.hp / e.maxHp)); }
     const beastNote = this.area === "overworld" ? questingBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.some((e) => e.questingBeast && !e.dead)) : null;
     if (beastNote) journalOnce(this.save, `questing-beast-try:${this.save.questingBeast.cycle}:${this.save.questingBeast.active?.tries ?? "gone"}`, beastNote, "The Questing Beast");
-    if (this.dragonHere() && this.dragonClock().casts >= DRAGON.colonize.casts) { const q = this.save.worldBeasts.crimsonTyrant; q.active = null; q.escaped++; q.cycle++; q.cooldown = WORLD_BEASTS.crimsonTyrant.cooldownEscaped; journalOnce(this.save, `crimson-claimed:${this.rx},${this.ry}`, WORLD_BEASTS.crimsonTyrant.claimed, "World beasts"); this.message = WORLD_BEASTS.crimsonTyrant.claimed; } // release 709: fall on its claimed ground and it is done with you
-    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null, this.beastTries === false) : null; // release 235
+    if (this.dragonHere() && this.dragonClock().casts >= DRAGON.colonize.casts) { const q = this.save.worldBeasts.crimsonTyrant; q.active = null; q.escaped++; q.cycle++; q.cooldown = WORLD_BEASTS.crimsonTyrant.cooldownEscaped; journalOnce(this.save, `crimson-claimed:${this.rx},${this.ry}`, WORLD_BEASTS.crimsonTyrant.claimed, "World beasts"); this.message = WORLD_BEASTS.crimsonTyrant.claimed; } // release 709: fall on its claimed ground and it is done with you (2026-11-18, Tim: this claim still ends the hunt inside its engagement window)
+    const worldNote = this.area === "overworld" || this.area === "dungeon" ? worldBeastPlayerFell(this.save, this.rx, this.ry, this.enemies.filter((e) => e.worldBeast && !e.dead).map((e) => e.worldBeast), this.area === "dungeon" ? this.areaId() : null) : null; // release 235
     if (worldNote) journalOnce(this.save, `world-beast-try:${this.rx},${this.ry}:${JSON.stringify(this.save.worldBeasts)}`.slice(0, 160), worldNote, "World beasts");
     // Gate predators have no rematches: a player death ends their hunt, without rewards.
     for (const e of this.enemies) if (e.gatePredator && !e.dead) { e.dead = true; e.noRewards = true; resetGateAttack(e, true); }
@@ -6056,8 +6162,7 @@ export class Game {
       if (!state?.active) { e.dead = true; e.noRewards = true; continue; }
       if (e.retreating || e.fleeTo) continue;
       if (e.worldBeast) { const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) state.active.wounds = Math.round(f * 1e4) / 1e4; else delete state.active.wounds; }
-      if (e.worldBeast && this.beastTries === false) { e.aggro = false; resetPackRuntime(e); continue; } // release 345: tries off: no try is spent and the clock carries on
-      state.active.patience = 0; // A fresh duel gets a fresh per-fight clock, not fresh attempts.
+      delete state.active.patience; // 2026-11-18: the per-fight clock is retired; a death no longer restarts anything (world-beasts.ts BEAST_ENGAGEMENT: the window runs on)
       if (e.glyphBaseSpeed !== undefined) e.speedMultiplier = e.glyphBaseSpeed;
       delete e.glyphBaseSpeed; delete e.glyphBurn; delete e.glyphSlow; delete e.sweepFreeze;
       e.hitStun = 0; e.recoil = 0; e.hitFlash = 0;
@@ -7886,18 +7991,28 @@ export class Game {
     if (this.beastNote) { this.message = this.beastNote; this.beastNote = null; }
     if (this.enemies.some((e) => e.remnantGone)) this.enemies = this.enemies.filter((e) => !e.remnantGone);
     let gone = null;
+    // The Questing Beast's engagement window (2026-11-18, questing-beast.ts): once engaged it holds its section for the window, then
+    // its hunt ends as an escape and it fades where it stands (RETREAT.fade), untouchable and with no bounty.
+    for (const e of this.enemies) {
+      if (!e.questingBeast || e.dead) continue;
+      if (e.qbLeaving || e.fleeTo) { if (e.fleeDone) { e.dead = true; e.noRewards = true; (gone ||= []).push(e); } continue; }
+      if (this.area !== "overworld" || !this.save.questingBeast?.active || this.save.questingBeast.active.rx !== this.rx || this.save.questingBeast.active.ry !== this.ry || !questingBeastWindow(this.save, e)) continue;
+      const line = questingBeastLeaves(this.save); this.message = line; journalOnce(this.save, `questing-beast-gone:${this.save.questingBeast.cycle}`, line, "The Questing Beast");
+      for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
+      Object.assign(e, { qbLeaving: true, retreating: true, untargetable: true, noRewards: true, aggro: false, fleeTo: { x: e.x, y: e.y, home: true }, fleePath: [], fleeSpeed: RETREAT.speed, fleeFadeTime: RETREAT.fade });
+    }
     for (const e of this.enemies) {
       if (!e.worldBeast || e.dead || !WORLD_BEASTS[e.worldBeast]) continue;
       const id = e.worldBeast, B = WORLD_BEASTS[id], q = this.save.worldBeasts?.[id]?.active;
       if (!q) continue;
       if (!e.retreating) { const f = e.hp / (e.maxHp || 1); if (f > 0 && f < 1) q.wounds = Math.round(f * 1e4) / 1e4; else delete q.wounds; } // release 353
       if(id==='astralWorm') {
-        if(!e.retreating&&e.aggro&&worldBeastPatience(this.save,id,dt,e,this.beastTries===false)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
+        if(!e.retreating&&(e.aggro||beastEngaged(q))&&worldBeastPatience(this.save,id,dt,e)){beginAstralWorldRetreat(this,e);this.message=B.flee;reconcileAstralCompanions(this);this.syncAstralRiders();}
         if(q.astralRetreat){const result=tickAstralWorldRetreat(this,e,dt,{previewDungeon:(save,id,levelId)=>generatePinnedDungeon(save,id,{levelId}),applyDungeonProgress:(save,id,map)=>applyDeepDungeonProgress(save,id,map),domainAt:domainSectionAt,beforeCross:actor=>{this.astralRiderLeavesWith(actor);return !this.enemies.some(rider=>rider.astralMount?.ownerId===actor.id&&this.astralRiderHeld(rider));}});if(result.arrived){this.astralRiderLeavesWith(e);this.message=retreatEnded(this.save,id);e.dead=true;e.noRewards=true;reconcileAstralCompanions(this);}}
         continue;
       }
-      if (!e.retreating && e.aggro && q.dungeon && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) { const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
-      if (!e.retreating && e.aggro && !q.dungeon && !q.cornered && this.area === "overworld" && worldBeastPatience(this.save, id, dt, e, this.beastTries === false)) {
+      if (!e.retreating && (e.aggro || beastEngaged(q)) && q.dungeon && worldBeastPatience(this.save, id, dt, e)) { /* 2026-11-18: once engaged, its window runs out whether or not it is roused */ const r = beginDungeonRetreat(this.save, id, this.map); e.retreating = true; this.message = r.message; for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; } journalOnce(this.save, `world-beast-flees:${id}:${this.save.worldBeasts[id].cycle}`, r.message, "World beasts"); }
+      if (!e.retreating && (e.aggro || beastEngaged(q)) && !q.dungeon && !q.cornered && this.area === "overworld" && worldBeastPatience(this.save, id, dt, e)) {
         const seed = this.save.seed, gen = this.save.worldGeneration, r = beginRetreat(this.save, id, this.rx, this.ry, this.retreatProbe()); // release 241: a section is generated only for homes that need it
         e.retreating = true; this.message = r.message;
         for (const m of this.enemies) if (m.summonedBy === e.id && !m.dead) { m.dead = true; m.noRewards = true; }
@@ -8336,7 +8451,7 @@ export class Game {
     q.active = { rx: this.rx, ry: this.ry, tries: 0 }; encounterMet(this.save);
     const m = this.createEnemyFromSpawn({ id: `world-beast:ashenMoth:${q.cycle}`, kind: "ashenMoth", x: e.x, y: e.y, boss: true, worldBeast: "ashenMoth", traits: [] });
     m.aggro = true; this.enemies.push(m); this.message = CHRYSALIS.hatch;
-    (this.questNotices ||= []).push({ title: "THE ASHEN MOTH", detail: `hatched · ${WORLD_BEASTS.ashenMoth.tries} tries`, kind: "discovery" });
+    (this.questNotices ||= []).push({ title: "THE ASHEN MOTH", detail: `hatched · ${Math.round(BEAST_ENGAGEMENT.seconds / 60)} minutes once engaged`, kind: "discovery" });
     return m;
   }
   // Up in a great tree, the Moth only harries the Wayfarer; on the ground it fights with everything (release 708).
@@ -8789,7 +8904,7 @@ export class Game {
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && this.artRush) return []; // 2026-11-14: the Lava Slash rush owns the body until its slam
     if (!echo && !this._shadowArrive && (this.shadowDash || (now < (this.boxingUntil || 0) && this.shadowDashBegin(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now)))) return []; // release 485; 2026-11-14: Shadow Boxing charges to the foe (SHADOW_DASH) and this press lands on arrival (shadowDashLand)
-    const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
+    const acceptedCooldown=PRIMARY_PRESS.ms*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
     if (!echo) { this.player.attackReadyAt = swingKind ? now /* the swing record gates the next press (swingChainDue) */ : now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
     if (!swingCall) { this.player.attackUntil = now + ACTION_MOTION.meleeMs;
@@ -8917,7 +9032,7 @@ export class Game {
       );
     this.save.lastAim = d;
     const toolKind = acceptedToolKind;
-    const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=360*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
+    const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=TOOL_PRESS.ms*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
     if(delayed&&startupMs==null)return false;
     const round=usesRounds(weapon)?this.takeRound(glyphs.count("echo")):"none";if(!round)return false; // tool-forms.ts ROUNDS: empowered first, then the belt, then cinder iron
     const preparedProjectiles=delayed?[]:this.projectiles;

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
 import { createInput } from '../src/input.ts';
+const legacyRig = (run: () => void) => { CV.CLOSE_VIEW_HOOKS.orbit = false; try { run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = null; } }; // the pre-2026-11-18 collision rig
 
 // Exercise the production camera and controls without a GPU or actor capture. Geometry/body projection
 // and heightfields are additionally covered by close-view-framing and close-view-terrain-render.
@@ -39,7 +40,10 @@ function clearEye(g) {
   for (let j = 1; j <= 40; j++) assert.equal(CV.closeViewWallAt(g.map, px + (c.x - px) * j / 40, py + (c.y - py) * j / 40), false, `clear eye ray ${j}`);
 }
 
-test('a stationary concave corner settles instead of pumping the boom or shoulder', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('a stationary concave corner settles instead of pumping the boom or shoulder', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.closeViewAutoFollow = false;
   assert.equal(CV.closeViewWallAt(g.map, 11.5, 5.75), false);
   CV.resetCloseViewCamera(); frame(g);
@@ -55,7 +59,7 @@ test('a stationary concave corner settles instead of pumping the boom or shoulde
   assert.equal(samples.at(-1).shoulder, 0, 'the obstructed shoulder stays centered');
   assert.equal(JSON.stringify(g.map.tiles), tiles, 'camera does not change room geometry');
   assert.equal(JSON.stringify(g.save), save, 'camera state is runtime-only');
-});
+}));
 
 test('recenter and quick-turn clocks, boom and crane freeze through pause and resume without a jump', () => {
   const g = fixture(); frame(g, 40); g.save.lastAim = { x: 0, y: 1 }; CV.closeViewRecentre(g, now); frame(g, 2);
@@ -77,7 +81,10 @@ test('recenter and quick-turn clocks, boom and crane freeze through pause and re
   frame(g, 40);
 });
 
-test('turning out of an alcove recovers distance smoothly, with clear geometry and no overshoot', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('turning out of an alcove recovers distance smoothly, with clear geometry and no overshoot', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.closeViewAutoFollow = false;
   CV.resetCloseViewCamera(); frame(g);
   CV.closeViewPan((-Math.PI / 2 - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now); frame(g, 180);
@@ -92,7 +99,7 @@ test('turning out of an alcove recovers distance smoothly, with clear geometry a
     largest = Math.max(largest, d - prior); prior = d;
   }
   assert.ok(prior > 2.6 && largest < .06, `gradual recovery: ${largest} tile maximum frame step`);
-});
+}));
 
 test('Game pause lifecycle freezes camera clocks with zero paused render or input callbacks', () => {
   const g = fixture(); frame(g, 40); g.player.attackReadyAt = 0; g.primaryAttack(now);
@@ -276,11 +283,14 @@ test('no-target activation follows the actual idle body instead of neutral camer
   assert.ok(Math.abs(wrap(c.yaw - displayed)) < .01); assert.ok(Math.abs((c.x - px) * rx + (c.y - py) * ry) < 1e-5); assert.deepEqual([g.player.x, g.player.y], xy); assert.deepEqual(g.player.attackVisual, pose);
 });
 
-test('centered Target keeps the existing obstruction escape and camera safety', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('centered Target keeps the existing obstruction escape and camera safety', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.lastAim = { x: 0, y: -1 }; CV.resetCloseViewCamera(); frame(g, 2);
   CV.closeViewTargetActivate(g, now); frame(g, 240); const c = CV.closeViewCamera(); assert.equal(c.centeredRear, true); clearEye(g);
   assert.ok(c.distance > 0 && c.distance <= CV.closeViewPreset(g).distance); assert.ok(Math.abs(c.rigOffset) <= CV.closeViewPreset(g).shoulder + 1e-9, 'bounded existing lateral rig is retained under obstruction');
-});
+}));
 
 test('Target acquires from the pre-recenter view, recenters on acquire and unlock, and rejects hidden input', () => {
   const g = fixture(); frame(g, 40); CV.closeViewPan(-CV.closeViewCamera().yaw / CV.CLOSE_VIEW.crescent.yaw, 0, now); const e = foe(g, 'target-command', 2, 0); assert.equal(CV.closeViewLockCandidate(g)?.id, e.id);

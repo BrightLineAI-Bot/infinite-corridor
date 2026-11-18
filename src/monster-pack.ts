@@ -11,6 +11,7 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.ts";
 import { stageOneBeastReference } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
+import { WORLD_BOSS_PACE } from "./boss-kit.ts"; // world-boss pacing (Tim, 2026-11-18)
 import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
 import { onStegoTailSevered } from "./stego-bait.ts";
 import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner } from "./dino-duel.ts"; // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
@@ -1084,6 +1085,19 @@ function damageOf(e, attackId) { return Math.max(1, Math.ceil((Number(e.damage) 
 // world turns it on (`w.bossPace`); a bare module world keeps the base timings the attack modules are written in.
 export const BOSS_PACE = { damage: .85, windup: 1.2, cooldown: 1.25, gap: 1.35 };
 export const bossPaced = (e) => { const k = staggerClass(e); return k === "boss" || k === "revenant"; };
+// World-boss pacing (Tim, 2026-11-18: "these bosses are like Monster Hunter World... their attacks almost one-shot or two-shot you,
+// which is fine... but the fights take a long time... I think he attacks too quickly... give their attacks more wind-up"). On top of
+// BOSS_PACE, the roaming world beasts (world-beasts.ts, the Astral Worm and the Questing Beast among them) and the big-room beasts (the
+// Wild Stegosaurus and the Spinosaurus of keeps, arcologies and Pentagons, and the Spinosaurus that comes in as an interloper) wind up
+// `windup` times longer, and pause `gap` times longer between attacks, at least `gapMin` s. The telegraph on the ground stretches with
+// the windup (packWindupScale is the one clock both read), so a blow lands when its mark fills. Damage and per-attack cooldowns are
+// unchanged. Dungeon bosses, the Gate Revenant, the Stalker, elites and ordinary creatures are not world-paced.
+export { WORLD_BOSS_PACE }; // the table lives in boss-kit.ts, where the Astral Worm (astral-worm.ts) reads it too
+export const worldBossPaced = (e) => !!(e && (e.worldBeast || e.questingBeast || e.stegoRoom || e.spinoRoom || e.spinoInterloper));
+// How much longer a pack attack's windup runs than its module says (1 when the world is not paced): the one number the attack clock,
+// its ground telegraph and every renderer that measures the windup's progress share.
+export const packWindupScale = (s) => (s?.paced ? BOSS_PACE.windup * (s.worldPaced ? WORLD_BOSS_PACE.windup : 1) : 1);
+const windupOf = (s, id) => (ATTACK_MODULES[id]?.windup || .5) * packWindupScale(s);
 function cooldownScale(e) { const enraged = e.boss && e.hp <= e.maxHp * PACK_BOSS_TEMPLATE.enrage; return (Number(e.attackCooldownScale) || 1) * (enraged ? .8 : 1) * (e.pack?.paced ? BOSS_PACE.cooldown : 1); }
 function segmentDistance(p, a, b) { const vx = b.x - a.x, vy = b.y - a.y, l = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / l)); return Math.hypot(p.x - (a.x + vx * t), p.y - (a.y + vy * t)); }
 function inArc(e, target, aim, radius, arcDegrees) {
@@ -1722,7 +1736,7 @@ function voidNovaRun(e, s, w) {
 
 function beginAttack(e, s, id, w, prey = null) {
   const attack = ATTACK_MODULES[id];
-  s.attack = id; s.phase = "windup"; s.t = (attack.windup || .5) * (s.paced ? BOSS_PACE.windup : 1); s.seq++; s.data = prey ? { prey: prey.id } : {}; s.hitOnce = false; // release 421 (the Wild Stegosaurus: a one-off blow at another creature, `prey`)
+  s.attack = id; s.phase = "windup"; s.t = (attack.windup || .5) * packWindupScale(s); s.seq++; s.data = prey ? { prey: prey.id } : {}; s.hitOnce = false; // release 421 (the Wild Stegosaurus: a one-off blow at another creature, `prey`)
   s.cd[id] = attack.cooldown * cooldownScale(e);
   const p = prey && dinoRivals(e, prey) ? duelReachPoint(e, prey) : center(prey || w.player); // the dino duel: aimed at the near side of the other's bulk
   s.data.aim = unit(p.x - e.x, p.y - e.y);
@@ -1765,7 +1779,7 @@ const dinoRivals = (a, b) => !!a && !!b && a !== b && ((a.kind === "spinoRex" &&
 function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
-  s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
+  s.gap = (e.attackGap ?? (attack?.recover || .6) * .6 + .45) * (s.paced ? BOSS_PACE.gap : 1); if (s.paced && s.worldPaced) s.gap = Math.max(WORLD_BOSS_PACE.gapMin, s.gap * WORLD_BOSS_PACE.gap); // the Questing Beast barely pauses (release 187); 421: bosses pause longer
   e.voidDashing = false; e.voidCharging = false; e.advPose = null; e.duelPose = null;
   if (e.strikeScale) e.strikeScale = 1; if (e.heavy) e.heavy = false; if (s.combo) { s.combo = 0; s.comboOf = 0; } // enemy-behaviour.ts: a blow's shape ends with it
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
@@ -1796,7 +1810,7 @@ const START = {
   dragonWingBack(e, s) { s.tele = { type: "brace" }; e.dragonPose = "crouch"; },
   dragonRain(e, s) { s.tele = { type: "brace" }; e.dragonPose = "headUp"; s.data.next = 0; s.data.n = 0; },
   dragonBlast(e, s) { s.tele = { type: "brace" }; e.dragonPose = "charge"; s.data.shot = 0; s.data.charge = DRAGON.blast.charge; },
-  dragonColonize(e, s, w) { s.tele = { type: "brace" }; e.dragonPose = "colonize"; e.dragonCharge = 0; const tiles = w.dragonLavaPreview?.(e) || []; if (tiles.length) w.addEffect({ kind: "colonize", owner: e.id, x: e.x, y: e.y, tiles, radius: 0, arming: 0, life: ATTACK_MODULES.dragonColonize.windup * BOSS_PACE.windup + .2, total: ATTACK_MODULES.dragonColonize.windup * BOSS_PACE.windup + .2, damage: 0 }); },
+  dragonColonize(e, s, w) { s.tele = { type: "brace" }; e.dragonPose = "colonize"; e.dragonCharge = 0; const tiles = w.dragonLavaPreview?.(e) || []; if (tiles.length) w.addEffect({ kind: "colonize", owner: e.id, x: e.x, y: e.y, tiles, radius: 0, arming: 0, life: windupOf(s, "dragonColonize") + .2, total: windupOf(s, "dragonColonize") + .2, damage: 0 }); },
   dragonClawSpin(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + DRAGON.claw.reach }; e.dragonPose = "spinReady"; s.data.beams = hashSeed(`${e.id}:${s.seq}:beams`) % 100 < DRAGON.claw.beams * 100; },
   dragonTailSpin(e, s) { s.tele = { type: "ring", radius: bodyRadius(e) + DRAGON.tailSpin.reach }; e.dragonPose = "spinReady"; },
   dragonTailSwipe(e, s) { s.tele = { type: "brace" }; e.dragonPose = "tailReady"; s.data.swipe = 0; s.data.next = 0; },
@@ -1821,17 +1835,17 @@ const START = {
   stagRoots(e, s) { s.tele = { type: "brace" }; e.stagPose = "rear"; },
   stagThorns(e, s) { s.tele = { type: "brace" }; e.stagPose = "shake"; s.data.volley = 0; s.data.next = 0; },
   stagLeap(e, s) { s.tele = { type: "brace" }; e.stagPose = "crouch"; },
-  stagCage(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.cageRings[0], total: ATTACK_MODULES.stagCage.windup }; e.stagPose = "rear"; },
+  stagCage(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.cageRings[0], total: windupOf(s, "stagCage") }; e.stagPose = "rear"; },
   stagStomp(e, s) { s.tele = { type: "circle", x: e.x, y: e.y, radius: bodyRadius(e) + STAG.stompRadius }; e.stagPose = "rear"; s.data.stamps = 0; },
   stagHunt(e, s) { s.tele = { type: "brace" }; e.stagPose = "bellow"; },
   stagGrove(e, s) { s.tele = { type: "brace" }; e.stagPose = "rear"; },
   stagMend(e, s) { s.tele = { type: "brace" }; e.stagPose = "mend"; },
   stagBirds(e, s) { s.tele = { type: "brace" }; e.stagPose = "bellow"; s.data.next = 0; s.data.birds = 0; },
-  stagMire(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.mire.radius, total: ATTACK_MODULES.stagMire.windup }; e.stagPose = "stamp"; },
+  stagMire(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: STAG.mire.radius, total: windupOf(s, "stagMire") }; e.stagPose = "stamp"; },
   // The Wild Stegosaurus (STEGO). `s.data.prey`: a one-off blow at another creature (stegoTick), aimed at it instead of you.
   stegoBite(e, s) { const B = STEGO.bite; stegoFace(e, s.data.aim); Object.assign(s.data, { bites: B.bites[hashSeed(`${e.id}:${s.seq}:bites`) % B.bites.length], n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + B.reach + B.step, arc: B.arc }; e.stegoPose = "biteReady"; },
   stegoTailWhack(e, s) { const T = STEGO.tailWhack; if (s.data.prey) stegoFace(e, { x: -s.data.aim.x, y: -s.data.aim.y }); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: stegoBack(e), radius: bodyRadius(e) + stegoWhackReach(e), arc: T.arc }; e.stegoPose = "tailReady"; },
-  stegoTailSlam(e, s) { const at = stegoSlamPoint(e, s.data.target); s.data.at = at; stegoFace(e, s.data.aim); s.tele = { type: "circle", x: at.x, y: at.y, radius: stegoSlamRadius(e), total: ATTACK_MODULES.stegoTailSlam.windup }; e.stegoPose = "tailRaise"; },
+  stegoTailSlam(e, s) { const at = stegoSlamPoint(e, s.data.target); s.data.at = at; stegoFace(e, s.data.aim); s.tele = { type: "circle", x: at.x, y: at.y, radius: stegoSlamRadius(e), total: windupOf(s, "stegoTailSlam") }; e.stegoPose = "tailRaise"; },
   stegoWheel(e, s, w) { stegoFace(e, s.data.aim); Object.assign(s.data, { dir: { ...s.data.aim }, hitAt: -1, dust: 0, side: 1, stuck: 0 }); s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, STEGO.wheel.speed * .8), width: bodyRadius(e) * 1.6 }; e.stegoPose = "curl"; e.stegoRoll = 0; },
   stegoPlateRockets(e, s) { s.tele = { type: "brace" }; e.stegoPose = "launch"; },
   stegoTailBlade(e, s, w) { stegoFace(e, { x: -s.data.aim.x, y: -s.data.aim.y }); s.tele = { type: "lane", aim: s.data.aim, length: rayLength(w, e, s.data.aim, STEGO.blade.speed * stegoBladeLife(e)), width: STEGO.blade.radius * 2 }; e.stegoPose = "whip"; },
@@ -1839,11 +1853,11 @@ const START = {
   stegoRearSwipe(e, s) { const R = STEGO.rear; stegoFace(e, s.data.aim); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + R.reach + R.step, arc: R.arc }; e.stegoPose = "rear"; },
   stegoBuck(e, s) { s.tele = { type: "arc", aim: stegoBack(e), radius: bodyRadius(e) + STEGO.buck.reach, arc: STEGO.buck.arc }; e.stegoPose = "buck"; },
   stegoJaws(e, s) { stegoFace(e, s.data.aim); Object.assign(s.data, { stage: "bite", slams: 0 }); e.stegoPose = "biteReady"; e.stegoGrab = { who: s.data.prey || null, phase: "bite", t: 0, slams: 0 }; },
-  stegoPounce(e, s, w) { const to = stegoLanding(e, w, s.data.target); s.data.to = to; s.data.from = { x: e.x, y: e.y }; stegoFace(e, s.data.aim); s.tele = { type: "circle", x: to.x, y: to.y, radius: STEGO.pounce.radius, total: ATTACK_MODULES.stegoPounce.windup }; e.stegoPose = "crouch"; },
+  stegoPounce(e, s, w) { const to = stegoLanding(e, w, s.data.target); s.data.to = to; s.data.from = { x: e.x, y: e.y }; stegoFace(e, s.data.aim); s.tele = { type: "circle", x: to.x, y: to.y, radius: STEGO.pounce.radius, total: windupOf(s, "stegoPounce") }; e.stegoPose = "crouch"; },
   stegoTreeClub(e, s, w) { const tree = clubTreeNear(w, e.x, e.y); Object.assign(s.data, { stage: "go", left: STEGO.tree.go, tree: tree ? tree.id : null, n: 0 }); s.tele = { type: "brace" }; e.stegoPose = "bite"; if (tree) { stegoFace(e, unit(tree.x - e.x, tree.y - e.y)); e.stegoTree = { phase: "grab", treeX: tree.x, treeY: tree.y }; } },
   stegoBreach(e, s, w) { const mode = hashSeed(`${e.id}:${s.seq}:breach`) % 2 ? "lane" : "slam", B = STEGO.breach; Object.assign(s.data, { mode, from: { x: e.x, y: e.y } }); e.stegoPose = "dive"; e.stegoSwim = 1; e.untargetable = true;
     if (mode === "lane") s.tele = { type: "lane", aim: s.data.aim, length: Math.min(B.lane, rayLength(w, e, s.data.aim, B.lane)), width: B.laneWidth * 2 };
-    else s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: B.radius, total: ATTACK_MODULES.stegoBreach.windup + B.under }; },
+    else s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: B.radius, total: windupOf(s, "stegoBreach") + B.under }; },
   // The Spinosaurus (SPINO). `s.data.prey`: a blow at a creature (its prey, or a one-off: spinoTick), aimed at it instead of you.
   spinoBite(e, s) { const B = SPINO.bite; spinoFace(e, s.data.aim); Object.assign(s.data, { bites: B.bites[hashSeed(`${e.id}:${s.seq}:bites`) % B.bites.length], n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + B.reach + B.step, arc: B.arc }; e.spinoPose = "bite"; },
   spinoClaw(e, s) { const C = SPINO.claw; spinoFace(e, s.data.aim); Object.assign(s.data, { n: 0, next: 0 }); s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + C.reach, arc: C.arc }; e.spinoPose = "clawL"; },
@@ -1961,7 +1975,7 @@ const START = {
   turtleDash(e, s, w) { const len = Math.min(11, TURTLE.dashSpeed * ATTACK_MODULES.turtleDash.active); s.data.ice = hashSeed(`${e.id}:${s.seq}:dash`) % 2 === 1; s.tele = { type: "lane", aim: s.data.aim, length: len, width: bodyRadius(e) * 1.2 }; s.data.next = 0; },
   turtleSpin(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.flung = 0; },
   turtleCyclone(e, s) { s.tele = { type: "brace" }; s.data.next = 0; s.data.volley = 0; s.data.dir = { ...s.data.aim }; s.data.hitCd = 0; },
-  turtleComet(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: TURTLE.cometBlast, total: ATTACK_MODULES.turtleComet.windup + 1.2 }; },
+  turtleComet(e, s) { s.tele = { type: "circle", x: s.data.target.x, y: s.data.target.y, radius: TURTLE.cometBlast, total: windupOf(s, "turtleComet") + 1.2 }; },
   turtleShield(e, s) { s.tele = { type: "shimmer" }; },
   wormMaw(e, s) { const a = Math.atan2(s.data.aim.y, s.data.aim.x); s.data.dirs = Array.from({ length: WORM.mawTentacles }, (_, i) => { const b = a + (i - (WORM.mawTentacles - 1) / 2) * WORM.mawSpread; return { x: Math.cos(b), y: Math.sin(b) }; }); s.tele = { type: "tendrils", dirs: s.data.dirs, length: WORM.mawLength, width: WORM.mawWidth, flesh: true }; },
   wormSuction(e, s) { s.tele = { type: "ring", radius: WORM.suctionRadius, inhale: true }; },
@@ -2196,7 +2210,7 @@ const RUN = {
     if (d.shot >= D.shots && d.charge < D.charge * .5 || s.t <= 0) { e.dragonCharge = 0; toPhase(s, "recover", A.recover); }
   },
   dragonColonize(e, s, w) {
-    if (s.phase === "windup") { e.dragonCharge = 1 - s.t / (ATTACK_MODULES.dragonColonize.windup * BOSS_PACE.windup); if (s.t > 0) return;
+    if (s.phase === "windup") { e.dragonCharge = 1 - s.t / windupOf(s, "dragonColonize"); if (s.t > 0) return;
       w.dragonLava?.(e); w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: 8, arming: 0, life: .7, damage: 0 }); e.dragonCharge = 0; e.dragonPose = "roar"; s.tele = null; toPhase(s, "recover", ATTACK_MODULES.dragonColonize.recover); }
   },
   dragonClawSpin(e, s, w) {
@@ -2654,7 +2668,7 @@ const RUN = {
   },
   stegoWheel(e, s, w) {
     const A = ATTACK_MODULES.stegoWheel, W = STEGO.wheel, d = s.data;
-    if (s.phase === "windup") { e.stegoRoll = Math.min(1, 1 - Math.max(0, s.t) / (A.windup * (s.paced ? BOSS_PACE.windup : 1))); if (s.t <= 0) { s.tele = null; e.stegoPose = "roll"; e.stegoRoll = 1; toPhase(s, "active", A.active); dinoCue(w, e, "roll", "stegoWheel"); } return; }
+    if (s.phase === "windup") { e.stegoRoll = Math.min(1, 1 - Math.max(0, s.t) / (A.windup * packWindupScale(s))); if (s.t <= 0) { s.tele = null; e.stegoPose = "roll"; e.stegoRoll = 1; toPhase(s, "active", A.active); dinoCue(w, e, "roll", "stegoWheel"); } return; }
     if (s.phase === "recover") { e.stegoPose = "uncurl"; e.stegoRoll = Math.max(0, s.t / A.recover); return; }
     const q = stegoQuarry(s, w) || d.target, want = Math.atan2(q.y - e.y, q.x - e.x), cur = Math.atan2(d.dir.y, d.dir.x), diff = ((want - cur) % TAU + TAU * 1.5) % TAU - Math.PI, a = cur + Math.max(-W.turn * w.dt, Math.min(W.turn * w.dt, diff));
     d.dir = { x: Math.cos(a), y: Math.sin(a) }; stegoFace(e, d.dir); e.stegoRoll = 1; e.stegoPose = "roll";
@@ -2720,7 +2734,7 @@ const RUN = {
   // then grabSlam, with e.stegoGrab { who, phase: 'bite'|'heave'|'slam'|'release', t, slams }.
   stegoJaws(e, s, w) {
     const A = ATTACK_MODULES.stegoJaws, J = STEGO.jaws, d = s.data, prey = stegoPreyAlive(w, d.prey), grab = (phase, t) => { e.stegoGrab = { who: d.prey || null, phase, t: Math.max(0, Math.min(1, t)), slams: d.slams || 0 }; };
-    if (s.phase === "windup") { if (prey) { d.aim = unit(prey.x - e.x, prey.y - e.y); stegoFace(e, d.aim); d.at = stegoJawsLanding(e, prey, Math.atan2(d.aim.y, d.aim.x) + J.swing); s.tele = { type: "circle", x: d.at.x, y: d.at.y, radius: J.radius, total: A.windup + J.bite + J.heave }; } e.stegoPose = "biteReady"; grab("bite", 0); if (s.t <= 0) { d.left = J.bite; toPhase(s, "active", A.active); } return; }
+    if (s.phase === "windup") { if (prey) { d.aim = unit(prey.x - e.x, prey.y - e.y); stegoFace(e, d.aim); d.at = stegoJawsLanding(e, prey, Math.atan2(d.aim.y, d.aim.x) + J.swing); s.tele = { type: "circle", x: d.at.x, y: d.at.y, radius: J.radius, total: A.windup * packWindupScale(s) + J.bite + J.heave }; } e.stegoPose = "biteReady"; grab("bite", 0); if (s.t <= 0) { d.left = J.bite; toPhase(s, "active", A.active); } return; }
     if (s.phase === "recover") { e.stegoGrab = null; return; }
     if (s.phase !== "active") return;
     if (!prey) { stegoLetGo(e, s, w); e.stegoPose = null; s.tele = null; toPhase(s, "recover", A.recover); return; }
@@ -3190,7 +3204,7 @@ const RUN = {
   giantElectrify(e, s, w) {
     if (s.phase !== "windup") return;
     // The sky strikes the raised club partway through the stand; at the end of it the Giant runs hot.
-    if (!s.data.struck && s.t <= ATTACK_MODULES.giantElectrify.windup * (1 - GIANT.strikeAt)) { s.data.struck = true; w.addEffect({ kind: "giantStrike", owner: e.id, x: e.x, y: e.y, scale: e.scale, radius: 0, arming: 0, life: .5, total: .5, damage: 0 }); }
+    if (!s.data.struck && s.t <= windupOf(s, "giantElectrify") * (1 - GIANT.strikeAt)) { s.data.struck = true; w.addEffect({ kind: "giantStrike", owner: e.id, x: e.x, y: e.y, scale: e.scale, radius: 0, arming: 0, life: .5, total: .5, damage: 0 }); }
     if (s.t > 0) return;
     e.giantCharged = GIANT.chargeTime; e.giantStormClock = GIANT.stormEvery; s.tele = null;
     toPhase(s, "recover", ATTACK_MODULES.giantElectrify.recover);
@@ -3836,7 +3850,7 @@ const RUN = {
 function advLeapStart(e, s, w, id) {
   const C = ADV.leaps[id], A = ATTACK_MODULES[id], p = center(w.player);
   s.data.from = { x: e.x, y: e.y }; s.data.fromLift = Number(e.hopLift) || 0; s.data.fromLevel = levelAt(w, e) + (e.advCling ? ADV.perch.clingRise : 0); e.advPose = C.pose;
-  if (C.to === "player") { s.data.held = 0; s.tele = { type: "circle", x: p.x, y: p.y, radius: C.radius, total: (A.windup || .5) * (s.paced ? BOSS_PACE.windup : 1) }; return; }
+  if (C.to === "player") { s.data.held = 0; s.tele = { type: "circle", x: p.x, y: p.y, radius: C.radius, total: (A.windup || .5) * packWindupScale(s) }; return; }
   const spot = C.search === "perch" ? findPerch(e, w, p) : findRetreat(e, w, p, s.seq);
   s.data.spot = spot ? { x: spot.x, y: spot.y, cling: !!(C.cling && spot.cling) } : null;
   s.tele = spot ? { type: "brace" } : null;
@@ -4166,7 +4180,7 @@ function duelVector(e, s, w, p, d) {
   DUEL_V.x = x; DUEL_V.y = y; DUEL_V.speed = speed; return DUEL_V;
 }
 // The feint: some swings are held a little longer than the rest (the telegraph shows the whole time).
-function duelFeint(e, s) { if (hashSeed(`${e.id}:feint:${s.seq}`) % 100 < DUELISTS.feint.chance) { s.t += DUELISTS.feint.delay * (s.paced ? BOSS_PACE.windup : 1); s.data.feint = true; } }
+function duelFeint(e, s) { if (hashSeed(`${e.id}:feint:${s.seq}`) % 100 < DUELISTS.feint.chance) { s.t += DUELISTS.feint.delay * packWindupScale(s); s.data.feint = true; } }
 // One blade blow at the Wayfarer if `hit` (they must be in sight): the ordinary damage path (guard, dodge frames, reductions).
 function duelBlow(e, w, id, hit, jumpable = false) { if (hit && w.los(e, w.player)) w.hurt(e, damageOf(e, id), { jumpable, source: id }); }
 Object.assign(START, {
@@ -4866,7 +4880,7 @@ function stegoTick(e, s, w, p, d) {
 function spinoHeading(e) { const h = e.spinoHeading; return h && Number.isFinite(h.x) && Number.isFinite(h.y) && (h.x || h.y) ? h : { x: e.facingX < 0 ? -1 : 1, y: 0 }; }
 function spinoFace(e, v) { const u = unit(v.x, v.y); e.spinoHeading = { x: u.x, y: u.y }; if (Math.abs(u.x) > .05) e.facingX = u.x >= 0 ? 1 : -1; }
 function spinoBack(e) { const h = spinoHeading(e); return { x: -h.x, y: -h.y }; }
-const spinoWindup = (s, id) => (ATTACK_MODULES[id].windup || .5) * (s.paced ? BOSS_PACE.windup : 1);
+const spinoWindup = (s, id) => windupOf(s, id);
 function spinoReach(e, t, max) { const dx = t.x - e.x, dy = t.y - e.y, m = Math.hypot(dx, dy); return m <= max ? { x: t.x, y: t.y } : { x: e.x + dx / m * max, y: e.y + dy / m * max }; }
 const spinoLanding = (e, w, t) => stegoLanding(e, w, t);
 function inTriangle(p, a, b, c) { const s1 = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x), s2 = (c.x - b.x) * (p.y - b.y) - (c.y - b.y) * (p.x - b.x), s3 = (a.x - c.x) * (p.y - c.y) - (a.y - c.y) * (p.x - c.x); return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0); }
@@ -4968,7 +4982,7 @@ export function updatePackMonster(e, w) {
   if(e.kind === "voidWalker" && e.astralAllyOf && !w.astralAllyContext) { updateAstralWalkerAllyFixture(e,w.enemies.find(q=>q.id===e.astralAllyOf),w); return; }
   const def = packDefinition(e);
   if (!def) return;
-  if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; } // release 421 (a paused frame changes nothing)
+  if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; if (e.pack.paced && worldBossPaced(e)) e.pack.worldPaced = true; else delete e.pack.worldPaced; } // release 421 (a paused frame changes nothing)
   if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
   if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); if (e.kind === "spinoRex" && e.pack) spinoLetGo(e, e.pack, w); if (e.kind === "wildStego" && e.pack) stegoLetGo(e, e.pack, w); return; }

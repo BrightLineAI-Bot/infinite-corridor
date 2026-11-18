@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 import { createInput } from '../src/input.ts';
 
 // Look mode (Tim, 2026-11-13): a long press on the compass in Close View; a pinch zooms the Close View camera onto the Wayfarer
@@ -56,7 +57,11 @@ test('the compass: a tap stays a tap, a held press is Look mode, a slide cancels
   assert.match(html, /id="navCompassHelp"[^>]*>[^<]*press and hold/, 'the long press has an accessible description');
 });
 
-test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfarer, never inside a wall', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfarer, never inside a wall', () => legacyRig(() => {
   CV.resetCloseViewCamera();
   assert.equal(CV.closeViewLookSet({ map: {}, player: { x: 0, y: 0 } }, true), false, 'not in Close View: no Look mode');
   const g = fixture(); const before = CV.closeViewCamera(), save = JSON.stringify(g.save);
@@ -84,9 +89,13 @@ test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfa
   assert.ok(far.distance >= before.distance - 1e-6 && far.distance <= before.distance + L.out + 1e-6, `at most a bit beyond the normal view, walls still bounding it (${before.distance} -> ${far.distance})`);
   assert.equal(CV.closeViewWallAt(g.map, far.x, far.y), false);
   assert.equal(JSON.stringify(g.save), save, 'Look mode is runtime-only');
-});
+}));
 
-test('zooming in beside a wall keeps the eye out of the wall', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('zooming in beside a wall keeps the eye out of the wall', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; CV.resetCloseViewCamera(); frame(g, 3);
   for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
     CV.closeViewPan((yaw - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now); frame(g, 4);
@@ -94,7 +103,7 @@ test('zooming in beside a wall keeps the eye out of the wall', () => {
       assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false, `yaw ${yaw} zoom ${z}`); clearLine(g, s.focus[0], s.focus[1], c.x, c.y); }
     CV.closeViewLookSet(g, false, true); frame(g, 2);
   }
-});
+}));
 
 test('a character in front is framed whole, then closer toward the face; the Wayfarer, not they, is faded between', () => {
   const g = fixture(); const px = g.player.x + .5, py = g.player.y + .75;
@@ -130,8 +139,9 @@ const DEG = Math.PI / 180;
 test('exits: Attack, Dodge, every spell (Rift Step too) and the Tool; Action, Jump, a potion and walking keep it', () => {
   const g = fixture();
   for (const k of ['interact', 'jump', 'potion', 'utility', 'preset']) { CV.closeViewLookSet(g, true); CV.closeViewLookZoomTo(.8); assert.equal(CV.closeViewLookActions(g, { [k]: true, x: .7, y: -.7 }), false, k); assert.equal(CV.closeViewLookActive(), true, `${k} keeps Look mode`); }
-  // walking keeps it (and the zoom)
-  CV.closeViewLookZoomTo(1); for (let i = 0; i < 30; i++) { g.player.x += .02; frame(g); } assert.equal(CV.closeViewLookActive(), true); assert.equal(CV.closeViewLookState().want, 1);
+  // walking keeps it (and the zoom). 2026-11-18 (Tim's review): with the orbit and the Wayfarer the subject, the zoom asked is
+  // her own Close View distance (save.closeViewZoom; closeViewLookZoomNow reads whichever zoom the pinch moves)
+  CV.closeViewLookZoomTo(1); for (let i = 0; i < 30; i++) { g.player.x += .02; frame(g); } assert.equal(CV.closeViewLookActive(), true); assert.equal(CV.closeViewLookZoomNow(), 1);
   for (const k of ['attack', 'dodge', 'spell', 'spell2', 'spell3', 'tool']) {
     CV.closeViewLookSet(g, true); CV.closeViewLookZoomTo(1); frame(g, 30);
     assert.equal(CV.closeViewLookActions(g, { [k]: true }), true, k); assert.equal(CV.closeViewLookActive(), false, `${k} ends Look mode`);
@@ -163,11 +173,13 @@ test('it resets: a pause or menu, leaving Close View, a new area, death and a re
   g = fixture(); assert.equal(CV.closeViewLookActive(), false);
 });
 
-test('Reduced Motion snaps the zoom rather than gliding it', () => {
+// 2026-11-18 (Tim's review): with the orbit, a zoom on the Wayfarer is her own distance (applied at once, no glide; tests/close-view-
+// orbit-camera.test.ts). This test pins Look's own zoom on her, on the collision rig (CLOSE_VIEW_HOOKS.orbit = false, legacyRig).
+test('Reduced Motion snaps the zoom rather than gliding it', () => legacyRig(() => {
   const g = fixture(); g.presentation = { ...(g.presentation || {}), reduceMotion: true };
   CV.closeViewLookSet(g, true); CV.closeViewLookZoomTo(1); frame(g, 1); assert.equal(CV.closeViewLookState().zoom, 1);
   CV.closeViewLookActions(g, { attack: true }); frame(g, 1); assert.equal(CV.closeViewLookState().zoom, 0);
-});
+}));
 
 // --- the pinch on the game area: a DOM double for mountCloseViewControls and createInput
 function el(tag = 'div') {
@@ -196,7 +208,7 @@ test('a pinch on the game area is never movement, aim or a world tap, and outsid
   const root = { querySelector: (s) => s === '#game' ? canvas : null, querySelectorAll: () => [], addEventListener() {} };
   const input = createInput(root, { addEventListener() {} });
   // as main.ts wires it: the joystick finger joined for a pinch is released from the input
-  const controls = CV.mountCloseViewControls(() => g, host, { releaseMovement: (id) => { released.push(id); input.releasePointer(id); } });
+  let persisted = 0; const controls = CV.mountCloseViewControls(() => g, host, { releaseMovement: (id) => { released.push(id); input.releasePointer(id); }, persist: () => persisted++ });
   controls.sync(); frame(g, 2); controls.sync();
   let taps = 0; canvas.addEventListener('worldtap', () => taps++);
   canvas.dispatchEvent = (ev) => { if (ev.type === 'worldtap') taps++; };
@@ -209,8 +221,11 @@ test('a pinch on the game area is never movement, aim or a world tap, and outsid
   canvas.fire('pointerdown', { pointerId: 3, clientX: 240, clientY: 300 }); assert.equal(controls.dragging, true);
   canvas.fire('pointerdown', { pointerId: 4, clientX: 290, clientY: 300 }); assert.equal(controls.pinching, true); assert.equal(controls.dragging, false, 'the drag is let go');
   canvas.fire('pointermove', { pointerId: 4, clientX: 340, clientY: 300 }); // 50 -> 100 px: one doubling
-  assert.ok(Math.abs(CV.closeViewLookState().want - L.pinchGain) < 1e-9, 'one doubling of spread zooms pinchGain');
-  canvas.fire('pointerup', { pointerId: 3, clientX: 240, clientY: 300 }); assert.equal(controls.pinching, false);
+  // 2026-11-18 (Tim's review): with the orbit and the Wayfarer the subject, the pinch sets her own distance (save.closeViewZoom),
+  // and the save is persisted as the pinch ends
+  assert.ok(Math.abs(CV.closeViewLookZoomNow() - L.pinchGain) < 1e-9, 'one doubling of spread zooms pinchGain');
+  assert.ok(Math.abs(g.save.closeViewZoom - L.pinchGain) < 1e-9 && CV.closeViewLookState().want === 0, 'her own distance, kept in the save');
+  canvas.fire('pointerup', { pointerId: 3, clientX: 240, clientY: 300 }); assert.equal(controls.pinching, false); assert.equal(persisted, 1, 'persisted once the pinch ends');
   canvas.fire('pointermove', { pointerId: 4, clientX: 360, clientY: 360 }); assert.equal(controls.dragging, false, 'the spent finger turns nothing');
   canvas.fire('pointerup', { pointerId: 4, clientX: 360, clientY: 360 }); assert.equal(taps, tapsBefore, 'neither finger taps the world');
   // a finger on the joystick joined at once by a second is a pinch too: the Wayfarer stops, nothing walks

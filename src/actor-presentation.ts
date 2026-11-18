@@ -1,4 +1,5 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
+import { WORLD_BOSS_PACE } from './boss-kit.ts';
 import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.ts';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
@@ -102,7 +103,7 @@ export function packActionPresentation(actor, modules, windupScale = 1.2, now = 
   const s = actor?.pack, action = s?.attack, family = PACK_ACTION_FAMILIES[action];
   if (!family || !modules[action]) return null;
   const phase = s.phase, spec = modules[action];
-  let duration = phase === 'windup' ? (spec.windup || .5) * (s.paced ? windupScale : 1)
+  let duration = phase === 'windup' ? (spec.windup || .5) * (s.paced ? windupScale * (s.worldPaced ? WORLD_BOSS_PACE.windup : 1) : 1) // 2026-11-18: world-boss pacing (boss-kit.ts)
     : phase === 'recover' ? spec.recover : phase === 'active' ? (action === 'sweepBeam' ? s.data?.total || spec.active * (actor.boss ? 1.25 : 1) : spec.active)
     : ({ strike: .32, track: 1, lock: .45, travel: 2.6, erupt: .75, stunned: 1.4 })[phase];
   if (action === 'ramCharge' && phase === 'recover' && actor.stunnedUntil > 0 && now >= actor.stunnedUntil && now < actor.stunnedUntil + 300) duration = .3;

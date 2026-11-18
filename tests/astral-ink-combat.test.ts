@@ -142,7 +142,7 @@ test('shared beam anchors match the scaled native mouth in both facing direction
 test('beam damages the actual mouth impact disk and not the old body-centered disk',()=>{
   for(const facingX of [-1,1]){
     const s=createAstralState({scale:2,facingX}),w=world();w.canOccupy=()=>false;w.player.x=facingX*3;startAstralMove(s,'flight',w.player);
-    const at=astralBeamAnchors(s).ground;Object.assign(w.player,at);advance(s,.8,w);assert.ok(w.player.hp<10000);close(s.hazards[0].x,at.x);close(s.hazards[0].y,at.y);
+    const at=astralBeamAnchors(s).ground;Object.assign(w.player,at);/* 2026-11-18 (Tim, world-boss pacing): was advance .8 s with ASTRAL.windup .65; now its windup plus the same .15 s */advance(s,ASTRAL.windup+.15,w);assert.ok(w.player.hp<10000);close(s.hazards[0].x,at.x);close(s.hazards[0].y,at.y);
     const before=w.player.hp;w.player.x=s.x;w.player.y=s.y;advance(s,.4,w);assert.equal(w.player.hp,before);assert.equal(s.facingX,facingX);
   }
 });
