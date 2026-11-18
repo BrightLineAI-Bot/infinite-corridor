@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Upwell seed hunts: the lookout shows where a seed lies
+## Release 1003 — Upwell seed hunts: the lookout shows where a seed lies
 
 Tim, 2026-11-18: climbing a tall tower should lead to a seed, as a guaranteed seed hunt in an undiscovered section that is neither too near nor too far. The seed can lie on the ground, on a tree platform or in a dungeon, and the existing seed rarities still apply. The lookout's charting and the lip cache are unchanged.
 
