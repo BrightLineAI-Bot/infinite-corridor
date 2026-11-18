@@ -10884,7 +10884,7 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 
 **BOUNDARY:** No auto-mounting, capture credit or temporary stable eviction. Generic save codecs and Proving Ground scratch state do not grant the mount.
 
-## Unreleased — Close View on the open sea
+## Release 993 — Close View on the open sea
 
 Tim's report (2026-11-18): in Close View on the ocean the water read as a flat plane, and the Wayfarer stood and walked on it with no swim, no robot water form and no power-armor pose. Root cause: Close View chose its body through `playerFormPresentation()`, which keys the robot and the suit on `mechUp()`, and `mechUp()` is false aboard (the robot put to sea and the submersible are `boat.aboard` with `boat.mechSub`/`boat.sub`); no Close View pose read `swimming`; and every figure stood on the water's drawn top, with nothing to say where the water was.
 
