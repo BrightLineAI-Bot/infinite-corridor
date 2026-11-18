@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 994 — Close View Stegosaurus legs: no first-frame snap or turn lag
+
+The new Triceratops body exposed a pattern on the shared beast rig: a leg's IK read its hip position before the hip bone had been resolved for the current frame. The Wild Stegosaurus had the same bug.
+
+**CODE:** `close-view-beast-stego.ts` now calls `resolveBone(P, top)` on each thigh and upper arm before reading its world position as the IK hip `H`, which is the fix the Triceratops got. Before, `H` was the previous frame's hip. On the first frame after spawn that is the unresolved world origin, so the feet landed 1.2–2.2 units off for one frame. In fast turns every foot trailed its target by the body's travel in one frame, up to 0.18 units at a quick walk in a tight circle. Every other beast on the rig was checked. The Dragon, Questing Beast, Stag, Stalker, Turtle, Walker, Knight, Duelist, Gloomvast, Giant and Folk already resolve first, and so do the Spinosaurus's legs. The Spinosaurus's arms read the shoulder before resolving it, but their hand target is an offset from that shoulder, so nothing showed. They now resolve first anyway. The Listener's jaw arm aimed at you from last frame's hand position, and it now resolves the hand before reading it. New tests in `tests/close-view-beast-stego.test.ts`: the spawn and teleport frames place the feet exactly where a steady frame does, and during a fast circling walk every reachable foot lands on its gait target in the same frame. `tests/close-view-beast-spino.test.ts` checks that the arms' first frame matches a steady frame.
+
+**BOUNDARY:** This is presentation only. No gameplay, timing, hit position or save change (schema 14). Steady-state poses are unchanged, and the only difference is which frame's hip the IK reads.
+
 ## Release 992 — Squad tactics
 
 Tim asked on 2026-11-15 for smarter, coordinated creatures that use their strengths, at a difficulty like Bloodborne's mobs or Mohgwyn Palace's albinaurics. They swarm when activated and aren't scared of you, and a wombo combo is on you if you are caught out of place. Fair means readable and avoidable, not gentle.
