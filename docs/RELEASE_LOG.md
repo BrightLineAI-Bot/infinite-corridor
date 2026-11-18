@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1001 (this merge, #671); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1001 (`390dea695fd5`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1002 | Claude | claude/triceratops-controls | Triceratops controls: hold Act (0.6 s) to call or dismiss the mount; while riding, B/C/D are Horn Dash, Bash and Horn Shot and Jump is Stomp/Drill; three older tests updated with Tim's approval; no save change | In flight. |
 | 1001 | Claude | claude/world-boss-pacing / #671 | World bosses and the Questing Beast: a 15-minute engagement window is the only limit (no tries); 1.4x wind-ups and longer gaps on one shared clock | Merged (#671); preview follows. |
 | 1000 | Claude | claude/close-view-camera / #670 | Close View camera: fixed-distance orbit (nearer indoors), bounded see-through cutout, full-sphere tilt, nothing out of the Wayfarer's sight drawn indoors, near-hidden/far-silhouette creatures in both views, Look zoom kept as the normal distance | Merged (#670); preview follows. |
 | 999 | Claude | claude/salvage-and-smithy / #665 | Salvage keeps the best six of each kind (tier, then power); salvage can yield lumen dust; Equipped stat readouts; one-tap smith with exact reforge results | Merged (#665); preview follows. |
@@ -30,7 +31,7 @@ Main is at r1001 (this merge, #671); production serves `r984-93a51644afcb` (publ
 | 995 | Claude | claude/hushed-wayfarer / #662 | The Wayfarer spoken of in hushed tones: rare hushed lines, the Shutter Glimpse, a few lesser creatures cower; new ground only | Merged (#662); preview follows. |
 | 994 | Claude | claude/stego-leg-lag / #668 | Close View Wild Stegosaurus legs resolve the hip before the IK reads it (no first-frame snap, no turn lag); Spinosaurus arms and the Listener's jaw arm the same; presentation only, no save change | In flight; renumbered from 993 (taken by #661). |
 | 993 | Claude | claude/close-view-ocean / #661 | Close View on the open sea: water surface, swell and horizon; swim, robot water-form, power-armor-at-sea and skiff poses; presentation only | Merged (#661); preview follows. |
-| 992 | Claude | claude/squad-tactics | Squad tactics for ordinary creatures (front, flank, swarm and ranged roles; pack aggression; punish windows; two-blow combo window; readable rear tells); new module squad-tactics; Triceratops excluded; no save change | In flight. |
+| 992 | Claude | claude/squad-tactics | Squad tactics for ordinary creatures (front, flank, swarm and ranged roles; pack aggression; punish windows; two-blow combo window; readable rear tells); new module squad-tactics; Triceratops excluded; no save change | Merged as `e8a230800dd1` (#667). |
 | 991 | Claude | claude/creature-visuals-forms | Creature visual pass (forms, Pentagon and adventure, reconciled): reshaped Close View bodies at the same triangle counts with per-attack rows; Standard View limbs on a shared attack clock; no save change | Merged as `c5cde5201244` (#664). |
 | 990 | Claude | claude/creature-visuals-core | Core creatures: per-move Close View attack rows and reshaped bodies at the same triangle counts; Standard View blocky creatures gain articulated limbs on the attack clocks; overworld digest re-pinned (Tim approved); rounded sprites kept for the bizarro world; no save change | Merged as `14c9fe003314` (#660). |
 | 989 | Codex | codex/free-triceratops-per-journey / #658 | One free permanent standard Triceratops per existing or new journey | Merged as `edc058f49154` (#658); preview r989-edc058f49154, not published. |
