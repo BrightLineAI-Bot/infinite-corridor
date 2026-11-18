@@ -19,6 +19,32 @@ import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClo
 import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 
 export const MONSTER_PACK_VERSION = 1;
+// A separate content pin: generic pack selectors still exclude this species.
+export const TRICERATOPS_HERDS = { version: 1, perThousand: 150, min: 2, max: 4, separation: 3, radius: 7,
+  grounds: ["grass", "forestFloor", "jungleFloor", "savannaGrass", "amberLitter"] };
+export function triceratopsHerdSpawns(map, seed, rx, ry, version = 0) {
+  const C = TRICERATOPS_HERDS;
+  if (version !== 1 || !map || Math.abs(rx) + Math.abs(ry) < 3 || map.settlement || map.hamlet || map.farDomain || map.canopy || map.greatBuilding || map.building || map.keep || map.pentagon || map.underwater) return [];
+  const key = `${seed}:triceratops-herd:v1:${rx}:${ry}`, h = hashSeed(key);
+  if (h % 1000 >= C.perThousand) return [];
+  const width = 32, tiles = map.tiles || [], occupied = [...(map.objects || []), ...(map.enemySpawns || [])];
+  const clear = (x, y) => {
+    const t = tiles[y * width + x];
+    return t && !t.blocked && !t.structure && !t.buildingId && !t.canopy && !t.chasm && !t.environment && C.grounds.includes(t.kind);
+  };
+  const spots = tiles.filter(t => t.x >= 3 && t.x <= 28 && t.y >= 3 && t.y <= 28 &&
+    occupied.every(o => Math.hypot(o.x - t.x, o.y - t.y) >= C.separation) &&
+    [-1, 0, 1].every(dx => [-1, 0, 1].every(dy => clear(t.x + dx, t.y + dy) && (Number(tiles[(t.y + dy) * width + t.x + dx].elev) || 0) === (Number(t.elev) || 0))))
+    .sort((a, b) => hashSeed(`${key}:${a.x}:${a.y}`) - hashSeed(`${key}:${b.x}:${b.y}`) || a.y - b.y || a.x - b.x);
+  const herd = [], count = C.min + (h >>> 10) % (C.max - C.min + 1), disposition = ["good", "silly", "bad"][(h >>> 16) % 3];
+  for (const t of spots) {
+    if (herd.length && (Math.hypot(t.x - herd[0].x, t.y - herd[0].y) > C.radius || herd.some(o => Math.hypot(t.x - o.x, t.y - o.y) < C.separation))) continue;
+    herd.push({ id: `${key}:${herd.length}`, kind: "triceratops", x: t.x, y: t.y, triceratopsDisposition: disposition, triceratopsHerd: key });
+    if (herd.length === count) break;
+  }
+  return herd.length >= C.min ? herd : [];
+}
+
 const TAU = Math.PI * 2;
 
 // ---------------------------------------------------------------- attribute tables
@@ -533,6 +559,16 @@ export const MONSTER_PACK = {
     attacks: ["stegoBite", "stegoTailWhack", "stegoTailSlam", "stegoWheel", "stegoPlateRockets", "stegoTailBlade", "stegoClaw", "stegoRearSwipe", "stegoBuck", "stegoPounce", "stegoTreeClub", "stegoBreach"], bossAttacks: [],
     palette: ["#2f6fd6", "#163a7a", "#a9dcff", "#6f9fe6"], render: "wildStego", tags: ["beast", "elder", "dinosaur", "water", "climber"],
     lore: "A stegosaurus as big as a house, blue, striped dark along its flanks, its two rows of tall plates barred with pale light, its eyes a fierce yellow. Its beak has turned to teeth, and it is always hungry. It eats the trees as it goes, but it would rather eat you: it snaps and rakes and rears, swings and slams its spiked tail, rolls at you as a wheel of plates, fires its plates into the sky to fall on you, and swims with only its plates above the water. Cut off its tail and it fights the weaker for it.",
+  },
+  // First playable Triceratops slice. Runtime placement supplies triceratopsDisposition; all
+  // dispositions deliberately share this body and palette. Generic selectors exclude it;
+  // only the separate versioned herd producer admits it to ordinary world generation.
+  triceratops: {
+    id: "triceratops", prototypeOnly: true, noEcho: true, name: "Triceratops", epithet: "Three Horns, One Bright Hide",
+    stats: [150, 14, 0], form: { scale: 1.65 }, sizeClass: "huge", movement: "walk", brain: "juggernaut",
+    attacks: ["ramCharge", "heavySweep", "shockwave"], bossAttacks: [],
+    palette: ["#f2cf35", "#8a6418", "#fff0a0", "#332612"], render: "triceratops", tags: ["beast", "dinosaur", "mount", "capture"],
+    lore: "A broad yellow ceratopsian with a shield-like frill, two long brow horns and a short nose horn. Its nature is known by what it does, never by a different coat.",
   },
   // The Spinosaurus (Tim, 2026-11-12): a world beast of the land (never the sea), the big rooms of keeps, arcologies and adventure
   // Pentagons, and the interloper in a fight with the Wild Stegosaurus or the Briar Stag (spino-rex.ts). Its numbers and pose fields: SPINO.
@@ -3678,7 +3714,11 @@ const RUN = {
     if (s.phase === "windup") { if (s.t <= 0) toPhase(s, "active", attack.active); return; }
     if (s.phase === "active") {
       const step = 8.5 * w.dt, moved = w.move(e, s.data.aim.x * step, s.data.aim.y * step);
-      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .55) { s.hitOnce = true; w.hurt(e, damageOf(e, "ramCharge"), { jumpable: false, source: "ramCharge" }); }
+      if (!s.hitOnce && distance(center(w.player), e) <= bodyRadius(e) + .55) {
+        s.hitOnce = true;
+        const landed = w.hurt(e, damageOf(e, "ramCharge"), { jumpable: false, source: "ramCharge" });
+        if (landed && e.kind === "triceratops") w.triceratopsPuncture?.(e);
+      }
       if (!moved) { s.tele = null; e.stunnedUntil = w.now + 1400; w.addEffect({ kind: "dust", owner: e.id, x: e.x, y: e.y, radius: 1.1, arming: 0, life: .5, damage: 0 }); toPhase(s, "stunned", 1.4); return; }
       if (s.t <= 0) { s.tele = null; w.addEffect({ kind: "shock", owner: e.id, x: e.x, y: e.y, radius: 2.4, arming: 0, life: .55, damage: damageOf(e, "shockwave"), jumpable: true }); toPhase(s, "recover", attack.recover); }
       return;
@@ -4953,13 +4993,18 @@ export function updatePackMonster(e, w) {
   if (e.illusion && (w.now - (e.bornAt || 0)) > 14000) { e.dead = true; return; }
   if (e.gloomOrbOf && gloomShadeTick(e, w)) return; // the Gloomvast's decoys go with its Dark
   if (e.kind === "gloomvast" && gloomVastTick(e, s, w)) return; // its Dark, the reveal, and calling the next
+  // Good and Silly Goose are friendly until the capture/runtime layer records an
+  // explicit betrayal. Damage and the ordinary behaviour board may set aggro, so
+  // enforce this at the pack target-acquisition boundary on every tick.
+  const friendlyTriceratops = e.kind === "triceratops" && ["good", "silly"].includes(e.triceratopsDisposition) && e.triceratopsBetrayed !== true;
+  if (friendlyTriceratops) { e.aggro = false; if (s.attack) endAttack(e, s); s.tele = null; }
   const p = center(w.player), d = distance(p, e), brain = BRAINS[e.brain || def.brain], roaming = isDungeonRoamer(e, w.area), hunting = isDungeonHunter(e, w.area);
   // Release 287 (Tim: "the crystal doesn't have to aggro to you, he can just be wandering around... if you touch him, or if
   // you attack him, he'll aggro"): a roaming dungeon Crystal ignores the Wayfarer until touched or hurt (hits alert it).
   const calmCrystal = roaming && e.kind === "psychicCrystal";
-  const B = w.squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, w.squad) : null; // enemy-behaviour.ts: its record, before it looks for the Wayfarer
+  const B = w.squad && !friendlyTriceratops ? behaviourProfile(e) : null, b = B ? behaviourState(e, w.squad) : null; // enemy-behaviour.ts: its record, before it looks for the Wayfarer
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
-  else if (!e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
+  else if (!friendlyTriceratops && !e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
@@ -5001,7 +5046,10 @@ export function updatePackMonster(e, w) {
     if (B && b.feintAt > 0 && s.phase === "windup" && s.data.wind > 0 && s.t <= s.data.wind * b.feintAt) { const id = s.attack; endAttack(e, s); s.cd[id] = Math.min(s.cd[id] || 0, .6); s.gap = 0; startFeint(e, b, B, w.squad); return; } // a feint breaks off into a sidestep
     RUN[s.attack]?.(e, s, w);
     if (B && b.feintAt > 0 && s.phase !== "windup") b.feintAt = 0; // review 975: past its windup the blow is committed; a feint never carries over
-    if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; if (packCombo(e, s, w, B, b)) return; if (e.heavy) s.t *= B.heavy.recover; } // the next blow of a combo; a heavy blow leaves it open
+    // Keep the contact pose for this frame before a combo replaces it with the next windup. Besides making the hit readable,
+    // this keeps the presentation clock on the blow that actually dealt damage; the pending combo starts on the next tick.
+    if (B && s.attack && s.phase === "recover" && !s.data.bRecover) { s.data.bRecover = true; s.data.comboPending = true; if (e.heavy) s.t *= B.heavy.recover; }
+    else if (B && s.attack && s.phase === "recover" && s.data.comboPending) { s.data.comboPending = false; if (packCombo(e, s, w, B, b)) return; }
     if (s.attack && s.phase === "recover" && s.t <= 0) { if (B) afterBlow(e, b, B); endAttack(e, s); }
     return;
   }

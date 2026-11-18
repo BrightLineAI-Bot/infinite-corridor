@@ -41,6 +41,7 @@ import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
@@ -275,6 +276,45 @@ export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // `ground` (its checks, any rebuild or patch, and the copy to the screen); main.ts adds what it draws after render(). Every part
 // is reset when a timed render begins, so a frame that returns early never reports the frame before's numbers.
 export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0, view: 0, groundImage: 0, endedAt: 0 }; // endedAt: when the last timed render returned
+function drawBeastHotelBed(ctx, bed, tileSize, now, reducedMotion) {
+  const x = (bed.x + .5) * tileSize;
+  const y = (bed.y + .75) * tileSize;
+  const u = tileSize;
+  ctx.save();
+  ctx.fillStyle = "#4a3729";
+  ctx.fillRect(x - .83*u, y - .72*u, 1.66*u, .72*u);
+  ctx.fillStyle = "#dfd5bd";
+  ctx.fillRect(x - .73*u, y - .66*u, 1.46*u, .55*u);
+  if (bed.recovering) {
+    const breath = reducedMotion ? 0 : Math.sin(now / 540) * .026*u;
+    ctx.fillStyle = "#597467";
+    ctx.beginPath();
+    ctx.ellipse(x - .13*u, y - .37*u, .55*u, .24*u + breath, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#f2cf35";
+    ctx.beginPath();
+    ctx.ellipse(x + .42*u, y - .53*u, .26*u, .18*u, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#fff0a0";
+    for (const offset of [-.11, .02, .12]) {
+      ctx.beginPath();
+      ctx.moveTo(x+(.4+offset)*u,y-.59*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.77*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.56*u);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#f4f6ef";
+    ctx.fillRect(x + .58*u, y - .49*u, .23*u, .05*u);
+    ctx.fillStyle = "#b94143";
+    ctx.fillRect(x + .76*u, y - .49*u, .05*u, .05*u);
+  } else {
+    drawPackMonster(ctx, {
+      id: bed.id, kind: "triceratops", packKind: "triceratops",
+      x: bed.x, y: bed.y - .23, scale: 1.38, facingX: 1, reduceMotion: reducedMotion,
+    }, tileSize, now, "right");
+  }
+  ctx.restore();
+}
 function renderableObject(g,o){
   // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
   const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
@@ -2373,8 +2413,9 @@ function drawPentSeal(ctx, o, s, now) {
   ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
 }
 // The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
-function drawDread(ctx, w, h, share) {
-  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread; // INTERIOR_LIGHT (close-view.ts): a little lighter, still closing in const key = `${w}x${h}:${share.toFixed(2)}`;
+export function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread;
+  const key = `${w}x${h}:${share.toFixed(2)}`;
   if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5 * D})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
     const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${(.5 + share * .35) * D})`); v.addColorStop(1, `rgba(2,2,6,${(.8 + share * .18) * D})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
@@ -2883,7 +2924,8 @@ export function render(ctx, g, w, h, now) {
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
-          if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
@@ -3096,7 +3138,13 @@ export function render(ctx, g, w, h, now) {
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
   const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
+  const mountRide = g.mountRide?.(), mountPose = triceratopsHornPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+  const drillPose = triceratopsDrillPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), mountBounds = drillPose ? TRICERATOPS_DRILL_POSE : TRICERATOPS_HORN_POSE;
+  // Reserve the whole rotating portrait, including its support clearance, in the
+  // atlas. The fixed camera envelope also prevents zoom pulses during a drill.
+  const mountComposite = mountRide?.beast === "triceratops" ? { halfWidth: drillPose ? TRICERATOPS_COMPOSITE.halfWidth : mountBounds.halfWidth, height: (drillPose ? TRICERATOPS_COMPOSITE.drillHeight : mountBounds.height) + Math.max(0, lift / s), below: 0, frameHalfWidth: TRICERATOPS_COMPOSITE.halfWidth, frameHeight: mountRide.variant === "silly" ? TRICERATOPS_COMPOSITE.frameHeight : TRICERATOPS_COMPOSITE.normalHeight, aim: drillPose || mountPose, viewFacing: null, viewAim: null } : null;
   const playerDraw = {
+    mountComposite,
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
@@ -3143,7 +3191,13 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      const ride = g.area === "overworld" ? g.mountRide?.() : null, seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
+      if (drillPose) {
+        const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
+        const frame = triceratopsDrillFrame(drillPose, aim, lift / s);
+        ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
+      }
+      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3173,6 +3227,7 @@ export function render(ctx, g, w, h, now) {
       if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
+      if (drillPose) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
       if (drone&&!captureDrone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)

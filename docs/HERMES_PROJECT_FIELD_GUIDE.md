@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Release 984 — Core creatures: Close View bodies and Standard View limbs
+## Release 990 — Core creatures: Close View bodies and Standard View limbs
 
 This is the second part of Tim's second creature pass (2026-11-15). Tim decided the Standard View keeps its original blocky art ("they fit with the theme of the game") and gains articulated limbs that swing, with no whole-body lean. The rounded sprites made along the way are kept for a later bizarro world.
 
@@ -14,7 +14,11 @@ This is the second part of Tim's second creature pass (2026-11-15). Tim decided 
 
 **BOUNDARY:** Presentation only: hit positions, reach and timings are unchanged. Every triangle count equals its pin, and rest and walk poses stay inside `ACTOR_BODY_HEIGHT`. With Tim's approval, the overworld draw digest in `tests/close-view-overworld-793.test.ts` was re-pinned to `['03cfd8c3b0115b27','02ea472204588c58']`. World beasts and bosses have no limb rows; arena bosses that share an ordinary kind's body get its limbs. Nothing allocates per frame, and Reduced Motion halves the swing and drops the idle sway. No save change (schema 14), and no new module.
 
-## Release 983 — Close View creature motion
+## Release 983 — Close View creature motion and Pentagon dread
+
+**CODE:** Standard View's positive-dread overlay in `renderer.ts` uses its dimensions and intensity as a cache key again. The lighting regression exercises the first draw, reuse, and rebuild.
+
+**BOUNDARY:** The repair restores drawing and does not change dungeon state or dread strength.
 
 This is the first part of Tim's second creature pass (2026-11-15): a triple-A feel for every creature except world beasts and bosses, within the phone budget. It is the shared motion layer every ordinary Close View rig gets for free.
 
@@ -10827,3 +10831,39 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
   - `tests/revenant-horde.test.ts`;
   - `tests/wood-boats.test.ts` (repairs, the guard);
   - `tests/building.test.ts` (costs).
+
+## Release 984 — Fourth-slot action locks
+
+**CODE:** Game.update consumes fourth-slot utility and legacy build presses during shock knockdown and firm grabs, alongside the other slotted actions.
+
+**BOUNDARY:** A blocked press is discarded and a fresh press works after recovery. Slot assignments and save schema are unchanged.
+
+## Release 985 — Triceratops capture and recovery
+
+**CODE:** Capture through enclosures grants persistent normal or Silly Goose mounts. Puncture or repeated depletion admits an injured mount to the selected hometown's Beast Hotel. The four Triceratops lab fixtures exercise capture and bedside recovery through the ordinary game actions.
+
+**BOUNDARY:** Save state is additive at schema 14. The fixtures use scratch state. Natural herd placement and dedicated mounted combat are separate work.
+
+## Release 986 — Triceratops capture loadout
+
+**CODE:** The scratch capture fixtures select Enclosure for the existing Build action in all three dispositions.
+
+**BOUNDARY:** The fixture loadout is isolated from journeys and does not change capture rules, saves or Beast Hotel behavior.
+
+## Release 987 — Triceratops herds and mounted combat
+
+**CODE:** New eligible areas can spawn deterministic herds. Mounted Dodge supports horn contact and held charge releases. Silly Goose uses a bounded airborne drill in place of the ordinary landing shockwave.
+
+**BOUNDARY:** Old explored areas keep their layouts. Drill state resumes through additive schema-14 data without repeating spent pulses. The mount and rider share one rendered composite.
+
+## Release 988 — Mounted Triceratops framing
+
+**CODE:** Fit the mounted composite to the Close View viewport through the existing wall-safe camera. Keep the rolling silhouette above its support.
+
+**BOUNDARY:** Presentation only. Collision, contact and save state follow the existing game rules.
+
+## Release 989 — Free standard Triceratops
+
+**CODE:** Production journeys receive a one-time permanent standard Triceratops. An existing standard mount satisfies the grant, including while recovering at the Beast Hotel.
+
+**BOUNDARY:** No auto-mounting, capture credit or temporary stable eviction. Generic save codecs and Proving Ground scratch state do not grant the mount.
