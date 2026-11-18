@@ -17,6 +17,7 @@ import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner 
 import { BLEED, tickCreatureBleed } from "./bleed.ts"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
 import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 
 export const MONSTER_PACK_VERSION = 1;
 // A separate content pin: generic pack selectors still exclude this species.
@@ -5061,7 +5062,7 @@ export function updatePackMonster(e, w) {
     if (e.watched) return;
   }
   // Move according to the brain, then start the best ready attack.
-  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : B && B.spacing ? (b.press > 0 ? pressVector(e, b, B, w.squad) : ringVector(e, b, B, w.squad)) : def.duelistKin ? duelVector(e, s, w, p, d) : brainVector(e, s, w, def), v =e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * (e.stegoSwim === 1 ? STEGO.water.swimSpeed : 1) * dt;
+  const move = MOVEMENT_MODES[e.movement] || MOVEMENT_MODES.walk, raw = roaming && (e.inRock || !w.los(e, w.player)) ? { ...unit(p.x - e.x, p.y - e.y), speed: .95 } : B && B.spacing ? (b.press > 0 ? pressVector(e, b, B, w.squad) : ringVector(e, b, B, w.squad)) : def.duelistKin ? duelVector(e, s, w, p, d) : (B && w.squad.tac && tacticsMove(e, b, B, w.squad, d)) || brainVector(e, s, w, def), v =e.evasive ? fluid(s, raw, dt) : raw, m = Math.hypot(v.x, v.y) || 1, speed = .82 * v.speed * move.speed * (e.speedMultiplier || 1) * (e.giantCharged > 0 ? GIANT.chargeSpeed : 1) * (e.stagHunt > 0 ? STAG.hunt.speed : 1) * (e.mothKindled > 0 ? MOTH.kindle.speed : 1) * (e.stegoSwim === 1 ? STEGO.water.swimSpeed : 1) * dt;
   const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   s.moveFailed = !moved; if (!moved && !move.phases) w.detour?.(e, speed);
   if (def.duelistKin) s.duelStuck = moved ? 0 : (s.duelStuck || 0) + dt; // the Gaunt: walled in on foot for a while, it hops (duelTick)
@@ -5099,6 +5100,7 @@ function packTokenAttack(e, s, w, B, b, d) {
   beginAttack(e, s, id, w);
   const k = shapeBlow(e, b, B, COMBO_MOVES.has(id));
   if (k > 1) s.t *= k; // a heavy blow: a longer windup (never a shorter one)
+  if (board.tac) s.t += tacticsWindup(board, e, b, s.t); // squad-tactics.ts: a longer tell from behind the Wayfarer (never shorter)
   s.data.wind = s.t; s.rangedPool = !close; s.combo = b.combo; s.comboOf = b.comboOf;
 }
 // The next blow of a light combo, straight out of the last one's recovery (a step in, the full windup again, a lighter hit).
@@ -5111,6 +5113,7 @@ function packCombo(e, s, w, B, b) {
   endAttack(e, s); s.gap = 0; s.state = "attack"; s.last = next;
   const to = unit(p.x - e.x, p.y - e.y); w.move(e, to.x * .3, to.y * .3, NO_PHASE);
   beginAttack(e, s, next, w); shapeBlow(e, b, B, true, true);
+  if (w.squad.tac) s.t += tacticsWindup(w.squad, e, b, s.t); // squad-tactics.ts: a longer tell from behind
   s.data.wind = s.t; s.rangedPool = false; s.combo = b.combo; s.comboOf = b.comboOf;
   return true;
 }
