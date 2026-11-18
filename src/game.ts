@@ -89,13 +89,13 @@ import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckN
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
-import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
+import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
-import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
+import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { chargeScale, giftResonances, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
 import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
@@ -137,7 +137,7 @@ import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonI
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
 import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
-import { THE_DEEP, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
+import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
@@ -568,7 +568,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
     history.gatePredatorSpawnThreshold = 0;
   }
   else if (isCanyonId(id)) { const c = ensureCanyonHistory(history); if (fresh && history.canyonGenerator === undefined) history.canyonGenerator = CANYON.generator; map = generateCanyon(save.seed, id, c.drilled, c.strained, history.canyonGenerator || 1); } // Canyon craters; release 735: generator 2 for craters first entered from now on
-  else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard' }); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
+  else if (isDeepId(id)) { const floor = deepShaft(save, id).floor, plan = floorPlan(save.seed, id, floor); map = generateExpeditionDungeon(save.seed, plan.genId, plan.recipe, { layoutPool: 5, themePool: THEME_POOL_VERSION, theme: plan.theme || 'none', sizeProfile: 'standard', ...(deepFloorGen(history) >= 2 ? { warpAny: true } : {}) }); map.deepGen = deepFloorGen(history); map.deepFloor = floor; map.name = `The Deep · Floor ${floor}`; dressDeepFloor(map, floor); } // release 677: a floor of the Deep
   else if (!id.includes(':deep-v') && history.generatorVersion === DUNGEON_GENERATOR_V5) map = generateExpeditionDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options,layoutPool:history.layoutPool||1,themePool:history.themePool||1,...(history.mire?{theme:'poisonCrypt'}:history.dream?{theme:'dream'}:{}),...(history.mire?.taste?{sizeProfile:'compact'}:{}),...(history.ladder?{ladder:crossingLadder(save.seed,id,history.ladder.tier)}:{}),...(history.warpVersion>=2?{warpAlways:true}:{})});
   else if (!id.includes(':deep-v') && history.generatorVersion === 4) map = generateUnifiedDungeon(save.seed,id,history.dungeonRecipe || dungeonDescriptor(id).recipe,{...history.generationOptions,...options});
   else if (!id.includes(':deep-v') && history.generatorVersion === 3) map = generateVariedDungeon(save.seed,id,dungeonDescriptor(id).recipe);
@@ -2745,7 +2745,7 @@ export class Game {
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
-    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (grantOrreryGear(save)) this.message = ORRERY.messages.given; /* the Aether Orrery */ else if (regiftOrreryGear(save)) { this.message = ORRERY.messages.regift; this.glyphNotice ||= ORRERY.messages.regift; } /* its one-time re-gift */ if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ // release 489; 493
+    { const given = grantBrawlerGear(save); if (given.length) this.message = `In your pack: ${given.join(", ")}. The Iron Fists are a weapon (Attack); Hammerfall and Great Sweep are tools.`; } if (grantOrreryGear(save)) this.message = ORRERY.messages.given; /* the Aether Orrery */ else if (regiftOrreryGear(save)) { this.message = ORRERY.messages.regift; this.glyphNotice ||= ORRERY.messages.regift; } /* its one-time re-gift */ if (giftResonances(save).length) this.glyphNotice = "Every resonance is now written in your codex (Glyphs)."; /* release 527 */ if (giftTriads(save).length) this.glyphNotice = "Every triad is now written in your codex (Glyphs)."; /* unreleased: triads too */ // release 489; 493
     if (!["attack", "tool", "act", "build"].includes(save.aimMode))
       save.aimMode = save.toolMode ? "tool" : "attack";
     save.toolMode = save.aimMode === "tool";
@@ -3408,7 +3408,8 @@ export class Game {
     const packAreaId=String(this.areaId()),packAdopted=area==="dungeon"&&!!history?.monsterPack&&!this.map.arena&&!/^(hunt-instance:|elite-portal:|proving:combat:|displacement:)/.test(packAreaId)&&!packAreaId.includes("aperture-annex")&&packAreaId!==dungeonId(this.save.seed,this.save.worldGeneration);
     if(packAdopted&&!this.map.deepDungeon&&this.map.recipe!=="deep-v1"&&history.cisternGuardianChoice!=="gravitantBell"){
       const guardian=this.map.enemySpawns.find(e=>e.boss&&e.dungeonRole==="gateWarden"&&e.kind==="hollowMarshal");
-      if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,packAreaId,history.ladder.tier,guardianKindFor(this.save.seed,packAreaId),GUARDIAN_POOL):guardianKindFor(this.save.seed,packAreaId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
+      const guardianId=this.map.deepFloor&&this.map.deepGen>=2?`${packAreaId}:f${this.map.deepFloor}`:packAreaId;/* the-deep.ts DEEP_FLOOR_GEN 2: each floor of the Deep rolls its own guardian */
+      if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,guardianId,history.ladder.tier,guardianKindFor(this.save.seed,guardianId),GUARDIAN_POOL):guardianKindFor(this.save.seed,guardianId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
     if (area === "dungeon" && !this.map.beastHotel && !this.map.deepDungeon && !this.map.building && !this.map.seedRealm /* seed realms */ && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
@@ -8233,7 +8234,8 @@ export class Game {
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
     const firstSpoils = takeFirstSpoils(this.save, e); // release 263: a world beast's first kill: its Sigil and Echo for certain
-    const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast, this.save.dropCounter, firstSpoils), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
+    const roomBeast = noteRoomBeastKill(this.save, e); // a big-room Wild Stegosaurus or a room/interloper Spinosaurus: recorded, and its Echo certain
+    const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast || roomBeast, this.save.dropCounter, firstSpoils || roomBeast), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
     if (echo) this.glyphNotice = echoNote;
     if (e.hordeOf) { const r = hordeKill(this.save, dungeonHistory(this.save, e.hordeOf)); if (r) { this.glyphNotice = r.message; if (r.sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + r.sigils; } /* release 273: a Sigil at the end of each wave */ if (r.cleared) { if (r.unlocked) r.message += latticeNote(this.save) + townNote(this.save); /* 2026-11-05: a horde's piece can unlock the Gate */ this.glyphNotice = r.message; this.defeatNotice = { title: "THE HORDE IS BROKEN", detail: r.message, kind: "danger" }; journalOnce(this.save, `horde-cleared:${e.hordeOf}`, r.message, "The Gate Revenant horde"); } } } // release 269
     if (!e.hordeOf) { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter, firstSpoils); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.${echoNote ? " " + echoNote : ""}`; } } // release 263 (269: none from a horde Revenant)
@@ -8400,7 +8402,7 @@ export class Game {
     p.attackUntil=now+(mirage?200:240);
     const visual=stampAttackVisual(p,'sweep',T.recovery,null);if(!visual)return;
     const primary=this.save.equipment.primary?.id,priorPose=mirage?null:o.priorPose,baseKind=priorPose?prior.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';
-    visual.toolKind='great-sweep';if(!mirage)visual.heldTool=true;visual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction,baseKind};visual.sweepSwing={v:1,id,tempo};p.actionVisualUntil=now+T.recovery;
+    visual.toolKind='great-sweep';if(!mirage)visual.heldTool=true;visual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction,baseKind,carry:primaryCarryKind(this.save.equipment.primary)/* the carry as accepted (items.ts) */};visual.sweepSwing={v:1,id,tempo};p.actionVisualUntil=now+T.recovery;
   }
   // One tick: advance the clock (held in hit-stop), then, in the active window, hit what the blade crossed since the last tick
   // (hilt to tip, all round) and the body bubble, once each per swing. The hits land through updateEffects (one short-lived
@@ -8680,7 +8682,7 @@ export class Game {
     const toolVisual = stampAttackVisual(this.player, "emitter", visualMs, d);
     const appearanceKind=simpleToolAppearanceKind(weapon);
     if(toolVisual&&appearanceKind)toolVisual.toolAppearance={v:1,kind:appearanceKind};
-    if (toolVisual && toolKind) { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = toolKind;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:1,baseKind};this.player.actionVisualUntil=now+visualMs; }
+    if (toolVisual && toolKind) { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = toolKind;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:1,baseKind,carry:primaryCarryKind(this.save.equipment.primary)/* the carry as accepted (items.ts) */};this.player.actionVisualUntil=now+visualMs; }
     this.player.meleeUntil = 0;
     this.player.meleeStrike = null;
     const derived=characterStats(this.save),reachMultiplier=1+derived.attackReach,projectileLifetime=weapon.lifetime*reachMultiplier;
@@ -9616,7 +9618,7 @@ export class Game {
     if(kind==='great-sweep'&&this.closeViewActionEligible()){
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
-      this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
+      this.save.toolUseCounter=counter+1;p.attackUntil=now+240;const toolVisual=stampAttackVisual(p,'sweep',TOOL_ACTION_TIMING[kind].durationMs,null);if(!toolVisual)return false;const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind=kind;toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind,carry:primaryCarryKind(this.save.equipment.primary)/* the carry as accepted (items.ts) */};toolVisual.toolUse={v:1,id,startupMs,phase:'startup'};p.actionVisualUntil=now+toolVisual.durationMs;
       this.pendingToolUse={v:1,id,toolKind:kind,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),acceptedAt:now,releaseAt:now+startupMs,startupMs,aim:projectileDirection(this.save.lastAim?.x||0,this.save.lastAim?.y||0,p.facing),payload:{v:1,family:'sweep',effect,pellets:0,spread:0,awakenedFan:false,echoCopies,cloneEligible:this.shadowCloneActive(now)&&!this.shadowClone.charging,cloneProfile:{...BRAWLER_ECHO.cloneArc,damage:primaryProfile(this.save.equipment.primary).damage+this.weaponBonus()}}};this.message='Great Sweep!';this.cancelConsumeVisual('tool');return true;
     }
     let visualAim = null;
@@ -9641,7 +9643,7 @@ export class Game {
     const toolVisual = stampAttackVisual(p, kind === "hammerfall" ? "hammer" : "sweep", visualMs, visualAim);
     if (toolVisual && kind === "hammerfall") { Object.assign(toolVisual, { hammerEffectId: main.id, hammerDelayMs: B.delay * 1000, hammerRecoveryMs: B.lifetime * 1000 }); p.actionVisualUntil = now + hammerDurationMs; const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y); if (prior) toolVisual.facingYaw = Math.atan2(Math.sin(prior.yaw), Math.cos(prior.yaw)); }
     if(kind==='hammerfall'&&this.closeViewActionEligible())this.hammerfallStartup={v:1,effectId:main.id,area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root')};
-    if (toolVisual && kind === "great-sweep") { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = "great-sweep";toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind};p.actionVisualUntil=now+visualMs; }
+    if (toolVisual && kind === "great-sweep") { const primary=this.save.equipment.primary?.id,baseKind=priorPose?priorTool.toolMotion.baseKind:primary==='primary-cinder-pike'?'cinder-pike':primary==='primary-verge-cleaver'?'verge-cleaver':'salvage-blade';toolVisual.toolKind = "great-sweep";toolVisual.heldTool=true;toolVisual.toolMotion={v:1,entry:priorPose?[priorPose.yaw,priorPose.side,priorPose.up,priorPose.forward,priorPose.weight]:[0,0,0,0,0],direction:sweepDirection,baseKind,carry:primaryCarryKind(this.save.equipment.primary)/* the carry as accepted (items.ts) */};p.actionVisualUntil=now+visualMs; }
     this.cancelConsumeVisual('tool');
     this.message = kind === "hammerfall" ? "Hammerfall!" : "Great Sweep!";
     return true;
@@ -9702,7 +9704,7 @@ export class Game {
   // starting section, Skylands, arenas, Array runs, hunts, horde or elite-portal dungeons, or a dungeon already cleared.
   fracturedHere(area = this.area) {
     const mode = fracturedMode(this.save); if (!mode || !this.map) return null;
-    if (fractureSealed(this.save, fractureKey(area, this.areaStateId()))) return null; // release 666: a Warden felled here sealed it
+    if (fractureSealed(this.save, this.fractureAreaKey(area))) return null; // release 666: a Warden felled here sealed it
     if (area === "overworld") {
       const home = homeCenter(this.save), lands = this.refugeLandsWhere() || {}, at = (q) => q && q.rx === this.rx && q.ry === this.ry;
       if (this.map.settlement || this.map.hamlet || (this.rx === 0 && this.ry === 0) || at(home) || at(lands.farm) || at(lands.quarry) || townAt(this.save, this.rx, this.ry)) return null;
@@ -10280,7 +10282,7 @@ export class Game {
   labQuelled() {
     const id = this.areaId(); if (this.area !== "dungeon" || !isLabyrinthId(id) || !this.map?.building?.labyrinth) return false;
     const h = dungeonHistory(this.save, id); if (h.labQuelled) return true;
-    const sealed = fractureSealed(this.save, fractureKey("dungeon", this.areaStateId())), guards = !fracturedMode(this.save) && !this.enemies.some((e) => e.buildingGuard && !e.dead && !e.rewarded);
+    const sealed = fractureSealed(this.save, this.fractureAreaKey("dungeon")), guards = !fracturedMode(this.save) && !this.enemies.some((e) => e.buildingGuard && !e.dead && !e.rewarded);
     if (sealed || guards) h.labQuelled = true; return !!h.labQuelled;
   }
   labQuellOnKill(e) {
@@ -10419,19 +10421,26 @@ export class Game {
     const o = { id: `deep-shaft-${this.rx}-${this.ry}`, kind: "deepShaft", name: THE_DEEP.name, x: at.x, y: at.y, state: "open", actions: startFloors(rec).map((f) => `descend:${f}`), lore: THE_DEEP.messages.shaft, landmark: true };
     this.map.objects.push(o); if (!this.message) this.message = THE_DEEP.messages.shaft; return o;
   }
-  resetDeepFloor(id) { delete this.save.consequences.dungeons[id]; for (const k of Object.keys(this.save.session.areas || {})) if (k === id || k.startsWith(`${id}:`)) delete this.save.session.areas[k]; }
+  resetDeepFloor(id) { delete this.save.consequences.dungeons[id]; for (const k of Object.keys(this.save.session.areas || {})) if (k === id || k.startsWith(`${id}:`)) delete this.save.session.areas[k];
+    // Unreleased (Tim's log): the floor left behind takes its Fractured seal and meter with it (a seal written before per-floor keys,
+    // on the shaft as a whole, applied to every deeper floor; it now stays with the floor it was set on), and its daises' attunement.
+    const seal = fractureKey("dungeon", id); if (this.save.fractureSeals) for (const k of Object.keys(this.save.fractureSeals)) if (k === seal || k.startsWith(`${seal}:`)) delete this.save.fractureSeals[k];
+    for (const k of Object.keys(this.save.worldFlags || {})) if (k.startsWith(`warp-dais:${id}:`)) delete this.save.worldFlags[k]; }
+  // The Fractured mode's record of the area (fractured.ts fractureKey). A floor of the Deep from DEEP_FLOOR_GEN 2 on keys its own floor:
+  // the shaft's id alone named every floor, so one Fracture Warden sealed them all.
+  fractureAreaKey(area = this.area) { const key = fractureKey(area, this.areaStateId()); return area === "dungeon" && this.map?.deepFloor && this.map.deepGen >= 2 ? `${key}:f${this.map.deepFloor}` : key; }
   enterDeep(o, chosen) {
     const id = deepIdFor(this.save.seed, this.rx, this.ry), rec = deepShaft(this.save, id), want = Number(String(chosen || "").split(":")[1]) || 1, floor = startFloors(rec).includes(want) ? want : 1;
     rec.floor = floor; this.resetDeepFloor(id);
     this.save.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: o.x, y: o.y + 1 }; this.save.session.activeDungeonId = id; this.save.session.activeDungeonLevelId = null;
-    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
+    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0; h.deepGen = DEEP_FLOOR_GEN.version; /* the-deep.ts: this floor's generation */
     this.loadArea("dungeon"); this.settleArrival();
     this.defeatNotice = { title: `THE DEEP · FLOOR ${floor}`, detail: floor > 1 ? "no way back up but a Return Ember · fell the guardian to go deeper" : "fell the guardian to go deeper · burn a Return Ember to come back up", kind: "danger" };
     this.message = `You climb down into the Deep${floor > 1 ? ` and on to floor ${floor}` : ""}.`; this.sync(); return { ok: true, message: this.message };
   }
   descendDeep(o) {
     const id = this.areaId(), rec = deepShaft(this.save, id); rec.floor = (this.map.deepFloor || rec.floor) + 1; this.resetDeepFloor(id);
-    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
+    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0; h.deepGen = DEEP_FLOOR_GEN.version; /* the-deep.ts: this floor's generation */
     this.loadArea("dungeon", false); this.settleArrival(); this.projectiles = [];
     this.defeatNotice = { title: `THE DEEP · FLOOR ${rec.floor}`, detail: rec.floor % THE_DEEP.checkpointEvery === 0 ? "a checkpoint: you may start here next time" : `deepest ${Math.max(rec.best, rec.floor - 1)} · ${this.save.theDeep.embers} Return Ember${this.save.theDeep.embers === 1 ? "" : "s"}`, kind: "danger" };
     this.message = `You go down the Deep Stair to floor ${rec.floor}.`; this.sync(); return { ok: true, message: this.message };
@@ -10519,7 +10528,7 @@ export class Game {
   tickFractured(now) {
     if (this.enemies.some((e) => e.fracReinforcement && e.dead)) { for (const e of this.enemies) if (e.fracReinforcement && e.dead) e.fracGoneAt ??= now; this.enemies = this.enemies.filter((e) => !(e.fracReinforcement && e.dead && now - e.fracGoneAt > FRACTURED.corpse * 1000)); } // the 659 review: fallen reinforcements are cleared away
     const mode = this.fracturedHere(); if (!mode) { this.fracState = null; return; }
-    const key = `${this.area}:${this.areaStateId()}`, F = FRACTURED, p = this.player;
+    const key = this.fractureAreaKey(), F = FRACTURED, p = this.player;
     let st = this.fracState; if (!st || st.key !== key) st = this.fracState = { key, nextAt: now + F.grace * 1000, n: 0, wave: false };
     const hostile = this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.retreating && !e.astralAllyOf && e.kind !== "npc");
     const brought = hostile.filter((e) => e.fracReinforcement && !e.fracWardenAdd).length;
@@ -10667,13 +10676,13 @@ export class Game {
   // Release 666: the HUD's fracture meter, while Fractured mode holds here: kills of need, and the Warden when it is up.
   fractureMeter() {
     const mode = this.fracturedHere(); if (!mode) return null;
-    const rec = this.save.fractureSeals?.[fractureKey(this.area, this.areaStateId())], warden = this.enemies.find((e) => e.fracWarden && !e.dead) || null;
+    const rec = this.save.fractureSeals?.[this.fractureAreaKey()], warden = this.enemies.find((e) => e.fracWarden && !e.dead) || null;
     return { kills: Math.min(fractureNeed(mode), Number(rec?.kills) || 0), need: fractureNeed(mode), warden };
   }
   // Release 666: a kill in a Fractured area fills the meter; the Warden's fall seals the area and drops its cache.
   fractureOnKill(e) {
     if (e.fracWarden) {
-      const W = FRACTURE_WARDEN, key = e.fracKey || fractureKey(this.area, this.areaStateId()), rec = fractureRecord(this.save, key);
+      const W = FRACTURE_WARDEN, key = e.fracKey || this.fractureAreaKey(), rec = fractureRecord(this.save, key);
       rec.sealed = true; this.fracState = null;
       for (const q of this.enemies) if (!q.dead && q.fracWardenAdd) { q.dead = true; q.noRewards = true; q.rewarded = true; } // its called packs go with it
       for (let i = 0; i < W.cache.items; i++) this.obtainDrop(`fracture-cache:${e.kind}`);
@@ -10682,7 +10691,7 @@ export class Game {
     }
     if (e.fracWardenAdd || e.summonedBy || e.ambient || e.astralAllyOf || e.passiveBehavior) return null;
     const mode = this.fracturedHere(); if (!mode) return null;
-    const key = fractureKey(this.area, this.areaStateId());
+    const key = this.fractureAreaKey();
     if (this.enemies.some((q) => q.fracWarden && !q.dead)) return null;
     if (fractureKill(this.save, key, mode, e)) return { message: "The fracture strains. Something is coming through." };
     return null;

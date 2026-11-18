@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixes from Tim's log: Triads on the Glyphs screen show their name and effect (they read "undefined"), armor triads appear on the armor card, and every triad is written into the codex of journeys already under way. Killing a Spinosaurus (a big room's, or one that comes in on a fight) or a big room's Wild Stegosaurus now gives its Echo, and journeys that already killed one get it on load. The power armor in Close View holds its own fists, or the weapon actually equipped, never a stand-in salvage blade. In the Deep, floors entered from now on each have Watcher's daises and their own guardian, and a Fracture Warden seals only its own floor, so Fractured and Frenzied keep going deeper down.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
