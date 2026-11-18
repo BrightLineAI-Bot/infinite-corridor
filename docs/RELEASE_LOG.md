@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r995 (this merge, #662); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r996 (this merge, #663); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 996 | Claude | claude/aerial-step-air-walk / #663 | Aerial Step walks on air everywhere (weapon put away for the cast); lethal falls play out in real time with Aerial Step, Rift Step and drone rescues and a red edge cue | Merged (#663); preview follows. |
 | 995 | Claude | claude/hushed-wayfarer / #662 | The Wayfarer spoken of in hushed tones: rare hushed lines, the Shutter Glimpse, a few lesser creatures cower; new ground only | Merged (#662); preview follows. |
 | 994 | Claude | claude/stego-leg-lag / #668 | Close View Wild Stegosaurus legs resolve the hip before the IK reads it (no first-frame snap, no turn lag); Spinosaurus arms and the Listener's jaw arm the same; presentation only, no save change | In flight; renumbered from 993 (taken by #661). |
 | 993 | Claude | claude/close-view-ocean / #661 | Close View on the open sea: water surface, swell and horizon; swim, robot water-form, power-armor-at-sea and skiff poses; presentation only | Merged (#661); preview follows. |

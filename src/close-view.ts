@@ -7,7 +7,7 @@ import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
 import { creaturePoseFamily, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
 import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
@@ -2025,6 +2025,33 @@ export const RIFT_RING = Object.freeze({ armed: "#b48cff", ok: "#c9a8ff", bad: "
 function worldRing(ctx, X, Y, Z, r) { const n = RIFT_RING.points; let open = false; ctx.beginPath();
   for (let i = 0; i <= n; i++) { const a = i / n * 6.2832, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
   ctx.stroke(); }
+// Aerial Step's rings (Tim, 2026-11-15: "two thin blue rings around the feet/shins... each slides smoothly up and down, the two
+// out of phase"). While it holds, two thin rings glide between the feet (0) and the shins (1), half a cycle apart on one eased
+// cosine (no wobble); Reduced Motion and safe mode hold them still at `still`; they fade in and out with the skill and hold still
+// while paused. Shared with the standard view (renderer.ts drawAerialRingsStd). `shin` is the shins' height in Close View world
+// units; `radius` in tiles; `back` the far half's share of the near half's alpha. No allocation (AERIAL_RING_STATE is reused).
+export const AERIAL_RINGS = Object.freeze({ color: "#7cc8ff", core: "#d6f0ff", width: 1.6, radius: .27, shin: .5, periodMs: 1400, still: Object.freeze([.22, .72]), fadeIn: .22, fadeOut: .4, back: .35, points: 20,
+  std: Object.freeze({ rx: .27, ry: .1, shin: .3, width: 1.4 }) });
+const AERIAL_RING_STATE = { a: 0, h0: 0, h1: 0 };
+const ease01 = (t) => { const u = Math.max(0, Math.min(1, t)); return u * u * (3 - 2 * u); };
+export function aerialRingState(g, now) {
+  const q = g?.save?.magicSkills?.active, R = AERIAL_RINGS, S = AERIAL_RING_STATE; if (!q || q.id !== "aerial-step" || !(q.remaining > 0) || !(g.player?.hp > 0)) return null;
+  const dur = Number(q.duration) > 0 ? Number(q.duration) : q.remaining; S.a = Math.min(ease01((dur - q.remaining) / R.fadeIn), ease01(q.remaining / R.fadeOut));
+  if (g.presentation?.reduceMotion || g.presentation?.safeMode) { S.h0 = R.still[0]; S.h1 = R.still[1]; return S; }
+  const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, c = Math.cos((Number(clock) || 0) / R.periodMs * 6.2832); S.h0 = .5 - .5 * c; S.h1 = .5 + .5 * c; return S;
+}
+function worldArc(ctx, X, Y, Z, r, a0, a1) { const n = AERIAL_RINGS.points; let open = false; ctx.beginPath();
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
+  ctx.stroke(); }
+function aerialRings(ctx, g, now) {
+  const S = aerialRingState(g, now); if (!S || !(S.a > 0) || !CAM.valid) return; const R = AERIAL_RINGS, p = g.player, X = footX(p), Y = footY(p);
+  const feet = Number.isFinite(HERO_FEET.z) ? HERO_FEET.z : surfaceZ(g.map, X, Y), toCam = Math.atan2(CAM.cy - Y, CAM.cx - X);
+  ctx.save(); ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) { const Z = feet + .04 + (k ? S.h1 : S.h0) * R.shin;
+    ctx.globalAlpha = S.a * R.back; ctx.strokeStyle = R.color; ctx.lineWidth = R.width; worldArc(ctx, X, Y, Z, R.radius, toCam + 1.5708, toCam + 4.7124); // the far half, behind the legs
+    ctx.globalAlpha = S.a; worldArc(ctx, X, Y, Z, R.radius, toCam - 1.5708, toCam + 1.5708); ctx.strokeStyle = R.core; ctx.lineWidth = R.width * .5; worldArc(ctx, X, Y, Z, R.radius, toCam - 1.5708, toCam + 1.5708); }
+  ctx.restore();
+}
 // The aimed Rift Step (constellation.ts RIFT_AIM): while armed, its reach round the feet; after the tap, a ring on the point (red
 // when the step was refused) that fades.
 function riftAimRing(ctx, g) {
@@ -2408,7 +2435,12 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); }
     const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer && !kept) continue;
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
-    if (q.sx + (d.mountComposite?.halfWidth || A.halfWidth * sc) * k < 0 || q.sx - (d.mountComposite?.halfWidth || A.halfWidth * sc) * k > w || q.sy - Math.max(d.mountComposite ? d.mountComposite.height + Math.max(0, d.lift || 0) : 0, nativeBoardTop(d.enemy, sc, d.nativeHeight)) * k > h || q.sy + (d.mountComposite?.below || A.below) * k < 0) continue;
+    let off = q.sx + (d.mountComposite?.halfWidth || A.halfWidth * sc) * k < 0 || q.sx - (d.mountComposite?.halfWidth || A.halfWidth * sc) * k > w || q.sy - Math.max(d.mountComposite ? d.mountComposite.height + Math.max(0, d.lift || 0) : 0, nativeBoardTop(d.enemy, sc, d.nativeHeight)) * k > h || q.sy + (d.mountComposite?.below || A.below) * k < 0;
+    if (off && d === capturedPlayer && !interiorTerrain(g.map) && closeViewActorLift(d) > 0) { // high in the air (Aerial Step's held air, a long fall) the ground under the Wayfarer can be off screen while they are not: judged where they are drawn
+      const sx = q.sx, sy = q.sy, dep = q.depth, u = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + closeViewActorLift(d));
+      if (u) { const ku = F / u.depth; off = u.sx + A.halfWidth * ku < 0 || u.sx - A.halfWidth * ku > w || u.sy - nativeBoardTop(null, 1, d.nativeHeight) * ku > h || u.sy + A.below * ku < 0; }
+      q.sx = sx; q.sy = sy; q.depth = dep; } // project() reuses one record
+    if (off) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
@@ -2477,6 +2509,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
   riftAimRing(ctx, g); // RIFT_AIM: the armed step's reach and the tapped point
+  aerialRings(ctx, g, now); // AERIAL_RINGS: Aerial Step holding
   // 6. the torch's warm cast and the vignette, both cached
   if (Q.warm && pq && !useGL) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(pSx, pSy - .6 * pk); ctx.fillStyle = SCREEN.warm; const r0 = Math.min(w, h) * .55; ctx.fillRect(-r0, -r0, 2 * r0, 2 * r0); ctx.restore(); } // only the glow's own square
@@ -4109,10 +4142,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */const handsFree=aerialHandsFree(state.heroPose);if(handsFree)gear.profile='';/* AERIAL_HANDS_FREE: put away for Aerial Step's cast, back after it */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
-          gear.offhand = offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
+          gear.offhand = handsFree ? null : offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool && !handsFree ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
           if (!reduce && equipped > offset && action.kind === 'melee' && held === 'verge-cleaver' && meleeAction?.kind === 'verge-cleaver') {
@@ -4123,7 +4156,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             }
           }
           offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
-          if (offhandTool) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
+          if (offhandTool && !handsFree) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
