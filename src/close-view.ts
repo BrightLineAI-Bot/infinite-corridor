@@ -17,7 +17,7 @@ import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowD
 import { dronePos, phaseShielded } from "./affixes.ts";
 import { PENTAGON_BACKDROPS } from "./pentagon-halls.ts";
 import { standardProjectile, standardProjectileColor, triceratopsHornVertices } from "./combat-visuals.ts";
-import { TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
+import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose } from "./beast-mounts.ts";
 import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.ts"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
 import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
 import { behaviourProfile } from "./enemy-behaviour.ts"; // a heavy blow's real recovery (creature motion, 2026-11-15)
@@ -28,7 +28,9 @@ import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framewo
 import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh } from "./close-view-beast-triceratops.ts";
+import { MOUNT_DRAW } from "./beast-mounts-render.ts";
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
@@ -975,7 +977,7 @@ const DIAGNOSTIC_FALLBACKS=new Set(['custom-art','body','capture','visibility','
 export function invalidateCloseViewDiagnostics(){RENDER_DIAGNOSTICS.activityValid=false;}
 export function closeViewRenderDiagnostics(){
   const fallbacks={};for(const [reason,count] of Object.entries(RENDER_DIAGNOSTICS.fallbacks||{}))if(DIAGNOSTIC_FALLBACKS.has(reason)&&Number.isSafeInteger(count)&&count>0)fallbacks[reason]=Math.min(999,count);
-  return {active:RENDER_DIAGNOSTICS.activityValid&&CAM.drawn,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
+  return {active:RENDER_DIAGNOSTICS.activityValid&&CAM.drawn,mountNeckPitch:RIDDEN.pitch,frame:RENDER_DIAGNOSTICS.frame,backend:RENDER_DIAGNOSTICS.backend,player:RENDER_DIAGNOSTICS.player,actors:RENDER_DIAGNOSTICS.actors,nativeActors:RENDER_DIAGNOSTICS.nativeActors,fallbacks,asset:closeViewHeroAssetStatus(),gpu:closeViewGLDiagnostics()};
 }
 
 
@@ -2432,7 +2434,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   }
   if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
-  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; }
+  MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -3701,16 +3704,17 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   // (Tim 2026-11-12: on the lowest setting the field tentacles keep their billboards: tierMinions.low is 0)
   B.count = 0; if (B.map !== g.map) { B.map = g.map; B.tracks.clear(); }
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y;
-  let big = 0, small = 0, dc = 0; // world beasts, their minions and the Gaunt (close-view-beasts.ts DUELIST_SLOT) each have their own slots
-  const full = (spec) => spec.duelist ? dc >= DUELIST_SLOT.maxDuelists : spec.minion ? small >= maxM : big >= maxB, count = (spec) => { if (spec.duelist) dc++; else if (spec.minion) small++; else big++; };
+  let big = 0, small = 0, dc = 0, tc = 0; // world beasts, their minions, the Gaunt (close-view-beasts.ts DUELIST_SLOT) and a Triceratops herd (TRICERATOPS_SLOT) each have their own slots
+  const full = (spec) => spec.herd ? tc >= TRICERATOPS_SLOT.maxBodies || tier === 'low' : spec.duelist ? dc >= DUELIST_SLOT.maxDuelists : spec.minion ? small >= maxM : big >= maxB, count = (spec) => { if (spec.herd) tc++; else if (spec.duelist) dc++; else if (spec.minion) small++; else big++; };
   const S = CLOSE_VIEW_BEAST_SIGHT, lodAt = BEAST_SIGHT_FRAME.far + S.lod;
   // 2026-11-14 (CLOSE_VIEW_BEAST_SIGHT): two passes, nearest first in each: the beasts of your section, then every other body,
   // so a nearer creature of a roster kind (a pen's stag, the Stalker's copies) never takes a section beast's slot.
-  for (let pass = 0; pass < 2; pass++) for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM || dc < DUELIST_SLOT.maxDuelists); oi--) {
+  admitRiddenTriceratops(g, Q, now, reduce, tier);
+  for (let pass = 0; pass < 2; pass++) for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM || dc < DUELIST_SLOT.maxDuelists || tc < TRICERATOPS_SLOT.maxBodies); oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || closeViewSectionBeast(foe) !== (pass === 0) || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
     const spec = CLOSE_VIEW_BEASTS[foe.kind]; if (full(spec)) continue;
-    const kept = pass === 0, far = kept && itemDepth[it] > lodAt, use = far ? 'low' : tier; // far off, the cheaper low-tier mesh, never nothing
+    const kept = pass === 0, far = kept && itemDepth[it] > lodAt, use = far ? 'low' : spec.herd && tier === 'full' && tc >= TRICERATOPS_SLOT.fullBodies ? 'balanced' : tier; // far off, the cheaper low-tier mesh, never nothing
     if (!prepareCloseViewBeastMesh(spec.mesh(use, foe))) continue;
     let track = B.tracks.get(foe); if (!track) { track = spec.createTrack(); B.tracks.set(foe, track); }
     // the standard view's own scale (u = tile x scale), times the beast's Close View presentation factor
@@ -3734,6 +3738,35 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     }
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
+}
+// The ridden Triceratops's skinned body (2026-11-18, beast-mounts.ts TRICERATOPS_CLOSE_VIEW.riddenBody): drawn under the mounted card,
+// whose saddle and rider stay on it (MOUNT_DRAW.skipBody leaves only the mount's body off the card). It stands where the card stands,
+// at the mount's own scale, and follows only the accepted pose fields: its heading, the horn pose, the Silly Goose's drill roll (an axial
+// turn about its middle, kept above its support) and the leap's lift. The lowest quality setting keeps the whole card.
+const RIDDEN = { track: null, mount: '', actor: { id: '', kind: 'triceratops', mountView: true, triceratopsDisposition: 'good', hp: 1, mountHornPose: null, pack: null, facingX: 1 },
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0 }, yaw: NaN, x: NaN, y: NaN, pitch: null };
+const RIDDEN_FACING_YAW = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+function admitRiddenTriceratops(g, Q, now, reduce, tier) {
+  MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null;
+  const ride = g.mountRide?.(), d = capturedPlayer;
+  if (!TRICERATOPS_CLOSE_VIEW.riddenBody || tier === 'low' || ride?.beast !== 'triceratops' || !d?.mountComposite) { RIDDEN.track = null; return; }
+  const p = g.player, a = RIDDEN.actor, E = RIDDEN.env, mesh = triceratopsMesh(tier, Object.assign(a, { triceratopsDisposition: ride.variant === 'silly' ? 'silly' : 'good' }));
+  if (!prepareCloseViewBeastMesh(mesh)) { RIDDEN.track = null; return; }
+  if (!RIDDEN.track || RIDDEN.mount !== ride.id) { RIDDEN.track = createTriceratopsTrack(); RIDDEN.mount = ride.id; RIDDEN.x = NaN; }
+  const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, horn = triceratopsHornPose(g, ride, clock, reduce), drill = triceratopsDrillPose(g, ride, clock, reduce);
+  const x = p.x + .5, y = p.y + .82;
+  // its heading: the accepted aim of a horn or drill pose, else the way it walks, else the Wayfarer's facing
+  if (drill || horn) RIDDEN.yaw = Math.atan2(drill ? drill.y : horn.y, drill ? drill.x : horn.x);
+  else if (Number.isFinite(RIDDEN.x) && Math.hypot(x - RIDDEN.x, y - RIDDEN.y) > .004) RIDDEN.yaw = Math.atan2(y - RIDDEN.y, x - RIDDEN.x);
+  else if (!Number.isFinite(RIDDEN.yaw)) RIDDEN.yaw = RIDDEN_FACING_YAW[p.facing] ?? 0;
+  RIDDEN.x = x; RIDDEN.y = y;
+  const q = g.triceratopsJump, T = TRICERATOPS_DRILL_POSE;
+  RIDDEN.drill.angle = drill && !reduce && q ? Math.PI * 2 * T.turns * Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))) : 0;
+  a.id = `mount:${ride.id}`; a.hp = p.hp; a.mountHornPose = horn;
+  E.x = x; E.y = y; E.air = Math.max(0, Number(d.jumpLift) || 0); E.z = surfaceZ(g.map, x, y - .07) + Math.max(0, Number(d.lift) || 0) + E.air; E.scale = Number(MOUNT_BEASTS.triceratops.scale) || 1;
+  E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
+  const frame = sampleTriceratops(RIDDEN.track, a, E); if (!frame) return;
+  const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch;
 }
 // 2026-11-13 (Tim: "every interactable character should have a real 3D body in Close View"): the townsfolk (close-view-folk.ts).
 // Nearest first, up to FOLK_SLOT.maxFolk for the tier; past it, or without the GPU's beast program, a person keeps its card. A

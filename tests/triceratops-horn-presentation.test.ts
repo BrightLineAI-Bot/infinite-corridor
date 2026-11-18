@@ -127,7 +127,7 @@ test('Close View preserves the posed Triceratops composite and falls back withou
   frame(h,g);
   assert.equal(closeViewShowing(g),true);assert.equal(closeViewRenderDiagnostics().player,'billboard');
   assert.equal(g.player.facing,playerFacing);
-  assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='rotate'&&Math.abs(Math.abs(q[2])-pose.pitch)<1e-9),'composite paints the accepted neck pose');
+  assert.ok(Math.abs(closeViewRenderDiagnostics().mountNeckPitch-pose.pitch)<1e-9,'the 3D body poses the accepted neck pitch');
   assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle survives native admission');
   h.gl.fault='draw';frame(h,g);
   assert.equal(closeViewShowing(g),false);assert.equal(g.player.facing,playerFacing);
