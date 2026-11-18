@@ -26,7 +26,8 @@ test('a floor entered now is generation 2: its own fracture key and its own guar
     assert.equal(g.map.deepFloor, f); assert.equal(s.consequences.dungeons[id].deepGen, DEEP_FLOOR_GEN.version);
     assert.equal(g.fractureAreaKey(), `${fractureKey('dungeon', id)}:f${f}`);
     const guardian = g.enemies.find((e) => e.boss && e.dungeonRole === 'gateWarden'); assert.ok(guardian, `floor ${f} guardian`);
-    assert.equal(guardian.kind, guardianKindFor(SEED, `${id}:f${f}`)); kinds.push(guardian.kind);
+    // DEEP_FLOOR_GEN 3: a lair floor's guardian is its beast (the-deep.ts DEEP_SPECIALS); every other floor keeps its own roll
+    assert.equal(guardian.kind, g.map.deepLair ? g.map.deepLair.beast : guardianKindFor(SEED, `${id}:f${f}`)); kinds.push(guardian.kind);
     if (f < 5) down(g);
   }
   assert.ok(new Set(kinds).size > 1, `not one species on every floor: ${kinds}`);

@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r997 (this merge, #666); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r998 (this merge, #669); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 998 | Claude | claude/deep-variety / #669 | The Deep's lairs (Poison Crypt, Psychic Crystal, Tremor Worm, Void Walker, Wild Stegosaurus, Spinosaurus as floor guardians at DEEP_FLOOR_GEN 3); full-charting Aperture bonus (+20%) in every dungeon | Merged (#669); preview follows. |
 | 997 | Claude | claude/tim-log-fixes / #666 | Fixes from Tim's log: triad names, room-beast Echoes with catch-up, power-suit weapon in Close View, per-floor Deep seals and guardians, Deep warp daises | Merged (#666); preview follows. |
 | 996 | Claude | claude/aerial-step-air-walk / #663 | Aerial Step walks on air everywhere (weapon put away for the cast); lethal falls play out in real time with Aerial Step, Rift Step and drone rescues and a red edge cue | Merged (#663); preview follows. |
 | 995 | Claude | claude/hushed-wayfarer / #662 | The Wayfarer spoken of in hushed tones: rare hushed lines, the Shutter Glimpse, a few lesser creatures cower; new ground only | Merged (#662); preview follows. |
