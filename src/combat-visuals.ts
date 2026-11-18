@@ -12,8 +12,24 @@ import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.ts";
 import { drawQuandrix } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { drawWeaponArts } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
 import { drawAwakenedArts } from "./awakened-arts.ts"; // awakened arts (2026-11-13)
+// Appearance only: both views share the same tapered horn dimensions in world tiles.
+export const TRICERATOPS_HORN_VISUAL = Object.freeze({ color: "#fff0bd", tip: .34, base: -.18, radius: .095 });
+export function triceratopsHornFrame(shot) {
+  const dx = Number.isFinite(Number(shot.dx)) ? Number(shot.dx) : 0, dy = Number.isFinite(Number(shot.dy)) ? Number(shot.dy) : 0, n = Math.hypot(dx, dy),
+    scale = Math.max(.55, Math.min(2, Number(shot.scale) || 1)), V = TRICERATOPS_HORN_VISUAL;
+  return { dx: n > 1e-6 ? dx / n : 1, dy: n > 1e-6 ? dy / n : 0, tip: V.tip * scale, base: V.base * scale, radius: V.radius * scale };
+}
+// Four faces around the flight axis, so the tapered shape also reads from a low/side camera.
+// Uses the existing twelve-vertex projectile budget and never writes to the projectile.
+export function triceratopsHornVertices(shot, x, y, z, out = new Float32Array(36)) {
+  const f = triceratopsHornFrame(shot), tx = x + f.dx * f.tip, ty = y + f.dy * f.tip,
+    bx = x + f.dx * f.base, by = y + f.dy * f.base, sx = -f.dy * f.radius, sy = f.dx * f.radius;
+  const ring = [[bx + sx, by + sy, z], [bx, by, z + f.radius], [bx - sx, by - sy, z], [bx, by, z - f.radius]];
+  for (let i = 0; i < 4; i++) { const at = i * 9, a = ring[i], b = ring[(i + 1) % 4]; out.set([tx, ty, z, ...a, ...b], at); }
+  return out;
+}
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
-export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q) => [
@@ -38,7 +54,11 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     ctx.fill(); ctx.globalAlpha = 1; ctx.beginPath();
     for (const p of list) {
       const [x, y] = toScreen(p);
-      if (p.path === "boomerang") {
+      if (p.triceratopsHorn) {
+        const f = triceratopsHornFrame(p), bx = x + f.dx * f.base * s, by = y + f.dy * f.base * s, sx = -f.dy * f.radius * s, sy = f.dx * f.radius * s;
+        ctx.moveTo(x + f.dx * f.tip * s, y + f.dy * f.tip * s);
+        ctx.lineTo(bx + sx, by + sy); ctx.lineTo(bx - sx, by - sy); ctx.closePath();
+      } else if (p.path === "boomerang") {
         const a = Math.atan2(p.dy, p.dx), k = .25 + .75 * shotFade(p); // tool-forms.ts TOOL_RANGE: a Spindle dissipating at the end of its range shrinks away
         ctx.moveTo(x + Math.cos(a) * 8 * k, y + Math.sin(a) * 8 * k);
         ctx.lineTo(x + Math.cos(a + 2.35) * 7 * k, y + Math.sin(a + 2.35) * 7 * k);

@@ -47,7 +47,7 @@ export const BEHAVIOUR = {
   awareness: { alert: [.4, .7], hitAlert: .25, call: 6.5, callDelay: [.12, .4], callPerTile: .04, pulseLife: 1.6, pulses: 8 },
   arrival: { radius: 7, time: .9 },
   tokens: { melee: { base: 2, per: 6, max: 3 }, swarm: { base: 4, per: 3, max: 8 }, ranged: { base: 1, per: 3, max: 2 }, fair: .05 },
-  spacing: { scan: 2.6, push: 2.2, flip: [2.6, 4.4], strafe: .55, close: .9, hold: 1, held: .05 }, /* held: a creature slowed below this share of its pace (held fast) neither strafes nor steps */
+  spacing: { scan: 2.6, push: 2.2, flip: [2.6, 4.4], strafe: .55, close: .9, hold: 1, held: .05, reach: .85 }, /* held: a creature slowed below this share of its pace (held fast) neither strafes nor steps; reach: a legacy creature on its ring winds up only within this share of its next blow's real reach (review 975) */
   react: { swingReach: 2.6, reroll: .6, sidestep: .3, backstep: .32, comboWindup: .62 },
   families: {
     brood: { pool: "swarm", band: [1.3, 2.1], spacing: false, sep: .75, rest: [.35, .75], heavy: null, combo: { chance: 25, hits: [2, 2], damage: .5 }, feint: 0, feintAt: .5, guard: null, dodge: null,
@@ -357,7 +357,7 @@ export function startFeint(e, b, B, board) {
 }
 // After its last blow: rest before the next token, step back if it is a skirmisher; a heavy blow leaves it open (`recover` x).
 export function afterBlow(e, b, B) {
-  b.comboLeft = 0; b.combo = 0; b.press = 0; b.pool = null;
+  b.comboLeft = 0; b.combo = 0; b.press = 0; b.pool = null; b.feintAt = 0;
   b.rest = span(e, b, "rest", B.rest);
   if (B.backstep > 0 && !e.heavy) b.back = BEHAVIOUR.react.backstep;
 }

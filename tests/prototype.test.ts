@@ -1782,7 +1782,7 @@ test("action readiness reports local cooldowns and potion availability", () => {
   const s = freshSave(),
     g = new Game(s, 100);
   g.player.attackReadyAt = 520;
-  g.player.dodgeReadyAt = 976;
+  g.player.dodgeReadyAt = 983;
   g.jumpUntil = 620;
   g.spellCooldownRemaining = 3;
   s.consumables.restorativeDraught = 2;
@@ -2405,12 +2405,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 976 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 989 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "976"/);assert.match(html,/styles\.css\?v=976/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v976`/);assert.match(sw,/styles\.css\?v=976/);assert.match(sw,/proving-ground-labs\.js\?v=976/);assert.match(sw,/dungeon-framework\.js\?v=976/);assert.match(sw,/renderer\.js\?v=976/);
-  assert.match(build,/release='976'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "989"/);assert.match(html,/styles\.css\?v=989/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v989`/);assert.match(sw,/styles\.css\?v=989/);assert.match(sw,/proving-ground-labs\.js\?v=989/);assert.match(sw,/dungeon-framework\.js\?v=989/);assert.match(sw,/renderer\.js\?v=989/);
+  assert.match(build,/release='989'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2439,7 +2439,7 @@ test("Proving Ground resets scratch state and cannot import persistence",()=>{
 });
 
 test("Proving Ground exposes every production diagnostic laboratory and direct scenario",()=>{
-  assert.equal(LABORATORIES.length,21);/* Combat Asset and Creature Asset inspection labs */assert.ok(LABORATORIES.some(q=>q.id==="combat-assets"));assert.ok(LABORATORIES.some(q=>q.id==="creature-assets"));assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
+  assert.equal(LABORATORIES.length,22);assert.ok(LABORATORIES.some(q=>q.id==="combat-assets"));assert.ok(LABORATORIES.some(q=>q.id==="creature-assets"));assert.ok(LABORATORIES.every(q=>q.status==="implemented"));
   for(const {id} of LABORATORIES){const scenarios=scenariosForLab(id);assert.ok(scenarios.length>0,id);const first=createLabFixture({lab:id,scenario:scenarios[0].id,seed:"all-labs",variant:1,now:0});assert.equal(labReport(first).scratch,true)}
 });
 

@@ -6,6 +6,66 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 983 — Close View creature motion and Pentagon dread
+
+**CODE:** Standard View's positive-dread overlay in `renderer.ts` uses its dimensions and intensity as a cache key again. The lighting regression exercises the first draw, reuse, and rebuild.
+
+**BOUNDARY:** The repair restores drawing and does not change dungeon state or dread strength.
+
+This is the first part of Tim's second creature pass (2026-11-15): a triple-A feel for every creature except world beasts and bosses, within the phone budget. It is the shared motion layer every ordinary Close View rig gets for free.
+
+**CODE:** `creature-motion.ts` holds the `CREATURE_MOTION` table (phase, heavy, combo, react, families, bend, carry, turn, death, swap, arms), `creatureMotion` (reaction layers driven by the enemy-behaviour.ts flags on the real clocks) and `motionCarry` (continuity, using per-track `MOTION_STATE_FLOATS`). In `close-view-models.ts`, `creatureRootPose` handles the phase model: a wind-up peak at 78% held with a tremble, follow-through, deeper heavy blows and alternating combos. `creatureRigFrame`, `bendFrame` and the vertex-loop bend handle torso, head and tail. `close-view.ts` has `creatureClock` and `e.bhv.wind`, so heavy and combo poses use the game's clocks. It also has `boardFade`, `swapCard` and the pooled `swapGhost` for the 220 ms card/body cross-fade, `deathAlpha` for the death fall, and a turn toward the target at 26/s. Quality tiers gate the layers (`motionDetail`).
+
+**BOUNDARY:** This is presentation only. No gameplay number, save field (schema 14), generation or triangle changes. It applies to `CREATURE_POSE.kinds` only, never world beasts or bosses. Strikes are drawn exactly on the hit frame; in a 40 s fight, all 83 melee hits landed at or past contact. Under Reduced Motion, reactions play at half strength with no translation, and there is no idle life or tremble. A paused scene swaps instantly, and a new spawn is opaque on its first frame. At most 2 bodies fade out beyond the cap. On desktop, the model write for 20 creatures went from about 0.45 ms to 0.58–0.78 ms per frame.
+
+## Release 982 — Fixes from the 975 review
+
+The Fable review of r972→r975 left six non-blocking notes. Tim chose to restore the older creatures' attack cadence (2026-11-15).
+
+**CODE:** `monster-pack.ts` `dinoRock` filters by `stegoPrey`. `dinoSetDown`, built on `nearestOpen` and `w.open` / `w.marineOpen` and limited to spots the holder can see, runs on every release from the stego's tail heave and the Spinosaurus's grab or lift, and when a holder dies. A feint is cleared when a windup ends, in both brains and in `afterBlow`, and the pack brain feints only a blow whose windup it recorded (`s.data.wind`). `BEHAVIOUR.spacing.reach` (0.85): a legacy ring creature winds up only within that share of its next blow's real reach (`game.ts` `legacyBlowReach`); otherwise it presses in with a token. With a squad board, legacy aggro needs line of sight (`hasLineOfSight`). `soundtrack.ts` `stingUntil` holds back the menace drop during a stinger. Tests are in `tests/review-975-fixes.test.ts`.
+
+**BOUNDARY:** No change to saves, generation or modules. Without a squad board the legacy brain behaves exactly as before. Setting a beast down is one bounded search, run only on release, never per frame. Measured over 40 s against a standing Wayfarer, legacy hit counts are back to between 0.83× and 1.0× of their pre-975 values. The Ashen Hound and Void Sentinel stay above their old rates (Tim wants harder mobs).
+
+## Release 981 — Iron Fists: the Cyclone Heel
+
+Tim, 2026-11-15: an aerial spinning leg kick after the uppercut and the airborne Ki Blast, for awakened Iron Fists with the Ki Blast passive; Shadow Boxing teleports to the target and lands every spin on it; tap for the plain kick, release just before landing for perfect rhythm.
+
+**CODE:** `brawler-spells.ts` `CYCLONE_HEEL` {spins 5, spinMs 110, windupMs 120, recoverMs 170, tiles 3.5, stop .8, range 6, radius 1.3, share .6, stun .25, shadow {spanMs 1000, reach 8, stop .85, follow 3, splash .35, leash 1, enter .6}, window {lead .22, grace .12}, holdMs 1500}, `normalizeCycloneHeel`, `cycloneTravel`, `drawCycloneHeel`. `action-motion.ts` `CYCLONE_MOTION`, `sampleCycloneMotion` (shared by both views, with an `enter` argument for the blink arrival). `game.ts` `cycloneReady` (`kiSlamReady` + `awakenedUp` "roundhouse" + chain window), `cyclonePress`, `tickCycloneHold`, `cycloneTarget` (locked, else nearest within 6, else forward), `cycloneBegin`, `cycloneBlink` (Rift Step's blink rules: quarter-tile steps with `blinkFooting`, stops at walls, lethal ground and sealed gates, `blinkPathClear`; falls back to the travelled kick), `cycloneSteer` (`dashCarry` with an `ease` argument), `cycloneSpin` (one hit per foe per spin; the Shadow Clone's `cloneSwing` per spin), `cycloneFinish`, `cancelCyclone`; `playerRuntime.cycloneHeel`, `GAME_NESTED_CLOCKS.cycloneHold`. Close View: `close-view-hero.ts` `AWAKENED_POSE['cyclone-heel']`, run ahead of the generic awakened envelope. Perfect release multiplies each spin by `perfectShare`; on the beat by `beatShare`; both give a rhythm blow (`rhythmBonus` spread across spins) and the HUD meter. Tests: `fist-cyclone-kick` (19); `awakened-arts` and `fists-four-step` expect the Cyclone Heel where the awakened Ki Blast slam was.
+
+**BOUNDARY:** Only replaces the Ki Blast slam with awakened fists plus Ki Blast, inside the uppercut leap and the chain window; every other path, including the grounded perfect-rhythm roundhouse, is unchanged. Each spin 0.6 × fist power (3.0 total against the 2.8 slam). Movement uses the dash mover or Rift Step's blink rules, never crossing walls, sealed gates or lethal ground or rising a ledge. A dodge, stun, death, area change or putting the fists away cancels it; casting does not. One record saved additively at schema 14; the hold is runtime only. No Echo copies; no per-frame allocation.
+
+## Release 980 — Falling pose
+
+Tim, 2026-11-15: the character should have a fall animation — the longer he falls, the more he moves his arms and legs, not frantic; pits keep their fall-over.
+
+**CODE:** `FALL_POSE` and `sampleFallPose(fallMs, remainingMs, reducedMotion, out)` (`close-view-player-presentation.ts`) are pure, read the fall's own clock (`game.fall.t`, saved with the fall and held by pause) and the time to the ground (`fallRemainingMs`), and write six weights (arm weight, leg bend, loop amplitude, loop phase, chest reaction, look-down) into an array the caller owns. `ordinaryFallPresentation` marks plunges `flail:false`. In `close-view-hero.ts`, `ordinaryAirPose` applies `fallTorso`, `fallArms` (upper arms aimed in model space with `alignJoint`, half a cycle apart) and an opposite-phase leg cycle; it skips the jump push-off, keeps the idle breathing under the fall, and meets the ground over `endMs`. Drawn weights are slew-limited through `state.fallLast`; `fallRelease` eases arms and chest out over `releaseMs` when a fall ends in the air (drone catch, roof). Standard View `drawFallArms` (`renderer.ts`) uses the same sampler. Test: `fall-pose` (8).
+
+**BOUNDARY:** Presentation only: no simulation, save or schema change. Applies only to an ordinary on-foot fall under the fall model with `fallPoseDue` (a drop of 1.5 levels or more); never in a jump's rise, gliding (closed freefall included), the drone lift, mech, boat or mount, or forms other than Iron Fists; a plunge keeps the hang; a dodge, cast, hit or defeat takes the body at once; the pit/defeat fall-over is untouched. The native Close View fallback body (used while the hero model loads) keeps the plain hang. Loop period at least `minPeriodMs` (one cycle every 1.3 s).
+
+## Release 979 — Great-tree Standard View blackout fix
+
+Tim, 2026-11-15 (save at section -186,-115): toggling the Oculus at a great tree left the top half of the Standard View black.
+
+**CODE:** `renderer.ts` `drawGroundCache` (CV_TREE_BLACKOUT) keeps the cached ground image's band above row 0 (`top`, where lifted tiles such as a great tree's trunk and crown are drawn) whenever the image is rebuilt with unchanged tiles and tile size; before, a rebuild for a new scale alone measured no band and clipped everything lifted above row 0. Close View's leave blend draws the Standard View under `ctx.scale(z)`; `close-view.ts` exports `closeViewLeaving()` for the duration of that zoom, and while it is true a scale change alone keeps the current image and draws it scaled instead of rebuilding it every frame. Test: `cv-tree-blackout` (2).
+
+**BOUNDARY:** Presentation only: generation, saves, the tree package and Close View's own scene are unchanged. Reduced Motion skips the blend as before. The band is still measured from scratch whenever any tile, the tile size, the map, the building or the scar surface changes. During the ~0.42 s leave zoom the ground is upscaled under the fading snapshot. The void-scar overlay still rebuilds on a scale change (it has no band to lose).
+
+## Release 978 — Oculus button and slots A to D
+
+Tim, 2026-11-15: give the Oculus its own button, make the utility button a fourth preset slot, and letter the slots A, B, C, D in on-screen order.
+
+**CODE:** `src/oculus.ts`: `OCULUS.button` ("switch"; "dais" restores the release-874 dais); `pressOculusButton` checks `oculusAvailable`, keeps the cooldown, then `oculusSwitch` and `oculusWarp`. `src/spell-slots.ts`: `SLOTS` gains `d` (`SLOT_ACTIONS.d = "utility"`); `SLOT_ORDER` and `SLOT_LABELS` (d→A, a→B, b→C, c→D) with `slotLabel`; `SLOT_TOOLS` gains robot and drone (`FRAME_TOOLS`); `UTILITY.slot` maps a stored utility to D; `presetSlot` and `setPresetSlot`; `presetUtility`, `setPresetUtility` and `activeUtility` read and write D; `togglePreset` swaps D. `src/game.ts`: `castSlot(slot, now, moving)` sends robot and drone to `pressFrame`; `pressUtility` is `castSlot("d")`; `pressOculus`; the update loop presses D through `pressSlot` and consumes `oculus`; `actionReadiness.utility`. `src/input.ts`: F, G, C, B for slots A–D; O for the Oculus. `src/main.ts`: `#oculusButton` state (availability in the 100 ms slow refresh); all four slots drawn alike; Arcanum rows A–D. `styles.css`: `.oculus-button` under the compass. Tests: `oculus-slot-d` (11); `oculus-utility-874`, `robot-drone-utility-875`, `spell-slots` and `lantern` updated to the four-slot layout.
+
+**BOUNDARY:** Schema 14, additive. Presets and `magicSkills.slots` gain `d`, filled from `utility` only when `d` is absent (build→Build, robot/drone/frame→that frame, oculus→empty, unknown→Build; a duplicate of A–C leaves D empty). `utility` and all unknown fields are kept; the migration is idempotent. The slot letters are display only: save keys, input actions and the Pairing (keys a+b) are unchanged. The Oculus dais code is kept and tested but no HUD control opens it while `OCULUS.button` is "switch". Look mode exits are unchanged. Drone still needs the fourth Gate.
+
+## Release 977 — Room light mix and the Lantern at night
+
+Tim, 2026-11-15: a mix of lit, gloomy and dark rooms indoors, the Deep darker, and the Lantern glowing outside at night.
+
+**CODE:** `INTERIOR_LIGHT` version 2 (`close-view.ts`): per-tier `keep` (interior lit .4 / gloomy .6 / dark .92; Deep .7 / .85 / .95) and `fogNear` (interior 2 / 1.2 / .3; Deep 1 / .5 / .15), and per-theme tier shares (default .30/.45/.25 … deep .04/.26/.70). `roomLightField(map)` finds rooms once per map from the floor (cores ≥2 tiles from walls, big caves cut into 10-tile sections, mazes use their whole floor, open-air tiles always lit), picks each room's tier from a hash of the map identity and the room's first tile, blurs tiers 2 tiles across boundaries and caches the field; `roomLightAt` reads it bilinearly at the Wayfarer's feet. Close View writes the GPU ambient in place once per frame and moves the fog's near edge; the 2D fallback steps its ambient in 1/64ths so the cached torch gradient rebuilds rarely. Standard View dims dark rooms only (≤ .30 alpha) from one tiny per-map image drawn as one scaled copy. `LANTERN.night = { glow: .16, reach: 1.4 }` (`spell-slots.ts`) with `outdoorNight(g)` and `lanternNightReach(save, night)`. Tests: `room-light-mix` (8), `brighter-interiors` updated to version 2.
+
+**BOUNDARY:** Presentation only: the field never mutates the map, the save or generation (checked by hash). Maps over 40,000 tiles keep the even 976 gloom. Chasm crossings, labyrinth chambers and the Stillworks keep their own darkness in Standard View. Ambient is per frame, not per pixel, so a room seen from a doorway takes on its light as you cross (about 4 tiles). By day or shuttered the Lantern is unchanged outdoors. No save change (schema 14).
+
 ## Release 976 — Brighter interiors
 
 Tim, 2026-11-15: every room inside dungeons, keeps and towers is a little too dark to see the world around you or interact with it.
@@ -10763,3 +10823,39 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
   - `tests/revenant-horde.test.ts`;
   - `tests/wood-boats.test.ts` (repairs, the guard);
   - `tests/building.test.ts` (costs).
+
+## Release 984 — Fourth-slot action locks
+
+**CODE:** Game.update consumes fourth-slot utility and legacy build presses during shock knockdown and firm grabs, alongside the other slotted actions.
+
+**BOUNDARY:** A blocked press is discarded and a fresh press works after recovery. Slot assignments and save schema are unchanged.
+
+## Release 985 — Triceratops capture and recovery
+
+**CODE:** Capture through enclosures grants persistent normal or Silly Goose mounts. Puncture or repeated depletion admits an injured mount to the selected hometown's Beast Hotel. The four Triceratops lab fixtures exercise capture and bedside recovery through the ordinary game actions.
+
+**BOUNDARY:** Save state is additive at schema 14. The fixtures use scratch state. Natural herd placement and dedicated mounted combat are separate work.
+
+## Release 986 — Triceratops capture loadout
+
+**CODE:** The scratch capture fixtures select Enclosure for the existing Build action in all three dispositions.
+
+**BOUNDARY:** The fixture loadout is isolated from journeys and does not change capture rules, saves or Beast Hotel behavior.
+
+## Release 987 — Triceratops herds and mounted combat
+
+**CODE:** New eligible areas can spawn deterministic herds. Mounted Dodge supports horn contact and held charge releases. Silly Goose uses a bounded airborne drill in place of the ordinary landing shockwave.
+
+**BOUNDARY:** Old explored areas keep their layouts. Drill state resumes through additive schema-14 data without repeating spent pulses. The mount and rider share one rendered composite.
+
+## Release 988 — Mounted Triceratops framing
+
+**CODE:** Fit the mounted composite to the Close View viewport through the existing wall-safe camera. Keep the rolling silhouette above its support.
+
+**BOUNDARY:** Presentation only. Collision, contact and save state follow the existing game rules.
+
+## Release 989 — Free standard Triceratops
+
+**CODE:** Production journeys receive a one-time permanent standard Triceratops. An existing standard mount satisfies the grant, including while recovering at the Beast Hotel.
+
+**BOUNDARY:** No auto-mounting, capture credit or temporary stable eviction. Generic save codecs and Proving Ground scratch state do not grant the mount.
