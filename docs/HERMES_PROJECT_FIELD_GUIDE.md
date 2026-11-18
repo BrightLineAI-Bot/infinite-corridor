@@ -10841,3 +10841,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 **CODE:** The scratch capture fixtures select Enclosure for the existing Build action in all three dispositions.
 
 **BOUNDARY:** The fixture loadout is isolated from journeys and does not change capture rules, saves or Beast Hotel behavior.
+
+## Release 987 — Triceratops herds and mounted combat
+
+**CODE:** New eligible areas can spawn deterministic herds. Mounted Dodge supports horn contact and held charge releases. Silly Goose uses a bounded airborne drill in place of the ordinary landing shockwave.
+
+**BOUNDARY:** Old explored areas keep their layouts. Drill state resumes through additive schema-14 data without repeating spent pulses. The mount and rider share one rendered composite.
