@@ -925,7 +925,7 @@ const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.second
 // the slot holding the most pieces (`slots`: weapons, tools, armor, charms), that slot's least-kept piece by `order`. A slot
 // holding `few` or fewer is never chosen while another holds more. Slots holding the same count: the one whose least-kept piece
 // is kept least goes (`slotTie` "weakest"), then the earlier in `slots`. So a high-power charm never outlasts your only weapon.
-export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]), slots: Object.freeze(["primary", "secondary", "armor", "charm"]), few: 10, slotTie: "weakest" });
+export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]), slots: Object.freeze(["primary", "secondary", "armor", "charm"]), few: 6 /* Tim 2026-11-18: about six of a kind is plenty */, slotTie: "weakest" });
 const KEEP_KEYS = {
   tier: (q) => ITEM_TIERS.indexOf(itemTier(q)),
   power: (q) => Math.max(0, Number(q?.power) || 0),
