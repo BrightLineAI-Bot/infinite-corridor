@@ -120,12 +120,14 @@ test('a beast that slips out breaks the pen: the materials of both pieces are lo
 });
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
+// Tim, 2026-11-18: holding Act (MOUNT_RIDE.callHold) calls the mount or gets you down; a tap does neither. Returns what that call returned.
+function holdAct(g, t0 = 500) { let first = true, t = t0, result = null; const call = g.actMount.bind(g); g.actMount = (...a) => (result = call(...a)); const act = { state: { x: 0, y: 0 }, consume: (k) => k === 'interact' && first && !(first = false), held: (k) => k === 'interact' }; for (; t < t0 + MOUNT_RIDE.callHold * 1000 + 100; t += 50) g.update(.05, act, t); g.update(.05, idle, t); delete g.actMount; return result; }
 test('summon and dismount: Act with nothing near calls the mount beside you, and again gets you down; it never fights', () => {
   const g = game('RIDE'); assert.match(g.interact().message, /Nothing nearby responds/, 'an empty stable: Act is as before');
   const { mount } = stableMount(g.save, 'briarStag');
-  const r = g.interact(); assert.ok(r.ok, r.message); assert.match(r.message, /Briar Stag answers your call/); assert.equal(g.save.mounts.riding, mount.id); assert.equal(g.mountRide().id, mount.id);
+  const r = holdAct(g); assert.ok(r.ok, r.message); assert.match(r.message, /Briar Stag answers your call/); assert.equal(g.save.mounts.riding, mount.id); assert.equal(g.mountRide().id, mount.id);
   assert.equal(g.enemies.length, 0, 'no creature is added: it is only drawn under you'); assert.deepEqual(mount.seen, ['4,3'], 'the section it was called in counts');
-  const d = g.interact(); assert.match(d.message, /climb down/); assert.equal(g.save.mounts.riding, null); assert.equal(g.save.mounts.stable.length, 1, 'it waits in the stable');
+  const d = holdAct(g); assert.match(d.message, /climb down/); assert.equal(g.save.mounts.riding, null); assert.equal(g.save.mounts.stable.length, 1, 'it waits in the stable');
   assert.match(g.summonMount(mount.id).message, /answers/); g.save.mech = { ...(g.save.mech || {}), active: true, mode: 'robot', built: true };
   g.update(.05, idle, 1000); assert.equal(g.save.mounts.riding, null, 'the robot comes up: you get down first'); g.save.mech.active = false;
   assert.match(g.summonMount(mount.id).message, /answers/); g.loadArea('dungeon', false); assert.equal(g.save.mounts.riding, null, 'not inside a dungeon'); assert.match(g.summonMount(mount.id).message, /cannot be ridden in here/);
