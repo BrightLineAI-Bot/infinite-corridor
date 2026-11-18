@@ -10853,3 +10853,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 **CODE:** Fit the mounted composite to the Close View viewport through the existing wall-safe camera. Keep the rolling silhouette above its support.
 
 **BOUNDARY:** Presentation only. Collision, contact and save state follow the existing game rules.
+
+## Release 989 — Free standard Triceratops
+
+**CODE:** Production journeys receive a one-time permanent standard Triceratops. An existing standard mount satisfies the grant, including while recovering at the Beast Hotel.
+
+**BOUNDARY:** No auto-mounting, capture credit or temporary stable eviction. Generic save codecs and Proving Ground scratch state do not grant the mount.

@@ -168,6 +168,21 @@ export function ensureMounts(save) {
   save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding && !m.recovery && (!persistentMount(m) || m.hp > 0)) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
   return save.mounts;
 }
+// A production-journey gift, deliberately separate from generic save creation/migration and scratch fixtures.
+// The permanent normal slot satisfies the grant even when injured or at the hotel; it is never replaced or healed.
+export function ensureProductionTriceratops(save) {
+  const q = ensureMounts(save);
+  if (Number.isSafeInteger(q.standardTriceratopsGrant) && q.standardTriceratopsGrant >= 1) return save;
+  if (!q.stable.some(m => m.beast === "triceratops" && m.variant === "normal")) {
+    const base = "mount-free-triceratops-v1"; let id = base, suffix = 1;
+    while (q.stable.some(m => m.id === id)) id = `${base}-${suffix++}`;
+    const caughtAt = Number.isFinite(save.playSeconds) ? Math.max(0, save.playSeconds) : 0;
+    // A distinct id namespace leaves the capture sequence alone. Older mounts retain their default-selection order.
+    q.stable.unshift({ id, beast: "triceratops", variant: "normal", caughtAt, left: MOUNT_RIDE.seconds, seen: [], hp: TRICERATOPS_RIDE.health, defeats: 0, recovery: null });
+  }
+  q.standardTriceratopsGrant = 1;
+  return save;
+}
 export const mountById = (save, id) => ensureMounts(save).stable.find((m) => m.id === id) || null;
 export const ridingMount = (save) => { const q = save.mounts; return q?.riding ? q.stable?.find((m) => m.id === q.riding) || null : null; };
 export const mountName = (m) => persistentMount(m) && m.variant === "silly" ? "The Silly Goose Triceratops" : MOUNT_BEASTS[m?.beast]?.name || "Your mount";
