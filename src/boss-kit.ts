@@ -14,6 +14,12 @@
 // Runtime only: `kitRole`, `kitMoves`, `kitClock`, `kitCalls` on the creature, additive.
 import { hashSeed } from "./random.ts";
 
+// World-boss pacing (Tim, 2026-11-18: "maybe the monsters overall attack too quickly, so we need to slow them down — give their
+// attacks more wind-up"): the roaming world beasts, the Questing Beast and the big-room beasts wind up `windup` times longer than
+// their attack modules say (on top of monster-pack BOSS_PACE), and pause `gap` times longer between attacks, never under `gapMin` s.
+// Damage is unchanged. monster-pack.ts applies it to pack attacks (packWindupScale); astral-worm.ts to the Astral Worm's own clock.
+export const WORLD_BOSS_PACE = { windup: 1.4, gap: 1.25, gapMin: .5 };
+
 export const BOSS_KIT = {
   guardian: { modules: 3, moves: 2, attackGap: .35, cooldown: .8, speed: 1.08, adds: { at: [.75, .5, .25], size: [2, 3], cap: 6 } },
   elite: { modules: 2, moves: 1, attackGap: .45, cooldown: .85, speed: 1.05, adds: { at: [.5], size: [2, 2], cap: 4 } },

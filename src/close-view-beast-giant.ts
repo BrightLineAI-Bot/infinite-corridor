@@ -10,7 +10,7 @@
 // Proportions are GIANT_ART's, in body units (the standard view's u: one tile times the actor's scale), so the Close View
 // body is exactly as tall as the sprite: 1.12 u to the helm, the jets above it.
 import { GIANT_ART } from "./lightning-giant-render.ts";
-import { ATTACK_MODULES, BOSS_PACE, GIANT } from "./monster-pack.ts";
+import { ATTACK_MODULES, packWindupScale, GIANT } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, mix, span, kick, wobble, TIER_DETAIL,
@@ -275,7 +275,7 @@ function lerpInto(out, b, t) { const pb = POSE_VEC[b] || POSE_VEC.idle; for (let
 function normDir(v) { const l = Math.hypot(v[3], v[4], v[5]) || 1; v[3] /= l; v[4] /= l; v[5] /= l; }
 // Seconds since the phase began and its share, for pack phase clocks (s.t counts down; paced bosses stretch the wind-up).
 function phaseOf(pack, id) {
-  const mod = ATTACK_MODULES[id] || {}, d = pack.phase === 'windup' ? (mod.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? mod.active || 0 : mod.recover || .5;
+  const mod = ATTACK_MODULES[id] || {}, d = pack.phase === 'windup' ? (mod.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? mod.active || 0 : mod.recover || .5;
   const t = Number.isFinite(pack.t) ? pack.t : 0; return d > 0 ? clamp01(1 - t / d) : 1;
 }
 // The movement and attack the body acts out this frame: fills V (the pose vector) and returns facts the rest of the pose
@@ -331,7 +331,7 @@ function act(e, tr, now, target) {
     }
   } else if (id === 'giantElectrify') {
     if (ph === 'windup') {
-      lerpVec(V, 'idle', 'raise', smooth(x / .3)); const at = GIANT.strikeAt, since = (x - at) * (ATTACK_MODULES.giantElectrify.windup || 1.6) * (pack.paced ? BOSS_PACE.windup : 1);
+      lerpVec(V, 'idle', 'raise', smooth(x / .3)); const at = GIANT.strikeAt, since = (x - at) * (ATTACK_MODULES.giantElectrify.windup || 1.6) * packWindupScale(pack);
       if (x >= at) { const k = kick(since, 22, 5); V[8] += .03 * Math.abs(k); V[7] -= .05 * k; ACT.bolts = 1; ACT.coil = 2.2 - .4 * span(x, at, 1); ACT.contact = since < .15 ? 1 : 0; }
       else { ACT.coil = .5 + 1.2 * x / at; ACT.tremble = .3 * x; }
     } else { lerpVec(V, 'raise', 'idle', smooth(x)); ACT.coil = 1.8; ACT.bolts = 1; }

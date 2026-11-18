@@ -12,6 +12,7 @@ import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_LEAP, closeViewCamera, closeVi
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 
 const C = CLOSE_VIEW.camera, O = C.outdoor, V = C.vertical, L = OUTDOOR.terrain.level;
+const legacyRig = (run: () => void) => { CLOSE_VIEW_HOOKS.orbit = false; try { run(); } finally { CLOSE_VIEW_HOOKS.orbit = null; } }; // the pre-2026-11-18 collision rig
 const wrap = (a: number) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
 class StubGL { constructor() { let next = 1; const c = new Map(); return new Proxy(this, { get: (o: any, k: any) => { if (k in o) return o[k]; if (typeof k === 'string' && /^[A-Z][A-Z0-9_]+$/.test(k)) { if (!c.has(k)) c.set(k, next++); return c.get(k); } return () => {}; } }); }
@@ -70,7 +71,10 @@ test('in the open overworld the boom is a tile longer; terrain below the chest l
   assert.ok(chestLineClear(s.g, seen[seen.length - 1], s.ground()), 'and the chest is in sight');
 }));
 
-test('a cliff that blocks the chest pulls the camera in, eased, and lets it out eased once it is gone', () => withGPU(() => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('a cliff that blocks the chest pulls the camera in, eased, and lets it out eased once it is gone', () => legacyRig(() => withGPU(() => {
   const s = scene(10, 26, Math.PI), full = s.frame().distance, z = s.ground();
   setElev(s.g, 11, 13, 22, 30, 3); // a three-level cliff at the Wayfarer's back: too tall and close for the crane alone
   const d: number[] = [], h: number[] = []; for (let i = 0; i < 120; i++) { const c = s.frame(); d.push(c.distance); h.push(c.height); }
@@ -88,7 +92,7 @@ test('a cliff that blocks the chest pulls the camera in, eased, and lets it out 
   const out: number[] = []; for (let i = 0; i < 240; i++) out.push(s.frame().distance);
   for (let i = 1; i < out.length; i++) assert.ok(out[i] >= out[i - 1] - 1e-9 && out[i] - out[i - 1] < .15, `let out smoothly (${i})`);
   assert.ok(Math.abs(out[out.length - 1] - full) < .02, 'back to the full boom');
-}));
+})));
 
 test('no pull-in at a section edge while the Wayfarer is in view', () => withGPU(() => {
   const s = scene(29, 9, Math.PI), P: any = CLOSE_VIEW.presets.standard, c = s.frame(); // the eye is past the east edge (x 32), over the next section

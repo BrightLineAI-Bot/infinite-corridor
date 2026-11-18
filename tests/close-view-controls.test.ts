@@ -13,6 +13,7 @@ const ctx = () => new Proxy({ canvas: null, measureText: () => ({ width: 10 }), 
 const logCtx = () => { const log = []; return { log, ctx: new Proxy({ canvas: null, measureText: () => ({ width: 10 }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }) },
   { get: (o, k) => k in o ? o[k] : (...a) => log.push(`${String(k)}(${a.map((v) => typeof v === 'number' ? Math.round(v * 100) / 100 : typeof v).join(',')})`), set: (o, k, v) => { o[k] = v; if (typeof v !== 'object') log.push(`${String(k)}=${v}`); return true; } }) }; };
 CV.setCloseViewCanvasFactory(() => ({ width: 1, height: 1, getContext: () => ctx() }));
+const legacyRig = (run) => { CV.CLOSE_VIEW_HOOKS.orbit = false; try { run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = null; } }; // the pre-2026-11-18 collision rig
 
 // An open room: the Heart, the Wayfarer at the middle of its widest clear square, and foes placed by hand (clones of one).
 function room(scenario = 'heart', keep = false) {
@@ -78,11 +79,16 @@ test('the assisted camera: still while walking straight, a slow damped follow on
 test('the crescent turns the view and the walk with it; a double tap recentres behind the Wayfarer', () => {
   const { g } = room(); frame(g, 2); const c0 = CV.closeViewCamera(); CV.closeViewPan(50, 0, T); const c1 = CV.closeViewCamera();
   assert.ok(Math.abs(wrap(c1.yaw - c0.yaw - 50 * CV.CLOSE_VIEW.crescent.yaw)) < 1e-9, 'yaw per px of arc'); assert.ok(Math.abs(wrap(c1.inputYaw - c1.yaw)) < 1e-9, 'push up walks where the camera looks');
-  CV.closeViewPan(0, -1000, T); assert.equal(CV.closeViewCamera().pitchUser, CV.CLOSE_VIEW.crescent.pitchRange[0], 'the tilt is bounded');
+  // Tim, 2026-11-18: the tilt now spans the fixed-distance orbit's whole sphere (CLOSE_VIEW.camera.orbit), not the crescent's old
+  // [-.22, .32]; it is still bounded, by closeViewPitchRange (the orbit's elevation limits less the preset's own elevation).
+  CV.closeViewPan(0, -1000, T); assert.equal(CV.closeViewCamera().pitchUser, CV.closeViewPitchRange()[0], 'the tilt is bounded');
   g.save.lastAim = { x: 1, y: 0 }; CV.closeViewRecentre(g, T); frame(g, 60); assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - 0)) < .02, 'recentred behind the Wayfarer');
 });
 
-test('stability: the boom rides a spring along walls (no lurch, never inside a wall), ghosting holds, and a still frame draws the same twice', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('stability: the boom rides a spring along walls (no lurch, never inside a wall), ghosting holds, and a still frame draws the same twice', () => legacyRig(() => {
   const { g } = room('cellar', true); frame(g, 3); let prev = CV.closeViewCamera().distance, maxJump = 0;
   for (let i = 0; i < 120; i++) { const st = { x: Math.sin(i / 9) * .6, y: -1 }; CV.closeViewSteer(g, st); g.update(.016, { state: st, consume: () => false, held: () => false }, T + 16); CV.closeViewUnsteer(st); frame(g, 1);
     const c = CV.closeViewCamera(); assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false, `frame ${i}: the camera is never inside a wall`); maxJump = Math.max(maxJump, Math.abs(c.distance - prev)); prev = c.distance; }
@@ -90,7 +96,7 @@ test('stability: the boom rides a spring along walls (no lurch, never inside a w
   const a = logCtx(), b = logCtx(); render(a.ctx, g, W, H, T); render(b.ctx, g, W, H, T); assert.deepEqual(b.log, a.log, 'the same frame draws identically (stable sort, no flicker)');
   const C = CV.CLOSE_VIEW; assert.equal(C.light.flicker, 0, 'the torch is still');
   for (const q of Object.values(C.quality)) assert.equal(q.outline, true, 'every tier draws the walls\' edges'); assert.ok(a.log.filter((l) => l.startsWith('stroke(')).length >= CV.closeViewStats.faces, 'each face is outlined'); assert.ok(C.fog.levels >= 64 && C.walls.cutHold > 1 && C.walls.cutFade > 0, 'fine light steps; ghosting with hysteresis');
-});
+}));
 
 test('walls: faces kept as far as the floor is drawn, a door face at every opening on the floor\'s edge, corners marked, and ghosting only on the line to the Wayfarer', () => {
   const { g } = room(); const geo = CV.wallGeometry(g.map), f = geo.faces, doors = [];
