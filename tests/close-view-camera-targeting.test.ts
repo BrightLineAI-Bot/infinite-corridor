@@ -54,10 +54,14 @@ test('every Close View preset sits farther back than before, the wide one farthe
 test('in open ground each preset settles at its full boom, with the Wayfarer low of centre and whole, in portrait and landscape', () => {
   for (const [w, h] of [[390, 844], [844, 390]]) for (const id of ['close', 'standard', 'wide']) {
     const g = fixture({ preset: id, follow: false, w, h }), c = frame(g, 120, w, h), p = g.player, z = interiorSurfaceHeight(g.map, p.x + .5, p.y + .75);
-    assert.ok(Math.abs(c.distance - C.presets[id].distance) < .02, `${id} ${w}x${h}: full boom (${c.distance})`);
+    // 2026-11-18 (Tim's review: indoors the Wayfarer bigger on screen): with the orbit indoors the full boom is the preset's
+    // orbitDistance in portrait; on a short landscape screen it stands back as far as keeps her whole (CLOSE_VIEW.camera.orbit.fit)
+    const want = C.presets[id].orbitDistance, fitD = h > w ? want : Math.max(want, want * C.camera.framing.bodyHeight * Math.max((w / 2) / Math.tan(C.presets[id].fov * Math.PI / 360), (h / 2) / Math.tan(C.fov.verticalMax * Math.PI / 360)) / ((1 - 2 * C.camera.framing.margin) * h) * C.camera.orbit.fit / Math.hypot(want, C.presets[id].orbitHeight - C.camera.orbit.focus));
+    assert.ok(Math.abs(c.distance - fitD) < .02, `${id} ${w}x${h}: full boom (${c.distance} vs ${fitD})`);
     const feet = CV.closeViewProject(p.x + .5, p.y + .82, z), head = CV.closeViewProject(p.x + .5, p.y + .82, z + C.camera.framing.bodyHeight);
     assert.ok(feet && head, 'both ends in front of the camera');
-    assert.ok(feet.sy > h * .5 && feet.sy <= h * (h > w ? .7 : 1 - C.camera.framing.margin) + 1, `${id} ${w}x${h}: feet low of centre (${feet.sy.toFixed(0)} of ${h})`);
+    // 2026-11-18 (Tim's review): the nearer indoor orbit puts the close preset's feet a little lower in portrait (about 70.5%): .72
+    assert.ok(feet.sy > h * .5 && feet.sy <= h * (h > w ? .72 : 1 - C.camera.framing.margin) + 1, `${id} ${w}x${h}: feet low of centre (${feet.sy.toFixed(0)} of ${h})`);
     assert.ok(head.sy > 0 && head.sy < feet.sy && Math.abs(feet.sx - w / 2) < w * .25, `${id} ${w}x${h}: the whole Wayfarer in frame, near the middle`);
     // the floor ahead: a point 4 tiles beyond the Wayfarer is on screen, above them
     const ahead = CV.closeViewProject(p.x + .5 + 4, p.y + .82, z); assert.ok(ahead && ahead.sy > 0 && ahead.sy < feet.sy, `${id}: ground ahead shows`);

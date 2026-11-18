@@ -710,15 +710,17 @@ in vec4 v_tex; in vec4 v_nrm; in float v_depth; uniform vec4 u_arch; out vec4 ou
 ` + WALL_CUT_GLSL + `void main() { if (v_nrm.z > 3.5 && v_nrm.z < 4.5 && (v_tex.z < u_arch.x || length(vec2(v_tex.y - 0.5, v_tex.z - u_arch.x)) < u_arch.y)) discard; if (cutAway(v_depth, v_nrm.z)) discard; outColor = vec4(0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- creatures: camera-facing cards from the sprite atlas
-// a_meta: opacity, hit flash, silhouette (0 none; up to 1 a creature's; 1 + a the Wayfarer's), light at its feet
+// a_meta: opacity, hit flash, silhouette (0 none; up to 1 a creature's; 1 + a the Wayfarer's; 3 + a a far creature out of sight, the
+// hint: Tim's review, 2026-11-18), light at its feet. u_pass: 0 the cards, 1 the silhouettes through walls, 2 the hints (over walls too)
 const BOARD_VS = VS_COMMON + `
 in vec3 a_pos; in vec2 a_uv; in vec4 a_meta; uniform float u_pass; out vec2 v_uv; out vec4 v_meta; out float v_depth;
-void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_uv = a_uv; v_meta = a_meta; if (u_pass > 0.5 && a_meta.z <= 0.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;
+void main() { float d; gl_Position = project(a_pos, d); v_depth = d; v_uv = a_uv; v_meta = a_meta; if (u_pass > 0.5 && (a_meta.z <= 0.0 || (u_pass > 1.5) != (a_meta.z > 2.5))) gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;
 const BOARD_FS = `#version 300 es
 precision highp float;
 uniform sampler2D u_ground; uniform float u_pass; uniform vec2 u_dev; uniform vec4 u_grade; uniform vec4 u_finish; uniform vec3 u_fog; uniform vec4 u_fogP; uniform vec3 u_sil; uniform vec3 u_silFoe;
 in vec2 v_uv; in vec4 v_meta; in float v_depth; out vec4 outColor;
 void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
+  if (u_pass > 1.5) { if (c.a < 0.02) discard; float a = v_meta.z - 3.0; outColor = vec4(vec3(0.58, 0.6, 0.64) * a, a); return; } // the hint: a far creature out of sight, one faint neutral shape (labyrinths.ts SIGHT_LINES.silhouette), over walls and the dark
   if (u_pass > 0.5) { // through a wall: a crisp silhouette, never a faded copy
     if (c.a < 0.5) discard; bool me = v_meta.z > 1.0; float a = me ? v_meta.z - 1.0 : v_meta.z; vec2 e = vec2(dFdx(c.a), dFdy(c.a)); float rim = clamp(length(e) * 4.0, 0.0, 1.0);
     vec3 s = me ? u_sil : u_silFoe; float k = me ? 0.55 + 0.45 * rim : 0.25 + 0.75 * rim; outColor = vec4(s * a * k, a * k); return; } // a creature: mostly its outline
@@ -828,8 +830,10 @@ out vec3 v_pos; out vec3 v_nrm; out vec3 v_col; out float v_mat; out float v_dep
 void main() { float d; gl_Position = project(a_pos, d); v_pos = a_pos; v_nrm = a_nrm; v_col = a_col; v_mat = a_mat; v_depth = d; }`;
 const PROP_FS = FS_COMMON + `
 in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_mat; in float v_depth;
+uniform highp usampler2D u_mask; uniform ivec2 u_mapSize; uniform float u_sight; // the sight field (2026-11-18): indoors, a prop on a tile out of sight is left out
 void main() {
   /*CUT*/
+  if (u_sight > 0.5) { ivec2 T = ivec2(floor(v_pos.xy)); if (T.x >= 0 && T.y >= 0 && T.x < u_mapSize.x && T.y < u_mapSize.y && (texelFetch(u_mask, T, 0).r & 2u) == 2u) discard; }
   vec3 N = normalize(v_nrm), c = v_col; float h = 0.5, shin = 0.0, m = v_mat; bool level = abs(N.z) > 0.6;
   vec2 q = level ? v_pos.xy : vec2(dot(v_pos.xy, vec2(-N.y, N.x)), v_pos.z);
   if (m > 6.5) { // the props' own: painted wood (grain across), metal (bright, sharp highlight), a lit ring (glows)
@@ -968,7 +972,7 @@ const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: nu
   tex: { ground: null, mask: null, grit: null, terrain: null }, outdoorKey: null, outdoorVerts: 0, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
-export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0 };
+export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0, nHint: 0 }; // nHint: far creatures' silhouettes among the boards (the hint pass)
 export function glEnsure(kind, verts) { const per = kind === "board" ? BOARD_FLOATS : DECAL_FLOATS, need = verts * per; let a = GLB[kind]; if (a.length >= need) return a; let n = a.length; while (n < need) n *= 2; const b = new Float32Array(n); b.set(a); GLB[kind] = b; return b; }
 
 function compile(gl, vs, fs) {
@@ -1073,15 +1077,17 @@ export function closeViewMask(map, seen = null, safe = null, out = null, remap =
     data[o + 3] = (t.blocked && !code ? 1 : 0) | (inlay << 1); if (code === 2) lava++; }
   return { data, w, h, lava };
 }
-export function glMask(map, now, seen, safe, everyMs, remap = null) {
+// `key`: the sight field's stamp (close-view.ts visSeen; -1 without one): a change rebuilds the mask at once. A `seen` with
+// timed === false (the field alone, no fog of war) is not rebuilt on the clock.
+export function glMask(map, now, seen, safe, everyMs, remap = null, key = -1) {
   const gl = S.gl; if (!gl) return;
   const buildRevision = buildVisualRevision(map);
-  if (S.maskMap === map && S.maskBuildRevision === buildRevision && (!seen || now - S.maskAt < everyMs)) return;
+  if (S.maskMap === map && S.maskBuildRevision === buildRevision && S.maskKey === key && (!seen || seen.timed === false || now - S.maskAt < everyMs)) return;
   const m = closeViewMask(map, seen, safe, S.maskData, remap); S.maskData = m.data; S.lavaTiles = m.lava;
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.tex.mask); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   if (S.maskMap !== map || S.maskW !== m.w || S.maskH !== m.h) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8UI, m.w, m.h, 0, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, m.data.subarray(0, m.w * m.h * 4)); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); }
   else gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, m.w, m.h, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, m.data.subarray(0, m.w * m.h * 4));
-  S.maskMap = map; S.maskBuildRevision = buildRevision; S.maskAt = now; S.maskW = m.w; S.maskH = m.h; closeViewGLStats.maskBuilds++;
+  S.maskMap = map; S.maskBuildRevision = buildRevision; S.maskKey = key; S.maskAt = now; S.maskW = m.w; S.maskH = m.h; closeViewGLStats.maskBuilds++;
 }
 export const glLavaTiles = () => S.lavaTiles;
 // The grit atlas: every painted variant side by side (cell = the textures' size), uploaded once.
@@ -1139,6 +1145,8 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   occA: new Float32Array(4), occB: new Float32Array(4), occC: new Float32Array(4), occSolid: 0, occTerrain: 0, edge: 0,
   // the orbit's cutout (close-view.ts wallCutout; WALL_CUT_GLSL): zero, nothing is cut
   cut: new Float32Array(4), cutB: new Float32Array(4), cutC: new Float32Array(4), cutNear: 0,
+  // the sight field (close-view.ts visSeen, 2026-11-18): 1 indoors with it, so the props leave out what stands on a tile out of sight
+  sight: 0,
   // towering structures (close-view-outdoor.ts outdoorTowerAir): the air below and above the eye and its colour; the cloud deck
   // (height, radius, alpha, drift), its noise (cover, softness, scale, edge) and its lit and shaded colours. Zero: none.
   tower: new Float32Array(4), towerR: new Float32Array(4), towerC: new Float32Array(3), deck: new Float32Array(4), deckP: new Float32Array(4), deckC: new Float32Array(3), deckS: new Float32Array(3) };
@@ -1177,10 +1185,11 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
     gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC); gl.uniform1f(u.u_edge, outdoor ? F.edge : 0);
     gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
   // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
+  const sightU = (P) => { const u = P.U; if (u.u_sight) gl.uniform1f(u.u_sight, !outdoor && F.sight > 0 ? 1 : 0); if (u.u_mask) gl.uniform1i(u.u_mask, 1); if (u.u_mapSize) gl.uniform2i(u.u_mapSize, S.maskW, S.maskH); }; // the sight field (2026-11-18)
   const occU = (P) => { gl.uniform4fv(P.U.u_occA, F.occA); gl.uniform4fv(P.U.u_occB, F.occB); gl.uniform4fv(P.U.u_occC, F.occC); };
   if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { const T = F.occTerrain > 0 && S.terrOcc ? S.terrOcc : S.terr; gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(T.p); cam(T); light(T); outdoorU(T); if (T !== S.terr) occU(T);
     gl.bindVertexArray(T === S.terr ? S.vao.terr : S.vao.terrOcc); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
-  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ const Pp = F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop; gl.useProgram(Pp.p); cam(Pp); light(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
+  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ const Pp = F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop; gl.useProgram(Pp.p); cam(Pp); light(Pp); sightU(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
     if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2], c = Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // a roof left out: the rest in runs
       if (F.nFades > 0 && S.propCut) { const P = S.propCut; gl.useProgram(P.p); cam(P); light(P); gl.bindVertexArray(S.vao.propCut); // a roof fading: dithered by its opacity (without the program, left out)
         for (let i = 0; i < F.nFades; i++) { const a = F.fades[i * 3], c = Math.min(F.fades[i * 3 + 1], S.outdoorVerts - a); if (c > 0) { gl.uniform1f(P.U.u_cut, F.fades[i * 3 + 2]); gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } } }
@@ -1203,7 +1212,9 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   const useBoards = () => { gl.useProgram(S.board.p); gl.bindVertexArray(S.vao.board); };
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
-    gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; gl.depthFunc(gl.LEQUAL); }
+    gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++;
+    if (GLB.nHint > 0) { gl.depthFunc(gl.ALWAYS); gl.uniform1f(S.board.U.u_pass, 2); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; } // far creatures out of sight: the hint, wherever they stand (the bodies drawn after still cover it)
+    gl.depthFunc(gl.LEQUAL); }
   if (hasModels) {
     gl.useProgram(model.p); cam(model); light(model); gl.uniform3fv(model.U.u_sil, F.sil);
     gl.bindVertexArray(S.vao.model); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.model);

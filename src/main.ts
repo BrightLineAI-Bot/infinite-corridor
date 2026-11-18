@@ -20,7 +20,7 @@ import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
@@ -92,7 +92,7 @@ export function equipFromInventory(save, index) {
 function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
-const closePan = mountCloseViewControls(() => game, globalThis, { releaseMovement: (id) => input.releasePointer(id) }); // Look mode: a joystick finger joined for a pinch stops moving the Wayfarer // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
+const closePan = mountCloseViewControls(() => game, globalThis, { releaseMovement: (id) => input.releasePointer(id), persist: () => persist() /* 2026-11-18: Look mode's pinch on the Wayfarer keeps her Close View distance (save.closeViewZoom) */ }); // Look mode: a joystick finger joined for a pinch stops moving the Wayfarer // Close View: the pan crescent round the action buttons and its lock button, shown only in Close View
 CLOSE_VIEW_HOOKS.groundLayers.push((c, W, H, projectedShots) => { closeViewLayer.ctx = c; closeViewLayer.w = W; closeViewLayer.h = H; drawDungeonSystems(closeViewLayer); drawApertureVisuals(closeViewLayer); if (game.oculus) drawOculus(closeViewLayer, performance.now()); /* release 874 */ drawCombatEffects(c, game, W, H, projectedShots); });
 function openShop(vendorId = "vendor-vela") {
   pauseForOverlay();
@@ -782,7 +782,7 @@ for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])
   if(t==="lostpointercapture")return;if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}
   if(t==="pointerup"){clearTimeout(lookSwallowTimer);lookSwallowTimer=setTimeout(()=>lookHold.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
 navCompass.addEventListener("contextmenu",e=>{if(closeViewShowing(game))e.preventDefault()}); // a long press opens no menu there
-addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}});
+addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}if(closeViewHomeZoomTake())persist()});
 let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
 navCompass.addEventListener("click",()=>{
   if(lookHold.takeClick())return; // the release of a long press (Look mode) is not a tap

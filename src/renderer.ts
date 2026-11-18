@@ -49,7 +49,7 @@ import { structureOccupancy } from "./world.ts";
 import { roofDeckById } from "./roof-decks.ts"; // roof decks: the roof stood on keeps its roof drawn
 import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.ts";
 import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, drawSightSilhouette, sightFrame } from "./labyrinths.ts"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.ts"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
 import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
@@ -3061,7 +3061,7 @@ export function render(ctx, g, w, h, now) {
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
-      if (!creatureInSight(g, e)) { if (!e.hidden && !e.ambient) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour); Close View takes it as a plain card
+      if (!creatureInSight(g, e)) { if (!e.hidden && !e.ambient && creatureSightLevel(g, e) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
       else draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         enemy: e,

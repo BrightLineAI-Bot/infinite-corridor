@@ -67,7 +67,7 @@ test('guardian-safe settled arrival uses an already-probed full-boom entry headi
   assert.ok(CV.closeViewStats.rigProbes <= 41, 'fallback adds no entry probes');
   assert.ok(Math.abs(first.yaw - Math.PI / 2) < 1e-8, 'equivalent safe headings retain the arrival facing');
   const settled = frame(g, 300); safe(g);
-  assert.ok(settled.distance > 2.6, `useful safe boom: ${settled.distance}`);
+  assert.ok(settled.distance >= CV.CLOSE_VIEW.presets[g.save.closeViewPreset || 'standard'].orbitDistance - .02, `useful safe boom: ${settled.distance}`); // 2026-11-18 (Tim's review): indoors the orbit's full distance is the preset's orbitDistance (was > 2.6 of the 3.5 boom)
   for (const [width, height] of [[1280, 720], [390, 844]]) {
     frame(g, 1, width, height); const p = g.player, z = interiorSurfaceHeight(g.map, p.x + .5, p.y + .75);
     const foot = CV.closeViewProject(p.x + .5, p.y + .82, z), head = CV.closeViewProject(p.x + .5, p.y + .82, z + CV.CLOSE_VIEW.camera.framing.bodyHeight);

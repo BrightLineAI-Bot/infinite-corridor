@@ -79,7 +79,10 @@ test('a world beast is framed whole by its size, from farther away, then closer 
   void px; void py;
 });
 
-test('the pick in front reaches farther as the zoom closes, and farther again for a big subject', () => {
+// 2026-11-18 (Tim's review: with the orbit, Look mode's pinch on the Wayfarer sets her own Close View distance, save.closeViewZoom;
+// tests/close-view-orbit-camera.test.ts): a zoom asked with her the subject no longer reaches farther in front. This test pins the
+// reach on the collision rig (CLOSE_VIEW_HOOKS.orbit = false, legacyRig), where her zoom is still Look's own.
+test('the pick in front reaches farther as the zoom closes, and farther again for a big subject', () => legacyRig(() => {
   let g = fixture(4, 8, 'heart', true);
   extras = [small(g.player.x + 5.5, g.player.y)]; on(g); frame(g, 3);
   assert.equal(CV.closeViewLookState().subject, 'wayfarer', 'at the normal view a creature 5.5 tiles off is out of reach');
@@ -94,7 +97,7 @@ test('the pick in front reaches farther as the zoom closes, and farther again fo
   frame(g, 200); const s = CV.closeViewLookState(), c = CV.closeViewCamera();
   assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false); clearLine(g, s.focus[0], s.focus[1], c.x, c.y);
   off(g);
-});
+}));
 
 test('trees, props, any other object and a drawn body can be the subject; scenery only nearly dead ahead', () => {
   const g = fixture(6, 8, 'heart', true); const y = g.player.y;
@@ -116,7 +119,9 @@ test('trees, props, any other object and a drawn body can be the subject; scener
     assert.equal(CV.closeViewLookLabel(), label, `the name line: ${label}`); frame(g, 2);
   }
   // a tree is framed whole, then toward its crown
-  const q = screen(extras[0].x + .5, extras[0].y + .82, 1); CV.closeViewLookTap(g, W, H, q.sx, q.sy); CV.closeViewLookZoomTo(.2); frame(g, 150);
+  // 2026-11-18 (Tim's review: indoors the orbit stands nearer, so the Wayfarer is bigger on screen and her box covers the tree's
+  // trunk at 1 tile from this view): the tree is tapped higher, in its canopy.
+  const q = screen(extras[0].x + .5, extras[0].y + .82, 1.9); CV.closeViewLookTap(g, W, H, q.sx, q.sy); CV.closeViewLookZoomTo(.2); frame(g, 150);
   const lo = CV.closeViewLookState().focus[2]; CV.closeViewLookZoomTo(1); frame(g, 150); const hi = CV.closeViewLookState();
   assert.ok(hi.focus[2] > lo + .2, 'toward the crown'); assert.ok(hi.top > 1.5, `a tree's own height (${hi.top})`);
   const c = CV.closeViewCamera(); assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false);
