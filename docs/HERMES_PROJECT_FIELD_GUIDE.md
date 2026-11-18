@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 991 — Creature visual pass: forms, Pentagon and adventure creatures
+
+Third part of Tim's second creature pass (2026-11-15). Two agents' branches (forms; Pentagon and adventure) were reconciled into one: for every creature both touched, the better body and attack rows were kept, and there is one shared Standard View limb clock.
+
+**CODE:** Bodies and per-attack joint rows live in `close-view-arcology-models.ts` (`CORE_JOINT_POSE`), `close-view-pentagon-models.ts` (`PENTAGON_JOINT_POSE`), `close-view-adventure-models.ts` (`ADVENTURE_JOINT_POSE`), `close-view-foundry-models.ts` (palette colours only) and the Root Brute in `close-view-models.ts`. Specifics: the Weeping Saint's head, veil and tears ride joint 82; the Lumen Wraith has sleeves on 50/51; the Thornspitter's bloom rides joint 31 about its root; eyes and lamps use the `CLOSE_VIEW_ACTOR_LOOK` emissive colours. Standard View: `adventure-creature-render.ts` `ADVENTURE_SPRITE.limb`, `limbClock` and `attackLimbs` (the limb draws back, holds, strikes, follows through, settles; quantised to 3 frames per phase). `monster-render.ts` uses `attackLimbs` for the Pentagon creatures through one scratch record, `PENTAGON_LIMBS`. Tests: `tests/realms-creature-pass.test.ts` and `tests/creature-forms-pass.test.ts`.
+
+**BOUNDARY:** This is presentation only. No gameplay number, timing or save change (schema 14). Every triangle pin, contact envelope and Foundry variant count is unchanged, and the Grave Lantern's motion is untouched. Standard View rest poses are pixel-identical, and the sprite caches stay bounded (64). There is no whole-body lean beyond the existing art's Vinehook crouch and Medusa swell. The 27 ordinary kinds that have no Close View mesh are left for the next phase.
+
 ## Release 990 — Core creatures: Close View bodies and Standard View limbs
 
 This is the second part of Tim's second creature pass (2026-11-15). Tim decided the Standard View keeps its original blocky art ("they fit with the theme of the game") and gains articulated limbs that swing, with no whole-body lean. The rounded sprites made along the way are kept for a later bizarro world.
