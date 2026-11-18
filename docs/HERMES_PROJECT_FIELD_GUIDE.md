@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 992 — Squad tactics
+
+Tim asked on 2026-11-15 for smarter, coordinated creatures that use their strengths, at a difficulty like Bloodborne's mobs or Mohgwyn Palace's albinaurics. They swarm when activated and aren't scared of you, and a wombo combo is on you if you are caught out of place. Fair means readable and avoidable, not gentle.
+
+**CODE:** `squad-tactics.ts` holds the `TACTICS` table, version 2: roles (front, flank, swarm, ranged) with `families`/`kinds` maps, plus `aggression` (rests cut to 55%), `punish`, `tell` (+0.15 s on rear windups), `courage`, `regroup` (casters only), `hurt` (two blows may land together, then a 0.35 s window) and `tokens` behind `surround` (off). `createSquad` makes `board.tac`. `squadFrame` calls `tacticsFrame`, `squadRequest` asks `tacticsAllow` and `ringVector` asks `tacticsRing`. `monster-pack.ts` and `game.ts` `updateEnemyAI` call `tacticsMove` and `tacticsWindup`. `game.ts` `packHurt` and the legacy blow call `tacticsHurtWindow`. Per-creature state lives in `e.bhv.tac`; the combo count is the non-enumerable `player.tacHit`. Tests: `tests/squad-tactics.test.ts`, `tests/squad-tactics-harness.ts`, `tests/squad-tactics-triceratops.test.ts`.
+
+**BOUNDARY:** No save change (schema 14). Without a squad board, or with `board.tac` null, nothing changes, and other damage sources keep their hurt windows. It applies to ordinary creatures only: never bosses, elites, world beasts, guardians, haunts, domains, the Gaunt, the Grave Lantern or any Triceratops, ridden or wild, of any disposition. No windup is ever shortened. The harness measured damage taken per minute rising ×2.34 when standing, ×1.67 careless and ×1.29 skilled; a skilled player takes 55% of a careless one's damage. Per-frame cost is O(active creatures), plus a rank within each role capped at 12 and a lane check per caster every 0.2 s.
+
 ## Release 991 — Creature visual pass: forms, Pentagon and adventure creatures
 
 Third part of Tim's second creature pass (2026-11-15). Two agents' branches (forms; Pentagon and adventure) were reconciled into one: for every creature both touched, the better body and attack rows were kept, and there is one shared Standard View limb clock.
