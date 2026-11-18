@@ -21,6 +21,7 @@ Main is at r990 (`14c9fe003314`); production serves `r984-93a51644afcb` (publish
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 993 | Claude | claude/stego-leg-lag | Close View Wild Stegosaurus legs resolve the hip before the IK reads it (no first-frame snap, no turn lag); Spinosaurus arms and the Listener's jaw arm the same; presentation only, no save change | In flight; 992 is taken by #667 (squad tactics). |
 | 991 | Claude | claude/creature-visuals-forms | Creature visual pass (forms, Pentagon and adventure, reconciled): reshaped Close View bodies at the same triangle counts with per-attack rows; Standard View limbs on a shared attack clock; no save change | In flight. |
 | 990 | Claude | claude/creature-visuals-core | Core creatures: per-move Close View attack rows and reshaped bodies at the same triangle counts; Standard View blocky creatures gain articulated limbs on the attack clocks; overworld digest re-pinned (Tim approved); rounded sprites kept for the bizarro world; no save change | Merged as `14c9fe003314` (#660). |
 | 989 | Codex | codex/free-triceratops-per-journey / #658 | One free permanent standard Triceratops per existing or new journey | Merged as `edc058f49154` (#658); preview r989-edc058f49154, not published. |
