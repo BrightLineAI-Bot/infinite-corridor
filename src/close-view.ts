@@ -25,7 +25,7 @@ import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } 
 import { hashSeed } from "./random.ts";
 import { knockdownPose } from "./lightning-giant-render.ts";
 import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
-import { holeDrops, labFogState, HOLE_DROPS } from "./labyrinths.ts";
+import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureInSight } from "./labyrinths.ts"; // sight lines (2026-11-18): lock-on and threat framing see what the Wayfarer sees
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
@@ -262,6 +262,26 @@ export const CLOSE_VIEW = Object.freeze({
     // stops at minBoom there too, the eye is lowered to maxPitch and the cliff between is cut open by the occluder window.
     // Release 932 (Tim: the best and steadiest view near cliffs and walls): on.
     limits: Object.freeze({ minBoom: 2.5, maxPitch: 60, solidPad: .25, terrain: true }),
+    // The fixed-distance orbit (Tim, 2026-11-18: Close View "basically unusable" indoors, "the camera keeps moving around
+    // obstacles"). `on`: the camera stays at the chosen distance from the Wayfarer at all times, indoors and out: no wall, solid,
+    // ceiling or ground pulls it in, cuts its shoulder or snaps it (the collision rig above stays for `on: false`). The eye sits on a
+    // sphere of radius hypot(preset distance, preset height - `focus`) round the point `focus` tiles over the Wayfarer's feet (the
+    // body's middle): the yaw is the view's, the elevation the preset's own plus the player's tilt (the drag and the crescent), held
+    // between `minElevation` (below the Wayfarer, looking up through the floor) and `maxElevation` (nearly straight down) degrees, so
+    // it never reaches a pole: the yaw stays defined (no gimbal flip) and the shoulder fades to nothing toward either pole (times the
+    // cosine of the elevation). Toward the poles the aim point's look-ahead and height ease onto the body (`aheadFade`: the power of
+    // cos(elevation) / cos(preset elevation)), so the Wayfarer stays centred. Look mode orbits its subject on the same sphere limits.
+    // Without the GPU scene (the 2D fallback cannot draw from below) the eye is kept `floor2D` tiles over the floor.
+    // `cutout` (close-view-gl.ts WALL_CUT_GLSL): walls, trim, ceilings and the floor's underside between the eye and the Wayfarer are
+    // cut away inside a screen-space ellipse round the body: `radius` tiles wide at the body (its px from the body's depth), `tall`
+    // times as high, never under `minPx` nor over `maxShare` of the screen's shorter side; only what stands nearer the eye than the
+    // body less `stop` tiles is cut (the wall behind them stays). Its outer `soft` share is screen-door dithered (by quality tier:
+    // `hard` on the low tier). Outside the ellipse nothing is cut: no general look through walls. Eye above the ceiling (or the walls'
+    // tops): the ceiling is left out and a wall tile's floor reads as solid rock (`rock`, of the theme's stone); eye under the floor:
+    // the floor's underside (`under`, a share of the theme's stone) hides everything above it except inside the ellipse. `near`:
+    // walls and trim nearer the eye than this (tiles) are left out everywhere, so a wall the eye stands in or against never fills the view.
+    orbit: Object.freeze({ on: true, focus: .9, minElevation: -80, maxElevation: 86, aheadFade: 2, floor2D: .35,
+      cutout: Object.freeze({ on: true, radius: 1.05, tall: 1.5, minPx: 56, maxShare: .4, stop: .35, soft: .3, hard: Object.freeze({ low: true, balanced: false, full: false }), rock: .32, under: .28, near: .45 }) }),
     // The occluder window (2026-11-13): whatever stands between the eye and the Wayfarer's body (`body` tiles over their feet)
     // is cut open by a dithered cone, `eye` tiles wide at the camera and `radius` at the body, softened over the outer `soft`
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
@@ -729,7 +749,7 @@ export const CLOSE_VIEW = Object.freeze({
 // Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.ts's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
-export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null }; // gl: false keeps the 2D view (the lab's ?cvGL=0)
+export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null, orbit: null }; // orbit: false runs the collision rig that the fixed-distance orbit replaced (2026-11-18; its own regression tests) // gl: false keeps the 2D view (the lab's ?cvGL=0)
 
 // Save (additive, schema 14): save.closeView, true when the player has chosen Close View for interiors. Off by default.
 // save.closeViewPreset: one of CLOSE_VIEW.presets' keys (the standard one unless chosen).
@@ -933,7 +953,7 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
   || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { orbitBase: NaN, orbitR: 0, orbitElev: 0, rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
   // the map the camera last chose a view for (its area and section), and a pending snap of every spring (CLOSE_VIEW.camera.crossing)
   area: "", secX: 0, secY: 0, snapNext: false,
@@ -1213,7 +1233,7 @@ function boomReach(g) { const P = closeViewPreset(g); return (CAM.outdoorBoom &&
 export function closeViewThreatWant(g) {
   const T = CLOSE_VIEW.camera.threat, p = g?.player, list = g?.enemies; if (!p || !Array.isArray(list)) return 0; const px = footX(p), py = footY(p); let want = 0;
   for (let i = 0; i < list.length; i++) { const e = list[i]; if (!e || e.dead || !(e.hp > 0) || e.hidden || !e.aggro || e.ambient || e.astralAllyOf) continue;
-    const sc = Number(e.scale) || 0, known = Object.hasOwn(T.heads, e.kind) ? T.heads[e.kind] : 0; if (sc < T.minScale && !known) continue; const d = Math.hypot(e.x + .5 - px, e.y + .75 - py); if (d >= T.range) continue;
+    const sc = Number(e.scale) || 0, known = Object.hasOwn(T.heads, e.kind) ? T.heads[e.kind] : 0; if (sc < T.minScale && !known) continue; const d = Math.hypot(e.x + .5 - px, e.y + .75 - py); if (d >= T.range || !creatureInSight(g, e)) continue; // a threat out of sight asks nothing (it would give it away)
     const near = Math.min(1, (T.range - d) / Math.max(1e-3, T.band)), tall = Math.max(0, Math.min(1, (Math.max(known, sc * T.headPerScale) - T.fits) / Math.max(1e-3, T.tall - T.fits)));
     if (near * tall > want) want = near * tall; }
   return want;
@@ -1310,7 +1330,7 @@ export function closeViewPan(dx, dy, now = 0) {
   if (CAM.qtT0 >= 0) return; // the quick turnaround owns the view until it settles
   const P = CLOSE_VIEW.crescent, a = (Number(dx) || 0) * P.yaw; CAM.recentre = NaN; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.yawV = 0;
   CAM.yaw = wrap(CAM.yaw + a); CAM.inputYaw = wrap(CAM.inputYaw + a);
-  CAM.pitchUser = Math.max(P.pitchRange[0], Math.min(P.pitchRange[1], CAM.pitchUser + (Number(dy) || 0) * P.pitch)); CAM.panAt = now;
+  const PR = closeViewPitchRange(); CAM.pitchUser = Math.max(PR[0], Math.min(PR[1], CAM.pitchUser + (Number(dy) || 0) * P.pitch)); CAM.panAt = now; // 2026-11-18: the orbit's whole sphere (CLOSE_VIEW.camera.orbit)
 }
 // A double tap on the crescent: the camera goes back behind the Wayfarer (the way they last faced or walked).
 export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = null, importedReady = null } = {}) {
@@ -1365,6 +1385,9 @@ export const closeViewTurning = () => CAM.qtT0 >= 0;
 // ------------------------------------------------------------------------------------------------ lock-on
 // Can the Wayfarer see (x, y)? No wall tile on the straight line between (a tile walk in quarter-tile steps).
 function sightTo(map, ax, ay, bx, by) { const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d * 4); for (let i = 1; i < n; i++) { const t = i / n; if (wallAt(map, ax + (bx - ax) * t, ay + (by - ay) * t)) return false; } return true; }
+// Lock-on sees what the Wayfarer sees (2026-11-18, labyrinths.ts sight lines): a foe within sight's reach with no wall between (or one an
+// announcing system shows on purpose). An already locked foe keeps the lock while briefly behind cover (lock.lostSec).
+const lockSees = (g, e) => sightExempt(g, e) || sightLineTo(g, e.x + .5, e.y + .75, closeViewSectionBeast(e));
 const lockable = (e) => !!e && !e.dead && !e.hidden && !e.ambient && !e.astralAllyOf && !e.untargetable && !e.gloomVeil;
 // Prefer a visible, unobstructed foe in front; otherwise allow a nearby forward target just outside the viewport.
 // Within each group, weigh angle and distance. Explicit rehop searches use their own center/cone without screen ranking.
@@ -1379,7 +1402,7 @@ export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.loc
     const a = Math.abs(wrap(Math.atan2(ey - py, ex - px) - yaw)) / DEG, visible = screen && lockOnScreen(g, e);
     if (a > (screen ? Math.max(cone, L.fallbackCone) : cone)) continue;
     if (screen && !visible && (a > L.fallbackCone || Math.hypot(ex - px, ey - py) > L.fallbackRange)) continue;
-    if (!sightTo(g.map, px, py, ex, ey)) continue;
+    if (!lockSees(g, e)) continue;
     const sc = L.wAngle * a / cone + L.wDist * d / range; if ((visible && !bestVisible) || (visible === bestVisible && sc < bestS)) { bestS = sc; best = e; bestVisible = visible; } }
   return best;
 }
@@ -1421,7 +1444,7 @@ function targetModeScan(g, skip) {
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
     const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
     const sc = targetScore(e, d, off), beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
-    if (!(beats || nearer) || !sightTo(g.map, px, py, ex, ey)) continue;
+    if (!(beats || nearer) || !lockSees(g, e)) continue;
     if (beats) { bestS = sc; TM_SCAN.best = e; } if (nearer) { TM_SCAN.nearD = d; TM_SCAN.near = e; } }
   TM_SCAN.bestS = bestS; return TM_SCAN.best;
 }
@@ -1429,7 +1452,7 @@ function targetModeScan(g, skip) {
 export function closeViewLockSwitch(g, dir) {
   const t = g?.lockedTarget?.(); if (!t) return null; const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), bt = Math.atan2(t.y + .75 - py, t.x + .5 - px); let best = null, bestA = Infinity, bestVisible = false;
   for (const e of g.enemies || []) { if (!lockable(e) || e.id === t.id) continue; const ex = e.x + .5, ey = e.y + .75; if (Math.hypot(ex - px, ey - py) > L.range) continue;
-    const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!sightTo(g.map, px, py, ex, ey)) continue;
+    const be = Math.atan2(ey - py, ex - px); if (Math.abs(wrap(be - CAM.yaw)) > L.switchCone * DEG) continue; const rel = wrap(be - bt) * Math.sign(dir || 1); if (rel <= 0) continue; if (!lockSees(g, e)) continue;
     const visible = lockOnScreen(g, e); if (!visible && Math.hypot(ex - px, ey - py) > L.fallbackRange) continue;
     if ((visible && !bestVisible) || (visible === bestVisible && rel < bestA)) { bestA = rel; best = e; bestVisible = visible; } }
   if (best) { g.lockTarget(best.id); CAM.lockId = best.id; CAM.lostFor = 0; CAM.tmHeld = 0; CAM.tmManual = true; } return best; // a chosen foe is not overridden at once by a nearer threat
@@ -1461,14 +1484,14 @@ function lockKeep(g, dt) {
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
-  CAM.lostFor = sightTo(g.map, px, py, ex, ey) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > (CAM.targetMode ? CLOSE_VIEW.targetMode.lostSec : L.lostSec)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
+  CAM.lostFor = lockSees(g, t) ? 0 : CAM.lostFor + dt; if (CAM.lostFor > (CAM.targetMode ? CLOSE_VIEW.targetMode.lostSec : L.lostSec)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
   return CAM.lostFor > 0 ? null : t;
 }
 const LOCK_LOOK = { x: 0, y: 0 }; // presentation scratch, never a saved or committed action direction
 export function closeViewIdleLockAim(g, now) {
   const p = g?.player, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   if (!p || p.attackUntil > clock || p.castUntil > clock || p.stunnedUntil > clock || g.fistCharge) return null;
-  const t = g.lockedTarget?.(); if (!lockable(t) || !sightTo(g.map, footX(p), footY(p), t.x + .5, t.y + .75)) return null;
+  const t = g.lockedTarget?.(); if (!lockable(t) || !lockSees(g, t)) return null;
   LOCK_LOOK.x = t.x - p.x; LOCK_LOOK.y = t.y - p.y; return LOCK_LOOK;
 }
 // Version 5: how much of the line from (ax, ay) to (bx, by) is clear of walls, `pad` tiles to either side (sampled every
@@ -1633,7 +1656,7 @@ export function closeViewSteer(g, state, now = NaN) {
   CAM.sx = sx; CAM.sy = sy; state.x = wx; state.y = wy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
-export function closeViewCamera() { return { yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
+export function closeViewCamera() { return { orbit: orbitOn(), orbitRadius: CAM.orbitR, elevation: CAM.orbitElev, yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
 export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
 // ------------------------------------------------------------------------------------------------ Look mode (CLOSE_VIEW.camera.look)
@@ -1793,16 +1816,17 @@ function lookRay(g, sx, sy) {
   const b = (sx - CAM.ppx) / CAM.F, a = (CAM.ppy - sy) / CAM.F, dx = CAM.fx * (CAM.cosP + a * CAM.sinP) + CAM.rx * b, dy = CAM.fy * (CAM.cosP + a * CAM.sinP) + CAM.ry * b, dz = -CAM.sinP + a * CAM.cosP;
   const len = Math.hypot(dx, dy, dz) || 1, step = L.rayStep / len, n = Math.ceil(L.rayFar / L.rayStep), w = Math.max(1, Number(map.width) || 32), h = Math.max(1, Math.floor(map.tiles.length / w));
   const tops = CAM.solidMap === map ? CAM.solidTop : null, scene = tops && g.area === "overworld" ? outdoorScene(map, RELIEF.map === map) : null, roofs = scene?.houses?.roofs || null;
-  let lx = CAM.cx, ly = CAM.cy, roof = null, roofId = null;
+  let lx = CAM.cx, ly = CAM.cy, roof = null, roofId = null, leading = wallAt(map, CAM.cx, CAM.cy); // leading: still inside the wall the eye stands in (unseen from within)
   for (let i = 1; i <= n; i++) { const t = i * step, X = CAM.cx + dx * t, Y = CAM.cy + dy * t, Z = CAM.hc + dz * t, tx = Math.floor(X), ty = Math.floor(Y);
     const inside = tx >= 0 && ty >= 0 && tx < w && ty < h, tile = inside ? map.tiles[ty * w + tx] : null;
-    if (inside && isWall(tile)) { const top = tops ? tops[ty * w + tx] : NaN;
+    if (leading && !(inside && isWall(tile))) leading = false;
+    if (inside && isWall(tile) && !inCut(sx, sy, t) && !(leading && orbitOn())) { const top = tops ? tops[ty * w + tx] : NaN; // the orbit's cutout: a wall cut away there is not met
       if (Number.isFinite(top) && top > -1e9) { if (Z <= top) { RAY.hit = 2; RAY.top = top; RAY.tile = tile; } }
-      else { RAY.hit = 4; RAY.top = Z; RAY.tile = tile; } }
+      else if (!orbitOn() || Z <= surfaceZ(map, X, Y) + CLOSE_VIEW.walls.height) { RAY.hit = 4; RAY.top = Z; RAY.tile = tile; } } // the orbit: a ray over the walls' tops passes over them
     else if (!inside && map !== CAM.edgeMap) { RAY.hit = 4; RAY.top = Z; }
     if (!RAY.hit && roofs && tile?.buildingId) { if (roofId !== tile.buildingId) { roofId = tile.buildingId; roof = null; for (let k = 0; k < roofs.length; k++) if (roofs[k].id === roofId) { roof = roofs[k]; break; } }
       if (roof && Z <= outdoorRoofTopAt(roof, X, Y) && Z >= (Number(roof.base) || 0)) { RAY.hit = 3; RAY.top = outdoorRoofTopAt(roof, (roof.x0 + roof.x1) / 2, (roof.y0 + roof.y1) / 2); RAY.tile = tile; } }
-    if (!RAY.hit && Z <= surfaceZ(map, X, Y)) { // the ground: refined to where the ray meets it
+    if (!RAY.hit && Z <= surfaceZ(map, X, Y) && !(CUT.below && dz > 0)) { // the ground: refined to where the ray meets it (never from under the floor, the orbit's)
       let lo = t - step, hi = t; for (let k = 0; k < 14; k++) { const m = (lo + hi) / 2; if (CAM.hc + dz * m > surfaceZ(map, CAM.cx + dx * m, CAM.cy + dy * m)) lo = m; else hi = m; }
       RAY.hit = 1; RAY.x = CAM.cx + dx * hi; RAY.y = CAM.cy + dy * hi; RAY.z = CAM.hc + dz * hi; RAY.base = RAY.z; RAY.top = RAY.z; RAY.tile = tile; RAY.dist = Math.hypot(RAY.x - CAM.cx, RAY.y - CAM.cy); return RAY; }
     if (RAY.hit) { RAY.x = lx; RAY.y = ly; RAY.z = Z; RAY.base = Math.min(Z, surfaceZ(map, lx, ly)); if (RAY.hit === 3) RAY.base = Math.max(RAY.base, Number(roof.base) || 0); RAY.dist = Math.hypot(X - CAM.cx, Y - CAM.cy); return RAY; }
@@ -1868,16 +1892,18 @@ function lookRig(g, ex, ey, ez, pitch, fx, fy, capAt) {
   let ux = lerp(bx, -fx, k), uy = lerp(by, -fy, k); { const ul = Math.hypot(ux, uy); if (ul < 1e-3) { ux = -fx; uy = -fy; } else { ux /= ul; uy /= ul; } }
   // the distance: from the normal eye's in to the subject's `near`; a subject too big for the normal eye's distance first backs
   // the eye off to frame it whole (`fit`, at most `standOff`: a very big one stands partly in frame), then closes on it
-  const pitchO = L.pitch * DEG + CAM.pitchUser, far = Math.min(LOOK.fit, Math.max(from, L.standOff)), kf = L.fitAt;
+  const ORB = orbitOn(), Ob = C.orbit, pitchO = ORB ? Math.max(Ob.minElevation * DEG, Math.min(Ob.maxElevation * DEG, L.pitch * DEG + CAM.pitchUser)) : L.pitch * DEG + CAM.pitchUser, far = Math.min(LOOK.fit, Math.max(from, L.standOff)), kf = L.fitAt;
   let dist = lerp(Math.max(from, LOOK.near), LOOK.near, k);
   if (far > LOOK.near) dist = Math.max(dist, k < kf ? (far > from ? lerp(from, far, k / kf) : far) : lerp(far, LOOK.near, (k - kf) / (1 - kf))); // a small subject (far under near) keeps the plain glide
   let hd = dist * Math.cos(pitchO), z = lerp(ez, tz + dist * Math.sin(pitchO), k);
-  // never inside a wall: the eye stays on a clear line from the subject (pulled in along it)
-  const clear = sightClear(g.map, tx, ty, tx + ux * hd, ty + uy * hd, C.sightStep, C.sightPad); hd = Math.max(.05, hd * clear);
+  // never inside a wall: the eye stays on a clear line from the subject (pulled in along it). The orbit (2026-11-18): it keeps its
+  // distance on the whole sphere instead, and what stands between is cut away round the subject (wallCutout)
+  hd = Math.max(.05, hd);
   let x = tx + ux * hd, y = ty + uy * hd;
-  while (hd > .05 && camWall(g.map, x, y)) { hd -= .03; x = tx + ux * hd; y = ty + uy * hd; }
-  if (camWall(g.map, x, y)) { hd = 0; x = tx; y = ty; } // no room at all: the eye stands on the aim point itself (open), never in the wall
-  z = Math.min(z, capAt(x, y)); z = Math.max(z, surfaceZ(g.map, x, y) + C.outdoor.clear);
+  if (!ORB) { const clear = sightClear(g.map, tx, ty, tx + ux * hd, ty + uy * hd, C.sightStep, C.sightPad); hd = Math.max(.05, hd * clear); x = tx + ux * hd; y = ty + uy * hd;
+    while (hd > .05 && camWall(g.map, x, y)) { hd -= .03; x = tx + ux * hd; y = ty + uy * hd; }
+    if (camWall(g.map, x, y)) { hd = 0; x = tx; y = ty; } // no room at all: the eye stands on the aim point itself (open), never in the wall
+    z = Math.min(z, capAt(x, y)); z = Math.max(z, surfaceZ(g.map, x, y) + C.outdoor.clear); }
   LR.x = x; LR.y = y; LR.z = z; LR.fx = -ux; LR.fy = -uy; LR.pitch = lerp(pitch, Math.atan2(z - tz, Math.max(.05, hd)), k); LR.lens = lerp(1, L.lens, k); LR.k = k;
   LOOK.k = k; LOOK.eyeX = x; LOOK.eyeY = y; LOOK.eyeZ = z; return true;
 }
@@ -1890,7 +1916,7 @@ function lookHeroAlpha(g, base) {
     && segDist2(px, py, px, py, LOOK.eyeX, LOOK.eyeY, LOOK.tx, LOOK.ty) < L.heroClear * L.heroClear || Math.hypot(px - LOOK.eyeX, py - LOOK.eyeY) < L.heroClear;
   return between ? lerp(base, Math.min(base, L.heroFade), LOOK.k) : base;
 }
-globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats }; // read by the browser harness and the lab's console (diagnostics only)
+globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats, cutout: () => ({ ...CUT }), gl: () => ({ props: GLF.props, terrain: GLF.terrain, cut: [...GLF.cut], cutB: [...GLF.cutB], cutC: [...GLF.cutC], near: GLF.cutNear }) }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
 export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && closeViewWanted(g); }
@@ -1965,9 +1991,9 @@ function terrainFloorRay(map, x, y) {
   const b=(x-CAM.ppx)/CAM.F, a=(CAM.ppy-y)/CAM.F;
   const dx=CAM.fx*(CAM.cosP+a*CAM.sinP)+CAM.rx*b, dy=CAM.fy*(CAM.cosP+a*CAM.sinP)+CAM.ry*b, dz=-CAM.sinP+a*CAM.cosP;
   const point=(t)=>({x:CAM.cx+dx*t,y:CAM.cy+dy*t,z:CAM.hc+dz*t});
-  let previous=0;
+  let previous=0, leading=wallAt(map,CAM.cx,CAM.cy);
   for(let i=1;i<=640;i++) {
-    const t=i*.025, p=point(t); if(wallAt(map,p.x,p.y)) return null;
+    const t=i*.025, p=point(t); if(wallAt(map,p.x,p.y)) { if(orbitOn()&&(leading||inCut(x,y,t)||p.z>surfaceZ(map,p.x,p.y)+CLOSE_VIEW.walls.height)){previous=t;continue;} return null; } leading=false; // the orbit: out of the wall the eye stands in (its faces turn away: unseen), through the cutout, or over the walls' tops
     if(p.z<=surfaceZ(map,p.x,p.y)) {
       let lo=previous,hi=t;
       for(let k=0;k<14;k++){const mid=(lo+hi)*.5,q=point(mid);if(q.z>surfaceZ(map,q.x,q.y))lo=mid;else hi=mid;}
@@ -2090,11 +2116,71 @@ function abortCloseViewGLFrame() {
 // The pitches that frame the Wayfarer's whole body from an eye at height `z` (CLOSE_VIEW.camera.framing): the feet over the
 // frame's foot and the hood under its top, each far enough in front of the near plane and inside the frame's sides. Writes FIT
 // (low, high: the range of pitches that fit; foot, head: the angles down to them). Pure, no allocation.
+// The fixed-distance orbit (CLOSE_VIEW.camera.orbit, Tim 2026-11-18). orbitOn: whether it applies (data). orbitPlace: puts the
+// eye on its sphere round the Wayfarer for this frame (CAM.cx, CAM.cy; returns ORBIT_OUT.z, the eye's height, and .pitch, the
+// view's) from the follow point, the preset's distance and height and the player's tilt. Nothing in the map is read: no wall,
+// ceiling or ground moves it. Pure arithmetic, no allocation.
+export const orbitOn = () => (CLOSE_VIEW_HOOKS.orbit ?? CLOSE_VIEW.camera.orbit.on) === true;
+const ORBIT_OUT = { z: 0, pitch: 0 };
+function orbitPlace(g, p, Cp, E, mix, camD, camH, anchorZ, playerZ, fx, fy, rx, ry, useGL, F, w, h) {
+  const O = CLOSE_VIEW.camera.orbit, lift = camH - O.focus, R = Math.hypot(camD, lift), base = Math.atan2(lift, Math.max(1e-3, camD));
+  CAM.orbitBase = base; CAM.orbitR = R;
+  const el = Math.max(O.minElevation * DEG, Math.min(O.maxElevation * DEG, base + CAM.pitchUser * mix)); CAM.orbitElev = el;
+  const ce = Math.cos(el), hd = R * ce, sh = CAM.centeredRear ? 0 : Cp.shoulder * mix * Math.max(0, ce); // the shoulder fades toward either pole
+  const ax = CAM.fpx, ay = CAM.fpy; CAM.dist = CAM.shown = hd; CAM.shoulder = CAM.shoulderRoom = sh;
+  CAM.cx = ax - fx * hd + rx * sh; CAM.cy = ay - fy * hd + ry * sh;
+  let z = anchorZ + O.focus + R * Math.sin(el);
+  if (!useGL) z = Math.max(z, surfaceZ(g.map, CAM.cx, CAM.cy) + O.floor2D); // the 2D fallback's floor cannot be drawn from below
+  // the aim point: the preset's look-ahead and height at its own elevation, easing onto the body's middle toward either pole
+  const f = Math.pow(Math.max(0, Math.min(1, ce / Math.max(1e-3, Math.cos(base)))), O.aheadFade);
+  const ahead = lerp(E.lookAhead, Cp.lookAhead, mix) * f, lookZ = anchorZ + lerp(O.focus, lerp(E.lookHeight, Cp.lookHeight, mix) + CAM.threat * CLOSE_VIEW.camera.threat.lift * mix, f);
+  const fwd = (ax - CAM.cx) * fx + (ay - CAM.cy) * fy; // the horizontal reach to the aim point's foot (the shoulder is sideways)
+  let pitch = Math.max(-89 * DEG, Math.min(89 * DEG, Math.atan2(z - lookZ, Math.max(1e-3, fwd + ahead))));
+  // the whole body in frame (a short landscape view, the close preset): the pitch is held where the feet and the hood both fit
+  const ex = footX(p) - CAM.cx, ey = footY(p) - CAM.cy, bodyForward = Math.max(.03, ex * fx + ey * fy + .07 * fy), side = ex * rx + (ey + .07) * ry;
+  framingFit(z, playerZ, bodyForward, side, F, w, h, true); if (FIT.low <= FIT.high) pitch = Math.max(FIT.low, Math.min(FIT.high, pitch));
+  ORBIT_OUT.z = z; ORBIT_OUT.pitch = pitch;
+  return ORBIT_OUT;
+}
+// The player's tilt's range this frame (closeViewPan clamps CAM.pitchUser to it): the orbit's elevation limits less the elevation
+// the tilt is added to (the preset's, or Look mode's), else the crescent's old range. Returns a shared pair (no allocation).
+const PITCH_RANGE = [0, 0];
+export function closeViewPitchRange() {
+  if (!orbitOn()) { PITCH_RANGE[0] = CLOSE_VIEW.crescent.pitchRange[0]; PITCH_RANGE[1] = CLOSE_VIEW.crescent.pitchRange[1]; return PITCH_RANGE; }
+  const O = CLOSE_VIEW.camera.orbit, base = LOOK.k > 0 ? CLOSE_VIEW.camera.look.pitch * DEG : (Number.isFinite(CAM.orbitBase) ? CAM.orbitBase : 0);
+  PITCH_RANGE[0] = O.minElevation * DEG - base; PITCH_RANGE[1] = O.maxElevation * DEG - base; return PITCH_RANGE;
+}
+// The orbit's cutout (CLOSE_VIEW.camera.orbit.cutout) for this frame, into GLF.cut / cutB / cutC (close-view-gl.ts WALL_CUT_GLSL):
+// the ellipse's centre (device px, from the bottom), its half width (device px) and the depth nearer than which it cuts; on, its
+// height share, soft share, eye under the floor; eye over the ceiling, eye over the walls' tops or in a wall, the rock's and the underside's shares of the stone.
+// Centred on the Wayfarer's body (or, zoomed in Look mode, on its subject). CUT keeps the same in CSS px for tests and the boards.
+const CUT = { on: false, sx: 0, sy: 0, rx: 0, ry: 0, depth: 0, below: false, above: false, solid: false };
+function wallCutout(g, F, w, h, Q) {
+  const O = CLOSE_VIEW.camera.orbit, K = O.cutout, p = g.player, scale = F.devW / Math.max(1, F.w); CUT.on = false; F.cut.fill(0); F.cutB.fill(0); F.cutC.fill(0); F.cutNear = 0;
+  if (!orbitOn() || !K.on) return CUT;
+  F.cutNear = K.near;
+  const look = LOOK.k > .5 && LOOK.key && Number.isFinite(LOOK.tx), X = look ? LOOK.tx : footX(p), Y = look ? LOOK.ty : footY(p);
+  const foot = look ? LOOK.tz : Number.isFinite(HERO_FEET.z) ? HERO_FEET.z : surfaceZ(g.map, X, Y), Z = look ? foot : foot + O.focus, floorZ = surfaceZ(g.map, CAM.cx, CAM.cy);
+  CUT.below = CAM.hc < floorZ - .02 && !interiorTerrain(g.map); CUT.above = !F.outdoor && CAM.hc > (F.ceilH || CLOSE_VIEW.walls.height) - .05;
+  CUT.solid = !F.outdoor && (CAM.hc > CLOSE_VIEW.walls.height - .05 || wallAt(g.map, CAM.cx, CAM.cy));
+  const q = project(X, Y, Z); if (!q) { // the body is behind the eye (it cannot be: the orbit looks at it), or at the lens: nothing is cut
+    F.cutC[0] = CUT.above ? 1 : 0; F.cutC[1] = CUT.solid ? 1 : 0; F.cutC[2] = K.rock; F.cutC[3] = K.under; return CUT; }
+  const k = CAM.F / Math.max(CLOSE_VIEW.near, q.depth), rx = Math.max(K.minPx, Math.min(K.maxShare * Math.min(w, h), K.radius * k));
+  CUT.on = true; CUT.sx = q.sx; CUT.sy = q.sy; CUT.rx = rx; CUT.ry = rx * K.tall; CUT.depth = q.depth - K.stop;
+  const hard = K.hard[g.presentation?.effectiveQuality] === true;
+  F.cut[0] = q.sx * scale; F.cut[1] = F.devH - q.sy * scale; F.cut[2] = rx * scale; F.cut[3] = CUT.depth;
+  F.cutB[0] = 1; F.cutB[1] = K.tall; F.cutB[2] = hard ? 0 : K.soft; F.cutB[3] = CUT.below ? 1 : 0;
+  F.cutC[0] = CUT.above ? 1 : 0; F.cutC[1] = CUT.solid ? 1 : 0; F.cutC[2] = K.rock; F.cutC[3] = K.under;
+  return CUT;
+}
+// Is a point (screen px, camera depth) inside the cutout and nearer than the body? (the boards: loot out of sight stays hidden)
+const inCut = (sx, sy, depth) => CUT.on && depth < CUT.depth && ((sx - CUT.sx) / CUT.rx) ** 2 + ((sy - CUT.sy) / CUT.ry) ** 2 < 1;
+export const closeViewCutout = () => ({ ...CUT }); // tests
 const FIT = { low: 0, high: 0, foot: 0, head: 0 };
-function framingFit(z, playerZ, bodyForward, side, F, w, h) {
-  const C = CLOSE_VIEW.camera, framing = C.framing, margin = h * framing.margin, ppy0 = h * C.center;
+function framingFit(z, playerZ, bodyForward, side, F, w, h, free = false) { // free: the orbit's whole sphere (no pitchMin / pitchMax)
+  const C = CLOSE_VIEW.camera, framing = C.framing, margin = h * framing.margin, ppy0 = h * C.center, pMin = free ? -Math.PI / 2 : framing.pitchMin, pMax = free ? Math.PI / 2 : framing.pitchMax;
   FIT.foot = Math.atan2(z - playerZ, bodyForward); FIT.head = Math.atan2(z - playerZ - framing.bodyHeight, bodyForward);
-  let low = Math.max(framing.pitchMin, FIT.foot - Math.atan2(h - margin - ppy0, F)), high = Math.min(framing.pitchMax, FIT.head + Math.atan2(ppy0 - margin, F));
+  let low = Math.max(pMin, FIT.foot - Math.atan2(h - margin - ppy0, F)), high = Math.min(pMax, FIT.head + Math.atan2(ppy0 - margin, F));
   // A small shoulder still matters close to the near plane, especially in portrait.
   // depth = range*cos(angle-pitch); intersect the vertical fit with enough depth
   // to keep each endpoint inside the horizontal frame and outside the near plane.
@@ -2191,52 +2277,62 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (!Number.isFinite(off) || off > C.followSnap || !CAM.valid) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; followSnapped = true; }
     else if (CAM.dt > 0) { spring(CAM, "fpx", "fvx", tx, C.follow, CAM.dt); spring(CAM, "fpy", "fvy", ty, C.follow, CAM.dt); const ex = CAM.fpx - tx, ey = CAM.fpy - ty, el = Math.hypot(ex, ey); if (el > C.followMax) { CAM.fpx = tx + ex / el * C.followMax; CAM.fpy = ty + ey / el * C.followMax; } }
     if (camWall(g.map, CAM.fpx, CAM.fpy) || !sightTo(g.map, tx, ty, CAM.fpx, CAM.fpy)) { CAM.fpx = tx; CAM.fpy = ty; CAM.fvx = CAM.fvy = 0; } }
-  const feetBoom = boomLength(g, fx, fy);
-  const followShare = Math.max(0, Math.min(1, (feetBoom / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter)));
-  // At a short boom, sideways spring lag is effectively an extra shoulder: it can put the hood outside a
-  // portrait viewport. Center that component with compression, retaining the longitudinal follow spring.
-  const sideLag = ((CAM.fpx - footX(p)) * rx + (CAM.fpy - footY(p)) * ry) * (CAM.centeredRear ? 1 : 1 - followShare);
-  let ax = CAM.fpx - rx * sideLag, ay = CAM.fpy - ry * sideLag;
-  let want = Math.min(camD, boomLength(g, fx, fy, ax, ay), feetBoom + Math.hypot(ax - footX(p), ay - footY(p)));
-  // Probe the requested centered rig, not last frame's shortened eye. Feedback from the latter alternated
-  // between "clear" and "blocked" at stationary corners, repeatedly extending and cutting the boom.
-  want *= sightClear(g.map, footX(p), footY(p), ax - fx * want, ay - fy * want, C.sightStep, C.sightPad);
-  want = Math.max(.03, want);
-  if (CAM.seeThrough) want = minBoomReach(g, fx, fy, ax, ay, want); // the open world: never under minBoom for what can be faded
-  const offsetWant = clearanceOffset(g, fx, fy, ax, ay, want, dt, mix);
-  if (offsetWant) { ax += rx * CAM.rigOffset; ay += ry * CAM.rigOffset; want = offsetWant; }
-  // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
-  // wall is cut at once, the only snap there is
-  // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
-  const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
-  spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
-  { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.threatPull - lookOut() - mountCameraPull(g) - CAM.dist) * C.crane); /* extra framing distance is not wall compression */ if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
-    spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
-  const craneUp = CAM.crane, baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
-  const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
-  if (snap) { CAM.focal = lerp(1, C.tightFocal, focalRelief); CAM.focalV = 0; }
-  spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
-  let F = baseF * CAM.focal * lerp(1, CLOSE_VIEW.camera.threat.focal, CAM.threat * mix); // a big threat: a wider lens
-  // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
-  const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
-  for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (camWall(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
-  // An open endpoint alone does not clear a concave corner between the shoulder and the player.
-  if (!CAM.seeThrough && sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0; // outdoors what lies between fades
-  if (snap) { CAM.shoulderRoom = CAM.shoulder = room; CAM.shoulderV = 0; }
-  if (room <= CAM.shoulderRoom) { CAM.shoulderRoom = room; CAM.shoulderClearFor = 0; }
-  else { CAM.shoulderClearFor += dt; if (CAM.shoulderClearFor >= C.shoulderRecover) CAM.shoulderRoom = room; }
-  spring(CAM, "shoulder", "shoulderV", CAM.shoulderRoom, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
-  if (CAM.shoulder > room) { CAM.shoulder = room; CAM.shoulderV = 0; } // clearance takes precedence over recovery damping
-  CAM.cx = bx + rx * CAM.shoulder; CAM.cy = by + ry * CAM.shoulder;
-  // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
-  // narrow way), the shoulder goes and the boom shortens at once until it is clear.
-  if (camWall(g.map, CAM.cx, CAM.cy)) { CAM.shoulder = CAM.shoulderV = 0; let d = CAM.dist; while (d > .03 && camWall(g.map, ax - fx * d, ay - fy * d)) d -= .03;
-    CAM.dist = Math.max(.03, d); CAM.distV = 0; CAM.cx = ax - fx * CAM.dist; CAM.cy = ay - fy * CAM.dist; }
-  // version 5: nothing stands between the camera and the Wayfarer. The spring aims at the shorter of the boom from the follow
-  // point and from their feet; if a corner still cuts the line from their feet to the camera (the shoulder, a turn in a narrow
-  // way), the camera is drawn in along that line at once, to where it clears by `hardPad`.
-  { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
-    if (k < 1 && !CAM.seeThrough) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
+  // The fixed-distance orbit (Tim, 2026-11-18; CLOSE_VIEW.camera.orbit): the camera keeps the chosen distance from the Wayfarer
+  // whatever stands between; nothing pulls it in or snaps it, and walls between are cut open round the Wayfarer instead
+  // (close-view-gl.ts the wall cutout). Off, the collision rig below (versions 1-5) runs as it did.
+  const ORB = orbitOn(); let ax = CAM.fpx, ay = CAM.fpy, craneUp = camH, F = 1;
+  if (!ORB) {
+    const feetBoom = boomLength(g, fx, fy);
+    const followShare = Math.max(0, Math.min(1, (feetBoom / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter)));
+    // At a short boom, sideways spring lag is effectively an extra shoulder: it can put the hood outside a
+    // portrait viewport. Center that component with compression, retaining the longitudinal follow spring.
+    const sideLag = ((CAM.fpx - footX(p)) * rx + (CAM.fpy - footY(p)) * ry) * (CAM.centeredRear ? 1 : 1 - followShare);
+    ax = CAM.fpx - rx * sideLag; ay = CAM.fpy - ry * sideLag;
+    let want = Math.min(camD, boomLength(g, fx, fy, ax, ay), feetBoom + Math.hypot(ax - footX(p), ay - footY(p)));
+    // Probe the requested centered rig, not last frame's shortened eye. Feedback from the latter alternated
+    // between "clear" and "blocked" at stationary corners, repeatedly extending and cutting the boom.
+    want *= sightClear(g.map, footX(p), footY(p), ax - fx * want, ay - fy * want, C.sightStep, C.sightPad);
+    want = Math.max(.03, want);
+    if (CAM.seeThrough) want = minBoomReach(g, fx, fy, ax, ay, want); // the open world: never under minBoom for what can be faded
+    const offsetWant = clearanceOffset(g, fx, fy, ax, ay, want, dt, mix);
+    if (offsetWant) { ax += rx * CAM.rigOffset; ay += ry * CAM.rigOffset; want = offsetWant; }
+    // critically damped springs (stable at any frame rate, never overshooting); a boom that would leave the camera inside a
+    // wall is cut at once, the only snap there is
+    // an arrival in the open overworld (CLOSE_VIEW.camera.crossing): every spring starts at its target, so nothing eases in
+    const snap = CAM.snapNext; if (snap) { CAM.dist = want; CAM.distV = 0; }
+    spring(CAM, "dist", "distV", want, want < CAM.dist ? C.pullIn : C.letOut, dt); if (CAM.dist > want + .02 && camWall(g.map, ax - fx * CAM.dist, ay - fy * CAM.dist)) { CAM.dist = want; CAM.distV = 0; }
+    { const craneTo = Math.min(Math.max(camH, Wl.height - C.craneClear), camH + Math.max(0, camD - CAM.threatPull - lookOut() - mountCameraPull(g) - CAM.dist) * C.crane); /* extra framing distance is not wall compression */ if (snap) { CAM.crane = craneTo; CAM.craneV = 0; }
+      spring(CAM, "crane", "craneV", craneTo, C.letOut * 1.5, dt); }
+    craneUp = CAM.crane; const baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+    const focalRelief = tightCornerFamily(g) ? Math.max(0, Math.min(1, (C.minDistance - want) / C.minDistance)) : 0;
+    if (snap) { CAM.focal = lerp(1, C.tightFocal, focalRelief); CAM.focalV = 0; }
+    spring(CAM, "focal", "focalV", lerp(1, C.tightFocal, focalRelief), C.letOut * 1.5, dt);
+    F = baseF * CAM.focal * lerp(1, CLOSE_VIEW.camera.threat.focal, CAM.threat * mix); // a big threat: a wider lens
+    // the shoulder: the camera steps right of the boom's end, as far as the walls let it (eased like the boom)
+    const bx = ax - fx * CAM.dist, by = ay - fy * CAM.dist, sh = CAM.centeredRear ? 0 : (offsetWant ? 0 : Cp.shoulder * mix) * Math.max(0, Math.min(1, (CAM.dist / camD - C.shoulderCenter) / (C.shoulderFull - C.shoulderCenter))); let room = sh;
+    for (let t = C.boomStep / 2; t <= sh + C.boomPad; t += C.boomStep / 2) if (camWall(g.map, bx + rx * t, by + ry * t)) { room = Math.max(0, t - C.boomPad); break; }
+    // An open endpoint alone does not clear a concave corner between the shoulder and the player.
+    if (!CAM.seeThrough && sightClear(g.map, footX(p), footY(p), bx + rx * room, by + ry * room, C.sightStep, C.sightPad) < 1) room = 0; // outdoors what lies between fades
+    if (snap) { CAM.shoulderRoom = CAM.shoulder = room; CAM.shoulderV = 0; }
+    if (room <= CAM.shoulderRoom) { CAM.shoulderRoom = room; CAM.shoulderClearFor = 0; }
+    else { CAM.shoulderClearFor += dt; if (CAM.shoulderClearFor >= C.shoulderRecover) CAM.shoulderRoom = room; }
+    spring(CAM, "shoulder", "shoulderV", CAM.shoulderRoom, room < CAM.shoulder ? C.pullIn : C.letOut, dt);
+    if (CAM.shoulder > room) { CAM.shoulder = room; CAM.shoulderV = 0; } // clearance takes precedence over recovery damping
+    CAM.cx = bx + rx * CAM.shoulder; CAM.cy = by + ry * CAM.shoulder;
+    // the hard rule under the springs: the camera is never inside a wall. If a spring still lags there (the view turning in a
+    // narrow way), the shoulder goes and the boom shortens at once until it is clear.
+    if (camWall(g.map, CAM.cx, CAM.cy)) { CAM.shoulder = CAM.shoulderV = 0; let d = CAM.dist; while (d > .03 && camWall(g.map, ax - fx * d, ay - fy * d)) d -= .03;
+      CAM.dist = Math.max(.03, d); CAM.distV = 0; CAM.cx = ax - fx * CAM.dist; CAM.cy = ay - fy * CAM.dist; }
+    // version 5: nothing stands between the camera and the Wayfarer. The spring aims at the shorter of the boom from the follow
+    // point and from their feet; if a corner still cuts the line from their feet to the camera (the shoulder, a turn in a narrow
+    // way), the camera is drawn in along that line at once, to where it clears by `hardPad`.
+    { const tx = footX(p), ty = footY(p), k = sightClear(g.map, tx, ty, CAM.cx, CAM.cy, C.sightStep, C.hardPad);
+      if (k < 1 && !CAM.seeThrough) { CAM.cx = tx + (CAM.cx - tx) * k; CAM.cy = ty + (CAM.cy - ty) * k; CAM.shoulder = CAM.shoulderV = 0; CAM.dist = Math.max(.03, Math.hypot(CAM.cx - ax, CAM.cy - ay)); CAM.distV = 0; closeViewStats.sightCuts++; }
+    }
+  } else {
+    const baseF = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
+    CAM.focal = 1; CAM.focalV = 0; CAM.crane = camH; CAM.craneV = 0; CAM.distV = 0; CAM.shoulderV = 0; CAM.rigOffset = 0;
+    F = baseF * lerp(1, CLOSE_VIEW.camera.threat.focal, CAM.threat * mix); // a big threat: a wider lens (never a wall)
   }
   const playerZ = RELIEF.map === g.map && LEAP.map === g.map ? LEAP.base + Math.max(0, capturedPlayer?.lift || 0) // over the heightfield the camera follows the Wayfarer's footing, not each jump's arc
     : surfaceZ(g.map, footX(p), footY(p)) + Math.max(0, (capturedPlayer?.lift || 0) + (capturedPlayer?.jumpLift || 0));
@@ -2249,65 +2345,69 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // Sample the final eye, not the previous frame's position. Arches and the roof
   // remain solid even when a collision or a jump changes the camera in one frame.
   const cap = (x, y) => outdoor ? Infinity : (interiorTerrain(g.map) ? surfaceZ(g.map, x, y) : 0) + Math.min(hallHeight(g.map) - .15, archCapAt(g.map, x, y));
-  let terrainCameraZ = Math.min(anchorZ + craneUp, cap(CAM.cx, CAM.cy));
-  if (outdoor && RELIEF.map === g.map) { // over the heightfield (CLOSE_VIEW.camera.outdoor): only ground that blocks the chest moves the camera, and eased
-    const O = C.outdoor, px = footX(p), py = footY(p), dx = CAM.cx - px, dy = CAM.cy - py, chestZ = playerZ + O.chest, base = terrainCameraZ, top = base + O.riseMax;
-    let need = base, keep = 1;
-    // A fixed handful of samples from the chest to the eye. Each sample's ground is held against the line where it passes the
-    // sample before (`kk`), so a ledge whose near edge falls between two samples still counts from that edge.
-    if (dx * dx + dy * dy > 1e-6) for (let i = 1; i <= O.samples; i++) {
-      const k = i / O.samples, kk = (i === 1 ? .5 : i - 1) / O.samples, gz = surfaceZ(g.map, px + dx * k, py + dy * k) + O.clear, req = chestZ + (gz - chestZ) / kk; if (req > need) need = req;
-      if (gz > chestZ) { const f = gz >= top ? kk : (top - chestZ) * kk / (gz - chestZ); if (f < keep) keep = f; } }
-    const L0 = Math.hypot(dx, dy), rise = Math.max(0, Math.min(O.riseMax, need - base)); keep = Math.max(Math.min(1, (CAM.seeThrough && C.limits.terrain ? C.limits.minBoom : C.closest) / Math.max(1e-3, L0)), Math.min(1, keep)); // limits.terrain: the ground between is faded instead
-    if (!CAM.valid || followSnapped) { CAM.tRise = rise; CAM.tKeep = keep; CAM.tRiseV = CAM.tKeepV = CAM.tRiseFor = CAM.tKeepFor = 0; }
-    else {
-      if (rise >= CAM.tRise) { CAM.tRiseFor = 0; spring(CAM, "tRise", "tRiseV", rise, O.riseRate, dt); }
-      else if ((CAM.tRiseFor += dt) >= O.hold) spring(CAM, "tRise", "tRiseV", rise, O.letOut, dt);
-      if (keep <= CAM.tKeep) { CAM.tKeepFor = 0; spring(CAM, "tKeep", "tKeepV", keep, O.pullIn, dt); }
-      else if ((CAM.tKeepFor += dt) >= O.hold) spring(CAM, "tKeep", "tKeepV", keep, O.letOut, dt);
-      CAM.tRise = Math.max(0, Math.min(O.riseMax, CAM.tRise)); CAM.tKeep = Math.max(0, Math.min(1, CAM.tKeep));
-    }
-    if (CAM.tKeep < 1) { CAM.cx = px + dx * CAM.tKeep; CAM.cy = py + dy * CAM.tKeep; closeViewStats.terrainPulls++; }
-    terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + O.clear, base + CAM.tRise); // the eye itself is never under the ground
-    CAM.shown = CAM.tKeep < 1 ? Math.hypot(CAM.cx - ax, CAM.cy - ay) : CAM.dist;
-  } else {
-    if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) { // the camera's line to the Wayfarer never dips under the ground
-      const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
-      for (let i = 1; i <= steps; i++) {
-        const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
-        if (z < surfaceZ(g.map, x, y) + .12 || z > cap(x, y)) {
-          const keep = Math.max(0, (i - 1) / steps);
-          CAM.cx = footX(p) + dx * keep; CAM.cy = footY(p) + dy * keep;
-          CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0;
-          terrainCameraZ = Math.min(anchorZ + craneUp, cap(CAM.cx, CAM.cy)); break;
-        }
+  let terrainCameraZ = 0, terrainPitch = 0;
+  if (ORB) { const o = orbitPlace(g, p, Cp, E, mix, camD, camH, anchorZ, playerZ, fx, fy, rx, ry, useGL, F, w, h); terrainCameraZ = o.z; terrainPitch = o.pitch; }
+  else {
+    terrainCameraZ = Math.min(anchorZ + craneUp, cap(CAM.cx, CAM.cy));
+    if (outdoor && RELIEF.map === g.map) { // over the heightfield (CLOSE_VIEW.camera.outdoor): only ground that blocks the chest moves the camera, and eased
+      const O = C.outdoor, px = footX(p), py = footY(p), dx = CAM.cx - px, dy = CAM.cy - py, chestZ = playerZ + O.chest, base = terrainCameraZ, top = base + O.riseMax;
+      let need = base, keep = 1;
+      // A fixed handful of samples from the chest to the eye. Each sample's ground is held against the line where it passes the
+      // sample before (`kk`), so a ledge whose near edge falls between two samples still counts from that edge.
+      if (dx * dx + dy * dy > 1e-6) for (let i = 1; i <= O.samples; i++) {
+        const k = i / O.samples, kk = (i === 1 ? .5 : i - 1) / O.samples, gz = surfaceZ(g.map, px + dx * k, py + dy * k) + O.clear, req = chestZ + (gz - chestZ) / kk; if (req > need) need = req;
+        if (gz > chestZ) { const f = gz >= top ? kk : (top - chestZ) * kk / (gz - chestZ); if (f < keep) keep = f; } }
+      const L0 = Math.hypot(dx, dy), rise = Math.max(0, Math.min(O.riseMax, need - base)); keep = Math.max(Math.min(1, (CAM.seeThrough && C.limits.terrain ? C.limits.minBoom : C.closest) / Math.max(1e-3, L0)), Math.min(1, keep)); // limits.terrain: the ground between is faded instead
+      if (!CAM.valid || followSnapped) { CAM.tRise = rise; CAM.tKeep = keep; CAM.tRiseV = CAM.tKeepV = CAM.tRiseFor = CAM.tKeepFor = 0; }
+      else {
+        if (rise >= CAM.tRise) { CAM.tRiseFor = 0; spring(CAM, "tRise", "tRiseV", rise, O.riseRate, dt); }
+        else if ((CAM.tRiseFor += dt) >= O.hold) spring(CAM, "tRise", "tRiseV", rise, O.letOut, dt);
+        if (keep <= CAM.tKeep) { CAM.tKeepFor = 0; spring(CAM, "tKeep", "tKeepV", keep, O.pullIn, dt); }
+        else if ((CAM.tKeepFor += dt) >= O.hold) spring(CAM, "tKeep", "tKeepV", keep, O.letOut, dt);
+        CAM.tRise = Math.max(0, Math.min(O.riseMax, CAM.tRise)); CAM.tKeep = Math.max(0, Math.min(1, CAM.tKeep));
       }
-      terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
+      if (CAM.tKeep < 1) { CAM.cx = px + dx * CAM.tKeep; CAM.cy = py + dy * CAM.tKeep; closeViewStats.terrainPulls++; }
+      terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + O.clear, base + CAM.tRise); // the eye itself is never under the ground
+      CAM.shown = CAM.tKeep < 1 ? Math.hypot(CAM.cx - ax, CAM.cy - ay) : CAM.dist;
+    } else {
+      if (interiorTerrain(g.map) || hasStoneBuilds(g.map)) { // the camera's line to the Wayfarer never dips under the ground
+        const dx = CAM.cx - footX(p), dy = CAM.cy - footY(p), steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / .08));
+        for (let i = 1; i <= steps; i++) {
+          const k = i / steps, x = footX(p) + dx * k, y = footY(p) + dy * k, z = playerZ + .6 + (terrainCameraZ - playerZ - .6) * k;
+          if (z < surfaceZ(g.map, x, y) + .12 || z > cap(x, y)) {
+            const keep = Math.max(0, (i - 1) / steps);
+            CAM.cx = footX(p) + dx * keep; CAM.cy = footY(p) + dy * keep;
+            CAM.dist = Math.hypot(CAM.cx - ax, CAM.cy - ay); CAM.distV = 0;
+            terrainCameraZ = Math.min(anchorZ + craneUp, cap(CAM.cx, CAM.cy)); break;
+          }
+        }
+        terrainCameraZ = Math.max(surfaceZ(g.map, CAM.cx, CAM.cy) + .12, terrainCameraZ);
+      }
+      CAM.shown = CAM.dist;
     }
-    CAM.shown = CAM.dist;
+    const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
+    const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
+    const ahead = Math.max(.15, lerp(E.lookAhead, Cp.lookAhead, mix) * compression);
+    const forward = Math.max(.03, eyeDX * fx + eyeDY * fy);
+    // Use the same foot anchor as the visible model, slightly beyond the movement foot.
+    const bodyForward = Math.max(.03, forward + .07 * fy);
+    const framing = C.framing, maxPitch = C.limits.maxPitch * DEG, lookH = lerp(E.lookHeight, Cp.lookHeight, mix) + CAM.threat * C.threat.lift * mix; // a big threat: the aim point higher
+    // The steepest view (CLOSE_VIEW.camera.limits.maxPitch): the eye is lowered (never under the ground at it) until the aim point
+    // is at most maxPitch below it, provided the body still fits the frame from there (a boom compressed to a fraction of a tile
+    // against walls indoors keeps its crane: it needs the height to frame the feet). A short boom then looks over the shoulder,
+    // not down on the hood. The pitch itself is held to maxPitch below while the body fits under it.
+    const side = eyeDX * rx + (eyeDY + .07) * ry;
+    { const zMax = Math.max(anchorZ + lookH + Math.tan(maxPitch) * (forward + ahead), surfaceZ(g.map, CAM.cx, CAM.cy) + C.outdoor.clear);
+      if (terrainCameraZ > zMax && (C.limits.terrain || !(RELIEF.map === g.map && outdoor && CAM.tKeep < .999))) { framingFit(zMax, playerZ, bodyForward, side, F, w, h); if (FIT.low <= FIT.high) terrainCameraZ = zMax; } }
+    const requestedPitch = Math.atan2(terrainCameraZ - anchorZ - lookH, forward + ahead) + CAM.pitchUser * mix;
+    framingFit(terrainCameraZ, playerZ, bodyForward, side, F, w, h);
+    let lowPitch = FIT.low, highPitch = FIT.high;
+    // A very short boom under a low arch may not fit the whole body. Centre its
+    // angular span within the available lens and keep the camera on the clear side of the wall.
+    if (lowPitch <= maxPitch) highPitch = Math.min(highPitch, maxPitch);
+    terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
+      : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (FIT.foot + FIT.head) / 2));
   }
-  const eyeDX = footX(p) - CAM.cx, eyeDY = footY(p) - CAM.cy;
-  const compression = Math.min(1, Math.hypot(eyeDX, eyeDY) / Math.max(.15, camD));
-  const ahead = Math.max(.15, lerp(E.lookAhead, Cp.lookAhead, mix) * compression);
-  const forward = Math.max(.03, eyeDX * fx + eyeDY * fy);
-  // Use the same foot anchor as the visible model, slightly beyond the movement foot.
-  const bodyForward = Math.max(.03, forward + .07 * fy);
-  const framing = C.framing, maxPitch = C.limits.maxPitch * DEG, lookH = lerp(E.lookHeight, Cp.lookHeight, mix) + CAM.threat * C.threat.lift * mix; // a big threat: the aim point higher
-  // The steepest view (CLOSE_VIEW.camera.limits.maxPitch): the eye is lowered (never under the ground at it) until the aim point
-  // is at most maxPitch below it, provided the body still fits the frame from there (a boom compressed to a fraction of a tile
-  // against walls indoors keeps its crane: it needs the height to frame the feet). A short boom then looks over the shoulder,
-  // not down on the hood. The pitch itself is held to maxPitch below while the body fits under it.
-  const side = eyeDX * rx + (eyeDY + .07) * ry;
-  { const zMax = Math.max(anchorZ + lookH + Math.tan(maxPitch) * (forward + ahead), surfaceZ(g.map, CAM.cx, CAM.cy) + C.outdoor.clear);
-    if (terrainCameraZ > zMax && (C.limits.terrain || !(RELIEF.map === g.map && outdoor && CAM.tKeep < .999))) { framingFit(zMax, playerZ, bodyForward, side, F, w, h); if (FIT.low <= FIT.high) terrainCameraZ = zMax; } }
-  const requestedPitch = Math.atan2(terrainCameraZ - anchorZ - lookH, forward + ahead) + CAM.pitchUser * mix;
-  framingFit(terrainCameraZ, playerZ, bodyForward, side, F, w, h);
-  let lowPitch = FIT.low, highPitch = FIT.high;
-  // A very short boom under a low arch may not fit the whole body. Centre its
-  // angular span within the available lens and keep the camera on the clear side of the wall.
-  if (lowPitch <= maxPitch) highPitch = Math.min(highPitch, maxPitch);
-  let terrainPitch = lowPitch <= highPitch ? Math.max(lowPitch, Math.min(highPitch, requestedPitch))
-    : Math.max(framing.pitchMin, Math.min(framing.pitchMax, (FIT.foot + FIT.head) / 2));
   // Look mode zoomed in (CLOSE_VIEW.camera.look): the eye leaves the rig for an orbit round the subject, its line to it clear
   if (lookRig(g, CAM.cx, CAM.cy, terrainCameraZ, terrainPitch, fx, fy, cap)) { CAM.cx = LR.x; CAM.cy = LR.y; terrainCameraZ = LR.z; terrainPitch = LR.pitch; fx = LR.fx; fy = LR.fy; rx = -fy; ry = fx; F *= LR.lens; }
   // A large mounted card needs both width and height framing. Preserve the safe
@@ -4484,6 +4584,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     occluderProbe(g.map, solidsNow ? solidTopsOf(solidsNow, mw, mh) : null, mw, mh, F.relief > 0 && RELIEF.map === g.map);
     F.occA[0] = OCC.ex; F.occA[1] = OCC.ey; F.occA[2] = OCC.ez; F.occA[3] = OCC.on ? 1 : 0; F.occB[0] = OCC.tx; F.occB[1] = OCC.ty; F.occB[2] = OCC.tz; F.occB[3] = O.radius;
     F.occC[0] = O.eye; F.occC[1] = O.soft; F.occC[2] = O.keep; F.occC[3] = O.stop; F.occSolid = OCC.solid; F.occTerrain = OCC.terrain; F.edge = F.outdoor ? CLOSE_VIEW.camera.edgeFog : 0; }
+  wallCutout(g, F, w, h, Q); // the orbit's cutout (CLOSE_VIEW.camera.orbit.cutout): walls between the eye and the Wayfarer cut away round her
   UNI.backdrop = BACKDROPS.get(stillworks ? "starVault" : UNI.hall?.backdrop) || NO_BACKDROP;
   UNI.inlay = st.inlay;
   UNI.q = Q; UNI.reduce = reduce; UNI.now = now; UNI.th = th; UNI.tg = tg; const drops = holeDrops(g.map); UNI.safeOn = !!drops;
@@ -4549,6 +4650,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const cardBody = MODEL_STATE.admitted.has(it) && swapCard[it] !== 1; // a body fading in draws its whole card under it (creature-motion.ts swap)
     const sc = boardScale[it], hw = boardHalfWidth[it], foe = boardFoe[it], top = boardTop[it], X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? (LOOK.k > 0 && LOOK.key ? Math.min(At.nearFade, LOOK.heroAlpha) : At.nearFade) : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
     const draw = draws[itemRef[it]];
+    if (CUT.on && !isPlayer && !foe && boardPW[it]) { const q = project(X, Y, surfaceZ(g.map, X, Y) + .4); if (q && inCut(q.sx, q.sy, q.depth) && !sightLineTo(g, X, Y)) continue; } // the orbit's cutout shows no loot the Wayfarer cannot see (2026-11-18)
     if (foe && !MODEL_STATE.admitted.has(it)) noteSolidity(foe, boardPW[it] ? 'board' : 'none', b);
     boardBase = surfaceZ(g.map, draw.nativeSupportX??X, draw.nativeSupportY??(Y-.07))
       + (interiorTerrain(g.map) ? closeViewActorLift(draw, cardBody) : 0);

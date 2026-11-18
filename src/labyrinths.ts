@@ -768,3 +768,106 @@ export function ensureLabFog(save) {
   for (const h of Object.values(D)) if (h && typeof h === "object" && "labFog" in h && !labFogValid(h.labFog)) delete h.labFog;
   return save;
 }
+
+// ------------------------------------------------------------------------------------------------ sight lines
+// Sight lines (Tim, 2026-11-18: "we shouldn't be able to see creatures that are in the distance or behind walls... it should be a
+// surprise... faint silhouettes only"). Presentation only: nothing here moves, spawns, damages or saves anything.
+//
+// A creature the Wayfarer has no line of sight to is drawn, in both views, only as a faint neutral silhouette: no colour-coded
+// threat, no health bar, name, affix or rank markers (drawSightSilhouette here, drawn by renderer.ts; Close View draws the same captured card,
+// see close-view.ts). With a line of sight it is drawn as before. Lock-on (close-view.ts) takes only creatures in sight, and an
+// already locked one keeps the lock while it passes briefly behind cover (CLOSE_VIEW.lock.lostSec).
+//
+// The line: the straight segment from the Wayfarer's feet to the creature's (x + .5, y + .75, where the lock reads them), walked
+// tile by tile (the fog of war's rule, labyrinths.ts clearLine, on the exact segment): clear when no wall tile stands on it from
+// the Wayfarer's own tile up to (not including) the creature's, and no step through a corner squeezes between two. A wall is a
+// blocked tile that is not open ground (water, lava, pits, chasms, sky; the same rule the Close View camera and lock use for walls). Indoors (a dungeon, a building, any map with a
+// building) sight reaches the map's light (map.lightRadius, the fog of war's, release 785) or `indoor.range` tiles, and walls stop
+// it. In the open overworld nothing on the ground is tall enough to hide a creature, so only `outdoor.range` (distance) applies.
+//
+// Bounded (mobile performance): a result is kept per creature while neither its tile nor the Wayfarer's changes (and for at most
+// `ttlFrames` frames, so an opened door is seen); at most `maxChecks` fresh lines are walked a frame (each at most range + 1
+// tiles long, so a frame walks a few hundred tiles at worst). Past the cap a creature keeps its last answer; one never checked yet
+// is hidden for that frame (never a reveal).
+//
+// Exemptions (systems that announce a creature on purpose keep doing so): a passing world beast (world-beasts.ts PASSING: "Far
+// off, ... moves through": a sight to watch), a retreating world beast (announced as fleeing through), and a world beast on
+// ground the Supernova scarred (release 409: nothing fights unseen in the white). And `sectionBeastReach`: a beast of the section
+// (close-view-beasts.ts closeViewSectionBeast: a world beast, the Questing Beast, the Stalker) is never hidden by distance alone
+// (Tim, 2026-11-14: "the world bosses should always be visible whenever they're in the same section as you"); walls still hide it.
+export const SIGHT_LINES = Object.freeze({
+  version: 1,
+  indoor: Object.freeze({ range: 7, walls: true }),
+  outdoor: Object.freeze({ range: 14, walls: false }),
+  maxChecks: 40, // fresh line walks a frame, at most
+  ttlFrames: 20, // a kept answer is walked again after this many frames
+  // the silhouette: one neutral colour for every creature, faint, with a slightly firmer rim (Standard View and Close View's card)
+  silhouette: Object.freeze({ rgb: Object.freeze([148, 154, 162]), alpha: .16, rim: .26, width: .5, height: .82, head: .2 }),
+  exempt: Object.freeze({ passing: true, retreating: true, scarred: true, sectionBeastReach: true }),
+});
+
+const EXEMPT_KIND = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i; // close-view.ts WALL_EXEMPT
+export const sightWall = (t) => !!t && t.blocked === true && !t.chasm && !t.doorway && !EXEMPT_KIND.test(String(t.kind || ""));
+
+// Is the straight segment from (ax, ay) to (bx, by) (world tiles) clear of walls? Every tile it passes through, from the start's up to
+// (not including) the end's, is tested, in order (a grid walk, Amanatides and Woo): at most |dx| + |dy| + 2 tiles. Through a tile's corner
+// exactly, the step squeezes between two tiles: blocked only when both are walls.
+function segmentClear(T, W, H, ax, ay, bx, by) {
+  let x = Math.floor(ax), y = Math.floor(ay); const ex = Math.floor(bx), ey = Math.floor(by), dx = bx - ax, dy = by - ay;
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, tdx = dx !== 0 ? Math.abs(1 / dx) : Infinity, tdy = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+  let tx = dx !== 0 ? (dx > 0 ? x + 1 - ax : ax - x) * tdx : Infinity, ty = dy !== 0 ? (dy > 0 ? y + 1 - ay : ay - y) * tdy : Infinity;
+  const wall = (cx, cy) => cx < 0 || cy < 0 || cx >= W || cy >= H || sightWall(T[cy * W + cx]);
+  if (wall(x, y) && (x !== ex || y !== ey)) return false; // the Wayfarer's own tile walled up (as the old lock line read it)
+  for (let n = Math.abs(ex - x) + Math.abs(ey - y) + 2; n > 0 && (x !== ex || y !== ey); n--) {
+    if (Math.abs(tx - ty) < 1e-9) { if (wall(x + sx, y) && wall(x, y + sy)) return false; x += sx; y += sy; tx += tdx; ty += tdy; }
+    else if (tx < ty) { x += sx; tx += tdx; } else { y += sy; ty += tdy; }
+    if ((x !== ex || y !== ey) && wall(x, y)) return false;
+  }
+  return true;
+}
+
+const STATE = { frame: 0, checks: 0, walks: 0 };
+const MEMO = new WeakMap(); // creature -> { map, pt, ct, frame, v }
+// Start a frame's budget (renderer.ts render calls this once a frame; anything else may too, it only resets the count).
+export function sightFrame() { STATE.frame++; STATE.checks = 0; }
+export const sightStats = () => ({ frame: STATE.frame, checks: STATE.checks, walks: STATE.walks });
+
+const outdoorMap = (g) => g?.area === "overworld" && !g?.map?.building;
+export function sightRule(g) { const S = SIGHT_LINES, out = outdoorMap(g); const R = out ? S.outdoor.range : Number(g?.map?.lightRadius) > 0 ? Math.max(S.indoor.range, Number(g.map.lightRadius)) : S.indoor.range; return { range: R, walls: out ? S.outdoor.walls : S.indoor.walls }; }
+const scarredAt = (g, e) => { const w = g.map?.width || 32, t = g.map?.tiles?.[Math.floor(Number(e?.y) + .5) * w + Math.floor(Number(e?.x) + .5)]; return !!t?.voidScar; };
+export function sightExempt(g, e) {
+  const X = SIGHT_LINES.exempt; if (!e) return false;
+  return (X.passing && !!e.passingBeast) || (X.retreating && !!e.worldBeast && !!e.retreating) || (X.scarred && !!e.worldBeast && scarredAt(g, e));
+}
+// Does the Wayfarer have a line of sight to (x, y) (feet, world tiles)? Not cached: a single walk (tests, one-off checks).
+const sectionBeast = (e) => !!e && !!(e.worldBeast || e.questingBeast || e.passingBeast || (e.stalker && !e.stalkerKin && !e.stalkerDecoy)); // close-view-beasts.ts closeViewSectionBeast
+// `beast`: the creature at (x, y) is a beast of the section (sectionBeastReach: no limit of reach for it).
+export function sightLineTo(g, x, y, beast = false) {
+  const p = g?.player, map = g?.map; if (!p || !map || !Array.isArray(map.tiles)) return true;
+  const { range, walls } = sightRule(g), px = p.x + .5, py = p.y + .75;
+  if (!(beast && SIGHT_LINES.exempt.sectionBeastReach) && Math.hypot(x - px, y - py) > range) return false; if (!walls) return true;
+  const W = Math.max(1, Number(map.width) || 32), H = Math.max(1, Math.floor(map.tiles.length / W));
+  return segmentClear(map.tiles, W, H, px, py, x, y);
+}
+// Is the creature in the Wayfarer's sight (cached and bounded, see above)?
+export function creatureInSight(g, e) {
+  if (!e || !g?.player || !g.map) return true; if (sightExempt(g, e)) return true;
+  const map = g.map, p = g.player, W = Math.max(1, Number(map.width) || 32);
+  const pt = Math.floor(p.y + .75) * W + Math.floor(p.x + .5), ex = Number(e.x) + .5, ey = Number(e.y) + .75, ct = Math.floor(ey) * W + Math.floor(ex);
+  let m = MEMO.get(e);
+  if (m && m.map === map && m.pt === pt && m.ct === ct && STATE.frame - m.frame < SIGHT_LINES.ttlFrames) return m.v;
+  if (STATE.checks >= SIGHT_LINES.maxChecks) return m && m.map === map ? m.v : false; // over the frame's budget: the last answer, else hidden
+  STATE.checks++; STATE.walks++;
+  const v = sightLineTo(g, ex, ey, sectionBeast(e));
+  if (!m) { m = { map, pt, ct, frame: STATE.frame, v }; MEMO.set(e, m); } else { m.map = map; m.pt = pt; m.ct = ct; m.frame = STATE.frame; m.v = v; }
+  return v;
+}
+// The faint neutral silhouette (Standard View, and Close View's card of a creature out of sight): an outline of a body and a head
+// sized by the creature's scale, one colour for every kind. `s`: px a tile. No allocation beyond the path.
+export function drawSightSilhouette(ctx, e, s) {
+  const S = SIGHT_LINES.silhouette, sc = Math.max(.6, Math.min(4, Number(e?.scale) || 1)), cx = (Number(e.x) + .5) * s, foot = (Number(e.y) + .82) * s;
+  const bw = S.width * sc * s / 2, bh = S.height * sc * s, hr = S.head * sc * s, col = `rgb(${S.rgb[0]},${S.rgb[1]},${S.rgb[2]})`;
+  ctx.save(); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, s * .04);
+  ctx.beginPath(); ctx.ellipse(cx, foot - bh * .42, bw, bh * .42, 0, 0, Math.PI * 2); ctx.moveTo(cx + hr, foot - bh - hr * .2); ctx.arc(cx, foot - bh - hr * .2, hr, 0, Math.PI * 2);
+  ctx.globalAlpha = S.alpha; ctx.fill(); ctx.globalAlpha = S.rim; ctx.stroke(); ctx.restore();
+}

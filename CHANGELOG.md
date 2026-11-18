@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Unreleased: Close View's camera stays at your chosen distance indoors and out. Walls no longer pull it in or snap it; instead, walls and ceilings between the camera and the Wayfarer are cut away in a small window around her. You can now orbit all the way round her: from almost straight above to underneath the floor, where the floor turns see-through only in that window. This works with both drag and crescent controls and in Look mode. In both views, a creature the Wayfarer can't see (behind a wall, or too far away) shows only as a faint grey silhouette, with no health bar, name or colour. Lock-on only targets creatures she can see, and a locked target that ducks briefly behind cover stays locked.
 - Release 990: The core creatures look and attack better. In Close View, the Ashling, Hollow Marshal, Ashen Hound, Coil Stalker, Pallid Crawler and Glass Mite each have their own attack for every move, with clearer wind-ups and follow-through, on reshaped bodies at the same triangle counts. The Marshal's halberd thrusts, reaps and chops; the Coil Stalker rears a hooded neck and strikes. In the normal view the creatures keep their blocky art, but their claws, halberd, jaws, legs, wings, staffs and tentacles now swing on joints, with a wind-up, a strike, a recovery and a flinch.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.

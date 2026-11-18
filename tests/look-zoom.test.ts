@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 import { createInput } from '../src/input.ts';
 
 // Look mode (Tim, 2026-11-13): a long press on the compass in Close View; a pinch zooms the Close View camera onto the Wayfarer
@@ -56,7 +57,11 @@ test('the compass: a tap stays a tap, a held press is Look mode, a slide cancels
   assert.match(html, /id="navCompassHelp"[^>]*>[^<]*press and hold/, 'the long press has an accessible description');
 });
 
-test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfarer, never inside a wall', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfarer, never inside a wall', () => legacyRig(() => {
   CV.resetCloseViewCamera();
   assert.equal(CV.closeViewLookSet({ map: {}, player: { x: 0, y: 0 } }, true), false, 'not in Close View: no Look mode');
   const g = fixture(); const before = CV.closeViewCamera(), save = JSON.stringify(g.save);
@@ -84,9 +89,13 @@ test('Look mode only in Close View; the pinch zooms within bounds onto the Wayfa
   assert.ok(far.distance >= before.distance - 1e-6 && far.distance <= before.distance + L.out + 1e-6, `at most a bit beyond the normal view, walls still bounding it (${before.distance} -> ${far.distance})`);
   assert.equal(CV.closeViewWallAt(g.map, far.x, far.y), false);
   assert.equal(JSON.stringify(g.save), save, 'Look mode is runtime-only');
-});
+}));
 
-test('zooming in beside a wall keeps the eye out of the wall', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('zooming in beside a wall keeps the eye out of the wall', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; CV.resetCloseViewCamera(); frame(g, 3);
   for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
     CV.closeViewPan((yaw - CV.closeViewCamera().yaw) / CV.CLOSE_VIEW.crescent.yaw, 0, now); frame(g, 4);
@@ -94,7 +103,7 @@ test('zooming in beside a wall keeps the eye out of the wall', () => {
       assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false, `yaw ${yaw} zoom ${z}`); clearLine(g, s.focus[0], s.focus[1], c.x, c.y); }
     CV.closeViewLookSet(g, false, true); frame(g, 2);
   }
-});
+}));
 
 test('a character in front is framed whole, then closer toward the face; the Wayfarer, not they, is faded between', () => {
   const g = fixture(); const px = g.player.x + .5, py = g.player.y + .75;

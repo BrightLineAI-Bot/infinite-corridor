@@ -9,6 +9,7 @@ import { closeViewGLStats, resetCloseViewGL } from '../src/close-view-gl.ts';
 import { interiorSurfaceHeight } from '../src/landscape.ts';
 import { interiorArchAt } from '../src/vehicle-gates.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 
 const context = () => new Proxy({ canvas: null, measureText: () => ({ width: 10 }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
   createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), createPattern: () => ({}) }, {
@@ -40,7 +41,10 @@ function safe(g) {
   assert.ok(c.height <= interiorSurfaceHeight(g.map, c.x, c.y) + cap + 1e-8, 'below solid roof and arches');
 }
 
-test('actual outer entrance chooses a useful forward view with safe lateral rig reach', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('actual outer entrance chooses a useful forward view with safe lateral rig reach', () => legacyRig(() => {
   const g = fixture(), tiles = JSON.stringify(g.map.tiles), save = JSON.stringify(g.save);
   assert.equal(g.map.id, 'pentagon:CINDER-VERGE-47:0:24:v8:f1'); assert.deepEqual([g.player.x, g.player.y], [25, 11]);
   const first = frame(g); safe(g);
@@ -52,7 +56,7 @@ test('actual outer entrance chooses a useful forward view with safe lateral rig 
   assert.ok(c.pitch < 50 * Math.PI / 180, `less overhead: ${c.pitch}`);
   assert.ok(c.rigOffset > .1 && c.rigOffset < .3);
   assert.equal(JSON.stringify(g.map.tiles), tiles); assert.equal(JSON.stringify(g.save), save);
-});
+}));
 
 test('guardian-safe settled arrival uses an already-probed full-boom entry heading', () => {
   const g = fixture(), tiles = JSON.stringify(g.map.tiles), save = JSON.stringify(g.save);
@@ -72,15 +76,21 @@ test('guardian-safe settled arrival uses an already-probed full-boom entry headi
   assert.equal(JSON.stringify(g.map.tiles), tiles); assert.equal(JSON.stringify(g.save), save, 'camera selection does not mutate save state');
 });
 
-test('entry keeps the honest compressed facing when no evaluated heading reaches the safety floor', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('entry keeps the honest compressed facing when no evaluated heading reaches the safety floor', () => legacyRig(() => {
   const g = fixture(); g.map.width = 1; g.map.height = 1; g.map.tiles = [{ x: 0, y: 0, blocked: false, kind: 'floor', elev: 0 }]; Object.assign(g.player, { x: 0, y: 0, facing: 'left' });
   CV.resetCloseViewCamera(); const first = frame(g); safe(g); const settled = frame(g, 300); safe(g);
   assert.ok(Math.abs(first.yaw - Math.PI) < 1e-8, 'original arrival facing remains the fallback');
   assert.ok(settled.distance < CV.CLOSE_VIEW.camera.minDistance, `impossible clearance stays honestly compressed: ${settled.distance}`);
   assert.ok(CV.closeViewStats.rigProbes <= 41, 'no extra fallback probes');
-});
+}));
 
-test('bounded probes and persistent sides settle at actual outer, cellar, hive and arcology entries', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('bounded probes and persistent sides settle at actual outer, cellar, hive and arcology entries', () => legacyRig(() => {
   for (const scenario of ['outer', 'cellar', 'hive', 'arcology']) for (const preset of ['standard', 'close', 'wide']) {
     const g = fixture(scenario, preset), tiles = JSON.stringify(g.map.tiles);
     frame(g); assert.ok(CV.closeViewStats.rigProbes <= 41, 'entry: at most nine headings x four alternatives plus five live probes');
@@ -95,9 +105,12 @@ test('bounded probes and persistent sides settle at actual outer, cellar, hive a
     }
     assert.equal(JSON.stringify(g.map.tiles), tiles);
   }
-});
+}));
 
-test('small corner movement retains the chosen side instead of alternating shoulders', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('small corner movement retains the chosen side instead of alternating shoulders', () => legacyRig(() => {
   const g = fixture(); frame(g, 300); const yaw = CV.closeViewCamera().yaw;
   let previous = CV.closeViewCamera(), largest = 0;
   for (let i = 0; i < 240; i++) {
@@ -106,9 +119,12 @@ test('small corner movement retains the chosen side instead of alternating shoul
     largest = Math.max(largest, Math.hypot(c.x - previous.x, c.y - previous.y)); previous = c;
   }
   assert.ok(largest < .025, `no side jumps around the corner: ${largest}`);
-});
+}));
 
-test('manual yaw and held movement keep ownership; offset and recovery freeze across a callback-free pause', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('manual yaw and held movement keep ownership; offset and recovery freeze across a callback-free pause', () => legacyRig(() => {
   const g = fixture(); frame(g, 240);
   const stick = { x: 0, y: -1 };
   const manualYaw = -3 * Math.PI / 4;
@@ -124,7 +140,7 @@ test('manual yaw and held movement keep ownership; offset and recovery freeze ac
   let largest = 0, previous = before.distance;
   for (let i = 0; i < 280; i++) { frame(g); safe(g); const c = CV.closeViewCamera(); largest = Math.max(largest, Math.abs(c.distance - previous)); previous = c.distance; }
   assert.ok(previous >= 1 && largest < .06, `smooth safe recovery: ${largest}`);
-});
+}));
 
 class GL {
   native = null; hero = null; program = null;

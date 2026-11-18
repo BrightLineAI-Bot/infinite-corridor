@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 
 // Look at everything (Tim, 2026-11-13: "it's the exploration / inspection world... We should be able to check everything and
 // look at everything"): every captured draw can be Look mode's subject (creatures and world beasts framed by their size,
@@ -122,7 +123,11 @@ test('trees, props, any other object and a drawn body can be the subject; scener
   off(g);
 });
 
-test('a tap picks the drawn thing under it; the Wayfarer returns her; a tapped subject is kept at any zoom', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('a tap picks the drawn thing under it; the Wayfarer returns her; a tapped subject is kept at any zoom', () => legacyRig(() => {
   const g = fixture(9, 8); const y = g.player.y;
   const villager = { kind: 'villager', id: 'look-odile', name: 'Odile', x: g.player.x + 2, y: y - .9 };
   const rat = small(g.player.x + 3, y + .9);
@@ -145,9 +150,13 @@ test('a tap picks the drawn thing under it; the Wayfarer returns her; a tapped s
   off(g); assert.equal(CV.closeViewLookTap(g, W, H, q.sx, q.sy), null); assert.equal(CV.closeViewLookLabel(), '');
   // a view of another size (a resize since the frame) is not guessed at
   on(g); assert.equal(CV.closeViewLookTap(g, 300, 500, q.sx, q.sy), null); off(g);
-});
+}));
 
-test('a tap on empty ground aims at that ground point; on a wall, at the wall; the eye never inside a wall', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead, and Look mode orbits its subject on the same sphere; tests/close-view-orbit-camera.test.ts).
+// This test pins Look mode on the collision rig it replaced (the eye kept out of walls), which stays in the code for orbit.on
+// false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('a tap on empty ground aims at that ground point; on a wall, at the wall; the eye never inside a wall', () => legacyRig(() => {
   for (const [scenario, x, y] of [['heart', 9, 8], ['cellar', 11, 5]]) {
     const g = fixture(x, y, scenario); on(g);
     let aimed = 0, grounds = 0, walls = 0;
@@ -165,7 +174,7 @@ test('a tap on empty ground aims at that ground point; on a wall, at the wall; t
     assert.ok(aimed >= 6 && (scenario === 'cellar' || grounds >= 2), `${scenario}: most taps aim somewhere (${aimed}, ${grounds} on the ground, ${walls} on a wall)`);
     off(g);
   }
-});
+}));
 
 test('the tap in Look mode never reaches the world: no attack, use, aim or walk', () => {
   const src = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8');
