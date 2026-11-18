@@ -550,8 +550,9 @@ for (const side of [-1, 1]) {
 }
 
 // Root Brute, a slow growth animated by buried machinery: a hunched bark trunk, a heavy head sunk between the shoulders with
-// two pale knot-eyes, branch spurs rooted in the shoulders (they no longer swing with the arms), knotted forearms ending in
-// pale root-knot fists, and stump legs. 204 triangles.
+// two pale knot-eyes, branch spurs rooted in the shoulders (they no longer swing with the arms), thick bark arms that swell
+// into knotted club forearms ending in pale root-knot fists (2026-11-15 forms pass: limbs, not stacked lumps), and stump
+// legs. 204 triangles.
 const rootBrute = [
   part(ellipsoid(8, 2), 0, 0, 1.035, .32, .403, .48, bark, 0, 0, 1.035, .12, true),
   part(membrane([[.30, 0, 1.24], [.36, .09, .98], [.33, -.02, .86], [.35, -.10, 1.05]]), 0, 0, 0, 1, 1, 1, root),
@@ -563,10 +564,10 @@ for (const side of [-1, 1]) rootBrute.push(
 );
 for (const side of [-1, 1]) {
   rootBrute.push(
-    part(ellipsoid(6, 1), .042, side * .465, 1.136, .229, .22, .27, bark, side * 2, .04, 1.27, 0, true),
-    part(ellipsoid(6, 1), .145, side * .48, .78, .217, .201, .273, darkBark, side * 2, .04, 1.27, 0, true),
+    part(curvedTube([[.03, side * .45, 1.33, .13], [.12, side * .5, .97, .105]], 6), 0, 0, 0, 1, 1, 1, bark, side * 2, .04, 1.27),
+    part(curvedTube([[.11, side * .5, 1.0, .1], [.22, side * .51, .64, .14]], 6), 0, 0, 0, 1, 1, 1, darkBark, side * 2, .04, 1.27),
     part(curvedTube([[-.045,side*.209,.70,.11],[-.045,side*.209,.36,.10],[.046,side*.209,.10,.07]],5),0,0,0,1,1,1,darkBark,side,-.04,.71),
-    part(ellipsoid(6, 1), .25, side * .49, .56, .15, .16, .15, root, side * 2, .04, 1.27, 0, true),
+    part(ellipsoid(6, 1), .25, side * .51, .53, .16, .17, .15, root, side * 2, .04, 1.27, 0, true),
   );
 }
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 991: The rest of the bestiary gets its visual pass. In Close View, the floating, blob, construct and plant creatures, the Pentagon and adventure creatures, the Arcology five and the Foundry forms are reshaped at the same triangle counts, each with its own attack wind-up, strike and recovery. The Veil Moth is a real moth, the Knellkeeper grows out of its bell, the Weeping Saint's head snaps into its blows, eyes and lamps glow, and the Thornspitter's bloom no longer comes apart from its stalk. In the normal view these creatures keep their art, but their limbs now draw back, hold, strike and recover on the attack clock; their rest poses are unchanged.
 - Release 990: The core creatures look and attack better. In Close View, the Ashling, Hollow Marshal, Ashen Hound, Coil Stalker, Pallid Crawler and Glass Mite each have their own attack for every move, with clearer wind-ups and follow-through, on reshaped bodies at the same triangle counts. The Marshal's halberd thrusts, reaps and chops; the Coil Stalker rears a hooded neck and strikes. In the normal view the creatures keep their blocky art, but their claws, halberd, jaws, legs, wings, staffs and tentacles now swing on joints, with a wind-up, a strike, a recovery and a flinch.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
