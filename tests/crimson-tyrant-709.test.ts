@@ -34,7 +34,7 @@ const by = (w, source) => w.hurts.filter((h) => h.source === source).length;
 
 test('registry: a huge flying world boss, thirteen moves, its own poise, Echo and Aperture tier; bigger than the Astral Worm', () => {
   const B = WORLD_BEASTS.crimsonTyrant, def = MONSTER_PACK.crimsonTyrant;
-  assert.equal(B.home, 'firelands'); assert.equal(B.tries, 4); assert.equal(def.attacks.length, 13); for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
+  assert.equal(B.home, 'firelands'); assert.equal(B.tries, undefined); /* 2026-11-18 (Tim): the 15-minute engagement window is the only limit; world beasts have no tries */ assert.equal(def.attacks.length, 13); for (const id of def.attacks) assert.ok(ATTACK_MODULES[id], id);
   assert.ok(ECHOES.crimsonTyrant); assert.ok(BOSS_POISE.crimsonTyrant); assert.equal(BEAST_APERTURE.crimsonTyrant, 8); assert.ok(PLACEMENT.bigBeasts.includes('crimsonTyrant'));
   assert.ok(createCombatant('crimsonTyrant', 0, 0, true, []).scale > 2 * createCombatant('astralWorm', 0, 0, true, []).scale);
 });

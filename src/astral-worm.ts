@@ -16,9 +16,9 @@ export const ASTRAL = Object.freeze({
   ringCount: 4, ringInner: .35, ringWidth: .85, ringSpacing: 1.2, ringWarning: .6, ringActive: .16, ringGap: .22,
   hostileWalkerChance: .025, allyWalkerChance: .005, maxCompanions: 1,
 });
-// Register only on the reviewed Gate baseline: inherits its strength floor, retries and Questing dominance.
+// Register only on the reviewed Gate baseline: inherits its strength floor and Questing dominance (2026-11-18: no tries; the engagement window is its only limit).
 export const ASTRAL_PROFILE = Object.freeze({ kind: 'astralWorm', name: 'The Astral Worm', chance: .02,
-  minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
+  minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
   damageShare: .24, speed: 1.35, attackGap: .2, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 18,
   nativeHpFloor: 4760, nativeDamageFloor: 78, dungeonChance: .02, dungeonMinLevel: 1,
   home: 'wayglass', retreatMoves: 'astral-wayglass',

@@ -101,12 +101,21 @@ test('when the window ends in sight it retreats home by its old rules, roused or
   assert.equal(o.s.worldBeasts.tremorWorm.cooldown, WORLD_BEASTS.tremorWorm.cooldownEscaped);
 });
 
-test('the Crimson Tyrant: a fall on its claimed ground no longer ends the hunt within the window', () => {
+// Tim (2026-11-18): the Crimson Tyrant's lava claim still ends its hunt inside the window (release 709 kept).
+test('the Crimson Tyrant: a fall on its claimed ground after its casts still ends the hunt, inside the window', () => {
   const { g, s, e, rx, ry } = hunt('crimsonTyrant'); e.aggro = true; play(g, .1);
+  assert.ok(beastEngagementLeft(s, 'crimsonTyrant') > 800, 'well inside its window');
   const r = dragonRecord(s, rx, ry); r.casts = DRAGON.colonize.casts; r.nextAt = 1e12;
   g.player.invulnerableUntil = 0; g.player.hp = 0; g.update(.05, idle, 5000);
-  assert.ok(s.worldBeasts.crimsonTyrant.active, 'within the window it is still there');
-  s.playSeconds = s.worldBeasts.crimsonTyrant.active.engagedAt + BEAST_ENGAGEMENT.seconds + 1; g.rx = rx; g.ry = ry; g.loadArea('overworld');
-  g.player.invulnerableUntil = 0; g.player.hp = 0; g.update(.05, idle, 9000);
-  assert.equal(s.worldBeasts.crimsonTyrant.active, null, 'its window over, it has claimed the ground as before'); assert.equal(s.worldBeasts.crimsonTyrant.escaped, 1);
+  assert.equal(s.worldBeasts.crimsonTyrant.active, null, 'it has claimed the ground'); assert.equal(s.worldBeasts.crimsonTyrant.escaped, 1);
+});
+
+test('no number of deaths ends a hunt inside its window', () => {
+  const { g, s, e, rx, ry } = hunt('briarStag'); e.aggro = true; play(g, .1); const at = s.worldBeasts.briarStag.active.engagedAt;
+  for (let i = 1; i <= 6; i++) {
+    g.rx = rx; g.ry = ry; g.loadArea('overworld'); const b = live(g, 'briarStag'); assert.ok(b, `death ${i}: still there`);
+    g.player.invulnerableUntil = 0; g.player.hp = 0; g.update(.05, idle, 5000 + i * 1000);
+    assert.equal(s.worldBeasts.briarStag.active.tries, i); assert.equal(s.worldBeasts.briarStag.active.engagedAt, at);
+  }
+  assert.equal(s.worldBeasts.briarStag.escaped, 0);
 });

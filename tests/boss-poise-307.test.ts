@@ -4,15 +4,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCombatant } from '../src/combat.ts';
 import { BOSS_POISE, bossPoiseOf, updatePackMonster, BLOB } from '../src/monster-pack.ts';
-import { WORLD_BEASTS, BEAST_BALANCE, worldBeastTriesLeft } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, BEAST_BALANCE, BEAST_ENGAGEMENT } from '../src/world-beasts.ts';
 import { QUESTING_BEAST } from '../src/questing-beast.ts';
 import { freshSave } from '../src/types.ts';
 
 test('balance: half health, 90% damage, four tries, no Blob regeneration', () => {
   assert.deepEqual(BEAST_BALANCE, { hp: .5, damage: .9 });
-  for (const id of Object.keys(WORLD_BEASTS)) assert.equal(WORLD_BEASTS[id].tries, 4, id);
+  // 2026-11-18 (Tim): the world beasts' four tries are gone; the 15-minute engagement window is their only limit. The Questing Beast keeps four.
+  for (const id of Object.keys(WORLD_BEASTS)) assert.equal(WORLD_BEASTS[id].tries, undefined, id);
+  assert.equal(BEAST_ENGAGEMENT.seconds, 900);
   assert.equal(QUESTING_BEAST.tries, 4); assert.equal(BLOB.growHeal, 0);
-  const s = freshSave(); s.worldBeasts = { morphingBlob: { active: { rx: 1, ry: 1, tries: 0 } } }; assert.equal(worldBeastTriesLeft(s, 'morphingBlob'), 4);
 });
 
 test('poise: the turtle and the giant are hardest, the astral worm surprisingly easy, the walker sturdy', () => {

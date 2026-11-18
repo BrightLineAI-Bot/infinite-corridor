@@ -9,19 +9,19 @@ test('Level-eight floor, Questing dominance, simultaneous attempts and productio
   const { createCombatant } = await import('../src/combat.ts');
   let combos=0;for(const level of [1,8,20,50])for(const power of [6,20,50])for(const guard of [.025,.3,.75]){const save=freshSave();save.level=level;save.maxHp=60+(level-1)*6;save.equipment.primary.power=power;const stats={...characterStats(save),damageReduction:guard},q=createCombatant('questingBeast',0,0,true);tuneQuestingBeast(q,save,stats);for(const id of WORLD_BEAST_IDS){const e=createCombatant(id,0,0,true);tuneWorldBeast(e,save,id,stats);assert(q.maxHp>e.maxHp);assert(q.damage>e.damage);assert(e.damage*(1-guard)>=53);/* release 307: damage ×.9 */const oldHP=Math.round(Math.max(6,power+stats.meleeBonus)*WORLD_BEASTS[id].hitsToKill+WORLD_BEASTS[id].hpPerLevel*level);assert(e.maxHp>=Math.round(oldHP*.5));/* release 307: health halved */assert(q.attackGap<e.attackGap)}combos++}
   // Each participant spends one attempt, with no early return skipping a simultaneous beast.
-  const s=freshSave();for(const id of ['psychicCrystal','voidWalker'])s.worldBeasts[id].active={rx:7,ry:2,tries:0};for(let attempt=1;attempt<=4;attempt++){/* release 307: four tries */worldBeastPlayerFell(s,7,2,['psychicCrystal','voidWalker']);for(const id of ['psychicCrystal','voidWalker'])assert.equal(s.worldBeasts[id].active?.tries??4,attempt)}assert(!s.worldBeasts.psychicCrystal.active&&!s.worldBeasts.voidWalker.active);
+  const s=freshSave();for(const id of ['psychicCrystal','voidWalker'])s.worldBeasts[id].active={rx:7,ry:2,tries:0};for(let attempt=1;attempt<=5;attempt++){/* release 307: four tries; 2026-11-18 (Tim): world beasts have no tries, the engagement window is their only limit */worldBeastPlayerFell(s,7,2,['psychicCrystal','voidWalker']);for(const id of ['psychicCrystal','voidWalker'])assert.equal(s.worldBeasts[id].active?.tries,attempt)}assert(s.worldBeasts.psychicCrystal.active&&s.worldBeasts.voidWalker.active,'no death ends their hunts');
   // Production death snapshot/re-entry, including Questing + ordinary beast, wounded non-death reload, and third departure.
   const save=freshSave();save.seed='GATE-BEAST-DEATH';const g=new Game(save,0);const idle={state:{x:0,y:0},consume:()=>false};let now=1000;
   for(let attempt=1;attempt<=4;attempt++){ // release 307: four tries
     g.rx=7;g.ry=2;save.questingBeast.active={rx:7,ry:2,tries:attempt-1};save.worldBeasts.morphingBlob.active={rx:7,ry:2,tries:attempt-1,patience:179.9};g.loadArea('overworld',false);
     const q=g.createEnemyFromSpawn({id:'questing-beast:0',kind:'questingBeast',questingBeast:true,boss:true,x:10,y:10},'overworld');const b=g.createEnemyFromSpawn({id:'world-beast:morphingBlob:0',kind:'morphingBlob',worldBeast:'morphingBlob',boss:true,x:12,y:10},'overworld');q.hp=30;b.hp=40;g.enemies=[q,b];g.player.hp=0;g.player.x=16;g.player.y=16;g.update(.001,idle,now+=1000);
-    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(attempt<4?e.hp<e.maxHp:e.dead&&e.noRewards)} // release 427: it keeps its wounds
+    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(attempt<4||e.worldBeast?e.hp<e.maxHp:e.dead&&e.noRewards)} // release 427: it keeps its wounds; 2026-11-18 (Tim): no death ends a world beast's hunt (the Questing Beast keeps four tries)
     if(attempt<4)assert.equal(save.worldBeasts.morphingBlob.active.patience||0,0);
-    assert.equal(save.questingBeast.active?.tries??4,attempt);assert.equal(save.worldBeasts.morphingBlob.active?.tries??4,attempt);
+    assert.equal(save.questingBeast.active?.tries??4,attempt);assert.equal(save.worldBeasts.morphingBlob.active.tries,attempt);
     g.rx=7;g.ry=2;g.loadArea('overworld',false);
     const live=g.enemies.filter(e=>(e.questingBeast||e.worldBeast==='morphingBlob')&&!e.dead);
-    if(attempt<4){assert.equal(live.length,1);assert(live.every(e=>e.hp<e.maxHp));}else assert.equal(live.length,0);
-    const restored=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(restored.worldBeasts.morphingBlob.active?.tries??4,attempt);
+    if(attempt<4){assert.equal(live.length,1);assert(live.every(e=>e.hp<e.maxHp));}else{assert.equal(live.filter(e=>e.questingBeast).length,0);assert(live.every(e=>e.hp<e.maxHp));}
+    const restored=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(restored.worldBeasts.morphingBlob.active.tries,attempt);
   }
 
 

@@ -6,7 +6,8 @@ import { ASTRAL_PROFILE } from "./astral-worm.ts";
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
 // section; it stays until it is killed or it has killed the Wayfarer `tries` times; then it is gone, and after a
-// cooldown counted in sections entered a new hunt can begin somewhere else. Its health and blows are tuned to the
+// cooldown counted in sections entered a new hunt can begin somewhere else. (2026-11-18, Tim: the 15-minute engagement window,
+// BEAST_ENGAGEMENT below, is now the only limit: deaths no longer end a hunt, and the per-beast `tries` are gone.) Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
 import { hashSeed, byHash } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
@@ -16,7 +17,7 @@ import { stageOneBeastReference } from "./stages.ts";
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
   morphingBlob: {
-    kind: "morphingBlob", name: "The Morphing Blob", chance: .03, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "morphingBlob", name: "The Morphing Blob", chance: .03, minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 70, hpPerLevel: 30, damageShare: .22, speed: 1, attackGap: .18, staggerResistance: .95, rewardMarks: 170, rewardPerLevel: 17,
     home: "mire", retreatMoves: "walk",
     flee: "The Morphing Blob has had enough of you. It pulls itself together and flows away toward the Blight Mire.",
@@ -26,7 +27,7 @@ export const WORLD_BEASTS = {
     gone: "The Morphing Blob has fed enough on you, and seeps away. In time it will settle somewhere else.",
   },
   tremorWorm: {
-    kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "tremorWorm", name: "The Tremor Worm", chance: .03, minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 62, hpPerLevel: 28, damageShare: .22, speed: 1, attackGap: .2, staggerResistance: .95, rewardMarks: 175, rewardPerLevel: 17,
     home: "dunes", retreatMoves: "burrow",
     flee: "The Tremor Worm dives and swims away under the ground, toward the Dune Sea.",
@@ -36,7 +37,7 @@ export const WORLD_BEASTS = {
     gone: "The Tremor Worm has had its fill of you, and sinks away. In time it will surface somewhere else.",
   },
   mountainTurtle: {
-    kind: "mountainTurtle", name: "The Mountain Turtle", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "mountainTurtle", name: "The Mountain Turtle", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 78, hpPerLevel: 34, damageShare: .24, speed: 1, attackGap: .35, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
     home: "canyon", retreatMoves: "through",
     flee: "The Mountain Turtle turns its great head away and walks off toward the canyons, through whatever stands in its way.",
@@ -46,7 +47,7 @@ export const WORLD_BEASTS = {
     gone: "The Mountain Turtle has trampled you enough, and walks on. In time it will settle somewhere else.",
   },
   nanobotKnight: {
-    kind: "nanobotKnight", name: "The Nanobot Knight", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "nanobotKnight", name: "The Nanobot Knight", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .22, speed: 1.1, attackGap: .22, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 19,
     home: "glass", retreatMoves: "through",
     flee: "The Nanobot Knight comes apart into a red-black swarm and streams away toward the glass.",
@@ -58,7 +59,7 @@ export const WORLD_BEASTS = {
   // Release 257 (Tim 2026-10-21): a giant lightning robot. It retreats on foot to a chasm, where a storm cloud gathers
   // under it and carries it up into the sky.
   lightningGiant: {
-    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "lightningGiant", name: "The Lightning Giant", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 72, hpPerLevel: 32, damageShare: .24, speed: .65, attackGap: .3, staggerResistance: 1, rewardMarks: 190, rewardPerLevel: 19,
     home: "canyon", retreatMoves: "walk",
     flee: "The Lightning Giant lowers its club and strides away toward the chasms, sparks trailing from its coils.",
@@ -68,7 +69,7 @@ export const WORLD_BEASTS = {
     gone: "The Lightning Giant has had enough of you, and strides off into the weather. In time it will walk somewhere else.",
   },
   psychicCrystal: {
-    kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "psychicCrystal", name: "The Psychic Crystal", chance: .025, minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 58, hpPerLevel: 26, damageShare: .2, speed: 1, attackGap: .3, staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     home: "water", retreatMoves: "through",
     dungeonChance: .35, dungeonMinLevel: 1, // Follow-on: level is a strength floor, not eligibility; water and depth still required
@@ -82,7 +83,7 @@ export const WORLD_BEASTS = {
   },
   // Initial balance proposal; owner requirements and open design decisions are in docs/void-walker-design.md.
   voidWalker: {
-    kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26,
+    kind: "voidWalker", name: "The Void Walker", chance: .025, minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .2, speed: 1.1, attackGap: 1.1, /* release 407 (Tim: "the Void Walker should attack less frequently... it covers up the entire screen with attacks... a little bit more pacing"): was .3 */ staggerResistance: .9, rewardMarks: 180, rewardPerLevel: 18,
     home: "dungeon", retreatMoves: "walk", dungeonChance: 0, dungeonMinLevel: 1, // release 429 (Tim: "I shouldn't be meeting him in the dungeons, because he makes kind of a big mess... floating... through blocks"): no new dungeon hunts (was .3); one already under way finishes where it is
     flee: "The Void Walker folds its rends shut and leaves toward a dungeon entrance.",
@@ -98,7 +99,7 @@ export const WORLD_BEASTS = {
   // Release 705 (Tim, 2026-11-03: "a few more world bosses... similar attack and aggressiveness and strength... varied amount of
   // attacks... pretty chaotic"): a stag of bark and bramble. It retreats to the deep woods and is lost among the trees.
   briarStag: {
-    kind: "briarStag", name: "The Briar Stag", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "briarStag", name: "The Briar Stag", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 66, hpPerLevel: 30, damageShare: .22, speed: 1.15, attackGap: .2, staggerResistance: .95, rewardMarks: 185, rewardPerLevel: 18,
     home: "forest", retreatMoves: "walk",
     flee: "The Briar Stag tosses its burning crown and bounds away toward the deep woods.",
@@ -109,7 +110,7 @@ export const WORLD_BEASTS = {
   },
   // Release 706 (the same ask): a moth of ash and ember. It flies home over everything to the ash lands and settles into the ash.
   ashenMoth: {
-    kind: "ashenMoth", name: "The Ashen Moth", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "ashenMoth", name: "The Ashen Moth", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .21, speed: 1.1, attackGap: .22, staggerResistance: .9, rewardMarks: 185, rewardPerLevel: 18,
     home: "firelands", retreatMoves: "through",
     flee: "The Ashen Moth rises on a hot wind and drifts away toward the ash lands.",
@@ -120,7 +121,7 @@ export const WORLD_BEASTS = {
   },
   // Release 709 (Tim, 2026-11-03): a red dragon. It claims the ground it holds (crimson-dragon.ts) and flies home over everything.
   crimsonTyrant: {
-    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    kind: "crimsonTyrant", name: "The Crimson Tyrant", chance: .02, minDepth: 6, cooldownSlain: 26, cooldownEscaped: 32,
     hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1, attackGap: .25, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
     home: "firelands", retreatMoves: "through",
     flee: "The Crimson Tyrant spreads its wings and climbs into the smoke, bound for the ash lands.",
@@ -133,7 +134,7 @@ export const WORLD_BEASTS = {
   // Release 710 (Tim, 2026-11-03: "The second dragon... a sweeping laser beam... eruptions everywhere... waves of dark energy... all of his
   // attacks can be black... His name is doom chaser"): a black dragon of dark fire. It flies home over everything to the canyons' dark.
   doomChaser: {
-    kind: "doomChaser", name: "The Doom Chaser", chance: .01, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 32,
+    kind: "doomChaser", name: "The Doom Chaser", chance: .01, minDepth: 6, cooldownSlain: 26, cooldownEscaped: 32,
     hitsToKill: 80, hpPerLevel: 36, damageShare: .24, speed: 1.1, attackGap: .22, staggerResistance: 1, rewardMarks: 240, rewardPerLevel: 24,
     home: "canyon", retreatMoves: "through",
     flee: "The Doom Chaser beats its black wings once and is gone into the sky, bound for the deep canyons.",
@@ -146,7 +147,7 @@ export const WORLD_BEASTS = {
   // it claims only sections no older beast claimed and every older beast's roll is as it was. It roams the land and the sea (beastGround),
   // and walks home to the deep woods. It is also met in the big rooms of keeps, arcologies and adventure Pentagons (wild-stego.ts).
   wildStego: {
-    kind: "wildStego", name: "The Wild Stegosaurus", chance: .025, minDepth: 6, tries: 4, cooldownSlain: 22, cooldownEscaped: 28,
+    kind: "wildStego", name: "The Wild Stegosaurus", chance: .025, minDepth: 6, cooldownSlain: 22, cooldownEscaped: 28,
     hitsToKill: 58, hpPerLevel: 27, damageShare: .21, speed: 1.1, attackGap: .24, staggerResistance: .95, rewardMarks: 185, rewardPerLevel: 18,
     home: "forest", retreatMoves: "walk",
     flee: "The Wild Stegosaurus snorts, swings its tail, and lumbers off toward the deep woods, eating as it goes.",
@@ -160,7 +161,7 @@ export const WORLD_BEASTS = {
   // home to the deep woods; it is never seen passing. It is also met in big rooms and as the interloper in a stego or stag fight
   // (spino-rex.ts). Its numbers: monster-pack.ts SPINO.
   spinoRex: {
-    kind: "spinoRex", name: "The Spinosaurus", chance: .015, minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
+    kind: "spinoRex", name: "The Spinosaurus", chance: .015, minDepth: 6, cooldownSlain: 26, cooldownEscaped: 30,
     hitsToKill: 58, hpPerLevel: 27, damageShare: .21, speed: 1.1, attackGap: .26, staggerResistance: .95, rewardMarks: 200, rewardPerLevel: 20,
     home: "forest", retreatMoves: "walk",
     flee: "The Spinosaurus snaps its jaws once more, turns, and stalks off toward the deep woods to hunt something else.",
@@ -320,38 +321,38 @@ export const PURSUIT = { sections: 3, inset: 3.5, limits: { morphingBlob: 1 }, e
 export const BLOB_SPLIT = { grown: .05, linger: 14, fade: 5 };
 const SIDES = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] }, OPPOSITE = { east: "west", west: "east", north: "south", south: "north" };
 
-// Release 345 (Tim, 2026-10-23: "set an option... where we can set the death sequence for the world bosses... turn it off... so
-// that there's no deaths... if you don't beat the boss... within 3 minutes. He'll just lose patience and then leave. But if you
-// do more than 50% of the boss's health, he will extend that 3 minutes by another two minutes"). With tries off (Options →
-// Accessibility, settings.beastTries), deaths cost no tries; once the beast is below `below` of its health its engagement
-// window (below) gains `extend` seconds.
-export const BEAST_NO_TRIES = { extend: 120, below: .5 };
 // The engagement window (Tim, 2026-11-18: "they make really good fights, but they leave too soon... each world boss can persist for
 // maybe 15 minutes once you engage it; if you keep coming back to the same tile to fight it, it persists for 15 minutes and then it
-// retreats"). It replaces the per-fight `patience` clock (180 s of fighting, 240 s for the Crimson Tyrant and the Doom Chaser,
-// restarted at every death of the Wayfarer). A hunt is engaged the first time its beast is roused against the Wayfarer (its
-// `aggro`: a blow dealt or taken rouses it too); from then it stays `seconds` of play (save.playSeconds: paused time is not
-// counted), whether the Wayfarer is fighting it, has died, or has gone and come back, and then it retreats home as before. The
-// start is kept on the hunt (`engagedAt`, additive at schema 14), so a reload or a death neither restarts nor loses it, and it is
-// never refreshed: a new window comes only with a new hunt. Tries are unchanged (BEAST_NO_TRIES above when they are off).
+// retreats"; then: the window is the only limit, so the four tries are gone). It replaces the per-fight `patience` clock (180 s of
+// fighting, 240 s for the Crimson Tyrant and the Doom Chaser, restarted at every death of the Wayfarer), the four tries (four deaths
+// ended a hunt) and the release-345 Options switch that turned tries off (no tries, and two more minutes below half health). A hunt is
+// engaged the first time its beast is roused against the Wayfarer (its `aggro`: a blow dealt or taken rouses it too); from then it
+// stays `seconds` of play (save.playSeconds: paused time is not counted), however often the Wayfarer dies, leaves or comes back, and
+// then it retreats home as before. The start is kept on the hunt (`engagedAt`, additive at schema 14), so a reload or a death neither
+// restarts nor loses it, and it is never refreshed: a new window comes only with a new hunt. The hunt's `tries` still counts the
+// Wayfarer's deaths (other code reads a nonzero count as a hunt under way), but ends nothing.
 export const BEAST_ENGAGEMENT = { seconds: 900 };
-// Seconds of the window left (Infinity before the hunt is engaged). `e`, the live beast, may earn the tries-off extension.
-export function beastEngagementLeft(save, id, e = null, triesOff = false) {
+// Seconds of the window left (Infinity before the hunt is engaged).
+export function beastEngagementLeft(save, id) {
   const q = save?.worldBeasts?.[id]?.active; if (!q || !Number.isFinite(q.engagedAt)) return Infinity;
-  const extended = triesOff && e && e.hp < (e.maxHp || 1) * BEAST_NO_TRIES.below;
-  return BEAST_ENGAGEMENT.seconds + (extended ? BEAST_NO_TRIES.extend : 0) - ((Number(save.playSeconds) || 0) - q.engagedAt);
+  return BEAST_ENGAGEMENT.seconds - ((Number(save.playSeconds) || 0) - q.engagedAt);
+}
+// What the hunt's message says of its time: the minutes left of an engaged window, or the whole window still to come.
+export function worldBeastHoldNote(save, id) {
+  const L = beastEngagementLeft(save, id), m = Math.max(1, Math.ceil((Number.isFinite(L) ? Math.max(0, L) : BEAST_ENGAGEMENT.seconds) / 60));
+  return Number.isFinite(L) ? `It will hold this ground about ${m} more minute${m === 1 ? "" : "s"}.` : `Once you engage it, it will hold this ground for ${m} minutes.`;
 }
 export const beastEngaged = (q) => Number.isFinite(q?.engagedAt);
 // Called each frame for a beast in the loaded area while it is roused, or once its hunt is engaged: engages the hunt (the first
 // time), and is true when its window has run out and it should retreat. `dt` is unused since the window is measured on
 // save.playSeconds (kept for the callers). `e` is the live beast (null: a caller that is fighting it).
-export function worldBeastPatience(save, id, dt, e = null, triesOff = false) {
+export function worldBeastPatience(save, id, dt, e = null) {
   const q = save.worldBeasts?.[id]?.active; if (!q || q.retreat) return false;
-  // A Walker that joined an Astral fight stays until it is killed or the player's tries run out, unless it chose to leave.
+  // A Walker that joined an Astral fight stays until it is killed, unless it chose to leave (astral-worm-mount.ts ASTRAL_FIGHTER).
   if (q.astralLeave) return true;
   if (q.astralJoined) return false;
   if (!beastEngaged(q)) { if (e && !e.aggro) return false; q.engagedAt = Number(save.playSeconds) || 0; }
-  return beastEngagementLeft(save, id, e, triesOff) <= 0;
+  return beastEngagementLeft(save, id) <= 0;
 }
 // Chooses its home: the nearest section (by steps across sections) that has its home ground, searched out to
 // RETREAT.search; `probe(rx, ry)` describes a section ({ biome, dominant, canyon, dungeon }). With none in reach it flees
@@ -586,7 +587,7 @@ export const BEAST_WANDER = { after: 16 };
 function wanderUnmet(save, rx, ry) {
   for (const id of WORLD_BEAST_IDS) {
     const q = save.worldBeasts[id], a = q?.active;
-    if (!a || a.dungeon || a.retreat || a.cornered || a.tries || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
+    if (!a || a.dungeon || a.retreat || a.cornered || a.tries || beastEngaged(a) /* 2026-11-18: an engaged hunt was fought */ || a.wounds || a.chase || !Number.isInteger(a.rx) || astralReservedCompanion(save, id)) continue;
     if (a.rx === rx && a.ry === ry) { delete a.away; continue; }
     a.away = (Number(a.away) || 0) + 1;
     if (a.away >= BEAST_WANDER.after) { q.active = null; q.cycle = (q.cycle || 0) + 1; }
@@ -615,9 +616,9 @@ export function worldBeastFor(save, map, rx, ry) {
   if (q.active.retreat) return fleeSpawn(save, here, rx, ry);
   const open = map.tiles.filter((t) => beastGround(here, t) && t.x > 7 && t.y > 7 && t.x < 24 && t.y < 24); // release 257: the Giant may be met at sea
   // Release 261: only ground it could retreat from (placementRegions); a beast already met keeps whatever ground it had.
-  const regions = placementRegions(map, here), sound = open.filter((t) => regions.ok[t.y * 32 + t.x]), pool = sound.length || q.active.tries ? (sound.length ? sound : open) : [];
+  const regions = placementRegions(map, here), sound = open.filter((t) => regions.ok[t.y * 32 + t.x]), pool = sound.length || q.active.tries || beastEngaged(q.active) ? (sound.length ? sound : open) : [];
   const at = pool.sort(byHash((a) => `wb:${here}:${q.cycle}:${a.x},${a.y}`))[0];
-  if (!at) { if (!q.active.tries) { q.active = null; if (claimed) { const g = ensureBeastGap(save); g.fresh = ENCOUNTER.newSections; if (passed) g.passed = true; } } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
+  if (!at) { if (!q.active.tries && !beastEngaged(q.active)) { q.active = null; if (claimed) { const g = ensureBeastGap(save); g.fresh = ENCOUNTER.newSections; if (passed) g.passed = true; } } return null; } // no valid terrain for this beast: it does not hold the section (and was never met)
   return { id: `world-beast:${here}:${q.cycle}`, kind: WORLD_BEASTS[here].kind, x: at.x, y: at.y, boss: true, worldBeast: here, traits: [] };
 }
 // Passing beasts (release 569; Tim, 2026-10-29: "it would be great to be able to just be wandering through the world and see
@@ -653,7 +654,6 @@ export function passingBeastFor(save, map, rx, ry, explored = 0) {
 }
 // Sightings (2026-11-11): a passer was shown (game.ts loadArea): no other passes until the next meeting (encounterMet).
 export function passingSeen(save) { if (PASSING.once) ensureBeastGap(save).passed = true; }
-export function worldBeastTriesLeft(save, id) { return WORLD_BEASTS[id].tries - (save.worldBeasts?.[id]?.active?.tries || 0); }
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
@@ -704,18 +704,16 @@ export function worldBeastEaten(save, id) {
   q.cycle++; q.active = null; q.cooldown = B.cooldownSlain; q.eaten = (Math.max(0, Math.floor(Number(q.eaten) || 0))) + 1;
   return { cooldown: q.cooldown, eaten: q.eaten };
 }
-// The Wayfarer fell in a beast's section while it lived. Returns a message, or null.
-export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null, triesOff = false) {
+// The Wayfarer fell in a beast's section while it lived. Returns a message, or null. Since 2026-11-18 (BEAST_ENGAGEMENT) a death
+// ends no hunt: it is counted on the hunt (`tries`) and the beast holds its ground for the rest of its window.
+export function worldBeastPlayerFell(save, rx, ry, aliveIds, dungeonId = null) {
   ensureWorldBeasts(save, false);
   const notes = [];
   for (const id of WORLD_BEAST_IDS) {
     const B = WORLD_BEASTS[id], q = save.worldBeasts[id];
-    if (!aliveIds.includes(id) || !q.active || q.active.retreat || (q.active.dungeon ? q.active.dungeon !== dungeonId : q.active.rx !== rx || q.active.ry !== ry)) continue; // a retreating beast takes no tries
-    if (triesOff) { const L = beastEngagementLeft(save, id), left = Math.max(0, Math.ceil(Number.isFinite(L) ? L : BEAST_ENGAGEMENT.seconds)); notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. Its patience: about ${Math.ceil(left / 60)} minute${left > 60 ? "s" : ""} left.`); continue; } // release 345 (2026-11-18: its engagement window)
+    if (!aliveIds.includes(id) || !q.active || q.active.retreat || (q.active.dungeon ? q.active.dungeon !== dungeonId : q.active.rx !== rx || q.active.ry !== ry)) continue; // a retreating beast is not counted
     q.active.tries++;
-    if (q.active.tries < B.tries) { const left = B.tries - q.active.tries; notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. ${left} ${left === 1 ? "try remains" : "tries remain"}.`); continue; }
-    q.escaped++; q.cycle++; q.active = null; q.cooldown = B.cooldownEscaped;
-    notes.push(B.gone);
+    notes.push(`${B.name} still holds ${q.active.dungeon ? "that place" : `${rx},${ry}`}. ${worldBeastHoldNote(save, id)}`);
   }
   return notes.length ? notes.join(" ") : null;
 }
