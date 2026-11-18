@@ -2,7 +2,7 @@
 // beast; it leaves after 3 minutes of fighting, 5 once it is below half health. Dying costs nothing (wood is kept).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORLD_BEASTS, BEAST_NO_TRIES, worldBeastPatience, worldBeastPlayerFell } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, BEAST_NO_TRIES, BEAST_ENGAGEMENT, worldBeastPatience, worldBeastPlayerFell } from '../src/world-beasts.ts';
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/persistence.ts';
 import { freshSave } from '../src/types.ts';
 
@@ -20,14 +20,17 @@ test('tries on: a death costs a try; tries off: it costs none', () => {
   assert.ok(off.worldBeasts.morphingBlob.active, 'never driven off by deaths');
 });
 
-test('tries off: patience is 3 minutes, 5 once the beast is below half health', () => {
-  const P = WORLD_BEASTS.morphingBlob.patience; assert.equal(P, 180); assert.equal(BEAST_NO_TRIES.extend, 120);
-  const fresh = holding(), full = { hp: 100, maxHp: 100 };
-  assert.equal(worldBeastPatience(fresh, 'morphingBlob', P - 1, full, true), false); assert.equal(worldBeastPatience(fresh, 'morphingBlob', 2, full, true), true);
-  const hurt = holding(), half = { hp: 40, maxHp: 100 };
-  assert.equal(worldBeastPatience(hurt, 'morphingBlob', P + 60, half, true), false, 'extended');
-  assert.equal(worldBeastPatience(hurt, 'morphingBlob', 61, half, true), true);
-  const on = holding(); assert.equal(worldBeastPatience(on, 'morphingBlob', P + 1, half, false), true, 'no extension with tries on');
+// 2026-11-18 (Tim): "each world boss can persist for maybe 15 minutes once you engage it": the 3-minute per-fight patience became the
+// 15-minute engagement window on save.playSeconds (BEAST_ENGAGEMENT); with tries off it still gains BEAST_NO_TRIES.extend below half health.
+test('tries off: the engagement window is 15 minutes, 17 once the beast is below half health', () => {
+  const P = BEAST_ENGAGEMENT.seconds; assert.equal(P, 900); assert.equal(BEAST_NO_TRIES.extend, 120);
+  const at = (s, t) => { s.playSeconds = t; return s; }, full = { hp: 100, maxHp: 100, aggro: true };
+  const fresh = holding(); assert.equal(worldBeastPatience(at(fresh, 0), 'morphingBlob', 0, full, true), false);
+  assert.equal(worldBeastPatience(at(fresh, P - 1), 'morphingBlob', 0, full, true), false); assert.equal(worldBeastPatience(at(fresh, P + 1), 'morphingBlob', 0, full, true), true);
+  const hurt = holding(), half = { hp: 40, maxHp: 100, aggro: true }; worldBeastPatience(at(hurt, 0), 'morphingBlob', 0, half, true);
+  assert.equal(worldBeastPatience(at(hurt, P + 60), 'morphingBlob', 0, half, true), false, 'extended');
+  assert.equal(worldBeastPatience(at(hurt, P + 121), 'morphingBlob', 0, half, true), true);
+  const on = holding(); worldBeastPatience(at(on, 0), 'morphingBlob', 0, half, false); assert.equal(worldBeastPatience(at(on, P + 1), 'morphingBlob', 0, half, false), true, 'no extension with tries on');
 });
 
 test('tries off: dying costs no try and leaves its clock running (release 427: it keeps its wounds)', async () => {

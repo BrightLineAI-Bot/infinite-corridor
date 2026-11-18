@@ -15,7 +15,7 @@
 // The two bodies share the bone hierarchy; each has its own bind fit (CLOAK_FIT, MORPH_FIT: the same names and parents with
 // each body's joint positions), and the pose switches fit with the form. The reflections and the worms keep their billboards
 // (close-view-beasts.ts). Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.ts";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.ts";
 import { MORPH_FORM } from "./listener-morph.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
@@ -356,7 +356,7 @@ function lerpInto(b, t) { const T = TBL[ACT.form], Bv = T[b] || T.idle; for (let
 // progress through the current phase (0 at its start, 1 at its end) on the game's own attack clock
 function phaseOf(pack, id) {
   const m = ATTACK_MODULES[id] || {}, ph = pack.phase;
-  const dur = ph === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : ph === 'active' ? m.active || 0 : ph === 'strike' ? LISTENER_RIG.strikeMs / 1000 : ph === 'recover' ? m.recover || .5 : 0;
+  const dur = ph === 'windup' ? (m.windup || .5) * packWindupScale(pack) : ph === 'active' ? m.active || 0 : ph === 'strike' ? LISTENER_RIG.strikeMs / 1000 : ph === 'recover' ? m.recover || .5 : 0;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 // a committed blow: anticipation to `wind` over the first `load` of the windup, the fast travel to `hit` at its end (the

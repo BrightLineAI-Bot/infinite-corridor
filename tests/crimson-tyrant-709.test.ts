@@ -1,7 +1,7 @@
 // Release 709 (Tim, 2026-11-03): a red dragon world boss, the Crimson Tyrant.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORLD_BEASTS, BEAST_APERTURE, PLACEMENT, ensureWorldBeasts } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, BEAST_APERTURE, PLACEMENT, ensureWorldBeasts, BEAST_ENGAGEMENT } from '../src/world-beasts.ts';
 import { MONSTER_PACK, ATTACK_MODULES, DRAGON, BOSS_POISE, updatePackMonster, tickPackEffects, addPackEffect } from '../src/monster-pack.ts';
 import { ECHOES } from '../src/echoes.ts';
 import { createCombatant } from '../src/combat.ts';
@@ -106,6 +106,9 @@ test('in the game: the clock runs while you are away; fall on its claimed ground
   dragonRecord(s, 9, 3).nextAt = 1000 - DRAGON.colonize.every * 2.5; g.loadArea('overworld');
   assert.equal(dragonRecord(s, 9, 3).casts, 3, 'three casts were due while away'); assert.ok(g.map.tiles.some((t) => t.kind === 'lava' && t.dragonLava));
   dragonRecord(s, 9, 3).nextAt = 0; assert.ok(g.dragonDue()); g.dragonLavaNow(); assert.equal(dragonRecord(s, 9, 3).casts, 4);
+  // 2026-11-18 (Tim: "each world boss can persist for maybe 15 minutes once you engage it"): within its engagement window a fall no
+  // longer ends the hunt (world-boss-engagement.test.ts); here the window has just run out, so the release-709 claim still applies.
+  s.worldBeasts.crimsonTyrant.active.engagedAt = s.playSeconds - BEAST_ENGAGEMENT.seconds;
   g.player.hp = 0; g.update(.05, { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} }, 5000);
   assert.equal(s.worldBeasts.crimsonTyrant.active, null, 'it leaves for good'); assert.ok(s.worldBeasts.crimsonTyrant.cooldown > 0);
 });

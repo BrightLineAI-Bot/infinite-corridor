@@ -184,13 +184,15 @@ test('the worm\'s tentacles cannot be outrun: left behind, they sink and come up
 });
 
 // Release 239: retreat.
-import { BEAST_HOMES, RETREAT, retreatPath, worldBeastPatience, beginRetreat, retreatSide, retreatTarget, retreatCrossed, worldBeastsLost } from '../src/world-beasts.ts';
+import { BEAST_HOMES, RETREAT, retreatPath, worldBeastPatience, beginRetreat, retreatSide, retreatTarget, retreatCrossed, worldBeastsLost, BEAST_ENGAGEMENT } from '../src/world-beasts.ts';
 import { Game } from '../src/game.ts';
 
 test('out of patience, a beast picks the nearest home section and heads for it; unfollowed, it is gone; it takes no tries', () => {
   const s = freshSave(); s.seed = 'FLEE'; s.worldBeasts = { morphingBlob: { active: { rx: 5, ry: 5, tries: 1 }, cycle: 4 } }; ensureWorldBeasts(s);
-  assert.equal(worldBeastPatience(s, 'morphingBlob', WORLD_BEASTS.morphingBlob.patience - 1), false);
-  assert.equal(worldBeastPatience(s, 'morphingBlob', 1.5), true);
+  // 2026-11-18 (Tim): the per-fight `patience` clock became the 15-minute engagement window on save.playSeconds (BEAST_ENGAGEMENT).
+  s.playSeconds = 100; assert.equal(worldBeastPatience(s, 'morphingBlob', 0), false, 'engaged');
+  s.playSeconds = 100 + BEAST_ENGAGEMENT.seconds - 1; assert.equal(worldBeastPatience(s, 'morphingBlob', 0), false);
+  s.playSeconds += 1.5; assert.equal(worldBeastPatience(s, 'morphingBlob', 0), true);
   const probe = (rx, ry) => ({ biome: rx === 8 && ry === 4 ? 'blight' : rx === 2 && ry === 9 ? 'swamp' : 'ash' });
   const r = beginRetreat(s, 'morphingBlob', 5, 5, probe);
   assert.deepEqual([r.home.rx, r.home.ry, r.home.found], [8, 4, true], 'the nearest mire (4 sections away, not 7)');
@@ -225,7 +227,7 @@ test('a retreating beast cannot be hurt, goes straight when it has no path, leav
 test('in a real game: the Blob runs out of patience, flees through the gate, and is there when you follow', () => {
   const s = freshSave(); s.seed = 'FLEE-GAME'; s.level = 6;
   let rx = 7, ry = 2; while (generateRegion(s.seed, rx, ry).settlement) rx++;
-  s.worldBeasts = { morphingBlob: { active: { rx, ry, tries: 0, patience: WORLD_BEASTS.morphingBlob.patience - .5 }, cycle: 0 } };
+  s.worldBeasts = { morphingBlob: { active: { rx, ry, tries: 0, engagedAt: (Number(s.playSeconds) || 0) - BEAST_ENGAGEMENT.seconds + .5 }, cycle: 0 } }; // 2026-11-18 (Tim): was patience: 180 - .5 (the engagement window replaced it)
   const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld');
   const b = g.enemies.find((e) => e.worldBeast === 'morphingBlob'); assert.ok(b); g.player.x = b.x + 3; g.player.y = b.y; g.player.hp = 1e6;
   const idle = { state: { x: 0, y: 0 }, consume: () => false };
