@@ -15,13 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r989 (`edc058f49154`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r991 (`c5cde5201244`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 990 | Claude | claude/creature-visuals-core | Core creatures: per-move Close View attack rows and reshaped bodies at the same triangle counts; Standard View blocky creatures gain articulated limbs on the attack clocks; overworld digest re-pinned (Tim approved); rounded sprites kept for the bizarro world; no save change | In flight. |
+| 992 | Claude | claude/squad-tactics | Squad tactics for ordinary creatures (front, flank, swarm and ranged roles; pack aggression; punish windows; two-blow combo window; readable rear tells); new module squad-tactics; Triceratops excluded; no save change | In flight. |
+| 991 | Claude | claude/creature-visuals-forms | Creature visual pass (forms, Pentagon and adventure, reconciled): reshaped Close View bodies at the same triangle counts with per-attack rows; Standard View limbs on a shared attack clock; no save change | Merged as `c5cde5201244` (#664). |
+| 990 | Claude | claude/creature-visuals-core | Core creatures: per-move Close View attack rows and reshaped bodies at the same triangle counts; Standard View blocky creatures gain articulated limbs on the attack clocks; overworld digest re-pinned (Tim approved); rounded sprites kept for the bizarro world; no save change | Merged as `14c9fe003314` (#660). |
 | 989 | Codex | codex/free-triceratops-per-journey / #658 | One free permanent standard Triceratops per existing or new journey | Merged as `edc058f49154` (#658); preview r989-edc058f49154, not published. |
 | 988 | Codex | codex/triceratops-close-view-framing / #659 | Fit the mounted camera and clear the airborne drill from the floor | Merged as `2ea9adf5e850` (#659). |
 | 987 | Codex | codex/triceratops-wild-herds / #655 | Wild herds, mounted horn attacks and Silly Goose tail drill | Merged as `ebf989f96803` (#655); Preview `r987-ebf989f96803`. Close View framing correction follows in r988. |
