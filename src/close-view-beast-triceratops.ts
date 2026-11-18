@@ -24,8 +24,6 @@ export const TRICERATOPS_RIG = Object.freeze({
   settle: 6, stepAt: .09, stepTime: .32, turnRate: 3.2, attackTurnRate: 8, standTurnRate: 2.2, standTurnMax: 1.5, footLift: .1, bob: .016,
   ease: 10, strikeEase: 18, deathMs: 2400, hitMs: 320, landMs: 380, tailBounce: .16,
   breathe: Object.freeze({ rate: 1.2, chest: .012 }),
-  // the ridden drill: an axial roll of the whole body about its middle (`pivot` body units up), `turns` as the standard view's
-  drill: Object.freeze({ pivot: .55 }),
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
   budget: Object.freeze({ full: 3218, balanced: 1694, low: 668 }),
 });
@@ -45,6 +43,12 @@ const BODY = [
   [.2, .555, .28, .26, 'chest'], [.3, .55, .22, .235, 'chest', 'neck', .5], [.38, .53, .165, .18, 'neck'], [.45, .515, .135, .15, 'neck', 'head', .5], [.51, .505, .12, .135, 'head'],
 ];
 function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= f) { const a = BODY[i - 1], b = BODY[i], t = (f - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]; } return BODY[BODY.length - 1].slice(1, 4); }
+// The Silly Goose's drill whirlwind (Tim, 2026-11-18: no spin of the body, "show the spin with an effect"): `bands` helical ribbons of
+// dust and air round the long axis through `at` (f, u), `turns` turns each from the head (`front`) back past the tail tip (`back`),
+// `radius` round the body tapering to a point behind the tail (the drill bit), `width` wide; translucent (emit channel 3, alpha
+// `alpha`). Built only into the ridden Silly Goose's full and balanced meshes, as the mesh's optional section: drawn only while drilling.
+const WHIRL = Object.freeze({ at: Object.freeze([-.3, .58]), front: .75, back: -1.55, radius: .5, tip: .05, turns: 2.2, width: .07, alpha: .55,
+  bands: Object.freeze({ full: 3, balanced: 2 }), cols: Object.freeze({ full: 26, balanced: 12 }) });
 const SEAT_F = -.13, HS0 = TRI_ART.headScale * G0.headScale; // the head's scale (the standard view's, a little bigger in the round) // the saddle's place along the back (the standard view's seat sits over the body's middle)
 const BONES = (() => {
   const W = {}, out = [], add = (name, parent, w) => { W[name] = w; const p = parent ? W[parent] : [0, 0, 0]; out.push({ name, parent, at: [w[0] - p[0], w[1] - p[1], w[2] - p[2]] }); };
@@ -54,6 +58,7 @@ const BONES = (() => {
   add('frill', 'head', [SPINE_AT.head[0] - .06 * HS0, 0, SPINE_AT.head[1] + .14 * HS0]); // over the back of the skull, its lower edges wrapping the cheeks
   add('tail1', 'pelvis', S('tail1')); add('tail2', 'tail1', S('tail2')); add('tail3', 'tail2', S('tail3')); add('tail4', 'tail3', S('tail4'));
   { const [u, , rz] = sectionAt(SEAT_F); add('saddle', 'spine', [SEAT_F, 0, u + rz]); }
+  add('whirl', 'root', [WHIRL.at[0], 0, WHIRL.at[1]]); // the drill's whirlwind, turning about the body's long axis
   for (const [side, s] of [['L', -1], ['R', 1]]) {
     const hx = -.3, hz = G0.hip - .1, hy = s * G0.hipWidth;
     add('thigh' + side, 'pelvis', [hx, hy, hz]); add('shin' + side, 'thigh' + side, [hx, hy, hz - G0.femur]); add('hock' + side, 'shin' + side, [hx, hy, hz - G0.femur - G0.tibia]); add('footH' + side, 'hock' + side, [hx, hy, hz - G0.femur - G0.tibia - G0.hindCannon]);
@@ -191,6 +196,18 @@ function buildTriceratopsMesh(tier, saddle) {
     if (silly && !low) B.color(0xfbfbf4).lathe({ at: [-.13, 0, .1], F: [-.35, 0, .94], rings: [[0, .006], [.04, .03], [.16, .02], [.22, 0]], seg: 5, rs: .25 });
     void clothDark; void seatZ;
   }
+  // ---- the drill's whirlwind (the optional section: the frame asks for it while drilling)
+  if (saddle === 'silly' && !low) {
+    B.mark().bone('whirl');
+    const W = WHIRL, n = W.bands[tier] ?? 2, cols = W.cols[tier] ?? 12, wb = TRICERATOPS_SKELETON.bindWorld, o = BI.whirl * 3;
+    for (let k = 0; k < n; k++) {
+      const grid = [[], []];
+      for (let c = 0; c < cols; c++) { const t = c / (cols - 1), f = W.front + (W.back - W.front) * t, ang = k * Math.PI * 2 / n + t * W.turns * Math.PI * 2;
+        const r = (W.tip + (W.radius - W.tip) * Math.min(1, (f - W.back) / (W.at[0] - .25 - W.back))) * (t < .1 ? .75 + 2.5 * t : 1);
+        for (const side of [0, 1]) grid[side].push([f + (side ? .5 : -.5) * W.width, wb[o + 1] + Math.cos(ang) * r, wb[o + 2] + Math.sin(ang) * r]); } // model space round the whirl bone's axis
+      B.color(0xf6ecd2, 3).sheet({ grid, rowBones: [['whirl', 'whirl', 0], ['whirl', 'whirl', 0]], tone: (r, c) => lerpHex(0xfff8e4, 0xd9c49a, c / (cols - 1)) });
+    }
+  }
   return B.done();
 }
 const MESHES = new Map();
@@ -205,7 +222,7 @@ export function createTriceratopsTrack() {
     gait: createGait(LEGS.map((L, k) => ({ side: L.side * .2, fore: L.hind ? LEG_FORE.hind : LEG_FORE.fore, phase: WALK_PHASE[k] }))),
     v: new Float64Array(K), w: new Float64Array(K), airV: 0, yaw: NaN, at: NaN, hp: NaN, hitAt: -Infinity, hitSide: 1, airWas: 0, landAt: -Infinity, deathAt: null, deathDir: 1, x: 0, y: 0,
     frame: { kind: 'triceratops', tier: 'full', mesh: null, skin: null, boneCount: TRICERATOPS_SKELETON.count, alpha: 1, hit: 0, emitK: new Float32Array(4), emitA: new Float32Array(4),
-      x: 0, y: 0, z: 0, yaw: 0, scale: 1, shadow: 1, air: 0, feet: new Float64Array(8), phase: '', contact: 0, cloud: false, ridden: false, neckPitch: 0, roll: 0, riderTop: 0 },
+      x: 0, y: 0, z: 0, yaw: 0, scale: 1, shadow: 1, air: 0, feet: new Float64Array(8), phase: '', contact: 0, cloud: false, ridden: false, neckPitch: 0, roll: 0 },
   };
 }
 
@@ -263,7 +280,7 @@ export function sampleTriceratops(tr, e, env) {
     rollAngle = (1.25 * side - bounce) * tr.deathDir; alpha *= 1 - clamp01((death - .82) / .18); }
   // the ridden drill: the whole body turns about its long axis through its middle, kept above its support
   let rx = x, ry = y;
-  if (env.drill) { rollAngle = env.drill.angle; const p = Number.isFinite(env.drill.pivot) ? env.drill.pivot : G.drill.pivot * S, c = Math.cos(rollAngle), s = Math.sin(rollAngle); rootZ += p * (1 - c) + Math.max(0, -c) * .2 * S; rx += -sf * s * p; ry += cf * s * p; }
+  if (env.drill) rollAngle = reduce ? 0 : .06 * Math.sin((env.drill.angle || 0) * .5); // upright: only a small wobble (the whirlwind turns)
   rootZ += env.lift || 0;
   setEuler(P, BI.root, yaw, 0, rollAngle); P.scl[BI.root] = S; resolveBone(P, BI.root, rx, ry, rootZ);
   const pitch = V[KI.pitch], lean = V[KI.lean] * A.lean;
@@ -286,6 +303,7 @@ export function sampleTriceratops(tr, e, env) {
     const swing = V[KI.tailSide] * .4 + (reduce ? 0 : .05 * Math.sin(t * 1.6 - i * .6) * w * (1 - stun));
     setEuler(P, BI[TAIL[i]], swing, lift, 0); resolveBone(P, BI[TAIL[i]]); }
   P.scl[BI.saddle] = 1; resolveBone(P, BI.saddle);
+  setEuler(P, BI.whirl, 0, 0, env.drill ? env.drill.angle || 0 : 0); P.scl[BI.whirl] = env.drill ? 1 : .001; resolveBone(P, BI.whirl);
   // ------------------------------------------------------------------ the legs
   for (let k = 0; k < 4; k++) {
     const L = LEGS[k], top = BI[L.top], hi = top * 3, len = (L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S;
@@ -308,12 +326,10 @@ export function sampleTriceratops(tr, e, env) {
   }
   writeSkin(P);
   const F = tr.frame, life = dead ? Math.max(0, 1 - death * 2) : 1;
-  F.emitK[0] = life; F.emitK[1] = 0; F.emitK[2] = 0; F.emitK[3] = 0; F.emitA[0] = 1; F.emitA[1] = 1; F.emitA[2] = 1; F.emitA[3] = 1;
+  F.emitK[0] = life; F.emitK[1] = 0; F.emitK[2] = 1.1; F.emitK[3] = 0; F.emitA[0] = 1; F.emitA[1] = 1; F.emitA[2] = WHIRL.alpha; F.emitA[3] = 1;
   F.tier = env.tier || 'full'; F.mesh = triceratopsMesh(F.tier, e); F.skin = P.skin; F.alpha = alpha; F.hit = Math.max(0, Math.min(1, Number(e.hitFlash) || 0)) * .8 + Math.max(0, hit) * .4;
-  F.x = x; F.y = y; F.z = env.z; F.yaw = yaw; F.scale = S; F.air = rootZ - env.z; F.shadow = 1 - Math.min(.6, F.air / (3 * S)); F.phase = name; F.contact = 0; F.cloud = false;
+  F.x = x; F.y = y; F.z = env.z; F.yaw = yaw; F.scale = S; F.air = rootZ - env.z; F.shadow = 1 - Math.min(.6, F.air / (3 * S)); F.phase = name; F.contact = 0; F.cloud = !!env.drill && ridden; // the whirlwind section
   F.ridden = ridden; F.neckPitch = hornPitch; F.roll = rollAngle;
-  // the top of the body over its seat this frame (the saddle, or the drill's upturned feet), in tiles over env.z: the upright rider sits on it
-  { let top = P.wp[BI.saddle * 3 + 2]; for (const L of LEGS) top = Math.max(top, P.wp[BI[L.foot] * 3 + 2] + G.foot * S); F.riderTop = top - env.z; }
   return F;
 }
 export const triceratopsBone = (tr, name) => { const i = BI[name]; return [tr.pose.wp[i * 3], tr.pose.wp[i * 3 + 1], tr.pose.wp[i * 3 + 2]]; };

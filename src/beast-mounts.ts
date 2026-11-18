@@ -100,27 +100,30 @@ export const TRICERATOPS_COMPOSITE = Object.freeze({ halfWidth: 3.7, drillHeight
 // rider on its card (Tim approved, 2026-11-18); false keeps the whole ridden composite (mount, saddle, rider) on the card, as release 988 framed it. Wild herds
 // always use the body. One switch, presentation only.
 export const TRICERATOPS_CLOSE_VIEW = Object.freeze({ riddenBody: true });
-// The rotating side portrait must stay above its support plane. Bounds include the
-// saddle and rider; this lift is presentation only and never changes jump/contact state.
-// The rider through the drill (Tim, 2026-11-18: "the rider stays upright and holds on"): never rolled with the body, but seated upright
-// on whichever of the saddle or the upturned underside is on top, leaning a little into the spin (`lean` radians at most), never below
-// or inside the body. `height` / `halfWidth`: the upright rider's box in tiles over that anchor (included in the frame's bounds).
-export const TRICERATOPS_DRILL_RIDER = Object.freeze({ height: 1.05, halfWidth: .32, lean: .16, tuck: .45 }); // tuck: the drill's folded feet, in tiles over the standing feet line
+// The rotating side portrait of release 988 (kept for its bounds; the drill is now drawn upright, 2026-11-18). Bounds include the
+// saddle and rider.
 export function triceratopsDrillFrame(pose, aim = pose, jump = 0) {
   const angle = (Math.atan2(aim.y, aim.x) + pose.bank) * pose.turnIn;
-  const c = Math.cos(angle), s = Math.sin(angle), B = TRICERATOPS_HORN_POSE, R = TRICERATOPS_DRILL_RIDER, M = MOUNT_BEASTS.triceratops;
-  const at = (x, y) => { const dy = (y + pose.pivot) * pose.roll; return [x * c - dy * s, x * s + dy * c - pose.pivot]; };
+  const c = Math.cos(angle), s = Math.sin(angle), B = TRICERATOPS_HORN_POSE;
   let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-  for (const x of [-B.halfWidth, B.halfWidth]) for (const y of [-B.height + R.height, 0]) { // the mount and saddle (the rider is placed below)
-    const [xx, yy] = at(x, y); left = Math.min(left, xx); right = Math.max(right, xx); top = Math.min(top, yy); bottom = Math.max(bottom, yy);
+  for (const x of [-B.halfWidth, B.halfWidth]) for (const y of [-B.height, 0]) {
+    const dy = (y + pose.pivot) * pose.roll, xx = x * c - dy * s, yy = x * s + dy * c - pose.pivot;
+    left = Math.min(left, xx); right = Math.max(right, xx); top = Math.min(top, yy); bottom = Math.max(bottom, yy);
   }
-  // the rider's anchor: over the seat, on whichever is uppermost of the saddle and the upturned feet (drawn facing left: seatX mirrors)
-  const sx = -(Number(M.seatX) || 0), seat = at(sx, -M.seat), feet = at(sx, -R.tuck), up = feet[1] < seat[1] ? feet : seat;
-  const lean = Math.max(-R.lean, Math.min(R.lean, R.lean * Math.sin(Number(pose.spin) || 0) * pose.turnIn));
-  left = Math.min(left, up[0] - R.halfWidth); right = Math.max(right, up[0] + R.halfWidth); top = Math.min(top, up[1] - R.height);
   const clearance = Math.max(0, bottom - jump + .02);
-  return { angle, clearance, halfWidth: Math.max(Math.abs(left), Math.abs(right)), height: -top + clearance, bottom: bottom - clearance - jump,
-    riderX: up[0], riderY: up[1] - clearance, riderLean: lean, seatX: seat[0], seatY: seat[1] - clearance, flipped: up === feet };
+  return { angle, clearance, halfWidth: Math.max(Math.abs(left), Math.abs(right)), height: -top + clearance, bottom: bottom - clearance - jump };
+}
+// The drill's whirlwind (both views): `turns` turns of its bands over the drill; under Reduced Motion a slow `quiet` radians a second.
+export const TRICERATOPS_WHIRL = Object.freeze({ turns: 4, quiet: .8 });
+export function triceratopsWhirlAngle(elapsedMs, totalMs, reduced = false) {
+  const e = Math.max(0, Number(elapsedMs) || 0);
+  return reduced ? TRICERATOPS_WHIRL.quiet * e / 1000 : Math.PI * 2 * TRICERATOPS_WHIRL.turns * Math.min(1, e / Math.max(1, Number(totalMs) || 1));
+}
+// The Silly Goose drills tail first: it faces away from the drill's aim (the view's facing when the camera gives one).
+export function triceratopsDrillFacing(viewFacing, pose) {
+  if (viewFacing === "left" || viewFacing === "right") return viewFacing === "left" ? "right" : "left";
+  if (viewFacing === "up" || viewFacing === "down") return viewFacing === "up" ? "down" : "up";
+  return Math.abs(pose.x) >= Math.abs(pose.y) ? (pose.x < 0 ? "right" : "left") : (pose.y < 0 ? "down" : "up");
 }
 export function triceratopsDrillPose(g, mount, now, reduced = false) {
   const q = g.triceratopsJump, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;

@@ -41,8 +41,8 @@ import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
-import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
-import { drawMount, drawMountFront, drawMountShadow, MOUNT_DRAW } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -3129,22 +3129,14 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
-      let drillFrame = null;
+      // The Silly Goose's drill (Tim, 2026-11-18: no spin of the body): mount, saddle and rider stay upright as one group, with a small
+      // wobble; the spin is the whirlwind round him (triceratops-render.ts). The shadow stays at the feet.
       if (drillPose) {
-        drawMountShadow(ctx, mountRide, p, s, lift); // r988 review: at the feet, outside the roll (it never turns with the body or floats over it)
-        const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
-        const frame = drillFrame = triceratopsDrillFrame(drillPose, aim, lift / s);
-        if (Number.isFinite(MOUNT_DRAW.riderTop)) frame.riderY = -MOUNT_DRAW.riderTop; // Close View: on the skinned body's own top (its roll is the 3D body's)
-        ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
+        drawMountShadow(ctx, mountRide, p, s, lift);
+        const w = (Number(drillPose.bank) || 0) * .35, fx = (p.x + .5) * s, fy = (p.y + .82) * s - lift;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(w); ctx.scale(1, 1); ctx.translate(-fx, -fy); // one upright group (unit scale: never flipped)
       }
-      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
-      // The drill (Tim, 2026-11-18): the mount and its saddle roll; the rider does not. Upright on whichever of the saddle or the upturned
-      // underside is on top (TRICERATOPS_DRILL_RIDER), leaning a little into the spin, gripping a strap to the pommel (drawn below).
-      // (inside the composite's roll, undone exactly: the composite's single transform group still holds mount, saddle and rider)
-      if (drillFrame && seatInfo) { const fx = (p.x + .5) * s, fy = (p.y + .82) * s - lift, rx = fx + drillFrame.riderX * s, ry = fy + drillFrame.riderY * s, pvx = fx, pvy = (p.y + .82 - drillPose.pivot) * s - lift;
-        ctx.save(); ctx.translate(pvx, pvy); ctx.scale(1, 1 / drillPose.roll); ctx.rotate(-drillFrame.angle); ctx.translate(-pvx, -(pvy - drillFrame.clearance * s)); // back to the world's axes
-        ctx.translate(rx, ry); ctx.rotate(drillFrame.riderLean); ctx.translate(-(fx + seatInfo.dx), -((p.y + .8) * s - lift - seat)); }
+      const ride = mountRide, mountFacing = drillPose ? triceratopsDrillFacing(mountComposite?.viewFacing, drillPose) : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3174,11 +3166,7 @@ export function render(ctx, g, w, h, now) {
       if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
-      if (drillFrame && seatInfo) ctx.restore(); // the upright rider
       if (drillPose) ctx.restore();
-      if (drillFrame && seatInfo) { const fx = (p.x + .5) * s, fy = (p.y + .82) * s - lift, rx = fx + drillFrame.riderX * s, ry = fy + drillFrame.riderY * s, c = Math.cos(drillFrame.riderLean), sn = Math.sin(drillFrame.riderLean), hx = rx + (.16 * c + .5 * sn) * s, hy = ry + (.16 * sn - .5 * c) * s, px = fx + drillFrame.seatX * s, py = fy + drillFrame.seatY * s;
-        ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3a2112"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo((px + hx) / 2 + s * .12, (py + hy) / 2, hx, hy); ctx.stroke(); ctx.strokeStyle = "#6b3f22"; ctx.lineWidth = Math.max(1, s * .04); ctx.stroke();
-        ctx.fillStyle = "#d9b48a"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(2, s * .07), 0, Math.PI * 2); ctx.fill(); ctx.restore(); } // the grab strap from the pommel to the rider's hand
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
       if (drone&&!captureDrone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)

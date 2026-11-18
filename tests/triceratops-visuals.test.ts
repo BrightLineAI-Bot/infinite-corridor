@@ -118,15 +118,15 @@ test("the Close View pose is deterministic, follows the accepted fields, and all
   // reduced motion: an idle body holds still
   const q = createTriceratopsTrack(), r1 = [...sampleTriceratops(q, wild(), env({ reduce: true, now: 1000 })).skin], r2 = [...sampleTriceratops(q, wild(), env({ reduce: true, now: 4000 })).skin];
   assert.deepEqual(r1, r2);
-  // the ridden horn pose: the neck carries exactly the accepted pitch; a drill rolls the body and keeps it above its support
+  // the ridden horn pose: the neck carries exactly the accepted pitch; the drill keeps the body upright (a small wobble) and turns its whirlwind
   const horn = { phase: "bash", pitch: .1, reach: .16, lower: .025, x: 1, y: 0 };
   const [, h] = run({ ...RIDDEN(), id: "m", hp: 100, mountHornPose: horn }, { scale: MOUNT_BEASTS.triceratops.scale, yaw: 0, horn }, 5);
-  assert.equal(h.neckPitch, .1); assert.equal(h.ridden, true);
+  assert.equal(h.neckPitch, .1); assert.equal(h.ridden, true); assert.equal(h.cloud, false);
   for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
-    const [t2, d] = run({ ...RIDDEN("silly"), id: "s", hp: 100 }, { scale: MOUNT_BEASTS.triceratops.scale, yaw: 0, air: .3, z: .3, drill: { angle } }, 3);
-    assert.equal(d.roll, angle);
-    const wp = t2.pose.wp; let low = Infinity; for (let i = 0; i < TRICERATOPS_SKELETON.count; i++) low = Math.min(low, wp[i * 3 + 2]);
-    assert.ok(low >= -.05, `drill ${angle}: a bone at ${low}`);
+    const [t2, d] = run({ ...RIDDEN("silly"), id: "s", hp: 100, mountDrill: true }, { scale: MOUNT_BEASTS.triceratops.scale, yaw: 0, air: .3, z: .3, drill: { angle } }, 3);
+    assert.ok(Math.abs(d.roll) <= .06 + 1e-9, `upright: roll ${d.roll}`); assert.equal(d.cloud, true, "the whirlwind section is drawn");
+    const wp = t2.pose.wp; let low = Infinity; for (let i = 0; i < TRICERATOPS_SKELETON.count; i++) if (TRICERATOPS_SKELETON.names[i] !== "whirl") low = Math.min(low, wp[i * 3 + 2]);
+    assert.ok(low >= .3 - .05, `drill ${angle}: a bone at ${low}`);
   }
   // the dispositions sample alike at rest (one hide, one stance)
   const [, g] = run(wild("good")), [, s] = run({ ...wild("silly"), id: "wild-good" }), [, bd] = run({ ...wild("bad"), id: "wild-good" });

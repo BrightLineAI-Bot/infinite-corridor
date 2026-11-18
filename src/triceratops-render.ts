@@ -24,6 +24,7 @@ export const TRI_ART = Object.freeze({
   spine: 26, length: 1.42, hipAt: .42, shoulderAt: .73, hip: .6, crouchDrop: .14, headScale: 1.48,
   thigh: .27, shin: .24, upperArm: .22, foreArm: .2, foot: .05, stride: .14, settle: 6, ease: 10, strikeEase: 18,
   landMs: 380, lean: .12, tailBounce: .08, quietBounce: .05,
+  whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
 });
 // How each pose bends the body. pitch (+ nose up; about the hips, or the shoulders nose down), head (+ raises the head), reach
 // (head pushed forward), open (beak), crouch, tailUp (+ up), tailSide (lateral swing, + to its left), frontLift (forefeet off the
@@ -230,9 +231,9 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   const dashing = e.mountView && (e.mountHornPose?.phase === "dash" || e.mountHornPose?.phase === "bash" && triceratopsHornAmount(e.mountHornPose) > .3);
   if (!reduce && dashing) { ctx.fillStyle = "rgba(185,168,136,.42)"; for (let i = 0; i < 4; i++) { const f = (t * 2.6 + i / 4) % 1; ctx.beginPath(); ctx.arc(-flip * (.2 + f * .75) * u, -(.04 + f * .2) * u, (.05 + f * .1) * u, 0, TAU); ctx.fill(); } }
   if (land > .05) { ctx.fillStyle = `rgba(185,168,136,${(.5 * land).toFixed(3)})`; for (let i = 0; i < 6; i++) { const sx = (i - 2.5) * .26, f = 1 - land; ctx.beginPath(); ctx.arc(flip * (sx + Math.sign(sx) * f * .35) * u, -(.03 + f * .12) * u, (.06 + f * .08) * u, 0, TAU); ctx.fill(); } }
-  if (poseName === "drill") { const tx = PX[0], ty = PY[0], spin = reduce ? 0 : t * 22; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, u * .022);
-    for (let i = 0; i < 5; i++) { const f = i / 5, x0 = flip * (tx + .1 + f * .55) * u, r = (.05 + f * .18) * u, a = spin + i * 1.3; ctx.strokeStyle = `rgba(255,248,214,${(.75 * (1 - f)).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(flip * (tx - .1 - f * .5) * u, -ty * u, r * .45, r, 0, a, a + 2.4); ctx.stroke(); void x0; }
-    ctx.lineCap = "butt"; }
+  // the Silly Goose's drill: no spin of the body (Tim, 2026-11-18); a whirlwind corkscrews round him tail first, tapering to a point
+  // past the tail tip (the bit). Bands in front of him strong, behind him faint; Reduced Motion holds them still.
+  if (poseName === "drill") drawWhirl(ctx, A, flip, u, PY[ih] + .02, PX[0], reduce ? 0 : t * A.whirlSpin);
   if (!reduce && poseName === "charge") { ctx.fillStyle = "rgba(185,168,136,.45)"; for (let i = 0; i < 4; i++) { const f = (t * 2.4 + i / 4) % 1; ctx.beginPath(); ctx.arc(-flip * (.4 + f * .7) * u, -(.05 + f * .18) * u, (.05 + f * .09) * u, 0, TAU); ctx.fill(); } }
   if (poseName === "stomp") { ctx.strokeStyle = "rgba(255,240,160,.7)"; ctx.lineWidth = Math.max(1.5, u * .03); const r = (reduce ? .5 : .35 + .3 * ((t * 3) % 1)) * u; ctx.beginPath(); ctx.ellipse(flip * .3 * u, 0, r, r * .3, 0, 0, TAU); ctx.stroke(); }
   if (e.pack?.attack === "heavySweep" && poseName === "sweep") { ctx.strokeStyle = "rgba(255,240,160,.65)"; ctx.lineWidth = Math.max(2, u * .045); ctx.beginPath(); ctx.arc(-flip * .55 * u, -(.48 * u) + bounce * u, u * .55, flip > 0 ? 2.6 : -.9, flip > 0 ? 4.2 : .55); ctx.stroke(); }
@@ -302,4 +303,21 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
   if (angry) { const l0 = H(.075, .08), l1 = H(.17, .075); ctx.fillStyle = A.bodyDark; ctx.beginPath(); mv(H(.07, .095)); qc(H(.12, .11), H(.175, .085)); ln(l1); qc(H(.12, .05), l0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke(); }
   else { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.08, .085)); qc(H(.12, .105), H(.165, .085)); ctx.stroke(); ctx.lineCap = "butt"; }
   void poseName;
+}
+
+// The drill's whirlwind in body units at (0, 0) = the feet, y up drawn as -y: `bands` helices round the long axis at height cy, from
+// `front` back to `back` past the tail tip (tx), each split into segments drawn bright where they pass in front of him.
+function drawWhirl(ctx, A, flip, u, cy, tx, spin) {
+  const W = A.whirl, end = tx + W.back; ctx.lineCap = "round";
+  for (let k = 0; k < W.bands; k++) {
+    let px = 0, py = 0;
+    for (let i = 0; i <= W.steps; i++) {
+      const f = i / W.steps, x = W.front + (end - W.front) * f, ang = spin + k * Math.PI * 2 / W.bands + f * W.turns * Math.PI * 2;
+      const r = W.tip + (W.radius - W.tip) * Math.min(1, Math.max(0, (x - end) / (tx + .35 - end))), X = flip * x * u, Y = -(cy + Math.cos(ang) * r) * u;
+      if (i) { const front = Math.sin(ang) > 0, a = (front ? .78 : .22) * (1 - f * .45); ctx.strokeStyle = `rgba(246,236,210,${a.toFixed(3)})`; ctx.lineWidth = Math.max(1.2, u * W.width * (front ? 1 : .6) * (1 - f * .5));
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(X, Y); ctx.stroke(); }
+      px = X; py = Y;
+    }
+  }
+  ctx.lineCap = "butt";
 }

@@ -5,11 +5,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { stableMount, startRide, TRICERATOPS_ATTACKS, TRICERATOPS_HORN_SHOT, MOUNT_BEASTS, TRICERATOPS_DRILL_RIDER, triceratopsDrillFrame, triceratopsDrillPose } from "../src/beast-mounts.ts";
+import { stableMount, startRide, TRICERATOPS_ATTACKS, TRICERATOPS_HORN_SHOT, MOUNT_BEASTS, triceratopsWhirlAngle, triceratopsDrillFacing } from "../src/beast-mounts.ts";
 import { drawMount, drawMountShadow, MOUNT_DRAW } from "../src/beast-mounts-render.ts";
 import { projectileVisualPoint } from "../src/actor-presentation.ts";
 import { render } from "../src/renderer.ts";
-import { TRI_KEYS, TRI_HORN_BODY, triceratopsHornOverlay, triceratopsHornAmount, drawTriceratopsBody } from "../src/triceratops-render.ts";
+import { TRI_ART, TRI_KEYS, TRI_HORN_BODY, triceratopsHornOverlay, triceratopsHornAmount, drawTriceratopsBody } from "../src/triceratops-render.ts";
 import { createTriceratopsTrack, sampleTriceratops, triceratopsHornTip } from "../src/close-view-beast-triceratops.ts";
 
 const flat = () => ({ tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: "savannaGrass", elev: 0, blocked: false })), objects: [], enemySpawns: [] });
@@ -67,25 +67,31 @@ test("the Close View horns' tips at the end of the wind-up are where the shot is
   assert.ok(Math.abs(t[0] - 10 - H.tip) < .35, `tip forward ${t[0] - 10}`); assert.ok(Math.abs(t[1] - 10) < 1e-6); assert.ok(Math.abs(t[2] - H.height) < .35, `tip height ${t[2]}`);
 });
 
-test("the drill draws the mount's shadow at its feet, outside the roll", () => {
-  const g = mounted("silly"); g.save.closeView = false; g.presentation = { effectiveQuality: "full" }; g.save.lastAim = { x: 1, y: 0 };
-  g.update(.01, { state: { x: 0, y: 0 }, consume: (k) => k === "jump", held: () => false }, 100000); g.lastUpdateNow = 100195;
-  assert.equal(g.triceratopsJump?.kind, "drill");
-  const { ctx, log } = recorder(); render(ctx, g, 390, 844, g.lastUpdateNow);
-  const roll = log.findIndex((q) => q[0] === "scale" && q[1] === 1 && q[2] !== 1 && Math.abs(q[2]) <= 1);
-  assert.ok(roll > 0, "the drill's roll");
-  const shadowAt = (from, to) => { const out = []; for (let i = from; i < to; i++) if (log[i][0] === "fillStyle" && /^rgba\(4,4,6,/.test(log[i][1])) { const e = log.slice(i, i + 4).find((q) => q[0] === "ellipse"); if (e) out.push(e); } return out; };
-  const before = shadowAt(0, roll), after = shadowAt(roll, log.length);
-  assert.equal(after.length, 0, "no shadow inside the rolled transform");
-  const feet = before.find((e) => Math.abs(e[2] / e[1] - (g.player.y + .82) / (g.player.x + .5)) < 1e-6);
-  assert.ok(feet, "a shadow at the feet before the roll");
-  // the helper itself: at the feet, nothing when the skinned body owns the shadow
+test("the drill keeps the composite upright, its shadow at the feet, and wraps him in a whirlwind (slow under Reduced Motion)", () => {
+  for (const reduce of [false, true]) {
+    const g = mounted("silly"); g.save.closeView = false; g.presentation = { effectiveQuality: "full", reduceMotion: reduce }; g.save.lastAim = { x: 1, y: 0 };
+    g.update(.01, { state: { x: 0, y: 0 }, consume: (k) => k === "jump", held: () => false }, 100000);
+    const q = g.triceratopsJump; assert.equal(q?.kind, "drill");
+    for (let now = q.start + 15; now < q.drillUntil; now += 40) {
+      const { ctx, marks, depth } = tracked(); render(ctx, g, 390, 844, now); assert.equal(depth(), 0, "balanced canvas state");
+      // nothing of the mount, saddle or rider is drawn squashed or turned more than the wobble
+      for (const [k, v, m] of marks) if (["#171817", "#6b3f22", TRI_ART.body].includes(v) || /^#2f9aa6/.test(v)) {
+        assert.ok(m[3] > 0 && Math.abs(Math.hypot(m[2], m[3]) / Math.hypot(m[0], m[1]) - 1) < 1e-6, `${v} upright and unsquashed`);
+        assert.ok(Math.abs(Math.atan2(m[1], m[0])) <= .05, `${v} turned ${Math.atan2(m[1], m[0])}`); }
+      assert.ok(marks.some(([k, v]) => k === "strokeStyle" && /^rgba\(246,236,210,/.test(v)), "the whirlwind's bands");
+      assert.ok(marks.some(([k, v, m]) => k === "fillStyle" && /^rgba\(4,4,6,/.test(v) && m[1] === 0 && m[2] === 0), "the shadow on the ground, untransformed");
+    }
+    // Reduced Motion: the bands turn slowly; otherwise they turn several times over the drill
+    assert.ok(triceratopsWhirlAngle(700, 780, true) < 1); assert.ok(triceratopsWhirlAngle(700, 780, false) > 4 * Math.PI);
+  }
+  // the shadow: drawn at the feet by the composite (the body skips its own), never twice
   const r = recorder(); assert.equal(drawMountShadow(r.ctx, { beast: "triceratops" }, { x: 3, y: 4 }, 40, 30), true);
   const e = r.log.find((q) => q[0] === "ellipse"); assert.deepEqual([e[1], e[2]], [3.5 * 40, 4.82 * 40]);
   MOUNT_DRAW.skipBody = true; try { assert.equal(drawMountShadow(recorder().ctx, { beast: "triceratops" }, { x: 3, y: 4 }, 40), false); } finally { MOUNT_DRAW.skipBody = false; }
-  // the body itself draws no shadow while the drill's roll is applied
   const b = recorder(); drawMount(b.ctx, { id: "s", beast: "triceratops", variant: "silly" }, { x: 3, y: 4, facing: "left", walkPhase: 0 }, 40, 1000, 12, false, null, "left", { x: 1, y: 0 });
   assert.equal(b.log.some((q) => q[0] === "fillStyle" && /^rgba\(4,4,6,/.test(q[1])), false);
+  // tail first: the Silly Goose faces away from the drill's aim
+  assert.equal(triceratopsDrillFacing(null, { x: 1, y: 0 }), "left"); assert.equal(triceratopsDrillFacing("left", { x: -1, y: 0 }), "right");
 });
 
 test("the Bash's contact arc is raised to the horns' height in both its record and the Standard View", () => {
@@ -134,28 +140,4 @@ function tracked() {
   return { ctx, marks, depth: () => stack.length };
 }
 
-test("through the whole drill the rider stays upright, above the body, gripping the strap; reduced motion stays still and upright", () => {
-  for (const reduce of [false, true]) {
-    const g = mounted("silly"); g.save.closeView = false; g.presentation = { effectiveQuality: "full", reduceMotion: reduce }; g.save.lastAim = { x: 1, y: 0 };
-    g.update(.01, { state: { x: 0, y: 0 }, consume: (k) => k === "jump", held: () => false }, 100000);
-    const q = g.triceratopsJump; assert.equal(q?.kind, "drill");
-    let flippedSeen = false;
-    for (let now = q.start + 10; now < q.drillUntil; now += 25) {
-      g.lastUpdateNow = now; const pose = triceratopsDrillPose(g, g.mountRide(), now, reduce); if (!pose) continue;
-      const f = triceratopsDrillFrame(pose, pose, 0), R = TRICERATOPS_DRILL_RIDER;
-      // above the body: over whichever of the saddle and the upturned underside is on top, never below either
-      const at = (x: number, y: number) => { const c = Math.cos(f.angle), s = Math.sin(f.angle), dy = (y + pose.pivot) * pose.roll; return x * s + dy * c - pose.pivot - f.clearance; };
-      const sx = -MOUNT_BEASTS.triceratops.seatX;
-      assert.ok(f.riderY <= at(sx, -MOUNT_BEASTS.triceratops.seat) + 1e-9 && f.riderY <= at(sx, -R.tuck) + 1e-9, `rider above the body at ${now}`);
-      assert.ok(Math.abs(f.riderLean) <= R.lean + 1e-9); if (reduce) assert.equal(f.riderLean, 0);
-      flippedSeen ||= f.flipped;
-      // drawn: the rider's fills land upright (no flip, no roll beyond the lean), and the shadow stays at the feet outside the roll
-      const { ctx, marks, depth } = tracked(); render(ctx, g, 390, 844, now); assert.equal(depth(), 0, "balanced canvas state");
-      const rider = marks.filter((q) => q[0] === "fillStyle" && q[1] === "#171817");
-      assert.ok(rider.length > 0, "the rider is drawn");
-      for (const [, , m] of rider) { const sy = Math.hypot(m[2], m[3]), ang = Math.atan2(m[1], m[0]); assert.ok(m[3] > 0, "upright"); assert.ok(Math.abs(ang) <= R.lean + 1e-6, `lean ${ang}`); assert.ok(Math.abs(sy / Math.hypot(m[0], m[1]) - 1) < 1e-6, "never squashed by the roll"); }
-      assert.ok(marks.some((q) => q[0] === "strokeStyle" && q[1] === "#3a2112"), "the grab strap");
-    }
-    if (!reduce) assert.ok(flippedSeen, "the roll turns the body over at least once"); else assert.equal(flippedSeen, false);
-  }
-});
+
