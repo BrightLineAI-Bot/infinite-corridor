@@ -26,7 +26,9 @@ function fight(only, seconds, each, { player = { x: 30, y: 20 } } = {}) {
   Object.assign(e, { id: 'astral-cv', aggro: true, hp: 5e5, maxHp: 1e6, damage: 40 }); w.enemies.push(e);
   for (let t = 0; t < seconds; t += w.dt) {
     w.now += w.dt * 1000; now += w.dt * 1000;
-    if (e.astral && !e.astral.move && e.astral.recovery < ASTRAL.recovery - .2) startAstralMove(e.astral, only, w.player);
+    // 2026-11-18 (Tim, world-boss pacing): ASTRAL.recovery became .65 × WORLD_BOSS_PACE.gap; the helper keeps its old moment (.45 s of
+    // recovery left), so the Worm still rests long enough in worm form for the morph to finish.
+    if (e.astral && !e.astral.move && e.astral.recovery < .45) startAstralMove(e.astral, only, w.player);
     updateAstralActor(e, w);
     each(sampleAstral(tr, e, env(e, now, { target: w.player })), e, tr, now, w);
   }

@@ -5,11 +5,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { RETREAT, worldBeastsLost, retreatsUnderWay, advanceRetreat } from '../src/world-beasts.ts';
+import { RETREAT, worldBeastsLost, retreatsUnderWay, advanceRetreat, BEAST_ENGAGEMENT } from '../src/world-beasts.ts';
 
 const SIDE = { east: [1, 0], west: [-1, 0], north: [0, -1], south: [0, 1] };
 function retreatOut(id = 'morphingBlob') {
-  const s = freshSave(); s.seed = 'FOLLOW'; s.playSeconds = 1000; s.worldBeasts[id].active = { rx: 8, ry: 8, tries: 1, patience: 179.99 };
+  // 2026-11-18 (Tim): the per-fight `patience` clock (180 s) became the 15-minute engagement window (BEAST_ENGAGEMENT, `engagedAt` on save.playSeconds); this fixture starts the hunt just short of its end.
+  const s = freshSave(); s.seed = 'FOLLOW'; s.playSeconds = 1000; s.worldBeasts[id].active = { rx: 8, ry: 8, tries: 1, engagedAt: 1000 - BEAST_ENGAGEMENT.seconds + .01 };
   const g = new Game(s, 0); g.rx = 8; g.ry = 8; g.loadArea('overworld'); const e = g.enemies.find((q) => q.worldBeast === id); e.aggro = true;
   let t = 0; const step = () => { g.player.hp = 999; g.update(1 / 30, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, t * 1000); t += 1 / 30; };
   for (let i = 0; i < 60 && !e.retreating; i++) step();

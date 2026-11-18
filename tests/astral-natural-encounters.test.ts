@@ -112,17 +112,16 @@ test('natural hostile survivor retains wounded health and its own hunt when the 
   assert.equal(restored.enemies.filter(e=>e.worldBeast==='voidWalker').length,1);assert.equal(restored.save.worldBeasts.voidWalker.active.dungeon,id);
 });
 
-test('natural hostile pair uses shared four-death retries, wounded rematches (release 427) and terminal fourth departure',()=>{ // release 307: four tries
+// 2026-11-18 (Tim): the 15-minute engagement window is the only limit; deaths no longer end a hunt (was: the fourth death ended it).
+test('natural hostile pair counts shared deaths, keeps its wounded rematches (release 427) and no death ends it',()=>{ // release 307: four tries, retired 2026-11-18
   const {g,save,id}=natural('hostile');const currency=save.currency;
-  for(let attempt=1;attempt<=4;attempt++) {
+  for(let attempt=1;attempt<=5;attempt++) {
     const owner=g.enemies.find(e=>e.worldBeast==='astralWorm'),rider=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(owner&&rider);
     owner.hp=Math.max(1,owner.maxHp-111);rider.hp=Math.max(1,rider.maxHp-222);const max=[owner.maxHp,rider.maxHp];
     g.player.hp=0;advance(g,attempt*1000);assert.equal(g.save.worldFlags.deaths,attempt);assert.equal(g.area,'dungeon','ordinary dungeon death wrapper returns to its entry');
-    if(attempt<4){assert.equal(save.worldBeasts.astralWorm.active.tries,attempt);assert.equal(save.worldBeasts.voidWalker.active.tries,attempt);}
-    else {assert.equal(save.worldBeasts.astralWorm.active,null);assert.equal(save.worldBeasts.voidWalker.active,null);assert.equal(save.worldBeasts.astralWorm.escaped,1);assert.equal(save.worldBeasts.voidWalker.escaped,1);}
+    assert.equal(save.worldBeasts.astralWorm.active.tries,attempt);assert.equal(save.worldBeasts.voidWalker.active.tries,attempt);assert.equal(save.worldBeasts.astralWorm.escaped,0);
     returnToDungeon(g,id);
-    if(attempt<4){const o=g.enemies.find(e=>e.worldBeast==='astralWorm'),r=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(o&&r);assert.ok(o.hp<max[0]&&r.hp<max[1],'release 427: the pair keep their wounds');assert.equal(o.astral,undefined);}
-    else assert.equal(g.enemies.some(e=>!e.dead&&(e.worldBeast==='astralWorm'||e.worldBeast==='voidWalker')),false);
+    {const o=g.enemies.find(e=>e.worldBeast==='astralWorm'),r=g.enemies.find(e=>e.worldBeast==='voidWalker');assert.ok(o&&r);assert.ok(o.hp<max[0]&&r.hp<max[1],'release 427: the pair keep their wounds');assert.equal(o.astral,undefined);}
   }
   assert.equal(save.currency,currency);assert.equal(save.worldBeasts.astralWorm.slain,0);assert.equal(save.worldBeasts.voidWalker.slain,0);
 });
