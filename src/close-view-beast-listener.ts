@@ -560,7 +560,7 @@ export function sampleListener(tr, e, env) {
       const ar = reduce ? 0 : .03 * wobble(t * .9, s * 3);
       armIK(P, fit, tag, s, Wv[o] + sway, Wv[o + 1], Wv[o + 2] + ar, R.upperArm, R.foreArm, S, cf, sf);
       const jawArm = s > 0 && ACT.reach > 0;
-      if (jawArm) { D[0] = ACT.reachX - P.wp[BI.handR * 3]; D[1] = ACT.reachY - P.wp[BI.handR * 3 + 1]; D[2] = env.z + .45 - P.wp[BI.handR * 3 + 2]; const l = Math.hypot(D[0], D[1], D[2]) || 1; for (let k = 0; k < 3; k++) D[k] /= l; }
+      if (jawArm) { resolveBone(P, BI.handR); D[0] = ACT.reachX - P.wp[BI.handR * 3]; D[1] = ACT.reachY - P.wp[BI.handR * 3 + 1]; D[2] = env.z + .45 - P.wp[BI.handR * 3 + 2]; const l = Math.hypot(D[0], D[1], D[2]) || 1; for (let k = 0; k < 3; k++) D[k] /= l; }
       else if (cabled) { const c = CSLOT[s < 0 ? 6 : 7]; D[0] = CAB[c * 2]; D[1] = CAB[c * 2 + 1]; D[2] = .05; }
       else chestDir(P, Wv[od], Wv[od + 1], Wv[od + 2], D);
       // the wrist turns into the tendril
