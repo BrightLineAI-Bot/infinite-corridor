@@ -126,7 +126,7 @@ test('791: enter and exit leave the production journey byte-identical, and the s
   // Mess with things: walk away, spend, wound, change gear, export as a save would.
   let t = walk(lab.game, 120, -1, -0.6, 50000);
   assert.ok(Math.hypot(lab.game.player.x - game.player.x, lab.game.player.y - game.player.y) > 1, 'the scratch Wayfarer walked away');
-  lab.save.lumenDust = 999; lab.save.level = 60; lab.save.equipment.primary = null; lab.game.player.hp = 1;
+  lab.save.lumenDust = 1000; lab.save.level = 60; lab.save.equipment.primary = null; lab.game.player.hp = 1;
   lab.save.futureField.kept.push(4); lab.save.session.futureSession = 'changed';
   lab.game.exportSnapshot(t);
   assert.equal(dump(ctl, PRODUCTION_DB), before, 'the laboratory never wrote the production database');
@@ -174,7 +174,7 @@ test('791: the laboratory page never loads production persistence or names a pro
   for (const [name, text] of sources) assert.doesNotMatch(text, /["'`]\.\.\//, `${name} has a parent-path literal`);
   // Its worker never caches the published identity, and the production worker precaches the new module.
   assert.match(readFileSync(new URL('../proving-ground/sw.js', import.meta.url), 'utf8'), /release-identity\.json"\)\)return/);
-  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=999/);
+  for (const f of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(f, import.meta.url), 'utf8'), /src\/proving-ground-handoff\.js\?v=1000/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'proving-ground-handoff'/);
 });
 

@@ -6,6 +6,7 @@ import * as CV from '../src/close-view.ts';
 import { render } from '../src/renderer.ts';
 import { outdoorRelief, outdoorSurfaceZ } from '../src/close-view-outdoor.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
+const legacyRig = (run: () => void) => { CV.CLOSE_VIEW_HOOKS.orbit = false; try { run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = null; } }; // the pre-2026-11-18 collision rig
 
 // Tim, 2026-11-11: the Close View camera pulled back in every preset (wide the farthest), and a second targeting pass toward a
 // reliable phone lock-on: one priority for every choice, attacks at the lock, a sticky lock through brief occlusion, smooth
@@ -53,10 +54,14 @@ test('every Close View preset sits farther back than before, the wide one farthe
 test('in open ground each preset settles at its full boom, with the Wayfarer low of centre and whole, in portrait and landscape', () => {
   for (const [w, h] of [[390, 844], [844, 390]]) for (const id of ['close', 'standard', 'wide']) {
     const g = fixture({ preset: id, follow: false, w, h }), c = frame(g, 120, w, h), p = g.player, z = interiorSurfaceHeight(g.map, p.x + .5, p.y + .75);
-    assert.ok(Math.abs(c.distance - C.presets[id].distance) < .02, `${id} ${w}x${h}: full boom (${c.distance})`);
+    // 2026-11-18 (Tim's review: indoors the Wayfarer bigger on screen): with the orbit indoors the full boom is the preset's
+    // orbitDistance in portrait; on a short landscape screen it stands back as far as keeps her whole (CLOSE_VIEW.camera.orbit.fit)
+    const want = C.presets[id].orbitDistance, fitD = h > w ? want : Math.max(want, want * C.camera.framing.bodyHeight * Math.max((w / 2) / Math.tan(C.presets[id].fov * Math.PI / 360), (h / 2) / Math.tan(C.fov.verticalMax * Math.PI / 360)) / ((1 - 2 * C.camera.framing.margin) * h) * C.camera.orbit.fit / Math.hypot(want, C.presets[id].orbitHeight - C.camera.orbit.focus));
+    assert.ok(Math.abs(c.distance - fitD) < .02, `${id} ${w}x${h}: full boom (${c.distance} vs ${fitD})`);
     const feet = CV.closeViewProject(p.x + .5, p.y + .82, z), head = CV.closeViewProject(p.x + .5, p.y + .82, z + C.camera.framing.bodyHeight);
     assert.ok(feet && head, 'both ends in front of the camera');
-    assert.ok(feet.sy > h * .5 && feet.sy <= h * (h > w ? .7 : 1 - C.camera.framing.margin) + 1, `${id} ${w}x${h}: feet low of centre (${feet.sy.toFixed(0)} of ${h})`);
+    // 2026-11-18 (Tim's review): the nearer indoor orbit puts the close preset's feet a little lower in portrait (about 70.5%): .72
+    assert.ok(feet.sy > h * .5 && feet.sy <= h * (h > w ? .72 : 1 - C.camera.framing.margin) + 1, `${id} ${w}x${h}: feet low of centre (${feet.sy.toFixed(0)} of ${h})`);
     assert.ok(head.sy > 0 && head.sy < feet.sy && Math.abs(feet.sx - w / 2) < w * .25, `${id} ${w}x${h}: the whole Wayfarer in frame, near the middle`);
     // the floor ahead: a point 4 tiles beyond the Wayfarer is on screen, above them
     const ahead = CV.closeViewProject(p.x + .5 + 4, p.y + .82, z); assert.ok(ahead && ahead.sy > 0 && ahead.sy < feet.sy, `${id}: ground ahead shows`);
@@ -64,7 +69,10 @@ test('in open ground each preset settles at its full boom, with the Wayfarer low
   }
 });
 
-test('a wall behind the Wayfarer still pulls the longer boom in, never into the wall, and it lets out again', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('a wall behind the Wayfarer still pulls the longer boom in, never into the wall, and it lets out again', () => legacyRig(() => {
   for (const id of ['standard', 'wide']) {
     const g = fixture({ preset: id, follow: false }); for (let dy = -6; dy <= 6; dy++) wall(g, -2, dy);
     const c = frame(g, 60), px = g.player.x + .5, py = g.player.y + .75;
@@ -74,7 +82,7 @@ test('a wall behind the Wayfarer still pulls the longer boom in, never into the 
     let prev = c.distance, jump = 0; for (let i = 0; i < 240; i++) { const d = frame(g).distance; jump = Math.max(jump, Math.abs(d - prev)); prev = d; }
     assert.ok(Math.abs(prev - C.presets[id].distance) < .05, `${id}: let out again (${prev})`); assert.ok(jump < .1, `${id}: smoothly (${jump})`);
   }
-});
+}));
 
 test('target priority: close in front first, then a foe attacking, then the nearest; the first lock does not flip a moment later', () => {
   let g = fixture(); foe(g, 'far-ahead', 6, 0); foe(g, 'close-behind', -2, 1);
@@ -187,7 +195,10 @@ test('outdoors the camera stands high with the horizon in view; in a short lands
   }
 }));
 
-test('with its back to a two-level cliff the camera rises and looks down over it instead of pulling in, and holds still', () => overworld(() => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('with its back to a two-level cliff the camera rises and looks down over it instead of pulling in, and holds still', () => legacyRig(() => overworld(() => {
   for (const id of ['close', 'standard', 'wide']) {
     const o = outside(id, 23, 4, Math.PI, 390, 844), P = C.presets[id];
     assert.ok(o.c.distance > P.outdoorDistance - .15, `${id}: the full boom (or within the fixed samples' margin) (${o.c.distance.toFixed(2)})`);
@@ -199,4 +210,4 @@ test('with its back to a two-level cliff the camera rises and looks down over it
   }
   // too tall and too close for the rise alone: the boom shortens only as far as it must
   const t = outside('wide', 23.3, 4, Math.PI, 390, 844); assert.ok(t.c.distance > 4 && t.c.height - t.z <= C.presets.wide.outdoorHeight + C.camera.outdoor.riseMax + .03, `tight: ${t.c.distance.toFixed(2)}`);
-}));
+})));
