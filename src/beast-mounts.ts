@@ -30,6 +30,56 @@ export const MOUNT_BEASTS = {
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
 MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.7, seat: 1.65, saddle: "strap", speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
+// Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.
+export const TRICERATOPS_ATTACKS = {
+  dash: { range: 1.8, arc: 85, damage: 24, stun: .2 },
+  landing: { range: 3, arc: 360, damage: 32, stun: .4 },
+  drill: { acquire: 5, travel: 3, speed: 5, step: .2, maxSteps: 8, stop: 1.05, contact: 1.2, damage: 12, stun: .08, pulses: 3, pulseMs: 120, windupMs: 100, maxMs: 900 },
+  charge: { shortMs: 450, longMs: 950, maxMs: 2500 },
+  bash: { range: 2.4, arc: 75, damage: 40, stun: .3, stamina: 8, windupMs: 120 },
+  horn: { range: 8, speed: 12, damage: 48, stamina: 14, windupMs: 180, maxProjectiles: 2 },
+};
+// Presentation reads accepted gameplay phases; the short contact receipt uses the pause-adjusted clock.
+export const TRICERATOPS_HORN_POSE = Object.freeze({ recoverMs: 240, halfWidth: 3.9, height: 3.6 });
+export function triceratopsHornPose(g, mount, now, reduced = false) {
+  if (mount?.beast !== "triceratops" || !(g.player?.hp > 0) || g.fallen || g.swimming || g.fall || g.glide || g.droneLift) return null;
+  const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, logical = clock - (g.presentationPausedMs || 0);
+  if (clock < (g.player.stunnedUntil || 0) || clock < (g.player.heldUntil || 0) || g.mountLeap?.(clock)) return null;
+  const q = g.triceratopsCharge, contact = g.triceratopsHornContact, dash = g.triceratopsDash;
+  let phase, pitch = 0, reach = 0, lower = 0, aim;
+  if (q?.mount === mount.id && q.phase === "hold" && clock >= q.start && clock - q.start <= TRICERATOPS_ATTACKS.charge.maxMs) {
+    const t = Math.min(1, (clock - q.start) / TRICERATOPS_ATTACKS.charge.longMs);
+    phase = "hold"; pitch = .16 * t; lower = .06 * t; reach = -.035 * t; aim = q;
+  } else if (q?.mount === mount.id && q.phase === "windup" && TRICERATOPS_ATTACKS[q.kind]?.windupMs && clock <= q.contactAt) {
+    const t = Math.max(0, Math.min(1, 1 - (q.contactAt - clock) / TRICERATOPS_ATTACKS[q.kind].windupMs));
+    phase = "windup"; pitch = .16 + .09 * t; lower = .06; reach = -.035 - .045 * t; aim = q;
+  } else if (contact?.mount === mount.id && logical >= contact.at && logical - contact.at < TRICERATOPS_HORN_POSE.recoverMs) {
+    const t = 1 - (logical - contact.at) / TRICERATOPS_HORN_POSE.recoverMs;
+    phase = contact.kind; pitch = (phase === "bash" ? .1 : -.12) * t; reach = (phase === "bash" ? .16 : -.1) * t; lower = .025 * t; aim = contact;
+  } else if (dash?.mount === mount.id && clock < dash.until) {
+    phase = "dash"; pitch = .12; reach = .08; lower = .035; aim = dash;
+  } else return null;
+  const amount = reduced ? .4 : 1;
+  return { phase, pitch: pitch * amount, reach: reach * amount, lower: lower * amount, x: aim.x, y: aim.y };
+}
+// The leap receipt resumes its remaining travel and contacts; elapsed time also anchors the shared pose.
+// Additive schema-14 action receipt. Unknown future versions stay opaque and never execute here.
+export function normalizeTriceratopsDrill(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (Number.isInteger(raw.v) && raw.v > 1) return { ...raw };
+  const C = TRICERATOPS_ATTACKS.drill, text = v => typeof v === "string" && v.length > 0 && v.length <= 512, number = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
+  if (raw.v !== 1 || !["overworld", "dungeon"].includes(raw.area) || !["areaId", "levelId", "mount"].every(k => text(raw[k])) || raw.variant !== "silly" || !(raw.target === null || text(raw.target))) return null;
+  if (!number(raw.elapsed, 0, C.maxMs) || !number(raw.jumpLeft, 1e-6, 10000) || !number(raw.drillLeft, 1e-6, C.maxMs) || !number(raw.nextLeft, 0, Math.max(C.windupMs, C.pulseMs)) || !number(raw.travel, 0, C.travel) || !Number.isInteger(raw.pulses) || !number(raw.pulses, 0, C.pulses) || !number(raw.hp, 1e-6, 1e9) || !["atX", "atY"].every(k => number(raw[k], -1e4, 1e4)) || !["x", "y"].every(k => number(raw[k], -1, 1)) || Math.abs(Math.hypot(raw.x, raw.y) - 1) > 1e-6) return null;
+  if (Math.abs(raw.elapsed + raw.drillLeft - Math.min(C.maxMs, raw.elapsed + raw.jumpLeft)) > 1e-5 || raw.pulses > 0 && (raw.elapsed < C.windupMs + (raw.pulses - 1) * C.pulseMs || raw.nextLeft > C.pulseMs) || raw.pulses === 0 && raw.elapsed + raw.nextLeft < C.windupMs - 1e-5) return null;
+  return { ...raw };
+}
+export const TRICERATOPS_DRILL_POSE = Object.freeze({ halfWidth: 4.2, height: 5.2, below: 2.8, pivot: 1.25, turns: 2 });
+export function triceratopsDrillPose(g, mount, now, reduced = false) {
+  const q = g.triceratopsJump, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (mount?.beast !== "triceratops" || mount.variant !== "silly" || q?.kind !== "drill" || q.mount !== mount.id || q.start !== g.jumpStart || q.until !== g.jumpUntil || !(clock >= q.start && clock < q.drillUntil) || !(g.player?.hp > 0) || g.player.hp < q.hp || g.fallen || g.swimming || g.fall || g.glide || g.droneLift || g.plunge || g.cycloneHeel || g.shadowDash || g.artRush || g.wallCling || g.wallKick || clock < (g.player.stunnedUntil || 0) || clock < (g.player.heldUntil || 0) || clock < (g.player.dodgeUntil || 0)) return null;
+  const t = Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))), roll = Math.cos(t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns);
+  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot };
+}
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
 export const triceratopsVariant = (actor) => actor?.triceratopsDisposition === "silly" || actor?.variant === "silly" ? "silly" : "normal";
