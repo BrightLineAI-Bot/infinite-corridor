@@ -314,7 +314,7 @@ setTimeout(() => {
     $("#spellInfo").textContent =
       `SPELL ${(SPELLS[save.equippedSpell] || SPELLS["ember-ring"]).name}`;
     $("#toolInfo").textContent =
-      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1001)}s` : ""}`; // the Aether Orrery
+      `TOOL ${save.equipment.secondary?.name || "none"}${save.aimMode === "tool" ? " [ACTIVE]" : ""}${game.roundsSummary?.() || "" /* tool rounds (game.ts roundsSummary) */}${(game.orreryLockUntil || 0) > (game.lastUpdateNow || 0) ? ` · overloaded ${Math.ceil((game.orreryLockUntil - game.lastUpdateNow) / 1000)}s` : ""}`; // the Aether Orrery
     tool?.classList.toggle("selected", save.aimMode === "tool");
     attack?.classList.toggle("selected", save.aimMode === "attack");
     attack?.classList.toggle("art-armed", !!game.weaponArtArmed?.()); // weapon-arts.ts: the weapon's art is armed (a light glint)
@@ -630,7 +630,7 @@ function openChallengeSections(){
 }
 function objectiveList(){
   // Release 159: a cheap key first (section and one-second bucket), so the frame loop does no counting between rebuilds.
-  const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1001)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
+  const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1000)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
   const resolvedCount=Object.values(save.consequences?.dungeons||{}).filter((h)=>h?.resolved).length,
     key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000)].join(":");
   if(objectiveCache.key===key){objectiveCache.quick=quick;return objectiveCache.list}
@@ -691,7 +691,7 @@ const navCompassDial = (() => { const dial = document.createElement("span"); dia
 const navCompassFacing = (() => { const m = document.createElement("span"); m.className = "nav-facing"; m.setAttribute("aria-hidden", "true"); navCompass.prepend(m); return m; })();
 function updateCompassFrame(now) {
   if (compassFrame.map !== game.map) { compassFrame.map = game.map; compassFrame.ready = false; compassFrame.target = NaN; }
-  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1001 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
+  const dt = Number.isFinite(compassFrame.at) ? (now - compassFrame.at) / 1000 : 0, close = closeViewShowing(game), body = close ? closeViewBodyFacingYaw() : NaN; compassFrame.at = now;
   /* the facing marker (Close View only): the body as drawn; a swing, cast or dodge that turns it for a moment keeps the way they were going */
   compassFrame.target = !close ? NaN : Number.isFinite(body) ? body : compassFrame.target;
   if (Number.isFinite(compassFrame.target)) compassFacingStep(compassFrame, compassFrame.target, dt, !!(settings.reduceMotion || settings.safeMode)); else compassFrame.ready = false;
@@ -1153,7 +1153,7 @@ export function combatIndicatorGeometry(game, now = performance.now()) {
 // Release 523: the new traps and the sigil orbs, on the live combat layer.
 function drawNewTraps(s, sx, sy, ctx = screenCtx()) {
   if (game.area !== "dungeon") return;
-  const t = performance.now() / 1001;
+  const t = performance.now() / 1000;
   for (const o of game.map.objects) if (o.kind === "trap" && o.newTrap && dungeonPointDiscovered(game.map, o)) drawNewTrap(o, sx(o.x + .5), sy(o.y + .5), s, t, ctx);
   for (const q of game.trapSeeds || []) { // the sigil orbs, landing and spinning
     const x = sx(q.x), y = sy(q.y), landed = q.t >= DUNGEON_TRAPS.sigil.flight, r = s * (landed ? .22 : .16);
@@ -1355,7 +1355,7 @@ addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
 const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
-function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1001)}
+function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 const journeyOperation=createExclusiveOperation();
 async function switchJourney(slot){if(slot===getActiveSlot()&&!saveBlocked()){resume();return}/* release 734: a blocked slot reloads, so a recovered or imported journey is what plays */try{const result=await journeyOperation.run(async()=>{await persist();await flushSaves();setActiveSlot(slot)});if(result.busy)return optionMessage("Another journey operation is already finishing.",true);location.reload()}catch(error){optionMessage(`Journey switch failed: ${error?.message||error}`,true)}}
 function journeyInput(label,value="",placeholder=""){const row=document.createElement("label"),caption=document.createElement("strong"),input=document.createElement("input");row.className="setting-row journey-input";caption.textContent=label;input.type="text";input.value=value;input.placeholder=placeholder;input.autocomplete="off";row.append(caption,input);return{row,input}}
@@ -1379,7 +1379,7 @@ function toggleSetting(key){const input=document.createElement("input");input.ty
 function updateSetting(key,value){Object.assign(settings,saveSettings({...settings,[key]:value}));applyPresentationSettings();optionMessage(`${key.replace(/([A-Z])/g," $1")} updated. Quality changes apply without changing journey data.`)}
 // The Far Gate (Journal tab, release 139): the Gate drawn as a ring of pieces that light as Listeners fall (guardians until 2026-11-05), with
 // its tier, the Listener's form, chosen boons, any pending boon or ending choice, and the run history.
-function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesToUnlock(f.gate),have=f.toNext||0,seals=piecesNeeded(f.gate),open=!f.quiet&&(!LISTENER_CYCLE.sealsCall||f.pieces>=seals),t=performance.now()/1001;/* 2026-11-05: the ring is the Gate's pieces (Listener kills and broken hordes); the centre, where the Listener is */
+function drawGate(canvas,f){const ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2+6,R=Math.min(w,h)*.36,need=piecesToUnlock(f.gate),have=f.toNext||0,seals=piecesNeeded(f.gate),open=!f.quiet&&(!LISTENER_CYCLE.sealsCall||f.pieces>=seals),t=performance.now()/1000;/* 2026-11-05: the ring is the Gate's pieces (Listener kills and broken hordes); the centre, where the Listener is */
   ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(cx,cy,R*.2,cx,cy,R*1.5);bg.addColorStop(0,open?"#3a2a5a":"#1a1722");bg.addColorStop(1,"#0b0a10");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
   for(let i=0;i<need;i++){const a0=-Math.PI/2+i*2*Math.PI/need+.04,a1=a0+2*Math.PI/need-.08,lit=i<have;ctx.beginPath();ctx.arc(cx,cy,R,a0,a1);ctx.arc(cx,cy,R*.72,a1,a0,true);ctx.closePath();ctx.fillStyle=lit?(open?"#d9b8ff":"#9f7ad9"):"#2a2633";ctx.fill();ctx.strokeStyle=lit?"#f3eaff":"#4a4458";ctx.lineWidth=2;ctx.stroke();
     if(lit){const am=(a0+a1)/2;ctx.fillStyle="#fff8";ctx.beginPath();ctx.arc(cx+Math.cos(am)*R*.86,cy+Math.sin(am)*R*.86,3,0,7);ctx.fill()}}
@@ -1575,7 +1575,7 @@ function drawDungeonMap() {
   for(const tile of map.tiles){const x=ox+tile.x*cell,y=oy+tile.y*cell,lab=fog?labFogAt(fog,tile.x,tile.y):2,visibility=lab===0?"unseen":dungeonTileVisibility(map,tile.x,tile.y);mctx.fillStyle=visibility==="unseen"?(fog?LAB_FOG.map.unseen:"#05080b"):tile.kind==="dungeonWater"?"#245967":tile.blocked?"#182129":({hollow:"#51484a",cistern:"#36565a",kiln:"#68463a"}[map.recipe]||"#51484a");mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell));if(lab===1){mctx.fillStyle=`rgba(0,0,0,${1-LAB_FOG.map.remembered})`;mctx.fillRect(x,y,Math.ceil(cell),Math.ceil(cell))}if(visibility!=="unseen"&&!tile.blocked&&cell>9){mctx.strokeStyle="#ffffff0b";mctx.strokeRect(x,y,cell,cell)}}
   const wayfinding=dungeonWayfinding(save,map,game.player,{current:map===game.map,areaId:game.areaId(),previous:game.pentagonPrevious,candidates:map===game.map&&(map.building?.labyrinth||map.building?.pentagon)?currentDungeonDoors(map,game.areaId()):[]});
   renderDungeonWayfinding(wayfinding,map);
-  const colors={warpDais:"#c9a6ff",pentShortcut:"#9fd0ae",annexStair:"#f2e6a8",buildingStair:"#f2e6a8",labKey:"#e8c45a",/* great buildings, labyrinths *//* release 675 */deepStair:"#e8c2ff",emberDoor:"#ffb35a",/* release 677 *//* release 401 (Tim: "the teleportation daises in dungeons should show on the map once you find them") */exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc1001",relayTerminal:"#b28cda",relayNode:"#ff7a7a",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
+  const colors={warpDais:"#c9a6ff",pentShortcut:"#9fd0ae",annexStair:"#f2e6a8",buildingStair:"#f2e6a8",labKey:"#e8c45a",/* great buildings, labyrinths *//* release 675 */deepStair:"#e8c2ff",emberDoor:"#ffb35a",/* release 677 *//* release 401 (Tim: "the teleportation daises in dungeons should show on the map once you find them") */exit:"#72d7df",chest:"#d8bd83",supplyCache:"#7fc992",relayTerminal:"#b28cda",relayNode:"#ff7a7a",trap:"#d16b62",vine:"#77b98b",apertureDoor:"#c493dd",sealedGate:"#d16b62",deepReturn:"#7bc7d3",hubAnchor:"#e4cf7a",deepTransition:"#dbc18a",deepShortcut:"#9fd0ae",deepPortal:"#bbb4ef",storyActor:"#d9e7ef",storyScene:"#efb18f"};
   for(const o of map.objects||[]){if(map.building?.pentagon&&["buildingStair","pentShortcut","exit"].includes(o.kind)&&!wayfinding?.doors.some(q=>q.id===o.id))continue;if(wayfinding&&o.secretDoor&&!wayfinding.doors.some(q=>q.id===o.id))continue;if(!colors[o.kind]||o.state==="hidden"||!dungeonPointDiscovered(map,o)||(fog&&labFogState(map,o.x,o.y)===0))continue;const x=ox+(o.x+.5)*cell,y=oy+(o.y+.5)*cell;mctx.fillStyle=colors[o.kind];mctx.strokeStyle="#0b1014";mctx.lineWidth=2;mctx.beginPath();if(o.kind==="exit"||o.kind==="deepShortcut"){mctx.rect(x-cell*.32,y-cell*.42,cell*.64,cell*.84)}else if(o.kind==="trap"){mctx.moveTo(x,y-cell*.42);mctx.lineTo(x+cell*.4,y+cell*.35);mctx.lineTo(x-cell*.4,y+cell*.35);mctx.closePath()}else if(o.kind==="warpDais"){mctx.arc(x,y,Math.max(4,cell*.42),0,7);mctx.fill();mctx.stroke();mctx.beginPath();mctx.fillStyle="#f3eaff";mctx.arc(x,y,Math.max(1.5,cell*.13),0,7)}else{mctx.arc(x,y,Math.max(3,cell*.28),0,7)}mctx.fill();mctx.stroke();const route=wayfinding?.doors.find(q=>q.id===o.id),tag=route?`${wayfinding.doors.indexOf(route)+1} · ${route.tag}`:dungeonMapTag(o);if(tag){mctx.font="bold 11px monospace";const tw=mctx.measureText(tag).width,tx=x+cell*.6+tw>w-4?x-cell*.6-tw:x+cell*.6;mctx.lineWidth=3;mctx.strokeStyle="#0b1014";mctx.fillStyle=colors[o.kind];mctx.strokeText(tag,tx,y+4);mctx.fillText(tag,tx,y+4)}}
   if(map===game.map)for(const e of game.enemies||[]){const k=staggerClass(e);if(e.dead||(k!=="boss"&&k!=="revenant"))continue;const x=ox+(e.x+.5)*cell,y=oy+(e.y+.5)*cell,r=Math.max(5,cell*.5);mctx.fillStyle="#ff5ab4";mctx.strokeStyle="#1a0710";mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y);mctx.lineTo(x,y+r);mctx.lineTo(x-r,y);mctx.closePath();mctx.fill();mctx.stroke();mctx.fillStyle="#1a0710";mctx.beginPath();mctx.arc(x,y,Math.max(1.5,r*.28),0,7);mctx.fill()} // release 403 (Tim: "the Psychic Crystal and the Void Walker... any bosses... should be indicated in the dungeon, where they are"): every living boss on this level, wherever it is
   drawDungeonDoorPins(map===game.map?activeDungeonDoors(game):[],ox,oy,cell);
@@ -2526,7 +2526,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
-  const short=(n)=>n>=10000?`${(n/1001).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
+  const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
   const states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`), slotOf = SLOT_OF_ACTION[action];
@@ -2594,7 +2594,7 @@ function spellOrSkillLeft(key) { const c = CASTABLES[key]; return c?.kind === "s
 function setBuffFill(button, f) {
   let fill = button.querySelector(".buff-fill");
   if (f > 0 && !fill) { fill = document.createElement("span"); fill.className = "buff-fill"; fill.setAttribute("aria-hidden", "true"); button.append(fill); }
-  hudSet(button, "class:buffing", f > 0); if (fill) fill.style.width = `${Math.round(f * 1001) / 10}%`;
+  hudSet(button, "class:buffing", f > 0); if (fill) fill.style.width = `${Math.round(f * 1000) / 10}%`;
 }
 let nextSlowUiRefresh = 0;
 const sceneRuntime={active:null,plan:null,shot:0,started:0,revealSkip:false,image:null,wasPaused:false};
@@ -2680,7 +2680,7 @@ function viewportFrame(dt, now) {
     viewportSeq = ev.seq;
     if (ev.start) { viewportPrepare(); document.body.classList.add("viewport-closed"); }
     if (ev.snap) { const s = viewportArt.snapshot.getContext("2d"); s.setTransform(1, 0, 0, 1, 0, 0); s.imageSmoothingEnabled = true; s.drawImage(canvas, 0, 0, viewportArt.sw, viewportArt.sh); }
-    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1001); // release 788's one clock list: the respawn's protection outlasts the black
+    if (ev.release && viewportSeq) shiftClocks(game, viewportSeq.frozen * 1000); // release 788's one clock list: the respawn's protection outlasts the black
     if (ev.end) { viewportEnd(); return null; }
     return viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   } catch (error) { console.warn("Viewport Closed sequence ended early", error); if (viewportSeq) viewportEnd(); return null; }
@@ -2688,7 +2688,7 @@ function viewportFrame(dt, now) {
 function frame(now) {
   try {
   probeInterval = now - last;
-  const dt = Math.min(0.05, Math.max(0, (now - last) / 1001)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); // release 736 (review F9): a frame stamped before resume() set `last` gave a negative step
   recordPerf("frame", now - last);
   last = now;
   measured("input",()=>input.update(dt));
@@ -2709,7 +2709,7 @@ function frame(now) {
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
-  const viewportStage = viewportFrame(probeInterval / 1001, now);
+  const viewportStage = viewportFrame(probeInterval / 1000, now);
   warmCompassSignals();
   warmSpillTerrain();
   warmCrossingTerrain();
@@ -2755,7 +2755,7 @@ function frame(now) {
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
     if(save.bleed?.left>0)buffs.push(`BLEED ${Math.ceil(save.bleed.left)}s · STILL ${Math.floor(save.bleed.still||0)}/${BLEED.stillSeconds}`); // the Spinosaurus's bleed (bleed.ts): stand still to stop it
-    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1001)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1001)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
+    if(save.elites?.status?.poison>0)buffs.push(`POISON ${Math.ceil(save.elites.status.poison)}s`);if(game.playerFire?.left>0)buffs.push(`BURNING ${Math.ceil(game.playerFire.left)}s`);{const nw=game.lastUpdateNow||0,cu=(game.player?.confusedUntil||0)-nw;if(cu>0)buffs.push(`CONFUSED ${Math.ceil(cu/1000)}s`);for(const c of game.player?.curses||[]){const l=c.until-nw;if(l>0)buffs.push(`${game.curseFlash?.id===c.id&&nw-game.curseFlash.at<600?'✕ ':''}${curseDef(c.id)?.label||c.id} ${Math.ceil(l/1000)}s`);}}/* release 731; 737: each haunt curse, flashing ✕ when it refuses a press *//* release 708 */if(game.frenzy?.active)buffs.push(`FRENZY ${Math.ceil(game.frenzy.left)}s · ${game.frenzy.cure}/${FRENZY.cure}`);else if(game.frenzy?.build>0)buffs.push(`FRENZY ${game.frenzy.build}/${FRENZY.build}`);/* release 710 */
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }

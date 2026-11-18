@@ -53,8 +53,8 @@ async function productionJourney(ctl, P) {
   s.futureField = { kept: [1, 2, 3] }; s.session.futureSession = 'kept'; s.session.playerRuntime.futureRuntime = { kept: true };
   s.lumenDust = 7;
   P.setActiveSlot(1);
-  const game = new Game(s, 1001);
-  let now = walk(game, 30, 1, 0.4, 1001);
+  const game = new Game(s, 1000);
+  let now = walk(game, 30, 1, 0.4, 1000);
   game.player.hp = Math.max(1, game.player.hp - 9); // a wound, for the exact resume
   game.setPaused(true, now); // Options open: the Corridor is paused
   await P.saveGame(game.exportSnapshot(now)); await P.flushSaves(); // persist(); flushSaves()
@@ -126,7 +126,7 @@ test('791: enter and exit leave the production journey byte-identical, and the s
   // Mess with things: walk away, spend, wound, change gear, export as a save would.
   let t = walk(lab.game, 120, -1, -0.6, 50000);
   assert.ok(Math.hypot(lab.game.player.x - game.player.x, lab.game.player.y - game.player.y) > 1, 'the scratch Wayfarer walked away');
-  lab.save.lumenDust = 1001; lab.save.level = 60; lab.save.equipment.primary = null; lab.game.player.hp = 1;
+  lab.save.lumenDust = 999; lab.save.level = 60; lab.save.equipment.primary = null; lab.game.player.hp = 1;
   lab.save.futureField.kept.push(4); lab.save.session.futureSession = 'changed';
   lab.game.exportSnapshot(t);
   assert.equal(dump(ctl, PRODUCTION_DB), before, 'the laboratory never wrote the production database');
