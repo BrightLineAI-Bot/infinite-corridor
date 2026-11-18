@@ -102,22 +102,31 @@ export const TRICERATOPS_COMPOSITE = Object.freeze({ halfWidth: 3.7, drillHeight
 export const TRICERATOPS_CLOSE_VIEW = Object.freeze({ riddenBody: true });
 // The rotating side portrait must stay above its support plane. Bounds include the
 // saddle and rider; this lift is presentation only and never changes jump/contact state.
+// The rider through the drill (Tim, 2026-11-18: "the rider stays upright and holds on"): never rolled with the body, but seated upright
+// on whichever of the saddle or the upturned underside is on top, leaning a little into the spin (`lean` radians at most), never below
+// or inside the body. `height` / `halfWidth`: the upright rider's box in tiles over that anchor (included in the frame's bounds).
+export const TRICERATOPS_DRILL_RIDER = Object.freeze({ height: 1.05, halfWidth: .32, lean: .16, tuck: .45 }); // tuck: the drill's folded feet, in tiles over the standing feet line
 export function triceratopsDrillFrame(pose, aim = pose, jump = 0) {
   const angle = (Math.atan2(aim.y, aim.x) + pose.bank) * pose.turnIn;
-  const c = Math.cos(angle), s = Math.sin(angle), B = TRICERATOPS_HORN_POSE;
+  const c = Math.cos(angle), s = Math.sin(angle), B = TRICERATOPS_HORN_POSE, R = TRICERATOPS_DRILL_RIDER, M = MOUNT_BEASTS.triceratops;
+  const at = (x, y) => { const dy = (y + pose.pivot) * pose.roll; return [x * c - dy * s, x * s + dy * c - pose.pivot]; };
   let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-  for (const x of [-B.halfWidth, B.halfWidth]) for (const y of [-B.height, 0]) {
-    const dy = (y + pose.pivot) * pose.roll, xx = x * c - dy * s, yy = x * s + dy * c - pose.pivot;
-    left = Math.min(left, xx); right = Math.max(right, xx); top = Math.min(top, yy); bottom = Math.max(bottom, yy);
+  for (const x of [-B.halfWidth, B.halfWidth]) for (const y of [-B.height + R.height, 0]) { // the mount and saddle (the rider is placed below)
+    const [xx, yy] = at(x, y); left = Math.min(left, xx); right = Math.max(right, xx); top = Math.min(top, yy); bottom = Math.max(bottom, yy);
   }
+  // the rider's anchor: over the seat, on whichever is uppermost of the saddle and the upturned feet (drawn facing left: seatX mirrors)
+  const sx = -(Number(M.seatX) || 0), seat = at(sx, -M.seat), feet = at(sx, -R.tuck), up = feet[1] < seat[1] ? feet : seat;
+  const lean = Math.max(-R.lean, Math.min(R.lean, R.lean * Math.sin(Number(pose.spin) || 0) * pose.turnIn));
+  left = Math.min(left, up[0] - R.halfWidth); right = Math.max(right, up[0] + R.halfWidth); top = Math.min(top, up[1] - R.height);
   const clearance = Math.max(0, bottom - jump + .02);
-  return { angle, clearance, halfWidth: Math.max(Math.abs(left), Math.abs(right)), height: -top + clearance, bottom: bottom - clearance - jump };
+  return { angle, clearance, halfWidth: Math.max(Math.abs(left), Math.abs(right)), height: -top + clearance, bottom: bottom - clearance - jump,
+    riderX: up[0], riderY: up[1] - clearance, riderLean: lean, seatX: seat[0], seatY: seat[1] - clearance, flipped: up === feet };
 }
 export function triceratopsDrillPose(g, mount, now, reduced = false) {
   const q = g.triceratopsJump, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   if (mount?.beast !== "triceratops" || mount.variant !== "silly" || q?.kind !== "drill" || q.mount !== mount.id || q.start !== g.jumpStart || q.until !== g.jumpUntil || !(clock >= q.start && clock < q.drillUntil) || !(g.player?.hp > 0) || g.player.hp < q.hp || g.fallen || g.swimming || g.fall || g.glide || g.droneLift || g.plunge || g.cycloneHeel || g.shadowDash || g.artRush || g.wallCling || g.wallKick || clock < (g.player.stunnedUntil || 0) || clock < (g.player.heldUntil || 0) || clock < (g.player.dodgeUntil || 0)) return null;
   const t = Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))), roll = Math.cos(t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns);
-  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot, turnIn: Math.min(1, t / .15, (1 - t) / .15) };
+  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot, turnIn: Math.min(1, t / .15, (1 - t) / .15) , spin: reduced ? 0 : t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns };
 }
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);

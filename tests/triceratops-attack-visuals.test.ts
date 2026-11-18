@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { stableMount, startRide, TRICERATOPS_ATTACKS, TRICERATOPS_HORN_SHOT, MOUNT_BEASTS } from "../src/beast-mounts.ts";
+import { stableMount, startRide, TRICERATOPS_ATTACKS, TRICERATOPS_HORN_SHOT, MOUNT_BEASTS, TRICERATOPS_DRILL_RIDER, triceratopsDrillFrame, triceratopsDrillPose } from "../src/beast-mounts.ts";
 import { drawMount, drawMountShadow, MOUNT_DRAW } from "../src/beast-mounts-render.ts";
 import { projectileVisualPoint } from "../src/actor-presentation.ts";
 import { render } from "../src/renderer.ts";
@@ -119,5 +119,43 @@ test("the standard view draws every ridden attack phase without error and leaves
     for (const now of [1000, 1016, 1400]) drawTriceratopsBody(ctx, { k: 220, b: 240, u: 80, s: 40, t: now / 1000, flip: variant === "silly" ? -1 : 1, state: "idle", e }, now);
     const saves = log.filter((q) => q[0] === "save").length, restores = log.filter((q) => q[0] === "restore").length;
     assert.equal(saves, restores, `${variant}/${phase}`);
+  }
+});
+
+// A 2D context that tracks its transform, so a test can see how a draw call lands on the screen.
+function tracked() {
+  let m = [1, 0, 0, 1, 0, 0]; const stack: number[][] = [], marks: any[] = [];
+  const mul = (n: number[]) => { const [a, b, c, d, e, f] = m; m = [a * n[0] + c * n[1], b * n[0] + d * n[1], a * n[2] + c * n[3], b * n[2] + d * n[3], a * n[4] + c * n[5] + e, b * n[4] + d * n[5] + f]; };
+  const base: any = { globalAlpha: 1, canvas: { width: 390, height: 844 }, measureText: () => ({ width: 10 }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), createPattern: () => ({}),
+    getTransform: () => ({ a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }), save: () => stack.push(m.slice()), restore: () => { m = stack.pop() || [1, 0, 0, 1, 0, 0]; },
+    translate: (x: number, y: number) => mul([1, 0, 0, 1, x, y]), scale: (x: number, y: number) => mul([x, 0, 0, y, 0, 0]), rotate: (r: number) => mul([Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 0, 0]),
+    transform: (a: number, b: number, c: number, d: number, e: number, f: number) => mul([a, b, c, d, e, f]), setTransform: (a: any, b?: number, c?: number, d?: number, e?: number, f?: number) => { m = typeof a === "object" ? [a.a, a.b, a.c, a.d, a.e, a.f] : [a, b!, c!, d!, e!, f!]; } };
+  const ctx: any = new Proxy(base, { get: (o, k) => k in o ? o[k] : () => {}, set: (o, k, v) => { if (k === "fillStyle" || k === "strokeStyle") marks.push([k, v, m.slice()]); o[k] = v; return true; } });
+  return { ctx, marks, depth: () => stack.length };
+}
+
+test("through the whole drill the rider stays upright, above the body, gripping the strap; reduced motion stays still and upright", () => {
+  for (const reduce of [false, true]) {
+    const g = mounted("silly"); g.save.closeView = false; g.presentation = { effectiveQuality: "full", reduceMotion: reduce }; g.save.lastAim = { x: 1, y: 0 };
+    g.update(.01, { state: { x: 0, y: 0 }, consume: (k) => k === "jump", held: () => false }, 100000);
+    const q = g.triceratopsJump; assert.equal(q?.kind, "drill");
+    let flippedSeen = false;
+    for (let now = q.start + 10; now < q.drillUntil; now += 25) {
+      g.lastUpdateNow = now; const pose = triceratopsDrillPose(g, g.mountRide(), now, reduce); if (!pose) continue;
+      const f = triceratopsDrillFrame(pose, pose, 0), R = TRICERATOPS_DRILL_RIDER;
+      // above the body: over whichever of the saddle and the upturned underside is on top, never below either
+      const at = (x: number, y: number) => { const c = Math.cos(f.angle), s = Math.sin(f.angle), dy = (y + pose.pivot) * pose.roll; return x * s + dy * c - pose.pivot - f.clearance; };
+      const sx = -MOUNT_BEASTS.triceratops.seatX;
+      assert.ok(f.riderY <= at(sx, -MOUNT_BEASTS.triceratops.seat) + 1e-9 && f.riderY <= at(sx, -R.tuck) + 1e-9, `rider above the body at ${now}`);
+      assert.ok(Math.abs(f.riderLean) <= R.lean + 1e-9); if (reduce) assert.equal(f.riderLean, 0);
+      flippedSeen ||= f.flipped;
+      // drawn: the rider's fills land upright (no flip, no roll beyond the lean), and the shadow stays at the feet outside the roll
+      const { ctx, marks, depth } = tracked(); render(ctx, g, 390, 844, now); assert.equal(depth(), 0, "balanced canvas state");
+      const rider = marks.filter((q) => q[0] === "fillStyle" && q[1] === "#171817");
+      assert.ok(rider.length > 0, "the rider is drawn");
+      for (const [, , m] of rider) { const sy = Math.hypot(m[2], m[3]), ang = Math.atan2(m[1], m[0]); assert.ok(m[3] > 0, "upright"); assert.ok(Math.abs(ang) <= R.lean + 1e-6, `lean ${ang}`); assert.ok(Math.abs(sy / Math.hypot(m[0], m[1]) - 1) < 1e-6, "never squashed by the roll"); }
+      assert.ok(marks.some((q) => q[0] === "strokeStyle" && q[1] === "#3a2112"), "the grab strap");
+    }
+    if (!reduce) assert.ok(flippedSeen, "the roll turns the body over at least once"); else assert.equal(flippedSeen, false);
   }
 });

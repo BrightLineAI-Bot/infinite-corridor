@@ -262,11 +262,11 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
   brow(-.035, .03, false);
   // the lower jaw first (the skull and the upper beak overlap it), opening with the pose; the mouth's dark inside behind it
   const open = Math.max(0, Math.min(1, V.open + (dead ? .2 : 0))), jaw = open * .35;
-  if (open > .05) { ctx.fillStyle = A.mouth; shape([[.1, -.05], [.42, -.06], [.38, -.07 - jaw * .5], [.12, -.1 - jaw * .2]]); ctx.fill(); }
+  if (open > .05) { ctx.fillStyle = A.mouth; shape([[.1, -.05], [.36, -.055], [.34, -.07 - jaw * .5], [.12, -.1 - jaw * .2]]); ctx.fill(); }
   ctx.save(); const hinge = H(.06, -.08); ctx.translate(hinge[0], -hinge[1]); ctx.rotate(jaw); ctx.translate(-hinge[0], hinge[1]);
-  shape([[.02, -.07], [.3, -.055], [.33, -.07], [.3, -.1], [.18, -.108], [.03, -.105]]); ctx.fillStyle = A.bodyDark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  shape([[.02, -.07], [.3, -.055], [.33, -.07], [.3, -.1], [.18, -.108], [.03, -.105]]); ctx.fillStyle = A.bodyDark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.3, -.1)); qc(H(.18, -.112), H(.06, -.104)); ctx.stroke(); // only its lower edge: no line up the cheek
   // the lower beak (the predentary): a dark wedge that meets the hook
-  shape([[.29, -.052], [.41, -.074], [.37, -.104], [.29, -.1]]); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  shape([[.29, -.052], [.365, -.062], [.343, -.092], [.29, -.094]]); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   ctx.restore();
   // the skull: deep at the cheeks, the brow high behind the eye, the snout narrowing to the beak; a cheek horn at its back corner
   const skull = [[-.06, .11], [.06, .15], [.18, .13], [.29, .085], [.35, .05], [.35, -.035], [.24, -.055], [.12, -.075], [.02, -.11], [-.05, -.12], [-.09, -.02]];
@@ -274,17 +274,17 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
   { const g0 = H(.15, .15), g1 = H(.15, -.12), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.bodyLight); g.addColorStop(.55, A.body); g.addColorStop(1, A.bodyDark); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   shape([[-.03, -.07], [-.1, -.17], [.04, -.11]]); ctx.fillStyle = A.hornBase; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   // the upper beak: a big hooked parrot beak of dark keratin, curling down over the lower one, a pale cutting edge and a sheen on top
-  ctx.beginPath(); mv(H(.3, .078)); qc(H(.43, .075), H(.475, -.035)); qc(H(.47, -.09), H(.43, -.105)); qc(H(.425, -.06), H(.37, -.05)); ln(H(.31, -.04)); qc(H(.29, .02), H(.3, .078)); ctx.closePath();
-  { const g0 = H(.36, .08), g1 = H(.4, -.1), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.beakLight); g.addColorStop(.45, A.beak); g.addColorStop(1, A.outline); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
-  ctx.strokeStyle = "rgba(255,236,190,.55)"; ctx.lineWidth = lw * 1.1; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.335, .058)); qc(H(.42, .055), H(.45, -.01)); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,236,190,.4)"; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.43, -.095)); qc(H(.415, -.06), H(.37, -.052)); ctx.stroke();
-  // the cheek line: from the corner of the beak back under the eye, turning up at its end (a friendly smile)
-  { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.3; ctx.beginPath(); mv(H(.31, -.045)); qc(H(.19, -.075), H(.07, -.04)); qc(H(.035, -.025), H(.03, -.005)); ctx.stroke(); ctx.lineCap = "butt"; }
-  { const p = H(.285, .035); ctx.fillStyle = A.outline; ctx.beginPath(); ctx.ellipse(p[0], -p[1], .017, .01, -ha, 0, TAU); ctx.fill(); }
+  ctx.beginPath(); mv(H(.3, .058)); qc(H(.39, .058), H(.412, -.01)); qc(H(.412, -.058), H(.385, -.072)); qc(H(.382, -.05), H(.352, -.046)); ln(H(.31, -.04)); qc(H(.29, .015), H(.3, .07)); ctx.closePath();
+  { const g0 = H(.35, .07), g1 = H(.38, -.08), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.beakLight); g.addColorStop(.45, A.beak); g.addColorStop(1, A.outline); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.strokeStyle = "rgba(255,236,190,.55)"; ctx.lineWidth = lw * 1.1; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.325, .044)); qc(H(.385, .042), H(.398, -.002)); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,236,190,.4)"; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.386, -.066)); qc(H(.38, -.052), H(.358, -.047)); ctx.stroke();
+  // the mouth: a short, gentle line back from the beak's corner, content (the ridden Silly Goose's turns up a little at its end)
+  { const silly = e.mountView && e.triceratopsDisposition === "silly"; ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.31, -.046)); qc(H(.25, -.058), H(.19, silly ? -.05 : -.056)); ctx.stroke(); ctx.lineCap = "butt"; }
+  { const p = H(.275, .03); ctx.fillStyle = A.outline; ctx.beginPath(); ctx.ellipse(p[0], -p[1], .017, .01, -ha, 0, TAU); ctx.fill(); }
   // the Silly Goose, ridden, pokes out its tongue
-  if (e.mountView && e.triceratopsDisposition === "silly" && !dead) { const wag = reduce ? 0 : .015 * Math.sin(t * 6); ctx.beginPath(); mv(H(.37, -.085)); qc(H(.44, -.09 + wag), H(.47, -.125 + wag)); qc(H(.44, -.145 + wag), H(.39, -.115)); ctx.closePath(); ctx.fillStyle = A.tongue; ctx.fill(); ctx.strokeStyle = A.mouth; ctx.lineWidth = lw * .7; ctx.stroke(); }
+  if (e.mountView && e.triceratopsDisposition === "silly" && !dead) { const wag = reduce ? 0 : .015 * Math.sin(t * 6); ctx.beginPath(); mv(H(.34, -.08)); qc(H(.4, -.085 + wag), H(.425, -.115 + wag)); qc(H(.4, -.135 + wag), H(.355, -.105)); ctx.closePath(); ctx.fillStyle = A.tongue; ctx.fill(); ctx.strokeStyle = A.mouth; ctx.lineWidth = lw * .7; ctx.stroke(); }
   // the nose horn: short and blunt
-  { const b0 = H(.235, .095), b1 = H(.31, .075), tip = H(.33, .205); ctx.beginPath(); mv(b0); qc(H(.25, .17), tip); qc(H(.31, .13), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
+  { const b0 = H(.225, .09), b1 = H(.29, .072), tip = H(.31, .2); ctx.beginPath(); mv(b0); qc(H(.25, .17), tip); qc(H(.31, .13), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   brow(0, 0, true);
   // the Horn Shot: a glint on the tips as the wind-up aims them, then the release's flash and streaks off the tips
   const hp = e.mountView ? e.mountHornPose : null, hk = triceratopsHornAmount(hp);

@@ -2435,8 +2435,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   }
   if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
-  MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
-  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; }
+  MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; MOUNT_DRAW.riderTop = MOUNT_DRAW.skipBody ? RIDDEN.riderTop : NaN; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; MOUNT_DRAW.riderTop = NaN; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -3745,10 +3745,10 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
 // at the mount's own scale, and follows only the accepted pose fields: its heading, the horn pose, the Silly Goose's drill roll (an axial
 // turn about its middle, kept above its support) and the leap's lift. The lowest quality setting keeps the whole card.
 const RIDDEN = { track: null, mount: '', actor: { id: '', kind: 'triceratops', mountView: true, mountDrill: false, triceratopsDisposition: 'good', hp: 1, mountHornPose: null, pack: null, facingX: 1 },
-  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0, pivot: 1 }, yaw: NaN, x: NaN, y: NaN, pitch: null };
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0, pivot: 1 }, riderTop: NaN, yaw: NaN, x: NaN, y: NaN, pitch: null };
 const RIDDEN_FACING_YAW = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
 function admitRiddenTriceratops(g, Q, now, reduce, tier) {
-  MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null;
+  MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null; RIDDEN.riderTop = NaN;
   const ride = g.mountRide?.(), d = capturedPlayer;
   if (!TRICERATOPS_CLOSE_VIEW.riddenBody || tier === 'low' || ride?.beast !== 'triceratops' || !d?.mountComposite) { RIDDEN.track = null; return; }
   const p = g.player, a = RIDDEN.actor, E = RIDDEN.env, mesh = triceratopsMesh(tier, Object.assign(a, { triceratopsDisposition: ride.variant === 'silly' ? 'silly' : 'good' }));
@@ -3768,7 +3768,7 @@ function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   E.x = x; E.y = y; E.air = Math.max(0, Number(d.jumpLift) || 0); E.z = surfaceZ(g.map, x, y - .07) + Math.max(0, Number(d.lift) || 0) + E.air; E.scale = Number(MOUNT_BEASTS.triceratops.scale) || 1;
   E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
   const frame = sampleTriceratops(RIDDEN.track, a, E); if (!frame) return;
-  const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch;
+  const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch; RIDDEN.riderTop = drill ? frame.riderTop : NaN;
 }
 // 2026-11-13 (Tim: "every interactable character should have a real 3D body in Close View"): the townsfolk (close-view-folk.ts).
 // Nearest first, up to FOLK_SLOT.maxFolk for the tier; past it, or without the GPU's beast program, a person keeps its card. A

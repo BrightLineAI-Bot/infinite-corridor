@@ -9,7 +9,8 @@ import { drawStalker } from "./stalker-render.ts";
 // One reused actor per frame (no per-frame allocation beyond it).
 const actor = { id: "", kind: "", packKind: "", x: 0, y: 0, scale: 1, facingX: 1, boss: false, hopLift: 0, stalkForm: "cat", stalkAct: { kind: "prowl", t: 0, total: 0 }, pack: null, mountView: true };
 // Close View's skinned ridden Triceratops (beast-mounts.ts TRICERATOPS_CLOSE_VIEW) sets skipBody while it paints the card: saddle and rider only.
-export const MOUNT_DRAW = { skipBody: false };
+// riderTop: with the skinned body, the top of the body over the seat (tiles over its feet and lift), where the drill's upright rider sits.
+export const MOUNT_DRAW = { skipBody: false, riderTop: NaN };
 const seatOut = { up: 0, dx: 0 }, front = { style: null, x: 0, y: 0, u: 0, drop: 0, face: 1 };
 // Draws the mount of `m` under the Wayfarer at `p` (raised `liftPx` by a jump). Returns where the Wayfarer sits: { up, dx } in pixels
 // (up from their feet; along the screen, + right). drawMountFront, after the rider, adds anything that goes in front of them.
