@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
 - Release 986: The Triceratops capture fixtures start with Enclosure selected so the Build button places the required pen.
