@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Aerial Step walks on air everywhere; falls in real time with rescues
+## Release 996 — Aerial Step walks on air everywhere; falls in real time with rescues
 
 Tim, 2026-11-15 and 2026-11-18: Aerial Step walks on air at the height it was cast, with a second charge from Quickened Stride, and catches a fall. It works the same everywhere with no place-specific exceptions. The weapon disappears during its cast and then returns. Lethal falls play out over real time and kill only on landing, and Aerial Step, Rift Step or the drone can save the Wayfarer mid-fall.
 
