@@ -59,7 +59,7 @@ test('the orbit, its cutout and sight lines are data', () => {
   // own distance are data too
   assert.equal(SIGHT_LINES.indoor.hideNear, 8, 'hidden within 8 tiles indoors'); assert.equal(SIGHT_LINES.outdoor.hideNear, 0, 'outdoors as built');
   assert.ok(SIGHT_LINES.field.on && SIGHT_LINES.field.radius >= 8 && SIGHT_LINES.field.radius <= 16 && SIGHT_LINES.field.refreshMs > 0, 'a bounded field');
-  const Z = O.zoom; assert.ok(Z.perUnit > 0 && Z.minRadius >= .8 && Z.maxRadius <= 12, 'the Wayfarer\'s distance is bounded');
+  const Z = O.zoom; assert.ok(Z.perUnit > 0 && Z.minRadius >= .8 && Z.maxRadius <= 12 && Z.indoorMaxRadius <= Z.maxRadius, 'the Wayfarer\'s distance is bounded');
   assert.ok(S.rgb[0] === S.rgb[1] - 6 || Math.max(...S.rgb) - Math.min(...S.rgb) < 20, 'neutral: no threat colour');
 });
 
@@ -265,7 +265,7 @@ test('Look mode\'s pinch on the Wayfarer sets her own Close View distance, kept 
   // further out than Look mode reached before (the boom `look.out` tiles longer at minZoom), bounded by maxRadius
   CV.closeViewLookSet(g, true); frame(g, 2); CV.closeViewLookZoomTo(-5); frame(g, 2); c = CV.closeViewCamera();
   const before = Math.hypot(P.orbitDistance + C.camera.look.out, P.orbitHeight - O.focus), beforeOld = Math.hypot(P.distance + C.camera.look.out, P.height - O.focus);
-  assert.equal(g.save.closeViewZoom, C.camera.look.minZoom); assert.ok(c.orbitRadius > beforeOld && c.orbitRadius > before && c.orbitRadius <= Z.maxRadius + 1e-9, `further (${c.orbitRadius.toFixed(2)} vs ${beforeOld.toFixed(2)})`);
+  assert.equal(g.save.closeViewZoom, C.camera.look.minZoom); assert.ok(c.orbitRadius > beforeOld && c.orbitRadius > before && c.orbitRadius <= Z.indoorMaxRadius + 1e-9 /* 2026-11-18 Tim: a shorter zoom-out indoors */, `further (${c.orbitRadius.toFixed(2)} vs ${beforeOld.toFixed(2)})`);
   CV.closeViewLookZoomTo(1); frame(g, 2); assert.ok(CV.closeViewCamera().orbitRadius >= Z.minRadius - 1e-9, 'never nearer than minRadius');
   // the elevation is kept: the distance and the height scale together
   assert.ok(Math.abs(CV.closeViewCamera().elevation - Math.atan2(P.orbitHeight - O.focus, P.orbitDistance)) < 1e-9);

@@ -288,7 +288,7 @@ export const CLOSE_VIEW = Object.freeze({
     // 2^(-zoom * `perUnit`) (so a doubling of the fingers' spread halves the distance), never under `minRadius` nor over
     // `maxRadius` tiles. A big threat's, a dino duel's and a mount's extra distance are added after it.
     orbit: Object.freeze({ on: true, focus: .9, minElevation: -80, maxElevation: 86, aheadFade: 2, floor2D: .35,
-      zoom: Object.freeze({ perUnit: 4 / 3, minRadius: 1, maxRadius: 10 }),
+      zoom: Object.freeze({ perUnit: 4 / 3, minRadius: 1, maxRadius: 10, indoorMaxRadius: 5 /* Tim 2026-11-18: a shorter zoom-out indoors */ }),
       // `fit`: the preset's own radius is never less than this times the distance at which the Wayfarer's whole body (framing.
       // bodyHeight) fills the screen's height less its margins: a short landscape screen keeps her whole (her own zoom may go nearer)
       fit: 1.05,
@@ -2192,7 +2192,7 @@ function orbitFrame(g, Cp, outdoor, w, h) {
   const H0 = outdoor && Number.isFinite(Cp.outdoorHeight) ? outdoorCrane(Cp, w, h) : indoor && Number.isFinite(Cp.orbitHeight) ? Cp.orbitHeight : Cp.height;
   const Fr = CLOSE_VIEW.camera.framing, focal = Math.max((w / 2) / Math.tan(Cp.fov * DEG / 2), (h / 2) / Math.tan(CLOSE_VIEW.fov.verticalMax * DEG / 2));
   const R00 = Math.max(1e-3, Math.hypot(D0, H0 - O.focus)), fitK = Math.max(1, (indoor && O.fit > 0 ? Fr.bodyHeight * focal / Math.max(1, (1 - 2 * Fr.margin) * h) * O.fit : 0) / R00); // a short screen: farther, the body whole
-  const lift = (H0 - O.focus) * fitK, R0 = R00 * fitK, want = Math.pow(2, -closeViewZoomOf(g?.save?.closeViewZoom) * Z.perUnit), scale = Math.max(Z.minRadius / R0, Math.min(Z.maxRadius / R0, want));
+  const lift = (H0 - O.focus) * fitK, R0 = R00 * fitK, want = Math.pow(2, -closeViewZoomOf(g?.save?.closeViewZoom) * Z.perUnit), scale = Math.max(Z.minRadius / R0, Math.min((indoor ? Z.indoorMaxRadius : Z.maxRadius) / R0, want));
   ORBIT_FRAME.scale = scale; ORBIT_FRAME.indoor = indoor; ORBIT_FRAME.r0 = R0 * scale;
   ORBIT_FRAME.d = D0 * fitK * scale + CAM.threatPull + lookOut() + mountCameraPull(g); ORBIT_FRAME.h = O.focus + lift * scale;
   return ORBIT_FRAME;
