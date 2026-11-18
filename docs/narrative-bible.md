@@ -75,6 +75,20 @@ How to use it, lightly:
 
 Never make the Wayfarer the centre of the world's story, and never preach it. It should be something the player notices for themselves.
 
+*Built (unreleased; src/lore.ts `WAYFARER_DREAD`, `HUSHED_LINES`).* Wayfarer dread version 1, pinned like the regions: a section first seen from
+then on carries `wayfarerDreadVersion` on its Atlas entry, a crossing first entered on its history; ground explored before keeps none,
+and there nothing below happens.
+- *Hushed voices:* fourteen original lines (two more for wardens), spoken instead of the usual words by about one traveller meeting in
+  twenty (reciters 0.04, a hamlet's folk 0.06), each speaker at most once, hashed from the seed and the speaker; no line repeats until all
+  are heard (`save.lore.hushed`). Named people keep their own words. For example: "Don't say its name. It hasn't got one. That's the
+  trouble." "They buried it at the ford. By morning the Wayglass was lit again." "Hush. It might be near. Forgive me. You've a kind face,
+  what I can see of it."
+- *The Glimpse:* **The Shutter** (catalogue 27), offered on entering a crossing once the Wayfarer has died three times, at 0.1 a
+  crossing, seen once.
+- *Cowering:* eleven lesser kinds (crawlers, wisps, mites, moths, rooks, a crab, the ashlings, the shardlings, the Ashen Hound) may
+  hesitate or flee for a moment on first noticing the Wayfarer: 3 to 8 in a hundred at full strength, scaled from 0.3 at level 1 to 1.25
+  from level 50; one at a time, then none for 25 seconds; struck, it fights. Never rats, bosses, elites, world beasts or guardians.
+
 ### What the Corridor is made of (Tim, 2026-10-29)
 
 Tim's words, lightly edited for reading: "The dungeon water is not water... it's the classic trope of: this is what your mind can perceive them as. The dungeon water is just a very different state of... the composition of the corridor in those places, that we perceive as water... it's more fluid and less concrete than the surrounding sections of the corridor. Some sections of the corridor are more concrete than others. The shovel is just a mental tool... a manifestation of the idea of burrowing and tunneling... into the density of the corridor. All these creatures and all these things are just manifestations in the Wayfarer's viewport. He's jacked in in some way... it doesn't necessarily even matter if he's experiencing it like us, through a game, or if his consciousness is inhabiting the Wayfarer, because that's essentially the same thing: you are dictating motion through consciousness and interacting with literally ones and zeros, or electrical signals, that have been configured in a way to indicate water and land and monsters."
@@ -260,6 +274,7 @@ You almost never see the same Glimpse twice. A Glimpse is offered only while uns
 24. **The Swirl.** A vortex of colour fields with no subject, no up and no down. It goes on a moment too long.
 25. **The Eye Within.** Something with eyes at every scale: the view falls endlessly into its own eye.
 26. **Inside the Wall** (built; `insideTheWall`, placed: it surfaces only in a Pentagon, sometimes, the first time marks in a wall are read). No eyes, only pressure and warmth. You are the wall: two beds of stone that were never meant to touch, pressed together at a buckled seam that is faintly warm, where small pale things cling and feed. Something warm and heavy comes along the outside of you, one step at a time. The pale things scatter. The seam leans toward it, and the stone begins, very slowly, to bend round it. The intrusion is the Wayfarer.
+27. **The Shutter** (built; `theShutter`, placed: offered only on entering a crossing where the Wayfarer's dread is live, after the Wayfarer has died a few times; section 1). You stand at a shutter at night and look down a road. Far off a Wayglass brightens, and a figure stands up out of its light and comes this way. Your hand, grey and too long in the finger, draws the shutter to a slit, and the view trembles. The figure passes close: a covered face, a muted green cloak, a glint of bronze at the clasp. Then only the road, and the lit glass.
 
 ### How they are drawn: free, in the browser
 
@@ -392,7 +407,7 @@ Each step is one release, built and previewed for Tim before publishing.
    - a new landscape generation version, used only for sections not yet explored;
    - existing journeys never regenerate.
 5. **Gilgamesh** (Tim confirmed this is the legend he meant, so the Yoga Vasistha is set aside). The Glimpse "The Plant at the Bottom" is built (release 219). Still to do: the recited voice, taken from R. Campbell Thompson (1928) or Jastrow and Clay (1920) once a public-domain source text is reachable.
-6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415; the Seven Bells in release 431; margins in release 455), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages. The Surveyor's Chain, part one (the twelve links and Corwin's notes), was built in release 505; part two (the last map, the chain on the Atlas, and his statue at the edge of the Far Sleep) in release 551. The Torn Pages were built in release 595 (src/torn-pages.ts).
+6. **Ilse, the Seven Bells, margins in crossings** (Ilse built in release 415; the Seven Bells in release 431; margins in release 455), then ongoing: new Glimpses every pass, the Surveyor and the Torn Pages. The Surveyor's Chain, part one (the twelve links and Corwin's notes), was built in release 505; part two (the last map, the chain on the Atlas, and his statue at the edge of the Far Sleep) in release 551. The Torn Pages were built in release 595 (src/torn-pages.ts). The Wayfarer as the thing the Corridor fears (section 1; Tim, 2026-11-15) is built, unreleased: hushed voices, the Glimpse The Shutter and a few cowering lesser creatures, on new ground only (src/lore.ts `WAYFARER_DREAD`).
 
 **Save:** one additive block, `save.lore`, holding:
 - the heard lines (compact ids);

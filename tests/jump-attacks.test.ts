@@ -211,7 +211,7 @@ test('a plunge never negates fall damage: off a sky hop over lower ground it lan
   g.map.landscape = true; for (const t of g.map.tiles) t.elev = 0;
   d.step(); const hp = p.hp; g.jumpFrom = 3; g.skyAir = 3; g.jumpStart = d.now(); g.jumpDur = JUMP.sky; g.jumpUntil = d.now() + JUMP.sky;
   d.step(); assert.ok(g.jumpUntil > d.now()); d.step(['attack']); assert.ok(g.plunge);
-  d.idle(300); assert.equal(g.plunge, null);
+  d.idle(800); assert.equal(g.plunge, null); // 2026-11-18 (FALL_EVERYWHERE): was idle(300): a floor with height now falls in real time, so the plunge's fall takes its airtime
   assert.ok(fallDamage(3, g.save.maxHp) > 0); assert.equal(p.hp, hp - fallDamage(3, g.save.maxHp), `a three-level fall (${hp} -> ${p.hp})`);
 });
 

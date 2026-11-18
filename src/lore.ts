@@ -5,6 +5,7 @@
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
 import { RECITATIONS } from "./recitations.ts";
+import { hashSeed } from "./random.ts";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -88,6 +89,7 @@ export function ensureLore(s) {
   // Unknown ids are kept, as unknown fields are.
   if (l.inscriptions !== undefined) s.lore.inscriptions = [...new Set((Array.isArray(l.inscriptions) ? l.inscriptions : []).filter((id) => typeof id === "string"))];
   if (l.murals !== undefined) s.lore.murals = [...new Set((Array.isArray(l.murals) ? l.murals : []).filter((id) => typeof id === "string"))]; // release 795: the grand halls' murals read (pentagon-halls.ts); unknown ids kept
+  if (l.hushed !== undefined) s.lore.hushed = typeof l.hushed === "string" && /^[0-9a-f]{0,16}$/.test(l.hushed) ? l.hushed : ""; // the hushed lines heard (WAYFARER_DREAD), once any is
   if (l.inscribedAt !== undefined) s.lore.inscribedAt = Object.fromEntries(Object.entries(l.inscribedAt && typeof l.inscribedAt === "object" ? l.inscribedAt : {}).filter(([, id]) => typeof id === "string"));
   return s;
 }
@@ -244,4 +246,121 @@ export function ensureArcanaState(save) {
   save.arcana = { ...a, unlocked }; // an old `gated` flag is kept as it was, and read by nothing
   if (a.starter !== undefined && !["set", "done"].includes(a.starter)) delete save.arcana.starter;
   return save;
+}
+
+// The Wayfarer as the thing the Corridor fears (Tim, 2026-11-15; docs/narrative-bible.md section 1). An undercurrent, never the
+// theme: most things still fight, most people treat the Wayfarer as anyone else, and nothing here explains itself. Three seams:
+//   speech   now and then a traveller, a reciter or a hamlet's folk lowers their voice and speaks of a figure who keeps coming back
+//            (HUSHED_LINES). Each speaker at most once, a share of meetings (`speech`), the roll hashed from the seed, the speaker's
+//            id and how often they have been spoken to; no line repeats until all are heard (save.lore.hushed, a bitset).
+//   glimpse  a rare Glimpse ("The Shutter", glimpses.ts, place "returning") seen through the eyes of one of the Corridor's own,
+//            watching the road at night as a figure walks out of the Wayglass. Offered on entering a crossing, once the Wayfarer
+//            has died `glimpse.deaths` times, at `glimpse.chance` (hashed per crossing); seen once.
+//   cower    a few lesser creatures (`cower.kinds`: the chance each one that notices the Wayfarer has of cowering) hesitate or
+//            flee for a moment instead of closing in, likelier as the Wayfarer grows (`cower.levels`). Never rats (`cower.never`),
+//            never bosses, elites, world beasts, guardians or anything enemy-behaviour.ts does not count as ordinary; at most one
+//            at a time on the board and then none for `cower.cooldown` s, so no pack ever empties; struck, it fights.
+// Version-pinned like everything that changes what a place offers: a section first seen from now on carries `wayfarerDreadVersion` on its
+// Atlas entry, a crossing first entered from now on on its history (game.ts); ground explored before keeps none, and there nobody
+// hushes, no creature cowers and the Glimpse is not offered.
+export const WAYFARER_DREAD = {
+  version: 1,
+  speech: { traveler: .05, reciter: .04, villager: .06 },
+  glimpse: { id: "theShutter", deaths: 3, chance: .1 },
+  cower: {
+    // kind: [chance on noticing, at full strength; "flee" | "hesitate"]
+    kinds: {
+      pallidCrawler: [.08, "flee"], gloomwisp: [.07, "flee"], ashling: [.05, "hesitate"], glassMite: [.05, "flee"], slateRook: [.04, "flee"],
+      shardling: [.05, "hesitate"], cinderWisp: [.05, "flee"], veilMoth: [.05, "flee"], groveMoth: [.05, "flee"], crystalCrab: [.04, "hesitate"],
+      ashenHound: [.03, "hesitate"],
+    },
+    // [from level, multiplier]: the last row at or below the Wayfarer's level applies
+    levels: [[1, .3], [10, .55], [20, .8], [35, 1], [50, 1.25]],
+    never: /(^rat|Rat)/, // rats are never afraid
+    time: { flee: [1.4, 2.4], hesitate: [.8, 1.4] },
+    speed: { flee: 1.15, hesitate: .3 }, // tiles a second, away from the Wayfarer
+    far: 7, // a fleeing creature stops this far off
+    cooldown: 25, // seconds after one cowers before another may
+  },
+};
+// Original lines: quiet, in no one book's voice, of a figure the speaker does not see is standing in front of them.
+export const HUSHED_LINES = [
+  "Keep your voice down. There is one who walks back out of the dark. Every time.",
+  "Don't say its name. It hasn't got one. That's the trouble.",
+  "They buried it at the ford. By morning the Wayglass was lit again.",
+  "We bar the door when the Wayglass hums at night. Someone always comes out of it.",
+  "The hounds won't go past the cairn now. Something came through that they remember.",
+  "No one walks out of the deep crossings. Except the one. Over and over.",
+  "If you meet the one who comes back, be civil. The things that weren't are not here.",
+  "The little ones under the stones go still when it passes. So do I.",
+  "Some say it's a saint. Some say the other thing. It paid for its bread.",
+  "My grandmother said there is one thing in the Corridor no one ever wrote down. It walks.",
+  "They say the great beasts fell, out past the far towns. They say it was only one, walking.",
+  "It came through here once, with its face covered. The birds were quiet for a week.",
+  "Hush. It might be near. Forgive me. You've a kind face, what I can see of it.",
+  "Everything out there is afraid of something. I keep wondering what it's afraid of.",
+];
+export const HUSHED_WARDEN_LINES = [
+  "We hold this gate against everything that walks. Nearly everything.",
+  "Captain says if the masked one comes, open the gate and stand aside. So we would.",
+];
+const dreadLevel = (level) => { let m = 0; for (const [from, k] of WAYFARER_DREAD.cower.levels) if ((Number(level) || 1) >= from) m = k; return m; };
+// Is the dread live at this place: the version pinned on its Atlas entry or its crossing's history (0 or missing: not).
+export const dreadLive = (version) => Number(version) >= WAYFARER_DREAD.version;
+// Who may hush: travellers (not the wandering cartographer or the Elders), reciters, and a hamlet's folk and wardens. Named people
+// (the cook, the farmer, the quarry keeper, the cairn keeper, Ilse) keep their own words.
+export function hushedSpeaker(o) {
+  if (!o || o.hushed) return null;
+  if (o.kind === "traveler") return o.elder || o.wanderer ? null : o.reciter ? "reciter" : "traveler";
+  if (o.kind === "villager" && !o.talkKey && !o.cook && !o.cairnKeeper && String(o.settlement || "").startsWith("hamlet-")) return "villager";
+  return null;
+}
+// Whether this speaker hushes the `n`th time they are spoken to (hashed from the seed and their id: the same journey, place and
+// speaker always answer the same way). False where the dread is not live.
+export function hushesNow(seed, o, n, version) {
+  const role = hushedSpeaker(o);
+  if (!role || !dreadLive(version)) return false;
+  return (hashSeed(`${seed}:hushed:v${WAYFARER_DREAD.version}:${o.id || o.name}:${n}`) % 10000) / 10000 < WAYFARER_DREAD.speech[role];
+}
+// The hushed line: an unheard one first (a hashed choice), recorded in save.lore.hushed; once all are heard, any. Wardens have their own.
+export function hushedLine(save, o, n) {
+  ensureLore(save);
+  if (o.guard) return HUSHED_WARDEN_LINES[hashSeed(`${save.seed}:hushed-warden:${o.id}`) % HUSHED_WARDEN_LINES.length];
+  const heard = save.lore.hushed || "", fresh = [];
+  for (let i = 0; i < HUSHED_LINES.length; i++) if (!bitGet(heard, i)) fresh.push(i);
+  const pool = fresh.length ? fresh : HUSHED_LINES.map((_, i) => i), at = pool[hashSeed(`${save.seed}:hushed-line:${o.id || o.name}:${n}`) % pool.length];
+  save.lore.hushed = bitSet(heard, at);
+  return HUSHED_LINES[at];
+}
+// A speaker's hushed speech, or null when they speak as usual this time. Each hushes at most once (`o.hushed`).
+export function hushedSpeech(save, o, version) {
+  if (!hushedSpeaker(o)) return null;
+  const n = (Number(o.hushTalk) || 0) + 1; o.hushTalk = n;
+  if (!hushesNow(save.seed, o, n, version)) return null;
+  o.hushed = true;
+  const line = hushedLine(save, o, n);
+  if (o.reciter) return `${o.name} breaks off, and says more quietly: “${line}”`;
+  return `${o.name}${o.role ? ` (${o.role})` : ""}, lowering their voice: “${line}”`;
+}
+// The chance a creature that has just noticed the Wayfarer cowers instead (0 for nearly everything). `ordinary` is whether
+// enemy-behaviour.ts counts it as an ordinary creature (bosses, elites, world beasts, guardians and the like are not).
+export function cowerChance(e, level, ordinary = true) {
+  const C = WAYFARER_DREAD.cower;
+  if (!e || !ordinary || e.dead || C.never.test(String(e.kind || ""))) return 0;
+  if (e.boss || e.eliteId || e.elite || e.worldBeast || e.questingBeast || e.dungeonRole || e.packGuardian || e.gatePredator || e.marginWarden || e.pentBoss || e.farArrayBoss || e.buildingGuardian) return 0;
+  const row = C.kinds[e.kind];
+  return row ? row[0] * dreadLevel(level) : 0;
+}
+// Whether this creature cowers (hashed from its id: the same creature always chooses the same), and how: null, or { mode, time }.
+export function cowerRoll(e, level, ordinary = true) {
+  const p = cowerChance(e, level, ordinary);
+  if (!(p > 0) || (hashSeed(`${e.id}:dread:v${WAYFARER_DREAD.version}`) % 10000) / 10000 >= p) return null;
+  const mode = WAYFARER_DREAD.cower.kinds[e.kind][1], [lo, hi] = WAYFARER_DREAD.cower.time[mode];
+  return { mode, time: lo + (hashSeed(`${e.id}:dread-time`) % 1000) / 1000 * (hi - lo) };
+}
+// Whether entering a crossing here offers the Glimpse of the one who keeps returning (hashed per crossing and the deaths so far).
+export function dreadGlimpseOffered(seed, crossingId, deaths, version) {
+  const G = WAYFARER_DREAD.glimpse;
+  if (!dreadLive(version) || !((Number(deaths) || 0) >= G.deaths)) return false;
+  return (hashSeed(`${seed}:dread-glimpse:v${WAYFARER_DREAD.version}:${crossingId}:${deaths}`) % 10000) / 10000 < G.chance;
 }

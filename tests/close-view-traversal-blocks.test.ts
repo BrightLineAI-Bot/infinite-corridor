@@ -10,6 +10,7 @@ import { serializeSave, deserializeSave } from '../src/persistence.ts';
 import { closeViewStatic, closeViewStaticStats, wallGeometry, CLOSE_VIEW_HOOKS, closeViewStats, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewProject, closeViewFloorRay, closeViewScreenToWorld } from '../src/close-view.ts';
 import { closeViewGLStats, resetCloseViewGL, glMask } from '../src/close-view-gl.ts';
 import { render } from '../src/renderer.ts';
+const legacyRig = (run) => { const was = CLOSE_VIEW_HOOKS.orbit; CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 
 const fixture = (version = 2, seed = DEFAULT_PROVING_SEED) => createLabFixture({ lab: 'close-view', scenario: version === 2 ? 'build-blocks-legacy' : 'build-blocks-current', seed, now: 1000 });
 const build = (f, at = f.buildPractice.lane.one) => { const r = f.game.buildAt(at.x + .5, at.y + .5); assert.equal(r.ok, true, r.message); return f.game.map.tiles[at.y * f.game.map.width + at.x]; };
@@ -141,7 +142,11 @@ class MockGL {
   isContextLost() { return false; } createShader() { return {}; } createProgram() { return {}; } createBuffer() { return {}; } createTexture() { return {}; } createVertexArray() { return {}; }
   getShaderParameter() { return true; } getProgramParameter(p, k) { return k === this.ACTIVE_UNIFORMS || k === this.ACTIVE_ATTRIBUTES ? 0 : true; } getExtension() { return null; }
 }
-test('the production Close View tap ray selects a visible stone top and stacks through Game.buildAt', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead). Here the orbit's eye stands behind a wall column that hides this block top (the old rig had
+// been pulled in past it), so this pick test pins the collision rig it replaced (orbit.on false, legacyRig); picking through the
+// orbit's cutout is tested in tests/close-view-orbit-camera.test.ts.
+test('the production Close View tap ray selects a visible stone top and stacks through Game.buildAt', () => legacyRig(() => {
   const previous = globalThis.WebGL2RenderingContext; globalThis.WebGL2RenderingContext = MockGL;
   const gl = new MockGL(), screen = context2D(), canvas = { width: 390, height: 844, addEventListener() {}, getContext: kind => kind === 'webgl2' ? gl : context2D() }; screen.canvas = canvas;
   setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
@@ -154,8 +159,12 @@ test('the production Close View tap ray selects a visible stone top and stacks t
       const stacked = g.buildAt(picked.x, picked.y); assert.equal(stacked.ok, true, stacked.message); assert.equal(g.map.tiles[at.y * g.map.width + at.x].buildLevel, 2); assert.equal(g.save.materials.stone, 90);
     }
   } finally { CLOSE_VIEW_HOOKS.gl = null; resetCloseViewGL(); setCloseViewCanvasFactory(null); resetCloseViewCamera(); if (previous === undefined) delete globalThis.WebGL2RenderingContext; else globalThis.WebGL2RenderingContext = previous; }
-});
-test('every quality tier and reduced motion submits legacy stone depth; picking and no-WebGL fallback remain usable', () => {
+}));
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead). Here the orbit's eye stands behind a wall column that hides this block top (the old rig had
+// been pulled in past it), so this pick test pins the collision rig it replaced (orbit.on false, legacyRig); picking through the
+// orbit's cutout is tested in tests/close-view-orbit-camera.test.ts.
+test('every quality tier and reduced motion submits legacy stone depth; picking and no-WebGL fallback remain usable', () => legacyRig(() => {
   const previous = globalThis.WebGL2RenderingContext; globalThis.WebGL2RenderingContext = MockGL;
   const gl = new MockGL(), screen = context2D(), canvas = { width: 390, height: 844, addEventListener() {}, getContext: kind => kind === 'webgl2' ? gl : context2D() }; screen.canvas = canvas;
   setCloseViewCanvasFactory(() => canvas); CLOSE_VIEW_HOOKS.gl = true; resetCloseViewGL();
@@ -174,4 +183,4 @@ test('every quality tier and reduced motion submits legacy stone depth; picking 
     }
     const f = fixture(); build(f); CLOSE_VIEW_HOOKS.gl = false; resetCloseViewCamera(); assert.doesNotThrow(() => render(screen, f.game, 390, 844, 200000));
   } finally { CLOSE_VIEW_HOOKS.gl = null; resetCloseViewGL(); setCloseViewCanvasFactory(null); if (previous === undefined) delete globalThis.WebGL2RenderingContext; else globalThis.WebGL2RenderingContext = previous; }
-});
+}));

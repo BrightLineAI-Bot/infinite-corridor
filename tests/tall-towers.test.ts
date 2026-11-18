@@ -209,10 +209,12 @@ test('falls inside an Upwell are real falls: airtime by height, then the damage 
   assert.equal(fallDamage(2, 100), 15); assert.equal(fallDamage(4, 100), Infinity);
 });
 
-test('only Upwells: every other interior keeps the instant rule', () => {
+// 2026-11-18 (FALL_EVERYWHERE, Tim: Aerial Step and falls work "the same everywhere"): was 'only Upwells: every other interior keeps
+// the instant rule'. Every interior with height now falls as an Upwell does (tests/fall-everywhere.test.ts).
+test('not only Upwells: every interior with height falls as an Upwell does', () => {
   const s = freshSave(); s.seed = 'CINDER-VERGE-47'; const g = new Game(s, 0);
   g.save.session.activeDungeonId = 'building:CINDER-VERGE-47:30:-3:hive:3r:f1'; g.save.session.dungeonReturn = { rx: 30, ry: -3, x: 16, y: 16 }; g.loadArea('dungeon', false);
-  assert.ok(g.map.interiorTerrain && !g.map.tallTower); assert.ok(!g.fallApplies(), 'a great building: instant');
+  assert.ok(g.map.interiorTerrain && !g.map.tallTower); assert.ok(g.fallApplies(), 'a great building: the fall model too');
   const { g: t } = enterTower(...towersIn[0].slice(0, 3)); assert.ok(t.fallApplies());
 });
 

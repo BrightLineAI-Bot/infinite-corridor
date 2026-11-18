@@ -8,7 +8,9 @@ import { storeInventoryItem, EQUIPMENT_CAPACITY, BRAWLER_GEAR } from '../src/gam
 import { generateItem, BRAWLER_LOOT } from '../src/items.ts';
 
 const gear = (name) => ({ ...BRAWLER_GEAR.find((g) => g.item.name === name).item, id: `x-${name}`, power: 1, tier: 'common' });
-const fullPack = () => { const s = freshSave(); s.inventory = Array.from({ length: EQUIPMENT_CAPACITY }, (_, i) => ({ id: `p${i}`, name: 'Kiln Mantle', slot: 'armor', property: 'guard', power: 90, tier: 'relic', affixes: [] })); return s; };
+// 2026-11-18: a full pack salvages from its most crowded slot (game.ts PACK_KEEP), so the pack is filled with tools (the
+// brawler tools' own slot) to keep weighing a second Hammerfall against the first; it was armor, a slot that now goes first.
+const fullPack = () => { const s = freshSave(); s.inventory = Array.from({ length: EQUIPMENT_CAPACITY }, (_, i) => ({ id: `p${i}`, name: 'Needle Caster', slot: 'secondary', property: 'quick', power: 90, tier: 'relic', affixes: [] })); return s; };
 
 test('Hammerfall drops from roughly one item in twenty or more', () => {
   let n = 0; for (let i = 0; i < 4000; i++) if (generateItem(`TIM:rootBrute:${i}`, 30).name === 'Hammerfall') n++;
