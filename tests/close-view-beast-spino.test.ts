@@ -68,6 +68,20 @@ test('the hide until it turns; the bones once the shed is under way; the shed pi
   for (const [name] of [['chunkflankL'], ['chunksail']]) assert.ok(tr.pose.scl[SPINO_SKELETON.index[name]] < .01, name);
 });
 
+// Its arms resolve the shoulder for this frame before their IK reads it (r992, as the Stegosaurus's legs now do). The hand's
+// target is an offset from that shoulder, so last frame's shoulder did not show; this keeps the spawn frame matching a steady
+// one should the target ever become a world point.
+test('the arms: the first frame after spawn places the hands where a steady frame does', () => {
+  const e = spino(), N = 5000, at = (now) => env(e, now, { reduce: true });
+  const first = createSpinoTrack(); sampleSpino(first, e, at(N));
+  const steady = createSpinoTrack(); for (let i = 90; i >= 0; i--) sampleSpino(steady, e, at(N - i * 16));
+  for (const n of ['handL', 'handR', 'foreL', 'foreR', 'footL', 'footR']) {
+    if (!(n in SPINO_SKELETON.index)) continue;
+    const p = spinoBone(first, n), q = spinoBone(steady, n), d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+    assert.ok(d < 1e-6, `${n}: ${d} off the steady frame`);
+  }
+});
+
 test('every pose of the contract, in its windup and its blow, flesh and bone, plays a finite frame', () => {
   for (const fossil of [false, true]) for (const pose of Object.keys(SPINO_POSES)) for (const phase of ['windup', 'active']) {
     const e = spino({ spinoPose: pose, spinoFossil: fossil, spinoAir: pose === 'leap' ? 1.2 : 0, spinoDig: pose === 'dig' ? 1 : 0, spinoGrab: pose.startsWith('grab') ? { who: 'player', phase: 'hold', t: .2 } : null });

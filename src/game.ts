@@ -144,6 +144,7 @@ import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, join
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -179,7 +180,7 @@ import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, 
 import { addMargin, readMargin } from "./margins.ts";
 import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.ts"; // release 505; 551: part two
-import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius } from "./lore.ts";
+import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
@@ -337,6 +338,8 @@ export function pinDungeonLayout(save, id) {
   // Arcana regions (lore.ts ARCANA_REGIONS): the same rule; while the regions are not live nothing is written, so a crossing
   // entered before they go live is seen-before when they do, and keeps the old placements.
   if (history.regionVersion === undefined) { const v = regionVersionFor(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined); if (v) history.regionVersion = v; }
+  // The Wayfarer's dread (lore.ts WAYFARER_DREAD): only crossings never generated, visited or pinned before; others are left unwritten.
+  if (history.wayfarerDreadVersion === undefined && !(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined)) history.wayfarerDreadVersion = WAYFARER_DREAD.version;
   if (history.gatePredatorSpawnThreshold == null) history.gatePredatorSpawnThreshold = visited() || history.layoutVersion !== undefined ? GATE_REVENANT.legacySpawnPerThousand : GATE_REVENANT.spawnPerThousand;
   if (history.layoutVersion === undefined) history.layoutVersion = visited() ? 0 : 1;
   // Dungeon Monster Pack: only histories that have never been entered adopt the new population and guardians.
@@ -2598,6 +2601,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     ty = player.y - e.y;
     speed = 0.78;
     if (B && B.spacing && !(b.press > 0) && !(b.comboLeft > 0) && e.range < 2.5) { const v = ringVector(e, b, B, squad); tx = v.x; ty = v.y; speed = 0.78 * v.speed; ai.mode = "circle"; } // waiting its turn on its ring
+    if (B && squad.tac && !(B.spacing && e.range < 2.5) && !(b.press > 0) && !(b.comboLeft > 0)) { const v = tacticsMove(e, b, B, squad, toPlayer); if (v) { tx = v.x; ty = v.y; speed = 0.78 * v.speed; } } // squad-tactics.ts: a swarm's place, a caster's clear line
   } else if (fromHome > 3.5) {
     ai.mode = "return";
     tx = ai.homeX - e.x;
@@ -2637,6 +2641,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   )
     {const followUp=!!(B&&b.comboLeft>0);if(B){b.press=0;if(followUp){b.comboLeft--;b.combo++}}const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=moves||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}
     if(B){const k=shapeBlow(e,b,B,!!pattern,followUp);if(followUp)e.telegraph=Math.max(BEHAVIOUR.react.comboWindup,e.minimumAttackWindup||0,.48);else if(k>1)e.telegraph*=k;b.wind=e.telegraph;e.comboStep=b.combo;e.comboOf=b.comboOf}}
+  if (B && inReach && squad.tac && e.telegraph > 0) { e.telegraph += tacticsWindup(squad, e, b, e.telegraph); b.wind = e.telegraph; } // squad-tactics.ts: a longer tell from behind the Wayfarer (never shorter)
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -3207,6 +3212,15 @@ export class Game {
       this.save.narrative.journal.push({recordId:'marshal-cancel',instanceKey:'record:marshal-cancel',title:'The Missing Crossing',text:'The Hollow Marshal fell guarding the cancellation mechanism.',provenance:'original'});
     }
   }
+  // The Wayfarer's dread (lore.ts WAYFARER_DREAD): the version pinned where the Wayfarer stands (the crossing's history in a dungeon,
+  // the section's Atlas entry outside), 0 on ground explored before it. Read once per map, so the frame allocates nothing.
+  wayfarerDreadHere() {
+    if (this._dreadMap === this.map && this._dreadArea === this.area) return this._dreadVersion;
+    const id = this.save.session?.activeDungeonId, v = this.area === "dungeon" ? (id ? this.save.consequences?.dungeons?.[id]?.wayfarerDreadVersion : 0) : this.save.atlas?.[`${this.rx},${this.ry}`]?.wayfarerDreadVersion;
+    this._dreadVersion = Number(v) || 0;
+    if (this.map && (this.area !== "overworld" || this.save.atlas?.[`${this.rx},${this.ry}`])) { this._dreadMap = this.map; this._dreadArea = this.area; } // a section's Atlas entry is written as it loads
+    return this._dreadVersion;
+  }
   areaId() {
     this.installSystems();
     this.installWeaponSystems();
@@ -3480,6 +3494,7 @@ export class Game {
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(!prior && !this.save.explored?.[key] && !this.save.session.areas?.[this.areaStateId()] ? { triceratopsHerdVersion: TRICERATOPS_HERDS.version } : {}),
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
+        ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
         ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
@@ -5336,6 +5351,7 @@ export class Game {
     if (o.strange && (action || validActions(o, this.save)[0]) === "touch") { const r = touchStrange(this.save, o, this.rx, this.ry); this.message = r.message; if (r.ok) this.glimpseCue = "strange"; return r; }
     if ((action || validActions(o, this.save)[0]) === "enter" && entranceKind(o)) this.openEntrance(o); // release 319; 323: never sealed
     if (o.kind === "chest" && o.id === "building-cache" && o.state === "closed" && this.regentHoldsHoard()) { this.message = PENTAGON.messages.hoardHeld; return { ok: false, message: this.message }; } // release 735
+    if ((action || validActions(o, this.save)[0]) === "speak" && !(o.reciter && !(o.linesLeft > 0))) { const hushed = hushedSpeech(this.save, o, this.wayfarerDreadHere()); if (hushed) { if (o.reciter) o.linesLeft--; this.message = hushed; return { ok: true, message: hushed, hushed: true }; } } // the Wayfarer's dread (lore.ts WAYFARER_DREAD): now and then someone speaks of the one who keeps coming back
     const chosen = action || validActions(o, this.save)[0],
       before = this.save.hp,
       r = applyInteraction(o, chosen, this.save, this.areaId(), this.area === "dungeon" ? { dungeonDepth: Math.max(0, (this.map?.multiLevel ? this.map.levels || [] : []).findIndex((q) => q.id === this.map.levelId)) } : {}); // release 287
@@ -5355,7 +5371,7 @@ export class Game {
     }
     // Release 193: moments that may open a Glimpse (main.ts reads the cue on the next frame).
     if ((o.kind === "ruinMarker" || o.kind === "shrine") && chosen === "inspect") this.glimpseCue = "touch";
-    if (r.transition === "dungeon") this.glimpseCue = "crossing";
+    if (r.transition === "dungeon") this.glimpseCue = !this.save.lore?.glimpses?.[WAYFARER_DREAD.glimpse.id] && dreadGlimpseOffered(this.save.seed, o.dungeonId || o.id, this.save.worldFlags?.deaths, this.wayfarerDreadHere()) ? "returning" : "crossing"; // the Wayfarer's dread: now and then, the Glimpse of the one who keeps returning (seen once; glimpses.ts)
     if (r.transition === "retrain") { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); } // release 347
     if (o.talkKey && chosen === "speak") { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } // release 265: the farmer and the quarry keeper have more to say each time
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
@@ -6606,7 +6622,7 @@ export class Game {
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
-    p.invulnerableUntil = now + (options.beam ? 320 : 700);
+    p.invulnerableUntil = now + tacticsHurtWindow(source, now, options.beam ? 320 : 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
     if (source?.kind === "doomChaser") this.frenzyHit(now); // release 710
     return true;
   }
@@ -11754,6 +11770,7 @@ export class Game {
     const packWorld=this.packWorld(dt,now,this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null);
     // enemy-behaviour.ts (Tim, 2026-11-14): one squad board for the ordinary creatures (awareness calls, attack tokens, rings).
     const squad=(this.squad||=createSquad());squadFrame(squad,activeEnemySet,p,now,dt,now<(p.meleeUntil||0),this.enemies);packWorld.squad=squad;
+    squad.wayfarerDread=dreadLive(this.wayfarerDreadHere())?(this._dreadBoard||={level:1,next:0}):null;if(squad.wayfarerDread)squad.wayfarerDread.level=Number(this.save.level)||1; // the Wayfarer's dread (lore.ts WAYFARER_DREAD): only on ground first seen from its version on
     // The Stego Bait (stego-bait.ts): while one is down here, every creature it lures sees it as the Wayfarer (lureWorld), and
     // their ground effects strike it, not you (monster-pack.ts tickPackEffects asks lureWorldFor).
     const lure=this.stegoBaitTick(dt),lureWorld=lure?this.stegoLureWorld(packWorld,lure,now):null;let stalkLure=null;
@@ -11827,7 +11844,7 @@ export class Game {
           ),
         );
         this.noteHurtVisualImpact();
-        p.invulnerableUntil = now + 700;
+        p.invulnerableUntil = now + tacticsHurtWindow(e, now, 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
