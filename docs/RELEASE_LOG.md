@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r999 (this merge, #665); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1000 (this merge, #670); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1000 | Claude | claude/close-view-camera / #670 | Close View camera: fixed-distance orbit (nearer indoors), bounded see-through cutout, full-sphere tilt, nothing out of the Wayfarer's sight drawn indoors, near-hidden/far-silhouette creatures in both views, Look zoom kept as the normal distance | Merged (#670); preview follows. |
 | 999 | Claude | claude/salvage-and-smithy / #665 | Salvage keeps the best six of each kind (tier, then power); salvage can yield lumen dust; Equipped stat readouts; one-tap smith with exact reforge results | Merged (#665); preview follows. |
 | 998 | Claude | claude/deep-variety / #669 | The Deep's lairs (Poison Crypt, Psychic Crystal, Tremor Worm, Void Walker, Wild Stegosaurus, Spinosaurus as floor guardians at DEEP_FLOOR_GEN 3); full-charting Aperture bonus (+20%) in every dungeon | Merged (#669); preview follows. |
 | 997 | Claude | claude/tim-log-fixes / #666 | Fixes from Tim's log: triad names, room-beast Echoes with catch-up, power-suit weapon in Close View, per-floor Deep seals and guardians, Deep warp daises | Merged (#666); preview follows. |
