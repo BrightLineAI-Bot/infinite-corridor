@@ -17,6 +17,7 @@
 // creature re-derives it; saves stay schema 14 and unchanged apart from the art's small numeric flags), all choices are hashed from stable ids (no Math.random), and the work
 // per frame is O(active creatures) plus a bounded kin check (BEHAVIOUR.spacing.scan).
 import { hashSeed } from "./random.ts";
+import { cowerRoll, WAYFARER_DREAD } from "./lore.ts"; // the Wayfarer's dread (Tim, 2026-11-15): a few lesser creatures cower
 
 export const BEHAVIOUR_VERSION = 1;
 
@@ -280,9 +281,29 @@ export function behaviourGate(e, b, B, board, dropAttack) {
   if (dealt > 0) react(e, b, B, board, dealt, dropAttack);
   poiseTick(e, b, B, dt);
   if (!e.aggro) { b.engaged = false; hearCall(e, b, B, board); }
-  else if (!b.engaged) { if (e.telegraph > 0 || e.pack?.attack) b.engaged = true; else notice(e, b, B, board, dealt > 0); } // already mid-attack: it noticed long ago
+  else if (!b.engaged) { if (e.telegraph > 0 || e.pack?.attack) b.engaged = true; else { notice(e, b, B, board, dealt > 0); if (board.wayfarerDread && !(dealt > 0)) dreadNotice(e, b, board); } } // already mid-attack: it noticed long ago
+  if (b.cower > 0 && dealt > 0) b.cower = 0; // struck while it cowers (or before it can), it fights
   if (b.alert > 0) { b.alert = Math.max(0, b.alert - dt); e.alert = b.alert / (b.alertMax || 1); faceWayfarer(e, board); if (b.alert > 0) return true; e.alert = 0; }
+  if (b.cower > 0) return cowerStep(e, b, board);
   return false;
+}
+// The Wayfarer's dread (lore.ts WAYFARER_DREAD; Tim, 2026-11-15): the game hands the board `wayfarerDread` ({ level, next }) only where it is
+// live (ground first seen from its version on); without it nothing here runs. A lesser creature that has just noticed the Wayfarer
+// may cower (hashed from its id), at most one per `cooldown`; after its alert beat it backs off or flees for a moment, and struck,
+// or out of time, or far enough away, it comes on as before. Runtime only (`e.bhv`), never saved.
+function dreadNotice(e, b, board) {
+  const D = board.wayfarerDread; if (board.now < (D.next || 0)) return;
+  const c = cowerRoll(e, D.level, true); if (!c) return;
+  b.cower = c.time; b.cowerMode = c.mode; D.next = board.now + WAYFARER_DREAD.cower.cooldown * 1000;
+}
+function cowerStep(e, b, board) {
+  const C = WAYFARER_DREAD.cower, dx = e.x - board.px, dy = e.y - board.py, m = Math.hypot(dx, dy) || 1;
+  b.cower = (b.cowerMode === "flee" && m >= C.far) ? 0 : Math.max(0, b.cower - board.dt);
+  if (b.cower <= 0) return false;
+  const v = (C.speed[b.cowerMode] || 0) * board.dt; moveBy(board, e, dx / m * v, dy / m * v);
+  if (b.cowerMode === "flee") { if (e.pack || e.packKind) e.facingX = dx >= 0 ? 1 : -1; else if (e.ai) e.ai.facing = Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down"); }
+  else faceWayfarer(e, board);
+  return true;
 }
 function faceWayfarer(e, board) { const dx = board.px - e.x; if (e.pack || e.packKind) e.facingX = dx >= 0 ? 1 : -1; else if (e.ai) e.ai.facing = Math.abs(dx) >= Math.abs(board.py - e.y) ? (dx < 0 ? "left" : "right") : (board.py < e.y ? "up" : "down"); }
 

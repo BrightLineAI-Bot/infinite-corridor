@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Unreleased: On ground first explored from now on, the Corridor has begun to speak of the Wayfarer in hushed tones. Now and then a traveller, a reciter or a hamlet's folk lowers their voice about a figure who keeps coming back; a rare Glimpse, The Shutter, may surface on entering a crossing; and a few lesser creatures hesitate or flee for a moment before they fight. Rats, bosses, elites, world beasts and guardians never cower, and most creatures still just fight.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
