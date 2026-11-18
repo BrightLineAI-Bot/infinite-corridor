@@ -5,7 +5,7 @@ import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.ts'; // the Carbine's stock, for its shouldered hold
 import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
 import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame, sampleCycloneMotion } from './action-motion.ts';
-import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose } from './close-view-player-presentation.ts';
+import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose, CLOSE_VIEW_WATER } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -664,6 +664,7 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   // Bounds belong to rendered triangles, never unused source vertices left by extraction.
   for (const v of asset.arrays.indices) { const y=s.vertices[v*6+1]; s.minY = Math.min(s.minY, y); max = Math.max(max, y); s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02); }
   s.referenceHeight = max - s.minY; if (!(s.referenceHeight > .1)) throw new Error('Invalid hero height');
+  s.restHip = Float64Array.of(s.global[33*16+12], s.global[33*16+13], s.global[33*16+14]); // the idle hips: a swimmer's body is drawn about them (swimPose)
   for(let side=0;side<2;side++){
     const foot=side===0?1:36,r=side*8,points=[],q=s.primaryScratch;let sole=Infinity;
     matrixQuat(q,0,s.global,foot*16);qinv(q,4,q,0);
@@ -903,7 +904,7 @@ function sampleSkinnedOverlay(parts,asset,state,input,dst,scale,cy,sy,dx,dz,knoc
     const joint=skin.joints.indexOf(part.node);if(joint<0)return -1;const m=joint*16,n=joint*9;
     for(const v of part.vertices){const x=v[0],y=v[1],z=v[2],px=matrices[m]*x+matrices[m+4]*y+matrices[m+8]*z+matrices[m+12]+dx,py=matrices[m+1]*x+matrices[m+5]*y+matrices[m+9]*z+matrices[m+13],pz=matrices[m+2]*x+matrices[m+6]*y+matrices[m+10]*z+matrices[m+14]+dz;
       // Recipe faces are deliberately outward-wound; transform their bind-space face normal below.
-      dst[o++]=input.x+(pz*cy-px*sy)*scale;dst[o++]=input.y+(pz*sy+px*cy)*scale;dst[o++]=input.groundZ+input.liftZ+(py-state.minY)*scale;
+      dst[o++]=input.x+(pz*cy-px*sy)*scale;dst[o++]=input.y+(pz*sy+px*cy)*scale;dst[o++]=input.groundZ+input.liftZ+(py-state.drawFloor)*scale;
       // Filled after each triangle so the same skinned face normal is shared by its three vertices.
       dst[o++]=normals[n+6]*cy-normals[n]*sy;dst[o++]=normals[n+6]*sy+normals[n]*cy;dst[o++]=normals[n+3];
     }
@@ -979,6 +980,37 @@ function kickLeg(asset,state,pose,left,up,fwd,w){
   if(!(w>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget,side=left?0:1,o=side*10,foot=left?1:36,H=state.referenceHeight;
   build(asset,state,pose);anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);
   target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
+}
+// Swimming (close-view-player-presentation.ts CLOSE_VIEW_WATER.stroke; input.swim { stroke, tread, move, weight }): the
+// Wayfarer treading water upright, or, moving, laid out along the surface in a front crawl. The tread (in `pose`) and the
+// crawl (in state.other) are each built whole and slerped by `move`, so a stroke never pops as the pace changes. Crawl: the
+// body pitched forward about the root (the feet go with it), the head lifted to look ahead, the arms wheeling in turn (the
+// recovery swung wide over the back, elbow bent; the pull through the water straight), a flutter kick. Tread: nearly upright,
+// the arms out at the sides sculling, the legs turning slow circles. The feet keep their own turn (no planted sole in water).
+// Radians on the root 38, head 4, upper arms 12/22 and elbows 11/21; kicks through kickLeg (heights of the hero).
+const SWIM_FOOT=new Float64Array(8);
+function swimLegs(asset,state,pose,kick,phase,circle){
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=foot*10+3,a=phase+(left?0:Math.PI);for(let k=0;k<4;k++)SWIM_FOOT[side*4+k]=pose[o+k];
+    kickLeg(asset,state,pose,left,kick*Math.sin(a),circle?kick*Math.cos(a):0,1);for(let k=0;k<4;k++)pose[o+k]=SWIM_FOOT[side*4+k];}
+}
+function swimPose(asset,state,pose,swim,reducedMotion){
+  const S=CLOSE_VIEW_WATER.stroke,w=clamp(Number(swim?.weight)||0);if(!(w>0))return false;
+  const move=clamp(Number(swim.move)||0),sp=TAU*(Number(swim.stroke)||0),tp=TAU*(Number(swim.tread)||0),calm=reducedMotion?.5:1;
+  if(move>0){const crawl=state.other;crawl.set(pose);
+    rotateX(crawl,38,S.pitch);rotateX(crawl,4,-S.head);
+    for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,side=k?-1:1,a=sp+k*Math.PI,over=Math.max(0,Math.sin(a));
+      rotateX(crawl,shoulder,a);rotateZ(crawl,shoulder,-side*.55*over);rotateX(crawl,elbow,-S.recoverElbow*over);}
+    swimLegs(asset,state,crawl,S.kick*calm,sp*2,false);
+    if(move<1)swimTread(asset,state,pose,S,tp,calm);
+    if(move>=1)pose.set(crawl);else blend(pose,crawl,move);}
+  else swimTread(asset,state,pose,S,tp,calm);
+  state.clip=move>.5?'derived-swim':'derived-tread';state.clipTime=(move>.5?sp:tp)/TAU;return true;
+}
+function swimTread(asset,state,pose,S,tp,calm){
+  rotateX(pose,38,S.treadPitch);rotateX(pose,4,-S.treadHead);
+  for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,side=k?-1:1,sweep=Math.sin(tp+k*Math.PI)*calm;
+    rotateZ(pose,shoulder,-side*S.scullOut);rotateY(pose,shoulder,side*S.scullSweep*sweep);rotateX(pose,elbow,-S.scullElbow);}
+  swimLegs(asset,state,pose,S.treadKick*calm,tp,true);
 }
 const CYCLONE_SAMPLE={stage:'',turn:0,chamber:0,extend:0,weight:0};
 function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false,cycloneWindup=NaN,cycloneRecover=NaN,cycloneEnter=0){
@@ -1140,6 +1172,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
     }
   }
   fallRelease(asset,state,action?.kind||'',action?.profile,input.nowMs,input.heldProfile==='cinder-pike');
+  const swimming=!action&&!knocked&&input.swim?swimPose(asset,state,state.pose,input.swim,input.reducedMotion):false; // CLOSE_VIEW_WATER: treading or the crawl
   // The Great Sweep stays drawn between uses (input.heldTool): the carry rides over walking, running,
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
@@ -1156,10 +1189,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // low and trailing, the weapon shoulder swung back and its elbow eased (close-view-shadow-forms.ts CLOSE_VIEW_SHADOW_FORMS.rush).
   {const k=clamp(Number(input.rushGrip)||0)*(input.reducedMotion?.5:1);if(k>0){const R=CLOSE_VIEW_SHADOW_FORMS.rush,right=roles.free==='leftSocket';rotateX(state.pose,right?22:12,R.grip*k);rotateX(state.pose,right?21:11,-R.elbow*k);}}
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
+  // a swimmer is drawn about the idle hips (its root turned under it), and from the hips down, so liftZ is the hips' depth under the water
+  let floor=state.minY;if(swimming){const b=33*16;dx=state.restHip[0]-state.global[b+12];dz=state.restHip[2]-state.global[b+14];floor=state.global[b+13];}state.drawFloor=floor;
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
-  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - state.minY, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
-  socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, state.minY); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, state.minY);
+  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - floor, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
+  socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, floor); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, floor);
   if(input.powerSuit===true){if(!samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p))return false;out.powerSuit=true;}
   // The kit is opt-in per caller: the standard Wayfarer kit, or on the suit its helmet and pack
   // (never the standard kit over the suit armor). A bad piece only drops the kit.

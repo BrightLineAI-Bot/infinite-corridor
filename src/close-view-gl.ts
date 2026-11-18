@@ -138,7 +138,7 @@ uniform vec4 u_outdoor; uniform vec4 u_skyZ; uniform vec4 u_skyH; uniform vec4 u
 // detail a land texel keeps (the rest is its own smoothed colour), the shore's wet band (tiles), foam strength, and 1 when
 // the water must keep the ordinary art (rafts drawn on it); outY: deep water's darkening, shallow water's lift, the
 // shoreline's wander (tiles), the reflection's clouds (1 balanced and full)
-uniform vec4 u_outX; uniform vec4 u_outY;
+uniform vec4 u_outX; uniform vec4 u_outY; uniform vec4 u_sea; // u_sea (close-view-outdoor.ts OUTDOOR.sea): the open water's swell (strength, wavenumber a tile, speed) and how far the sea runs on toward the horizon (0: no farther than the ground; negative on a coast, whose edge tiles run on instead of open sea)
 // the sky's mood (close-view-outdoor.ts OUTDOOR.moods): mood: stars, the clouds' dark undersides, the moon (1: its disc for the
 // sun's), a distant lightning flash now (0-1; 0 with reduced motion); moodC: the clouds' colour, the flash's azimuth (radians)
 uniform vec4 u_mood; uniform vec4 u_moodC;
@@ -327,7 +327,8 @@ float outdoorDetail(vec2 P, uint cls, float hf) {
   if (cls == 6u) { vec3 k = cells(P * 1.6); return (k.z - 0.5) * 0.5 - (1.0 - smoothstep(0.01, 0.05, k.y)) * 0.35 * hf; }
   return (fbm(P * 2.5) - 0.5) * 0.8 + (vnoise(P * 37.0) - 0.5) * 0.3 * hf;
 }
-bool waterTile(ivec2 T) { return (outdoorFlags(T) & 1u) == 1u; }
+bool waterTile(ivec2 T) { if (u_sea.w > 0.0 && (T.x < 0 || T.y < 0 || T.x >= u_mapSize.x || T.y >= u_mapSize.y)) return true; // past an open sea's edge: the sea (a coast's edge tiles run on, u_sea.w < 0)
+  return (outdoorFlags(T) & 1u) == 1u; }
 // how much water is at P, 0 to 1: the four nearest tile centres' water, blended bilinearly at a point wandered a little by
 // noise, so a coast is a curve and not a staircase (a water tile's own middle is always water, dry ground's always dry)
 float waterField(vec2 P) { vec2 Q0 = P - 0.5; ivec2 T0 = ivec2(floor(Q0)); // all four nearest middles alike (most of the ground, open water): no shore here, no noise
@@ -358,14 +359,19 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface, float z) { // z:
       float e = i == 0 ? f.x : i == 1 ? 1.0 - f.x : i == 2 ? f.y : 1.0 - f.y; uint q = outdoorFlags(T + o); float ln = float((q >> 2u) & 7u);
       if (ln > lv || (q & 2u) == 2u) foot = min(foot, e); else if (ln < lv) lip = min(lip, e); }
     col *= 1.0 - u_outR.y * (1.0 - smoothstep(0.0, u_outR.x, foot)); col *= 1.0 + u_outR.w * (1.0 - smoothstep(0.0, u_outR.z, lip)); }
+  float seaFade = 1.0, swell = 0.0;
   if (water) { vec3 n = vec3(0.0, 0.0, 1.0); float t = u_time * 0.0004;
-    if (u_finish.z > 0.5) { vec2 q = P * u_outW.z; // two swells crossing, and a finer chop near the eye
-      vec2 sw = vec2(vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t)), vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7));
-      if (depth < 9.0) sw += (vec2(vnoise(q * 2.7 - vec2(t * 1.9, 0.0)), vnoise(q * 2.9 + vec2(0.0, t * 1.6))) - 0.5) * 0.45 * (1.0 - smoothstep(6.0, 9.0, depth));
-      n = normalize(vec3(sw * u_outW.w, 1.0)); }
     // the depth: how far into the water this is (its own field), and how much water lies two tiles round it
     float ring = 0.0; for (int i = 0; i < 8; i++) { ivec2 o = i == 0 ? ivec2(2, 0) : i == 1 ? ivec2(-2, 0) : i == 2 ? ivec2(0, 2) : i == 3 ? ivec2(0, -2) : i == 4 ? ivec2(2, 2) : i == 5 ? ivec2(-2, 2) : i == 6 ? ivec2(2, -2) : ivec2(-2, -2); ring += waterTile(T + o) ? 0.125 : 0.0; }
     float deep = smoothstep(0.5, 1.0, wf) * (0.35 + 0.65 * ring);
+    if (u_finish.z > 0.5) { vec2 q = P * u_outW.z; // two swells crossing, and a finer chop near the eye
+      seaFade = 1.0 - smoothstep(u_fogP.x, u_fogP.y * 1.6, depth); // far off the noise would only shimmer: it settles into the long swell's shading
+      vec2 sw = vec2(vnoise(q + vec2(t, 0.0)) - vnoise(q + vec2(3.1, t)), vnoise(q * 1.3 - vec2(t * 0.7, t)) - vnoise(q * 1.3 + 5.7)) * seaFade;
+      if (depth < 9.0) sw += (vec2(vnoise(q * 2.7 - vec2(t * 1.9, 0.0)), vnoise(q * 2.9 + vec2(0.0, t * 1.6))) - 0.5) * 0.45 * (1.0 - smoothstep(6.0, 9.0, depth));
+      if (u_sea.x > 0.0) { // the open sea's long swell (OUTDOOR.sea): two trains of waves rolling across it, strongest in deep water
+        vec2 k1 = vec2(0.8, 0.6) * u_sea.y, k2 = vec2(-0.42, 0.91) * u_sea.y * 1.37; float p1 = dot(P, k1) - u_time * u_sea.z, p2 = dot(P, k2) - u_time * u_sea.z * 1.21;
+        swell = (sin(p1) + 0.6 * sin(p2)) * deep; sw -= (vec2(0.8, 0.6) * cos(p1) + vec2(-0.42, 0.91) * cos(p2) * 0.6) * u_sea.x * deep * (0.35 + 0.65 * seaFade) / max(u_outW.w, 1e-3); }
+      n = normalize(vec3(sw * u_outW.w, 1.0)); }
     vec3 body = mix(alb * (1.0 + u_outY.y) + vec3(0.02, 0.05, 0.05), alb * (1.0 - u_outY.x), deep);
     col = body * (dif * 0.75 + 0.25);
     vec3 v = normalize(dir), r = reflect(v, n); r.z = abs(r.z);
@@ -375,10 +381,14 @@ vec3 outdoorGround(vec2 P, vec3 dir, float depth, vec4 surface, float z) { // z:
     float edge = 1.0 - smoothstep(0.5, 0.5 + u_outX.y * 0.9, wf);
     if (edge > 0.001) { float br = vnoise(P * 6.0 + vec2(t * 2.5, -t * 1.7)) * 0.6 + vnoise(P * 15.0 - t * 3.0) * 0.4;
       float foam = edge * smoothstep(0.35, 0.75, br + edge * 0.35) * u_outX.z; col = mix(col, vec3(0.92, 0.95, 0.96) * (dif * 0.6 + 0.4), clamp(foam, 0.0, 0.85)); }
+    if (u_sea.x > 0.0 && u_finish.z > 0.5) { float cap = smoothstep(1.15, 1.55, swell) * smoothstep(0.62, 0.9, vnoise(vec2(P.x * 7.0 + P.y * 2.0, P.y * 7.0 - P.x * 2.0) + vec2(t * 1.3, -t))); // flecks of white on the swell's crests
+      col = mix(col, vec3(0.9, 0.94, 0.96) * (dif * 0.6 + 0.4), cap * 0.22 * seaFade * smoothstep(2.0, 7.0, depth)); }
     if (u_outX.w > 0.5) col = mix(col, art * dif, near * 0.6); }
   // past the section's edge (2026-11-13): no ordinary art there (it drew the off-map void as a dark checker); the ground
   // melts into the far haze over u_edge tiles, as if it lay at the fog's far edge, so the edge reads as distance, not a hole
   vec2 off = max(-P, P - vec2(u_mapSize)); float beyond = max(off.x, off.y);
+  // the open sea runs on past the edge to the horizon (OUTDOOR.sea.reach): its fog stretched, so it fades into the haze far off
+  if (water && u_sea.w != 0.0) return atmos(col, W3, depth > u_fogP.x ? u_fogP.x + (depth - u_fogP.x) / abs(u_sea.w) : depth, dif);
   if (u_edge > 0.0 && beyond > 0.0) return atmos(col, W3, mix(depth, max(depth, u_fogP.y), smoothstep(0.0, u_edge, beyond)), dif);
   return atmos(col, W3, depth, dif);
 }
@@ -427,7 +437,7 @@ void main() {
   if (u_terrain > .5) { outColor = vec4(finish(col), 1.0); return; }
   if (dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     float depth = t /* dir's component along the view axis is 1: t is the camera depth */, fogK = clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0);
-    if (fogK < 0.999) {
+    if (fogK < 0.999 || u_sea.w != 0.0 && u_outdoor.x > 0.5 && (depth - u_fogP.x) < (u_fogP.y - u_fogP.x) * abs(u_sea.w) && waterTile(T)) { // the open sea: on past the fog (OUTDOOR.sea.reach)
       vec3 dif, spe; vec3 W3 = vec3(P, 0.0);
       if ((m.r & 2u) == 2u) { col = u_fog; } // unseen: the dark keeps its secrets
       else if (u_space.x > 0.5 && (m.r & 8u) == 8u) { vec4 sf = overlayAt(P); col = mix(mix(spaceSky(dir), sf.rgb, sf.a * (m.g == 3u ? 0.15 : 0.3)), u_fog, fogK * 0.5); } // seed realms: the cosmos below the glass
@@ -718,9 +728,10 @@ void main() {
 }`;
 const MODEL_FS = FS_COMMON + `
 in vec3 v_pos; in vec3 v_nrm; in vec3 v_col; in float v_depth; in float v_alpha;
-uniform float u_pass; uniform vec3 u_sil;
+uniform float u_pass; uniform vec3 u_sil; uniform vec4 u_water;
 void main() {
-  if (v_pos.z < 0.0) discard;
+  // below the ground, or near the Wayfarer in the water below its surface (CLOSE_VIEW_WATER: the surface, not the bank, is the cut)
+  if (u_water.w > 0.0 && dot(v_pos.xy - u_water.xy, v_pos.xy - u_water.xy) < u_water.w ? v_pos.z < u_water.z : v_pos.z < 0.0) discard;
   // Identical, time-independent coverage in the silhouette and depth-writing body passes.
   // Alpha remains a separate float; a packed 32-bit RGBA integer would lose precision.
   const float bayer[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0);
@@ -889,6 +900,10 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
       vec2 q = p - c0; q = vec2(cos(an) * q.x - sin(an) * q.y, sin(an) * q.x + cos(an) * q.y); float bone = 1.0 - smoothstep(0.05, 0.08, length(vec2(max(abs(q.x) - 0.22, 0.0), q.y))); float knob = 1.0 - smoothstep(0.06, 0.09, length(vec2(abs(q.x) - 0.22, abs(q.y) - 0.04))); m = max(m, max(bone, knob)); }
     float skull = 1.0 - smoothstep(0.16, 0.2, length(p - vec2(0.25, -0.2))); m = max(m, skull); float eye = (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.2, -0.24)))) + (1.0 - smoothstep(0.03, 0.05, length(p - vec2(0.31, -0.24))));
     vec3 c = vec3(0.55, 0.51, 0.42) * lit * (1.0 - 0.8 * clamp(eye, 0.0, 1.0) * skull); a = m * v_meta.y * keep; outColor = vec4(c * a, a); return; }
+  if (k > 11.5) { // foam at a waterline (CLOSE_VIEW_WATER): a ring broken into flecks; v_meta.z: its width, plus a whole-number seed
+    float wd = fract(v_meta.z), sd = floor(v_meta.z), f = max(fwidth(r), 1e-3), ang = atan(v_loc.y, v_loc.x);
+    float band = 1.0 - smoothstep(wd - f, wd + f, abs(r - 1.0 + wd)), br = 0.55 + 0.45 * sin(ang * 9.0 + sd * 1.7) * sin(ang * 4.0 - sd * 2.3 + 1.1);
+    a = v_meta.y * band * clamp(br + 0.25, 0.0, 1.0) * keep; outColor = vec4(vec3(0.9, 0.95, 0.97) * lit * a, a); return; }
   if (k > 10.5) {
     ivec2 tile = ivec2(floor(v_world));
     if (any(lessThan(tile, ivec2(0))) || any(greaterThanEqual(tile, u_mapSize)) ||
@@ -1088,6 +1103,8 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   lp: new Float32Array(32), lc: new Float32Array(32), nl: 0, sil: new Float32Array(3), silFoe: new Float32Array(3),
   time: 0, gmapK: 44, gmapX: 0, gmapY: 0, atlasY: 0, mip: true, aniso: 4, ceiling: 1, ceilH: 2.4, ceilDetail: 1,
   // outdoors (close-view-outdoor.ts); sunC stays black and outdoor 0 indoors
+  sea: new Float32Array(4), // the open sea's swell and reach (close-view-outdoor.ts OUTDOOR.sea; zero: none)
+  water: new Float32Array(4), // the waterline the figures near the Wayfarer are cut at (x, y, height, reach squared; 0: none): close-view-player-presentation.ts CLOSE_VIEW_WATER
   outdoor: 0, sun: new Float32Array([0, 0, 1, 0]), sunC: new Float32Array(3), outdoorP: new Float32Array(4), skyZ: new Float32Array(4), skyH: new Float32Array(4), ridge: new Float32Array(4), outW: new Float32Array(4), outR: new Float32Array(4), outD: new Float32Array(4), outX: new Float32Array(4), outY: new Float32Array(4), mood: new Float32Array(4), moodC: new Float32Array(4), props: 0,
   // the solids drawn in runs (start, count) when a house's roof is left out; nRuns 0: the whole buffer in one call
   runs: new Int32Array(2 * 16), nRuns: 0, relief: 0,
@@ -1115,7 +1132,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   const light = (P) => { const u = P.U; gl.uniform2f(u.u_player, F.px, F.py); gl.uniform3f(u.u_eye, F.cx, F.cy, F.hc); gl.uniform1f(u.u_time, F.time); gl.uniform2f(u.u_dev, F.devW, F.devH);
     gl.uniform3fv(u.u_amb, F.amb); gl.uniform3fv(u.u_torch, F.torch); gl.uniform4fv(u.u_torchP, F.torchP); gl.uniform4fv(u.u_lp, F.lp); gl.uniform4fv(u.u_lc, F.lc); gl.uniform1i(u.u_nl, F.nl);
     gl.uniform4fv(u.u_fogP, F.fogP); gl.uniform3fv(u.u_fog, F.fog); gl.uniform3fv(u.u_haze, F.haze); gl.uniform4fv(u.u_grade, F.grade); gl.uniform4fv(u.u_finish, F.finish);
-    gl.uniform4fv(u.u_sun, F.sun); gl.uniform3fv(u.u_sunC, F.sunC); gl.uniform4fv(u.u_tower, F.tower); gl.uniform4fv(u.u_towerR, F.towerR); gl.uniform3fv(u.u_towerC, F.towerC); };
+    if (u.u_water) gl.uniform4fv(u.u_water, F.water); gl.uniform4fv(u.u_sun, F.sun); gl.uniform3fv(u.u_sunC, F.sunC); gl.uniform4fv(u.u_tower, F.tower); gl.uniform4fv(u.u_towerR, F.towerR); gl.uniform3fv(u.u_towerC, F.towerC); };
   gl.clearColor(F.fog[0], F.fog[1], F.fog[2], 1); gl.clearDepth(1); gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   // 1. walls, trim, arches and props: the static buffer, opaque, with depth (first, so the environment is never shaded where a wall stands)
   gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
@@ -1130,7 +1147,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   // 1b. outdoors: the outcrops and trees, one static buffer, opaque, with depth
   const outdoor = F.outdoor > 0 && !!S.prop && S.outdoorKey !== null;
   const outdoorU = (P) => { const u = P.U; gl.uniform1i(u.u_ground, 0); gl.uniform1i(u.u_mask, 1); gl.uniform4f(u.u_gmap, F.gmapK, F.gmapX, F.gmapY, F.atlasY); gl.uniform2f(u.u_tex, ground.width, ground.height); gl.uniform2i(u.u_mapSize, S.maskW, S.maskH);
-    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC); gl.uniform1f(u.u_edge, outdoor ? F.edge : 0);
+    gl.uniform4f(u.u_outdoor, outdoor ? 1 : 0, F.outdoorP[1], F.outdoorP[2], F.outdoorP[3]); gl.uniform4fv(u.u_skyZ, F.skyZ); gl.uniform4fv(u.u_skyH, F.skyH); gl.uniform4fv(u.u_ridge, F.ridge); gl.uniform4fv(u.u_outW, F.outW); gl.uniform4fv(u.u_outR, F.outR); gl.uniform4fv(u.u_outD, F.outD); gl.uniform4fv(u.u_outX, F.outX); gl.uniform4fv(u.u_outY, F.outY); if (u.u_sea) gl.uniform4fv(u.u_sea, F.sea); gl.uniform4fv(u.u_mood, F.mood); gl.uniform4fv(u.u_moodC, F.moodC); gl.uniform1f(u.u_edge, outdoor ? F.edge : 0);
     gl.uniform1i(u.u_terrainTex, outdoor ? 3 : 0); if (outdoor) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, S.tex.terrain); gl.activeTexture(gl.TEXTURE0); } };
   // 1a. outdoors: the heightfield (its tops shaded as the open ground, its cliffs and pits), opaque, with depth
   const occU = (P) => { gl.uniform4fv(P.U.u_occA, F.occA); gl.uniform4fv(P.U.u_occB, F.occB); gl.uniform4fv(P.U.u_occC, F.occC); };
