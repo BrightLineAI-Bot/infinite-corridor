@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { render } from '../src/renderer.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 import * as GL from '../src/close-view-gl.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 
@@ -69,7 +70,10 @@ test('the mask carries each tile\'s floor material, a theme\'s remap and what th
   assert.deepEqual([0, 1, 2, 5].map((i) => f.data[i * 4] & 2), [0, 0, 2, 0], 'unseen floor is marked; walls hide only where discovery hides them');
 });
 
-test('nothing stands between the camera and the Wayfarer: walking a narrow maze the line from their feet to the camera stays clear of walls, the camera never in one, the boom never lurching', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('nothing stands between the camera and the Wayfarer: walking a narrow maze the line from their feet to the camera stays clear of walls, the camera never in one, the boom never lurching', () => legacyRig(() => {
   const g = lab('cellar'); frame(g, 3); let prev = CV.closeViewCamera().distance, maxJump = 0, blocked = 0, frames = 0;
   for (let i = 0; i < 160; i++) { const st = { x: Math.sin(i / 7) * .8, y: -1 }; CV.closeViewSteer(g, st); g.update(.016, { state: st, consume: () => false, held: () => false }, T + 16); CV.closeViewUnsteer(st); frame(g, 1);
     const c = CV.closeViewCamera(), fx = g.player.x + .5, fy = g.player.y + .75; assert.equal(CV.closeViewWallAt(g.map, c.x, c.y), false, `frame ${i}: never inside a wall`);
@@ -79,7 +83,7 @@ test('nothing stands between the camera and the Wayfarer: walking a narrow maze 
   const C = CV.CLOSE_VIEW.camera; assert.ok(C.hardPad < C.sightPad && C.sightStep > 0, 'the hard cut sits under the spring\'s aim');
   const gl = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
   assert.ok(!/nGhostStart|cut-away walls/.test(gl), 'no translucent wall pass in the GPU scene'); assert.match(gl, /gl\.depthFunc\(gl\.GREATER\)/, 'a silhouette through a wall instead');
-});
+}));
 
 test('the bare floor: while the GPU scene captures, the renderer leaves the floor tiles to the shader; otherwise nothing changes', () => {
   assert.equal(CV.closeViewBareFloor(), false, 'outside a capture');
