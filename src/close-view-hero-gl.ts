@@ -11,7 +11,7 @@ precision highp sampler2DArray;
 in vec3 v_pos; in vec3 v_nrm; in vec2 v_uv; in float v_depth;
 flat in int v_layer; flat in int v_class;
 uniform sampler2DArray u_hero; uniform float u_pass; uniform float u_alpha; uniform float u_powerSuit;
-uniform vec3 u_tint; uniform float u_hit; uniform vec3 u_sil;
+uniform vec3 u_tint; uniform float u_hit; uniform vec3 u_sil; uniform vec4 u_water;
 vec3 wayfarerPalette(vec3 c) {
   // Only the two added aperture lenses: all original mask/hair triangles remain source-painted.
   if (v_class==4) return vec3(.952941,.647059,.360784)*clamp(dot(c,vec3(.2126,.7152,.0722))/.7,0.0,1.0);
@@ -35,7 +35,8 @@ vec3 wayfarerPalette(vec3 c) {
   return result;
 }
 void main() {
-  if(v_pos.z<0.0) discard;
+  // below the ground, or near the Wayfarer in the water below its surface (CLOSE_VIEW_WATER: the surface, not the bank, is the cut)
+  if(u_water.w>0.0&&dot(v_pos.xy-u_water.xy,v_pos.xy-u_water.xy)<u_water.w?v_pos.z<u_water.z:v_pos.z<0.0) discard;
   // Back faces of the added lenses must not shine through the source's open hair geometry.
   // Use the actual surface/view direction rather than the scene projection's winding convention.
   if(v_class==4 && dot(v_nrm,u_eye-v_pos)<=0.0) discard;
