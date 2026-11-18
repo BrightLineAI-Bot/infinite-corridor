@@ -10835,3 +10835,9 @@ Tim, 2026-10-21. On the horde: "There's a 1/2 a percent chance that you spawn a 
 **CODE:** Capture through enclosures grants persistent normal or Silly Goose mounts. Puncture or repeated depletion admits an injured mount to the selected hometown's Beast Hotel. The four Triceratops lab fixtures exercise capture and bedside recovery through the ordinary game actions.
 
 **BOUNDARY:** Save state is additive at schema 14. The fixtures use scratch state. Natural herd placement and dedicated mounted combat are separate work.
+
+## Release 986 — Triceratops capture loadout
+
+**CODE:** The scratch capture fixtures select Enclosure for the existing Build action in all three dispositions.
+
+**BOUNDARY:** The fixture loadout is isolated from journeys and does not change capture rules, saves or Beast Hotel behavior.

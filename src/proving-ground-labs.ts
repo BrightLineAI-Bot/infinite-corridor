@@ -731,6 +731,7 @@ function triceratopsLab(spec, seed, now) {
     if (door) Object.assign(game.player, { x: door.x, y: door.y + 1 });
   } else {
     Object.assign(save.materials, { wood: 80, stone: 80, cinderIron: 80 });
+    setBuildKind(save, "enclosure");
     for (let y = 3; y <= 16; y++) for (let x = 5; x <= 19; x++) {
       Object.assign(game.map.tiles[y * (game.map.width || 32) + x], {
         kind: "grass", blocked: false, structure: null, buildingId: null,
