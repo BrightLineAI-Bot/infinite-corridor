@@ -68,6 +68,40 @@ test('walking: planted feet never slide', () => {
   assert.ok(checked > 100, `${checked} planted frames`);
 });
 
+// Each leg's hip (or shoulder) is resolved for this frame before its IK reads it (r992). Reading it first used last frame's
+// hip: on spawn (an unresolved pose sits at the world origin) the legs snapped in from metres away for a frame, and in a fast
+// turn every foot trailed its target by the body's travel in one frame.
+const TOPS = ['thighL', 'armL', 'thighR', 'armR'];
+const still = (e, now, x, y) => ({ x, y, z: 0, scale: SCALE, now, reduce: true, tier: 'full', target: { x: x + 6, y }, dead: false });
+const footGap = (a, b) => Math.max(...FEET.map((n) => { const p = stegoBone(a, n), q = stegoBone(b, n); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); }));
+test('the legs: the first frame after spawn or a teleport places the feet where a steady frame does', () => {
+  const e = stego(), N = 5000;
+  const first = createStegoTrack(); sampleStego(first, e, still(e, N, 10, 10));
+  const steady = createStegoTrack(); for (let i = 90; i >= 0; i--) sampleStego(steady, e, still(e, N - i * 16, 10, 10));
+  assert.ok(footGap(first, steady) < 1e-6, `spawn: feet ${footGap(first, steady)} off the steady frame`);
+  for (let k = 0; k < 4; k++) { const p = stegoBone(first, FEET[k]); assert.ok(Math.hypot(p[0] - first.gait.out[k * 4], p[1] - first.gait.out[k * 4 + 1]) < 1e-6, `${FEET[k]} on its spot`); }
+  // a teleport along its heading (beyond the gait's snap distance): the next frame matches a track that has stood there a while
+  sampleStego(steady, e, still(e, N + 16, 40, 10));
+  const there = createStegoTrack(); for (let i = 90; i >= 0; i--) sampleStego(there, e, still(e, N + 16 - i * 16, 40, 10));
+  assert.ok(footGap(steady, there) < 1e-6, `teleport: feet ${footGap(steady, there)} off the steady frame`);
+});
+
+test('the legs: in a fast turn every reachable foot lands on its gait target the same frame (no lag)', () => {
+  const e = stego(), tr = createStegoTrack(); let checked = 0;
+  for (let i = 0; i < 300; i++) {
+    const a = i * .06, en = still(e, 5000 + i * 16, 10 + 2 * Math.cos(a), 10 + 2 * Math.sin(a)); en.target = null; sampleStego(tr, e, en);
+    if (i < 60) continue;
+    for (let k = 0; k < 4; k++) {
+      const p = stegoBone(tr, FEET[k]), h = stegoBone(tr, TOPS[k]), hind = k % 2 === 0;
+      const tx = tr.gait.out[k * 4], ty = tr.gait.out[k * 4 + 1], tz = (STEGO_RIG.foot + .01) * SCALE + tr.gait.out[k * 4 + 2] * STEGO_RIG.footLift * SCALE;
+      const reach = (hind ? STEGO_RIG.femur + STEGO_RIG.tibia + STEGO_RIG.hindCannon : STEGO_RIG.humerus + STEGO_RIG.radius + STEGO_RIG.foreCannon) * SCALE;
+      if (Math.hypot(h[0] - tx, h[1] - ty, h[2] - tz) > .9 * reach) continue; // a leg at full stretch stops short by design
+      assert.ok(Math.hypot(p[0] - tx, p[1] - ty, p[2] - tz) < 1e-6, `${FEET[k]} frame ${i}: ${Math.hypot(p[0] - tx, p[1] - ty, p[2] - tz)} off its target`); checked++;
+    }
+  }
+  assert.ok(Math.abs(tr.yaw) > 6 && checked > 150, `turned ${tr.yaw}, ${checked} feet checked`);
+});
+
 test('every contract pose (and its flags) gives a finite frame on every tier', () => {
   const extras = { leap: { stegoAir: 1.5 }, breach: { stegoAir: 1.8, stegoSwim: 1 }, dive: { stegoSwim: 1 }, roll: { stegoRoll: 1 }, curl: { stegoRoll: .5 },
     climb: { stegoClimb: .8, stegoClimbDir: { x: 0, y: -1 } }, launch: { stegoPlates: .1 }, shake: { stegoTree: { phase: 'pull', treeX: 0, treeY: 0 } },
