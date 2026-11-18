@@ -812,7 +812,7 @@ test("enemy strike is persisted as remaining-time state", () => {
   e.strike = 0.2;
   const restored = new Game(
     deserializeSave(serializeSave(g.exportSnapshot(10))),
-    999,
+    1000,
   );
   assert.equal(restored.enemies[0].strike, 0.2);
 });
@@ -1673,7 +1673,7 @@ test("v8 paused save roundtrip retains wounds choices active visit and effect de
   ];
   g.setPaused(true, 20);
   g.player.attackReadyAt = 220;
-  const snapshot = structuredClone(g.exportSnapshot(999));
+  const snapshot = structuredClone(g.exportSnapshot(1000));
   const restored = deserializeSave(serializeSave(snapshot));
   snapshot.consequences.dungeons["dungeon:CINDER-VERGE-47:g1"].discovery = { schema: 1, levels: {} };
   const expectedConsequences=structuredClone(snapshot.consequences);for(const history of Object.values(expectedConsequences.dungeons))history.layoutVersion??=0;
@@ -2405,12 +2405,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 989 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 1000 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "989"/);assert.match(html,/styles\.css\?v=989/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v989`/);assert.match(sw,/styles\.css\?v=989/);assert.match(sw,/proving-ground-labs\.js\?v=989/);assert.match(sw,/dungeon-framework\.js\?v=989/);assert.match(sw,/renderer\.js\?v=989/);
-  assert.match(build,/release='989'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "1000"/);assert.match(html,/styles\.css\?v=1000/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1000`/);assert.match(sw,/styles\.css\?v=1000/);assert.match(sw,/proving-ground-labs\.js\?v=1000/);assert.match(sw,/dungeon-framework\.js\?v=1000/);assert.match(sw,/renderer\.js\?v=1000/);
+  assert.match(build,/release='1000'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -2429,9 +2429,9 @@ test("Shelter Gallery uses six deterministic production shelter families",()=>{
 
 test("Proving Ground resets scratch state and cannot import persistence",()=>{
   const first=createShelterFixture("timber",0),second=createShelterFixture("timber",0);
-  first.save.currency=999;
+  first.save.currency=1000;
   assert.notEqual(first.save,second.save);
-  assert.notEqual(second.save.currency,999);
+  assert.notEqual(second.save.currency,1000);
   const source=readFileSync(new URL("../src/proving-ground.ts",import.meta.url),"utf8");
   assert.doesNotMatch(source,/persistence|saveGame|loadSave|main\.ts/);
   assert.match(source,/visibilitychange/);

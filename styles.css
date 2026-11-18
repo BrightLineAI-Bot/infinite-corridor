@@ -1161,3 +1161,8 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 /* Hold Act to call the mount or get down (MOUNT_RIDE.callHold, about 0.6 s): a gold sweep fills the Act button as it is held. It
    follows the hold itself, not an animation, so Reduced Motion needs nothing more. */
 .action-diamond button.core.act.holding { background: conic-gradient(#e0b45aa6 var(--hold, 0%), transparent 0), radial-gradient(circle at 45% 35%, #403b318c, #1c1b1873 72%); border-color: #e0b45a; }
+
+/* 2026-11-18: equipped gear stats and the smith's previews (main.ts gearStatList, previewRows) */
+.gear-grid.with-stats{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.gear-card .gear-stats{grid-column:1/-1;margin:.4rem 0 0}.gear-card .gear-stats span{font-size:.7rem;color:#cfc3a8}
+.smith-action{margin:.3rem 0}.smith-action>button{max-width:100%;white-space:normal;text-align:left}.smith-action .forge-preview{margin:.25rem 0 .1rem}.smith-action>button.reforge-up{color:#91d79a;border-color:#4f8c58;background:#17351e}.smith-action>button.reforge-down{color:#e58c87;border-color:#9a4c48;background:#3e1818}.forge-preview span,.gear-stats span{overflow-wrap:anywhere}
+.salvage-yield small{display:block;margin-top:.3rem;color:#aaa18f;font-size:.74rem}

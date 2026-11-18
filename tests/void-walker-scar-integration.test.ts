@@ -91,5 +91,8 @@ test('diagonal departure from a scar does not protect a later ordinary five-leve
  consumeVoidTerrain(game.save,map,key,{x:.5,y:.5},7);
  assert.equal(map.tiles[6*map.width+4].voidScar,true);assert.equal(map.tiles[6*map.width+5].voidScar,undefined);assert.equal(map.tiles[7*map.width+5].voidScar,undefined);
  Object.assign(game.player,{x:4.49,y:6.24});game.update(.05,{state:{x:1,y:1},consume:()=>false},1000);
+ // 2026-11-18 (FALL_EVERYWHERE, Tim: lethal falls play out over real time): was a death on this first frame. The cliff is a fall now,
+ // and still a death, on landing.
+ assert.ok(game.fall&&!(game.save.worldFlags.deaths>0),'falling, not yet dead');let t=1000;for(let i=0;i<60&&!(game.save.worldFlags.deaths>0);i++){t+=50;game.update(.05,{state:{x:0,y:0},consume:()=>false},t);}
  assert.equal(game.save.worldFlags.deaths,1);assert.ok(Math.abs(game.player.x-4.49)>.2||Math.abs(game.player.y-6.24)>.2);
 });

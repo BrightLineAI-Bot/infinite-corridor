@@ -66,6 +66,9 @@ export const ALT_PASSIVES = {
   "cinder-heart": { name: "Kindling", kind: "changes", text: "When Ember Form begins it bursts, scorching everything around you.", radius: 2.6, damage: 10, perLevel: 2 },
   "light-feet": { name: "Second Wind", kind: "always", text: "Each dodge restores 3 health.", heal: 3 },
   "aerial-step": { name: "Long Quickening", kind: "changes", text: "Quickening lasts 50% longer. (Aerial Step cannot be cast while this is chosen.)", duration: 1.5 },
+  // 2026-11-15 (Tim): the Quickening discipline's own secondary form, mirroring Long Quickening on Aerial Step: chosen, Quickening
+  // is no longer cast and Aerial Step holds `charges` more (APERTURE_SKILLS["aerial-step"].charges + this). Keyed by the discipline.
+  quickening: { name: "Quickened Stride", kind: "changes", text: "Aerial Step holds a second charge. (Quickening cannot be cast while this is chosen.)", charges: 1, discipline: true, affects: "aerial-step" },
   slipstream: { name: "Afterimage", kind: "while", text: "While Quickening holds, each dodge leaves a burst where you started.", radius: 1.6, damage: 6, perLevel: 1 },
   "thorned-veil": { name: "Veil Pulse", kind: "while", text: "While Veil Guard holds, each blow you take pulses back at every foe within 2 tiles for 15% of it.", share: .15, reach: 2 },
   sanctuary: { name: "Long Veil", kind: "changes", text: "Veil Guard lasts 50% longer.", duration: 1.5 },
@@ -110,10 +113,10 @@ export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };
   if (!altUnlocked(save)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
-  if (!hasNode(save, id)) return { ok: false, message: "Learn it first." };
+  if (!(alt.discipline ? skillRank(save, id) > 0 : hasNode(save, id))) return { ok: false, message: "Learn it first." }; // a discipline's own form (Quickened Stride): once it has a rank
   const c = save.constellation; c.alt ||= {};
   if (c.alt[id]) delete c.alt[id]; else c.alt[id] = true;
-  const primary = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
+  const primary = alt.discipline ? APERTURE_SKILLS[id] : Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
   return { ok: true, message: c.alt[id] ? `${alt.name} (secondary) replaces ${primary.name}.` : `${primary.name} (primary) is back in place of ${alt.name}.` };
 }
 
@@ -282,8 +285,9 @@ function riftCommit(game, now, R, from, best, fromLevel) {
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
   game.message = "Rift Step.";
-  // Tim (2026-11-12): every Rift Step falls. A glide or the drone's lift carries on in the air; anything else lands where it arrived.
-  if (best.footing && game.landBlink && !game.glide && !game.droneLift) game.landBlink(best.footing, fromLevel, now);
+  // Tim (2026-11-12): every Rift Step falls. An open glide or the drone's lift carries on in the air; anything else lands where it
+  // arrived. A step taken while falling steps out of the fall (game.ts FALL_RESCUE.rift, Tim 2026-11-18).
+  if (best.footing && game.landBlink && !(game.glide && game.glide.open !== false) && !game.droneLift) game.landBlink(best.footing, fromLevel, now); // FALL_RESCUE.rift: a great tree's closed freefall is stepped out of too
   game.sync();
   return true;
 }
@@ -336,6 +340,23 @@ export function riftStepTo(game, now, target) {
   const c = riftAimCheck(game, target, now);
   if (!c.ok) { if (c.why !== "charges") game.message = c.why === "reach" ? `Rift Step reaches ${c.reach} tiles.` : c.why === "path" ? "Something on the way turns the step aside." : "Rift Step cannot stand there."; return false; }
   return riftCommit(game, now, c.R, { x: game.player.x, y: game.player.y }, c.best, c.startLevel);
+}
+// Aerial Step's charges (Tim, 2026-11-15): APERTURE_SKILLS["aerial-step"].charges, and Quickened Stride's (Quickening's secondary
+// form, chosen and open) on top. The count is save.magicSkills.aerialCharges (additive; absent reads as full, or one short while the
+// old single cooldown still runs); each spent charge comes back on cooldowns["aerial-step"], one at a time, as Rift Step's do.
+export const quickenedStride = (save) => skillRank(save, "quickening") > 0 && altChosen(save, "quickening");
+export const aerialChargeMax = (save) => Math.max(1, Math.floor(Number(APERTURE_SKILLS["aerial-step"].charges) || 1)) + (quickenedStride(save) ? ALT_PASSIVES.quickening.charges : 0);
+export function aerialChargesNow(save) {
+  const st = save.magicSkills, max = aerialChargeMax(save); if (!st) return max;
+  const n = Number(st.aerialCharges), have = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : (st.cooldowns?.["aerial-step"] || 0) > 0 ? max - 1 : max;
+  return Math.min(max, have);
+}
+// One frame of recharge (after the cooldowns have ticked): a finished cooldown returns a charge and starts the next while one is missing.
+export function tickAerialCharges(save, cooldown) {
+  const st = save.magicSkills; if (!st || !skillRank(save, "aerial-step")) return;
+  const max = aerialChargeMax(save); let n = aerialChargesNow(save);
+  if (n < max && (st.cooldowns["aerial-step"] || 0) <= 0) { n += 1; if (n < max) st.cooldowns["aerial-step"] = cooldown; }
+  st.aerialCharges = n;
 }
 export function tickRiftCharges(save) {
   const st = save.magicSkills; if (!st || !skillRank(save, "rift-step")) return;
