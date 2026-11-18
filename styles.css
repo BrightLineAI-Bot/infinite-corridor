@@ -1158,3 +1158,6 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 .buttons button.mount-control .slot-sym svg { width: 20px; height: 20px; }
 .buttons button.mount-control.mount-active { box-shadow: 0 0 10px #ffd07a, inset 0 0 0 2px #ffd07a; background-color: #4a3519; }
 .action-diamond button.core.jump.mount-control { color: #f1dca8; }
+/* Hold Act to call the mount or get down (MOUNT_RIDE.callHold, about 0.6 s): a gold sweep fills the Act button as it is held. It
+   follows the hold itself, not an animation, so Reduced Motion needs nothing more. */
+.action-diamond button.core.act.holding { background: conic-gradient(#e0b45aa6 var(--hold, 0%), transparent 0), radial-gradient(circle at 45% 35%, #403b318c, #1c1b1873 72%); border-color: #e0b45a; }

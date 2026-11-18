@@ -1,17 +1,16 @@
-// Tim, 2026-11-18: hold Act (not a tap) to call or dismiss the mount, and while riding a Triceratops slots B, C and D are its
+// Tim, 2026-11-18: hold Act (not a tap, about 0.6 s) to call or dismiss the mount, and while riding a Triceratops slots B, C and D are its
 // Horn Dash, Bash and Horn Shot, with Jump read as Stomp (the Silly Goose's Drill). Display and input only.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, actionReadiness } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { BOAT } from "../src/boats.ts";
 import { deserializeSave, serializeSave } from "../src/save-codec.ts";
-import { stableMount, startRide, ridingMount, mountById, damagePersistentMount, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS } from "../src/beast-mounts.ts";
+import { MOUNT_RIDE, stableMount, startRide, ridingMount, mountById, damagePersistentMount, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS } from "../src/beast-mounts.ts";
 
 const flat = () => ({ width: 32, height: 32, exits: { west: 16, east: 16, north: 16, south: 16 }, tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: "savannaGrass", elev: 0, blocked: false })), objects: [], enemySpawns: [] });
 function world({ ride = true, variant = "good" } = {}) {
   const save = freshSave(); save.seed = "TRIKE-CONTROLS";
-  const g = new Game(save, 0); g.mountSlotControls = true; g.map = flat(); g.enemies = []; g.builds = []; g.projectiles = [];
+  const g = new Game(save, 0); g.map = flat(); g.enemies = []; g.builds = []; g.projectiles = [];
   Object.assign(g.player, { x: 10, y: 10, facing: "right", hp: 100, stamina: 100, jumping: false });
   const m = stableMount(save, "triceratops", { triceratopsDisposition: variant }).mount; if (ride) startRide(save, m.id);
   return { g, m };
@@ -33,28 +32,33 @@ test("a tap of Act with nothing near does not call or dismiss the mount, and rea
   assert.ok(ridingMount(riding.save), "a tap does not get you down");
 });
 
-test("holding Act for the skiff's hold length calls the mount, and again gets you down", () => {
-  const { g, m } = world({ ride: false }), input = pad(), seen = new Set();
+test("holding Act for MOUNT_RIDE.callHold calls the mount, and again gets you down", () => {
+  const { g, m } = world({ ride: false }), input = pad(), seen = new Set(), fill = [];
+  assert.equal(MOUNT_RIDE.callHold, .6);
   input.press("interact");
   let t = 1000;
-  for (; t < 1000 + BOAT.leaveHold * 1000 - 100; t += 50) { g.update(.05, input, t + 50); if (/Keep holding Act/.test(g.message)) seen.add(g.message); }
+  for (; t < 1000 + MOUNT_RIDE.callHold * 1000 - 100; t += 50) { g.update(.05, input, t + 50); seen.add(g.message); fill.push(g.mountHoldProgress()); }
   assert.equal(ridingMount(g.save), null, "not before the hold completes");
-  assert.deepEqual([...seen], [3, 2, 1].map(n => `Keep holding Act to call your mount… ${n}`));
+  assert.deepEqual([...seen], ["Calling your mount…"]);
+  assert.ok(fill.every((f, i) => f > 0 && f < 1 && (!i || f > fill[i - 1])), "the Act button fills as it is held");
   t = run(g, input, t, 200);
   assert.equal(ridingMount(g.save)?.id, m.id, "called");
   assert.match(g.message, /answers your call/);
-  t = run(g, input, t, BOAT.leaveHold * 1000 + 500);
+  assert.equal(g.mountHoldProgress(), 0);
+  t = run(g, input, t, MOUNT_RIDE.callHold * 1000 + 500);
   assert.equal(ridingMount(g.save)?.id, m.id, "one hold, one call: it waits for the button to be released");
   input.release("interact"); t = run(g, input, t, 100);
   input.press("interact"); t = run(g, input, t, 300);
-  assert.match(g.message, /Keep holding Act to get down… 3/);
-  t = run(g, input, t, BOAT.leaveHold * 1000);
+  assert.equal(g.message, "Getting down…");
+  t = run(g, input, t, MOUNT_RIDE.callHold * 1000);
   assert.equal(ridingMount(g.save), null, "dismissed");
   assert.match(g.message, /climb down/);
-  // letting go early, or a pause, cancels
+  // a direct interact() with nothing near behaves the same: it only arms the hold
+  assert.match(g.interact().message, /Nothing nearby responds/); assert.equal(ridingMount(g.save), null);
+  // a pause cancels
   input.release("interact"); t = run(g, input, t, 100);
-  input.press("interact"); t = run(g, input, t, 1000); g.setPaused(true, t); g.setPaused(false, t + 10);
-  t = run(g, input, t + 10, BOAT.leaveHold * 1000 + 200);
+  input.press("interact"); t = run(g, input, t, 300); g.setPaused(true, t); g.setPaused(false, t + 10);
+  t = run(g, input, t + 10, MOUNT_RIDE.callHold * 1000 + 200);
   assert.equal(ridingMount(g.save), null, "a pause drops the hold");
 });
 
@@ -81,8 +85,6 @@ test("the slot override applies only while riding a Triceratops, and the slots r
   assert.deepEqual(presses, ["b"], "on foot again: the spell slot casts as ever");
   const briar = world({ ride: false }); const s = stableMount(briar.g.save, "briarStag").mount; startRide(briar.g.save, s.id);
   assert.equal(briar.g.triceratopsControls(), null, "other mounts keep the spell slots");
-  const headless = world(); headless.g.mountSlotControls = false;
-  assert.equal(headless.g.triceratopsControls(), null, "only the player's control layer installs the override");
 });
 
 test("B is the Horn Dash: the accepted tap-Dodge horn contact", () => {
@@ -143,7 +145,7 @@ test("the Beast Hotel: holding Act with nothing near still calls and dismisses t
   save.hometowns = { home: "4,3", towns: [{ rx: 4, ry: 3, name: "West Reach", listener: 1 }] };
   const { id } = stableMount(save, "triceratops", { triceratopsDisposition: "good" }).mount;
   startRide(save, id); damagePersistentMount(save, 1, { puncture: true, home: "4,3", location: "4,3" });
-  const game = new Game(save, 0); game.mountSlotControls = true; game.rx = 4; game.ry = 3; game.loadArea("overworld");
+  const game = new Game(save, 0); game.rx = 4; game.ry = 3; game.loadArea("overworld");
   const door = game.map.objects.find(o => o.beastHotelDoor);
   Object.assign(game.player, { x: door.x, y: door.y }); game.rite = false;
   assert.equal(game.interact("enter", door.id).ok, true);
@@ -153,9 +155,9 @@ test("the Beast Hotel: holding Act with nothing near still calls and dismisses t
   assert.ok(spot, "a clear spot in the hotel"); assert.ok(w);
   const input = pad(); input.press("interact"); let t = run(game, input, 1000, 100);
   assert.equal(ridingMount(save), null);
-  t = run(game, input, t, BOAT.leaveHold * 1000);
+  t = run(game, input, t, MOUNT_RIDE.callHold * 1000);
   assert.equal(ridingMount(save)?.id, id, "called in the hotel");
-  input.release("interact"); t = run(game, input, t, 100); input.press("interact"); run(game, input, t, BOAT.leaveHold * 1000 + 100);
+  input.release("interact"); t = run(game, input, t, 100); input.press("interact"); run(game, input, t, MOUNT_RIDE.callHold * 1000 + 100);
   assert.equal(ridingMount(save), null, "dismissed in the hotel");
   assert.equal(deserializeSave(serializeSave(save)).mounts.stable.length, save.mounts.stable.length, "nothing new saved");
 });

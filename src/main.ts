@@ -2556,6 +2556,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"aria-label",action === "jump" && mountJump ? `Jump: Triceratops ${mountJump.jump} ${label}` : `${action} ${label}`);
   }
   // Tim, 2026-11-18: riding a Triceratops, Jump reads as its landing (Stomp; the Silly Goose's Drill), and back to Jump on getting down.
+  { const ab = hudEl('[data-action="interact"]'), h = game.mountHoldProgress?.() || 0; if (ab) { hudSet(ab, "class:holding", h > 0); hudSet(ab, "--hold", `${Math.round(h * 100)}%`); } } // hold Act: the call fills the button (MOUNT_RIDE.callHold)
   { const jb = hudEl('[data-action="jump"]'); if (jb) { hudSet(jb, "text", mountJump ? mountJump.jump : "Jump"); hudSet(jb, "class:mount-control", !!mountJump); } }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots (the slots are lettered, so no clash).
@@ -2714,7 +2715,6 @@ function frame(now) {
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
-  game.mountSlotControls = true; // Tim, 2026-11-18: riding a Triceratops, the slot buttons and keys B/C/D are its attacks (Game.triceratopsControls)
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });

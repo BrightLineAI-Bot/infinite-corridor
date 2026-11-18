@@ -115,7 +115,8 @@ export const MOUNT_NEVER = ["questingBeast", "psychicCrystal", "voidWalker", "li
 // Tim, 2026-11-04: "The mounts shouldn't give you any extra defense. You're just riding them. If you take them into fire or something,
 // it should hurt the character. The only defense they give you: if you go into lava, it's not an instant kill, it's like a two-second
 // kill." `lavaSeconds`: standing in lava on a mount takes this long to burn through full health (on foot lava kills at once).
-export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14, lavaSeconds: 2,
+// `callHold` (Tim, 2026-11-18: "About 0.6 s"): seconds holding Act, with nothing near, to call the mount or get down; a tap does neither.
+export const MOUNT_RIDE = { cap: 3, seconds: 720, sections: 35, knockoff: .35, sense: 14, lavaSeconds: 2, callHold: .6,
   lavaWade: "Your mount wades into the lava and it burns you both: ride out of it, now!", lavaDeath: "The lava burns through the saddle, and takes the Wayfarer." };
 // Release 748 (Tim, 2026-11-04: "hits should land on the rider where drawn"): how far above its feet the rider sits, in tiles. While
 // mounted, the hostile phase of each frame sees the Wayfarer there (game.ts riderUp / riderDown); terrain stays at the feet.

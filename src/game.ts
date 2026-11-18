@@ -2881,7 +2881,7 @@ export class Game {
       return hits;
     };
     const interact = this.interact.bind(this);
-    this.interact = (action, objectId = null, press = false) => {
+    this.interact = (action, objectId = null) => {
       const o = this.nearestObject();
       if (o?.kind === "vine" && (!action || action === "swing")) {
         const reverse =
@@ -2894,7 +2894,7 @@ export class Game {
         this.message = "You catch the root-vine and swing across.";
         return { ok: true, message: this.message, transition: "swing" };
       }
-      return interact(action, objectId, press);
+      return interact(action, objectId);
     };
     const update = this.update.bind(this);
     this.update = (dt, input, now) => {
@@ -3135,7 +3135,7 @@ export class Game {
       }
     };
     const interact = this.interact.bind(this);
-    this.interact = (action, objectId = null, press = false) => {
+    this.interact = (action, objectId = null) => {
       const target = objectId
         ? this.map.objects.find((o) => o.id === objectId)
         : this.nearestObject();
@@ -3161,7 +3161,7 @@ export class Game {
           transition: "apertureReturn",
         };
       }
-      const r = interact(action, objectId, press);
+      const r = interact(action, objectId);
       if (r?.ok && target?.kind === "apertureRelic") {
         const key = "relic-stat:" + this.areaId();
         if (!this.save.perception.awarded[key]) {
@@ -5151,7 +5151,7 @@ export class Game {
     if(hidden){recordRevelationLead(this.save,'displacement',o.id);journalOnce(this.save,`hidden-displacement:${o.id}`,'A concealed Folded Seam displaced you only after you crossed fully inside a shelter. Triggered seams keep a faint scar; untouched shelters reveal nothing.','Shelter hazards');this.defeatNotice={title:'HIDDEN SEAM TRIGGERED',detail:'the shelter folds into an unknown crossing',kind:'discovery'}}
     this.loadArea("dungeon");this.player.x=this.map.entry?.x??4;this.player.y=this.map.entry?.y??5;this.settleArrival();/* release 439 */this.message=hidden?'The floor opens without warning. Space folds around you.':'The threshold folds the room into somewhere else.';this.sync();return true;
   }
-  interact(action, objectId = null, press = false) {
+  interact(action, objectId = null) {
     this.sync();
     // Release 641 (Tim: "if you're in open sea, you're swimming, I think you should be able to hit action and get the boat or deploy
     // the robot"): swimming in the open world with nothing nearby to use, Act brings your skiff to you, or else calls up the robot.
@@ -5169,9 +5169,9 @@ export class Game {
     // Release 263 (Tim: "if I go to the edge of the water and hit action, I should be building a boat and getting on that
     // boat and moving"): at the water's edge a tree or rock beside you no longer takes the press when a skiff can be built.
     if (o && !objectId && SHORE_PASSIVE.includes(o.kind) && this.shoreWater() && canBuildSkiff(this.save)) return this.buildSkiffHere();
-    // Tim, 2026-11-18: the Act button's press (`press`, from update) no longer calls the mount or gets you down; it arms the hold
-    // (mountHoldTick), and a tap reads as it did before mounts. A direct call with no object (no button involved) still does it at once.
-    if (!o && !objectId && !action && this.mountCallable()) { if (press) this.mountHold = { t: 0, shown: null }; else { const r = this.actMount(); if (r) return r; } }
+    // Tim, 2026-11-18: Act with nothing near no longer calls the mount or gets you down; it arms the hold (mountHoldTick, MOUNT_RIDE.callHold),
+    // and a tap reads as it did before mounts.
+    if (!o && !objectId && !action && this.mountCallable()) this.mountHold = { t: 0, shown: null };
     if (!o)
       return {
         ok: false,
@@ -7427,19 +7427,20 @@ export class Game {
   // Act with nothing near in the open world: get down, or call the mount ridden last.
   mountCallable() { return (this.area === "overworld" || isBeastHotelId(this.save.session.activeDungeonId)) && ensureMounts(this.save).stable.length > 0; }
   actMount() { if (!this.mountCallable()) return null; return ridingMount(this.save) ? this.dismount() : this.summonMount(); }
-  // Tim, 2026-11-18: hold Act (an Act press with nothing near) for the skiff's hold length, BOAT.leaveHold, to call the mount or get
-  // down, with the same "Keep holding Act…" countdown. Letting go first cancels; a finished hold waits for the button to be released.
+  // Tim, 2026-11-18: hold Act (an Act press with nothing near) for MOUNT_RIDE.callHold seconds to call the mount or get down. While it
+  // fills, the message says so (and mountHoldProgress fills the Act button); letting go first cancels and the tap reads as before mounts.
+  // A finished hold waits for the button to be released.
   mountHoldTick(dt, held) {
     const q = this.mountHold; if (!q) return null;
-    if (!held || !this.mountCallable() || aboard(this.save)) { this.mountHold = null; if (q.t >= 0 && q.shown != null && /^Keep holding Act to (call|get)/.test(this.message || "")) this.message = "Nothing nearby responds."; return null; } // let go early: the tap reads as it did before mounts
+    if (!held || !this.mountCallable() || aboard(this.save)) { this.mountHold = null; if (q.t >= 0 && q.shown && this.message === q.shown) this.message = "Nothing nearby responds."; return null; } // let go early: the tap reads as it did before mounts
     if (q.t < 0) return null;
     q.t += dt;
-    if (q.t < BOAT.leaveHold) { const left = Math.ceil(BOAT.leaveHold - q.t); if (left !== q.shown) { q.shown = left; this.message = `Keep holding Act to ${ridingMount(this.save) ? "get down" : "call your mount"}… ${left}`; } return null; }
+    if (q.t < MOUNT_RIDE.callHold) { if (!q.shown) this.message = q.shown = ridingMount(this.save) ? "Getting down…" : "Calling your mount…"; return null; }
     q.t = -1e9; q.shown = null; return this.actMount();
   }
+  mountHoldProgress() { const q = this.mountHold; return q && q.t >= 0 ? Math.min(1, q.t / MOUNT_RIDE.callHold) : 0; }
   // While riding a Triceratops: slots B, C and D become its attacks (TRICERATOPS_CONTROLS), Jump its landing. Display and input only.
-  // The player's control layer (main.ts, touch and keyboard) turns it on with `mountSlotControls` each frame; a headless Game keeps the raw slots.
-  triceratopsControls() { const m = this.mountSlotControls === true && this.mountRide?.(); return persistentMount(m) ? { variant: m.variant === "silly" ? "silly" : "normal", jump: TRICERATOPS_CONTROLS.jump[m.variant === "silly" ? "silly" : "normal"] } : null; }
+  triceratopsControls() { const m = this.mountRide?.(); return persistentMount(m) ? { variant: m.variant === "silly" ? "silly" : "normal", jump: TRICERATOPS_CONTROLS.jump[m.variant === "silly" ? "silly" : "normal"] } : null; }
   releaseStabled(id) { const m = releaseMount(this.save, id); if (m) { if (!ridingMount(this.save)) this._mountHp = null; this.message = `You let ${mountName(m).replace(/^The /, "the ")} go. It is gone from your stable.`; } return m; }
   // Each frame: the ride runs down; a death, an indoor step, water, a skiff, the robot, the drone or the glider gets you down
   // first, and a heavy blow (MOUNT_RIDE.knockoff of maximum health in one frame) throws you off.
@@ -11329,7 +11330,7 @@ export class Game {
     if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (this.cycloneHold) this.tickCycloneHold(now, input.held?.(this.cycloneHold.action) === true); // the Cyclone Heel: let go (or landed), it spins
     let mountPress = null; const mounted = this.triceratopsControls(); // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks through the accepted Dodge path
-    if (mounted) { for (const a of ["spell", "spell2", "spell3"]) if (input.consume(a)) mountPress ||= TRICERATOPS_CONTROLS[a]; }
+    if (mounted) { for (const a of ["spell", "spell2", "spell3"]) if (input.consume(a)) mountPress ||= TRICERATOPS_CONTROLS[a]; if (this.triceratopsCharge) mountPress = null; } // a charge under way (held Dodge or a button's) is not cut short
     else {
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
@@ -11667,7 +11668,7 @@ export class Game {
     if (!fellIntoHazard&&input.consume("interact")) {
       this.save.aimMode = "act";
       this.save.toolMode = false;
-      this.interact(undefined, null, true); // the Act button: a press (hold Act to call the mount)
+      this.interact(); // with nothing near, this arms the hold that calls the mount
     }
     if (this.mountHold) this.mountHoldTick(dt, !fellIntoHazard && input.held?.("interact") === true); // hold Act: call the mount or get down
     const sanctuary=this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null;
