@@ -24,7 +24,7 @@ test('the danger zone: at 30% of maximum health or below, alive; 0 at the thresh
 
 test('it creeps further in and grows stronger as health falls', () => {
   for (let s = 1; s <= L.steps; s++) assert.ok(lowHealthEdgeReach(s) > lowHealthEdgeReach(s - 1));
-  assert.equal(lowHealthEdgeReach(0), L.reach.min); assert.equal(lowHealthEdgeReach(L.steps), L.reach.max);
+  assert.equal(lowHealthEdgeReach(0), L.reach.min); assert.ok(Math.abs(lowHealthEdgeReach(L.steps) - L.reach.max) < 1e-9);
   let lastAlpha = 0, lastStep = -1;
   for (const hp of [30, 25, 20, 15, 10, 5, 1]) { const st = lowHealthEdgeState(g(hp, 100, { presentation: { reduceMotion: true } }), 1000); assert.ok(st.show); assert.ok(st.alpha > lastAlpha, `alpha at ${hp}`); assert.ok(st.step >= lastStep); lastAlpha = st.alpha; lastStep = st.step; }
   assert.ok(lowHealthEdgeState(g(30), 0).alpha > 0, 'visible already at the threshold');

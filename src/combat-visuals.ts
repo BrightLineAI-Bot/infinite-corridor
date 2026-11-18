@@ -339,11 +339,11 @@ export function drawViewportClosed(ctx, stage, w, h, t, art = {}, quality = "bal
 // still frame at `still` of its alpha. While the fall cue (FALL_RESCUE.flash) shows, it yields: one red cue at a time.
 export const LOW_HEALTH_EDGE = Object.freeze({
   threshold: .3,
-  reach: Object.freeze({ min: .05, max: .24 }),
+  reach: Object.freeze({ min: .04, max: .11 }), // Tim 2026-11-18: a light mist at the edges, not a frame
   steps: 8,
   soft: .6,
-  ragged: .5,
-  alpha: Object.freeze({ min: .5, max: .82 }),
+  ragged: .3,
+  alpha: Object.freeze({ min: .14, max: .32 }),
   tint: Object.freeze([1, .12, .1]),
   dip: Object.freeze({ min: .06, max: .24 }),
   dipTo: .45,
