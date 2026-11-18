@@ -3,14 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {freshSave} from '../src/types.ts';
 import {Game,footprintOpen,footprintHazard,settlementSanctuary} from '../src/game.ts';
-import {WORLD_BEASTS,BEAST_HOMES} from '../src/world-beasts.ts';
+import {WORLD_BEASTS,BEAST_HOMES,BEAST_ENGAGEMENT} from '../src/world-beasts.ts';
 import {skylandSection,rollSkylandMode,skylandModeOf} from '../src/skylands.ts';
 const idle={state:{x:0,y:0},consume:()=>false,held:()=>false};
 // Existing valid hunt/patience fixture, matching world-beast-pursuit tests. Observe
 // real update/transitionSection lifecycle, not chance-roll acquisition or human navigation.
 function retreat(seed,id,physicalBoundary=false){
  const s=freshSave();s.seed=seed;s.level=8;s.perception.aperture=10810;s.capabilities.swim=true;
- s.worldBeasts[id].active={rx:6,ry:6,tries:1,patience:179.99};
+ // 2026-11-18 (Tim): the per-fight `patience` clock (180 s) became the 15-minute engagement window (BEAST_ENGAGEMENT, `engagedAt` on save.playSeconds); this fixture starts the hunt just short of its end.
+ s.worldBeasts[id].active={rx:6,ry:6,tries:1,engagedAt:(s.playSeconds||0)-BEAST_ENGAGEMENT.seconds+.01};
  const g=new Game(s,0);g.rx=6;g.ry=6;g.loadArea('overworld');
  let e=g.enemies.find(e=>e.worldBeast===id);assert.ok(e,'generated placement accepts hunt');e.aggro=true;
  let now=1000;g.player.invulnerableUntil=1e12;g.update(.05,idle,now+=50);
