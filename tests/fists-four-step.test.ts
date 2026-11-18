@@ -100,8 +100,10 @@ test('Ki Blast: the airborne uppercut is followed by the ground slam in the kick
     idle(g, clock, 40); step(g, clock); step(g, clock); assert.equal(g.fistNextStep(clock.t), 3); hold(g, clock, WEAPON_ARTS.hold.grace + 1.15); return a; };
   for (const awakened of [true, false]) {
     { const { g, clock } = setUp(awakened); idle(g, clock, 5); /* 2026-11-14: the fists' contact delay runs in every area */ assert.ok(clock.t < g.jumpUntil, 'popped up'); assert.equal(g.fistCombo.step, 3);
-      tap(g, clock); assert.ok(g.plunge?.kiSlam, 'the press in the air is the slam'); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick');
-      const before = lost(g); idle(g, clock, 30); assert.ok(lost(g) > before, 'it lands'); assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross');
+      tap(g, clock);
+      if (awakened) { frame(g, clock); assert.ok(g.cycloneHeel && !g.plunge, 'awakened with Ki Blast (2026-11-15): the Cyclone Heel'); assert.equal(g.player.attackVisual.awakenedArt, 'cyclone-heel'); }
+      else { assert.ok(g.plunge?.kiSlam, 'the press in the air is the slam'); assert.equal(g.player.attackVisual.awakenedArt, 'axe-kick'); }
+      const before = lost(g); idle(g, clock, awakened ? 60 : 30); assert.ok(lost(g) > before, 'it lands'); assert.equal(g.fistNextStep(clock.t), 1, 'then the chain starts again at the cross');
       tap(g, clock); frame(g, clock); assert.equal(g.fistCombo.step, 1); }
     { const { g, clock } = setUp(awakened); while (clock.t < g.jumpUntil) frame(g, clock); frame(g, clock); assert.equal(g.kiSlamReady(clock.t), false, 'landed');
       assert.ok(clock.t <= g.fistCombo.until, 'the leap (JUMP.base) lands inside the combo window');

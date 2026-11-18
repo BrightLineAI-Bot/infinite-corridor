@@ -8,7 +8,7 @@ const bodies=['quadruped','floating','segmented','tentacled','geometric','biomec
 const idle={state:{x:0,y:0},consume:()=>false,held:()=>false};
 
 test('Creature Asset Lab is separate, exhaustive and leaves the existing combat gallery unchanged',()=>{
-  assert.equal(LABORATORIES.length,21);
+  assert.equal(LABORATORIES.length,22);assert.equal(LABORATORIES.find(q=>q.id==='triceratops-recovery')?.status,'implemented');assert.deepEqual(scenariosForLab('triceratops-recovery').map(q=>q.id),['triceratops-hotel','triceratops-good','triceratops-silly','triceratops-bad']);
   const cases=scenariosForLab('creature-assets');assert.equal(cases.length,47);assert.deepEqual(cases.slice(0,29).map(q=>q.id),roster);assert.deepEqual(cases.slice(29,35).map(q=>q.id),bodies.map(q=>`foundry-${q}`));assert.deepEqual(cases.slice(38).map(q=>q.id),['wayfarer-iron-fists','wayfarer-active-robot','wayfarer-empowered-suit','wayfarer-ember-form','corridor-golem','shadow-clone','aether-orrery','dungeon-reciter','elder-wanderer']);
   const combat=scenariosForLab('combat-assets');
   assert.equal(combat.length,33);assert.equal(combat[32].id,'blade-needle-ashling');
