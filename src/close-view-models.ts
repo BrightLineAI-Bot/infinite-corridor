@@ -10,6 +10,7 @@ import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeView
 import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.ts';
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.ts'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
+import { CREATURE_MOTION, creatureMotion, motionCarry } from './creature-motion.ts'; // the shared creature motion layers (2026-11-15)
 export { MESH_FLOATS } from './close-view-mesh.ts';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
@@ -538,11 +539,12 @@ const ashling = [
   jointed(part(taper, .05, -.12, 1.19, .075, .066, .14, ash, 0, .05, 1.12, -.42), 82, .04, .88),
   jointed(part(taper, .06, .12, 1.17, .075, .072, .10, ash, 0, .06, 1.12, -.30), 82, .04, .88),
 ];
-for (const side of [-1, 1]) ashling.push(part(membrane([[.288, side * .035, 1.005], [.282, side * .12, 1.045], [.29, side * .115, 1.0], [.29, side * .04, .975]]), 0, 0, 0, 1, 1, 1, ember, 82, .04, .88));
+for (const side of [-1, 1]) ashling.push(part(membrane([[.29, side * .03, .985], [.283, side * .125, 1.045], [.29, side * .11, .995]]), 0, 0, 0, 1, 1, 1, ember, 82, .04, .88));
 for (const side of [-1, 1]) {
   ashling.push(
-    part(curvedTube([[.03, side * .25, .86, .075], [.07, side * .33, .63, .058], [.17, side * .29, .44, .04]], 4), 0, 0, 0, 1, 1, 1, ash, side * 2, .03, .84),
-    part(membrane([[.16, side * .29, .45], [.31, side * .31, .40], [.27, side * .34, .32], [.30, side * .25, .31]]), 0, 0, 0, 1, 1, 1, ashClaw, side * 2, .03, .84),
+    part(curvedTube([[.03, side * .25, .86, .08], [.07, side * .33, .63, .066], [.17, side * .29, .44, .05]], 4), 0, 0, 0, 1, 1, 1, ash, side * 2, .03, .84),
+    // three hooked claws fanned from the wrist
+    part(membrane([[.16, side * .29, .45], [.33, side * .27, .42], [.25, side * .3, .39], [.34, side * .31, .32], [.26, side * .35, .27]]), 0, 0, 0, 1, 1, 1, ashClaw, side * 2, .03, .84),
     part(curvedTube([[0, side * .133, .39, .075], [0, side * .133, .19, .06], [.071, side * .133, .055, .035]], 4), 0, 0, 0, 1, 1, 1, coal, side, 0, .43),
   );
 }
@@ -569,84 +571,95 @@ for (const side of [-1, 1]) {
 }
 
 // Pallid Crawler, "too many joints, no eyes, and a mouth where a face should be": a long floor-hugging back, an eyeless head
-// whose face is a wet maw behind a hinged jaw and a row of teeth, and four spider-high limbs with three joints each. 168.
+// whose face is a wet maw behind a hinged jaw and a row of teeth, and four spider-high limbs (the forelegs with a joint too many). 168.
 const pallidCrawler = [
-  part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],7), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
-  part(ellipsoid(6, 2), .31, 0, .43, .22, .2, .17, bone, 30, .2, .45, 0, true),
+  part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],6), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
+  part(ellipsoid(5, 2), .31, 0, .43, .22, .2, .17, bone, 30, .2, .45, 0, true),
   part(membrane([[.505, -.085, .42], [.505, .085, .42], [.485, .065, .33], [.485, -.065, .33]]), 0, 0, 0, 1, 1, 1, crawlerEye, 30, .2, .45),
-  part(membrane([[.512, -.08, .425], [.515, -.045, .372], [.513, 0, .425], [.515, .045, .372], [.512, .08, .425]]), 0, 0, 0, 1, 1, 1, 0xe3d6cf, 30, .2, .45),
-  part(ringLoft([[0,.12,-.04],[.15,.10,0],[.27,.03,.02]],5), .33, 0, .31, 1, 1, 1, sinew, 31, .30, .37),
+  part(membrane([[.512, -.08, .425], [.515, -.05, .365], [.513, -.015, .42], [.516, .02, .36], [.514, .05, .41], [.512, .08, .425]]), 0, 0, 0, 1, 1, 1, 0xe3d6cf, 30, .2, .45),
+  part(ringLoft([[0,.12,-.04],[.15,.10,0],[.27,.03,.02]],4), .33, 0, .31, 1, 1, 1, sinew, 31, .30, .37),
 ];
 for (const side of [-1, 1]) {
   pallidCrawler.push(
-    part(curvedTube([[.16,side*.19,.42,.055],[.30,side*.36,.58,.045],[.45,side*.44,.30,.034],[.56,side*.45,.03,.016]],3),0,0,0,1,1,1,bone,side*2,.14,.48),
+    // the forelegs carry one joint more than a leg should: up to a high knuckle, out, down to a second knee, then to a point
+    part(curvedTube([[.16,side*.19,.42,.055],[.27,side*.33,.62,.045],[.41,side*.43,.55,.038],[.50,side*.46,.29,.03],[.57,side*.45,.03,.016]],3),0,0,0,1,1,1,bone,side*2,.14,.48),
     part(curvedTube([[-.30,side*.19,.42,.055],[-.42,side*.36,.58,.045],[-.56,side*.42,.28,.034],[-.47,side*.44,.03,.016]],3),0,0,0,1,1,1,sinew,-side,-.34,.45),
   );
 }
 
 // Hollow Marshal: crimson armour, a crested helm with a brass visor slit, a cape, and a halberd carried at guard - shaft up
-// and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first. 220 triangles.
+// and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first.
+// Brass gorget and iron tasset plates, armoured legs bent at the knee. 220 triangles.
 const marshalHand = [.04, -.41, .94], marshalDir = [.47, .883];
 // The halberd is drawn at .8 of its first length so its blade stays inside the Marshal's contact height (actor-contact.ts).
 const marshalAt = (k0, n = 0, k = k0 * .8) => [marshalHand[0] + marshalDir[0] * k + marshalDir[1] * n, marshalHand[1], marshalHand[2] + marshalDir[1] * k - marshalDir[0] * n];
 const hollowMarshal = [
   part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
-  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
+  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],5), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
   part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 82, .02, 1.6, 0, true),
   part(detailPrism,.226,0,1.737,.047,.147,.057,brass,82,.02,1.6),
   part(detailPrism,.275,0,1.745,.006,.105,.017,iron,82,.02,1.6),
-  block(.208, 0, 1.254, .053, .143, .096, brass),
-  block(.021, 0, .865, .22, .275, .069, iron),
+  part(membrane([[.235,0,1.36],[.235,.13,1.33],[.245,.1,1.17],[.24,0,1.11],[.245,-.1,1.17],[.235,-.13,1.33]]), 0, 0, 0, 1, 1, 1, brass),
+  part(membrane([[.215,-.21,.92],[.215,.21,.92],[.25,.18,.69],[.25,-.18,.69]]), 0, 0, 0, 1, 1, 1, iron),
 ];
 for (const side of [-1, 1]) {
   hollowMarshal.push(
     jointed(part(taper, .002, side * .132, 2.025, .096, .063, .16, brass, 0, 0, 1.951, -.19), 82, .02, 1.6),
-    part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side*2,0,1.46),
-    part(curvedTube([[.03,side*.153,.80,.09],[.03,side*.153,.42,.075],[.08,side*.153,.10,.055]],4),0,0,0,1,1,1,plate,side,0,.831),
+    // The halberd arm (group 32) holds the polearm at guard and keeps it out of the walking swing; the free arm walks (+2).
+    part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side<0?32:side*2,0,1.46),
+    part(curvedTube([[.02,side*.15,.80,.105],[.075,side*.155,.45,.08],[.03,side*.155,.16,.06],[.1,side*.155,.05,.05]],4),0,0,0,1,1,1,plate,side,0,.831),
   );
 }
 {
   const butt = marshalAt(-.35), top = marshalAt(1.05), tip = marshalAt(1.44), mid = marshalAt(1.2), y = marshalHand[1];
   hollowMarshal.push(
-    part(curvedTube([[...butt, .03], [...top, .026]], 4), 0, 0, 0, 1, 1, 1, iron, -2, 0, 1.46),
-    part(membrane([top, marshalAt(1.2, -.07), tip, marshalAt(1.2, .07)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
-    part(membrane([top, [mid[0], y - .07, mid[2]], tip, [mid[0], y + .07, mid[2]]]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
-    part(membrane([marshalAt(.91), marshalAt(1.07), marshalAt(1.07, .2), marshalAt(.88, .17)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
+    part(curvedTube([[...butt, .03], [...top, .026]], 4), 0, 0, 0, 1, 1, 1, iron, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([top, marshalAt(1.2, -.07), tip, marshalAt(1.2, .07)]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([top, [mid[0], y - .07, mid[2]], tip, [mid[0], y + .07, mid[2]]]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([marshalAt(.91), marshalAt(1.07), marshalAt(1.07, .2), marshalAt(.88, .17)]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
   );
 }
 
 // Ashen Hound: a low charcoal body, a rust head on its own neck joint with pointed ears, lit eyes and a hinged lower jaw, and a
-// tail. 216 triangles.
+// tail, raised hackles and hind legs bent at stifle and hock. 216 triangles.
 const houndFur = 0x765244, houndDark = 0x302724, houndEye = 0xc18a63;
 const ashenHound = [
   part(ellipsoid(8, 2), -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09, true),
   part(ellipsoid(6, 2), .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34, true),
   part(ellipsoid(6, 1), .388, 0, .581, .177, .146, .133, houndFur, 82, .27, .55, 0, true),
   part(ringLoft([[0,.10,-.05],[.15,.08,0],[.25,.025,.02]],5),.43,0,.55,1,1,1,houndFur,82,.27,.55),
-  block(.637, 0, .573, .033, .07, .032, houndDark, 82, .27, .55),
+  part(detailPrism, .64, 0, .575, .045, .06, .035, houndDark, 82, .27, .55),
   jointed(part(taper, .52, 0, .475, .045, .065, .13, houndDark, 0, .52, .475, Math.PI / 2), 30, .44, .5),
   part(taper, -.484, 0, .574, .076, .074, .216, houndFur, 6, -.354, .477, -.95),
+  // raised hackles along the nape and shoulders
+  part(membrane([[.08, 0, .6], [.2, 0, .73], [.29, 0, .69], [.33, 0, .6]]), 0, 0, 0, 1, 1, 1, houndDark),
 ];
+// Ears and eyes ride the head (82). Each side's foreleg keeps its place in the vertex order (tests/close-view-tube-volume).
+const houndEar = (side) => part(membrane([[.30, side * .06, .655], [.37, side * .12, .665], [.315, side * .14, .80]]), 0, 0, 0, 1, 1, 1, houndFur, 82, .27, .55);
+const houndEyeSlit = (side) => part(membrane([[.505, side * .065, .615], [.475, side * .12, .635], [.465, side * .13, .62], [.49, side * .11, .598]]), 0, 0, 0, 1, 1, 1, houndEye, 82, .27, .55);
+ashenHound.push(houndEar(-1), houndEar(1), houndEyeSlit(-1));
 for (const side of [-1, 1]) {
   ashenHound.push(
-    jointed(part(taper, .33, side * .1, .70, .06, .055, .10, houndFur, 0, .33, .657, -.38), 82, .27, .55),
-    part(curvedTube([[.235,side*.131,.43,.045],[.235,side*.131,.20,.038],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
-    part(curvedTube([[-.293,side*.132,.41,.045],[-.293,side*.132,.19,.038],[-.25,side*.132,.035,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
-    part(membrane([[.50, side * .07, .62], [.47, side * .12, .63], [.49, side * .11, .60]]), 0, 0, 0, 1, 1, 1, houndEye, 82, .27, .55),
+    part(curvedTube([[.235,side*.131,.43,.045],[.24,side*.131,.20,.036],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
+    // the hind leg bends at the stifle and the hock, so it loads like a dog's
+    part(curvedTube([[-.29,side*.135,.43,.065],[-.22,side*.135,.26,.045],[-.33,side*.132,.13,.03],[-.29,side*.13,.03,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
   );
 }
+ashenHound.push(houndEyeSlit(1));
 
-// Coil Stalker: a dark trunk banded in mint, a long teal snake head on its own joint with mint eye slits, a hinged jaw and a
-// back frill, and two trailing segments (groups 4 and 5) that lag behind every strike. 172 triangles.
-const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad;
+// Coil Stalker, a hooded serpent reared on its own coils: a banded neck rising from the first coil to a long flat head with
+// mint eye slits and a hinged jaw, a hood spread behind it, pale belly scales down the neck's front, and two trailing coils
+// (groups 4 and 5) that lag behind every strike. The neck, hood and head turn as one striking column about the neck's root
+// (group 82; the jaw 83 about the same root), so a strike drives the whole column, not just the head. 164 triangles.
+const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad, coilRoot = [-.09, .24];
 const coilStalker = [
-  part(ellipsoid(8, 2), .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19, true),
-  part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],5), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
-  part(ellipsoid(6, 2), .2, 0, .735, .25, .19, .145, coilShell, 82, .1, .62, 0, true),
-  part(membrane([[.02, 0, .70], [-.07, 0, .87], [.05, 0, .86], [.12, 0, .81]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62),
-  jointed(part(taper, .28, 0, .645, .05, .11, .15, coilLight, 0, .28, .645, Math.PI / 2), 30, .17, .66),
+  part(curvedTube([[-.13, 0, .2, .185], [-.04, 0, .37, .16], [.05, 0, .54, .13], [.12, 0, .64, .105]], 6), 0, 0, 0, 1, 1, 1, coilDark, 82, ...coilRoot),
+  part(membrane([[.215, -.06, .57], [.215, .06, .57], [.16, .1, .33], [.16, -.1, .33]]), 0, 0, 0, 1, 1, 1, coilLight, 82, ...coilRoot),
+  part(membrane([[.07, 0, .64], [.04, -.12, .5], [.05, -.21, .58], [.08, -.24, .73], [.09, 0, .86], [.08, .24, .73], [.05, .21, .58], [.04, .12, .5]]), 0, 0, 0, 1, 1, 1, coilShell, 82, ...coilRoot),
+  part(ellipsoid(6, 2), .25, 0, .7, .25, .16, .12, coilShell, 82, ...coilRoot, 0, true),
+  jointed(part(taper, .31, 0, .625, .05, .1, .14, coilLight, 0, .31, .625, Math.PI / 2), 83, ...coilRoot),
 ];
-for (const side of [-1, 1]) coilStalker.push(part(membrane([[.39, side * .085, .77], [.33, side * .14, .78], [.37, side * .12, .745]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62));
+for (const side of [-1, 1]) coilStalker.push(part(membrane([[.425, side * .07, .735], [.37, side * .13, .755], [.34, side * .14, .745], [.39, side * .115, .715]]), 0, 0, 0, 1, 1, 1, coilLight, 82, ...coilRoot));
 coilStalker.push(
   part(ellipsoid(6, 2), -.294, 0, .262, .232, .217, .192, coilShell, 4, -.294, .262, 0, true),
   part(ringLoft([[0,.20,-.04],[.01,.23,0],[.02,.20,.04]],5),-.375,0,.263,1,1,1,coilLight,4,-.375,.263,0,true),
@@ -1011,6 +1024,10 @@ function nativeCleaverRig(frame) {
 //     extension when the hit resolves; `phased` attacks (a strike, track or travel phase follows) strike in that phase instead.
 //   Reduced Motion: crouch, lean, twist and rise at `reduced.scale`, no lunge translation and no recoil kick (as the hero's
 //     cleaver load and the hit recoil already do); the attack still reads.
+//   Phase model (2026-11-15, creature-motion.ts CREATURE_MOTION.phase/heavy/combo): the coil peaks at `phase.peak` of its window
+//     and holds (trembling, never under Reduced Motion) until the strike; recovery carries a follow-through past full extension
+//     before it settles; a heavy blow (e.heavy) coils, extends and follows through further; combo follow-ups alternate their
+//     twist. close-view.ts creatureClock and the e.bhv.wind windup put every phase on the creature's real clock.
 const poseFamily = (crouch, lunge, lean, twist, recoil, lift, style, wind = 'smooth', strike = 'snap', settle = 'back') => Object.freeze({ crouch, lunge, lean, twist, recoil, lift, style, wind, strike, settle });
 const poseStyle = (crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil) => Object.freeze({ crouch, back, rear, lunge, lean, twist, windLift, lift, land, impact, recoil });
 export const CREATURE_POSE = Object.freeze({
@@ -1090,12 +1107,12 @@ function poseEase(kind, t) {
   return t * t * (3 - 2 * t);
 }
 // One scratch record, rewritten by every call (no per-frame allocation). stage: 0 rest, 1 coil, 2 strike, 3 hold, 4 recover.
-const ROOT_POSE = { lunge: 0, squash: 0, lean: 0, twist: 0, lift: 0, stage: 0, u: 0, style: '', family: '' };
+const ROOT_POSE = { lunge: 0, squash: 0, lean: 0, twist: 0, lift: 0, stage: 0, u: 0, hold: 0, heavy: false, style: '', family: '' };
 // The root offset of an ordinary creature this frame (an actor as writeCloseViewModel takes it). Fields: lunge (tiles forward
 // along its facing; negative is back), squash (share of its height, feet planted), lean (radians, forward positive), twist
 // (radians of yaw), lift (tiles). `family` is '' for anything that is not an ordinary 3D creature (all zero).
 export function creatureRootPose(actor, out = ROOT_POSE) {
-  out.lunge = 0; out.squash = 0; out.lean = 0; out.twist = 0; out.lift = 0; out.stage = 0; out.u = 0; out.style = ''; out.family = '';
+  out.lunge = 0; out.squash = 0; out.lean = 0; out.twist = 0; out.lift = 0; out.stage = 0; out.u = 0; out.hold = 0; out.heavy = false; out.style = ''; out.family = '';
   const family = creaturePoseFamily(actor?.kind);
   if (!family) return out;
   out.family = family;
@@ -1128,28 +1145,91 @@ export function creatureRootPose(actor, out = ROOT_POSE) {
     // A slow dread pulse on the stillness clock, back at rest by the time the curse falls (the clock then starts again).
     else if (actor.stillness > 0) { id = 'stillnessCurse'; stage = 1; u = Math.sin(Math.PI * Math.min(1, actor.stillness / P.stillness.fires)); }
   }
+  // Anticipation (creature-motion.ts CREATURE_MOTION.phase): a windup's coil reaches its peak at `peak` of the coil window and
+  // holds there (out.hold, 0..1 through the hold) until the strike, so the blow reads before it lands.
+  const MP = CREATURE_MOTION.phase;
+  let hold = 0;
   if (windup >= 0) {
     if (POSE_PHASED.has(id)) { stage = 1; u = windup; }
     else if (windup < 1 - P.tail) { stage = 1; u = windup / (1 - P.tail); }
     else { stage = 2; u = (windup - (1 - P.tail)) / P.tail; }
+    if (stage === 1) { if (u > MP.peak) hold = (u - MP.peak) / (1 - MP.peak); u = Math.min(1, u / MP.peak); }
   }
   if (!stage) return out;
   const styleId = id === 'elite' ? P.elite.style : creaturePoseStyle(family, id, semantic), S = P.styles[styleId] || P.styles.lunge;
-  let c = 0, e = 0, bump = 0;
+  // A heavy blow (enemy-behaviour.ts shapeBlow: e.heavy) coils deeper, extends, kicks and follows through further; a combo's
+  // follow-ups (step 2, 3: e.comboStep or the pack's combo) are a little lighter and swing back the other way every other blow.
+  const H = CREATURE_MOTION.heavy, heavy = actor.heavy === true, step = Number.isInteger(actor.comboStep) ? actor.comboStep : 0;
+  const light = step > 1 ? CREATURE_MOTION.combo.amp : 1, side = step > 1 && step % 2 === 0 ? -1 : 1;
+  const kc = (heavy ? H.coil : 1) * light, ke = (heavy ? H.extend : 1) * light, kr = heavy ? H.recoil : 1;
+  let c = 0, e = 0, bump = 0, fo = 0;
   if (stage === 1) { c = poseEase(F.wind, u); e = -S.back * c; }
   else if (stage === 2) { const k = poseEase(F.strike, u); c = 1 - k; e = -S.back + (1 + S.back) * k; }
   else if (stage === 3) e = 1;
-  else { e = 1 - poseEase(F.settle, u); bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0; }
+  else {
+    e = 1 - poseEase(F.settle, u); bump = u < P.recoilSpan ? Math.sin(Math.PI * u / P.recoilSpan) : 0;
+    // follow-through: the body carries on past full extension just after contact, then settles back over the real recovery
+    if (u < MP.followSpan) fo = MP.follow * (heavy ? H.follow : 1) * Math.sin(Math.PI * u / MP.followSpan);
+  }
   const reduce = !!actor.reduceMotion, amp = reduce ? P.reduced.scale : 1;
   const reach = Number.isFinite(actor.attackReach) && actor.attackReach > 0 ? actor.attackReach : P.defaultReach;
-  const lunge = Math.min(F.lunge * S.lunge, reach * P.reachShare);
-  out.lunge = e * lunge * (reduce ? P.reduced.lunge : 1) - F.recoil * S.recoil * bump * (reduce ? P.reduced.recoil : 1);
-  out.squash = Math.max(0, Math.min(.45, F.crouch * (S.crouch * c + S.land * Math.max(0, e) + S.impact * bump) * amp));
-  out.lean = F.lean * (S.lean * e - S.rear * c) * amp;
-  out.twist = F.twist * S.twist * (e - .6 * c) * amp;
-  out.lift = F.lift * (S.windLift * c + S.lift * e) * amp;
-  out.stage = stage; out.u = u; out.style = styleId;
+  const lunge = Math.min(F.lunge * S.lunge * ke, reach * P.reachShare), drawn = e < 0 ? e * kc : e;
+  out.lunge = drawn * lunge * (reduce ? P.reduced.lunge : 1) - F.recoil * S.recoil * bump * kr * (reduce ? P.reduced.recoil : 1);
+  out.squash = Math.max(0, Math.min(.45, F.crouch * (S.crouch * c * kc + S.land * Math.max(0, e) * ke + S.impact * bump * kr) * amp));
+  out.lean = F.lean * (S.lean * (e + fo) * ke - S.rear * c * kc) * amp;
+  out.twist = side * F.twist * S.twist * ((e + fo) * ke - .6 * c * kc) * amp;
+  out.lift = F.lift * (S.windLift * c * kc + S.lift * (e + fo) * ke) * amp;
+  // the held peak trembles with the effort (never under Reduced Motion)
+  if (hold > 0 && !reduce && Number.isFinite(actor.effectTime)) out.lean += MP.tremble * Math.min(1, hold * 3) * Math.sin(actor.effectTime / 1000 * 6.2832 * MP.trembleHz);
+  out.stage = stage; out.u = u; out.hold = hold; out.heavy = heavy; out.style = styleId;
   return out;
+}
+
+// The rest-pose frame of a creature's body (model units, measured once per kind from its parts): top and bottom, back and front,
+// and its half width. creature-motion.ts weights its bend bands from it, and a fall settles on it. Read-only, cached per kind.
+const RIG_FRAMES = new Map();
+export function creatureRigFrame(kind) {
+  const known = RIG_FRAMES.get(kind); if (known !== undefined) return known;
+  const parts = Object.hasOwn(models, kind) ? models[kind] : null; if (!parts) return null;
+  let top = -Infinity, bot = Infinity, back = Infinity, front = -Infinity, half = 0;
+  for (const item of parts) { const mesh = item.mesh; for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
+    const f = mesh[i] + item.px, h = mesh[i + 2] + item.pz, y = Math.abs(mesh[i + 1]);
+    if (h > top) top = h; if (h < bot) bot = h; if (f < back) back = f; if (f > front) front = f; if (y > half) half = y; } }
+  const family = creaturePoseFamily(kind), axis = family && CREATURE_MOTION.families[family] ? CREATURE_MOTION.families[family].axis : 'up', B = CREATURE_MOTION.bend;
+  const H = Math.max(1e-3, top - bot), L = Math.max(1e-3, front - back), mid = bot + .55 * H;
+  // band origins and spans: up (heights) or front (lengths along the body), and each band's pivot (forward, up)
+  const frame = Object.freeze(axis === 'front'
+    ? { axis, top, bot, back, front, half, tFrom: back + B.hip * L, tSpan: (1 - B.hip) * L, hFrom: back + B.head * L, hSpan: (1 - B.head) * L, lFrom: back + B.tail * L, lSpan: B.tail * L,
+      tf: back + B.hip * L, tz: mid, hf: back + B.head * L, hz: mid, lf: back + B.tail * L, lz: mid }
+    : { axis, top, bot, back, front, half, tFrom: bot + B.hip * H, tSpan: (1 - B.hip) * H, hFrom: bot + B.head * H, hSpan: (1 - B.head) * H, lFrom: bot + B.hang * H, lSpan: B.hang * H,
+      tf: 0, tz: bot + B.hip * H, hf: 0, hz: bot + B.head * H, lf: 0, lz: bot + B.hang * H });
+  RIG_FRAMES.set(kind, frame); return frame;
+}
+const UPRIGHT = new Set(['biped', 'construct', 'plant']), MOTION_ARMS = new Set(CREATURE_MOTION.arms);
+// The fall's clock: it drops with gravity and lands with a little bounce.
+function deathFall(p) { return p < .72 ? (p / .72) * (p / .72) : 1 - .07 * Math.sin(Math.PI * (p - .72) / .28); }
+// How far a falling body rises so what it falls onto rests on the floor (its front or back for a pitch, its side for a roll).
+function deathSink(rig, pitch, roll) {
+  if (!rig) return 0; const reach = pitch >= 0 ? Math.max(0, rig.front) : Math.max(0, -rig.back);
+  return Math.max(reach * Math.abs(Math.sin(pitch)), rig.half * Math.abs(Math.sin(roll)));
+}
+// The motion bend this frame (creature-motion.ts), worked out once per creature: each band's span on the rest pose (up: heights;
+// front: lengths along the body), its pivot, and each of its angles as a sine and 1 - cosine that the vertex loop scales by the
+// vertex's weight in the band. One scratch record (no allocation).
+const BEND_FRAME = { up: true, tFrom: 0, tInv: 0, hFrom: 0, hInv: 0, lFrom: 0, lInv: 0, tf: 0, tz: 0, hf: 0, hz: 0, lf: 0, lz: 0, tOn: false, hOn: false, lOn: false,
+  tP: false, tPS: 0, tPC: 0, tY: false, tYS: 0, tYC: 0, tR: false, tRS: 0, tRC: 0, hP: false, hPS: 0, hPC: 0, hY: false, hYS: 0, hYC: 0, lP: false, lPS: 0, lPC: 0, lY: false, lYS: 0, lYC: 0 };
+function bendFrame(B, mo, rig) {
+  B.up = rig.axis === 'up'; B.tFrom = rig.tFrom; B.tInv = 1 / rig.tSpan; B.hFrom = rig.hFrom; B.hInv = 1 / rig.hSpan; B.lFrom = rig.lFrom; B.lInv = 1 / rig.lSpan;
+  B.tf = rig.tf; B.tz = rig.tz; B.hf = rig.hf; B.hz = rig.hz; B.lf = rig.lf; B.lz = rig.lz;
+  B.tP = mo.bendPitch !== 0; B.tPS = Math.sin(mo.bendPitch); B.tPC = 1 - Math.cos(mo.bendPitch);
+  B.tY = mo.bendYaw !== 0; B.tYS = Math.sin(mo.bendYaw); B.tYC = 1 - Math.cos(mo.bendYaw);
+  B.tR = mo.bendRoll !== 0; B.tRS = Math.sin(mo.bendRoll); B.tRC = 1 - Math.cos(mo.bendRoll);
+  B.hP = mo.headPitch !== 0; B.hPS = Math.sin(mo.headPitch); B.hPC = 1 - Math.cos(mo.headPitch);
+  B.hY = mo.headYaw !== 0; B.hYS = Math.sin(mo.headYaw); B.hYC = 1 - Math.cos(mo.headYaw);
+  B.lP = mo.tailPitch !== 0; B.lPS = Math.sin(mo.tailPitch); B.lPC = 1 - Math.cos(mo.tailPitch);
+  B.lY = mo.tailYaw !== 0; B.lYS = Math.sin(mo.tailYaw); B.lYC = 1 - Math.cos(mo.tailYaw);
+  B.tOn = B.tP || B.tY || B.tR; B.hOn = B.hP || B.hY; B.lOn = B.lP || B.lY;
+  return B;
 }
 
 export function writeCloseViewModel(out, offset, actor) {
@@ -1225,16 +1305,26 @@ export function writeCloseViewModel(out, offset, actor) {
   // An ordinary 3D creature's attack takes its root motion from creatureRootPose (CREATURE_POSE) in place of the generic
   // windup pitch and strike shove/lean/turn below (gen 0); its limbs keep their windup/strike swings.
   const root = playerLike ? null : creatureRootPose(actor).family ? ROOT_POSE : null, gen = root ? 0 : 1;
-  const rootSquash = root ? 1 - root.squash : 1, rootLift = root ? root.lift : 0;
-  const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist : turn0;
+  // The shared motion layers (creature-motion.ts): continuity across a broken-off or chained attack, the hit reactions, idle and
+  // locomotion life, the arrival, and a per-family fall; rigid offsets here, the three-band bend in the vertex loop below.
+  if (root) motionCarry(actor.motionState, root, root.stage, actor.effectTime);
+  const mo = root ? creatureMotion(actor, root.family, root) : null, rig = mo && (mo.bend || fall > 0) ? creatureRigFrame(kind) : null;
+  const fallR = root && fall > 0 ? deathFall(fall) : 0, D = fallR ? CREATURE_MOTION.death[root.family] : null;
+  const deathPitch = D ? (mo.push < 0 ? -D.pitch : D.pitch) * fallR : 0, deathRoll = D ? (mo.pushSide < 0 ? -D.roll : D.roll) * fallR : 0;
+  const rootSquash = root ? 1 - Math.max(-.12, Math.min(.75, root.squash + mo.squash + (D ? D.squash * fallR : 0))) : 1, rootLift = root ? root.lift + mo.lift : 0;
+  const roll = mo ? mo.roll + deathRoll : 0, rollOn = roll !== 0, rollC = rollOn ? Math.cos(roll) : 1, rollS = rollOn ? Math.sin(roll) : 0;
+  const B = rig && mo.bend ? bendFrame(BEND_FRAME, mo, rig) : null;
+  // a layered creature's blow tints it as the hit pose did; its arrival fades it in
+  const tint = root && Number.isFinite(actor.hitReact) ? Math.max(flinch, Math.max(0, Math.min(1, actor.hitReact))) : flinch, drawnAlpha = mo ? alpha * mo.alpha : alpha;
+  const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist + mo.twist : turn0;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
   const pitch0 = (nativeCleaver?cf.lean*cleaverLoad:0) -.10 * (chargingFist ? progress : 0) - .18 * windup * gen + (weightedFists?(meleePose.move==='dash'?.22:meleePose.move==='uppercut'?.16:.10)*meleePose.drive:(newCleaver&&!meleePose?CLEAVER_FOUR_SWEEP.nativeLean:.29 * gen) * strike) - .11 * tool - .12 * cast - .12 * jump -.07*(drink?.head||0) + .30*(shovel?.down||0)-.14*(shovel?.lever||0)+.22*place + .16 * stagger
-    + .09 * jumpSettle - .24 * flinch + 1.52 * fall - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
-    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0), pitch = root ? pitch0 + root.lean : pitch0; // Shadow Boxing charge lean
+    + .09 * jumpSettle - .24 * flinch + (root ? 0 : 1.52 * fall) - 1.52 * knocked + (kind==='playerCinderPike'?.045:.075)*reach
+    + (playerLike && actor.charge > 0 ? CLOSE_VIEW_SHADOW_FORMS.dash.nativeLean * Math.min(1, actor.charge) * (actor.reduceMotion ? .5 : 1) : 0), pitch = root ? pitch0 + root.lean + mo.lean + deathPitch : pitch0; // Shadow Boxing charge lean
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const base = secondary * (.012 * Math.sin(phase * 2) * (1 - moving) + .052 * Math.abs(beat) - .014 * heel)
-    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (kind === "pallidCrawler" ? .61 : .36) * fall + .35 * knocked;
-  const shift0 = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14 * gen) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch, shift = root ? shift0 + root.lunge / size : shift0;
+    * (1 - fall) * (1 - knocked) - .075 * jumpSettle - .10 * stagger + (D ? deathSink(rig, deathPitch, deathRoll) : (kind === "pallidCrawler" ? .61 : .36) * fall) + .35 * knocked;
+  const shift0 = (weightedFists?(meleePose.move==='dash'?.25:.13)*meleePose.drive:(kind === 'playerCinderPike' ? primaryStep===3?.28:primaryStep===2?.19:.22 : .14 * gen) * strike) - .06 * tool + .05 * cast - .055 * jump - .08 * flinch, shift = root ? shift0 + (root.lunge + mo.lunge) / size : shift0;
   const stride = kind === "pallidCrawler" ? .23 : .48;
   const hound = kind === "ashenHound";
   const foundry = kind.startsWith('foundry-');
@@ -1317,6 +1407,8 @@ export function writeCloseViewModel(out, offset, actor) {
       const a = adventureJointPose(kind, swing, actor.action || actor.rootAttack, root.style, root.stage, root.u, actor.reduceMotion ? CREATURE_POSE.reduced.scale : 1);
       if (a !== null) angle = (semanticAngle(kind, swing, '', '', '', 0, 0, beat, moving, phase, secondary) ?? -Math.sign(swing) * beat * stride) + a;
     }
+    // creature-motion.ts: the upright families' arms (CREATURE_MOTION.arms) come up into a guard and fling with a flinch.
+    if (mo && mo.arm !== 0 && MOTION_ARMS.has(swing) && UPRIGHT.has(root.family)) angle = (angle ?? 0) + mo.arm;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
     const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
@@ -1340,12 +1432,33 @@ export function writeCloseViewModel(out, offset, actor) {
       if(levelS!==0){const dx=mx0-heldTool[0],dz=mz0-heldTool[1],n0=nx0;mx0=heldTool[0]+dx*levelC+dz*levelS;mz0=heldTool[1]+dz*levelC-dx*levelS;nx0=n0*levelC+nz0*levelS;nz0=nz0*levelC-n0*levelS;}
       let forward = mx0 * c + mz0 * s + px;
       let lateral = localY + coilSway;
-      const u = forward * cc - (lateral - pivotY) * sc;
-      const v = forward * sc + (lateral - pivotY) * cc + pivotY;
+      let u = forward * cc - (lateral - pivotY) * sc;
+      let v = forward * sc + (lateral - pivotY) * cc + pivotY;
       let w = mz0 * c - mx0 * s + pz;
-      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
       const armNormal=nx0*c+nz0*s;
       let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=nz0*c-nx0*s;
+      // creature-motion.ts: the torso, head and tail bands bend from each vertex's rest place, then the whole body rolls
+      if(B){
+        // each band turns by its angle times the vertex's weight in it (k): sin(ka) ~ k sin a, 1 - cos(ka) ~ k^2 (1 - cos a)
+        const at=B.up?mesh[i+2]+pz:mesh[i]+px;let k=(at-B.tFrom)*B.tInv,s=0,cs=0,x=0;
+        if(k>0&&B.tOn){if(k>1)k=1;const q=k*k;let du=u-B.tf,dw=w-B.tz;
+          if(B.tP){s=k*B.tPS;cs=1-q*B.tPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.tY){s=k*B.tYS;cs=1-q*B.tYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          if(B.tR){s=k*B.tRS;cs=1-q*B.tRC;x=v*cs+dw*s;dw=dw*cs-v*s;v=x;x=nv*cs+nw*s;nw=nw*cs-nv*s;nv=x;}
+          u=B.tf+du;w=B.tz+dw;}
+        k=(at-B.hFrom)*B.hInv;
+        if(k>0&&B.hOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.hf,dw=w-B.hz;
+          if(B.hP){s=k*B.hPS;cs=1-q*B.hPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.hY){s=k*B.hYS;cs=1-q*B.hYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          u=B.hf+du;w=B.hz+dw;}
+        k=(B.lFrom-at)*B.lInv;
+        if(k>0&&B.lOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.lf,dw=w-B.lz;
+          if(B.lP){s=k*B.lPS;cs=1-q*B.lPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
+          if(B.lY){s=k*B.lYS;cs=1-q*B.lYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
+          u=B.lf+du;w=B.lz+dw;}
+      }
+      if(rollOn){const x=v*rollC+w*rollS;w=w*rollC-v*rollS;v=x;const y=nv*rollC+nw*rollS;nw=nw*rollC-nv*rollS;nv=y;}
+      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
       let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
       if(jumpPart){
         let a=u,b=v,d=w,na=nu,nb=nv,nd=normalZ*c-mesh[i+3]*s;
@@ -1417,10 +1530,10 @@ export function writeCloseViewModel(out, offset, actor) {
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;
-      out[offset++] = red + (.96 - red) * flinch * .6;
-      out[offset++] = green + (.34 - green) * flinch * .6;
-      out[offset++] = blue + (.23 - blue) * flinch * .6;
-      const bodyAlpha = kind === 'gloomgorge' ? alpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : alpha;
+      out[offset++] = red + (.96 - red) * tint * .6;
+      out[offset++] = green + (.34 - green) * tint * .6;
+      out[offset++] = blue + (.23 - blue) * tint * .6;
+      const bodyAlpha = kind === 'gloomgorge' ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
       out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
     }
     if(muzzle&&muzzleOut){
@@ -1430,7 +1543,7 @@ export function writeCloseViewModel(out, offset, actor) {
       muzzleOut[0]=x+(ff*cy-mv*sy)*size;muzzleOut[1]=y+(ff*sy+mv*cy)*size;muzzleOut[2]=z+fz*size;muzzleOut[3]=Number.isFinite(muzzleOut[0]+muzzleOut[1]+muzzleOut[2])?1:0;
     }
   }
-  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, alpha, actorScale);
+  for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, drawnAlpha, actorScale);
   return offset;
 }
 

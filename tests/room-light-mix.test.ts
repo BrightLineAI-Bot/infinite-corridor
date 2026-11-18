@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { CLOSE_VIEW, INTERIOR_LIGHT, closeViewTheme, interiorAmbient, outdoorNight, roomLightAt, roomLightField, roomLightShares, roomTierFor, tierValue } from '../src/close-view.ts';
 import { moodFor } from '../src/close-view-outdoor.ts';
 import { LANTERN, lanternNightReach } from '../src/spell-slots.ts';
-import { drawRoomDim, roomDimAlpha } from '../src/renderer.ts';
+import { drawDread, drawRoomDim, roomDimAlpha } from '../src/renderer.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 
 // A floor of n x n rooms, each `size` tiles square inside one-tile walls, joined to its neighbours by one-tile doors.
@@ -121,4 +121,25 @@ test('the Lantern glows outdoors under a night sky, not by day', () => {
   const rd = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), cv = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8');
   assert.match(rd, /else if \(!closeViewCapturing\(\) && outdoorNight\(g\) && lanternIsLit\(g\.save\)\) drawLanternGlow\(ctx, \(p\.x \+ \.5\) \* s, \(p\.y \+ \.55 - viewLift\) \* s, s, LANTERN\.night\.glow\)/);
   assert.match(cv, /lanternReach\(g\.save, g\.area\) \* lanternNightReach\(g\.save, outdoorNight\(g\)\)/);
+});
+
+test('positive Pentagon dread draws and reuses the cache until intensity changes', () => {
+  const previous = globalThis.OffscreenCanvas;
+  let made = 0, drawn = 0;
+  globalThis.OffscreenCanvas = class {
+    constructor() { made++; }
+    getContext() { return { createRadialGradient() { return { addColorStop() {} }; }, fillRect() {} }; }
+  } as any;
+  try {
+    const ctx = { drawImage() { drawn++; } };
+    drawDread(ctx, 421, 239, .4);
+    drawDread(ctx, 421, 239, .4);
+    assert.equal(made, 1);
+    drawDread(ctx, 421, 239, .5);
+    assert.equal(made, 2);
+    assert.equal(drawn, 3);
+  } finally {
+    if (previous === undefined) delete globalThis.OffscreenCanvas;
+    else globalThis.OffscreenCanvas = previous;
+  }
 });
