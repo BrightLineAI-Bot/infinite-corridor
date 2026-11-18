@@ -186,7 +186,10 @@ test('mounted portrait fits phone and landscape frames through the whole drill',
   }
 }));
 
-test('mounted composition keeps the eye on clear floor at a compressed indoor wall',()=>withGPU({},h=>{
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the mounted card on the collision rig it
+// replaced (the eye kept on clear floor), which stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false.
+test('mounted composition keeps the eye on clear floor at a compressed indoor wall',()=>{const was=CLOSE_VIEW_HOOKS.orbit;CLOSE_VIEW_HOOKS.orbit=false;try{withGPU({},h=>{
   const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-good',now:100000}).game;
   const m=stableMount(g.save,'triceratops',{triceratopsDisposition:'silly'}).mount;startRide(g.save,m.id);
   g.placeBeastHotel();assert.equal(g.enterBeastHotel(g.map.objects.find(o=>o.beastHotelDoor)).ok,true);
@@ -203,4 +206,4 @@ test('mounted composition keeps the eye on clear floor at a compressed indoor wa
     else assert.equal(GLB.nBoard,0,'fallback leaves no partial mounted GPU geometry');
   }
   assert.ok(closeViewCamera().distance<1,'the body fit never forces the camera through the hotel wall');
-}));
+})}finally{CLOSE_VIEW_HOOKS.orbit=was}});

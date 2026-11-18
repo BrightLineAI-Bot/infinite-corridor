@@ -15,12 +15,19 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r993 (this merge, #661); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1000 (this merge, #670); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1000 | Claude | claude/close-view-camera / #670 | Close View camera: fixed-distance orbit (nearer indoors), bounded see-through cutout, full-sphere tilt, nothing out of the Wayfarer's sight drawn indoors, near-hidden/far-silhouette creatures in both views, Look zoom kept as the normal distance | Merged (#670); preview follows. |
+| 999 | Claude | claude/salvage-and-smithy / #665 | Salvage keeps the best six of each kind (tier, then power); salvage can yield lumen dust; Equipped stat readouts; one-tap smith with exact reforge results | Merged (#665); preview follows. |
+| 998 | Claude | claude/deep-variety / #669 | The Deep's lairs (Poison Crypt, Psychic Crystal, Tremor Worm, Void Walker, Wild Stegosaurus, Spinosaurus as floor guardians at DEEP_FLOOR_GEN 3); full-charting Aperture bonus (+20%) in every dungeon | Merged (#669); preview follows. |
+| 997 | Claude | claude/tim-log-fixes / #666 | Fixes from Tim's log: triad names, room-beast Echoes with catch-up, power-suit weapon in Close View, per-floor Deep seals and guardians, Deep warp daises | Merged (#666); preview follows. |
+| 996 | Claude | claude/aerial-step-air-walk / #663 | Aerial Step walks on air everywhere (weapon put away for the cast); lethal falls play out in real time with Aerial Step, Rift Step and drone rescues and a red edge cue | Merged (#663); preview follows. |
+| 995 | Claude | claude/hushed-wayfarer / #662 | The Wayfarer spoken of in hushed tones: rare hushed lines, the Shutter Glimpse, a few lesser creatures cower; new ground only | Merged (#662); preview follows. |
+| 994 | Claude | claude/stego-leg-lag / #668 | Close View Wild Stegosaurus legs resolve the hip before the IK reads it (no first-frame snap, no turn lag); Spinosaurus arms and the Listener's jaw arm the same; presentation only, no save change | In flight; renumbered from 993 (taken by #661). |
 | 993 | Claude | claude/close-view-ocean / #661 | Close View on the open sea: water surface, swell and horizon; swim, robot water-form, power-armor-at-sea and skiff poses; presentation only | Merged (#661); preview follows. |
 | 992 | Claude | claude/squad-tactics | Squad tactics for ordinary creatures (front, flank, swarm and ranged roles; pack aggression; punish windows; two-blow combo window; readable rear tells); new module squad-tactics; Triceratops excluded; no save change | In flight. |
 | 991 | Claude | claude/creature-visuals-forms | Creature visual pass (forms, Pentagon and adventure, reconciled): reshaped Close View bodies at the same triangle counts with per-attack rows; Standard View limbs on a shared attack clock; no save change | Merged as `c5cde5201244` (#664). |
