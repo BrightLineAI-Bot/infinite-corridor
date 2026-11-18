@@ -4,7 +4,7 @@
 // The climb is the vertical toolkit the Wayfarer already has: a jump (one level), an aimed Rift Step (up to two levels, across a
 // gap) and the drone, whose lift is capped below the top in here (`drone.below`), so it cannot simply fly up. The glider never
 // opens indoors. Some towers have their door at the foot; others have it a few levels up the face, reached by a short run of
-// floating steps outside. At the top: a cache paid once (by tier), a lookout that charts the sections round it on the Atlas,
+// floating steps outside. At the top: a cache paid once (by tier), a lookout that charts the sections round it on the Atlas (and glimpses a seed to hunt: `seedHunt`),
 // and the Long Rope, a safe way down: the climb is the challenge, not the descent.
 //
 // Lore (narrative-bible.md, the river and its eddies): someone built a well the wrong way up, to draw the distance down.
@@ -52,6 +52,37 @@ export const TALL_TOWERS = f({
   dwellerBoost: f({ roofGargoyle: f({ hp: 2, damage: 2 }) }), // Tim, 2026-11-14: the Eave Gargoyle on a tower's walls has twice the health and damage of its kind at that ring and tier (on top of the tier scale); other dwellers none
   dwellerVitals: 3, // how the creatures' health and damage were derived: 1 (releases 937 to 949) took the region's threat twice (about 30x the health and 15x the damage of their kind at ring 200); 2 (unreleased) took it once, as every creature does; 3 adds `dwellerBoost`. A dweller saved under 1 is mended on load (game.ts)
   exteriorStep: "skyPlatform", // the floating steps up to a raised door (the Sky Stairs' kind)
+  // The seed hunt (Tim, 2026-11-18: "if you find one of these towers and climb to the top of it, it'll direct you to the location
+  // of a seed... somewhere in an undiscovered section... not too far, not too close... a guaranteed seed hunt"). Looking out
+  // from the lip starts one hunt per tower (`save.seedHunts`, keyed by the tower's id): a section not yet explored, `band`
+  // sections off (Chebyshev), in an order hashed from the journey's seed and the tower's id; the first of at most `loads`
+  // previewed whose ground can hold a find (game.ts seedHuntGround) is the one. The seed's kind is drawn by the travel seeds'
+  // own overworld weights (skylands.ts SEED_FINDS.overworld), so the rare kinds stay rare. Where in that section it lies is
+  // chosen when the section is first loaded with the hunt on, from what it offers (`where`, weighted; a kind it lacks drops
+  // out) and kept on the hunt: on open ground, on a great tree's platforms (reached by climbing), or inside the section's
+  // ordinary crossing, on the entry's own level, `crossingSteps` walking steps in. It is an object laid over the place as
+  // loaded, never a tile or a generator change, so every pinned layout stays as it was.
+  seedHunt: f({
+    version: 1,
+    band: f([3, 8]), // sections off from the tower (Chebyshev): not too close, not too far
+    loads: 24, // the most candidate sections previewed for ground before the hunt gives up (a sea of nothing)
+    where: f([f(["ground", 3]), f(["tree", 2]), f(["crossing", 2])]), // the kinds of spot, weighted; one the section lacks drops out
+    crossingSteps: f([3, 18]), // walking steps from a crossing's entry (on its own level) a seed inside lies within
+    groundFrom: 3, // tiles kept between an open-ground seed and the ground the section's reach is measured from
+    marker: "#ffd36a", // its pin on the Atlas (main.ts drawAtlasPins), whatever the seed
+    messages: f({
+      glimpse: "From the lip you glimpse a glint far off to the {dir}, {n} sections away: {a} {seed}, lying somewhere in the land at {rx},{ry} that you have not yet walked. You mark it on your Atlas.",
+      lore: "The well draws the distance down, and sometimes what the distance was keeping.",
+      none: "You look for a glint in the land round the tower, but the distance keeps its seeds today.",
+      already: "The glint you saw from here still waits at {rx},{ry}.",
+      arrive: "The glint the Upwell showed you is somewhere in this section.",
+      arriveTree: "The glint the Upwell showed you is high in the great tree here.",
+      arriveCrossing: "The glint the Upwell showed you is below ground, in the crossing here.",
+      inside: "The glint the Upwell showed you is somewhere on this level.",
+      found: "You found the {seed} the Upwell at {tx},{ty} showed you, {where}.",
+      wheres: f({ ground: "lying in the open", tree: "caught high in a great tree", crossing: "inside a crossing" }),
+    }),
+  }),
   messages: f({
     arrive: "An Upwell stands here: a tower hollow to the sky.",
     raised: "The Upwell's door is up the face. Climb the floating steps to it: jump from one to the next.",
@@ -298,3 +329,51 @@ export function lookOut(save, rx, ry, radius) {
 }
 // The cache's pay, by tier (TALL_TOWERS.tiers[*].cache).
 export const towerCachePay = (tier) => tierOf(tier).cache;
+
+// ------------------------------------------------------------------------------------------------ the seed hunts
+// `save.seedHunts` { [tower id]: hunt } (additive at schema 14; normalised here, types.ts calls it). A hunt: { v, tower, from:
+// { rx, ry }, rx, ry, kind, state: "active" | "found", where?, x?, y?, elev?, dungeonId?, door? }. A malformed entry is dropped
+// (it could never be found); unknown fields on a good one are kept.
+const HUNT_STATES = new Set(["active", "found"]), HUNT_WHERE = new Set(["ground", "tree", "crossing"]);
+export function ensureSeedHunts(save, kinds = null) {
+  if (!save || typeof save !== "object") return {};
+  const raw = save.seedHunts && typeof save.seedHunts === "object" && !Array.isArray(save.seedHunts) ? save.seedHunts : {}, out = {};
+  for (const [id, q] of Object.entries(raw)) {
+    if (!isTowerId(id) || !q || typeof q !== "object" || Array.isArray(q) || !Number.isSafeInteger(q.rx) || !Number.isSafeInteger(q.ry) || typeof q.kind !== "string" || !q.kind || (kinds && !kinds.includes(q.kind))) continue;
+    const h = Object.assign(q, { v: 1, tower: id, state: HUNT_STATES.has(q.state) ? q.state : "active" }); // in place: a hunt held elsewhere stays the one kept
+    if (!(q.from && Number.isSafeInteger(q.from.rx) && Number.isSafeInteger(q.from.ry))) { const P = parseTowerId(id); h.from = { rx: P.rx, ry: P.ry }; }
+    if (h.where !== undefined && !HUNT_WHERE.has(h.where)) { delete h.where; delete h.x; delete h.y; delete h.elev; delete h.dungeonId; delete h.door; }
+    out[id] = h;
+  }
+  save.seedHunts = out; return out;
+}
+// The sections a tower's hunt may aim at, in the hunt's own hashed order: `band` sections off (Chebyshev), none explored, none
+// another live hunt already aims at. Pure: the same seed, tower, explored set and hunts give the same list.
+export function seedHuntCandidates(seed, id, rx, ry, explored = {}, busy = new Set()) {
+  const [lo, hi] = TALL_TOWERS.seedHunt.band, out = [];
+  for (let dy = -hi; dy <= hi; dy++) for (let dx = -hi; dx <= hi; dx++) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < lo) continue; const k = `${rx + dx},${ry + dy}`;
+    if (explored?.[k] || busy.has(k)) continue; out.push({ rx: rx + dx, ry: ry + dy, k: hashSeed(`${seed}:seed-hunt:v${TALL_TOWERS.seedHunt.version}:${id}:${k}`) });
+  }
+  return out.sort((a, b) => a.k - b.k || a.ry - b.ry || a.rx - b.rx).map(({ rx, ry }) => ({ rx, ry }));
+}
+// A weighted draw from `[[name, weight], ...]` by `key` (the seed's kind by the travel seeds' weights; the spot by `where`).
+export function huntDraw(key, weights) {
+  const list = (weights || []).filter(([, w]) => w > 0), total = list.reduce((n, [, w]) => n + w, 0); if (!total) return null;
+  let r = hashSeed(key) % total; for (const [k, w] of list) { if (r < w) return k; r -= w; } return list[0][0];
+}
+export const seedHuntKind = (seed, id, weights) => huntDraw(`${seed}:seed-hunt-kind:v${TALL_TOWERS.seedHunt.version}:${id}`, weights);
+// Which kind of spot the hunt's seed lies in, among those the section offers ({ ground, tree, crossing }: true where offered).
+export const seedHuntWhere = (seed, id, offered) => huntDraw(`${seed}:seed-hunt-where:v${TALL_TOWERS.seedHunt.version}:${id}`, TALL_TOWERS.seedHunt.where.filter(([k]) => offered[k]));
+export const seedHuntPick = (seed, id, what, n) => n > 0 ? hashSeed(`${seed}:seed-hunt-at:v${TALL_TOWERS.seedHunt.version}:${id}:${what}`) % n : -1;
+// The live hunts, and the one (if any) aiming at a section.
+export const activeSeedHunts = (save) => Object.values(save?.seedHunts || {}).filter((q) => q?.state === "active" && Number.isSafeInteger(q.rx) && Number.isSafeInteger(q.ry));
+export const seedHuntAt = (save, rx, ry) => activeSeedHunts(save).filter((q) => q.rx === rx && q.ry === ry).sort((a, b) => (a.tower < b.tower ? -1 : a.tower > b.tower ? 1 : 0));
+// The hunt nearest (rx, ry), for the compass; ties by tower id.
+export function nearestSeedHunt(save, rx, ry) {
+  let best = null, d0 = Infinity; const all = save?.seedHunts; if (!all) return null;
+  for (const id in all) { const q = all[id]; if (q?.state !== "active" || !Number.isSafeInteger(q.rx) || !Number.isSafeInteger(q.ry)) continue; const d = Math.max(Math.abs(q.rx - rx), Math.abs(q.ry - ry)); if (d < d0 || (d === d0 && best && q.tower < best.tower)) { best = q; d0 = d; } }
+  return best;
+}
+export const huntHeading = (dx, dy) => `${dy < 0 ? "north" : dy > 0 ? "south" : ""}${dx && dy ? "-" : ""}${dx > 0 ? "east" : dx < 0 ? "west" : ""}` || "here";
+export const huntText = (template, vars) => String(template).replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m);
