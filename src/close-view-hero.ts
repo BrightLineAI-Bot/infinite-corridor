@@ -4,8 +4,8 @@ const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_V
 import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.ts';
 import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.ts'; // the Carbine's stock, for its shouldered hold
 import { sampleSweepPose } from './great-sweep.ts'; // the Great Sweep's 360° swing clock (2026-11-14)
-import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame } from './action-motion.ts';
-import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.ts';
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame, sampleCycloneMotion } from './action-motion.ts';
+import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose, CLOSE_VIEW_WATER } from './close-view-player-presentation.ts';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -227,24 +227,68 @@ function solveLeg(state,pose,left,target,weight,data) {
 // tucked and arms lifted out for balance through the rise and hang, then legs reaching down,
 // arms settling and the chest leaning in to meet the ground. Legs read only the fixed rise/fall
 // clocks; every layer is scaled by the connection envelope, so both ends are the ground pose.
+const slew=(a,b,step)=>b>a?Math.min(b,a+step):Math.max(b,a-step*FALL_POSE.slewMs/FALL_POSE.slewDownMs); // a fall: slow rises, quicker falls (still faster than its own settle curve)
+const FALL_SAMPLE = new Float64Array(6); // sampleFallPose's output, reused every frame
 const AIR_POSE = Object.freeze({ tuck: .19, tuckLead: .03, tuckBack: .06, armRaise: .34, armOut: .22, elbow: .30, arch: .05, landLean: .09 });
-function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false){
+function ordinaryAirPose(asset,state,pose,air,reducedMotion,twoHanded=false,nowMs=NaN){
   if(air?.v!==1)return;
   const elapsed=Number(air.elapsedMs),remaining=Number(air.remainingMs),duration=Number(air.durationMs),rise=Number(air.rise),fall=Number(air.fall),lift=Number(air.lift);
   if(!Number.isFinite(elapsed)||!Number.isFinite(remaining)||!Number.isFinite(duration)||!Number.isFinite(rise)||!Number.isFinite(fall)||!Number.isFinite(lift)||elapsed<0||remaining<0||duration<=0||elapsed>duration||remaining>duration||rise<0||rise>1||fall<0||fall>1||lift<0)return;
-  const connection=smoothstep(elapsed/60)*smoothstep(remaining/60);if(!(connection>0))return;
-  const fold=smoothstep(rise/.55)*(1-smoothstep(fall/.75));
-  const takeoff=smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
-  const raise=smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish,land=smoothstep((fall-.35)/.55)*connection*flourish,A=AIR_POSE;
+  // FALL_POSE: a real fall (not a plunge) grows from a small arms-out reaction into a slow arm wheel and leg cycle on its own clock;
+  // it meets the ground over FALL_POSE.endMs (a frame's step of the fall never leaves more than a sliver of the pose at touchdown).
+  const falling=air.falling===true&&air.flail!==false,F=FALL_POSE;
+  const connection=smoothstep(elapsed/60)*smoothstep(remaining/(falling?F.endMs:60));if(!(connection>0))return;
+  const flail=falling?sampleFallPose(elapsed,remaining,reducedMotion,FALL_SAMPLE):null;
+  let fold=flail?flail[1]*(1-smoothstep((fall-.3)/.45)):smoothstep(rise/.55)*(1-smoothstep(fall/.75));
+  const takeoff=flail?0:smoothstep(elapsed/18)*(1-smoothstep(elapsed/70)),flourish=reducedMotion?.55:1;
+  let raise=flail?flail[0]*connection:smoothstep(rise/.40)*(1-smoothstep(fall/.90))*connection*flourish;let land=smoothstep((fall-.35)/.55)*connection*flourish,legs=connection;const A=AIR_POSE;
+  let loop=flail?flail[2]*connection:0,torso=flail?flail[4]*connection:0,head=flail?flail[5]*connection:0;const ph=flail?flail[3]:0;
+  if(flail){ // FALL_POSE.slewMs: the drawn weights never jump frame to frame (state.fallLast: at, raise, loop, phase, fold, torso, head, live, land, legs)
+    const L=state.fallLast,dt=nowMs-L[0],step=L[7]===1&&dt>0&&dt<=100?dt/F.slewMs:Infinity;
+    raise=slew(L[1],raise,step);loop=slew(L[2],loop,step);fold=slew(L[4],fold,step);torso=slew(L[5],torso,step);head=slew(L[6],head,step);land=slew(L[8],land,step);legs=slew(L[9],legs,step);
+    if(Number.isFinite(nowMs)){L[0]=nowMs;L[1]=raise;L[2]=loop;L[3]=ph;L[4]=fold;L[5]=torso;L[6]=head;L[7]=1;L[8]=land;L[9]=legs;}
+  }
   const layer=state.hammerLayer,data=state.hammerLegData,g=state.global,target=state.primaryTarget;
   layer.set(pose);build(asset,state,pose);
   // Preserve each current source sole/ankle frame before solving the independent foot roots.
   for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=side*10;anklePoint(state,left,target);for(let k=0;k<3;k++){data[o+k]=target[k];data[o+3+k]=g[foot*16+12+k]-target[k];}matrixQuat(data,o+6,g,foot*16);}
   rotateX(layer,27,.07*takeoff*flourish-A.arch*raise*(1-land)+A.landLean*land);rotateX(layer,24,.045*takeoff*flourish+.04*land);rotateX(layer,4,-.03*takeoff*flourish-.04*land);
   // Arms lift forward and out for balance, elbows soften; a two-handed polearm keeps its frame.
-  if(!twoHanded&&raise>0)for(const [shoulder,elbow,out] of [[12,11,-1],[22,21,1]]){rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
-  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold;target[2]=data[o+2]-A.tuckBack*fold;solveLeg(state,layer,left,target,connection,state.hammerLegSides[side]);}
+  // A fall's loop: the arms wheel slowly in turn (each half a cycle apart), up and out; each leg cycles opposite its own arm.
+  if(flail)fallTorso(layer,torso,head,loop,ph);
+  if(!twoHanded&&flail&&raise>0)fallArms(asset,state,layer,raise,loop,ph);
+  else if(!twoHanded&&raise>0)for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,out=k?1:-1;rotateX(layer,shoulder,-A.armRaise*raise);rotateZ(layer,shoulder,out*A.armOut*raise);rotateX(layer,elbow,-A.elbow*raise);}
+  for(let side=0;side<2;side++){const left=side===0,o=side*10,tuck=A.tuck+(left?A.tuckLead:0),w=ph+(left?Math.PI:0);target[0]=data[o]+(left?.015:-.015)*fold;target[1]=data[o+1]+tuck*fold+F.legLift*loop*(.5+.5*Math.sin(w));target[2]=data[o+2]-A.tuckBack*fold+F.legStride*loop*Math.cos(w);solveLeg(state,layer,left,target,legs,state.hammerLegSides[side]);}
   pose.set(layer);state.clip='derived-ordinary-jump';state.clipTime=elapsed/duration;
+}
+// FALL_POSE arms, in the model's frame (x across, y up, z forward): each upper arm turns from where it hangs toward a direction out
+// and up (abduction armOut, plus armRise as the loop builds), wheeling slowly around it: up/down by armWheelOut and fore/aft by
+// armSwing, the two arms half a cycle apart. `raise` blends from the hanging arm (0) to that direction (1); elbows soften with it.
+function fallArms(asset,state,pose,raise,loop,ph){
+  const F=FALL_POSE,g=state.global;build(asset,state,pose);const cx=g[27*16+12];
+  for(let k=0;k<2;k++){
+    const shoulder=k?22:12,elbow=k?21:11,so=shoulder*16,eo=elbow*16,sx=g[so+12],sy=g[so+13],sz=g[so+14];
+    let rx=g[eo+12]-sx,ry=g[eo+13]-sy,rz=g[eo+14]-sz;const len=Math.hypot(rx,ry,rz);if(!(len>1e-6))continue;rx/=len;ry/=len;rz/=len;
+    const side=sx>=cx?1:-1,w=ph+k*Math.PI,a=F.armOut+F.armRise*loop+F.armWheelOut*loop*Math.cos(w),c=F.armSwing*loop*Math.sin(w),sa=Math.sin(a),ca=Math.cos(a);
+    let dx=side*sa*Math.cos(c),dy=-ca*Math.cos(F.armFwd),dz=sa*Math.sin(c)+Math.abs(ca)*Math.sin(F.armFwd);const dl=Math.hypot(dx,dy,dz)||1;
+    dx=rx+(dx/dl-rx)*raise;dy=ry+(dy/dl-ry)*raise;dz=rz+(dz/dl-rz)*raise;const bl=Math.hypot(dx,dy,dz)||1;
+    alignJoint(state,pose,shoulder,elbow,sx+dx/bl*len,sy+dy/bl*len,sz+dz/bl*len);
+    rotateX(pose,elbow,-F.elbow*raise-F.elbowCycle*loop*(.5+.5*Math.sin(w-F.elbowLag))); // the forearm trails the upper arm
+  }
+}
+// FALL_POSE torso: the chest opens first at the onset, then sways (pitch and a little roll) ahead of the arm wheel; the head tips to
+// look down as a long fall goes on. Body 27, chest 24, head 4.
+function fallTorso(pose,torso,head,loop,ph){
+  const F=FALL_POSE,w=Math.sin(ph+F.swayLead);
+  rotateX(pose,27,-F.chestOpen*torso);rotateX(pose,24,F.sway*loop*w);rotateZ(pose,24,F.roll*loop*Math.cos(ph+F.swayLead));rotateX(pose,4,F.headDown*head);
+}
+// FALL_POSE.releaseMs: when the falling pose stops without a landing (the drone's catch, a roof met before the ground under it), the
+// last arms and chest ease down over the next pose instead of vanishing. Only over the plain body or a jump's hang; any action of its
+// own (a dodge or roll, a cast, a hit, a defeat) owns the body at once and ends the release.
+function fallRelease(asset,state,kind,profile,nowMs,twoHanded){
+  const L=state.fallLast;if(L[7]!==1)return;const dt=nowMs-L[0];if(!(dt>0))return;
+  if(kind&&!(kind==='jump'&&profile!=='cling')||!(dt<FALL_POSE.releaseMs)){L[7]=0;return;}
+  const k=1-smoothstep(dt/FALL_POSE.releaseMs);fallTorso(state.pose,L[5]*k,L[6]*k,L[2]*k,L[3]);if(!twoHanded&&L[1]*k>0)fallArms(asset,state,state.pose,L[1]*k,L[2]*k,L[3]);
 }
 // Stegosaur's Grip (game.ts wallCling): the still cling pose's arm reach and elbow bend, the body's lean in and the head's look up
 // (radians on the source's shoulders 12/22, elbows 11/21, body 27 and head 4).
@@ -444,6 +488,57 @@ function castPose(state,pose,profile,p,sourceLeft=true){
   solveArm(state,pose,sourceLeft,t,spec[3]*commit*side,spec[4]*commit);
 }
 
+// The cast flourish (Tim, 2026-11-15: "slightly more flourish... a fuller arm arc/wrist turn, slight follow-through"): over the
+// solved free arm of castPose, the wrist turns open through the release and rolls back, the upper arm's arc swings a little wider,
+// and after the release the forearm follows through and settles. Hands and wrists trail the shoulder (`lag`). Presentation only:
+// it runs after the arm is solved, never moves the held grip, and is zero at both ends of the cast's own clock.
+const CAST_FLOURISH = Object.freeze({ arc: .10, wrist: .42, palm: .22, follow: .12, lag: .07, reduced: .5 });
+function castFlourish(pose,p,sourceLeft,reducedMotion){
+  const F=CAST_FLOURISH,side=sourceLeft?1:-1,k=reducedMotion?F.reduced:1,u=clamp((p-F.lag)/(1-F.lag)),turn=Math.sin(Math.PI*clamp(u/.62)),settle=u>.45?Math.sin(Math.PI*clamp((u-.45)/.55)):0,arc=Math.sin(Math.PI*clamp(p/.7));
+  if(!(turn>0||settle>0||arc>0))return;
+  rotateZ(pose,sourceLeft?12:22,-side*F.arc*arc*k);
+  rotateY(pose,sourceLeft?7:18,side*F.wrist*turn*k);rotateX(pose,sourceLeft?7:18,-F.palm*turn*k);
+  rotateX(pose,sourceLeft?11:21,-F.follow*settle*k);
+}
+// A spell's cast (castPose, unchanged: its reach and timing are the release's) with the flourish over the solved arm. Unknown
+// future profiles stay neutral.
+function castBlend(state,profile,p,sourceLeft,reducedMotion){
+  if(!CAST_HAND_TARGETS[profile])return;
+  castPose(state,state.pose,profile,p,sourceLeft);castFlourish(state.pose,p,sourceLeft,reducedMotion);
+}
+// Aerial Step's cast (Tim, 2026-11-15: "leans slightly and sweeps both arms back behind him, palms facing down (not fully
+// extended), then returns to normal"), in both views (the standard view draws this same rig). An anticipation (the chest lifts,
+// the arms draw a touch forward and the hips sink), then the sweep: the shoulders lead, the forearms and hands trail by `lag`, the
+// torso leans in over a small hip shift; a hold; and an eased return with a slight forward follow-through. Over the cast's clock
+// (ACTION_MOTION.castMs); when the cast is cut short (a dodge, a blow, an attack) the last pose eases out over `outMs` instead of
+// popping. The carried weapon is put away for it (AERIAL_HANDS_FREE, below), so both arms sweep and the torso leans whatever is
+// carried (`keep`, a held arm left still, is kept for the shape's callers but no longer used). Runtime only on the pose state (aerialW, aerialP, aerialAt); nothing allocated.
+// AERIAL_HANDS_FREE (Tim, 2026-11-18: "the weapon disappears during the Aerial Step cast... then returns"): the one deliberate
+// exception to the casting rule that a cast never moves the held weapon. For Aerial Step's cast (live, or easing out when cut short)
+// the carried weapon and off-hand tool are not drawn (close-view.ts gear.profile; renderer.ts in the standard view), and both arms
+// sweep (aerialCastLayer with no held arm kept). Every other cast keeps its grip and follow-through.
+export const aerialHandsFree = (state) => !!state && state.aerialW > 0;
+export const AERIAL_CAST_POSE = Object.freeze({ sweep: .85, spread: .62, elbow: .22, palm: .3, roll: 1.3, lean: .17, chest: .06, head: -.12, hips: .05, sink: .04,
+  antic: .16, ready: .14, over: .10, lag: .07, rise: .34, hold: .64, outMs: 120, reduced: .7 });
+// The sweep's lead envelope at cast phase p (0..1), for the standard view's drawn cast (renderer.ts aerialCastStd). Pure.
+export function aerialCastLead(p){const A=AERIAL_CAST_POSE;p=clamp(p);return p<A.ready?0:p<A.rise?smoothstep((p-A.ready)/(A.rise-A.ready)):p<A.hold?1:1-smoothstep((p-A.hold)/(1-A.hold));}
+function aerialCastShape(pose,p,w,reducedMotion,keep=0){
+  const A=AERIAL_CAST_POSE,k=w*(reducedMotion?A.reduced:1);if(!(k>0))return;
+  const lead=p<A.ready?0:p<A.rise?smoothstep((p-A.ready)/(A.rise-A.ready)):p<A.hold?1:1-smoothstep((p-A.hold)/(1-A.hold));
+  const q=clamp((p-A.lag)/(1-A.lag)),trail=q<A.ready?0:q<A.rise?smoothstep((q-A.ready)/(A.rise-A.ready)):q<A.hold?1:1-smoothstep((q-A.hold)/(1-A.hold));
+  const antic=Math.sin(Math.PI*clamp(p/A.rise))*(1-lead),over=p>A.hold&&!reducedMotion?Math.sin(Math.PI*clamp((p-A.hold)/(1-A.hold))):0;
+  for(let i=0;i<2;i++){const side=i?-1:1,sh=i?22:12,el=i?21:11,hand=i?18:7;if(sh===keep)continue;
+    rotateZ(pose,sh,side*(A.sweep*lead-A.antic*antic-A.over*over)*k);rotateX(pose,sh,A.spread*lead*k);
+    rotateX(pose,el,-A.elbow*trail*k);rotateX(pose,hand,A.palm*trail*k);rotateY(pose,hand,side*A.roll*trail*k);}
+  if(!keep){rotateX(pose,28,-A.sink*antic*k);rotateZ(pose,28,A.hips*lead*k);rotateZ(pose,27,-A.hips*.6*lead*k);rotateX(pose,27,(A.lean*lead+.03*over)*k);rotateX(pose,24,(A.chest*lead-A.chest*antic)*k);}
+  rotateX(pose,4,(A.head*lead+(keep?A.lean*.5*lead:0))*k); // with a carried weapon only the neck leans: the torso is the held arm's ancestor
+}
+function aerialCastLayer(state,pose,live,p,nowMs,reducedMotion,keep=0){
+  const A=AERIAL_CAST_POSE;
+  if(live){state.aerialP=p;state.aerialAt=nowMs;state.aerialW=1;state.aerialKeep=keep;aerialCastShape(pose,p,1,reducedMotion,keep);return;}
+  if(!(state.aerialW>0))return;const age=nowMs-(state.aerialAt??nowMs),w=age>=0?1-smoothstep(age/A.outMs):0;
+  if(!(w>0)||state.aerialP>=1){state.aerialW=0;return;}aerialCastShape(pose,state.aerialP,w,reducedMotion,state.aerialKeep||0);
+}
 // Added body loading belongs only to accepted phased tools, never legacy or opaque records.
 const TOOL_BODY_LOAD=Object.freeze({
   'rift-bombard':Object.freeze({twist:.055,brace:.085,guard:.10}),
@@ -606,7 +701,7 @@ function deform(asset, state) {
 export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.fit=fitProportions(asset,s.proportions);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
@@ -620,6 +715,7 @@ export function createHeroPoseState(asset,proportions=HERO_PROPORTIONS) {
   // Bounds belong to rendered triangles, never unused source vertices left by extraction.
   for (const v of asset.arrays.indices) { const y=s.vertices[v*6+1]; s.minY = Math.min(s.minY, y); max = Math.max(max, y); s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02); }
   s.referenceHeight = max - s.minY; if (!(s.referenceHeight > .1)) throw new Error('Invalid hero height');
+  s.restHip = Float64Array.of(s.global[33*16+12], s.global[33*16+13], s.global[33*16+14]); // the idle hips: a swimmer's body is drawn about them (swimPose)
   for(let side=0;side<2;side++){
     const foot=side===0?1:36,r=side*8,points=[],q=s.primaryScratch;let sole=Infinity;
     matrixQuat(q,0,s.global,foot*16);qinv(q,4,q,0);
@@ -859,7 +955,7 @@ function sampleSkinnedOverlay(parts,asset,state,input,dst,scale,cy,sy,dx,dz,knoc
     const joint=skin.joints.indexOf(part.node);if(joint<0)return -1;const m=joint*16,n=joint*9;
     for(const v of part.vertices){const x=v[0],y=v[1],z=v[2],px=matrices[m]*x+matrices[m+4]*y+matrices[m+8]*z+matrices[m+12]+dx,py=matrices[m+1]*x+matrices[m+5]*y+matrices[m+9]*z+matrices[m+13],pz=matrices[m+2]*x+matrices[m+6]*y+matrices[m+10]*z+matrices[m+14]+dz;
       // Recipe faces are deliberately outward-wound; transform their bind-space face normal below.
-      dst[o++]=input.x+(pz*cy-px*sy)*scale;dst[o++]=input.y+(pz*sy+px*cy)*scale;dst[o++]=input.groundZ+input.liftZ+(py-state.minY)*scale;
+      dst[o++]=input.x+(pz*cy-px*sy)*scale;dst[o++]=input.y+(pz*sy+px*cy)*scale;dst[o++]=input.groundZ+input.liftZ+(py-state.drawFloor)*scale;
       // Filled after each triangle so the same skinned face normal is shared by its three vertices.
       dst[o++]=normals[n+6]*cy-normals[n]*sy;dst[o++]=normals[n+6]*sy+normals[n]*cy;dst[o++]=normals[n+3];
     }
@@ -924,16 +1020,58 @@ const AWAKENED_POSE = Object.freeze({
   'spell-runes': Object.freeze({ trace: 1.1, out: .3 }),
   roundhouse: Object.freeze({ up: .42, fwd: .3, guard: .55, lean: .15, kickAt: .1, kickLen: .2, holdEnd: .65, spinEnd: .85 }),
   'axe-kick': Object.freeze({ up: .55, fwd: .22, guard: .4, arch: .12, slam: .3, riseEnd: .35, fallAt: .4, fallLen: .2, crouch: .35, drop: .12 }),
+  // The Cyclone Heel (brawler-spells.ts CYCLONE_HEEL) on its shared clock (action-motion.ts sampleCycloneMotion): the right knee
+  // chambers (`chamber` [up, fwd]) as the body coils, the leg drives out level (`out`) and is held while she turns, arms tucked to
+  // the guard and a lean back against the leg, then the leg is drawn back and set down as the turn runs out on her heading.
+  'cyclone-heel': Object.freeze({ chamber: Object.freeze([.42, .1]), out: Object.freeze([.38, .44]), guard: .5, lean: .12 }),
 });
-const AWAKENED_KICKS = new Set(['roundhouse', 'axe-kick']), AWAKENED_CLIP = Object.freeze(Object.fromEntries(Object.keys(AWAKENED_POSE).map((k) => [k, `derived-${k}`])));
+const AWAKENED_KICKS = new Set(['roundhouse', 'axe-kick', 'cyclone-heel']), AWAKENED_CLIP = Object.freeze(Object.fromEntries(Object.keys(AWAKENED_POSE).map((k) => [k, `derived-${k}`])));
 // One leg's ankle lifted `up` and carried `fwd` (heights of the hero), weighted by w; the other sole stays put.
 function kickLeg(asset,state,pose,left,up,fwd,w){
   if(!(w>0))return;const data=state.hammerLegData,g=state.global,target=state.primaryTarget,side=left?0:1,o=side*10,foot=left?1:36,H=state.referenceHeight;
   build(asset,state,pose);anklePoint(state,left,target);for(let q=0;q<3;q++){data[o+q]=target[q];data[o+3+q]=g[foot*16+12+q]-target[q];}matrixQuat(data,o+6,g,foot*16);
   target[0]=data[o];target[1]=data[o+1]+up*H*w;target[2]=data[o+2]+fwd*H*w;solveLeg(state,pose,left,target,w,state.hammerLegSides[side]);
 }
-function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false){
+// Swimming (close-view-player-presentation.ts CLOSE_VIEW_WATER.stroke; input.swim { stroke, tread, move, weight }): the
+// Wayfarer treading water upright, or, moving, laid out along the surface in a front crawl. The tread (in `pose`) and the
+// crawl (in state.other) are each built whole and slerped by `move`, so a stroke never pops as the pace changes. Crawl: the
+// body pitched forward about the root (the feet go with it), the head lifted to look ahead, the arms wheeling in turn (the
+// recovery swung wide over the back, elbow bent; the pull through the water straight), a flutter kick. Tread: nearly upright,
+// the arms out at the sides sculling, the legs turning slow circles. The feet keep their own turn (no planted sole in water).
+// Radians on the root 38, head 4, upper arms 12/22 and elbows 11/21; kicks through kickLeg (heights of the hero).
+const SWIM_FOOT=new Float64Array(8);
+function swimLegs(asset,state,pose,kick,phase,circle){
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,o=foot*10+3,a=phase+(left?0:Math.PI);for(let k=0;k<4;k++)SWIM_FOOT[side*4+k]=pose[o+k];
+    kickLeg(asset,state,pose,left,kick*Math.sin(a),circle?kick*Math.cos(a):0,1);for(let k=0;k<4;k++)pose[o+k]=SWIM_FOOT[side*4+k];}
+}
+function swimPose(asset,state,pose,swim,reducedMotion){
+  const S=CLOSE_VIEW_WATER.stroke,w=clamp(Number(swim?.weight)||0);if(!(w>0))return false;
+  const move=clamp(Number(swim.move)||0),sp=TAU*(Number(swim.stroke)||0),tp=TAU*(Number(swim.tread)||0),calm=reducedMotion?.5:1;
+  if(move>0){const crawl=state.other;crawl.set(pose);
+    rotateX(crawl,38,S.pitch);rotateX(crawl,4,-S.head);
+    for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,side=k?-1:1,a=sp+k*Math.PI,over=Math.max(0,Math.sin(a));
+      rotateX(crawl,shoulder,a);rotateZ(crawl,shoulder,-side*.55*over);rotateX(crawl,elbow,-S.recoverElbow*over);}
+    swimLegs(asset,state,crawl,S.kick*calm,sp*2,false);
+    if(move<1)swimTread(asset,state,pose,S,tp,calm);
+    if(move>=1)pose.set(crawl);else blend(pose,crawl,move);}
+  else swimTread(asset,state,pose,S,tp,calm);
+  state.clip=move>.5?'derived-swim':'derived-tread';state.clipTime=(move>.5?sp:tp)/TAU;return true;
+}
+function swimTread(asset,state,pose,S,tp,calm){
+  rotateX(pose,38,S.treadPitch);rotateX(pose,4,-S.treadHead);
+  for(let k=0;k<2;k++){const shoulder=k?22:12,elbow=k?21:11,side=k?-1:1,sweep=Math.sin(tp+k*Math.PI)*calm;
+    rotateZ(pose,shoulder,-side*S.scullOut);rotateY(pose,shoulder,side*S.scullSweep*sweep);rotateX(pose,elbow,-S.scullElbow);}
+  swimLegs(asset,state,pose,S.treadKick*calm,tp,true);
+}
+const CYCLONE_SAMPLE={stage:'',turn:0,chamber:0,extend:0,weight:0};
+function awakenedArtPose(asset,state,pose,art,p,reducedMotion,contact=.24,chained=false,cycloneWindup=NaN,cycloneRecover=NaN,cycloneEnter=0){
   if(art==='roundhouse'){kickChain(asset,state,pose,p,contact,chained,0,reducedMotion);return;} // the chain's fourth step (FIST_CHAIN_POSE.kick)
+  if(art==='cyclone-heel'){ // its own envelope (sampleCycloneMotion): at rest at both ends, or already chambered on a Shadow Boxing blink's first frame
+    const A=AWAKENED_POSE[art],m=sampleCycloneMotion(p,cycloneWindup,cycloneRecover,CYCLONE_SAMPLE,undefined,cycloneEnter),c=m.chamber,x=m.extend;
+    if(m.weight>0){rotateX(pose,12,-A.guard*m.weight);rotateX(pose,22,-A.guard*m.weight);}if(c>0)rotateX(pose,27,-A.lean*x*c);
+    if(c>0)kickLeg(asset,state,pose,false,(A.chamber[0]+(A.out[0]-A.chamber[0])*x)*c,(A.chamber[1]+(A.out[1]-A.chamber[1])*x)*c,1); // full IK weight: the target itself starts at the planted ankle
+    if(!reducedMotion&&p<1)state.sweepSpin+=TAU*m.turn; // the turns that strike (whole turns by the end); reduced motion keeps the leg but does not turn
+    state.clip=AWAKENED_CLIP[art];state.clipTime=p;return;}
   const A=AWAKENED_POSE[art];if(!A)return;const env=Math.min(1,smoothstep(p/.08),smoothstep((1-p)/.2));if(!(env>0))return;
   if(art==='fissure'){const k=smoothstep((p-A.at)/A.len)*env;rotateX(pose,27,A.bend*k);rotateX(pose,24,A.chest*k);plantedCrouch(asset,state,pose,k*A.crouch,A.drop);}
   else if(art==='returning-blades'){const k=smoothstep(p/A.out)*(1-smoothstep((p-A.back)/A.len))*env;rotateX(pose,12,-A.fling*k);rotateX(pose,22,-A.fling*k);rotateZ(pose,12,-A.spread*k);rotateZ(pose,22,A.spread*k);}
@@ -969,13 +1107,15 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // The Carbine in hand (close-view.ts input.carbineHold): carried, charging or firing, only over the plain carry or its own
   // record. Its idle is held still too, so a charge starting from the carry does not jump the shoulders (CARBINE_HOLD).
   const carbineHeld=input.carbineHold===true&&!knocked&&(!action||!action.kind||action.kind==='ranged'&&action.profile==='emitter');
-  const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer, idleSec = idleFrozen ? 0 : idleMs / 1000;
+  // FALL_POSE: a real fall keeps the idle breathing under it, so neither its start nor its touchdown jumps the body to a frozen idle.
+  const airFall=action?.kind==='jump'&&action.jumpAir?.falling===true&&action.jumpAir.flail!==false;
+  const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer&&!airFall, idleSec = idleFrozen ? 0 : idleMs / 1000;
   clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
   const primaryAction=action?.kind==='melee'&&!action.weaponArt&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,
     meleeMotion=action?.kind==='melee'?sampleMeleeActionPose(action.meleeAction??(action.profile==='fist'&&!action.awakenedArt&&[1,2,3].includes(action.fistStep)?FIST_DESCRIPTORS[FIST_MOVES[action.fistStep]]:null)/* a fist record with no contact descriptor: the chain's own timing */,p,action?.primaryStage?.step??action?.primaryMotion?.step??action?.primaryStep??action?.fistStep,action?.fistLead):null;
-  let clip = null, weight = 0, time = 0, dx = 0, dz = 0;
+  let clip = null, weight = 0, time = 0, dx = 0, dz = 0, aerialCast = false;
   state.clip = speed > 2.8 ? 'Run' : speed > 0 ? 'Walk' : 'Idle'; state.clipTime = phase;
   const primaryStage=primaryAction?(primaryVisualStage(action)||(action.primaryMotion?{kind:'opaque'}:{kind:'legacy',step:1})):input.primaryCarryStage,
     carryProfile=primaryAction||heldPrimary,roles=cleaverHandRoles(input.handProfile??carryProfile,primaryStage);
@@ -1071,26 +1211,30 @@ export function sampleCloseViewHero(asset, state, input, out) {
         // Orrery tools and pre-descriptor saves retain their established cast layer.
         // Unknown future spell profiles remain neutral until they have a recipe.
         if(profile==='cast'||profile==='orrery-tap'||profile==='orrery-release'){rotateX(state.pose,12,-.65*pulse);rotateX(state.pose,22,-.8*pulse);}
-        else castPose(state,state.pose,profile,p,roles.free==='leftSocket');
+        else if(profile==='traversal-brace')aerialCast=true; // Aerial Step: its own whole-body cast (aerialCastLayer, below)
+        else castBlend(state,profile,p,roles.free==='leftSocket',input.reducedMotion);
       }
       // Stegosaur's Grip: holding a wall, both arms reach up onto it and the body leans in; held still (Reduced Motion alike).
       else if (profile === 'cling') { const A = CLING_POSE; for (const [shoulder, elbow] of CLING_ARMS) { rotateX(state.pose, shoulder, -A.reach * weight); rotateX(state.pose, elbow, -A.elbow * weight); } rotateX(state.pose, 27, A.lean * weight); rotateX(state.pose, 4, -A.look * weight); state.clip = 'derived-cling'; state.clipTime = .5; }
       else { // Legacy jumps keep their brace; reviewed ordinary-air records add connected legs.
         rotateX(state.pose, 12, -.25 * pulse); rotateX(state.pose, 22, -.25 * pulse);
-        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike');
+        ordinaryAirPose(asset,state,state.pose,action.jumpAir,input.reducedMotion,input.heldProfile==='cinder-pike',input.nowMs);
       }
       if(state.clip!=='derived-ordinary-jump'&&state.clip!=='derived-cling'&&!(kind==='ranged'&&['rift-bombard','blunderbuss','lumen-spindle'].includes(profile)))state.clip = kind==='ranged'?'derived-ranged':kind==='cast'?'derived-cast':'derived-jump';
     }
   }
+  fallRelease(asset,state,action?.kind||'',action?.profile,input.nowMs,input.heldProfile==='cinder-pike');
+  const swimming=!action&&!knocked&&input.swim?swimPose(asset,state,state.pose,input.swim,input.reducedMotion):false; // CLOSE_VIEW_WATER: treading or the crawl
   // The Great Sweep stays drawn between uses (input.heldTool): the carry rides over walking, running,
   // dodging, jumping and flinching. A knockdown or defeat keeps the hand where the body throws it.
   if(action?.kind==='melee'&&action.weaponArt)weaponArtPose(state,state.pose,action.weaponArt,p,input.reducedMotion);
   else if(!action&&input.artCharge>0)weaponArtChargePose(state,state.pose,clamp(input.artCharge),input.reducedMotion);
-  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true);
+  if(action?.kind==='melee'&&typeof action.awakenedArt==='string')awakenedArtPose(asset,state,state.pose,action.awakenedArt,p,input.reducedMotion,action.meleeAction?.contactMs>0&&action.meleeAction.durationMs>0?action.meleeAction.contactMs/action.meleeAction.durationMs:FIST_DESCRIPTORS.dash.contactMs/FIST_DESCRIPTORS.dash.durationMs,action.fistChain===true,action.cycloneWindup,action.cycloneRecover,action.cycloneEnter);
   if(!sweepPosed&&input.heldTool==='great-sweep'&&!knocked&&action?.kind!=='death')greatSweepPose(state,state.pose,null,input.reducedMotion);
   if(carbineHeld)carbineHoldPose(state,state.pose,input.carbineRecoil); // the Carbine shouldered (CARBINE_HOLD), over the gait and any carbine record
   if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
+  if(!knocked&&action?.kind!=='death')aerialCastLayer(state,state.pose,aerialCast,p,input.nowMs,input.reducedMotion,0); else state.aerialW=0; // AERIAL_CAST_POSE (eases out when cut short); AERIAL_HANDS_FREE: the weapon is put away for it, so both arms sweep whatever is carried
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
   // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
   {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);if(!action)plantedCrouch(asset,state,state.pose,CLOSE_VIEW_SHADOW_FORMS.dash.crouch*w,CLOSE_VIEW_SHADOW_FORMS.dash.drop);}} // 2026-11-14: low in the charge (not over a swing's own legs)
@@ -1098,10 +1242,12 @@ export function sampleCloseViewHero(asset, state, input, out) {
   // low and trailing, the weapon shoulder swung back and its elbow eased (close-view-shadow-forms.ts CLOSE_VIEW_SHADOW_FORMS.rush).
   {const k=clamp(Number(input.rushGrip)||0)*(input.reducedMotion?.5:1);if(k>0){const R=CLOSE_VIEW_SHADOW_FORMS.rush,right=roles.free==='leftSocket';rotateX(state.pose,right?22:12,R.grip*k);rotateX(state.pose,right?21:11,-R.elbow*k);}}
   build(asset,state,state.pose);if(action?.kind==='dodge'){const b=asset.meta.reference.bodyNode*16;dx=-(state.global[b+12]-state.rollX)*weight;dz=-(state.global[b+14]-state.rollZ)*weight;} deform(asset, state); state.rollCompX = dx; state.rollCompZ = dz;
+  // a swimmer is drawn about the idle hips (its root turned under it), and from the hips down, so liftZ is the hips' depth under the water
+  let floor=state.minY;if(swimming){const b=33*16;dx=state.restHip[0]-state.global[b+12];dz=state.restHip[2]-state.global[b+14];floor=state.global[b+13];}state.drawFloor=floor;
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
-  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - state.minY, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
-  socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, state.minY); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, state.minY);
+  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - floor, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
+  socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, floor); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, floor);
   if(input.powerSuit===true){if(!samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p))return false;out.powerSuit=true;}
   // The kit is opt-in per caller: the standard Wayfarer kit, or on the suit its helmet and pack
   // (never the standard kit over the suit armor). A bad piece only drops the kit.

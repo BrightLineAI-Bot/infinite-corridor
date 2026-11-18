@@ -1,6 +1,7 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts"; // a dodge's after-images replace the single dodge ghost
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts";
+import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.ts"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
 import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.ts"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
 import { drawQuandrixStaff } from "./quandrix-staff.ts";
@@ -14,7 +15,7 @@ import { FAR_FOLK } from "./far-realms.ts";
 import { astralBeamAnchors } from "./astral-worm.ts";
 import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { knockdownPose, drawShockSparks } from "./lightning-giant-render.ts";
-import { playerFormPresentation } from './close-view-player-presentation.ts';
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.ts';
 import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.ts";
 import { enemyPatternWindup } from "./enemy-patterns.ts";
 import { ruleRows } from "./elders.ts";
@@ -22,7 +23,7 @@ import { SEA_CREATURES } from "./sea-creatures.ts";
 import { BOAT } from "./boats.ts";
 import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.ts"; // 613: Starfield rafts
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.ts"; // 613: Starfield rafts
 import { SEASONS, treeSeason } from "./seasons.ts";
 import { setTreeSeason, bizarroWash } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
@@ -41,6 +42,7 @@ import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
 import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
@@ -50,7 +52,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } fro
 import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.ts";
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -64,6 +66,55 @@ export function nativeWindupDuration(e) {
 }
 export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
 // Native player bodies replace only the body. These existing state-owned cues remain in the residual atlas.
+// Aerial Step's rings in the standard view (close-view.ts AERIAL_RINGS, aerialRingState): two thin blue ellipses round the feet at
+// (x, foot) in pixels, gliding up to the shins and back half a cycle apart; the far half fainter, behind the legs. `half` 0 draws the
+// far halves (before the body), 1 the near halves (after it). No allocation.
+export function drawAerialRingsStd(ctx, g, x, foot, s, now, half) {
+  const S = aerialRingState(g, now); if (!S || !(S.a > 0)) return; const R = AERIAL_RINGS, D = R.std;
+  ctx.save(); ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) { const y = foot - (k ? S.h1 : S.h0) * D.shin * s;
+    if (!half) { ctx.globalAlpha = S.a * R.back; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, Math.PI, 2 * Math.PI); ctx.stroke(); }
+    else { ctx.globalAlpha = S.a; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, 0, Math.PI); ctx.stroke(); ctx.strokeStyle = R.core; ctx.lineWidth = Math.max(.6, D.width * s / 80); ctx.stroke(); } }
+  ctx.restore();
+}
+// Aerial Step's cast in the standard view (close-view-hero.ts AERIAL_CAST_POSE draws it on the rig in Close View): the sprite
+// leans into its facing and two arms sweep back behind the shoulders, hands flat (palms down), over the sweep's own eased envelope
+// (aerialCastLead). Cut short, it eases out over AERIAL_CAST_POSE.outMs. Runtime only (AERIAL_STD); nothing allocated.
+const AERIAL_STD = { p: 1, at: -Infinity };
+export function aerialCastStd(g, now) {
+  const p = g.player, v = p?.castVisual, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (v?.spellKind === "aerial-step" && v.cancelled !== true && clock < (p.castUntil || 0)) { AERIAL_STD.p = 1 - ((p.castUntil || 0) - clock) / (Number(v.durationMs) || ACTION_MOTION.castMs); AERIAL_STD.at = clock; return aerialCastLead(AERIAL_STD.p); }
+  const age = clock - AERIAL_STD.at; if (!(age >= 0 && age < AERIAL_CAST_POSE.outMs) || AERIAL_STD.p >= 1) return 0;
+  const u = age / AERIAL_CAST_POSE.outMs; return aerialCastLead(AERIAL_STD.p) * (1 - u * u * (3 - 2 * u));
+}
+// AERIAL_HANDS_FREE in the standard view (close-view-hero.ts): through Aerial Step's cast, and its ease-out when cut short, the
+// weapon in hand (the sprite's blade and the Quandrix Staff) is not drawn; it is back once the cast is over. Read only.
+export function aerialHandsFreeStd(g, now) {
+  const p = g?.player, v = p?.castVisual, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (v?.spellKind === "aerial-step" && v.cancelled !== true && clock < (p.castUntil || 0)) return true;
+  const age = clock - AERIAL_STD.at; return age >= 0 && age < AERIAL_CAST_POSE.outMs && AERIAL_STD.p < 1;
+}
+// FALL_RESCUE.flash (game.ts): while a fall would kill where it lands now (game.fallDoomed), the screen's edges pulse red over the fall's
+// own clock (paused: held); Reduced Motion holds a steady tint. One gradient a frame, only while doomed.
+function drawFallDoom(ctx, g, w, h, now) {
+  const F = FALL_RESCUE.flash, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, still = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
+  const a = still ? F.still : F.alpha * (.55 + .45 * Math.sin(clock / F.pulseMs * Math.PI * 2)), r1 = Math.hypot(w, h) / 2;
+  if (!(a > 0) || !(r1 > 0)) return;
+  const v = ctx.createRadialGradient(w / 2, h / 2, r1 * F.inner, w / 2, h / 2, r1); v.addColorStop(0, `rgba(${F.color},0)`); v.addColorStop(1, `rgba(${F.color},${a.toFixed(3)})`);
+  ctx.save(); ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); ctx.restore();
+}
+let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
+const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
+function drawAerialArmsStd(ctx, x, y, s, facing, k) {
+  const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
+  ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let i = -1; i <= 1; i += 2) {
+    const sx = cx + (side ? i * .05 : i * .15) * s, sy = cy + (side ? 0 : .02 * s);
+    const hx = side ? sx - side * A.back * k * s + i * .03 * s : sx + i * A.spread * k * s, hy = sy + A.hang * (1 - k) * s + (side ? -A.up * k * s : up ? A.up * k * s : -A.up * 1.5 * k * s);
+    ctx.strokeStyle = A.arm; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo((sx + hx) / 2, (sy + hy) / 2 + .02 * s); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = A.hand; ctx.beginPath(); ctx.ellipse(hx, hy, Math.max(1.5, s * .06), Math.max(1, s * .03), 0, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
 export function drawNativePlayerDecorations(ctx, g, s, now) {
   const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
   const x=(p.x+.5)*s,foot=(p.y+.82)*s;
@@ -95,6 +146,26 @@ function drawClingGrip(ctx, x, y, s, nx, ny) {
     const ox = side ? k * .14 * s : 0, oy = side ? 0 : k * .05 * s, hx = cx + ox + reachX, hy = cy + oy + reachY;
     ctx.beginPath(); ctx.moveTo(cx + ox * .6, cy + oy); ctx.lineTo(hx, hy); ctx.stroke();
     ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * .045), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// FALL_POSE (Standard View): a real fall raises both hands out to the sides, more as it goes on, with a small slow flap on a long
+// fall (the same clock and weights as Close View's falling pose; Reduced Motion holds them still). When the fall is taken over in the
+// air (the drone's catch, a roof met first) the hands ease back down over FALL_POSE.releaseMs rather than vanishing (FALL_STD_LAST:
+// at, arms, loop, phase). Nothing else is drawn differently.
+const FALL_STD = new Float64Array(6), FALL_STD_LAST = new Float64Array(4);
+function drawFallArms(ctx, g, x, y, s, now) {
+  const air = g.fall ? ordinaryFallPresentation(g, now, 0) : null, L = FALL_STD_LAST, S = FALL_POSE.std, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  let arms = 0, loop = 0, ph = 0;
+  if (air && air.flail !== false) { const f = sampleFallPose(air.elapsedMs, air.remainingMs, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), FALL_STD); arms = f[0]; loop = f[2]; ph = f[3]; L[0] = clock; L[1] = arms; L[2] = loop; L[3] = ph; }
+  else { const u = (clock - L[0]) / FALL_POSE.releaseMs; if (!(L[1] > 0) || !(u > 0) || u >= 1) { L[1] = 0; return; } const k = 1 - u * u * (3 - 2 * u); arms = L[1] * k; loop = L[2] * k; ph = L[3]; }
+  if (!(arms > .02)) return;
+  const cx = (x + .5) * s, cy = (y + .36) * s;
+  ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#3b2e23"; ctx.lineWidth = Math.max(2, s * S.line);
+  for (let k = -1; k <= 1; k += 2) {
+    const flap = S.flap * loop * Math.sin(ph + (k > 0 ? Math.PI : 0)), ox = k * .12 * s, hx = cx + ox + k * S.reachX * arms * s, hy = cy + (S.reachY * arms + flap) * s;
+    ctx.beginPath(); ctx.moveTo(cx + ox, cy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = "#e0b48c"; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, s * S.hand), 0, 7); ctx.fill();
   }
   ctx.restore();
 }
@@ -255,6 +326,45 @@ export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // `ground` (its checks, any rebuild or patch, and the copy to the screen); main.ts adds what it draws after render(). Every part
 // is reset when a timed render begins, so a frame that returns early never reports the frame before's numbers.
 export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0, view: 0, groundImage: 0, endedAt: 0 }; // endedAt: when the last timed render returned
+function drawBeastHotelBed(ctx, bed, tileSize, now, reducedMotion) {
+  const x = (bed.x + .5) * tileSize;
+  const y = (bed.y + .75) * tileSize;
+  const u = tileSize;
+  ctx.save();
+  ctx.fillStyle = "#4a3729";
+  ctx.fillRect(x - .83*u, y - .72*u, 1.66*u, .72*u);
+  ctx.fillStyle = "#dfd5bd";
+  ctx.fillRect(x - .73*u, y - .66*u, 1.46*u, .55*u);
+  if (bed.recovering) {
+    const breath = reducedMotion ? 0 : Math.sin(now / 540) * .026*u;
+    ctx.fillStyle = "#597467";
+    ctx.beginPath();
+    ctx.ellipse(x - .13*u, y - .37*u, .55*u, .24*u + breath, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#f2cf35";
+    ctx.beginPath();
+    ctx.ellipse(x + .42*u, y - .53*u, .26*u, .18*u, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#fff0a0";
+    for (const offset of [-.11, .02, .12]) {
+      ctx.beginPath();
+      ctx.moveTo(x+(.4+offset)*u,y-.59*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.77*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.56*u);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#f4f6ef";
+    ctx.fillRect(x + .58*u, y - .49*u, .23*u, .05*u);
+    ctx.fillStyle = "#b94143";
+    ctx.fillRect(x + .76*u, y - .49*u, .05*u, .05*u);
+  } else {
+    drawPackMonster(ctx, {
+      id: bed.id, kind: "triceratops", packKind: "triceratops",
+      x: bed.x, y: bed.y - .23, scale: 1.38, facingX: 1, reduceMotion: reducedMotion,
+    }, tileSize, now, "right");
+  }
+  ctx.restore();
+}
 function renderableObject(g,o){
   // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
   const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
@@ -1682,7 +1792,7 @@ function actor(
     rect(p[2], 0.04, -0.66, 0.04, 0.04);
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
-    rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05);
+    if (!STD_HANDS_FREE) rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand (AERIAL_HANDS_FREE: put away for Aerial Step's cast)
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
   else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
@@ -2353,8 +2463,9 @@ function drawPentSeal(ctx, o, s, now) {
   ctx.beginPath(); ctx.arc(cx, cy, s * .06, 0, 7); ctx.fill(); ctx.restore();
 }
 // The dread (a cached screen image like the vignette): the dark closes in from the edges, leaving `share` of the view lit.
-function drawDread(ctx, w, h, share) {
-  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread; // INTERIOR_LIGHT (close-view.ts): a little lighter, still closing in const key = `${w}x${h}:${share.toFixed(2)}`;
+export function drawDread(ctx, w, h, share) {
+  if (!(share > 0)) return; let o = render.dread; const D = INTERIOR_LIGHT.dread;
+  const key = `${w}x${h}:${share.toFixed(2)}`;
   if (!o || o.key !== key) { const c = makeGroundCanvas(); const x = c?.getContext?.("2d"); if (!x) { ctx.fillStyle = `rgba(0,0,0,${share * .5 * D})`; ctx.fillRect(0, 0, w, h); return; } c.width = w; c.height = h;
     const R = Math.max(w, h) * .75, v = x.createRadialGradient(w / 2, h / 2, R * (1 - share) * .45, w / 2, h / 2, R * (1.05 - share * .5)); v.addColorStop(0, "rgba(2,2,6,0)"); v.addColorStop(.6, `rgba(2,2,6,${(.5 + share * .35) * D})`); v.addColorStop(1, `rgba(2,2,6,${(.8 + share * .18) * D})`); x.fillStyle = v; x.fillRect(0, 0, w, h); o = render.dread = { key, canvas: c }; }
   ctx.drawImage(o.canvas, 0, 0, w, h);
@@ -2500,10 +2611,17 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
   const dungeon = g.area === "dungeon", reveal = dungeon ? (g.map._dungeonRevealMode === "full" ? "full" : g.map._dungeonRevealed || null) : null, revealSize = reveal && reveal !== "full" ? reveal.size : 0;
   let dirty = !ground.canvas || ground.map !== g.map || ground.s !== s || ground.building !== activeBuildingId || ground.refs.length !== T.length || ground.scarSurface !== scarSurface;
   if (!dirty) for (let i = 0; i < T.length; i++) { const q = T[i]; if (q !== ground.refs[i] || q.kind !== ground.kinds[i] || q.blocked !== ground.blocked[i] || q.elev !== ground.elev[i]) { dirty = true; break; } }
-  let top = 0; if (dirty) for (const q of T) top = Math.max(top, landscapeTileLift(q, s));
-  const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + (dirty ? top : ground.top)))), scale = Math.min(want, fit);
+  // CV_TREE_BLACKOUT (Tim, r975: after the Oculus took him into Close View and back beside a great tree, "the top half of the
+  // screen of the tree doesn't load in... It was a black screen"): the headroom above row 0 that lifted tiles are drawn into
+  // (`top`) was measured only when the tiles had changed, so a rebuild for a new scale alone (Close View's leave zoom changes the
+  // transform) built the image with no headroom, and the great tree's trunk, crown and upper branches were cut off for as long as
+  // the image lived. Unchanged tiles at the same tile size keep the headroom the last build measured.
+  let top = ground.top; if (dirty) { top = 0; for (const q of T) top = Math.max(top, landscapeTileLift(q, s)); }
+  const want = Math.hypot(m.a, m.b) || 1, fit = Math.sqrt(GROUND_MAX_PIXELS / (mw * s * (mh * s + top))), scale = Math.min(want, fit);
   if (dungeon && fit < want) return false; // a large dungeon at high pixel density would cache blurred: draw it per tile
-  if (!dirty && Math.abs(scale - ground.scale) > 1e-6) dirty = true;
+  // A scale that changes only for Close View's leave zoom (a few tenths of a second, a new scale each frame) keeps the image it
+  // has, drawn scaled, rather than rebuilding the whole section every frame of the blend and once more as it ends.
+  if (!dirty && Math.abs(scale - ground.scale) > 1e-6 && !closeViewLeaving()) dirty = true;
   // Release 165: exploring a dungeon reveals chunks one at a time. Redrawing the whole image for each (up to 4096
   // tiles, about once a second while exploring) was a visible hitch, so newly revealed chunks are repainted in place.
   let added = null;
@@ -2686,7 +2804,8 @@ export function render(ctx, g, w, h, now) {
     : g.area === "overworld" && g.skyAir != null && jumping && !g.deckHop /* roof decks: a hop on or onto a roof is drawn as an ordinary jump */
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
-  const fallLift = g.fall && g.area === "overworld" && Number.isFinite(g.fall.z) ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1)) : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it
+  const fallLift = g.fall && Number.isFinite(g.fall.z) ? g.area === "overworld" ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1))
+    : g.area === "dungeon" ? flatFloor ? Math.max(0, g.fall.z - (interior ? supportLevel : g.elevationHere?.(p.x, p.y) || 0)) * LIFT_PER_LEVEL : Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL) : null : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it (FALL_EVERYWHERE: indoors too, over the floor drawn flat)
   const stepLift = standardStepEase(g, hopLift ?? groundLift(p.x, p.y), jumping, now, worldCapture || closeViewCapturing() || fallLift != null || !!g.glide || !!g.droneLift || g.area !== "overworld" || !!g.save?.boat?.aboard, lift / s); // a step up or down a level (or a hop's landing on the next branch) is eased, never cut (standardStepEase)
   const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : fallLift ?? (hopLift ?? groundLift(p.x, p.y)) + stepLift; // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   const spinoShakeAt = shakeOffset(g.spinoShake, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Spinosaurus's roar (spino-rex.ts): none under reduced motion
@@ -2722,7 +2841,7 @@ export function render(ctx, g, w, h, now) {
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? Math.max(g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0), g.aerialHeld?.() ? g.fall.z : 0) : 0, /* Aerial Step: the held air's height */ floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
     if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
@@ -2857,7 +2976,8 @@ export function render(ctx, g, w, h, now) {
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
-          if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
@@ -3071,7 +3191,13 @@ export function render(ctx, g, w, h, now) {
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
   const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
+  const mountRide = g.mountRide?.(), mountPose = triceratopsHornPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+  const drillPose = triceratopsDrillPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), mountBounds = drillPose ? TRICERATOPS_DRILL_POSE : TRICERATOPS_HORN_POSE;
+  // Reserve the whole rotating portrait, including its support clearance, in the
+  // atlas. The fixed camera envelope also prevents zoom pulses during a drill.
+  const mountComposite = mountRide?.beast === "triceratops" ? { halfWidth: drillPose ? TRICERATOPS_COMPOSITE.halfWidth : mountBounds.halfWidth, height: (drillPose ? TRICERATOPS_COMPOSITE.drillHeight : mountBounds.height) + Math.max(0, lift / s), below: 0, frameHalfWidth: TRICERATOPS_COMPOSITE.halfWidth, frameHeight: mountRide.variant === "silly" ? TRICERATOPS_COMPOSITE.frameHeight : TRICERATOPS_COMPOSITE.normalHeight, aim: drillPose || mountPose, viewFacing: null, viewAim: null } : null;
   const playerDraw = {
+    mountComposite,
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
@@ -3096,6 +3222,7 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
+      if (fallLift != null && !g.glide) { const up = playerDraw.lift || 0; if (up > .04) { const k = Math.max(.35, 1 - up / 6); ctx.fillStyle = "#05050466"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82 + up) * s, s * .22 * k, s * .07 * k, 0, 0, 7); ctx.fill(); } } // FALL: the shadow on the ground below, smaller the higher the fall (the height cue)
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
         const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
@@ -3118,7 +3245,13 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      const ride = g.area === "overworld" ? g.mountRide?.() : null, seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
+      if (drillPose) {
+        const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
+        const frame = triceratopsDrillFrame(drillPose, aim, lift / s);
+        ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
+      }
+      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3128,8 +3261,12 @@ export function render(ctx, g, w, h, now) {
       const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      const rushLean = kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
+      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; // AERIAL_HANDS_FREE: the weapon put away for the cast
+      const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 0); // Aerial Step: the rings' far halves, behind the legs
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x + (seatInfo ? seatInfo.dx / s : 0), // release 748: on the mount's back
@@ -3139,14 +3276,18 @@ export function render(ctx, g, w, h, now) {
         p.facing,
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
-      );
-      if (rushLean) { ctx.restore(); drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
-      if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
+      ); STD_HANDS_FREE = false;
+      if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
+      if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them
+      if (!suited && !mech && !kd && !handsFree && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
       if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
+      if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
+      if (drillPose) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
       if (drone&&!captureDrone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)
@@ -3434,11 +3575,12 @@ export function render(ctx, g, w, h, now) {
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
     if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
+  if (!worldCapture && !closeViewCapturing() && g.fallDoomed?.()) drawFallDoom(ctx, g, w, h, now); // FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
-    label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
+    label = hasLevels ? `${place} · ${levelName(g.aerialHeld?.() ? Math.floor(g.fall.z + 1e-6) : elevationAt(g.map, mw, g.player.x, g.player.y))}` : place; // Aerial Step: the held level
   ctx.fillStyle = "#151411ee";
   // Sits just beneath Map and Pack (release 183), aligned with them, never wider than the space before the next control.
   const labelY = h - (g.labelInset ?? 122), labelX = g.labelX ?? 8,

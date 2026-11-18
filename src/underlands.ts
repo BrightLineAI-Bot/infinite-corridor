@@ -224,7 +224,9 @@ export function generateExpeditionDungeon(seed, id, recipe = "hollow", options =
   // Release 377 (Tim, 2026-10-24: "daises should appear in all the large dungeons. It shouldn't be rare. It's just an easy way to
   // help me navigate these super large dungeons"): with options.warpAlways (histories first generated from 377 on), every
   // large crossing gets its pair; older histories keep the old chance.
-  if (options.warpAlways ? sizeProfile === "extended" && !plain : options.layoutPool >= 5 && !plain && !quiet && (!ladder || ladder.warp) && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist, !!options.warpAlways);
+  // Unreleased (Tim's log: the Deep has no daises): options.warpAny (floors of the Deep generated from DEEP_FLOOR_GEN 2 on) gives
+  // every non-plain crossing its pair, whatever its size; placeWarpDaises still needs the two far enough apart.
+  if (options.warpAny ? !plain : options.warpAlways ? sizeProfile === "extended" && !plain : options.layoutPool >= 5 && !plain && !quiet && (!ladder || ladder.warp) && sizeProfile === "extended" && hashSeed(`${seed}:${id}:warp`) % 100 < WARP.chance) placeWarpDaises(map, dist, !!(options.warpAlways || options.warpAny));
   let theme = options.theme && UNDER_THEMES[options.theme] ? options.theme : options.theme === "none" || grammar === "rooms" || quiet ? null : themeRoll % 100 < themes.chance ? themes.ids[Math.floor(themeRoll / 100) % themes.ids.length] : null;
   if (ladder && !ladder.newThemes && theme && !options.theme && !THEME_POOLS[1].ids.includes(theme)) theme = THEME_POOLS[1].ids[(themeRoll >>> 8) % THEME_POOLS[1].ids.length]; // release 319: the newer environments come later
   if (theme) applyUnderTheme(map, theme, rand);

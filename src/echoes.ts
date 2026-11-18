@@ -22,10 +22,40 @@ export const ECHO_DROPS = { guardian: 100, ordinary: 0 };
 // guaranteed first-kill Echo of release 263) grants it once, when the save loads. Returns the ids granted.
 export function grantSlainEchoes(save) {
   if (!save?.echoes?.owned) return [];
-  const slain = [["questingBeast", save.questingBeast?.slain], ["stalker", save.stalker?.kills], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain])];
+  const rooms = ensureRoomBeastSlain(save);
+  const slain = [["questingBeast", save.questingBeast?.slain], ["stalker", save.stalker?.kills], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain]), ...ROOM_BEAST_IDS.map((id) => [id, rooms[id]])];
   const granted = slain.filter(([id, n]) => ECHOES[id] && Number(n) > 0 && !save.echoes.owned[id]).map(([id]) => id);
   for (const id of granted) save.echoes.owned[id] = true;
   return granted;
+}
+
+// Unreleased (Tim's log: "killed a Spinosaurus, no Echo"): the Spinosaurus of a big room or come in as an interloper, and the Wild
+// Stegosaurus of a big room, are tuned as the roaming beast (game.ts tuneSpinoBeast / tuneStegoRoom) but are not it: no `worldBeast`,
+// not a boss, so echoDrop's ordinary 0% applied and grantSlainEchoes (save.worldBeasts) never saw them. Their kills now count as the
+// beast's: echoDrop is certain (game.ts), and save.roomBeastSlain (additive at schema 14) counts them so grantSlainEchoes can give the
+// Echo on load. ROOM_BEAST_KILL maps the kill ids those spawns carry (spino-rex.ts spinoRoomSpawn and the interloper, wild-stego.ts
+// stegoRoomSpawn) to the beast; a journey that killed one before this release is caught up once from the lasting per-kill flag the
+// Game writes for every rewarded kill (worldFlags `drop:v1:<area>:<enemy id>`). A dino duel's eaten loser is never the Wayfarer's
+// (game.ts dinoEaten: noRewards), so it is never counted.
+export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/ };
+export const ROOM_BEAST_IDS = Object.keys(ROOM_BEAST_KILL);
+const roomBeastOf = (e) => e?.spinoRoom || e?.spinoInterloper ? "spinoRex" : e?.stegoRoom ? "wildStego" : null;
+// `catchUp` false (freshSave) leaves the scan to the first load: a fresh save's defaults are merged under every loaded one, so a mark
+// set there would stand in for an old journey that never scanned.
+export function ensureRoomBeastSlain(save, catchUp = true) {
+  if (!save || typeof save !== "object") return {};
+  const r = save.roomBeastSlain && typeof save.roomBeastSlain === "object" ? save.roomBeastSlain : {};
+  const out = { ...r }; for (const id of ROOM_BEAST_IDS) out[id] = Math.max(0, Math.floor(Number(r[id]) || 0));
+  if (catchUp && !out.caughtUp) { // once: kills from before this record existed
+    out.caughtUp = 1;
+    for (const key of Object.keys(save.worldFlags || {})) if (key.startsWith("drop:v1:") && save.worldFlags[key]) for (const id of ROOM_BEAST_IDS) if (ROOM_BEAST_KILL[id].test(key)) out[id] = Math.max(out[id], 1);
+  }
+  save.roomBeastSlain = out; return out;
+}
+// The Game's kill: true when `e` is one of those beasts and the Wayfarer's (the count goes up).
+export function noteRoomBeastKill(save, e) {
+  const id = roomBeastOf(e); if (!id || e.summonedBy || e.noRewards || e.kind !== id) return false;
+  const r = ensureRoomBeastSlain(save); r[id] += 1; return true;
 }
 
 // Spinosaur's Echo (Tim, 2026-11-12). Every jump-attack slam (any weapon's plunge, the Shadow Boxing dive's slam

@@ -365,6 +365,73 @@ export function playerFormPresentation(game) {
   const scale=kind==='playerEmberForm'?(1.25+.05*Math.max(1,Math.min(3,Number(active.rank)||1)))*1.68/profile.head:kind==='playerRobot'?1.12:1;
   return {...profile,kind,scale,head:profile.head*.82*scale,lift:mech&&game.mechBoosting===true?.22:0,mech,fists,empowered:mech&&save.mech?.empowered===true};
 }
+// Close View on water (Tim's report 2026-11-18: on the open sea Close View drew the Wayfarer standing and walking on the water as
+// on a floor, with no swim, no robot water form and no power-armor pose). Standard View (renderer.ts) chooses its water figure
+// from the save and the game's flags, never from mechUp(): aboard with the robot put to sea (boat.mechSub) or the submersible
+// (boat.sub) it draws the robot's water form half under the waterline (drawSubmersible), empowered at sea the power armor
+// hovering on its thrust (SEA_SUIT), the skiff otherwise, and the Wayfarer in the water while swimming. Close View read
+// playerFormPresentation(), which keys the robot and the suit on mechUp(), and mechUp() is false aboard, so the water forms fell
+// back to the ordinary body; and no Close View pose read `swimming` at all. These descriptors carry the same state-driven choice.
+// Per mode: `form` the body's kind (null: the ordinary Wayfarer), `pose` ('swim': the stroke and tread; 'stand': still in the
+// hull; 'hover': the suit's thrust stance; 'walk': the ordinary gait), `sink` how far under the water's surface the feet (or,
+// for 'swim', the hips: `sink` treading, `crawlSink` laid out in the crawl) are drawn, in tiles; `dive` the extra sink while a submersible dives; `hover`/`bob`/`bobMs` the suit's
+// height over the water and its bob (renderer.ts SEA_SUIT, kept equal by tests/close-view-water.test.ts); `ring` the waterline
+// ripple's radius (tiles) and `wake` its strength (0 for none); `hull` true where the skiff is drawn under the body.
+export const CLOSE_VIEW_WATER = Object.freeze({
+  swim: Object.freeze({ mode: 'swim', form: null, pose: 'swim', sink: .44, crawlSink: .02, dive: 0, hover: 0, bob: .025, bobMs: 1500, ring: .42, wake: 1, hull: false }),
+  wade: Object.freeze({ mode: 'wade', form: 'playerRobot', pose: 'walk', sink: .46, dive: 0, hover: 0, bob: 0, bobMs: 1, ring: .62, wake: .8, hull: false }),
+  suitWade: Object.freeze({ mode: 'suitWade', form: 'playerPowerSuit', pose: 'walk', sink: .52, dive: 0, hover: 0, bob: 0, bobMs: 1, ring: .38, wake: .8, hull: false }),
+  robotSea: Object.freeze({ mode: 'robotSea', form: 'playerRobot', pose: 'stand', sink: .62, dive: .62, hover: 0, bob: .03, bobMs: 900, ring: .66, wake: 1, hull: false }),
+  suitSea: Object.freeze({ mode: 'suitSea', form: 'playerPowerSuit', pose: 'hover', sink: 0, dive: 1.6, hover: .3, bob: .04, bobMs: 320, ring: .5, wake: .7, hull: false }),
+  boat: Object.freeze({ mode: 'boat', form: null, pose: 'stand', sink: 0, dive: 0, hover: 0, bob: .025, bobMs: 1100, ring: .7, wake: .6, hull: true }),
+  // the waterline's reach (tiles) round the Wayfarer's feet: below the water's surface nothing of the figure (or the skiff) is drawn
+  cut: 1.3,
+  // the swim pose (close-view-hero.ts swimPose), radians on the source's joints: the body's pitch forward while stroking and
+  // while treading water, the head's lift to keep looking ahead, the crawl's arm wheel (the elbow bent over the recovery),
+  // the tread's sculling arms (out to the side, sweeping), the flutter kick (ankle travel, heights of the hero) and the stroke
+  // period while treading (moving, the stroke follows the distance swum), and the still stroke reduced motion holds
+  stroke: Object.freeze({ pitch: 1.3, treadPitch: .2, head: .62, treadHead: .05, recoverElbow: 1.15, scullOut: 1.05, scullSweep: .38, scullElbow: .55,
+    kick: .055, treadKick: .035, treadMs: 1700, reducedPhase: .3 }),
+});
+// Which water figure Close View draws (a CLOSE_VIEW_WATER entry) or null on land. Pure; reads only what Standard View reads.
+export function closeViewWaterState(game) {
+  const g = game, save = g?.save, b = save?.boat;
+  if (!g || !save) return null;
+  if (g.area === 'overworld' && b?.aboard === true) {
+    if (b.mechSub === true && save.mech?.active === true && save.mech.empowered === true) return CLOSE_VIEW_WATER.suitSea; // renderer.ts _seaSuit
+    return b.sub === true || b.mechSub === true ? CLOSE_VIEW_WATER.robotSea : CLOSE_VIEW_WATER.boat;
+  }
+  if (g.swimming !== true) return null;
+  const mech = typeof g.mechUp === 'function' ? g.mechUp() : save.mech?.active === true && save.mech.mode !== 'drone';
+  if (mech) return save.mech?.empowered === true ? CLOSE_VIEW_WATER.suitWade : CLOSE_VIEW_WATER.wade;
+  return CLOSE_VIEW_WATER.swim;
+}
+// The body Close View draws: the water figure's form where it names one (aboard, mechUp() is false), else the land forms.
+const SEA_FORMS = Object.create(null);
+export function closeViewPlayerForm(game) {
+  const water = closeViewWaterState(game), form = playerFormPresentation(game);
+  if (!water?.form || form?.kind === water.form) return form;
+  const profile = CLOSE_VIEW_PLAYER_FORM_PROFILES[water.form], scale = water.form === 'playerRobot' ? 1.12 : 1;
+  return SEA_FORMS[water.form] ??= Object.freeze({ ...profile, kind: water.form, scale, head: profile.head * .82 * scale, lift: 0, mech: true, fists: false, empowered: water.form === 'playerPowerSuit', sea: true });
+}
+// The waterline's drawn offset for the body (tiles, added to the support height) at a logical clock: the sink under the
+// surface (deeper while a submersible dives), the suit's hover, and a gentle bob (none with reduced motion).
+// `move` (0..1): a swimmer's share of the crawl, which lies higher in the water than the tread.
+export function closeViewWaterLift(water, clockMs, reducedMotion = false, diving = false, move = 0) {
+  if (!water) return 0;
+  const t = Number(clockMs) || 0, bob = reducedMotion || !(water.bob > 0) ? 0 : water.bob * Math.sin(t / water.bobMs);
+  const sink = water.pose === 'swim' ? water.sink + (water.crawlSink - water.sink) * unit(move) : water.sink;
+  return (diving ? -sink - water.dive : water.hover - sink) + (diving && water.mode === 'suitSea' ? 0 : bob);
+}
+// The swim's two clocks, 0..1 cycles, written into `out` (no allocation): out[0] the crawl stroke, one cycle (both arms) per
+// gait cycle, so it follows the distance swum (the gait's own distance-driven radians) and stops when the Wayfarer stops;
+// out[1] the tread, on the logical clock. Reduced motion holds one still stroke and tread. Pure.
+export function closeViewSwimPhases(gaitRadians, clockMs, reducedMotion, out) {
+  const S = CLOSE_VIEW_WATER.stroke;
+  if (reducedMotion) { out[0] = out[1] = S.reducedPhase; return out; }
+  const a = (Number(gaitRadians) || 0) / (2 * Math.PI), b = (Number(clockMs) || 0) / S.treadMs;
+  out[0] = (a % 1 + 1) % 1; out[1] = (b % 1 + 1) % 1; return out;
+}
 export function playerFormModelKey(form,held='melee') {
   const profile=['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(held)?'melee':CANONICAL_TOOL_FORM_PROFILE[held]||held;
   return form&&PLAYER_HELD_PROFILES.includes(profile)?`${form.kind}:${profile}`:form?.kind||null;
@@ -398,7 +465,43 @@ export function ordinaryFallPresentation(game, now, lift) {
   const form=playerFormPresentation(g);if(form&&form.kind!=='playerIronFists')return null;
   if(clock<(p.stunnedUntil||0)||clock<(p.dodgeUntil||0))return null;
   const elapsedMs=Math.max(0,(Number(f.t)||0)*1000),remainingMs=Math.max(0,Number(g.fallRemainingMs?.())||0),durationMs=Math.max(1,elapsedMs+remainingMs);
-  return {v:1,elapsedMs,remainingMs,durationMs,lift:Math.max(0,Number(lift)||0),rise:1,fall:unit(.3+.7*(1-remainingMs/FALL_REACH_MS)),falling:true};
+  return {v:1,elapsedMs,remainingMs,durationMs,lift:Math.max(0,Number(lift)||0),rise:1,fall:unit(.3+.7*(1-remainingMs/FALL_REACH_MS)),falling:true,flail:!g.plunge}; // a plunge is an attack: it keeps the plain hang
+}
+
+// FALL_POSE (Tim 2026-11-15: "a fall animation when he starts falling ... the longer he falls, the more he gets into a loop of moving
+// his arms and legs; not frantic"). Read only from the fall's own clock (game.fall.t, held by a pause and saved with the fall), so the
+// same fall time always draws the same pose. Onset: the chest reacts first (torsoMs), then the arms ease out over onsetMs (to `onset`
+// of the full reach). Building: overlapping the onset (from buildFrom, so the arms never stall between the two), over buildMs the arms
+// rise and the slow wheel and the gentle leg cycle grow in. Long falls: a steady loop of periodMs; the chest sways ahead of the arms
+// (swayLead), the forearms trail the upper arms (elbowLag) and each leg trails its opposite arm. Over the last settleMs before the ground
+// the arms, chest and loop settle (the legs reach down over FALL_REACH_MS), so the legs reach down into the existing landing absorb or roll. Reduced Motion: a
+// smaller, still arms-out pose (no loop, no sway). Radians on the hero's joints; leg offsets in model metres.
+export const FALL_POSE = Object.freeze({
+  torsoMs: 160, onsetMs: 240, onset: .35, buildFrom: 140, buildMs: 1300, periodMs: 1300, minPeriodMs: 900,
+  armOut: .9, armRise: .55, armFwd: .25, armWheelOut: .22, armSwing: .35, elbow: .35, elbowCycle: .2, elbowLag: .6,
+  legRest: .45, legBend: .80, legLift: .07, legStride: .05,
+  chestOpen: .07, headDown: .12, sway: .035, swayLead: .5, roll: .05,
+  reducedArms: .6,
+  settleMs: 500, // the arms, chest and loop settle over the last settleMs before the ground (the legs reach over FALL_REACH_MS)
+  endMs: 120, // the falling pose meets the ground pose over the last endMs
+  slewMs: 300, slewDownMs: 60, // the fastest a drawn weight may rise / drop (0 to 1), so a jump in the ground's distance never pops; the drop stays quicker than the settle and endMs curves
+  releaseMs: 200, // when something else takes the fall over mid-air (the drone's catch, a roof landing), the arms ease down over this
+  // Standard View: the sprite's hands, out and up (tile units), with a small flap at the loop's tempo
+  std: Object.freeze({ reachX: .26, reachY: -.16, flap: .05, line: .07, hand: .045 }),
+});
+const fallSmooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
+// out[0] arms-out weight, out[1] leg-bend weight, out[2] loop amplitude, out[3] loop phase (radians), out[4] chest reaction weight,
+// out[5] the long fall's look down; all 0..1 but the phase. No allocation: the caller owns `out` (six numbers).
+export function sampleFallPose(fallMs, remainingMs, reducedMotion, out) {
+  const F=FALL_POSE,t=Math.max(0,Number(fallMs)||0),r=Number(remainingMs),settle=Number.isFinite(r)?fallSmooth(r/F.settleMs):1;
+  const engage=fallSmooth(t/F.onsetMs),build=fallSmooth((t-F.buildFrom)/F.buildMs);
+  out[0]=Math.min(1,engage*F.onset+(1-F.onset)*build)*settle*(reducedMotion?F.reducedArms:1);
+  out[1]=Math.min(1,engage*F.legRest+(1-F.legRest)*build)*F.legBend;
+  out[2]=reducedMotion?0:build*settle;
+  out[3]=2*Math.PI*(Math.max(0,t-F.buildFrom)%F.periodMs)/F.periodMs;
+  out[4]=fallSmooth(t/F.torsoMs)*settle*(reducedMotion?F.reducedArms:1);
+  out[5]=build*settle*(reducedMotion?F.reducedArms:1);
+  return out;
 }
 
 // Read-only touchdown handoff: the short absorb after an ordinary jump, read from the jump's own
