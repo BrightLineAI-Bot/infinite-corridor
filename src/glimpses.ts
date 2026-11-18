@@ -29,6 +29,12 @@ export const GLIMPSES = {
   // Tim, 2026-11-04 (narrative bible, section 1): "a Glimpse from inside a Pentagon wall, for which the Wayfarer is the
   // intrusion". `place` keeps a Glimpse out of the general pool: it surfaces only at its own kind of moment (GLIMPSE_PLACED).
   insideTheWall: { name: "Inside the Wall", human: 0, seconds: 13, eyes: "none", reduced: [.2, .58, .9], place: "pentagon" },
+  // Tim, 2026-11-15 (narrative bible, section 1: "a rare Glimpse can show the Corridor's own dwellers dreading a figure that keeps
+  // returning, told so the player recognises themselves only at the end"). Through the eyes of one of the Corridor's own, at a
+  // shutter at night: the Wayglass down the road brightens, a figure stands up out of its light and walks this way; a grey hand
+  // closes the shutter to a slit, and the figure passes: a covered face, a muted green cloak, a glint of bronze. Offered only on
+  // entering a crossing where the Wayfarer's dread is live, after a few deaths (lore.ts WAYFARER_DREAD); seen once.
+  theShutter: { name: "The Shutter", human: .6, seconds: 14, eyes: "two", reduced: [.18, .52, .86], place: "returning" },
 };
 // The general pool (every Glimpse without a `place`), in catalogue order; GLIMPSE_ALL also holds the placed ones.
 export const GLIMPSE_ALL = Object.keys(GLIMPSES);
@@ -37,7 +43,7 @@ export const GLIMPSE_ORDER = GLIMPSE_ALL.filter((id) => !GLIMPSES[id].place);
 export const GLIMPSE_PLACED = Object.fromEntries([...new Set(GLIMPSE_ALL.map((id) => GLIMPSES[id].place).filter(Boolean))].map((k) => [k, GLIMPSE_ALL.filter((id) => GLIMPSES[id].place === k)]));
 // How often each kind of moment surfaces a Glimpse, and how many times one Glimpse may ever be seen in a journey.
 // Release 215 (Tim): story beats come from strange things (always), not from felling trees; ruins and crossings rarely.
-export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2, pentagon: .25 };
+export const GLIMPSE_CHANCE = { strange: 1, touch: .15, crossing: .2, pentagon: .25, returning: 1 }; // returning: the rarity is in the cue (lore.ts dreadGlimpseOffered)
 export const GLIMPSE_MAX_SEEN = 1; // release 481 (Tim: "I shouldn't be [seeing] the same glimpses multiple times... just see them once, and then if I wanna see them again... look in the book"): was 3
 // Depth (sections from the Refuge) at which the Corridor has wholly forgotten it was human.
 export const GLIMPSE_DRIFT_DEPTH = 40;

@@ -7,10 +7,10 @@ import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
 import { creaturePoseFamily, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
-import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
+import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
 import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.ts';
 import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.ts';
 import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.ts';
@@ -1325,7 +1325,7 @@ export function closeViewPlayerFacingYaw(g, now = 0, baseYaw = NaN, { phase = nu
   if (Number.isFinite(toolYaw)) return toolYaw;
   if (action.active || action.legacy) {
     const d = v?.aim || g.pendingToolUse?.aim || p.meleeStrike, aimYaw = d && (d.x || d.y) ? Math.atan2(d.y, d.x) : Number.isFinite(trackYaw) ? trackYaw : FACING_YAW[p.facing] ?? CAM.yaw;
-    const form = playerFormPresentation(g), importedForm = !form || form.kind === 'playerIronFists', imported = importedReady ?? (importedForm && !!MODEL_STATE.hero && !!getCloseViewHeroAsset()), profile = action.active ? v?.profile : null;
+    const form = closeViewPlayerForm(g), importedForm = !form || form.kind === 'playerIronFists', imported = importedReady ?? (importedForm && !!MODEL_STATE.hero && !!getCloseViewHeroAsset()), profile = action.active ? v?.profile : null;
     const blendsEntry = profile === 'fist' || profile === 'hammer' || profile === 'melee' && ['cinder-pike','verge-cleaver'].includes(v?.weaponKind);
     if (imported && blendsEntry && Number.isFinite(v?.facingYaw)) {
       let amount = Number.isFinite(phase) ? phase : action.amount;
@@ -2025,6 +2025,33 @@ export const RIFT_RING = Object.freeze({ armed: "#b48cff", ok: "#c9a8ff", bad: "
 function worldRing(ctx, X, Y, Z, r) { const n = RIFT_RING.points; let open = false; ctx.beginPath();
   for (let i = 0; i <= n; i++) { const a = i / n * 6.2832, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
   ctx.stroke(); }
+// Aerial Step's rings (Tim, 2026-11-15: "two thin blue rings around the feet/shins... each slides smoothly up and down, the two
+// out of phase"). While it holds, two thin rings glide between the feet (0) and the shins (1), half a cycle apart on one eased
+// cosine (no wobble); Reduced Motion and safe mode hold them still at `still`; they fade in and out with the skill and hold still
+// while paused. Shared with the standard view (renderer.ts drawAerialRingsStd). `shin` is the shins' height in Close View world
+// units; `radius` in tiles; `back` the far half's share of the near half's alpha. No allocation (AERIAL_RING_STATE is reused).
+export const AERIAL_RINGS = Object.freeze({ color: "#7cc8ff", core: "#d6f0ff", width: 1.6, radius: .27, shin: .5, periodMs: 1400, still: Object.freeze([.22, .72]), fadeIn: .22, fadeOut: .4, back: .35, points: 20,
+  std: Object.freeze({ rx: .27, ry: .1, shin: .3, width: 1.4 }) });
+const AERIAL_RING_STATE = { a: 0, h0: 0, h1: 0 };
+const ease01 = (t) => { const u = Math.max(0, Math.min(1, t)); return u * u * (3 - 2 * u); };
+export function aerialRingState(g, now) {
+  const q = g?.save?.magicSkills?.active, R = AERIAL_RINGS, S = AERIAL_RING_STATE; if (!q || q.id !== "aerial-step" || !(q.remaining > 0) || !(g.player?.hp > 0)) return null;
+  const dur = Number(q.duration) > 0 ? Number(q.duration) : q.remaining; S.a = Math.min(ease01((dur - q.remaining) / R.fadeIn), ease01(q.remaining / R.fadeOut));
+  if (g.presentation?.reduceMotion || g.presentation?.safeMode) { S.h0 = R.still[0]; S.h1 = R.still[1]; return S; }
+  const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, c = Math.cos((Number(clock) || 0) / R.periodMs * 6.2832); S.h0 = .5 - .5 * c; S.h1 = .5 + .5 * c; return S;
+}
+function worldArc(ctx, X, Y, Z, r, a0, a1) { const n = AERIAL_RINGS.points; let open = false; ctx.beginPath();
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, q = project(X + Math.cos(a) * r, Y + Math.sin(a) * r, Z); if (!q) { open = false; continue; } if (open) ctx.lineTo(q.sx, q.sy); else { ctx.moveTo(q.sx, q.sy); open = true; } }
+  ctx.stroke(); }
+function aerialRings(ctx, g, now) {
+  const S = aerialRingState(g, now); if (!S || !(S.a > 0) || !CAM.valid) return; const R = AERIAL_RINGS, p = g.player, X = footX(p), Y = footY(p);
+  const feet = Number.isFinite(HERO_FEET.z) ? HERO_FEET.z : surfaceZ(g.map, X, Y), toCam = Math.atan2(CAM.cy - Y, CAM.cx - X);
+  ctx.save(); ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) { const Z = feet + .04 + (k ? S.h1 : S.h0) * R.shin;
+    ctx.globalAlpha = S.a * R.back; ctx.strokeStyle = R.color; ctx.lineWidth = R.width; worldArc(ctx, X, Y, Z, R.radius, toCam + 1.5708, toCam + 4.7124); // the far half, behind the legs
+    ctx.globalAlpha = S.a; worldArc(ctx, X, Y, Z, R.radius, toCam - 1.5708, toCam + 1.5708); ctx.strokeStyle = R.core; ctx.lineWidth = R.width * .5; worldArc(ctx, X, Y, Z, R.radius, toCam - 1.5708, toCam + 1.5708); }
+  ctx.restore();
+}
 // The aimed Rift Step (constellation.ts RIFT_AIM): while armed, its reach round the feet; after the tap, a ring on the point (red
 // when the step was refused) that fades.
 function riftAimRing(ctx, g) {
@@ -2408,7 +2435,12 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); }
     const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer && !kept) continue;
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
-    if (q.sx + (d.mountComposite?.halfWidth || A.halfWidth * sc) * k < 0 || q.sx - (d.mountComposite?.halfWidth || A.halfWidth * sc) * k > w || q.sy - Math.max(d.mountComposite ? d.mountComposite.height + Math.max(0, d.lift || 0) : 0, nativeBoardTop(d.enemy, sc, d.nativeHeight)) * k > h || q.sy + (d.mountComposite?.below || A.below) * k < 0) continue;
+    let off = q.sx + (d.mountComposite?.halfWidth || A.halfWidth * sc) * k < 0 || q.sx - (d.mountComposite?.halfWidth || A.halfWidth * sc) * k > w || q.sy - Math.max(d.mountComposite ? d.mountComposite.height + Math.max(0, d.lift || 0) : 0, nativeBoardTop(d.enemy, sc, d.nativeHeight)) * k > h || q.sy + (d.mountComposite?.below || A.below) * k < 0;
+    if (off && d === capturedPlayer && !interiorTerrain(g.map) && closeViewActorLift(d) > 0) { // high in the air (Aerial Step's held air, a long fall) the ground under the Wayfarer can be off screen while they are not: judged where they are drawn
+      const sx = q.sx, sy = q.sy, dep = q.depth, u = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + closeViewActorLift(d));
+      if (u) { const ku = F / u.depth; off = u.sx + A.halfWidth * ku < 0 || u.sx - A.halfWidth * ku > w || u.sy - nativeBoardTop(null, 1, d.nativeHeight) * ku > h || u.sy + A.below * ku < 0; }
+      q.sx = sx; q.sy = sy; q.depth = dep; } // project() reuses one record
+    if (off) continue;
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
@@ -2477,6 +2509,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const t4 = tm ? performance.now() : 0;
   lockBrackets(ctx, g, now);
   riftAimRing(ctx, g); // RIFT_AIM: the armed step's reach and the tapped point
+  aerialRings(ctx, g, now); // AERIAL_RINGS: Aerial Step holding
   // 6. the torch's warm cast and the vignette, both cached
   if (Q.warm && pq && !useGL) { if (!SCREEN.warm || SCREEN.warmW !== w || SCREEN.warmH !== h) { const r0 = Math.min(w, h) * .55, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r0); gr.addColorStop(0, Lt.warm); gr.addColorStop(1, "rgba(255,168,92,0)"); SCREEN.warm = gr; SCREEN.warmW = w; SCREEN.warmH = h; }
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(pSx, pSy - .6 * pk); ctx.fillStyle = SCREEN.warm; const r0 = Math.min(w, h) * .55; ctx.fillRect(-r0, -r0, 2 * r0, 2 * r0); ctx.restore(); } // only the glow's own square
@@ -3520,7 +3553,11 @@ const MODEL_STATE = {
   beasts: { count: 0, items: [], tracks: new Map() }, // release 891: skinned world-beast bodies this frame (close-view-beasts.ts)
   folk: { count: 0, items: [], tracks: new Map(), map: null }, // 2026-11-13: the townsfolk's skinned bodies this frame (close-view-folk.ts), drawn with the beasts
   playerRepresentation: 'absent', hero: null, heroAsset: null, heroPose: null, heroFrame: null, heroRequested: false, heroWaitFrom: NaN, heroFadeFrom: NaN,
-  heroInput: { tint: new Float32Array([1, 1, 1]), action: null, carbineHold: false, carbineRecoil: 0 },
+  heroInput: { tint: new Float32Array([1, 1, 1]), action: null, carbineHold: false, carbineRecoil: 0, swim: null },
+  // CLOSE_VIEW_WATER: the swimmer's clocks and pace (close-view-hero.ts swimPose), the swim's two phases, the waterline the body
+  // is cut at this frame (x, y, the water's height, the radius squared; 0: none), the skiff drawn under the Wayfarer aboard
+  heroSwim: { stroke: 0, tread: 0, move: 0, weight: 1 }, swimPhases: new Float64Array(2), waterline: new Float32Array(4), waterRing: new Float32Array(4),
+  skiff: { kind: 'playerSkiff', x: 0, y: 0, z: 0, yaw: 0, phase: 0, pace: 0, pose: 'idle', amount: 0, turn: 0, scale: 1.3, alpha: 1, reduceMotion: false },
   heroAction: { kind: '', profile: '', phase: 0, durationMs: 0, yaw: 0 },
   consumeCurrent:{area:'overworld',areaId:'',levelId:'root'},consumeSample:{active:false,kind:'',itemKind:'',phase:0,elapsedMs:0,remainingMs:0,durationMs:0},
   heroGear: { profile: '', leftSocket: null, rightSocket: null, vialSocket:null,drinkVial:false,vialWeight:0,alpha: 1, tint: null, hitFlash: 0 },
@@ -3794,7 +3831,7 @@ function heroFadeIn(state, now, reduce) {
 function buildActorModels(g, draws, n, Q, now, reduce) {
   now = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   const state = MODEL_STATE, player = g.player, limit = Q.glScale === 1 ? MODEL_LIMIT.full : Q.relief ? MODEL_LIMIT.balanced : MODEL_LIMIT.low;
-  const form = playerFormPresentation(g);
+  const form = closeViewPlayerForm(g), water = closeViewWaterState(g); // CLOSE_VIEW_WATER: the robot's and the suit's water forms (mechUp() is false aboard)
   const importedPlayer = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit';
   state.admitted.clear();
   state.playerRepresentation=capturedPlayer?'billboard':'absent';state.hero = null;state.toolEmissionReady=false;state.toolRelease=null;state.spellEmissionReady=false;state.spellRelease=null;state.muzzleReady=false;
@@ -3895,7 +3932,12 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       hurtPhase = sampleHurtVisual(player.hurtVisual, logicalNow, g.areaId(), String(g.map?.levelId || 'root'));
     }
     const bodyHit = ordinary ? hurtPhase !== null : hit > 0;
-    let pose = defeat ? "death" : stunned ? "knockdown" : presentation?.stagger ? "idle" : bodyHit && !layered ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 ? "walk" : "idle";
+    // CLOSE_VIEW_WATER: in the water the Wayfarer swims (the hero's own stroke layer), the robot wades, and aboard the vessel
+    // carries the body (no gait); every figure sits at its own depth in the water (closeViewWaterLift)
+    const afloat = who === player ? water : null, carried = !!afloat && (afloat.pose === 'stand' || afloat.pose === 'hover');
+    const diving = !!afloat && (afloat.mode === 'robotSea' || afloat.mode === 'suitSea') && now < (g.subDiveUntil || 0);
+    const swimMove = afloat?.pose === 'swim' ? Math.max(0, Math.min(1, track.pace * 3)) : 0, waterZ = afloat ? closeViewWaterLift(afloat, now - (g.presentationPausedMs || 0), reduce, diving, swimMove) : 0;
+    let pose = defeat ? "death" : stunned ? "knockdown" : presentation?.stagger ? "idle" : bodyHit && !layered ? "hit" : monsterAction?.semanticPose ? 'semantic' : attack ? profilePose : charge != null ? 'fistCharge' : cast ? "cast" : winding ? "windup" : jump ? "jump" : track.pace > .01 && !carried ? "walk" : "idle";
     let drink=null;
     if (who === player && (!form || form.kind === 'playerIronFists') &&
         (pose === 'idle' || pose === 'walk') && player.consumeVisual?.v === 1 && !player.consumeVisual.cancelled) {
@@ -3993,8 +4035,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const stepSide = bhv && (bhv.side > 0 || bhv.dodge > 0) ? (-(Number(bhv.sx) || 0) * syaw + (Number(bhv.sy) || 0) * cyaw < 0 ? -1 : 1) : 1;
     const spent = !layered || who.heavy !== true ? 0 : pack ? (pack.attack && pack.phase === 'recover' ? 1 - (monsterAction?.semantic?.progress ?? 1) : 0) : who.telegraph > 0 ? 0 : Math.min(1, (Number(who.cooldown) || 0) / CREATURE_MOTION.heavy.spent.window);
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
-      x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0), yaw: track.yaw,
-      phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
+      x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0) + waterZ, yaw: track.yaw,
+      phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: carried ? 0 : track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
       scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
       jumpAir: who===player&&pose==='jump'?ordinaryJumpPresentation(g,now,d.jumpLift,d.jumpBaseMs):null,
@@ -4047,8 +4089,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         input.nowMs = poseTime - (g.presentationPausedMs || 0); input.reducedMotion = reduce;
         input.x = actor.x; input.y = actor.y;
         input.groundZ = surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY); input.charge = state.shadowDash.charge; input.rushGrip = state.shadowDash.kind === 'cleaver' ? state.shadowDash.charge : 0; /* the Lava Slash rush: the blade low and trailing */
-        input.liftZ = closeViewActorLift(d, true); input.yaw = actor.yaw;
-        input.height = 1.68 * .82; input.speed = track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        input.liftZ = closeViewActorLift(d, true) + waterZ; input.yaw = actor.yaw;
+        input.height = 1.68 * .82; input.speed = carried || afloat?.pose === 'swim' ? 0 : track.pace * MODEL_TIMING.strideSpeed; input.gaitPhase = track.phase;
+        input.swim = null;
+        if (afloat?.pose === 'swim') { const sw = state.heroSwim, ph = closeViewSwimPhases(track.phase, input.nowMs, reduce, state.swimPhases); sw.stroke = ph[0]; sw.tread = ph[1]; sw.move = swimMove; sw.weight = 1; input.swim = sw; }
         input.powerSuit = form?.kind === 'playerPowerSuit';
         input.wayfarerKit = !form || form.kind === 'playerIronFists' || form.kind === 'playerPowerSuit'; // the standard kit, or the suit's helmet and pack
         input.accel = ordinary ? track.lean : 0;
@@ -4104,10 +4148,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */const handsFree=aerialHandsFree(state.heroPose);if(handsFree)gear.profile='';/* AERIAL_HANDS_FREE: put away for Aerial Step's cast, back after it */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
-          gear.offhand = offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
+          gear.offhand = handsFree ? null : offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool && !handsFree ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
           if (!reduce && equipped > offset && action.kind === 'melee' && held === 'verge-cleaver' && meleeAction?.kind === 'verge-cleaver') {
@@ -4118,7 +4162,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             }
           }
           offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
-          if (offhandTool) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
+          if (offhandTool && !handsFree) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
@@ -4162,6 +4206,18 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       if (!capturedPlayer.mountComposite) admit(it, player, "player");
       break;
     }
+  }
+  // CLOSE_VIEW_WATER: the waterline the Wayfarer's figure is cut at (the water's own drawn height at the feet; close-view-gl.ts
+  // u_water), its ripple (glScene), and aboard the skiff, drawn on the water under the body (outside the actor cap, as the
+  // afterimages). Nothing here while on land.
+  state.waterline.fill(0); state.waterRing.fill(0);
+  const swimmer = water ? state.tracks.get(player) : null;
+  if (swimmer?.actor && swimmer.at === now) {
+    const a = swimmer.actor, fx = a.x, fy = a.y, surface = surfaceZ(g.map, footX(player), footY(player)), W = CLOSE_VIEW_WATER; // centred on the drawn figure
+    state.waterline[0] = fx; state.waterline[1] = fy; state.waterline[2] = surface; state.waterline[3] = W.cut * W.cut;
+    state.waterRing[0] = fx; state.waterRing[1] = fy; state.waterRing[2] = water.ring; state.waterRing[3] = water.wake * (now < (g.subDiveUntil || 0) && water.dive > 0 ? .5 : 1) + .001;
+    if (water.hull) { const k = state.skiff; k.x = a.x; k.y = a.y; k.yaw = a.yaw; k.reduceMotion = reduce; k.alpha = a.alpha ?? 1;
+      k.z = surface - .08 + (reduce ? 0 : water.bob * Math.sin((now - (g.presentationPausedMs || 0)) / water.bobMs)); offset = writeCloseViewModel(state.vertices, offset, k); }
   }
   const admitAux = (it, d) => {
     const spec=d.nativeAux,a=spec.sample(now,reduce); if(!a||!modelSupported(a.kind))return;
@@ -4444,7 +4500,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   const scale = Math.max(.5, Math.min(4, (ctx.canvas?.width || w) / w)) * (Q.glScale || 1);
   F.w = w; F.h = h; F.devW = Math.max(1, Math.round(w * scale)); F.devH = Math.max(1, Math.round(h * scale));
   F.cx = CAM.cx; F.cy = CAM.cy; F.fx = CAM.fx; F.fy = CAM.fy; F.rx = CAM.rx; F.ry = CAM.ry; F.hc = CAM.hc; F.cosP = CAM.cosP; F.sinP = CAM.sinP; F.F = CAM.F; F.ppx = CAM.ppx; F.ppy = CAM.ppy;
-  F.px = footX(p); F.py = footY(p);
+  F.px = footX(p); F.py = footY(p); F.water.set(MODEL_STATE.waterline); // CLOSE_VIEW_WATER: the waterline the figure is cut at
   // the theme's light and air (the Pentagon's dread still shrinks the carried light, as before)
   const stillworks = stillworksCloseView(g.map);
   const air = stillworks ? STILLWORKS_AIR : outdoor ? WORLD_AIR : null;
@@ -4459,7 +4515,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   UNI.openArena = stillworks || outdoor;
   UNI.worldCapture = flatWorld;
   // the open world (close-view-outdoor.ts): its sky, sun and air, the ground's far field and its solids
-  F.outdoor = 0; F.sunC.fill(0); F.sun[3] = 0;
+  F.outdoor = 0; F.sunC.fill(0); F.sun[3] = 0; F.sea.fill(0);
   const openWorld = outdoor && flatWorld && geo === OPEN_WORLD_GEOMETRY && g.area === "overworld" ? outdoorScene(g.map, RELIEF.map === g.map) : null;
   if (openWorld && glOutdoor(openWorld)) { const sk = openWorld.sky, view = OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced, half = GROUND.W / (2 * s), W2 = OUTDOOR.water, R2 = OUTDOOR.relief, D2 = OUTDOOR.detail;
     F.outdoor = 1; F.fogNear = view.near; F.fogFar = view.far; F.reach = F.fogFar + 2; F.fogP[0] = F.fogNear; F.fogP[1] = F.fogFar;
@@ -4472,6 +4528,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     F.outD[0] = D2.amp; F.outD[1] = D2.near; F.outD[2] = D2.far; F.outD[3] = W2.glint;
     F.outX[0] = OUTDOOR.ground.art; F.outX[1] = W2.shore; F.outX[2] = Q.relief ? W2.foam : W2.foam * .6; F.outX[3] = g.map.movers?.length ? 1 : 0; // rafts are drawn on the water by the ordinary art: keep it there
     F.outY[0] = W2.deep; F.outY[1] = W2.shallow; F.outY[2] = W2.wander; F.outY[3] = Q.motes ? 1 : 0; // clouds in the water: the full tier only
+    if (g.map.openSea || g.map.landscape?.openSea) { const SEA = OUTDOOR.sea; F.sea[0] = SEA.swell; F.sea[1] = SEA.wavenumber; F.sea[2] = SEA.speed; F.sea[3] = Q.relief ? SEA.reach * (g.map.openSea ? 1 : -1) : 0; } // the open sea's swell and its horizon (a coast: its own edge runs on)
     // the sky's mood: stars, the clouds' undersides, the moon, a distant flash (none with reduced motion) and the clouds' colour
     const flash = reduce ? 0 : outdoorLightning(now, sk.lightning || 0); F.mood[0] = sk.stars || 0; F.mood[1] = sk.cloudDark || 0; F.mood[2] = sk.moon || 0; F.mood[3] = flash;
     if (sk.cloud) { F.moodC[0] = sk.cloud[0]; F.moodC[1] = sk.cloud[1]; F.moodC[2] = sk.cloud[2]; } else F.moodC.fill(1); F.moodC[3] = flash > 0 ? LIGHTNING.az : 0;
@@ -4565,9 +4622,16 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -boardBelow[it];
     const gc = gh * boardFade[it]; BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, zb, u1, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, top, u0, v0, cb, fl, gc, li); }
     if (foe || isPlayer) { const SD = MODEL_STATE.shadowDash, dash = isPlayer && MODEL_STATE.admitted.has(it) && SD.active, SX = dash ? X + SD.x - g.player.x : X, SY = dash ? Y + SD.y - g.player.y : Y, SA = dash ? 1 - .6 * SD.wraith : statusAlpha; // a charging wraith's shadow goes with it
-      if (MODEL_STATE.admitted.has(it)) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0);
+      const afloat = isPlayer && MODEL_STATE.waterRing[3] > 0; // in the water: its ripple below instead of a shadow on a floor
+      if (MODEL_STATE.admitted.has(it) && !afloat) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; if (!afloat) flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0);
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   GLB.nBoard = bv;
+  // CLOSE_VIEW_WATER: where the Wayfarer's figure meets the water, a broken ring of foam at the waterline and (in motion) ripples
+  // spreading from it and fading; reduced motion keeps the still ring. Four quads at most, on the water's own height.
+  { const R = MODEL_STATE.waterRing; if (R[3] > 0) { const wake = R[3], t = ((g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now) - (g.presentationPausedMs || 0)) / 1000 /* held while paused */, z = MODEL_STATE.waterline[2] + .012;
+    const ring = (rad, a, wd, seed) => { room(6); const X = R[0], Y = R[1]; DV(X - rad, Y - rad, z, -1, -1, 12, a, wd + seed, 1, true); DV(X + rad, Y - rad, z, 1, -1, 12, a, wd + seed, 1, true); DV(X + rad, Y + rad, z, 1, 1, 12, a, wd + seed, 1, true); DV(X - rad, Y - rad, z, -1, -1, 12, a, wd + seed, 1, true); DV(X + rad, Y + rad, z, 1, 1, 12, a, wd + seed, 1, true); DV(X - rad, Y + rad, z, -1, 1, 12, a, wd + seed, 1, true); };
+    ring(R[2], .36 * Math.min(1, wake), .12, reduce ? 0 : Math.floor(t * 3) % 8);
+    if (!reduce) for (let i = 0; i < 3; i++) { const ph = (t / 1.6 + i / 3) % 1; ring(R[2] * (1.05 + 1.1 * ph), .3 * wake * (1 - ph) * (1 - ph), .045, i + 3); } } }
   // outdoors: a soft shadow under each standing tree near the Wayfarer, cast a little away from the sun
   if (F.outdoor) { const Ts = OUTDOOR.treeShadow; for (const o of g.map.objects || []) { if (!outdoorTreeObject(o)) continue; const X = Number(o.x) + .5 - F.sun[0] * .35, Y = Number(o.y) + .72 - F.sun[1] * .35;
     if (Math.hypot(X - px, Y - py) > F.reach) continue; flatD(X, Y, Ts.r * OUTDOOR.trees[o.vegetationForm].r / OUTDOOR.trees.canopy.r + .15, 0, Ts.alpha, 0); } }
@@ -4592,7 +4656,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
     const X = boardWX[it], Y = boardWY[it], support = surfaceZ(g.map, X, Y - .07) + closeViewActorLift(draw, true);
     const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
-    const knocked = statusNow < (g.player.stunnedUntil || 0), form = playerFormPresentation(g), body = knocked ? .35 : form ? form.head * .52 : .72;
+    const knocked = statusNow < (g.player.stunnedUntil || 0), form = closeViewPlayerForm(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
       const phase = reduce ? i * 2.094 : statusNow / 150 + i * 2.094;
       const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);

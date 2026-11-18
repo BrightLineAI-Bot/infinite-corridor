@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, FALL, GLIDE, fallAirtime, stepFall } from '../src/game.ts';
+import { Game, FALL, GLIDE, FALL_RESCUE, fallAirtime, stepFall } from '../src/game.ts';
 import { fallDamage, canStep } from '../src/landscape.ts';
 import { learnRank, BRANCHES, riftStep } from '../src/constellation.ts';
 import { APERTURE_SKILLS } from '../src/items.ts';
@@ -115,11 +115,17 @@ test('mid-fall catches: Jump with the drone up catches the fall (same fuel and r
 });
 
 // 2026-11-13: was 'the glider catches a fall over enough air' (926's FALL.catchGlide, removed: the glider is for great trees only).
-test('a drone stowed in the air is a fall the glider does not catch: Jump says nothing can catch you', () => {
+// 2026-11-18 (FALL_RESCUE.callDrone, Tim: the drone "if they have it, deploy/grab to stop the fall"): was '... Jump says nothing can
+// catch you' with the drone stowed; a docked drone is now called up by that Jump and catches. With no drone set in the frame (the
+// robot), Jump still says nothing can catch you, and the glider still catches nothing.
+test('a drone stowed in the air is a fall the glider does not catch: Jump calls the docked drone back to catch it; without one, nothing can', () => {
   const g = wayfarer({ drone: true, glider: true }); cliff(g, 0); const d = drive(g);
   d.step(0, 0, true); d.step(0, 0, true, true); assert.ok(g.droneLift, 'on the booster'); g.droneLift.z = 5; g.droneLift.vz = 0; d.step(0, 0, false, true); assert.ok(g.droneLift.z > 4.5, 'up on the booster');
-  g.toggleMech(); d.step(0); assert.equal(g.droneLift, null); assert.ok(g.fall && g.fall.z > 4, 'stowed in the air: a fall');
-  d.step(0, 0, true); assert.ok(g.fall, 'still falling'); assert.equal(g.glide, null, 'no glider'); assert.equal(g.message, FALL.nothing);
+  g.toggleMech(); d.step(0); assert.equal(g.droneLift, null); assert.ok(g.fall && g.fall.z > 4, 'stowed in the air: a fall'); assert.equal(g.save.mech.active, false, 'docked');
+  d.step(0, 0, true); assert.equal(g.fall, null, 'caught'); assert.ok(g.droneLift, 'on the drone again'); assert.equal(g.save.mech.active, true, 'called up'); assert.equal(g.glide, null, 'no glider'); assert.equal(g.message, FALL_RESCUE.callDrone);
+  const k = wayfarer({ drone: true, glider: true }); cliff(k, 0); const dk = drive(k);
+  dk.step(0, 0, true); dk.step(0, 0, true, true); k.droneLift.z = 5; k.droneLift.vz = 0; dk.step(0, 0, false, true); k.toggleMech(); dk.step(0); setMechMode(k.save, 'robot');
+  dk.step(0, 0, true); assert.ok(k.fall, 'still falling'); assert.equal(k.glide, null, 'no glider'); assert.equal(k.message, FALL.nothing);
 });
 
 test('a drone that ends in the air (stowed) falls from where it was, with the old damage', () => {
@@ -130,17 +136,19 @@ test('a drone that ends in the air (stowed) falls from where it was, with the ol
   }
 });
 
-test('Rift Step out over a drop falls from there; while falling it is allowed and keeps the fall (its speed and where it counts from)', () => {
+// 2026-11-18 (FALL_RESCUE.rift, Tim: Rift Step during a fall "teleport[s] out to safe ground"): was '...; while falling it is allowed
+// and keeps the fall (its speed and where it counts from)'. A step from the ground out over a drop still falls from there.
+test('Rift Step out over a drop falls from there; while falling it steps out of the fall onto the ground, with nothing charged', () => {
   // out over the drop: the step lands on nothing, so the Wayfarer falls from the height they stepped from
   const g = wayfarer({ rift: true }); cliff(g, 3); g.player.lastMoveVector = { x: 1, y: 0 }; g.lastUpdateNow = 5000;
   assert.equal(riftStep(g, 5000), true); assert.ok(g.player.x > 5, 'out past the edge'); assert.ok(g.fall && g.fall.z === 3 && g.fall.vz === 0, 'in the air at the height it left');
   assert.equal(g.player.hp, M, 'no damage yet'); const d = drive(g); let n = 0; while (g.fall && n++ < 200) d.step(0);
   assert.ok(Math.abs(n / 60 - fallAirtime(3)) <= 1.5 / 60, `airtime ${(n / 60).toFixed(3)}`); assert.equal(M - g.player.hp, fallDamage(3, M));
-  // a step while falling: still falling, at the same speed and counting from the same height
+  // a step while falling: out of the fall, standing on the ground it reached, nothing charged (it would have been 40%)
   const k = wayfarer({ rift: true }); cliff(k, 3); const dk = drive(k); for (let j = 0; j < 120 && !(k.fall && k.fall.vz < -2); j++) dk.step(1);
-  const { z, vz, from } = k.fall; k.player.lastMoveVector = { x: 1, y: 0 }; k.lastUpdateNow = dk.now(); assert.equal(riftStep(k, dk.now()), true, 'allowed');
-  assert.ok(k.fall && Math.abs(k.fall.z - z) < 1e-9 && k.fall.vz === vz && k.fall.from === from, 'momentum and accounting kept');
-  n = 0; while (k.fall && n++ < 200) dk.step(0); assert.equal(M - k.player.hp, fallDamage(3, M), 'the same damage');
+  assert.ok(k.fall && k.fall.z > 1, 'falling'); k.player.lastMoveVector = { x: 1, y: 0 }; k.lastUpdateNow = dk.now(); assert.equal(riftStep(k, dk.now()), true, 'allowed');
+  assert.equal(k.fall, null, 'out of the fall'); assert.equal(k.message, FALL_RESCUE.rift);
+  for (n = 0; n < 60; n++) dk.step(0); assert.equal(k.player.hp, M, 'nothing charged'); assert.equal(k.fall, null); assert.equal(k.playerLevel(), 0, 'on the ground');
   // from four levels a blink off is still death, after the airtime
   const c = wayfarer({ rift: true }); cliff(c, 4); c.player.lastMoveVector = { x: 1, y: 0 }; c.lastUpdateNow = 5000; assert.equal(riftStep(c, 5000), true); assert.equal(c.player.hp, M);
   const dc = drive(c); n = 0; while (c.fall && n++ < 200) dc.step(0); assert.ok(c.player.hp <= 0 || deaths(c) === 1 || c._fatalFall, 'four levels: death');
@@ -198,7 +206,9 @@ test('creatures are unchanged: they still never step off a ledge, and the model 
   const g = wayfarer(); cliff(g, 3);
   assert.equal(canStep({ isPlayer: false }, g.map, W, 4.4, ROW, 4.6, ROW), false, 'a creature stops at the edge');
   assert.equal(canStep({ isPlayer: true }, g.map, W, 4.4, ROW, 4.6, ROW), true, 'the Wayfarer may drop');
-  g.save.mech = g.save.mech || {}; assert.equal(g.fallApplies(), true); g.area = 'dungeon'; assert.equal(g.fallApplies(), false, 'not indoors'); g.area = 'overworld';
+  // 2026-11-18 (FALL_EVERYWHERE): was 'not indoors'. Indoors, a floor with height falls as the open world does; a flat floor and an underwater scene never do.
+  g.save.mech = g.save.mech || {}; assert.equal(g.fallApplies(), true); const map = g.map; g.area = 'dungeon'; assert.equal(g.fallApplies(), true, 'a floor with height');
+  g.map = { ...map, landscape: null }; assert.equal(g.fallApplies(), false, 'a flat floor'); g.map = { ...map, underwater: true }; assert.equal(g.fallApplies(), false, 'underwater'); g.map = map; g.area = 'overworld';
 });
 
 test('the standard view draws a fall at its height and the camera follows it; a step up is eased, never a cut', () => {
