@@ -144,6 +144,7 @@ import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, join
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { addStrange, touchStrange } from "./strange.ts";
@@ -2598,6 +2599,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
     ty = player.y - e.y;
     speed = 0.78;
     if (B && B.spacing && !(b.press > 0) && !(b.comboLeft > 0) && e.range < 2.5) { const v = ringVector(e, b, B, squad); tx = v.x; ty = v.y; speed = 0.78 * v.speed; ai.mode = "circle"; } // waiting its turn on its ring
+    if (B && squad.tac && !(B.spacing && e.range < 2.5) && !(b.press > 0) && !(b.comboLeft > 0)) { const v = tacticsMove(e, b, B, squad, toPlayer); if (v) { tx = v.x; ty = v.y; speed = 0.78 * v.speed; } } // squad-tactics.ts: a swarm's place, a caster's clear line
   } else if (fromHome > 3.5) {
     ai.mode = "return";
     tx = ai.homeX - e.x;
@@ -2637,6 +2639,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   )
     {const followUp=!!(B&&b.comboLeft>0);if(B){b.press=0;if(followUp){b.comboLeft--;b.combo++}}const phase=(e.boss&&e.hp<=e.maxHp*.5) ? .82 : 1,ids=moves||[],id=e.tentacles&&e.range>=2.5&&toPlayer<=2.8?'longReach':e.range<2.5&&ids.length?ids[e.meleePatternIndex++%ids.length]:null,pattern=id&&MELEE_PATTERNS[id];e.telegraph = Math.max(.48,e.minimumAttackWindup||0,(pattern?.telegraph||enemyPatternWindup(e))*(e.telegraphScale||1)*phase)*(bossPaced(e)?BOSS_PACE.windup:1);/* release 421 */if(!pattern&&e.range>=2.5&&!e.instantStrike)e.telegraph=Math.max(e.telegraph,enemyPatternWindup(e));e.attackAim=projectileDirection(player.x-e.x,player.y-e.y);if(pattern){e.meleePhase={id,stage:0,aim:{...e.attackAim},target:{x:player.x,y:player.y}};e.threatRange=pattern.range}
     if(B){const k=shapeBlow(e,b,B,!!pattern,followUp);if(followUp)e.telegraph=Math.max(BEHAVIOUR.react.comboWindup,e.minimumAttackWindup||0,.48);else if(k>1)e.telegraph*=k;b.wind=e.telegraph;e.comboStep=b.combo;e.comboOf=b.comboOf}}
+  if (B && inReach && squad.tac && e.telegraph > 0) { e.telegraph += tacticsWindup(squad, e, b, e.telegraph); b.wind = e.telegraph; } // squad-tactics.ts: a longer tell from behind the Wayfarer (never shorter)
   return false;
 }
 export function shouldSimulateEnemy(e,player,area="overworld"){
@@ -6605,7 +6608,7 @@ export class Game {
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
-    p.invulnerableUntil = now + (options.beam ? 320 : 700);
+    p.invulnerableUntil = now + tacticsHurtWindow(source, now, options.beam ? 320 : 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
     if (source?.kind === "doomChaser") this.frenzyHit(now); // release 710
     return true;
   }
@@ -11818,7 +11821,7 @@ export class Game {
           ),
         );
         this.noteHurtVisualImpact();
-        p.invulnerableUntil = now + 700;
+        p.invulnerableUntil = now + tacticsHurtWindow(e, now, 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
     }
