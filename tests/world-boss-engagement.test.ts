@@ -10,6 +10,7 @@ import { ASTRAL_PROFILE } from '../src/astral-worm.ts';
 import { DRAGON } from '../src/monster-pack.ts';
 import { dragonRecord } from '../src/crimson-dragon.ts';
 import { Game } from '../src/game.ts';
+import { QUESTING_BEAST, questingBeastHoldNote } from '../src/questing-beast.ts';
 
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} };
 // A game holding beast `id` in a plain overworld section (no settlement or open sea), with its live actor.
@@ -118,4 +119,43 @@ test('no number of deaths ends a hunt inside its window', () => {
     assert.equal(s.worldBeasts.briarStag.active.tries, i); assert.equal(s.worldBeasts.briarStag.active.engagedAt, at);
   }
   assert.equal(s.worldBeasts.briarStag.escaped, 0);
+});
+
+// Tim (2026-11-18): "give the Questing Beast the 15-minute engagement window too, replacing its four tries — same rules".
+function qbHunt(seed = 'ENGAGE-QB') {
+  for (let ry = 2; ry < 40; ry++) for (let rx = 6; rx < 30; rx++) {
+    const m = generateRegion(seed, rx, ry); if (m.settlement || m.openSea) continue;
+    const s = freshSave(); s.seed = seed; s.level = 8; s.playSeconds = 500; s.questingBeast = { active: { rx, ry, tries: 0 }, cycle: 0, cooldown: 0 };
+    const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld');
+    const e = g.enemies.find((q) => q.questingBeast && !q.dead); if (!e) continue;
+    g.player.hp = 1e6; g.player.invulnerableUntil = 1e15;
+    return { g, s, e, rx, ry };
+  }
+  throw new Error('no section found');
+}
+const qbLive = (g) => g.enemies.find((q) => q.questingBeast && !q.dead);
+
+test('the Questing Beast: no tries, the same window; deaths, leaving and reloads do not end or refresh it', () => {
+  assert.equal(QUESTING_BEAST.tries, undefined);
+  const { g, s, e, rx, ry } = qbHunt(); e.aggro = true; play(g, .1);
+  const at = s.questingBeast.active.engagedAt; assert.ok(Number.isFinite(at), 'engaged on first rousing');
+  for (let i = 1; i <= 6; i++) {
+    g.rx = rx; g.ry = ry; g.loadArea('overworld'); assert.ok(qbLive(g), `death ${i}: still there`);
+    g.player.invulnerableUntil = 0; g.player.hp = 0; g.update(.05, idle, 5000 + i * 1000);
+    assert.equal(s.questingBeast.active.tries, i); assert.equal(s.questingBeast.active.engagedAt, at, 'no refresh');
+  }
+  g.rx = rx + 4; g.ry = ry; g.loadArea('overworld'); s.playSeconds = at + 600; g.rx = rx; g.loadArea('overworld'); assert.ok(qbLive(g), 'back after ten minutes away');
+  const r = migrateSave(JSON.parse(JSON.stringify(s))); assert.equal(r.questingBeast.active.engagedAt, at, 'saved additively');
+  assert.match(questingBeastHoldNote(r), /about 5 more minutes/);
+});
+
+test('the Questing Beast: when its window ends in sight it is gone as it always went (fading, no bounty); out of sight it has gone', () => {
+  const { g, s, e } = qbHunt(); e.aggro = true; play(g, .1); const marks = s.currency;
+  e.aggro = false; s.playSeconds = s.questingBeast.active.engagedAt + BEAST_ENGAGEMENT.seconds; play(g, .1);
+  assert.equal(s.questingBeast.active, null); assert.equal(s.questingBeast.escaped, 1); assert.equal(s.questingBeast.cycle, 1); assert.ok(s.questingBeast.cooldown > 0);
+  assert.ok(e.untargetable && e.fleeTo, 'it fades where it stands'); play(g, 3); assert.ok(!g.enemies.includes(e), 'and is gone'); assert.equal(s.currency, marks, 'no bounty');
+  const o = qbHunt('ENGAGE-QB2'); o.e.aggro = true; play(o.g, .1); const engaged = o.s.questingBeast.active.engagedAt;
+  o.g.rx = o.rx + 5; o.g.loadArea('overworld'); assert.ok(o.s.questingBeast.active, 'away inside the window: still holding');
+  o.s.playSeconds = engaged + BEAST_ENGAGEMENT.seconds + 1; o.g.rx = o.rx + 6; o.g.loadArea('overworld');
+  assert.equal(o.s.questingBeast.active, null, 'its window ran out unseen: gone'); assert.equal(o.s.questingBeast.escaped, 1);
 });

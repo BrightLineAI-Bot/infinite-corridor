@@ -12,15 +12,15 @@ test('Level-eight floor, Questing dominance, simultaneous attempts and productio
   const s=freshSave();for(const id of ['psychicCrystal','voidWalker'])s.worldBeasts[id].active={rx:7,ry:2,tries:0};for(let attempt=1;attempt<=5;attempt++){/* release 307: four tries; 2026-11-18 (Tim): world beasts have no tries, the engagement window is their only limit */worldBeastPlayerFell(s,7,2,['psychicCrystal','voidWalker']);for(const id of ['psychicCrystal','voidWalker'])assert.equal(s.worldBeasts[id].active?.tries,attempt)}assert(s.worldBeasts.psychicCrystal.active&&s.worldBeasts.voidWalker.active,'no death ends their hunts');
   // Production death snapshot/re-entry, including Questing + ordinary beast, wounded non-death reload, and third departure.
   const save=freshSave();save.seed='GATE-BEAST-DEATH';const g=new Game(save,0);const idle={state:{x:0,y:0},consume:()=>false};let now=1000;
-  for(let attempt=1;attempt<=4;attempt++){ // release 307: four tries
+  for(let attempt=1;attempt<=5;attempt++){ // release 307: four tries; 2026-11-18 (Tim): no tries for any of them, the engagement window is the only limit
     g.rx=7;g.ry=2;save.questingBeast.active={rx:7,ry:2,tries:attempt-1};save.worldBeasts.morphingBlob.active={rx:7,ry:2,tries:attempt-1,patience:179.9};g.loadArea('overworld',false);
     const q=g.createEnemyFromSpawn({id:'questing-beast:0',kind:'questingBeast',questingBeast:true,boss:true,x:10,y:10},'overworld');const b=g.createEnemyFromSpawn({id:'world-beast:morphingBlob:0',kind:'morphingBlob',worldBeast:'morphingBlob',boss:true,x:12,y:10},'overworld');q.hp=30;b.hp=40;g.enemies=[q,b];g.player.hp=0;g.player.x=16;g.player.y=16;g.update(.001,idle,now+=1000);
-    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(attempt<4||e.worldBeast?e.hp<e.maxHp:e.dead&&e.noRewards)} // release 427: it keeps its wounds; 2026-11-18 (Tim): no death ends a world beast's hunt (the Questing Beast keeps four tries)
+    assert.equal(g.player.hp,save.maxHp);const snapshot=save.session.areas['overworld:7:2:g1'];assert(snapshot);for(const e of snapshot.enemies){assert(e.hp<e.maxHp)} // release 427: it keeps its wounds; 2026-11-18 (Tim): no death ends a hunt (was: the fourth left it dead, without rewards)
     if(attempt<4)assert.equal(save.worldBeasts.morphingBlob.active.patience||0,0);
-    assert.equal(save.questingBeast.active?.tries??4,attempt);assert.equal(save.worldBeasts.morphingBlob.active.tries,attempt);
+    assert.equal(save.questingBeast.active.tries,attempt);assert.equal(save.worldBeasts.morphingBlob.active.tries,attempt);
     g.rx=7;g.ry=2;g.loadArea('overworld',false);
     const live=g.enemies.filter(e=>(e.questingBeast||e.worldBeast==='morphingBlob')&&!e.dead);
-    if(attempt<4){assert.equal(live.length,1);assert(live.every(e=>e.hp<e.maxHp));}else{assert.equal(live.filter(e=>e.questingBeast).length,0);assert(live.every(e=>e.hp<e.maxHp));}
+    assert.equal(live.length,1);assert(live.every(e=>e.hp<e.maxHp));
     const restored=migrateSave(JSON.parse(JSON.stringify(save)));assert.equal(restored.worldBeasts.morphingBlob.active.tries,attempt);
   }
 

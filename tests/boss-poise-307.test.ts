@@ -10,10 +10,10 @@ import { freshSave } from '../src/types.ts';
 
 test('balance: half health, 90% damage, four tries, no Blob regeneration', () => {
   assert.deepEqual(BEAST_BALANCE, { hp: .5, damage: .9 });
-  // 2026-11-18 (Tim): the world beasts' four tries are gone; the 15-minute engagement window is their only limit. The Questing Beast keeps four.
+  // 2026-11-18 (Tim): the four tries are gone for the world beasts and the Questing Beast; the 15-minute engagement window is their only limit.
   for (const id of Object.keys(WORLD_BEASTS)) assert.equal(WORLD_BEASTS[id].tries, undefined, id);
   assert.equal(BEAST_ENGAGEMENT.seconds, 900);
-  assert.equal(QUESTING_BEAST.tries, 4); assert.equal(BLOB.growHeal, 0);
+  assert.equal(QUESTING_BEAST.tries, undefined); assert.equal(BLOB.growHeal, 0);
 });
 
 test('poise: the turtle and the giant are hardest, the astral worm surprisingly easy, the walker sturdy', () => {
