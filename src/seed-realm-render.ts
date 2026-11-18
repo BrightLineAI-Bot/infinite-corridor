@@ -142,7 +142,7 @@ function shipImage(i, px) {
   g.fillStyle = "#ffb070"; g.fillRect(0, H * .44, W * .04, H * .12); // the drive
   COSMOS.ships.set(key, c); if (COSMOS.ships.size > 6) COSMOS.ships.delete(COSMOS.ships.keys().next().value); return c;
 }
-const cosmosTile = (t) => !!t?.realm && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk && !t.bored && !t.fragment));
+const cosmosTile = (t) => !!t?.realm && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk && !t.bored)); // the Askew's drifting fragments too: its galaxy shows over them
 const VIEW_TILES = [];
 // Per frame: the galaxy (and, aboard the ship, slow ships passing) seen through the cosmos tiles in view. `view` is the tile
 // rectangle drawn, (cx, cy) the camera's world point in tiles.

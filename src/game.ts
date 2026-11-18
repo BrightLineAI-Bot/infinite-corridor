@@ -3707,12 +3707,12 @@ export class Game {
     }
     if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
     if (area === "overworld") this.placeAbyssalFind(); // the bizarro world: an Abyssal Seed, often in a pocket, very rarely elsewhere; new ground only, once
-    if (area === "overworld" && this.map.bizarro) for (const q of bizarroSpawns(this.save.seed, this.rx, this.ry, this.openSeedGround().open)) if (!this.map.enemySpawns.some((e) => e.id === q.id)) this.map.enemySpawns.push(q); // the pocket's own rounded wanderers, on ground the Wayfarer can reach
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if (area === "overworld") this.map.enemySpawns.push(...triceratopsHerdSpawns(this.map, this.save.seed, this.rx, this.ry, this.save.atlas?.[`${this.rx},${this.ry}`]?.triceratopsHerdVersion));
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
     if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
+    if (area === "overworld" && this.map.bizarro) for (const q of bizarroSpawns(this.save.seed, this.rx, this.ry, this.openSeedGround().open)) if (!this.map.enemySpawns.some((e) => e.id === q.id)) this.map.enemySpawns.push(q); // the pocket's own rounded wanderers, on ground the Wayfarer can reach
     if(area==="overworld"&&this._coherence&&!this.map.farDomain)settleSpawns(this.map,coherenceKeeps); // WG-08: a creature on a pad it cannot leave moves to ground it can (new ground only)
     if(area==="overworld"&&(this.farRealm?.type==="monsterFolk"||this.farRealm?.type==="giantFolk"))this.map.farFolk=this.farRealm.type==="monsterFolk"?"monster":"giant"; // release 720: the folk realms
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}

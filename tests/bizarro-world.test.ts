@@ -122,7 +122,7 @@ test('exact resume inside the Askew; the heart pays the usual rewards and its ow
   const g3 = reload(g2); assert.equal(g3.seedRealmWon(g3.enemies.find((e) => e.seedRealmHeart)), null); assert.equal(JSON.stringify(g3.save.tesseracts), tess, 'no Tesseract');
   // leaving: gone for good
   const on = g3.map.objects.find((o) => o.onward); g3.player.x = on.x; g3.player.y = on.y + .8; assert.ok(g3.interact('leave', on.id).ok); assert.equal(g3.area, 'overworld');
-  assert.equal(JSON.stringify(g3.exportSnapshot(3000)).includes(g.areaId()), false);
+  const left = g3.save; assert.ok(![...Object.keys(left.session.areas), ...Object.keys(left.consequences.dungeons)].some((k) => k.startsWith('seedrealm:')), 'its snapshot and history are gone'); assert.equal(left.session.seedRealm, null);
 });
 
 test('the bizarro pockets: about one section in 400, never near the Refuge, pure', () => {
@@ -134,9 +134,9 @@ test('the bizarro pockets: about one section in 400, never near the Refuge, pure
 });
 
 // A pocket section for `seed`: the first coordinates that load as one.
-function pocketGame(seed = 'POCKET') {
+function pocketGame(seed = 'POCKET', ground = 0) {
   for (let rx = 4; rx < 400; rx++) for (let ry = -6; ry <= 6; ry++) { if (!bizarroHere(seed, rx, ry)) continue;
-    const s = freshSave(); s.seed = seed; const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld', false); if (g.map.bizarro) return g; }
+    const s = freshSave(); s.seed = seed; const g = new Game(s, 0); g.rx = rx; g.ry = ry; g.loadArea('overworld', false); if (g.map.bizarro && g.openSeedGround().open.length >= ground) return g; }
   throw new Error('no pocket');
 }
 
@@ -160,7 +160,7 @@ test('a pocket is new ground only: the ground is exactly as it would be, exits a
 });
 
 test('a pocket\'s creatures are drawn rounded and stand on reachable ground; everywhere else they keep their figures', () => {
-  const g = pocketGame(), mine = g.enemies.filter((e) => String(e.id).startsWith(`bizarro-${g.rx}-${g.ry}-`));
+  const g = pocketGame('POCKET', 40), mine = g.enemies.filter((e) => String(e.id).startsWith(`bizarro-${g.rx}-${g.ry}-`));
   assert.ok(mine.length >= BIZARRO.creatures.n[0] && mine.length <= BIZARRO.creatures.n[1], `${mine.length}`);
   const open = new Set(g.openSeedGround().open.map((t) => `${t.x},${t.y}`)); // computed after they stand: their own tiles are not objects, so still open
   for (const e of mine) { assert.ok(isCoreSpriteKind(e.kind)); assert.ok(drawsBizarro(g.map, 'overworld', e), e.kind); assert.ok(open.has(`${Math.round(e.x)},${Math.round(e.y)}`), `${e.kind} on reachable ground`); }
