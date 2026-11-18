@@ -477,12 +477,17 @@ function drawTriceratops(ctx, q) {
   ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(-.05), Y(.52), u * .62, u * .32, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1, u * .025); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(X(-.58), Y(.62)); ctx.lineTo(X(-1.02), Y(.48) + bounce); ctx.lineTo(X(-.57), Y(.4)); ctx.closePath(); ctx.fillStyle = body; ctx.fill(); ctx.stroke();
+  // Only the neck articulates: saddle, torso and rider remain on their shared anchor.
+  const horn = e.mountView && e.mountHornPose;
+  ctx.save();
+  if (horn) { const nx = X(.35), ny = Y(.54); ctx.translate(nx + flip * horn.reach * u, ny + horn.lower * u); ctx.rotate(flip * horn.pitch); ctx.translate(-nx, -ny); }
   // Frill and head. The shared yellow hide is invariant across good, silly and bad actors.
   ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(X(.48), Y(.72), u * .31, u * .4, -.12 * flip, 0, TAU); ctx.fill();
   ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(.67), Y(.52), u * .31, u * .22, 0, 0, TAU); ctx.fill(); ctx.stroke();
   ctx.fillStyle = pale;
   for (const [x, y, len] of [[.62,.72,.42],[.8,.68,.39],[.88,.52,.2]]) { ctx.beginPath(); ctx.moveTo(X(x),Y(y)); ctx.lineTo(X(x+len),Y(y+.1)); ctx.lineTo(X(x+.06),Y(y-.045)); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(X(.76), Y(.57), Math.max(1.5, u * .03), 0, TAU); ctx.fill();
+  ctx.restore();
   // Windups lower the horns; the active sweep lifts the tail. Both remain escapable through the production attack telegraph.
   if (wind) { ctx.strokeStyle = pale; ctx.lineWidth = Math.max(2, u * .035); ctx.beginPath(); ctx.arc(X(.84),Y(.62),u*.35,-.2,.55); ctx.stroke(); }
   if (e.pack?.attack === "heavySweep" && active) { ctx.strokeStyle = pale; ctx.lineWidth = Math.max(2,u*.045); ctx.beginPath(); ctx.arc(X(-.68),Y(.5)+bounce,u*.55,2.8,4.7); ctx.stroke(); }
@@ -1422,6 +1427,7 @@ const sprites = new Map();
 function makeSpriteCanvas() { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(1, 1); if (typeof document !== "undefined") return document.createElement("canvas"); return null; }
 function spriteState(e) { const s0 = e.pack; return s0?.attack ? (s0.phase === "windup" ? "windup" : "attack") : "idle"; }
 function drawPackSprite(ctx, e, s, now, facing, def) {
+  if (e.kind === "triceratops" && e.mountView && e.mountHornPose) return false; // one live mount pose, no expanding sprite cache key
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;

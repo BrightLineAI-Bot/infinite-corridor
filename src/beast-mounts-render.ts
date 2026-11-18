@@ -11,10 +11,10 @@ const actor = { id: "", kind: "", packKind: "", x: 0, y: 0, scale: 1, facingX: 1
 const seatOut = { up: 0, dx: 0 }, front = { style: null, x: 0, y: 0, u: 0, drop: 0, face: 1 };
 // Draws the mount of `m` under the Wayfarer at `p` (raised `liftPx` by a jump). Returns where the Wayfarer sits: { up, dx } in pixels
 // (up from their feet; along the screen, + right). drawMountFront, after the rider, adds anything that goes in front of them.
-export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false) {
+export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false, hornPose = null, mountFacing = p.facing) {
   const B = MOUNT_BEASTS[m?.beast]; front.style = null; if (!B) { seatOut.up = 0; seatOut.dx = 0; return seatOut; }
-  const moving = (p.walkPhase || 0) % 2, face = p.facing === "left" ? -1 : p.facing === "right" ? 1 : (p.mountFace || 1); p.mountFace = face;
-  Object.assign(actor, { id: `mount:${m.id}`, kind: m.beast, packKind: m.beast, x: p.x, y: p.y - liftPx / s, scale: B.scale, facingX: face, hopLift: reduceMotion ? 0 : Math.abs(Math.sin(moving * Math.PI)) * .5 });
+  const moving = (p.walkPhase || 0) % 2, face = mountFacing === "left" ? -1 : mountFacing === "right" ? 1 : (p.mountFace || 1); p.mountFace = face;
+  Object.assign(actor, { id: `mount:${m.id}`, kind: m.beast, packKind: m.beast, x: p.x, y: p.y - liftPx / s, scale: B.scale, facingX: face, mountHornPose: m.beast === "triceratops" ? hornPose : null, triceratopsDisposition: m.variant === "silly" ? "silly" : "good", hopLift: reduceMotion ? 0 : Math.abs(Math.sin(moving * Math.PI)) * .5 });
   try {
     if (m.beast === "stalker") drawStalker(ctx, actor, s, now, reduceMotion);
     else drawPackMonster(ctx, actor, s, now, p.facing);

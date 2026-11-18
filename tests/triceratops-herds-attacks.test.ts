@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, updateProjectiles } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { stableMount, startRide, TRICERATOPS_ATTACKS } from "../src/beast-mounts.ts";
+import { stableMount, startRide, TRICERATOPS_ATTACKS, triceratopsHornPose, TRICERATOPS_HORN_POSE } from "../src/beast-mounts.ts";
 import { triceratopsHerdSpawns, TRICERATOPS_HERDS } from "../src/monster-pack.ts";
 
 const flat = () => ({ tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: "savannaGrass", elev: 0, blocked: false })), objects: [], enemySpawns: [] });
@@ -253,4 +253,43 @@ test("charging does not intercept ordinary rider Attack or spell input", () => {
   g.pressSlot = (slot, action, ...rest) => { if (slot === "a" && action === "spell") spellPressed = true; return press(slot, action, ...rest); };
   g.update(.01, holdInput("spell"), 1450);
   assert.equal(spellPressed, true); assert.equal(g.triceratopsCharge?.phase, "hold");
+});
+
+
+test("mounted horn poses follow acceptance, freeze contact through pause and never own rider visuals", () => {
+  const g = chargeGame(), mount = g.mountRide(), riderVisual = { kind: "sentinel" };
+  g.player.attackVisual = riderVisual;
+  const held = triceratopsHornPose(g, mount, 1600), reduced = triceratopsHornPose(g, mount, 1600, true);
+  assert.equal(held.phase, "hold"); assert.ok(held.pitch > 0); assert.ok(reduced.pitch < held.pitch);
+  assert.equal(g.triceratopsHornContact, null);
+  g.tickTriceratopsCharge(1600, false);
+  assert.equal(triceratopsHornPose(g, mount, 1650).phase, "windup");
+  const contactAt = g.triceratopsCharge.contactAt;
+  g.tickTriceratopsCharge(contactAt, false);
+  const contact = triceratopsHornPose(g, mount, contactAt + 50);
+  assert.equal(contact.phase, "bash"); assert.ok(contact.reach > 0);
+  g.setPaused(true, contactAt + 50);
+  assert.deepEqual(triceratopsHornPose(g, mount, contactAt + 4000), contact);
+  g.setPaused(false, contactAt + 5050);
+  assert.deepEqual(triceratopsHornPose(g, mount, contactAt + 5050), contact);
+  assert.equal(triceratopsHornPose(g, mount, contactAt + 5000 + TRICERATOPS_HORN_POSE.recoverMs), null);
+  assert.equal(g.player.attackVisual, riderVisual);
+  g.dismount(); assert.equal(g.triceratopsHornContact, null);
+  assert.equal(triceratopsHornPose(g, null, contactAt), null);
+});
+
+test("only a launched horn gets recoil; refusals, interruption and other mounts do not", () => {
+  const g = chargeGame(); chargedHorn(g);
+  assert.equal(triceratopsHornPose(g, g.mountRide(), 2130).phase, "horn");
+  assert.ok(triceratopsHornPose(g, g.mountRide(), 2130).reach < 0);
+  g.swimming = true; assert.equal(triceratopsHornPose(g, g.mountRide(), 2140), null);
+  const blocked = chargeGame(); blocked.tickTriceratopsCharge(1950, false);
+  blocked.projectiles = Array.from({length:64}, () => ({life:1})); blocked.tickTriceratopsCharge(2130, false);
+  assert.equal(blocked.triceratopsHornContact, null); assert.equal(triceratopsHornPose(blocked, blocked.mountRide(), 2130), null);
+  const paused = chargeGame(); paused.tickTriceratopsCharge(1950, false); paused.setPaused(true, 2000);
+  assert.equal(triceratopsHornPose(paused, paused.mountRide(), 3000), null);
+  const old = chargeGame("briarStag"); assert.equal(triceratopsHornPose(old, old.mountRide(), 1100), null);
+  const tap = mounted(); tap.update(.01, holdInput("dodge", false), 1000);
+  assert.equal(triceratopsHornPose(tap, tap.mountRide(), 1000).phase, "dash");
+  assert.equal(triceratopsHornPose(tap, tap.mountRide(), tap.player.dodgeUntil), null);
 });

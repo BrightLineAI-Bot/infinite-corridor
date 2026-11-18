@@ -3317,7 +3317,7 @@ export class Game {
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
     if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
-    this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; // accepted attacks belong to this area
+    this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; this.triceratopsHornContact = null; // accepted attacks belong to this area
     this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
@@ -7276,6 +7276,7 @@ export class Game {
     this.triceratopsCharge = null; // consume before contact: no repeated release or re-entrant hit
     if (q.kind === "bash") {
       this.triceratopsBlow("bash", now, { x: q.x, y: q.y });
+      this.triceratopsHornContact = { mount: m.id, kind: "bash", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };
       (this.glyphVisuals ||= []).push({ kind: "arc", x: p.x + .5, y: p.y + .45, tx: p.x + .5 + q.x * TRICERATOPS_ATTACKS.bash.range, ty: p.y + .45 + q.y * TRICERATOPS_ATTACKS.bash.range, color: "#fff0a0", life: .2, max: .2 });
     } else if (q.kind === "horn" && this.triceratopsHornRoom()) {
       const B = TRICERATOPS_ATTACKS.horn;
@@ -7283,6 +7284,7 @@ export class Game {
         x: p.x + .5, y: p.y + .45, dx: q.x, dy: q.y, speed: B.speed, life: B.range / B.speed,
         damage: B.damage, damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 0,
         glyphHost: "melee", triceratopsHorn: true, toolUseNewborn: true });
+      this.triceratopsHornContact = { mount: m.id, kind: "horn", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };
     }
   }
   triceratopsHornRoom() {
@@ -7342,7 +7344,7 @@ export class Game {
     return { ok: true, message: (this.message = `${mountName(m)} answers your call, and you climb onto its back. ${mountLifeText(m)} left.`) };
   }
   dismount(message = null) {
-    const m = stopRide(this.save); this._mountHp = null; this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; if (!m) return { ok: false, message: this.message };
+    const m = stopRide(this.save); this._mountHp = null; this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; this.triceratopsHornContact = null; if (!m) return { ok: false, message: this.message };
     return { ok: true, message: (this.message = message || `You climb down from ${mountName(m).replace(/^The /, "the ")}, and it is gone back to your stable. ${mountLifeText(m)} left.`) };
   }
   // Act with nothing near in the open world: get down, or call the mount ridden last.

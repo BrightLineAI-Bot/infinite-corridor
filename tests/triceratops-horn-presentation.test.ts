@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
+import { stableMount, startRide, triceratopsHornPose } from '../src/beast-mounts.ts';
+import { drawMount } from '../src/beast-mounts-render.ts';
 import { render } from '../src/renderer.ts';
 import { drawRangedEffects, standardProjectile, standardProjectileColor, TRICERATOPS_HORN_VISUAL, triceratopsHornFrame, triceratopsHornVertices } from '../src/combat-visuals.ts';
-import { CLOSE_VIEW_HOOKS, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW_HOOKS, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewRenderDiagnostics } from '../src/close-view.ts';
 import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 
 class TransactionGL {
@@ -98,4 +100,39 @@ test('Close View renders twelve horn vertices at both motion settings and restor
     assert.deepEqual(g.projectiles,before);
     h.gl.fault='';resetCloseViewGL();resetCloseViewCamera();
   }
+}));
+
+
+test('mounted head articulation leaves saddle and rider anchor fixed, mirrors and clears for other mounts',()=>{
+  const log=[],ctx=context(log,'mount'),p={x:10,y:10,facing:'right',walkPhase:0},m={id:'trike',beast:'triceratops'};
+  const idle={...drawMount(ctx,m,p,33,1000)},idleSaddle=log.filter(q=>q[1]==='fillRect'&&q[4]>20);
+  log.length=0;
+  const pose={phase:'bash',pitch:.1,reach:.16,lower:.025,x:1,y:0};
+  assert.deepEqual({...drawMount(ctx,m,p,33,1000,0,false,pose)},idle);
+  assert.ok(log.some(q=>q[1]==='rotate'&&q[2]===.1));
+  assert.deepEqual(log.filter(q=>q[1]==='fillRect'&&q[4]>20),idleSaddle);
+  log.length=0;drawMount(ctx,m,p,33,1000,0,false,pose,'left');
+  assert.ok(log.some(q=>q[1]==='rotate'&&q[2]===-.1));
+  log.length=0;drawMount(ctx,{id:'stag',beast:'briarStag'},p,33,1000,0,false,pose);
+  assert.equal(log.some(q=>q[1]==='rotate'&&Math.abs(q[2])===.1),false);
+});
+
+test('Close View preserves the posed Triceratops composite and falls back without stealing rider facing',()=>withGPU({},h=>{
+  const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-good',now:100000}).game;
+  const m=stableMount(g.save,'triceratops').mount;startRide(g.save,m.id);
+  g.enemies=[];g.effects=[];g.glyphVisuals=[];g.projectiles=[];g.save.closeView=true;g.save.overworldCloseView=true;
+  g.presentation={effectiveQuality:'full'};g.player.facing='left';g.player.hp=100;g.lastUpdateNow=100700;
+  g.triceratopsCharge={mount:m.id,start:100000,phase:'hold',x:1,y:0};
+  const pose=triceratopsHornPose(g,m,g.lastUpdateNow),playerFacing=g.player.facing;
+  frame(h,g);
+  assert.equal(closeViewShowing(g),true);assert.equal(closeViewRenderDiagnostics().player,'billboard');
+  assert.equal(g.player.facing,playerFacing);
+  assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='rotate'&&Math.abs(Math.abs(q[2])-pose.pitch)<1e-9),'composite paints the accepted neck pose');
+  assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle survives native admission');
+  h.gl.fault='draw';frame(h,g);
+  assert.equal(closeViewShowing(g),false);assert.equal(g.player.facing,playerFacing);
+  assert.ok(h.log.some(q=>q[0]==='screen'&&q[1]==='rotate'&&Math.abs(Math.abs(q[2])-pose.pitch)<1e-9));
+  h.gl.fault='';g.dismount();frame(h,g);
+  assert.equal(closeViewShowing(g),true);
+  assert.ok(closeViewRenderDiagnostics().nativeActors>0,'unmounted hero returns to ordinary native admission');
 }));
