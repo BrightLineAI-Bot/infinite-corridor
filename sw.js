@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "infinite-corridor-",
-  CACHE = `${CACHE_PREFIX}v1001`,
+  CACHE = `${CACHE_PREFIX}v1002`,
   ASSETS = [
     "./",
     "./index.html",
