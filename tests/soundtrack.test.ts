@@ -252,7 +252,7 @@ const BOSS_FOES = {
   gateRevenant: { id: 'horde-d1-1', kind: 'gateRevenant', gatePredator: true, hordeOf: 'd1', aggro: true },
   tyrantMosasaur: { id: 'tyrant-hunt-1-2-0-9', kind: 'tyrantMosasaur', seaKind: 'tyrantMosasaur', boss: true, hunting: true, leviathan: true },
 };
-const LISTED = ['ashenMoth', 'mothChrysalis', 'briarStag', 'crimsonTyrant', 'doomChaser', 'lightningGiant', 'morphingBlob', 'mountainTurtle', 'nanobotKnight', 'psychicCrystal', 'tremorWorm', 'voidWalker', 'wildStego', 'spinoRex', 'questingBeast', 'stalker', 'astralWorm', 'listener', 'gloomvast', 'gateRevenant', 'tyrantMosasaur'];
+const LISTED = ['ashenMoth', 'mothChrysalis', 'briarStag', 'crimsonTyrant', 'doomChaser', 'lightningGiant', 'morphingBlob', 'mountainTurtle', 'nanobotKnight', 'psychicCrystal', 'tremorWorm', 'voidWalker', 'wildStego', 'spinoRex', 'earthApato', 'questingBeast', 'stalker', 'astralWorm', 'listener', 'gloomvast', 'gateRevenant', 'tyrantMosasaur'];
 const themeSongs = () => Object.values(SONGS).filter((s) => s.boss && s.id !== 'boss');
 const bossWorld = (enemies) => ({ area: 'overworld', rx: 3, ry: 4, map: { landscape: { biome: 'forest' } }, player: { x: 0, y: 0, hp: 90 }, save: { session: {}, activeCheckpoint: { rx: 0, ry: 0, x: 1, y: 1 } }, enemies });
 
@@ -396,7 +396,7 @@ test('boss themes have a menace tier: overt ones use overt devices, understated 
     if (tier === 'calm') assert.ok(song.dark.shadow?.length && overt.length === 0 && hidden.length <= 2, `${song.id}: gentle, with a shadow under it`);
     assert.ok(!song.chords.some((c) => c.endsWith(':add9')), `${song.id}: no warm add9 stacks`);
   }
-  assert.deepEqual(count, { overt: 9, understated: 9, calm: 4 });
+  assert.deepEqual(count, { overt: 9, understated: 10, calm: 4 });
   assert.equal(tierOf('fernsAndPlates'), 'calm', 'the stegosaurus stays a romp');
   assert.ok(!LINER_NOTES.some((n) => n.menace && !SONGS[n.id]?.boss), 'only boss themes are tiered');
   // The validator: deliberate dissonance only where a song lists it, and well-formed devices.
