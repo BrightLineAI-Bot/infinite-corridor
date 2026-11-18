@@ -1150,3 +1150,11 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 .utility-slot button.utility .slot-sym { font-size: 17px; line-height: 1; pointer-events: none; }
 .utility-slot button.utility .slot-sym svg { display: block; width: 22px; height: 22px; margin: 0 auto; }
 .utility-slot button.utility[data-utility="cast"], .utility-slot button.utility[data-utility="item"], .utility-slot button.utility[data-utility="lantern"], .utility-slot button.utility[data-utility="empty"] { border-color: var(--slot); color: var(--slot); }
+/* Tim, 2026-11-18: riding a Triceratops, slots B, C and D are its attacks (main.ts MOUNT_CONTROL_ICONS) and Jump reads Stomp or
+   Drill. A warm horn-gold rim marks them as the mount's; the pressed attack glows while it runs (no animation, so Reduced Motion
+   needs nothing more). The names sit where a cooldown or stamina cost does. */
+.buttons button.mount-control { border-color: #e0b45a; box-shadow: inset 0 0 0 1px #5a4320; }
+.buttons button.mount-control::after { content: attr(data-cooldown); font-size: 7px; letter-spacing: .02em; color: #f1dca8; white-space: nowrap; }
+.buttons button.mount-control .slot-sym svg { width: 20px; height: 20px; }
+.buttons button.mount-control.mount-active { box-shadow: 0 0 10px #ffd07a, inset 0 0 0 2px #ffd07a; background-color: #4a3519; }
+.action-diamond button.core.jump.mount-control { color: #f1dca8; }

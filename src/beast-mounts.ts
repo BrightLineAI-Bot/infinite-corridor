@@ -39,6 +39,15 @@ export const TRICERATOPS_ATTACKS = {
   bash: { range: 2.4, arc: 75, damage: 40, stun: .3, stamina: 8, windupMs: 120 },
   horn: { range: 8, speed: 12, damage: 48, stamina: 14, windupMs: 180, maxProjectiles: 2 },
 };
+// Tim, 2026-11-18: while riding a Triceratops, slots B, C and D (actions spell, spell2, spell3) become its own attacks and Jump
+// reads as its landing. A display and input override only: each press runs the accepted Dodge path (`charge` = the held-Dodge
+// charge tier it releases at: 1 the short Bash, 2 the long Horn Shot), the loadout and presets are untouched and nothing is saved.
+export const TRICERATOPS_CONTROLS = Object.freeze({
+  spell: Object.freeze({ attack: "dash", name: "Horn Dash", charge: 0 }),
+  spell2: Object.freeze({ attack: "bash", name: "Bash", charge: 1 }),
+  spell3: Object.freeze({ attack: "horn", name: "Horn Shot", charge: 2 }),
+  jump: Object.freeze({ normal: "Stomp", silly: "Drill" }),
+});
 // Presentation reads accepted gameplay phases; the short contact receipt uses the pause-adjusted clock.
 export const TRICERATOPS_HORN_POSE = Object.freeze({ recoverMs: 240, halfWidth: 3.9, height: 3.6 });
 export function triceratopsHornPose(g, mount, now, reduced = false) {
