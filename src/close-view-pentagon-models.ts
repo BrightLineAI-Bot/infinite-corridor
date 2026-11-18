@@ -230,7 +230,7 @@ const veilSpinner = [
 ];
 for (let i = 0; i < 4; i++) for (const side of [-1, 1]) {
   const x = .20 - i * .10, reach = [.20, .07, -.07, -.20][i], s = 70 + i * 2 + (side > 0 ? 1 : 0);
-  veilSpinner.push(limb([[x, side * .12, .50, .04], [x + reach * .7, side * .40, .78, .03], [x + reach * 1.5, side * .68, .02, .01]], i % 2 ? 0x46394c : 0x5e4c66, s, x, .50, 3));
+  veilSpinner.push(limb([[x, side * .12, .50, .035], [x + reach * .7, side * .40, .78, .028], [x + reach * 1.5, side * .68, .02, .01]], i % 2 ? 0x46394c : 0x5e4c66, s, x, .50, 3));
 }
 
 // Rift Lynx (standard view: a sleek dark-navy cat, a fan of violet rift crystals over the shoulders, a white eye, a long tail).
