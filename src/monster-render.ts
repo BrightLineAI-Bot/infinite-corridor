@@ -14,6 +14,7 @@ import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
 import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks } from "./apato-render.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
 import { drawSpino, drawSpinoMarks } from "./spino-render.ts";
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
@@ -565,6 +566,8 @@ const BODY = {
   wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
   triceratops(ctx, q) { drawTriceratops(ctx, q); },
   spinoRex(ctx, q) { drawSpino(ctx, q, q.t * 1000); },
+  earthApato(ctx, q) { drawEarthApato(ctx, q, q.t * 1000); },
+  apatoClone(ctx, q) { drawApatoClone(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
@@ -1438,7 +1441,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || e.kind === "earthApato" || e.kind === "apatoClone" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);
@@ -1817,6 +1820,9 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
     { const b = !e.dead && visible(e) && bodyHitFootprint(e); if (b) { const by = (e.y + .6 - (heights.ground?.(e.x, e.y) || 0)) * s, R = b.radius * s; ctx.save(); ctx.fillStyle = b.armed ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; if (!b.armed) ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, by, R, R * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); } } // release 427: the body's own reach while it hits with it
     // the Spinosaurus's grab: its bite-mark reticle on its prey (spino-render.ts)
     if (e.kind === 'spinoRex' && !e.dead && e.spinoGrab && visible(e)) drawSpinoMarks(ctx, e, s, now, enemies, 0, !!heights.reduceMotion);
+    // the Earth Apatosaurus (apato-render.ts): its saplings, hazards, beam and lashing neck; a clone's coils; a duel foe's daze and venom
+    if (e.kind === 'earthApato' && !e.dead && visible(e)) drawApatoGround(ctx, e, s, now, { quiet: !!heights.reduceMotion, capture: !!heights.capture });
+    if ((e.apatoLatched || e.apatoDazed > 0 || e.apatoVenom > 0) && !e.dead && visible(e)) drawApatoMarks(ctx, e, s, now, !!heights.reduceMotion);
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;

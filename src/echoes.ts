@@ -37,25 +37,26 @@ export function grantSlainEchoes(save) {
 // stegoRoomSpawn) to the beast; a journey that killed one before this release is caught up once from the lasting per-kill flag the
 // Game writes for every rewarded kill (worldFlags `drop:v1:<area>:<enemy id>`). A dino duel's eaten loser is never the Wayfarer's
 // (game.ts dinoEaten: noRewards), so it is never counted.
-export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/ };
+export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/, earthApato: /:earth-apato$/ };
 export const ROOM_BEAST_IDS = Object.keys(ROOM_BEAST_KILL);
-const roomBeastOf = (e) => e?.spinoRoom || e?.spinoInterloper ? "spinoRex" : e?.stegoRoom ? "wildStego" : null;
+const ROOM_BEAST_FIRST = ["spinoRex", "wildStego"]; // the record's first two ids, always written
+const roomBeastOf = (e) => e?.spinoRoom || e?.spinoInterloper ? "spinoRex" : e?.stegoRoom ? "wildStego" : e?.apatoRoom ? "earthApato" : null;
 // `catchUp` false (freshSave) leaves the scan to the first load: a fresh save's defaults are merged under every loaded one, so a mark
 // set there would stand in for an old journey that never scanned.
 export function ensureRoomBeastSlain(save, catchUp = true) {
   if (!save || typeof save !== "object") return {};
   const r = save.roomBeastSlain && typeof save.roomBeastSlain === "object" ? save.roomBeastSlain : {};
-  const out = { ...r }; for (const id of ROOM_BEAST_IDS) out[id] = Math.max(0, Math.floor(Number(r[id]) || 0));
+  const out = { ...r }; for (const id of ROOM_BEAST_IDS) { const n = Math.max(0, Math.floor(Number(r[id]) || 0)); if (n > 0 || ROOM_BEAST_FIRST.includes(id)) out[id] = n; else delete out[id]; } // a later beast's count is written once it has one
   if (catchUp && !out.caughtUp) { // once: kills from before this record existed
     out.caughtUp = 1;
-    for (const key of Object.keys(save.worldFlags || {})) if (key.startsWith("drop:v1:") && save.worldFlags[key]) for (const id of ROOM_BEAST_IDS) if (ROOM_BEAST_KILL[id].test(key)) out[id] = Math.max(out[id], 1);
+    for (const key of Object.keys(save.worldFlags || {})) if (key.startsWith("drop:v1:") && save.worldFlags[key]) for (const id of ROOM_BEAST_IDS) if (ROOM_BEAST_KILL[id].test(key)) out[id] = Math.max(Number(out[id]) || 0, 1);
   }
   save.roomBeastSlain = out; return out;
 }
 // The Game's kill: true when `e` is one of those beasts and the Wayfarer's (the count goes up).
 export function noteRoomBeastKill(save, e) {
   const id = roomBeastOf(e); if (!id || e.summonedBy || e.noRewards || e.kind !== id) return false;
-  const r = ensureRoomBeastSlain(save); r[id] += 1; return true;
+  const r = ensureRoomBeastSlain(save); r[id] = (Number(r[id]) || 0) + 1; return true;
 }
 
 // Spinosaur's Echo (Tim, 2026-11-12). Every jump-attack slam (any weapon's plunge, the Shadow Boxing dive's slam
@@ -63,6 +64,10 @@ export function noteRoomBeastKill(save, e) {
 // slam's damage (and of its Imbue Weapon spark) and `stunShare` of its stagger. The afterimage is an ordinary effect, so it
 // keeps every rule the slam keeps (friendly fire, bosses and elites, poise, sanctuaries); it never lays another afterimage.
 export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
+// Apatosaur's Sprout (the Earth Apatosaurus, Tim 2026-11-18; proposed, for Tim to keep or veto): being hurt sprouts a sapling at your
+// feet, at most once each `cooldown` ms. Its roots snare foes within `radius` tiles (they move at `slow` of their pace for `seconds`
+// s) and it mends `mend` of your maximum health at once.
+export const APATO_ECHO = { cooldown: 7000, radius: 2, slow: .5, seconds: 2.5, mend: .04 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -109,6 +114,9 @@ export const ECHOES = {
   // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
   // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
   // or on load for a Wayfarer who has slain it already (grantSlainEchoes reads save.worldBeasts).
+  // The Earth Apatosaurus (APATO_ECHO above; echoEvent "hurt"). Taken as every world beast's is: certain on the first kill, or on load.
+  earthApato: { name: "Apatosaur's Sprout", cost: 2, trigger: "hurt", module: "apatoSeeds",
+    text: `Being hurt sprouts a sapling at your feet (once every ${APATO_ECHO.cooldown / 1000} s): its roots snare foes within ${APATO_ECHO.radius} tiles, slowing them by half for ${APATO_ECHO.seconds} s, and it mends ${Math.round(APATO_ECHO.mend * 100)}% of your health.` },
   spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
     text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
@@ -272,6 +280,7 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
     if (eq.includes("crystalCrab")) world.blast(me.x, me.y, 1.5, Math.round(dmg * .5));
     if (eq.includes("morphingBlob")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 2, until: now + 3000, slow: .6 }); // release 235
+    if (eq.includes("earthApato") && now >= (p.echoSproutReadyAt || 0)) { const A = APATO_ECHO, max = Number(save.maxHp) || p.maxHp || 100; (game.echoPatches ||= []).push({ kind: "web", sprout: true, x: me.x, y: me.y, radius: A.radius, until: now + A.seconds * 1000, slow: A.slow }); if (p.hp > 0) p.hp = Math.min(max, p.hp + Math.max(1, Math.round(max * A.mend))); game._echoLastHp = p.hp; p.echoSproutReadyAt = now + A.cooldown; } // Apatosaur's Sprout
     if (eq.includes("mountainTurtle") && now >= (p.echoWardReadyAt || 0)) { p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 1000); p.echoWardReadyAt = now + 8000; } // release 241
     if (eq.includes("psychicCrystal")) for (const e of nearest(game, me.x, me.y, 3)) { const c = centre(e), m = Math.hypot(c.x - me.x, c.y - me.y) || 1; world.nudge(e, (c.x - me.x) / m * 1.5, (c.y - me.y) / m * 1.5); e.hitStun = Math.max(e.hitStun || 0, .25); } // release 249
     if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }

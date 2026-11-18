@@ -108,7 +108,7 @@ function profileOfKind(kind) {
 // illusions, ambient and passive life, skirmishers, sea creatures, the Stalker, the Foundry's domains and anything unlisted).
 export function behaviourProfile(e) {
   if (!e || e.dead || e.kind === "npc") return null;
-  if (e.boss || e.eliteId || e.elite || e.worldBeast || e.questingBeast || e.gatePredator || e.marginWarden || e.fracWarden || e.packGuardian || e.stegoRoom || e.spinoRoom || e.spinoInterloper || e.farArrayBoss || e.pentBoss || e.pentFinaleBeast || e.buildingGuardian) return null;
+  if (e.boss || e.eliteId || e.elite || e.worldBeast || e.questingBeast || e.gatePredator || e.marginWarden || e.fracWarden || e.packGuardian || e.stegoRoom || e.apatoRoom || e.apatoCloneOf || e.kind === "earthApato" || e.kind === "apatoClone" /* the Earth Apatosaurus and its tree clones (its minions): no squad role */ || e.spinoRoom || e.spinoInterloper || e.farArrayBoss || e.pentBoss || e.pentFinaleBeast || e.buildingGuardian) return null;
   if (e.illusion || e.astralCompanionOf || e.astralAllyOf || e.passiveBehavior || e.ambient || e.skirmishId || e.seaKind || e.stalker || e.stalkerKin || e.stalkerDecoy || e.mirrorClone || e.morphWorm || e.blobletOf || e.wormOf || e.gloomOrbOf || e.roofDweller || e.domainFamily || e.foundryAttack || e.passingBeast || e.retreating || e.fleeTo || e.objectiveId) return null;
   if (e.dungeonRole && GUARDIAN_ROLES.has(e.dungeonRole)) return null;
   return profileOfKind(e.kind);

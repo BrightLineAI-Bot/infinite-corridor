@@ -133,6 +133,8 @@ import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interlop
 import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.ts"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
 import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.ts"; // the Spinosaurus's bleed (the Wayfarer's status)
 import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
+import { APATO, APATO_ROOMS, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.ts"; // its root venom (the Wayfarer's status)
 import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
@@ -188,7 +190,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoSproutReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
@@ -196,7 +198,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
-export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoMirrorReadyAt"];
+export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoSproutReadyAt", "echoMirrorReadyAt"];
 export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
@@ -617,6 +619,10 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // a floor whose big room already holds the Wild Stegosaurus.
   if (fresh && stegoKind && history.spinoRooms === undefined) history.spinoRooms = SPINO_ROOMS.version;
   if (stegoKind && history.spinoRooms && map) { const q = spinoRoomSpawn(save.seed, id, map, stegoKind, history.spinoRooms, (map.enemySpawns || []).some((e) => e.stegoRoom)); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
+  // The Earth Apatosaurus (earth-apato.ts APATO_ROOMS): the same floors, first generated from this version on (`apatoRooms`, pinned the
+  // same way), and never a floor whose big room already holds the Wild Stegosaurus or the Spinosaurus.
+  if (fresh && stegoKind && history.apatoRooms === undefined) history.apatoRooms = APATO_ROOMS.version;
+  if (stegoKind && history.apatoRooms && map) { const q = apatoRoomSpawn(save.seed, id, map, stegoKind, history.apatoRooms, (map.enemySpawns || []).some((e) => e.stegoRoom || e.spinoRoom)); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
   return map;
 }
 // The Pentagon's shortcut links in a chamber (pentagon.ts pentagonLinkEnds): laid in from version 6; over a Pentagon begun
@@ -661,6 +667,12 @@ export function tuneStegoRoom(c, save, stats) {
 }
 // The Spinosaurus met in a big room or come in as an interloper (spino-rex.ts): tuned as the roaming beast is (its WORLD_BEASTS row), with
 // no hunt (no tries, retreat or bounty); `flags` is { spinoRoom: true } or { spinoInterloper: <the prey's id> }.
+// The Earth Apatosaurus met in a big room (earth-apato.ts APATO_ROOMS): tuned as the roaming beast is, with no hunt (as the stego's).
+export function tuneApatoRoom(c, save, stats) {
+  const B = WORLD_BEASTS.earthApato, v = beastProfileVitals(B, save, stats);
+  Object.assign(c, { apatoRoom: true, boss: false, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: B.name });
+  delete c.worldBeast; return c;
+}
 export function tuneSpinoBeast(c, save, stats, flags = { spinoRoom: true }) {
   const B = WORLD_BEASTS.spinoRex, v = beastProfileVitals(B, save, stats);
   Object.assign(c, flags, { boss: false, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: B.name });
@@ -1046,11 +1058,11 @@ export function ordinaryThreat(ring) {
 }
 // Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
 // elites included, so they stay proportionally above the trash around them.
-export function wayfarerTuned(e) { return !!(e.worldBeast || e.deepLair || e.stegoRoom || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.deepLair || e.stegoRoom || e.apatoRoom || e.apatoCloneOf || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
   if (e.pentFinaleBeast || e.deepLair) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // a lair of the Deep too (tuneDeepLair); the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
-  const beast = !!(e.worldBeast || e.stegoRoom || spinoTuned(e) || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
+  const beast = !!(e.worldBeast || e.stegoRoom || e.apatoRoom || spinoTuned(e) || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
   e.maxHp = Math.round(e.maxHp * m.hpMultiplier * o.hp);
@@ -3724,7 +3736,7 @@ export class Game {
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     { const here = this.map.beastHotel ? null : this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
       const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q) && !q.duelist /* the Gaunt are never copied into a pack */), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
-      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && !q.stegoRoom && !spinoTuned(q) && q.kind !== 'npc').length)); } }
+      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && !q.stegoRoom && !q.apatoRoom && !spinoTuned(q) && q.kind !== 'npc').length)); } }
     this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 731: the haunts
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
       if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
@@ -3796,7 +3808,7 @@ export class Game {
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
         if (e.towerScaled && !isTombstone(restored) && restored.towerVitals !== TALL_TOWERS.dwellerVitals) { const share = restored.maxHp > 0 ? Math.max(0, Math.min(1, (Number(restored.hp) || 0) / restored.maxHp)) : 1; // tall towers: a dweller saved with the region taken twice (TALL_TOWERS.dwellerVitals) takes its true health and damage, keeping its wounds
           Object.assign(merged, { maxHp: e.maxHp, hp: merged.dead ? 0 : Math.max(1, Math.round(e.maxHp * share)), damage: e.damage, towerVitals: TALL_TOWERS.dwellerVitals }); if (e.baseDamage != null) merged.baseDamage = e.baseDamage; else delete merged.baseDamage; }
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !spinoTuned(merged) && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !merged.apatoRoom && !merged.apatoCloneOf && !spinoTuned(merged) && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
@@ -5007,10 +5019,26 @@ export class Game {
   // The dino duel (dino-duel.ts DINO_DUEL, Tim 2026-11-14): the Spinosaurus and the Wild Stegosaurus fight each other, and by 90 s one
   // has the other: eaten (dinoEaten: nothing is the Wayfarer's) or fled (dinoEscape). Duels live on the creatures (e.dinoDuel), so the
   // area snapshot carries one in progress; a loser fled off the area's edge is gone once it is over it.
+  // The Earth Apatosaurus's tree clones coiled round the Wayfarer (earth-apato.ts APATO_CLONE.coil): while any holds on she cannot
+  // walk, dodge or jump; every attack press counts toward breaking free (apatoMashNeed: more presses for more clones), and the swing
+  // itself still lands. True while she is held. `apatoPin` (runtime only: a reload lets every coil go, as the Spinosaurus's jaws do).
+  apatoLatchInput(input) {
+    const n = apatoLatchedClones(this.enemies); if (!n || !(this.player.hp > 0)) { this.apatoPin = null; this.apatoMash = 0; return false; }
+    input.consume("dodge"); input.consume("jump");
+    if (input.state.attack) { this.apatoMash = (Number(this.apatoMash) || 0) + 1; if (this.apatoMash >= apatoMashNeed(n)) { this.apatoBreak(APATO.text.free); return false; } }
+    return true;
+  }
+  apatoBreak(text) { apatoBreakFree(this.enemies, { player: this.player, move: (e, dx, dy) => this.moveGrounded(e, dx, dy, false, null, false) }); this.apatoPin = null; this.apatoMash = 0; if (text) this.message = text; }
+  // Held in place; a jump away (Rift Step, stepping into the Shadow Clone) slips the coils.
+  apatoLatchSlip() {
+    const p = this.player, pin = this.apatoPin; if (!apatoLatchedClones(this.enemies)) { this.apatoPin = null; this.apatoMash = 0; return; }
+    if (Math.hypot(p.x - pin.x, p.y - pin.y) > APATO_CLONE.coil.slip) { this.apatoBreak(APATO.text.slip); return; }
+    p.x = pin.x; p.y = pin.y;
+  }
   dinoDuelTick(dt) {
     if (!(dt > 0)) return [];
     if (this.enemies.some((e) => e.dinoFled && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.dinoFled && e.fleeDone));
-    if (!this.enemies.some((e) => e.kind === "spinoRex" && (!e.dead || e.dinoDuel))) return []; // (a Spinosaurus just eaten still has its duel to close)
+    if (!this.enemies.some((e) => (e.kind === "spinoRex" || e.kind === "earthApato") && (!e.dead || e.dinoDuel))) return []; // (a duel's leader just eaten still has its duel to close)
     const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
     return tickDinoDuels(this.enemies, dt, {
       clock: Number(this.save.playSeconds) || 0, width, height,
@@ -6091,7 +6119,7 @@ export class Game {
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
-    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
+    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);clearPoison(this.save);this.apatoPin=null;/* the Earth Apatosaurus's venom and coils end with the fall too */this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
     if (hole) { p.x = hole.x; p.y = hole.y; relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); p.invulnerableUntil = now + 2000; this.fallen = null; for (const e of this.enemies) if (!e.dead) e.aggro = false; this.snapshotArea(); this.message = `${HOLE_DROPS.messages.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return; } // the same floor; nothing lost (release 345)
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
@@ -7235,6 +7263,14 @@ export class Game {
       shake(power, seconds) { const was = game.spinoShake && now < game.spinoShake.until ? game.spinoShake.power : 0; game.spinoShake = { at: now, until: now + seconds * 1000, power: Math.max(power, was) }; },
       spinoHold(source, seconds) { if (now < (p.dodgeUntil || 0) || p.hp <= 0 || sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return false; p.heldUntil = now + seconds * 1000; p.heldBy = source.id; p.heldFirm = true; game.cancelPendingMeleeContact?.("held"); return true; },
       carry(x, y) { if (footprintOpen(map, width, x, y)) { p.x = x; p.y = y; } },
+      // The Earth Apatosaurus (earth-apato.ts): its root venom (apato-poison.ts), its tree clones (grown from its saplings by its beam;
+      // its minions: no reward, gone with it) and a clone's coil on the Wayfarer (struggled out of by mashing attack: game.ts apatoLatchInput).
+      apatoPoison(stacks, source) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (dosePoison(game.save, stacks, source)) game.message = POISON.text.start; return true; },
+      spawnApatoClone(owner, x, y, n) {
+        if (game.enemies.length >= 32) return null;
+        const c = createCombatant("apatoClone", x, y, false, []); tuneApatoClone(c, owner, n); c.threatRing = owner.threatRing; ensureAI(c); game.enemies.push(c); return c;
+      },
+      apatoLatch(clone) { if (now < (p.dodgeUntil || 0) || p.hp <= 0 || sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return false; if (!game.apatoPin) { game.apatoPin = { x: p.x, y: p.y }; game.apatoMash = 0; } game.cancelPendingMeleeContact?.("held"); return true; },
       throwPlayer(source, dir, dist) { displacePlayer(dir.x * dist, dir.y * dist); },
       spinoFossil(e) { const q = e.worldBeast && game.save.worldBeasts?.[e.worldBeast]?.active; if (q) q.fossil = true; },
       // The Stillworks' cover (pentagon-arena.ts PENTAGON_ARENA.cover, arena version 2): a pillar or standing lattice between the beast
@@ -8011,6 +8047,7 @@ export class Game {
       if (e.adventureCreature) { c.adventureCreature = e.adventureCreature; this.scaleToRegion(c); } // Pentagon v11: an adventure creature (adventure-creatures.ts) takes its region's threat
       if (e.stegoRoom) tuneStegoRoom(c, this.save, characterStats(this.save)); // the Wild Stegosaurus in a big room (wild-stego.ts)
       if (e.spinoRoom) tuneSpinoBeast(c, this.save, characterStats(this.save), { spinoRoom: true }); // the Spinosaurus in a big room (spino-rex.ts)
+      if (e.apatoRoom) tuneApatoRoom(c, this.save, characterStats(this.save)); // the Earth Apatosaurus in a big room (earth-apato.ts)
       if (e.deepLair) this.tuneDeepLair(c, e.deepLair); // a lair of the Deep: the beast as its kin, by floor (the-deep.ts DEEP_SPECIALS.lair)
       if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
       if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
@@ -8036,7 +8073,7 @@ export class Game {
   extraDungeonSpawns() {
     const id = String(this.areaId()), h = dungeonHistory(this.save, id), map = this.map;
     if (map.arena || isArrayRun(id) || id.startsWith("hunt-") || h.resolved || h.combatClear?.completed) return [];
-    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon && !q.stegoRoom && !spinoTuned(q) /* the Wild Stegosaurus in a big room: one, and the extras as they would be without it */);
+    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon && !q.stegoRoom && !q.apatoRoom && !spinoTuned(q) /* the Wild Stegosaurus in a big room: one, and the extras as they would be without it */);
     const n = Math.round(base.length * DUNGEON_BOOST.count), w = mapWidth(map, "dungeon"), out = [], taken = new Set(map.enemySpawns.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`));
     for (let i = 0; i < n * 3 && out.length < n; i++) {
       const k = hashSeed(`${this.save.seed}:dungeon-boost:v1:${id}:${map.levelId || ""}:${i}`), b = base[k % base.length], r = DUNGEON_BOOST.near;
@@ -11515,6 +11552,7 @@ export class Game {
       scale = m > 1 ? 1 / m : 1,
       x = rawX * scale,
       y = rawY * scale;
+    if (this.apatoPin && this.apatoLatchInput(input)) { x = 0; y = 0; } // the Earth Apatosaurus's tree clones coiled round her: rooted, she mashes attack to break free
     if (now < (p.heldUntil || 0) && p.heldFirm) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "utility", "build", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); } // the Spinosaurus's jaws: held fast, nothing to do but wait
     else if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
@@ -11979,6 +12017,8 @@ export class Game {
     this.riderDown(); // the ground under the mount from here: elite trails, ooze pools and root eruptions lie at the mount's feet, as on foot (a hazard skip at the rider's drawn height, fixed 2026-11-04)
     if (!(now < (p.heldUntil || 0))) p.heldFirm = false;
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
+    { const v = tickPoison(this.save, dt, Number(this.save.maxHp) || p.maxHp || 100); if (v.damage > 0 && p.hp > 0) p.hp -= v.damage; if (v.gone && p.hp > 0) this.message = POISON.text.gone; } // the Earth Apatosaurus's root venom (apato-poison.ts)
+    if (this.apatoPin) this.apatoLatchSlip(); // a Rift Step or the Shadow Clone's step out of the clones' coils
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape

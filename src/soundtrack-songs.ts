@@ -657,6 +657,28 @@ export const BOSS_SONGS = {
     dissonance: [5, 6, 10], dark: { shade: .4, sub: .8, shadow: [1], beat: .5, sag: .3, skip: .15 },
     mix: { bed: .85, groove: .9, motion: .6, lead: .8 }, echo: .3, reverb: .5,
   },
+  // The Earth Apatosaurus (Tim, 2026-11-18): G Aeolian, a garden that walks; slow tread of timpani and toms under a horn that calls
+  // across a valley, a dulcimer like seeds scattering, and a long cello line that keeps growing.
+  rootedColossus: {
+    id: "rootedColossus", name: "The Garden That Walks", mood: "vast and patient, a forest on the move",
+    bpm: 58, swing: .04, root: 55, mode: "aeolian", leadOct: 1, pedal: false, boss: true, intensityFloor: .5,
+    pad: "strings", arp: "dulcimer", leads: ["horn", "cello", "horn", "choir"], arpOct: 1,
+    chords: ["1", "6", "1", "4:7", "6", "2", "3", "5"],
+    bass: { calm: [[0, "R", 8], [8, "5", 8]], combat: [[0, "R", 4], [4, "R", 2], [8, "5", 4], [12, "R", 4]] },
+    drums: { calm: { timp: "X.......x......." }, combat: { timp: "X.......X...x...", tom: "....o.......o..." }, drive: { timp: "X...x...X...x.x.", tom: "..o...o...o...o.", frame: "X.......X......." } },
+    arps: { calm: "0...2...1...3...", busy: "0.2.1.3.0.2.1.3." },
+    motifs: {
+      a: [[0, 0, 8], [8, 2, 4], [12, 4, 4], [16, 5, 8], [24, 7, 8]],
+      a2: [[0, 4, 4], [4, 2, 4], [8, 0, 8], [16, 3, 8], [24, 5, 8]],
+      b: [[0, 5, 8], [8, 7, 4], [12, 9, 4], [16, 8, 8], [24, 5, 8]],
+      c: [[0, 4, 8], [8, 6, 4], [12, 2, 4], [16, 1, 16]],
+    },
+    forms: [["a", "a2", "b", "c"]],
+    leadPlan: [1, 1, 1, 0],
+    // Understated: the line comes to rest on the diminished ii, the tread now and then falls a beat late, the low strings sag.
+    dissonance: [5, 6, 10], dark: { shade: .35, sub: .8, shadow: [1], beat: .4, sag: .25, skip: .12 },
+    mix: { bed: .9, groove: .85, motion: .55, lead: .8 }, echo: .35, reverb: .6,
+  },
   // The Questing Beast: C Dorian, the quarry that bays like a pack of hounds and is never caught; leaping string and horn calls
   // over a chord line that climbs step by step and falls back.
   quarryBays: {
@@ -984,6 +1006,8 @@ export const LINER_NOTES = [
     story: "A predator wading the shallows. Low timpani prowl in long dotted strides and a cello stalks under the strings, patient, then not." },
   { id: "bonesHunt", beast: "The Spinosaurus, in bone", title: "The Bones Still Hunt", moment: "The Spinosaurus once its flesh falls away", feel: "urgent", menace: "overt",
     story: "The River Stalker's own tune, stripped to the bone when its flesh falls away. A dry harpsichord and a bell take the line, a hollow choir replaces the strings, and the drums turn to the click of bone on stone." },
+  { id: "rootedColossus", beast: "The Earth Apatosaurus", title: "The Garden That Walks", moment: "The Earth Apatosaurus planting its saplings", feel: "awe", menace: "understated",
+    story: "A forest on the move. The timpani tread slowly as a horn calls across a valley, a dulcimer scatters like seed, and a long cello line keeps growing, patient and a little too sure of itself." },
   { id: "quarryBays", beast: "The Questing Beast", title: "The Quarry That Bays", moment: "The Questing Beast and the endless chase", feel: "urgent", menace: "understated",
     story: "The quarry nobody catches, with the sound of hounds baying inside it. Leaping string and horn calls over chords that climb step by step and fall back to the start, the chase begun again." },
   { id: "eyesBehind", beast: "The Stalker", title: "Eyes Behind the Light", moment: "The Stalker, just past the lamplight", feel: "urgent", menace: "overt",

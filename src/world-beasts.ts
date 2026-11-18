@@ -169,6 +169,19 @@ export const WORLD_BEASTS = {
     slain: "The Spinosaurus crashes down, and lies still, its sail sinking last of all.",
     gone: "The Spinosaurus has hunted you enough, and goes looking for other prey. In time it will hunt somewhere else.",
   },
+  // The Earth Apatosaurus (Tim, 2026-11-18; at the Spinosaurus's and the Wild Stegosaurus's level). Listed last, so it claims only
+  // sections no older beast claimed and every older beast's roll is as it was. It roams the land only (never the sea), rarely, walks
+  // home to the deep woods and is never seen passing. It is also met in big rooms (earth-apato.ts APATO_ROOMS). Its numbers: APATO.
+  earthApato: {
+    kind: "earthApato", name: "The Earth Apatosaurus", chance: .009, /* rarer than the Spinosaurus: the combined roll stays under encounter-pacing's bound */ minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
+    hitsToKill: 60, hpPerLevel: 28, damageShare: .21, speed: 1, attackGap: .28, staggerResistance: .97, rewardMarks: 205, rewardPerLevel: 20,
+    patience: 180, home: "forest", retreatMoves: "walk",
+    flee: "The Earth Apatosaurus lifts its long neck, turns, and plods off toward the deep woods, saplings springing up in its tracks.",
+    homeLine: "The Earth Apatosaurus wades in among the trees until only its neck shows above them, and then not even that.",
+    arrive: "The ground here is new-turned, and young trees stand where none grew yesterday, all leaning the same way. Far above them a head on a long neck turns to look at you. The Earth Apatosaurus is here.",
+    slain: "The Earth Apatosaurus sways, its neck sinking slow as a falling tree, and lies down for good. The sprout on its head closes.",
+    gone: "The Earth Apatosaurus has had enough of you, and walks on to plant somewhere else.",
+  },
 };
 export const WORLD_BEAST_IDS = Object.keys(WORLD_BEASTS);
 // Beasts that keep to a homeland (release 760; Tim, 2026-11-05: "The Doom Chaser should still just remain in the Stillworks. That's
@@ -482,7 +495,7 @@ export function pursuitSpawn(save, id, map, rx, ry, dx, dy) {
 // large creatures shouldn't be trapped on small islands"). Flood the section over the ground the beast can stand on or
 // cross in its retreat (retreatPassable for its retreatMoves). A region is sound when it reaches a section edge (a way
 // out) and holds at least PLACEMENT.minRegion tiles (PLACEMENT.big for the large beasts). Returns { ok: Uint8Array(1024) }.
-export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser", "wildStego", "spinoRex"] };
+export const PLACEMENT = { minRegion: 40, big: 120, bigBeasts: ["mountainTurtle", "morphingBlob", "tremorWorm", "lightningGiant", "astralWorm", "briarStag", "ashenMoth", "crimsonTyrant", "doomChaser", "wildStego", "spinoRex", "earthApato"] };
 export function placementRegions(map, here) {
   const tiles = map?.tiles || [], B = WORLD_BEASTS[here], mode = B?.retreatMoves || "walk", need = PLACEMENT.bigBeasts.includes(here) ? PLACEMENT.big : PLACEMENT.minRegion;
   const pass = (t) => !!t && (beastGround(here, t) || retreatPassable(t, mode)), label = new Int32Array(1024).fill(-1), ok = new Uint8Array(1024);
@@ -553,7 +566,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8, wildStego: 5, spinoRex: 6 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8, wildStego: 5, spinoRex: 6, earthApato: 6 };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
@@ -613,7 +626,7 @@ export function worldBeastFor(save, map, rx, ry) {
 // - only a beast that is free: not holding, hunting or retreating anywhere, and not cooling down after its last hunt (it cannot be
 //   seen in two places, nor walk by just after it died).
 // Which beast, which way and whether one passes are still fixed by the seed, the section and the explored count.
-export const PASSING = { chance: .02, minDepth: 6, speed: 1.7, ready: true, once: true, not: ["wildStego", "spinoRex"] }; // `not`: beasts never seen passing (the Wild Stegosaurus: so every passer an existing journey would see is the one it saw)
+export const PASSING = { chance: .02, minDepth: 6, speed: 1.7, ready: true, once: true, not: ["wildStego", "spinoRex", "earthApato"] }; // `not`: beasts never seen passing (the Wild Stegosaurus: so every passer an existing journey would see is the one it saw)
 export function passingBeastFor(save, map, rx, ry, explored = 0) {
   if (!map || map.settlement || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < PASSING.minDepth) return null;
   if (PASSING.ready && !encounterReady(save) || PASSING.once && ensureBeastGap(save).passed) return null; // sightings (2026-11-11)

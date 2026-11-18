@@ -13,7 +13,8 @@ import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.ts"; // adventure creatures (Tim, 2026-11-11)
 import { onStegoTailSevered } from "./stego-bait.ts";
-import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner } from "./dino-duel.ts"; // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
+import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.ts";
+import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
 import { BLEED, tickCreatureBleed } from "./bleed.ts"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
 import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
@@ -83,6 +84,9 @@ export const BRAINS = {
   restless: { id: "restless", name: "Hungry and restless", preferred: [1.4, 2.6] },
   // The Spinosaurus (SPINO): presses in like a duelist, but hunts its prey first (spinoTick).
   hunter: { id: "hunter", name: "Hunts the hunters", preferred: [1.6, 3] },
+  // The Earth Apatosaurus (earth-apato.ts APATO): keeps you at the length of its neck; its tree clones press close to coil.
+  grazer: { id: "grazer", name: "Keeps you at neck's length", preferred: [2.8, 5.5] },
+  coiler: { id: "coiler", name: "Presses close to coil", preferred: [1, 2] },
   // The Gaunt (duelists.ts): closes in, circles (flipping direction now and then), keeps off its kin, hops to reposition and after it
   // attacks; its own band is DUELISTS.ai[kind].preferred.
   fencer: { id: "fencer", name: "Circles, feints and hops in", preferred: [1.5, 2.6] },
@@ -337,6 +341,7 @@ export const ATTACK_MODULES = {
   spinoGrab: { id: "spinoGrab", name: "Hunter's Grip", range: [0, 8], cooldown: 14, windup: 1.6, active: 4.8, recover: .8, damage: 1, tags: ["grab", "bleed"], text: "A bite mark follows you. Be out from under it when it stops, or it lunges, lifts you in its jaws, chews (you bleed) and throws you down." },
   spinoBoneVolley: { id: "spinoBoneVolley", name: "Bone Volley", range: [3, 12], cooldown: 10, windup: .8, active: 1.6, recover: .7, damage: .55, fossil: true, tags: ["ranged"], text: "Bone only: it flings its bones into the air; they hunt you, and those that miss land and burst on the marked ground." },
   spinoRibSpears: { id: "spinoRibSpears", name: "Rib Spears", range: [0, 4.6], cooldown: 7, windup: .65, active: .7, recover: .7, damage: 1.1, fossil: true, tags: ["melee"], text: "Bone only: its ribs shoot out to either side as spears, then swing in to meet at a point in front of it." },
+  ...APATO_ATTACKS, // the Earth Apatosaurus and its tree clones (earth-apato.ts; every other number is in APATO and APATO_CLONE)
   chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
   // The Gaunt's blades (duelists.ts DUELISTS.attacks holds every number). Melee: under ELEVATION_REACH they never carry between heights.
   ...Object.fromEntries(Object.entries(DUELISTS.attacks).map(([id, A]) => [id, { id, name: A.name, range: [...A.range], cooldown: A.cooldown, windup: A.windup, active: A.active, recover: A.recover, damage: A.damage, los: true, ...(A.jumpable ? { jumpable: true } : {}), tags: ["melee", "blade"], text: A.text }])),
@@ -579,6 +584,23 @@ export const MONSTER_PACK = {
     attacks: ["spinoBite", "spinoClaw", "spinoLeapSlam", "spinoDigFling", "spinoRoar", "spinoTailSwipe", "spinoBodySlam", "spinoGrab", "spinoBoneVolley", "spinoRibSpears"], bossAttacks: [],
     palette: ["#f2a35e", "#c4561a", "#a8481e", "#f6c48e"], render: "spinoRex", tags: ["beast", "elder", "dinosaur", "predator"],
     lore: "A spinosaurus taller than a house, always on its hind legs: light orange mottled and striped with rust, a pale belly, a tall dark-orange sail along its back, a long crocodile snout full of teeth, heavy clawed arms and a heavy tail. It hunts the hunters: the Wild Stegosaurus and the Briar Stag first, anything else it sees, and you. It bites and rakes until you bleed, leaps and ploughs the ground with its jaw, digs and flings the earth, roars until the ground shakes, and grabs you in its jaws. Halve it and its skin falls away, and it fights on as a skeleton of white bone, throwing its bones and thrusting its ribs as spears.",
+  },
+  // The Earth Apatosaurus (Tim, 2026-11-18): a world beast of the land, and of the big rooms of keeps, arcologies and adventure
+  // Pentagons (earth-apato.ts APATO_ROOMS). Its numbers and pose fields: earth-apato.ts APATO.
+  earthApato: {
+    id: "earthApato", name: "The Earth Apatosaurus", epithet: "The Garden That Walks", unique: true,
+    stats: [400, 19, 0], form: { scale: 2.2 }, sizeClass: "huge", movement: "walk", brain: "grazer",
+    attacks: ["apatoNeckSlam", "apatoLash", "apatoHydra", "apatoSeeds", "apatoBeam", "apatoBeamSweep", "apatoSpires", "apatoHands", "apatoLeaves", "apatoStomp", "apatoWrap"], bossAttacks: [],
+    palette: ["#4f8f3a", "#2f5a22", "#7a5634", "#c8ff6a"], render: "earthApato", tags: ["beast", "elder", "dinosaur", "earth", "plant"],
+    lore: "A long-necked sauropod as tall as a tower, its hide moss-green, a bank of brown earth and grass across its back, and a seed sprout on top of its head. Its neck is longer than it looks, and longer still when it wants: it slams it down like a hammer and sends it slithering across the ground like a snake. Roots rise from its back as necks of their own; seeds fly from it and take root; the sprout on its head glows, and its eyes pour out a light that grows those seeds into trees shaped like itself. The ground answers it with spires and with hands that throw stones. It wraps its prey in its neck and fills it with venom.",
+  },
+  // Its tree clones (earth-apato.ts APATO_CLONE): grown from its saplings by its beam; its minions, never an ordinary creature.
+  apatoClone: {
+    id: "apatoClone", prototypeOnly: true, noEcho: true, name: "Tree Clone", epithet: "Grown in the Apatosaurus's Light",
+    stats: [40, 9, 0], form: { scale: 1.3 }, sizeClass: "large", movement: "walk", brain: "coiler",
+    attacks: ["apatoCloneSlam", "apatoCloneTail", "apatoCloneThorn", "apatoCloneCoil"], bossAttacks: [],
+    palette: ["#7a5634", "#4a3220", "#6fbf3a", "#d8ff8a"], render: "apatoClone", tags: ["plant", "minion", "wood"],
+    lore: "A sapling grown in the Earth Apatosaurus's light into a small copy of it, all bark and branch, leaves for a mane. It slams its wooden neck, whips its tail, spits thorns, and coils round whatever it catches.",
   },
   doomChaser: { // release 710
     id: "doomChaser", name: "The Doom Chaser", epithet: "The Dark That Follows", unique: true,
@@ -1036,6 +1058,7 @@ export function resetPackRuntime(enemy) {
   if (enemy.kind === "wildStego") { enemy.stegoPose = null; enemy.stegoAir = 0; enemy.stegoRoll = 0; enemy.stegoTree = null; enemy.stegoClimb = 0; enemy.stegoClimbDir = null; enemy.stegoSwim = 0; } // a move, a hop or a climb never resumes mid-way; its tail, tail wear and plates are kept
   if (enemy.kind === "spinoRex") { enemy.spinoFossil = enemy.spinoFossil === true; Object.assign(enemy, spinoPoseDefaults(), { spinoFossil: enemy.spinoFossil, spinoShed: enemy.spinoFossil ? 1 : 0 }); delete enemy.spinoArriving; } // a move, a grab or the shed never resumes mid-way; once bone, it stays bone
   if (enemy.spinoHeldBy) delete enemy.spinoHeldBy; // a creature in the Spinosaurus's jaws is let go by a reload
+  if (enemy.kind === "earthApato" || enemy.kind === "apatoClone") resetApatoRuntime(enemy); else { if (enemy.apatoHeldBy) delete enemy.apatoHeldBy; } // the Earth Apatosaurus: no move, hazard, coil or latch resumes; its saplings are kept
   if (enemy.stegoHeldBy) delete enemy.stegoHeldBy; if (enemy.kind === "wildStego") enemy.stegoGrab = null; if (enemy.dinoLift || enemy.dinoPitch || enemy.dinoRoll) dinoUnhang(enemy); // so is the Spinosaurus in the stego's (the dino duel)
   enemy.voidDashing = false; enemy.voidCharging = false; enemy.voidTeleport = 0;
   resetBehaviour(enemy); if (enemy.strikeScale) enemy.strikeScale = 1; if (enemy.heavy) enemy.heavy = false; // enemy-behaviour.ts: no token, combo, feint, guard or dodge resumes
@@ -1349,7 +1372,7 @@ export const STEGO = {
   // you). With you within `close` it turns on you instead at `youChance` % of its choices. A blow on the Spinosaurus takes `share` of
   // its health at least, never below `floor` of it (the kill stays yours). It closes to `gap` tiles past both bodies at `speed` of
   // its walk, and holds its own blow while the Spinosaurus's blow at it is coming (`wait`), so the blows alternate.
-  rival: { kinds: ["spinoRex"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .5, speed: .9, wait: true,
+  rival: { kinds: ["spinoRex", "earthApato"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .5, speed: .9, wait: true,
     moves: ["stegoWheel", "stegoTailWhack", "stegoTailSlam", "stegoRearSwipe", "stegoPounce", "stegoBite", "stegoClaw", "stegoTreeClub"], grabs: ["stegoJaws"] },
   // Its duel grab (stegoJaws, on the Spinosaurus only; Tim 2026-11-14: "picking him up by the tail and slamming him"): it lunges
   // `reach` past its body in `bite` s and seizes the tail, then `slams` times heaves it up and round in an arc (`heave` s: `swing`
@@ -1403,12 +1426,12 @@ export const SPINO = {
   // Its prey (Tim: "wildStego and briarStag first"): within `sight` it turns on one, at `chance` % each time it chooses (it chooses again after `refocus` s on its prey, `refocusYou` s on you). A blow on
   // one takes `beastShare` of its health at least; a beast, a boss or a big-room beast is never taken below `floor` of its health by
   // it, so the kill and its bounty stay yours. It moves on its prey at `speed` of its walk.
-  hunt: { kinds: ["wildStego", "briarStag"], sight: 16, chance: 75, refocus: 5, refocusYou: 2, beastShare: .035, floor: .08, speed: .9, moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam"] },
+  hunt: { kinds: ["wildStego", "briarStag", "earthApato"], sight: 16, chance: 75, refocus: 5, refocusYou: 2, beastShare: .035, floor: .08, speed: .9, moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam"] },
   infight: { range: 7, every: 8, chance: 60, share: .8 }, /* one-off jumps and grabs at other creatures it sees; `share` of the victim's health a blow takes */
   // The dino duel (Tim, 2026-11-14): on the Wild Stegosaurus it turns on you instead only at `youChance` % of its choices with you
   // within `close` (else always on the stego, never at `hunt.chance`); it trades blows with `moves` (the bone moves once it is bone)
   // and holds its own blow while the stego's blow at it is coming (`wait`). The Briar Stag keeps `hunt.chance` and `hunt.moves`.
-  duel: { kinds: ["wildStego"], close: 6, youChance: 22, wait: true,
+  duel: { kinds: ["wildStego", "earthApato"], close: 6, youChance: 22, wait: true,
     moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam", "spinoTailSwipe", "spinoRoar", "spinoDigFling", "spinoRibSpears"] },
   arrive: { time: 1.4 }, /* an interloper roars this long as it comes in (game.ts) */
   text: { fossil: "Its flesh splits and falls away! The Spinosaurus fights on as bare bone.", grabbed: "Its jaws close on you! You are lifted off your feet." },
@@ -1461,7 +1484,7 @@ export const BOSS_POISE = {
   questingBeast: { hits: [10, 15, 22], guard: 9, breakTime: 2.2 },
   forget: 6,
 };
-export const bossPoiseOf = (e) => e.kind !== "psychicCrystal" && (e.worldBeast || e.questingBeast || e.mireHeart || e.stegoRoom || spinoTuned(e)) ? BOSS_POISE[e.kind] || BOSS_POISE.default : null;
+export const bossPoiseOf = (e) => e.kind !== "psychicCrystal" && (e.worldBeast || e.questingBeast || e.mireHeart || e.stegoRoom || e.apatoRoom || spinoTuned(e)) ? BOSS_POISE[e.kind] || BOSS_POISE.default : null;
 export const CRYSTAL = {
   pushRadius: 4.5, pushForce: 9, pushBite: .7,
   pullRadius: 9.5, pullForce: 3.6, pullReach: 1.2,
@@ -1735,7 +1758,7 @@ function beginAttack(e, s, id, w, prey = null) {
 function duelReachPoint(e, q) { const d = distance(q, e), k = d > 1e-6 ? Math.min(DINO_DUEL.spacing.reach, d) / d : 0; return { x: q.x + (e.x - q.x) * k, y: q.y + (e.y - q.y) * k }; }
 // The dino duel's sounds (battle-sfx.ts, Tim 2026-11-14): a cue to the game's sound hook (w.dinoSfx) for what the Spinosaurus or
 // the Wild Stegosaurus does: a wind-up, a swing, a roar, a landing, a blow that lands on the other. Sound only: it changes nothing.
-const DINO_SFX_KINDS = ["spinoRex", "wildStego"];
+const DINO_SFX_KINDS = DUEL_KINDS;
 function dinoCue(w, e, phase, move, at = e, extra = null) {
   if (!DINO_SFX_KINDS.includes(e?.kind)) return;
   const duel = !!duelOf(e), x = Number(at.x) || 0, y = Number(at.y) || 0;
@@ -1744,8 +1767,8 @@ function dinoCue(w, e, phase, move, at = e, extra = null) {
 }
 // The duel's big moves (DINO_DUEL.shake, DINO_DUEL.rockfall): the screen shakes (capped, at most once each `gap` s from either
 // duellist; none under Reduced Motion: spino-rex.ts shakeOffset), and under a ceiling (w.indoors) rocks fall around a slam.
-const DINO_SHAKE = { land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock" };
-const DINO_SLAMS = new Set(["stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel"]);
+const DINO_SHAKE = { land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock", apatoNeckSlam: "slam", apatoStomp: "big", apatoWrapThrow: "slam", apatoSpireStamp: "land", apatoBeam: "roar", apatoBeamSweep: "roar" };
+const DINO_SLAMS = new Set(["stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel", "apatoNeckSlam", "apatoStomp", "apatoWrapThrow"]);
 function dinoBigMove(w, e, phase, move, x, y) {
   const S = DINO_DUEL.shake, d = duelOf(e), kind = phase === "land" ? DINO_SHAKE[move] || "land" : (phase === "roar" || phase === "rock") ? DINO_SHAKE[move] : phase === "hit" && move === "stegoWheel" ? "wheel" : null;
   const now = (Number(w.now) || 0) / 1000;
@@ -1761,7 +1784,7 @@ function dinoBigMove(w, e, phase, move, x, y) {
   }
 }
 // The other duellist: the Spinosaurus to the Wild Stegosaurus, and the stego to it.
-const dinoRivals = (a, b) => !!a && !!b && a !== b && ((a.kind === "spinoRex" && b.kind === "wildStego") || (a.kind === "wildStego" && b.kind === "spinoRex"));
+const dinoRivals = (a, b) => duelPair(a, b); // dino-duel.ts DINO_DUEL.pairs (the Earth Apatosaurus duels each of the two)
 function endAttack(e, s) {
   const attack = ATTACK_MODULES[s.attack];
   s.state = "move"; s.attack = null; s.phase = null; s.tele = null; s.data = null;
@@ -1771,6 +1794,7 @@ function endAttack(e, s) {
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
   if (e.kind === "wildStego") { e.stegoPose = null; e.stegoAir = 0; e.stegoRoll = 0; e.stegoTree = null; e.stegoGrab = null; } // its water, tail, plates and climb are its own state, not the move's
   if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
+  if (e.kind === "earthApato" || e.kind === "apatoClone") { e.apatoPose = null; e.apatoNeckReach = 0; if (e.apatoLash) e.apatoLash.on = false; if (e.apatoBeam) e.apatoBeam.on = false; if (e.apatoWrap) e.apatoWrap.on = false; s.windupTotal = 0; } // whatever it holds is let go on its next frame (apatoTick)
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 // The awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE; Tim 2026-11-14: "if they get frozen, the attack gets
@@ -1784,6 +1808,7 @@ export function cancelPackAttack(e) {
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
+  ...APATO_START, // the Earth Apatosaurus (earth-apato.ts)
   giantArcs(e, s) { s.tele = { type: "ring", radius: GIANT.arcRange }; e.giantPose = "arcs"; }, // release 397: the arcs' reach, shown while it crackles
   giantShock(e, s) { const p = s.data.target; s.tele = { type: "circle", x: p.x, y: p.y, radius: GIANT.shockRadius }; e.giantPose = "point"; },
   giantSwing(e, s) { s.tele = { type: "arc", aim: s.data.aim, radius: bodyRadius(e) + GIANT.swingReach, arc: GIANT.swingArc }; e.giantPose = "swingReady"; },
@@ -2146,6 +2171,7 @@ function gloomShadeTick(e, w) {
   return false;
 }
 const RUN = {
+  ...APATO_RUN, // the Earth Apatosaurus (earth-apato.ts)
   dragonStrafe(e, s, w) {
     const A = ATTACK_MODULES.dragonStrafe, d = s.data, D = DRAGON.strafe;
     if (s.phase === "windup") { e.dragonAir = Math.min(D.height, (e.dragonAir || 0) + w.dt * 3); if (s.t <= 0) { s.tele = null; e.dragonPose = "fly"; d.drop = 0; d.room = rayLength(w, e, d.aim, d.len); toPhase(s, "active", A.active); } return; }
@@ -4263,6 +4289,7 @@ function attackReady(e, s, w, id, d) {
   if (attack.scheduled) return false; // release 709: only its own clock starts it
   if (e.kind === "wildStego" && !stegoCan(e, s, w, id)) return false; // STEGO: water, plates, the buck rule, the rare tree
   if (e.kind === "spinoRex" && !spinoCan(e, s, w, id)) return false; // SPINO: bone-only moves, the tail behind it
+  if ((e.kind === "earthApato" || e.kind === "apatoClone") && !apatoCan(e, s, w, id)) return false; // APATO: the caps, the beams' saplings, the coil
   if (attack.hurtBelow && !((Number(e.hp) || 0) < (Number(e.maxHp) || 0) * attack.hurtBelow)) return false; // release 708: a heal only once it is hurt
   if (e.kind === "tremorWorm" && attack.posture === "full" && Number.isFinite(s.worm?.fullAt) && (w.now - s.worm.fullAt) / 1000 < WORM.fullGap) return false; // release 664: it comes all the way out only now and then
   if (id === "mirrorSwap" && !w.enemies.some((q) => !q.dead && q.illusion && q.summonedBy === e.id)) return false;
@@ -4724,7 +4751,7 @@ function stegoRivalStep(e, s, w, rival) {
   const R = STEGO.rival, fd = distance(rival, e);
   if (s.gap <= 0 && !(R.wait && dinoBlowComing(rival, e))) {
     // its own moves, its duel grab (R.grabs: the duel's alone), and the tree club where a club tree stands near
-    const ready = [...R.moves, ...R.grabs].filter((id) => { const A = ATTACK_MODULES[id]; return ((e.packAttacks || []).includes(id) || R.grabs.includes(id)) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + DINO_DUEL.spacing.reach && (id !== "stegoTreeClub" || (!e.stegoSwim && !!clubTreeNear(w, e.x, e.y))) && (id !== "stegoJaws" || !rival.spinoHeldBy); });
+    const ready = [...R.moves, ...R.grabs].filter((id) => { const A = ATTACK_MODULES[id]; return ((e.packAttacks || []).includes(id) || R.grabs.includes(id)) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + DINO_DUEL.spacing.reach && (id !== "stegoTreeClub" || (!e.stegoSwim && !!clubTreeNear(w, e.x, e.y))) && (id !== "stegoJaws" || (!rival.spinoHeldBy && rival.kind === "spinoRex")); }); // its tail heave is for the Spinosaurus only
     if (ready.length) { const id = ready[hashSeed(`${e.id}:rival-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, rival); return true; }
   }
   const want = bodyRadius(e) + bodyRadius(rival) + R.gap + DINO_DUEL.spacing.gap, v = unit(rival.x - e.x, rival.y - e.y), step = .82 * R.speed * (e.speedMultiplier || 1) * w.dt;
@@ -4732,7 +4759,7 @@ function stegoRivalStep(e, s, w, rival) {
   return true;
 }
 // What it will turn on besides you: ordinary creatures and wildlife, never a boss, a beast, a guardian, an elite or anything hidden.
-export const stegoPrey = (q, e) => !!q && q !== e && !q.dead && q.kind !== "npc" && q.kind !== e?.kind && !q.boss && !q.worldBeast && !q.questingBeast && !q.stalker && !q.gatePredator && !q.dungeonRole && !q.eliteId && !q.elite && !q.passingBeast && !q.retreating && !q.untargetable && !q.hidden && !q.illusion && !q.astralCompanionOf && !q.stegoRoom && !q.pentBoss && !q.buildingGuardian && !q.farArrayBoss && !q.mothChrysalis && !q.fleeTo && q.kind !== "spinoRex";
+export const stegoPrey = (q, e) => !!q && q !== e && !q.dead && q.kind !== "npc" && q.kind !== e?.kind && !q.boss && !q.worldBeast && !q.questingBeast && !q.stalker && !q.gatePredator && !q.dungeonRole && !q.eliteId && !q.elite && !q.passingBeast && !q.retreating && !q.untargetable && !q.hidden && !q.illusion && !q.astralCompanionOf && !q.stegoRoom && !q.pentBoss && !q.buildingGuardian && !q.farArrayBoss && !q.mothChrysalis && !q.fleeTo && q.kind !== "spinoRex" && q.kind !== "earthApato" && !q.apatoRoom && !q.apatoCloneOf && !q.apatoHeldBy;
 function stegoPreyNear(e, w) { let best = null, bd = STEGO.infight.range + bodyRadius(e); for (const q of w.enemies || []) { if (!stegoPrey(q, e)) continue; const dd = distance(q, e); if (dd < bd) { bd = dd; best = q; } } return best; }
 // A blow counts on the tail when you stand in the arc behind it, past its hips; anywhere else it is a body blow.
 export function stegoTailHit(e, at) { const back = stegoBack(e), along = (at.x - e.x) * back.x + (at.y - e.y) * back.y; return along >= bodyRadius(e) * STEGO.tail.hips && inArc(e, at, back, Infinity, STEGO.tail.arc); }
@@ -4873,7 +4900,7 @@ function inTriangle(p, a, b, c) { const s1 = (b.x - a.x) * (p.y - a.y) - (b.y - 
 const spinoPreyAlive = (w, id) => stegoPreyAlive(w, id);
 const spinoQuarry = (s, w) => stegoQuarry(s, w);
 function spinoFxCount(w, owner, kind) { let n = 0; for (const f of voidEffects(w)) if (f.kind === kind && f.owner === owner && (f.life > 0 || f.arming > 0)) n++; return n; }
-const spinoBig = (q) => !!(q.boss || q.worldBeast || q.questingBeast || q.stegoRoom || spinoTuned(q) || SPINO.hunt.kinds.includes(q.kind));
+const spinoBig = (q) => !!(q.boss || q.worldBeast || q.questingBeast || q.stegoRoom || q.apatoRoom || spinoTuned(q) || SPINO.hunt.kinds.includes(q.kind));
 // A wound on a creature. A beast (or a boss, or a big-room beast) is never taken below SPINO.hunt.floor of its health by it.
 function spinoWound(w, source, q, amount, weight = 1) {
   if (!q || q.dead || !(amount > 0)) return false;
@@ -4946,7 +4973,7 @@ function spinoTick(e, s, w, p, d) {
     const fd = distance(focus, e);
     const duel = S.duel.kinds.includes(focus.kind);
     if (s.gap <= 0 && !(duel && S.duel.wait && dinoBlowComing(focus, e))) {
-      const moves = duel ? S.duel.moves.filter((id) => e.spinoFossil || !S.fossilOnly.includes(id)) : S.hunt.moves;
+      const moves = duel ? S.duel.moves.filter((id) => (e.spinoFossil || !S.fossilOnly.includes(id)) && (id !== "spinoGrab" || focus.kind !== "earthApato")) : S.hunt.moves.filter((id) => id !== "spinoGrab" || focus.kind !== "earthApato"); // its belly lift is for the stego only
       const ready = moves.filter((id) => { const A = ATTACK_MODULES[id]; return (e.packAttacks || []).includes(id) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + (duel ? DINO_DUEL.spacing.reach : 0); });
       if (ready.length) { const id = ready[hashSeed(`${e.id}:prey-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, focus); return true; }
     }
@@ -4971,10 +4998,13 @@ export function updatePackMonster(e, w) {
   if (e.pack && w.dt > 0) { if (w.bossPace && bossPaced(e)) e.pack.paced = true; else delete e.pack.paced; } // release 421 (a paused frame changes nothing)
   if (e.kind === "astralWorm" || e.kind === "astralMirage") { if (w.dt > 0) updateAstralActor(e, w); return; }
   if (e.kind === "voidWalker" && !(w.dt > 0)) return;
-  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); if (e.kind === "spinoRex" && e.pack) spinoLetGo(e, e.pack, w); if (e.kind === "wildStego" && e.pack) stegoLetGo(e, e.pack, w); return; }
+  if (e.dead) { if (e.kind === "voidWalker") { voidClear(e, w); if (e.pack?.attack) endAttack(e, e.pack); } if (e.gloomDark) gloomDarkEnd(e, w, false); if (e.kind === "spinoRex" && e.pack) spinoLetGo(e, e.pack, w); if (e.kind === "wildStego" && e.pack) stegoLetGo(e, e.pack, w); if (e.kind === "earthApato") { if (e.pack) apatoLetGo(e, e.pack, w); apatoFx(e, w); } return; }
   if (e.spinoHeldBy && spinoHolds(e, w)) return; // in the Spinosaurus's jaws: it does nothing until let go
   if (e.stegoHeldBy && stegoHolds(e, w)) { if (e.pack?.attack) endAttack(e, e.pack); return; } // the dino duel: the Spinosaurus in the stego's jaws, shaken
+  if ((e.apatoHeldBy || e.apatoDazed > 0 || e.apatoVenom > 0) && w.dt > 0 && apatoAfflicted(e, e.pack, w)) return; // the dino duel: coiled in the Earth Apatosaurus's neck, or dazed by its venom (earth-apato.ts)
   const s = e.pack && e.pack.v === MONSTER_PACK_VERSION ? e.pack : (e.pack = freshPackState()), dt = w.dt;
+  if (e.kind === "earthApato") apatoFx(e, w); // its seeds, roots, hands, rocks, spires, leaves and waves (bounded pools on itself)
+  if (e.kind === "apatoClone" && dt > 0 && apatoCloneTick(e, s, w)) return; // a tree clone: its life, its maker, its coil
   if (e.kind === "wildStego" && e.spinoBleed > 0) { const n = tickCreatureBleed(e, dt); if (n > 0) spinoWound(w, null, e, n); if (e.dead) return; } // the Spinosaurus's bleed runs its minute (BLEED)
   if (!s.orbitDir) s.orbitDir = hashSeed(`${e.id}:orbit`) % 2 ? 1 : -1;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.scattered = Math.max(0, (Number(e.scattered) || 0) - dt); // release 249: a scatter is brief
@@ -5009,12 +5039,14 @@ export function updatePackMonster(e, w) {
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
+  if (e.kind === "earthApato" && !e.aggro && apatoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus or the Wild Stegosaurus in sight
   // enemy-behaviour.ts (Tim, 2026-11-14): ordinary creatures, when the game hands a squad board: arrival, blows, calls, the alert beat.
   if (B) { w.squad.w = w; w.squad.disp = null; if (behaviourGate(e, b, B, w.squad, packDrop)) return; }
   if (!e.aggro) {
     if (def.adventureKin && advIdle(e, s, w)) return; // adventure-creatures.ts: a loop, a burial, a perch
     if (hunting && e.kind === "voidWalker") { w.walkerPatrol?.(e, s); return; }
     if (e.kind === "wildStego" && stegoIdle(e, s, w)) return; // it grazes
+    if (e.kind === "earthApato" && apatoIdle(e, s, w)) return; // it grazes
     if (roaming) { patrolDungeon(e, s, w); return; }
     s.wander = ((s.wander ?? (hashSeed(e.id) % 628) / 100) + dt / 2.4) % TAU;
     if (!brain?.hiddenUntilAggro) w.move(e, Math.cos(s.wander) * .28 * dt, Math.sin(s.wander * .8) * .28 * dt, { phase: false });
@@ -5025,6 +5057,7 @@ export function updatePackMonster(e, w) {
   if (def.adventureKin && advTick(e, s, w, p, d)) return;
   if (e.kind === "wildStego" && stegoTick(e, s, w, p, d)) return; // STEGO: its tail, water, climbing, hops, buck and infighting
   if (e.kind === "spinoRex" && spinoTick(e, s, w, p, d)) return; // SPINO: the fossil shed, its prey first, one-off jumps and grabs
+  if (e.kind === "earthApato" && apatoTick(e, s, w, p, d)) return; // APATO: its turn, its hold, its duel
   if (def.duelistKin && duelHopStep(e, s, w)) return; // the Gaunt: a hop in flight always lands
   if (B && behaviourReact(e, b, B, w.squad, d, !!s.attack && s.phase !== "recover", !!s.attack && s.phase === "recover", packDrop)) return; // a stagger, a flinch's jolt, a sidestep, a backstep, a guard, the retreat
   if (e.hitStun > 0 && s.state === "move") return;
@@ -5066,7 +5099,7 @@ export function updatePackMonster(e, w) {
   const hold = def.adventureKin && advHold(e), moved = hold || w.move(e, v.x / m * speed, v.y / m * speed, { phase: !!move.phases });
   s.moveFailed = !moved; if (!moved && !move.phases) w.detour?.(e, speed);
   if (def.duelistKin) s.duelStuck = moved ? 0 : (s.duelStuck || 0) + dt; // the Gaunt: walled in on foot for a while, it hops (duelTick)
-  e.facingX = e.kind === "wildStego" ? (stegoHeading(e).x >= 0 ? 1 : -1) : e.kind === "spinoRex" ? (spinoHeading(e).x >= 0 ? 1 : -1) : (p.x - e.x) >= 0 ? 1 : -1;
+  e.facingX = e.kind === "wildStego" ? (stegoHeading(e).x >= 0 ? 1 : -1) : e.kind === "spinoRex" ? (spinoHeading(e).x >= 0 ? 1 : -1) : e.kind === "earthApato" && e.apatoHeading ? (e.apatoHeading.x >= 0 ? 1 : -1) : (p.x - e.x) >= 0 ? 1 : -1;
   if (s.gap > 0) return;
   if (hunting && (e.inRock || !w.los(e, w.player))) return; // move toward the player first; never begin a grab/sky attack from an unseen room (release 437: nor from inside rock; it comes out to you first)
   if (B) { packTokenAttack(e, s, w, B, b, d); return; } // enemy-behaviour.ts: the attack tokens, and the shape of the blow
@@ -5258,7 +5291,7 @@ export const STAGGER_GOVERNOR = { limit: { revenant: .6, boss: .9, elite: 1.3, o
 export const WINDUP_STAGGER = { max: .35 };
 // Call while hit-stunned during a windup; `held` is the attack's own record. True while the windup may still be held.
 export function windupHeld(e, held, dt) { held.windupStagger = (held.windupStagger || 0) + dt; if (held.windupStagger < WINDUP_STAGGER.max) return true; e.hitStun = 0; return false; }
-export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.stegoRoom || e?.spinoRoom || e?.spinoInterloper || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
+export function staggerClass(e) { return e?.gatePredator ? "revenant" : e?.boss || e?.marginWarden /* release 459 */ || e?.fracWarden /* release 666 */ || e?.worldBeast || e?.stegoRoom || e?.apatoRoom || e?.spinoRoom || e?.spinoInterloper || e?.questingBeast || e?.farArrayBoss || ["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss"].includes(e?.dungeonRole) ? "boss" : e?.eliteId || e?.elite ? "elite" : null; }
 // Call after the frame's hit-stun countdown. Returns true while the foe is guarded (it shrugs stuns off).
 export function staggerGovernor(e, dt) {
   const k = staggerClass(e) || "ordinary"; // release 561: ordinary creatures cannot be stun-locked either
@@ -5838,3 +5871,7 @@ export function updateAstralWalkerAllyFixture(ally, target, world) {
   ally.untargetable=false;
   if(target.hp<=0){ally.astralAllyEffects=[];ally.dead=true;ally.hp=0;}
 }
+
+// The Earth Apatosaurus's module (earth-apato.ts) shares these helpers (handed over once, so it never imports this module).
+installApatoKit({ bodyRadius, damageOf, toPhase, endAttack, beginAttack, rayLength, inArc, duelReachPoint, cue: dinoCue, setDown: dinoSetDown, feeds: dinoFeeds, duelWinner, blowComing: dinoBlowComing,
+  woundRival: (w, source, q, amount, weight = 1) => stegoWoundRival(w, source, q, amount, weight), duelReach: DINO_DUEL.spacing.reach, duelGap: DINO_DUEL.spacing.gap, duelSlack: DINO_DUEL.spacing.slack });
