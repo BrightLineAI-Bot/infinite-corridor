@@ -76,9 +76,14 @@ export const APERTURE_SKILLS={
  'quickening':{id:'quickening',name:'Quickening',branch:'Motion',threshold:6,maxRank:3,cooldown:14,duration:6,description:'Move faster and lengthen the ordinary leap.'},
  'veil-guard':{id:'veil-guard',name:'Veil Guard',branch:'Veil',threshold:18,maxRank:3,cooldown:20,duration:6,description:'Harden a veil that reduces incoming damage.'},
  'force-channel':{id:'force-channel',name:'Force Channel',branch:'Force',threshold:18,maxRank:3,cooldown:16,duration:6,description:'Empower weapons, projectiles, and spell pulses.'},
- 'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,description:'Briefly cross water, canyons, and pits without granting true flight.'},
+ // Aerial Step (Tim, 2026-11-15): `charges` it holds (each recharges on `cooldown`; Quickening's secondary form, Quickened Stride,
+ // adds constellation.ts ALT_PASSIVES.quickening.charges), `airCasts` at most between touches of the ground (game.ts AERIAL hold).
+ 'aerial-step':{id:'aerial-step',name:'Aerial Step',branch:'Motion',threshold:36,maxRank:1,cooldown:22,duration:3.5,charges:1,airCasts:2,description:'Walk on air at the height you cast it: step off a branch, ledge or cliff and stay level, jump and land back on it, or cast it falling to stop the fall. It never lifts you; when it ends you fall from there. Twice at most before your feet touch ground.'},
  'rift-step':{id:'rift-step',name:'Rift Step',branch:'Rift',threshold:18,maxRank:3,cooldown:9,duration:0,description:'Blink 3 tiles (+1 per rank) the way you are moving, never up a ledge or into a hazard.'},
 };
+// Aerial Step's saved charge count (magicSkills.aerialCharges, additive at schema 14): a whole number from 0 to its most (its own
+// charges and Quickened Stride's one, constellation.ts ALT_PASSIVES.quickening), or absent (read as full: constellation.ts aerialChargesNow).
+export function normalizeAerialCharges(ms){if(!ms||typeof ms!=='object'||!('aerialCharges' in ms))return ms;const n=Number(ms.aerialCharges);if(ms.aerialCharges==null||!Number.isFinite(n))delete ms.aerialCharges;else ms.aerialCharges=Math.max(0,Math.min(APERTURE_SKILLS['aerial-step'].charges+1,Math.floor(n)));return ms}
 // Aperture bands. The first four are the original manifestations; from release 136 Aperture keeps going: each further
 // band needs about half as much again plus 20, so the gaps widen (72, 124, 200, 310, 470, 702, 1038, 1525, 2231, ...).
 // Bands past Resonant grant Resonance (see game.ts characterStats) and harden Aperture encounters (world.ts).
