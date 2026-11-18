@@ -63,7 +63,7 @@ test('the death static itself is unchanged, and the edge is that same static, re
     let redder = 0, n = 0; for (let i = 0; i < f.data.length; i += 4) if (f.data[i + 3] > 0) { n++; if (f.data[i] > f.data[i + 1] * 5) redder++; } assert.equal(redder, n, 'red');
   }
   const lit = (step: number) => { const fr: any = lowHealthEdgeFrames(mk().make, 'low', 1.4, step)[0]; let k = 0; for (let i = 3; i < fr.data.length; i += 4) if (fr.data[i] > 0) k++; return k / (fr.data.length / 4); };
-  const thin = lit(0), deep = lit(L.steps); assert.ok(thin > .03 && thin < .3, `a thin band at the threshold (${thin.toFixed(2)})`); assert.ok(deep > thin * 2.5, `deeper near death (${deep.toFixed(2)})`);
+  const thin = lit(0), deep = lit(L.steps); assert.ok(thin > .03 && thin < .4, `a thin band at the threshold (${thin.toFixed(2)})`); assert.ok(deep > thin * 1.3, `deeper near death (Tim 2026-11-18: the band starts near the Oculus button's edge, so it grows less) (${deep.toFixed(2)})`);
 });
 
 test('a frame of it is one drawImage with no per-pixel work', () => {
