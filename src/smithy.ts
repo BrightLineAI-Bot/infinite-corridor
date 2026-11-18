@@ -9,7 +9,7 @@
 // - Masterwork: one rank past the tier's upgrade cap (item.masterwork, once per item; items.ts itemCap).
 // The item fields are additive and kept by normalizeItemUpgrade. Pure rules: no DOM.
 import { hashSeed, rng } from "./random.ts";
-import { AFFIX_POOLS, rollAffixValue, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.ts";
+import { AFFIX_POOLS, rollAffixValue, affixRange, itemTier, ITEM_TIERS, normalizeItemUpgrade } from "./items.ts";
 import { normalizeSockets, socketCount, GLYPHS } from "./glyphs.ts";
 
 export const SMITHY = {
@@ -19,6 +19,56 @@ export const SMITHY = {
   socket: { iron: 4, lumenDust: 6 },
   masterwork: { iron: 12, marks: 120 },
 };
+// Salvage yield (Tim, 2026-11-18: lumen dust could not be earned from salvage). The Wayfarer chooses, at Sela's forge or the
+// town smith, what salvage pays: cinder iron (the default, as before) or lumen dust. The choice applies to every salvage, by
+// hand, by the smith and a full pack's automatic one. In lumen dust a piece pays `lumenPerIron` of the cinder iron it would
+// have paid (SMITHY.salvage.iron by tier: a relic .8, a common .2), the fraction carried in save.salvageYield.carry until a
+// whole dust gathers, so nothing is lost to rounding. At .2 (the smelting rate: SMELT.cost 5 iron to a sphere) a relic
+// salvage is worth under one dust, against 1-3 from a tall-tower cache, a dig or a canyon find and 2 for severing a relay:
+// steady but not dominant, and it costs all of that salvage's iron (the tool rounds' supply). Glyph dust, glyphs and the
+// smith's sphere chance are paid either way. save.salvageYield = { mode, carry } is additive at schema 14 (ensureSalvageYield,
+// called by freshSave and migrateSave); unknown fields on it are kept.
+export const SALVAGE_YIELD = Object.freeze({ modes: Object.freeze(["cinderIron", "lumenDust"]), fallback: "cinderIron", lumenPerIron: .2, labels: Object.freeze({ cinderIron: "Cinder iron", lumenDust: "Lumen dust" }) });
+const HUNDREDTHS = 100;
+export function ensureSalvageYield(save) {
+  const raw = save.salvageYield && typeof save.salvageYield === "object" && !Array.isArray(save.salvageYield) ? save.salvageYield : {};
+  const mode = SALVAGE_YIELD.modes.includes(raw.mode) ? raw.mode : SALVAGE_YIELD.fallback, c = Number(raw.carry);
+  if (raw === save.salvageYield && raw.mode === mode && (raw.carry === 0 || (Number.isFinite(c) && c > 0 && c < 1 && Math.round(c * HUNDREDTHS) / HUNDREDTHS === c))) return raw; // already sound: no new object
+  save.salvageYield = { ...raw, mode, carry: Number.isFinite(c) && c > 0 && c < 1 ? Math.round(c * HUNDREDTHS) / HUNDREDTHS : 0 };
+  return save.salvageYield;
+}
+export const salvageYieldMode = (save) => ensureSalvageYield(save).mode;
+export function setSalvageYield(save, mode) {
+  if (!SALVAGE_YIELD.modes.includes(mode)) return { ok: false, message: "Salvage cannot yield that." };
+  ensureSalvageYield(save).mode = mode;
+  return { ok: true, message: mode === "lumenDust" ? `Salvage now yields lumen dust: ${Math.round(SALVAGE_YIELD.lumenPerIron * 5 * 100) / 100} for every 5 cinder iron it would have paid, gathered as it adds up. Tool rounds still need cinder iron.` : "Salvage now yields cinder iron." };
+}
+// The lumen dust `iron` worth of salvage would pay now, and the carry it would leave (pure: nothing is changed).
+function lumenFor(save, iron) {
+  const units = Math.round(ensureSalvageYield(save).carry * HUNDREDTHS) + Math.round(Math.max(0, Number(iron) || 0) * SALVAGE_YIELD.lumenPerIron * HUNDREDTHS);
+  return { whole: Math.floor(units / HUNDREDTHS), carry: (units % HUNDREDTHS) / HUNDREDTHS };
+}
+// Pays one salvage worth `iron` cinder iron in the chosen yield. Returns { iron, lumenDust } actually paid.
+export function paySalvage(save, iron) {
+  save.materials ||= {};
+  const n = Math.max(0, Number(iron) || 0);
+  if (salvageYieldMode(save) !== "lumenDust") { save.materials.cinderIron = (Number(save.materials.cinderIron) || 0) + n; return { iron: n, lumenDust: 0 }; }
+  const { whole, carry } = lumenFor(save, n);
+  save.salvageYield.carry = carry; save.materials.lumenDust = (Number(save.materials.lumenDust) || 0) + whole;
+  return { iron: 0, lumenDust: whole };
+}
+// What salvaging pieces worth `iron` cinder iron (in total) would pay, as words for a button: "4 iron" or "0.8 lumen dust".
+export function salvageYieldText(save, iron) {
+  const n = Math.max(0, Number(iron) || 0);
+  if (salvageYieldMode(save) !== "lumenDust") return `${n} iron`;
+  return `${Math.round(n * SALVAGE_YIELD.lumenPerIron * HUNDREDTHS) / HUNDREDTHS} lumen dust`;
+}
+// A paid salvage as words: "4 cinder iron", "1 lumen dust" or "no whole lumen dust yet (0.4 gathered)".
+export function salvagePaidText(save, paid) {
+  if (paid?.lumenDust > 0) return `${paid.lumenDust} lumen dust`;
+  if (salvageYieldMode(save) === "lumenDust") return `no whole lumen dust yet (${ensureSalvageYield(save).carry} gathered)`;
+  return `${paid?.iron || 0} cinder iron`;
+}
 const listeners = (save) => Math.max(0, Math.floor(Number(save?.farArray?.listeners) || 0));
 export const smithOpen = (save, service) => listeners(save) >= SMITHY.unlock[service];
 const lockedWhy = (service) => `The smith takes on ${service} work once ${SMITHY.unlock[service]} Listener${SMITHY.unlock[service] === 1 ? " has" : "s have"} fallen.`;
@@ -32,9 +82,9 @@ export function salvageItem(save, index) {
   if (!smithOpen(save, "salvage")) return { ok: false, message: lockedWhy("salvage") };
   const item = save.inventory?.[index]; if (!item) return { ok: false, message: "Nothing there to salvage." };
   const tier = itemTier(item), iron = SMITHY.salvage.iron[tier] || 1, sphere = (hashSeed(`${save.seed}:salvage:${item.id}`) % 1000) / 1000 < SMITHY.salvage.sphereChance ? (item.slot === "armor" || item.slot === "charm" ? "armorSphere" : "weaponSphere") : null;
-  returnGlyphs(save, item); save.inventory.splice(index, 1); save.materials.cinderIron = (Number(save.materials.cinderIron) || 0) + iron;
+  returnGlyphs(save, item); save.inventory.splice(index, 1); const paid = paySalvage(save, iron); // 2026-11-18: in the chosen yield (SALVAGE_YIELD)
   if (sphere) save.materials[sphere] = (Number(save.materials[sphere]) || 0) + 1;
-  return { ok: true, iron, sphere, message: `The smith breaks down ${item.name}: ${iron} cinder iron${sphere ? ` and ${sphere === "armorSphere" ? "an armor" : "a weapon"} sphere` : ""}.` };
+  return { ok: true, iron: paid.iron, lumenDust: paid.lumenDust, sphere, message: `The smith breaks down ${item.name}: ${salvagePaidText(save, paid)}${sphere ? ` and ${sphere === "armorSphere" ? "an armor" : "a weapon"} sphere` : ""}.` };
 }
 export function reforgeAffix(save, slot, index) {
   if (!smithOpen(save, "reforge")) return { ok: false, message: lockedWhy("reforge") };
@@ -46,6 +96,17 @@ export function reforgeAffix(save, slot, index) {
   const choices = pool.filter((id) => !others.includes(id)), id = choices.length ? choices[Math.floor(r() * choices.length) % choices.length] : list[index].id, before = list[index];
   list[index] = { id, value: rollAffixValue(r, id, Math.max(1, ITEM_TIERS.indexOf(itemTier(item)))) };
   return { ok: true, before, after: list[index], message: `The smith reforges ${item.name}: ${before.id} ${before.value} becomes ${id} ${list[index].value}.` };
+}
+// What reforging affix `index` of the slot's piece can give (2026-11-18: the smith shows it before you pay): each affix kind
+// the roll may pick (its slot's pool less the kinds the piece's other affixes hold, as reforgeAffix picks) with the lowest and
+// highest value for the piece's tier. The roll itself stays hidden until paid: it is seeded by the piece and its reforge count,
+// so showing it would let the next roll be read and steered.
+export function reforgeChoices(save, slot, index) {
+  const item = save?.equipment?.[slot], list = Array.isArray(item?.affixes) ? item.affixes : [];
+  if (!item || !list[index]) return null;
+  const pool = AFFIX_POOLS[item.slot] || ["attack"], others = list.filter((_, i) => i !== index).map((a) => a.id), tier = Math.max(1, ITEM_TIERS.indexOf(itemTier(item)));
+  const ids = pool.filter((id) => !others.includes(id));
+  return { current: list[index], choices: (ids.length ? ids : [list[index].id]).map((id) => ({ id, ...affixRange(id, tier) })) };
 }
 export function addSocket(save, slot) {
   if (!smithOpen(save, "socket")) return { ok: false, message: lockedWhy("socket") };

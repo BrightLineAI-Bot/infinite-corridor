@@ -1150,3 +1150,8 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 .utility-slot button.utility .slot-sym { font-size: 17px; line-height: 1; pointer-events: none; }
 .utility-slot button.utility .slot-sym svg { display: block; width: 22px; height: 22px; margin: 0 auto; }
 .utility-slot button.utility[data-utility="cast"], .utility-slot button.utility[data-utility="item"], .utility-slot button.utility[data-utility="lantern"], .utility-slot button.utility[data-utility="empty"] { border-color: var(--slot); color: var(--slot); }
+
+/* 2026-11-18: equipped gear stats and the smith's previews (main.ts gearStatList, previewRows) */
+.gear-grid.with-stats{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.gear-card .gear-stats{grid-column:1/-1;margin:.4rem 0 0}.gear-card .gear-stats span{font-size:.7rem;color:#cfc3a8}
+.smith-preview{margin:.45rem 0;padding:.5rem;border:1px solid #8e7447;border-radius:5px;background:#1b1a17}.smith-preview>small{display:block;color:#e6c98f;letter-spacing:.05em}.smith-preview p{margin:.3rem 0;font-size:.78rem;overflow-wrap:anywhere}.forge-preview span,.gear-stats span{overflow-wrap:anywhere}
+.salvage-yield small{display:block;margin-top:.3rem;color:#aaa18f;font-size:.74rem}

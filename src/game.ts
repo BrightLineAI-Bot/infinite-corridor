@@ -90,7 +90,8 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
-import { SMITHY } from "./smithy.ts"; // release 607: one salvage table
+import { itemCap } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
+import { SMITHY, paySalvage, salvagePaidText } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { echoEvent, tickEchoes, echoDrop, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -901,28 +902,39 @@ export function salvageInventoryItem(save, index, auto = false) {
   const item = save.inventory?.[index];
   if (!item) return null;
   save.inventory.splice(index, 1);
-  const iron = auto ? autoSalvageIron(item) : salvageIron(item);
-  save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  const paid = paySalvage(save, auto ? autoSalvageIron(item) : salvageIron(item)); // 2026-11-18: cinder iron or lumen dust (smithy.ts SALVAGE_YIELD)
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
-  return { item, iron };
+  return { item, iron: paid.iron, lumenDust: paid.lumenDust };
 }
 // Release 469 (Tim: "a select all in the gear menu... everything will be highlighted... click something, it'll become
 // deselected... then salvage"): salvages the given carried items (by identity) at once. Returns { count, iron }.
 export function salvageInventoryItems(save, items) {
-  const pick = new Set(items || []); let count = 0, iron = 0;
-  for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; } }
-  return { count, iron };
+  const pick = new Set(items || []); let count = 0, iron = 0, lumenDust = 0;
+  for (let i = (save.inventory || []).length - 1; i >= 0; i--) if (pick.has(save.inventory[i])) { const r = salvageInventoryItem(save, i); if (r) { count++; iron += r.iron; lumenDust += r.lumenDust; } }
+  return { count, iron, lumenDust };
 }
 const isBrawlerGear = (item) => [...BRAWLER_LOOT.primary, ...BRAWLER_LOOT.secondary].some(([n, p]) => n === item?.name && p === item?.property);
 // Release 545 (Tim: "first in first out... ranks it by [tier] first. So the most powerful ones don't get salvaged... leave the
-// relic and higher quality... if they're all the same tier... salvage the first one that you got"): how much a full pack
-// wants to keep a piece: its tier, then whether you have worked on it (upgraded, masterworked, an added socket). Within the
-// same keep, the oldest (lowest index: the pack only appends) goes first.
-const packKeep = (q) => ITEM_TIERS.indexOf(itemTier(q)) * 2 + ((Number(q?.upgradeRank) || 0) > 0 || q?.masterwork || q?.extraSockets ? 1 : 0);
+// relic and higher quality... if they're all the same tier... salvage the first one that you got"): a full pack keeps by tier.
+// 2026-11-18 (Tim: auto-salvage kept a weaker piece and salvaged a stronger one of the same tier): keep by tier first, then by
+// power (item.power, the Power the Pack shows; it already counts every upgrade rank), then by the work a smith put in that power
+// does not show (a masterwork or an added socket; an upgraded piece too, for a piece whose power was never brought up to its
+// rank), and only then the oldest (lowest index: the pack only appends). PACK_KEEP.order lists the keys, most important first.
+export const PACK_KEEP = Object.freeze({ order: Object.freeze(["tier", "power", "worked"]) });
+const KEEP_KEYS = {
+  tier: (q) => ITEM_TIERS.indexOf(itemTier(q)),
+  power: (q) => Math.max(0, Number(q?.power) || 0),
+  worked: (q) => ((Number(q?.upgradeRank) || 0) > 0 || q?.masterwork === true || q?.extraSockets ? 1 : 0),
+};
+// Negative when a is kept less than b (a goes first), positive when more, 0 at an equal keep.
+export function packKeepCompare(a, b) {
+  for (const k of PACK_KEEP.order) { const d = KEEP_KEYS[k](a) - KEEP_KEYS[k](b); if (d) return d; }
+  return 0;
+}
 export function packVictim(save, spareBrawler = false) {
   let at = -1;
-  for (let i = 0; i < save.inventory.length; i++) if ((!spareBrawler || !isBrawlerGear(save.inventory[i])) && (at < 0 || packKeep(save.inventory[i]) < packKeep(save.inventory[at]))) at = i;
+  for (let i = 0; i < save.inventory.length; i++) if ((!spareBrawler || !isBrawlerGear(save.inventory[i])) && (at < 0 || packKeepCompare(save.inventory[i], save.inventory[at]) < 0)) at = i;
   return at < 0 ? 0 : at;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
@@ -936,15 +948,14 @@ export function storeInventoryItem(save, item, keep = false) {
   // place of another piece instead.
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
   const weakest = packVictim(save, fresh);
-  if (!fresh && !keep && packKeep(item) < packKeep(save.inventory[weakest])) { // release 545: a drop below everything you keep is salvaged; at the same keep the oldest goes instead
-    const iron = autoSalvageIron(item); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none)
-    save.materials.cinderIron = (save.materials.cinderIron || 0) + iron;
+  if (!fresh && !keep && packKeepCompare(item, save.inventory[weakest]) < 0) { // release 545: a drop below everything you keep is salvaged (2026-11-18: tier, then power); at the same keep the oldest goes instead
+    const paid = paySalvage(save, autoSalvageIron(item)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
-    return { stored: false, salvaged: item, iron };
+    return { stored: false, salvaged: item, iron: paid.iron, lumenDust: paid.lumenDust };
   }
   const salvaged = salvageInventoryItem(save, weakest, true); // release 607: automatic
   save.inventory.push(item);
-  return { stored: true, salvaged: salvaged.item, iron: salvaged.iron };
+  return { stored: true, salvaged: salvaged.item, iron: salvaged.iron, lumenDust: salvaged.lumenDust };
 }
 // Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
 export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
@@ -1089,6 +1100,74 @@ export function scaledBonus(save, scaling, channel = "melee", derived = characte
   const magic = channel === "magic", base = magic ? derived.magicBonus : derived.meleeBonus, k = SCALING_STRENGTH[magic ? "magic" : "melee"];
   if (!SCALING_STATS[scaling]) return base;
   return base + (statRank(save, SCALING_STATS[scaling]) - statRank(save, magic ? "Focus" : "Might")) * k;
+}
+// The cadence of an ordinary press (a weapon without a weighted swing) and of a tool shot, before glyphs and armor speed.
+export const PRIMARY_PRESS = Object.freeze({ ms: 420 }), TOOL_PRESS = Object.freeze({ ms: 360 });
+// Gear readout (Tim, 2026-11-18: Pack → Equipped showed tier, power, scaling and affixes, but not what the piece does). The
+// effective numbers of one piece as the Wayfarer wears it now: the hit before glyphs, timed buffs and the foe's own defence
+// (the same sums primaryAttack, fistPower and fireSecondary use), its reach and arc or its range, its pace, and for armor and
+// charms what they give to resistance. `item` replaces the slot's piece (a smith's preview reads its outcome the same way).
+// Each row is { id, label, value, text, better }: `value` is the number compared, `better` "higher" or "lower".
+const GEAR_SHAPES = { cone: "sweep", thrust: "thrust", arc: "arc", daggers: "paired cuts", staff: "spectral hands" };
+const r2 = (n) => Math.round(n * 100) / 100;
+export function gearReadout(save, slot, item = save?.equipment?.[slot]) {
+  if (!item) return [];
+  const s = { ...save, equipment: { ...(save.equipment || {}), [slot]: item } }, d = characterStats(s), rows = [];
+  const row = (id, label, value, text, better = "higher") => rows.push({ id, label, value: Number(value) || 0, text: text ?? String(r2(Number(value) || 0)), better });
+  const rank = Math.max(0, Number(item.upgradeRank) || 0);
+  row("power", "Power", Number(item.power) || 0);
+  if (slot === "primary") {
+    const p = primaryProfile(item), fists = !!p.fist, kind = item.id === "primary-verge-cleaver" || item.name === "Verge Cleaver" ? "verge-cleaver" : isFourfoldDaggers(item) ? "fourfold-daggers" : item.id === "primary-cinder-pike" || item.name === "Cinder Pike" ? "cinder-pike" : null, swing = kind ? swingSpec(kind) : null;
+    const bonus = scaledBonus(s, weaponScaling(item), "melee", d), base = fists ? IRON_FISTS.base + Math.max(1, Number(item.power) || 1) * IRON_FISTS.perPower : p.damage, hit = wayfarerDamage(base + bonus);
+    row("hit", "Damage a hit", hit, `${hit}`);
+    const shares = fists ? IRON_FISTS.punches.map((q) => q.share) : swing ? swing.steps.map((q) => q.share) : null;
+    if (shares) row("combo", fists ? "Punches" : "Combo", shares.reduce((a, b) => a + b, 0), shares.map((q) => `×${q}`).join(" · "));
+    row("reach", "Reach", p.range * (1 + d.attackReach), `${r2(p.range * (1 + d.attackReach))} tiles`);
+    row("arc", "Arc", p.arc, `${p.arc}° ${GEAR_SHAPES[p.shape] || p.shape}`);
+    if (swing) { const ms = swing.steps.reduce((t, q) => t + (q.chainMs ?? q.recoveryMs), 0) / swing.steps.length; row("pace", "Pace", ms / 1000, `${r2(ms / 1000)} s a step`, "lower"); }
+    else if (!fists && !p.staff) row("pace", "Pace", PRIMARY_PRESS.ms / 1000, `${PRIMARY_PRESS.ms / 1000} s a press`, "lower");
+  } else if (slot === "secondary") {
+    const w = rangedWeapon(item);
+    if (w) {
+      const magic = w.damageType === "magic", bonus = scaledBonus(s, toolScaling(item), magic ? "magic" : "melee", d);
+      const shot = w.brawlerTool ? Math.round(IRON_FISTS.base + Math.max(1, Number(item.power) || 1) * IRON_FISTS.perPower + bonus) : Math.round(w.damage + bonus), n = Math.max(1, Number(w.pellets) || 1);
+      row("hit", w.brawlerTool ? "Damage a blow" : "Damage a shot", shot * n, `${shot}${n > 1 ? ` ×${n}` : ""} ${magic ? "magic" : "physical"}`);
+      if (!w.brawlerTool && !w.orrery && w.speed > 0) row("range", "Range", w.speed * w.lifetime * (1 + d.attackReach), `${r2(w.speed * w.lifetime * (1 + d.attackReach))} tiles`);
+      if (!w.brawlerTool && !w.orrery) { const sec = w.cooldown ?? TOOL_PRESS.ms / 1000; row("pace", "Pace", sec, `${r2(sec)} s a shot`, "lower"); }
+      if (w.radius) row("blast", "Blast", w.radius, `${w.radius} tiles`);
+    }
+  } else {
+    const own = slot === "armor" ? (Number(item.power) || 0) * 2.5 : Number(item.power) || 0;
+    row("guard", slot === "armor" ? "Armor resistance" : "Charm resistance", own, `${r2(own)}%`);
+  }
+  for (const [id, label] of [["attack", "Attack"], ["reach", "Reach bonus"], ["movement", "Move speed"], ["ward", "Ward"]]) { const v = affixValue(item, id); if (v) row(`affix-${id}`, label, v, id === "attack" ? `+${v}` : `+${Math.round(v * 100)}%`); }
+  if (slot === "armor" || slot === "charm") row("reduction", "Total damage cut", d.damageReduction * 100, `${Math.round(d.damageReduction * 100)}%`);
+  if (slot !== "charm") row("sockets", "Sockets", socketCount(item));
+  const cap = itemCap(item, save);
+  row("rank", "Rank", rank, `+${rank}`);
+  row("cap", "Rank cap", cap, `+${cap}`);
+  return rows;
+}
+// Before → after for each row of two readouts, coloured as the Pack's compare: `direction` "up" (better: green), "down"
+// (worse: red) or "same", following each row's `better`.
+export function compareReadouts(before, after) {
+  const prior = new Map(before.map((q) => [q.id, q])), out = [];
+  for (const q of after) { const b = prior.get(q.id), delta = r2(q.value - (b?.value ?? 0)), good = q.better === "lower" ? -delta : delta; out.push({ ...q, before: b?.text ?? "—", after: q.text, delta, direction: good > 0 ? "up" : good < 0 ? "down" : "same" }); prior.delete(q.id); }
+  for (const b of prior.values()) out.push({ ...b, before: b.text, after: "—", delta: -b.value, direction: b.better === "lower" ? "up" : "down" });
+  return out;
+}
+// What a deterministic forge or smith action would make of the slot's piece (the same changes upgradeEquipment, masterwork
+// and addSocket make), or null when it cannot be done to it. Reforge is random and has no outcome here (smithy.ts reforgeChoices).
+export function forgeOutcome(save, slot, action) {
+  const item = save?.equipment?.[slot]; if (!item) return null;
+  if (action === "upgrade") { const n = normalizeItemUpgrade(item); return normalizeItemUpgrade({ ...n, power: n.power + 1, upgradeRank: n.upgradeRank + 1 }); }
+  if (action === "masterwork") return item.masterwork === true ? null : normalizeItemUpgrade({ ...item, masterwork: true });
+  if (action === "socket") return item.extraSockets === 1 || !socketCount(item) ? null : normalizeSockets({ ...item, extraSockets: 1 });
+  return null;
+}
+export function forgePreview(save, slot, action) {
+  const next = forgeOutcome(save, slot, action); if (!next) return null;
+  return compareReadouts(gearReadout(save, slot), gearReadout(save, slot, next));
 }
 export function syncCharacterStats(save) {
   const oldHp = Math.max(0, Number(save.maxHp) || 60),
@@ -2234,7 +2313,7 @@ export function buyFromVela(save, id, quantity = 1) {
   save.currency -= price;
   const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${salvagePaidText(save, kept)}.` : ""}` };
 }
 export function vendorShop(save, vendorId = "vendor-vela") {
   if (vendorId === "vendor-vela") return velaShop(save);
@@ -2305,7 +2384,7 @@ export function buyFromVendor(save, vendorId, id, quantity = 1) {
   save.currency -= price;
   const kept = storeInventoryItem(save, { ...item }, true); // release 545: a full pack makes room (its least-kept, oldest piece) rather than refusing
   shop.purchased[id] = true;
-  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${kept.iron} cinder iron.` : ""}` };
+  return { ok: true, quantity: 1, message: `Purchased ${item.name}.${kept.salvaged ? ` Your pack was full: ${kept.salvaged.name} was salvaged for ${salvagePaidText(save, kept)}.` : ""}` };
 }
 export function actionReadiness(game, now = 0) {
   const attack = Math.max(0, (game.player.attackReadyAt || 0) - now),
@@ -8538,7 +8617,7 @@ export class Game {
     if (!echo && now < (this.player.attackReadyAt || 0)) return [];
     if (!echo && this.artRush) return []; // 2026-11-14: the Lava Slash rush owns the body until its slam
     if (!echo && !this._shadowArrive && (this.shadowDash || (now < (this.boxingUntil || 0) && this.shadowDashBegin(primaryProfile(this.save.equipment.primary).range * (1 + characterStats(this.save).attackReach) * glyphs.mods.range, now)))) return []; // release 485; 2026-11-14: Shadow Boxing charges to the foe (SHADOW_DASH) and this press lands on arrival (shadowDashLand)
-    const acceptedCooldown=420*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
+    const acceptedCooldown=PRIMARY_PRESS.ms*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed);
     if (!echo) { this.player.attackReadyAt = swingKind ? now /* the swing record gates the next press (swingChainDue) */ : now + acceptedCooldown; this.cancelConsumeVisual('attack'); noteArtPress(this); } // weapon-arts.ts: an accepted press arms the weapon's art
     if (!echo) tesseractHarm(this.save, this.player, armorGlyphBonus(this.save).selfHarm); // a Tesseract glyph's cost: each swing bites back (never below TESSERACTS.harmFloor)
     if (!swingCall) { this.player.attackUntil = now + ACTION_MOTION.meleeMs;
@@ -8666,7 +8745,7 @@ export class Game {
       );
     this.save.lastAim = d;
     const toolKind = acceptedToolKind;
-    const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=360*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
+    const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=TOOL_PRESS.ms*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
     if(delayed&&startupMs==null)return false;
     const round=usesRounds(weapon)?this.takeRound(glyphs.count("echo")):"none";if(!round)return false; // tool-forms.ts ROUNDS: empowered first, then the belt, then cinder iron
     const preparedProjectiles=delayed?[]:this.projectiles;
