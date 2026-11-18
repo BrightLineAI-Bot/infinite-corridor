@@ -34,6 +34,7 @@ export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 export const TRICERATOPS_ATTACKS = {
   dash: { range: 1.8, arc: 85, damage: 24, stun: .2 },
   landing: { range: 3, arc: 360, damage: 32, stun: .4 },
+  drill: { acquire: 5, travel: 3, speed: 5, step: .2, maxSteps: 8, stop: 1.05, contact: 1.2, damage: 12, stun: .08, pulses: 3, pulseMs: 120, windupMs: 100, maxMs: 900 },
   charge: { shortMs: 450, longMs: 950, maxMs: 2500 },
   bash: { range: 2.4, arc: 75, damage: 40, stun: .3, stamina: 8, windupMs: 120 },
   horn: { range: 8, speed: 12, damage: 48, stamina: 14, windupMs: 180, maxProjectiles: 2 },
@@ -60,6 +61,24 @@ export function triceratopsHornPose(g, mount, now, reduced = false) {
   } else return null;
   const amount = reduced ? .4 : 1;
   return { phase, pitch: pitch * amount, reach: reach * amount, lower: lower * amount, x: aim.x, y: aim.y };
+}
+// The leap receipt resumes its remaining travel and contacts; elapsed time also anchors the shared pose.
+// Additive schema-14 action receipt. Unknown future versions stay opaque and never execute here.
+export function normalizeTriceratopsDrill(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (Number.isInteger(raw.v) && raw.v > 1) return { ...raw };
+  const C = TRICERATOPS_ATTACKS.drill, text = v => typeof v === "string" && v.length > 0 && v.length <= 512, number = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
+  if (raw.v !== 1 || !["overworld", "dungeon"].includes(raw.area) || !["areaId", "levelId", "mount"].every(k => text(raw[k])) || raw.variant !== "silly" || !(raw.target === null || text(raw.target))) return null;
+  if (!number(raw.elapsed, 0, C.maxMs) || !number(raw.jumpLeft, 1e-6, 10000) || !number(raw.drillLeft, 1e-6, C.maxMs) || !number(raw.nextLeft, 0, Math.max(C.windupMs, C.pulseMs)) || !number(raw.travel, 0, C.travel) || !Number.isInteger(raw.pulses) || !number(raw.pulses, 0, C.pulses) || !number(raw.hp, 1e-6, 1e9) || !["atX", "atY"].every(k => number(raw[k], -1e4, 1e4)) || !["x", "y"].every(k => number(raw[k], -1, 1)) || Math.abs(Math.hypot(raw.x, raw.y) - 1) > 1e-6) return null;
+  if (Math.abs(raw.elapsed + raw.drillLeft - Math.min(C.maxMs, raw.elapsed + raw.jumpLeft)) > 1e-5 || raw.pulses > 0 && (raw.elapsed < C.windupMs + (raw.pulses - 1) * C.pulseMs || raw.nextLeft > C.pulseMs) || raw.pulses === 0 && raw.elapsed + raw.nextLeft < C.windupMs - 1e-5) return null;
+  return { ...raw };
+}
+export const TRICERATOPS_DRILL_POSE = Object.freeze({ halfWidth: 4.2, height: 5.2, below: 2.8, pivot: 1.25, turns: 2 });
+export function triceratopsDrillPose(g, mount, now, reduced = false) {
+  const q = g.triceratopsJump, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (mount?.beast !== "triceratops" || mount.variant !== "silly" || q?.kind !== "drill" || q.mount !== mount.id || q.start !== g.jumpStart || q.until !== g.jumpUntil || !(clock >= q.start && clock < q.drillUntil) || !(g.player?.hp > 0) || g.player.hp < q.hp || g.fallen || g.swimming || g.fall || g.glide || g.droneLift || g.plunge || g.cycloneHeel || g.shadowDash || g.artRush || g.wallCling || g.wallKick || clock < (g.player.stunnedUntil || 0) || clock < (g.player.heldUntil || 0) || clock < (g.player.dodgeUntil || 0)) return null;
+  const t = Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))), roll = Math.cos(t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns);
+  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot };
 }
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
-import { stableMount, startRide, triceratopsHornPose } from '../src/beast-mounts.ts';
+import { stableMount, startRide, triceratopsHornPose, triceratopsDrillPose, TRICERATOPS_DRILL_POSE } from '../src/beast-mounts.ts';
 import { drawMount } from '../src/beast-mounts-render.ts';
 import { render } from '../src/renderer.ts';
 import { drawRangedEffects, standardProjectile, standardProjectileColor, TRICERATOPS_HORN_VISUAL, triceratopsHornFrame, triceratopsHornVertices } from '../src/combat-visuals.ts';
 import { CLOSE_VIEW_HOOKS, closeViewShowing, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewRenderDiagnostics } from '../src/close-view.ts';
-import { closeViewGLStats, GLB, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
+import { closeViewGLStats, GLB, BOARD_FLOATS, DECAL_FLOATS, resetCloseViewGL } from '../src/close-view-gl.ts';
 
 class TransactionGL {
   lost=false; error=0; fault=''; nullKind=''; created:any={program:0,buffer:0,vao:0,texture:0};
@@ -135,4 +135,20 @@ test('Close View preserves the posed Triceratops composite and falls back withou
   h.gl.fault='';g.dismount();frame(h,g);
   assert.equal(closeViewShowing(g),true);
   assert.ok(closeViewRenderDiagnostics().nativeActors>0,'unmounted hero returns to ordinary native admission');
+}));
+
+
+test('Silly Goose rolls mount, saddle and rider together with below bounds and reduced-motion banking',()=>withGPU({},h=>{
+  const g=createLabFixture({lab:'triceratops-recovery',scenario:'triceratops-silly',now:100000}).game;
+  const m=stableMount(g.save,'triceratops',{triceratopsDisposition:'silly'}).mount;startRide(g.save,m.id);
+  g.enemies=[];g.effects=[];g.glyphVisuals=[];g.projectiles=[];g.save.closeView=true;g.save.overworldCloseView=true;
+  g.presentation={effectiveQuality:'full'};g.player.hp=g.save.maxHp;g.player.facing='right';g.save.lastAim={x:1,y:0};
+  g.update(.01,{state:{x:0,y:0},consume:k=>k==='jump',held:()=>false},100000);g.lastUpdateNow=100195;
+  const group=(tag,roll)=>{const at=h.log.findIndex(q=>q[0]===tag&&q[1]==='scale'&&q[2]===1&&Math.abs(q[3]-roll)<1e-9);assert.ok(at>=0,'accepted axial roll');let depth=0,end=at+1;for(;end<h.log.length;end++){const q=h.log[end];if(q[0]!==tag)continue;if(q[1]==='save')depth++;if(q[1]==='restore'){if(!depth)break;depth--;}}const drawn=h.log.slice(at,end);assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle inside transform');assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#171817'),'rider inside transform');};
+  const pose=triceratopsDrillPose(g,m,g.lastUpdateNow);assert.ok(pose.roll<0);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',pose.roll);
+  assert.equal(closeViewRenderDiagnostics().player,'billboard');assert.equal(g.player.facing,'right');
+  const bottoms=[];for(let i=0;i<GLB.nBoard;i++)bottoms.push(GLB.board[i*BOARD_FLOATS+2]);
+  assert.ok(bottoms.some(z=>Math.abs(z+TRICERATOPS_DRILL_POSE.below)<1e-4),'GPU card retains the below-pivot composite');
+  h.gl.fault='draw';frame(h,g);assert.equal(closeViewShowing(g),false);group('screen',pose.roll);
+  h.gl.fault='';g.presentation.reduceMotion=true;const quiet=triceratopsDrillPose(g,m,g.lastUpdateNow,true);assert.equal(quiet.roll,1);assert.ok(Math.abs(quiet.bank)<.1);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',1);
 }));
