@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Salvage keeps the best of each slot; lumen dust from salvage; gear stats and smith previews
+## Release 999 — Salvage keeps the best of each slot; lumen dust from salvage; gear stats and smith previews
 
 Tim (2026-11-18): auto-salvage threw away great gear; salvage should keep the highest tier, then the highest power. He also wanted a way to earn lumen dust at the forge or smith, current stats on the equipped page, and a before/after preview at the smith. Later the same day he asked for the best few of each slot to be kept (pieces never weighed against another slot's), and for no confirm step at the smith: every button shows its exact outcome, the reforge's seeded roll included.
 
