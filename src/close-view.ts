@@ -1,5 +1,5 @@
 import { weaponArtCharge, javelinInFlight } from "./weapon-arts.ts"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon, FOURFOLD_DAGGERS, isFourfoldDaggers } from './items.ts';
+import { rangedWeapon, PRIMARY_CARRY_MODEL, primaryCarryKind } from './items.ts';
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.ts";
 import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.ts";
@@ -3529,12 +3529,18 @@ const KNOWN_PLAYER_VISUAL = new Set(ATTACK_VISUAL_PROFILES);
 const KNOWN_TOOL_VISUAL = new Set(TOOL_VISUAL_KINDS);
 export const closeViewToolCueOwnsAction=(acceptedTool,inputAction,selectedAction)=>!!acceptedTool&&inputAction===selectedAction&&['ranged','melee','cast'].includes(selectedAction?.kind);
 export function closeViewToolConnectorWithin(muzzle,head,aim){const dx=head.x-muzzle[0],dy=head.y-muzzle[1],dz=head.z-muzzle[2];return dx*(aim?.x||0)+dy*(aim?.y||0)>0&&Math.hypot(dx,dy,dz)<=.9;}
-export function closeViewPrimaryWeaponKind(item) {
-  return item?.id === 'primary-cinder-pike' || item?.name === 'Cinder Pike' ? 'cinder-pike'
-    : item?.id === 'primary-verge-cleaver' || item?.name === 'Verge Cleaver' ? 'verge-cleaver'
-    : item?.id === 'primary-quandrix-staff' || item?.name === 'Quandrix Staff' ? 'quandrix-staff'
-    : isFourfoldDaggers(item) ? FOURFOLD_DAGGERS.closeView.model /* 2026-11-14: a dagger in each hand */ : 'salvage-blade';
-}
+// The Close View model of each primary (items.ts PRIMARY_CARRY_MODEL / primaryCarryKind): no unknown primary becomes the salvage blade.
+export const CLOSE_VIEW_PRIMARY_MODEL = PRIMARY_CARRY_MODEL;
+// An accepted tool use keeps the primary carried when it was accepted (toolMotion.carry, stamped by the Game), whatever is equipped
+// since; a record from before carries none and reads the equipment as before.
+const KNOWN_CARRY = new Set([...Object.values(PRIMARY_CARRY_MODEL), 'melee']);
+const acceptedCarry = (record) => KNOWN_CARRY.has(record?.toolMotion?.carry) ? record.toolMotion.carry : null;
+// What the Wayfarer holds when not mid-attack: the tool's emitter while the tool slot is active (and nothing charges), the fists
+// when the Iron Fists are equipped, else the primary's model. The power suit included: its `empowered` is the suit's, not the
+// fists' (it used to send a suited fist-wearer to the primary's model, the salvage blade); the suit shows its own armored fists,
+// no gauntlet (gear.profile), as the standard view's drawPowerSuit does.
+export const closeViewRestingHeld = (form, toolSlot, charge, primaryHeld) => toolSlot && charge == null ? 'emitter' : form?.fists ? 'fist' : primaryHeld;
+export const closeViewPrimaryWeaponKind = (item) => primaryCarryKind(item);
 // Close View play-through of 926 (bug 11): at a scene's start the native stand-in Wayfarer showed, then popped to the imported
 // model once its data and GPU texture were ready. While that load is in flight (the asset 'loading', or loaded and its texture
 // not yet on the GPU) the Wayfarer is not drawn at all (no stand-in body, no sprite card; their place is kept), for at most
@@ -3998,9 +4004,9 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       dashDX = SD.x - who.x; dashDY = SD.y - who.y; wraith = SD.wraith;
     }
     const recoil = reduce || who === player ? 0 : MODEL_TIMING.recoilTiles * Math.min(1, (who.recoil || 0) / MODEL_TIMING.hitSec);
-    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':currentPrimary;
+    const acceptedPrimary=visualProfile==='melee'&&['salvage-blade','cinder-pike','verge-cleaver','quandrix-staff','fourfold-daggers'].includes(visualRecord?.weaponKind)?visualRecord.weaponKind:null,currentPrimary=closeViewPrimaryWeaponKind(g.save.equipment?.primary),primaryHeld=visualAttack&&visualProfile==='melee'?acceptedPrimary||'melee':visualAttack&&acceptedTool&&acceptedCarry(visualRecord)||currentPrimary;
     const heldSweep = who === player && !visualAttack && ordinary && heldToolKind(player) === 'great-sweep'; // the Great Sweep stays drawn between uses
-    let held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : g.save.activeWeaponSlot === 'secondary' && charge == null ? 'emitter' : form?.fists && !form.empowered ? 'fist' : primaryHeld;
+    let held = heldSweep ? 'great-sweep' : visualAttack ? visualProfile==='melee'?primaryHeld:visualProfile==='hammer'?'':acceptedTool || (knownProfile ? visualProfile : 'fist') : closeViewRestingHeld(form, g.save.activeWeaponSlot === 'secondary', charge, primaryHeld);
     // 2026-11-14 (Tim: the Orrery "in his right hand all the time"; the Great Sweep held "whenever it's equipped", on the right
     // shoulder; "two weapons out"): the equipped Great Sweep or Aether Orrery rides in the right hand while the primary, whatever
     // it is, stays in the left, through idle, walking, the tool's own use and one-handed swings. A primary that needs both hands

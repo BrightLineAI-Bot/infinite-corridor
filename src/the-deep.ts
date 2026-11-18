@@ -41,6 +41,13 @@ export const THE_DEEP = {
   },
 };
 
+// The generation of a Deep floor (Unreleased; Tim's log). A floor is generated afresh on each visit, and only the floor you stand on
+// is kept (its dungeon history, wiped by game.ts resetDeepFloor on every floor change), so the version is pinned on that history
+// (`deepGen`) when the floor is entered (enterDeep, descendDeep). A floor entered before keeps generation 1 until it is left.
+// Generation 2: Watcher's daises on every floor (underlands.ts warpAny); the guardian's species rolled per floor (not once per
+// shaft); and the Fractured mode's seal kept per floor (game.ts fractureAreaKey).
+export const DEEP_FLOOR_GEN = { version: 2 };
+export const deepFloorGen = (history) => Math.max(1, Math.floor(Number(history?.deepGen) || 1));
 export const deepIdFor = (seed, rx, ry) => `the-deep:${seed}:${rx}:${ry}`;
 export const isDeepId = (id) => String(id || "").startsWith("the-deep:");
 export const deepKey = (id) => String(id || "").replace(/^the-deep:[^:]*:/, "");
