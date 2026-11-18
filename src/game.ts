@@ -2703,8 +2703,19 @@ export const TREE_KEEL = { on: true, lean: .6, pull: 5, max: .8 };
 // lands (its damage still counted from the jump's height). `pose`: a fall from this many levels or more shows the falling pose in Close View.
 export const FALL = { gravity: 14, terminal: 9, minDrop: .5, stepDown: 1, jumpExit: 4, plunge: 9, pose: 1.5, catchDrone: "The drone catches you mid-fall and its booster roars.", nothing: "Nothing to catch you.",
   roll: .22, rollLevels: 1, rollPose: 260, rolled: "Rolled!" }; // the landing roll (Tim, 2026-11-13): a dodge begun no more than `roll` s of the fall's own time before it lands counts the fall `rollLevels` less (2 levels free, 3 = 15%, 4 = 40%, 5+ still fatal); the first dodge of a fall is its one try; not a plunge's. `rollPose` ms of the dodge roll drawn on landing // nothing (Tim, 2026-11-13): Jump mid-fall with no drone to catch you; the glider is for great trees only
+// FALL_RESCUE (Tim, 2026-11-18: "lethal falls play out over real time... death happens only on landing if nothing saved them").
+// Every fall is the FALL model above, in the open world and on every floor with height (fallFloor), so a lethal one is airtime the
+// Wayfarer can act in: Aerial Step catches it where it is (AERIAL), Rift Step steps out of it onto the ground it reaches and stands
+// there (`rift`: the step takes the fall's speed and height with it, so nothing is charged), and Jump with the drone catches it (its
+// booster; `callDrone`: a built drone set in the frame, docked, is called up by that same Jump and catches at once). The doom cue:
+// while a fall (or a great tree's closed freefall) would kill where it would land now (game.fallDoomed), the standard view's edges
+// pulse red (`flash`: colour, peak alpha, Reduced Motion's steady alpha, pulse period ms, the inner radius of the vignette as a share
+// of the screen). A later fall with no ground under it (a chasm) needs only `fall.doom` set and a landing of its own: the cue, the
+// rescues, the exact resume and the single death are already the fall's.
+export const FALL_RESCUE = { rift: "Rift Step tears you out of the fall onto the ground beneath the step.", callDrone: "The drone launches from its frame and catches you mid-fall.",
+  flash: { color: "208,24,24", alpha: .34, still: .22, pulseMs: 520, inner: .42 } };
 // AERIAL (Tim, 2026-11-15): Aerial Step walks on air at the height it was cast. While it holds, a fall (game.fall, the FALL model:
-// the open world on foot and the tall towers) stops at `fall.hold` — the cast height, or where the fall began if that is lower (it
+// the open world on foot and every floor with height, FALL_EVERYWHERE) stops at `fall.hold` — the cast height, or where the fall began if that is lower (it
 // never lifts) — and the Wayfarer walks, jumps and lands there as on ground. Cast falling, it stops the fall where it is and its
 // damage counts afresh from there. When it ends the fall goes on from the held height under FALL (lethal stays lethal). At most
 // APERTURE_SKILLS["aerial-step"].airCasts casts between touches of real ground (`aerialCasts`; standing on air is not ground).
@@ -2731,6 +2742,10 @@ export function fallAirtime(drop, vz0 = 0) {
   if (h <= hT) return (-v0 + Math.sqrt(v0 * v0 + 2 * G * h)) / G;
   return toTerminal + (h - hT) / T;
 }
+// FALL_EVERYWHERE: does a dungeon floor carry the fall model? Any interior heightfield (tall towers, great buildings, castles,
+// compounds, labyrinths, Pentagon chambers) or a dungeon on landscape terrain, but never an underwater scene. Pure.
+export function fallFloor(map) { return !!map && !map.underwater && (interiorTerrain(map) || !!map.tallTower || !!map.landscape && !legacyFlatFloor(map)); }
+const legacyFlatFloor = (map) => !!map.building && !interiorTerrain(map); // an old flat interior (player stone at most two levels): no fall
 // One step of a fall state ({ z, vz }) over dt seconds, in place (no allocation). Returns the height it fell from this step.
 export function stepFall(f, dt) {
   const z0 = f.z; f.vz = Math.max(-FALL.terminal, Math.min(0, Number(f.vz) || 0) - FALL.gravity * dt); f.z += f.vz * dt; return z0;
@@ -2798,7 +2813,7 @@ export class Game {
     this.jumpUntil = Number(s.playerRuntime.jump) > 0 ? now + s.playerRuntime.jump : -1e9; this.jumpStart = undefined; this.mechSpent = s.playerRuntime.mechSpent === true; // release 609 (Codex play-test, issue 5): a landed jump is not a jump that just ended, and an emptied boost stays emptied
     this.guardRemaining = Math.max(0, Number(s.playerRuntime.guard || 0));
     { const q = s.playerRuntime.glide; this.glide = q && s.area === "overworld" && [q.z, q.vx, q.vy].every((v) => Number.isFinite(Number(v))) ? { z: Math.max(GLIDE.skim, Number(q.z)), vx: Number(q.vx), vy: Number(q.vy), open: q.open !== false, ...(q.open === false && Number.isFinite(Number(q.fallFrom)) ? { fallFrom: Number(q.fallFrom) } : {}), ...(q.open === false && q.vz != null && Number.isFinite(Number(q.vz)) ? { vz: Math.max(-GLIDE.drop, Math.min(0, Number(q.vz))) } : {}), told: false } : null; } // release 635
-    { const q = s.playerRuntime.fall; this.fall = q && (s.area === "overworld" || isTowerId(s.activeDungeonId)) /* tall towers fall as the open world does */ && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0), ...(q.rollT != null && Number.isFinite(Number(q.rollT)) ? { rollT: Number(q.rollT) } : {}), ...(q.hold != null && Number.isFinite(Number(q.hold)) ? { hold: Math.min(Number(q.z), Number(q.hold)) } : {}) } : null; } // FALL: exact resume (AERIAL: the held height) (FALL.roll: rollT, the landing roll's try, on the fall's clock) in the air (checked against the ground once the section is loaded)
+    { const q = s.playerRuntime.fall; this.fall = q && (s.area === "overworld" || s.area === "dungeon") /* FALL_EVERYWHERE: any floor with height (judged once it is loaded) */ && [q.z, q.vz, q.from].every((v) => v != null && Number.isFinite(Number(v))) ? { z: Number(q.z), vz: Math.max(-FALL.terminal, Math.min(0, Number(q.vz))), from: Number(q.from), scale: Number(q.scale) > 0 ? Number(q.scale) : 1, t: Math.max(0, Number(q.t) || 0), ...(q.rollT != null && Number.isFinite(Number(q.rollT)) ? { rollT: Number(q.rollT) } : {}), ...(q.hold != null && Number.isFinite(Number(q.hold)) ? { hold: Math.min(Number(q.z), Number(q.hold)) } : {}) } : null; } // FALL: exact resume (AERIAL: the held height) (FALL.roll: rollT, the landing roll's try, on the fall's clock) in the air (checked against the ground once the section is loaded)
     { const q = s.playerRuntime.glide, g = this.glide; if (g) { if (g.open !== false || q.tree === true || s.playerRuntime.glideHome) g.tree = true; else { if (!this.fall) this.fall = { z: g.z, vz: Number.isFinite(g.vz) ? Math.max(-FALL.terminal, g.vz) : 0, from: Math.max(g.z, Number.isFinite(g.fallFrom) ? g.fallFrom : g.z), scale: 1, t: 0 }; this.glide = null; } } } // 2026-11-13: a closed glide saved before the glider was for great trees only (the 641 freefall off any drop) resumes as the fall it is, at its height
     this.magicBuffRemaining = Math.max(0, Number(save.magicBuff || 0));
     this.spellCooldownRemaining = Math.max(0, Number(save.spellCooldown || 0));
@@ -3673,7 +3688,7 @@ export class Game {
       resumeDeckEdge = !capture && area === "overworld" && this.resumeDeckEdge(areaWidth),
       resumeAirborne = !capture && this.airborneHeld(this._resumeNow ?? this.lastUpdateNow ?? 0, this.save.session.playerRuntime), // QA 926: a fall, glide, jump or outdoor lift resumes where it was
       playerRelocated = !resumeLiftPosition && !resumeDeckEdge && !resumeAirborne && !(area === "overworld" && aboard(this.save) && footprintSailable(this.map, areaWidth, this.player.x, this.player.y)) && relocateIfStranded(this.player, this.map, areaWidth);
-    if (area === "dungeon" && !resumeLiftPosition) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
+    if (area === "dungeon" && !resumeLiftPosition && !(resumeAirborne && this.fall)) { const to = settleDungeonArrival(this.map, areaWidth, this.player, this.enemies, false); if (to) { this.player.x = to.x; this.player.y = to.y; } } // release 419: a resumed or loaded floor never leaves you in a sealed pocket
     for (const e of this.enemies) {
       refreshMarineBeast(e, this.map, areaWidth, area);
       if (this.astralRiderHeld(e) || e.kind === "astralWorm" || e.kind === "astralMirage") {
@@ -4201,8 +4216,11 @@ export class Game {
   // roof or is carrying them onto one. Decks apply on foot on the overworld's landscape: never mounted, in the robot or aboard.
   // FALL: does the fall model carry the Wayfarer here? The open world, on foot (the robot, a mount and the skiff keep their own rules).
   // Tall towers (tall-towers.ts, 2026-11-13: "a constant threat of falling as you climb"): an Upwell's shaft falls as the open world
-  // does; every other interior keeps the instant rule.
-  fallArea() { return (this.area === "overworld" && !!this.map?.landscape) || (this.area === "dungeon" && !!this.map?.tallTower); }
+  // does. FALL_EVERYWHERE (Tim, 2026-11-18: Aerial Step "works the same everywhere"; "lethal falls play out over real time"): so does
+  // every floor with height, dungeons, great buildings, castles, compounds, labyrinths, Pentagon chambers and annexes alike (an
+  // interior heightfield, or a dungeon laid on landscape terrain); only the flat floors (nothing to fall from) and the underwater
+  // scenes (the diver sinks and swims) keep no fall. One model, one rule set: no place-specific exceptions.
+  fallArea() { return (this.area === "overworld" && !!this.map?.landscape) || (this.area === "dungeon" && fallFloor(this.map)); }
   fallApplies() { return this.fallArea() && !this.mechUp?.() && !this.mountRide?.() && !aboard(this.save); }
   // FALL: begin (or carry on) a fall at height z with vertical speed vz, its damage counted from `from`; `scale` is the drawn scale
   // of the ground it left (a great tree's levels are drawn taller). The jump, sky hop and roof hop it may end are settled by the caller.
@@ -4235,6 +4253,19 @@ export class Game {
   // there (ms, at the fall's speed; the ground under the Wayfarer now)? Read only. Never while Aerial Step holds it.
   fallPoseDue() { const f = this.fall; return !!f && this.fallArea() && !this.aerialHeld() && f.from - this.elevationHere(this.player.x, this.player.y) >= FALL.pose; }
   fallRemainingMs() { const f = this.fall; return f ? fallAirtime(f.z - this.elevationHere(this.player.x, this.player.y), f.vz) * 1000 : 0; }
+  // FALL_RESCUE: would the fall in progress kill where it would land now (the ground under the Wayfarer), if nothing saves them? A
+  // fall Aerial Step holds is not; a great tree's closed freefall is (until the glider opens). `fall.doom` marks a fall lethal
+  // whatever is below (for a fall with no ground under it). Read only; the standard view's red pulse reads it.
+  fallDoomed() {
+    const p = this.player; if (!(p.hp > 0) || this.fallen) return false;
+    const ground = this.elevationHere(p.x, p.y), M = this.save.maxHp, f = this.fall;
+    if (f && this.fallApplies() && !this.aerialHeld()) return f.doom === true || fallDamage(f.from - ground, M) === Infinity;
+    const gl = this.glide; if (gl && gl.open === false && this.area === "overworld") return fallDamage(Math.round((gl.fallFrom ?? gl.z) - ground), M) === Infinity;
+    return false;
+  }
+  // FALL_RESCUE.callDrone: a built drone, set in the frame (Pack: Supplies), docked: one Jump in a fall calls it up (as the frame's
+  // button would) so it can catch. Not aboard, never where the drone may not lift, and only through its own gate.
+  droneCallable() { const m = this.save.mech; return !!m && m.built === true && m.active !== true && m.mode === "drone" && !aboard(this.save) && this.droneLiftAllowed() && droneGate(this.save).ok; }
   decksApply() { return this.area === "overworld" && roofDecksApply(this.map) && !this.mountRide?.() && !this.mechUp?.() && !aboard(this.save) && roofDeckIndex(this.map).decks.length > 0; }
   // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION; Tim, 2026-11-14): the test updateProjectiles puts to each of
   // the Wayfarer's shots while Close View applies here (close-view.ts closeViewApplies: the save's switches, the place and the
@@ -4521,8 +4552,12 @@ export class Game {
   // is a freefall only when the step leaves a great tree: treeLaunch). Tim (2026-11-12): every Rift Step falls.
   landBlink(footing, fromLevel, now) {
     const p = this.player, was = this.fall, from = was ? Math.max(was.from, fromLevel) : fromLevel, drop = from - footing.level; this.setRoofDeck(footing.deck); this.skyAir = null; this.deckHop = false;
-    // FALL: a step that arrives in the air over its footing falls from there (a step taken while falling keeps the fall's speed and
-    // the height its damage counts from: a blink moves you, it does not catch you). Arriving at the footing, it lands now.
+    // FALL_RESCUE.rift: a step taken in a fall (not from Aerial Step's held air), or in a great tree's closed freefall, steps out of it:
+    // it stands on its footing with nothing charged (the fall's speed and height do not go with it).
+    { const gl = this.glide, falling = !!was && this.fallApplies() && !this.aerialHeld(), freefall = !!gl && gl.open === false && this.area === "overworld";
+      if (falling || freefall) { this.fall = null; this.glide = null; this.fallLanded = null; this.jumpUntil = Math.min(this.jumpUntil || 0, now); this.message = FALL_RESCUE.rift; return 0; } }
+    // FALL: a step that arrives in the air over its footing falls from there (a step taken while falling stepped out of it, above).
+    // Arriving at the footing, it lands now.
     if (this.fallApplies() && fromLevel - footing.level > FALL.minDrop) {
       if (this.save.glider && !this.glide && !was && drop >= GLIDE.minDrop && !this.mechUp() && this.treeLaunch(now)) { this.setRoofDeck(null); this.glide = { z: fromLevel, vx: 0, vy: 0, vz: 0, open: false, fallFrom: from, told: false, tree: true }; this.glideHome = this.treeGlideHome(fromLevel); this.message = GLIDE.falling; return 0; }
       this.jumpUntil = Math.min(this.jumpUntil || 0, now); this.beginFall(fromLevel, was ? was.vz : 0, from, was ? was.scale : 1); return 0;
@@ -11361,7 +11396,8 @@ export class Game {
       // FALL: falling, Jump catches you with the drone's booster (when it is up; its fuel and rules as from a jump). A catch ends the
       // fall: its damage then counts afresh from where you were caught. The glider catches nothing (Tim, 2026-11-13: great trees only).
       else if (fall && !(now < this.jumpUntil) && !this.aerialHeld()) { // AERIAL: on held air Jump is a jump (below)
-        if (this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else if (this.droneRoofCap(fall.z) != null) this.message = DRONE_LIFT.roofed; else { this.droneLift = { base: Math.max(below, Math.floor(fall.z + 1e-6) - DRONE_LIFT.max), z: fall.z, vz: 0, cap: fall.z }; this.mechSpent = false; this.fall = null; this.jumpUntil = now + 140; this.skyAir = Math.floor(fall.z + 1e-6); this.liftDrop = false; this.message = FALL.catchDrone; } }
+        const called = !this.droneUp() && !this.droneLift && this.droneCallable() && this.save.mech.fuel > 0 && this.droneRoofCap(fall.z) == null; if (called) { this.save.mech.active = true; this.droneAt = null; } // FALL_RESCUE.callDrone: Jump calls a docked drone up to catch
+        if (this.droneLiftAllowed() && this.droneUp() && !this.droneLift) { const m = this.save.mech; if (!(m.fuel > 0)) this.message = DRONE_LIFT.none; else if (this.droneRoofCap(fall.z) != null) this.message = DRONE_LIFT.roofed; else { this.droneLift = { base: Math.max(below, Math.floor(fall.z + 1e-6) - DRONE_LIFT.max), z: fall.z, vz: 0, cap: fall.z }; this.mechSpent = false; this.fall = null; this.jumpUntil = now + 140; this.skyAir = Math.floor(fall.z + 1e-6); this.liftDrop = false; this.message = called ? FALL_RESCUE.callDrone : FALL.catchDrone; if (called) this.sync(); } }
         else this.message = FALL.nothing;
       }
       else if (now < this.jumpUntil && this.save.glider && this.area === "overworld" && !this.mechUp() && !this.droneUp() && high - below >= GLIDE.minDrop && this.treeLaunch(now)) { this.glide = { z: high, vx: 0, vy: 0, open: true, told: false, tree: true }; this.glideHome = this.treeGlideHome(high); this.skyAir = null; this.fall = null; this.message = GLIDE.open; }

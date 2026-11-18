@@ -285,8 +285,9 @@ function riftCommit(game, now, R, from, best, fromLevel) {
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
   game.message = "Rift Step.";
-  // Tim (2026-11-12): every Rift Step falls. A glide or the drone's lift carries on in the air; anything else lands where it arrived.
-  if (best.footing && game.landBlink && !game.glide && !game.droneLift) game.landBlink(best.footing, fromLevel, now);
+  // Tim (2026-11-12): every Rift Step falls. An open glide or the drone's lift carries on in the air; anything else lands where it
+  // arrived. A step taken while falling steps out of the fall (game.ts FALL_RESCUE.rift, Tim 2026-11-18).
+  if (best.footing && game.landBlink && !(game.glide && game.glide.open !== false) && !game.droneLift) game.landBlink(best.footing, fromLevel, now); // FALL_RESCUE.rift: a great tree's closed freefall is stepped out of too
   game.sync();
   return true;
 }

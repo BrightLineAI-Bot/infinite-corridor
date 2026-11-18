@@ -511,8 +511,13 @@ function castBlend(state,profile,p,sourceLeft,reducedMotion){
 // the arms draw a touch forward and the hips sink), then the sweep: the shoulders lead, the forearms and hands trail by `lag`, the
 // torso leans in over a small hip shift; a hold; and an eased return with a slight forward follow-through. Over the cast's clock
 // (ACTION_MOTION.castMs); when the cast is cut short (a dodge, a blow, an attack) the last pose eases out over `outMs` instead of
-// popping. With a carried two-handed primary (Cinder Pike, Verge Cleaver) the held arm keeps its grip exactly and only the free
-// arm sweeps (the casting rule: a cast never moves the held weapon), so the torso stays and the neck takes the lean. Runtime only on the pose state (aerialW, aerialP, aerialAt); nothing allocated.
+// popping. The carried weapon is put away for it (AERIAL_HANDS_FREE, below), so both arms sweep and the torso leans whatever is
+// carried (`keep`, a held arm left still, is kept for the shape's callers but no longer used). Runtime only on the pose state (aerialW, aerialP, aerialAt); nothing allocated.
+// AERIAL_HANDS_FREE (Tim, 2026-11-18: "the weapon disappears during the Aerial Step cast... then returns"): the one deliberate
+// exception to the casting rule that a cast never moves the held weapon. For Aerial Step's cast (live, or easing out when cut short)
+// the carried weapon and off-hand tool are not drawn (close-view.ts gear.profile; renderer.ts in the standard view), and both arms
+// sweep (aerialCastLayer with no held arm kept). Every other cast keeps its grip and follow-through.
+export const aerialHandsFree = (state) => !!state && state.aerialW > 0;
 export const AERIAL_CAST_POSE = Object.freeze({ sweep: .85, spread: .62, elbow: .22, palm: .3, roll: 1.3, lean: .17, chest: .06, head: -.12, hips: .05, sink: .04,
   antic: .16, ready: .14, over: .10, lag: .07, rise: .34, hold: .64, outMs: 120, reduced: .7 });
 // The sweep's lead envelope at cast phase p (0..1), for the standard view's drawn cast (renderer.ts aerialCastStd). Pure.
@@ -1196,7 +1201,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   if(carbineHeld)carbineHoldPose(state,state.pose,input.carbineRecoil); // the Carbine shouldered (CARBINE_HOLD), over the gait and any carbine record
   if(input.heldTool==='orrery'&&!knocked&&action?.kind!=='death'&&action?.kind!=='cast')orreryPalmPose(state,state.pose); // the Orrery floats over the open right palm
   if(!action&&Number.isFinite(input.landing))landingAbsorbPose(asset,state,state.pose,clamp(Number(input.landing)),input.reducedMotion);
-  if(!knocked&&action?.kind!=='death')aerialCastLayer(state,state.pose,aerialCast,p,input.nowMs,input.reducedMotion,heldPrimary?(roles.free==='leftSocket'?22:12):0); else state.aerialW=0; // AERIAL_CAST_POSE (eases out when cut short)
+  if(!knocked&&action?.kind!=='death')aerialCastLayer(state,state.pose,aerialCast,p,input.nowMs,input.reducedMotion,0); else state.aerialW=0; // AERIAL_CAST_POSE (eases out when cut short); AERIAL_HANDS_FREE: the weapon is put away for it, so both arms sweep whatever is carried
   // Shadow Boxing charge (close-view-shadow-forms.ts): a forward lean over whatever the swing is doing, head up on the
   // foe, the free arm swept back. Presentation weight only; zero leaves the pose untouched.
   {const w=clamp(Number(input.charge)||0);if(w>0){const L=CLOSE_VIEW_SHADOW_FORMS.dash.lean*w*(input.reducedMotion?.5:1);rotateX(state.pose,27,L);rotateX(state.pose,24,.45*L);rotateX(state.pose,4,-.7*L);if(heldPrimary!=='cinder-pike')rotateX(state.pose,roles.free==='leftSocket'?12:22,1.1*L);if(!action)plantedCrouch(asset,state,state.pose,CLOSE_VIEW_SHADOW_FORMS.dash.crouch*w,CLOSE_VIEW_SHADOW_FORMS.dash.drop);}} // 2026-11-14: low in the charge (not over a swing's own legs)

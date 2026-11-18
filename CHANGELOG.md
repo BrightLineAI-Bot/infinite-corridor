@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Aerial Step walks on air at its cast height, with two charges through Quickening's new secondary form, Quickened Stride, and catches a fall or a great tree's freefall. It works the same in every place with height, dungeons, great buildings, castles, compounds, labyrinths and Pentagon chambers included, and the weapon is put away for its cast. Every fall on a floor with height now plays out in real time, indoors too, and kills only on landing. While a fall would be lethal the Standard View's edges pulse red, and Aerial Step, Rift Step (which now steps out of a fall) or the drone (Jump calls a docked one up to catch) can save the Wayfarer. Pause and reload mid-fall resume exactly.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.

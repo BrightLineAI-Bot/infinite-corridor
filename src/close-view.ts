@@ -7,7 +7,7 @@ import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
 import { creaturePoseFamily, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero } from './close-view-hero.ts';
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
 import { playerFormPresentation, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
@@ -4131,10 +4131,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
         if (sampleCloseViewHero(asset, state.heroPose, input, state.heroFrame) && state.heroFrame.ready) {
           CAM.bodyYaw = action.yaw;
           const gear = state.heroGear;
-          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
+          gear.profile = action.kind==='interact'&&shovelProfile?shovelProfile:form?.empowered && held === 'fist' ? '' : held==='emitter'?importedEmitterAppearance(visualRecord,visualAttack?null:rangedWeapon(g.save.equipment?.secondary),visualAttack):held; if(who===player&&gear.profile==='cinder-pike'&&javelinInFlight(g))gear.profile='';/* weapon-arts.ts: thrown, so not in hand */const handsFree=aerialHandsFree(state.heroPose);if(handsFree)gear.profile='';/* AERIAL_HANDS_FREE: put away for Aerial Step's cast, back after it */ gear.primaryStage=primaryStage; gear.leftSocket = state.heroFrame.leftSocket; gear.rightSocket = state.heroFrame.rightSocket;
           gear.drinkVial=action.kind==='drink'&&!state.heroFrame.powerSuit;gear.vialWeight=gear.drinkVial?state.heroPose.weight:0;gear.vialSocket=state.heroFrame[cleaverHandRoles(held,primaryStage).free];
           gear.alpha = actor.alpha; gear.tint = input.tint; gear.hitFlash = hit;
-          gear.offhand = offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
+          gear.offhand = handsFree ? null : offhandTool; gear.single = offhandSingle; gear.offhandSocket = offhandTool && !handsFree ? state.heroFrame.leftSocket /* source-left: the displayed right hand */ : null; gear.clock = input.nowMs; gear.still = reduce; const heroStart = offset;
           const equipped = writeCloseViewHeroEquipment(state.vertices, offset, gear, state.heroFrame);
           if (state.heroFrame.powerSuit && equipped === offset) return;
           if (!reduce && equipped > offset && action.kind === 'melee' && held === 'verge-cleaver' && meleeAction?.kind === 'verge-cleaver') {
@@ -4145,7 +4145,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
             }
           }
           offset = writeCloseViewHeroKit(state.vertices, equipped, gear, state.heroFrame);
-          if (offhandTool) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
+          if (offhandTool && !handsFree) offset = writeCloseViewHeldTool(state.vertices, offset, gear, heroStart + (MODEL_MAX_VERTICES + HERO_SLOT_EXTRA_TRIANGLES * 3) * MODEL_FLOATS); // close-view-sweep-gear.ts: inside the hero's reservation
           const right=state.heroFrame[cleaverHandRoles(held,primaryStage).grip],rx=right?.[12],ry=right?.[13],rz=right?.[14];
           if(actor.alpha>0&&closeViewHeldMuzzlePoint(state.muzzle,gear.profile,right))state.muzzleReady=true;
           // Only the final selected tool action owns its cue. The validated authored muzzles extend .611–.652 tiles from this bounded socket.
