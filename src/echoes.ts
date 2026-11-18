@@ -24,6 +24,7 @@ export function grantSlainEchoes(save) {
   if (!save?.echoes?.owned) return [];
   const rooms = ensureRoomBeastSlain(save);
   const slain = [["questingBeast", save.questingBeast?.slain], ["stalker", save.stalker?.kills], ...Object.entries(save.worldBeasts || {}).map(([id, q]) => [id, q?.slain]), ...ROOM_BEAST_IDS.map((id) => [id, rooms[id]])];
+  for (const [minion, parent] of Object.entries(MINION_ECHOES)) slain.push([minion, save.worldBeasts?.[parent]?.slain]); // a minion's Echo, once its beast is slain
   const granted = slain.filter(([id, n]) => ECHOES[id] && Number(n) > 0 && !save.echoes.owned[id]).map(([id]) => id);
   for (const id of granted) save.echoes.owned[id] = true;
   return granted;
@@ -191,9 +192,15 @@ export function toggleEcho(save, id) {
 // Release 263 fix: live pack combatants carry `packKind: true` (a flag), not their id, so every real drop used to miss;
 // the creature is now read from `kind` when the flag is a boolean.
 export const echoKindOf = (enemy) => typeof enemy?.packKind === "string" ? enemy.packKind : enemy?.packKind ? enemy.kind : null;
+// Tim (2026-11-18: "the echoes for the bloblets and the tentacles for the tremor worm are broken, they're not showing up after
+// I've killed them"): a bloblet or a worm tentacle is a minion (summonedBy its beast, and never a guardian), so the summoned-kill
+// rule and the ordinary 0% (release 263) left their Echoes unreachable. A minion Echo is now certain on its first kill, like a
+// guardian's (release 337), and a Wayfarer who has slain the parent beast is granted it once on load (grantSlainEchoes).
+export const MINION_ECHOES = { bloblet: "morphingBlob", wormTentacle: "tremorWorm" };
 export function echoDrop(save, enemy, guardian, n, certain = false) {
-  const id = echoKindOf(enemy);
-  if (!id || !ECHOES[id] || save.echoes.owned[id] || enemy.summonedBy || enemy.noRewards) return null;
+  const id = echoKindOf(enemy), minion = !!id && Object.hasOwn(MINION_ECHOES, id);
+  if (!id || !ECHOES[id] || save.echoes.owned[id] || (enemy.summonedBy && !minion) || enemy.noRewards) return null;
+  if (minion) certain = true;
   // A mixed roll: the raw FNV hash modulo 100 runs well under the stated chance when only the counter changes.
   if (!certain && rng(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`)() * 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
   save.echoes.owned[id] = true;
