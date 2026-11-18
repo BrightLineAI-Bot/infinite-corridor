@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Unreleased: On ground first explored from now on, the Corridor has begun to speak of the Wayfarer in hushed tones. Now and then a traveller, a reciter or a hamlet's folk lowers their voice about a figure who keeps coming back; a rare Glimpse, The Shutter, may surface on entering a crossing; and a few lesser creatures hesitate or flee for a moment before they fight. Rats, bosses, elites, world beasts and guardians never cower, and most creatures still just fight.
+- Release 990: The core creatures look and attack better. In Close View, the Ashling, Hollow Marshal, Ashen Hound, Coil Stalker, Pallid Crawler and Glass Mite each have their own attack for every move, with clearer wind-ups and follow-through, on reshaped bodies at the same triangle counts. The Marshal's halberd thrusts, reaps and chops; the Coil Stalker rears a hooded neck and strikes. In the normal view the creatures keep their blocky art, but their claws, halberd, jaws, legs, wings, staffs and tentacles now swing on joints, with a wind-up, a strike, a recovery and a flinch.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
