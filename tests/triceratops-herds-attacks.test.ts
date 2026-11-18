@@ -252,7 +252,7 @@ test("charging does not intercept ordinary rider Attack or spell input", () => {
   const press = g.pressSlot.bind(g);
   g.pressSlot = (slot, action, ...rest) => { if (slot === "a" && action === "spell") spellPressed = true; return press(slot, action, ...rest); };
   g.update(.01, holdInput("spell"), 1450);
-  assert.equal(spellPressed, true); assert.equal(g.triceratopsCharge?.phase, "hold");
+  assert.equal(spellPressed, false, "Tim, 2026-11-18: riding, slot B is the Triceratops's Horn Dash, not a spell"); assert.equal(g.triceratopsCharge?.phase, "hold");
 });
 
 
