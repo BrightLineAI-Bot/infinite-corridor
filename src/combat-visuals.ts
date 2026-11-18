@@ -339,7 +339,7 @@ export function drawViewportClosed(ctx, stage, w, h, t, art = {}, quality = "bal
 // still frame at `still` of its alpha. While the fall cue (FALL_RESCUE.flash) shows, it yields: one red cue at a time.
 export const LOW_HEALTH_EDGE = Object.freeze({
   threshold: .3,
-  reach: Object.freeze({ min: .08, max: .14 }), // Tim 2026-11-18: a light mist at the edges, reaching just past the Oculus button's inner edge
+  reach: Object.freeze({ min: .04, max: .14, fullAt: .5 }), // Tim 2026-11-18: a thin mist at 30% health; by 15% (level .5) it reaches just past the Oculus button's inner edge
   steps: 8,
   soft: .6,
   ragged: .3,
@@ -357,7 +357,7 @@ export function lowHealthEdgeLevel(hp, maxHp) {
   return vcClamp(1 - v / max / T);
 }
 // The band's depth (share of the shorter screen side) for a step 0..steps.
-export function lowHealthEdgeReach(step) { const L = LOW_HEALTH_EDGE; return L.reach.min + (L.reach.max - L.reach.min) * vcClamp(step / L.steps); }
+export function lowHealthEdgeReach(step) { const L = LOW_HEALTH_EDGE; return L.reach.min + (L.reach.max - L.reach.min) * vcClamp(step / (L.steps * (L.reach.fullAt || 1))); }
 const LHE_STATE = { show: false, level: 0, step: 0, alpha: 0, pick: 0, flipX: false, flipY: false, still: false, tick: 0 };
 // One frame's state, in a reused object (no allocation). fallCue: the fall's doom cue is drawn this frame.
 export function lowHealthEdgeState(g, now, fallCue = false) {
