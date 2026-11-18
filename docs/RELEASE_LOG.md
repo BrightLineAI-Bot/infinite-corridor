@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r988 (`2ea9adf5e850`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r989 (`edc058f49154`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 989 | Codex | codex/free-triceratops-per-journey / #658 | One free permanent standard Triceratops per existing or new journey | In flight. |
+| 990 | Claude | claude/creature-visuals-core | Core creatures: per-move Close View attack rows and reshaped bodies at the same triangle counts; Standard View blocky creatures gain articulated limbs on the attack clocks; overworld digest re-pinned (Tim approved); rounded sprites kept for the bizarro world; no save change | In flight. |
+| 989 | Codex | codex/free-triceratops-per-journey / #658 | One free permanent standard Triceratops per existing or new journey | Merged as `edc058f49154` (#658); preview r989-edc058f49154, not published. |
 | 988 | Codex | codex/triceratops-close-view-framing / #659 | Fit the mounted camera and clear the airborne drill from the floor | Merged as `2ea9adf5e850` (#659). |
 | 987 | Codex | codex/triceratops-wild-herds / #655 | Wild herds, mounted horn attacks and Silly Goose tail drill | Merged as `ebf989f96803` (#655); Preview `r987-ebf989f96803`. Close View framing correction follows in r988. |
 | 986 | Codex | codex/triceratops-capture-preview / #657 | Equip Enclosure in the isolated Triceratops capture fixtures | Merged as `53a48ec3610c` (#657); Preview `r986-53a48ec3610c`. |

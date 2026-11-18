@@ -21,6 +21,7 @@ import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser
 import { ASTRAL, astralBeamAnchors } from "./astral-worm.ts";
 
 import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
+import { ACTION_MOTION } from "./action-motion.ts"; // the ordinary strike's length, for the core bestiary's Standard View motion
 
 const TAU = Math.PI * 2;
 
@@ -2187,4 +2188,235 @@ export function drawPackPortrait(ctx, kind, size, now = 0) {
   const bg = ctx.createRadialGradient(size / 2, size * .55, size * .05, size / 2, size * .55, size * .7); bg.addColorStop(0, def.palette[2] + "33"); bg.addColorStop(1, "#0b0a0d00"); ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
   paintPackMonster(ctx, { id: `portrait-${kind}`, kind, x: size / tile / 2 - .5, y: size / tile * .62 - .82, scale: def.form.scale || 1, facingX: 1, pack: null }, tile, now, "down", def, false);
   ctx.restore(); return true;
+}
+
+// The ordinary creatures' Standard View limbs (creature visual pass, Tim 2026-11-15: keep the flat blocky figures of renderer.ts
+// actor() - "they fit with the theme of the game" - and give them limbs that swing at you; no whole-body leaning). Each kind's
+// arms, claws, jaws, weapon and tail are their own blocks turned about a joint, in the same palette and style. The clocks are
+// the ones the Close View rows use (close-view-arcology-models.ts CORE_JOINT_POSE): the wind-up is e.telegraph against its full
+// length (the behaviour record's `wind`, else the move's own telegraph), coiling over the first `snapAt` of it and snapping
+// through in the rest; the strike is e.strike against ACTION_MOTION.monsterStrikeMs, held for `hold`, then settled back with a
+// follow-through; e.flinch flings the limbs back. Rows are J(coil, strike, follow) in radians, clockwise positive, for a figure
+// facing right (actor() mirrors them facing left); `idle` is a slow sway of that amplitude (none under Reduced Motion).
+const L = (coil, strike, follow = 0, idle = 0) => Object.freeze([coil, strike, follow, idle]);
+const rowsOf = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Object.freeze(v)])));
+export const CORE_LIMBS = Object.freeze({
+  snapAt: .8, hold: .25, follow: .45, idleRate: 1.6, flinch: .45, windupDefault: .8,
+  windups: Object.freeze({ longReach: 1, lunge: .8, zigzag: .95, hop: 1.05, slam: 1.25 }), // combat.ts MELEE_PATTERNS telegraphs
+  // limbs: lead and off arm (the lead is the one on the side it faces), head, jaw, weapon or staff, tail, fore and hind legs,
+  // wings and tentacles
+  kinds: Object.freeze({
+    // the Lunge: the lead claw rears overhead and rakes down across; the Long Reach: both claws rear up and rake in together
+    ashling: rowsOf({ '*': { lead: L(-2.3, .7, .35, .06), off: L(.35, -.3, 0, .06), head: L(-.12, .16, .05) },
+      longReach: { lead: L(-2.5, .55, .3, .06), off: L(2.5, -.55, -.3, .06), head: L(0, .1, .05) } }),
+    // the halberd turns about its fist: the thrust levels it at the foe, the reap swings it up from low, the chop brings it
+    // over the helm and down
+    hollowMarshal: rowsOf({ '*': { weapon: L(-.35, 1.57, .12, .04), head: L(-.05, .08) },
+      lunge: { weapon: L(2.3, .7, -.25, .04), head: L(.06, -.08) },
+      slam: { weapon: L(-1.3, 2.1, .15, .04), head: L(-.1, .12) } }),
+    // the head drops to stalk with the jaw agape, then snaps up and shut; the foreleg tucks and rakes out, the hind leg drives
+    ashenHound: rowsOf({ '*': { head: L(.3, -.3, .1, .03), jaw: L(.6, 0, .3), fore: L(.5, -.95, .2), hind: L(-.3, .5), tail: L(-.35, .2, 0, .15) },
+      lunge: { head: L(.35, -.4, .12, .03), jaw: L(.7, 0, .35), fore: L(.55, -1.1, .25), hind: L(-.4, .6), tail: L(-.4, .25, 0, .15) } }),
+    // the legs gather and splay for the hop; the mandibles spread wide and clamp
+    glassMite: rowsOf({ '*': { lead: L(-.7, .35, 0, .05), off: L(.7, -.35, 0, .05), jaw: L(.55, -.15, .1), head: L(0, .08) },
+      longReach: { lead: L(-.32, .26, 0, .05), off: L(.32, -.26, 0, .05), jaw: L(.7, -.2, .12), head: L(-.08, .14) } }),
+    // the Long Reach rears the head to the far side with the fangs agape, then strikes out toward the foe as they shut; the
+    // Lunge dips it toward the foe to stalk, then springs it further out
+    coilStalker: rowsOf({ '*': { head: L(-.32, .42, -.1, .04), jaw: L(.55, 0, .2) },
+      lunge: { head: L(.32, .8, -.15, .04), jaw: L(.6, .05, .2) } }),
+    // the Heavy Slam: both knotted arms rise over the head and hammer down; the Long Reach is a one-arm haymaker
+    rootBrute: rowsOf({ '*': { lead: L(-2.6, .35, .3, .04), off: L(2.6, -.35, -.3, .04), head: L(-.08, .1) },
+      longReach: { lead: L(-1.4, .9, .3, .04), off: L(.3, -.2, 0, .04), head: L(-.06, .1) } }),
+    // the bolt: the staff is drawn back, then levelled across at the foe as the bolt leaves
+    sparkWarden: rowsOf({ '*': { staff: L(-.45, 1.2, .15, .04), head: L(-.06, .08) } }),
+    // the cast: the flame crown leans back to gather and flares forward; the trailing wisp whips the other way
+    cinderWisp: rowsOf({ '*': { head: L(-.35, .5, -.15, .12), tail: L(.4, -.5, .15, .12) } }),
+    // the cast: both wings rise, then clap down to throw the force (the far wing mirrors the near); the antennae dip in
+    veilMoth: rowsOf({ '*': { wing: L(-.55, .6, -.2, .15), head: L(-.1, .12, 0, .05) } }),
+    // the bolt: alternate tentacles curl in and flare out round the eye
+    voidSentinel: rowsOf({ '*': { tentacle: L(.35, -.6, .25) } }),
+    // the Heavy Slam: the great arm is hauled up and brought down, the other braces; the Long Reach swings it out level
+    riftColossus: rowsOf({ '*': { lead: L(-1.3, .6, .3, .03), off: L(.5, -.3, 0, .03), head: L(-.05, .08) },
+      longReach: { lead: L(-.4, 1.3, .2, .03), off: L(.2, -.2, 0, .03), head: L(-.04, .06) } }),
+    // the quiet creatures never attack: the head grazes and bobs, and a blow throws it up (the coil only sets the flinch's way)
+    mossGrazer: rowsOf({ '*': { head: L(-.3, 0, 0, .1), fore: L(.3, 0, 0, .03), hind: L(-.2, 0) } }),
+    lanternDoe: rowsOf({ '*': { head: L(-.3, 0, 0, .06), fore: L(.3, 0), hind: L(-.2, 0) } }),
+    hushling: rowsOf({ '*': { head: L(-.25, .2, 0, .08) } }),
+  }),
+});
+// One scratch record, rewritten by every call (no per-frame allocation). `row` is the creature's limb row ('' for other kinds).
+const CORE_LIMB_POSE = { kind: '', row: null, c: 0, s: 0, f: 0, flinch: 0, idle: 0, amp: 1 };
+export function coreLimbPose(e, now = 0, reduceMotion = false, out = CORE_LIMB_POSE) {
+  const K = CORE_LIMBS, rows = e && Object.hasOwn(K.kinds, e.kind) ? K.kinds[e.kind] : null;
+  out.kind = rows ? e.kind : ''; out.row = null; out.c = 0; out.s = 0; out.f = 0; out.flinch = 0; out.idle = 0; out.amp = reduceMotion ? .5 : 1;
+  if (!rows) return out;
+  const id = typeof e.meleePhase?.id === 'string' ? e.meleePhase.id : '';
+  out.row = Object.hasOwn(rows, id) ? rows[id] : rows['*'];
+  const telegraph = Number(e.telegraph) || 0, strike = Number(e.strike) || 0;
+  if (strike > 0) {
+    const v = 1 - Math.min(1, strike * 1000 / ACTION_MOTION.monsterStrikeMs);
+    if (v < K.hold) out.s = 1; else { const t = (v - K.hold) / (1 - K.hold); out.s = 1 - t * t * (3 - 2 * t); out.f = reduceMotion || t >= K.follow ? 0 : Math.sin(Math.PI * t / K.follow); }
+  } else if (telegraph > 0) {
+    const full = Math.max(telegraph, Number(e.bhv?.wind) || 0, Object.hasOwn(K.windups, id) ? K.windups[id] : K.windupDefault), u = 1 - telegraph / full;
+    if (u < K.snapAt) { const t = u / K.snapAt; out.c = t * t * (3 - 2 * t); }
+    else { const q = 1 - (u - K.snapAt) / (1 - K.snapAt), k = 1 - q * q * q; out.c = 1 - k; out.s = k; }
+  }
+  out.flinch = Math.max(0, Math.min(1, Number(e.flinch) || 0));
+  out.idle = reduceMotion ? 0 : Math.sin(now / 1000 * K.idleRate + (Number(e.x) || 0) * 1.7 + (Number(e.y) || 0) * 2.3);
+  return out;
+}
+// The angle of `limb` for pose `P` (coreLimbPose) facing right, or 0 when it has no row.
+export function coreLimbAngle(P, limb) {
+  const r = P?.row && Object.hasOwn(P.row, limb) ? P.row[limb] : null;
+  if (!r) return 0;
+  // a flinch flings each limb back the way it winds up, as far as its wind-up goes (at most `flinch`)
+  return P.amp * (r[0] * P.c + r[1] * P.s) + r[2] * P.f + r[3] * P.idle + CORE_LIMBS.flinch * P.flinch * Math.max(-1, Math.min(1, r[0]));
+}
+
+// The bizarro-world style (Tim, 2026-11-15): the core bestiary drawn as rounded, shaded side-on bodies instead of the usual
+// blocky figures (renderer.ts actor()), kept for rare special realms and pockets where creatures look strange. Nothing on the
+// normal Standard View path calls it; the realm that wants it calls drawCoreCreature in place of actor(). It covers the Ashling,
+// Hollow Marshal, Ashen Hound, Glass Mite and Coil Stalker in their Close View palettes, with a pose for rest, the wind-up
+// (cocked back) and the strike (extended). Like the haunts (cachedHaunt), each kind/pose/facing/size is painted once into a small
+// canvas and only stamped each frame (bounded by CORE_SPRITE.max); a walking creature bobs a pixel. Without a DOM canvas (tests)
+// the body is painted directly. The Coil Stalker's trailing coils are live ellipses.
+export const CORE_SPRITE = Object.freeze({
+  max: 40, box: Object.freeze({ w: 3.7, h: 2.6, foot: 2.3 }),
+  kinds: Object.freeze({
+    ashling: Object.freeze({ unit: .62, body: "#87503f", dark: "#372927", lit: "#b0705a", claw: "#b78a62", glow: "#f3a55c" }),
+    hollowMarshal: Object.freeze({ unit: .44, body: "#78434a", dark: "#3a2a32", lit: "#9c5a62", claw: "#c6a46f", glow: "#c7e6c6" }),
+    ashenHound: Object.freeze({ unit: .62, body: "#765244", dark: "#302724", lit: "#94695a", claw: "#c18a63", glow: "#f3a55c" }),
+    glassMite: Object.freeze({ unit: .8, body: "#607c79", dark: "#283b3b", lit: "#8fa9a3", claw: "#aab7aa", glow: "#d8f4ee" }),
+    coilStalker: Object.freeze({ unit: .72, body: "#47716d", dark: "#263a39", lit: "#6a9a92", claw: "#87c0ad", glow: "#c9ffe8" }),
+  }),
+});
+const coreSprites = new Map();
+export const coreSpriteCount = () => coreSprites.size;
+export const isCoreSpriteKind = (kind) => Object.hasOwn(CORE_SPRITE.kinds, kind);
+function corePath(g, pts, fill, stroke = null, lw = .03) {
+  g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath();
+  g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function coreLimb(g, pts, color, width) {
+  g.strokeStyle = color; g.lineWidth = width; g.lineCap = "round"; g.lineJoin = "round";
+  g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.stroke();
+}
+function coreBlob(g, x, y, rx, ry, rot, c, lit = null) {
+  g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU);
+  if (lit && typeof g.createRadialGradient === "function") { const gr = g.createRadialGradient(x + rx * .35, y - ry * .45, rx * .1, x, y, Math.max(rx, ry)); gr.addColorStop(0, lit); gr.addColorStop(1, c); g.fillStyle = gr; } else g.fillStyle = c;
+  g.fill();
+}
+// Body units: feet at y 0, up is negative, the creature faces +x. `w` is the wind-up (0 or 1), `a` the strike.
+const CORE_BODIES = {
+  ashling(g, P, w, a) {
+    coreLimb(g, [-.08, -.42, -.12, -.2, -.08, 0], P.dark, .1); coreLimb(g, [.06, -.42, .1, -.2, .06 + .08 * a, 0], P.dark, .1);
+    g.save(); g.rotate(.25 * a - .12 * w);
+    // the far arm, the trunk and its ember crack, the head and crown, then the near arm and its claws
+    const far = w ? [-.02, -.82, -.2, -1.08, -.16, -1.3] : a ? [.02, -.82, .3, -.78, .55, -.86] : [0, -.82, .1, -.6, .2, -.45];
+    coreLimb(g, far, P.dark, .09);
+    coreBlob(g, 0, -.66, .25, .29, 0, P.body, P.lit);
+    g.strokeStyle = P.glow; g.lineWidth = .025; g.beginPath(); g.moveTo(.2, -.86); g.lineTo(.16, -.72); g.lineTo(.21, -.62); g.lineTo(.17, -.5); g.stroke();
+    coreBlob(g, .14, -1.0, .17, .15, 0, P.dark);
+    corePath(g, [.03, -1.1, -.04, -1.32, .1, -1.12], P.body); corePath(g, [.13, -1.12, .14, -1.34, .22, -1.12], P.body);
+    corePath(g, [.2, -1.03, .31, -1.06, .27, -.99], P.glow);
+    const near = w ? [.08, -.84, -.1, -1.06, -.02, -1.28] : a ? [.08, -.84, .36, -.82, .62, -.88] : [.1, -.84, .2, -.62, .3, -.46];
+    coreLimb(g, near, P.body, .1);
+    const hx = near[4], hy = near[5], dir = w ? -Math.PI / 2 : a ? 0 : Math.PI / 3;
+    for (const d of [-.45, 0, .45]) { const r = dir + d; coreLimb(g, [hx, hy, hx + Math.cos(r) * .13, hy + Math.sin(r) * .13], P.claw, .035); }
+    g.restore();
+  },
+  hollowMarshal(g, P, w, a) {
+    coreLimb(g, [-.1, -.8, -.14, -.42, -.08, 0], P.dark, .12); coreLimb(g, [.08, -.8, .16, -.42, .1 + .14 * a, 0], P.body, .13);
+    g.save(); g.rotate(.16 * a - .08 * w);
+    corePath(g, [-.18, -1.55, -.5 - .15 * a - .1 * w, -.4, -.12, -.5], P.dark); // the cape
+    corePath(g, [-.24, -1.55, .26, -1.55, .2, -.78, -.18, -.78], P.body, P.dark, .03);
+    corePath(g, [-.2, -.82, .22, -.82, .24, -.64, -.22, -.64], P.dark);
+    corePath(g, [.08, -1.42, .2, -1.42, .14, -1.22], P.claw);
+    coreBlob(g, .04, -1.74, .2, .19, 0, P.dark);
+    corePath(g, [.12, -1.77, .26, -1.77, .26, -1.72, .12, -1.72], P.claw);
+    corePath(g, [-.06, -1.86, -.1, -2.08, .04, -1.9], P.claw); corePath(g, [.06, -1.88, .1, -2.1, .16, -1.88], P.claw);
+    // the halberd: upright at rest, cocked back over the helm in the wind-up, levelled in the strike
+    const hx = .28, hy = -1.0, ang = w ? -2.35 : a ? -.12 : -1.25, ca = Math.cos(ang), sa = Math.sin(ang), L = 1.15;
+    coreLimb(g, [hx - ca * .3, hy - sa * .3, hx + ca * L, hy + sa * L], "#2a1d22", .045);
+    const tx = hx + ca * L, ty = hy + sa * L, nx = -sa, ny = ca;
+    corePath(g, [tx - ca * .14 + nx * .07, ty - sa * .14 + ny * .07, tx + ca * .3, ty + sa * .3, tx - ca * .14 - nx * .07, ty - sa * .14 - ny * .07], P.claw);
+    corePath(g, [tx - ca * .2, ty - sa * .2, tx - ca * .2 - nx * .2, ty - sa * .2 - ny * .2, tx - ca * .02 - nx * .17, ty - sa * .02 - ny * .17, tx, ty], P.claw);
+    coreLimb(g, [.14, -1.45, .22, -1.2, hx, hy], P.body, .11);
+    g.restore();
+  },
+  ashenHound(g, P, w, a) {
+    const c = .12 * w, r = .2 * a;
+    coreLimb(g, [-.4, -.5 + c, -.36 - .1 * a, -.28, -.46 - .12 * a, -.12, -.42 - .14 * a, 0], P.dark, .08);
+    coreLimb(g, [.3, -.5 + c, .3 + r, -.26, .32 + 1.5 * r, -.02 - .2 * a], P.dark, .075);
+    coreLimb(g, [-.55, -.62 + c, -.82, -.74 + c, -.92, -.78 + c], P.body, .07);
+    coreBlob(g, -.12, -.6 + c, .48, .19, .04 * a, P.dark, P.body);
+    coreBlob(g, .26, -.62 + c, .2, .22, 0, P.body, P.lit);
+    corePath(g, [-.1, -.76 + c, .14, -.92 + c, .3, -.8 + c], P.dark); // hackles
+    const hx = .5 + .1 * a, hy = -.72 + c * 1.4 - .08 * a;
+    coreBlob(g, hx, hy, .17, .13, 0, P.body, P.lit);
+    corePath(g, [hx + .08, hy - .07, hx + .32, hy - .02, hx + .32, hy + .05, hx + .1, hy + .07], P.body);
+    corePath(g, [hx + .08, hy + .05, hx + .3, hy + .08 + .1 * w, hx + .08, hy + .12], P.dark); // the jaw, agape in the wind-up
+    corePath(g, [hx - .1, hy - .08, hx - .05, hy - .3, hx + .04, hy - .1], P.body);
+    corePath(g, [hx + .07, hy - .05, hx + .14, hy - .06, hx + .1, hy - .02], P.glow);
+    coreLimb(g, [.3, -.5 + c, .42 + 1.6 * r, -.24 + .05 * w, .5 + 2 * r, -.02 - .24 * a], P.body, .075);
+    coreLimb(g, [-.3, -.5 + c, -.24, -.3, -.34, -.14, -.3, 0], P.body, .085);
+  },
+  glassMite(g, P, w, a) {
+    const lift = .14 * a - .06 * w;
+    for (const [x, r, c] of [[.18, .5, P.dark], [-.02, .3, P.dark], [-.22, -.2, P.dark], [.2, .55, P.body], [0, .25, P.body], [-.2, -.25, P.body]]) {
+      const kx = x + Math.sin(r) * .1, ky = -.36 - lift - .18 - .1 * a;
+      coreLimb(g, [x, -.34 - lift, kx, ky, kx + Math.sin(r) * .22, a ? -.1 : 0], c, .045);
+    }
+    g.save(); g.translate(0, -lift);
+    corePath(g, [-.38, -.32, -.26, -.5, .02, -.56, .26, -.48, .34, -.34, .18, -.24, -.24, -.22], P.body, P.dark, .025);
+    corePath(g, [-.26, -.5, .02, -.56, -.04, -.42], P.lit); corePath(g, [.02, -.56, .26, -.48, .06, -.42], P.claw);
+    corePath(g, [-.14, -.52, -.08, -.8, 0, -.54], P.claw); // the crystal spur
+    const o = w ? .16 : a ? -.04 : .06;
+    coreBlob(g, .36, -.36, .1, .09, 0, P.dark);
+    corePath(g, [.42, -.4, .62 + .06 * a, -.42 - o, .46, -.36], P.claw); corePath(g, [.42, -.33, .62 + .06 * a, -.3 + o, .46, -.36], P.claw);
+    corePath(g, [.37, -.41, .43, -.41, .4, -.37], P.glow);
+    g.restore();
+  },
+  coilStalker(g, P, w, a) {
+    // the reared neck, the hood and the head; the coils behind it are drawn live
+    const bx = -.1, by = -.15, tx = .12 + .3 * a - .14 * w, ty = -1.0 + .3 * a + .06 * w, cx = bx + .1 - .1 * w, cy = -.7;
+    g.beginPath(); g.moveTo(bx - .2, by); g.quadraticCurveTo(cx - .16, cy, tx - .1, ty + .06); g.lineTo(tx + .08, ty + .12); g.quadraticCurveTo(cx + .14, cy + .1, bx + .22, by); g.closePath();
+    g.fillStyle = P.dark; g.fill();
+    g.strokeStyle = P.claw; g.lineWidth = .04; g.beginPath(); g.moveTo(bx + .2, by - .06); g.quadraticCurveTo(cx + .12, cy + .08, tx + .06, ty + .12); g.stroke();
+    corePath(g, [tx - .14, ty + .24, tx - .24, ty - .04, tx - .06, ty - .2, tx + .02, ty + .08], P.body, P.dark, .02); // the hood
+    g.save(); g.translate(tx, ty); g.rotate(w ? -.35 : a ? .3 : 0);
+    coreBlob(g, .12, 0, .22, .1, 0, P.body, P.lit);
+    corePath(g, [.04, .05, .32, .06 + .1 * w, .06, .12], P.claw); // the jaw, agape in the wind-up
+    corePath(g, [.16, -.06, .25, -.05, .2, -.02], P.glow);
+    g.restore();
+  },
+};
+// Draws `e` at tile (x, y) and returns true, or returns false for a kind it does not draw (the caller falls back to actor()).
+export function drawCoreCreature(ctx, e, x, y, s, facing, state, frame = 0) {
+  const P = CORE_SPRITE.kinds[e?.kind], body = CORE_BODIES[e?.kind];
+  if (!P || !body) return false;
+  const sc = Math.max(.6, Number(e.scale) || (e.boss ? 1.45 : 1)), k = x * s + s / 2, base = y * s + s * .82, flip = facing === "left" ? -1 : 1;
+  const pose = state === "telegraph" || state === "windup" ? "windup" : state === "attack" ? "attack" : "idle";
+  if (e.segments > 1) { // the trailing coils, as the old figure drew them
+    const f = facing === "left" ? -1 : facing === "right" ? 1 : 0, fy = facing === "up" ? -1 : facing === "down" || !f ? 1 : 0;
+    for (let i = e.segments - 1; i >= 1; i--) {
+      const wave = Math.sin((frame + i) * .9) * .1, cx = k - f * s * e.segmentSpacing * i - fy * s * wave, cy = base - fy * s * e.segmentSpacing * i + f * s * wave - s * .2 * sc;
+      ctx.fillStyle = i % 2 ? P.dark : P.body; ctx.strokeStyle = P.claw; ctx.lineWidth = Math.max(1, s * .035);
+      ctx.beginPath(); ctx.ellipse(cx, cy, s * .25 * sc, s * .17 * sc, Math.atan2(fy, f), 0, TAU); ctx.fill(); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = "#050504aa"; ctx.beginPath(); ctx.ellipse(k, base, s * .3 * sc, s * .1, 0, 0, TAU); ctx.fill();
+  const u = Math.max(4, Math.round(s * sc * P.unit)), B = CORE_SPRITE.box, bob = Math.floor(frame) % 2;
+  const paint = (g, ox, oy) => { g.save(); g.translate(ox, oy); g.scale(u * flip, u); body(g, P, pose === "windup" ? 1 : 0, pose === "attack" ? 1 : 0); g.restore(); };
+  if (typeof document === "undefined" || typeof document.createElement !== "function") { paint(ctx, k, base - bob); return true; }
+  const key = `${e.kind}:${pose}:${flip}:${u}`;
+  let sprite = coreSprites.get(key);
+  if (!sprite) {
+    sprite = document.createElement("canvas"); sprite.width = Math.ceil(u * B.w); sprite.height = Math.ceil(u * B.h);
+    const g = sprite.getContext("2d"); if (!g) { paint(ctx, k, base - bob); return true; }
+    paint(g, sprite.width / 2, u * B.foot);
+    coreSprites.set(key, sprite); if (coreSprites.size > CORE_SPRITE.max) coreSprites.delete(coreSprites.keys().next().value);
+  }
+  ctx.drawImage(sprite, k - sprite.width / 2, base - u * B.foot - bob);
+  return true;
 }

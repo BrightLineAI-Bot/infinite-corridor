@@ -130,26 +130,56 @@ const J = (coil, strike, follow = 0, lag = 0) => Object.freeze([coil, strike, fo
 const crawlerBite = Object.freeze({ [-2]: J(.3, -.82, .3), 2: J(.36, -.56, .34, .12), [-1]: J(-.36, .46, -.16, .1), 1: J(-.3, .4, -.12, .2), 30: J(-.22, .32, -.1), 31: J(.72, -.05, .3) });
 const sentinelTentacle = (i) => i % 2 ? J(-.3, .5, .2, .05 + .05 * Math.abs(i - 3)) : J(.42, -.78, -.22, .05 * Math.abs(i - 3));
 export const CORE_JOINT_POSE = Object.freeze({
-  // A short clawed lunge: the lead claw draws back and thrusts, the off arm guards, the stance splits and the head snaps in.
-  ashling: Object.freeze({ '*': Object.freeze({ [-2]: J(1.0, -1.75, .25), 2: J(-.35, .55, -.1, .15), [-1]: J(-.25, -.45), 1: J(.3, .5), 82: J(.18, -.38, .12) }) }),
+  // Ashling: the Lunge is a one-claw jab (the lead claw cocks back by the hip, the off claw guards, the head ducks in behind
+  // it); the Long Reach is a two-claw overhead rake (both arms rear up over the crown spikes, the head tips back, then both
+  // claws rake down in front and carry past).
+  ashling: Object.freeze({
+    lunge: Object.freeze({ [-2]: J(1.1, -1.9, .3), 2: J(-.45, .6, -.15, .15), [-1]: J(-.3, -.5), 1: J(.35, .55), 82: J(.25, -.45, .15) }),
+    longReach: Object.freeze({ [-2]: J(-2.45, -.55, .5), 2: J(-2.35, -.45, .45, .1), [-1]: J(-.15, -.35), 1: J(.2, .4), 82: J(-.4, .5, .14) }),
+    '*': Object.freeze({ [-2]: J(1.0, -1.75, .25), 2: J(-.35, .55, -.1, .15), [-1]: J(-.25, -.45), 1: J(.3, .5), 82: J(.18, -.38, .12) }) }),
   // The Heavy Slam: both arms rise overhead in the windup and hammer down in front, stopping short of the floor so the root's
   // lean no longer pitches the body past it (the old strike swing stacked on that lean); the head looks up, then ducks in.
   rootBrute: Object.freeze({ '*': Object.freeze({ [-2]: J(-2.55, -.62, .32), 2: J(-2.55, -.62, .32, .06), [-1]: J(-.2, -.28), 1: J(.25, .34), 82: J(-.3, .22, .12) }) }),
-  // The Long Reach pole thrust: the halberd arm lifts the blade upright, then levels it point first; the cape streams back, the
-  // free arm draws back and the helm dips behind the point.
-  hollowMarshal: Object.freeze({ '*': Object.freeze({ [-2]: J(-.32, .95, -.16), 2: J(-.35, .45, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .14, .06) }) }),
-  // The Zigzag Assault: the hind legs load under the body and drive, the forequarters lift and both forelegs reach (the lead one
-  // further), the head drops to stalk then snaps forward as the jaw gapes and slams shut; the tail counterbalances.
-  ashenHound: Object.freeze({ '*': Object.freeze({ 2: J(.32, -1.0, .35), [-2]: J(.32, -.78, .3, .1), 1: J(-.38, .62, -.2), [-1]: J(-.38, .62, -.2, .1), 6: J(-.3, .5, -.22, .3), 82: J(.28, -.2, .14), 30: J(.55, -.04, .3) }) }),
-  // The serpent strike: the head rears back with the jaw open, drives down and forward as the jaw snaps; the two trailing
-  // segments coil and whip after it, the second later and wider.
-  coilStalker: Object.freeze({ '*': Object.freeze({ 82: J(-.42, .48, -.12), 30: J(.62, -.05, .22), 4: J(.26, -.34, .16, .2), 5: J(.42, -.6, .3, .4) }) }),
-  // The legacy bite and leap: forelegs tuck and strike out staggered, hind legs load and drive, the head rears then bites down
-  // while the jaw gapes and snaps.
-  pallidCrawler: Object.freeze({ bite: crawlerBite, leapSlam: crawlerBite }),
-  // The hop: the legs gather under the shell, then fire out staggered (front legs reach, rear legs drive, the middle pair
+  // Hollow Marshal: the halberd (33) turns about the fist and the halberd arm (32) about the shoulder, so the blade can be
+  // stood up, levelled, dropped low or swung back over the helm while the fist stays on the haft.
+  hollowMarshal: Object.freeze({
+    // The Long Reach thrust: the halberd (33, about the fist) stands upright, then levels point first as the arm (32) punches.
+    longReach: Object.freeze({ 33: J(-.35, 1.0, -.1), 32: J(.2, -.25, .05), 2: J(-.3, .42, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .16, .06) }),
+    // The Lunge is a rising reap: the blade drops forward and low, the stance splits deep, then it sweeps up through the foe.
+    lunge: Object.freeze({ 33: J(1.25, .1, -.4), 32: J(.15, -.3, .05), 2: J(.35, -.5, .12), 3: J(-.25, .45, .18, .3), [-1]: J(-.35, -.55), 1: J(.3, .55), 82: J(.15, -.22, .08) }),
+    // The Slam is an overhead chop: the halberd swings back over the helm (the helm tips up to follow it), then it is brought
+    // down in front, stopping short of the floor; the cape flies up behind and the lead foot stamps.
+    slam: Object.freeze({ 33: J(-1.45, 1.65, .15), 32: J(-.22, .14, .05), 2: J(-.45, .35, -.1), 3: J(-.3, .55, .2, .3), [-1]: J(-.2, -.5), 1: J(.25, .4), 82: J(-.32, .36, .1) }),
+    '*': Object.freeze({ 33: J(-.35, 1.0, -.1), 32: J(.2, -.25, .05), 2: J(-.35, .45, -.1), 3: J(-.18, .38, .16, .3), [-1]: J(-.15, -.42), 1: J(.2, .48), 82: J(-.12, .14, .06) }) }),
+  // Ashen Hound.
+  ashenHound: Object.freeze({
+    // The Zigzag is a slashing rake: the head drops to stalk, the lead foreleg cocks and rakes up and across, the other follows
+    // a beat later, and the jaw snaps once the paw has landed.
+    zigzag: Object.freeze({ 2: J(.35, -1.25, .4), [-2]: J(.2, -.55, .22, .18), 1: J(-.35, .55, -.15), [-1]: J(-.35, .55, -.15, .12), 6: J(-.3, .32, -.25, .3), 82: J(.38, -.22, .16), 30: J(.5, -.04, .3, .2) }),
+    // The Lunge is a pounce and bite: both forelegs tuck, the hind legs load, the jaw gapes wide with the head low, then the
+    // whole hound drives up and the jaw slams shut on contact.
+    lunge: Object.freeze({ 2: J(.55, -.95, .3), [-2]: J(.55, -.95, .3, .05), 1: J(-.5, .78, -.25), [-1]: J(-.5, .78, -.25, .06), 6: J(-.35, .38, -.3, .35), 82: J(.45, -.45, .2), 30: J(.75, -.04, .32) }),
+    '*': Object.freeze({ 2: J(.32, -1.0, .35), [-2]: J(.32, -.78, .3, .1), 1: J(-.38, .62, -.2), [-1]: J(-.38, .62, -.2, .1), 6: J(-.3, .5, -.22, .3), 82: J(.28, -.2, .14), 30: J(.55, -.04, .3) }) }),
+  // Coil Stalker: the head, hood and neck (82) and the jaw (83) turn about the neck's root, so the whole column strikes. The Long Reach rears
+  // the column back with the jaw agape and drives it forward and down as the jaw snaps; the Lunge drops the head low to stalk,
+  // then springs it up and out. The two trailing coils (4, 5) bunch and whip after it, the second later and wider.
+  coilStalker: Object.freeze({
+    longReach: Object.freeze({ 82: J(-.55, .12, -.22), 83: J(-.12, .12, -.1), 4: J(.3, -.4, .18, .2), 5: J(.45, -.65, .3, .4) }),
+    lunge: Object.freeze({ 82: J(.3, -.08, -.2), 83: J(.76, -.06, -.08), 4: J(-.35, .5, -.2, .15), 5: J(-.5, .7, -.25, .3) }),
+    '*': Object.freeze({ 82: J(-.55, .12, -.22), 83: J(-.12, .12, -.1), 4: J(.3, -.4, .18, .2), 5: J(.45, -.6, .3, .4) }) }),
+  // The legacy bite: forelegs tuck and strike out staggered, hind legs load and drive, the head rears then bites down while
+  // the jaw gapes and snaps.
+  // The Leap Slam rears the forequarters: the forelegs lift high and splay, the hind legs crouch to spring, then the forelegs
+  // and the eyeless head come down together as the jaw gapes.
+  pallidCrawler: Object.freeze({ bite: crawlerBite, leapSlam: Object.freeze({ [-2]: J(-.85, .55, -.25), 2: J(-.85, .55, -.25, .08), [-1]: J(.4, -.55, .2), 1: J(.4, -.55, .2, .1), 30: J(-.4, .45, -.12), 31: J(.55, .35, .2) }) }),
+  // Glass Mite. The hop: the legs gather under the shell, then fire out staggered (front legs reach, rear legs drive, the middle pair
   // splays for the landing) as the mandibles gape and clamp.
-  glassMite: Object.freeze({ '*': Object.freeze({ 70: J(.34, -.66, .22), 71: J(.34, -.58, .26, .08), 72: J(-.12, .2, .36, .16), 73: J(-.12, .2, .36, .2), 74: J(-.34, .5, -.12, .28), 75: J(-.34, .56, -.16, .32), 82: J(-.12, .16, .08), 30: J(-.62, .42, -.18) }) }),
+  glassMite: Object.freeze({
+    hop: Object.freeze({ 70: J(.34, -.66, .22), 71: J(.34, -.58, .26, .08), 72: J(-.12, .2, .3, .16), 73: J(-.12, .2, .3, .2), 74: J(-.34, .42, -.12, .28), 75: J(-.34, .46, -.16, .32), 82: J(-.12, .16, .08), 30: J(-.62, .42, -.18) }),
+    // The Long Reach is a planted mandible stab: the front legs brace forward, the rear legs push, the head draws back with the
+    // mandibles spread, then darts out as they clamp.
+    longReach: Object.freeze({ 70: J(-.25, .3, -.1), 71: J(-.25, .3, -.1, .06), 72: J(.1, -.12), 73: J(.1, -.12), 74: J(.22, -.34, .1, .15), 75: J(.22, -.34, .1, .2), 82: J(.38, -.62, .16), 30: J(-.95, .7, -.25) }),
+    '*': Object.freeze({ 70: J(.34, -.66, .22), 71: J(.34, -.58, .26, .08), 72: J(-.12, .2, .36, .16), 73: J(-.12, .2, .36, .2), 74: J(-.34, .5, -.12, .28), 75: J(-.34, .56, -.16, .32), 82: J(-.12, .16, .08), 30: J(-.62, .42, -.18) }) }),
   // The bolt: the staff arm draws the staff up and back, thrusts it level at the target and kicks back as the bolt leaves; the
   // free hand rises to channel, the stance braces and the helm tips into the aim.
   sparkWarden: Object.freeze({ '*': Object.freeze({ [-2]: J(-.55, 1.2, -.3), 2: J(-.85, -.35, .2, .1), [-1]: J(-.22, -.34), 1: J(.2, .36), 82: J(-.16, .2, .1) }) }),

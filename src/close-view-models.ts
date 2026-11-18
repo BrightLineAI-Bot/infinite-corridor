@@ -539,11 +539,12 @@ const ashling = [
   jointed(part(taper, .05, -.12, 1.19, .075, .066, .14, ash, 0, .05, 1.12, -.42), 82, .04, .88),
   jointed(part(taper, .06, .12, 1.17, .075, .072, .10, ash, 0, .06, 1.12, -.30), 82, .04, .88),
 ];
-for (const side of [-1, 1]) ashling.push(part(membrane([[.288, side * .035, 1.005], [.282, side * .12, 1.045], [.29, side * .115, 1.0], [.29, side * .04, .975]]), 0, 0, 0, 1, 1, 1, ember, 82, .04, .88));
+for (const side of [-1, 1]) ashling.push(part(membrane([[.29, side * .03, .985], [.283, side * .125, 1.045], [.29, side * .11, .995]]), 0, 0, 0, 1, 1, 1, ember, 82, .04, .88));
 for (const side of [-1, 1]) {
   ashling.push(
-    part(curvedTube([[.03, side * .25, .86, .075], [.07, side * .33, .63, .058], [.17, side * .29, .44, .04]], 4), 0, 0, 0, 1, 1, 1, ash, side * 2, .03, .84),
-    part(membrane([[.16, side * .29, .45], [.31, side * .31, .40], [.27, side * .34, .32], [.30, side * .25, .31]]), 0, 0, 0, 1, 1, 1, ashClaw, side * 2, .03, .84),
+    part(curvedTube([[.03, side * .25, .86, .08], [.07, side * .33, .63, .066], [.17, side * .29, .44, .05]], 4), 0, 0, 0, 1, 1, 1, ash, side * 2, .03, .84),
+    // three hooked claws fanned from the wrist
+    part(membrane([[.16, side * .29, .45], [.33, side * .27, .42], [.25, side * .3, .39], [.34, side * .31, .32], [.26, side * .35, .27]]), 0, 0, 0, 1, 1, 1, ashClaw, side * 2, .03, .84),
     part(curvedTube([[0, side * .133, .39, .075], [0, side * .133, .19, .06], [.071, side * .133, .055, .035]], 4), 0, 0, 0, 1, 1, 1, coal, side, 0, .43),
   );
 }
@@ -571,84 +572,95 @@ for (const side of [-1, 1]) {
 }
 
 // Pallid Crawler, "too many joints, no eyes, and a mouth where a face should be": a long floor-hugging back, an eyeless head
-// whose face is a wet maw behind a hinged jaw and a row of teeth, and four spider-high limbs with three joints each. 168.
+// whose face is a wet maw behind a hinged jaw and a row of teeth, and four spider-high limbs (the forelegs with a joint too many). 168.
 const pallidCrawler = [
-  part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],7), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
-  part(ellipsoid(6, 2), .31, 0, .43, .22, .2, .17, bone, 30, .2, .45, 0, true),
+  part(ringLoft([[-.50,.08,-.13],[-.20,.25,0],[.18,.22,.01],[.42,.10,-.08]],6), 0, 0, .48, 1, 1, 1, bone, 0, -.17, .50, 0, true),
+  part(ellipsoid(5, 2), .31, 0, .43, .22, .2, .17, bone, 30, .2, .45, 0, true),
   part(membrane([[.505, -.085, .42], [.505, .085, .42], [.485, .065, .33], [.485, -.065, .33]]), 0, 0, 0, 1, 1, 1, crawlerEye, 30, .2, .45),
-  part(membrane([[.512, -.08, .425], [.515, -.045, .372], [.513, 0, .425], [.515, .045, .372], [.512, .08, .425]]), 0, 0, 0, 1, 1, 1, 0xe3d6cf, 30, .2, .45),
-  part(ringLoft([[0,.12,-.04],[.15,.10,0],[.27,.03,.02]],5), .33, 0, .31, 1, 1, 1, sinew, 31, .30, .37),
+  part(membrane([[.512, -.08, .425], [.515, -.05, .365], [.513, -.015, .42], [.516, .02, .36], [.514, .05, .41], [.512, .08, .425]]), 0, 0, 0, 1, 1, 1, 0xe3d6cf, 30, .2, .45),
+  part(ringLoft([[0,.12,-.04],[.15,.10,0],[.27,.03,.02]],4), .33, 0, .31, 1, 1, 1, sinew, 31, .30, .37),
 ];
 for (const side of [-1, 1]) {
   pallidCrawler.push(
-    part(curvedTube([[.16,side*.19,.42,.055],[.30,side*.36,.58,.045],[.45,side*.44,.30,.034],[.56,side*.45,.03,.016]],3),0,0,0,1,1,1,bone,side*2,.14,.48),
+    // the forelegs carry one joint more than a leg should: up to a high knuckle, out, down to a second knee, then to a point
+    part(curvedTube([[.16,side*.19,.42,.055],[.27,side*.33,.62,.045],[.41,side*.43,.55,.038],[.50,side*.46,.29,.03],[.57,side*.45,.03,.016]],3),0,0,0,1,1,1,bone,side*2,.14,.48),
     part(curvedTube([[-.30,side*.19,.42,.055],[-.42,side*.36,.58,.045],[-.56,side*.42,.28,.034],[-.47,side*.44,.03,.016]],3),0,0,0,1,1,1,sinew,-side,-.34,.45),
   );
 }
 
 // Hollow Marshal: crimson armour, a crested helm with a brass visor slit, a cape, and a halberd carried at guard - shaft up
-// and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first. 220 triangles.
+// and forward from the fist, a brass leaf blade and a back axe - so its long reach thrusts point first.
+// Brass gorget and iron tasset plates, armoured legs bent at the knee. 220 triangles.
 const marshalHand = [.04, -.41, .94], marshalDir = [.47, .883];
 // The halberd is drawn at .8 of its first length so its blade stays inside the Marshal's contact height (actor-contact.ts).
 const marshalAt = (k0, n = 0, k = k0 * .8) => [marshalHand[0] + marshalDir[0] * k + marshalDir[1] * n, marshalHand[1], marshalHand[2] + marshalDir[1] * k - marshalDir[0] * n];
 const hollowMarshal = [
   part(verticalLoft([[0,.22,-.42],[-.01,.35,-.12],[0,.31,.25],[-.02,.18,.43]],6), 0, 0, 1.18, 1, 1, 1, plate, 0, 0, 1.18, 0, true),
-  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],6), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
+  part(verticalLoft([[0,.31,-.40],[-.02,.28,.05],[-.05,.12,.46]],5), -.215, 0, .97, 1, 1, 1, iron, 3, -.21, 1.412, .08, true),
   part(ellipsoid(6, 1), .04, 0, 1.737, .234, .243, .247, iron, 82, .02, 1.6, 0, true),
   part(detailPrism,.226,0,1.737,.047,.147,.057,brass,82,.02,1.6),
   part(detailPrism,.275,0,1.745,.006,.105,.017,iron,82,.02,1.6),
-  block(.208, 0, 1.254, .053, .143, .096, brass),
-  block(.021, 0, .865, .22, .275, .069, iron),
+  part(membrane([[.235,0,1.36],[.235,.13,1.33],[.245,.1,1.17],[.24,0,1.11],[.245,-.1,1.17],[.235,-.13,1.33]]), 0, 0, 0, 1, 1, 1, brass),
+  part(membrane([[.215,-.21,.92],[.215,.21,.92],[.25,.18,.69],[.25,-.18,.69]]), 0, 0, 0, 1, 1, 1, iron),
 ];
 for (const side of [-1, 1]) {
   hollowMarshal.push(
     jointed(part(taper, .002, side * .132, 2.025, .096, .063, .16, brass, 0, 0, 1.951, -.19), 82, .02, 1.6),
-    part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side*2,0,1.46),
-    part(curvedTube([[.03,side*.153,.80,.09],[.03,side*.153,.42,.075],[.08,side*.153,.10,.055]],4),0,0,0,1,1,1,plate,side,0,.831),
+    // The halberd arm (group 32) holds the polearm at guard and keeps it out of the walking swing; the free arm walks (+2).
+    part(curvedTube([[0,side*.34,1.43,.10],[.03,side*.41,1.14,.075],[.04,side*.41,.94,.055]],4),0,0,0,1,1,1,iron,side<0?32:side*2,0,1.46),
+    part(curvedTube([[.02,side*.15,.80,.105],[.075,side*.155,.45,.08],[.03,side*.155,.16,.06],[.1,side*.155,.05,.05]],4),0,0,0,1,1,1,plate,side,0,.831),
   );
 }
 {
   const butt = marshalAt(-.35), top = marshalAt(1.05), tip = marshalAt(1.44), mid = marshalAt(1.2), y = marshalHand[1];
   hollowMarshal.push(
-    part(curvedTube([[...butt, .03], [...top, .026]], 4), 0, 0, 0, 1, 1, 1, iron, -2, 0, 1.46),
-    part(membrane([top, marshalAt(1.2, -.07), tip, marshalAt(1.2, .07)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
-    part(membrane([top, [mid[0], y - .07, mid[2]], tip, [mid[0], y + .07, mid[2]]]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
-    part(membrane([marshalAt(.91), marshalAt(1.07), marshalAt(1.07, .2), marshalAt(.88, .17)]), 0, 0, 0, 1, 1, 1, brass, -2, 0, 1.46),
+    part(curvedTube([[...butt, .03], [...top, .026]], 4), 0, 0, 0, 1, 1, 1, iron, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([top, marshalAt(1.2, -.07), tip, marshalAt(1.2, .07)]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([top, [mid[0], y - .07, mid[2]], tip, [mid[0], y + .07, mid[2]]]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
+    part(membrane([marshalAt(.91), marshalAt(1.07), marshalAt(1.07, .2), marshalAt(.88, .17)]), 0, 0, 0, 1, 1, 1, brass, 33, marshalHand[0], marshalHand[2]),
   );
 }
 
 // Ashen Hound: a low charcoal body, a rust head on its own neck joint with pointed ears, lit eyes and a hinged lower jaw, and a
-// tail. 216 triangles.
+// tail, raised hackles and hind legs bent at stifle and hock. 216 triangles.
 const houndFur = 0x765244, houndDark = 0x302724, houndEye = 0xc18a63;
 const ashenHound = [
   part(ellipsoid(8, 2), -.072, 0, .449, .395, .204, .173, houndDark, 0, -.072, .449, .09, true),
   part(ellipsoid(6, 2), .215, 0, .495, .177, .21, .223, houndFur, 0, .215, .495, -.34, true),
   part(ellipsoid(6, 1), .388, 0, .581, .177, .146, .133, houndFur, 82, .27, .55, 0, true),
   part(ringLoft([[0,.10,-.05],[.15,.08,0],[.25,.025,.02]],5),.43,0,.55,1,1,1,houndFur,82,.27,.55),
-  block(.637, 0, .573, .033, .07, .032, houndDark, 82, .27, .55),
+  part(detailPrism, .64, 0, .575, .045, .06, .035, houndDark, 82, .27, .55),
   jointed(part(taper, .52, 0, .475, .045, .065, .13, houndDark, 0, .52, .475, Math.PI / 2), 30, .44, .5),
   part(taper, -.484, 0, .574, .076, .074, .216, houndFur, 6, -.354, .477, -.95),
+  // raised hackles along the nape and shoulders
+  part(membrane([[.08, 0, .6], [.2, 0, .73], [.29, 0, .69], [.33, 0, .6]]), 0, 0, 0, 1, 1, 1, houndDark),
 ];
+// Ears and eyes ride the head (82). Each side's foreleg keeps its place in the vertex order (tests/close-view-tube-volume).
+const houndEar = (side) => part(membrane([[.30, side * .06, .655], [.37, side * .12, .665], [.315, side * .14, .80]]), 0, 0, 0, 1, 1, 1, houndFur, 82, .27, .55);
+const houndEyeSlit = (side) => part(membrane([[.505, side * .065, .615], [.475, side * .12, .635], [.465, side * .13, .62], [.49, side * .11, .598]]), 0, 0, 0, 1, 1, 1, houndEye, 82, .27, .55);
+ashenHound.push(houndEar(-1), houndEar(1), houndEyeSlit(-1));
 for (const side of [-1, 1]) {
   ashenHound.push(
-    jointed(part(taper, .33, side * .1, .70, .06, .055, .10, houndFur, 0, .33, .657, -.38), 82, .27, .55),
-    part(curvedTube([[.235,side*.131,.43,.045],[.235,side*.131,.20,.038],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
-    part(curvedTube([[-.293,side*.132,.41,.045],[-.293,side*.132,.19,.038],[-.25,side*.132,.035,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
-    part(membrane([[.50, side * .07, .62], [.47, side * .12, .63], [.49, side * .11, .60]]), 0, 0, 0, 1, 1, 1, houndEye, 82, .27, .55),
+    part(curvedTube([[.235,side*.131,.43,.045],[.24,side*.131,.20,.036],[.29,side*.131,.035,.022]],4),0,0,0,1,1,1,houndDark,side*2,.237,.45),
+    // the hind leg bends at the stifle and the hock, so it loads like a dog's
+    part(curvedTube([[-.29,side*.135,.43,.065],[-.22,side*.135,.26,.045],[-.33,side*.132,.13,.03],[-.29,side*.13,.03,.022]],4),0,0,0,1,1,1,houndDark,-side,-.299,.432),
   );
 }
+ashenHound.push(houndEyeSlit(1));
 
-// Coil Stalker: a dark trunk banded in mint, a long teal snake head on its own joint with mint eye slits, a hinged jaw and a
-// back frill, and two trailing segments (groups 4 and 5) that lag behind every strike. 172 triangles.
-const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad;
+// Coil Stalker, a hooded serpent reared on its own coils: a banded neck rising from the first coil to a long flat head with
+// mint eye slits and a hinged jaw, a hood spread behind it, pale belly scales down the neck's front, and two trailing coils
+// (groups 4 and 5) that lag behind every strike. The neck, hood and head turn as one striking column about the neck's root
+// (group 82; the jaw 83 about the same root), so a strike drives the whole column, not just the head. 164 triangles.
+const coilShell = 0x47716d, coilDark = 0x263a39, coilLight = 0x87c0ad, coilRoot = [-.09, .24];
 const coilStalker = [
-  part(ellipsoid(8, 2), .022, 0, .348, .301, .274, .328, coilDark, 0, .022, .348, .19, true),
-  part(ringLoft([[0,.27,-.035],[.02,.31,0],[.04,.26,.035]],5), .142, 0, .519, 1, 1, 1, coilLight, 0, .142, .519, -.15, true),
-  part(ellipsoid(6, 2), .2, 0, .735, .25, .19, .145, coilShell, 82, .1, .62, 0, true),
-  part(membrane([[.02, 0, .70], [-.07, 0, .87], [.05, 0, .86], [.12, 0, .81]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62),
-  jointed(part(taper, .28, 0, .645, .05, .11, .15, coilLight, 0, .28, .645, Math.PI / 2), 30, .17, .66),
+  part(curvedTube([[-.13, 0, .2, .185], [-.04, 0, .37, .16], [.05, 0, .54, .13], [.12, 0, .64, .105]], 6), 0, 0, 0, 1, 1, 1, coilDark, 82, ...coilRoot),
+  part(membrane([[.215, -.06, .57], [.215, .06, .57], [.16, .1, .33], [.16, -.1, .33]]), 0, 0, 0, 1, 1, 1, coilLight, 82, ...coilRoot),
+  part(membrane([[.07, 0, .64], [.04, -.12, .5], [.05, -.21, .58], [.08, -.24, .73], [.09, 0, .86], [.08, .24, .73], [.05, .21, .58], [.04, .12, .5]]), 0, 0, 0, 1, 1, 1, coilShell, 82, ...coilRoot),
+  part(ellipsoid(6, 2), .25, 0, .7, .25, .16, .12, coilShell, 82, ...coilRoot, 0, true),
+  jointed(part(taper, .31, 0, .625, .05, .1, .14, coilLight, 0, .31, .625, Math.PI / 2), 83, ...coilRoot),
 ];
-for (const side of [-1, 1]) coilStalker.push(part(membrane([[.39, side * .085, .77], [.33, side * .14, .78], [.37, side * .12, .745]]), 0, 0, 0, 1, 1, 1, coilLight, 82, .1, .62));
+for (const side of [-1, 1]) coilStalker.push(part(membrane([[.425, side * .07, .735], [.37, side * .13, .755], [.34, side * .14, .745], [.39, side * .115, .715]]), 0, 0, 0, 1, 1, 1, coilLight, 82, ...coilRoot));
 coilStalker.push(
   part(ellipsoid(6, 2), -.294, 0, .262, .232, .217, .192, coilShell, 4, -.294, .262, 0, true),
   part(ringLoft([[0,.20,-.04],[.01,.23,0],[.02,.20,.04]],5),-.375,0,.263,1,1,1,coilLight,4,-.375,.263,0,true),
