@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 990: The core creatures look and attack better. In Close View, the Ashling, Hollow Marshal, Ashen Hound, Coil Stalker, Pallid Crawler and Glass Mite each have their own attack for every move, with clearer wind-ups and follow-through, on reshaped bodies at the same triangle counts. The Marshal's halberd thrusts, reaps and chops; the Coil Stalker rears a hooded neck and strikes. In the normal view the creatures keep their blocky art, but their claws, halberd, jaws, legs, wings, staffs and tentacles now swing on joints, with a wind-up, a strike, a recovery and a flinch.
 - Release 989: Every journey gets one permanent standard Triceratops. Existing standard mounts keep their health and recovery state.
 - Release 988: Fit mounted Triceratops in Close View and keep the airborne tail roll clear of the floor.
 - Release 987: Add deterministic wild Triceratops herds, mounted horn attacks and the Silly Goose airborne tail drill.
