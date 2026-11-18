@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Unreleased — Salvage keeps by power; lumen dust from salvage; gear stats and smith previews
+
+Tim (2026-11-18): auto-salvage threw away great gear; salvage should keep the highest tier, then the highest power. He also wanted a way to earn lumen dust at the forge or smith, current stats on the equipped page, and a before/after preview at the smith.
+
+**CODE:** `game.ts` `PACK_KEEP`/`packKeepCompare` replace the old keep score: a full pack compares tier, then `item.power`, then smith work (an upgrade rank, a masterwork or an added socket) as a tiebreak, then age. `smithy.ts` `SALVAGE_YIELD` (`lumenPerIron` .2), `ensureSalvageYield`, `paySalvage` and `salvageYieldText` route every salvage (manual, bulk, the smith and a full pack) into cinder iron or lumen dust, carrying fractions in `save.salvageYield.carry`. `gearReadout`, `compareReadouts`, `forgeOutcome` and `forgePreview` in `game.ts` drive the Equipped stat chips and the before → after previews. `smithy.ts` `reforgeChoices` and `items.ts` `AFFIX_ROLLS`/`affixRange` drive the reforge range. `PRIMARY_PRESS` and `TOOL_PRESS` name the old 420 and 360 ms cooldowns. In `main.ts`, the smith is choose then confirm (`smithyPick`), and `salvageYieldPicker` appears in the Sphere Forge and the smith.
+
+**BOUNDARY:** `save.salvageYield` is added at schema 14 and normalised in `freshSave`/`migrateSave`; its unknown fields are kept. Cinder iron mode pays exactly as before. The reforge rolls the same values as before (a table-driven copy of the same arithmetic), and its preview shows ranges only, never the seeded roll. Loot generation (`rollAffixes`) is unchanged. Readouts leave out glyph modifiers, timed buffs and foe defence. The unowned brawler-gear exception is kept, and equipped gear is never salvaged.
+
 ## Release 983 — Close View creature motion and Pentagon dread
 
 **CODE:** Standard View's positive-dread overlay in `renderer.ts` uses its dimensions and intensity as a cache key again. The lighting regression exercises the first draw, reuse, and rebuild.
