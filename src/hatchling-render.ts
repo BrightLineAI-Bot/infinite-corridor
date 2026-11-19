@@ -13,13 +13,16 @@ export const HATCH_ART = Object.freeze({
   prance: Object.freeze({ young: .07, baby: .05, rate: 9 }),
   beam: "#fff2b0", beamCore: "#ffffff", bolt: "#ffe680", chill: "#bfe9ff", heal: "#8ff0a4", whirl: "rgba(255,240,160,", stomp: "rgba(185,168,136,",
   buff: Object.freeze({ damage: "#ff9a5a", defence: "#9ad0ff", stamina: "#b8f07a" }),
+  // where the young form's horns are, in tiles x his scale from his feet (along his facing, up): the two brow horn tips and the nose horn,
+  // and the focus ahead of the nose where the three beams meet before the blast
+  tips: Object.freeze([Object.freeze([.86, .8]), Object.freeze([.8, .72]), Object.freeze([.92, .5])]), focus: Object.freeze([1.3, .64]),
   straw: "#d9b860", strawDark: "#a8873a", post: "#6b4a26", postLight: "#8f6a3c", rope: "#c9b48a", sick: "#9fd28a",
 });
 export const HATCH_DRAW = { skipBody: false };
 // One reused actor each (no per-frame allocation beyond them).
 const COMPANION = { id: "hatchling", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: 1, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
-const MAMA = { id: "hatch-mama", kind: "triceratops", x: 0, y: 0, scale: 1.9, facingX: -1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 1 };
-const BABY = { id: "hatch-pen-baby", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: .55, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
+const MAMA = { id: "hatch-mama", kind: "triceratops", x: 0, y: 0, scale: 1.9, facingX: -1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, resting: "sick" };
+const BABY = { id: "hatch-pen-baby", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: .9, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
 const PACKS = { charge: { attack: "ramCharge", phase: "attack" }, beam: { attack: "ramCharge", phase: "windup" }, whirl: { attack: "heavySweep", phase: "attack" }, stompUp: { attack: "shockwave", phase: "windup" }, stomp: { attack: "shockwave", phase: "attack" }, gatling: { attack: "shockwave", phase: "windup" }, bite: { attack: "ramCharge", phase: "attack" } };
 const Q = { k: 0, b: 0, u: 0, s: 0, t: 0, flip: 1, e: null, state: "idle" };
 
@@ -63,12 +66,12 @@ export function drawHatchMama(ctx, o, s, now, reduce = false) {
   ctx.fillStyle = HATCH_ART.straw; ctx.beginPath(); ctx.ellipse(cx, by - s * .1, s * 1.9, s * .42, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = HATCH_ART.strawDark; ctx.lineWidth = Math.max(1, s * .03);
   for (let i = 0; i < 14; i++) { const a = i * 2.4, x = cx + Math.cos(a) * s * 1.6, y = by - s * .1 + Math.sin(a) * s * .3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a + 1) * s * .25, y + Math.sin(a + 1) * s * .08); ctx.stroke(); }
-  Object.assign(MAMA, { x: o.x, y: o.y, poiseBreak: well ? .25 : 1, reduceMotion: reduce, noShadow: true });
-  body(ctx, MAMA, s, now, cx, by + s * .18); // settled down into the straw
+  Object.assign(MAMA, { x: o.x, y: o.y, resting: well ? "well" : "sick", reduceMotion: reduce, noShadow: true });
+  body(ctx, MAMA, s, now, cx, by + s * .05); // lying in the straw
   if (!well) { // a slow sick breath, and a bandage over the flank
-    ctx.fillStyle = "#efe8d8"; ctx.strokeStyle = "#7a6a50"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.ellipse(cx + s * .1, by - s * 1.05, s * .32, s * .12, -.2, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = "#c04040"; ctx.beginPath(); ctx.moveTo(cx + s * .02, by - s * 1.05); ctx.lineTo(cx + s * .18, by - s * 1.05); ctx.moveTo(cx + s * .1, by - s * 1.12); ctx.lineTo(cx + s * .1, by - s * .98); ctx.stroke();
-    for (let i = 0; i < 3; i++) { const f = (t * .4 + i / 3) % 1, x = cx - s * (1.4 + f * .4), y = by - s * (1 + f * .9); ctx.globalAlpha = (1 - f) * .6; ctx.strokeStyle = HATCH_ART.sick; ctx.lineWidth = Math.max(1.2, s * .04); ctx.beginPath(); ctx.arc(x, y, s * (.08 + f * .08), 0, 4.5); ctx.stroke(); }
+    ctx.fillStyle = "#efe8d8"; ctx.strokeStyle = "#7a6a50"; ctx.lineWidth = Math.max(1, s * .025); ctx.beginPath(); ctx.ellipse(cx + s * .15, by - s * .75, s * .32, s * .12, -.2, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#c04040"; ctx.beginPath(); ctx.moveTo(cx + s * .07, by - s * .75); ctx.lineTo(cx + s * .23, by - s * .75); ctx.moveTo(cx + s * .15, by - s * .82); ctx.lineTo(cx + s * .15, by - s * .68); ctx.stroke();
+    for (let i = 0; i < 3; i++) { const f = (t * .4 + i / 3) % 1, x = cx - s * (1.9 + f * .3), y = by - s * (.75 + f * .9); ctx.globalAlpha = (1 - f) * .6; ctx.strokeStyle = HATCH_ART.sick; ctx.lineWidth = Math.max(1.2, s * .04); ctx.beginPath(); ctx.arc(x, y, s * (.08 + f * .08), 0, 4.5); ctx.stroke(); }
     ctx.globalAlpha = 1;
   } else { ctx.fillStyle = "#ff8fa8"; const y = by - s * (2 + (reduce ? 0 : .08 * Math.sin(t * 2))); heart(ctx, cx - s * .9, y, s * .16); }
   ctx.restore();
@@ -77,13 +80,13 @@ function heart(ctx, x, y, r) { ctx.beginPath(); ctx.moveTo(x, y + r); ctx.bezier
 
 // The pen: a ring of sharpened stakes lashed with rope round the frightened hatchling (the back stakes, him, the front stakes).
 export function drawHatchPen(ctx, o, s, now, reduce = false) {
-  const cx = (o.x + .5) * s, by = (o.y + .82) * s, R = s * .85, open = o.state === "open", t = reduce ? 0 : now / 1000;
+  const cx = (o.x + .5) * s, by = (o.y + .82) * s, R = s * 1.15, open = o.state === "open", t = reduce ? 0 : now / 1000;
   ctx.save();
   ctx.fillStyle = "rgba(60,44,24,.35)"; ctx.beginPath(); ctx.ellipse(cx, by - s * .1, R * 1.1, R * .45, 0, 0, TAU); ctx.fill();
-  const stake = (a) => { const x = cx + Math.cos(a) * R, y = by - s * .1 + Math.sin(a) * R * .42, h = s * (.75 + .1 * Math.sin(a * 3));
+  const stake = (a) => { const x = cx + Math.cos(a) * R, y = by - s * .1 + Math.sin(a) * R * .42, h = s * (.95 + .12 * Math.sin(a * 3));
     ctx.fillStyle = HATCH_ART.post; ctx.fillRect(x - s * .06, y - h, s * .12, h); ctx.fillStyle = HATCH_ART.postLight; ctx.fillRect(x - s * .06, y - h, s * .04, h);
     ctx.beginPath(); ctx.moveTo(x - s * .06, y - h); ctx.lineTo(x, y - h - s * .14); ctx.lineTo(x + s * .06, y - h); ctx.closePath(); ctx.fillStyle = HATCH_ART.post; ctx.fill(); };
-  const rope = (from, to) => { ctx.strokeStyle = HATCH_ART.rope; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); for (let i = 0; i <= 12; i++) { const a = from + (to - from) * i / 12, x = cx + Math.cos(a) * R, y = by - s * .1 + Math.sin(a) * R * .42 - s * .45; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); };
+  const rope = (from, to) => { ctx.strokeStyle = HATCH_ART.rope; ctx.lineWidth = Math.max(1, s * .04); ctx.beginPath(); for (let i = 0; i <= 12; i++) { const a = from + (to - from) * i / 12, x = cx + Math.cos(a) * R, y = by - s * .1 + Math.sin(a) * R * .42 - s * .55; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); };
   const N = 9, gap = open ? 2 : -1; // freed: two stakes pulled out at the front
   for (let i = 0; i < N; i++) { const a = Math.PI + i * TAU / N; if (Math.sin(a) < 0) stake(a); }
   rope(Math.PI, TAU);
@@ -91,7 +94,7 @@ export function drawHatchPen(ctx, o, s, now, reduce = false) {
   body(ctx, BABY, s, now, cx, by - s * .12);
   for (let i = 0; i < N; i++) { const a = Math.PI + i * TAU / N; if (Math.sin(a) >= 0 && !(open && (i === 6 || i === gap + 5))) stake(a); }
   rope(0, Math.PI);
-  if (!open) { ctx.fillStyle = "#fff6d6"; ctx.font = `bold ${Math.max(9, Math.round(s * .32))}px sans-serif`; ctx.textAlign = "center"; ctx.fillText("!", cx + s * .35, by - s * 1.15 - (reduce ? 0 : Math.abs(Math.sin(t * 4)) * s * .08)); }
+  if (!open) { ctx.fillStyle = "#fff6d6"; ctx.font = `bold ${Math.max(9, Math.round(s * .32))}px sans-serif`; ctx.textAlign = "center"; ctx.fillText("!", cx + s * .45, by - s * 1.35 - (reduce ? 0 : Math.abs(Math.sin(t * 4)) * s * .08)); }
   ctx.restore();
 }
 
@@ -101,17 +104,23 @@ export function drawHatchVisuals(ctx, g, toScreen, s, reduce = false) {
   ctx.save(); ctx.lineCap = "round";
   for (const v of list) {
     const k = Math.max(0, Math.min(1, v.life / (v.total || 1))), [x, y] = toScreen(v);
-    if (v.kind === "beamCharge") { // three beams focusing on the horn tip as he charges
-      const f = 1 - k, hx = x + v.dx * s * .55, hy = y + v.dy * s * .25 - s * .55;
-      for (let i = 0; i < 3; i++) { const a = i * TAU / 3 + (reduce ? 0 : f * 4), r = s * (1.1 - f * .95); ctx.strokeStyle = HATCH_ART.beam; ctx.globalAlpha = .4 + .5 * f; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * r, hy + Math.sin(a) * r * .7); ctx.lineTo(hx, hy); ctx.stroke(); }
-      ctx.globalAlpha = .6 + .4 * f; ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(hx, hy, s * (.06 + .1 * f), 0, TAU); ctx.fill();
-    } else if (v.kind === "beam") {
-      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), lift = s * .55;
-      ctx.globalAlpha = k; ctx.strokeStyle = HATCH_ART.beam; ctx.lineWidth = s * .32 * k + 2; ctx.beginPath(); ctx.moveTo(x, y - lift); ctx.lineTo(x2, y2 - lift * .6); ctx.stroke();
-      ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = s * .12 * k + 1; ctx.stroke();
-    } else if (v.kind === "bolt") {
-      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), f = 1 - k, lift = s * .5, px = x + (x2 - x) * f, py = y - lift + (y2 - y + lift * .4) * f;
-      ctx.globalAlpha = 1; ctx.strokeStyle = HATCH_ART.bolt; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); ctx.moveTo(px - (x2 - x) * .12, py - (y2 - y) * .12); ctx.lineTo(px, py); ctx.stroke();
+    if (v.kind === "beamCharge") { // three beams from the three horn tips, focusing ahead of the nose as he charges
+      const f = 1 - k, sc = v.sc || 1, d = v.dx < 0 ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s;
+      for (const T of HATCH_ART.tips) { const tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s, ex = tx + (fx - tx) * Math.min(1, .3 + f), ey = ty + (fy - ty) * Math.min(1, .3 + f);
+        ctx.globalAlpha = .35 + .6 * f; ctx.strokeStyle = HATCH_ART.beam; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = Math.max(1, s * .035); ctx.stroke(); }
+      const r = s * (.05 + .2 * f) * (reduce ? 1 : 1 + .12 * Math.sin(f * 40)), gr = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 2.2);
+      gr.addColorStop(0, "rgba(255,255,255,.95)"); gr.addColorStop(.45, "rgba(255,240,170,.7)"); gr.addColorStop(1, "rgba(255,220,120,0)"); ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fx, fy, r * 2.2, 0, TAU); ctx.fill();
+    } else if (v.kind === "beam") { // the blast: from the focus along his aim, thick and bright, thinning as it fades
+      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s, ey = y2 - F[1] * sc * s * .8;
+      ctx.globalAlpha = .45 * k; ctx.strokeStyle = HATCH_ART.beam; ctx.lineWidth = s * .6 * k + 3; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(x2, ey); ctx.stroke();
+      ctx.globalAlpha = k; ctx.lineWidth = s * .3 * k + 2; ctx.stroke(); ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = s * .12 * k + 1; ctx.stroke();
+      ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(fx, fy, s * .22 * k + 2, 0, TAU); ctx.fill();
+    } else if (v.kind === "bolt") { // a gatling horn bolt: a bright streak with a glowing head, from a horn tip to the foe
+      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, T = HATCH_ART.tips[(v.n || 0) % 3], tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s, ey = y2 - s * .4, f = 1 - k;
+      const px = tx + (x2 - tx) * f, py = ty + (ey - ty) * f, L = Math.hypot(x2 - tx, ey - ty) || 1, ux = (x2 - tx) / L, uy = (ey - ty) / L;
+      ctx.globalAlpha = 1; ctx.strokeStyle = HATCH_ART.bolt; ctx.lineWidth = Math.max(3, s * .12); ctx.beginPath(); ctx.moveTo(px - ux * s * .7, py - uy * s * .7); ctx.lineTo(px, py); ctx.stroke();
+      ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = Math.max(1.5, s * .05); ctx.stroke(); ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, s * .1), 0, TAU); ctx.fill();
     } else if (v.kind === "whirl" || v.kind === "stomp" || v.kind === "chill") {
       const r = (v.r || 1) * s * (v.kind === "chill" ? 1 - k * .7 : 1.1 - k * .5);
       ctx.globalAlpha = k * (v.kind === "chill" ? .8 : .7); ctx.strokeStyle = v.kind === "chill" ? HATCH_ART.chill : v.kind === "whirl" ? HATCH_ART.whirl + ".8)" : HATCH_ART.stomp + ".8)"; ctx.lineWidth = Math.max(2, s * .07);

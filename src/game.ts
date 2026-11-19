@@ -8210,7 +8210,7 @@ export class Game {
     if (!kind) { this.hatchWalkTo(o, foe.x, foe.y, F.speed, dt, 1.1); return; }
     const M = Y.moves[kind], ux = (fx - cx()) / (d || 1), uy = (fy - cy()) / (d || 1);
     o.act = { kind, left: moveTime(kind), n: 0, x: d ? ux : o.face, y: d ? uy : 0, target: foe.id, phase: "go" }; o.cd[kind] = M.cd; o.seq++; o.moving = 0;
-    if (kind === "beam") this.hatchVisual({ kind: "beamCharge", x: cx(), y: cy(), dx: o.act.x, dy: o.act.y, life: M.charge });
+    if (kind === "beam") this.hatchVisual({ kind: "beamCharge", x: o.x + .5, y: o.y + .82, dx: o.act.x, dy: o.act.y, sc: F.scale, life: M.charge }); // drawn from his feet
   }
   runHatchAct(o, dt) {
     const a = o.act, M = HATCHLING.young.moves[a.kind], total = moveTime(a.kind), cx = o.x + .5, cy = o.y + .45; a.left -= dt; const t = total - a.left;
@@ -8218,8 +8218,8 @@ export class Game {
     if (a.kind === "beam" && a.n === 0 && t >= M.charge) { // three beams focused at the horn, then one blast along the aim, stopped by walls
       a.n = 1; const W = mapWidth(this.map, this.area), shot = `hatch-beam-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, hits = {}; let ex = cx, ey = cy;
       for (let s = M.step; s <= M.length; s += M.step) { const x = cx + a.x * s, y = cy + a.y * s; if (!projectileTileOpen(this.map, W, x, y)) break; this.hatchHit(x, y, M.radius, M.share, { shot, hits }); ex = x; ey = y; }
-      this.hatchVisual({ kind: "beam", x: cx + a.x * .6, y: cy + a.y * .6, x2: ex, y2: ey, life: .3 });
-    } else if (a.kind === "gatling") { while (a.n < M.shots && t >= a.n * M.gap) { a.n++; const tx = alive ? foe.x + .5 : cx + a.x * 3, ty = alive ? foe.y + .45 : cy + a.y * 3; this.hatchHit(tx, ty, M.radius, M.share); this.hatchVisual({ kind: "bolt", x: cx + a.x * .5, y: cy + a.y * .5, x2: tx, y2: ty, life: .16 }); } }
+      this.hatchVisual({ kind: "beam", x: o.x + .5, y: o.y + .82, x2: ex, y2: ey, sc: HATCHLING.forms.young.scale, life: .3 });
+    } else if (a.kind === "gatling") { while (a.n < M.shots && t >= a.n * M.gap) { a.n++; const tx = alive ? foe.x + .5 : cx + a.x * 3, ty = alive ? foe.y + .45 : cy + a.y * 3; this.hatchHit(tx, ty, M.radius, M.share); this.hatchVisual({ kind: "bolt", n: a.n, x: o.x + .5, y: o.y + .82, x2: tx, y2: ty, sc: HATCHLING.forms.young.scale, life: .16 }); } }
     else if (a.kind === "charge") { if (a.left > 0) this.hatchMove(o, a.x * M.speed * dt, a.y * M.speed * dt); }
     else if (a.kind === "whirl") { while (a.n < M.pulses && t >= a.n * M.gap) { a.n++; this.hatchHit(cx, cy, M.radius, M.share); this.hatchVisual({ kind: "whirl", x: cx, y: cy, r: M.radius, life: .3 }); } }
     else if (a.kind === "stomp") { while (a.n < M.hits && t >= a.n * M.gap + .08) { a.n++; this.hatchHit(cx + a.x * .7, cy + a.y * .7, M.radius, M.share); this.hatchVisual({ kind: "stomp", x: cx + a.x * .7, y: cy + a.y * .7, r: M.radius, life: .3 }); } }

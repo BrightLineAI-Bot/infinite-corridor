@@ -44,6 +44,8 @@ export const TRI_POSES = Object.freeze({
   land: { crouch: .45, pitch: -.06, head: -.2 },
   dazed: { head: -.5, crouch: .3, open: .3 },
   dead: { crouch: 1, head: -.6, tuck: .8, open: .3 },
+  rest: { crouch: 1, head: -.5, tuck: .85, open: .12, tailUp: -.1 }, // lying down, sick (the hatchling's mother at the Beast Hotel: e.resting)
+  restWell: { crouch: 1, head: .08, tuck: .85, tailUp: .05 }, // lying down, well again, head up
 });
 // The hatchling's growth forms (hatchling.ts; Tim, 2026-11-19) on the same rig, by multipliers of the adult's proportions. baby: a big
 // round head with huge eyes, a nub of a nose horn and two tiny brow nubs, a small frill, a short chubby body on short stubby legs
@@ -86,6 +88,7 @@ export function triceratopsHornOverlay(horn, out) {
 // The pose a Triceratops shows from its accepted state. `air`: the ridden leap's lift in tiles; `moving`: 0..1.
 export function triceratopsPoseName(e, air = 0, moving = 0, rising = true) {
   if (e?.dead || e?.hp <= 0 && e?.maxHp > 0) return "dead";
+  if (e?.resting) return e.resting === "well" ? "restWell" : "rest";
   const a = e?.pack?.attack, wind = e?.pack?.phase === "windup";
   if (a === "ramCharge") return wind ? "chargeReady" : "charge";
   if (a === "heavySweep") return wind ? "sweepReady" : "sweep";
@@ -150,7 +153,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // pitch about the hips (nose up) or the shoulders (nose down), then the hips set at their height
   const pvx = pitch >= 0 ? PX[ih] : PX[is], pvy = pitch >= 0 ? PY[ih] : PY[is], cp = Math.cos(pitch), sp = Math.sin(pitch);
   for (let i = 0; i <= N; i++) { const dx = PX[i] - pvx, dy = PY[i] - pvy; PX[i] = pvx + dx * cp - dy * sp; PY[i] = pvy + dx * sp + dy * cp; }
-  const hipX = -.3, lift = A.hip * FM.leg - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead ? .22 : 0) + Math.abs(bounce) * .35; // the sweep's bounce lifts the hindquarters with the tail
+  const hipX = -.3, lift = A.hip * FM.leg - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead || e.resting ? .22 : 0) + Math.abs(bounce) * .35; // the sweep's bounce lifts the hindquarters with the tail
   for (let i = 0; i <= N; i++) { PX[i] += hipX; PY[i] += lift; PY[i] -= PZ[i] * .4; }
   for (let i = 0; i <= N; i++) { const a = Math.max(0, i - 1), c = Math.min(N, i + 1), tx = PX[c] - PX[a], ty = PY[c] - PY[a], l = Math.hypot(tx, ty) || 1; NX[i] = -ty / l; NY[i] = tx / l;
     const sN = i / N, depth = (1 + PZ[i] * .3) * FM.girth; DT[i] = table(THICK, sN, 1) * depth; VT[i] = table(THICK, sN, 2) * depth; }
