@@ -51,9 +51,9 @@ export const TRI_POSES = Object.freeze({
   rest: { crouch: 1, head: -.5, tuck: .85, open: .12, tailUp: -.1 }, // lying down, sick (the hatchling's mother at the Beast Hotel: e.resting)
   restWell: { crouch: 1, head: .08, tuck: .85, tailUp: .05 }, // lying down, well again, head up
 });
-// The hatchling's growth forms (hatchling.ts; Tim, 2026-11-19) on the same rig, by multipliers of the adult's proportions. baby: a big
-// round head with huge eyes, a nub of a nose horn and two tiny brow nubs, a small frill, a short chubby body on short stubby legs
-// ("everything cheeby"); young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
+// The hatchling's growth forms (hatchling.ts; Tim, 2026-11-19) on the same rig, by multipliers of the adult's proportions. baby: a real
+// Triceratops scaled down and only mildly juvenile (a modestly bigger head, eyes a touch larger, a short squat beak, small horn nubs,
+// a small frill set back off the skull) on a short chubby body and stubby legs; young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
 // `triForm` (the herds, the mount) keeps exactly the adult's numbers (TRI_FORM_ADULT).
 // head: the head's scale; leg: leg bone lengths and the hip's height; legW: leg and haunch thickness; girth: body depth; length: the
 // spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none); snout: the face
@@ -61,8 +61,8 @@ export const TRI_POSES = Object.freeze({
 // higher (body units) and nose up (radians) in the standard view (Close View: TRICERATOPS_RIG.formHeadLift).
 export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 });
 export const TRI_FORMS = Object.freeze({
-  // Tim, 2026-11-19 (size pass): a cute little baby that is still clearly a Triceratops: a tiny frill, barely any horns (nubs), rounder
-  // and chubbier, a bigger head on a shorter body, big eyes, short stubby legs.
+  // Tim, 2026-11-19 (size pass) kept the body and size; face pass ("its eyes are too big ... It should look more like a Triceratops,
+  // just smaller, just a little bit cuter"): a young animal, not a cartoon mascot. No pink cheek, near-adult eyes.
   baby: Object.freeze({ head: 1.25, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .45, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: .5, lift: .05, nod: .1 }),
   young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
