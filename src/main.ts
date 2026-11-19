@@ -218,7 +218,8 @@ const UTILITY_ICONS = {
 // button's input action back to its slot.
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
+import { reloadPips } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
 import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.ts";
 import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
 import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.ts";
@@ -2522,6 +2523,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   hudSet(hudEl("#staminaBar"),"max",save.maxStamina);
   hudSet(hudEl("#staminaBar"),"value",stamina);
   // Release 257: Lightning Giant shock pips (shown only while charged or knocked down).
+  { const pips = hudEl("#reloadPips"), n = reloadPips(game); hudSet(pips,"class:off",n < 0); hudSet(pips,"data-count",String(Math.max(0, n))); } // Rapid Reload (hit-cast-passives.ts): charged releases that hit, toward the refund
   { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0), count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
@@ -3094,11 +3096,12 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const path=el('div','arc-path'),detail=el('div','arc-detail');
   const nodes=[{id:'active',...(ALT_PASSIVES[skill.id]?.discipline?{ref:skill.id}:{}),name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
    {id:'mod',ref:b.mod.id,name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
-   ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'}))];
+   ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'})),
+   ...(b.extras||[]).map(x=>{const own=!!save.constellation.mods[x.id];return{id:x.id,ref:x.id,extra:true,name:x.name,text:x.text,state:own?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!own,act:()=>learnExtra(save,bid,x.id),verb:'Learn'}})]; // Tim 2026-11-19: the branch's on-cast / on-hit node (hit-cast-passives.ts)
   // Release 359: a passive whose secondary form is chosen shows that form (name, text and kind).
   for(const n of nodes)if(n.ref&&altChosen(save,n.ref)){const A=ALT_PASSIVES[n.ref];Object.assign(n,{primaryName:n.name,primaryText:n.text,name:`${A.name} ⇄`,text:A.text,alt:true})}
   const focus=arcanumFocus?.branch===bid?nodes.find(n=>n.id===arcanumFocus.node):null;
-  nodes.forEach((n,i)=>{if(i===1||i===2)path.append(el('i','arc-link'+(n.state!=='locked'?' lit':'')));if(i===2)path.append(el('div','arc-caps'));
+  nodes.forEach((n,i)=>{if(i===1||i===2)path.append(el('i','arc-link'+(n.state!=='locked'?' lit':'')));if(i===2)path.append(el('div','arc-caps'));if(n.extra&&!nodes[i-1].extra)path.append(el('div','arc-caps arc-extras'));
    const node=el('button',`arc-node ${n.cap?'cap':i===0?'core':'mod'} ${n.state}${focus===n?' focus':''}`);node.type='button';node.setAttribute('aria-label',`${n.name}: ${n.state}`);
    const orb=el('span','arc-node-orb',n.cap?'✦':i===0?'✶':'◆');if(attr&&n.state!=='locked')orb.style.color=ATTRIBUTES[attr].color;node.append(orb,el('span','arc-node-name',`${n.name}${nodeKind(n,skill)[1]?' ⚡':''}`));
    if(n.pips){const pips=el('span','arc-pips');for(let k=0;k<n.pips[1];k++)pips.append(el('i',k<n.pips[0]?'on':''));node.append(pips)}
@@ -3114,7 +3117,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
   const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
   if(castId)detail.append(...slotButtons(`skill:${castId}`,()=>{arcanumFocus={branch:bid,node:show.id}}));
-  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
+  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'||show.extra?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
   card.append(head,path,detail);sky.append(card)}
  body.append(sky);
  const seen=Object.keys(PAIRINGS).filter(k=>save.magicSkills.pairingsSeen?.[k]);body.append(el('h3','',`Pairings · ${seen.length} of ${Object.keys(PAIRINGS).length} found`));

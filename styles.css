@@ -66,6 +66,7 @@ body {
 .shock-pips i { width: 14px; height: 6px; border: 1px solid #3d5a6a; background: #0b1218; transform: skewX(-20deg); }
 .shock-pips[data-count="1"] i:nth-child(-n+1), .shock-pips[data-count="2"] i:nth-child(-n+2), .shock-pips[data-count="3"] i { background: #7fd6ff; border-color: #eafaff; box-shadow: 0 0 4px #7fd6ff; }
 .shock-pips.stunned i { background: #eafaff; border-color: #ffffff; }
+.reload-pips[data-count="1"] i:nth-child(-n+1), .reload-pips[data-count="2"] i:nth-child(-n+2), .reload-pips[data-count="3"] i { background: #ffd36a; border-color: #fff4d0; box-shadow: 0 0 4px #ffd36a; } /* Rapid Reload (hit-cast-passives.ts) */
 #healthText {
   font-size: 10px;
   color: #eee3cb;
