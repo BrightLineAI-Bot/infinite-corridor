@@ -70,6 +70,15 @@ export const TALL_TOWERS = f({
     crossingSteps: f([3, 18]), // walking steps from a crossing's entry (on its own level) a seed inside lies within
     groundFrom: 3, // tiles kept between an open-ground seed and the ground the section's reach is measured from
     marker: "#ffd36a", // its pin on the Atlas (main.ts drawAtlasPins), whatever the seed
+    // Higher in the great trees (Tim, 2026-11-19: seeds may sit higher in great trees, including spots reached by hopping). A tree
+    // spot is any great-tree platform the Wayfarer can reach from the section's edge-joined ground and come back down from by the
+    // real movement rules with the hops the trees are laid for (game.ts huntTreeReach): walks and one-level jumps that never hurt
+    // (a drop of at most `treeDrop` levels), and from a sky platform the sky jump over `treeGap` tile of open ground onto a canopy
+    // tile no lower than a level under it. Only a spot not yet chosen uses it: a hunt keeps the spot it already has.
+    treeHops: true, treeGap: 1, treeDrop: 1,
+    // The compass (Tim, 2026-11-19): each live hunt is one of the quests the compass cycles through when tapped (main.ts
+    // navigationTargets), named `compassLabel`; tracked, it points at the hunt's section and, inside it, at the seed or its door.
+    compassLabel: "Seed hunt · {seed}",
     // Tim (2026-11-18): the Abyssal seed (the Bizarro world's) joins the hunt as its rarest kind. These are added to the travel
     // seeds' overworld weights only for a hunt, and only once the kind exists (skylands.ts SEEDS[kind]); until then they are inert.
     rare: f([f(["abyssal", 1])]),
