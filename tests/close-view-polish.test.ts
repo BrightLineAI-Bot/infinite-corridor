@@ -1,6 +1,8 @@
 // The Close View polish pass (Tim, 2026-11-19: "buttery smooth, no rendering glitches", controls feel and ease of navigation):
 // continuous pitch, sight parity with the room, the under-floor cross-fade, eased zoom, drag inertia and soft tilt limits, fades,
-// the eased recentre, the softer cutout rim, transition cross-fades and a presentation-only hit-stop (src/close-view-polish.ts).
+// the eased recentre, the softer cutout rim and transition cross-fades (src/close-view-polish.ts).
+// Tim 2026-11-19: the presentation-only full-frame hit-stop is removed; hit-stop is per actor in game time now
+// (src/hitstop-actors.ts, tests/hitstop-actors.test.ts). Test 10 checks the hold is gone and its numbers moved.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +11,8 @@ import { render } from '../src/renderer.ts';
 import * as CV from '../src/close-view.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 import { SIGHT_LINES, creatureSightLevel, sightRule, sightFieldAt } from '../src/labyrinths.ts';
-import { CLOSE_VIEW_POLISH as P, smoothDamp, softTilt, inertiaRelease, inertiaDecay, inertiaTravel, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, hitStopMs, hitStopBegin } from '../src/close-view-polish.ts';
+import { CLOSE_VIEW_POLISH as P, smoothDamp, softTilt, inertiaRelease, inertiaDecay, inertiaTravel, recentreStep, fadeToward, smoothstep01, crossfadeAlpha } from '../src/close-view-polish.ts';
+import { HITSTOP_ACTORS } from '../src/hitstop-actors.ts';
 
 const C = CV.CLOSE_VIEW, DEG = Math.PI / 180, W = 390, H = 844;
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -39,7 +42,7 @@ function room() {
   const foe = (id: string, dx: number, dy: number, extra = {}) => { const e = { ...proto, id, x: best.x + dx, y: best.y + dy, dead: false, hidden: false, ambient: false, aggro: false, hp: 25, maxHp: 50, hitFlash: 0, hitStun: 0, worldBeast: undefined, passingBeast: undefined, retreating: false, ...extra }; g.enemies.push(e); return e; };
   const tile = (dx: number, dy: number, on: boolean) => { const i = (best.y + dy) * w + best.x + dx; if (i >= 0 && i < g.map.tiles.length) g.map.tiles[i] = { ...g.map.tiles[i], kind: on ? 'keepWall' : 'keepFloor', blocked: on }; };
   g.player.x = best.x; g.player.y = best.y; g.save.closeView = true; g.save.closeViewAutoFollow = false; g.save.closeViewPreset = 'standard'; g.player.hp = g.player.maxHp = 1e6;
-  CV.resetCloseViewCamera(); CV.resetCloseViewHitStop();
+  CV.resetCloseViewCamera();
   return { g, best, foe, tile, w, h };
 }
 const frame = (g: any, n = 1, step = 16) => { let c: any; for (let i = 0; i < n; i++) { const L = logCtx(); render(L.ctx, g, W, H, (T += step)); c = L; } return c; };
@@ -51,7 +54,9 @@ test('the polish numbers are data, in their asked ranges', () => {
   assert.ok(Math.abs(P.drag.pitch - .006) < 1e-9 && P.drag.pitch > C.drag.pitch, 'drag pitch raised to .006 rad/px');
   assert.ok(P.fade.creatureSec >= .15 && P.fade.creatureSec <= .25 && P.fade.haloSec <= .25 && P.fade.cardSec <= .25, 'fades about .2 s');
   assert.ok(P.crossfade.underFloorSec >= .15 && P.crossfade.underFloorSec <= .25, 'the under-floor view fades in over .15-.25 s');
-  assert.ok(P.hitStop.maxMs <= 70 && P.hitStop.parryMs >= 40 && P.hitStop.staggerMs >= 40 && P.hitStop.reducedScale === 0, 'hit-stop 40-70 ms, off under Reduced Motion');
+  // Tim 2026-11-19: the hit-stop numbers moved to hitstop-actors.ts (per actor, game time); parry and stagger keep 40-70 ms, off under Reduced Motion
+  assert.ok(!('hitStop' in P), 'no presentation hit-stop table here any more');
+  assert.ok(HITSTOP_ACTORS.parry.maxMs <= 70 && HITSTOP_ACTORS.parry.ms >= 40 && HITSTOP_ACTORS.stagger.ms >= 40 && HITSTOP_ACTORS.stagger.maxMs <= 70 && HITSTOP_ACTORS.parry.reducedScale === 0 && HITSTOP_ACTORS.stagger.reducedScale === 0, 'hit-stop 40-70 ms, off under Reduced Motion');
   assert.ok(C.camera.orbit.cutout.soft > .3 && C.camera.orbit.cutout.soft < .6, 'a wider soft rim');
 });
 
@@ -212,24 +217,15 @@ test('the cutout rim: a finer dither under a smooth falloff; the floor and ceili
   assert.equal(vals.size, 64); assert.equal(Math.min(...vals), 0); assert.equal(Math.max(...vals), 63);
 });
 
-// 10. hit-stop
-test('hit-stop: by weight, capped, never stacking, off under Reduced Motion; presentation only', () => {
-  assert.equal(hitStopMs({ stagger: .1 }), 0, 'a light blow: none'); assert.equal(hitStopMs({ stagger: .6 }), P.hitStop.staggerMs, 'Hammerfall\'s stagger');
-  const mid = hitStopMs({ stagger: .4 }); assert.ok(mid >= 40 && mid < P.hitStop.staggerMs, `scaled by weight (${mid})`);
-  assert.equal(hitStopMs({ parry: true }), P.hitStop.parryMs); assert.ok(hitStopMs({ parry: true, stagger: 9 }) <= P.hitStop.maxMs, 'capped');
-  assert.equal(hitStopMs({ parry: true, reduce: true }), 0, 'Reduced Motion / Safe Mode: off');
-  const o = { start: -1e9, until: -1e9 }; assert.equal(hitStopBegin(o, 1000, 60), true); assert.equal(o.until, 1060);
-  assert.equal(hitStopBegin(o, 1030, 70), false, 'one already holds'); assert.ok(o.until - o.start <= P.hitStop.maxMs, 'never past maxMs from its start');
-  assert.equal(hitStopBegin(o, o.until + 10, 60), false, 'not again at once (gapMs)'); assert.equal(hitStopBegin(o, o.until + P.hitStop.gapMs + 1, 60), true);
-  // in the game: a hard stagger in view holds the presented frame, the simulation untouched
+// 10. hit-stop (Tim 2026-11-19: the full-frame hold is removed; only the Wayfarer and the struck creature pause, in game time,
+// hitstop-actors.ts). The view never holds a frame: a hard stagger in view draws the live scene, and nothing of the old hold is left.
+test('hit-stop: no presentation hold any more; a hard stagger in view draws the live frame, the save untouched', () => {
+  const src = readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8');
+  assert.ok(!/hitStopBegin|holdSnapshot|closeViewHitStopNote|HS_SEEN/.test(src), 'the full-frame hold is gone from close-view.ts');
+  assert.equal((CV as any).closeViewHitStop, undefined); assert.equal((CV as any).resetCloseViewHitStop, undefined);
   withGPU(() => {
-    const { g, foe } = room(); frame(g, 2); face(0); frame(g, 6); const e = foe('struck', 2, 0); frame(g, 4);
-    const snapBefore = JSON.stringify(g.save); e.hitFlash = .18; e.hitStun = .6; frame(g, 1);
-    const hs = CV.closeViewHitStop(); assert.ok(hs.until - hs.start >= 40 && hs.until - hs.start <= P.hitStop.maxMs, `held ${hs.until - hs.start} ms`);
-    const held = frame(g, 1); assert.ok(held.images.length >= 1, 'the held frame is drawn from the copy'); assert.equal(JSON.stringify(g.save), snapBefore, 'nothing saved changed');
-    frame(g, 6); assert.ok(T > CV.closeViewHitStop().until, 'over'); e.hitFlash = .3; e.hitStun = 1.2; frame(g, 1); assert.ok(CV.closeViewHitStop().until < T, 'not again within gapMs');
-    g.presentation = { effectiveQuality: 'balanced', reduceMotion: true }; frame(g, 30); e.hitFlash = .5; e.hitStun = 2; frame(g, 1); assert.ok(CV.closeViewHitStop().until < T, 'Reduced Motion: none');
-    // a weighted swing's own hit-stop holds the blow already: none is added over it
-    g.presentation = { effectiveQuality: 'balanced', reduceMotion: false }; frame(g, 30); g.pendingMeleeContact = { stopLeft: 60 }; e.hitFlash = .7; e.hitStun = 3; frame(g, 1); assert.ok(CV.closeViewHitStop().until < T, 'the swing\'s own hit-stop stands alone'); g.pendingMeleeContact = null;
+    const { g, foe } = room(); frame(g, 2); face(0); frame(g, 6); const e = foe('struck', 2, 0); frame(g, 4); const base = frame(g, 1).images.length;
+    const snapBefore = JSON.stringify(g.save); e.hitFlash = .18; e.hitStun = .6; const hit = frame(g, 1), live = frame(g, 1);
+    assert.equal(hit.images.length, base, 'the frame of the hit draws as any other'); assert.equal(live.images.length, base, 'no held copy is drawn after it'); assert.equal(JSON.stringify(g.save), snapBefore, 'nothing saved changed');
   });
 });

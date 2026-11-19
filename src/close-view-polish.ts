@@ -1,6 +1,6 @@
 // Close View polish (Tim, 2026-11-19: "buttery smooth, no rendering glitches", the controls' feel and ease of navigation).
-// The numbers of the polish pass as one data table, and the pure easing arithmetic the camera, the drag, the fades and the
-// hit-stop share (close-view.ts uses them; tests/close-view-polish.test.ts pins them). Presentation only: nothing here reads or
+// The numbers of the polish pass as one data table, and the pure easing arithmetic the camera, the drag and the fades
+// share (close-view.ts uses them; tests/close-view-polish.test.ts pins them). Presentation only: nothing here reads or
 // writes the save, the simulation or its clocks, so determinism and exact resume are untouched. No allocation in any function.
 //
 // pitch.fitTau: the framing clamp's correction (the whole body kept in frame, close-view.ts orbitPlace) eases in over about this
@@ -20,11 +20,8 @@
 //   mounting cross-fade from the last frame drawn over `underFloorSec` / `transitionSec` seconds (one canvas copy when it starts, one
 //   draw a frame while it lasts), only when the last frame was Close View within `gapMs` (a load or resume never fades from stale art).
 // (The cutout's softer rim is CLOSE_VIEW.camera.orbit.cutout.soft, .3 -> .42, on an 8x8 dither: close-view-gl.ts WALL_CUT_GLSL.)
-// hitStop: a heavy connect holds the presented frame (presentation time only: the simulation runs on): `parryMs` for a perfect
-//   parry, `staggerMs` for a stagger of at least `staggerHeavy` seconds (scaled down to `staggerMs * minShare` at `staggerFrom`),
-//   never longer than `maxMs`, never again within `gapMs` of the last (no stacking into a long freeze), and never while a weighted
-//   swing's own hit-stop is holding (melee-swing.ts / great-sweep.ts hitStopMs: those freeze the swing in game time already).
-//   Reduced Motion and Safe Mode: times `reducedScale` (0: off).
+// (hitStop: release 1023's presentation-only full-frame hold was removed on Tim's 2026-11-19 rework; its numbers moved to
+//   hitstop-actors.ts HITSTOP_ACTORS, where only the Wayfarer and the creature she struck pause, in game time.)
 export const CLOSE_VIEW_POLISH = Object.freeze({
   version: 1,
   pitch: Object.freeze({ fitTau: .06 }),
@@ -33,7 +30,6 @@ export const CLOSE_VIEW_POLISH = Object.freeze({
   recentre: Object.freeze({ maxRate: 7, accel: 40, brake: 26 }),
   fade: Object.freeze({ creatureSec: .2, haloSec: .2, cardSec: .2 }),
   crossfade: Object.freeze({ underFloorSec: .2, transitionSec: .2, gapMs: 400 }),
-  hitStop: Object.freeze({ parryMs: 70, staggerMs: 60, staggerFrom: .3, staggerHeavy: .5, minShare: .67, maxMs: 70, gapMs: 300, reducedScale: 0 }),
 });
 const DEG = Math.PI / 180;
 const clamp01 = (x) => x <= 0 ? 0 : x >= 1 ? 1 : x;
@@ -89,20 +85,3 @@ export function fadeToward(a, want, dt, sec) {
 // A cross-fade's overlay alpha `t` seconds after it began: 1 (the old frame) easing to 0 over `sec`.
 export const crossfadeAlpha = (t, sec) => (sec > 0 ? 1 - smoothstep01(t / sec) : 0);
 
-// Hit-stop: how long (ms) a heavy connect holds the presented frame. `stagger`: the stagger seconds the blow laid (0 none),
-// `parry`: a perfect parry. 0 when it is not heavy, or under Reduced Motion / Safe Mode with reducedScale 0.
-export function hitStopMs({ stagger = 0, parry = false, reduce = false } = {}, P = CLOSE_VIEW_POLISH.hitStop) {
-  let ms = 0;
-  if (parry) ms = P.parryMs;
-  if (stagger >= P.staggerFrom) { const k = clamp01((stagger - P.staggerFrom) / Math.max(1e-6, P.staggerHeavy - P.staggerFrom)); ms = Math.max(ms, P.staggerMs * (P.minShare + (1 - P.minShare) * k)); }
-  ms = Math.min(P.maxMs, ms) * (reduce ? P.reducedScale : 1);
-  return ms > 0 ? Math.round(ms) : 0;
-}
-// Start (or refuse) a hit-stop at `now` (ms) for `ms`: never within gapMs of the last one's end, never extending one past maxMs
-// from its start. o: { start, until }. Returns true when the presented frame should be held from now.
-export function hitStopBegin(o, now, ms, P = CLOSE_VIEW_POLISH.hitStop) {
-  if (!(ms > 0) || !Number.isFinite(now)) return false;
-  if (now < o.until) { o.until = Math.min(o.start + P.maxMs, Math.max(o.until, now + ms)); return false; } // one already holds: no stacking
-  if (now - o.until < P.gapMs) return false;
-  o.start = now; o.until = now + Math.min(ms, P.maxMs); return true;
-}
