@@ -43,6 +43,13 @@ export const CREATURE_MOTION = fz({
     alert: fz({ in: .12, out: .6, stretch: .06, lift: .03, head: .3, lean: .08 }),
     arrive: fz({ emerge: .62, drop: 1.6, land: .22, landAt: .22, fadeIn: .3, dropFade: .18, fadeLift: .1, head: .35 }),
   }),
+  // Impact weight (Tim, 2026-11-19: "hit reactions on the creature's body... heavier reactions for heavy hits and stagger/poise
+  // break, light ones for chip hits"). close-view.ts reads the blow's size as its share of the creature's maximum health over
+  // `heavyShare` (0..1, `blow` on the actor; absent: the old single strength). The flinch scales from `light` (a chip) to `heavy`
+  // (a big blow), and the body slides back up to `knock` tiles more along the push (grounded: the feet stay on the floor; it is
+  // drawn only, the creature does not move). A poise break counts as a full blow. `flashMs`: the first moments of a blow flash
+  // the body toward `flash` (white-hot) before the red of the hurt tint (close-view-models.ts), on the body itself, no overlay.
+  impact: fz({ heavyShare: .1, light: .65, heavy: 1.55, knock: .16, flashMs: 70, flash: fz([1, .93, .82]), flashAmount: .55 }),
   // Per body family: axis ('up': head at the top; 'front': head at the front, tail behind), react (scale of the reactions),
   // breath [Hz, stretch, chest], sway [Hz, roll, twist] (weight shift at rest), step (roll onto the planted foot), head (lead into
   // a turn), tail (lag of tails and trailing parts), hang (lag of parts hanging below a floater), bank (roll into a turn).
@@ -110,8 +117,10 @@ export function creatureMotion(actor, family, root, out = MOTION) {
   // a flinch (the enemy-behaviour.ts flag, or any blow the art saw land), or a poise-break stagger on the same clock
   const fl = num(actor.flinch), reeling = !!actor.reeling && fl > 0;
   const fe = Math.max(reeling ? 0 : motionEnvelope(fl, R.flinch.in, R.flinch.out), motionEnvelope(num(actor.hitReact), R.flinch.in, R.flinch.out));
+  const I = M.impact, blow = Number.isFinite(actor.blow) ? Math.max(0, Math.min(1, actor.blow)) : -1, weigh = blow < 0 ? 1 : I.light + (I.heavy - I.light) * blow;
   if (fe > 0) {
-    const Q = R.flinch, k = fe * amp;
+    const Q = R.flinch, k = fe * amp * weigh;
+    if (blow > 0) out.lunge += I.knock * blow * bf * fe * move; // the heavier blow drives it back along the push
     out.lean += Q.lean * bf * k; out.bendPitch += Q.bend * bf * k; out.roll += Q.roll * bs * k; out.twist += Q.twist * bs * k;
     out.headPitch += Q.head * bf * k; out.headYaw += Q.headYaw * bs * k; out.squash += Q.squash * k; out.lunge += Q.back * bf * fe * move; out.arm += Q.arm * k;
     out.tailPitch -= Q.bend * bf * k; out.tailYaw -= Q.twist * bs * k;

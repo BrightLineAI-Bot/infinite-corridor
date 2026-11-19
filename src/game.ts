@@ -5086,7 +5086,7 @@ export class Game {
   }
   noteSecondSighting(r) {
     journalOnce(this.save, `second-wayfarer:${r.index}`, r.passed ? r.text : `${SECOND_SIGHTINGS[r.index]} ${r.text}`, SECOND_WAYFARER.title); // what was seen at a distance, then what was left
-    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · nobody is ahead of you now`, kind: "quest" }); }
+    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · no one is ahead of you now`, kind: "quest" }); }
   }
   settleArcana() {
     const paid = settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });

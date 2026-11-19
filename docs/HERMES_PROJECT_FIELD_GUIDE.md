@@ -14,6 +14,57 @@ Tim (2026-11-19): using an Aperture skill (movement skills too) should arm Arcan
 
 **BOUNDARY:** No save change: the Edge charges and every Encumbered tier are runtime only (the tier lives on the non-enumerable per-foe mark and calms down as the freeze's does); a reload drops them. Skills never fire Casting Wind, Glyph Mine's sigil, Echoing Cast or the Echo "spell" event. Tiers cover every creature, as the freeze's tiers cover every class. Tool shots are untouched: a physical shot (the Blunderbuss, Needle Caster and Rift Bombard) still reads the melee stat (so the skills' melee bonus) and every shot's range still reads attackReach, as before; Spellblade, Ember Skin, Arcane Edge and Pocket Time stay off shots. No generation change; Glyph Mine × Rift Step mines are untouched apart from the line's damage. No new module, allocation per frame or array.
 
+## Release 1028 — the Second Wayfarer's ending
+
+Tim (2026-11-19) changed the end of the Second Wayfarer (release 1024): the trail stays on the overworld, and at the last stop you find her body, laid out still beside the folded suit and the gifts, under a note in blood in a hand that does not know what letters are. Its words, "NO ONE IS AHEAD OF YOU NOW", replace "Nobody is ahead of you now" as the closing line. Who wrote it is never said and is no named entity.
+
+**CODE:** `src/second-wayfarer.ts`: new `SECOND_LAST_WORDS` ("NO ONE IS AHEAD OF YOU NOW") and `SECOND_HAND` (the stone's writing, described in plain text, then the words; bare prints go back the way you came). `SECOND_TRACES[5]` is now her body, the suit, the bundle, her own last note and `SECOND_HAND`; `SECOND_ENDING` closes on `SECOND_LAST_WORDS`; `SECOND_PASSED_LAST` (last sighting passed at sea) is her in a drifting boat with the same words. `SECOND_SIGHTINGS[4]` and `SECOND_TRACES[4]` gain one foreshadowing sentence each. `secondTraceName` names the last trace "Someone lying still", then "Wenna Callow". `game.ts` QUEST COMPLETE detail reads "no one is ahead of you now". `renderer.ts drawSecondTrace` default case draws her lying still, the folded suit, mask and bundle, a flat stone with short dark-red square strokes, and bare prints going the other way; fixed canvas calls, no allocation.
+
+**BOUNDARY:** Text and drawing only. No generation, number or save change: `save.lore.second` is untouched, the trail, its sections and the compass are as in 1024, and a Journal entry already written by a finished trail keeps its old text (journalOnce never rewrites); rereads in the Arcana and Tome show the new words. Restrained by rule: no wound or gore, nothing named, and the hand is not fractal.
+
+## Content stages
+
+Tim's naming convention for this guide and `docs/narrative-bible.md` (2026-10-29, renumbered 2026-11-19). These are content eras by when a feature was built, not the in-game creature stages S1/S2 that the Listener opens (`stageOf`). They replace the 2026-10-29 wording "Stage 3 begins with vertical traversal". Vertical-traversal work falls into Stage 3 or Stage 4 by when each piece was built: great trees, skyways, the glider and the Skylands climb are Stage 3; canopy groves, Upwells, Cloud Hold summit skyways, roof decks, real falls and Aerial Step's air walk are Stage 4.
+
+- **Stage 1**: the base game, with the first creatures, monsters and world beasts.
+- **Stage 2**: everything up to release 573 (2026-10-29, PR #270): the passives and secondary passives, the Transit Lattice and its field passives and tool forms, the extra weapons and brawler gear, and the newer bosses.
+- **Stage 3**: everything after Stage 2 up to the start of the Pentagon work, releases 575-726 (2026-10-29 to 2026-11-03, PRs #271-#374). It includes the great trees and the glider, skyways and the Skylands' modes, the Deep, the Stalker, Great Keeps, ruined arcologies, great buildings, compounds, labyrinths and Great Castles, the Briar Stag, Ashen Moth and both dragons, the far realms and world-beast domains past 1000, and new regions (firelands, moonlands, pillar lands, fog moors, jungle and others).
+- **Stage 4**: everything from the start of the Pentagon work to now, from release 727 (2026-11-04, PR #375, the first Pentagon) on. It includes the Pentagon and the Stillworks, adventure Pentagons, Upwells, seed realms and the Askew, travel seeds, Abyssal Seeds and seed hunts, the Deep's lairs, the new far regions (Terrace Springs, the Reckoning Fields, Rimeglaciers, the Lunar Wastes, the Marrowworks, the Magma Rivers), the Gaunt, adventure creatures, haunts, the dinosaurs and the Earth Apatosaurus, Tesseract glyphs, the Quandrix Staff, Fourfold Daggers, Carbine and Aether Orrery, weapon arts and awakened moves, Imbue Weapon and Essence Walk, the on-hit and charge passives (Tempo, Shatterpoint, Rapid Reload, Power Aegis, the five Constellation extras), the new Echoes, mounts and the Triceratops hatchling, refinement, and Close View.
+
+Boundaries were found from `git log --first-parent` on main. Release 573 (merge `04a36c5d5`) is the last Stage 2 release. Release 575 (merge `b21cc7fdb`) opens Stage 3; no release 574 shipped, because of the two-session odd/even numbering of the time. Release 726 (merge `06fac040c`) is the last Stage 3 release. Release 727 (commit `6f05f9cb2`, merge `ccd585551`) is the first Pentagon. Stage 4 runs to release 1025 at the time of writing. Each Stage 4 player ability and piece of content is listed in `docs/stage-4-inventory.md`, with the release that added it and how the player gets it today.
+
+Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not a design). Tim wants to go back over Stage 4's passives, spells, skills, tools and abilities and tie them to quests and places in the world, so that different playthroughs come out with different kits depending on which quests a player goes on. The inspiration is a new Dungeons & Dragons game that spreads very many wild abilities through its world. Tim's detail, the same day:
+
+- Quests and quest lines are not only for Stage 4 abilities: this is how the whole game's progression will work.
+- Unlock routes are a mix:
+  - (a) plain levelling up, some of it shown in advance as "these are the level-ups";
+  - (b) Arcanum or Constellation unlocks that open a quest ("go here", "find these items"), and finishing the quest grants the passive or skill;
+  - (c) exploration milestones: complete X deep dungeons, fell X Listeners, restore X hollow relays, and the like;
+  - (d) threads: picking up a thread item starts a quest. It may say that something waits at the end, or it may not say what you get at all.
+- Visibility varies. Some routes are directed and obvious. Some stay unknown until you find the thread or finish the quest, and some you won't know you are getting. Overall they should be about as discoverable as the threads are today; some abilities are simply found at random.
+- A compendium can later show how each quest or ability is obtained, once the player knows it.
+- Constraint: players must still be able to build builds and feel progress. They should not wander the Corridor forever without moving toward anything. Tim has already lined some things up with deserts and regions.
+- Exploration first (Tim, 2026-11-19): the aim is so much content that there is a huge amount to explore and dig into. A quest can start in one region and send the player farther out for its next item, with conditions such as "a desert at least 50 sections from the Ember Refuge"; some send you to the open sea; some things can be found only in the skyways. Some passives or abilities may be bought with Divine Viscera, the endgame currency.
+- Next step: design a viable, structured acquisition architecture. The lead does this after the inventory. Until Tim approves that design, no acquisition is changed.
+
+Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
+
+## Release 1027 — Triceratops beak and rider
+
+Tim (2026-11-19), after release 1025: the tip of every Triceratops's beak hung off the shortened snout, and when riding, the frill clipped into the rider; the rider should sit behind the frill.
+
+**CODE:** TRICERATOPS_BEAK (close-view-beast-triceratops.ts): the upper beak is the end of the skull's own surface and closes to the hook's point through the squat muzzle and shorter snout; the separate hook cone is gone (the low tier keeps the point); the jaw reads BEAK.jaw. TRI_BEAK (triceratops-render.ts): the standard-view skull, upper beak and lower beak, the lower beak tucked inside the hook. MOUNT_BEASTS.triceratops.seatX -.6 (beast-mounts.ts); under MOUNT_DRAW.skipBody the card's seat shift is 0 and SEAT_F is 0. TRICERATOPS_RIG.riddenFrill {tilt .35, follow 1.4, recoil 1.8, fwd .12, down .04} sets the ridden frill more upright and tips it further as the head rises. Covered by tests/triceratops-beak-rider.test.ts (4).
+
+**BOUNDARY:** Presentation only: seat height (riderLiftOf), attacks, the horn-shot origin, the card's position and the camera are unchanged; wild herds and the hatchling keep their frill; no save change; triangle counts within budget. Frill-to-rider clearance is positive over every ridden move (standard +0.237, Close View +0.099 tiles at the Horn Shot recoil).
+
+## Release 1026 — Close View creatures stay solid
+
+Tim (2026-11-19): in Close View the world and the Wayfarer feel concrete but the creatures still feel ephemeral, a little wireframe-like; he wants that AAA feel in combat, as close as possible within the phone budget. He approved three existing-test edits: distant creatures stay opaque (creature-solidity.test.ts), the new death sequence (creature-motion.test.ts) and the dying body still present at 500 ms (close-view-enemy-opacity.test.ts).
+
+**CODE:** close-view.ts CLOSE_VIEW.creatures: `fogDither: false` (closeViewCreatureEdge), `outdoorReach` (creatureReach = OUTDOOR.view far + 1 in the open world), `contact` {share .62, min .27, max .55, alpha .7} sized by creatureFootprint, and `death` {holdMs 450, sinkMs 680, sink .85, cap 2/5/8, grey drift .3, pieces {spread .45, turn .9, shrink .55, settle 1.8, rest .03, late .55}}: after lying whole, each of the body's own triangles drifts on a seeded path, shrinks and settles on the floor, then sinks (no jitter, no ring), drawn through MODEL_STATE.deathGhost/dying and counted in closeViewGLStats.models and .dying. close-view-gl.ts MODEL_FS lights a body with lightsAt(v_pos, up), the same ambient/torch/sun/source sum as the floor, as mix(env, min(dif, env), form) (CLOSE_VIEW_ACTOR_LOOK form .6, rim 0, spec 0), so a creature is never brighter than the floor under it; the beast shader (close-view-beast-gl.ts) follows the same rule; emissive parts and the spectral ghost rim are kept. close-view-models.ts: CREATURE_GROUND, creatureRestGround and creatureFootprint (applied when actor.grounded); a fallen body is set down on its ground; impactFlash. creature-motion.ts CREATURE_MOTION.impact scales the flinch by the blow and adds a drawn-only slide. Root Brute arms rooted in the trunk. Tests: close-view-creature-solidity-1119 (11). It composes with release 1023's sight fades (the sightFade multiplier is kept).
+
+**BOUNDARY:** Presentation only: no simulation, save (schema 14), generation, hit or AI change; the slide is drawn only. Per-kind triangle counts are unchanged; dying bodies are capped per tier (2/5/8); no new passes or modules; the only new allocation is one record per creature kind, measured once. Designed translucency (spectral kinds, wards, phasing) is unchanged. Reduced Motion keeps smaller reactions with no slide or shimmer. The silhouette x-ray through props and creatures between camera and Wayfarer are left to the camera owner's follow-up. Frame rate on a real phone is not measured.
+
 ## Release 1025 — Triceratops faces
 
 Tim (2026-11-19) found the baby hatchling's face too cartoonish (eyes too big, face too crazy) and every Triceratops's beak still a little long. He kept the baby's size.
@@ -8146,7 +8197,7 @@ echoes could be a separate subtab... these are just the passes for spells... ski
 Tim (2026-10-29): "we should have some actual forest sections where there's just actual, like bunch of trees... that you can chop
 down. It can be passed through the forest... some taller trees... that reach beyond the frame... you can walk behind them... maybe
 you can see like a silhouette"; "when you generate a region, you can generate a name as well... I also don't see any ice regions".
-Climbing the trees, skyways and floating platforms (what Tim calls Stage 3, vertical traversal) are not built here.
+Climbing the trees, skyways and floating platforms (vertical traversal, which Tim then called Stage 3) are not built here. Under Tim's 2026-11-19 convention (see Content stages near the top of this guide) Stage 3 is releases 575-726 and Stage 4 is release 727 onward, so vertical traversal falls into Stage 3 or Stage 4 by when each piece was built.
 
 **CODE:**
 - `src/landscape.ts`: `LANDSCAPE_VERSION` 5. `regionAt(seed, sx, sy, version = 4)`: from version 5 a wild region may become
