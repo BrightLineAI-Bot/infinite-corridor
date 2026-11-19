@@ -785,7 +785,7 @@ function activeQuests(){
   if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null,{kind:"quest",id:"errand"}); // 2026-11-11: the first quest
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null,{kind:"quest",id:"leads"});
-  if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
+  if(save.worldFlags?.worldBossAwake&&!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
   return out;
 }
 function renderQuests(out){

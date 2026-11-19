@@ -34,6 +34,8 @@ import {
   cacheLootText,
   HEARTLAND_SHACK,
   heartlandShackSection,
+  hideDormantBossCue,
+  DORMANT_BOSS,
 } from "./world.ts";
 
 function applyFallenTreeCrossings(map) {
@@ -70,6 +72,7 @@ import {
   gainAperture,
   APERTURE_TIER_DUE,
   progressLead,
+  actionDone,
 } from "./interactions.ts";
 import { SEED_HUNT_PICK } from "./atlas-view.ts"; // the compass pick of a seed hunt (2026-11-19)
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.ts";
@@ -188,7 +191,7 @@ import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.ts"; // rel
 import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.ts"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
 import { addMargin, readMargin } from "./margins.ts";
 import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.ts"; // release 505; 551: part two
+import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper, resettleSurveyorLink } from "./surveyor.ts"; // release 505; 551: part two
 import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace } from "./second-wayfarer.ts"; // the Second Wayfarer (narrative bible, section 4)
 import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
@@ -1753,6 +1756,9 @@ export const EDGE_HOLD = Object.freeze({ depth: .75, ms: 450 });
 // new section's terrain): within `edge` tiles of a section edge, idle time lays the section beyond it into the sectionTerrain
 // cache (Game.warmCrossingTerrain, main.ts), so the crossing copies kept terrain instead of generating it in its own frame.
 export const CROSSING_WARM = Object.freeze({ edge: 6 });
+// Exact resume (2026-11-19): the most foes a section or floor holds once saved foes not made again are put back.
+export const RESUME_KEEP = Object.freeze({ cap: 64 });
+const EXTRA_FOE = /:extra:\d+$/; // a crossing's extra foe (extraDungeonSpawns' id)
 export const DUNGEON_LEVEL_KEEP = 24; // perf pack (D7): other levels' guardian lists kept per session
 const terrainCache = new Map();
 export function sectionTerrainCacheStats() { return { size: terrainCache.size, keep: SECTION_TERRAIN.keep, hits: terrainCache.hits || 0, misses: terrainCache.misses || 0 }; }
@@ -3673,6 +3679,7 @@ export class Game {
     this.map = area === "dungeon"
       ? generatePinnedDungeon(this.save, loadingId, {levelId:this.save.session.activeDungeonLevelId||undefined})
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
+    if(area==="overworld"&&!this.rx&&!this.ry)this.map.objects=hideDormantBossCue(this.map.objects,this.save); // 2026-11-19: the Refuge's world-boss cue only once something wakes it
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
@@ -3817,6 +3824,7 @@ export class Game {
         ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
         ...(prior ? (prior.bizarroVersion ? { bizarroVersion: prior.bizarroVersion } : {}) : { bizarroVersion: BIZARRO.version }), // the bizarro pockets and the Abyssal Seeds lying in the open: new ground only
+        ...(prior ? {} : { quietBossVersion: DORMANT_BOSS.version }), // 2026-11-19: no red mark toward the sleeping world boss (world.ts DORMANT_BOSS): new ground only
         ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
@@ -3872,6 +3880,7 @@ export class Game {
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
       if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
     if (area === "overworld" && this.map.farDomain) { this.map.enemySpawns = this.map.enemySpawns.filter((e) => this.map.farDomain === "questingBeast" ? e.questingBeast : e.worldBeast === this.map.farDomain && !e.retreating); this.map.objects = (this.map.objects || []).filter((o) => o.domain); if (this.domainMessage) this.message = this.domainMessage; } this.domainMessage = null; // release 723: nothing lives in a domain but its beast
+    if (area === "dungeon") resettleSurveyorLink(this.map, this.save, this.areaId()); // 2026-11-19: a chain-link the floor as laid (a cistern's pool, the terrain-hazard pass) has cut off moves to where it can be reached
     this.enemies = this.map.enemySpawns.map(e => this.createEnemyFromSpawn(e,area));
     this.roofDwell = null; // roof-dwellers.ts: made below, once the section's objects are all laid
     if (area === "overworld" && this.map?.canopy?.top && !this.map.objects.some((o) => o.kind === "crownRest")) { // release 669: a rest point on every great tree's crown
@@ -3955,6 +3964,13 @@ export class Game {
       for (const saved of s.enemies || []) if (saved.spinoInterloper && saved.kind === "spinoRex" && !saved.dead && !this.enemies.some((e) => e.id === saved.id)) { const restored = { ...saved, ai: { ...saved.ai } }; ensureAI(restored); resetPackRuntime(restored); this.enemies.push(restored); } // the Spinosaurus come in as an interloper, while it lives (spino-rex.ts)
       for(const saved of s.enemies||[])if((saved.gatePredator||saved.foundryId||saved.astralMountFixture||saved.riteFoe&&area==="overworld"&&this.rite?.key===riteKey(this.rx,this.ry)/* release 736 (F7): a Rite resumed keeps its foes */)&&!saved.dead&&!this.enemies.some(e=>e.id===saved.id)){const restored={...saved,ai:{...saved.ai}};ensureAI(restored);if(restored.gatePredator){tuneGatePredator(restored,this.save,characterStats(this.save));resetGateAttack(restored, true)}this.enemies.push(restored)}
       for(const saved of s.enemies||[])if(saved.astralOwner&&!saved.dead&&this.enemies.length<32&&!this.enemies.some(e=>e.id===saved.id)){const owner=this.enemies.find(e=>e.id===saved.astralOwner&&!e.dead),clone=owner?.astral?.clones?.find(c=>c.id===saved.id&&c.hp>0);if(clone){const restored={...saved,hp:Math.min(saved.hp,clone.hp),noRewards:true,summonedBy:owner.id,ai:{...saved.ai}};delete restored.worldBeast;delete restored.questingBeast;ensureAI(restored);this.enemies.push(restored);}}
+      // 2026-11-19 (first-hour fixes): exact resume. Foes not made again as they were saved come back from the save: a crossing's
+      // extra foes (DUNGEON_BOOST: no longer laid once the crossing's combat is clear), an Aperture intrusion (rolled again from
+      // the Aperture as it is now, so a higher tier rolled another or none) and the Stalker, mid-fight (made at run time; a fight
+      // left by an edge, a Wayglass or a door is still lost as before). Bounded by RESUME_KEEP.cap.
+      { const st = area === "overworld" ? ensureStalker(this.save) : null, stalkId = st?.active?.engaged && !st.active.door ? `stalker-${st.seq}-${st.kills}` : null;
+        if ((s.enemies || []).some((q) => q.apertureEncounter && !q.dead)) this.enemies = this.enemies.filter((e) => !e.apertureEncounter || by.has(e.id)); // the intrusion saved stands; none rolled since joins it
+        for (const saved of s.enemies || []) if ((EXTRA_FOE.test(String(saved.id)) || saved.apertureEncounter || (stalkId && saved.stalker && saved.id === stalkId)) && !saved.dead && !isTombstone(saved) && this.enemies.length < RESUME_KEEP.cap && !this.enemies.some((e) => e.id === saved.id)) { const restored = { ...saved, ai: { ...saved.ai } }; ensureAI(restored); resetPackRuntime(restored); this.enemies.push(restored); } }
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
       if (area === "overworld" && this.rite?.key !== riteKey(this.rx, this.ry)) for (const o of this.map.objects) if (o.kind === "saplingDais" && o.state === "burning") { // release 736 (review F7): no rite burns here now
@@ -5823,6 +5839,7 @@ export class Game {
       h.visits++;
       h.visitOpen = true;
       { const was = this.message; this.loadArea("dungeon"); if (this.message === SETTLED_MESSAGE) this.message = was; } // the position loadArea judged was the door's on the land outside, never where you arrive (just below): a crater, mostly clods, said "settles you" on every entry
+      if (this.message === r.message && r.message === actionDone(o, "enter") && this.map?.name) this.message = actionDone({ name: this.map.name }, "enter"); // 2026-11-19: named for the crossing as it is inside
       if (horde?.left > 0) this.message = `The crossing is thick with Gate Revenants: ${horde.left} remain.`;
       this.player.x = this.map.entry?.x ?? 4;
       this.player.y = this.map.entry?.y ?? 5;
@@ -7018,6 +7035,9 @@ export class Game {
           if (exceptional.length) this.save.session.areas[stateId] = { encounterVersion: this.save.session.areas[stateId]?.encounterVersion || 0, enemies: exceptional, objects: {}, projectiles: [], effects: [], eliteHazards: [] };
           else delete this.save.session.areas[stateId];
         }
+        // 2026-11-19 (first-hour fixes): resolveDeath moved the Wayfarer to the checkpoint's section; the crossing they wake in
+        // is still the one they entered from q's section, so foes scale, and the Atlas and compass read, from there.
+        if (q && Number.isFinite(q.rx) && Number.isFinite(q.ry)) { this.rx = q.rx; this.ry = q.ry; Object.assign(this.save.session, { rx: q.rx, ry: q.ry }); if (this.save.position) Object.assign(this.save.position, { rx: q.rx, ry: q.ry }); }
         this.loadArea("dungeon", false);
         for (const o of this.map.objects)
           if (claimed[o.id]?.state === "used") o.state = "used";

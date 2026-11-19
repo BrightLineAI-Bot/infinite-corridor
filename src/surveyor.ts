@@ -49,16 +49,61 @@ export function surveyorCrossing(seed, dungeonId, region = 0) {
   return (hashSeed(`${seed}:surveyor:v1:${dungeonId}`) % 10000) / 10000 < (region >= 1 ? arcanaRate("surveyor", rx, ry) : SURVEYOR.chance);
 }
 // Lays the crossing's link on open floor away from the entry. Returns the object or null.
+// 2026-11-19 (first-hour fixes): the link lies only where the Wayfarer can walk to it from the entry with the real step rules
+// (surveyorReach: short of any sealed gate, never across lethal ground or a drop too high to climb). The spot the rule before
+// chose (legacySpot) is kept wherever it is reachable, so a link already lying in a crossing stays where it was; only a link that
+// could never be reached, or a crossing that held none (a deep or many-levelled crossing: on its entry level), gains a new spot.
 export function addSurveyorLink(map, save, dungeonId) {
-  if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "surveyorLink")) return null;
+  if (!map?.tiles?.length || map.arena || map.underwater || map.objects?.some((o) => o.kind === "surveyorLink")) return null;
+  if (map.multiLevel && map.levels?.length && map.levelId !== map.levels[0].id) return null; // a deep crossing: on its entry level only
   if (!surveyorCrossing(save?.seed, dungeonId, regionVersionOf(save, dungeonId)) && !starterLink(save, dungeonId)) return null; // 2026-11-11: or the Cairn Keeper's errand
   const s = ensureSurveyor(save); if (Object.values(s.where).includes(dungeonId) || nextLink(s) === undefined) return null;
-  const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
-  const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= SURVEYOR.minFromEntry && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)));
-  if (!open.length) return null;
-  const t = open[hashSeed(`${save.seed}:surveyor-at:v1:${dungeonId}`) % open.length];
+  const t = surveyorSpot(map, save, dungeonId); if (!t) return null;
   const o = { id: "surveyor-link", kind: "surveyorLink", name: "A link of surveyor's chain", x: t.x, y: t.y, state: "lying", actions: ["take"] };
   (map.objects ||= []).push(o); return o;
+}
+const SPOT_SHUN = /water|lava|pit|void|Gate|Stair/i; // reachable ground only (surveyorReach already shuns lethal kinds); not on a stair or a gate
+// Where the link lies: the earlier rule's spot if the Wayfarer can reach it, else a seeded spot among the reachable floor (away from
+// the entry if it can be, plain floor before themed ground). Null where nothing reachable is fit to hold it.
+export function surveyorSpot(map, save, dungeonId, legacyOk = true) {
+  const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
+  const reach = surveyorReach(map), ok = (t) => !!t && reach.has(t.y * w + t.x);
+  const legacy = map.multiLevel || !legacyOk ? null : legacySpot(map, save, dungeonId, w, entry, taken); if (legacy && ok(legacy)) return legacy;
+  const fit = map.tiles.filter((t) => ok(t) && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && !taken.has(`${t.x},${t.y}`) && !SPOT_SHUN.test(String(t.kind)));
+  const far = (t) => Math.hypot(t.x - entry.x, t.y - entry.y) >= SURVEYOR.minFromEntry, near = (t) => Math.hypot(t.x - entry.x, t.y - entry.y) >= 2;
+  const pool = [(t) => far(t) && !t.environment, far, (t) => near(t) && !t.environment, near].map((f) => fit.filter(f)).find((l) => l.length);
+  return pool ? pool[hashSeed(`${save.seed}:surveyor-at:v2:${dungeonId}`) % pool.length] : null;
+}
+// After the rest of the floor is laid (game.ts loadArea: a cistern's pool can close a way after the link was placed), a lying link
+// the Wayfarer can no longer walk to moves to a reachable spot. Returns the link if it moved, else null.
+export function resettleSurveyorLink(map, save, dungeonId) {
+  const o = map?.objects?.find((q) => q.kind === "surveyorLink" && q.state !== "taken"); if (!o || !map.tiles?.length) return null;
+  const w = map.width || 24; if (surveyorReach(map).has(Math.round(o.y) * w + Math.round(o.x))) return null;
+  map.objects = map.objects.filter((q) => q !== o); const t = surveyorSpot(map, save, dungeonId, false); map.objects.push(o);
+  if (!t) return null; o.x = t.x; o.y = t.y; return o;
+}
+// The spot the rule before 2026-11-19 chose (kept unchanged so links already lying in crossings do not move).
+function legacySpot(map, save, dungeonId, w, entry, taken) {
+  const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= SURVEYOR.minFromEntry && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|void|Gate/i.test(String(t.kind)));
+  return open.length ? open[hashSeed(`${save.seed}:surveyor-at:v1:${dungeonId}`) % open.length] : null;
+}
+// The floor the Wayfarer can walk to from the entry: open, not lethal or a pit, each step one the Wayfarer can take on foot (a jump
+// of one level up, any drop that is not lethal). A set of tile indexes.
+const WALKER = Object.freeze({ isPlayer: true, jumping: true });
+export function surveyorReach(map) {
+  const w = map.width || 24, h = Math.floor(map.tiles.length / w), out = new Set();
+  const open = (t) => !!t && !t.blocked && !t.pit && !t.perch && !LETHAL_KINDS.has(t.kind);
+  const e = map.entry || { x: 4, y: 5 }, ex = Math.round(Number(e.x)), ey = Math.round(Number(e.y)), q = [];
+  for (const [dx, dy] of [[0, 0], [0, -1], [1, 0], [-1, 0], [0, 1]]) { const x = ex + dx, y = ey + dy; if (x >= 0 && y >= 0 && x < w && y < h && open(map.tiles[y * w + x])) { out.add(y * w + x); q.push(y * w + x); break; } }
+  for (let i = 0; i < q.length; i++) {
+    const k = q[i], x = k % w, y = (k - x) / w;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, n = ny * w + nx;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h || out.has(n) || !open(map.tiles[n]) || !canStep(WALKER, map, w, x, y, nx, ny)) continue;
+      out.add(n); q.push(n);
+    }
+  }
+  return out;
 }
 // Taking it: the next link and its page of notes. Returns { ok, index, message, note, total }.
 export function takeSurveyorLink(save, o, dungeonId) {
@@ -78,7 +123,7 @@ export function takeSurveyorLink(save, o, dungeonId) {
 // FAR_SLEEP_DEPTH along the line from the Refuge through the crossing of the twelfth link, stands his statue
 // (`surveyorStatueSection`, recorded once as save.lore.surveyor.statue so it never moves). Touching it closes the thread
 // (`statueSeen`). Original writing for the game.
-import { FAR_SLEEP_DEPTH } from "./landscape.ts";
+import { FAR_SLEEP_DEPTH, LETHAL_KINDS, canStep } from "./landscape.ts";
 
 export const SURVEYOR_STATUE_LINES = [
   "A man in a surveyor's coat, kneeling, carved from the same pale stone as the Far Sleep's terraces. One end of a brass chain is pinned under his boot; the rest runs up along his arm to the hand that holds it, the way you hold a chain to read a length.",
@@ -86,7 +131,9 @@ export const SURVEYOR_STATUE_LINES = [
   "Someone has. Below it, in many other hands, a column of numbers runs down the stone and on into the grass, each one more than the last.",
 ];
 export const surveyorComplete = (save) => ensureSurveyor(save).links.length >= SURVEYOR.links;
-const sectionOf = (dungeonId) => { const m = ORDINARY.exec(String(dungeonId || "")); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : null; };
+// The section a link's crossing opens from: any crossing the errand's first link can lie in (2026-11-19: the Refuge's own is 0, 0).
+const SECTION_OF = /^dungeon:.+:g\d+(?::(-?\d+):(-?\d+):(?:deep-v2:)?[^:]+)?$/;
+const sectionOf = (dungeonId) => { const m = SECTION_OF.exec(String(dungeonId || "")); return m ? { rx: Number(m[1] || 0), ry: Number(m[2] || 0) } : null; };
 // Where the statue stands: recorded the first time it is asked for once the chain is complete.
 export function surveyorStatueSection(save) {
   const s = ensureSurveyor(save); if (s.links.length < SURVEYOR.links) return null;
@@ -121,7 +168,7 @@ export function visitSurveyorStatue(save, o) {
 // The Cairn Keeper (2026-11-11; Tim: a first quest from the Refuge: "you meet someone who sets you on a thread, the first
 // dungeon gives the first item... and the Journal guidance leads on"). At Ember Refuge, beside the cairn where Abel Corwin
 // drove his first peg, an old woman keeps the stones. Speaking with her sets the errand (save.arcana.starter = "set"): the first
-// ordinary crossing entered after it holds the chain's first link, wherever it lies, while no link is found. She unlocks nothing
+// crossing entered after it (the Refuge's own included, 2026-11-19) holds the chain's first link, wherever it lies, while no link is found. She unlocks nothing
 // (Tim, 2026-11-11: what was free stays free for now); once the link is taken her next words point the way the rest went (the
 // chain's home). On every journey she stands there; on one that has found a link she only talks.
 export const CAIRN_KEEPER = { id: "cairn-keeper", name: "Maud Fennick", role: "Cairn Keeper", near: { x: 4, y: 9 } };
@@ -158,5 +205,8 @@ export function speakCairnKeeper(save, o, where = "out past the black stone") {
   a.talks = (Math.floor(Number(a.talks)) || 0) + 1;
   return { ok: true, message: a.talks % 2 ? CAIRN_LINES.after(where) : CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
 }
-// The errand's first link: while it is set and no link is found, any ordinary crossing holds one.
-const starterLink = (save, dungeonId) => save?.arcana?.starter === "set" && ORDINARY.test(String(dungeonId || "")) && !ensureSurveyor(save).links.length;
+// The errand's first link: while it is set and no link is found, any crossing entered from the land holds one: an ordinary
+// crossing, a deep one (deep-v1, deep-v2:<archetype>), a canopy crossing, and (2026-11-19) the Refuge's own crossing
+// (`dungeon:<seed>:g<n>`), the first one most Wayfarers come to; Maud's "the first crossing you come to" meant it too.
+export const starterCrossing = (dungeonId) => SECTION_OF.test(String(dungeonId || ""));
+const starterLink = (save, dungeonId) => save?.arcana?.starter === "set" && starterCrossing(dungeonId) && !ensureSurveyor(save).links.length;
