@@ -138,10 +138,18 @@ export function chooseForm(h, form) {
 }
 
 // ---------------------------------------------------------------- the baby's buffs
-// Which kind the buff timer gives next: a hashed walk through the kinds that never repeats the kind just given (random-ish order).
-export function nextBuffKind(seed, seq, last = null) {
-  const list = HATCH_BUFF_IDS.filter((k) => k !== last), i = hashSeed(`${seed}:hatchling-buff:v1:${seq}`) % list.length;
-  return list[i];
+// Which kind the buff timer gives next: the kinds in a hashed order each round (every kind once a round, random-ish), a round never
+// starting with the kind the last one ended on, so no kind comes twice in a row.
+function buffRound(seed, r) { // round r: its last kind from a hash, its first never the last of round r - 1, the rest in a hashed order
+  const n = HATCH_BUFF_IDS.length, last = (k) => HATCH_BUFF_IDS[hashSeed(`${seed}:hatchling-buff:v1:${k}:end`) % n], L = last(r), P = r > 0 ? last(r - 1) : null;
+  const rest = HATCH_BUFF_IDS.filter((k) => k !== L), firsts = rest.filter((k) => k !== P), F = firsts[hashSeed(`${seed}:hatchling-buff:v1:${r}:first`) % firsts.length];
+  const mid = rest.filter((k) => k !== F);
+  for (let i = mid.length - 1; i > 0; i--) { const j = hashSeed(`${seed}:hatchling-buff:v1:${r}:${i}`) % (i + 1), t = mid[i]; mid[i] = mid[j]; mid[j] = t; }
+  return [F, ...mid, L];
+}
+export function nextBuffKind(seed, seq) {
+  const n = HATCH_BUFF_IDS.length, q = Math.max(0, Math.floor(seq) || 0);
+  return buffRound(seed, Math.floor(q / n))[q % n];
 }
 // Gives (or refreshes) one buff: never a second of the same kind.
 export function grantBuff(h, kind, seconds = HATCHLING.buffs.seconds) {

@@ -59,11 +59,12 @@ test("buffs stack across kinds, never two of a kind: a repeat refreshes its time
   grantBuff(h, "damage"); clearBuffs(h); assert.deepEqual(h.buffs, {});
 });
 
-test("the buff order is random-ish but never gives the kind just given", () => {
-  let last = null; const seen = new Set();
-  for (let i = 0; i < 60; i++) { const k = nextBuffKind("SEED", i, last); assert.ok(HATCH_BUFF_IDS.includes(k)); assert.notEqual(k, last); seen.add(k); last = k; }
-  assert.equal(seen.size, HATCH_BUFF_IDS.length);
-  assert.equal(nextBuffKind("SEED", 7, "damage"), nextBuffKind("SEED", 7, "damage"), "deterministic");
+test("the buff order is random-ish: every kind once a round, never the same kind twice in a row", () => {
+  let last = null; const order = [];
+  for (let i = 0; i < 60; i++) { const k = nextBuffKind("SEED", i); assert.ok(HATCH_BUFF_IDS.includes(k)); assert.notEqual(k, last); order.push(k); last = k; }
+  for (let r = 0; r < 20; r++) assert.equal(new Set(order.slice(r * 3, r * 3 + 3)).size, HATCH_BUFF_IDS.length);
+  assert.ok(new Set([0, 1, 2, 3, 4, 5].map((r) => order.slice(r * 3, r * 3 + 3).join())).size > 1, "the order changes between rounds");
+  assert.equal(nextBuffKind("SEED", 7), nextBuffKind("SEED", 7), "deterministic");
 });
 
 test("the rescue site is version-pinned: the same seed, hometown and version give the same place; a new version may differ", () => {

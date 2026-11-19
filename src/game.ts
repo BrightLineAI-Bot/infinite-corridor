@@ -8183,7 +8183,7 @@ export class Game {
   tickHatchBaby(h, o, F, dt, now) {
     const B = HATCHLING.baby, p = this.player, T = o.timers, max = this.save.maxHp || p.maxHp || 100, cx = o.x + .5, cy = o.y + .45;
     this.hatchFollow(o, F, dt, now);
-    T.buff -= dt; if (T.buff <= 0) { const kind = nextBuffKind(this.save.seed, o.seq, o.lastBuff); grantBuff(h, kind); o.lastBuff = kind; o.seq++; T.buff = HATCHLING.buffs.every; this.hatchVisual({ kind: "buff", buff: kind, x: p.x + .5, y: p.y + .45, life: .9 }); }
+    T.buff -= dt; if (T.buff <= 0) { const kind = nextBuffKind(this.save.seed, o.buffSeq || 0); grantBuff(h, kind); o.buffSeq = (o.buffSeq || 0) + 1; o.seq++; T.buff = HATCHLING.buffs.every; this.hatchVisual({ kind: "buff", buff: kind, x: p.x + .5, y: p.y + .45, life: .9 }); }
     T.heal = Math.max(0, T.heal - dt); if (T.heal <= 0 && p.hp < max * B.heal.below) { p.hp = Math.min(max, p.hp + max * B.heal.share); T.heal = B.heal.every; this.hatchVisual({ kind: "heal", x: p.x + .5, y: p.y + .45, x2: cx, y2: cy, life: 1 }); }
     T.chill = Math.max(0, T.chill - dt);
     if (T.chill <= 0) {
