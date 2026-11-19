@@ -133,6 +133,8 @@ test('retained native death completes without changing actor state or admission 
   render(screen, game, 390, 844, now + 16);
   assert.equal(closeViewGLStats.models, 2, 'retained death body is still submitted');
   render(screen, game, 390, 844, now + 500);
-  assert.equal(closeViewGLStats.models, 1, 'death body expires through its existing bounded track');
+  assert.equal(closeViewGLStats.models, 2, 'the slain body still lies there');
+  render(screen, game, 390, 844, now + 1700);
+  assert.equal(closeViewGLStats.models, 1, 'death body expires through its bounded track');
   assert.equal(JSON.stringify(enemy), snapshot, 'death rendering cannot mutate simulation');
 }));

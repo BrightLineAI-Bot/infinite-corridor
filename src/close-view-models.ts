@@ -1263,7 +1263,7 @@ export function writeCloseViewModel(out, offset, actor) {
   if (Object.hasOwn(MIRAGE_BLADE_MODELS, actor?.kind)) return writeMirageBladeModel(out, offset, actor); // the Mirage blades: spun in a plane tipped toward the camera (close-view-sweep-gear.ts)
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
   // measured first (once per kind): the measurement writes a model itself and reuses the module's scratch pose records
-  const groundLift = !groundMeasuring && GROUND_FAMILIES.has(creaturePoseFamily(kind)) ? creatureRestGround(kind) : 0;
+  const groundLift = actor.grounded === true && !groundMeasuring && GROUND_FAMILIES.has(creaturePoseFamily(kind)) ? creatureRestGround(kind) : 0; // Close View's creatures ask for it (actor.grounded); other writers keep the authored rest
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
   const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;
   const size = (kind === "nativeOrb" ? Math.max(.02,Math.min(1,Number(actor.radius)||.13)) : (playerLike ? .82 : 1) * actorScale);

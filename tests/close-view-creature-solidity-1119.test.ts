@@ -95,7 +95,7 @@ test('bodies stand on the floor: grounded families touch it, designed hovering b
   const out = new Float32Array(400000);
   for (const kind of KINDS) {
     if (!CREATURE_GROUND.families.includes(creaturePoseFamily(kind))) continue;
-    const n = writeCloseViewModel(out, 0, { kind, x: 0, y: 0, z: 0, yaw: 0, phase: 0, pace: 0, amount: 0, pose: 'idle', alpha: 1, scale: 1, effectTime: 0, reduceMotion: true });
+    const n = writeCloseViewModel(out, 0, { kind, x: 0, y: 0, z: 0, yaw: 0, phase: 0, pace: 0, amount: 0, pose: 'idle', alpha: 1, scale: 1, effectTime: 0, reduceMotion: true, grounded: true });
     let low = Infinity; for (let o = 2; o < n; o += MODEL_FLOATS) low = Math.min(low, out[o]);
     assert.ok(Math.abs(low) < .012, `${kind}: lowest point ${low.toFixed(3)} on the floor`);
     assert.ok(creatureRestGround(kind) >= 0 && creatureRestGround(kind) <= CREATURE_GROUND.max);

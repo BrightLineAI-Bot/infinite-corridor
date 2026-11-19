@@ -549,7 +549,13 @@ export const CLOSE_VIEW = Object.freeze({
     // with no cross-fade. Kept true (the 220 ms cross-fade, pinned by tests/creature-motion.test.ts): fighters keep their bodies
     // by model rank, so the swap at fighting range happens only past the tier's cap or for an undrawable decoration.
     swapNear: true,
-    death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .7, cap: Object.freeze({ low: 2, balanced: 5, full: 8 }) }) }),
+    // Decoherence (Tim, 2026-11-19: the body "isn't destroyed, it falls out of coherence and is consumed back into the Corridor"):
+    // over the sink its colour drifts `drift` of the way to the Corridor's static `grey`, its vertices snap to a grid of `quant`
+    // tiles and shiver up to `jitter` tiles (deterministic per creature, stepped `hz` times a second: a losing-coherence
+    // shimmer), and a faint ring (`ring` alpha, the wind-up ring's decal) marks where it is taken. Reduced Motion: drift and
+    // sink only. Opaque throughout; no new pass, nothing allocated.
+    death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .85, cap: Object.freeze({ low: 2, balanced: 5, full: 8 }),
+      grey: Object.freeze([.46, .47, .5]), drift: .85, quant: .06, jitter: .045, hz: 14, ring: .35 }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -3763,7 +3769,7 @@ const MODEL_STATE = {
   muzzle:new Float32Array(3),muzzleReady:false,nativeMuzzle:new Float32Array(4),
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
   // Shadow Boxing's drawn charge (close-view-shadow-forms.ts) and one pooled actor for the native body's afterimages.
-  shadowDash: createShadowDash(), shadowGhost: {}, swapGhost: {}, deathGhost: {}, dying: new Float32Array(8 * 4), nDying: 0, // creature-motion.ts: one pooled actor for a body fading out
+  shadowDash: createShadowDash(), shadowGhost: {}, swapGhost: {}, deathGhost: {}, dying: new Float32Array(8 * 4), ringAt: new Float32Array(8 * 4), nDying: 0, // creature-motion.ts: one pooled actor for a body fading out
 };
 export const closeViewShadowDash = () => MODEL_STATE.shadowDash; // for tests: the drawn charge (read only)
 
@@ -4300,7 +4306,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       attackReach: who === player ? 0 : closeViewRootReach(who, closeViewRootAttack(who, monsterAction)),
       eliteWindup: who === player ? 0 : Number(who.eliteWindup) || 0, eliteActive: who === player ? 0 : Number(who.eliteActive) || 0,
       stillness: who === player || who.pack?.attack ? 0 : Number(who.pack?.stillT) || 0,
-      flinch: layered ? Number(who.flinch) || 0 : 0, reeling: !!(bhv && bhv.stagger > 0), hitReact: layered ? hit : 0, blow: layered && Number.isFinite(track.blow) ? track.blow : undefined,
+      flinch: layered ? Number(who.flinch) || 0 : 0, reeling: !!(bhv && bhv.stagger > 0), hitReact: layered ? hit : 0, blow: layered && Number.isFinite(track.blow) ? track.blow : undefined, grounded: layered, /* set down on the floor (close-view-models.ts CREATURE_GROUND) */
       impactFlash: layered && Number.isFinite(track.hitAt) ? Math.max(0, 1 - (now - track.hitAt) / CREATURE_MOTION.impact.flashMs) : 0,
       hitX: pushL > 1e-6 ? (who.x - player.x) / pushL : 0, hitY: pushL > 1e-6 ? (who.y - player.y) / pushL : 0,
       guard: layered ? Number(who.guard) || 0 : 0, dodge: layered ? Number(who.dodge) || 0 : 0, dodgeSide: stepSide, feint: layered ? Number(who.feint) || 0 : 0, feintSide: stepSide,
@@ -4555,13 +4561,18 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       const body = Object.assign(state.deathGhost, track.actor); body.attachments = null; body.motionState = null; body.pose = "death"; body.amount = Math.min(1, t / MODEL_TIMING.deathMs);
       body.z = track.actor.z - Dd.sink * sc * sinkU * sinkU; body.alpha = track.actor.alpha ?? 1; // whole until it has sunk (no dither)
       const next = writeCloseViewModel(state.vertices, offset, body); if (next === offset) continue;
-      let mx = 0, my = 0, nv = 0; for (let o = offset; o < next; o += MODEL_FLOATS) { mx += state.vertices[o]; my += state.vertices[o + 1]; nv++; } // its shadow lies under the fallen body
+      let mx = 0, my = 0, nv = 0; const V = state.vertices, dk = sinkU > 0 ? Math.min(1, sinkU) : 0, jit = reduce ? 0 : Dd.jitter * dk, qz = Dd.quant * dk, step = Math.floor(t * Dd.hz / 1000), sd = (track.seed || 0) * 7919 + step * 104729;
+      for (let o = offset, i = 0; o < next; o += MODEL_FLOATS, i++) { mx += V[o]; my += V[o + 1]; nv++; // its shadow lies under the fallen body
+        if (dk > 0) { const gr = Dd.grey, d = Dd.drift * dk; V[o + 6] += (gr[0] - V[o + 6]) * d; V[o + 7] += (gr[1] - V[o + 7]) * d; V[o + 8] += (gr[2] - V[o + 8]) * d; // decoherence: drawn back to the Corridor's grey
+          if (jit > 0) { const h = Math.sin(((i * 3 + 1) * 12.9898 + sd) % 6283.1853) * 43758.5453, j1 = h - Math.floor(h), j2 = (j1 * 7.31) % 1, j3 = (j1 * 13.7) % 1;
+            V[o] = Math.round(V[o] / qz) * qz + (j1 - .5) * 2 * jit; V[o + 1] = Math.round(V[o + 1] / qz) * qz + (j2 - .5) * 2 * jit; V[o + 2] += (j3 - .5) * 2 * jit; } } }
       offset = next; dying++;
       if (state.nDying < state.dying.length / 4) { const o = state.nDying++ * 4; state.dying[o] = nv ? mx / nv : body.x; state.dying[o + 1] = nv ? my / nv : body.y; state.dying[o + 2] = sc; state.dying[o + 3] = 1 - sinkU; }
+      if (dk > 0 && state.nDying <= state.ringAt.length / 4) { const o = (state.nDying - 1) * 4; state.ringAt[o] = state.dying[o]; state.ringAt[o + 1] = state.dying[o + 1]; state.ringAt[o + 2] = sc; state.ringAt[o + 3] = Dd.ring * Math.sin(Math.PI * Math.min(1, sinkU)); } else if (state.nDying > 0 && state.nDying <= state.ringAt.length / 4) state.ringAt[(state.nDying - 1) * 4 + 3] = 0;
     } else if (now - track.at > 120 || who.dead) state.tracks.delete(who);
   }
   closeViewGLStats.dying = dying;
-  closeViewGLStats.models = count;
+  closeViewGLStats.models = count + dying; // the slain bodies lying in view are model bodies too
   admitBeasts(g, draws, n, Q, now, reduce);
   { const B = MODEL_STATE.beasts, Fk = MODEL_STATE.folk; for (let i = 0; i < Fk.count; i++) B.items[B.count++] = Fk.items[i]; } admitApatoProps(g.enemies, MODEL_STATE.beasts, Q.glScale === 1 ? 'full' : 'low', now, reduce, (x, y) => surfaceZ(g.map, x, y), prepareCloseViewBeastMesh); // the Earth Apatosaurus's spires, hands and rocks: small solid meshes (close-view-beast-apato.ts) // drawn by the beast slot's program
   return offset ? state.vertices.subarray(0, offset) : null;
@@ -4888,7 +4899,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (body && !afloat) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; if (!afloat) { if (foot > 0) flatD(SX, SY - .05, foot * sc * 1.15, 0, Kc.alpha * b * SA, 0); else flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0); }
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   for (let i = 0; i < MODEL_STATE.nDying; i++) { const o = i * 4, X = MODEL_STATE.dying[o], Y = MODEL_STATE.dying[o + 1], scD = MODEL_STATE.dying[o + 2], Kc = CLOSE_VIEW.creatures.contact; // a fallen body's shadow (CLOSE_VIEW.creatures.death)
-    flatD(X, Y - .05, Kc.max * scD, 0, Kc.alpha * MODEL_STATE.dying[o + 3], 0); }
+    flatD(X, Y - .05, Kc.max * scD, 0, Kc.alpha * MODEL_STATE.dying[o + 3], 0);
+    if (MODEL_STATE.ringAt[o + 3] > 0) flatD(X, Y - .05, Kc.max * scD * 1.6, 1, MODEL_STATE.ringAt[o + 3], CLOSE_VIEW.gl.ringWidth); } // where it is taken back
   GLB.nBoard = bv; GLB.nHint = nHint;
   // CLOSE_VIEW_WATER: where the Wayfarer's figure meets the water, a broken ring of foam at the waterline and (in motion) ripples
   // spreading from it and fading; reduced motion keeps the still ring. Four quads at most, on the water's own height.
