@@ -39,7 +39,7 @@ import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCl
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
 import { lanternReach, lanternNightReach } from "./spell-slots.ts"; // the Lantern lengthens the torch
 import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.ts";
-import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, hitStopMs, hitStopBegin, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.ts"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
+import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.ts"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
@@ -1723,7 +1723,7 @@ export function closeViewSteer(g, state, now = NaN) {
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { orbit: orbitOn(), orbitRadius: CAM.orbitR, zoomScale: ORBIT_FRAME.scale, indoorOrbit: ORBIT_FRAME.indoor, elevation: CAM.orbitElev, yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { XF.t0 = -1; XF.map = null; XF.drawnAt = -1e9; XF.below = XF.composite = false; HS.until = HS.start = -1e9; HS.pending = 0; REC.v = 0; CAM.fitOff = CAM.zoomS = NaN; CAM.fitOffV = CAM.zoomV = 0; CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.stickYaw = NaN; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
+export function resetCloseViewCamera() { XF.t0 = -1; XF.map = null; XF.drawnAt = -1e9; XF.below = XF.composite = false; REC.v = 0; CAM.fitOff = CAM.zoomS = NaN; CAM.fitOffV = CAM.zoomV = 0; CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.stickYaw = NaN; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
 // ------------------------------------------------------------------------------------------------ Look mode (CLOSE_VIEW.camera.look)
 // Runtime only: nothing here is saved, and a reload starts with it off. `s` is the eased zoom, `want` the asked one; the subject
 // (`key`: its game object, null for the Wayfarer) and its aim point (tx, ty, tz, eased) are chosen after each frame's actors are
@@ -2020,30 +2020,8 @@ function xfadeOverlay(ctx, w, h, now) {
   ctx.save(); ctx.globalAlpha = a; ctx.drawImage(XF.canvas, 0, 0, XF.w, XF.h, 0, 0, w, h); ctx.restore();
 }
 export const closeViewCrossfade = () => ({ active: XF.t0 >= 0, t0: XF.t0, sec: XF.sec, below: XF.below }); // tests
-// Hit-stop (the polish pass, CLOSE_VIEW_POLISH.hitStop): a heavy connect (a perfect parry; a blow that staggers hard: Hammerfall,
-// a charged Iron Fist, the clap) holds the presented frame for a few tens of ms. The simulation never stops: closeViewFrame shows
-// the frame of the hit again (one canvas copy when it starts), then draws on at the true time. A weighted swing's own hit-stop
-// (melee-swing.ts / great-sweep.ts, in game time) already holds its blow: none is added over it. Off under Reduced Motion and Safe Mode.
-const HS = { start: -1e9, until: -1e9, pending: 0, parry: NaN, canvas: null, ctx: null, w: 0, h: 0, ok: false };
-const HS_SEEN = new WeakMap();
-export function closeViewHitStopNote(g, foe) {
-  if (!foe || typeof foe !== "object" || g?.paused) return 0;
-  const flash = Number(foe.hitFlash) || 0, stun = Number(foe.hitStun) || 0; let r = HS_SEEN.get(foe);
-  if (!r) { r = { flash, stun }; HS_SEEN.set(foe, r); return 0; }
-  const onset = flash > r.flash + .02, laid = stun - r.stun; r.flash = flash; r.stun = stun; if (!onset || !(laid > 0)) return 0;
-  if (g.pendingMeleeContact?.stopLeft > 0 || g.toolSwing?.stopLeft > 0) return 0; // the swing's own hit-stop holds it already
-  const ms = hitStopMs({ stagger: stun, reduce: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) }); if (ms > HS.pending) HS.pending = ms; return ms;
-}
-function hitStopParry(g) { const at = Number(g?.parryFlashAt); if (!Number.isFinite(at) || at === HS.parry || g.paused) return; const first = !Number.isFinite(HS.parry); HS.parry = at; if (first) return; // the first one seen may be old (a resume): only a change counts
-  const ms = hitStopMs({ parry: true, reduce: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) }); if (ms > HS.pending) HS.pending = ms; }
-function holdSnapshot(ctx) {
-  const src = ctx?.canvas; if (!src || !(src.width > 0) || !(src.height > 0)) return false;
-  if (!HS.canvas) { HS.canvas = makeCanvas(); HS.ctx = HS.canvas?.getContext?.("2d") || null; } if (!HS.ctx || typeof HS.ctx.drawImage !== "function") return false;
-  if (HS.canvas.width !== src.width || HS.canvas.height !== src.height) { HS.canvas.width = src.width; HS.canvas.height = src.height; }
-  HS.ctx.setTransform?.(1, 0, 0, 1, 0, 0); HS.ctx.drawImage(src, 0, 0); HS.w = src.width; HS.h = src.height; return true;
-}
-export const closeViewHitStop = () => ({ start: HS.start, until: HS.until, pending: HS.pending }); // tests
-export function resetCloseViewHitStop() { HS.start = HS.until = -1e9; HS.pending = 0; HS.parry = NaN; }
+// Hit-stop: release 1023's presentation-only full-frame hold is gone (Tim, 2026-11-19): the struck foe and the Wayfarer pause in
+// game time instead (hitstop-actors.ts), and this view simply draws them not advancing while everything else moves on.
 const MODE = { cur: 0, wanted: false, failed: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1 };
 let bypass = false;
 // True while the leave blend draws the ordinary view zoomed (renderer.ts drawGroundCache keeps its ground image through it).
@@ -2062,8 +2040,6 @@ export function closeViewFrame(ctx, g, w, h, now, baseRender) {
   MODE.g = g; MODE.map = g.map; MODE.lastNow = now; MODE.pend = MODE.cur; MODE.wanted = wanted;
   let k = 1; if (MODE.to >= 0) { k = Math.max(0, Math.min(1, (now - MODE.t0) / (B.seconds * 1000))); if (k >= 1) MODE.to = -1; }
   const e = k * k * (3 - 2 * k), blending = k < 1; MODE.mix = e;
-  if (MODE.cur === 1 && !blending && now < HS.until && now >= HS.start && !g.paused && HS.canvas && HS.w > 0) { ctx.save(); ctx.globalAlpha = 1; ctx.drawImage(HS.canvas, 0, 0, HS.w, HS.h, 0, 0, w, h); ctx.restore(); return true; } // a hit-stop: the frame of the hit, held
-  if (g.paused) HS.until = Math.min(HS.until, now);
   if (MODE.cur === 1) { const ok = renderCloseView(ctx, g, w, h, now, baseRender, e); MODE.failed = !ok; if (!ok) { MODE.cur = 0; MODE.to = -1; return false; } if (blending) overlaySnapshot(ctx, w, h, k); return true; }
   MODE.failed = false;
   CAM.drawn = false;
@@ -2243,7 +2219,7 @@ function groundCanvas(W, H, ts) {
   GROUND.atlasY = Math.ceil(H * ts);
   GROUND.W = W; GROUND.H = H; GROUND.ts = ts; return GROUND.ctx;
 }
-export function setCloseViewCanvasFactory(factory) { CLOSE_VIEW_HOOKS.makeCanvas = factory || null; XF.canvas = XF.ctx = HS.canvas = HS.ctx = null; XF.t0 = -1; HS.until = -1e9; GROUND.canvas = null; GROUND.ctx = null; GROUND.failed = false; GROUND.torch = null; SCREEN.ctx = null; CUE.glow = CUE.ao = null; CUE.failed = false; GRIT_TEX.length = 0; gritFailed = false; }
+export function setCloseViewCanvasFactory(factory) { CLOSE_VIEW_HOOKS.makeCanvas = factory || null; XF.canvas = XF.ctx = null; XF.t0 = -1; GROUND.canvas = null; GROUND.ctx = null; GROUND.failed = false; GROUND.torch = null; SCREEN.ctx = null; CUE.glow = CUE.ao = null; CUE.failed = false; GRIT_TEX.length = 0; gritFailed = false; }
 
 function qualityOf(g) { const q = g.presentation?.effectiveQuality; return CLOSE_VIEW.quality[q] || CLOSE_VIEW.quality.balanced; }
 // Far to near. Depths within 1/1000 of a tile are a tie, broken the same way every frame (a wall face before a billboard, then
@@ -2397,7 +2373,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   CAM.drawn = false; const gc = groundCanvas(W, H, ts); if (!gc) return false; const T = closeViewTimings, tm = T.on, t0 = tm ? performance.now() : 0;
   closeViewStats.rigProbes = closeViewStats.rigSamples = 0;
   const camWasValid = CAM.valid; if (XF.map !== null && XF.map !== g.map) xfadeBegin(ctx, now, CLOSE_VIEW_POLISH.crossfade.transitionSec); // a door, stairs or a crossing: cross-faded from the last frame (the polish pass)
-  ensureCam(g); turnCamera(g, now); threatFrame(g, CAM.dt); hitStopParry(g); // a big threat's extra view eases in (it lengthens boomReach)
+  ensureCam(g); turnCamera(g, now); threatFrame(g, CAM.dt); // a big threat's extra view eases in (it lengthens boomReach)
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
   lookFrame(g, CAM.dt, reduce); // Look mode (CLOSE_VIEW.camera.look): the zoom's spring and the subject's aim point
   // version 4: the GPU scene when it can be had (close-view-gl.ts); else the 2D view of version 3
@@ -2702,7 +2678,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const meshTrees = useGL && plainWorld && g.area === "overworld" && closeViewOutdoorAvailable(); // standing trees are solids there (close-view-outdoor.ts), not cards
   const meshProps = useGL && (meshTrees || !(outdoor && flatWorld)) && closeViewPropsAvailable(); // and so are chests, caches, shrines, standing stones... (OUTDOOR.props)
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
-    if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); closeViewHitStopNote(g, d.enemy); }
+    if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); }
     else if (VIS.field && d !== capturedPlayer && !d.sightHidden && !sightFieldAt(VIS.field, Math.floor(d.x + .5), Math.floor(d.y + .82))) continue; // out of the Wayfarer's sight indoors (loot, objects, folk): not drawn (a far creature's silhouette is drawn: sightHidden)
     const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer && !kept) continue;
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
@@ -2795,7 +2771,6 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   RENDER_DIAGNOSTICS.actors=useGL?closeViewGLStats.models:0;RENDER_DIAGNOSTICS.nativeActors=useGL?closeViewGLStats.models-(MODEL_STATE.hero?1:0):0;RENDER_DIAGNOSTICS.fallbacks=useGL?closeViewGLStats.modelFallbacks:null;
   captured = null; capturedPlayer = null; closeViewStats.frames++; CAM.drawn = true;
   XF.drawnAt = now; XF.map = g.map; XF.below = belowNow; XF.composite = !!composite;
-  if (HS.pending > 0) { const ms = HS.pending; HS.pending = 0; if (hitStopBegin(HS, now, ms) && !holdSnapshot(ctx)) HS.until = now; } // a heavy connect this frame: hold it (presentation only)
   return true;
 }
 // The floor band's four corners, [screen x, screen y, texture x, texture y] each (preallocated: no allocation per frame).

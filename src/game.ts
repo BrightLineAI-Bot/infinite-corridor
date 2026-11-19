@@ -89,6 +89,7 @@ import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, g
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
 import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.ts";
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
+import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHitStop, holdFoe, foeHeld } from "./hitstop-actors.ts"; // per-actor hit-stop (Tim, 2026-11-19)
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
@@ -4312,6 +4313,7 @@ export class Game {
       wallHolds: Math.max(0, Math.floor(Number(this.wallHolds) || 0)),
       // AERIAL: Aerial Step's casts in this airtime, and whether the Wayfarer has been off the ground since (additive, schema 14).
       ...(this.aerialCasts > 0 ? { aerialAir: { casts: Math.floor(this.aerialCasts), aloft: this.aerialAloft === true } } : {}),
+      ...(normalizeHitStop(this.hitStop) ? { hitStop: normalizeHitStop(this.hitStop) } : {}), // hitstop-actors.ts: the Wayfarer's stop as ms left (additive, schema 14)
       curses: cursesOut(p.curses, clock), // release 737: the haunt curses, with what each has left (and the health FRAIL holds back)
     };
   }
@@ -4438,6 +4440,7 @@ export class Game {
     for (const k of RESUME_PLAYER_CLOCKS) if (ms(c[k])) p[k] = now + ms(c[k]);
     for (const k of RESUME_GAME_CLOCKS) if (ms(c[`game.${k}`])) this[k] = now + ms(c[`game.${k}`]);
     p.curses = cursesIn(r.curses, now); // release 737
+    this.hitStop = normalizeHitStop(r.hitStop); // hitstop-actors.ts: the same ms left, never longer
     if (p.slowUntil && Number(r.slowFactor) > 0) p.slowFactor = Math.min(1, Number(r.slowFactor));
     if (p.heldUntil && r.heldBy != null) p.heldBy = r.heldBy;
     if (p.stunnedUntil) p.stunnedAt = now - (Number.isFinite(Number(r.stunnedFor)) ? Math.max(0, Number(r.stunnedFor)) : 0);
@@ -9133,6 +9136,25 @@ export class Game {
       area:this.area,areaId:this.areaId(),levelId:String(this.map?.levelId||'root'),aim:{x:geometry.dx,y:geometry.dy},
       payload:{kind:'swing',weaponKind:kind,primaryStep:step,profile:structuredClone(profile),meleeBonus:this.weaponBonus(),attackDamage:armor.attackDamage,imbue:this.imbueBonus(now),spellblade:this.spellbladeOn(now),boxing:boxing?structuredClone(boxing):null,awakened:!!this.save.equipment.primary?.awakened,primaryMotion:structuredClone(visual.primaryMotion||null),support:this.playerLevel()}};
   }
+  // Per-actor hit-stop (hitstop-actors.ts; Tim, 2026-11-19): a qualifying connect pauses the Wayfarer once and each foe it struck,
+  // nothing else. Returns the ms the Wayfarer's new stop holds (0: refused by the gap or a running stop, or joined to one begun
+  // this update, whose foes pause too). Reduced Motion and Safe Mode take the table's reducedScale.
+  hitStopConnect(now,kind,foes,o={}){
+    const reduce=!!(this.presentation?.reduceMotion||this.presentation?.safeMode),r=beginHitStop(this.hitStop,kind,hitStopActorMs(kind,{...o,reduce}),now);this.hitStop=r.state;
+    if(r.ms>0)for(const e of foes||[])holdFoe(e,r.ms);
+    return r.joined?0:r.ms;
+  }
+  // The Wayfarer's stop, counted down by the update. A swing's stop is held by the swing's own record (stopLeft); a parry's or a
+  // stagger's holds her action and animation clocks (HITSTOP_ACTORS.wayfarerClocks), a live swing's clock and the Hammerfall
+  // blow her drawn swing follows. Her movement, health and every other timer run on: blows from others land through it.
+  tickWayfarerHitStop(dt,now){
+    const s=this.hitStop;if(!s)return;const held=tickHitStop(s,Math.max(0,Number(dt)||0)*1000);
+    if(held>0&&s.kind!=='swing'){const p=this.player;
+      for(const k of HITSTOP_ACTORS.wayfarerClocks)if(Number.isFinite(p[k])&&p[k]>now)p[k]+=held;
+      for(const q of [this.pendingMeleeContact,this.toolSwing])if(q&&Number.isFinite(q.lastNow))q.lastNow+=held;
+      const id=p.attackVisual?.hammerEffectId,fx=id&&this.effects.find(f=>f.id===id);if(fx){if(fx.delay>0)fx.delay+=held/1000;else fx.life+=held/1000;}}
+    if(!(s.left>0)&&!(s.gap>0))this.hitStop=null;
+  }
   // One tick of the live swing: advance its clock (held during hit-stop), carry the lunge, test the swept sector and the body
   // bubble during the active window, then chain a buffered press or end. One pass over the foes per active tick; the hit and
   // bubble lists are reused.
@@ -9156,7 +9178,7 @@ export class Game {
     if(cur>T.windEnd&&prev<T.activeEnd){
       const a0=Math.max(prev,T.windEnd),a1=Math.min(cur,T.activeEnd),aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,contact=!q.contacted,first=q.contacted?a0:T.windEnd;q.contacted=true;
       const cx=p.x+.5,cy=p.y+.45,tip=Number(q.payload.profile.range)||1,width=mapWidth(this.map,this.area),rx=-q.aim.y,ry=q.aim.x,blades=swingBlades(st);
-      const bubble=(this._swingBubble||=[]);bubble.length=0;let struck=false,first_=true;
+      const bubble=(this._swingBubble||=[]),struckFoes=(this._swingStruck||=[]);bubble.length=0;struckFoes.length=0;let struck=false,first_=true;
       for(let b=0;b<blades;b++){
         const m=b?-1:1,side=(Number(st.side)||0)*m,ox=cx+rx*side,oy=cy+ry*side,key=b?'~2':'';
         const from=aim+m*damageAngle(st,first,T)*deg,to=aim+m*damageAngle(st,a1,T)*deg,r0=st.thrust?(contact?spec.hilt:damageReach(st,a0,T)*tip):0,r1=st.thrust?damageReach(st,a1,T)*tip:0;
@@ -9171,11 +9193,11 @@ export class Game {
           const dealt=this.primaryStrike(now,q.aim,{committed:q.payload,swing:{kind:q.weapon,hits,bubble:b===0?bubble:[],share:st.share,contact:contact&&first_,aim:q.aim}});first_=false;
           this.recordPrimaryConsequences(dealt||[]);
           if(hits.some(e=>e.kind!=='npc'))struck=true;
-          if(!q.stopUsed)for(const e of hits)if(!e.dead&&e.kind!=='npc')e.hitStun=Math.max(e.hitStun||0,st.hitStopMs/1000); // hit-stop: the struck foes hold with the swing
+          for(const e of hits)if(!e.dead&&e.kind!=='npc'&&!struckFoes.includes(e))struckFoes.push(e); // hit-stop: every foe the swing strikes pauses (hitstop-actors.ts)
         }
       }
       for(const e of bubble)if(!e.dead&&!e.boss&&!e.eliteId&&!artAnchored(e)){const kx=e.x+.5-cx,ky=e.y+.45-cy,k=Math.hypot(kx,ky),ux=k>.05?kx/k:q.aim.x,uy=k>.05?ky/k:q.aim.y;this.moveGrounded(e,ux*spec.knockback,uy*spec.knockback);} // the body bubble: knocked off the Wayfarer (along the facing when right on top)
-      if(struck&&!q.stopUsed&&this.pendingMeleeContact===q){q.stopUsed=true;q.stopLeft=st.hitStopMs;const v=p.attackVisual;p.attackUntil+=st.hitStopMs;p.meleeUntil+=st.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+st.hitStopMs;if(v?.meleeAction?.v===3)v.hitStopMs=(Number(v.hitStopMs)||0)+st.hitStopMs;} // hit-stop: the swing holds once, on its first hit
+      if(struck&&!q.stopUsed&&this.pendingMeleeContact===q){q.stopUsed=true;const ms=this.hitStopConnect(now,'swing',struckFoes,{ms:st.hitStopMs});q.stopMs=ms;if(ms>0){q.stopLeft=ms;const v=p.attackVisual;p.attackUntil+=ms;p.meleeUntil+=ms;p.actionVisualUntil=(p.actionVisualUntil||now)+ms;if(v?.meleeAction?.v===3)v.hitStopMs=(Number(v.hitStopMs)||0)+ms;}}else if(q.stopMs>0)for(const e of struckFoes)holdFoe(e,q.stopMs); // hit-stop (hitstop-actors.ts): the Wayfarer's swing pauses once, on its first hit; each foe it strikes pauses (a foe met later in the swing too); nothing else stops
     }
     if(this.pendingMeleeContact!==q)return;
     if(q.queued&&(T.chain!=null?cur>=T.chain:cur>=T.recovery)){if(T.chain!=null)this.noteSwingChain(q);this.endSwing(q);this.attackAction='attack';try{this.primaryAttack(now);}finally{this.attackAction=null;}return;}
@@ -9213,7 +9235,7 @@ export class Game {
     const T=sweepTimes(q.tempo,this._sweepT||(this._sweepT={})),prev=q.elapsedMs,cur=prev+d;q.elapsedMs=cur;
     if(!q.mirage&&cur>T.windEnd&&prev<T.activeEnd){
       const aim=Math.atan2(q.aim.y,q.aim.x),deg=Math.PI/180,hits=this.toolSwingHits(q,aim+sweepDamageAngle(Math.max(prev,T.windEnd),T,q.direction)*deg,aim+sweepDamageAngle(Math.min(cur,T.activeEnd),T,q.direction)*deg);
-      if(hits.length&&!q.stopUsed){q.stopUsed=true;q.stopLeft=S.hitStopMs;for(const e of hits)e.hitStun=Math.max(e.hitStun||0,S.hitStopMs/1000);p.attackUntil=Math.max(p.attackUntil||0,now)+S.hitStopMs;p.actionVisualUntil=(p.actionVisualUntil||now)+S.hitStopMs;v.hitStopMs=(Number(v.hitStopMs)||0)+S.hitStopMs;} // hit-stop: once, on the first hit
+      if(hits.length&&!q.stopUsed){q.stopUsed=true;const ms=this.hitStopConnect(now,'swing',hits,{ms:S.hitStopMs});q.stopMs=ms;if(ms>0){q.stopLeft=ms;p.attackUntil=Math.max(p.attackUntil||0,now)+ms;p.actionVisualUntil=(p.actionVisualUntil||now)+ms;v.hitStopMs=(Number(v.hitStopMs)||0)+ms;}}else if(hits.length&&q.stopMs>0)for(const e of hits)holdFoe(e,q.stopMs); // hit-stop (hitstop-actors.ts): the Wayfarer once, on the first hit; each foe the blade strikes pauses (later ones too)
     }
     if(cur>=T.recovery)this.toolSwing=null;
   }
@@ -10484,6 +10506,7 @@ export class Game {
     if (foe && !foe.dead && foe.kind !== "npc" && !foe.staggerImmune && !foe.untargetable && this.enemies.includes(foe) && Math.hypot(foe.x - p.x, foe.y - p.y) <= P.reach) {
       foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? P.stun * P.bossShare : P.stun); foe.hitFlash = Math.max(Number(foe.hitFlash) || 0, .18); staggered = true; // the stagger governor (monster-pack.ts) still bounds it
     }
+    this.hitStopConnect(now, "parry", staggered ? [foe] : []); // hitstop-actors.ts: the Wayfarer and the foe she parried pause
     const back = this.aegisReflect(now) > 0 || this._parryShot;
     this.message = `Perfect! The Aegis parries${back ? " and sends it back" : ""}${staggered ? "; your foe reels" : ""}. Power Aegis: ${P.buffMs / 1000} s.`;
     return true;
@@ -12584,6 +12607,7 @@ export class Game {
     }
     this.reconcileHeldTool(now);
     shadowTrailTick(this, now); /* presentation only: a dodge's trail follows him and closes when it ends */
+    this.tickWayfarerHitStop(dt,now); // hitstop-actors.ts: the Wayfarer's own stop (her action clocks only)
     if(p.hp<=0){this.cancelShadowDash(now);this.cancelCyclone(now);this.cancelArtRush(now);this.cancelConsumeVisual('death');this.cancelPendingToolUse('death');this.toolSwing=null;this.cancelPendingMeleeContact('death');this.clearHammerfallStartup('death');}else{this.shadowDashLand(now);/* Shadow Boxing's charge: the blow on arrival */this.artRushLand(now);/* the Lava Slash rush: the slam on arrival */this.reconcileHammerfallStartup();this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.tickMeleeSwing(now);this.tickToolSwing(now);/* great-sweep.ts */}
     if(!this.toolUseBlocksPrimary()&&this.fistReleaseIntent){const intent=this.fistReleaseIntent;this.fistReleaseIntent=null;if(p.hp>0&&now<=intent.expiresAt&&this.fistsEquipped()&&!this.cursed('attack',now)&&!this.penned(now)){this._fistInputUpdate=true;try{this.fistPunch(intent.step,intent.charge,now,intent.direction,intent.perfect===true,intent.onBeat===true);}finally{this._fistInputUpdate=false;}}}
     this.tickFistQueue(now,input); // a press that waited out the fists' gate
@@ -12666,7 +12690,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!fx.hostile && e.kind !== "npc" && actual > 0 && (fx.kind === "gravity-well" || fx.clap)) this.pullBuild(e, actual, now); /* Encumbered: the Gravity Well (and the perfect Orbit Volley's vortex) and the Hammerfall's clap pull */ if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y }, pulled: fx.kind === "gravity-well" || !!fx.clap }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
+      (fx, e, dealt, actual) => { if (fx.brawler && !fx.hostile && fx.stun > 0 && e.kind !== "npc") this.hitStopConnect(now, "stagger", [e], { stun: fx.stun }); /* hitstop-actors.ts: a hard-staggering blow (Hammerfall, its clap, a charged Iron Fist) pauses the Wayfarer and each foe it strikes */ this.astralPlayerHit(e,actual); if (!fx.hostile && e.kind !== "npc" && actual > 0 && (fx.kind === "gravity-well" || fx.clap)) this.pullBuild(e, actual, now); /* Encumbered: the Gravity Well (and the perfect Orbit Volley's vortex) and the Hammerfall's clap pull */ if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y }, pulled: fx.kind === "gravity-well" || !!fx.clap }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
       (fx, e) => this.clapClear(fx, e), // the awakened Hammerfall's clap strikes only foes it can see from its centre line
     );
@@ -12690,8 +12714,8 @@ export class Game {
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
-    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e))continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
-    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e))continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
+    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = this.fall && this.fallArea() && this.fall.z > this.elevationHere(p.x, p.y) + FALL.minDrop ? null : tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind; // FALL: in the air, the ground's murk is not touched
@@ -12754,6 +12778,7 @@ export class Game {
     const skirmishHooks={settled:(side,survivors)=>{const war=this.map.skirmish;if(!war)return;this.save.worldFlags[war.id]=side;const winner=war[side],loser=war[side==="a"?"b":"a"];this.message=`The fighting ends: the ${winner.label} hold the field against the ${loser.label}.`;journalOnce(this.save,war.id,`At ${this.rx},${this.ry}, ${war.a.label} and ${war.b.label} fought; the ${winner.label} held the field.`,"Skirmishes")}};
     for (const e of this.enemies) {
       if(!activeEnemySet.has(e)){this.performanceStats.dormantEnemies++;continue}
+      if(e.hitStop>0&&foeHeld(e,dt*1000)){this.performanceStats.activeEnemies++;if(!sweepFrozen(e)){const ms=dt*1000,a=e.kitClock,b=e.affixClock;if(a)for(const k in a)if(Number.isFinite(a[k]))a[k]+=ms;if(b)for(const k in b)if(Number.isFinite(b[k]))b[k]+=ms;}continue} // hitstop-actors.ts: a struck foe pauses (its AI, movement, attacks and clocks); every other creature runs on
       if(!e.dead&&sweepFrozen(e)){this.performanceStats.activeEnemies++;e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);continue} // great-sweep.ts SWEEP_FREEZE: frozen in place, it neither moves nor attacks (blows still land)
       if(e.farArrayBoss==="listener"&&!e.dead){if(isMirror(e))tickMirrorListener(e,this.mirrorWorld(dt,now));const morphing=isMorph(e)&&tickMorphListener(e,this.mirrorWorld(dt,now));/* release 385: the Morphling */if(this.updateListener(e,now)||morphing)continue}
       if(e.morphWorm&&!e.dead){this.performanceStats.activeEnemies++;if(tickWorm(e,this.mirrorWorld(dt,now)))continue} // release 369: the mirror form
