@@ -38,7 +38,7 @@ export const HATCHLING = f({
   // `scale`: the standard view's; `closeViewScale`: Close View's body (Tim, 2026-11-19 size pass: the baby a little shorter than the
   // Wayfarer in both views, the young about the Stalker's cat form; presentation only).
   forms: f({
-    baby: f({ name: "Baby", scale: .74, closeViewScale: 1.08, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
+    baby: f({ name: "Baby", scale: .74, closeViewScale: 1.2, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
     young: f({ name: "Young", scale: 1, closeViewScale: 1.2, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
     big: f({ name: "Big", scale: 2.1, speed: 0, rideable: true, text: "rideable" }),
   }),

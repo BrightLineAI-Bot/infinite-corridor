@@ -24,6 +24,7 @@ export const TRICERATOPS_RIG = Object.freeze({
   settle: 6, stepAt: .09, stepTime: .32, turnRate: 3.2, attackTurnRate: 8, standTurnRate: 2.2, standTurnMax: 1.5, footLift: .1, bob: .016,
   ease: 10, strikeEase: 18, deathMs: 2400, hitMs: 320, landMs: 380, tailBounce: .16,
   breathe: Object.freeze({ rate: 1.2, chest: .012 }),
+  knobFrill: .3, // a frill smaller than this share of the adult's (the baby's) is a smooth little shield, no rim knobs
   legHeight: .5, // the hip and shoulder joints over the feet (body units): a form's shorter legs lower the body by its share of this
   formHeadLift: Object.freeze({ baby: .07 }), // the hatchling's baby form carries his big head higher (body units over the head bone)
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
@@ -162,7 +163,7 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
     const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = -.12 + (Math.PI + .24) * c / (cols - 1); return rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
     const FB = TRICERATOPS_SKELETON.bindWorld, fo = BI.frill * 3; // the sheet takes model-space points: the frill bone's bind position added
     B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
-    if (!low) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
+    if (!low && FM.frill >= G0.knobFrill) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
       const kp = rimAt(a, 1.04), kk = FM.frill === 1 ? 1 : Math.sqrt(FM.frill); kp[0] += FF; kp[2] += FZ; B.color(C.knob).ellipsoid({ at: kp, radius: [.022 * HS * kk, .026 * HS * kk, .026 * HS * kk], rings: 2, seg: full ? 5 : 4 }); } // a small frill's knobs smaller
   }
   // ---- legs: thick pillars of hide from the body to broad round feet with three pale toenails; markings over the leg tops

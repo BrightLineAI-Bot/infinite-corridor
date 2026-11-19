@@ -59,7 +59,7 @@ export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1
 export const TRI_FORMS = Object.freeze({
   // Tim, 2026-11-19 (size pass): a cute little baby that is still clearly a Triceratops: a tiny frill, barely any horns (nubs), rounder
   // and chubbier, a bigger head on a shorter body, big eyes, short stubby legs.
-  baby: Object.freeze({ head: 1.7, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .25, brow: .06, nose: .16, eye: 2.15, cheek: 1, snout: .45, jugal: .3, lift: .1, nod: .22 }),
+  baby: Object.freeze({ head: 1.7, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .17, brow: .06, nose: .16, eye: 2.15, cheek: 1, snout: .45, jugal: .3, lift: .1, nod: .22 }),
   young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
 export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
