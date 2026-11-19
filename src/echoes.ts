@@ -9,6 +9,7 @@
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
 import { rng } from "./random.ts";
 import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.ts";
+import { ENCUMBERED } from "./hit-cast-passives.ts"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -377,7 +378,7 @@ export function echoEvent(game, event, now, data = {}) {
   }
   else if (event === "kill") {
     const at = centre(data.enemy);
-    if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); }
+    if (eq.includes("gnawingMaw")) for (const e of nearest(game, at.x, at.y, 4, data.enemy)) { const c = centre(e), m = Math.hypot(at.x - c.x, at.y - c.y) || 1; world.nudge(e, (at.x - c.x) / m * Math.min(1, m - .4), (at.y - c.y) / m * Math.min(1, m - .4)); e.hitStun = Math.max(e.hitStun || 0, .3); world.pull?.(e, dmg * ENCUMBERED.dry); } // Encumbered: a pull with no damage of its own counts `dry` of the Echo damage
     if (eq.includes("questingBeast")) for (const e of nearest(game, at.x, at.y, 4.5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#f2ece0"); world.damage(e, Math.round(dmg * 1.2)); }
     if (eq.includes("nanobotKnight")) for (const e of nearest(game, at.x, at.y, 5, data.enemy).slice(0, 2)) { world.arc(data.enemy, e, "#ff2a2a"); world.damage(e, Math.round(dmg * .8)); } // release 245
     if (eq.includes("crimsonTyrant")) world.blast(at.x, at.y, 2.5, Math.round(dmg * .9)); // release 709

@@ -66,7 +66,7 @@ export const NODE_EFFECTS = {
   overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
   "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
   "arcane-edge": { kind: "always", spells: "Each cast empowers your next three melee attacks." }, "casting-wind": { kind: "always", spells: "Each cast gives back stamina." }, "pocket-time": { kind: "always" },
-  "echoing-cast": { kind: "always", spells: "Every fourth cast repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each cast leaves a sigil that bursts." },
+  "echoing-cast": { kind: "always", spells: "Every fourth cast repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each cast leaves a sigil that bursts; Rift Steps leave mines that link into a wounding void." },
 };
 
 // Secondary passives (release 359; Tim, 2026-10-23: "develop an additional passive for each one that you can select...
@@ -309,6 +309,7 @@ function riftCommit(game, now, R, from, best, fromLevel) {
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + (altOn(s, "rift-wake") ? ALT_PASSIVES["rift-wake"].guardMs : 150));
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
+  game.riftStepMine?.(from, best, st.riftCharges, now); // Glyph Mine × Rift Step (hit-cast-passives.ts RIFT_MINE): a mine where it began and where it lands
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
   game.message = "Rift Step.";
   // Tim (2026-11-12): every Rift Step falls. An open glide or the drone's lift carries on in the air; anything else lands where it

@@ -212,9 +212,12 @@ function dragHeld(game, H, x, y, pull, hug, slip, dt, now) {
     else e.glyphSlow = { until: now + 150, factor: .15 }; // held: barely moving of its own accord (once per grab; reused after)
   }
 }
+// Encumbered (hit-cast-passives.ts ENCUMBERED): the fist's and the suction cup's blows are a pull's damage (anchored foes too).
+const pulling = (H) => H.mode === "fist" || H.mode === "suction";
+function pullBlow(game, H, e, amount, now, stun, x, y) { const n = game.quandrixBlow(e, amount, now, stun, x, y); if (n > 0 && pulling(H)) game.pullBuild?.(e, n, now); }
 function burst(game, x, y, radius, share, stun, now, kind) {
   const H = game.quandrix.hold, power = H.power;
-  for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + Math.max(0, enemyBodyRadius(e) - .38)) game.quandrixBlow(e, power * share, now, stun, x, y);
+  for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + Math.max(0, enemyBodyRadius(e) - .38)) pullBlow(game, H, e, power * share, now, stun, x, y);
   flash(game.quandrix, x, y, radius, kind);
 }
 function finish(game, now, held) {
@@ -246,7 +249,7 @@ function tickHold(game, dt, now, held) {
     dragHeld(game, H, h.x, h.y, U.pull, U.hug, U.radius + 1, dt, now);
   }
   H.tick += dt;
-  while (H.tick >= S.tick) { H.tick -= S.tick; for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= S.radius + Math.max(0, enemyBodyRadius(e) - .38)) game.quandrixBlow(e, H.power * S.tickShare, now, S.stun, h.x, h.y); }
+  while (H.tick >= S.tick) { H.tick -= S.tick; for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= S.radius + Math.max(0, enemyBodyRadius(e) - .38)) pullBlow(game, H, e, H.power * S.tickShare, now, S.stun, h.x, h.y); }
   if (H.held >= S.max) finish(game, now, H.held);
 }
 // Every frame while game.quandrix exists. `held`: whether the press's (or hold's) button is still down.

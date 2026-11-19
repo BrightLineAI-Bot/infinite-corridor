@@ -39,6 +39,26 @@ export const ARCANE_EDGE = {
 // `lifeMs`, striking every foe within `radius` for `share` of a spell of `power` (it grows with Focus). At most `max` at once: the
 // oldest gives way. A sigil left in another place fades unburst.
 export const GLYPH_MINE = { lifeMs: 4000, max: 3, trigger: .7, radius: 1.4, power: 8, share: .8 };
+// Glyph Mine × Rift Step (Tim, 2026-11-19). With Glyph Mine learned, a Rift Step leaves a rift mine where it began and one where it
+// lands (game.ts riftStepMine, called from constellation.ts riftCommit). A second step from (within `join` tiles of) the last
+// landing adds only its landing: 1 step = 2 mines, 2 steps = 3. A step begun farther off adds its start too; at most `max` mines,
+// the oldest giving way. Rift mines never burst: once the Rift Step charges are spent, or `graceMs` after the last step (charges
+// left over), they link: 2 into a line, 3 into a filled triangle of inky void that lasts `voidMs`. Every `tickMs` it strikes every
+// foe inside (the line: within `halfWidth` tiles of it; the triangle: inside it or within `halfWidth` of an edge) for `tickShare`
+// of a spell of GLYPH_MINE.power (a proc through glyphWorld, never a hit: bosses and world beasts take it as every proc).
+// One void at a time: a new one takes the old one's place. Leaving the place drops the mines and the void. Frame time (dt), so
+// pause and background stop it; runtime only, like the sigils.
+export const RIFT_MINE = { max: 3, join: 1, graceMs: 1500, voidMs: 6000, tickMs: 500, tickShare: .25, halfWidth: .45 };
+// Encumbered (Tim, 2026-11-19: a pull build-up status, like bleed or frostbite build-up). Damage a pull deals (the Gravity Well's
+// pulses and the perfect Orbit Volley's vortex, the awakened Hammerfall's clap, Mage's Hand's fist and suction cup, a Tether spell
+// pulse, Maelstrom's dragging arcs, Arcane Edge's Rift touch; Maw's Hunger, a pull with no damage, adds `dry` of the Echo damage)
+// fills a meter on every creature, bosses and the unmovable included, `gain` a point. At the creature's threshold (`threshold`:
+// `share` of its maximum health times its class's `factor`, monster-pack.ts staggerClass; never under `min`) it is Encumbered for
+// `durationMs`: it takes `takenMul` from every source of the Wayfarer's damage (as Tempo's window) and its blows deal `dealtMul`.
+// The meter then empties, and fills nothing while Encumbered. With no pull damage for `decayDelayMs` it drains `decayPerSec` of
+// the threshold a second. Frame time (dt); runtime only (the per-foe mark), as Tempo's window.
+export const ENCUMBERED = { durationMs: 10000, takenMul: 1.05, dealtMul: .95, gain: 1, dry: .5, decayDelayMs: 3000, decayPerSec: .15,
+  threshold: { share: .3, min: 12, factor: { ordinary: 1, elite: .7, revenant: .5, boss: .5 } } };
 // Casting Wind (Tim's "Second Wind": that name is taken, Light Feet's secondary form): each cast gives back `share` of maximum
 // stamina. A cast paid in stamina under Essence Walk gives back at most `essenceShare` of what it cost, so the walk always costs.
 export const CASTING_WIND = { share: .15, essenceShare: .5 };
@@ -102,7 +122,7 @@ export const PASSIVE_TEXT = {
   "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
   "echoing-cast": `Every ${ECHOING_CAST.every}th cast repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
   "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, the blow goes back (a shot turns round and flies at its shooter; a blow, roar, beam or blast lands on its maker; it counts as your own hit), its burn, poison or slow never takes hold, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more (tool shots ${pct(POWER_AEGIS.toolBonus)}). Command grabs cannot be parried. Later in the ward it blocks as always.`,
-  "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once.`,
+  "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once. A Rift Step leaves a mine where you stood and where you land; once your steps are spent (or ${RIFT_MINE.graceMs / 1000} s after the last) they link into inky void (2 mines a line, 3 a triangle) that wounds every foe inside for ${RIFT_MINE.voidMs / 1000} s.`,
 };
 
 // ---------------------------------------------------------------- who has what
@@ -113,8 +133,11 @@ function state(game) {
   let S = game._hcp;
   if (!S) {
     const n = RAPID_RELOAD.ring;
+    const k = RIFT_MINE.max;
     S = game._hcp = { maskAt: NaN, maskSave: null, mask: 0, pocketAt: -Infinity, pocketSpells: {}, edge: { n: 0, el: null, at: -Infinity, riding: false },
-      casts: 0, echoDue: false, windDue: 0, mines: [], rr: { next: 1, ids: new Array(n).fill(0), cost: new Array(n).fill(0), counted: new Array(n).fill(0), n: 0, paid: [0, 0, 0], readyAt: -Infinity, last: 0 } };
+      casts: 0, echoDue: false, windDue: 0, mines: [], encLive: false, encSeen: false,
+      rift: { n: 0, xs: new Array(k).fill(0), ys: new Array(k).fill(0), left: 0, where: "" },
+      void: { on: false, n: 0, xs: new Array(k).fill(0), ys: new Array(k).fill(0), left: 0, tick: 0, dmg: 0, where: "" }, rr: { next: 1, ids: new Array(n).fill(0), cost: new Array(n).fill(0), counted: new Array(n).fill(0), n: 0, paid: [0, 0, 0], readyAt: -Infinity, last: 0 } };
   }
   return S;
 }
@@ -135,14 +158,19 @@ export const powerAegisLeft = (game, now) => { const u = Number(game?.powerAegis
 const MARK = Symbol("hitCastMark");
 function mark(e) {
   let r = e[MARK];
-  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
+  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity, pull: 0, idle: 0, enc: 0, th: 0, told: false }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
   return r;
 }
 export const passiveMarkOf = (e) => e?.[MARK] || null;
 export const vulnerableUntil = (e) => Math.max(0, Number(e?.[MARK]?.vuln) || 0);
 // The damage multiple a foe takes now (Tempo's window), and the multiple a foe's blows deal (Arcane Edge's Dusk weaken).
-export const vulnScale = (e, now) => { const r = e?.[MARK]; return r && r.vuln > now ? 1 + TEMPO.vuln : 1; };
+export const vulnScale = (e, now) => { const r = e?.[MARK]; return !r ? 1 : (r.vuln > now ? 1 + TEMPO.vuln : 1) * (r.enc > 0 ? ENCUMBERED.takenMul : 1); }; // Tempo's window; Encumbered
 export const weakenScale = (e, now) => { const r = e?.[MARK]; return r && r.weak > now ? 1 - ARCANE_EDGE.dusk.share : 1; };
+// Encumbered: s left (0 when not), the meter's fill 0..1, and the multiple a foe's blows deal now.
+export const encumberedLeft = (e) => { const r = e?.[MARK]; return r && r.enc > 0 ? r.enc : 0; };
+export const pullMeterOf = (e) => { const r = e?.[MARK]; return r && r.pull > 0 && r.th > 0 ? Math.min(1, r.pull / r.th) : 0; };
+export const foeDealtScale = (e) => { const r = e?.[MARK]; return r && r.enc > 0 ? ENCUMBERED.dealtMul : 1; };
+export const encumberedAny = (game) => !!game?._hcp?.encLive;
 export const staggered = (e) => (Number(e?.bhv?.stagger) || 0) > 0 || (Number(e?.hitStun) || 0) >= SHATTERPOINT.stun;
 
 // Arcane Edge's Wind: move faster for a while (read by game.ts characterStats, which knows only the save).
@@ -163,13 +191,13 @@ function strike(game, e, amount) {
 // the Great Sweep; `rr`: the charged release it belongs to), or null.
 export function passiveHit(game, e, actual, now, src = null) {
   if (!e || !(actual > 0) || !Number.isFinite(now)) return;
-  const m = mask(game, now), r0 = e[MARK], vuln = !!r0 && r0.vuln > now;
-  if (!m && !vuln) return;
+  const m = mask(game, now), r0 = e[MARK], vuln = !!r0 && r0.vuln > now, enc = !!r0 && r0.enc > 0;
+  if (!m && !vuln && !enc) return;
   const reflected = !!src && typeof src === "object" && src.aegisReflected === true; // Power Aegis: a blow sent back (game.ts reflectBlow, turnShot)
   const S = state(game), melee = src === "melee" || (!!src && typeof src === "object" && (src.melee === true || src.brawler === true));
-  let bonus = vuln ? TEMPO.vuln : 0;
+  let bonus = (vuln ? TEMPO.vuln : 0) + (enc ? ENCUMBERED.takenMul - 1 : 0); // Tempo's window; Encumbered
   if (m & B_SHATTER && staggered(e)) bonus += SHATTERPOINT.bonus;
-  if (m & B_EDGE && melee) bonus += edgeHit(game, S, e, now);
+  if (m & B_EDGE && melee) bonus += edgeHit(game, S, e, now, actual);
   if (m & B_AEGIS && (Number(game.powerAegisUntil) || 0) > now) bonus += melee ? POWER_AEGIS.bonus : src && typeof src === "object" && src.glyphHost === "tool" ? POWER_AEGIS.toolBonus : 0; // Power Aegis
   if (bonus > 0 && !reflected) strike(game, e, actual * bonus); // a Power Aegis reflect deals its own amount only (no double dip)
   if (m & B_TEMPO && !e.dead) tempoCount(e, now);
@@ -197,22 +225,23 @@ function pocket(game, S, now) {
     q.until = game[field];
   }
 }
-function edgeHit(game, S, e, now) {
+function edgeHit(game, S, e, now, actual) {
   const A = ARCANE_EDGE, E = S.edge;
   if (!(E.riding && now - E.at < A.gapMs)) { // a new attack takes a charge; the rest of that attack's foes ride on it
     if (!(E.n > 0)) { E.riding = false; return 0; }
     E.n--; E.at = now; E.riding = true;
   }
-  edgeTouch(game, e, E.el, now);
+  edgeTouch(game, e, E.el, now, actual);
   return A.bonus;
 }
-function edgeTouch(game, e, el, now) {
+function edgeTouch(game, e, el, now, actual = 0) {
   const A = ARCANE_EDGE, p = game.player, big = !!(e.boss || e.eliteId || e.worldBeast);
   if (el === "fire") { const b = e.glyphBurn, dps = A.fire.dps + Math.round((game.save.level || 1) * A.fire.perLevel); e.glyphBurn = { until: Math.max(b?.until || 0, now + A.fire.ms), dps: Math.max(b?.dps || 0, dps), tick: b?.tick || 0 }; }
   else if (el === "dusk") mark(e).weak = now + A.dusk.ms;
-  else if (el === "rift" && !big && !e.dead) {
+  else if (el === "rift" && !e.dead) {
+    if (actual > 0) game.pullBuild?.(e, actual, now); // Encumbered: the pull's hit counts, the foe held or not
     const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy), step = Math.min(A.rift.pull, d - A.rift.keep);
-    if (step > 0) game.glyphWorld?.(now)?.nudge(e, dx / d * step, dy / d * step);
+    if (!big && step > 0) game.glyphWorld?.(now)?.nudge(e, dx / d * step, dy / d * step);
   }
   else if (el === "ward") game.guardRemaining = Math.max(Number(game.guardRemaining) || 0, A.ward.guard);
   else if (el === "wind") WIND.set(game.save, A.wind.seconds);
@@ -256,6 +285,99 @@ export function echoingRecast(game, fromEffects, fromShots, now) {
 export function recastBurst(burst) { const E = ECHOING_CAST; return { ...burst, id: `${burst.id}-recast`, hits: {}, delay: E.delayMs / 1000, damage: Math.max(1, Math.round(burst.damage * E.share)), echo: true, recast: true, rr: 0 }; }
 export const glyphMinesOf = (game) => game?._hcp?.mines || [];
 
+// ---------------------------------------------------------------- Glyph Mine × Rift Step (RIFT_MINE)
+// A Rift Step taken (constellation.ts riftCommit): `from` and `to` are the Wayfarer's positions (top-left, as p.x/p.y) before and
+// after; `charges`: Rift Step charges left. Nothing without Glyph Mine.
+function riftPush(R, x, y) {
+  const k = RIFT_MINE.max;
+  if (R.n >= k) { for (let i = 1; i < k; i++) { R.xs[i - 1] = R.xs[i]; R.ys[i - 1] = R.ys[i]; } R.n = k - 1; } // the oldest gives way
+  R.xs[R.n] = x; R.ys[R.n] = y; R.n++;
+}
+export function riftStepMine(game, from, to, charges, now) {
+  if (!castNodeOn(game.save, "glyph-mine") || !from || !to) return false;
+  const fx = Number(from.x) + .5, fy = Number(from.y) + .45, tx = Number(to.x) + .5, ty = Number(to.y) + .45;
+  if (![fx, fy, tx, ty].every(Number.isFinite)) return false;
+  const S = state(game), R = S.rift, where = game.areaId?.() ?? "";
+  if (R.n > 0 && R.where !== where) R.n = 0; // mines left in another place are gone
+  if (!(R.n > 0 && Math.hypot(R.xs[R.n - 1] - fx, R.ys[R.n - 1] - fy) <= RIFT_MINE.join)) riftPush(R, fx, fy); // a step from the last landing adds only where it lands
+  riftPush(R, tx, ty);
+  R.where = where; R.left = RIFT_MINE.graceMs / 1000;
+  if (!(Number(charges) >= 1)) riftLink(game, now); // every charge spent: they link now
+  return true;
+}
+// The pending mines link into the void (two or three of them); a lone mine fades.
+function riftLink(game, now) {
+  const S = state(game), R = S.rift, V = S.void, n = R.n; R.n = 0; R.left = 0;
+  if (n < 2) return false;
+  const power = typeof game.spellPower === "function" ? Number(game.spellPower({ damage: GLYPH_MINE.power })) || GLYPH_MINE.power : GLYPH_MINE.power;
+  for (let i = 0; i < n; i++) { V.xs[i] = R.xs[i]; V.ys[i] = R.ys[i]; }
+  V.n = n; V.on = true; V.left = RIFT_MINE.voidMs / 1000; V.tick = 0; V.where = R.where; V.dmg = Math.max(1, Math.round(power * RIFT_MINE.tickShare)); // one at a time: the old one gives way
+  return true;
+}
+// Distance from (px, py) to the segment a–b.
+function segDist(px, py, ax, ay, bx, by) {
+  const vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy, t = L > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L)) : 0;
+  return Math.hypot(px - (ax + vx * t), py - (ay + vy * t));
+}
+// Whether a point (a foe's middle, with `pad` for a big body) lies in the void `V`.
+export function inRiftVoid(V, px, py, pad = 0) {
+  if (!V?.on || !(V.n >= 2)) return false;
+  const w = RIFT_MINE.halfWidth + Math.max(0, pad), x = V.xs, y = V.ys;
+  if (V.n === 2) return segDist(px, py, x[0], y[0], x[1], y[1]) <= w;
+  const d1 = (px - x[1]) * (y[0] - y[1]) - (x[0] - x[1]) * (py - y[1]), d2 = (px - x[2]) * (y[1] - y[2]) - (x[1] - x[2]) * (py - y[2]), d3 = (px - x[0]) * (y[2] - y[0]) - (x[2] - x[0]) * (py - y[0]);
+  if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true; // inside (or on) the triangle
+  return segDist(px, py, x[0], y[0], x[1], y[1]) <= w || segDist(px, py, x[1], y[1], x[2], y[2]) <= w || segDist(px, py, x[2], y[2], x[0], y[0]) <= w;
+}
+// For the views: the pending rift mines ({ n, xs, ys }) and the void (or null).
+export const riftMinesOf = (game) => game?._hcp?.rift || null;
+export const riftVoidOf = (game) => game?._hcp?.void?.on ? game._hcp.void : null;
+function tickRift(game, S, dt, now) {
+  const R = S.rift, V = S.void, where = game.areaId?.() ?? "";
+  if (R.n > 0) { if (R.where !== where) { R.n = 0; R.left = 0; } else if ((R.left -= dt) <= 0) riftLink(game, now); }
+  if (!V.on) return;
+  if (V.where !== where) { V.on = false; return; }
+  V.left -= dt; V.tick += dt;
+  const T = RIFT_MINE.tickMs / 1000;
+  if (V.tick >= T) {
+    V.tick -= T * Math.floor(V.tick / T); // one strike a tick however long the frame (never a burst of catch-up strikes)
+    const list = game.enemies || []; let world = null;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i]; if (e.dead || e.untargetable || e.kind === "npc" || !(e.hp > 0)) continue;
+      if (!inRiftVoid(V, e.x + .5, e.y + .45, (Number(e.bodyRadius) || .38) - .38)) continue;
+      (world ||= game.glyphWorld?.(now))?.damage(e, V.dmg);
+    }
+  }
+  if (V.left <= 0) V.on = false;
+}
+
+// ---------------------------------------------------------------- Encumbered (ENCUMBERED)
+// The threshold of foe `e` of stagger class `cls` (monster-pack.ts staggerClass: "boss", "revenant", "elite" or null).
+export function encumberThreshold(e, cls = null) {
+  const T = ENCUMBERED.threshold, max = Number(e?.maxHp) || Number(e?.hp) || 0, f = T.factor[cls || "ordinary"] ?? 1;
+  return Math.max(T.min, max * T.share * f);
+}
+// Damage a pull dealt to `e` (or a pull's worth, for one with no damage): fills its meter; true when it becomes Encumbered.
+export function pullBuild(game, e, amount, now, cls = null) {
+  if (!e || e.dead || e.kind === "npc" || !(amount > 0) || !Number.isFinite(amount)) return false;
+  const r = mark(e); if (r.enc > 0) return false; // no build-up while Encumbered
+  const E = ENCUMBERED, th = encumberThreshold(e, cls);
+  const S = state(game); r.th = th; r.pull += amount * E.gain; r.idle = 0; S.encLive = S.encSeen = true;
+  if (r.pull < th) return false;
+  r.pull = 0; r.enc = E.durationMs / 1000;
+  if (!r.told && (cls === "boss" || cls === "revenant")) { r.told = true; game.message = `${e.name || "Your foe"} is Encumbered: for ${E.durationMs / 1000} s it takes ${pct(E.takenMul - 1)} more and deals ${pct(1 - E.dealtMul)} less.`; }
+  return true;
+}
+function tickEncumbered(game, S, dt) {
+  const E = ENCUMBERED, list = game.enemies || [], wait = E.decayDelayMs / 1000; let live = false;
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]?.[MARK]; if (!r) continue;
+    if (r.enc > 0) { r.enc = Math.max(0, r.enc - dt); live = true; }
+    if (r.pull > 0) { r.idle += dt; if (r.idle >= wait) r.pull = Math.max(0, r.pull - r.th * E.decayPerSec * dt); live = true; }
+  }
+  S.encLive = live; // read by encumberedAny (a foe's shots); the pass itself goes on every frame once any meter has filled (`encSeen`),
+  // so a marked foe met again after leaving the place picks up where its clock stopped
+}
+
 // ---------------------------------------------------------------- charged releases (Rapid Reload)
 // A new charged release: its id, to set as `rr` on what it fires. `cost`: stamina it took (0 for most).
 export function chargedRelease(game, cost = 0) {
@@ -274,6 +396,9 @@ export const reloadPips = (game) => rapidReloadOn(game?.save) ? (game._hcp?.rr.n
 // ---------------------------------------------------------------- a frame
 export function tickHitCastPassives(game, dt, now) {
   const S = game._hcp; if (!S) return;
+  const step = dt > 0 && Number.isFinite(dt) ? dt : 0;
+  if (S.rift.n > 0 || S.void.on) tickRift(game, S, step, now); // Glyph Mine × Rift Step
+  if (S.encSeen) tickEncumbered(game, S, step); // Encumbered: its clock and the meters' decay
   const w = WIND.get(game.save); if (w > 0) WIND.set(game.save, Math.max(0, w - (dt > 0 ? dt : 0)));
   if (S.mines.length) {
     const G = GLYPH_MINE, where = game.areaId?.() ?? "", list = game.enemies || [];
