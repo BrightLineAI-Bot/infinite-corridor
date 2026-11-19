@@ -45,6 +45,19 @@ export const TRI_POSES = Object.freeze({
   dazed: { head: -.5, crouch: .3, open: .3 },
   dead: { crouch: 1, head: -.6, tuck: .8, open: .3 },
 });
+// The hatchling's growth forms (hatchling.ts; Tim, 2026-11-19) on the same rig, by multipliers of the adult's proportions. baby: a big
+// round head with huge eyes, a nub of a nose horn and two tiny brow nubs, a small frill, a short chubby body on short stubby legs
+// ("everything cheeby"); young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
+// `triForm` (the herds, the mount) keeps exactly the adult's numbers (TRI_FORM_ADULT).
+// head: the head's scale; leg: leg bone lengths and the hip's height; legW: leg and haunch thickness; girth: body depth; length: the
+// spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none).
+export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0 });
+export const TRI_FORMS = Object.freeze({
+  baby: Object.freeze({ head: 1.5, leg: .72, legW: 1.3, girth: 1.18, length: .78, frill: .55, brow: .2, nose: .42, eye: 1.85, cheek: 1 }),
+  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0 }),
+});
+export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
+const scl = (v, c, k) => k === 1 ? v : c + (v - c) * k; // a horn point scaled about its base (exactly the adult's at 1)
 export const TRI_KEYS = Object.freeze(["pitch", "head", "reach", "open", "crouch", "tailUp", "tailSide", "frontLift", "tuck", "lean"]);
 // The ridden horn attacks' body (2026-11-18 pass 2: "a real wind-up ... a body brace, and a recoil on release"; the dash and bash "real
 // head-down charges and shoves"). Added to the pose per unit of the accepted horn pose's own amount (beast-mounts.ts triceratopsHornPose:
@@ -102,7 +115,7 @@ const LEG = new Float64Array(14), LEGW = new Float64Array(7), OV = new Float64Ar
 const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
 export function drawTriceratopsBody(ctx, q, now = 0) {
-  const A = TRI_ART, { k, u, flip, e } = q, reduce = !!e.reduceMotion, t = reduce ? 0 : now / 1000, M = memo(e, now);
+  const A = TRI_ART, { k, u, flip, e } = q, FM = triForm(e), reduce = !!e.reduceMotion, t = reduce ? 0 : now / 1000, M = memo(e, now);
   const air = Math.max(0, Number(e.mountAir) || 0), dead = !!e.dead || e.hp <= 0 && e.maxHp > 0;
   // movement: a gait phase from the distance travelled (the leap's lift taken back out of the ridden mount's drawn y)
   const x = Number(e.x) || 0, y = (Number(e.y) || 0) + air, dt = M.at == null ? 0 : Math.min(.1, Math.max(0, (now - M.at) / 1000)), moved = M.x == null ? 0 : Math.hypot(x - M.x, y - M.y);
@@ -123,7 +136,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   const wobble = reduce ? 0 : .02 * Math.sin(t * 1.3);
 
   // ---------------------------------------------------------------- the spine
-  const L = A.length / N, ih = Math.round(A.hipAt * N), is = Math.round(A.shoulderAt * N);
+  const L = A.length * FM.length / N, ih = Math.round(A.hipAt * N), is = Math.round(A.shoulderAt * N);
   const headingAt = (i) => { const s = i / N; let a = table(HEADING, s, 1);
     if (s < A.hipAt) { const w = (A.hipAt - s) / A.hipAt; a += -V.tailUp * 1.4 * smooth(w * 1.6) - Math.max(0, pitch) * .85 * Math.min(1, w * 4) - bounce * 2 * w + (reduce ? 0 : .06 * Math.sin(t * 1.6 + s * 4) * w); }
     if (s > .86) a += (V.head * .5 + wobble) * (s - .86) / .14;
@@ -136,10 +149,10 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // pitch about the hips (nose up) or the shoulders (nose down), then the hips set at their height
   const pvx = pitch >= 0 ? PX[ih] : PX[is], pvy = pitch >= 0 ? PY[ih] : PY[is], cp = Math.cos(pitch), sp = Math.sin(pitch);
   for (let i = 0; i <= N; i++) { const dx = PX[i] - pvx, dy = PY[i] - pvy; PX[i] = pvx + dx * cp - dy * sp; PY[i] = pvy + dx * sp + dy * cp; }
-  const hipX = -.3, lift = A.hip - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead ? .22 : 0) + Math.abs(bounce) * .35; // the sweep's bounce lifts the hindquarters with the tail
+  const hipX = -.3, lift = A.hip * FM.leg - V.crouch * A.crouchDrop + (moving ? Math.abs(Math.sin(ph)) * .012 : 0) - (dead ? .22 : 0) + Math.abs(bounce) * .35; // the sweep's bounce lifts the hindquarters with the tail
   for (let i = 0; i <= N; i++) { PX[i] += hipX; PY[i] += lift; PY[i] -= PZ[i] * .4; }
   for (let i = 0; i <= N; i++) { const a = Math.max(0, i - 1), c = Math.min(N, i + 1), tx = PX[c] - PX[a], ty = PY[c] - PY[a], l = Math.hypot(tx, ty) || 1; NX[i] = -ty / l; NY[i] = tx / l;
-    const sN = i / N, depth = 1 + PZ[i] * .3; DT[i] = table(THICK, sN, 1) * depth; VT[i] = table(THICK, sN, 2) * depth; }
+    const sN = i / N, depth = (1 + PZ[i] * .3) * FM.girth; DT[i] = table(THICK, sN, 1) * depth; VT[i] = table(THICK, sN, 2) * depth; }
 
   const lean = V.lean * A.lean * u, kx = k + flip * lean;
   ctx.save(); ctx.translate(kx, q.b); ctx.save(); ctx.scale(flip * u, u);
@@ -150,7 +163,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // ---------------------------------------------------------------- legs
   const legAt = (hind, near) => { // hip/shoulder joint, foot target, bone lengths
     const i = hind ? ih : is, jx = PX[i] - NX[i] * VT[i] * .3 + (near ? 0 : (hind ? .05 : .045)), jy = PY[i] - NY[i] * VT[i] * .3 + (near ? 0 : .03);
-    const l1 = hind ? A.thigh : A.upperArm, l2 = hind ? A.shin : A.foreArm;
+    const l1 = (hind ? A.thigh : A.upperArm) * FM.leg, l2 = (hind ? A.shin : A.foreArm) * FM.leg;
     const off = (hind ? 0 : Math.PI) + (near ? 0 : Math.PI * .5), swing = Math.sin(ph + off) * moving, up = Math.max(0, Math.cos(ph + off)) * moving;
     let fx = (hind ? PX[ih] + .03 : PX[is] + .02) + (near ? 0 : (hind ? .06 : .05)) + swing * A.stride, fy = A.foot + up * .08 + (near ? 0 : .03);
     const rot = (bx, by) => [jx + bx * cp - by * sp, jy + bx * sp + by * cp], blend = (tx, ty, w) => { fx += (tx - fx) * w; fy += (ty - fy) * w; };
@@ -174,7 +187,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
     const tone = near ? A.body : A.bodyDark, light = near ? A.bodyLight : A.body;
     // pillar legs: a heavy thigh (or upper arm) bulging into the body, a thick straight shin down to the foot
     // the haunch or shoulder: a solid rounded mass where the leg meets the body, outlined only along its lower front
-    if (near) { const hr = hind ? .19 : .14, cx2 = jx + (hind ? .0 : .01), cy2 = jy - (hind ? .04 : .03), g = ctx.createLinearGradient(cx2, -(cy2 + hr), cx2, -(cy2 - hr)); g.addColorStop(0, light); g.addColorStop(1, tone);
+    if (near) { const hr = (hind ? .19 : .14) * FM.legW, cx2 = jx + (hind ? .0 : .01), cy2 = jy - (hind ? .04 : .03), g = ctx.createLinearGradient(cx2, -(cy2 + hr), cx2, -(cy2 - hr)); g.addColorStop(0, light); g.addColorStop(1, tone);
       ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.fill();
       // the markings (Tim, 2026-11-18): darker bands of his own yellow curving across the haunch or the shoulder
       ctx.save(); ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .8;
@@ -183,7 +196,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
       ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, .15, 1.9); ctx.stroke(); }
     // pillar legs: thick all the way down to a broad foot
     { const cx3 = 2 * kx2 - (jx + ex) / 2, cy3 = 2 * ky2 - (jy + ey) / 2, W = hind ? [.27, .24, .21, .19, .18, .185, .2] : [.21, .195, .175, .16, .155, .16, .17]; // a smooth column through the knee
-      for (let i = 0; i < 7; i++) { const f = i / 6, g1 = (1 - f) * (1 - f), g2 = 2 * f * (1 - f), g3 = f * f; LEG[i * 2] = g1 * jx + g2 * cx3 + g3 * ex; LEG[i * 2 + 1] = g1 * jy + g2 * cy3 + g3 * (ey + .01); LEGW[i] = W[i]; }
+      for (let i = 0; i < 7; i++) { const f = i / 6, g1 = (1 - f) * (1 - f), g2 = 2 * f * (1 - f), g3 = f * f; LEG[i * 2] = g1 * jx + g2 * cx3 + g3 * ex; LEG[i * 2 + 1] = g1 * jy + g2 * cy3 + g3 * (ey + .01); LEGW[i] = W[i] * FM.legW; }
       limb(LEG, LEGW, tone, light); }
     // the foot: a broad round pad, three blunt pale toenails at its front
     ctx.fillStyle = near ? A.bodyDark : A.shade; ctx.beginPath(); ctx.moveTo(ex - (hind ? .11 : .095), 0); ctx.quadraticCurveTo(ex - .1, -.07, ex, -.075); ctx.quadraticCurveTo(ex + .1, -.07, ex + (hind ? .12 : .105), 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
@@ -225,7 +238,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   ctx.save();
   if (horn) { const nx = flip * (PX[is] + .1) * u, ny = -(PY[is] + .05) * u; ctx.translate(nx + flip * horn.reach * u, ny + horn.lower * u); ctx.rotate(flip * horn.pitch); ctx.translate(-nx, -ny); }
   ctx.scale(flip * u, u);
-  drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName);
+  drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM);
   ctx.restore();
   // a charge's dust, and the stomp's ring at the forefeet
   const dashing = e.mountView && (e.mountHornPose?.phase === "dash" || e.mountHornPose?.phase === "bash" && triceratopsHornAmount(e.mountHornPose) > .3);
@@ -242,22 +255,22 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
 
 // The head in its own frame at the base of the skull (hx, hy), turned to `ha`: the frill behind, the far brow horn, the skull and
 // beak, the nose horn, the near brow horn and the eye.
-function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
-  const S = A.headScale, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, H = (x, y) => [hx + x * c - y * sn, hy + x * sn + y * c];
+function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = TRI_FORM_ADULT) {
+  const S = A.headScale * FM.head, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, H = (x, y) => [hx + x * c - y * sn, hy + x * sn + y * c];
   const mv = (p) => ctx.moveTo(p[0], -p[1]), ln = (p) => ctx.lineTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
   const shape = (pts) => { ctx.beginPath(); mv(H(pts[0][0], pts[0][1])); for (let i = 1; i < pts.length; i++) ln(H(pts[i][0], pts[i][1])); ctx.closePath(); };
   // the frill: a broad shield rising up and back from the skull, its rim scalloped with pale knobs, two dark spots inside
-  const fc = H(-.03, .22), fa = -(ha + 1.0), rx = .28, ry = .36;
+  const fc = H(-.03, .22 * (FM.frill === 1 ? 1 : .55 + .45 * FM.frill)), fa = -(ha + 1.0), rx = .28 * FM.frill, ry = .36 * FM.frill;
   ctx.save(); ctx.translate(fc[0], -fc[1]); ctx.rotate(fa);
-  ctx.fillStyle = A.knob; for (let i = 0; i < 11; i++) { const a = -Math.PI * .95 + i * Math.PI * 1.15 / 10, kx = Math.cos(a) * rx * 1.03, ky = Math.sin(a) * ry * 1.03; ctx.beginPath(); ctx.arc(kx, ky, .03, 0, TAU); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6; ctx.stroke(); }
+  ctx.fillStyle = A.knob; for (let i = 0; i < 11; i++) { const a = -Math.PI * .95 + i * Math.PI * 1.15 / 10, kx = Math.cos(a) * rx * 1.03, ky = Math.sin(a) * ry * 1.03; ctx.beginPath(); ctx.arc(kx, ky, FM.frill === 1 ? .03 : .03 * Math.sqrt(FM.frill), 0, TAU); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6; ctx.stroke(); }
   const fg = ctx.createRadialGradient(0, .12, .02, 0, 0, ry); fg.addColorStop(0, A.frillInner); fg.addColorStop(.7, A.frill); fg.addColorStop(1, A.frillEdge);
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fillStyle = fg; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
   ctx.strokeStyle = "rgba(255,240,160,.55)"; ctx.lineWidth = .02; ctx.beginPath(); ctx.ellipse(0, 0, rx * .82, ry * .84, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
   ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2, sy2, .055, .08, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
   ctx.restore();
   // the brow horns: long, curving forward and up out of the brow; the far one first, behind the skull, the near one over it
-  const brow = (dx, dy, near) => { const b0 = H(.13 + dx, .1 + dy), b1 = H(.2 + dx, .095 + dy), mid = H(.3 + dx, .3 + dy), tip = H(.5 + dx, .4 + dy);
-    ctx.beginPath(); mv(b0); qc(H(.2 + dx, .28 + dy), tip); qc(mid, b1); ctx.closePath();
+  const bk = FM.brow, bx0 = .165, by0 = .1, brow = (dx, dy, near) => { const b0 = H(.13 + dx, .1 + dy), b1 = H(.2 + dx, .095 + dy), mid = H(scl(.3, bx0, bk) + dx, scl(.3, by0, bk) + dy), tip = H(scl(.5, bx0, bk) + dx, scl(.4, by0, bk) + dy);
+    ctx.beginPath(); mv(b0); qc(H(scl(.2, bx0, bk) + dx, scl(.28, by0, bk) + dy), tip); qc(mid, b1); ctx.closePath();
     const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, near ? A.hornBase : A.shade); g.addColorStop(.35, near ? A.horn : A.hornBase); g.addColorStop(1, near ? A.hornTip : A.horn);
     ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); };
   brow(-.035, .03, false);
@@ -285,7 +298,7 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
   // the Silly Goose, ridden, pokes out its tongue
   if (e.mountView && e.triceratopsDisposition === "silly" && !dead) { const wag = reduce ? 0 : .015 * Math.sin(t * 6); ctx.beginPath(); mv(H(.34, -.08)); qc(H(.4, -.085 + wag), H(.425, -.115 + wag)); qc(H(.4, -.135 + wag), H(.355, -.105)); ctx.closePath(); ctx.fillStyle = A.tongue; ctx.fill(); ctx.strokeStyle = A.mouth; ctx.lineWidth = lw * .7; ctx.stroke(); }
   // the nose horn: short and blunt
-  { const b0 = H(.225, .09), b1 = H(.29, .072), tip = H(.31, .2); ctx.beginPath(); mv(b0); qc(H(.25, .17), tip); qc(H(.31, .13), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
+  { const nk = FM.nose, b0 = H(.225, .09), b1 = H(.29, .072), tip = H(scl(.31, .2575, nk), scl(.2, .081, nk)); ctx.beginPath(); mv(b0); qc(H(scl(.25, .2575, nk), scl(.17, .081, nk)), tip); qc(H(scl(.31, .2575, nk), scl(.13, .081, nk)), b1); ctx.closePath(); const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, A.hornBase); g.addColorStop(1, A.hornTip); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   brow(0, 0, true);
   // the Horn Shot: a glint on the tips as the wind-up aims them, then the release's flash and streaks off the tips
   const hp = e.mountView ? e.mountHornPose : null, hk = triceratopsHornAmount(hp);
@@ -296,9 +309,12 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName) {
   // the eye: big, round and bright, a brow ridge over it; narrowed while it attacks, crossed out in death
   const ep = H(.12, .045), ex = ep[0], ey = -ep[1], angry = !!e.pack?.attack;
   if (dead) { ctx.strokeStyle = A.pupil; ctx.lineWidth = lw * 1.4; ctx.beginPath(); ctx.moveTo(ex - .02, ey - .02); ctx.lineTo(ex + .02, ey + .02); ctx.moveTo(ex - .02, ey + .02); ctx.lineTo(ex + .02, ey - .02); ctx.stroke(); return; }
-  ctx.fillStyle = A.eye; ctx.beginPath(); ctx.ellipse(ex, ey, .036, .031, -ha, 0, TAU); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
-  ctx.fillStyle = A.pupil; ctx.beginPath(); ctx.arc(ex + .008, ey + .002, .02, 0, TAU); ctx.fill();
-  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(ex + .001, ey - .009, .007, 0, TAU); ctx.fill();
+  const ek = FM.eye;
+  if (FM.cheek > 0) { const cp = H(.17, -.03); ctx.fillStyle = "rgba(255,140,150,.45)"; ctx.beginPath(); ctx.ellipse(cp[0], -cp[1], .045, .028, -ha, 0, TAU); ctx.fill(); } // the baby's soft pink cheek
+  ctx.fillStyle = A.eye; ctx.beginPath(); ctx.ellipse(ex, ey, .036 * ek, .031 * ek, -ha, 0, TAU); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  ctx.fillStyle = A.pupil; ctx.beginPath(); ctx.arc(ex + .008 * ek, ey + .002 * ek, .02 * ek, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(ex + .001 * ek, ey - .009 * ek, .007 * ek, 0, TAU); ctx.fill();
+  if (ek > 1.3) { ctx.beginPath(); ctx.arc(ex + .014 * ek, ey + .008 * ek, .0035 * ek, 0, TAU); ctx.fill(); } // a second glint: big shiny baby eyes
   // the brow ridge over it: a soft arch while calm, drawn down over the eye while it attacks
   if (angry) { const l0 = H(.075, .08), l1 = H(.17, .075); ctx.fillStyle = A.bodyDark; ctx.beginPath(); mv(H(.07, .095)); qc(H(.12, .11), H(.175, .085)); ln(l1); qc(H(.12, .05), l0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke(); }
   else { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.08, .085)); qc(H(.12, .105), H(.165, .085)); ctx.stroke(); ctx.lineCap = "butt"; }
