@@ -282,6 +282,10 @@ function buildCloneMesh(tier) {
   const grain = (i, k, st) => lerpHex(i % 2 ? bark : barkD, barkL, Math.max(0, st) * .4 + (k % 3 === 0 ? .15 : 0));
   B.color(bark).loft({ seg: low ? 5 : full ? 9 : 7, sections: [[-.85, .58, .02, .02, 'ct2'], [-.7, .6, .05, .05, 'ct2', 'ct1', .3], [-.45, .62, .12, .11, 'ct1', 'body', .3], [-.25, .64, .2, .19, 'body'], [.05, .66, .23, .21, 'body'], [.3, .66, .2, .19, 'body'], [.42, .72, .12, .12, 'body', 'c1', .5],
     [.5, .88, .085, .085, 'c1', 'c2', .5], [.6, 1.06, .07, .07, 'c2', 'c3', .5], [.68, 1.22, .06, .06, 'c3', 'chead', .6], [.74, 1.32, .055, .055, 'chead']].map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: grain });
+  // bark: dark ridges running along the trunk, two knots and a broken branch stub (not on the low tier)
+  if (!low) { for (let i = 0; i < (full ? 5 : 3); i++) { const a = (i / (full ? 5 : 3)) * Math.PI * 2 + .3, r = .2; B.bone('body').color(barkD).lathe({ at: [-.32, Math.cos(a) * r, Math.sin(a) * r * .95 + .04], F: [1, 0, 0], U: [0, 0, 1], seg: 3, rings: [[0, .018], [.3, .024], [.62, .014]], caps: false }); }
+    for (const [f, side] of [[-.1, 1], [.15, -1]]) B.bone('body').color(barkD).ellipsoid({ at: [f, side * .2, .05], radius: [.04, .02, .035], rings: 2, seg: 5 });
+    B.bone('body').color(barkL).lathe({ at: [-.05, .1, .17], F: [-.2, .6, .7], U: [0, 0, 1], seg: 3, rings: [[0, .025], [.12, .012]], caps: true }); }
   const hd = bw('chead'); B.bone('chead').color(barkL).ellipsoid({ at: [.08, 0, .01], radius: [.11, .055, .05], rings: low ? 2 : 3, seg: low ? 5 : 8 });
   if (!low) for (const s of [-1, 1]) B.color(0xc8ff6a, 1).ellipsoid({ at: [.1, s * .045, .025], radius: [.014, .008, .012], rings: 2, seg: 4 });
   B.color(leaf).ellipsoid({ at: [-.02, 0, .07], radius: [.03, .012, .05], rings: 2, seg: 5 }); void hd;
@@ -331,7 +335,7 @@ export function sampleApatoClone(tr, e, env) {
 // the marks, the beam's track, the waves, the saplings); what stands up from it is drawn here with the scene's camera-facing cards
 // (close-view.ts `card`: kind 7 a stone spike, kind 0 a dark disc, kind 11 an added glow of the colour given). Bounded by the
 // beast's own pools (APATO.caps); nothing allocated. `card(X, Y, z0, z1, halfWidth, kind, alpha, colour, light)`.
-export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, beamZ: 3, beamCards: 9, star: .09, resolveRoots: 18 });
+export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, beamZ: 3.4, beamCards: 22, star: .09, resolveRoots: 18 });
 export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve = null) {
   const Cd = APATO_CARDS, t = reduce ? 0 : now / 1000;
   // Earth Resolve (its Echo): roots rising round the sigil's rim (short stone-dark spikes) and a green glow at its heart, fading at its end
@@ -344,10 +348,7 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve
     const F = e.apatoFx; if (!F) continue;
     for (const q of F.leaves) { if (q.on) card(q.x + .5, q.y + .62, Cd.leafZ - Cd.leaf, Cd.leafZ + Cd.leaf, Cd.leaf, 11, .85, q.thorn ? 0xe8e0c0 : 0x8fe04a, 0); }
     for (const q of F.seeds) { if (!q.on || q.delay > 0) continue; const k = Math.min(1, q.t / (q.total || 1)), x = q.fx + (q.tx - q.fx) * k, y = q.fy + (q.ty - q.fy) * k, z = 1.5 * (1 - k) + Math.sin(Math.PI * k) * Cd.seedArc; card(x + .5, y + .62, z, z + .2, .1, 0, .9, 0, 0); }
-    for (const q of F.roots) { if (!q.on) continue; const rise = Math.min(1, q.t / .45) * Math.max(0, Math.min(1, (q.life - q.t) / .4));
-      for (let i = 0; i <= Cd.rootBeads; i++) { const k = i / Cd.rootBeads * rise, x = q.bx + (q.x - q.bx) * k, y = q.by + (q.y - q.by) * k, z = Cd.rootZ * (1 - k) * (1 - k) + Math.sin(Math.PI * k) * .8 + .3; card(x + .5, y + .62, z - Cd.rootR, z + Cd.rootR, Cd.rootR * (1.2 - .5 * k), 0, .85, 0, 0); }
-      card(q.x + .5, q.y + .62, .1, .7, .3, 11, .7 * rise, 0xa8d65a, 0); }
-    const B = e.apatoBeam; if (B?.on) for (let i = 0; i <= Cd.beamCards; i++) { const k = i / Cd.beamCards, x = B.x + B.ax * B.len * k, y = B.y + B.ay * B.len * k, z = Cd.beamZ * (1 - k) + .15; card(x + .5, y + .62, z - .25, z + .25, .3 + .1 * k, 11, .8, 0xf4ff9a, 0); }
+    const B = e.apatoBeam; if (B?.on) for (let i = 0; i <= Cd.beamCards; i++) { const k = i / Cd.beamCards, x = B.x + B.ax * B.len * k, y = B.y + B.ay * B.len * k, z = Cd.beamZ * (1 - k) + .15; card(x + .5, y + .62, z - .3, z + .3, .22 + .08 * k, 11, .55, 0xf4ff9a, 0); card(x + .5, y + .62, z - .12, z + .12, .08, 11, .9, 0xffffff, 0); }
   }
 }
 
@@ -370,10 +371,16 @@ function buildHand(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.
   B.color(earthD).lathe({ at: [-.2, 0, .82], F: [-1, .2, .6], U: [0, 0, 1], seg: low ? 3 : 4, rings: [[0, .05], [.18, 0]], caps: false }); // thumb
   if (!low) for (let i = 0; i < 3; i++) B.color(grassC).lathe({ at: [(i - 1) * .12, .14, .3 + i * .15], F: [0, .4, 1], U: [1, 0, 0], seg: 3, rings: [[0, .02], [.1, 0]], caps: false });
   return B.done(); }
+function buildRoot(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root'); const vine = hex(A.vine), vineD = hex(A.vineDark), bud = hex(A.bud), thorn = hex(A.thorn), n = low ? 6 : 10, S = [];
+  for (let i = 0; i <= n; i++) { const f = i / n; S.push({ at: [f, 0, Math.pow(1 - f, 1.4) + .45 * Math.sin(Math.PI * f) + .04], rx: .055 - .02 * f, rz: .055 - .02 * f, bones: ['root', 'root', 0] }); }
+  B.color(vine).loft({ seg: low ? 4 : 6, sections: S, tone: (i, k, st) => (i + (k % 2)) % 3 ? vine : vineD });
+  B.color(bud).ellipsoid({ at: [1.02, 0, .08], radius: [.11, .08, .08], rings: 2, seg: low ? 5 : 7 });
+  if (!low) for (const sd of [-1, 1]) B.color(thorn).lathe({ at: [1.08, sd * .05, .1], F: [1, sd * .6, .2], U: [0, 0, 1], seg: 3, rings: [[0, .025], [.08, 0]], caps: false });
+  return B.done(); }
 function buildRock(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root'); B.color(rockC).ellipsoid({ at: [0, 0, 0], radius: [.3, .26, .24], rings: low ? 2 : 3, seg: low ? 5 : 6 }); if (!low) B.color(rockL).ellipsoid({ at: [-.1, .05, .12], radius: [.12, .1, .08], rings: 2, seg: 4 }); return B.done(); }
 const PROP_MESH = { full: null, low: null };
-export function apatoPropMeshes(tier = 'full') { const k = tier === 'low' ? 'low' : 'full'; return PROP_MESH[k] ||= { spire: buildSpire(k === 'low'), hand: buildHand(k === 'low'), rock: buildRock(k === 'low') }; }
-export const PROP_TRIS = Object.freeze({ get spire() { return apatoPropMeshes().spire.triangles; }, get hand() { return apatoPropMeshes().hand.triangles; }, get rock() { return apatoPropMeshes().rock.triangles; } });
+export function apatoPropMeshes(tier = 'full') { const k = tier === 'low' ? 'low' : 'full'; return PROP_MESH[k] ||= { spire: buildSpire(k === 'low'), hand: buildHand(k === 'low'), rock: buildRock(k === 'low'), root: buildRoot(k === 'low') }; }
+export const PROP_TRIS = Object.freeze({ get root() { return apatoPropMeshes().root.triangles; }, get spire() { return apatoPropMeshes().spire.triangles; }, get hand() { return apatoPropMeshes().hand.triangles; }, get rock() { return apatoPropMeshes().rock.triangles; } });
 const propFrame = () => ({ kind: 'apatoProp', tier: 'full', mesh: null, skin: new Float32Array(12), boneCount: 1, alpha: 1, hit: 0, emitK: new Float32Array(4), emitA: Float32Array.from([1, 1, 1, 1]), x: 0, y: 0, z: 0, yaw: 0, scale: 1, shadow: 0, air: 0, feet: new Float64Array(8), phase: 'prop', contact: 0, cloud: false, fogCap: 1 });
 // One prop's skin: a uniform `size` (wide) by `tall` (up), turned `yaw`, at (x, y, z).
 function placeProp(f, mesh, x, y, z, yaw, size, tall, alpha) {
@@ -382,15 +389,22 @@ function placeProp(f, mesh, x, y, z, yaw, size, tall, alpha) {
 }
 // Appends this frame's live props to the beast list `B` ({ items, count }). zAt(x, y): the floor's height; prepare(mesh): upload once (false: skip).
 export function admitApatoProps(enemies, B, tier, now, reduce, zAt, prepare) {
-  const M = apatoPropMeshes(tier), t = reduce ? 0 : now / 1000; if (!prepare(M.spire) || !prepare(M.hand) || !prepare(M.rock)) return 0; let n = 0;
+  const M = apatoPropMeshes(tier), t = reduce ? 0 : now / 1000; if (!prepare(M.spire) || !prepare(M.hand) || !prepare(M.rock) || !prepare(M.root)) return 0; let n = 0;
   for (const e of enemies || []) {
-    if (e.kind !== 'earthApato' || e.dead || !e.apatoFx) continue; const F = e.apatoFx, P = e.apatoProps ||= { spires: F.spires.map(propFrame), hands: F.hands.map(propFrame), held: F.hands.map(propFrame), rocks: F.rocks.map(propFrame) };
+    if (e.kind !== 'earthApato' || e.dead || !e.apatoFx) continue; const F = e.apatoFx, P = e.apatoProps ||= { spires: F.spires.map(propFrame), hands: F.hands.map(propFrame), held: F.hands.map(propFrame), rocks: F.rocks.map(propFrame), roots: F.roots.map(propFrame) };
     Object.defineProperty(e, 'apatoProps', { value: P, enumerable: false, configurable: true, writable: true }); // presentation only, never saved
     for (let i = 0; i < F.spires.length; i++) { const q = F.spires[i]; if (!q.on || q.t < q.warn) continue; const k = Math.min(1, (q.t - q.warn) / .12), fade = Math.max(0, Math.min(1, (q.warn + q.up - q.t) / .25)), X = q.x + .5, Y = q.y + .62;
       B.items[B.count++] = placeProp(P.spires[i], M.spire, X, Y, zAt(X, Y) - .3 * (1 - fade), i * 1.7, .95, 1.6 * k * (.5 + .5 * fade), 1); n++; }
     for (let i = 0; i < F.hands.length; i++) { const q = F.hands[i]; if (!q.on) continue; const rise = Math.min(1, q.t / .7) * Math.max(0, Math.min(1, (q.life - q.t) / .5)); if (!(rise > .02)) continue; const X = q.x + .5, Y = q.y + .62, z = zAt(X, Y), tall = 1.15 * rise;
       B.items[B.count++] = placeProp(P.hands[i], M.hand, X, Y, z - .2 * (1 - rise), i * 2.3 + .3 * Math.sin(t * 2 + i), 1, tall, 1); n++;
       if (q.throws > 0 && q.next < .6) { B.items[B.count++] = placeProp(P.held[i], M.rock, X, Y, z + tall * 1.12, t * 2, .9, .9, 1); n++; } }
+    // root necks: the arched vine laid from the beast's back (high) out to its hunting bud on the ground
+    { const sc = Math.max(.6, Number(e.scale) || 1) * APATO_RIG.closeViewScale, backZ = 1.25 * sc;
+      for (let i = 0; i < F.roots.length; i++) { const q = F.roots[i]; if (!q.on) continue; const rise = Math.min(1, q.t / .45) * Math.max(0, Math.min(1, (q.life - q.t) / .4)); if (!(rise > .02)) continue;
+        const bx = q.bx + .5, by = q.by + .62, tx = bx + (q.x - q.bx) * rise, ty = by + (q.y - q.by) * rise, dx = tx - bx, dy = ty - by, L = Math.hypot(dx, dy) || .01, z0 = zAt(bx, by), f = P.roots[i], k = f.skin, h = backZ * rise, w = 1 + (reduce ? 0 : .15 * Math.sin(t * 6 + i));
+        f.mesh = M.root; f.alpha = 1; f.x = bx; f.y = by; f.z = z0; // f axis along the root's run, r across (a vine's girth), u its height off the back
+        k[0] = dx; k[1] = -dy / L * w; k[2] = 0; k[3] = bx; k[4] = dy; k[5] = dx / L * w; k[6] = 0; k[7] = by; k[8] = 0; k[9] = 0; k[10] = h; k[11] = z0;
+        B.items[B.count++] = f; n++; } }
     for (let i = 0; i < F.rocks.length; i++) { const q = F.rocks[i]; if (!q.on) continue; const X = q.x + .5, Y = q.y + .62;
       B.items[B.count++] = placeProp(P.rocks[i], M.rock, X, Y, zAt(X, Y) + .7, t * 9 + i, .9, .9, 1); n++; }
   }
