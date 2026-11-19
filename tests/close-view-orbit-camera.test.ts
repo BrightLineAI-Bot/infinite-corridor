@@ -289,19 +289,19 @@ test('Look mode\'s pinch on the Wayfarer sets her own Close View distance, kept 
   assert.equal(CV.closeViewLookZoomTo(.5), CV.closeViewLookZoomNow(), 'outside Look mode the zoom asks nothing'); assert.equal(g.save.closeViewZoom, 0);
   CV.closeViewLookSet(g, true); frame(g, 2); assert.equal(CV.closeViewLookState().homeActive, true, 'the Wayfarer is the subject');
   CV.closeViewLookZoomTo(.3); assert.equal(CV.closeViewHomeZoomTake(), true, 'changed: the host persists it'); assert.equal(CV.closeViewHomeZoomTake(), false, 'once');
-  frame(g, 2); assert.equal(g.save.closeViewZoom, .3); assert.equal(CV.closeViewLookState().want, 0, 'no Look orbit round her');
+  frame(g, 60 /* 2026-11-19 polish: the distance eases (CLOSE_VIEW_POLISH.zoom); let it settle */); assert.equal(g.save.closeViewZoom, .3); assert.equal(CV.closeViewLookState().want, 0, 'no Look orbit round her');
   let c = CV.closeViewCamera(); assert.ok(Math.abs(c.orbitRadius - R1 * Math.pow(2, -.3 * Z.perUnit)) < 1e-9, `nearer (${c.orbitRadius.toFixed(3)})`);
   // the pinch's own arithmetic moves it: a doubling of the fingers' spread halves the distance
-  CV.closeViewLookZoomTo(CV.closeViewPinchZoom(CV.closeViewLookZoomNow(), 100, 100 * Math.SQRT2)); frame(g, 2);
+  CV.closeViewLookZoomTo(CV.closeViewPinchZoom(CV.closeViewLookZoomNow(), 100, 100 * Math.SQRT2)); frame(g, 60);
   assert.ok(Math.abs(CV.closeViewCamera().orbitRadius - c.orbitRadius / 2 ** (.5 * C.camera.look.pinchGain * Z.perUnit)) < 1e-6, 'the pinch moves it');
   // Look mode off: her distance stays (Look mode, a reset and a new frame do not undo it)
   CV.closeViewLookSet(g, false, true); frame(g, 4); const kept = CV.closeViewCamera().orbitRadius; assert.ok(kept < R1 - .5, 'kept after Look mode');
   CV.resetCloseViewCamera(); frame(g, 4); assert.ok(Math.abs(CV.closeViewCamera().orbitRadius - kept) < 1e-9, 'kept after a reset (it is the save\'s)');
   // further out than Look mode reached before (the boom `look.out` tiles longer at minZoom), bounded by maxRadius
-  CV.closeViewLookSet(g, true); frame(g, 2); CV.closeViewLookZoomTo(-5); frame(g, 2); c = CV.closeViewCamera();
+  CV.closeViewLookSet(g, true); frame(g, 2); CV.closeViewLookZoomTo(-5); frame(g, 60); c = CV.closeViewCamera();
   const before = Math.hypot(P.orbitDistance + C.camera.look.out, P.orbitHeight - O.focus), beforeOld = Math.hypot(P.distance + C.camera.look.out, P.height - O.focus);
   assert.equal(g.save.closeViewZoom, C.camera.look.minZoom); assert.ok(c.orbitRadius > beforeOld && c.orbitRadius > before && c.orbitRadius <= Z.indoorMaxRadius + 1e-9 /* 2026-11-18 Tim: a shorter zoom-out indoors */, `further (${c.orbitRadius.toFixed(2)} vs ${beforeOld.toFixed(2)})`);
-  CV.closeViewLookZoomTo(1); frame(g, 2); assert.ok(CV.closeViewCamera().orbitRadius >= Z.minRadius - 1e-9, 'never nearer than minRadius');
+  CV.closeViewLookZoomTo(1); frame(g, 60); assert.ok(CV.closeViewCamera().orbitRadius >= Z.minRadius - 1e-9, 'never nearer than minRadius');
   // the elevation is kept: the distance and the height scale together
   assert.ok(Math.abs(CV.closeViewCamera().elevation - Math.atan2(P.orbitHeight - O.focus, P.orbitDistance)) < 1e-9);
   // another subject (a foe in front) zooms Look's own way, never her distance
