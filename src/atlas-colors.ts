@@ -1,4 +1,5 @@
 import { DOMAIN_ATLAS } from "./domain-looks.ts";
+import { bizarroTint } from "./strange.ts"; // the bizarro pockets: the Atlas shows them as off as they look
 // Atlas colours (release 559; Tim, 2026-10-29: "the colors on the atlas. When you zoom out, they don't correspond to the
 // tiles that you actually visited... I want to see the world that I actually am exploring not like some fake picture...
 // those places will actually look like what they actually look like").
@@ -15,5 +16,6 @@ export function sectionAtlasColor(map) {
   const tiles = map?.tiles; if (!tiles?.length) return null;
   const sum = [0, 0, 0], seen = new Map();
   for (const t of tiles) { const k = t?.kind; let c = seen.get(k); if (!c) { c = rgb(ATLAS_TILE_COLORS[k] || ATLAS_TILE_COLORS.ash); seen.set(k, c); } sum[0] += c[0]; sum[1] += c[1]; sum[2] += c[2]; }
-  return "#" + sum.map((v) => Math.round(v / tiles.length).toString(16).padStart(2, "0")).join("");
+  const hex = "#" + sum.map((v) => Math.round(v / tiles.length).toString(16).padStart(2, "0")).join("");
+  return map.bizarro ? bizarroTint(hex) : hex;
 }

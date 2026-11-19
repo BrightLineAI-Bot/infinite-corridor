@@ -1,6 +1,7 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
 import { createSoundtrack } from "./soundtrack.ts";
 import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.ts";
+import { createBackgroundMusic } from "./background-music.ts"; // 2026-11-19: Music in background
 import { createBattleSfx } from "./battle-sfx.ts"; // the dino duel's sounds of battle (Tim, 2026-11-14)
 import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
 import { BLEED } from "./bleed.ts"; // the bleed status line
@@ -14,7 +15,7 @@ import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } f
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
 import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.ts";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount } from "./beast-mounts.ts"; // release 748: the stable
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.ts"; // release 748: the stable
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -27,7 +28,8 @@ import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDunge
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
-import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
+import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.ts";
+import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.ts"; // the seed hunts: the Atlas marker and the compass
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
@@ -43,7 +45,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest } from "./atlas-view.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -179,7 +181,7 @@ import {
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS, freshSave } from "./types.ts";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
 import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
@@ -216,6 +218,13 @@ const UTILITY_ICONS = {
 };
 // Slot D (2026-11-15): the tools that draw as an icon on whichever slot holds them (the utility button's three), and each slot
 // button's input action back to its slot.
+// Tim, 2026-11-18: the Triceratops's own slot icons while riding (TRICERATOPS_CONTROLS): a horn lunge, a lowered-head bash, a flying horn.
+const MOUNT_CONTROL_COLOR = "#e0b45a";
+const MOUNT_CONTROL_ICONS = {
+  dash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h6M2 12h6M3 16h6" stroke="#e0b45a" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><path d="M10 17c0-5 3-9 8-10l3-3-1 5c1 3 0 7-4 9z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M18 7l4-4M17 10l5-1" stroke="#f4ead2" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  bash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c0-6 4-10 10-10 3 0 5 2 5 5 0 3-3 5-7 5z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M14 9l6-5M17 13l6-2M6 12l-3-4" stroke="#f4ead2" stroke-width="1.6" stroke-linecap="round"/><path d="M20 16l2 1M19 19l2 2M17 20l0 3" stroke="#ffe08a" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  horn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9" stroke="#e0b45a" stroke-width="1.4" stroke-dasharray="2 2" stroke-linecap="round"/><path d="M10 9.5l11 2.5-11 2.5c-1-1.6-1-3.4 0-5z" fill="#f4ead2" stroke="#4a3418" stroke-width=".8"/><circle cx="21" cy="12" r="1.2" fill="#ffe08a"/></svg>',
+};
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
 import { reloadPips } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
@@ -338,7 +347,7 @@ function currentQuality(){return effectiveQuality(settings,{width:innerWidth,hei
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
 game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
-function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=muted?0:AUDIO_MIX.master*settings.masterVolume;if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
+function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=masterLevel();backgroundMusic.setMasterLevel(masterLevel());backgroundMusic.setEnabled(settings.backgroundMusic);if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
@@ -651,13 +660,14 @@ function navigationTargets() {
     huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint,farQuest=activeFarQuest(save); // release 716: a quest to a far civilisation
   const quest=compassQuest(save); // 2026-11-12: the relay leads or the Cairn Keeper's errand (a quest with no fixed section); before, any unmade relay choice counted
   const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx].join(":");
+  const seedHunt=nearestSeedHunt(save,game.rx,game.ry); // tall towers: the nearest live seed hunt (atlas-view.ts seedHuntGuidance)
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx,seedHunt?.tower,seedHunt?.where,seedHunt?.x,seedHunt?.y,seedHunt?.door?.x,seedHunt?.door?.y].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   // Tim (2026-11-12): the compass points only at an objective (atlas-view.ts compassGuidance): a Journal pin, the tracked hunt,
   // a far quest (release 716), a target chosen by tapping, or the waymarks a quest with no fixed section follows. Else no needle.
   const cues=game.area==="overworld"&&quest&&!pick?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues});
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues})||(game.area==="overworld"?seedHuntGuidance(seedHunt,seedHunt?{[seedHunt.kind]:SEEDS[seedHunt.kind]?.name}:{}):null); // a seed hunt last, as compassGuidance's seedHunt
   navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
   return navigationCache;
 }
@@ -835,6 +845,9 @@ let audio = null,
   battleSfx = null,
   muted = localStorage.getItem("corridor-muted") === "1";
 const musicMemo = {};
+// Music in background (background-music.ts): with the option on, a hidden page keeps the score playing (the game still pauses).
+const backgroundMusic = createBackgroundMusic();
+function masterLevel() { return muted ? 0 : AUDIO_MIX.master * settings.masterVolume; }
 // The dino duel's sounds (battle-sfx.ts): the game's cues (game.dinoCues, the newest kept) handed over once a frame, then the
 // footfalls, the rolling wheel and the undercurrent's heartbeat. The queue is emptied even with no sound, so it never grows.
 function duelSounds() {
@@ -874,7 +887,7 @@ function directMusic() {
   if (!soundtrack || !director || muted || !audio) return;
   try {
     const out = director.update(sampleMusic(game, musicMemo), audio.currentTime);
-    soundtrack.setPaused(game.paused);
+    soundtrack.setPaused(game.paused && !backgroundMusic.active); // in the background the score plays at full level
     soundtrack.setTarget(out);
     for (const s of out.stingers) soundtrack.stinger(s);
     // the dino duel: the score fades out under the battle and back after it (soundtrack-director.ts DUEL); its sounds follow the duel
@@ -901,7 +914,7 @@ function startAmbience() {
   compressor.knee.value = AUDIO_MIX.compressor.knee;
   compressor.ratio.value = AUDIO_MIX.compressor.ratio;
   makeup.gain.value = AUDIO_MIX.makeup;
-  audioGain.gain.value = muted ? 0 : AUDIO_MIX.master * settings.masterVolume;
+  audioGain.gain.value = masterLevel();
   musicBus.gain.value = AUDIO_MIX.music * settings.musicVolume;
   filter.type = "lowpass";
   filter.frequency.value = AUDIO_MIX.lowpass;
@@ -931,6 +944,7 @@ function startAmbience() {
     filter.connect(delay);
     legacyScore(filter);
   }
+  backgroundMusic.attach({ ctx: audio, musicTail: makeup, master: audioGain, soundtrack, sfx: battleSfx, isMuted: () => muted, level: masterLevel() });
   if (muted) audio.suspend?.();
 }
 // The score before the soundtrack (release 327), kept only as a fallback if the soundtrack cannot start.
@@ -1000,7 +1014,10 @@ mute.onclick = () => {
   if (!audio && !muted) startAmbience();
   if (audio && !muted && audio.state === "suspended") audio.resume();
   soundtrack?.setMuted(muted);
+  if (backgroundMusic.musicPaused) soundtrack?.setMuted(true); // paused from the lock screen: the music stays paused
   battleSfx?.setMuted(muted);
+  backgroundMusic.setMasterLevel(masterLevel(), 0.35);
+  backgroundMusic.setPlaybackState();
   if (audioGain) {
     const t = audio.currentTime;
     audioGain.gain.cancelScheduledValues(t);
@@ -1505,7 +1522,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1001,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1009,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1526,10 +1543,10 @@ async function renderSettings(category){const grid=document.createElement("div")
     const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));/* release 793: the camera control, its sensitivity */const cc=document.createElement("select");for(const[id,label]of[["drag","Drag anywhere (default)"],["crescent","Pan crescent"]]){const o=document.createElement("option");o.value=id;o.textContent=label;cc.append(o)}cc.value=save.closeViewCamera==="crescent"?"crescent":"drag";cc.onchange=()=>{save.closeViewCamera=cc.value;persist()};grid.append(settingRow("Camera control",cc,"Drag anywhere: drag the open screen outside the left joystick to turn the view. Start inside the joystick to move. Each finger keeps its role until you lift it, and buttons keep their own touches. Quick turnaround: hold the stick back toward the camera and swipe down on the right, and the view swings round behind you. Pan crescent: slide along the arc round the action buttons instead."));const sv=document.createElement("input");sv.type="range";sv.min=String(CLOSE_VIEW.drag.sensitivity[0]);sv.max=String(CLOSE_VIEW.drag.sensitivity[1]);sv.step="0.1";sv.value=String(save.closeViewSensitivity||1);sv.oninput=()=>{save.closeViewSensitivity=Number(sv.value);persist()};grid.append(settingRow("Camera sensitivity",sv,"How far the view turns for a drag (or a slide along the crescent). 1 is the default."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last turn the view (a drag, or the crescent), it slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
-  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."));
+  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1001,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1001\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1009,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1009\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1541,7 +1558,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1001,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1009,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1782,6 +1799,7 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
+  for(const q of activeSeedHunts(save))pins.push({rx:q.rx,ry:q.ry,color:TALL_TOWERS.seedHunt.marker,inner:SEEDS[q.kind]?.color||"#ffffff",label:`Seed hunt: ${SEEDS[q.kind]?.name||"a seed"}`,seed:true}); // tall towers: each live seed hunt, a glinting seed-shaped marker
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
   for(const r of retreatsUnderWay(save))pins.push({rx:r.rx,ry:r.ry,color:"#ff8f4a",label:`${WORLD_BEASTS[r.id].name}, retreating`}); // release 605: a retreat can be followed on the Atlas
@@ -1793,6 +1811,7 @@ function drawAtlasPins(w,h,cell){
     if(x>=E&&y>=E&&x<=w-E&&y<=h-E){ // on the map: a pin standing on its section
       mctx.fillStyle="rgba(0,0,0,.35)";mctx.beginPath();mctx.ellipse(x,y,S*.55,S*.22,0,0,7);mctx.fill();
       if(p.mark){mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x,y-S*2.6);mctx.stroke();mctx.beginPath();mctx.moveTo(x,y-S*2.6);mctx.lineTo(x+S*1.6,y-S*2.1);mctx.lineTo(x,y-S*1.6);mctx.closePath();mctx.fillStyle=p.color;mctx.fill();mctx.stroke();mctx.restore();continue} // release 355: a map mark is a small flag
+      if(p.seed){const cy=y-S*1.5;mctx.beginPath();mctx.moveTo(x,cy-S*1.3);mctx.quadraticCurveTo(x+S*.95,cy,x,cy+S*1.1);mctx.quadraticCurveTo(x-S*.95,cy,x,cy-S*1.3);mctx.closePath();mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();mctx.fillStyle=p.inner;mctx.beginPath();mctx.ellipse(x,cy+S*.1,S*.32,S*.55,0,0,7);mctx.fill();mctx.restore();continue} // tall towers: a seed hunt is a seed-shaped marker, the seed's own colour at its heart
       mctx.beginPath();mctx.moveTo(x,y);mctx.bezierCurveTo(x-S*.2,y-S*.8,x-S,y-S*1.3,x-S,y-S*2);mctx.arc(x,y-S*2,S,Math.PI,0);mctx.bezierCurveTo(x+S,y-S*1.3,x+S*.2,y-S*.8,x,y);mctx.closePath();
       mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();
       mctx.fillStyle="#091018";mctx.beginPath();mctx.arc(x,y-S*2,S*.38,0,7);mctx.fill();
@@ -2020,7 +2039,7 @@ function openPack(tab) {
   for(const [kind,label] of [['weapon','Weapon sphere'],['armor','Armor sphere']]){const row=document.createElement('div'),key=kind+'Sphere';row.className='item sphere-row';row.textContent=`${label} ×${save.materials[key]||0} · strengthens fitted equipment at the Forge.`;body.append(row)}
   }catch(error){packSectionFailed("Spheres",error)}
   if (packTab === "supplies") try{ // travel seeds (skylands.ts SEEDS): rare, found lying in the open, in crossing chests and in the Skylands
-  const held = SEEDS.kinds.filter((k) => seedCount(save, k) > 0), row = document.createElement('div'); row.className = 'item seed-row';
+  const held = ALL_SEED_KINDS.filter((k) => seedCount(save, k) > 0), row = document.createElement('div'); row.className = 'item seed-row';
   if (!held.length) row.textContent = 'Seeds: none yet. They are rare: some lie in the open, some in crossing chests and the Skylands.';
   else { const name = document.createElement('strong'); name.textContent = 'Seeds'; row.append(name); for (const k of held) { const line = document.createElement('small'); line.style.display = 'block'; line.textContent = `${SEEDS[k].name} ×${seedCount(save, k)} · ${SEEDS[k].text}`; row.append(line); } }
   body.append(row);
@@ -2529,10 +2548,10 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
   const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
-  const states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
+  const mountJump = game.triceratopsControls?.(), states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`), slotOf = SLOT_OF_ACTION[action];
-    if (!button || (slotOf && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
+    if (!button || (slotOf && !state.mount && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
 
     const cooling = state.remaining > 0,
       fraction = cooling ? Math.min(1, state.remaining / state.duration) : 0,
@@ -2542,6 +2561,8 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
       ? `${state.remaining.toFixed(state.remaining < 1 ? 1 : 0)}s`
       : action === "potion"
         ? `×${state.count}`
+        : state.mount
+          ? state.name // Tim, 2026-11-18: a Triceratops attack names itself under its icon
         : action === "dodge"
           ? `${state.cost} STA`
           : state.essence != null
@@ -2554,8 +2575,11 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"class:unavailable",state.available === false);
     hudSet(button,"data-cooldown",label);
     if (action === "tool") hudSet(button,"class:empowered",state.empowered === true && !!state.rounds); /* gold count while empowered rounds are held */
-    hudSet(button,"aria-label",`${action} ${label}`);
+    hudSet(button,"aria-label",action === "jump" && mountJump ? `Jump: Triceratops ${mountJump.jump} ${label}` : `${action} ${label}`);
   }
+  // Tim, 2026-11-18: riding a Triceratops, Jump reads as its landing (Stomp; the Silly Goose's Drill), and back to Jump on getting down.
+  { const ab = hudEl('[data-action="interact"]'), h = game.mountHoldProgress?.() || 0; if (ab) { hudSet(ab, "class:holding", h > 0); hudSet(ab, "--hold", `${Math.round(h * 100)}%`); } } // hold Act: the call fills the button (MOUNT_RIDE.callHold)
+  { const jb = hudEl('[data-action="jump"]'); if (jb) { hudSet(jb, "text", mountJump ? mountJump.jump : "Jump"); hudSet(jb, "class:mount-control", !!mountJump); } }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots (the slots are lettered, so no clash).
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
@@ -2572,7 +2596,14 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   for (const slot of SLOTS) { const action = SLOT_ACTIONS[slot], n = slotLabel(slot), util = slot === "d";
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot), t = !c && slotTool(save, slot); // release 309: Build or the item in A or B
     if (!button) continue;
+    const mc = states[action]?.mount && TRICERATOPS_CONTROLS[action]; // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks
+    if (mc) { const key = `mount:${mc.attack}`;
+      if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; const sym = Object.assign(document.createElement("span"), { className: "slot-sym mount-sym" }); sym.innerHTML = MOUNT_CONTROL_ICONS[mc.attack]; button.replaceChildren(sym, Object.assign(document.createElement("span"), { className: "slot-letter", textContent: n })); button.style.setProperty("--slot", MOUNT_CONTROL_COLOR); hudSet(button, "class:spent", false); hudSet(button, "data-kind", ""); }
+      hudSet(button, "class:mount-control", true); hudSet(button, "class:mount-active", states[action].active === true); hudSet(button, "class:lantern-lit", false); setBuffFill(button, 0);
+      hudSet(button, "aria-label", `Slot ${n}: Triceratops ${mc.name}, ${states[action].cost} stamina${states[action].available === false ? ", not ready" : ""}`); continue; }
+    hudSet(button, "class:mount-control", false); hudSet(button, "class:mount-active", false);
     const key = c ? c.key : t ? `tool:${t.tool}:${t.item || ""}` : "empty", toolIcon = t && UTILITY_TOOL_ICONS[t.tool];
+    if (toolIcon) { hudSet(button, "class:cooling", false); hudSet(button, "class:unavailable", false); hudSet(button, "--cooldown", "0%"); } // never set for these, unless the Triceratops borrowed the slot
     if (button.dataset.slotKey !== key) { button.dataset.slotKey = key;
       const sym = Object.assign(document.createElement("span"), { className: toolIcon && util ? "utility-icon" : "slot-sym", textContent: c ? c.symbol : t?.tool === "lantern" ? LANTERN.symbol : t ? "" : "+" });
       if (toolIcon) sym.innerHTML = toolIcon(); else if (t?.tool === "item") sym.innerHTML = ITEM_ICONS[t.item] || "?";
@@ -3002,23 +3033,23 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     overlayPause = false;
     pause(false, true);
-    // The soundtrack sleeps with the tab.
-    audio?.suspend?.();
+    // The soundtrack sleeps with the tab, unless Music in background is on: then only the music plays on (background-music.ts).
+    backgroundMusic.onHidden();
   }
   else {
-    if (audio && !muted && audio.state === "suspended") audio.resume?.();
+    backgroundMusic.onVisible();
     if (game.paused && !pausePanel.open && !glimpseRun) pausePanel.showModal();
   }
 });
-addEventListener("pagehide", () => {
+addEventListener("pagehide", (event) => {
   overlayPause = false;
   pause(false, true);
-  audio?.suspend?.();
+  backgroundMusic.onHidden({ frozen: !!event?.persisted }); // a page kept in the back-forward cache runs no script: it sleeps
 });
 addEventListener("freeze", () => {
   overlayPause = false;
   pause(false, true);
-  audio?.suspend?.();
+  backgroundMusic.onHidden({ frozen: true });
 });
 // Release 734: a damaged or unreadable active journey opens on the Journeys screen, saying it is kept and not saved over.
 if (saveBlocked()) { optionCategory = "Journeys"; openOptions().then(() => optionMessage(`${saveBlocked()} Nothing you do now is saved to Journey ${getActiveSlot()}. Recover it, import a journey, or choose another slot.`, true)); }
@@ -3246,6 +3277,7 @@ function openSmithy(note='',last=null){pauseForOverlay();if(pausePanel.open)paus
    action(`Reforge ${affixText(a)} → ${affixText(pv.after)} · ${SMITHY.reforge.iron} iron, ${SMITHY.reforge.marks} marks${lock('reforge')}`,()=>act(reforgeAffix(save,slot,i)),forgePreview(save,slot,'reforge',i),`reforge-${pv.direction}`)});
   if(slot!=='charm'&&!item.extraSockets)action(`Add a socket · ${SMITHY.socket.iron} iron, ${SMITHY.socket.lumenDust} lumen dust${lock('socket')}`,()=>act(addSocket(save,slot)),forgePreview(save,slot,'socket'));
   if(!item.masterwork)action(`Masterwork (+1 rank cap) · ${SMITHY.masterwork.iron} iron, ${SMITHY.masterwork.marks} marks${lock('masterwork')}`,()=>act(masterwork(save,slot)),forgePreview(save,slot,'masterwork'));
+  {const cost=upgradeCost(item,save);/* refinement (items.ts REFINEMENT): past the normal cap, for Divine Viscera */if(cost.refine&&cost.eligible)action(upgradeLabel(cost),()=>act(game.upgradeEquipmentSlot(slot)),forgePreview(save,slot,'upgrade'));else if(!cost.eligible&&cost.rank>=cost.cap){const hint=document.createElement('small');hint.textContent=refinementOpen(save)?`Refined to its limit (+${REFINEMENT.max}).`:refinementHint(save);row.append(hint)}}
   body.append(row)}
  const sh=document.createElement('h3');sh.textContent='Salvage from your pack';body.append(sh,salvageYieldPicker(()=>openSmithy(note)));if(!(save.inventory||[]).length)body.append(Object.assign(document.createElement('p'),{textContent:'Nothing in your pack to salvage.'}));
  (save.inventory||[]).forEach((item,i)=>{const row=document.createElement('div');row.className='item';row.textContent=`${item.name} (${itemTier(item)}) `;row.append(uiButton(`Salvage · ${salvageYieldText(save,SMITHY.salvage.iron[itemTier(item)]||1)}${lock('salvage')}`,()=>act(salvageItem(save,i))));body.append(row)});
@@ -3269,7 +3301,11 @@ function openKitchen(cookId,note=''){pauseForOverlay();if(pausePanel.open)pauseP
   row.append(t,d,uiButton('Eat',()=>{const r=game.eatAt(cookId,a,b);persist();if(r.ok){kitchenPick=[];resume()}else openKitchen(cookId,r.message)}),uiButton('Clear',()=>{kitchenPick=[];openKitchen(cookId)}));body.append(row)}
  else{const p=document.createElement('p');p.textContent=kitchenPick.length?`${INGREDIENTS[kitchenPick[0]].name}, and…`:'Nothing chosen yet.';body.append(p)}
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
-function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item,save),/* release 457 */row=document.createElement('div'),title=document.createElement('strong'),rows=cost.eligible?forgePreview(save,slot,'upgrade'):null/* 2026-11-18: the smith's before → after (game.ts forgePreview), every stat coloured */,preview=rows?previewRows(rows):gearStatList(gearReadout(save,slot,item));row.className='item';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;row.append(title,preview,uiButton(cost.eligible?`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`:lateUpgradeOpen(save)?'Upgrade limit reached':`Limit reached (Infinite IV + second Gate: +${LATE_UPGRADE.ranks})`,()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
+// Refinement (items.ts REFINEMENT): the forge's one-tap upgrade names its cost: spheres up to the normal cap, Divine Viscera above
+// it (to +20) once refinement is open, and before then the hint of where it opens.
+function upgradeLabel(cost){if(cost.eligible)return cost.refine?`Refine to +${cost.rank+1} · ${cost.amount} Divine Viscera (you hold ${visceraHeld(save)})`:`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`;
+ if(refinementOpen(save))return`Refinement limit reached (+${REFINEMENT.max})`;return`${lateUpgradeOpen(save)?'Upgrade limit reached':`Limit reached (Infinite IV + second Gate: +${LATE_UPGRADE.ranks})`} · ${refinementHint(save)}`}
+function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item,save),/* release 457 */row=document.createElement('div'),title=document.createElement('strong'),rows=cost.eligible?forgePreview(save,slot,'upgrade'):null/* 2026-11-18: the smith's before → after (game.ts forgePreview), every stat coloured */,preview=rows?previewRows(rows):gearStatList(gearReadout(save,slot,item));row.className='item';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;row.append(title,preview,uiButton(upgradeLabel(cost),()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
  const iron=document.createElement('div');iron.className='item';iron.textContent=`Cinder Iron ${save.materials.cinderIron||0} · weapon +${save.weaponLevel||0}`;iron.append(uiButton('Reinforce weapon · 3 iron',()=>{game.upgrade();persist();openForge()}),uiButton(`Smelt weapon sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'weaponSphere').message;persist();openForge()}),uiButton(`Smelt armor sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'armorSphere').message;persist();openForge()}));body.append(iron,salvageYieldPicker(openForge)); // release 259: moved here from the Pack; 383: smelting; 2026-11-18: what salvage yields
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
 function openInteraction(id, confirmAttack = false) {

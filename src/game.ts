@@ -90,7 +90,7 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
-import { itemCap } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
+import { itemCap, upgradeLimit, upgradedItem, unlockRefinement } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
@@ -99,7 +99,7 @@ import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND,
 import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
-import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
+import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.ts";
@@ -118,7 +118,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
-import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay } from "./tall-towers.ts"; // tall towers (the Upwells)
+import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
@@ -143,12 +143,12 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
-import { addStrange, touchStrange } from "./strange.ts";
+import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
 import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
@@ -539,6 +539,47 @@ function towerInterior(save, id) {
   for (const o of map.objects) { if (o.towerCache && h.towerCache) Object.assign(o, { state: "opened", actions: [] }); if (o.kind === "towerLookout" && h.towerLookout) o.state = "used"; }
   return map;
 }
+// The seed hunts (tall-towers.ts TALL_TOWERS.seedHunt). Where a hunt's seed may lie, read off the place as loaded and never
+// written into it. Overworld: the real movement rules (reachableFrom / canReturnTo, thin walls included: a climb of one level,
+// any drop) from the open ground nearest the middle, which must itself join a section edge both ways. `ground`: open, level,
+// dry ground there (`groundFrom` tiles off that start); `tree`: a great tree's platforms (t.canopy, above the ground) there;
+// `crossing`: the ordinary crossings whose door stands on that ground. Null when the section offers no such ground at all.
+const HUNT_N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const huntFooting = (t) => !!t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.chasm && !t.pit && !t.door && !t.perch && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t);
+const huntGround = (t) => huntFooting(t) && !t.slope && !t.canopy && !t.skyPlatform && !(Number(t.elev) > 0) && !/water|shallow|ocean|sea|mire|bog|pool|lava|void|abyss|canyon|river|pit|Gate|ice/i.test(String(t.kind));
+const huntTree = (t) => huntFooting(t) && !!t.canopy && !t.slope && Number(t.elev) > 0;
+export const huntCrossingDoor = (o) => o?.kind === "dungeon" && !o.dungeonId && !o.buildingDoor && !o.towerDoor && !o.beastHotelDoor && !o.viewportHuntId && /^dungeon-g\d/.test(String(o.id));
+export function seedHuntGround(map) {
+  const T = map?.tiles; if (!T || T.length !== 1024) return null;
+  const mid = T.filter(huntGround).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!mid) return null;
+  const go = reachableFrom(map, 32, 32, mid, true), back = canReturnTo(map, 32, 32, mid, true), ok = new Uint8Array(1024); let edge = false;
+  for (let i = 0; i < 1024; i++) if (go[i] && back[i]) { ok[i] = 1; const x = i % 32, y = (i - x) / 32; if (x === 0 || y === 0 || x === 31 || y === 31) edge = true; }
+  return edge ? { ok, start: { x: mid.x, y: mid.y } } : null;
+}
+export function seedHuntSpots(map) {
+  const G = seedHuntGround(map); if (!G) return null;
+  const busy = new Set(); for (const o of map.objects || []) { if (o.decor) continue; const ox = Math.round(o.x), oy = Math.round(o.y); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) busy.add((oy + dy) * 32 + ox + dx); }
+  const free = (t) => G.ok[t.y * 32 + t.x] && !busy.has(t.y * 32 + t.x) && t.x > 1 && t.y > 1 && t.x < 30 && t.y < 30 && footprintOpen(map, 32, t.x, t.y);
+  const ground = map.tiles.filter((t) => huntGround(t) && free(t) && Math.hypot(t.x - G.start.x, t.y - G.start.y) >= TALL_TOWERS.seedHunt.groundFrom);
+  const tree = map.tiles.filter((t) => huntTree(t) && free(t));
+  const crossing = (map.objects || []).filter((o) => huntCrossingDoor(o) && [[0, 0], ...HUNT_N4].some(([dx, dy]) => G.ok[(Math.round(o.y) + dy) * 32 + Math.round(o.x) + dx]));
+  return { ground, tree, crossing, start: G.start, ok: G.ok };
+}
+// Inside a crossing: on the entry's own level, joined to the entry on that level (shut doors laid as objects count as shut),
+// `crossingSteps` walking steps in, clear of other objects; else the nearest such tile past the entry. Null with no entry.
+export function seedHuntCrossingSpot(map, seed, id) {
+  const W = Math.max(1, Number(map?.width) || 24), T = map?.tiles || [], H = Math.floor(T.length / W), e = map?.entry; if (!e || !T.length) return null;
+  const at = (x, y) => x < 0 || y < 0 || x >= W || y >= H ? null : T[y * W + x], sx = Math.round(e.x), sy = Math.round(e.y); if (!at(sx, sy) || at(sx, sy).blocked) return null;
+  const shut = new Set(); for (const o of map.objects || []) if (o.blocked || ((o.kind === "labGate" || o.kind === "sealedGate") && o.state !== "open")) shut.add(Math.round(o.y) * W + Math.round(o.x));
+  const lvl = (x, y) => elevationAt(map, W, x, y), base = lvl(sx, sy), open = (t) => !!t && !t.blocked && !t.chasm && !t.pit && !LETHAL_KINDS.has(t.kind) && !shut.has(t.y * W + t.x) && Math.abs(lvl(t.x, t.y) - base) < 1e-6;
+  const dist = new Int32Array(W * H).fill(-1), q = [sy * W + sx]; dist[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) { const i = q[h], x = i % W, y = (i - x) / W; for (const [dx, dy] of HUNT_N4) { const b = at(x + dx, y + dy), j = (y + dy) * W + x + dx; if (!b || dist[j] >= 0 || !open(b)) continue; dist[j] = dist[i] + 1; q.push(j); } }
+  const busy = new Set(); for (const o of map.objects || []) busy.add(Math.round(o.y) * W + Math.round(o.x));
+  const [lo, hi] = TALL_TOWERS.seedHunt.crossingSteps, fits = (i) => !busy.has(i) && footprintOpen(map, W, i % W, (i - i % W) / W);
+  const band = q.filter((i) => dist[i] >= lo && dist[i] <= hi && fits(i)), list = band.length ? band : q.filter((i) => dist[i] > 0 && fits(i)).slice(0, 1);
+  if (!list.length) return null; const i = band.length ? list[seedHuntPick(seed, id, "crossing", list.length)] : list[0];
+  return { x: i % W, y: (i - i % W) / W, steps: dist[i] };
+}
 export function generatePinnedDungeon(save, id, options = {}) {
   if (isBeastHotelId(id)) {
     const history = dungeonHistory(save, id); history.beastHotelVersion ??= TRICERATOPS_RIDE.hotelVersion; history.relayNode = false; history.gatePredatorSpawnThreshold = 0;
@@ -547,7 +588,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
     return { id, seed: save.seed, name: "Beast Hotel", recipe: "beast-hotel", beastHotel: true, arena: true, width, height, tiles, entry, objects: [{ id: "beast-hotel-exit", kind: "exit", name: "Return to hometown", ...entry, state: "open", actions: ["exit"] }], enemySpawns: [] };
   }
   if (isTowerId(id)) { const m = towerInterior(save, id); if (m) return m; } // tall towers: their own interior, nothing laid over it
-  if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id) || seedRealmFallback(id); // seed realms: laid from the id alone, never pinned or dressed
+  if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id, { seedTable: save.session?.seedRealm?.id === id ? save.session.seedRealm.seedTable : undefined }) || seedRealmFallback(id); // seed realms: laid from the id alone (and the seed table its session recorded), never pinned or dressed
   if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
@@ -982,7 +1023,7 @@ function packVictimIn(length, at, may) {
   return pick === null ? -1 : weakest.get(pick);
 }
 export function packVictim(save, spareBrawler = false) {
-  const inv = save.inventory, i = packVictimIn(inv.length, (k) => inv[k], (q) => !spareBrawler || !isBrawlerGear(q));
+  const inv = save.inventory, i = packVictimIn(inv.length, (k) => inv[k], (q) => (!spareBrawler || !isBrawlerGear(q)) && q?.refined !== true);
   return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
@@ -997,7 +1038,7 @@ export function storeInventoryItem(save, item, keep = false) {
   const fresh = isBrawlerGear(item) && !save.inventory.some((q) => q?.name === item.name) && !Object.values(save.equipment || {}).some((q) => q?.name === item.name);
   // 2026-11-18: the drop is weighed with the pack (it is the newest piece, counted in its slot): when its slot is the most
   // crowded and it is that slot's least-kept piece, it is salvaged on arrival; a purchase (`keep`) or fresh brawler gear never is.
-  const inv = save.inventory, n = inv.length, victim = packVictimIn(n + 1, (k) => (k === n ? item : inv[k]), (q, i) => (i === n ? !fresh && !keep : !fresh || !isBrawlerGear(q)));
+  const inv = save.inventory, n = inv.length, victim = packVictimIn(n + 1, (k) => (k === n ? item : inv[k]), (q, i) => (i === n ? !fresh && !keep : (!fresh || !isBrawlerGear(q)) && q?.refined !== true /* refinement: Divine Viscera went into it; only salvaged by hand */));
   const weakest = victim < 0 || victim === n ? packVictim(save, fresh) : victim;
   if (victim === n) { // release 545: a drop below everything you keep is salvaged (2026-11-18: within its slot, tier then power); at the same keep the oldest goes instead
     const paid = paySalvage(save, autoSalvageIron(item)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
@@ -1194,7 +1235,7 @@ export function gearReadout(save, slot, item = save?.equipment?.[slot]) {
   for (const [id, label] of [["attack", "Attack"], ["reach", "Reach bonus"], ["movement", "Move speed"], ["ward", "Ward"]]) { const v = affixValue(item, id); if (v) row(`affix-${id}`, label, v, id === "attack" ? `+${v}` : `+${Math.round(v * 100)}%`); }
   if (slot === "armor" || slot === "charm") row("reduction", "Total damage cut", d.damageReduction * 100, `${Math.round(d.damageReduction * 100)}%`);
   if (slot !== "charm") row("sockets", "Sockets", socketCount(item));
-  const cap = itemCap(item, save);
+  const cap = upgradeLimit(item, save); // refinement (items.ts REFINEMENT): +20 once it is open
   row("rank", "Rank", rank, `+${rank}`);
   row("cap", "Rank cap", cap, `+${cap}`);
   return rows;
@@ -1212,7 +1253,7 @@ export function compareReadouts(before, after) {
 // cannot be done to it. Pure: the piece and the save are not changed.
 export function forgeOutcome(save, slot, action, index = 0) {
   const item = save?.equipment?.[slot]; if (!item) return null;
-  if (action === "upgrade") { const n = normalizeItemUpgrade(item); return normalizeItemUpgrade({ ...n, power: n.power + 1, upgradeRank: n.upgradeRank + 1 }); }
+  if (action === "upgrade") return upgradedItem(item, save); // items.ts: the same piece upgradeEquipment makes (a refined rank too)
   if (action === "masterwork") return item.masterwork === true ? null : normalizeItemUpgrade({ ...item, masterwork: true });
   if (action === "socket") return item.extraSockets === 1 || !socketCount(item) ? null : normalizeSockets({ ...item, extraSockets: 1 });
   if (action === "reforge") { const after = reforgeRoll(save, item, index); if (!after) return null; const affixes = item.affixes.slice(); affixes[index] = after; return { ...item, affixes, reforged: (Number(item.reforged) || 0) + 1 }; } // smithy.ts reforgeRoll: the exact next roll
@@ -2464,6 +2505,7 @@ export function actionReadiness(game, now = 0) {
     spell2: essenceReadiness(game, "b", slotReadiness(game.save, "b", spell)),
     spell3: essenceReadiness(game, "c", slotReadiness(game.save, "c", spell)), // release 874: slot C
     utility: essenceReadiness(game, "d", slotReadiness(game.save, "d", spell)), // 2026-11-15: slot D, the utility button
+    ...triceratopsReadiness(game),
     potion: {
       remaining: 0,
       duration: 0,
@@ -2473,6 +2515,18 @@ export function actionReadiness(game, now = 0) {
         game.player.hp < game.save.maxHp,
     },
   };
+}
+// Tim, 2026-11-18: riding a Triceratops, slots B/C/D read as its attacks: the stamina each press spends (the Dodge, plus the charged
+// blow's own cost) and whether it can go now. Display only: the presses run the accepted Dodge path, with all its blocks.
+export function triceratopsReadiness(game) {
+  if (!game.triceratopsControls?.()) return {};
+  const p = game.player, dodgeSta = dodgeCost(game.save), out = {};
+  for (const action of ["spell", "spell2", "spell3"]) {
+    const c = TRICERATOPS_CONTROLS[action], blow = c.charge ? TRICERATOPS_ATTACKS[c.attack].stamina : 0, cost = Math.round(dodgeSta + blow);
+    const q = game.triceratopsCharge, active = c.charge ? !!q && (q.autoTier === c.charge || q.kind === c.attack) : !!game.triceratopsDash && !q;
+    out[action] = { remaining: 0, duration: 0, mount: c.attack, name: c.name, cost, active, available: (p.stamina || 0) >= dodgeSta + blow && (c.attack !== "horn" || game.triceratopsHornRoom()) };
+  }
+  return out;
 }
 // Essence Walk (brawler-spells.ts ESSENCE_WALK): while it runs, a slot whose spell is recovering reads as castable for its
 // stamina cost (`essence`), unavailable when stamina is short, instead of counting its cooldown down.
@@ -3518,7 +3572,7 @@ export class Game {
     if (this.player?.cachePickupVisual?.v === 1) this.player.cachePickupVisual = null;
     if (this.player?.hurtVisual?.v === 1) this.player.hurtVisual = null;
     this.cancelPendingToolUse('area-transition');
-    this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; this.triceratopsHornContact = null; // accepted attacks belong to this area
+    this.triceratopsDash = null; this.triceratopsJump = null; this.triceratopsCharge = null; this.triceratopsHornContact = null; this.mountHold = null; // accepted attacks (and a held Act) belong to this area
     this.toolSwing = null; // great-sweep.ts: the swing belongs to where it was swung
     this.cancelPendingMeleeContact('area-transition');
     this.clearHammerfallStartup('area-transition');
@@ -3637,6 +3691,10 @@ export class Game {
         const fv = prior ? prior.farVersion || 0 : FAR_REALMS.version, lv = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; this.farPocket = lv >= 5 ? farPocketAt(this.save.seed, this.rx, this.ry, fv, sectionRegion(this.save.seed, this.rx, this.ry, lv)) : null; // release 715: the pockets
         if (this.farPocket?.civ && this.save.farQuests?.[this.farPocket.id]?.status === "open") { this.save.farQuests[this.farPocket.id].status = "found"; (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: FAR_CIVS[this.farPocket.id].found, kind: "discovery" }); } // release 716
         const K = this.farPocket, kid = K && `far-pocket:${K.type}:${K.id}`; if (K && !this.save.narrative.journal.some((j) => j.recordId === kid)) { journalOnce(this.save, kid, `${K.arrive} (${this.rx},${this.ry})`, K.name); if (!this.message) this.message = K.arrive; } }
+      { const bv = prior ? prior.bizarroVersion || 0 : BIZARRO.version; // the bizarro pockets (strange.ts BIZARRO): only on ground first seen from now on; the ground itself is unchanged
+        if (bv && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && bizarroHere(this.save.seed, this.rx, this.ry, bv)) { this.map.bizarro = { v: bv };
+          if (!this.save.narrative.journal.some((j) => j.recordId === "bizarro-pocket")) journalOnce(this.save, "bizarro-pocket", `${BIZARRO.text.journal} (${this.rx},${this.ry})`, "The bizarro world");
+          if (!this.message) this.message = BIZARRO.text.arrive; } }
       this.domainVisit = null; if (this.map.farDomain) { const id = this.map.farDomain, D = FAR_DOMAINS[id], fq = (this.save.farQuests ||= {}), rec = fq[id], atOnce = !rec || rec.status === "open"; // release 723: a domain
         if (!rec) fq[id] = { status: "found", rx: this.rx, ry: this.ry }; else if (rec.status === "open") { rec.status = "found"; (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: D.found, kind: "discovery" }); }
         const first = !this.save.narrative.journal.some((j) => j.recordId === `far-domain:${id}`); journalOnce(this.save, `far-domain:${id}`, `${D.arrive} (${this.rx},${this.ry})`, D.name.replace(/^the /, "The ")); this.message = first ? D.arrive : D.waiting; // every far domain lies beyond the Doom Chaser's homeland line (world-beasts.ts BEAST_HOMELANDS), so the Black Pyre waits for him like any other
@@ -3683,6 +3741,7 @@ export class Game {
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
+        ...(prior ? (prior.bizarroVersion ? { bizarroVersion: prior.bizarroVersion } : {}) : { bizarroVersion: BIZARRO.version }), // the bizarro pockets and the Abyssal Seeds lying in the open: new ground only
         ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
@@ -3706,11 +3765,13 @@ export class Game {
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
+    if (area === "overworld") this.placeAbyssalFind(); // the bizarro world: an Abyssal Seed, often in a pocket, very rarely elsewhere; new ground only, once
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if (area === "overworld") this.map.enemySpawns.push(...triceratopsHerdSpawns(this.map, this.save.seed, this.rx, this.ry, this.save.atlas?.[`${this.rx},${this.ry}`]?.triceratopsHerdVersion));
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
     if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
+    if (area === "overworld" && this.map.bizarro) for (const q of bizarroSpawns(this.save.seed, this.rx, this.ry, this.openSeedGround().open)) if (!this.map.enemySpawns.some((e) => e.id === q.id)) this.map.enemySpawns.push(q); // the pocket's own rounded wanderers, on ground the Wayfarer can reach
     if(area==="overworld"&&this._coherence&&!this.map.farDomain)settleSpawns(this.map,coherenceKeeps); // WG-08: a creature on a pad it cannot leave moves to ground it can (new ground only)
     if(area==="overworld"&&(this.farRealm?.type==="monsterFolk"||this.farRealm?.type==="giantFolk"))this.map.farFolk=this.farRealm.type==="monsterFolk"?"monster":"giant"; // release 720: the folk realms
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
@@ -3719,6 +3780,7 @@ export class Game {
     if(area==="overworld"&&silentMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="silentMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};this.map.objects.push({id:"silent-mouth",kind:"silentMouth",name:"A Quiet Mouth",lore:"The Listener's old Mouth. Whatever waited here went deeper, but the line still opens onto somewhere new each time.",x:at.x,y:at.y,state:"quiet",actions:["enter"],landmark:true})} // release 357: an old Mouth stays; 361: still a door to a new run
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry)?.mouth)this.raiseMouthTown(); // release 373 (after every Mouth, old ones too)
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry))this.raiseTownAmenities(); // release 441
+    if(area==="overworld")this.reachRefinementTown(); // refinement (items.ts REFINEMENT): the first town past 1,000
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);this.claimGuideLair();const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastHoldNote(this.save,worldBeast.worldBeast)}`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */if(!beast&&!worldBeast){const chrys=mothChrysalisFor(this.save,this.map,this.rx,this.ry);if(chrys){this.map.enemySpawns.push(chrys);this.message=CHRYSALIS.found}}/* release 708: the Ashen Moth's chrysalis on a great tree */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastHoldNote(this.save)}`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`],guidedSky=!!seenSky?.guideVersion&&guideHost(this.save.seed,"skyway",this.rx,this.ry);if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&(skylandSection(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1)||guidedSky)&&!this.map.objects.some(o=>o.kind==='skyStair')){const skyV=seenSky?.skyVersion||SKYLANDS.version,disc=skyV>=3?buildSkyDiscs(this.map,this.save.seed,this.rx,this.ry,guidedSky):null,top=disc?{x:disc.x-.5,y:disc.y-.75,elev:disc.level,disc:true}:skyV===2?buildSkyway(this.map,this.save.seed,this.rx,this.ry):null;/* release 585: the skyway ascent; 587: floating discs; waymark guides: a guided host with no room for the discs keeps the plain Sky Stair */const spot=skyV>=2&&(top||!guidedSky)?top:this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot&&top)this.map.objects.push({id:`skyway-${this.rx}-${this.ry}`,kind:'skyStair',name:'Skyway',skyway:true,elev:top.elev,...(top.disc?{disc:true}:{}),lore:'At the top of the floating steps a door of pale stone stands in the open air, and behind it is sky.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});else if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const annex=spot&&skyAnnexStair(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1),st=annex&&this.map.objects.find(o=>o.kind==='skyStair');if(st){Object.assign(st,{skyAnnex:true,name:`${st.name} · ${SKY_ANNEX.name}`,lore:SKY_ANNEX.messages.stair});this.message=SKY_ANNEX.messages.stair}/* release 678: the Skylands Deep Annex, named before you climb */const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:st?st.name:top?'Skyway':'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);passingSeen(this.save);/* sightings (2026-11-11): one passer between meetings */this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind: it is only passing through, a sight, not a hunt you can follow.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
     this.activatedEncounterGroups=new Set;
@@ -3955,6 +4017,7 @@ export class Game {
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
     this.placeCaches(); // world caches (world.ts WORLD_CACHES): last, over the place as loaded; new ground and new crossings only
+    this.placeSeedHunt(); // the seed hunts (tall-towers.ts TALL_TOWERS.seedHunt): an object over the place as loaded, after the caches
     this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
     this.mireTimer = 0; this.mirePool = 0;
     if (area !== "dungeon" || this.clockArea !== "dungeon") this.dungeonClock = 0; this.clockArea = area; // release 271: Revenants hunt after GATE_REVENANT.huntAfter s in a dungeon
@@ -4041,7 +4104,7 @@ export class Game {
     return moved;
   }
   setPaused(v, now = 0) {
-    if (v) { this.triceratopsCharge = null; this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
+    if (v) { this.triceratopsCharge = null; this.mountHold = null; this.attackBufferUntil = 0; this.fistReleaseIntent=null; }
     if (v && !this.paused) {
       this.pauseStarted = now;
       this.recoverPosition(now);
@@ -5404,7 +5467,9 @@ export class Game {
     // Release 263 (Tim: "if I go to the edge of the water and hit action, I should be building a boat and getting on that
     // boat and moving"): at the water's edge a tree or rock beside you no longer takes the press when a skiff can be built.
     if (o && !objectId && SHORE_PASSIVE.includes(o.kind) && this.shoreWater() && canBuildSkiff(this.save)) return this.buildSkiffHere();
-    if (!o && !objectId && !action) { const r = this.actMount(); if (r) return r; } // release 748: call the mount, or get down
+    // Tim, 2026-11-18: Act with nothing near no longer calls the mount or gets you down; it arms the hold (mountHoldTick, MOUNT_RIDE.callHold),
+    // and a tap reads as it did before mounts.
+    if (!o && !objectId && !action && this.mountCallable()) this.mountHold = { t: 0, shown: null };
     if (!o)
       return {
         ok: false,
@@ -5427,7 +5492,7 @@ export class Game {
     if (o.skyway && (o.disc ? this.skyLevel || 0 : elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) < (o.elev || 0)) return { ok: false, message: (this.message = "The skyway door hangs above you. Climb the floating platforms to reach it: jump from one to the next.") }; // release 585
     if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
     if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
-    if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.kind === "seedFind") return o.seedHunt ? this.takeHuntSeed(o) : this.takeSeedFind(o); // a seed hunt's seed (tall-towers.ts) or one lying in the open
     if (o.kind === "stegoTail") return this.pickStegoTail(o); // the Stego Bait (stego-bait.ts)
     if (o.kind === "worldCache") return this.takeWorldCache(o); // world caches
     if (o.kind === "cacheLever") return this.pullCacheLever(o);
@@ -5869,7 +5934,75 @@ export class Game {
     const added = lookOut(this.save, P.rx, P.ry, towerTierOf(P.tier).lookout), first = !h.towerLookout; h.towerLookout = true; o.state = "used";
     this.message = first || added.length ? `${TALL_TOWERS.messages.lookout} ${added.length} section${added.length === 1 ? "" : "s"} newly charted.` : TALL_TOWERS.messages.lookedOut;
     journalOnce(this.save, `tall-tower:lookout:${this.areaId()}`, `From the lip of an ${TALL_TOWERS.name} at ${P.rx},${P.ry} you charted the land round it. ${TALL_TOWERS.lore}`, "The Upwells");
-    this.sync(); return { ok: true, message: this.message, charted: added };
+    const hunt = this.startSeedHunt(this.areaId(), P); if (hunt.text) this.message = `${this.message} ${hunt.text}`;
+    this.sync(); return { ok: true, message: this.message, charted: added, seedHunt: hunt.hunt };
+  }
+  // The seed hunt (TALL_TOWERS.seedHunt): once per tower, kept in save.seedHunts by its id. The target is the first section of
+  // the hunt's hashed order (undiscovered, in the band, no other live hunt's) whose previewed ground can hold a find; previews
+  // (walkerCrossingMap) never touch the save. Looked from again, the lookout recalls the glint while it still waits.
+  startSeedHunt(id, P) {
+    const hunts = ensureSeedHunts(this.save), H = TALL_TOWERS.seedHunt, M = H.messages, had = hunts[id];
+    if (had) return { hunt: had, fresh: false, text: had.state === "active" ? huntText(M.already, had) : "" };
+    const busy = new Set(Object.values(hunts).filter((q) => q.state === "active").map((q) => `${q.rx},${q.ry}`));
+    const list = seedHuntCandidates(this.save.seed, id, P.rx, P.ry, this.save.explored, busy).filter((c) => !this.save.atlas?.[`${c.rx},${c.ry}`]).slice(0, H.loads);
+    const target = list.find((c) => seedHuntGround(walkerCrossingMap(this.save, c.rx, c.ry)));
+    if (!target) return { hunt: null, fresh: true, text: M.none };
+    const kind = seedHuntKind(this.save.seed, id, seedHuntWeights(SEED_FINDS.overworld.weights, SEEDS)), S = SEEDS[kind], dx = target.rx - P.rx, dy = target.ry - P.ry;
+    const hunt = (hunts[id] = { v: 1, tower: id, from: { rx: P.rx, ry: P.ry }, rx: target.rx, ry: target.ry, kind, state: "active" });
+    const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
+    journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");
+    (this.questNotices ||= []).push({ title: "SEED HUNT", detail: `${S.name} · ${target.rx},${target.ry} · marked on the Atlas`, kind: "discovery" });
+    return { hunt, fresh: true, text };
+  }
+  // Lay the seed of each live hunt aiming here, over the place as loaded (after the world caches, so they lie as they would
+  // without it): never a tile, never a generator change. Its spot is chosen the first time and kept on the hunt; a kept spot
+  // that no longer holds footing is chosen again the same way. A crossing hunt's seed lies inside, on the entry's level.
+  placeSeedHunt() {
+    const M = this.map; if (!M?.tiles?.length || !this.save.seedHunts) return [];
+    const seed = this.save.seed, made = [], H = TALL_TOWERS.seedHunt, W = mapWidth(M, this.area);
+    const lay = (h, x, y, elev = 0) => { const S = SEEDS[h.kind]; const o = { id: `seed-hunt:${h.tower}`, kind: "seedFind", seedHunt: h.tower, seed: h.kind, name: S.name, x, y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` }, ...(elev > 0 ? { cacheElev: elev } : {}) }; M.objects.push(o); made.push(o); return o; };
+    const stands = (x, y) => Number.isInteger(x) && Number.isInteger(y) && footprintOpen(M, W, x, y) && !LETHAL_KINDS.has(M.tiles[y * W + x]?.kind);
+    if (this.area === "overworld") {
+      for (const h of seedHuntAt(this.save, this.rx, this.ry)) {
+        if (!SEEDS[h.kind] || M.objects.some((o) => o.seedHunt === h.tower)) continue;
+        if (h.where === "crossing" && h.dungeonId && M.objects.some((o) => huntCrossingDoor(o) && dungeonId(seed, this.save.worldGeneration, this.rx, this.ry, o.id) === h.dungeonId)) { this.tellSeedHunt(h, H.messages.arriveCrossing); continue; }
+        if ((h.where === "ground" || h.where === "tree") && stands(h.x, h.y) && (h.where === "ground" || elevationAt(M, W, h.x, h.y) === h.elev)) { lay(h, h.x, h.y, h.where === "tree" ? h.elev : 0); this.tellSeedHunt(h, h.where === "tree" ? H.messages.arriveTree : H.messages.arrive); continue; }
+        const P = seedHuntSpots(M), offered = { ground: !!P?.ground.length, tree: !!P?.tree.length, crossing: !!P?.crossing.length && !h.where };
+        const where = h.where && offered[h.where] ? h.where : seedHuntWhere(seed, h.tower, offered);
+        for (const k of ["x", "y", "elev", "dungeonId", "door", "inside"]) delete h[k];
+        if (where === "crossing") { const d = P.crossing[seedHuntPick(seed, h.tower, "door", P.crossing.length)]; Object.assign(h, { where, dungeonId: dungeonId(seed, this.save.worldGeneration, this.rx, this.ry, d.id), door: { x: Math.round(d.x), y: Math.round(d.y) } }); this.tellSeedHunt(h, H.messages.arriveCrossing); continue; }
+        let t = where ? P[where][seedHuntPick(seed, h.tower, where, P[where].length)] : null;
+        if (!t) { const open = M.tiles.filter((q) => stands(q.x, q.y) && !(Number(q.elev) > 0)).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x); t = open[0]; } // no ground the rules can read: the open footing nearest the middle
+        if (!t) continue;
+        const tree = where === "tree"; Object.assign(h, { where: tree ? "tree" : "ground", x: t.x, y: t.y, ...(tree ? { elev: Number(t.elev) || 0 } : {}) });
+        lay(h, t.x, t.y, tree ? h.elev : 0); this.tellSeedHunt(h, tree ? H.messages.arriveTree : H.messages.arrive);
+      }
+      return made;
+    }
+    if (this.area !== "dungeon") return made;
+    const id = this.areaId(), first = !M.multiLevel || !M.levels?.length || M.levelId === M.levels[0].id;
+    for (const h of Object.values(this.save.seedHunts)) {
+      if (h?.state !== "active" || h.where !== "crossing" || h.dungeonId !== id || !first || !SEEDS[h.kind] || M.objects.some((o) => o.seedHunt === h.tower)) continue;
+      let at = h.inside && stands(h.inside.x, h.inside.y) ? h.inside : null;
+      if (!at) { const q = seedHuntCrossingSpot(M, seed, h.tower); if (!q) continue; at = h.inside = { x: q.x, y: q.y }; }
+      lay(h, at.x, at.y); this.tellSeedHunt(h, H.messages.inside);
+    }
+    return made;
+  }
+  tellSeedHunt(h, text) { const k = `${h.tower}:${this.areaStateId()}`; if (this._seedHuntTold === k) return; this._seedHuntTold = k; (this.questNotices ||= []).push({ title: "SEED HUNT", detail: text, kind: "discovery" }); }
+  // Picking it up: the seed of that kind (the same item as any other), the hunt found, its marker gone; once only.
+  takeHuntSeed(o) {
+    const h = this.save.seedHunts?.[o.seedHunt], S = SEEDS[h?.kind], M = TALL_TOWERS.seedHunt.messages;
+    if (o.cacheElev && elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y) < o.cacheElev) return { ok: false, message: (this.message = "It lies above you. Find the way up.") };
+    this.map.objects = this.map.objects.filter((q) => q !== o);
+    if (!h || h.state !== "active" || !S) { this.message = "Nothing is left here."; return { ok: false, message: this.message }; }
+    h.state = "found"; const n = grantSeed(this.save, h.kind), P = parseTowerId(h.tower);
+    const text = huntText(M.found, { seed: S.name, tx: h.from?.rx ?? P?.rx, ty: h.from?.ry ?? P?.ry, where: M.wheres[h.where] || M.wheres.ground });
+    journalOnce(this.save, `seed-hunt:found:${h.tower}`, `${text} (${h.rx},${h.ry})`, "The Upwells");
+    journalOnce(this.save, `seed:${h.kind}`, `You found a ${S.name}. ${S.text}`, "Seeds");
+    (this.questNotices ||= []).push({ title: S.name.toUpperCase(), detail: `seed hunt found · ${n} held · Pack → Supplies`, kind: "discovery" });
+    this.message = `${text} (${n} held.) ${S.text}`;
+    this.sync(); return { ok: true, message: this.message, seed: h.kind, hunt: h.tower };
   }
   // The cache at the lip: paid once (the history's `towerCache`, set before it pays), by the tower's tier (TALL_TOWERS.tiers[*].cache).
   openTowerCache(o) {
@@ -6189,14 +6322,30 @@ export class Game {
   // Wayfarer can walk to from the section's middle, never in a town, hamlet or far domain. Taken once.
   placeSeedFind() {
     const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key];
-    if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind")) return null;
+    if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind" && !o.seedHunt)) return null;
     const kind = seedFindRoll(this.save.seed, "overworld", key); if (!kind || this.save.worldFlags[seedFindFlag("overworld", key)]) return null;
-    const W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
-    const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return null;
-    const reach = reachableFromPlaza(M, start, !!this._coherence), open = M.tiles.filter((t) => reach[t.y * W + t.x] && ground(t) && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29 && !taken.has(t.y * W + t.x) && Math.hypot(t.x - 16, t.y - 16) >= 4);
-    if (!open.length) return null;
+    const { open } = this.openSeedGround(); if (!open.length) return null;
     const at = open[hashSeed(`${this.save.seed}:seed-find-at:v${SEED_FINDS.version}:${key}`) % open.length], S = SEEDS[kind];
     const o = { id: `seed-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: kind, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
+    M.objects.push(o); return o;
+  }
+  // Open, level ground in this section the Wayfarer can walk to from its middle, away from the middle and off every object, in a
+  // fixed order: where a seed may lie (placeSeedFind, placeAbyssalFind) and a bizarro pocket's wanderers stand. { open }.
+  openSeedGround() {
+    const M = this.map, W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
+    const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return { open: [] };
+    const reach = reachableFromPlaza(M, start, !!this._coherence);
+    return { open: M.tiles.filter((t) => reach[t.y * W + t.x] && ground(t) && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29 && !taken.has(t.y * W + t.x) && Math.hypot(t.x - 16, t.y - 16) >= 4) };
+  }
+  // The bizarro world (strange.ts BIZARRO): an Abyssal Seed lying in the open, in a section first seen from BIZARRO.version (Atlas
+  // `bizarroVersion`): half the pockets hold one, and now and then another new section does. Taken once (its own world flag).
+  placeAbyssalFind() {
+    const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key], flag = seedFindFlag("abyssal", key);
+    if (!seen?.bizarroVersion || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind" && o.seed === "abyssal")) return null;
+    if (!abyssalFindHere(this.save.seed, this.rx, this.ry, !!M.bizarro) || this.save.worldFlags[flag]) return null;
+    const { open } = this.openSeedGround(); if (!open.length) return null;
+    const at = open[hashSeed(`${this.save.seed}:abyssal-find-at:v${BIZARRO.version}:${key}`) % open.length], S = SEEDS.abyssal;
+    const o = { id: `abyssal-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: "abyssal", findFlag: flag, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
     M.objects.push(o); return o;
   }
   // ---------------------------------------------------------------------------------------- the Stego Bait (stego-bait.ts)
@@ -6273,7 +6422,7 @@ export class Game {
     });
   }
   takeSeedFind(o) {
-    const key = `${this.rx},${this.ry}`, flag = seedFindFlag("overworld", key), S = SEEDS[o.seed];
+    const key = `${this.rx},${this.ry}`, flag = o.findFlag || seedFindFlag("overworld", key), S = SEEDS[o.seed]; // findFlag: an Abyssal Seed's own (placeAbyssalFind)
     this.map.objects = this.map.objects.filter((q) => q !== o);
     if (!S || this.save.worldFlags[flag]) { this.message = "Nothing is left here."; return { ok: false, message: this.message }; }
     this.save.worldFlags[flag] = true; const n = grantSeed(this.save, o.seed);
@@ -6435,10 +6584,10 @@ export class Game {
     const n = ensureSeeds(s).used[kind], id = seedRealmId(s.seed, kind, n), from = { rx: this.rx, ry: this.ry };
     dropSeedRealms(s, null); // anything left of another realm is gone already
     s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
-    s.session.seedRealm = { v: 1, id, kind, from, dest: realmDestination(s.atlas, id, from) };
+    s.session.seedRealm = { v: 1, id, kind, from, dest: realmDestination(s.atlas, id, from), seedTable: SEED_REALMS.seedTable }; // seedTable: additive (the bizarro world); a record without it lays seed table 1
     s.session.activeDungeonId = id; s.session.activeDungeonLevelId = null; s.session.viewportDungeonHuntId = null;
     const h = dungeonHistory(s, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
-    journalOnce(s, `seed-realm:${realm}`, realm === "ship" ? "A Crimson Seed given to the Watcher's shrine opened a way aboard a great ship adrift among the stars. Nothing aboard it lasts: when you leave, it is gone." : "A Pumice Seed given to the Watcher's shrine opened a way down into a mining world bored hollow, haunted by its dead. Nothing there lasts: when you leave, it is gone.", "Seed realms");
+    journalOnce(s, `seed-realm:${realm}`, SEED_REALMS.text.journal[realm], "Seed realms");
     this.loadArea("dungeon"); this.player.x = this.map.entry.x; this.player.y = this.map.entry.y; this.settleArrival();
     this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, (this.lastUpdateNow || 0) + 1500);
     Object.assign(this, { projectiles: [], effects: [], traversal: null });
@@ -6481,9 +6630,12 @@ export class Game {
     const realm = this.map.seedRealm.realm, got = realmViscera(this.save.session.seedRealm?.from?.rx ?? this.rx, this.save.session.seedRealm?.from?.ry ?? this.ry);
     h.realmDone = true; ensureSkylands(this.save); this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + got;
     for (const o of this.map.objects) if (o.realmObject === "exit" && o.onward) o.state = "open";
-    journalOnce(this.save, `seed-realm-won:${realm}`, realm === "ship" ? "You brought down the Helm Sovereign. The ship's heart gave up Divine Viscera, and a Way Onward opened on its bridge." : "You laid the Last Foreman to rest. The husk's heart gave up Divine Viscera, and a Way Onward opened where it fell.", "Seed realms");
-    this.defeatNotice = { title: realm === "ship" ? "THE HELM FALLS" : "THE FOREMAN RESTS", detail: `+${got} ${VISCERA.name} · the Way Onward is open`, kind: "discovery" };
-    this.message = `${SEED_REALMS.text.won[realm]} +${got} ${VISCERA.name}.`; return got;
+    let extra = ""; const B = SEED_REALMS[realm]?.boon; // the Askew's own gift (SEED_REALMS.abyss.boon), once, with the viscera
+    if (B) { const gl = B.glyph ? glyphDrop(this.save, `askew-boon:${this.areaId()}`, 0, true) : null; this.save.materials ||= {}; this.save.materials.lumenDust = (Number(this.save.materials.lumenDust) || 0) + (B.lumenDust || 0);
+      extra = `${gl ? `, a ${GLYPHS[gl]?.name || gl} glyph` : ""}${B.lumenDust ? `, ${B.lumenDust} Lumen Dust` : ""}`; }
+    journalOnce(this.save, `seed-realm-won:${realm}`, SEED_REALMS.text.wonJournal[realm], "Seed realms");
+    this.defeatNotice = { title: SEED_REALMS.text.wonTitle[realm], detail: `+${got} ${VISCERA.name}${extra} · the Way Onward is open`, kind: "discovery" };
+    this.message = `${SEED_REALMS.text.won[realm]} +${got} ${VISCERA.name}${extra}.`; return got;
   }
   // Leaving: the realm is dropped (its snapshot and history), and the Wayfarer is set down at the realm's destination.
   leaveSeedRealm(o = null) {
@@ -7309,6 +7461,13 @@ export class Game {
     const best = tiles.filter(ok).sort((a, b) => String(a.buildingId).localeCompare(String(b.buildingId)) || a.y - b.y || a.x - b.x)[0];
     return best ? { x: best.x, y: best.y } : null;
   }
+  // Refinement (items.ts REFINEMENT): the first time the Wayfarer stands in a town (a settlement's ground with folk who are not
+  // monsters, or a Listener town) REFINEMENT.distance or more sections out, refinement opens for good (Journal line and a notice).
+  reachRefinementTown() {
+    const t = townAt(this.save, this.rx, this.ry), place = t || (settlementSanctuary(this.map, this.rx, this.ry, this.save) && this.map.settlement); if (!place) return null;
+    const r = unlockRefinement(this.save, this.rx, this.ry, place.name); if (!r) return null;
+    (this.questNotices ||= []).push({ title: "REFINEMENT", detail: r.text, kind: "discovery" }); this.message = r.text; return r;
+  }
   // Release 447: maximum health and stamina follow a meal as it starts and ends.
   refreshDerivedStats() { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); }
   // Release 447 (meals.ts): eat a meal of two ingredients at the cook `cookId`, who must stand near you.
@@ -7490,11 +7649,11 @@ export class Game {
   // takes the lift off again, so a knock still moves the mount's feet. Terrain, water, mire and lethal ground stay at the feet.
   riderUp() { const p = this.player, m = this.mountRide(); if (!m || p.riderShift) return; const h = riderLiftOf(m); if (h > 0) { p.y -= h; p.riderShift = h; } }
   riderDown() { const p = this.player; if (p.riderShift) { p.y += p.riderShift; p.riderShift = 0; } }
-  beginTriceratopsDash(now, held = false) {
+  beginTriceratopsDash(now, held = false, autoTier = 0) {
     const m = this.mountRide(), p = this.player;
     if (!persistentMount(m) || !(p.hp > 0) || !(now < p.dodgeUntil)) return false;
     this.triceratopsDash = { mount: m.id, until: p.dodgeUntil, x: p.dodgeX, y: p.dodgeY, hits: [] };
-    this.triceratopsCharge = held && !this.mountLeap(now) ? { mount: m.id, start: now, phase: "hold", tier: 0, x: p.dodgeX, y: p.dodgeY } : null;
+    this.triceratopsCharge = held && !this.mountLeap(now) ? { mount: m.id, start: now, phase: "hold", tier: 0, x: p.dodgeX, y: p.dodgeY, ...(autoTier ? { autoTier } : {}) } : null; // autoTier: a Bash or Horn Shot button holds the charge to that tier, then lets go
     return true;
   }
   // A held accepted Dodge adds a charge; taps, the rider's Attack and spell controls are unchanged.
@@ -7510,8 +7669,9 @@ export class Game {
       const elapsed = Math.max(0, now - q.start);
       if (elapsed > C.maxMs) { this.triceratopsCharge = null; return; }
       const tier = elapsed >= C.longMs ? 2 : elapsed >= C.shortMs ? 1 : 0;
+      if (q.autoTier) held = tier < q.autoTier;
       if (held) {
-        if (tier > q.tier) this.message = tier === 2 ? "Horn projectile ready: release Dodge." : "Horn bash ready: release Dodge, or keep holding for a projectile.";
+        if (tier > q.tier && !q.autoTier) this.message = tier === 2 ? "Horn projectile ready: release Dodge." : "Horn bash ready: release Dodge, or keep holding for a projectile.";
         q.tier = tier; return;
       }
       if (!tier) { this.triceratopsCharge = null; return; }
@@ -7528,11 +7688,17 @@ export class Game {
     if (q.kind === "bash") {
       this.triceratopsBlow("bash", now, { x: q.x, y: q.y });
       this.triceratopsHornContact = { mount: m.id, kind: "bash", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };
-      (this.glyphVisuals ||= []).push({ kind: "arc", x: p.x + .5, y: p.y + .45, tx: p.x + .5 + q.x * TRICERATOPS_ATTACKS.bash.range, ty: p.y + .45 + q.y * TRICERATOPS_ATTACKS.bash.range, color: "#fff0a0", life: .2, max: .2 });
+      (this.glyphVisuals ||= []).push({ kind: "arc", x: p.x + .5, y: p.y + .45, tx: p.x + .5 + q.x * TRICERATOPS_ATTACKS.bash.range, ty: p.y + .45 + q.y * TRICERATOPS_ATTACKS.bash.range, z: TRICERATOPS_HORN_SHOT.bashArc, color: "#fff0a0", life: .2, max: .2 }); // z: drawn at the horns' height (presentation)
     } else if (q.kind === "horn" && this.triceratopsHornRoom()) {
       const B = TRICERATOPS_ATTACKS.horn;
+      // it leaves the horn tips (TRICERATOPS_HORN_SHOT), stopping short of a wall between the body and the tips; same damage, speed, range
+      const H = TRICERATOPS_HORN_SHOT, w = mapWidth(this.map, this.area), n = Math.hypot(q.x, q.y) || 1;
+      const open = (d) => projectileTileOpen(this.map, w, p.x + .5 + q.x / n * d, p.y + .45 + q.y / n * d);
+      const clear = (end) => { let ok = 0; for (let i = 1; ; i++) { const d = Math.min(end, i * H.step); if (!open(d)) return ok; ok = d; if (d >= end) return ok; } }; // the farthest open point up to `end`
+      const reach = clear(H.forward), tip = Math.max(reach, clear(H.tip));
+      const ahead = Math.max(0, tip - reach); // drawn from the horn tips (or the wall short of them), settling onto the true path
       this.projectiles.push({ id: `triceratops-horn-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`,
-        x: p.x + .5, y: p.y + .45, dx: q.x, dy: q.y, speed: B.speed, life: B.range / B.speed,
+        x: p.x + .5 + q.x / n * reach, y: p.y + .45 + q.y / n * reach, visualHeight: H.height, visualLaunch: { v: 1, dx: q.x / n * ahead, dy: q.y / n * ahead, dz: 0, settle: H.settle }, dx: q.x, dy: q.y, speed: B.speed, life: B.range / B.speed,
         damage: B.damage, damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 0,
         glyphHost: "melee", triceratopsHorn: true, toolUseNewborn: true, rr: chargedRelease(this, B.stamina) }); // Rapid Reload: a charged horn, paid in stamina
       this.triceratopsHornContact = { mount: m.id, kind: "horn", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };
@@ -7658,7 +7824,22 @@ export class Game {
     return { ok: true, message: (this.message = message || `You climb down from ${mountName(m).replace(/^The /, "the ")}, and it is gone back to your stable. ${mountLifeText(m)} left.`) };
   }
   // Act with nothing near in the open world: get down, or call the mount ridden last.
-  actMount() { if (this.area !== "overworld" && !isBeastHotelId(this.save.session.activeDungeonId) || !ensureMounts(this.save).stable.length) return null; return ridingMount(this.save) ? this.dismount() : this.summonMount(); }
+  mountCallable() { return (this.area === "overworld" || isBeastHotelId(this.save.session.activeDungeonId)) && ensureMounts(this.save).stable.length > 0; }
+  actMount() { if (!this.mountCallable()) return null; return ridingMount(this.save) ? this.dismount() : this.summonMount(); }
+  // Tim, 2026-11-18: hold Act (an Act press with nothing near) for MOUNT_RIDE.callHold seconds to call the mount or get down. While it
+  // fills, the message says so (and mountHoldProgress fills the Act button); letting go first cancels and the tap reads as before mounts.
+  // A finished hold waits for the button to be released.
+  mountHoldTick(dt, held) {
+    const q = this.mountHold; if (!q) return null;
+    if (!held || !this.mountCallable() || aboard(this.save)) { this.mountHold = null; if (q.t >= 0 && q.shown && this.message === q.shown) this.message = "Nothing nearby responds."; return null; } // let go early: the tap reads as it did before mounts
+    if (q.t < 0) return null;
+    q.t += dt;
+    if (q.t < MOUNT_RIDE.callHold) { if (!q.shown) this.message = q.shown = ridingMount(this.save) ? "Getting down…" : "Calling your mount…"; return null; }
+    q.t = -1e9; q.shown = null; return this.actMount();
+  }
+  mountHoldProgress() { const q = this.mountHold; return q && q.t >= 0 ? Math.min(1, q.t / MOUNT_RIDE.callHold) : 0; }
+  // While riding a Triceratops: slots B, C and D become its attacks (TRICERATOPS_CONTROLS), Jump its landing. Display and input only.
+  triceratopsControls() { const m = this.mountRide?.(); return persistentMount(m) ? { variant: m.variant === "silly" ? "silly" : "normal", jump: TRICERATOPS_CONTROLS.jump[m.variant === "silly" ? "silly" : "normal"] } : null; }
   releaseStabled(id) { const m = releaseMount(this.save, id); if (m) { if (!ridingMount(this.save)) this._mountHp = null; this.message = `You let ${mountName(m).replace(/^The /, "the ")} go. It is gone from your stable.`; } return m; }
   // Each frame: the ride runs down; a death, an indoor step, water, a skiff, the robot, the drone or the glider gets you down
   // first, and a heavy blow (MOUNT_RIDE.knockoff of maximum health in one frame) throws you off.
@@ -11604,16 +11785,20 @@ export class Game {
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (this.cycloneHold) this.tickCycloneHold(now, input.held?.(this.cycloneHold.action) === true); // the Cyclone Heel: let go (or landed), it spins
+    let mountPress = null; const mounted = this.triceratopsControls(); // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks through the accepted Dodge path
+    if (mounted) { for (const a of ["spell", "spell2", "spell3"]) if (input.consume(a)) mountPress ||= TRICERATOPS_CONTROLS[a]; if (this.triceratopsCharge) mountPress = null; } // a charge under way (held Dodge or a button's) is not cut short
+    else {
     if (input.consume("spell")) { this.clearAttackBuffer(); this.pressSlot("a", "spell", input, now); }
     if (input.consume("spell2")) { this.clearAttackBuffer(); this.pressSlot("b", "spell2", input, now); }
     if (input.consume("spell3")) { this.clearAttackBuffer(); this.pressSlot("c", "spell3", input, now); } // release 874: slot C
+    }
     if (this.riftPress) { const q = this.riftPress; if (input.held?.(q.action) === true) { q.held += dt; if (q.held >= RIFT_AIM.hold) { this.riftPress = null; this.aimRiftStep(now, q.slot); } } else { this.riftPress = null; this.castSlot(q.slot, now); } } // RIFT_AIM.hold: let go first, a step; held, the aim
-    const dodgePressed = input.consume("dodge"); if (dodgePressed) this.clearAttackBuffer();
+    const dodgePressed = input.consume("dodge") || !!mountPress; if (dodgePressed) this.clearAttackBuffer();
     if (dodgePressed && !this.cursed("dodge", now)) { // release 737: NO DODGE
       const lockedForDodge = this.lockedTarget?.(), lockDx = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.x - p.x : 0, lockDy = lockedForDodge && !lockedForDodge.dead && !lockedForDodge.hidden && !lockedForDodge.untargetable ? lockedForDodge.y - p.y : 0;
       const cardinal = p.facing === "right" ? 0 : p.facing === "down" ? Math.PI / 2 : p.facing === "left" ? Math.PI : -Math.PI / 2;
       const facingYaw = Math.hypot(lockDx, lockDy) > .01 ? Math.atan2(lockDy, lockDx) : cardinal;
-      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.beginTriceratopsDash(now, input.held?.("dodge") === true); if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ this.cancelCyclone(now); /* and the Cyclone Heel, held or spinning */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
+      const mired = stagMireAt(this.packEffects, p.x, p.y), r = dodge(p, now, x, y, dodgeCost(this.save) * (mired ? STAG.mire.dodgeCost : 1)); if (r.ok) { this.beginTriceratopsDash(now, mountPress ? mountPress.charge > 0 : input.held?.("dodge") === true, mountPress?.charge || 0); if (!aboard(this.save) && !this.mountRide?.()) markShadowTrail(this, p.x, p.y, now, "dodge"); /* the dodge's after-images (presentation only) */ this.cancelPendingMeleeContact('dodge'); this.resolveToolSwing(now); /* great-sweep.ts: a dodge cancels the spin; the rest of its blow lands at once */ this.cancelFists(now); /* 2026-11-13: a dodge cancels any fist step or charge */ this.cancelCyclone(now); /* and the Cyclone Heel, held or spinning */ p.dodgeMired = mired; tesseractHarm(this.save, p, armorGlyphBonus(this.save).dodgeHarm); /* a Tesseract's cost: health per dodge */ } // release 708: the Briar Stag's mire
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
@@ -11947,8 +12132,9 @@ export class Game {
     if (!fellIntoHazard&&input.consume("interact")) {
       this.save.aimMode = "act";
       this.save.toolMode = false;
-      this.interact();
+      this.interact(); // with nothing near, this arms the hold that calls the mount
     }
+    if (this.mountHold) this.mountHoldTick(dt, !fellIntoHazard && input.held?.("interact") === true); // hold Act: call the mount or get down
     const sanctuary=this.area==="overworld"?settlementSanctuary(this.map,this.rx,this.ry,this.save):null;
     if(this.area==="overworld"&&footprintInsideStructure(this.map,width,p.x,p.y)){
       const escaped=this.enemies.filter(e=>e.gatePredator&&!e.dead&&e.aggro);
