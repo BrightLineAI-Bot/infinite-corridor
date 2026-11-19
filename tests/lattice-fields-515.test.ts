@@ -21,7 +21,7 @@ const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false };
 const field = (g, extra = {}) => { const e = { id: 'spell-f', kind: 'stillpoint', glyphHost: 'spell', glyphSpell: 'stillpoint', x: g.player.x + .5, y: g.player.y + .45, life: 5, radius: 2.8, pulse: 99, untilPulse: 99, damage: 0, pulseIndex: 0, hits: {}, ...extra }; g.effects.push(e); return e; };
 
 test('the five field passives are Lattice passives that need nothing learned', () => {
-  assert.equal(FIELD_KEYS.length, 7); // 2026-11-19: Tempo and Shatterpoint (hit-cast-passives.ts)
+  assert.equal(FIELD_KEYS.length, 8); // 2026-11-19: Tempo and Shatterpoint (hit-cast-passives.ts); Power Aegis
   const { s } = arena(); assert.ok(latticeOpen(s), 'the Lattice is open in this fixture');
   for (const key of FIELD_KEYS) { assert.equal(passiveForm(key).name, fieldForm(key).name); const r = toggleLatticePassive(s, key); if (s.lattice.passives.length <= 2) assert.ok(r.ok || /slot/.test(r.message), r.message); }
   assert.ok(s.lattice.passives.every((k) => FIELD_KEYS.includes(k)));

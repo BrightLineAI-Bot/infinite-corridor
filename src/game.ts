@@ -177,7 +177,7 @@ import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, f
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.ts"; // release 487
-import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -190,12 +190,15 @@ import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSu
 import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
+// Power Aegis (game.ts parryBlow): how a blow reached the Wayfarer. A creature's own blow (the parry may stagger it), and a pack
+// creature's blow (that, and it may be one of its moving bolts, sent back as a shot).
+const PARRY_STRIKE = 1, PARRY_PACK = 3;
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
-export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "parryFlashAt", "reflectFlashAt" /* Power Aegis: the perfect window, the empowerment, the flashes (drawn only) */, "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
@@ -203,7 +206,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
-export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
   const p = game.player || {};
@@ -2143,7 +2146,7 @@ export function updateProjectiles(
             Math.hypot(q.x-e.x,q.y-e.y)<1e-6 && (e.astralMount?.status === "mounted" && e.astralMount.ownerId === q.id ||
               q.astralMount?.status === "mounted" && q.astralMount.ownerId === e.id)) : null;
           const dealt = damageFor(p, e), hpBefore = Math.max(0, e.hp);
-          e.hp -= landed(dealt);
+          e.hp -= p.aegisReflected ? dealt : landed(dealt); // Power Aegis: a reflected shot carries the foe's own damage back (not the Wayfarer's scale)
           const actual = Math.max(0, hpBefore - Math.max(0, e.hp));
           if (dealt > 0) { // a scattered blow (release 245) neither flashes nor staggers
             e.hitFlash = 0.18;
@@ -7102,6 +7105,7 @@ export class Game {
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
     amount *= weakenScale(source, now); // Arcane Edge's Dusk: a weakened foe's blows take less
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
+    this.parryBlow(source, now, amount, null, options.source || null, PARRY_PACK); // Power Aegis: `amount` is what the blow carried
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
     p.invulnerableUntil = now + tacticsHurtWindow(source, now, options.beam ? 320 : 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
@@ -7452,7 +7456,7 @@ export class Game {
       release(source) { if (p.heldBy === source.id) { p.heldUntil = 0; p.heldFirm = false; } },
       push(source, step, radius) { const ddx = p.x - source.x, ddy = p.y - source.y, dd = Math.hypot(ddx, ddy) || 1; if (dd > radius || now < (p.dodgeUntil || 0)) return false; displacePlayer(ddx / dd * step, ddy / dd * step); return true; }, // release 235: the Blob's jet
       dragonDue: () => !map.pentArena && game.dragonDue(), /* the Stillworks is never claimed */ dragonLava: () => game.dragonLavaNow(), dragonLavaPreview: () => { const r = game.dragonClock(); return castTiles(map, game.save.seed, game.rx, game.ry, r.casts + 1); }, playerMaxHp: () => game.save.maxHp || p.maxHp || 100, // release 709
-      frenzy: (n) => game.frenzyHit(now, n), // release 710: the Doom Chaser's roar
+      frenzy: (n) => game.parryWard() ? undefined : game.frenzyHit(now, n), // release 710 (Power Aegis: not on a parried roar): the Doom Chaser's roar
       // The Wild Stegosaurus (monster-pack.ts STEGO): a one-off blow at another creature (its kills pay nothing); its climb over rock and
       // walls (the Stalker's rule: the open world only, never into a building, shelter or town); a tall thin tree torn out for a club (kept
       // down as a felled tree is: its state and a world flag); its cut tail, kept on its hunt for the rest of that hunt.
@@ -7481,7 +7485,7 @@ export class Game {
       // The Spinosaurus (monster-pack.ts SPINO): bleed (bleed.ts) from a landed slash or bite; the bite mark over the screen; the roar's
       // shake (none under reduced motion: the renderer); its command grab (held fast: no struggle, no action), carried in its jaws,
       // then thrown (the collision mover, as a push); its fossil shed, kept on its hunt.
-      bleed() { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (applyBleed(game.save)) game.message = BLEED.text.start; return true; },
+      bleed() { if (game.parryWard()) return false; /* Power Aegis: a parried blow's riders never take hold */ if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (applyBleed(game.save)) game.message = BLEED.text.start; return true; },
       biteMark() { game.spinoBiteMark = 1; }, // the screen's bite mark (decays in update)
       indoors: game.area === "dungeon", // the dino duel's rockfall: every interior has a ceiling (monster-pack.ts dinoBigMove)
       // The dino duel's sound cues (monster-pack.ts dinoCue): kept for main.ts to hand to battle-sfx.ts each frame, the newest
@@ -7492,7 +7496,7 @@ export class Game {
       carry(x, y) { if (footprintOpen(map, width, x, y)) { p.x = x; p.y = y; } },
       // The Earth Apatosaurus (earth-apato.ts): its root venom (apato-poison.ts), its tree clones (grown from its saplings by its beam;
       // its minions: no reward, gone with it) and a clone's coil on the Wayfarer (struggled out of by mashing attack: game.ts apatoLatchInput).
-      apatoPoison(stacks, source) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (dosePoison(game.save, stacks, source)) game.message = POISON.text.start; return true; },
+      apatoPoison(stacks, source) { if (game.parryWard()) return false; if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius || p.hp <= 0) return false; if (dosePoison(game.save, stacks, source)) game.message = POISON.text.start; return true; },
       spawnApatoClone(owner, x, y, n) {
         if (game.enemies.length >= 32) return null;
         const c = createCombatant("apatoClone", x, y, false, []); tuneApatoClone(c, owner, n); c.threatRing = owner.threatRing; ensureAI(c); game.enemies.push(c); return c;
@@ -7503,19 +7507,19 @@ export class Game {
       // The Stillworks' cover (pentagon-arena.ts PENTAGON_ARENA.cover, arena version 2): a pillar or standing lattice between the beast
       // and the Wayfarer turns the Sunfall. Only in an arena that has the pillars; everywhere else the Sunfall is as it was.
       sunfallShaded: map.stillworks?.cover ? (e) => { const shade = !hasLineOfSight({ x: e.x + .5, y: e.y + .5 }, { x: p.x + .5, y: p.y + .7 }, map, width, true); if (shade) game.message = PENTAGON_ARENA.messages.shaded; return shade; } : null,
-      confuse(seconds) { if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
-      curse: (source, n) => game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses
+      confuse(seconds) { if (game.parryWard()) return; if (!(seconds > 0) || p.hp <= 0 || now < (p.dodgeUntil || 0)) return; if (!(now < (p.confusedUntil || 0))) game.message = HAUNT.text.confused; p.confusedUntil = Math.max(p.confusedUntil || 0, now + seconds * 1000); }, // release 731: the haunts turn you about
+      curse: (source, n) => game.parryWard() ? undefined : game.layHauntCurses(source, n, now), // release 737: a landed puff or howl lays haunt curses
       say: (text) => { if (text) game.message = text; }, // the Gloomvast's Dark and reveal (haunts.ts GLOOM_FINALE.text)
       gloomSpots: (c, n, key) => game.gloomSpots(c, n, key), spawnGloomOrb: (owner, x, y, tag, brain) => game.spawnGloomOrb(owner, x, y, tag, brain),
-      ignite(seconds, dps) { if (now < (p.dodgeUntil || 0)) return; const f = game.playerFire, on = f && f.left > 0; if (on && f.dps > dps) return; game.playerFire = { left: on && f.dps === dps ? Math.max(f.left, seconds) : seconds, dps, tick: f?.tick ?? 1 }; }, // balance pack (C11): the stronger burn keeps its own time // release 708: set alight (the Briar Stag's burning trees)
-      poison(seconds, dps) { if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(eliteStateInPlace(game.save).status, seconds, dps); },
+      ignite(seconds, dps) { if (now < (p.dodgeUntil || 0) || game.parryWard()) return; const f = game.playerFire, on = f && f.left > 0; if (on && f.dps > dps) return; game.playerFire = { left: on && f.dps === dps ? Math.max(f.left, seconds) : seconds, dps, tick: f?.tick ?? 1 }; }, // balance pack (C11): the stronger burn keeps its own time // release 708: set alight (the Briar Stag's burning trees)
+      poison(seconds, dps) { if (game.parryWard()) return; if (sanctuary && Math.hypot(p.x - sanctuary.x, p.y - sanctuary.y) < sanctuary.radius) return; if (now < (p.dodgeUntil || 0)) return; applyPoison(eliteStateInPlace(game.save).status, seconds, dps); },
       effects: () => game.packEffects || [],
       elevation: (x, y) => elevationAt(map, width, x, y), // release 235: high ground stays above the Blob
       // Release 257: the Lightning Giant's shock knocks the Wayfarer flat; dodge frames already blocked the hit itself.
-      stun(seconds) { if (!(seconds > 0) || p.hp <= 0) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.cancelPendingMeleeContact("knockdown"); game.cancelConsumeVisual('knockdown'); game.message = "The shock knocks you flat!"; },
+      stun(seconds) { if (!(seconds > 0) || p.hp <= 0 || game.parryWard()) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.cancelPendingMeleeContact("knockdown"); game.cancelConsumeVisual('knockdown'); game.message = "The shock knocks you flat!"; },
       // One landed lightning hit from the Lightning Giant: every GIANT.stunHits-th one knocks the Wayfarer down (Tim 2026-10-21).
-      shockHit() { if (p.hp <= 0 || now < (p.stunnedUntil || 0)) return; p.shockCount = (p.shockCount || 0) + 1; p.shockAt = now; if (p.shockCount >= GIANT.stunHits) { p.shockCount = 0; this.stun(GIANT.stunTime); } },
-      slow(factor, seconds) { const on = now < (p.slowUntil || 0), cur = on ? (p.slowFactor || 1) : 1; if (on && cur < factor) return; p.slowUntil = on && cur === factor ? Math.max(p.slowUntil, now + seconds * 1000) : now + seconds * 1000; p.slowFactor = factor; }, // balance pack (C11): the stronger slow keeps its own time
+      shockHit() { if (game.parryWard() || p.hp <= 0 || now < (p.stunnedUntil || 0)) return; p.shockCount = (p.shockCount || 0) + 1; p.shockAt = now; if (p.shockCount >= GIANT.stunHits) { p.shockCount = 0; this.stun(GIANT.stunTime); } },
+      slow(factor, seconds) { if (game.parryWard()) return; const on = now < (p.slowUntil || 0), cur = on ? (p.slowFactor || 1) : 1; if (on && cur < factor) return; p.slowUntil = on && cur === factor ? Math.max(p.slowUntil, now + seconds * 1000) : now + seconds * 1000; p.slowFactor = factor; }, // balance pack (C11): the stronger slow keeps its own time
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {
         const c = createCombatant(kind, x, y, false, []);
@@ -10339,13 +10343,122 @@ export class Game {
     const fx = { id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: spell.id, brawler: true, x, y, life: spell.lifetime, radius: spell.radius, pulse: spell.pulse, untilPulse: 0, damage: Math.max(1, Math.round(damage)), pulseIndex: 0, hits: {}, glyphHost: "spell", glyphSpell: spell.id, ...extra };
     this.effects.push(fx); return fx;
   }
+  // Power Aegis (hit-cast-passives.ts POWER_AEGIS): every damage path a foe's blow, shot or blast reports here once its damage
+  // is taken (the Aegis turns it aside at the end of the frame). `foe`: the creature behind it (null: none known); `carried`: the
+  // damage the blow carried; `shot`: the game projectile that struck (turned round here, in place), else null; `attack`: the
+  // move's id where the path knows it; `how`: PARRY_STRIKE (a creature's own blow: the parry may stagger it), PARRY_PACK (that,
+  // and it may be one of its moving bolts), 0 (a shot or a blast: no stagger). Returns whether the blow is parried: inside the
+  // live window and never a command grab (aegisGrab). The first parried blow of a frame is the one that goes back; the window
+  // closes at the end of that frame (one parry a cast). Allocates nothing; reflected damage never parries (`_reflecting`).
+  parryBlow(foe, now = this.lastUpdateNow || 0, carried = 0, shot = null, attack = null, how = 0) {
+    if (this._reflecting || !(now < (this.aegisPerfectUntil || 0)) || !(now < (this.aegisUntil || 0))) return false;
+    const body = foe && typeof foe === "object" ? foe : null;
+    if (this.aegisGrab(body, attack, now)) return false; // a command grab goes through; the Aegis blocks its damage as always
+    this._parryHit = true;
+    if (body && how & PARRY_STRIKE && !this._parryFoe) this._parryFoe = body; // the stagger (perfectParry)
+    if (this._parryBack) return true; // only the first goes back
+    this._parryBack = true; this._reflectFoe = body; this._parryCarried = Math.max(0, Number(carried) || 0);
+    this._parryShot = !!shot && this.turnShot(shot, now);
+    this._parryBolt = !shot && (how & PARRY_PACK) === PARRY_PACK && this.packBoltSpent();
+    return true;
+  }
+  // Command grabs are never parried (POWER_AEGIS.grabs, any ATTACK_MODULES move tagged "grab", the Stalker's ape arm, the sea's
+  // biting draggers, and any blow from the creature holding the Wayfarer).
+  aegisGrab(foe, attack, now) {
+    const P = POWER_AEGIS, id = attack || foe?.pack?.attack || null, p = this.player;
+    if (id && (P.grabs.includes(id) || !!ATTACK_MODULES[id]?.tags?.includes("grab"))) return true;
+    if (!foe) return false;
+    if (foe.stalkAct && P.stalkerGrabs.includes(foe.stalkAct.kind)) return true;
+    if (foe.seaKind && P.seaGrabs.includes(foe.seaKind)) return true;
+    return foe.id != null && p.heldBy === foe.id && now < (p.heldUntil || 0);
+  }
+  // A parried blow's riders (burn, poison, bleed, confusion, slow, stun, curses, the frenzy) are not laid (packWorld reads this).
+  parryWard() { return this._parryHit === true; }
+  // A creature's moving bolt (an orb, a dart, debris) that struck this frame: spent (life 0) and still beside the Wayfarer.
+  packBoltSpent() {
+    const p = this.player;
+    for (const f of this.packEffects || []) if (!(f.life > 0) && (Number(f.vx) || Number(f.vy)) && Math.hypot(f.x - p.x, f.y - p.y) <= 2) return true;
+    return false;
+  }
+  // Who loosed a game projectile: its owner mark, else the creature whose id begins its own.
+  shotOwner(q) {
+    const id = q?.visualOwnerId || q?.ownerId; if (id) { for (const e of this.enemies) if (e.id === id) return e; return null; }
+    const s = typeof q?.id === "string" ? q.id : "";
+    let best = null; for (const e of this.enemies) { const k = typeof e.id === "string" ? e.id.length : 0; if (k && s.length > k && s.charCodeAt(k) === 58 && s.startsWith(e.id) && (!best || k > best.id.length)) best = e; }
+    return best;
+  }
+  // Where a reflect goes: `foe` while it can be struck, else the nearest foe that can within POWER_AEGIS.seek tiles of (x, y).
+  reflectTarget(foe, x, y) {
+    const ok = (e) => e && !e.dead && e.hp > 0 && e.kind !== "npc" && !e.untargetable && !e.illusion && !e.astralAllyOf;
+    if (ok(foe) && this.enemies.includes(foe)) return foe;
+    let best = null, bd = POWER_AEGIS.seek;
+    for (const e of this.enemies) { if (!ok(e) || e.ambient || e.passiveBehavior) continue; /* never a creature at peace */ const d = Math.hypot(e.x + .5 - x, e.y + .45 - y); if (d <= bd) { bd = d; best = e; } }
+    return best;
+  }
+  // A reflect's damage on `e`: a boss-class foe (staggerClass "boss": bosses, world beasts, room beasts) takes at most bossCap of
+  // its maximum health from one.
+  reflectDamage(e, n) { const P = POWER_AEGIS; n = Number(n) || 0; return staggerClass(e) === "boss" ? Math.min(n, Math.max(1, Math.round((Number(e.maxHp) || 0) * P.bossCap))) : n; }
+  // A parried game projectile turns round where it struck: friendly, gold, faster, homing on whoever loosed it (else the nearest
+  // foe), carrying POWER_AEGIS.reflect of its damage. `minor`: a foe's blow sent back, not the Wayfarer's (no on-hit passives).
+  turnShot(q, now) {
+    const P = POWER_AEGIS, to = this.reflectTarget(this.shotOwner(q), q.x, q.y);
+    let dx = -(Number(q.dx) || 0), dy = -(Number(q.dy) || 0); if (to) { dx = to.x + .5 - q.x; dy = to.y + .45 - q.y; }
+    const m = Math.hypot(dx, dy) || 1;
+    Object.assign(q, { dead: false, impact: null, hostile: false, aegisReflected: true, aegisAt: now, minor: true, dx: dx / m, dy: dy / m, speed: (Number(q.speed) || 4) * P.shotSpeed, life: P.shotLife, age: 0,
+      damage: Math.max(1, Math.round((Number(q.damage) || 1) * P.reflect)), pierce: 0, path: "straight", homingTurnRate: 0, splitAfter: null, jumpable: false, seekId: to ? to.id : null, seekTurn: P.shotTurn });
+    if (q.hits && typeof q.hits === "object") { for (const k in q.hits) delete q.hits[k]; } else q.hits = {};
+    return true;
+  }
+  // The parried blow goes back (end of the frame, once every creature has moved): a shot already turned; a creature's bolt is
+  // sent back from the Wayfarer as a shot; anything else lands on its maker (reflectBlow).
+  aegisReflect(now) {
+    const P = POWER_AEGIS, n = this._parryCarried * P.reflect;
+    if (this._parryShot || !(n > 0)) return 0;
+    if (this._parryBolt) { const p = this.player, cap = this.area === "dungeon" ? 32 : 64, x = p.x + .5, y = p.y + .45, to = this.reflectTarget(this._reflectFoe, x, y);
+      if (to && this.projectiles.length < cap) { const dx = to.x + .5 - x, dy = to.y + .45 - y, m = Math.hypot(dx, dy) || 1;
+        this.projectiles.push({ id: `aegis-bolt-${Math.round(now)}`, x: x + dx / m * .5, y: y + dy / m * .5, dx: dx / m, dy: dy / m, speed: P.boltSpeed, life: P.shotLife, age: 0, damage: Math.max(1, Math.round(n)), hostile: false, aegisReflected: true, aegisAt: now, minor: true, path: "straight", hits: {}, seekId: to.id, seekTurn: P.shotTurn });
+        return n; } }
+    return this.reflectBlow(this._reflectFoe, n, now);
+  }
+  // Direct reflected damage on the creature that made the blow, with a gold flash on it (brawler-spells.ts drawPowerAegis).
+  reflectBlow(foe, n, now = this.lastUpdateNow || 0) {
+    if (!foe || foe.dead || !(foe.hp > 0) || foe.kind === "npc" || foe.untargetable || foe.illusion || foe.astralAllyOf || !this.enemies.includes(foe)) return 0;
+    const d = Math.max(1, Math.round(this.reflectDamage(foe, n))), before = foe.hp;
+    this._reflecting = true;
+    try {
+      foe.hp -= d; foe.hitFlash = .18; foe.aggro = true; foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? .1 : .18); // as a shot's hit; the stagger governor bounds it
+      this.astralPlayerHit(foe, Math.max(0, before - Math.max(0, foe.hp)));
+      if (foe.hp <= 0 && !foe.dead) { foe.dead = true; this.defeatEnemy(foe); }
+    } finally { this._reflecting = false; }
+    this.reflectFlashAt = now; this.reflectFlashX = foe.x; this.reflectFlashY = foe.y;
+    return d;
+  }
+  // A perfect parry: the window closes (one a cast), the Aegis is ready again, part of an Essence Walk price comes back, the
+  // empowerment starts, a foe that struck from within `reach` tiles staggers (bosses, world beasts and elites `bossShare`), and the
+  // parried blow goes back (aegisReflect).
+  perfectParry(now = this.lastUpdateNow || 0, foe = null) {
+    const P = POWER_AEGIS, p = this.player;
+    this.aegisPerfectUntil = 0;
+    if (!powerAegisOn(this.save)) return false;
+    const cds = (this.save.magicSkills ||= {}).cooldowns ||= {}; cds["spell:aegis"] = 0; this.aegisLockUntil = 0;
+    if (this.aegisPaid > 0 && p.hp > 0) p.stamina = Math.min(Number(this.save.maxStamina) || Number(p.stamina) || 0, (Number(p.stamina) || 0) + this.aegisPaid * P.staminaShare);
+    this.aegisPaid = 0;
+    this.powerAegisUntil = now + P.buffMs; this.parryFlashAt = now; this.parryCue = true; // main.ts plays the cue (NOTICE_SOUNDS.parry)
+    let staggered = false;
+    if (foe && !foe.dead && foe.kind !== "npc" && !foe.staggerImmune && !foe.untargetable && this.enemies.includes(foe) && Math.hypot(foe.x - p.x, foe.y - p.y) <= P.reach) {
+      foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? P.stun * P.bossShare : P.stun); foe.hitFlash = Math.max(Number(foe.hitFlash) || 0, .18); staggered = true; // the stagger governor (monster-pack.ts) still bounds it
+    }
+    const back = this.aegisReflect(now) > 0 || this._parryShot;
+    this.message = `Perfect! The Aegis parries${back ? " and sends it back" : ""}${staggered ? "; your foe reels" : ""}. Power Aegis: ${P.buffMs / 1000} s.`;
+    return true;
+  }
   castBrawler(spell, cds, key, now = this.lastUpdateNow || 0) {
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
     const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     if (spell.essence) { this.essenceUntil = now + ESSENCE_WALK.seconds * 1000; echoEvent(this, "spell", now); this.message = "Essence Walk: your spells need not wait; recovering ones cost stamina."; return true; } // Essence Walk (2026-11-05): a recast refreshes the window, never stacks
     if (spell.id === "imbue-weapon") { this.imbueUntil = now + IMBUE.seconds * 1000; echoEvent(this, "spell", now); const n = wayfarerDamage(this.imbueBonus(now)); this.message = n > 0 ? `Imbue Weapon: your melee hits carry ${n} magic damage.` : "Imbue Weapon: with no Focus put in, your weapon carries no magic."; return true; } // Imbue Weapon (2026-11-04)
-    if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
+    if (spell.id === "aegis") { this.aegisUntil = now + B.ms; this.aegisPerfectUntil = powerAegisOn(this.save) ? now + Math.min(B.ms, POWER_AEGIS.windowMs) : 0; this.aegisPaid = 0; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485; Power Aegis opens its perfect window (hit-cast-passives.ts POWER_AEGIS)
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; if (echoPlan(this.glyphLoadout("spell", spell.id)) && !this.shadowCloneActive(now)) { const o = cloneOffset(null, this.save.lastAim, SHADOW_CLONE.near); this.shadowClone = { ox: o.x, oy: o.y, until: now + BRAWLER_ECHO.echoClone * 1000, boxing: true }; this.message += " An echo of you boxes beside you."; } return true; } // release 485; 503: Echo spawns a short melee clone
     return false;
   }
@@ -11719,6 +11832,7 @@ export class Game {
     if (!ok) { settleCastWind(this, false); return false; }
     if (spell.id === "orbit-volley" && this.orbit && !this.orbit.flight) this.orbit.essence = true; // its launch leaves the cooldown alone
     p.stamina = Math.max(0, p.stamina - cost); settleCastWind(this, true);
+    if (spell.id === "aegis") this.aegisPaid = cost; // Power Aegis: a perfect parry gives back POWER_AEGIS.staminaShare of it
     this.message = `${this.message} (Essence Walk: ${cost} stamina.)`;
     // ESSENCE_WALK.lockout: spent down too far for another, it is locked for its whole cooldown, Essence Walk or not.
     if (essenceLockout(spell.id) && spell.id === "aegis" && p.stamina < cost) { const full = this.spellCooldownFor(spell); cds[key] = Math.max(cds[key] || 0, full); this.aegisLockUntil = now + full * 1000; this.message += ` Your stamina is spent: ${spell.name} is locked for ${Math.ceil(full)}s.`; }
@@ -12034,6 +12148,7 @@ export class Game {
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    this._parryHit = false; this._parryFoe = null; this._parryBack = false; this._reflectFoe = null; this._parryShot = false; this._parryBolt = false; this._parryCarried = 0; // Power Aegis: the blows of this frame (parryBlow)
     if (this.ordinaryCloseViewBody()) this._hurtVisualWitness = false;
     this._consumeVisualAcceptedHp = null;
     this.markWalked(); // DIG_GATES: the floor walked in an interior
@@ -12482,7 +12597,7 @@ export class Game {
       (e) => {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
-      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */,...(shot.toolUseNewborn?{toolUseNewborn:true}:{}),...(shot.glyphSpell?{glyphSpell:shot.glyphSpell}:{}),...(shot.fireBomb?{fireBurst:true}:{})/* release 547: Fire Burst's own glyphs and its flame */})},
+      (shot)=>{this.clusterShell(shot);return this.effects.push({id:"blast-"+shot.id,kind:shot.hostile?"enemy-blast":"rift-blast",x:shot.x,y:shot.y,life:.32,radius:shot.blastRadius||2,untilPulse:0,pulse:99,damage:shot.damage,hostile:!!shot.hostile,hits:{},...(!shot.hostile&&shot.glyphHost?{glyphHost:shot.glyphHost}:{})/* release 467 (Codex audit I001): the Bombard's blast keeps its tool glyphs, once per foe */,...(shot.toolUseNewborn?{toolUseNewborn:true}:{}),...(shot.glyphSpell?{glyphSpell:shot.glyphSpell}:{}),...(shot.fireBomb?{fireBurst:true}:{})/* release 547: Fire Burst's own glyphs and its flame */,...(shot.hostile&&shot.visualOwnerId?{ownerId:shot.visualOwnerId}:{})/* Power Aegis: who a parried blast goes back to */})},
       p,
       (shot)=>{
         const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;
@@ -12490,10 +12605,10 @@ export class Game {
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
-        if (shot.hostile) this.noteHurtVisualImpact();
+        if (shot.hostile) this.noteHurtVisualImpact(); this.parryBlow(null, now, shot.damage, shot); // Power Aegis: a shot parried turns round (turnShot)
         p.invulnerableUntil=now+700;
       },
-      (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
+      (shot, e) => shot.aegisReflected ? this.reflectDamage(e, shot.damage) /* Power Aegis: a foe's blow sent back (bossCap) */ : (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
       (shot, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (shot.orrery) orreryOnHit(this, shot, e, now); /* the Aether Orrery's combos */ if (shot.mirage && shot.sweepFreeze && !shot.hostile) this.sweepFreezeHit(e, SWEEP_FREEZE.touch.mirage); /* the awakened Great Sweep's Mirage blades freeze what they cut */ if (shot.assault) this.assaultHit(shot, e); /* Continuous Assault */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.frenzyBlow(e); /* balance pack (C10): a tool shot is a blow (its sunburst shards are not more blows) */ if (shot.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(shot.glyphHost), e, dealt, { echo: !!shot.echo }); if (actual > 0) this.tesseractHitHeal(shot.glyphHost === "spell" || shot.damageType === "magic" ? "spell" : "melee", now, e); } if (shot.glyphHost === "spell" && !shot.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!shot.hostile && !shot.echo && !shot.shard && !shot.minor) this.landHit(e, actual, now, shot); /* on-hit Echoes: a blow, as the frenzy counts one */ },
       (this.packEffects || []).filter(f => f.kind === "psyWall" && !(f.arming > 0)), // swept wall contact precedes actor collision at every substep
       (bx, by) => { const b = buildOn(this, bx, by); if (b) strikeBuild(this, b); }, // release 265: a build absorbs the shot
@@ -12502,7 +12617,7 @@ export class Game {
       this.shotOccluder(), // Close View only: raised ground stops the Wayfarer's shots (tool-forms.ts RANGED_OCCLUSION)
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();p.invulnerableUntil=now+700}}
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();this.parryBlow(fx.ownerId?this.enemies.find(q=>q.id===fx.ownerId)||null:null,now,fx.damage);p.invulnerableUntil=now+700}} // Power Aegis: a blast goes back to whoever loosed it
     const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
     if(this.effects.length)this.tickHammerClaps(dt); // the awakened Hammerfall's clap: its closing lines draw foes in (brawler-spells.ts HAMMER_CLAP.pull)
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
@@ -12588,7 +12703,7 @@ export class Game {
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
-      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2},
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
       pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}},
       // Leviathans (W4): krakens raise bounded tentacles (summoned, no rewards) and the Stormkraken inks the sea.
       tentacles:(o)=>this.enemies.filter(q=>!q.dead&&q.summonedBy===o.id).length+seaSummons.filter(q=>q.summonedBy===o.id).length,
@@ -12652,7 +12767,7 @@ export class Game {
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );
-        this.noteHurtVisualImpact();
+        this.noteHurtVisualImpact(); this.parryBlow(e, now, (Number(e.damage) || 0) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1), null, null, PARRY_STRIKE); // Power Aegis: what the blow carried
         p.invulnerableUntil = now + tacticsHurtWindow(e, now, 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
@@ -12716,6 +12831,10 @@ export class Game {
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
     this.applyInkShield(hpStart, now); // release 461: Ink Shield
+    // Power Aegis (hit-cast-passives.ts POWER_AEGIS): a blow inside the Aegis's perfect window is parried (once a cast). Read from
+    // the blows themselves (parryBlow), so a blow the plating or an Ink Shield took is still a parry; the Aegis below turns it aside.
+    if (this._parryHit && !fellIntoHazard && now < (this.aegisPerfectUntil || 0) && now < (this.aegisUntil || 0)) this.perfectParry(now, this._parryFoe);
+    this._parryHit = false; this._parryFoe = null; this._parryBack = false; this._reflectFoe = null; this._parryShot = false; this._parryBolt = false; this._parryCarried = 0;
     // Release 485: Aegis turns every blow aside; Shadow Boxing takes `guard` off what gets through. A fall is not a blow.
     if (p.hp < hpStart && !fellIntoHazard) { if (now < (this.aegisUntil || 0)) p.hp = hpStart; else if (now < (this.boxingUntil || 0)) p.hp = hpStart - (hpStart - p.hp) * (1 - BRAWLER["shadow-boxing"].guard); }
     if (p.hp < hpStart || p.hp < (this._consumeVisualAcceptedHp ?? -Infinity)) this.cancelConsumeVisual('hurt');
