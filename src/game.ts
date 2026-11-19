@@ -95,7 +95,7 @@ import { itemCap, upgradeLimit, upgradedItem, unlockRefinement } from "./items.t
 import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
-import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
+import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
@@ -178,7 +178,7 @@ import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, f
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.ts"; // release 487
-import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { passiveHit, passiveCast, edgeArm, isMeleeSource, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -198,6 +198,7 @@ const PARRY_STRIKE = 1, PARRY_PACK = 3;
 // Tim, 2026-11-19: "reflected damage can count as your own hit". The `src` a direct reflect (reflectBlow) hands landHit: a hit of
 // the Wayfarer's, but not melee, not a tool shot and no charged release (hit-cast-passives.ts passiveHit reads `aegisReflected`).
 const REFLECT_HIT = Object.freeze({ aegisReflected: true });
+const CLONE_HIT = Object.freeze({ melee: true, clone: true }); // the Shadow Clone's swing (cloneSwing): a melee source (hit-cast-passives.ts isMeleeSource)
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
@@ -1237,7 +1238,7 @@ export function characterStats(save) {
       (Number(save.weaponLevel) || 0) * 3 +
       Math.floor((level - 1) * 0.6) +
       Math.floor((Number(primary?.power) || 0) * 0.7) +
-      affixValue(primary, "attack")+(active?.id==='ember-form'?2+rank*2:0)+(active?.id==='force-channel'?rank*2:0) + resonance * APERTURE_RESONANCE.melee + boons.melee)),
+      affixValue(primary, "attack")+skillMeleeBonus(active,rank)/* constellation.ts SKILL_MELEE: Ember Form, Force Channel */ + resonance * APERTURE_RESONANCE.melee + boons.melee)),
     magicBonus: Math.round(( // release 335: armor Ignite now scales whole spells and magic shots
       focus * SCALING_STRENGTH.magic + // items.ts SCALING_STRENGTH (1 a rank)
       Math.floor((level - 1) * 0.45) +
@@ -1246,7 +1247,9 @@ export function characterStats(save) {
     // Tim (2026-11-12): the melee bonus as the equipped weapon reads it (its scaling stat in place of Might; scaledBonus).
     // The boss references (world beasts, the Far Array, Gate Revenants, the Skylands) tune to this blow.
     get weaponBonus() { return scaledBonus(save, weaponScaling(primary), "melee", this); },
-    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+(active?.id==='ember-form'?.12+.06*rank:0)+(ag.reach||0)/* release 461: Long Arm */,
+    attackReach: affixValue(primary, "reach") + affixValue(secondary, "reach") + affixValue(charm, "reach")+skillReachBonus(active,rank)/* SKILL_MELEE: Ember Form */+(ag.reach||0)/* release 461: Long Arm */,
+    // The skills' melee parts of the two above (constellation.ts SKILL_MELEE): skillReach also stretches a punch, Hammerfall and the Great Sweep.
+    skillMelee: skillMeleeBonus(active,rank), skillReach: skillReachBonus(active,rank),
     moveSpeed: affixValue(armor, "movement") + affixValue(charm, "movement")+(active?.id==='quickening'?.12+.08*rank:0)+pairingMods(save).speed+boons.speed+ag.move+edgeMoveBonus(save)/* Arcane Edge: Wind */,
     armorPower,
     charmPower,
@@ -5083,7 +5086,7 @@ export class Game {
   }
   noteSecondSighting(r) {
     journalOnce(this.save, `second-wayfarer:${r.index}`, r.passed ? r.text : `${SECOND_SIGHTINGS[r.index]} ${r.text}`, SECOND_WAYFARER.title); // what was seen at a distance, then what was left
-    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · nobody is ahead of you now`, kind: "quest" }); }
+    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · no one is ahead of you now`, kind: "quest" }); }
   }
   settleArcana() {
     const paid = settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });
@@ -8852,7 +8855,8 @@ export class Game {
   landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || e.kind === "npc") return;
     // Power Aegis: a reflect is the Wayfarer's own hit (Tim, 2026-11-19); whatever its on-hit effects do never parries (`_reflecting`), so nothing ping-pongs
     const rf = !this._reflecting && !!src && typeof src === "object" && src.aegisReflected === true; if (rf) this._reflecting = true;
-    try { const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */ }
+    try { const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */
+      if (isMeleeSource(src)) { onConstellationMelee(this, e, now); /* Ember Skin: every melee hit (Tim, 2026-11-19) */ if (src.brawler === true) this.tesseractHitHeal("melee", now, e); /* a Tesseract's melee heal: punches and melee tools too (swings and arts call it themselves) */ } }
     finally { if (rf) this._reflecting = false; } }
   // hit-cast-passives.ts hooks: a foe's damage multiple now (Tempo), a new charged release's id (Rapid Reload), a spell cast.
   vulnScale(e, now = this.lastUpdateNow || 0) { return vulnScale(e, now); }
@@ -9097,7 +9101,7 @@ export class Game {
     }else{
       const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
       for(const c of q.payload.echoCopies||[])this.effects.push({...fx,id:`${q.id}-echo-${c.index||1}`,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(fx.damage*c.share)),imbue:(fx.imbue||0)*c.share,echo:true,toolUseNewborn:true});
-      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-this.weaponBonus()},q.aim,now);
+      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-this.weaponBonus()},q.aim,now,1,true);
     }
     const v=this.player.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id&&v.toolUse.phase==='startup'&&!v.presentationCancelled){v.toolUse={...v.toolUse,phase:'released',releaseOffsetMs:q.startupMs};if(base&&q.payload.family==='shot')v.toolShotId=base.id;this.player.actionVisualUntil=now+(v.durationMs-q.startupMs);}
     return{released:true,cancelled:false};
@@ -9413,7 +9417,6 @@ export class Game {
       }
       if (!isEcho) this.landHit(e, Math.max(0, hpBefore - Math.max(0, e.hp)), now, "melee"); // on-hit Echoes (a glyph's Echo copy is not a new hit)
       glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: isEcho });
-      onConstellationMelee(this, e, now);
       if (!isEcho && !scattered) this.bellToll(e, dealt + imbued, now); // 2026-11-11: Bell Toll
     }
     if (daggers && !followCut) (this.glyphTimers ||= []).push({ at: now + FOURFOLD_DAGGERS.gapMs, kind: "daggerCut", aim: { x: geometry.dx, y: geometry.dy }, share: isEcho ? echo.share : 1, echoed: isEcho, areaId: this.areaId() }); // the second cut ("//")
@@ -9740,7 +9743,7 @@ export class Game {
     const held = q.mode === "shadow" && foe && Math.hypot(foe.x - p.x, foe.y - p.y) <= q.stop + C.shadow.leash; // still at her foe (a foe carried off past the leash is not struck through the air)
     if (held) { blow(foe.x + .5, foe.y + .45, .5, q.power, [foe], {}); if (q.splash > 0) blow(p.x + .5, p.y + .45, C.radius, q.splash, null, { [`1:${foe.id}`]: true }); } // every turn on her foe; a touch of it on foes at her leg
     else blow(p.x + .5, p.y + .45, C.radius, q.power, null, {});
-    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now, 1, true); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
   }
   cycloneFinish(now) {
     const q = this.cycloneHeel, F = IRON_FISTS; this.cycloneHeel = null; if (!q) return;
@@ -10532,8 +10535,9 @@ export class Game {
     // Spellblade strengthens Hammerfall and the Great Sweep (more damage; the hammer reaches and the sweep spreads farther),
     // and Charged Air the Great Sweep alone (more damage, a wider sweep).
     const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
-    const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1);
-    if (kind === 'great-sweep') { const plan=echoPlan(this.glyphLoadout('tool')); this.startToolSwing(now,{mirage:false,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),radius:B.radius*fieldGrow,imbue:this.imbueBonus(now),healShare:boxing?.heal||0,echoCopies:(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1})),priorTool,priorPose,direction:sweepDirection}); this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); this.cancelConsumeVisual('tool'); this.message = 'Great Sweep!'; return true; } // great-sweep.ts (2026-11-14): the blade itself, swung all the way round, deals the damage
+    const skillReach = characterStats(this.save).skillReach; // Ember Form's reach (constellation.ts SKILL_MELEE), on the melee tools too (Tim, 2026-11-19)
+    const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1) * (kind === "great-sweep" ? 1 + skillReach : 1);
+    if (kind === 'great-sweep') { const plan=echoPlan(this.glyphLoadout('tool')); this.startToolSwing(now,{mirage:false,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),radius:B.radius*fieldGrow,imbue:this.imbueBonus(now),healShare:boxing?.heal||0,echoCopies:(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1})),priorTool,priorPose,direction:sweepDirection}); this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now, 1, true); this.cancelConsumeVisual('tool'); this.message = 'Great Sweep!'; return true; } // great-sweep.ts (2026-11-14): the blade itself, swung all the way round, deals the damage
     if(kind==='great-sweep'&&this.closeViewActionEligible()){
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
@@ -10544,7 +10548,7 @@ export class Game {
     const fx = (x, y, extra = {}) => { const e = { id: `tool-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind, brawler: true, x, y, life: B.lifetime, radius: B.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.toolPower() * B.share * (1 + (boxing?.damage || 0)) * fieldMult)), pulseIndex: 0, hits: {}, glyphHost: "tool", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), ...extra }; if (fieldGrow !== 1) e.radius *= fieldGrow; /* release 495: boxing damage and heal; 569: Spellblade and Charged Air */ this.effects.push(e); return e; };
     let main;
     if (kind === "hammerfall") {
-      const reach = B.reach + (boxing ? boxing.stick : 0) + (blade ? SB.reach : 0); // release 495: with Shadow Boxing the hammer reaches farther; 569: Spellblade too
+      const reach = (B.reach + (boxing ? boxing.stick : 0) + (blade ? SB.reach : 0)) * (1 + skillReach); // release 495: with Shadow Boxing the hammer reaches farther; 569: Spellblade too
       let { d, foe } = this.brawlerAim(reach + 1); if (!foe && direction && Math.hypot(direction.x, direction.y) > .01) d = projectileDirection(direction.x, direction.y, p.facing);
       const fd = foe ? Math.hypot(foe.x + .5 - cx, foe.y + .45 - cy) : Infinity, at = fd <= reach + .5 ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * B.reach, y: cy + d.y * B.reach };
       visualAim = d;
@@ -10555,7 +10559,7 @@ export class Game {
     // The awakened Hammerfall's clap (brawler-spells.ts HAMMER_CLAP; Tim, 2026-11-14): one per press, in addition to the hammer's
     // blow and its Echo copies, waiting with the hammer and then on its own clock (saved with the area's effects).
     if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, spread: C.spread, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); clipHammerClap(this.effects[this.effects.length - 1], (x, y) => this.quandrixOpen(x, y)); } // the lines never pass a wall: clipped once, here, and kept on the effect
-    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now, 1, true); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
     const hammerDurationMs=B.delay*1000+B.lifetime*1000;
     const visualMs=kind==='great-sweep'?TOOL_ACTION_TIMING['great-sweep'].durationMs:hammerDurationMs;
@@ -11793,9 +11797,10 @@ export class Game {
     const rushX = p.x, rushY = p.y;
     for (let k = .25; k <= dist + 1e-6; k += .25) { const nx = p.x + d.x * .25, ny = p.y + d.y * .25; if (!w.canStand(nx, ny) || !this.moveGuardedCombatStep(nx, ny)) break; }
     if (P.rush) markShadowTrail(this, rushX, rushY, now, boxing ? "carry" : "rush"); // the rush stays instant; only its drawing shows the crossing (presentation only). Tim 2026-11-14: the plain cross rush leaves after-images too, like a dodge
-    const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= P.radius + Math.max(0, enemyBodyRadius(e) - .38));
+    const radius = (P.radius + (this.spellbladeOn(now) ? FIELD_PASSIVES.spellblade.reach : 0)) * (1 + characterStats(this.save).skillReach); // the melee buffs' reach on a punch (Tim, 2026-11-19): Spellblade's, Ember Form's (constellation.ts SKILL_MELEE)
+    const reachOut = kick ? 0 : .7, at = { x: p.x + .5 + d.x * reachOut, y: p.y + .45 + d.y * reachOut }, landed = this.enemies.some((e) => !e.dead && !e.untargetable && !e.hidden && Math.hypot(e.x + .5 - at.x, e.y + .45 - at.y) <= radius + Math.max(0, enemyBodyRadius(e) - .38));
     const before = step === 1 ? [] : this.fistCombo?.landed || [], finisher = step === 3 && before[0] && before[1], full = perfect ? 1 : Math.max(0, Math.min(1, Number(charge) || 0)), rhythm = onBeat === true && perfect === true; // a charge started on the beat, let go in its perfect window
-    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius: P.radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * ((rhythm ? P.share * F.beatShare : (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1)) * (finisher ? F.finisher : 1) + (rhythm ? F.rhythmBonus : 0)) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
+    const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * ((rhythm ? P.share * F.beatShare : (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1)) * (finisher ? F.finisher : 1) + (rhythm ? F.rhythmBonus : 0)) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher };
     if (full > 0 || perfect) effect.rr = chargedRelease(this); // Rapid Reload: a charged (or perfect) punch is a charged release
     const delayed=this.attackAction==='attack'||this._fistInputUpdate===true; // Tim 2026-11-14: the Close View interior contact delay, in every area and both views
     if(!delayed)this.effects.push(effect);
@@ -11803,7 +11808,7 @@ export class Game {
     this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, level: fistCalloutLevel(perfect, onBeat) /* the HUD status meter (FIST_CALLOUT): presentation only */ }; // the chain loops: after the last step the cross comes next
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
     this.fistBeat = { at: now, ...fistBeatWindow(now, this.fistRecoverUntil), step, ax: d.x, ay: d.y }; if (rhythm) this.fistFlash = { at: now, rhythm: true }; // the next beat: the ball goes out with this step and is home as its window opens
-    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each step
+    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now, 1, true); // release 503: the Shadow Clone throws a plain arc swing with each step
     const chained = now < (p.fistVisualUntil || 0) || now < (p.actionVisualUntil || 0); // a step thrown out of the last one's guard (Close View starts it from the guard)
     this.cancelConsumeVisual('attack');
     const T = CLOSE_VIEW_MELEE_TIMING[kick ? 'kick' : step === 1 ? 'dash' : step === 2 ? 'jab' : 'uppercut'];
@@ -11920,11 +11925,19 @@ export class Game {
   }
   // The clone's copy of a swing: the same blow from where it stands, at `share` of the damage (release 387: toward the
   // locked target when there is one).
-  cloneSwing(profile, dir, now, scale = 1) {
+  // Tim (2026-11-19): the clone's swing is a melee source (hit-cast-passives.ts isMeleeSource, CLONE_HIT): it gets what her own
+  // swing gets, at SHADOW_CLONE.share: Spellblade's damage, armor Volatile, Imbue Weapon's magic share, Ember Skin, Arcane Edge (a
+  // clone blow in the same attack rides the charge her blow took; alone it takes one), Pocket Time, Power Aegis, a Tesseract's
+  // melee heal. Reach: a copy of her swing (`profile`) already carries hers (Ember Form, Spellblade); the clone's own arc (`arc`:
+  // BRAWLER_ECHO.cloneArc, with the fists and the melee tools) is stretched here as a punch is.
+  cloneSwing(profile, dir, now, scale = 1, arc = false) {
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return;
+    const blade = this.spellbladeOn(now), SB = FIELD_PASSIVES.spellblade;
+    if (arc) profile = { ...profile, range: (profile.range + (blade ? SB.reach : 0)) * (1 + characterStats(this.save).skillReach) };
     const at = clonePosition(this.player, this.shadowClone), body = { ...this.player, x: at.x, y: at.y }; dir = this.cloneAimFrom(at) || dir;
     const hits = primaryAttackHits(body, this.enemies.filter((e) => !e.untargetable), this.map, mapWidth(this.map, this.area), profile, dir);
-    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); const before = Math.max(0, e.hp); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * SHADOW_CLONE.share * scale))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } this.landHit(e, Math.max(0, before - Math.max(0, e.hp)), now); } // the clone's blow is hers: an on-hit Echo hit
+    const share = SHADOW_CLONE.share * scale, mult = (1 + armorGlyphBonus(this.save).attackDamage) * (blade ? 1 + SB.damage : 1), imbue = Math.round(this.imbueBonus(now) * share);
+    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); const before = Math.max(0, e.hp); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * mult * share)) + imbue); if (imbue > 0) imbueSpark(this, e.x + .5, e.y + .45, now); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } const dealt = Math.max(0, before - Math.max(0, e.hp)); this.landHit(e, dealt, now, CLONE_HIT); if (dealt > 0) this.tesseractHitHeal("melee", now, e); } // the clone's blow is hers: an on-hit Echo hit, and melee
     this.shadowClone.swingUntil = now + 240; this.shadowClone.swingDir = { x: dir.x, y: dir.y };
   }
   // Release 309 (Tim: "we can click on a monster... and then that'll just be the targeting... our blasts and attacks and swings
@@ -12008,7 +12021,8 @@ export class Game {
   activateApertureSkill(id = this.save.magicSkills?.selected) {
     const before={x:this.player.x,y:this.player.y,shots:this.projectiles.length,effects:this.effects.length};
     const result = this.activateApertureSkillEffect(id);
-    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.cancelFists(now);/* 2026-11-13: so does a cast */this.recordCastVisual(id,before,'activate'); }
+    if (result) { const now=this.lastUpdateNow||0;this.player.castUntil=now+ACTION_MOTION.castMs;this.cancelConsumeVisual('cast');this.cancelAttackPresentation(now);this.cancelFists(now);/* 2026-11-13: so does a cast */this.recordCastVisual(id,before,'activate');
+      edgeArm(this, CASTABLES[`skill:${id}`]?.attr || null); } // Arcane Edge (Tim, 2026-11-19): a skill used arms it with its own element, and nothing else of the on-cast passives. Rift Step answers true only for a step taken (arming its aim returns false), so it arms once a step
     return result;
   }
   activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */if(id==='quickening'&&altChosen(this.save,'quickening')){this.message=`Quickening is set to its secondary form, ${ALT_PASSIVES.quickening.name} (Arcanum).`;return false}/* 2026-11-15: Quickened Stride, mirroring Long Quickening */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}const aerial=id==='aerial-step',charges=aerial?aerialChargesNow(this.save):0;if(aerial&&(this.aerialCasts||0)>=skill.airCasts){this.message=AERIAL.capped;return false}/* AERIAL: twice at most between touches of the ground */if(aerial?charges<1:(state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */const cd=this.skillCooldown(id);if(aerial){state.aerialCharges=charges-1;if(!((state.cooldowns[id]||0)>0))state.cooldowns[id]=cd;/* a charge already coming back keeps its clock */this.aerialCast()}else state.cooldowns[id]=cd;if(aerial)state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}

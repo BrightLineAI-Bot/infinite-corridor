@@ -29,19 +29,29 @@ export const RIFT = { reach: 2, longStep: 2 };
 // hits (game.ts landHit) heals `leech` of the health it took, and heals from hits on elites and stronger may reach
 // TESSERACTS.hitHealCapElite of maximum health a second; all of it from the one heal-on-hit budget (game.ts grantHitHeal).
 export const SANCTUARY = { leech: .12 };
+// The skills' melee buffs (Tim, 2026-11-19: "whatever melee damage buffs, they should also work with the tools that do melee
+// damage"): [base, per rank] while the skill's buff runs. `melee` adds to the melee bonus (game.ts characterStats meleeBonus:
+// weapon swings and arts, the Iron Fists, Hammerfall and the Great Sweep, and as before a physical tool shot, which reads the
+// same stat); `reach` stretches every melee source (a swing's range, a punch's, Hammerfall's and the Great Sweep's reach) by that
+// share, and as before a tool shot's range (attackReach). game.ts characterStats skillMelee / skillReach. Tim (2026-11-19) left
+// the shots as they are; hit-cast-passives.ts isMeleeSource draws the melee line for the on-hit buffs.
+export const SKILL_MELEE = { "ember-form": { melee: [2, 2], reach: [.12, .06] }, "force-channel": { melee: [0, 2] } };
+const skillPart = (active, rank, key) => { const q = active && SKILL_MELEE[active.id]?.[key]; return q ? q[0] + q[1] * (Number(rank) || 0) : 0; };
+export const skillMeleeBonus = (active, rank) => skillPart(active, rank, "melee");
+export const skillReachBonus = (active, rank) => skillPart(active, rank, "reach");
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
-  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your strikes set foes burning." }, caps: [
-    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer and you take 15% less damage while it holds." },
-    { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form ends it bursts, scorching everything around you." }] },
+  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall, the Great Sweep and your Shadow Clone's swings) set foes burning." }, caps: [
+    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15%, softened at high defence)." },
+    { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form runs out, it bursts, scorching everything around you. Another skill cutting it short skips the burst." }] },
   motion: { name: "Motion", active: "quickening", mod: { id: "light-feet", name: "Light Feet", text: "Dodges cost 3 less stamina." }, caps: [
     { id: "aerial-step", name: "Aerial Step", text: "Learn Aerial Step: briefly cross water, canyons and pits." },
-    { id: "slipstream", name: "Slipstream", text: "While Quickening holds, every dodge refunds its stamina." }] },
+    { id: "slipstream", name: "Slipstream", text: "While Quickening holds, each dodge gives back stamina." }] },
   veil: { name: "Veil", active: "veil-guard", mod: { id: "thorned-veil", name: "Thorned Veil", text: "While Veil Guard holds, the nearest foe takes back 30% of each blow." }, caps: [
     { id: "sanctuary", name: "Sanctuary", text: `While Veil Guard holds, your hits heal ${pct(SANCTUARY.leech)} of the damage they deal, and health from hits on elites, bosses, guardians and great beasts may reach ${pct(TESSERACTS.hitHealCapElite)} of your maximum a second instead of ${pct(TESSERACTS.hitHealCap)}.` }, // Tim 2026-11-18: SANCTUARY; was a flat 20% mend over the guard
     { id: "mirror-veil", name: "Mirror Veil", text: "The first blow during Veil Guard is undone entirely." }] },
   force: { name: "Force", active: "force-channel", mod: { id: "overflow", name: "Overflow", text: "While Force Channel holds, spells recover 25% faster." }, caps: [
-    { id: "amplifier", name: "Amplifier", text: "While Force Channel holds, glyph and Echo strikes deal 50% more." },
+    { id: "amplifier", name: "Amplifier", text: "While Force Channel holds, Echo and glyph strikes deal 50% more. Echoes that add to your own hit (Tentacle Ember, Triceratops gore) are not amplified." },
     { id: "resonant-force", name: "Resonant Force", text: "Kills during Force Channel extend it by 1 s." }] },
   rift: { name: "Rift", active: "rift-step", mod: { id: "rift-wake", name: "Rift Wake", text: "Rift Step tears a line that wounds foes you pass through." }, caps: [
     { id: "fold", name: "Fold", text: "Rift Step holds two charges." },
@@ -63,10 +73,10 @@ export const NODE_EFFECTS = {
   "ember-skin": { kind: "while" }, colossus: { kind: "while" }, "cinder-heart": { kind: "changes" },
   "light-feet": { kind: "always" }, "aerial-step": { kind: "cast" }, slipstream: { kind: "while" },
   "thorned-veil": { kind: "while" }, sanctuary: { kind: "while" }, "mirror-veil": { kind: "while" },
-  overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
+  overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Echo and glyph strikes (your spells' glyphs too) deal 50% more; not Echoes that add to your own hit." }, "resonant-force": { kind: "changes" },
   "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
-  "arcane-edge": { kind: "always", spells: "Each cast empowers your next three melee attacks." }, "casting-wind": { kind: "always", spells: "Each cast gives back stamina." }, "pocket-time": { kind: "always" },
-  "echoing-cast": { kind: "always", spells: "Every fourth cast repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each cast leaves a sigil that bursts; Rift Steps leave mines that link into a wounding void." },
+  "arcane-edge": { kind: "always", spells: "Each spell (or skill) empowers your next three melee attacks." }, "casting-wind": { kind: "always", spells: "Each spell gives back stamina." }, "pocket-time": { kind: "always" },
+  "echoing-cast": { kind: "always", spells: "Every fourth spell repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each spell leaves a sigil that bursts; Rift Steps leave mines that link into a wounding void." },
 };
 
 // Secondary passives (release 359; Tim, 2026-10-23: "develop an additional passive for each one that you can select...
@@ -87,9 +97,9 @@ export const ALT_PASSIVES = {
   slipstream: { name: "Afterimage", kind: "while", text: "While Quickening holds, each dodge leaves a burst where you started.", radius: 1.6, damage: 6, perLevel: 1 },
   "thorned-veil": { name: "Veil Pulse", kind: "while", text: "While Veil Guard holds, each blow you take pulses back at every foe within 2 tiles for 15% of it.", share: .15, reach: 2 },
   sanctuary: { name: "Long Veil", kind: "changes", text: "Veil Guard lasts 50% longer.", duration: 1.5 },
-  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take 20% less damage.", guard: .2 },
+  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take less damage (20%, softened at high defence).", guard: .2 },
   overflow: { name: "Wellspring", kind: "while", text: "While Force Channel holds, your Aperture skills recover 25% faster.", rate: .25 },
-  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take 15% less damage.", guard: .15 },
+  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take less damage (15%, softened at high defence).", guard: .15 },
   "resonant-force": { name: "Harvest", kind: "while", text: "Kills during Force Channel restore 4 health.", heal: 4 },
   "rift-wake": { name: "Rift Ward", kind: "changes", text: "After a Rift Step nothing can touch you for 0.6 s (instead of 0.15 s).", guardMs: 600 },
   fold: { name: "Quick Fold", kind: "changes", text: "Rift Step recovers 30% faster.", cooldown: .7 },
