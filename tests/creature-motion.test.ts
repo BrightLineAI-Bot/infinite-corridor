@@ -290,10 +290,14 @@ test('no popping between card and body: a creature taking its body fades into it
 test('a slain creature fades out at the end of its fall instead of vanishing', () => withGPU(({ gl, screen }) => {
   const game: any = lane(); let now = 100000; game.paused = false; resetCloseViewCamera(); game.enemies = []; render(screen, game, 390, 844, now);
   const e: any = ahead(game, 'glassMite', 3, 'death'); game.enemies = [e]; render(screen, game, 390, 844, now += 16);
-  e.dead = true; e.hp = 0; const alphas: number[] = [];
-  for (let i = 0; i < 40 && closeViewGLStats.models >= 2 || i === 0; i++) { render(screen, game, 390, 844, now += 16); if (closeViewGLStats.models >= 2) alphas.push(Math.min(...modelAlphas(gl.uploads.at(-1)))); }
-  assert.ok(alphas.length > 10, `the fall plays (${alphas.length} frames)`);
-  assert.ok(alphas[0] > .95 && alphas.at(-1) < .2, `whole as it falls, nearly gone on its last frame (${alphas[0]}, ${alphas.at(-1)})`);
+  // 2026-11-19 (Tim, approved): the body falls, lies whole and sinks into the floor, opaque throughout (no dither-out)
+  e.dead = true; e.hp = 0; const alphas: number[] = [], lows: number[] = []; const start = now;
+  const low = (u: Float32Array) => { let m = Infinity; for (let i = 2; i < u.length; i += MODEL_FLOATS) m = Math.min(m, u[i]); return m; };
+  for (let i = 0; i < 120 && (closeViewGLStats.dying >= 1 || i === 0); i++) { render(screen, game, 390, 844, now += 16); if (closeViewGLStats.dying >= 1) { const u = gl.uploads.at(-1); alphas.push(Math.min(...modelAlphas(u))); lows.push(low(u)); } }
+  assert.ok(alphas.length >= 60, `the fall, rest and sink play (${alphas.length} frames)`);
+  assert.ok(alphas.every(a => a === 1), `opaque every frame (min ${Math.min(...alphas)})`);
+  assert.ok(lows[0] - lows.at(-1) >= .5, `sinks into the floor (${lows[0].toFixed(2)} -> ${lows.at(-1).toFixed(2)})`);
+  render(screen, game, 390, 844, start + 1600); assert.equal(closeViewGLStats.dying, 0, 'gone after 1.6 s');
 }));
 
 test('a mid-fight arrival rises in rather than popping', () => withGPU(({ gl, screen }) => {

@@ -30,6 +30,15 @@ export const TRI_ART = Object.freeze({
   muzzle: Object.freeze({ from: .2, k: .82, deep: 1.12, mid: -.01, ramp: .12 }),
   whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
 });
+// The face's outline in head units before the squat muzzle (drawHead's H; Tim, 2026-11-19: "the tip of the beak is kind of hanging
+// off; it's not connected"): the skull, the upper beak (a path: [x, y] a point, [cx, cy, x, y] a curve) whose hook curls down at the
+// front, and the lower beak, tucked up under the upper beak with its point inside the hook, so the two meet with no gap (it opens with
+// the jaw). Every form, both directions.
+export const TRI_BEAK = Object.freeze({
+  skull: Object.freeze([[-.06, .11], [.06, .15], [.18, .13], [.29, .085], [.35, .05], [.35, -.035], [.24, -.055], [.12, -.075], [.02, -.11], [-.05, -.12], [-.09, -.02]].map(Object.freeze)),
+  upper: Object.freeze([[.3, .058], [.39, .058, .412, -.01], [.412, -.058, .385, -.072], [.382, -.05, .352, -.046], [.31, -.04], [.29, .015, .3, .07]].map(Object.freeze)),
+  lower: Object.freeze([[.285, -.036], [.372, -.044], [.386, -.066], [.362, -.09], [.29, -.096]].map(Object.freeze)),
+});
 // How each pose bends the body. pitch (+ nose up; about the hips, or the shoulders nose down), head (+ raises the head), reach
 // (head pushed forward), open (beak), crouch, tailUp (+ up), tailSide (lateral swing, + to its left), frontLift (forefeet off the
 // ground: the rear before a stomp), tuck (legs folded: the leap), lean (thrown forward in the charge).
@@ -293,16 +302,16 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   if (open > .05) { ctx.fillStyle = A.mouth; shape([[.1, -.05], [.36, -.055], [.34, -.07 - jaw * .5], [.12, -.1 - jaw * .2]]); ctx.fill(); }
   ctx.save(); const hinge = H(.06, -.08); ctx.translate(hinge[0], -hinge[1]); ctx.rotate(jaw); ctx.translate(-hinge[0], hinge[1]);
   shape([[.02, -.07], [.3, -.055], [.33, -.07], [.3, -.1], [.18, -.108], [.03, -.105]]); ctx.fillStyle = A.bodyDark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.3, -.1)); qc(H(.18, -.112), H(.06, -.104)); ctx.stroke(); // only its lower edge: no line up the cheek
-  // the lower beak (the predentary): a dark wedge that meets the hook
-  shape([[.29, -.052], [.365, -.062], [.343, -.092], [.29, -.094]]); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  // the lower beak (the predentary): a dark wedge tucked up under the upper beak, its point inside the hook (TRI_BEAK)
+  shape(TRI_BEAK.lower); ctx.fillStyle = A.beak; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   ctx.restore();
   // the skull: deep at the cheeks, the brow high behind the eye, the snout narrowing to the beak; a cheek horn at its back corner
-  const skull = [[-.06, .11], [.06, .15], [.18, .13], [.29, .085], [.35, .05], [.35, -.035], [.24, -.055], [.12, -.075], [.02, -.11], [-.05, -.12], [-.09, -.02]];
+  const skull = TRI_BEAK.skull;
   ctx.beginPath(); mv(H(...skull[0])); for (let i = 1; i <= skull.length; i++) { const a = skull[i - 1], b = skull[i % skull.length]; qc(H(...a), H((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)); } ctx.closePath();
   { const g0 = H(.15, .15), g1 = H(.15, -.12), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.bodyLight); g.addColorStop(.55, A.body); g.addColorStop(1, A.bodyDark); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   { const jk = FM.jugal; shape([[-.03, -.07], [scl(-.1, -.005, jk), scl(-.17, -.09, jk)], [.04, -.11]]); } ctx.fillStyle = A.hornBase; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   // the upper beak: a big hooked parrot beak of dark keratin, curling down over the lower one, a pale cutting edge and a sheen on top
-  ctx.beginPath(); mv(H(.3, .058)); qc(H(.39, .058), H(.412, -.01)); qc(H(.412, -.058), H(.385, -.072)); qc(H(.382, -.05), H(.352, -.046)); ln(H(.31, -.04)); qc(H(.29, .015), H(.3, .07)); ctx.closePath();
+  ctx.beginPath(); for (const c of TRI_BEAK.upper) { if (c.length === 2) (c === TRI_BEAK.upper[0] ? mv : ln)(H(c[0], c[1])); else qc(H(c[0], c[1]), H(c[2], c[3])); } ctx.closePath();
   { const g0 = H(.35, .07), g1 = H(.38, -.08), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.beakLight); g.addColorStop(.45, A.beak); g.addColorStop(1, A.outline); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
   ctx.strokeStyle = "rgba(255,236,190,.55)"; ctx.lineWidth = lw * 1.1; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.325, .044)); qc(H(.385, .042), H(.398, -.002)); ctx.stroke();
   ctx.strokeStyle = "rgba(255,236,190,.4)"; ctx.lineWidth = lw * .8; ctx.beginPath(); mv(H(.386, -.066)); qc(H(.38, -.052), H(.358, -.047)); ctx.stroke();

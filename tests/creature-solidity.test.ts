@@ -202,9 +202,10 @@ test('distant materialisation is unchanged: a creature far from the Wayfarer sti
   for (let k = 0; k < 3; k++) frame(g, () => pin(e, at));
   const r = closeViewCreatureSolidity(e);
   assert.ok(r && r.path !== 'culled', `drawn (${r?.path})`);
-  assert.ok(r.alpha > 0 && r.alpha < 1, `materialising in the edge band, as before (${r.alpha})`);
-  assert.equal(r.near, false); assert.equal(r.w, 0, 'spared none of the fade: exactly the old opacity');
-  // walking in, it is spared the fade smoothly (eased), never popping; walking out again, it thins smoothly
-  const steps: number[] = []; for (let k = 0; k <= 60; k++) { const a2 = ahead(g, gap - (k < 30 ? k : 60 - k) * .2); frame(g, () => pin(e, a2)); const q = closeViewCreatureSolidity(e); if (q) steps.push(q.alpha); }
-  for (let k = 1; k < steps.length; k++) assert.ok(Math.abs(steps[k] - steps[k - 1]) < .35, `no pop (${steps[k - 1].toFixed(3)} to ${steps[k].toFixed(3)})`);
+  // 2026-11-19 (Tim, approved): a live creature in view is never dithered by the fog's edge; it stays a whole body
+  assert.equal(r.alpha, 1, `opaque in the old edge band (${r.alpha})`); assert.equal(r.path, 'model', 'a body');
+  assert.equal(r.near, false); assert.equal(r.w, 0, 'past the solid band, and still whole');
+  // walking in and out again: a body at full opacity every frame
+  const steps: number[] = [], paths = new Set(); for (let k = 0; k <= 60; k++) { const a2 = ahead(g, gap - (k < 30 ? k : 60 - k) * .2); frame(g, () => pin(e, a2)); const q = closeViewCreatureSolidity(e); if (q) { steps.push(q.alpha); paths.add(q.path); } }
+  assert.ok(steps.length > 50, `drawn on the walk (${steps.length})`); assert.ok(steps.every(a => a === 1), `opaque every frame (min ${Math.min(...steps)})`); assert.deepEqual([...paths], ['model'], 'a body every frame');
 }));
