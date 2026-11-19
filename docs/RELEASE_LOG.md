@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1025 (this merge); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1026 (this merge); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1025 | Claude | claude/hatchling-face | Triceratops faces: the hatchling baby reads as a young Triceratops (smaller eyes, modest head, squat beak, horn nubs, small frill); every Triceratops beak a little shorter and deeper; drawing only, no save change | In flight. |
+| 1026 | Claude | claude/creature-solidity-2 | Close View creatures stay solid: no distance dither, outdoor reach to the real fog, lit by the floor's own light, grounded bodies on stance-sized shadows, heavier hit reactions with a body flash, a quiet break-apart-and-sink death; three test edits (Tim approved); no save change | In flight. |
+| 1025 | Claude | claude/hatchling-face / #695 | Triceratops faces: the hatchling baby reads as a young Triceratops (smaller eyes, modest head, squat beak, horn nubs, small frill); every Triceratops beak a little shorter and deeper; drawing only, no save change | Merged as `6a859d2b933c` (#695). |
 | 1024 | Claude | claude/narrative-step / #694 | The Second Wayfarer: a six-sighting quest (narrative bible recurring character 4) | Merged (#694). |
 | 1023 | Claude | claude/close-view-polish / #693 | Close View polish pass: pitch continuity, sight parity and fades, eased zoom/drag/recentre, transition cross-fades, hit-stop | Merged (#693); preview follows. |
 | 1022 | Claude | claude/rift-mines-encumbered / #692 | Glyph Mine × Rift Step void; Encumbered pull build-up | Merged (#692); preview follows. |
