@@ -347,14 +347,14 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve
   const Cd = APATO_CARDS, t = reduce ? 0 : now / 1000;
   // Earth Resolve (its Echo): roots rising round the sigil's rim (short stone-dark spikes) and a green glow at its heart, fading at its end
   if (resolve) { const fade = Math.max(0, Math.min(1, (resolve.until - now) / 1000)), born = Math.max(0, Math.min(1, (now - resolve.at) / 450)), n = Math.min(Cd.resolveRoots, Math.round(6 + resolve.r * 3));
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .3, x = resolve.x + Math.cos(a) * resolve.r * .9, y = resolve.y + .3 + Math.sin(a) * resolve.r * .9, h = (.35 + .25 * ((i * 7) % 3) / 2) * born * fade; card(x, y, 0, h, .07, 7, .9 * fade, 0, 0); }
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .3, x = resolve.x + Math.cos(a) * resolve.r * .9, y = resolve.y + .3 + Math.sin(a) * resolve.r * .9, h = (.35 + .25 * ((i * 7) % 3) / 2) * born * fade; card(x, y, 0, h, .07, 7, .9 * fade, 0, 0); card(x, y, h * .7, h + .08, .06, 11, .7 * fade, 0x9cff5a, 0); } // a root with a living tip
     card(resolve.x, resolve.y + .3, 0, .9 * fade, resolve.r * .5, 11, .35 * fade, 0x9cff5a, 0); }
   for (const e of enemies || []) {
     if (e.apatoDazed > 0 && !e.dead) { const z = 2.2 * Math.max(.6, Number(e.scale) || 1) * .55; for (let i = 0; i < 4; i++) { const a = t * 3 + i * Math.PI / 2; card(e.x + .5 + Math.cos(a) * .6, e.y + .75 + Math.sin(a) * .6, z - Cd.star, z + Cd.star, Cd.star, 11, .9, 0xfff6a0, 0); } }
     const eye = e.apatoEyeCV; if (eye && !reduce && !e.dead) { const age = (now - eye.slamAt) / APATO_FX.dustMs; if (age >= 0 && age < 1) { // dust and grit thrown up where a head struck
-      const big = e.kind === 'earthApato' ? 1.6 : .8, fade = 1 - age, r = big * (.35 + .7 * smooth(age)), n = APATO_FX.dustPuffs;
+      const big = e.kind === 'earthApato' ? 1.6 : .8, fade = 1 - age, r = big * (.6 + .8 * smooth(age)), n = APATO_FX.dustPuffs;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .2, x = eye.sx + Math.cos(a) * r, y = eye.sy + Math.sin(a) * r, h = big * (.1 + .3 * age) * (1 + .3 * (i % 2)), w = big * (.26 + .26 * age);
-        card(x, y, h * .2, h * .2 + w * 1.4, w, 0, .4 * fade, 0, 0); card(x, y, h * .3, h * .3 + w * 1.1, w * .85, 11, .32 * fade, 0xc8a878, 0); }
+        card(x, y, h * .2, h * .2 + w * 1.6, w, 0, .55 * fade, 0, 0); card(x, y, h * .3, h * .3 + w * 1.3, w * .85, 11, .4 * fade, 0xc8a878, 0); }
       for (let i = 0; i < 4; i++) { const a = i * 1.7 + .5, k = smooth(age * 1.6), x = eye.sx + Math.cos(a) * big * .5 * k, y = eye.sy + Math.sin(a) * big * .5 * k, z = big * .9 * Math.sin(Math.PI * Math.min(1, age * 1.3)); card(x, y, z, z + .07, .05, 0, .9 * fade, 0, 0); } } } // flung clods
     if (e.kind !== 'earthApato' || e.dead) continue;
     const F = e.apatoFx; if (!F) continue;
