@@ -14,7 +14,7 @@ import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
 import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
-import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks } from "./apato-render.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks, drawApatoCoilOver } from "./apato-render.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
 import { drawSpino, drawSpinoMarks } from "./spino-render.ts";
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
@@ -1740,6 +1740,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
   const riderAlpha=astralBoardingRiderAlpha(boarding),fullAlpha=ctx.globalAlpha;ctx.globalAlpha*=riderAlpha;
   if(riderAlpha>0)BODY[def.render]?.(ctx, q);
+  if (e.apatoHeldBy && !e.dead) drawApatoCoilOver(ctx, q, now); // coiled in the Earth Apatosaurus's neck (the duel): the coils' front over its body
   ctx.globalAlpha=fullAlpha;
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip,layer:'front'});
   if(boarding)drawAstralBoarding(ctx,boarding,{tile:s,unit:u,facing:flip,riderX:k,riderY:b,layer:'front'});

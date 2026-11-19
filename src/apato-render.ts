@@ -321,3 +321,14 @@ export function drawEarthResolveSigil(ctx, q, s, now, inside = false, quiet = fa
     ctx.beginPath(); ctx.moveTo(rx - k, ry); ctx.lineTo(rx, ry - k * .7); ctx.lineTo(rx + k, ry); if (i % 2) { ctx.moveTo(rx, ry - k * .7); ctx.lineTo(rx, ry + k * .5); } ctx.stroke(); }
   ctx.restore(); return true;
 }
+// A duel foe held in its neck (e.apatoHeldBy): the front of the coils drawn over its body (the back half is under it, on the ground
+// layer), three green bands round its middle with a dark edge, a drip of venom. q: the pack paint context of the held creature.
+export function drawApatoCoilOver(ctx, q, now = 0) {
+  const A = APATO_ART, { k, b, u, e } = q, quiet = !!e.reduceMotion, t = quiet ? 0 : now / 1000, cy = b - u * .55, rx = u * .62, ry = u * .2;
+  ctx.save(); ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) { const y = cy - u * (.18 * (i - 1)) + (quiet ? 0 : Math.sin(t * 4 + i) * u * .01);
+    ctx.strokeStyle = A.outline; ctx.lineWidth = u * .13; ctx.beginPath(); ctx.ellipse(k, y, rx, ry, 0, .1, Math.PI - .1); ctx.stroke();
+    ctx.strokeStyle = A.hide; ctx.lineWidth = u * .1; ctx.stroke(); ctx.strokeStyle = A.belly; ctx.globalAlpha = .5; ctx.lineWidth = u * .03; ctx.beginPath(); ctx.ellipse(k, y + u * .02, rx, ry, 0, .3, Math.PI - .3); ctx.stroke(); ctx.globalAlpha = 1; }
+  if (!quiet) { ctx.fillStyle = A.venom; for (let i = 0; i < 4; i++) { const f = (t * 1.3 + i / 4) % 1; ctx.globalAlpha = 1 - f; ctx.beginPath(); ctx.arc(k + (i - 1.5) * u * .25, cy + u * .25 + f * u * .4, u * .035, 0, TAU); ctx.fill(); } }
+  ctx.restore(); return true;
+}
