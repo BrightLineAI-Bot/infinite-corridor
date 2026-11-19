@@ -4161,7 +4161,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (stunned || watched) track.pace = 0;
     else if(!importedDodge&&!leavingImportedDodge)track.pace += (speed - track.pace) * (1 - Math.exp(-elapsed * 14));
     if(leavingImportedDodge)track.dodgeUntil=null;
-    if (who.hp < track.hp) track.hitAt = now;
+    if (who.hp < track.hp) { const I = CREATURE_MOTION.impact; track.blow = Math.max(0, Math.min(1, (track.hp - who.hp) / Math.max(1, Number(who.maxHp) || 1) / I.heavyShare)); if (who.bhv?.stagger > 0) track.blow = 1; track.hitAt = now; } // the blow's weight (CREATURE_MOTION.impact)
     const hit = Math.max(0, Math.min(1, Math.max(who.hitFlash || 0, MODEL_TIMING.hitSec - (now - track.hitAt) / 1000) / MODEL_TIMING.hitSec));
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
@@ -4300,7 +4300,8 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       attackReach: who === player ? 0 : closeViewRootReach(who, closeViewRootAttack(who, monsterAction)),
       eliteWindup: who === player ? 0 : Number(who.eliteWindup) || 0, eliteActive: who === player ? 0 : Number(who.eliteActive) || 0,
       stillness: who === player || who.pack?.attack ? 0 : Number(who.pack?.stillT) || 0,
-      flinch: layered ? Number(who.flinch) || 0 : 0, reeling: !!(bhv && bhv.stagger > 0), hitReact: layered ? hit : 0,
+      flinch: layered ? Number(who.flinch) || 0 : 0, reeling: !!(bhv && bhv.stagger > 0), hitReact: layered ? hit : 0, blow: layered && Number.isFinite(track.blow) ? track.blow : undefined,
+      impactFlash: layered && Number.isFinite(track.hitAt) ? Math.max(0, 1 - (now - track.hitAt) / CREATURE_MOTION.impact.flashMs) : 0,
       hitX: pushL > 1e-6 ? (who.x - player.x) / pushL : 0, hitY: pushL > 1e-6 ? (who.y - player.y) / pushL : 0,
       guard: layered ? Number(who.guard) || 0 : 0, dodge: layered ? Number(who.dodge) || 0 : 0, dodgeSide: stepSide, feint: layered ? Number(who.feint) || 0 : 0, feintSide: stepSide,
       alert: layered ? Number(who.alert) || 0 : 0, arrive: layered ? Number(who.arrive) || 0 : 0, arriveStyle: layered ? who.arriveStyle : '',
@@ -4549,7 +4550,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       const t = now - track.deathAt;
       if (t >= dlife || who.hidden || who.gloomVeil) { state.tracks.delete(who); continue; }
       let newer = 0; for (const [w2, t2] of state.tracks) if (w2 !== who && w2.dead && t2.deathAt > track.deathAt) newer++; // at most the tier's cap lie at once (bounded by the tracks, a few dozen)
-      if (newer >= dcap) { state.tracks.delete(who); continue; }
+      if (newer >= dcap || dying >= dcap) { state.tracks.delete(who); continue; }
       const sinkU = Math.max(0, (t - MODEL_TIMING.deathMs - Dd.holdMs) / Dd.sinkMs), sc = Number.isFinite(track.actor.scale) ? track.actor.scale : 1;
       const body = Object.assign(state.deathGhost, track.actor); body.attachments = null; body.motionState = null; body.pose = "death"; body.amount = Math.min(1, t / MODEL_TIMING.deathMs);
       body.z = track.actor.z - Dd.sink * sc * sinkU * sinkU; body.alpha = track.actor.alpha ?? 1; // whole until it has sunk (no dither)

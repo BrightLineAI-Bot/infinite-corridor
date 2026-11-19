@@ -564,7 +564,7 @@ for (const side of [-1, 1]) rootBrute.push(
 );
 for (const side of [-1, 1]) {
   rootBrute.push(
-    part(curvedTube([[.03, side * .45, 1.33, .13], [.12, side * .5, .97, .105]], 6), 0, 0, 0, 1, 1, 1, bark, side * 2, .04, 1.27),
+    part(curvedTube([[.02, side * .36, 1.35, .14], [.12, side * .5, .97, .105]], 6), 0, 0, 0, 1, 1, 1, bark, side * 2, .04, 1.27), // rooted in the trunk (solidity pass 2: no gap at the shoulder)
     part(curvedTube([[.11, side * .5, 1.0, .1], [.22, side * .51, .64, .14]], 6), 0, 0, 0, 1, 1, 1, darkBark, side * 2, .04, 1.27),
     part(curvedTube([[-.045,side*.209,.70,.11],[-.045,side*.209,.36,.10],[.046,side*.209,.10,.07]],5),0,0,0,1,1,1,darkBark,side,-.04,.71),
     part(ellipsoid(6, 1), .25, side * .51, .53, .16, .17, .15, root, side * 2, .04, 1.27, 0, true),
@@ -1344,6 +1344,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const roll = mo ? mo.roll + deathRoll : 0, rollOn = roll !== 0, rollC = rollOn ? Math.cos(roll) : 1, rollS = rollOn ? Math.sin(roll) : 0;
   const B = rig && mo.bend ? bendFrame(BEND_FRAME, mo, rig) : null;
   // a layered creature's blow tints it as the hit pose did; its arrival fades it in
+  const FLASH = CREATURE_MOTION.impact.flash, flashK = root && actor.impactFlash > 0 ? Math.min(1, actor.impactFlash) * CREATURE_MOTION.impact.flashAmount : 0;
   const ground = root && GROUND_FAMILIES.has(root.family) ? groundLift * size : 0; // set down on the floor (CREATURE_GROUND)
   const tint = root && Number.isFinite(actor.hitReact) ? Math.max(flinch, Math.max(0, Math.min(1, actor.hitReact))) : flinch, drawnAlpha = mo ? alpha * mo.alpha : alpha;
   const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist + mo.twist : turn0;
@@ -1560,9 +1561,10 @@ export function writeCloseViewModel(out, offset, actor) {
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;
-      out[offset++] = red + (.96 - red) * tint * .6;
-      out[offset++] = green + (.34 - green) * tint * .6;
-      out[offset++] = blue + (.23 - blue) * tint * .6;
+      const r1 = red + (.96 - red) * tint * .6, g1 = green + (.34 - green) * tint * .6, b1 = blue + (.23 - blue) * tint * .6; // the hurt tint
+      out[offset++] = flashK > 0 ? r1 + (FLASH[0] - r1) * flashK : r1; // the blow's first instant: white-hot (CREATURE_MOTION.impact)
+      out[offset++] = flashK > 0 ? g1 + (FLASH[1] - g1) * flashK : g1;
+      out[offset++] = flashK > 0 ? b1 + (FLASH[2] - b1) * flashK : b1;
       const bodyAlpha = kind === 'gloomgorge' ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
       out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
     }
