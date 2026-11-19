@@ -127,7 +127,7 @@ test('Close View preserves the posed Triceratops composite and falls back withou
   frame(h,g);
   assert.equal(closeViewShowing(g),true);assert.equal(closeViewRenderDiagnostics().player,'billboard');
   assert.equal(g.player.facing,playerFacing);
-  assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='rotate'&&Math.abs(Math.abs(q[2])-pose.pitch)<1e-9),'composite paints the accepted neck pose');
+  assert.ok(Math.abs(closeViewRenderDiagnostics().mountNeckPitch-pose.pitch)<1e-9,'the 3D body poses the accepted neck pitch');
   assert.ok(h.log.some(q=>q[0]==='ground'&&q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle survives native admission');
   h.gl.fault='draw';frame(h,g);
   assert.equal(closeViewShowing(g),false);assert.equal(g.player.facing,playerFacing);
@@ -145,11 +145,11 @@ test('Silly Goose rolls mount, saddle and rider together above its support and w
   g.presentation={effectiveQuality:'full'};g.player.hp=g.save.maxHp;g.player.facing='right';g.save.lastAim={x:1,y:0};
   g.update(.01,{state:{x:0,y:0},consume:k=>k==='jump',held:()=>false},100000);g.lastUpdateNow=100195;
   const group=(tag,roll)=>{const at=h.log.findIndex(q=>q[0]===tag&&q[1]==='scale'&&q[2]===1&&Math.abs(q[3]-roll)<1e-9);assert.ok(at>=0,'accepted axial roll');let depth=0,end=at+1;for(;end<h.log.length;end++){const q=h.log[end];if(q[0]!==tag)continue;if(q[1]==='save')depth++;if(q[1]==='restore'){if(!depth)break;depth--;}}const drawn=h.log.slice(at,end);assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#6b3f22'),'saddle inside transform');assert.ok(drawn.some(q=>q[1]==='fillStyle'&&q[2]==='#171817'),'rider inside transform');};
-  const pose=triceratopsDrillPose(g,m,g.lastUpdateNow);assert.ok(pose.roll<0);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',pose.roll);
+  const pose=triceratopsDrillPose(g,m,g.lastUpdateNow);assert.ok(pose.roll<0);frame(h,g);assert.equal(closeViewShowing(g),true);assert.ok(!h.log.some(q=>q[0]==='ground'&&q[1]==='scale'&&q[2]===1&&Math.abs(q[3]-1)>1e-9),'composite drawn upright');group('ground',1);
   assert.equal(closeViewRenderDiagnostics().player,'billboard');assert.equal(g.player.facing,'right');
   const bottoms=[];for(let i=0;i<GLB.nBoard;i++)if(GLB.board[i*BOARD_FLOATS+7]>1)bottoms.push(GLB.board[i*BOARD_FLOATS+2]);
   assert.equal(bottoms.length,6);assert.ok(bottoms.every(z=>z>=0),'mounted card never extends beneath its ground support');
-  h.gl.fault='draw';frame(h,g);assert.equal(closeViewShowing(g),false);group('screen',pose.roll);
+  h.gl.fault='draw';frame(h,g);assert.equal(closeViewShowing(g),false);assert.ok(!h.log.some(q=>q[0]==='screen'&&q[1]==='scale'&&q[2]===1&&Math.abs(q[3]-1)>1e-9),'composite drawn upright');group('screen',1);
   h.gl.fault='';g.presentation.reduceMotion=true;const quiet=triceratopsDrillPose(g,m,g.lastUpdateNow,true);assert.equal(quiet.roll,1);assert.ok(Math.abs(quiet.bank)<.1);frame(h,g);assert.equal(closeViewShowing(g),true);group('ground',1);
 }));
 

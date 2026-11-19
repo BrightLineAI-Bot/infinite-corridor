@@ -24,7 +24,7 @@ export function projectileLaunchMetadata(shot, anchor, support=0) {
   return readProjectileVisualLaunch({v:1,dx:anchor.x-shot.x,dy:anchor.y-shot.y,dz:anchor.z-support-shotVisualHeight(shot)});
 }
 export function projectileVisualPoint(shot, support=0, x=shot.x, y=shot.y, age=shot.age) {
-  const launch=readProjectileVisualLaunch(shot.visualLaunch),t=Number.isFinite(age)&&age>=0?Math.min(1,age/PLAYER_DRONE_VISUAL.settleSeconds):1,w=launch?1-t*t*(3-2*t):0;
+  const launch=readProjectileVisualLaunch(shot.visualLaunch),settle=launch&&Number.isFinite(launch.settle)&&launch.settle>0&&launch.settle<=1?launch.settle:PLAYER_DRONE_VISUAL.settleSeconds/* a launch may carry its own settle time (the Triceratops's horn shot) */,t=Number.isFinite(age)&&age>=0?Math.min(1,age/settle):1,w=launch?1-t*t*(3-2*t):0;
   return {x:x+(launch?.dx||0)*w,y:y+(launch?.dy||0)*w,z:finite(support,0)+shotVisualHeight(shot,age)+(launch?.dz||0)*w};
 }
 export function readProjectileVisualFlight(raw){const d=Number(raw?.duration);return raw&&typeof raw==='object'&&!Array.isArray(raw)&&raw.v===1&&Number.isFinite(d)&&d>0&&d<=8?{...raw,v:1,duration:d}:null;}
