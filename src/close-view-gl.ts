@@ -751,8 +751,18 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
 // silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
 // sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
 // creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+// Solidity pass 2 (Tim, 2026-11-19: creatures read "wireframe-y, like they aren't filled in" beside the Wayfarer). The Wayfarer's
+// shader exposes broadly (never under .55 of its colour, a third of the scene's contrast) and has no rim; creatures went to a
+// third of their colour in the dark while both rims lit their edges, so a dark body with bright edges read as an outline.
+// `expose`/`contrast`: a creature's light is mix(expose, the scene's light, contrast) (the Wayfarer's rule, a little more
+// contrast so a creature still sits in its room), never under `floor`; `sky`: a soft light from above on top of that (1 - sky
+// on a face looking straight down, 1 + sky straight up), so every body shows its volume even where no lamp reaches; `form`: a
+// fill from the eye and above (faces turned to the viewer a little brighter, faces turning away a little darker: the body reads
+// rounded and filled, the opposite of an outline; 1 + form x (cos - .55)); `rim`:
+// the share of the two rim lights kept (edge separation, not an outline); `spec`: the highlight's share (less plastic).
 export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
-  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  expose: .86, contrast: .55, sky: .16, form: .5, rim: .3, spec: .14,
+  floor: .42, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
   emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
     0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
     0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
@@ -786,8 +796,9 @@ void main() {
   float rim = 1.0 - max(0.0, dot(normal, toEye));
   const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
   float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
-  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  vec3 lit = max(mix(vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.expose)}), dif, ${glf(CLOSE_VIEW_ACTOR_LOOK.contrast)}), vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) * (1.0 + ${glf(CLOSE_VIEW_ACTOR_LOOK.sky)} * normal.z) * (1.0 + ${glf(CLOSE_VIEW_ACTOR_LOOK.form)} * (dot(normal, normalize(toEye + vec3(0.0, 0.0, 1.2))) - 0.55));
+  vec3 color = v_col * lit + spe * ${glf(CLOSE_VIEW_ACTOR_LOOK.spec)} + (vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(CLOSE_VIEW_ACTOR_LOOK.rim)};
   color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
   float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
   color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};

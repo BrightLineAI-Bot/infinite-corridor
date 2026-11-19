@@ -6,7 +6,7 @@ import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorT
 import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
-import { creaturePoseFamily, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
+import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
 import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.ts';
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
@@ -530,7 +530,16 @@ export const CLOSE_VIEW = Object.freeze({
   // `ward` (Tim, 2026-11-14: a warded creature stays somewhat spectral in Close View, a cue beyond the purple ring): a creature
   // under the Phase Shield draws at `alpha`, and keeps it for `holdMs` after the ward last held, so a creature on the edge of the
   // shaman's 11-tile ward never flickers. The solid band never overrides a ward (it only spares the fog's edge).
-  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8, solid: Object.freeze({ near: 4.5, engage: 7, hold: 1, ease: 5 }), ward: Object.freeze({ alpha: .6, holdMs: 500 }) }),
+  // Solidity pass 2 (Tim, 2026-11-19: creatures "feel ephemeral, a little wireframe-y, like they aren't filled in... concrete and
+  // persistent while in frame... until they die"). `fogDither` false: a live creature is never screen-door dithered by the fog's
+  // far edge; it stays whole and takes the fog's colour in the shader (fully fogged at the far end, where it leaves the view), so
+  // it sinks into the haze instead of dissolving into a dot pattern. `outdoorReach` true: in the open world the GPU's fog is
+  // OUTDOOR.view (far 18-30 by tier), not the floor's radius + 2 (8.5-11.5), and creatures are kept to that fog (they were
+  // dithered at 5 and gone at 6-7 tiles ahead with the ground and sky clear behind them).
+  creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8, solid: Object.freeze({ near: 4.5, engage: 7, hold: 1, ease: 5 }), ward: Object.freeze({ alpha: .6, holdMs: 500 }), fogDither: false, outdoorReach: true,
+    // `contact`: a creature drawn as a body stands on a contact shadow sized to its stance (close-view-models.ts creatureFootprint
+    // times `share`, held in [min, max] tiles at scale 1), `alpha` dark at its core; one decal, as before (no shadow pass).
+    contact: Object.freeze({ share: .62, min: .27, max: .55, alpha: .7 }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -2547,7 +2556,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   // Walls are kept to the same reach as the floor: as far ahead of the camera as the floor is drawn (the fog's far edge). They
   // used to be kept within a radius of the Wayfarer instead, so a wall ahead and to the side could be dropped while the floor
   // beyond it (another room) was still drawn: one of the ways the view saw through walls.
-  const geo = plainWorld ? OPEN_WORLD_GEOMETRY : wallGeometry(g.map), faces = geo.faces, H0 = Wl.height, ox = footX(p), oy = footY(p), reach = fogFar + 1, cutPad2 = Wl.cutPad * Wl.cutPad;
+  const geo = plainWorld ? OPEN_WORLD_GEOMETRY : wallGeometry(g.map), faces = geo.faces, H0 = Wl.height, ox = footX(p), oy = footY(p), reach = fogFar + 1, creatureReach = CLOSE_VIEW.creatures.outdoorReach && plainWorld && useGL && g.area === "overworld" ? Math.max(reach, (OUTDOOR.view[g.presentation?.effectiveQuality] || OUTDOOR.view.balanced).far + 1) : reach, cutPad2 = Wl.cutPad * Wl.cutPad;
   let n = 0; closeViewStats.faces = 0; closeViewStats.facesCut = 0; closeViewStats.boards = 0; closeViewStats.culled = 0;
   const disc = !!g.map?.dungeonContract?.discoveryEnabled, minCx = Math.max(0, Math.floor((CAM.cx - reach) / geo.C)), maxCx = Math.min(geo.cw - 1, Math.floor((CAM.cx + reach) / geo.C)), minCy = Math.max(0, Math.floor((CAM.cy - reach) / geo.C)), maxCy = Math.min(geo.ch - 1, Math.floor((CAM.cy + reach) / geo.C));
   // the Wayfarer's place on screen, for the cut-away
@@ -2590,7 +2599,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   for (let i = 0; i < draws.length; i++) { const d = draws[i]; if (!Number.isFinite(d?.x) || typeof d.fn !== "function" || (i < FLAT.n && FLAT.mark[i]) || (meshTrees && outdoorTreeObject(d.object)) || (meshProps && !d.enemy && outdoorPropObject(d.object))) continue;
     if (d.enemy) { noteSolidity(d.enemy, 'culled', 0); closeViewCreatureWard(d.enemy, now); }
     else if (VIS.field && d !== capturedPlayer && !d.sightHidden && !sightFieldAt(VIS.field, Math.floor(d.x + .5), Math.floor(d.y + .82))) continue; // out of the Wayfarer's sight indoors (loot, objects, folk): not drawn (a far creature's silhouette is drawn: sightHidden)
-    const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > reach && d !== capturedPlayer && !kept) continue;
+    const bxw = d.x + .5, byw = d.y + .82, kept = !!d.enemy && closeViewSectionBeast(d.enemy); /* a beast in your section: never past the view's reach (CLOSE_VIEW_BEAST_SIGHT) */ if ((bxw - CAM.cx) * fx + (byw - CAM.cy) * fy > (d.enemy ? creatureReach : reach) && d !== capturedPlayer && !kept) continue;
     const q = project(bxw, byw, surfaceZ(g.map, bxw, byw - .07) + (interiorTerrain(g.map) ? closeViewActorLift(d) : 0)); if (!q) continue; matched = null; const k = F / q.depth, sc = d === capturedPlayer ? 1 : scaleFor(g, d);
     let off = q.sx + (d.mountComposite?.halfWidth || A.halfWidth * sc) * k < 0 || q.sx - (d.mountComposite?.halfWidth || A.halfWidth * sc) * k > w || q.sy - Math.max(d.mountComposite ? d.mountComposite.height + Math.max(0, d.lift || 0) : 0, nativeBoardTop(d.enemy, sc, d.nativeHeight)) * k > h || q.sy + (d.mountComposite?.below || A.below) * k < 0;
     if (off && d === capturedPlayer && !interiorTerrain(g.map) && closeViewActorLift(d) > 0) { // high in the air (Aerial Step's held air, a long fall) the ground under the Wayfarer can be off screen while they are not: judged where they are drawn
@@ -2601,7 +2610,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     if (n >= N) grow();
     const dl = Math.hypot(bxw - ox, byw - oy) / lightR, lit = (1 - Math.min(1, Math.max(0, (dl - Lt.inner) / (1 - Lt.inner)))) * (1 - amb) + amb, fog = Math.min(1, Math.max(0, (q.depth - fogNear) / (fogFar - fogNear)));
     boardX[n] = q.sx; boardY[n] = q.sy; boardK[n] = k; const solid = d.enemy || (useGL && closeViewFolkKind(d.object, g)); // a townsperson's body stands solid like a creature's (lit by the scene, not faded by the torch)
-    boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? (kept ? 0 : closeViewCreatureFog(q.depth, fogNear, fogFar) * (d.enemy ? 1 - closeViewCreatureSolidWeight(d.enemy, g, g.paused ? 0 : CAM.dt) : 1)) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy || LOOK.key === d.nativeAux?.source))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
+    boardB[n] = d === capturedPlayer ? (LOOK.heroAlpha = lookHeroAlpha(g, q.depth < C.nearFade[0] ? C.nearFade[1] + (1 - C.nearFade[1]) * Math.max(0, (q.depth - .6) / (C.nearFade[0] - .6)) : 1)) : closeViewActorEnvironmentAlpha(solid && !d.enemy ? FOLK_SOLID : d, lit, solid ? (kept ? 0 : closeViewCreatureEdge(d.enemy, g, q.depth, fogNear, fogFar)) : fog, q.depth < pDepth - .05 && segDist2(bxw, byw, bxw, byw, CAM.cx, CAM.cy, ox, oy) < (.35 + .3 * sc) ** 2 && !(LOOK.k > 0 && LOOK.key && (LOOK.key === d.object || LOOK.key === d.enemy || LOOK.key === d.nativeAux?.source))); /* Look mode: its subject is never faded as an occluder */ boardScale[n] = sc; // version 3: to nothing at the fog's far edge, where it leaves the view (it was a tenth there, then gone)
     boardWX[n] = bxw; boardWY[n] = byw; boardOcc[n] = 0; boardFade[n] = 1; swapCard[n] = 0;
     boardFoe[n] = matched; itemKind[n] = 1; itemRef[n] = i; itemDepth[n] = q.depth - .01; order[n] = n; n++; closeViewStats.boards++; }
   occludeBillboards(n, faces, g.paused, reduce, g.map);
@@ -2720,6 +2729,14 @@ let matched = null; // the creature scaleFor last matched (or null): boardFoe ke
 export function closeViewCreatureFog(depth, fogNear, fogFar) {
   const far = Number.isFinite(fogFar) ? fogFar : CLOSE_VIEW.fog.far, from = Math.max(Number.isFinite(fogNear) ? fogNear : 0, far - CLOSE_VIEW.creatures.edge);
   if (!(depth > from)) return 0; return depth >= far ? 1 : (depth - from) / Math.max(1e-6, far - from);
+}
+// A solid body's share of the fog's edge for its opacity this frame (the board loop). A creature always updates its solid flag
+// (model admission reads it); with `creatures.fogDither` off a live creature takes none of the edge (whole until it leaves the
+// view; the shader fogs its colour). A townsperson (no enemy) keeps the edge.
+function closeViewCreatureEdge(foe, g, depth, fogNear, fogFar) {
+  const w = foe ? closeViewCreatureSolidWeight(foe, g, g.paused ? 0 : CAM.dt) : 0;
+  if (foe && !CLOSE_VIEW.creatures.fogDither) return 0;
+  return closeViewCreatureFog(depth, fogNear, fogFar) * (1 - w);
 }
 // A creature's designed opacity in Close View (1 for every solid creature): its presentation state times the standing
 // opacity of a spectral kind. Environment visibility (closeViewActorEnvironmentAlpha) multiplies this.
@@ -4844,7 +4861,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const gc = hint ? gh : gh * boardFade[it]; if (hint) nHint++; BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, zb, u1, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, top, u0, v0, cb, fl, gc, li); }
     if (foe || isPlayer) { const SD = MODEL_STATE.shadowDash, dash = isPlayer && MODEL_STATE.admitted.has(it) && SD.active, SX = dash ? X + SD.x - g.player.x : X, SY = dash ? Y + SD.y - g.player.y : Y, SA = dash ? 1 - .6 * SD.wraith : statusAlpha; // a charging wraith's shadow goes with it
       const afloat = isPlayer && MODEL_STATE.waterRing[3] > 0; // in the water: its ripple below instead of a shadow on a floor
-      if (MODEL_STATE.admitted.has(it) && !afloat) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; if (!afloat) flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0);
+      const body = MODEL_STATE.admitted.has(it), Kc = CLOSE_VIEW.creatures.contact, foot = foe && body ? Math.max(Kc.min, Math.min(Kc.max, creatureFootprint(actorModelKey(foe)) * Kc.share)) : 0; // a body's stance (CLOSE_VIEW.creatures.contact)
+      if (body && !afloat) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; if (!afloat) { if (foot > 0) flatD(SX, SY - .05, foot * sc * 1.15, 0, Kc.alpha * b * SA, 0); else flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0); }
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   GLB.nBoard = bv; GLB.nHint = nHint;
   // CLOSE_VIEW_WATER: where the Wayfarer's figure meets the water, a broken ring of foam at the waterline and (in motion) ripples
