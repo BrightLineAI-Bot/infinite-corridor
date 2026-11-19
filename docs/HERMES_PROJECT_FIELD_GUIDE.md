@@ -28,6 +28,7 @@ Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not
 - Visibility varies. Some routes are directed and obvious. Some stay unknown until you find the thread or finish the quest, and some you won't know you are getting. Overall they should be about as discoverable as the threads are today; some abilities are simply found at random.
 - A compendium can later show how each quest or ability is obtained, once the player knows it.
 - Constraint: players must still be able to build builds and feel progress. They should not wander the Corridor forever without moving toward anything. Tim has already lined some things up with deserts and regions.
+- Exploration first (Tim, 2026-11-19): the aim is so much content that there is a huge amount to explore and dig into. A quest can start in one region and send the player farther out for its next item, with conditions such as "a desert at least 50 sections from the Ember Refuge"; some send you to the open sea; some things can be found only in the skyways. Some passives or abilities may be bought with Divine Viscera, the endgame currency.
 - Next step: design a viable, structured acquisition architecture. The lead does this after the inventory. Until Tim approves that design, no acquisition is changed.
 
 Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
