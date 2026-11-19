@@ -29,7 +29,8 @@ import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStat
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
 import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.ts";
-import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.ts"; // the seed hunts: the Atlas marker and the compass
+import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.ts";
+import { HATCHLING, rescueGuidance, formUnlocked, growthProgress } from "./hatchling.ts"; // the Triceratops hatchling: the Pack row, the Atlas marker and the compass // the seed hunts: the Atlas marker and the compass
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
@@ -642,7 +643,7 @@ function objectiveList(){
   // Release 159: a cheap key first (section and one-second bucket), so the frame loop does no counting between rebuilds.
   const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1000)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
   const resolvedCount=Object.values(save.consequences?.dungeons||{}).filter((h)=>h?.resolved).length,
-    liveHunts=activeSeedHunts(save),key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000),liveHunts.map((h)=>`${h.tower}|${h.where}|${h.x}|${h.y}|${h.door?.x}|${h.door?.y}`).join(";")].join(":");
+    liveHunts=activeSeedHunts(save),key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000),liveHunts.map((h)=>`${h.tower}|${h.where}|${h.x}|${h.y}|${h.door?.x}|${h.door?.y}`).join(";"),save.mounts?.hatchling?.quest?.state,save.mounts?.hatchling?.quest?.x].join(":");
   if(objectiveCache.key===key){objectiveCache.quick=quick;return objectiveCache.list}
   const byKey=new Map(),add=(o)=>{const k=`${o.rx},${o.ry}`,prior=byKey.get(k);if(!prior||OBJECTIVE_KINDS[o.kind].rank<OBJECTIVE_KINDS[prior.kind].rank)byKey.set(k,o)},open=openChallengeSections();
   for(const t of wayfindingTargets(save.seed,game.rx,game.ry,save.worldGeneration,save))if(t.kind!=="beacon"&&!(t.kind==="crossing"&&save.explored[`${t.rx},${t.ry}`]&&!open.has(`${t.rx},${t.ry}`)))add({kind:t.kind==="story"&&t.name===save.viewport?.contracts?.[save.viewport?.activeHuntId]?.title?"hunt":t.kind,rx:t.rx,ry:t.ry,name:t.name});
@@ -650,7 +651,8 @@ function objectiveList(){
   const here=(o)=>Math.max(Math.abs(o.rx-game.rx),Math.abs(o.ry-game.ry));
   const all=[...byKey.values()].filter((o)=>here(o)>0||o.kind==="challenge").sort((a,b)=>here(a)-here(b)||OBJECTIVE_KINDS[a.kind].rank-OBJECTIVE_KINDS[b.kind].rank);
   const hunts=seedHuntObjectives(liveHunts,Object.fromEntries(liveHunts.map((h)=>[h.kind,SEEDS[h.kind]?.name])),game.rx,game.ry); // 2026-11-19 (Tim): each live seed hunt is a quest the tap cycles through, first in the list (atlas-view.ts seedHuntObjectives)
-  objectiveCache={key,quick,list:[...hunts,...all.slice(0,COMPASS_OBJECTIVE_LIMIT)],all:[...hunts,...all]}; // release 279: the chosen target is looked up in all of them
+  const rescue=rescueGuidance(save.mounts?.hatchling),rescues=rescue?[{kind:"hatchRescue",rx:rescue.rx,ry:rescue.ry,...(Number.isInteger(rescue.x)?{x:rescue.x,y:rescue.y}:{}),name:rescue.name}]:[]; // the hatchling's rescue (hatchling.ts): a quest the tap cycles through
+  objectiveCache={key,quick,list:[...rescues,...hunts,...all.slice(0,COMPASS_OBJECTIVE_LIMIT)],all:[...rescues,...hunts,...all]}; // release 279: the chosen target is looked up in all of them
   return objectiveCache.list;
 }
 function compassObjective(){if(compassPick===null)return null;objectiveList();return objectiveCache.all.find((o)=>objectiveKey(o)===compassPick)||null} // release 279: a pick that is merely far off is kept; 2026-11-12: a finished one leaves the compass without a needle (no nearest objective by default)
@@ -662,13 +664,13 @@ function navigationTargets() {
   const quest=compassQuest(save); // 2026-11-12: the relay leads or the Cairn Keeper's errand (a quest with no fixed section); before, any unmade relay choice counted
   const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
   const seedHunt=nearestSeedHunt(save,game.rx,game.ry); // tall towers: the nearest live seed hunt (atlas-view.ts seedHuntGuidance)
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx,seedHunt?.tower,seedHunt?.where,seedHunt?.x,seedHunt?.y,seedHunt?.door?.x,seedHunt?.door?.y].join(":");
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx,seedHunt?.tower,seedHunt?.where,seedHunt?.x,seedHunt?.y,seedHunt?.door?.x,seedHunt?.door?.y,save.mounts?.hatchling?.quest?.state,save.mounts?.hatchling?.quest?.x].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   // Tim (2026-11-12): the compass points only at an objective (atlas-view.ts compassGuidance): a Journal pin, the tracked hunt,
   // a far quest (release 716), a target chosen by tapping, or the waymarks a quest with no fixed section follows. Else no needle.
   const cues=game.area==="overworld"&&quest&&!pick?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues})||(game.area==="overworld"?seedHuntGuidance(seedHunt,seedHunt?{[seedHunt.kind]:SEEDS[seedHunt.kind]?.name}:{}):null); // a seed hunt last, as compassGuidance's seedHunt
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues})||(game.area==="overworld"?seedHuntGuidance(seedHunt,seedHunt?{[seedHunt.kind]:SEEDS[seedHunt.kind]?.name}:{})||rescueGuidance(save.mounts?.hatchling):null); // a seed hunt last, as compassGuidance's seedHunt; then the hatchling's rescue (hatchling.ts)
   navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
   return navigationCache;
 }
@@ -1800,6 +1802,7 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
+  {const r=rescueGuidance(save.mounts?.hatchling);if(r)pins.push({rx:r.rx,ry:r.ry,color:"#f2cf35",label:r.name,mark:true})} // the hatchling's rescue (hatchling.ts): a Triceratops-yellow flag
   for(const q of activeSeedHunts(save))pins.push({rx:q.rx,ry:q.ry,color:TALL_TOWERS.seedHunt.marker,inner:SEEDS[q.kind]?.color||"#ffffff",label:`Seed hunt: ${SEEDS[q.kind]?.name||"a seed"}`,seed:true}); // tall towers: each live seed hunt, a glinting seed-shaped marker
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
@@ -2196,6 +2199,15 @@ function openPack(tab) {
     const use = uiButton("Use", () => { panel.close(); openSigilAtlas(); }); // CROSSING_SIGIL: anywhere
     use.disabled = !(save.consumables.crossingSigil > 0);
     row.append(title, text, use); body.append(row);
+    { // The Triceratops hatchling (hatchling.ts; Tim, 2026-11-19): his growth and which form a hold of Act calls.
+      const h = ensureMounts(save).hatchling, hr = document.createElement("div"), ht = document.createElement("strong"), hp = document.createElement("p"); hr.className = "item consumable stable";
+      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her."; hr.append(ht, hp); }
+      else { const g2 = growthProgress(h), F = HATCHLING.forms[h.form]; ht.textContent = `Your Triceratops · ${F.name} form${h.out ? " · out" : ""}`;
+        hp.textContent = `${g2.next ? `Growing: ${g2.have}/${g2.need} toward his ${HATCHLING.forms[g2.next].name.toLowerCase()} form (he grows from ${Math.round(HATCHLING.growth.share * 100)}% of the experience you earn from fights while he is out).` : "Fully grown."} Hold Act to call the chosen form, or send him to rest.`;
+        hr.append(ht, hp); const line = document.createElement("div"); line.className = "stable-mount";
+        for (const k of HATCHLING.formIds) { const F2 = HATCHLING.forms[k], b = uiButton(`${F2.name}${h.form === k ? " ✓" : ""}`, () => { const r = game.chooseHatchlingForm(k); game.message = r.message; persist(); openPack("supplies"); }); b.title = formUnlocked(h, k) ? F2.text : "Not grown yet"; b.disabled = !formUnlocked(h, k) || h.form === k; line.append(b); }
+        hr.append(line); }
+      body.append(hr); }
     { // Release 748 (Tim, 2026-11-04): the stable, up to MOUNT_RIDE.cap caught beasts. Ride calls one beside you (as Act with nothing near does).
       const q = ensureMounts(save), sr = document.createElement("div"), stt = document.createElement("strong"), sp = document.createElement("p"); sr.className = "item consumable stable";
       const temporaryCount = q.stable.filter(m => !persistentMount(m)).length;
