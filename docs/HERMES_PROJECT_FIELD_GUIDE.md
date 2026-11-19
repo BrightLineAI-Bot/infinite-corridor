@@ -49,7 +49,7 @@ Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not
 
 Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
 
-## Unreleased — per-actor hit-stop (Elden Ring style)
+## Release 1031 — per-actor hit-stop (Elden Ring style)
 
 Tim (2026-11-19) asked for hit-stop to work like Elden Ring: only the Wayfarer and the creature she hit pause briefly, while everything else (other monsters, projectiles, effects) keeps moving and can still attack her. Release 1023's hold froze the whole presented frame in Close View. The weighted swings' own game-time hit-stop already held only the swing and the struck foes, but the foe's hold was a short stagger (`hitStun`), not a pause.
 

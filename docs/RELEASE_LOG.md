@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1030 (this merge, #701); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1031 (this merge, #702); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1031 | Claude | claude/hitstop-actors / #702 | Per-actor hit-stop (Elden Ring style): only the Wayfarer and the struck foe pause | Merged (#702); preview follows. |
 | 1030 | Claude | claude/close-view-visibility / #701 | Close View visibility: silhouettes only behind walls; fade creatures blocking the Wayfarer; creature cards lit like their floor | Merged (#701); preview follows. |
 | 1029 | Claude | claude/edge-skills-texts / #697 | Arcane Edge from skills; honest skill/passive texts; Encumbered tiers and calm-down; melee buffs on fists, melee tools and the Shadow Clone; softer rift line | Merged (#697); preview follows. |
 | 1028 | Claude | claude/second-wayfarer-ending / #696 | The Second Wayfarer's ending: her body and the note in blood | Merged (#696); preview follows. |
