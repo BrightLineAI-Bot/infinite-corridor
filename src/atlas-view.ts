@@ -240,13 +240,13 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
 // point, within `radius` tiles (the door needle's own .45). The banner fires once as the arrival starts; it re-arms when the
 // Wayfarer leaves, the target changes, or the player chooses again (compassArrivalReset). The state is one small object reused
 // every HUD frame (no per-frame allocation); `id` and the coordinates say which target was reached.
-export const COMPASS_ARRIVAL = Object.freeze({ radius: .45, banner: "WAYPOINT REACHED" });
+export const COMPASS_ARRIVAL = Object.freeze({ radius: .45, site: 1.5, banner: "WAYPOINT REACHED" }); // site: an overworld spot, measured in the open (the door radius is too tight there)
 // An overworld target `g` (navigationTargets' guidance) reached by a Wayfarer at (px, py) in section (rx, ry) of `area`. A site
 // is measured to the middle of its tile, as the needle aims.
 export function compassTargetArrived(g, area, rx, ry, px, py) {
   if (!g || area !== g.area || g.rx !== rx || g.ry !== ry) return false;
   if (!Number.isFinite(g.x)) return true;
-  return Math.hypot(g.x + .5 - px, g.y + .5 - py) < COMPASS_ARRIVAL.radius;
+  return Math.hypot(g.x + .5 - px, g.y + .5 - py) < COMPASS_ARRIVAL.site;
 }
 export const compassArrivalState = () => ({ on: false, id: null, rx: NaN, ry: NaN, x: NaN, y: NaN });
 export function compassArrivalReset(s) { s.on = false; return s; }

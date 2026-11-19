@@ -169,7 +169,7 @@ test('starting a seed hunt at a tower lookout points the compass at it; looking 
 test('arrival at the compass target: the needle\'s rule, once per arrival, re-armed by leaving or choosing again', () => {
   // the rule: a target with no site is reached on its section; a site (and a door point) within the radius
   const sec = { area: 'overworld', rx: 2, ry: 1, name: 'Hunt' }, site = { area: 'overworld', rx: 2, ry: 1, x: 10, y: 6, name: 'Seed hunt' };
-  assert.equal(COMPASS_ARRIVAL.radius, .45); assert.equal(COMPASS_ARRIVAL.banner, 'WAYPOINT REACHED');
+  assert.equal(COMPASS_ARRIVAL.radius, .45); assert.equal(COMPASS_ARRIVAL.site, 1.5); assert.equal(COMPASS_ARRIVAL.banner, 'WAYPOINT REACHED');
   assert.equal(compassTargetArrived(sec, 'overworld', 2, 1, 3, 30), true); assert.equal(compassTargetArrived(sec, 'overworld', 2, 2, 16, 16), false);
   assert.equal(compassTargetArrived(sec, 'dungeon', 2, 1, 16, 16), false, 'dormant indoors');
   assert.equal(compassTargetArrived(site, 'overworld', 2, 1, 10.5, 6.6), true); assert.equal(compassTargetArrived(site, 'overworld', 2, 1, 12, 6.5), false, 'in its section, not at its spot');
