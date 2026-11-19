@@ -133,7 +133,7 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   B.color(C.body).loft({ seg: low ? 7 : full ? 14 : 10, sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS * dp(f), bones: ['head', 'head', 0] })),
     tone: (i, k, st) => { const f = skull[i][0]; if (f >= beakF) return st > .2 ? C.beakLight : C.beak; if (st < -.2 && st > -.55 && f > .02) return lerpHex(C.dark, C.beak, .35); return st > .3 ? C.light : st < -.5 ? C.dark : C.body; } });
   // the upper beak's hook, curling down over the lower beak
-  B.color(C.beak).lathe({ at: hb([.35, 0, -.055]), F: [.25, 0, -.97], rings: [[0, .03 * HS], [.035 * HS * dp(.35), .02 * HS], [.06 * HS * dp(.35), 0]], seg: low ? 4 : 6, rs: .75 });
+  B.color(C.beak).lathe({ at: hb([.35, 0, -.055]), F: [.25, 0, -.97], rings: [[0, .03 * HS], [.035 * HS, .02 * HS], [.06 * HS, 0]], seg: low ? 4 : 6, rs: .75 });
   // the brow horns: each grows out of a swelling of the brow, thick at the base, curving forward and up to a fine tip (one lofted skin)
   for (const s of [-1, 1]) {
     if (!low) B.color(C.body).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });

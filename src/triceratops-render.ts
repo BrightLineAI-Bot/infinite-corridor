@@ -27,7 +27,7 @@ export const TRI_ART = Object.freeze({
   // the face's squat beak (Tim, 2026-11-19: "its beak portion is still too long; it needs to be a little bit more squat"): in front of
   // `from` (head units, just ahead of the brow horns' roots) the snout is drawn `k` as long and, toward the beak, up to `deep` as deep
   // about the mouth line `mid`. Every form, both views (Close View reads it too); the brow horns are not moved.
-  muzzle: Object.freeze({ from: .2, k: .86, deep: 1.12, mid: -.01, ramp: .12 }),
+  muzzle: Object.freeze({ from: .2, k: .82, deep: 1.12, mid: -.01, ramp: .12 }),
   whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
 });
 // How each pose bends the body. pitch (+ nose up; about the hips, or the shoulders nose down), head (+ raises the head), reach
