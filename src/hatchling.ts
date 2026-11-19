@@ -36,8 +36,8 @@ export const HATCHLING = f({
   // and about 4 more to big at ordinary kill rates (about 1,800 Wayfarer experience an hour in the mid game).
   growth: f({ share: .5, young: 2700, big: 6300 }),
   forms: f({
-    baby: f({ name: "Baby", scale: .6, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
-    young: f({ name: "Young", scale: 1.15, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
+    baby: f({ name: "Baby", scale: 1.15, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
+    young: f({ name: "Young", scale: 1.4, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
     big: f({ name: "Big", scale: 2.1, speed: 0, rideable: true, text: "rideable" }),
   }),
   formIds: f(["baby", "young", "big"]),

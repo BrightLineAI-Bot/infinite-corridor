@@ -50,11 +50,12 @@ export const TRI_POSES = Object.freeze({
 // ("everything cheeby"); young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
 // `triForm` (the herds, the mount) keeps exactly the adult's numbers (TRI_FORM_ADULT).
 // head: the head's scale; leg: leg bone lengths and the hip's height; legW: leg and haunch thickness; girth: body depth; length: the
-// spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none).
-export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0 });
+// spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none); snout: the face
+// in front of the eye shortened toward it (a round baby face, a small beak).
+export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0, snout: 1 });
 export const TRI_FORMS = Object.freeze({
-  baby: Object.freeze({ head: 1.5, leg: .72, legW: 1.3, girth: 1.18, length: .78, frill: .55, brow: .2, nose: .42, eye: 1.85, cheek: 1 }),
-  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0 }),
+  baby: Object.freeze({ head: 1.5, leg: .85, legW: 1.3, girth: 1.18, length: .72, frill: .55, brow: .2, nose: .42, eye: 1.85, cheek: 1, snout: .72 }),
+  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1 }),
 });
 export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
 const scl = (v, c, k) => k === 1 ? v : c + (v - c) * k; // a horn point scaled about its base (exactly the adult's at 1)
@@ -256,7 +257,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
 // The head in its own frame at the base of the skull (hx, hy), turned to `ha`: the frill behind, the far brow horn, the skull and
 // beak, the nose horn, the near brow horn and the eye.
 function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = TRI_FORM_ADULT) {
-  const S = A.headScale * FM.head, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, H = (x, y) => [hx + x * c - y * sn, hy + x * sn + y * c];
+  const S = A.headScale * FM.head, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, sk = FM.snout, H = sk === 1 ? (x, y) => [hx + x * c - y * sn, hy + x * sn + y * c] : (x, y) => { x = x > .12 ? .12 + (x - .12) * sk : x; return [hx + x * c - y * sn, hy + x * sn + y * c]; };
   const mv = (p) => ctx.moveTo(p[0], -p[1]), ln = (p) => ctx.lineTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
   const shape = (pts) => { ctx.beginPath(); mv(H(pts[0][0], pts[0][1])); for (let i = 1; i < pts.length; i++) ln(H(pts[i][0], pts[i][1])); ctx.closePath(); };
   // the frill: a broad shield rising up and back from the skull, its rim scalloped with pale knobs, two dark spots inside
@@ -316,8 +317,9 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(ex + .001 * ek, ey - .009 * ek, .007 * ek, 0, TAU); ctx.fill();
   if (ek > 1.3) { ctx.beginPath(); ctx.arc(ex + .014 * ek, ey + .008 * ek, .0035 * ek, 0, TAU); ctx.fill(); } // a second glint: big shiny baby eyes
   // the brow ridge over it: a soft arch while calm, drawn down over the eye while it attacks
-  if (angry) { const l0 = H(.075, .08), l1 = H(.17, .075); ctx.fillStyle = A.bodyDark; ctx.beginPath(); mv(H(.07, .095)); qc(H(.12, .11), H(.175, .085)); ln(l1); qc(H(.12, .05), l0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke(); }
-  else { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.08, .085)); qc(H(.12, .105), H(.165, .085)); ctx.stroke(); ctx.lineCap = "butt"; }
+  const rl = (ek - 1) * .035; // a big eye lifts the brow ridge over it
+  if (angry) { const l0 = H(.075, .08 + rl), l1 = H(.17, .075 + rl); ctx.fillStyle = A.bodyDark; ctx.beginPath(); mv(H(.07, .095 + rl)); qc(H(.12, .11 + rl), H(.175, .085 + rl)); ln(l1); qc(H(.12, .05 + rl), l0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke(); }
+  else { ctx.strokeStyle = A.outline; ctx.lineWidth = lw * 1.2; ctx.lineCap = "round"; ctx.beginPath(); mv(H(.08, .085 + rl)); qc(H(.12, .105 + rl), H(.165, .085 + rl)); ctx.stroke(); ctx.lineCap = "butt"; }
   void poseName;
 }
 
