@@ -1,3 +1,4 @@
+import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.ts"; // the Triceratops hatchling
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { vulnerableUntil, glyphMinesOf, GLYPH_MINE } from "./hit-cast-passives.ts"; // Tempo marks, Glyph Mine sigils (2026-11-19)
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
@@ -2993,6 +2994,8 @@ export function render(ctx, g, w, h, now) {
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
           if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "hatchMama") drawHatchMama(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the hatchling's mother (hatchling-render.ts)
+          else if (o.kind === "hatchPen") drawHatchPen(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the pen he is rescued from
           else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
@@ -3125,6 +3128,7 @@ export function render(ctx, g, w, h, now) {
           } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else if(SEASON&&o.kind==="tree"&&o.state==="standing")drawSeasonTree(ctx,o,s,kind);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
+  { const hd = hatchlingDraw(ctx, g, s, now); if (hd && visibleInCamera(hd, l, t, r, b, 2)) draws.push(hd); } // the Triceratops hatchling, out (hatchling-render.ts)
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))

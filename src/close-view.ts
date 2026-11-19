@@ -32,6 +32,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
+import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
@@ -2621,7 +2622,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
   MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
-  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; }
+  HATCH_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.hatchling; // the hatchling's body is skinned: his card is left empty
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; HATCH_DRAW.skipBody = false; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -3917,6 +3919,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   // 2026-11-14 (CLOSE_VIEW_BEAST_SIGHT): two passes, nearest first in each: the beasts of your section, then every other body,
   // so a nearer creature of a roster kind (a pen's stag, the Stalker's copies) never takes a section beast's slot.
   admitRiddenTriceratops(g, Q, now, reduce, tier);
+  admitHatchling(g, now, reduce, tier);
   for (let pass = 0; pass < 2; pass++) for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM || dc < DUELIST_SLOT.maxDuelists || tc < TRICERATOPS_SLOT.maxBodies); oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || closeViewSectionBeast(foe) !== (pass === 0) || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
@@ -3975,6 +3978,22 @@ function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
   const frame = sampleTriceratops(RIDDEN.track, a, E); if (!frame) return;
   const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch;
+}
+// The Triceratops hatchling (hatchling.ts), out in his baby or young form: his skinned body on the Triceratops rig with his form's
+// proportions (close-view-beast-triceratops.ts triceratopsMesh: `triForm`), at his form's scale, on his own track. One body at most;
+// the lowest quality setting keeps his card. Reads only his presentation (hatchling-render.ts hatchlingPresentation).
+const HATCH_CV = { track: null, form: '', actor: { id: 'hatchling', kind: 'triceratops', triForm: 'baby', hp: 1, maxHp: 1, pack: null, facingX: 1 },
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, air: 0 } };
+function admitHatchling(g, now, reduce, tier) {
+  MODEL_STATE.beasts.hatchling = false;
+  const pr = tier === 'low' ? null : hatchlingPresentation(g, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, reduce); if (!pr) { HATCH_CV.track = null; return; }
+  const a = HATCH_CV.actor, E = HATCH_CV.env; a.triForm = pr.form; a.pack = pr.pack; a.facingX = pr.face;
+  if (!prepareCloseViewBeastMesh(triceratopsMesh(tier, a))) { HATCH_CV.track = null; return; }
+  if (!HATCH_CV.track || HATCH_CV.form !== pr.form) { HATCH_CV.track = createTriceratopsTrack(); HATCH_CV.form = pr.form; }
+  const x = pr.x + .5, y = pr.y + .82; E.x = x; E.y = y; E.z = surfaceZ(g.map, x, y - .07) + pr.hop; E.scale = pr.closeViewScale; E.now = now; E.reduce = reduce; E.tier = tier;
+  BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y; E.target = BEAST_TARGET;
+  const frame = sampleTriceratops(HATCH_CV.track, a, E); if (!frame) return;
+  const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.hatchling = true;
 }
 // 2026-11-13 (Tim: "every interactable character should have a real 3D body in Close View"): the townsfolk (close-view-folk.ts).
 // Nearest first, up to FOLK_SLOT.maxFolk for the tier; past it, or without the GPU's beast program, a person keeps its card. A

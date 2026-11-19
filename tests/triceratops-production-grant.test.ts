@@ -33,26 +33,26 @@ function fakeStorage() {
 let instance = 0;
 const persistence = () => import(`../src/persistence.ts?freeTriceratops=${++instance}`);
 
-test("the production grant supplies one permanent normal mount without a capture or automatic ride",()=>{
-  const save=freshSave();gift(save);const m=normal(save)[0];assert.ok(m);assert.equal(normal(save).length,1);assert.equal(m.hp,TRICERATOPS_RIDE.health);assert.equal(m.recovery,null);assert.equal(save.mounts.riding,null);assert.equal(save.mounts.seq,0);assert.deepEqual(save.mounts.caught,{});assert.equal(save.mounts.standardTriceratopsGrant,1);
+test("the production hook grants no Triceratops: every journey earns him through the Beast Hotel rescue (Tim, 2026-11-19)",()=>{
+  const save=freshSave();gift(save);assert.equal(normal(save).length,0);assert.equal(save.mounts.riding,null);assert.equal(save.mounts.seq,0);assert.deepEqual(save.mounts.caught,{});assert.equal(save.mounts.standardTriceratopsGrant,undefined);assert.equal(save.mounts.hatchling.quest.state,"none");
   const before=structuredClone(save.mounts);gift(save);assert.deepEqual(save.mounts,before);
   const restored=migrateSave(JSON.parse(JSON.stringify(save)));gift(restored);assert.deepEqual(restored.mounts,before);
-  const caught=stableMount(restored,"triceratops").mount;assert.equal(caught.id,m.id);assert.equal(normal(restored).length,1);
+  const caught=stableMount(restored,"triceratops").mount;assert.equal(caught.id,"mount-1");assert.equal(normal(restored).length,1);
 });
 
-test("existing mount identities, health, recovery, variant, capacity and selection survive the gift",()=>{
+test("existing mount identities, health, recovery, variant, capacity and selection are untouched by the production hook",()=>{
   const save=freshSave();for(const beast of ["briarStag","stalker","mountainTurtle"])stableMount(save,beast);
   assert.equal(save.mounts.stable.length,3); // all legacy capacity slots are occupied
   const silly=stableMount(save,"triceratops",{variant:"silly"}).mount;startRide(save,silly.id);
   const old=structuredClone(save.mounts),selected=defaultMount(save).id;gift(save);
-  assert.deepEqual(save.mounts.stable.slice(1),old.stable);assert.deepEqual(save.mounts.caught,old.caught);assert.equal(save.mounts.seq,old.seq);assert.equal(save.mounts.riding,old.riding);assert.equal(save.mounts.last,old.last);assert.equal(defaultMount(save).id,selected);
+  assert.deepEqual(save.mounts.stable,old.stable);assert.deepEqual(save.mounts.caught,old.caught);assert.equal(save.mounts.seq,old.seq);assert.equal(save.mounts.riding,old.riding);assert.equal(save.mounts.last,old.last);assert.equal(defaultMount(save).id,selected);
   const owned=freshSave(),m=stableMount(owned,"triceratops").mount;m.hp=0;m.defeats=3;m.recovery={home:"2,3",progress:7,recent:["world:2,3"],opponentId:"hotel-owned",encounterStarted:true,encounterComplete:false,unknown:8};m.extra="kept";
   const before=structuredClone(owned.mounts);gift(owned);assert.deepEqual(owned.mounts.stable,before.stable);assert.equal(normal(owned)[0].id,m.id);assert.deepEqual(owned.mounts.caught,before.caught);
 });
 
-test("grant ids do not collide and a consumed grant never recreates or heals a mount",()=>{
-  const save=freshSave(),legacy=stableMount(save,"briarStag").mount;legacy.id="mount-free-triceratops-v1";const selected=defaultMount(save).id;gift(save);assert.notEqual(normal(save)[0].id,legacy.id);assert.equal(defaultMount(save).id,selected);
-  normal(save)[0].hp=27;gift(save);assert.equal(normal(save)[0].hp,27);
+test("the withdrawn gift's id family is only ever a Triceratops of the gift; nothing is recreated or healed",()=>{
+  const save=freshSave(),legacy=stableMount(save,"briarStag").mount;legacy.id="mount-free-triceratops-v1";const selected=defaultMount(save).id;gift(save);assert.equal(normal(save).length,0);assert.equal(save.mounts.stable[0].id,legacy.id);assert.equal(defaultMount(save).id,selected);
+  stableMount(save,"triceratops").mount.hp=27;gift(save);assert.equal(normal(save)[0].hp,27);
   save.mounts.stable=save.mounts.stable.filter(m=>m.beast!=="triceratops");gift(save);assert.equal(normal(save).length,0);
   save.mounts.standardTriceratopsGrant=2;gift(save);assert.equal(save.mounts.standardTriceratopsGrant,2);assert.equal(normal(save).length,0);
 });
@@ -66,19 +66,19 @@ test("generic factories, codecs and Proving Ground fixtures do not receive produ
   assert.equal(normal(hotel).length,1);assert.ok(normal(hotel)[0].recovery);assert.equal(hotel.mounts.standardTriceratopsGrant,undefined);
 });
 
-test("production creation and load grant once while validation and original storage remain untouched",async()=>{
+test("production creation and load grant nothing while validation and original storage remain untouched",async()=>{
   const ctl=fakeStorage(),P=await persistence(),old=freshSave();old.seed="OLD-GRANT";ctl.data.set("journey:1",structuredClone(old));
-  assert.equal(normal(P.validateJourney(old).save).length,0);P.setActiveSlot(1);const loaded=await P.loadSave();assert.equal(normal(loaded).length,1);assert.deepEqual(ctl.data.get("journey:1"),old);
+  assert.equal(normal(P.validateJourney(old).save).length,0);P.setActiveSlot(1);const loaded=await P.loadSave();assert.equal(normal(loaded).length,0);assert.deepEqual(ctl.data.get("journey:1"),old);
   await P.saveGame(loaded);await P.flushSaves();const again=await P.loadSave();assert.deepEqual(again.mounts,loaded.mounts);
-  await P.createJourney(2,{name:"Fresh gift",seed:"NEW-GRANT"});P.setActiveSlot(2);const created=await P.loadSave();assert.equal(normal(created).length,1);assert.equal(created.mounts.riding,null);
-  P.setActiveSlot(3);assert.equal(normal(await P.loadSave()).length,1,"empty production slot");
+  await P.createJourney(2,{name:"Fresh gift",seed:"NEW-GRANT"});P.setActiveSlot(2);const created=await P.loadSave();assert.equal(normal(created).length,0);assert.equal(created.mounts.hatchling.owned,false);assert.equal(created.mounts.riding,null);
+  P.setActiveSlot(3);assert.equal(normal(await P.loadSave()).length,0,"empty production slot: a new journey does the rescue quest");
 });
 
 test("production import, duplication and recovery preserve an owned companion and leave backups unchanged",async()=>{
   const ctl=fakeStorage(),P=await persistence(),owned=freshSave(),m=stableMount(owned,"triceratops").mount;m.hp=31;m.defeats=2;
   const silly=stableMount(owned,"triceratops",{variant:"silly"}).mount;startRide(owned,silly.id);const before=structuredClone(owned);
-  await P.importJourney(1,JSON.stringify(owned));P.setActiveSlot(1);const imported=await P.loadSave();assert.deepEqual(imported.mounts.stable,before.mounts.stable);assert.equal(imported.mounts.riding,silly.id);assert.equal(imported.mounts.standardTriceratopsGrant,1);assert.deepEqual(owned,before);
+  await P.importJourney(1,JSON.stringify(owned));P.setActiveSlot(1);const imported=await P.loadSave();assert.deepEqual(imported.mounts.stable,before.mounts.stable);assert.equal(imported.mounts.riding,silly.id);assert.equal(imported.mounts.standardTriceratopsGrant,undefined);assert.deepEqual(owned,before);
   await P.duplicateJourney(1,2);P.setActiveSlot(2);const copy=await P.loadSave();assert.deepEqual(copy.mounts,imported.mounts);
   const recovery=structuredClone(before);normal(recovery)[0].hp=0;normal(recovery)[0].defeats=3;normal(recovery)[0].recovery={home:"0,0",progress:4,recent:[],opponentId:"hotel-captured",encounterStarted:true,encounterComplete:false};ctl.data.set("recovery:3:1",structuredClone(recovery));
-  await P.recoverJourney(3);P.setActiveSlot(3);const restored=await P.loadSave();assert.deepEqual(restored.mounts.stable,recovery.mounts.stable);assert.equal(restored.mounts.riding,silly.id);assert.equal(restored.mounts.standardTriceratopsGrant,1);assert.deepEqual(ctl.data.get("recovery:3:1"),recovery);
+  await P.recoverJourney(3);P.setActiveSlot(3);const restored=await P.loadSave();assert.deepEqual(restored.mounts.stable,recovery.mounts.stable);assert.equal(restored.mounts.riding,silly.id);assert.equal(restored.mounts.standardTriceratopsGrant,undefined);assert.deepEqual(ctl.data.get("recovery:3:1"),recovery);
 });
