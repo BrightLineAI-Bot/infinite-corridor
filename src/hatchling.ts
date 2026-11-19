@@ -46,9 +46,9 @@ export const HATCHLING = f({
   // The baby's buffs: one kind at a time is given every `every` seconds, for `seconds`; kinds stack, never two of a kind (a repeat
   // refreshes its time). Bonus fields are the meal fields game.ts armorGlyphBonus already applies (fractions).
   buffs: f({ every: 10, seconds: 40, kinds: f({
-    damage: f({ name: "damage", bonus: f({ attackDamage: .02, spellDamage: .02 }) }),
-    defence: f({ name: "defence", bonus: f({ defense: .02 }) }),
-    stamina: f({ name: "stamina recovery", bonus: f({ staminaRegen: .02 }) }),
+    damage: f({ name: "damage", bonus: f({ attackDamage: .05, spellDamage: .05 }) }),
+    defence: f({ name: "defence", bonus: f({ defense: .05 }) }),
+    stamina: f({ name: "stamina recovery", bonus: f({ staminaRegen: .05 }) }),
   }) }),
   baby: f({
     heal: f({ every: 16, share: .22, below: .85 }), // a share of maximum health, when the Wayfarer is under `below` of it
