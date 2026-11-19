@@ -564,7 +564,7 @@ for (const side of [-1, 1]) rootBrute.push(
 );
 for (const side of [-1, 1]) {
   rootBrute.push(
-    part(curvedTube([[.03, side * .45, 1.33, .13], [.12, side * .5, .97, .105]], 6), 0, 0, 0, 1, 1, 1, bark, side * 2, .04, 1.27),
+    part(curvedTube([[.02, side * .36, 1.35, .14], [.12, side * .5, .97, .105]], 6), 0, 0, 0, 1, 1, 1, bark, side * 2, .04, 1.27), // rooted in the trunk (solidity pass 2: no gap at the shoulder)
     part(curvedTube([[.11, side * .5, 1.0, .1], [.22, side * .51, .64, .14]], 6), 0, 0, 0, 1, 1, 1, darkBark, side * 2, .04, 1.27),
     part(curvedTube([[-.045,side*.209,.70,.11],[-.045,side*.209,.36,.10],[.046,side*.209,.10,.07]],5),0,0,0,1,1,1,darkBark,side,-.04,.71),
     part(ellipsoid(6, 1), .25, side * .51, .53, .16, .17, .15, root, side * 2, .04, 1.27, 0, true),
@@ -1233,9 +1233,37 @@ function bendFrame(B, mo, rig) {
   return B;
 }
 
+// Grounding (solidity pass 2, Tim 2026-11-19: "concrete"). The baked rest meshes of most creatures stand a little above the
+// floor (the Root Brute's soles .078 of a tile up, the Ashling's .043), which with a small contact shadow read as a body hovering
+// over a dark coin. A creature of a `families` body whose lowest rest point is above the floor by at most `max` (in its own
+// units at scale 1) is set down by that much; higher ones are designed to hover (the Veil Moth) and are left alone. Measured
+// once per kind from its idle pose (one scratch buffer, one number kept per kind), never per frame.
+export const CREATURE_GROUND = Object.freeze({ families: Object.freeze(['biped', 'quadruped', 'crawler', 'serpent', 'construct', 'plant', 'blob']), max: .12, foot: .4 });
+// The same measurement gives the body's footprint: the half extent (tiles at scale 1) of its lower `foot` share, which sizes its
+// contact shadow (close-view.ts CLOSE_VIEW.creatures.contact) so a wide body stands on a shadow as wide as its stance.
+const GROUND_FAMILIES = new Set(CREATURE_GROUND.families), GROUND_REST = new Map(); let groundProbe = null, groundMeasuring = false;
+function measureRest(kind) {
+  let r = GROUND_REST.get(kind); if (r) return r; r = { lift: 0, foot: 0 };
+  if (!groundMeasuring && modelSupported(kind)) {
+    groundMeasuring = true;
+    try { groundProbe ||= new Float32Array(MODEL_MAX_VERTICES * MODEL_FLOATS);
+      const n = writeCloseViewModel(groundProbe, 0, { kind, x: 0, y: 0, z: 0, yaw: 0, phase: 0, pace: 0, amount: 0, pose: 'idle', alpha: 1, scale: 1, effectTime: 0, reduceMotion: true });
+      let low = Infinity, high = -Infinity; for (let o = 2; o < n; o += MODEL_FLOATS) { if (groundProbe[o] < low) low = groundProbe[o]; if (groundProbe[o] > high) high = groundProbe[o]; }
+      if (low > 0 && low <= CREATURE_GROUND.max) r.lift = low;
+      const cut = low + (high - low) * CREATURE_GROUND.foot; let ext = 0;
+      for (let o = 0; o < n; o += MODEL_FLOATS) if (groundProbe[o + 2] <= cut) ext = Math.max(ext, Math.abs(groundProbe[o]), Math.abs(groundProbe[o + 1]));
+      r.foot = Number.isFinite(ext) ? ext : 0;
+    } finally { groundMeasuring = false; }
+  }
+  GROUND_REST.set(kind, r); return r;
+}
+export const creatureRestGround = (kind) => measureRest(kind).lift;
+export const creatureFootprint = (kind) => measureRest(kind).foot;
 export function writeCloseViewModel(out, offset, actor) {
   if (Object.hasOwn(MIRAGE_BLADE_MODELS, actor?.kind)) return writeMirageBladeModel(out, offset, actor); // the Mirage blades: spun in a plane tipped toward the camera (close-view-sweep-gear.ts)
   const { kind, x, y, z, yaw, phase, pace, pose, amount } = actor;
+  // measured first (once per kind): the measurement writes a model itself and reuses the module's scratch pose records
+  const groundLift = actor.grounded === true && !groundMeasuring && GROUND_FAMILIES.has(creaturePoseFamily(kind)) ? creatureRestGround(kind) : 0; // Close View's creatures ask for it (actor.grounded); other writers keep the authored rest
   const playerLike = kind === "player" || kind === "wayfarer" || kind.startsWith("player");
   const actorScale = Number.isFinite(actor.scale) ? Math.max(.25, Math.min(4, actor.scale)) : 1;
   const size = (kind === "nativeOrb" ? Math.max(.02,Math.min(1,Number(actor.radius)||.13)) : (playerLike ? .82 : 1) * actorScale);
@@ -1244,7 +1272,7 @@ export function writeCloseViewModel(out, offset, actor) {
   if (!modelSupported(kind) || !modelSupportsAttachments(kind, attachments.length) || !Number.isSafeInteger(offset) || offset < 0 || offset + needed > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
-  const moving = Math.max(0, Math.min(1, pace));
+  const modelStart = offset, moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
   // Only new accepted phase records use this path; legacy/native poses keep their original timing.
   const phasedTool=playerLike&&actor.toolAction?.toolUse?actor.toolAction:null;
@@ -1316,6 +1344,8 @@ export function writeCloseViewModel(out, offset, actor) {
   const roll = mo ? mo.roll + deathRoll : 0, rollOn = roll !== 0, rollC = rollOn ? Math.cos(roll) : 1, rollS = rollOn ? Math.sin(roll) : 0;
   const B = rig && mo.bend ? bendFrame(BEND_FRAME, mo, rig) : null;
   // a layered creature's blow tints it as the hit pose did; its arrival fades it in
+  const FLASH = CREATURE_MOTION.impact.flash, flashK = root && actor.impactFlash > 0 ? Math.min(1, actor.impactFlash) * CREATURE_MOTION.impact.flashAmount : 0;
+  const ground = root && GROUND_FAMILIES.has(root.family) ? groundLift * size : 0; // set down on the floor (CREATURE_GROUND)
   const tint = root && Number.isFinite(actor.hitReact) ? Math.max(flinch, Math.max(0, Math.min(1, actor.hitReact))) : flinch, drawnAlpha = mo ? alpha * mo.alpha : alpha;
   const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist + mo.twist : turn0;
   const cy = Math.cos(yaw + turn), sy = Math.sin(yaw + turn);
@@ -1521,7 +1551,7 @@ export function writeCloseViewModel(out, offset, actor) {
         f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
         nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
       }else if(kind==='playerHammerStomp')worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
-      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=root?z+worldZ*rootSquash*size+rootLift:z+worldZ*size;
+      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=root?z+worldZ*rootSquash*size+rootLift-ground:z+worldZ*size;
       out[offset++]=nf*cy-nv*sy;out[offset++]=nf*sy+nv*cy;out[offset++]=nw;
       const poison = actor.poison ? .55 : 0;
       let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
@@ -1531,9 +1561,10 @@ export function writeCloseViewModel(out, offset, actor) {
       const red = sourceRed + (.32 - sourceRed) * poison;
       const green = sourceGreen + (.82 - sourceGreen) * poison;
       const blue = sourceBlue + (.24 - sourceBlue) * poison;
-      out[offset++] = red + (.96 - red) * tint * .6;
-      out[offset++] = green + (.34 - green) * tint * .6;
-      out[offset++] = blue + (.23 - blue) * tint * .6;
+      const r1 = red + (.96 - red) * tint * .6, g1 = green + (.34 - green) * tint * .6, b1 = blue + (.23 - blue) * tint * .6; // the hurt tint
+      out[offset++] = flashK > 0 ? r1 + (FLASH[0] - r1) * flashK : r1; // the blow's first instant: white-hot (CREATURE_MOTION.impact)
+      out[offset++] = flashK > 0 ? g1 + (FLASH[1] - g1) * flashK : g1;
+      out[offset++] = flashK > 0 ? b1 + (FLASH[2] - b1) * flashK : b1;
       const bodyAlpha = kind === 'gloomgorge' ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
       out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
     }
@@ -1544,6 +1575,9 @@ export function writeCloseViewModel(out, offset, actor) {
       muzzleOut[0]=x+(ff*cy-mv*sy)*size;muzzleOut[1]=y+(ff*sy+mv*cy)*size;muzzleOut[2]=z+fz*size;muzzleOut[3]=Number.isFinite(muzzleOut[0]+muzzleOut[1]+muzzleOut[2])?1:0;
     }
   }
+  if (root && fall > 0) { // a falling or fallen body rests on the floor (solidity pass 2): its lowest point is set down on its ground
+    let low = Infinity; for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) if (out[o] < low) low = out[o];
+    const drop = low - z; if (drop > 0 && Number.isFinite(drop)) for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) out[o] -= drop; }
   for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, drawnAlpha, actorScale);
   return offset;
 }

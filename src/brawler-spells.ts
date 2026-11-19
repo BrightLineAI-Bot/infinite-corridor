@@ -406,7 +406,8 @@ export function drawCleaverRushBlade(ctx, game, s, lift = 0) {
 // Your primary damage as a caster stays spells, skills and synergies"). A spell (items.ts `imbue-weapon`, cast through
 // castBrawler like Shadow Boxing) that lasts `seconds`. While it lasts every melee hit adds magic damage: each swing (and its
 // glyph echo strike, at the echo's share), each Iron Fists punch, and each Hammerfall and Great Sweep blow (the strikes
-// Spellblade calls melee). Not the Awakened crescent, the Shadow Clone's copies, tool shots, Mirage of Blades or the golem.
+// Spellblade calls melee), and the Shadow Clone's swing at its share (Tim, 2026-11-19: the clone's swing gets what hers gets;
+// game.ts cloneSwing). Not the Awakened crescent, tool shots (the clone's included), Mirage of Blades or the golem.
 // The amount per hit, before the Imbue spell's own glyph damage mod and the spell-damage multipliers of armor glyphs, meals
 // and pages (not Pairings, not melee multipliers): `focus` × (Focus − 1), plus `magic` × the magic bonus once Focus has had
 // `gate` points put in (scaled in linearly below that). Focus 1, the starting value, adds exactly nothing. Recasting while it

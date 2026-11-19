@@ -30,6 +30,10 @@ import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from '.
 //   and a low ground haze lit by the lights; a colour grade and vignette per theme; dust motes near lights (full tier).
 // - Nothing is ever drawn translucent to show the Wayfarer: the camera is pulled in along the boom instead (close-view.ts), and
 //   anything that must still hide them shows them as a crisp silhouette through it (the depth GREATER pass).
+// - That silhouette pass (Tim, 2026-11-19) compares against walls and solid architecture only: the props (crates, cabinets,
+//   furniture: the solids buffer's prop range, GLF.propA..propB) are drawn after it, so nothing shows through a prop; and only the
+//   model vertex runs close-view.ts lists (GLF.silRuns: the Wayfarer, and creatures not within CLOSE_VIEW_VISIBILITY.silhouette.near
+//   of her, not engaging her, not dying) take it. Cards and beasts carry the same rule in their own data.
 // - The fixed-distance orbit (Tim, 2026-11-18; close-view.ts CLOSE_VIEW.camera.orbit) replaces that pull: the camera keeps its
 //   distance, and walls, trim and ceilings between the eye and the Wayfarer are cut away inside a modest screen-space ellipse round
 //   her body (WALL_CUT_GLSL, in the walls' depth pass; the floor's underside in the environment pass). Only nearer than her body,
@@ -763,8 +767,17 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
 // silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
 // sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
 // creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+// Lighting (Tim, 2026-11-19: "creatures shouldn't get their own lighting, they should just match the lighting of the
+// surroundings"). A body takes exactly the light the floor would take where it stands: `env` is lightsAt() at the vertex with
+// the floor's up normal (the same ambient, torch, sun and placed sources the floor's shader adds). `form` only redistributes
+// that light for volume: a face turned away from the lights takes its own (lower) lightsAt() share, mixed in by `form`, and
+// never more than `env` (lit = mix(env, min(own, env), form)), so a body is never brighter than the floor under it: dim in a
+// dim corner, torchlit in the torch. No light floor, no rim, no fill, no highlight of its own (`rim` 0, `spec` 0). `floor`
+// is no longer read by any shader (kept for tests/close-view-creature-materials.test.ts until that contract is updated).
+// Designed light is unchanged: emissive parts (`emissive`, `glow`) and the spectral rim of a ghost.
 export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
-  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  form: .6, rim: 0, spec: 0,
+  floor: .42, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
   emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
     0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
     0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
@@ -798,8 +811,10 @@ void main() {
   float rim = 1.0 - max(0.0, dot(normal, toEye));
   const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
   float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
-  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  vec3 env, envS; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, env, envS); // the floor's light here (Tim, 2026-11-19: match the surroundings)
+  vec3 lit = mix(env, min(dif, env), ${glf(CLOSE_VIEW_ACTOR_LOOK.form)}); // shading for volume only: never above the floor's light
+  vec3 color = v_col * lit + spe * ${glf(CLOSE_VIEW_ACTOR_LOOK.spec)} + (vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(CLOSE_VIEW_ACTOR_LOOK.rim)};
   color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
   float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
   color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
@@ -984,7 +999,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0, dying: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
 // Coarse observational history only; never expose driver logs or probe hardware.
 const GPU_DIAGNOSTICS={attempted:false,contextLost:false,lastFailure:'none',frameFailure:'none',lastHeroFailure:'none'};
 export function closeViewGLDiagnostics(){return {
@@ -999,7 +1014,7 @@ const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: nu
   tex: { ground: null, mask: null, grit: null, terrain: null }, outdoorKey: null, outdoorVerts: 0, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
-export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0, nHint: 0 }; // nHint: far creatures' silhouettes among the boards (the hint pass)
+export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0, nHint: 0, nSilCard: 0 }; // nHint: far creatures' silhouettes among the boards (the hint pass)
 export function glEnsure(kind, verts) { const per = kind === "board" ? BOARD_FLOATS : DECAL_FLOATS, need = verts * per; let a = GLB[kind]; if (a.length >= need) return a; let n = a.length; while (n < need) n *= 2; const b = new Float32Array(n); b.set(a); GLB[kind] = b; return b; }
 
 function compile(gl, vs, fs) {
@@ -1177,6 +1192,11 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   cutZ: new Float32Array(4), // the eye's height, the body's and the margin: a level floor or ceiling is cut only between them (2026-11-19)
   // the sight field (close-view.ts visSeen, 2026-11-18): 1 indoors with it, so the props leave out what stands on a tile out of sight
   sight: 0,
+  // the props' vertex range in the solids buffer (close-view-outdoor.ts propsAt..housesAt outdoors; the whole buffer indoors): drawn
+  // after the silhouette pass so a creature never shows through one (Tim, 2026-11-19). Empty (propB <= propA): nothing deferred.
+  propA: 0, propB: 0,
+  // the model buffer's vertex runs (start, count) that take the silhouette pass (close-view.ts buildActorModels); nSil -1: the whole buffer
+  silRuns: new Int32Array(2 * 16), nSil: -1, silFoes: 0, // silFoes: how many of those are creatures (the props wait only for a creature's silhouette)
   // towering structures (close-view-outdoor.ts outdoorTowerAir): the air below and above the eye and its colour; the cloud deck
   // (height, radius, alpha, drift), its noise (cover, softness, scale, edge) and its lit and shaded colours. Zero: none.
   tower: new Float32Array(4), towerR: new Float32Array(4), towerC: new Float32Array(3), deck: new Float32Array(4), deckP: new Float32Array(4), deckC: new Float32Array(3), deckS: new Float32Array(3) };
@@ -1219,11 +1239,23 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   const occU = (P) => { gl.uniform4fv(P.U.u_occA, F.occA); gl.uniform4fv(P.U.u_occB, F.occB); gl.uniform4fv(P.U.u_occC, F.occC); };
   if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { const T = F.occTerrain > 0 && S.terrOcc ? S.terrOcc : S.terr; gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(T.p); cam(T); light(T); outdoorU(T); if (T !== S.terr) occU(T);
     gl.bindVertexArray(T === S.terr ? S.vao.terr : S.vao.terrOcc); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
-  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ const Pp = F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop; gl.useProgram(Pp.p); cam(Pp); light(Pp); sightU(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
-    if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2], c = Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // a roof left out: the rest in runs
+  // the props (GLF.propA..propB) wait until after the silhouette pass (Tim, 2026-11-19: no creature seen through a crate); not
+  // while the eye is under the floor (its underside hides all drawn after it)
+  const solids = (outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0, Pp = solids ? (F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop) : null;
+  // only when some creature takes the silhouette pass this frame (else the props keep their place and their one call; the
+  // Wayfarer's own silhouette then still shows through them, as before)
+  let silAny = GLB.nBoard > 0 && GLB.nSilCard > 0 || (!!models?.length && F.nSil !== 0 && F.silFoes > 0); if (!silAny && beasts?.count && S.beast) for (let i = 0; i < beasts.count; i++) if (beasts.items[i].noSil === false) { silAny = true; break; }
+  const under = F.cutB[0] > 0.5 && F.cutB[3] > 0.5 && !!S.under && !!S.vao.under, pa = Math.max(0, F.propA | 0), pb = Math.min(S.outdoorVerts, F.propB | 0), defer = solids && silAny && !under && pb > pa;
+  const span = (a, c, only) => { const e = a + c; if (c <= 0) return; // only: the props' share of [a, a + c); else the rest of it
+    if (only) { const s0 = Math.max(a, pa), s1 = Math.min(e, pb); if (s1 > s0) { gl.drawArrays(gl.TRIANGLES, s0, s1 - s0); calls++; } return; }
+    if (!defer || e <= pa || a >= pb) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; return; }
+    if (pa > a) { gl.drawArrays(gl.TRIANGLES, a, pa - a); calls++; } if (e > pb) { gl.drawArrays(gl.TRIANGLES, pb, e - pb); calls++; } };
+  const solidRuns = (only) => { if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2]; span(a, Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a), only); } } else span(0, S.outdoorVerts, only); };
+  if (solids) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ gl.useProgram(Pp.p); cam(Pp); light(Pp); sightU(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
+    if (F.nRuns > 0) { solidRuns(false); // a roof left out: the rest in runs
       if (F.nFades > 0 && S.propCut) { const P = S.propCut; gl.useProgram(P.p); cam(P); light(P); gl.bindVertexArray(S.vao.propCut); // a roof fading: dithered by its opacity (without the program, left out)
         for (let i = 0; i < F.nFades; i++) { const a = F.fades[i * 3], c = Math.min(F.fades[i * 3 + 1], S.outdoorVerts - a); if (c > 0) { gl.uniform1f(P.U.u_cut, F.fades[i * 3 + 2]); gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } } }
-    else { gl.drawArrays(gl.TRIANGLES, 0, S.outdoorVerts); calls++; } }
+    else solidRuns(false); }
   // 2. the environment: floor, ceiling, pits, lava; a full-screen triangle at the far plane, depth-tested and not written, so
   // the early depth test leaves every pixel a wall covers unshaded
   gl.depthMask(false); gl.useProgram(S.env.p); gl.uniform1f(S.env.U.u_terrain,F.terrain?1:0); cam(S.env); light(S.env); U.env(gl, S.env.U, F, S.lavaTiles);
@@ -1243,18 +1275,23 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
     gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++;
-    if (GLB.nHint > 0) { gl.depthFunc(gl.ALWAYS); gl.uniform1f(S.board.U.u_pass, 2); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; } // far creatures out of sight: the hint, wherever they stand (the bodies drawn after still cover it)
     gl.depthFunc(gl.LEQUAL); }
   if (hasModels) {
     gl.useProgram(model.p); cam(model); light(model); gl.uniform3fv(model.U.u_sil, F.sil);
     gl.bindVertexArray(S.vao.model); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.model);
     gl.bufferData(gl.ARRAY_BUFFER, models, gl.DYNAMIC_DRAW);
     const vertices = models.length / MODEL_FLOATS;
-    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1);
+    if (F.nSil < 0) { gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++; } // no runs listed: the whole buffer (as before)
+    else for (let i = 0; i < F.nSil; i++) { const a = F.silRuns[i * 2], c = Math.min(F.silRuns[i * 2 + 1], vertices - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // only the listed bodies
   }
-  if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; }
   const hasBeasts = !!(beasts?.count && S.beast);
   if(hasBeasts) { gl.depthFunc(gl.GREATER); calls += drawBeastsGL(gl,S.beast,beasts,1,cam,light,F.sil); }
+  // the deferred props, opaque, writing depth: they cover any creature silhouette behind them (and the bodies drawn next test against them)
+  if (defer) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(Pp.p); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc); solidRuns(true); gl.depthMask(false); gl.enable(gl.BLEND); }
+  if (GLB.nHint > 0) useBoards(); // (nHint > 0: the cards were uploaded this frame)
+  if (GLB.nHint > 0) { gl.depthFunc(gl.ALWAYS); gl.uniform1f(S.board.U.u_pass, 2); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; gl.depthFunc(gl.LEQUAL); } // far creatures out of sight: the hint, wherever they stand, over walls and props (the bodies drawn after still cover it)
+  if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; } // the Wayfarer's own silhouette: through props too
   if(hasModels || hasHero || hasBeasts) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }

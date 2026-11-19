@@ -13,7 +13,8 @@
 //
 // Who she is (never said outright): Wenna Callow, who sold lamp oil at Larrow Ford, bought a suit like the Wayfarer's
 // second-hand, and from then on everyone she met thanked her for what the Wayfarer had done. She carried their thanks a section
-// ahead, kept it, and set it down. All writing is original to the game. Pure rules: no DOM.
+// ahead, kept it, and set it down, and at the last section she is found dead, laid out beside the folded suit, under a note in blood
+// in a hand that does not know what letters are (Tim, 2026-11-19): who wrote it is never said. All writing is original to the game. Pure rules: no DOM.
 // Save: save.lore.second = { begun: dungeonId, trail: [{ rx, ry }], found: n, passed: [i], spot?: { i, x, y } } (additive, created when the
 // trail begins; normalised by ensureSecondWayfarer, unknown fields kept).
 import { hashSeed } from "./random.ts";
@@ -42,7 +43,7 @@ export const SECOND_SIGHTINGS = [
   "Someone in a suit like yours stands at the far edge of the section with a traveller, who keeps bowing. Then they go on, and the traveller looks your way, puzzled, as if he has counted you twice.",
   "You see them only for a moment, at the far edge: the same mask, the same green-grey cloth, a pack heavier than yours.",
   "At the far edge someone dressed as you sits on a stone, eating, the mask pushed up. They see you, pull it down, and go.",
-  "They are at the edge of the section with a child, who is holding something out. They take it, touch the child's head, and go on.",
+  "They are at the edge of the section with a child, who is holding something out. They take it, touch the child's head, and go on. Once they look back: not at you, but past you, at the way you came.",
   "No one at the edge of the section. Only a thin line of smoke from a fire someone has just put out.",
 ];
 // What was left at each sighting. `at` is the next section; the last names none.
@@ -51,13 +52,17 @@ export const SECOND_TRACES = [
   (at) => `A blue ribbon, the kind a child wears to a fair, tied to a thorn at the height of your shoulder. A note is pinned through it: "A girl gave me this for the hound. I don't know about any hound. I said thank you anyway. You'll know what it was for." Under it, in the same hand: ${at.rx}, ${at.ry}.`,
   (at) => `A hollow in the grass where someone sat a long while, and a page from a small account book left in it, ruled for lamp oil: Larrow Ford, three pints; the Ferry, two pints. Then the columns change. "Thanked at the ford. Thanked at the crossroads. Given bread at the black stone. None of it mine." At the foot of the page: ${at.rx}, ${at.ry}.`,
   (at) => `A water skin, full, hung on a branch where you would see it. On the leather, in charcoal: "They think I'm you. It's the suit. I bought it off a peddler at Larrow, second-hand, and it fit. Since then nobody looks at my face. They look at the mask, and thank it. It is a strange thing, to be thanked for a life. I have started keeping it for you." Then: ${at.rx}, ${at.ry}.`,
-  (at) => `A glove like your own, worn through at two fingers. Inside it, folded small: "A man at the crossroads wouldn't take my money for the bread. He said I'd paid already, a long time ago, in the deep crossings. I have never been in the deep crossings. I don't think anyone has, but you." And: ${at.rx}, ${at.ry}.`,
-  () => "A suit of green-grey cloth, folded, the mask laid on top of it face up, and on the mask a small bundle: a child's drawing of a figure in a mask, a wooden horse with one ear, a pressed flower, a button, a lock of grey hair tied with thread. A last note: \"All of it is yours. They gave it to the suit, and the suit was only ever yours. I'm going home to Larrow Ford to sell lamp oil under my own name. If anyone asks, I was never anyone. Wenna Callow.\" The footprints going on from here are bare feet.",
+  (at) => `A glove like your own, worn through at two fingers. Inside it, folded small: "A man at the crossroads wouldn't take my money for the bread. He said I'd paid already, a long time ago, in the deep crossings. I have never been in the deep crossings. I don't think anyone has, but you. Some mornings there are footprints round my fire that are not mine, bare, set down too far apart. I thought they were yours. But you wear boots, as I do." And: ${at.rx}, ${at.ry}.`,
+  () => `She is lying on her back in the grass, very still: a woman past middle age in a plain brown dress, grey at the temples, her eyes closed. Someone has laid her out, or tried to; her hands are folded on her breast with the fingers laced the wrong way, like a thing copied from a picture. Beside her is a suit of green-grey cloth, folded, the mask laid on top of it face up, and on the mask a small bundle: a child's drawing of a figure in a mask, a wooden horse with one ear, a pressed flower, a button, a lock of grey hair tied with thread. Under the bundle, her last note, in her own hand: "All of it is yours. They gave it to the suit, and the suit was only ever yours. I'm going home to Larrow Ford to sell lamp oil under my own name. If anyone asks, I was never anyone. Wenna Callow." ${SECOND_HAND}`,
 ];
-export const SECOND_ENDING = "A lamp-oil seller from Larrow Ford bought a suit like yours off a peddler, second-hand, and from then on everyone she met thanked her for things you had done: bread at the black stone, a ribbon for a hound, half a honey cake for a man carried out of a crossing. Nobody looked past the mask. She carried their thanks a section ahead of you for a long way, kept it as well as she could, and set it down where you would find it before she went home under her own name. You leave the bundle as she left it, on the folded suit, and walk on. Nobody is ahead of you now. The ground in the next section has no footprints on it but the ones you are making.";
+// The last writing, on the stone at her head (or, where the last sighting is passed at sea, on the boat): the note that ends the
+// trail, and its closing line. Who wrote it is never said; it is no one already named in the game.
+export const SECOND_LAST_WORDS = "NO ONE IS AHEAD OF YOU NOW";
+export const SECOND_HAND = `On a flat stone at her head there is other writing, in blood, dried dark. The hand is wrong. The letters are large and square and pressed hard, each one built from short separate strokes, as if whoever made them had copied their shapes without knowing they were letters, or what a finger was for. The strokes shake, and the lines run uneven, and yet it is careful, almost beautiful, like a first try at something. It says: ${SECOND_LAST_WORDS}. Bare footprints, set down too far apart, lead away from her back the way you came.`;
+export const SECOND_ENDING = `A lamp-oil seller from Larrow Ford bought a suit like yours off a peddler, second-hand, and from then on everyone she met thanked her for things you had done: bread at the black stone, a ribbon for a hound, half a honey cake for a man carried out of a crossing. Nobody looked past the mask. She carried their thanks a section ahead of you for a long way, kept it as well as she could, and set it down where you would find it. She meant to go home under her own name. Something walked the last sections behind her, nearer than you were. You leave her as you found her, with what she kept for you, and walk on. The writing goes with you, in that unpractised hand: ${SECOND_LAST_WORDS}.`;
 // A sighting whose section has no open ground (open sea): it passes on arrival.
 export const SECOND_PASSED = (at) => `Their footprints run down to the water's edge here and do not come up again. Out on the water, small and far, someone in a suit like yours is rowing. The boat turns toward ${at.rx}, ${at.ry}.`;
-export const SECOND_PASSED_LAST = "Their footprints run down to the water's edge and do not come up again. On the last dry stone lies a lock of grey hair tied with thread, and nothing else.";
+export const SECOND_PASSED_LAST = `Their footprints run down to the water's edge and do not come up again. Out on the water a small boat turns slowly with no one at the oars. Someone lies in the bottom of it, very still, green-grey cloth folded under her head and a lock of grey hair tied with thread in her hands. Along the near side of the boat, written large in something dark red, in a hand that shakes and does not seem to know what letters are, it says: ${SECOND_LAST_WORDS}.`;
 
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 const int = (v) => Number.isInteger(v) ? v : null;
@@ -148,11 +153,13 @@ export function addSecondTrace(map, save, rx, ry) {
     if (at.rx !== rx || at.ry !== ry || i > s.found || map.objects?.some((o) => o.kind === "secondTrace" && o.index === i)) return;
     const toward = s.trail[i + 1] || { rx: at.rx * 2 || 1, ry: at.ry * 2 }, t = traceSpot(map, at, toward), waiting = i === s.found;
     if (!t) { if (waiting && !passed) passed = passSecondSighting(save, i); return; }
-    const o = { id: `second-trace-${i}`, kind: "secondTrace", index: i, name: waiting ? "Something left behind" : "What they left", x: t.x, y: t.y, state: waiting ? "waiting" : "read", actions: ["read"], landmark: waiting };
+    const o = { id: `second-trace-${i}`, kind: "secondTrace", index: i, name: secondTraceName(i, waiting), x: t.x, y: t.y, state: waiting ? "waiting" : "read", actions: ["read"], landmark: waiting };
     (map.objects ||= []).push(o); if (waiting) { s.spot = { i, x: t.x, y: t.y }; object = o; sighting = SECOND_SIGHTINGS[i] || null; }
   });
   return object || passed ? { object, sighting, passed } : null;
 }
+// What a trace is called on the ground: the last is her, still in the grass (text only; 2026-11-19).
+const secondTraceName = (i, waiting) => i >= SECOND_WAYFARER.sightings - 1 ? (waiting ? "Someone lying still" : "Wenna Callow") : waiting ? "Something left behind" : "What they left";
 // Counts sighting `i` and works out the next. Returns { index, total, done, next }.
 function advance(save, i) {
   const s = state(save); s.found = i + 1; delete s.spot;
@@ -170,7 +177,7 @@ export function readSecondTrace(save, o) {
   const i = o.index;
   if (i < s.found) { const text = secondTraceText(save, i); return { ok: true, first: false, index: i, text, message: text }; }
   if (i !== s.found) return { ok: false, message: "Nothing here to read." };
-  const r = advance(save, i), text = secondTraceText(save, i); o.state = "read"; o.name = "What they left"; o.landmark = false;
+  const r = advance(save, i), text = secondTraceText(save, i); o.state = "read"; o.name = secondTraceName(i, false); o.landmark = false;
   return { ok: true, first: true, done: r.done, index: i, next: r.next, text, message: `${text}${r.done ? ` ${SECOND_ENDING}` : ` (${SECOND_WAYFARER.title}: ${r.total} of ${SECOND_WAYFARER.sightings}.)`}` };
 }
 // The words of trace `i`, naming the section after it (as kept in the trail).

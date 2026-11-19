@@ -6,7 +6,7 @@ import { actorPresentation } from '../src/actor-presentation.ts';
 import { render } from '../src/renderer.ts';
 import { MODEL_FLOATS } from '../src/close-view-models.ts';
 import { GLB, BOARD_FLOATS, closeViewGLStats, resetCloseViewGL } from '../src/close-view-gl.ts';
-import { closeViewActorEnvironmentAlpha, closeViewCamera, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { closeViewActorEnvironmentAlpha, closeViewCamera, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewCreatureBetween } from '../src/close-view.ts';
 
 const context = (log = []) => new Proxy({
   canvas: null, measureText: () => ({ width: 10 }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
@@ -75,7 +75,8 @@ test('production native and unsupported fallback submissions retain solid nearby
   assert.ok(native?.length && closeViewGLStats.models >= 2);
   const alphas = Array.from(native).filter((_, i) => i % MODEL_FLOATS === 9);
   const visibility = Math.min(...alphas);
-  assert.ok(visibility > .9 && visibility <= 1, 'near native body retains only the current transition fog; player stays opaque');
+  const between = closeViewCreatureBetween(enemy); // Tim 2026-11-19: midway between the eye and the Wayfarer it covers her, so it takes the .35 between fade
+  assert.ok(visibility > .9 * between && visibility <= between + 1e-6, 'near native body retains only the current transition fog and the between fade; player stays opaque');
   enemy.phasing = true;
   render(screen, game, 390, 844, now + 16);
   assert.ok(Array.from(gl.uploads.at(-1)).some((a, i) => i % MODEL_FLOATS === 9 && Math.abs(a - visibility * .45) < 1e-6), 'native intrinsic phase survives');
@@ -133,6 +134,8 @@ test('retained native death completes without changing actor state or admission 
   render(screen, game, 390, 844, now + 16);
   assert.equal(closeViewGLStats.models, 2, 'retained death body is still submitted');
   render(screen, game, 390, 844, now + 500);
-  assert.equal(closeViewGLStats.models, 1, 'death body expires through its existing bounded track');
+  assert.equal(closeViewGLStats.models, 2, 'the slain body still lies there');
+  render(screen, game, 390, 844, now + 1700);
+  assert.equal(closeViewGLStats.models, 1, 'death body expires through its bounded track');
   assert.equal(JSON.stringify(enemy), snapshot, 'death rendering cannot mutate simulation');
 }));

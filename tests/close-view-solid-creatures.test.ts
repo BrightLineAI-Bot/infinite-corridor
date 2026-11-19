@@ -11,7 +11,7 @@ import { ACTOR_PRESENTATION } from '../src/actor-presentation.ts';
 import { render } from '../src/renderer.ts';
 import { MODEL_FLOATS } from '../src/close-view-models.ts';
 import { GLB, BOARD_FLOATS, closeViewGLStats, resetCloseViewGL, CLOSE_VIEW_ACTOR_LOOK } from '../src/close-view-gl.ts';
-import { CLOSE_VIEW, closeViewCreatureFog, closeViewCreatureIntrinsicAlpha, closeViewActorEnvironmentAlpha, closeViewCamera, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+import { CLOSE_VIEW, closeViewCreatureFog, closeViewCreatureIntrinsicAlpha, closeViewActorEnvironmentAlpha, closeViewCamera, CLOSE_VIEW_HOOKS, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewCreatureBetween } from '../src/close-view.ts';
 
 const context = (log = []) => new Proxy({
   canvas: null, measureText: () => ({ width: 10 }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
@@ -90,11 +90,11 @@ test('active play: a native creature is wholly opaque from its first frame at ev
   const game = lane(); let now = 100000; game.paused = false;
   resetCloseViewCamera(); game.enemies = []; render(screen, game, 390, 844, now);
   for (const d of [1.6, 2.5, 3.5, 5, 6.5, 8]) {
-    game.enemies = [ahead(game, 'glassMite', d, `solid-${d}`)];
+    const e = ahead(game, 'glassMite', d, `solid-${d}`); game.enemies = [e];
     render(screen, game, 390, 844, now += 16);
-    const alphas = modelAlphas(gl.uploads.at(-1));
+    const alphas = modelAlphas(gl.uploads.at(-1)), between = Math.fround(closeViewCreatureBetween(e)); // Tim 2026-11-19: covering the Wayfarer from the camera, .35 (Reduced Motion: at once)
     assert.ok(closeViewGLStats.models >= 2, `native body admitted at ${d}`);
-    assert.ok(alphas.length && alphas.every(a => a === 1), `opaque on its first frame at ${d} tiles (min ${Math.min(...alphas)})`);
+    assert.ok(alphas.length && alphas.every(a => a === 1 || a === between), `opaque on its first frame at ${d} tiles but for the between fade (min ${Math.min(...alphas)})`);
   }
 }));
 

@@ -16,7 +16,7 @@ import { actorPresentation, ACTOR_ALPHA } from '../src/actor-presentation.ts';
 import { PHASE_SHIELD } from '../src/affixes.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewCamera, closeViewCreatureFog, closeViewCreatureFade, closeViewCreatureIntrinsicAlpha,
-  closeViewCreatureSolidity, closeViewCreatureSolidNear, closeViewCreatureWard, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+  closeViewCreatureSolidity, closeViewCreatureSolidNear, closeViewCreatureWard, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewCreatureBetween, CLOSE_VIEW_VISIBILITY } from '../src/close-view.ts';
 
 class MockGL {
   program: any = null; sources: string[] = [];
@@ -184,7 +184,10 @@ test('the occluder never cuts a creature next to the Wayfarer, between her and t
   for (let k = 0; k < 4; k++) frame(g, () => pin(e, at));
   assert.ok(depthOf(at) < depthOf(g.player), 'it stands between the camera and the Wayfarer');
   assert.equal(closeViewCreatureFade(e), 1, 'no occluder share');
-  assert.equal(closeViewCreatureSolidity(e)?.alpha, 1, 'drawn solid');
+  // Tim, 2026-11-19 (CLOSE_VIEW_VISIBILITY.between): a creature covering her from the camera eases to .35 so it never hides her;
+  // that fade is the only one it takes (the occluder window still never cuts it)
+  assert.ok(closeViewCreatureBetween(e) < 1 && closeViewCreatureBetween(e) >= CLOSE_VIEW_VISIBILITY.between.alpha, 'the between fade, easing in');
+  assert.ok(Math.abs(closeViewCreatureSolidity(e)?.alpha - closeViewCreatureBetween(e)) < 1e-6, 'drawn solid but for the between fade');
   // the cut is only in the scenery's programs (props and terrain), never in a creature's (models, cards, beasts)
   const cut = GL.sources.filter((t: string) => t.includes('occlude(v_pos)'));
   assert.ok(cut.length >= 1 && cut.every((t: string) => !t.includes('in float v_alpha') && !t.includes('u_emitA')), 'occluder programs are scenery only');
@@ -202,9 +205,10 @@ test('distant materialisation is unchanged: a creature far from the Wayfarer sti
   for (let k = 0; k < 3; k++) frame(g, () => pin(e, at));
   const r = closeViewCreatureSolidity(e);
   assert.ok(r && r.path !== 'culled', `drawn (${r?.path})`);
-  assert.ok(r.alpha > 0 && r.alpha < 1, `materialising in the edge band, as before (${r.alpha})`);
-  assert.equal(r.near, false); assert.equal(r.w, 0, 'spared none of the fade: exactly the old opacity');
-  // walking in, it is spared the fade smoothly (eased), never popping; walking out again, it thins smoothly
-  const steps: number[] = []; for (let k = 0; k <= 60; k++) { const a2 = ahead(g, gap - (k < 30 ? k : 60 - k) * .2); frame(g, () => pin(e, a2)); const q = closeViewCreatureSolidity(e); if (q) steps.push(q.alpha); }
-  for (let k = 1; k < steps.length; k++) assert.ok(Math.abs(steps[k] - steps[k - 1]) < .35, `no pop (${steps[k - 1].toFixed(3)} to ${steps[k].toFixed(3)})`);
+  // 2026-11-19 (Tim, approved): a live creature in view is never dithered by the fog's edge; it stays a whole body
+  assert.equal(r.alpha, 1, `opaque in the old edge band (${r.alpha})`); assert.equal(r.path, 'model', 'a body');
+  assert.equal(r.near, false); assert.equal(r.w, 0, 'past the solid band, and still whole');
+  // walking in and out again: a body at full opacity every frame
+  const steps: number[] = [], paths = new Set(); for (let k = 0; k <= 60; k++) { const a2 = ahead(g, gap - (k < 30 ? k : 60 - k) * .2); frame(g, () => pin(e, a2)); const q = closeViewCreatureSolidity(e); if (q) { steps.push(q.alpha); paths.add(q.path); } }
+  assert.ok(steps.length > 50, `drawn on the walk (${steps.length})`); assert.ok(steps.every(a => a === 1), `opaque every frame (min ${Math.min(...steps)})`); assert.deepEqual([...paths], ['model'], 'a body every frame');
 }));

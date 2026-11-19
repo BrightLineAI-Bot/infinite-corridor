@@ -38,8 +38,9 @@ void main() {
   if (dot(normal, toEye) < 0.0 && v_emit >= 3) normal = -normal; // flat glyphs and bolts light from either face
   vec3 dif, spe; lightsAt(v_pos, normal, 14.0, dif, spe);
   float rim = 1.0 - max(0.0, dot(normal, toEye));
-  vec3 color = v_col * max(dif, vec3(${glf(L.floor)})) + spe * 0.3 + vec3(${L.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${L.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  vec3 env, envS; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, env, envS); vec3 lit = mix(env, min(dif, env), ${glf(L.form ?? 0)}); // the floor's light here, shaded for volume only (CLOSE_VIEW_ACTOR_LOOK, Tim 2026-11-19)
+  vec3 color = v_col * lit + spe * ${glf(L.spec ?? 0)} + (vec3(${L.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${L.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(L.rim ?? 0)};
   float emit = v_emit > 0 ? 1.0 : 0.0;
   // lit from within: the channel's brightness (0 dark glass, 1 its colour, above 1 running white-hot)
   vec3 glowC = v_col * ${glf(L.glow)} * k + vec3(max(k - 1.0, 0.0) * 0.35);
@@ -85,13 +86,13 @@ export function prepareBeastMesh(gl, s, mesh) {
     s.failed = true; return false;
   } finally { gl.bindVertexArray(null); }
 }
-// Draw the frame's beasts in one actor phase (pass 1: silhouette through walls, 0: the body). Returns draw calls.
+// Draw the frame's beasts in one actor phase (pass 1: silhouette through walls, skipping a frame marked `noSil`; 0: the body). Returns draw calls.
 export function drawBeastsGL(gl, s, beasts, pass, cam, light, silhouette) {
   if (!s || !beasts?.count) return 0;
   const p = s.program, u = p.U; let calls = 0;
   gl.useProgram(p.p); cam(p); light(p); gl.uniform1f(u.u_pass, pass); gl.uniform3fv(u.u_sil, silhouette);
   for (let i = 0; i < beasts.count; i++) {
-    const f = beasts.items[i], r = s.meshes.get(f.mesh); if (!r) continue;
+    const f = beasts.items[i], r = s.meshes.get(f.mesh); if (!r || (pass === 1 && f.noSil)) continue; // noSil: no silhouette through walls (close-view.ts closeViewSilhouetteAllowed: near, engaging or dying)
     gl.bindVertexArray(r.vao); gl.uniform4fv(u.u_bones, f.skin, 0, f.boneCount * 12);
     gl.uniform1f(u.u_alpha, f.alpha); gl.uniform1f(u.u_hit, f.hit); gl.uniform1f(u.u_fogCap, Number.isFinite(f.fogCap) ? f.fogCap : 1); gl.uniform4fv(u.u_emitK, f.emitK); gl.uniform4fv(u.u_emitA, f.emitA);
     gl.drawElements(gl.TRIANGLES, f.cloud ? f.mesh.indices.length : f.mesh.coreIndices, gl.UNSIGNED_SHORT, 0); calls++;
