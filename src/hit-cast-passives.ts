@@ -25,7 +25,11 @@ export const SHATTERPOINT = { bonus: .4, stun: .3 };
 // clock field for each). Aegis is left out on purpose: it turns every blow aside.
 export const POCKET_TIME = { step: .15, cap: 3, gapMs: 60, spells: { "imbue-weapon": "imbueUntil", "shadow-boxing": "boxingUntil", "essence-walk": "essenceUntil" } };
 // Arcane Edge: a spell cast empowers the next `hits` melee attacks (each foe an attack strikes) with `bonus` more, and the spell's
-// element (spell-slots.ts CASTABLES attr) adds its touch to each foe struck.
+// element (spell-slots.ts CASTABLES attr) adds its touch to each foe struck. The charges wait until spent (they never expire); a
+// new cast sets them to `hits` again with its own element. Skills arm it too (Tim, 2026-11-19): an Aperture skill used (Ember
+// Form, Quickening, Veil Guard, Force Channel, Aerial Step, and Rift Step once per step actually taken, never on arming its aim)
+// arms it with the skill's own element (CASTABLES["skill:<id>"].attr) through edgeArm, from game.ts activateApertureSkill. A
+// skill arms only Arcane Edge: never Casting Wind, Glyph Mine's sigil, Echoing Cast or the Echo "spell" event.
 export const ARCANE_EDGE = {
   hits: 3, bonus: .3, gapMs: 60,
   fire: { ms: 2000, dps: 3, perLevel: .4 }, // a short burn
@@ -35,7 +39,7 @@ export const ARCANE_EDGE = {
   wind: { seconds: 2, move: .1 }, // move faster
   force: { stun: .35, bossShare: .25 }, // a stagger (bosses and elites a share, as every Wayfarer stagger)
 };
-// Glyph Mine: each cast leaves a sigil at your feet; it bursts (a proc, never a hit) on the first foe within `trigger` tiles or after
+// Glyph Mine: each spell cast leaves a sigil at your feet; it bursts (a proc, never a hit) on the first foe within `trigger` tiles or after
 // `lifeMs`, striking every foe within `radius` for `share` of a spell of `power` (it grows with Focus). At most `max` at once: the
 // oldest gives way. A sigil left in another place fades unburst.
 export const GLYPH_MINE = { lifeMs: 4000, max: 3, trigger: .7, radius: 1.4, power: 8, share: .8 };
@@ -45,10 +49,11 @@ export const GLYPH_MINE = { lifeMs: 4000, max: 3, trigger: .7, radius: 1.4, powe
 // the oldest giving way. Rift mines never burst: once the Rift Step charges are spent, or `graceMs` after the last step (charges
 // left over), they link: 2 into a line, 3 into a filled triangle of inky void that lasts `voidMs`. Every `tickMs` it strikes every
 // foe inside (the line: within `halfWidth` tiles of it; the triangle: inside it or within `halfWidth` of an edge) for `tickShare`
-// of a spell of GLYPH_MINE.power (a proc through glyphWorld, never a hit: bosses and world beasts take it as every proc).
+// of a spell of GLYPH_MINE.power (a proc through glyphWorld, never a hit: bosses and world beasts take it as every proc); a line
+// strikes `lineScale` of that (Tim, 2026-11-19: the line softer than the triangle; the triangle is unchanged).
 // One void at a time: a new one takes the old one's place. Leaving the place drops the mines and the void. Frame time (dt), so
 // pause and background stop it; runtime only, like the sigils.
-export const RIFT_MINE = { max: 3, join: 1, graceMs: 1500, voidMs: 6000, tickMs: 500, tickShare: .25, halfWidth: .45 };
+export const RIFT_MINE = { max: 3, join: 1, graceMs: 1500, voidMs: 6000, tickMs: 500, tickShare: .25, lineScale: .6, halfWidth: .45 };
 // Encumbered (Tim, 2026-11-19: a pull build-up status, like bleed or frostbite build-up). Damage a pull deals (the Gravity Well's
 // pulses and the perfect Orbit Volley's vortex, the awakened Hammerfall's clap, Mage's Hand's fist and suction cup, a Tether spell
 // pulse, Maelstrom's dragging arcs, Arcane Edge's Rift touch; Maw's Hunger, a pull with no damage, adds `dry` of the Echo damage)
@@ -57,12 +62,18 @@ export const RIFT_MINE = { max: 3, join: 1, graceMs: 1500, voidMs: 6000, tickMs:
 // `durationMs`: it takes `takenMul` from every source of the Wayfarer's damage (as Tempo's window) and its blows deal `dealtMul`.
 // The meter then empties, and fills nothing while Encumbered. With no pull damage for `decayDelayMs` it drains `decayPerSec` of
 // the threshold a second. Frame time (dt); runtime only (the per-foe mark), as Tempo's window.
+// Tiers (Tim, 2026-11-19: harder to Encumber after each proc, by the same tier mechanic as the freeze and the stagger): each proc
+// raises the creature's tier, and the threshold is multiplied by `tiers[tier]`; from the third proc on the last entry, where the
+// tier stops (great-sweep.ts SWEEP_FREEZE's `need` and monster-pack.ts BOSS_POISE's `hits` pick their tier the same way:
+// list[min(length - 1, tier)]). The multipliers mirror BOSS_POISE.default.hits over its first entry (8, 12, 18). Every creature,
+// as the freeze's tiers cover every class; the tier lasts as long as the creature (the per-foe mark: runtime, never saved), as a
+// boss's poise tier does (no calm-down).
 export const ENCUMBERED = { durationMs: 10000, takenMul: 1.05, dealtMul: .95, gain: 1, dry: .5, decayDelayMs: 3000, decayPerSec: .15,
-  threshold: { share: .3, min: 12, factor: { ordinary: 1, elite: .7, revenant: .5, boss: .5 } } };
-// Casting Wind (Tim's "Second Wind": that name is taken, Light Feet's secondary form): each cast gives back `share` of maximum
+  threshold: { share: .3, min: 12, factor: { ordinary: 1, elite: .7, revenant: .5, boss: .5 } }, tiers: [1, 1.5, 2.25] };
+// Casting Wind (Tim's "Second Wind": that name is taken, Light Feet's secondary form): each spell cast gives back `share` of maximum
 // stamina. A cast paid in stamina under Essence Walk gives back at most `essenceShare` of what it cost, so the walk always costs.
 export const CASTING_WIND = { share: .15, essenceShare: .5 };
-// Echoing Cast: every `every`th cast repeats `delayMs` later at `share` power: its pulses and shots again, free and with no
+// Echoing Cast: every `every`th spell cast repeats `delayMs` later at `share` power: its pulses and shots again, free and with no
 // cooldown. The repeat is an Echo copy (no on-hit, never counted). A cast with nothing to strike (a buff) repeats nothing.
 export const ECHOING_CAST = { every: 4, share: .5, delayMs: 400 };
 // Rapid Reload: every `shots`th charged release that hits gives back `share` of maximum stamina. One counter for every charged
@@ -117,12 +128,12 @@ export const PASSIVE_TEXT = {
   tempo: `Every ${TEMPO.hits}th hit you land on the same foe within ${TEMPO.windowMs / 1000} s marks it: for ${TEMPO.vulnMs / 1000} s it takes ${pct(TEMPO.vuln)} more from all your damage. One mark a foe at a time.`,
   shatterpoint: `Your hits on a staggered or poise-broken foe deal ${pct(SHATTERPOINT.bonus)} more.`,
   "rapid-reload": `Every ${RAPID_RELOAD.shots}rd charged release that hits (a charged Carbine beam, the Orrery's great orb, a charged punch, a weapon art, the staff's slam, a charged Orbit Volley) gives back ${pct(RAPID_RELOAD.share)} of your stamina, at most once every ${RAPID_RELOAD.cooldownMs / 1000} s. Taps and misses do not count.`,
-  "arcane-edge": `Casting a spell empowers your next ${ARCANE_EDGE.hits} melee attacks: ${pct(ARCANE_EDGE.bonus)} more, with the spell's element (Fire burns, Dusk weakens, Rift pulls, Ward guards you, Wind speeds you, Force staggers).`,
-  "casting-wind": `Each cast gives back ${pct(CASTING_WIND.share)} of your stamina (under Essence Walk, never more than half what the cast cost).`,
-  "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
-  "echoing-cast": `Every ${ECHOING_CAST.every}th cast repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
+  "arcane-edge": `Casting a spell or using a skill empowers your next ${ARCANE_EDGE.hits} melee attacks: ${pct(ARCANE_EDGE.bonus)} more, with its element (Fire burns, Dusk weakens, Rift pulls, Ward guards you, Wind speeds you, Force staggers). The charges wait until you use them.`,
+  "casting-wind": `Each spell gives back ${pct(CASTING_WIND.share)} of your stamina (under Essence Walk, never more than half what the spell cost).`,
+  "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Aerial Step, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
+  "echoing-cast": `Every ${ECHOING_CAST.every}th spell repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
   "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, the blow goes back (a shot turns round and flies at its shooter; a blow, roar, beam or blast lands on its maker; it counts as your own hit), its burn, poison or slow never takes hold, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more (tool shots ${pct(POWER_AEGIS.toolBonus)}). Command grabs cannot be parried. Later in the ward it blocks as always.`,
-  "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once. A Rift Step leaves a mine where you stood and where you land; once your steps are spent (or ${RIFT_MINE.graceMs / 1000} s after the last) they link into inky void (2 mines a line, 3 a triangle) that wounds every foe inside for ${RIFT_MINE.voidMs / 1000} s.`,
+  "glyph-mine": `Each spell leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once. A Rift Step leaves a mine where you stood and where you land; once your steps are spent (or ${RIFT_MINE.graceMs / 1000} s after the last) they link into inky void (2 mines a line, 3 a triangle) that wounds every foe inside for ${RIFT_MINE.voidMs / 1000} s.`,
 };
 
 // ---------------------------------------------------------------- who has what
@@ -158,7 +169,7 @@ export const powerAegisLeft = (game, now) => { const u = Number(game?.powerAegis
 const MARK = Symbol("hitCastMark");
 function mark(e) {
   let r = e[MARK];
-  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity, pull: 0, idle: 0, enc: 0, th: 0, told: false }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
+  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity, pull: 0, idle: 0, enc: 0, th: 0, tier: 0, told: false }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
   return r;
 }
 export const passiveMarkOf = (e) => e?.[MARK] || null;
@@ -250,9 +261,17 @@ function edgeTouch(game, e, el, now, actual = 0) {
 
 // ---------------------------------------------------------------- the cast (echoes.ts echoEvent "spell")
 // `attr`: the spell's element. `essence`: the stamina the cast costs under Essence Walk (0: it is free).
+// Arcane Edge armed: `hits` charges with element `attr` (a spell's or a skill's). True when it armed. Allocates nothing.
+export function edgeArm(game, attr) {
+  if (!attr || !castNodeOn(game?.save, "arcane-edge")) return false;
+  const E = state(game).edge; E.n = ARCANE_EDGE.hits; E.el = attr; E.riding = false; E.at = -Infinity;
+  return true;
+}
+// Arcane Edge: charges left and their element (for views and tests).
+export const edgeCharges = (game) => { const E = game?._hcp?.edge; return E && E.n > 0 ? { n: E.n, el: E.el } : null; };
 export function passiveCast(game, now, attr = null, essence = 0) {
   const s = game.save, S = state(game), p = game.player;
-  if (castNodeOn(s, "arcane-edge") && attr) { const E = S.edge; E.n = ARCANE_EDGE.hits; E.el = attr; E.riding = false; E.at = -Infinity; }
+  edgeArm(game, attr);
   if (castNodeOn(s, "glyph-mine")) {
     const G = GLYPH_MINE, list = S.mines; if (list.length >= G.max) list.shift();
     list.push({ x: p.x + .5, y: p.y + .45, born: now, until: now + G.lifeMs, where: game.areaId?.() ?? "" });
@@ -311,7 +330,7 @@ function riftLink(game, now) {
   if (n < 2) return false;
   const power = typeof game.spellPower === "function" ? Number(game.spellPower({ damage: GLYPH_MINE.power })) || GLYPH_MINE.power : GLYPH_MINE.power;
   for (let i = 0; i < n; i++) { V.xs[i] = R.xs[i]; V.ys[i] = R.ys[i]; }
-  V.n = n; V.on = true; V.left = RIFT_MINE.voidMs / 1000; V.tick = 0; V.where = R.where; V.dmg = Math.max(1, Math.round(power * RIFT_MINE.tickShare)); // one at a time: the old one gives way
+  V.n = n; V.on = true; V.left = RIFT_MINE.voidMs / 1000; V.tick = 0; V.where = R.where; V.dmg = Math.max(1, Math.round(power * RIFT_MINE.tickShare * (n === 2 ? RIFT_MINE.lineScale : 1))); // one at a time: the old one gives way
   return true;
 }
 // Distance from (px, py) to the segment a–b.
@@ -352,18 +371,22 @@ function tickRift(game, S, dt, now) {
 
 // ---------------------------------------------------------------- Encumbered (ENCUMBERED)
 // The threshold of foe `e` of stagger class `cls` (monster-pack.ts staggerClass: "boss", "revenant", "elite" or null).
-export function encumberThreshold(e, cls = null) {
+// `tier`: procs it has had (the creature's Encumbered tier; ENCUMBERED.tiers, the last entry from the third on).
+export const encumberTierScale = (tier = 0) => { const L = ENCUMBERED.tiers, k = Math.max(0, Math.floor(Number(tier) || 0)); return L[Math.min(L.length - 1, k)]; };
+export function encumberThreshold(e, cls = null, tier = 0) {
   const T = ENCUMBERED.threshold, max = Number(e?.maxHp) || Number(e?.hp) || 0, f = T.factor[cls || "ordinary"] ?? 1;
-  return Math.max(T.min, max * T.share * f);
+  return Math.max(T.min, max * T.share * f) * encumberTierScale(tier);
 }
+// The creature's Encumbered tier now (0 before its first proc).
+export const encumberTierOf = (e) => e?.[MARK]?.tier || 0;
 // Damage a pull dealt to `e` (or a pull's worth, for one with no damage): fills its meter; true when it becomes Encumbered.
 export function pullBuild(game, e, amount, now, cls = null) {
   if (!e || e.dead || e.kind === "npc" || !(amount > 0) || !Number.isFinite(amount)) return false;
   const r = mark(e); if (r.enc > 0) return false; // no build-up while Encumbered
-  const E = ENCUMBERED, th = encumberThreshold(e, cls);
+  const E = ENCUMBERED, th = encumberThreshold(e, cls, r.tier);
   const S = state(game); r.th = th; r.pull += amount * E.gain; r.idle = 0; S.encLive = S.encSeen = true;
   if (r.pull < th) return false;
-  r.pull = 0; r.enc = E.durationMs / 1000;
+  r.pull = 0; r.enc = E.durationMs / 1000; r.tier = Math.min(E.tiers.length - 1, r.tier + 1); // the next proc needs more (the tier stops at the last entry)
   if (!r.told && (cls === "boss" || cls === "revenant")) { r.told = true; game.message = `${e.name || "Your foe"} is Encumbered: for ${E.durationMs / 1000} s it takes ${pct(E.takenMul - 1)} more and deals ${pct(1 - E.dealtMul)} less.`; }
   return true;
 }
