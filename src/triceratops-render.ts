@@ -24,6 +24,10 @@ export const TRI_ART = Object.freeze({
   spine: 26, length: 1.42, hipAt: .42, shoulderAt: .73, hip: .6, crouchDrop: .14, headScale: 1.48,
   thigh: .27, shin: .24, upperArm: .22, foreArm: .2, foot: .05, stride: .14, settle: 6, ease: 10, strikeEase: 18,
   landMs: 380, lean: .12, tailBounce: .08, quietBounce: .05,
+  // the face's squat beak (Tim, 2026-11-19: "its beak portion is still too long; it needs to be a little bit more squat"): in front of
+  // `from` (head units, just ahead of the brow horns' roots) the snout is drawn `k` as long and, toward the beak, up to `deep` as deep
+  // about the mouth line `mid`. Every form, both views (Close View reads it too); the brow horns are not moved.
+  muzzle: Object.freeze({ from: .2, k: .86, deep: 1.12, mid: -.01, ramp: .12 }),
   whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
 });
 // How each pose bends the body. pitch (+ nose up; about the hips, or the shoulders nose down), head (+ raises the head), reach
@@ -59,7 +63,7 @@ export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1
 export const TRI_FORMS = Object.freeze({
   // Tim, 2026-11-19 (size pass): a cute little baby that is still clearly a Triceratops: a tiny frill, barely any horns (nubs), rounder
   // and chubbier, a bigger head on a shorter body, big eyes, short stubby legs.
-  baby: Object.freeze({ head: 1.7, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .17, brow: .06, nose: .16, eye: 2.15, cheek: 1, snout: .45, jugal: .3, lift: .1, nod: .22 }),
+  baby: Object.freeze({ head: 1.3, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .34, brow: .2, nose: .3, eye: 1.15, cheek: 0, snout: .72, jugal: .5, lift: .05, nod: .1 }),
   young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
 export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
@@ -263,7 +267,10 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
 // The head in its own frame at the base of the skull (hx, hy), turned to `ha`: the frill behind, the far brow horn, the skull and
 // beak, the nose horn, the near brow horn and the eye.
 function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = TRI_FORM_ADULT) {
-  const S = A.headScale * FM.head, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, sk = FM.snout, H = sk === 1 ? (x, y) => [hx + x * c - y * sn, hy + x * sn + y * c] : (x, y) => { x = x > .12 ? .12 + (x - .12) * sk : x; return [hx + x * c - y * sn, hy + x * sn + y * c]; };
+  const S = A.headScale * FM.head, c = Math.cos(ha) * S, sn = Math.sin(ha) * S, sk = FM.snout, MZ = A.muzzle;
+  // HB: the head frame with the form's shorter face (the brow horns); H: the same with the squat muzzle (the skull, beak, jaw, nose horn)
+  const HB = (x, y) => { if (sk !== 1 && x > .12) x = .12 + (x - .12) * sk; return [hx + x * c - y * sn, hy + x * sn + y * c]; };
+  const H = (x, y) => { if (x > MZ.from) { const w = smooth((x - MZ.from) / MZ.ramp); y = MZ.mid + (y - MZ.mid) * (1 + (MZ.deep - 1) * w); x = MZ.from + (x - MZ.from) * MZ.k; } return HB(x, y); };
   const mv = (p) => ctx.moveTo(p[0], -p[1]), ln = (p) => ctx.lineTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
   const shape = (pts) => { ctx.beginPath(); mv(H(pts[0][0], pts[0][1])); for (let i = 1; i < pts.length; i++) ln(H(pts[i][0], pts[i][1])); ctx.closePath(); };
   // the frill: a broad shield rising up and back from the skull, its rim scalloped with pale knobs, two dark spots inside
@@ -276,8 +283,8 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   { const fk = FM.frill; ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2 * fk, sy2 * fk, .055 * fk, .08 * fk, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // the spots keep their place on a small frill
   ctx.restore();
   // the brow horns: long, curving forward and up out of the brow; the far one first, behind the skull, the near one over it
-  const bk = FM.brow, bx0 = .165, by0 = .1, brow = (dx, dy, near) => { const b0 = H(.13 + dx, .1 + dy), b1 = H(.2 + dx, .095 + dy), mid = H(scl(.3, bx0, bk) + dx, scl(.3, by0, bk) + dy), tip = H(scl(.5, bx0, bk) + dx, scl(.4, by0, bk) + dy);
-    ctx.beginPath(); mv(b0); qc(H(scl(.2, bx0, bk) + dx, scl(.28, by0, bk) + dy), tip); qc(mid, b1); ctx.closePath();
+  const bk = FM.brow, bx0 = .165, by0 = .1, brow = (dx, dy, near) => { const b0 = HB(.13 + dx, .1 + dy), b1 = HB(.2 + dx, .095 + dy), mid = HB(scl(.3, bx0, bk) + dx, scl(.3, by0, bk) + dy), tip = HB(scl(.5, bx0, bk) + dx, scl(.4, by0, bk) + dy);
+    ctx.beginPath(); mv(b0); qc(HB(scl(.2, bx0, bk) + dx, scl(.28, by0, bk) + dy), tip); qc(mid, b1); ctx.closePath();
     const g = ctx.createLinearGradient(b0[0], -b0[1], tip[0], -tip[1]); g.addColorStop(0, near ? A.hornBase : A.shade); g.addColorStop(.35, near ? A.horn : A.hornBase); g.addColorStop(1, near ? A.hornTip : A.horn);
     ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); };
   brow(-.035, .03, false);
@@ -309,7 +316,7 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   brow(0, 0, true);
   // the Horn Shot: a glint on the tips as the wind-up aims them, then the release's flash and streaks off the tips
   const hp = e.mountView ? e.mountHornPose : null, hk = triceratopsHornAmount(hp);
-  if (hk > 0 && hp.phase === "windup") { /* the release's flash is drawn with the shot itself, where it leaves the horns (combat-visuals.ts) */ const tp = H(.5, .4), ta = Math.atan2(.4 - .3, .5 - .3) + ha, tx = tp[0], ty = -tp[1], r = hp.phase === "horn" ? .2 * hk : .06 + (reduce ? 0 : .02 * Math.sin(t * 30));
+  if (hk > 0 && hp.phase === "windup") { /* the release's flash is drawn with the shot itself, where it leaves the horns (combat-visuals.ts) */ const tp = HB(.5, .4), ta = Math.atan2(.4 - .3, .5 - .3) + ha, tx = tp[0], ty = -tp[1], r = hp.phase === "horn" ? .2 * hk : .06 + (reduce ? 0 : .02 * Math.sin(t * 30));
     const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, r * 1.6); g.addColorStop(0, `rgba(255,252,230,${(.95 * hk).toFixed(3)})`); g.addColorStop(.4, `rgba(255,236,170,${(.6 * hk).toFixed(3)})`); g.addColorStop(1, "rgba(255,220,140,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx, ty, r * 1.6, 0, TAU); ctx.fill();
     if (hp.phase === "horn") { ctx.strokeStyle = `rgba(255,246,210,${(.85 * hk).toFixed(3)})`; ctx.lineWidth = lw * 1.4; ctx.lineCap = "round"; for (const d of [-.25, 0, .25]) { const a = ta + d; ctx.beginPath(); ctx.moveTo(tx + Math.cos(a) * r * .5, ty - Math.sin(a) * r * .5); ctx.lineTo(tx + Math.cos(a) * r * 2.2, ty - Math.sin(a) * r * 2.2); ctx.stroke(); } ctx.lineCap = "butt"; } }
