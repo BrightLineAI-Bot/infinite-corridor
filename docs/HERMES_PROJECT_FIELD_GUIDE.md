@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1008 — On-hit Echoes, minion Echoes and Sanctuary leech
+
+Tim (2026-11-18): the Bloblet and Worm Tentacle Echoes never dropped. He asked for on-hit Echoes, since the game has many on-kill ones, and for a Triceratops Echo from the hostile Triceratops. On healing: a 5%/s cap is fine against ordinary creatures but too low against world bosses, so the Sanctuary passive should leech, and raise the cap against elites and stronger. Tim approved the one-line exception in tests/echoes.test.ts for the Triceratops Echo.
+
+**CODE:** `Game.landHit` is the single hit hook; DoTs, `glyphWorld` procs and Echo damage, glyph Echo copies and afterimages never count. `echoes.ts` has `ON_HIT_ECHOES` (perSecond 12, per-foe gap 60 ms, cunning, mend, ember) and `echoHit`, with per-foe Symbol marks; `MINION_ECHOES` makes a minion's Echo certain on its first kill, and `grantSlainEchoes` grants it on load once the parent beast is slain. `ECHOES.triceratops` is gated by `from: { triceratopsDisposition: "bad" }` and `certain`. `Game.grantHitHeal` is the one heal-on-hit budget: `TESSERACTS.hitHealCap` (.05) and `hitHealCapElite` (.15, only with Sanctuary and only on `eliteOrStronger` targets). `constellation.ts` has `SANCTUARY.leech` (.12) and `sanctuaryOn`; the old flat 20% mend is removed.
+
+**BOUNDARY:** No new save fields: ownership is the existing `echoes.owned`, and per-foe marks are runtime only and non-enumerable. A journey that already took Sanctuary gets the new effect. A Triceratops's own Echo drops only from a hostile one, never from Good, Silly, caught or ridden ones. Hostile Triceratops killed before this release grant nothing retroactively. Shadow Boxing's heal stays outside the shared cap, as before.
+
 ## Release 1007 — Music in background: the score plays on while the app is hidden
 
 Tim, 2026-11-19: "add a background playing option so that when I close the phone or close the app the music keeps playing in the background... Make it an option in the audio options." Options → Audio → Music in background, off by default.
