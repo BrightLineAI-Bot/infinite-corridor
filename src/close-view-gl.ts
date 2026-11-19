@@ -763,8 +763,17 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
 // silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
 // sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
 // creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+// Lighting (Tim, 2026-11-19: "creatures shouldn't get their own lighting, they should just match the lighting of the
+// surroundings"). A body takes exactly the light the floor would take where it stands: `env` is lightsAt() at the vertex with
+// the floor's up normal (the same ambient, torch, sun and placed sources the floor's shader adds). `form` only redistributes
+// that light for volume: a face turned away from the lights takes its own (lower) lightsAt() share, mixed in by `form`, and
+// never more than `env` (lit = mix(env, min(own, env), form)), so a body is never brighter than the floor under it: dim in a
+// dim corner, torchlit in the torch. No light floor, no rim, no fill, no highlight of its own (`rim` 0, `spec` 0). `floor`
+// is no longer read by any shader (kept for tests/close-view-creature-materials.test.ts until that contract is updated).
+// Designed light is unchanged: emissive parts (`emissive`, `glow`) and the spectral rim of a ghost.
 export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
-  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  form: .6, rim: 0, spec: 0,
+  floor: .42, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
   emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
     0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
     0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
@@ -798,8 +807,10 @@ void main() {
   float rim = 1.0 - max(0.0, dot(normal, toEye));
   const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
   float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
-  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  vec3 env, envS; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, env, envS); // the floor's light here (Tim, 2026-11-19: match the surroundings)
+  vec3 lit = mix(env, min(dif, env), ${glf(CLOSE_VIEW_ACTOR_LOOK.form)}); // shading for volume only: never above the floor's light
+  vec3 color = v_col * lit + spe * ${glf(CLOSE_VIEW_ACTOR_LOOK.spec)} + (vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(CLOSE_VIEW_ACTOR_LOOK.rim)};
   color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
   float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
   color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
@@ -984,7 +995,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0, dying: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
 // Coarse observational history only; never expose driver logs or probe hardware.
 const GPU_DIAGNOSTICS={attempted:false,contextLost:false,lastFailure:'none',frameFailure:'none',lastHeroFailure:'none'};
 export function closeViewGLDiagnostics(){return {

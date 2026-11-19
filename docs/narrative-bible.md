@@ -424,3 +424,34 @@ Each step is one release, built and previewed for Tim before publishing.
 It is normalised in `freshSave` and `migrateSave` at schema 14.
 
 **Sources:** every quoted passage comes from public-domain editions (Maude, Garnett, Martin, Project Gutenberg and, if added, Mitra). Everything else, including Ilse, the Surveyor, the Bells and the Glimpses, is original writing for the game.
+
+---
+
+## 8. Content stages, and abilities found through quests
+
+Tim's naming convention for this bible and the field guide (2026-10-29, renumbered 2026-11-19). It is not the in-game creature stages S1/S2 that the Listener opens.
+
+- **Stage 1**: the base game, with the first creatures, monsters and world beasts.
+- **Stage 2**: everything up to release 573 (2026-10-29, PR #270): the passives and secondary passives, the Transit Lattice and its field passives and tool forms, the extra weapons and brawler gear, and the newer bosses.
+- **Stage 3**: everything after Stage 2 up to the start of the Pentagon work, releases 575-726 (2026-10-29 to 2026-11-03, PRs #271-#374). It includes the great trees and the glider, skyways and the Skylands' modes, the Deep, the Stalker, Great Keeps, ruined arcologies, great buildings, compounds, labyrinths and Great Castles, the Briar Stag, Ashen Moth and both dragons, the far realms and world-beast domains past 1000, and new regions (firelands, moonlands, pillar lands, fog moors, jungle and others).
+- **Stage 4**: everything from the start of the Pentagon work to now, from release 727 (2026-11-04, PR #375, the first Pentagon) on. It includes the Pentagon and the Stillworks, adventure Pentagons, Upwells, seed realms and the Askew, travel seeds, Abyssal Seeds and seed hunts, the Deep's lairs, the new far regions (Terrace Springs, the Reckoning Fields, Rimeglaciers, the Lunar Wastes, the Marrowworks, the Magma Rivers), the Gaunt, adventure creatures, haunts, the dinosaurs and the Earth Apatosaurus, Tesseract glyphs, the Quandrix Staff, Fourfold Daggers, Carbine and Aether Orrery, weapon arts and awakened moves, Imbue Weapon and Essence Walk, the on-hit and charge passives (Tempo, Shatterpoint, Rapid Reload, Power Aegis, the five Constellation extras), the new Echoes, mounts and the Triceratops hatchling, refinement, and Close View.
+
+The earlier wording "Stage 3 = vertical traversal" is superseded: each vertical-traversal feature belongs to Stage 3 or Stage 4 by when it was built. The release boundaries and how they were found are in the field guide (Content stages). The Stage 4 inventory is `docs/stage-4-inventory.md`.
+
+Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not a design). Tim wants to go back over Stage 4's passives, spells, skills, tools and abilities and tie them to quests and places in the world, so that different playthroughs come out with different kits depending on which quests a player goes on. The inspiration is a new Dungeons & Dragons game that spreads very many wild abilities through its world. Tim's detail, the same day:
+
+- Quests and quest lines are not only for Stage 4 abilities: this is how the whole game's progression will work.
+- Unlock routes are a mix:
+  - (a) plain levelling up, some of it shown in advance as "these are the level-ups";
+  - (b) Arcanum or Constellation unlocks that open a quest ("go here", "find these items"), and finishing the quest grants the passive or skill;
+  - (c) exploration milestones: complete X deep dungeons, fell X Listeners, restore X hollow relays, and the like;
+  - (d) threads: picking up a thread item starts a quest. It may say that something waits at the end, or it may not say what you get at all.
+- Visibility varies. Some routes are directed and obvious. Some stay unknown until you find the thread or finish the quest, and some you won't know you are getting. Overall they should be about as discoverable as the threads are today; some abilities are simply found at random.
+- A compendium can later show how each quest or ability is obtained, once the player knows it.
+- Constraint: players must still be able to build builds and feel progress. They should not wander the Corridor forever without moving toward anything. Tim has already lined some things up with deserts and regions.
+- Exploration first (Tim, 2026-11-19): the aim is so much content that there is a huge amount to explore and dig into. A quest can start in one region and send the player farther out for its next item, with conditions such as "a desert at least 50 sections from the Ember Refuge"; some send you to the open sea; some things can be found only in the skyways. Some passives or abilities may be bought with Divine Viscera, the endgame currency.
+- Next step: design a viable, structured acquisition architecture. The lead does this after the inventory. Until Tim approves that design, no acquisition is changed.
+
+Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
+
+For this bible, the direction means quests become the main way a Wayfarer's kit grows. Threads, regional quests and places will carry abilities, so the story's map and the build's map come to be the same map. Writing for those quests follows the rules above: subtle, never explained, and kept to the story budget (section 6, item 6), so a new quest takes a thread slot rather than adding density.
