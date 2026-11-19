@@ -232,6 +232,8 @@ test('a hold with no click after it (cancelled, slid off, or long past) does not
   h.down(3, 10, 10, 9000); h.due(9000 + L.holdMs); h.hold(); h.up(3, NaN); h.drop(); assert.equal(h.takeClick(), false);
   assert.ok(L.swallowMs >= 300 && L.swallowMs <= 1500, 'a short window: the click follows its release at once');
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
-  assert.match(main, /for\(const t of\["pointerup","pointercancel","pointerleave","lostpointercapture"\]\)navCompass\.addEventListener\(t,e=>\{clearTimeout\(lookTimer\);if\(t==="pointercancel"\|\|t!=="pointerup"&&lookHold\.pressing\)lookHold\.drop\(\);/, 'a cancel, or leaving or losing the pointer mid-press, drops the flag');
-  assert.match(main, /if\(t==="pointerup"\)\{clearTimeout\(lookSwallowTimer\);lookSwallowTimer=setTimeout\(\(\)=>lookHold\.drop\(\),CLOSE_VIEW\.camera\.look\.swallowMs\)\}/, 'and a release drops it after swallowMs');
+  // 2026-11-19 (Tim): the compass's hold handling moved into main.ts wireHold (shared by the compass's quick menu and the Oculus's
+  // Look mode); the same drop rules, now on any held HUD button.
+  assert.match(main, /for\(const t of\["pointerup","pointercancel","pointerleave","lostpointercapture"\]\)el\.addEventListener\(t,e=>\{clearTimeout\(timer\);ringOff\(\);if\(t==="pointercancel"\|\|t!=="pointerup"&&h\.pressing\)h\.drop\(\);/, 'a cancel, or leaving or losing the pointer mid-press, drops the flag');
+  assert.match(main, /clearTimeout\(swallowTimer\);swallowTimer=setTimeout\(\(\)=>h\.drop\(\),CLOSE_VIEW\.camera\.look\.swallowMs\)\}/, 'and a release drops it after swallowMs');
 });

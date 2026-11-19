@@ -34,16 +34,23 @@ test('with no objective the compass has no needle, whatever marks the section ho
   s.consequences.choices.relay = 'restore'; assert.equal(compassGuidance(s, { area: 'overworld', cues: marks }), null);
 });
 
-test('objective pointing that already worked still works, in its old order', () => {
+// Changed 2026-11-19 (Tim: "the compass points at exactly the one target the player last actively chose"): the tracked hunt and
+// a far quest no longer lead by themselves; each is followed only when chosen (save.guidance.follow, set on accepting it).
+test('the compass follows only the chosen target: a pin, else a followed hunt or quest, else a pick', () => {
   const s = cold('OBJ1'), marks = [cue('crossing', 2, 0)];
   s.viewport.contracts.h1 = { id: 'h1', title: 'Glass Hunt', status: 'tracking', target: { rx: 5, ry: -3 } }; s.viewport.activeHuntId = 'h1';
-  const pin = { rx: -4, ry: 2, name: 'The Unwritten Meridian' }, far = { rx: 30, ry: 1, name: 'the Storm Halls' }, pick = { rx: 1, ry: 1, x: 9, y: 12, name: 'Crossing: Old Kiln' };
-  assert.deepEqual(compassGuidance(s, { pin, pick, farQuest: far, cues: marks }), { area: 'overworld', rx: -4, ry: 2, kind: 'guidance', name: pin.name }, 'a Journal pin first');
-  assert.deepEqual(compassGuidance(s, { pick, farQuest: far, cues: marks }), { area: 'overworld', rx: 5, ry: -3, kind: 'guidance', name: 'Glass Hunt' }, 'then the tracked hunt');
-  assert.deepEqual(compassGuidance(s, { area: 'dungeon', farQuest: far }), { area: 'overworld', rx: 5, ry: -3, kind: 'guidance', name: 'Glass Hunt' }, 'shown (dormant) indoors too');
+  s.farQuests = { storm: { status: 'open', rx: 30, ry: 1 } };
+  const pin = { rx: -4, ry: 2, name: 'The Unwritten Meridian' }, pick = { rx: 1, ry: 1, x: 9, y: 12, name: 'Crossing: Old Kiln' }, hunt = { kind: 'hunt', id: 'h1' }, far = { kind: 'far', id: 'storm', name: 'the Storm Halls' };
+  assert.deepEqual(compassGuidance(s, { pin, follow: hunt, pick, cues: marks }), { area: 'overworld', rx: -4, ry: 2, kind: 'guidance', name: pin.name }, 'a Journal pin first');
+  assert.deepEqual(compassGuidance(s, { follow: hunt, cues: marks }), { area: 'overworld', rx: 5, ry: -3, kind: 'guidance', name: 'Glass Hunt' }, 'a followed hunt');
+  assert.deepEqual(compassGuidance(s, { area: 'dungeon', follow: hunt }), { area: 'overworld', rx: 5, ry: -3, kind: 'guidance', name: 'Glass Hunt' }, 'shown (dormant) indoors too');
+  assert.equal(compassGuidance(s, { cues: marks }), null, 'a tracked hunt nobody chose: no needle');
+  assert.deepEqual(compassGuidance(s, { pick }), { area: 'overworld', rx: 1, ry: 1, x: 9, y: 12, kind: 'guidance', name: pick.name }, 'a pick is not led by the tracked hunt');
   s.viewport.contracts.h1.status = 'completed';
-  assert.equal(compassGuidance(s, { farQuest: far, pick }).name, 'the Storm Halls', 'then a far quest');
-  assert.deepEqual(compassGuidance(s, { pick, cues: marks }), { area: 'overworld', rx: 1, ry: 1, x: 9, y: 12, kind: 'guidance', name: pick.name }, 'then a target chosen by tapping');
+  assert.equal(compassGuidance(s, { follow: hunt, pick }), null, 'the followed hunt finished: no needle, the old pick does not come back');
+  assert.equal(compassGuidance(s, { follow: far }).name, 'the Storm Halls', 'a followed far quest');
+  assert.equal(compassGuidance(s, { pick }).name, pick.name, 'a far quest nobody chose leads nothing');
+  s.farQuests.storm.status = 'found'; assert.equal(compassGuidance(s, { follow: far }), null, 'found: no needle');
   assert.equal(compassGuidance(s, { area: 'dungeon', pick }), null, 'a tapped pick is an overworld target');
 });
 
@@ -51,13 +58,19 @@ test('a quest with no fixed section follows the section\'s marks: the relay lead
   const s = cold('OBJ2'), skyway = cue('crossing', 3, 3, { guide: true, name: 'a skyway' }), lair = cue('danger', 4, 0, { guide: true, name: 'a world boss' });
   const early = cue('danger', -2, 1, { guide: true, crossing: true, name: G.lairEarly }), buried = cue('crossing', 0, -2, { name: 'a buried crossing' }), odd = cue('event', 1, 0);
   s.narrative.facts['leads.active'] = true; assert.equal(compassQuest(s), 'leads');
-  assert.equal(compassGuidance(s, { cues: [odd, lair, buried] }).name, 'a buried crossing', 'leads: crossing, then danger, then event (release 153 order)');
-  assert.equal(compassGuidance(s, { cues: [odd, lair] }).name, 'a world boss');
-  s.narrative.facts['leads.complete'] = true; assert.equal(compassQuest(s), null); assert.equal(compassGuidance(s, { cues: [odd, lair, buried] }), null, 'finished leads: no needle');
+  // 2026-11-19 (Tim): a quest's marks lead only while that quest is the one followed (taken, or chosen in the Journal or the menu)
+  const leads = { kind: 'quest', id: 'leads' }, errand = { kind: 'quest', id: 'errand' };
+  assert.equal(compassGuidance(s, { cues: [odd, lair, buried] }), null, 'not followed: no needle');
+  assert.equal(compassGuidance(s, { follow: leads, cues: [odd, lair, buried] }).name, 'a buried crossing', 'leads: crossing, then danger, then event (release 153 order)');
+  assert.equal(compassGuidance(s, { follow: leads, cues: [odd, lair] }).name, 'a world boss');
+  s.viewport.contracts.t1 = { id: 't1', kind: 'tracking', title: 'Relay trail', status: 'tracking' };
+  assert.equal(compassGuidance(s, { follow: { kind: 'hunt', id: 't1' }, cues: [odd, lair] }).name, 'a world boss', 'a followed tracking hunt with no target yet follows the leads');
+  s.narrative.facts['leads.complete'] = true; assert.equal(compassQuest(s), null); assert.equal(compassGuidance(s, { follow: leads, cues: [odd, lair, buried] }), null, 'finished leads: no needle');
   s.arcana = { ...(s.arcana || {}), starter: 'set' }; assert.equal(compassQuest(s), 'errand');
   assert.equal(compassQuestCue('errand', [skyway, odd]), null, 'an amber mark on guided ground is a skyway, not a crossing');
-  assert.deepEqual(compassGuidance(s, { cues: [skyway, odd, early] }), { area: 'overworld', rx: -2, ry: 1, kind: 'guidance', name: G.lairEarly }, 'the early red mark leads to a crossing');
-  assert.equal(compassGuidance(s, { cues: [buried, skyway] }).name, 'a buried crossing', 'old ground: the buried-crossing mark');
+  assert.deepEqual(compassGuidance(s, { follow: errand, cues: [skyway, odd, early] }), { area: 'overworld', rx: -2, ry: 1, kind: 'guidance', name: G.lairEarly }, 'the early red mark leads to a crossing');
+  assert.equal(compassGuidance(s, { follow: errand, cues: [buried, skyway] }).name, 'a buried crossing', 'old ground: the buried-crossing mark');
+  assert.equal(compassGuidance(s, { follow: leads, cues: [buried, skyway] }), null, 'a followed quest that is over: no needle, nothing else takes over');
   s.lore = { ...(s.lore || {}), surveyor: { links: [{ id: 'l1' }] } }; assert.equal(compassQuest(s), null, 'the first link found ends the errand');
   assert.deepEqual(Object.keys(COMPASS_QUEST_CUES), ['leads', 'errand']);
 });
@@ -73,13 +86,16 @@ test('main.ts: no objective shows the compass dial with no needle; the old neare
   assert.equal(compass.hidden, false, 'the compass stays on the HUD'); assert.equal(guide.hidden, true); assert.equal(manual.hidden, true, 'no needle, not even true north');
   assert.equal(compass['class:north'], false); assert.match(compass['aria-label'], /No objective/);
   const nav = main.slice(main.indexOf('function navigationTargets()'), main.indexOf('function updateNavigationArrow('));
-  assert.match(nav, /compassGuidance\(save,\{area:game\.area,pin:compassPin,pick,farQuest,cues\}\)/);
+  assert.match(nav, /compassGuidance\(save,\{area:game\.area,pin:compassPin,follow:f,pick,cues,rescue:/); // 2026-11-19 (Tim): only the chosen target
+  assert.doesNotMatch(nav, /nearestSeedHunt|activeFarQuest|seedHuntGuidance/, 'no nearest seed hunt or far quest leads by itself');
+  assert.match(nav, /navigationCache=\{key,map:game\.map,guidance,manual:null\}/, 'markers draw no needle unless chosen');
   assert.doesNotMatch(nav, /choices\.relay/, 'an unmade relay choice is no objective');
   assert.doesNotMatch(main, /compassPick\)\|\|list\[0\]\|\|null/, 'compassObjective no longer falls back to the nearest objective');
   assert.match(main, /function compassObjective\(\)\{if\(compassPick===null\)return null;/);
   assert.match(main, /if\(!labels\.length\)\{idleCompass\(\);return\}/);
-  // dungeons keep their door points and the true-north fallback (release 887)
+  // dungeons keep their door points (release 887); with none, 2026-11-19 (Tim: "two norths"), the idle compass, not a needle to north
   assert.match(main, /pointDungeonCompass\(points\.find\(door => door\.id === dungeonCompassPick\) \|\| points\[0\]\)/);
+  assert.match(main, /if \(!point\) \{ compassArrivalStep\(compassArrival, false\); idleCompass\(DUNGEON_COMPASS_IDLE\); return; \}/);
 });
 
 test('crossingRolled gives exactly the landmark crossings the generator places, without building a section', () => {

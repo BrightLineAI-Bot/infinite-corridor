@@ -284,8 +284,7 @@ body {
 .nav-dial-tick.e { transform: rotate(90deg); }
 .nav-dial-tick.s { transform: rotate(180deg); }
 .nav-dial-tick.w { transform: rotate(270deg); }
-.nav-compass.north .manual-arrow { color: #eee0be; }
-.nav-compass.north::after { content: "N"; position: absolute; right: 0; bottom: -2px; color: #eee0be; background: #141714; border-radius: 3px; padding: 0 2px; font: bold 8px monospace; }
+/* Tim, 2026-11-19 ("two norths"): the old true-north needle and its white N badge are gone; the dial's own N is the only N. */
 .nav-arrow {
   position: absolute;
   left: 50%;
@@ -1167,3 +1166,37 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 .gear-grid.with-stats{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.gear-card .gear-stats{grid-column:1/-1;margin:.4rem 0 0}.gear-card .gear-stats span{font-size:.7rem;color:#cfc3a8}
 .smith-action{margin:.3rem 0}.smith-action>button{max-width:100%;white-space:normal;text-align:left}.smith-action .forge-preview{margin:.25rem 0 .1rem}.smith-action>button.reforge-up{color:#91d79a;border-color:#4f8c58;background:#17351e}.smith-action>button.reforge-down{color:#e58c87;border-color:#9a4c48;background:#3e1818}.forge-preview span,.gear-stats span{overflow-wrap:anywhere}
 .salvage-yield small{display:block;margin-top:.3rem;color:#aaa18f;font-size:.74rem}
+
+/* 2026-11-19 (Tim): hold-to-act on the HUD (main.ts wireHold). Holding the Oculus (Look mode, in Close View) or the compass (its
+   quick menu) fills a gold ring over CLOSE_VIEW.camera.look.holdMs (550 ms); Reduced Motion shows the ring at once, unanimated.
+   Look mode on: the Oculus wears the same gold as the compass's Look badge. */
+@property --hold-p { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@keyframes hud-hold-fill { from { --hold-p: 0%; } to { --hold-p: 100%; } }
+.left-controls .oculus-button.holding::after, .left-controls .compass-slot.holding::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none; z-index: 6; background: conic-gradient(#f0c86a var(--hold-p), #f0c86a2e 0); -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 4px)); animation: hud-hold-fill 550ms linear forwards; }
+.left-controls .oculus-button.holding, .left-controls .compass-slot.holding .nav-compass { border-color: #f0c86a; }
+body.reduce-motion .left-controls .oculus-button.holding::after, body.reduce-motion .left-controls .compass-slot.holding::after { animation: none; --hold-p: 100%; opacity: .7; }
+.left-controls .oculus-button.look-on { border-color: #f0c86a; box-shadow: inset 0 0 0 3px #0e1210, 0 0 0 2px #f0c86a66, 0 2px 7px #000b; }
+
+/* 2026-11-19 (Tim): the compass's quick menu (index.html #compassMenu; main.ts openCompassMenu). A panel that opens to the LEFT
+   of the compass and the Oculus (top right), wide enough to read and tap on a phone; rows are 48 px or taller, names wrap,
+   text scales with the Text size option (rem); the list scrolls when long. The backdrop under it takes a tap outside (it closes
+   the menu and nothing else). The red X sits in the panel's top-left corner. */
+.compass-menu[hidden] { display: none; }
+.compass-menu { position: fixed; inset: 0; z-index: 30; }
+.compass-menu-backdrop { position: absolute; inset: 0; background: #0006; touch-action: none; }
+.compass-menu-panel { position: absolute; top: calc(env(safe-area-inset-top) + 8px); right: calc(env(safe-area-inset-right) + 56px); width: min(22rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 64px)); min-width: 0; max-height: min(36rem, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px)); box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid #b58c50; border-radius: 12px; background: #161713f5; color: #eadfc8; box-shadow: 0 10px 30px #000c; overflow: hidden; }
+.compass-menu-head { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-bottom: 1px solid #b58c5055; flex: none; }
+.compass-menu-head h2 { margin: 0; font: 700 1rem/1.2 serif; letter-spacing: .04em; color: #f0dbb5; min-width: 0; overflow-wrap: anywhere; }
+.compass-menu-close { flex: none; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; margin: 0; display: grid; place-items: center; border: 1px solid #e0574f; border-radius: 10px; background: #3a1412; color: #ff6a5e; font: 700 28px/1 sans-serif; cursor: pointer; touch-action: manipulation; }
+.compass-menu-list { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 8px 10px; min-height: 0; }
+.compass-menu-group h3 { margin: 10px 4px 4px; font: 700 .72rem/1.2 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: #c9a467; }
+.compass-menu-row { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; width: 100%; min-height: 48px; margin: 0 0 4px; padding: 7px 10px; box-sizing: border-box; text-align: left; border: 1px solid #5d5444; border-radius: 9px; background: #23241e; color: #eadfc8; cursor: pointer; touch-action: manipulation; white-space: normal; }
+.compass-menu-row .cm-name { grid-column: 2; font: 600 .95rem/1.25 sans-serif; overflow-wrap: anywhere; }
+.compass-menu-row .cm-hint { grid-column: 2; font: .78rem/1.25 sans-serif; color: #b9ad95; overflow-wrap: anywhere; }
+.compass-menu-row .cm-swatch { grid-column: 1; grid-row: 1 / span 2; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000a; }
+.compass-menu-row[aria-pressed="true"] { border-color: #f0c86a; background: #3a3220; box-shadow: inset 3px 0 0 #f0c86a; }
+.compass-menu-row[aria-pressed="true"] .cm-hint { color: #f0d690; }
+.compass-menu-row:focus-visible, .compass-menu-close:focus-visible, .compass-menu-clear:focus-visible { outline: 2px solid #5fe0d8; outline-offset: 1px; }
+.compass-menu-empty { margin: 10px 4px; font: .9rem/1.35 sans-serif; color: #c8bda8; }
+.compass-menu-clear { display: block; width: 100%; min-height: 44px; margin: 8px 0 0; border: 1px dashed #80745f; border-radius: 9px; background: none; color: #c8bda8; font: .85rem sans-serif; }
+body.proving-ground .compass-menu-panel { top: calc(env(safe-area-inset-top) + 64px); }
