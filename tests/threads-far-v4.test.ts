@@ -56,9 +56,9 @@ const NEAR = [[3, 6], [7, 18], [19, 35], [36, 70], [71, 150], [495, 505], [700, 
 const beyond = (id) => { const [x, y] = at(id); return farDistance(x, y) >= FAR_REALMS.start; };
 
 test('story version 4: the budget stays 0.12, the first ten give way past 1000, and every pool and weight is version 3\'s', () => {
-  assert.equal(STORY_BUDGET.version, 4); assert.equal(STORY_BUDGET.perCrossing, .12); assert.deepEqual(STORY_BUDGET.byVersion, { 1: .13, 2: .12, 3: .12, 4: .12 });
+  assert.ok(STORY_BUDGET.version >= 4); assert.equal(STORY_BUDGET.perCrossing, .12); for (const [v, b] of Object.entries({ 1: .13, 2: .12, 3: .12, 4: .12 })) assert.equal(STORY_BUDGET.byVersion[v], b); // story version 5 (the Second Wayfarer) adds an entry
   assert.equal(STORY_BUDGET.firstTenGivesWay, 4); assert.equal(budgetFor(4), .12); assert.equal(budgetFor(3), .12); assert.equal(budgetFor(1), .13);
-  assert.equal(storyVersionFor(false), 4); assert.equal(storyVersionFor(true), 0);
+  assert.equal(storyVersionFor(false), STORY_BUDGET.version); assert.equal(storyVersionFor(true), 0);
   for (const [x, y] of [[0, 1500], [1000, 0], [708, 708], [3000, -4000], [999, 0], [700, 700], [40, 0], [5, 2]]) {
     assert.deepEqual(sharedThreads(4, x, y), sharedThreads(3, x, y), `${x},${y}: the pools are version 3's`);
     for (const t of THREAD_ORDER) assert.equal(threadWeight(t, 4), threadWeight(t, 3), t); }
@@ -121,9 +121,9 @@ test('a crossing pinned at version 3 keeps its pin and its first-ten piece throu
   for (const id of v3) s.consequences.dungeons[id] = { discovered: true, bypassed: false, visits: 1, abandoned: 0, guardianDefeated: false, resolved: false, visitOpen: false, storyVersion: 3 };
   const loaded = migrateSave(JSON.parse(JSON.stringify(s)));
   for (const id of v3) { pinDungeonLayout(loaded, id); assert.equal(storyVersionOf(loaded, id), 3); const o = addThreadRelic(map(), loaded, id); assert.equal(o?.thread, r781('FAR4PIN', id)); assert.ok(FIRST[o.thread]); }
-  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, 4); assert.equal(addThreadRelic(map(), loaded, id)?.thread, v4('FAR4PIN', id)); }
+  for (const id of fresh) { const h = pinDungeonLayout(loaded, id); assert.equal(h.storyVersion, STORY_BUDGET.version); assert.equal(addThreadRelic(map(), loaded, id)?.thread, v4('FAR4PIN', id)); }
   const again = migrateSave(JSON.parse(JSON.stringify(loaded)));
-  for (const id of v3) assert.equal(again.consequences.dungeons[id].storyVersion, 3); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, 4);
+  for (const id of v3) assert.equal(again.consequences.dungeons[id].storyVersion, 3); for (const id of fresh) assert.equal(again.consequences.dungeons[id].storyVersion, STORY_BUDGET.version);
   assert.equal(again.version, 14);
 });
 
@@ -142,7 +142,7 @@ test('at version 4 the Second Surveyor is still read to its end on the way out, 
 test('in the game, a far thread is read to its end in version 4 crossings past 1000: the Journal keeps every piece and the ending, and QUEST COMPLETE is raised', () => {
   const id = 'tallSlates', T = THREADS[id], seed = 'FAR4GAME', c = crossings(seed, id, T.pieces.length, true), s = freshSave(); s.seed = seed;
   for (let i = 0; i < T.pieces.length; i++) { const q = c[i], [x, y] = at(q); assert.ok(beyond(q)); s.session.activeDungeonId = q; s.session.dungeonReturn = { rx: x, ry: y, x: 16, y: 16 };
-    const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[q].storyVersion, 4, 'a new crossing pins to version 4');
+    const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[q].storyVersion, STORY_BUDGET.version, "a new crossing pins to the current version (5 rolls as 4)");
     const o = g.map.objects.find((k) => k.kind === 'threadRelic'); assert.ok(o, `${i}: laid in the crossing`); assert.equal(o.thread, id); assert.equal(o.index, i);
     g.player.x = o.x; g.player.y = o.y; const r = g.interact('read', o.id); assert.ok(r.ok, g.message); assert.equal(r.done, i === T.pieces.length - 1);
     assert.ok(s.narrative.journal.some((j) => j.text === T.pieces[i]), `piece ${i + 1} is in the Journal`);
