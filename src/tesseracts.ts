@@ -37,6 +37,11 @@ export const TESSERACTS = {
   roll: 3,
   harmFloor: .15, // a health cost (selfHarm, castHarm, dodgeHarm) stops at this share of maximum health: it never kills
   hitHealCap: .05, // health on hit gives at most this share of maximum health in any one second, however many hits land
+  // Tim (2026-11-18): while Sanctuary holds (constellation.ts sanctuaryOn: Veil Guard active, the node taken), heals from hits on
+  // elites and stronger (game.ts eliteOrStronger: elites, bosses, world beasts, crossing guardians, big-room beasts) may reach this
+  // share of maximum health in a second instead. The one budget is shared: a heal from a hit on an ordinary creature still stops at
+  // hitHealCap of what this second has given, and nothing passes this.
+  hitHealCapElite: .15,
   // each effect: the range of a bonus, the range of a cost (fractions), and how a line reads. Roll 3 adds `axis` (a cost never
   // shares one with a bonus on its glyph), `curse` (a top tier's cost, at full strength) and `bad3` (roll 3's cost range where
   // roll 1's would not fit: a swing lands about three times a second on a fast weapon, so roll 3 takes far less health per swing)
