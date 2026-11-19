@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Power Aegis: the Aegis's perfect parry
+## Release 1014 — Power Aegis: the Aegis's perfect parry
 
 Tim (2026-11-19) asked for a just-guard on the Aegis as a passive. A blow timed into the start of the ward is parried: the Aegis is ready again and the Wayfarer's next attacks are empowered for a few seconds. He then asked for a generous window that reads well on a phone, so it is the first 0.45 s of the 1 s ward.
 
