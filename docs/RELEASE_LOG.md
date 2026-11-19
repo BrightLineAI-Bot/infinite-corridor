@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1014 (this merge, #684); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1015 (this merge, #685); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1015 | Claude | claude/aegis-reflect / #685 | Power Aegis reflects parried attacks (shots, bolts, blows, roars, beams; command grabs excluded; 5% boss cap); tool shots +20% while empowered | Merged (#685); preview follows. |
 | 1014 | Claude | claude/aegis-parry / #684 | Power Aegis (Lattice passive): a perfect parry in the Aegis's first 0.45 s negates the blow, staggers the attacker, refunds the cooldown and empowers melee +40% for 2.5 s | Merged (#684); preview follows. |
 | 1013 | Claude | claude/earth-apatosaurus / #683 | The Earth Apatosaurus world beast: tree clones, root venom, duels with the Spinosaurus and Stegosaurus, Earth Resolve Echo; 4 new modules; six roster-test lines updated (Tim approved); additive saves | Merged as `f95a13a10413` (#683); preview r1013-f95a13a10413; not published. |
 | 1012 | Claude | claude/tree-falls-seed-hunt / #682 | Great-tree falls land on the branch below (no instant drop with the glider); seed hunts reach hop-only crowns and join the compass tap list | Merged as `ffa69513a699` (#682); preview r1012-ffa69513a699; published as part of r1012-ffa69513a699 on 2026-11-19. |
