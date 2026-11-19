@@ -70,8 +70,8 @@ test("production creation and load grant once while validation and original stor
   const ctl=fakeStorage(),P=await persistence(),old=freshSave();old.seed="OLD-GRANT";ctl.data.set("journey:1",structuredClone(old));
   assert.equal(normal(P.validateJourney(old).save).length,0);P.setActiveSlot(1);const loaded=await P.loadSave();assert.equal(normal(loaded).length,1);assert.deepEqual(ctl.data.get("journey:1"),old);
   await P.saveGame(loaded);await P.flushSaves();const again=await P.loadSave();assert.deepEqual(again.mounts,loaded.mounts);
-  await P.createJourney(2,{name:"Fresh gift",seed:"NEW-GRANT"});P.setActiveSlot(2);const created=await P.loadSave();assert.equal(normal(created).length,1);assert.equal(created.mounts.riding,null);
-  P.setActiveSlot(3);assert.equal(normal(await P.loadSave()).length,1,"empty production slot");
+  await P.createJourney(2,{name:"Fresh gift",seed:"NEW-GRANT"});P.setActiveSlot(2);const created=await P.loadSave();assert.equal(normal(created).length,0);assert.equal(created.mounts.hatchling.questJourney,true);assert.equal(created.mounts.riding,null);
+  P.setActiveSlot(3);assert.equal(normal(await P.loadSave()).length,0,"empty production slot: a new journey does the rescue quest");
 });
 
 test("production import, duplication and recovery preserve an owned companion and leave backups unchanged",async()=>{
