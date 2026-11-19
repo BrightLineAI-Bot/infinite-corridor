@@ -549,7 +549,7 @@ export const CLOSE_VIEW = Object.freeze({
     // with no cross-fade. Kept true (the 220 ms cross-fade, pinned by tests/creature-motion.test.ts): fighters keep their bodies
     // by model rank, so the swap at fighting range happens only past the tier's cap or for an undrawable decoration.
     swapNear: true,
-    death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .7, cap: Object.freeze({ low: 3, balanced: 5, full: 8 }) }) }),
+    death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .7, cap: Object.freeze({ low: 2, balanced: 5, full: 8 }) }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -4549,7 +4549,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
       track.deathAt ??= now;
       const t = now - track.deathAt;
       if (t >= dlife || who.hidden || who.gloomVeil) { state.tracks.delete(who); continue; }
-      let newer = 0; for (const [w2, t2] of state.tracks) if (w2 !== who && w2.dead && t2.deathAt > track.deathAt) newer++; // at most the tier's cap lie at once (bounded by the tracks, a few dozen)
+      let newer = 0; for (const w2 of state.tracks.keys()) if (w2 !== who && w2.dead && state.tracks.get(w2).deathAt > track.deathAt) newer++; // at most the tier's cap lie at once (bounded by the tracks, a few dozen)
       if (newer >= dcap || dying >= dcap) { state.tracks.delete(who); continue; }
       const sinkU = Math.max(0, (t - MODEL_TIMING.deathMs - Dd.holdMs) / Dd.sinkMs), sc = Number.isFinite(track.actor.scale) ? track.actor.scale : 1;
       const body = Object.assign(state.deathGhost, track.actor); body.attachments = null; body.motionState = null; body.pose = "death"; body.amount = Math.min(1, t / MODEL_TIMING.deathMs);
