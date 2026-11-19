@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1005 (this merge, #675); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1005 (`b48a167e0317`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1006 | Claude | claude/triceratops-visuals | The Triceratops redesigned: a Close View body for ridden and wild, a new Standard View drawing, the saddle on his back, 22% smaller, markings, convincing horn attacks, an upright whirlwind drill; new modules triceratops-render and close-view-beast-triceratops; two horn-presentation assertions updated (Tim approved); no save change | In flight. |
 | 1005 | Claude | claude/low-health-edge / #675 | Low health: at 30% of max health or below, the death static, red and light as a mist, creeps in at the screen's edges; at full depth (just past the Oculus button) by 15% | Merged (#675); preview follows. |
 | 1004 | Claude | claude/refinement-20 / #673 | Refinement to +20 past 1,000: unlocked at the first town past 1,000; ranks above a piece's normal cap cost Divine Viscera (44 for +11..+20); refined pieces are never auto-salvaged | Merged as `1e1156e50fa2` (#673); preview r1004-1e1156e50fa2, not published. |
 | 1003 | Claude | claude/tower-seed-hunt / #672 | Tall-tower summits start a seed hunt: an unexplored section 3-8 out marked on the Atlas, the seed on reachable ground, a tree platform or in a crossing; the Abyssal seed joins as the rarest kind once it exists | Merged as `6c70278f9462` (#672); preview r1003-6c70278f9462, not published. |

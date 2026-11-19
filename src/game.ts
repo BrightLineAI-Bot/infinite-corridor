@@ -99,7 +99,7 @@ import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND,
 import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
-import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
+import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.ts";
@@ -7657,11 +7657,17 @@ export class Game {
     if (q.kind === "bash") {
       this.triceratopsBlow("bash", now, { x: q.x, y: q.y });
       this.triceratopsHornContact = { mount: m.id, kind: "bash", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };
-      (this.glyphVisuals ||= []).push({ kind: "arc", x: p.x + .5, y: p.y + .45, tx: p.x + .5 + q.x * TRICERATOPS_ATTACKS.bash.range, ty: p.y + .45 + q.y * TRICERATOPS_ATTACKS.bash.range, color: "#fff0a0", life: .2, max: .2 });
+      (this.glyphVisuals ||= []).push({ kind: "arc", x: p.x + .5, y: p.y + .45, tx: p.x + .5 + q.x * TRICERATOPS_ATTACKS.bash.range, ty: p.y + .45 + q.y * TRICERATOPS_ATTACKS.bash.range, z: TRICERATOPS_HORN_SHOT.bashArc, color: "#fff0a0", life: .2, max: .2 }); // z: drawn at the horns' height (presentation)
     } else if (q.kind === "horn" && this.triceratopsHornRoom()) {
       const B = TRICERATOPS_ATTACKS.horn;
+      // it leaves the horn tips (TRICERATOPS_HORN_SHOT), stopping short of a wall between the body and the tips; same damage, speed, range
+      const H = TRICERATOPS_HORN_SHOT, w = mapWidth(this.map, this.area), n = Math.hypot(q.x, q.y) || 1;
+      const open = (d) => projectileTileOpen(this.map, w, p.x + .5 + q.x / n * d, p.y + .45 + q.y / n * d);
+      const clear = (end) => { let ok = 0; for (let i = 1; ; i++) { const d = Math.min(end, i * H.step); if (!open(d)) return ok; ok = d; if (d >= end) return ok; } }; // the farthest open point up to `end`
+      const reach = clear(H.forward), tip = Math.max(reach, clear(H.tip));
+      const ahead = Math.max(0, tip - reach); // drawn from the horn tips (or the wall short of them), settling onto the true path
       this.projectiles.push({ id: `triceratops-horn-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`,
-        x: p.x + .5, y: p.y + .45, dx: q.x, dy: q.y, speed: B.speed, life: B.range / B.speed,
+        x: p.x + .5 + q.x / n * reach, y: p.y + .45 + q.y / n * reach, visualHeight: H.height, visualLaunch: { v: 1, dx: q.x / n * ahead, dy: q.y / n * ahead, dz: 0, settle: H.settle }, dx: q.x, dy: q.y, speed: B.speed, life: B.range / B.speed,
         damage: B.damage, damageType: "physical", path: "straight", age: 0, hits: {}, pierce: 0,
         glyphHost: "melee", triceratopsHorn: true, toolUseNewborn: true });
       this.triceratopsHornContact = { mount: m.id, kind: "horn", at: now - (this.presentationPausedMs || 0), x: q.x, y: q.y };

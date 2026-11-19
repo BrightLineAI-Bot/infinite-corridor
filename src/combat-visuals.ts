@@ -5,6 +5,7 @@ function drawShadowBody(ctx,x,y,s){
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
+import { projectileVisualPoint } from "./actor-presentation.ts";
 import { SHADOW_CLONE } from "./late-spells.ts";
 import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.ts";
 import { drawOrbit } from "./orbit-volley.ts";
@@ -28,14 +29,20 @@ export function triceratopsHornVertices(shot, x, y, z, out = new Float32Array(36
   for (let i = 0; i < 4; i++) { const at = i * 9, a = ring[i], b = ring[(i + 1) % 4]; out.set([tx, ty, z, ...a, ...b], at); }
   return out;
 }
+// The Standard View draws a horn shot at its drawn height (TRICERATOPS_HORN_SHOT.height): the world y of a shot is the Wayfarer's centre
+// line (y + .45), the feet .37 below it. Its trail and the flash it leaves the horns with: TRICERATOPS_HORN_TRAIL (appearance only).
+export const TRICERATOPS_HORN_TRAIL = Object.freeze({ length: .95, width: .07, flashAge: .09, flash: .38, feet: .37 });
+// A horn shot is drawn where it leaves the horns, settling onto its path (its visual launch); other shots where they are.
+export const shotDrawPoint = (p) => p?.triceratopsHorn && p.visualLaunch ? projectileVisualPoint(p, 0) : p;
+export const hornScreenLift = (p) => p?.triceratopsHorn ? Math.max(0, (Number(p.visualHeight) || 0) - TRICERATOPS_HORN_TRAIL.feet) : 0;
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
 export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
-    toScreen = (q) => [
+    toScreen = (q0) => { const q = shotDrawPoint(q0); return [
       width / 2 + (q.x - game.player.x) * s,
       height / 2 + (q.y - game.player.y) * s,
-    ];
+    ]; };
   // Release 169: projectiles are drawn in batches, one halo path and one body path per colour, rather than two fills and
   // two alpha changes per projectile. An awakened Lumen Spindle with Echo keeps thirty or more in the air, and on
   // Firefox each separate fill is costly.
@@ -50,10 +57,10 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     ctx.fillStyle = color;
     // A translucent halo instead of shadowBlur (release 159), which Firefox renders as a separate blur per projectile.
     ctx.globalAlpha = .28; ctx.beginPath();
-    for (const p of list) { const [x, y] = toScreen(p), r = (p.damageType === "magic" ? 10 : 8) * (p.scale || 1); /* release 515: Charged Air */ ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); }
+    for (const p of list) { const [x, y0] = toScreen(p), y = y0 - hornScreenLift(p) * s, r = (p.damageType === "magic" ? 10 : 8) * (p.scale || 1); /* release 515: Charged Air */ ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r, 0, 0, 7); }
     ctx.fill(); ctx.globalAlpha = 1; ctx.beginPath();
     for (const p of list) {
-      const [x, y] = toScreen(p);
+      const [x, y0] = toScreen(p), y = y0 - hornScreenLift(p) * s;
       if (p.triceratopsHorn) {
         const f = triceratopsHornFrame(p), bx = x + f.dx * f.base * s, by = y + f.dy * f.base * s, sx = -f.dy * f.radius * s, sy = f.dx * f.radius * s;
         ctx.moveTo(x + f.dx * f.tip * s, y + f.dy * f.tip * s);
@@ -68,6 +75,16 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     }
     ctx.fill();
   }
+  // the horn shots' trails (a tapering streak back along their flight) and the flash they leave the horns with
+  for (const p of game.projectiles) { if (!p.triceratopsHorn || projectedShots?.has(p) || !dungeonPointDiscovered(game.map, p)) continue;
+    const T = TRICERATOPS_HORN_TRAIL, f = triceratopsHornFrame(p), [x, y0] = toScreen(p), y = y0 - hornScreenLift(p) * s, L = T.length * s * Math.min(1, (Number(p.age) || 0) / T.flashAge + .25);
+    const g = ctx.createLinearGradient(x, y, x - f.dx * L, y - f.dy * L); g.addColorStop(0, "rgba(255,240,189,.75)"); g.addColorStop(1, "rgba(255,240,189,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - f.dy * T.width * s, y + f.dx * T.width * s); ctx.lineTo(x - f.dx * L, y - f.dy * L); ctx.lineTo(x + f.dy * T.width * s, y - f.dx * T.width * s); ctx.closePath(); ctx.fill();
+    { const tx = x + f.dx * f.tip * s, ty = y + f.dy * f.tip * s, bx = x + f.dx * f.base * s, by = y + f.dy * f.base * s, nx = -f.dy * f.radius * s, ny = f.dx * f.radius * s, bend = .35 * f.radius * s; // a horn: a curved ivory cone, darker at its torn base
+      const hg = ctx.createLinearGradient(bx, by, tx, ty); hg.addColorStop(0, "#c9a76a"); hg.addColorStop(.35, "#f2e3bd"); hg.addColorStop(1, "#fffaf0");
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo((tx + bx) / 2 + nx + f.dy * bend, (ty + by) / 2 + ny - f.dx * bend, bx + nx, by + ny); ctx.lineTo(bx - nx, by - ny); ctx.quadraticCurveTo((tx + bx) / 2 - nx * .6, (ty + by) / 2 - ny * .6, tx, ty); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#4a3410"; ctx.lineWidth = Math.max(1, s * .025); ctx.stroke(); }
+    if ((Number(p.age) || 0) < T.flashAge) { const k = 1 - (Number(p.age) || 0) / T.flashAge, r = T.flash * s * (.6 + .4 * k), gr = ctx.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,252,232,${(.9 * k).toFixed(3)})`); gr.addColorStop(1, "rgba(255,226,150,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
     if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms

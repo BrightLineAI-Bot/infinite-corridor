@@ -28,7 +28,11 @@ export const MOUNT_BEASTS = {
 };
 // Legacy hunt mounts retain their capacity and expiry contract.
 export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
-MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.7, seat: 1.65, saddle: "strap", speed: 1.65, jump: 1.5 };
+// 2026-11-18 (Tim: "he should be smaller: 20–25% smaller", the saddle "on his back, not positioned inside him"): drawn at 2.1 (was
+// 2.7), the seat on the top of the back. `tack: "barrel"` draws the saddle's girth round the barrel (beast-mounts-render.ts) down to
+// `belly` (tiles above the feet at the saddle). Presentation only: his contact, reach and attacks (TRICERATOPS_ATTACKS) never read
+// the scale; the seat is also where hostile hits find the rider (riderLiftOf), which follows the drawing by design (release 748).
+MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.28, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 // Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.
 export const TRICERATOPS_ATTACKS = {
@@ -48,8 +52,16 @@ export const TRICERATOPS_CONTROLS = Object.freeze({
   spell3: Object.freeze({ attack: "horn", name: "Horn Shot", charge: 2 }),
   jump: Object.freeze({ normal: "Stomp", silly: "Drill" }),
 });
+// Where the Horn Shot leaves the horns (the r988 review: it had left under the belly at ground height, hidden behind the mount from the
+// rear). Its gameplay origin is `forward` tiles along its aim from the Wayfarer's centre (no point-blank gap: a foe at the horns is still
+// met); it is drawn leaving the brow horns' tips, `tip` tiles out and `height` tiles up, and settles onto its true path within `settle`
+// seconds (a visual launch, actor-presentation.ts; never so fast that it seems to slide back). `step`: a wall between the body and either
+// point stops that point short of it, so neither the shot nor its drawing ever passes through a wall. Damage, speed, range and lifetime
+// are TRICERATOPS_ATTACKS.horn's, unchanged. `bashArc`: the Bash's contact arc is drawn at the horns' height.
+export const TRICERATOPS_HORN_SHOT = Object.freeze({ forward: 1.4, tip: 2.65, height: .85, settle: .2, step: .25, bashArc: 1.2 });
 // Presentation reads accepted gameplay phases; the short contact receipt uses the pause-adjusted clock.
-export const TRICERATOPS_HORN_POSE = Object.freeze({ recoverMs: 240, halfWidth: 3.9, height: 3.6 });
+// halfWidth / height: the ridden composite's bounds in tiles (mount, saddle and rider at MOUNT_BEASTS.triceratops.scale).
+export const TRICERATOPS_HORN_POSE = Object.freeze({ recoverMs: 240, halfWidth: 3.1, height: 3.05 });
 export function triceratopsHornPose(g, mount, now, reduced = false) {
   if (mount?.beast !== "triceratops" || !(g.player?.hp > 0) || g.fallen || g.swimming || g.fall || g.glide || g.droneLift) return null;
   const clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, logical = clock - (g.presentationPausedMs || 0);
@@ -82,10 +94,14 @@ export function normalizeTriceratopsDrill(raw) {
   if (Math.abs(raw.elapsed + raw.drillLeft - Math.min(C.maxMs, raw.elapsed + raw.jumpLeft)) > 1e-5 || raw.pulses > 0 && (raw.elapsed < C.windupMs + (raw.pulses - 1) * C.pulseMs || raw.nextLeft > C.pulseMs) || raw.pulses === 0 && raw.elapsed + raw.nextLeft < C.windupMs - 1e-5) return null;
   return { ...raw };
 }
-export const TRICERATOPS_DRILL_POSE = Object.freeze({ halfWidth: 4.2, height: 5.2, below: 2.8, pivot: 1.25, turns: 2 });
-export const TRICERATOPS_COMPOSITE = Object.freeze({ halfWidth: 4.6, drillHeight: 9.2, frameHeight: 9.7, normalHeight: 4.2, cameraPull: 3, margin: .1 });
-// The rotating side portrait must stay above its support plane. Bounds include the
-// saddle and rider; this lift is presentation only and never changes jump/contact state.
+export const TRICERATOPS_DRILL_POSE = Object.freeze({ halfWidth: 3.3, height: 4.1, below: 2.2, pivot: 1.05, turns: 2 });
+export const TRICERATOPS_COMPOSITE = Object.freeze({ halfWidth: 3.7, drillHeight: 7.3, frameHeight: 7.7, normalHeight: 3.4, cameraPull: 2.3, margin: .1 });
+// Close View: `riddenBody` draws the ridden Triceratops as its skinned body (close-view-beast-triceratops.ts) with the saddle and
+// rider on its card (Tim approved, 2026-11-18); false keeps the whole ridden composite (mount, saddle, rider) on the card, as release 988 framed it. Wild herds
+// always use the body. One switch, presentation only.
+export const TRICERATOPS_CLOSE_VIEW = Object.freeze({ riddenBody: true });
+// The rotating side portrait of release 988 (kept for its bounds; the drill is now drawn upright, 2026-11-18). Bounds include the
+// saddle and rider.
 export function triceratopsDrillFrame(pose, aim = pose, jump = 0) {
   const angle = (Math.atan2(aim.y, aim.x) + pose.bank) * pose.turnIn;
   const c = Math.cos(angle), s = Math.sin(angle), B = TRICERATOPS_HORN_POSE;
@@ -97,11 +113,23 @@ export function triceratopsDrillFrame(pose, aim = pose, jump = 0) {
   const clearance = Math.max(0, bottom - jump + .02);
   return { angle, clearance, halfWidth: Math.max(Math.abs(left), Math.abs(right)), height: -top + clearance, bottom: bottom - clearance - jump };
 }
+// The drill's whirlwind (both views): `turns` turns of its bands over the drill; under Reduced Motion a slow `quiet` radians a second.
+export const TRICERATOPS_WHIRL = Object.freeze({ turns: 4, quiet: .8 });
+export function triceratopsWhirlAngle(elapsedMs, totalMs, reduced = false) {
+  const e = Math.max(0, Number(elapsedMs) || 0);
+  return reduced ? TRICERATOPS_WHIRL.quiet * e / 1000 : Math.PI * 2 * TRICERATOPS_WHIRL.turns * Math.min(1, e / Math.max(1, Number(totalMs) || 1));
+}
+// The Silly Goose drills tail first: it faces away from the drill's aim (the view's facing when the camera gives one).
+export function triceratopsDrillFacing(viewFacing, pose) {
+  if (viewFacing === "left" || viewFacing === "right") return viewFacing === "left" ? "right" : "left";
+  if (viewFacing === "up" || viewFacing === "down") return viewFacing === "up" ? "down" : "up";
+  return Math.abs(pose.x) >= Math.abs(pose.y) ? (pose.x < 0 ? "right" : "left") : (pose.y < 0 ? "down" : "up");
+}
 export function triceratopsDrillPose(g, mount, now, reduced = false) {
   const q = g.triceratopsJump, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
   if (mount?.beast !== "triceratops" || mount.variant !== "silly" || q?.kind !== "drill" || q.mount !== mount.id || q.start !== g.jumpStart || q.until !== g.jumpUntil || !(clock >= q.start && clock < q.drillUntil) || !(g.player?.hp > 0) || g.player.hp < q.hp || g.fallen || g.swimming || g.fall || g.glide || g.droneLift || g.plunge || g.cycloneHeel || g.shadowDash || g.artRush || g.wallCling || g.wallKick || clock < (g.player.stunnedUntil || 0) || clock < (g.player.heldUntil || 0) || clock < (g.player.dodgeUntil || 0)) return null;
   const t = Math.max(0, Math.min(1, (clock - q.start) / Math.max(1, q.drillUntil - q.start))), roll = Math.cos(t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns);
-  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot, turnIn: Math.min(1, t / .15, (1 - t) / .15) };
+  return { x: q.x, y: q.y, bank: reduced ? .08 : .12 * Math.sin(t * Math.PI * 2), roll: reduced ? 1 : Math.sign(roll || 1) * Math.max(.2, Math.abs(roll)), pivot: TRICERATOPS_DRILL_POSE.pivot, turnIn: Math.min(1, t / .15, (1 - t) / .15) , spin: reduced ? 0 : t * Math.PI * 2 * TRICERATOPS_DRILL_POSE.turns };
 }
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
