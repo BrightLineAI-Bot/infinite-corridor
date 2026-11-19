@@ -12,6 +12,7 @@
 // goes straight to health and is never a hit itself, so nothing chains. Per-foe marks are runtime only (a non-enumerable symbol on
 // the foe, never saved); the Game's own state is one object (`game._hcp`), so a hit allocates nothing.
 import { latticePassives } from "./transit-lattice.ts";
+import { freezeRow } from "./great-sweep.ts"; // Encumbered's calm-down: the freeze's own `calm` (SWEEP_FREEZE)
 
 // Tempo: every `hits`th hit on one foe within `windowMs` opens a window of `vulnMs` in which it takes `vuln` more from every source
 // of the Wayfarer's damage (hits, procs and Echoes through glyphWorld, burns, the Echo bursts). One window a foe at a time; hits
@@ -66,8 +67,10 @@ export const RIFT_MINE = { max: 3, join: 1, graceMs: 1500, voidMs: 6000, tickMs:
 // raises the creature's tier, and the threshold is multiplied by `tiers[tier]`; from the third proc on the last entry, where the
 // tier stops (great-sweep.ts SWEEP_FREEZE's `need` and monster-pack.ts BOSS_POISE's `hits` pick their tier the same way:
 // list[min(length - 1, tier)]). The multipliers mirror BOSS_POISE.default.hits over its first entry (8, 12, 18). Every creature,
-// as the freeze's tiers cover every class; the tier lasts as long as the creature (the per-foe mark: runtime, never saved), as a
-// boss's poise tier does (no calm-down).
+// as the freeze's tiers cover every class; the tier lives on the per-foe mark (runtime, never saved). It calms down as the freeze's
+// does (Tim, 2026-11-19): every `calm` s (great-sweep.ts SWEEP_FREEZE.classes[class].calm, by the same stagger class: ordinary
+// 6 s, elite 10 s, boss 15 s; others read the ordinary row, as the freeze does) without being Encumbered drops it one tier; a proc
+// starts the count again. The meter building does not.
 export const ENCUMBERED = { durationMs: 10000, takenMul: 1.05, dealtMul: .95, gain: 1, dry: .5, decayDelayMs: 3000, decayPerSec: .15,
   threshold: { share: .3, min: 12, factor: { ordinary: 1, elite: .7, revenant: .5, boss: .5 } }, tiers: [1, 1.5, 2.25] };
 // Casting Wind (Tim's "Second Wind": that name is taken, Light Feet's secondary form): each spell cast gives back `share` of maximum
@@ -169,7 +172,7 @@ export const powerAegisLeft = (game, now) => { const u = Number(game?.powerAegis
 const MARK = Symbol("hitCastMark");
 function mark(e) {
   let r = e[MARK];
-  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity, pull: 0, idle: 0, enc: 0, th: 0, tier: 0, told: false }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
+  if (!r) { r = { n: 0, start: -Infinity, last: -Infinity, vuln: -Infinity, weak: -Infinity, pull: 0, idle: 0, enc: 0, th: 0, tier: 0, calm: 0, cls: null, told: false }; Object.defineProperty(e, MARK, { value: r, writable: true, configurable: true, enumerable: false }); }
   return r;
 }
 export const passiveMarkOf = (e) => e?.[MARK] || null;
@@ -197,6 +200,22 @@ function strike(game, e, amount) {
   return n;
 }
 
+// ---------------------------------------------------------------- melee or not (one rule)
+// Tim, 2026-11-19: "whatever melee damage buffs, they should also work with the tools that do melee damage." The one line between
+// melee and the rest, for every melee-scoped buff that reads the hit (Arcane Edge, Pocket Time, Power Aegis's melee share, Ember
+// Skin's burn and a Tesseract's melee heal: game.ts landHit). Melee: a weapon swing ("melee"), a weapon art (`melee: true`), and
+// every brawler blow (`brawler: true`): the Iron Fists' punches and kicks, Hammerfall (and its clap), the Great Sweep, the brawler
+// spells' blows and the Triceratops' landing slam. Never melee: a tool's shot (the Blunderbuss's pellets, the Needle Caster, the
+// Rift Bombard, the Spark Coil, the Lumen Spindle, the Carbine, the Orrery, the Mirage blades, the Quandrix Staff's hand), a spell
+// pulse, a proc or a reflect. The stat side (the skills' melee bonus and reach) follows the same line: constellation.ts SKILL_MELEE.
+export const MELEE_FLAGS = ["melee", "brawler"];
+export function isMeleeSource(src) {
+  if (src === "melee") return true;
+  if (!src || typeof src !== "object" || src.aegisReflected === true) return false;
+  for (let i = 0; i < MELEE_FLAGS.length; i++) if (src[MELEE_FLAGS[i]] === true) return true;
+  return false;
+}
+
 // ---------------------------------------------------------------- the hit (game.ts landHit)
 // `src`: "melee" (a swing or a weapon art), or the shot or effect that struck (`brawler` effects are melee: punches, Hammerfall,
 // the Great Sweep; `rr`: the charged release it belongs to), or null.
@@ -205,7 +224,7 @@ export function passiveHit(game, e, actual, now, src = null) {
   const m = mask(game, now), r0 = e[MARK], vuln = !!r0 && r0.vuln > now, enc = !!r0 && r0.enc > 0;
   if (!m && !vuln && !enc) return;
   const reflected = !!src && typeof src === "object" && src.aegisReflected === true; // Power Aegis: a blow sent back (game.ts reflectBlow, turnShot)
-  const S = state(game), melee = src === "melee" || (!!src && typeof src === "object" && (src.melee === true || src.brawler === true));
+  const S = state(game), melee = isMeleeSource(src); // a reflect is never melee (game.ts REFLECT_HIT)
   let bonus = (vuln ? TEMPO.vuln : 0) + (enc ? ENCUMBERED.takenMul - 1 : 0); // Tempo's window; Encumbered
   if (m & B_SHATTER && staggered(e)) bonus += SHATTERPOINT.bonus;
   if (m & B_EDGE && melee) bonus += edgeHit(game, S, e, now, actual);
@@ -384,9 +403,9 @@ export function pullBuild(game, e, amount, now, cls = null) {
   if (!e || e.dead || e.kind === "npc" || !(amount > 0) || !Number.isFinite(amount)) return false;
   const r = mark(e); if (r.enc > 0) return false; // no build-up while Encumbered
   const E = ENCUMBERED, th = encumberThreshold(e, cls, r.tier);
-  const S = state(game); r.th = th; r.pull += amount * E.gain; r.idle = 0; S.encLive = S.encSeen = true;
+  const S = state(game); r.th = th; r.cls = cls; r.pull += amount * E.gain; r.idle = 0; S.encLive = S.encSeen = true;
   if (r.pull < th) return false;
-  r.pull = 0; r.enc = E.durationMs / 1000; r.tier = Math.min(E.tiers.length - 1, r.tier + 1); // the next proc needs more (the tier stops at the last entry)
+  r.pull = 0; r.enc = E.durationMs / 1000; r.tier = Math.min(E.tiers.length - 1, r.tier + 1); r.calm = 0; // the next proc needs more (the tier stops at the last entry)
   if (!r.told && (cls === "boss" || cls === "revenant")) { r.told = true; game.message = `${e.name || "Your foe"} is Encumbered: for ${E.durationMs / 1000} s it takes ${pct(E.takenMul - 1)} more and deals ${pct(1 - E.dealtMul)} less.`; }
   return true;
 }
@@ -395,6 +414,7 @@ function tickEncumbered(game, S, dt) {
   for (let i = 0; i < list.length; i++) {
     const r = list[i]?.[MARK]; if (!r) continue;
     if (r.enc > 0) { r.enc = Math.max(0, r.enc - dt); live = true; }
+    else if (r.tier > 0 && (r.calm += dt) >= freezeRow(r.cls).calm) { r.tier--; r.calm = 0; } // the calm-down, one tier at a time (as the freeze's)
     if (r.pull > 0) { r.idle += dt; if (r.idle >= wait) r.pull = Math.max(0, r.pull - r.th * E.decayPerSec * dt); live = true; }
   }
   S.encLive = live; // read by encumberedAny (a foe's shots); the pass itself goes on every frame once any meter has filled (`encSeen`),

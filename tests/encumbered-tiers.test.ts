@@ -1,6 +1,6 @@
 // Encumbered tiers and the softer rift void line (Tim, 2026-11-19; src/hit-cast-passives.ts ENCUMBERED.tiers, RIFT_MINE.lineScale).
 // Each proc raises the creature's tier: the first is easiest, the second needs more, the third and later the most (the tier stops),
-// by the same pick as the freeze's `need` and a boss's poise `hits`. The rift void's line strikes softer than its triangle.
+// by the same pick as the freeze's `need` and a boss's poise `hits`; a quiet spell of the freeze's `calm` drops it a tier. The rift void's line strikes softer than its triangle.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
@@ -48,12 +48,20 @@ for (const [label, extra] of [['a boss', { boss: true }], ['an ordinary foe', {}
   });
 }
 
-test('the tier lasts while the creature does: the meter drains, the tier stays', () => {
-  const { g, e } = arena({ boss: true }); let t = 1000;
-  procCost(g, e, t); expire(g, t += 11000);
-  for (let i = 0; i < 120; i++) tickHitCastPassives(g, 1, t += 1000);
-  assert.equal(encumberTierOf(e), 1);
-  assert.equal(procCost(g, e, t), Math.ceil(encumberThreshold(e, staggerClass(e), 1) - 1e-9));
+test('the tier calms down as the freeze\'s does: one tier after its class\'s quiet spell, not before; a proc restarts the count', () => {
+  for (const [extra, cls] of [[{ boss: true }, 'boss'], [{}, 'ordinary'], [{ eliteId: 'test-elite' }, 'elite']]) {
+    const { g, e } = arena(extra); let t = 1000; assert.equal(staggerClass(e) || 'ordinary', cls);
+    const calm = SWEEP_FREEZE.classes[cls].calm;
+    procCost(g, e, t); expire(g, t += 11000); procCost(g, e, t); expire(g, t += 11000); assert.equal(encumberTierOf(e), 2);
+    tickHitCastPassives(g, calm - .05, t += 1000 * (calm - .05)); assert.equal(encumberTierOf(e), 2, `${cls}: not before ${calm} s`);
+    tickHitCastPassives(g, .1, t += 100); assert.equal(encumberTierOf(e), 1, `${cls}: one tier after ${calm} s`);
+    // building the meter does not stop the count; a proc does
+    g.pullBuild(e, 1, t); tickHitCastPassives(g, calm - .05, t += 1000 * (calm - .05)); assert.equal(encumberTierOf(e), 1);
+    tickHitCastPassives(g, .1, t += 100); assert.equal(encumberTierOf(e), 0, `${cls}: back to the first tier`);
+    assert.equal(procCost(g, e, t), Math.ceil(encumberThreshold(e, staggerClass(e), 0) - 1e-9), 'the first tier\'s cost again');
+    // while Encumbered nothing calms: the whole 10 s pass, the tier holds
+    tickHitCastPassives(g, 9.9, t += 9900); assert.equal(encumberTierOf(e), 1, `${cls}: no calm while Encumbered`);
+  }
 });
 
 // Glyph Mine × Rift Step, as tests/rift-mines.test.ts sets it up.

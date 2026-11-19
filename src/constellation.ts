@@ -29,9 +29,19 @@ export const RIFT = { reach: 2, longStep: 2 };
 // hits (game.ts landHit) heals `leech` of the health it took, and heals from hits on elites and stronger may reach
 // TESSERACTS.hitHealCapElite of maximum health a second; all of it from the one heal-on-hit budget (game.ts grantHitHeal).
 export const SANCTUARY = { leech: .12 };
+// The skills' melee buffs (Tim, 2026-11-19: "whatever melee damage buffs, they should also work with the tools that do melee
+// damage"): [base, per rank] while the skill's buff runs. `melee` adds to the melee bonus (game.ts characterStats meleeBonus:
+// weapon swings and arts, the Iron Fists, Hammerfall and the Great Sweep, and as before a physical tool shot, which reads the
+// same stat); `reach` stretches every melee source (a swing's range, a punch's, Hammerfall's and the Great Sweep's reach) by that
+// share, and as before a tool shot's range (attackReach). game.ts characterStats skillMelee / skillReach. Tim (2026-11-19) left
+// the shots as they are; hit-cast-passives.ts isMeleeSource draws the melee line for the on-hit buffs.
+export const SKILL_MELEE = { "ember-form": { melee: [2, 2], reach: [.12, .06] }, "force-channel": { melee: [0, 2] } };
+const skillPart = (active, rank, key) => { const q = active && SKILL_MELEE[active.id]?.[key]; return q ? q[0] + q[1] * (Number(rank) || 0) : 0; };
+export const skillMeleeBonus = (active, rank) => skillPart(active, rank, "melee");
+export const skillReachBonus = (active, rank) => skillPart(active, rank, "reach");
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
-  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your weapon swings set foes burning." }, caps: [
+  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall and the Great Sweep) set foes burning." }, caps: [
     { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15%, softened at high defence)." },
     { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form runs out, it bursts, scorching everything around you. Another skill cutting it short skips the burst." }] },
   motion: { name: "Motion", active: "quickening", mod: { id: "light-feet", name: "Light Feet", text: "Dodges cost 3 less stamina." }, caps: [
