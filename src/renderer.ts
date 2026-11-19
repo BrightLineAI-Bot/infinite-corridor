@@ -24,6 +24,7 @@ import { BOAT } from "./boats.ts";
 import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.ts"; // 613: Starfield rafts
+import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.ts"; // the low-health edge: the death static, red, at the edges
 import { SEASONS, treeSeason } from "./seasons.ts";
 import { setTreeSeason } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
@@ -102,6 +103,16 @@ function drawFallDoom(ctx, g, w, h, now) {
   if (!(a > 0) || !(r1 > 0)) return;
   const v = ctx.createRadialGradient(w / 2, h / 2, r1 * F.inner, w / 2, h / 2, r1); v.addColorStop(0, `rgba(${F.color},0)`); v.addColorStop(1, `rgba(${F.color},${a.toFixed(3)})`);
   ctx.save(); ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); ctx.restore();
+}
+// LOW_HEALTH_EDGE (combat-visuals.ts): at 30% health or below, the death's static creeps in red at the screen's edges, in both
+// views. Its few small frames are made once per band step, quality and screen shape (one cache entry); a frame is one drawImage.
+const LHE_ART = { key: "", frames: [] };
+function lheCanvas(cw, ch) { const c = document.createElement("canvas"); c.width = cw; c.height = ch; return c; }
+function drawLowHealth(ctx, g, w, h, now, fallCue) {
+  const st = lowHealthEdgeState(g, now, fallCue); if (!st.show || !(w > 0) || !(h > 0) || typeof document === "undefined") return;
+  const q = g.presentation?.effectiveQuality, quality = q === "low" || q === "full" ? q : "balanced", aspect = Math.round(h / w * 10) / 10, key = `${quality}:${aspect}:${st.step}`;
+  if (key !== LHE_ART.key) { LHE_ART.key = key; LHE_ART.frames = lowHealthEdgeFrames(lheCanvas, quality, aspect, st.step); }
+  drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
@@ -2757,7 +2768,7 @@ export function render(ctx, g, w, h, now) {
   const timedView = renderTimings.on && !closeViewCapturing(), tv = timedView ? performance.now() : 0; // a capture is a render inside the frame's own
   if (timedView) { renderTimings.ground = renderTimings.world = renderTimings.overlay = renderTimings.view = renderTimings.groundImage = 0; }
   if (!closeViewCapturing()) sightFrame(); // labyrinths.ts sight lines: one bounded budget of fresh line walks a frame (both views)
-  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
+  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { drawLowHealth(ctx, g, w, h, now, false); if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   if (timedView) renderTimings.view = t0 - tv;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
@@ -3575,7 +3586,7 @@ export function render(ctx, g, w, h, now) {
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
     if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
-  if (!worldCapture && !closeViewCapturing() && g.fallDoomed?.()) drawFallDoom(ctx, g, w, h, now); // FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
+  if (!worldCapture && !closeViewCapturing()) { const doomed = !!g.fallDoomed?.(); drawLowHealth(ctx, g, w, h, now, doomed); if (doomed) drawFallDoom(ctx, g, w, h, now); } // LOW_HEALTH_EDGE yields to the fall cue (one red cue at a time). FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
