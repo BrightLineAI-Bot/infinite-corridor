@@ -922,7 +922,7 @@ export function closeViewThemeId(b) {
 }
 export const closeViewThemeLivedIn = (base) => themeRoll(String(base || ""), "lived") < CLOSE_VIEW.themes.livedInShare; // for the lab: which keeps are lived in
 const THEME_OF = new WeakMap();
-const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers
+const SEED_REALM_THEMES = Object.freeze({ ship: "starship", husk: "rootCellar", abyss: "hive" }); // seed realms (seed-realms.ts): the ship's clean panels, the husk's mine timbers, the Askew's resin-glow walls (the bizarro world)
 // 2026-11-11: a floor of the Deep takes its environment's theme (CLOSE_VIEW_DEEP; `none` for a floor laid without one); another
 // dungeon laid in one of those environments (a Proving Ground fixture) takes it too. Buildings keep theirs.
 export function closeViewDeepThemeId(map) {

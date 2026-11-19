@@ -26,7 +26,7 @@ import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.ts"; // 613: Starfield rafts
 import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.ts"; // the low-health edge: the death static, red, at the edges
 import { SEASONS, treeSeason } from "./seasons.ts";
-import { setTreeSeason } from "./landscape-render.ts";
+import { setTreeSeason, bizarroWash } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
@@ -35,7 +35,7 @@ import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./af
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
-import { coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
@@ -2675,6 +2675,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
       if (!dungeon && g.map?.canopy?.box) drawCanopyBehindTrunk(gc, T, mw, s, g.map.canopy.box, (q, x, y) => tile(gc, q, x, y, s, T, mw, activeBuildingId, scarSurface)); } // great-tree review: platforms behind the trunk, drawn over its face
     finally { setLandscapeStaticPass(false); }
     if (g.map.farInk && !dungeon) inkWash(gc, mw, mh, s, top); // release 719: the Ink Wastes
+    if (g.map.bizarro && !dungeon) bizarroWash(gc, mw, mh, s); // the bizarro pockets (strange.ts BIZARRO): everything a colour off
     Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, scarSurface, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }
@@ -3162,7 +3163,8 @@ export function render(ctx, g, w, h, now) {
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
           if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "wildStego", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
-          if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
+          if (drawsBizarro(g.map, g.area, e) && drawBizarroCreature(ctx, e, e.x + ox, e.y + oy, s, f, e.telegraph > 0 ? "telegraph" : e.strike > 0 ? "attack" : "walk", e.kind === "voidSentinel" ? now / 180 : Math.floor(e.ai?.step || 0))) { /* the bizarro world: the rounded style, only in the Askew and a bizarro pocket (monster-render.ts drawsBizarro) */ }
+          else if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
             e.x + ox,

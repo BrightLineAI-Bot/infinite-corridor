@@ -148,7 +148,7 @@ import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, b
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
-import { addStrange, touchStrange } from "./strange.ts";
+import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
 import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.ts";
 import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.ts";
@@ -587,7 +587,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
     return { id, seed: save.seed, name: "Beast Hotel", recipe: "beast-hotel", beastHotel: true, arena: true, width, height, tiles, entry, objects: [{ id: "beast-hotel-exit", kind: "exit", name: "Return to hometown", ...entry, state: "open", actions: ["exit"] }], enemySpawns: [] };
   }
   if (isTowerId(id)) { const m = towerInterior(save, id); if (m) return m; } // tall towers: their own interior, nothing laid over it
-  if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id) || seedRealmFallback(id); // seed realms: laid from the id alone, never pinned or dressed
+  if (isSeedRealmId(id)) return generateSeedRealm(save.seed, id, { seedTable: save.session?.seedRealm?.id === id ? save.session.seedRealm.seedTable : undefined }) || seedRealmFallback(id); // seed realms: laid from the id alone (and the seed table its session recorded), never pinned or dressed
   if (isPentagonFinaleId(id) || isPentagonArenaId(id)) { const h = dungeonHistory(save, id); if (h.relayNode === undefined) h.relayNode = false; } // the Pentagon's finale is a quiet place: no relay node (nor bells, pages, threads, margins or wanderers: loadArea)
   const history = pinDungeonLayout(save, id), canonical = `dungeon:${save.seed}:g${save.worldGeneration}`;
   // Generator 5 (Underlands) only for histories never generated before; pinned histories keep their generator.
@@ -3690,6 +3690,10 @@ export class Game {
         const fv = prior ? prior.farVersion || 0 : FAR_REALMS.version, lv = prior ? prior.landscapeVersion || 0 : LANDSCAPE_VERSION; this.farPocket = lv >= 5 ? farPocketAt(this.save.seed, this.rx, this.ry, fv, sectionRegion(this.save.seed, this.rx, this.ry, lv)) : null; // release 715: the pockets
         if (this.farPocket?.civ && this.save.farQuests?.[this.farPocket.id]?.status === "open") { this.save.farQuests[this.farPocket.id].status = "found"; (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: FAR_CIVS[this.farPocket.id].found, kind: "discovery" }); } // release 716
         const K = this.farPocket, kid = K && `far-pocket:${K.type}:${K.id}`; if (K && !this.save.narrative.journal.some((j) => j.recordId === kid)) { journalOnce(this.save, kid, `${K.arrive} (${this.rx},${this.ry})`, K.name); if (!this.message) this.message = K.arrive; } }
+      { const bv = prior ? prior.bizarroVersion || 0 : BIZARRO.version; // the bizarro pockets (strange.ts BIZARRO): only on ground first seen from now on; the ground itself is unchanged
+        if (bv && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && bizarroHere(this.save.seed, this.rx, this.ry, bv)) { this.map.bizarro = { v: bv };
+          if (!this.save.narrative.journal.some((j) => j.recordId === "bizarro-pocket")) journalOnce(this.save, "bizarro-pocket", `${BIZARRO.text.journal} (${this.rx},${this.ry})`, "The bizarro world");
+          if (!this.message) this.message = BIZARRO.text.arrive; } }
       this.domainVisit = null; if (this.map.farDomain) { const id = this.map.farDomain, D = FAR_DOMAINS[id], fq = (this.save.farQuests ||= {}), rec = fq[id], atOnce = !rec || rec.status === "open"; // release 723: a domain
         if (!rec) fq[id] = { status: "found", rx: this.rx, ry: this.ry }; else if (rec.status === "open") { rec.status = "found"; (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: D.found, kind: "discovery" }); }
         const first = !this.save.narrative.journal.some((j) => j.recordId === `far-domain:${id}`); journalOnce(this.save, `far-domain:${id}`, `${D.arrive} (${this.rx},${this.ry})`, D.name.replace(/^the /, "The ")); this.message = first ? D.arrive : D.waiting; // every far domain lies beyond the Doom Chaser's homeland line (world-beasts.ts BEAST_HOMELANDS), so the Black Pyre waits for him like any other
@@ -3736,6 +3740,7 @@ export class Game {
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
+        ...(prior ? (prior.bizarroVersion ? { bizarroVersion: prior.bizarroVersion } : {}) : { bizarroVersion: BIZARRO.version }), // the bizarro pockets and the Abyssal Seeds lying in the open: new ground only
         ...(prior ? {} : { cacheVersion: WORLD_CACHES.version }), // world caches (world.ts WORLD_CACHES): new ground only
         ...(prior ? (prior.deepVersion ? { deepVersion: prior.deepVersion } : {}) : { deepVersion: THE_DEEP.version }),
         ...(prior ? (prior.keepVersion ? { keepVersion: prior.keepVersion } : {}) : {}), // great keeps: sections first seen from 683 until the great buildings
@@ -3759,11 +3764,13 @@ export class Game {
         .map((o) => ({ kind: o.kind, name: o.kind === "watcherTomb" ? (o.where === "shrine" ? "Watcher's Shrine" : "Watcher's Tomb") : o.name || (o.kind === "supplyCache" ? "Supply Cache" : o.kind), x: o.x, y: o.y })) };
     }
     if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
+    if (area === "overworld") this.placeAbyssalFind(); // the bizarro world: an Abyssal Seed, often in a pocket, very rarely elsewhere; new ground only, once
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
     if (area === "overworld") this.map.enemySpawns.push(...triceratopsHerdSpawns(this.map, this.save.seed, this.rx, this.ry, this.save.atlas?.[`${this.rx},${this.ry}`]?.triceratopsHerdVersion));
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
     if(area==="overworld"&&this.farRealm?.type==="ink")populateInk(this.map,this.save.seed,this.rx,this.ry); // release 719: the Ink Wastes
+    if (area === "overworld" && this.map.bizarro) for (const q of bizarroSpawns(this.save.seed, this.rx, this.ry, this.openSeedGround().open)) if (!this.map.enemySpawns.some((e) => e.id === q.id)) this.map.enemySpawns.push(q); // the pocket's own rounded wanderers, on ground the Wayfarer can reach
     if(area==="overworld"&&this._coherence&&!this.map.farDomain)settleSpawns(this.map,coherenceKeeps); // WG-08: a creature on a pad it cannot leave moves to ground it can (new ground only)
     if(area==="overworld"&&(this.farRealm?.type==="monsterFolk"||this.farRealm?.type==="giantFolk"))this.map.farFolk=this.farRealm.type==="monsterFolk"?"monster":"giant"; // release 720: the folk realms
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
@@ -6316,12 +6323,28 @@ export class Game {
     const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key];
     if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind" && !o.seedHunt)) return null;
     const kind = seedFindRoll(this.save.seed, "overworld", key); if (!kind || this.save.worldFlags[seedFindFlag("overworld", key)]) return null;
-    const W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
-    const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return null;
-    const reach = reachableFromPlaza(M, start, !!this._coherence), open = M.tiles.filter((t) => reach[t.y * W + t.x] && ground(t) && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29 && !taken.has(t.y * W + t.x) && Math.hypot(t.x - 16, t.y - 16) >= 4);
-    if (!open.length) return null;
+    const { open } = this.openSeedGround(); if (!open.length) return null;
     const at = open[hashSeed(`${this.save.seed}:seed-find-at:v${SEED_FINDS.version}:${key}`) % open.length], S = SEEDS[kind];
     const o = { id: `seed-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: kind, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
+    M.objects.push(o); return o;
+  }
+  // Open, level ground in this section the Wayfarer can walk to from its middle, away from the middle and off every object, in a
+  // fixed order: where a seed may lie (placeSeedFind, placeAbyssalFind) and a bizarro pocket's wanderers stand. { open }.
+  openSeedGround() {
+    const M = this.map, W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
+    const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return { open: [] };
+    const reach = reachableFromPlaza(M, start, !!this._coherence);
+    return { open: M.tiles.filter((t) => reach[t.y * W + t.x] && ground(t) && t.x > 2 && t.y > 2 && t.x < 29 && t.y < 29 && !taken.has(t.y * W + t.x) && Math.hypot(t.x - 16, t.y - 16) >= 4) };
+  }
+  // The bizarro world (strange.ts BIZARRO): an Abyssal Seed lying in the open, in a section first seen from BIZARRO.version (Atlas
+  // `bizarroVersion`): half the pockets hold one, and now and then another new section does. Taken once (its own world flag).
+  placeAbyssalFind() {
+    const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key], flag = seedFindFlag("abyssal", key);
+    if (!seen?.bizarroVersion || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind" && o.seed === "abyssal")) return null;
+    if (!abyssalFindHere(this.save.seed, this.rx, this.ry, !!M.bizarro) || this.save.worldFlags[flag]) return null;
+    const { open } = this.openSeedGround(); if (!open.length) return null;
+    const at = open[hashSeed(`${this.save.seed}:abyssal-find-at:v${BIZARRO.version}:${key}`) % open.length], S = SEEDS.abyssal;
+    const o = { id: `abyssal-find-${this.rx}-${this.ry}`, kind: "seedFind", seed: "abyssal", findFlag: flag, name: S.name, x: at.x, y: at.y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` } };
     M.objects.push(o); return o;
   }
   // ---------------------------------------------------------------------------------------- the Stego Bait (stego-bait.ts)
@@ -6398,7 +6421,7 @@ export class Game {
     });
   }
   takeSeedFind(o) {
-    const key = `${this.rx},${this.ry}`, flag = seedFindFlag("overworld", key), S = SEEDS[o.seed];
+    const key = `${this.rx},${this.ry}`, flag = o.findFlag || seedFindFlag("overworld", key), S = SEEDS[o.seed]; // findFlag: an Abyssal Seed's own (placeAbyssalFind)
     this.map.objects = this.map.objects.filter((q) => q !== o);
     if (!S || this.save.worldFlags[flag]) { this.message = "Nothing is left here."; return { ok: false, message: this.message }; }
     this.save.worldFlags[flag] = true; const n = grantSeed(this.save, o.seed);
@@ -6560,10 +6583,10 @@ export class Game {
     const n = ensureSeeds(s).used[kind], id = seedRealmId(s.seed, kind, n), from = { rx: this.rx, ry: this.ry };
     dropSeedRealms(s, null); // anything left of another realm is gone already
     s.session.dungeonReturn = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y };
-    s.session.seedRealm = { v: 1, id, kind, from, dest: realmDestination(s.atlas, id, from) };
+    s.session.seedRealm = { v: 1, id, kind, from, dest: realmDestination(s.atlas, id, from), seedTable: SEED_REALMS.seedTable }; // seedTable: additive (the bizarro world); a record without it lays seed table 1
     s.session.activeDungeonId = id; s.session.activeDungeonLevelId = null; s.session.viewportDungeonHuntId = null;
     const h = dungeonHistory(s, id); h.visits++; h.visitOpen = true; h.gatePredatorSpawnThreshold = 0;
-    journalOnce(s, `seed-realm:${realm}`, realm === "ship" ? "A Crimson Seed given to the Watcher's shrine opened a way aboard a great ship adrift among the stars. Nothing aboard it lasts: when you leave, it is gone." : "A Pumice Seed given to the Watcher's shrine opened a way down into a mining world bored hollow, haunted by its dead. Nothing there lasts: when you leave, it is gone.", "Seed realms");
+    journalOnce(s, `seed-realm:${realm}`, SEED_REALMS.text.journal[realm], "Seed realms");
     this.loadArea("dungeon"); this.player.x = this.map.entry.x; this.player.y = this.map.entry.y; this.settleArrival();
     this.player.invulnerableUntil = Math.max(this.player.invulnerableUntil || 0, (this.lastUpdateNow || 0) + 1500);
     Object.assign(this, { projectiles: [], effects: [], traversal: null });
@@ -6606,9 +6629,12 @@ export class Game {
     const realm = this.map.seedRealm.realm, got = realmViscera(this.save.session.seedRealm?.from?.rx ?? this.rx, this.save.session.seedRealm?.from?.ry ?? this.ry);
     h.realmDone = true; ensureSkylands(this.save); this.save.skylands.viscera = (Number(this.save.skylands.viscera) || 0) + got;
     for (const o of this.map.objects) if (o.realmObject === "exit" && o.onward) o.state = "open";
-    journalOnce(this.save, `seed-realm-won:${realm}`, realm === "ship" ? "You brought down the Helm Sovereign. The ship's heart gave up Divine Viscera, and a Way Onward opened on its bridge." : "You laid the Last Foreman to rest. The husk's heart gave up Divine Viscera, and a Way Onward opened where it fell.", "Seed realms");
-    this.defeatNotice = { title: realm === "ship" ? "THE HELM FALLS" : "THE FOREMAN RESTS", detail: `+${got} ${VISCERA.name} · the Way Onward is open`, kind: "discovery" };
-    this.message = `${SEED_REALMS.text.won[realm]} +${got} ${VISCERA.name}.`; return got;
+    let extra = ""; const B = SEED_REALMS[realm]?.boon; // the Askew's own gift (SEED_REALMS.abyss.boon), once, with the viscera
+    if (B) { const gl = B.glyph ? glyphDrop(this.save, `askew-boon:${this.areaId()}`, 0, true) : null; this.save.materials ||= {}; this.save.materials.lumenDust = (Number(this.save.materials.lumenDust) || 0) + (B.lumenDust || 0);
+      extra = `${gl ? `, a ${GLYPHS[gl]?.name || gl} glyph` : ""}${B.lumenDust ? `, ${B.lumenDust} Lumen Dust` : ""}`; }
+    journalOnce(this.save, `seed-realm-won:${realm}`, SEED_REALMS.text.wonJournal[realm], "Seed realms");
+    this.defeatNotice = { title: SEED_REALMS.text.wonTitle[realm], detail: `+${got} ${VISCERA.name}${extra} · the Way Onward is open`, kind: "discovery" };
+    this.message = `${SEED_REALMS.text.won[realm]} +${got} ${VISCERA.name}${extra}.`; return got;
   }
   // Leaving: the realm is dropped (its snapshot and history), and the Wayfarer is set down at the realm's destination.
   leaveSeedRealm(o = null) {
