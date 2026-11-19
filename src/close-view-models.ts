@@ -1272,7 +1272,7 @@ export function writeCloseViewModel(out, offset, actor) {
   if (!modelSupported(kind) || !modelSupportsAttachments(kind, attachments.length) || !Number.isSafeInteger(offset) || offset < 0 || offset + needed > out.length) return offset;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw) ||
       !Number.isFinite(phase) || !Number.isFinite(pace) || !Number.isFinite(amount)) return offset;
-  const moving = Math.max(0, Math.min(1, pace));
+  const modelStart = offset, moving = Math.max(0, Math.min(1, pace));
   const progress = Math.max(0, Math.min(1, amount));
   // Only new accepted phase records use this path; legacy/native poses keep their original timing.
   const phasedTool=playerLike&&actor.toolAction?.toolUse?actor.toolAction:null;
@@ -1573,6 +1573,9 @@ export function writeCloseViewModel(out, offset, actor) {
       muzzleOut[0]=x+(ff*cy-mv*sy)*size;muzzleOut[1]=y+(ff*sy+mv*cy)*size;muzzleOut[2]=z+fz*size;muzzleOut[3]=Number.isFinite(muzzleOut[0]+muzzleOut[1]+muzzleOut[2])?1:0;
     }
   }
+  if (root && fall > 0) { // a falling or fallen body rests on the floor (solidity pass 2): its lowest point is set down on its ground
+    let low = Infinity; for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) if (out[o] < low) low = out[o];
+    const drop = low - z; if (drop > 0 && Number.isFinite(drop)) for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) out[o] -= drop; }
   for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, drawnAlpha, actorScale);
   return offset;
 }

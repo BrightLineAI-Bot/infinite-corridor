@@ -539,7 +539,17 @@ export const CLOSE_VIEW = Object.freeze({
   creatures: Object.freeze({ edge: 1.5, spectralAlpha: .8, solid: Object.freeze({ near: 4.5, engage: 7, hold: 1, ease: 5 }), ward: Object.freeze({ alpha: .6, holdMs: 500 }), fogDither: false, outdoorReach: true,
     // `contact`: a creature drawn as a body stands on a contact shadow sized to its stance (close-view-models.ts creatureFootprint
     // times `share`, held in [min, max] tiles at scale 1), `alpha` dark at its core; one decal, as before (no shadow pass).
-    contact: Object.freeze({ share: .62, min: .27, max: .55, alpha: .7 }) }),
+    contact: Object.freeze({ share: .62, min: .27, max: .55, alpha: .7 }),
+    // `death`: a slain creature's body falls (MODEL_TIMING.deathMs, the per-family fall of creature-motion.ts), lies whole for
+    // `holdMs`, then sinks `sink` tiles (times its scale) into the floor over `sinkMs`, opaque throughout (it used to dissolve in a
+    // dither over the fall's last third). At most `cap` bodies by tier lie at once (the oldest go first, sinking at once), drawn
+    // outside the living creatures' model cap on the vertex room the buffer keeps, each on its contact shadow. Reduced Motion
+    // keeps it (a slower world is not a vanishing one).
+    // `swapNear` false would let a creature in the fight (its solid flag) that takes a body from its card take it whole at once,
+    // with no cross-fade. Kept true (the 220 ms cross-fade, pinned by tests/creature-motion.test.ts): fighters keep their bodies
+    // by model rank, so the swap at fighting range happens only past the tier's cap or for an undrawable decoration.
+    swapNear: true,
+    death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .7, cap: Object.freeze({ low: 3, balanced: 5, full: 8 }) }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
@@ -3753,7 +3763,7 @@ const MODEL_STATE = {
   muzzle:new Float32Array(3),muzzleReady:false,nativeMuzzle:new Float32Array(4),
   spellEmission:new Float32Array(3),spellEmissionReady:false,spellRelease:null,spellAlpha:1,
   // Shadow Boxing's drawn charge (close-view-shadow-forms.ts) and one pooled actor for the native body's afterimages.
-  shadowDash: createShadowDash(), shadowGhost: {}, swapGhost: {}, // creature-motion.ts: one pooled actor for a body fading out
+  shadowDash: createShadowDash(), shadowGhost: {}, swapGhost: {}, deathGhost: {}, dying: new Float32Array(8 * 4), nDying: 0, // creature-motion.ts: one pooled actor for a body fading out
 };
 export const closeViewShadowDash = () => MODEL_STATE.shadowDash; // for tests: the drawn charge (read only)
 
@@ -4304,7 +4314,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (layered) { // creature motion (CREATURE_MOTION.swap): a creature drawn as a card last frame fades into its body, its card fading out
       const r = solidityOf(who), Fr = closeViewStats.frames;
       if (r.mf !== Fr) { const wasBody = r.body === Fr - 1, wasCard = r.card === Fr - 1;
-        if (wasCard && !wasBody) { if (!(r.m < 1)) r.m = 0; } else if (!Number.isFinite(r.m) || !wasBody && r.mf !== Fr - 1) r.m = 1; // new, or back after a while unseen: whole at once
+        if (wasCard && !wasBody) { if (!(r.m < 1)) r.m = r.near && !CLOSE_VIEW.creatures.swapNear ? 1 : 0; } else if (!Number.isFinite(r.m) || !wasBody && r.mf !== Fr - 1) r.m = 1; // new, or back after a while unseen: whole at once
         r.m = g.paused ? 1 : swapStep(r.m, 1, CAM.dt * 1000); r.mf = Fr; } // a paused scene changes body at once (nothing moves)
       if (r.m < 1) { const k = swapEase(r.m); actor.alpha *= k; swapCard[it] = 1; boardFade[it] = 1 - k; }
     }
@@ -4529,15 +4539,27 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     offset = next; fading++; track.at = now; boardFade[it] = 1 - k;
   }
   closeViewGLStats.swapOut = fading;
+  // the slain (CLOSE_VIEW.creatures.death): fall, lie whole, sink; newest first up to the tier's cap, each on its contact shadow
+  const Dd = CLOSE_VIEW.creatures.death, dcap = Dd.cap[Q.glScale === 1 ? 'full' : Q.relief ? 'balanced' : 'low'], dlife = MODEL_TIMING.deathMs + Dd.holdMs + Dd.sinkMs;
+  let dying = 0; state.nDying = 0;
   for (const [who, track] of state.tracks) {
     if (who.kind === 'voidWalker' && who.dead) { state.tracks.delete(who); continue; }
     if (who.dead && who.hp <= 0 && !who.noRewards) {
       track.deathAt ??= now;
-      const amount = (now - track.deathAt) / MODEL_TIMING.deathMs;
-      if (amount < 1 && !who.hidden && !who.gloomVeil) append({ ...track.actor, attachments: null, pose: "death", amount, alpha: (track.actor.alpha ?? 1) * deathAlpha(amount) }); // fades out over the fall's end (creature-motion.ts death.fade)
-      else state.tracks.delete(who);
+      const t = now - track.deathAt;
+      if (t >= dlife || who.hidden || who.gloomVeil) { state.tracks.delete(who); continue; }
+      let newer = 0; for (const [w2, t2] of state.tracks) if (w2 !== who && w2.dead && t2.deathAt > track.deathAt) newer++; // at most the tier's cap lie at once (bounded by the tracks, a few dozen)
+      if (newer >= dcap) { state.tracks.delete(who); continue; }
+      const sinkU = Math.max(0, (t - MODEL_TIMING.deathMs - Dd.holdMs) / Dd.sinkMs), sc = Number.isFinite(track.actor.scale) ? track.actor.scale : 1;
+      const body = Object.assign(state.deathGhost, track.actor); body.attachments = null; body.motionState = null; body.pose = "death"; body.amount = Math.min(1, t / MODEL_TIMING.deathMs);
+      body.z = track.actor.z - Dd.sink * sc * sinkU * sinkU; body.alpha = track.actor.alpha ?? 1; // whole until it has sunk (no dither)
+      const next = writeCloseViewModel(state.vertices, offset, body); if (next === offset) continue;
+      let mx = 0, my = 0, nv = 0; for (let o = offset; o < next; o += MODEL_FLOATS) { mx += state.vertices[o]; my += state.vertices[o + 1]; nv++; } // its shadow lies under the fallen body
+      offset = next; dying++;
+      if (state.nDying < state.dying.length / 4) { const o = state.nDying++ * 4; state.dying[o] = nv ? mx / nv : body.x; state.dying[o + 1] = nv ? my / nv : body.y; state.dying[o + 2] = sc; state.dying[o + 3] = 1 - sinkU; }
     } else if (now - track.at > 120 || who.dead) state.tracks.delete(who);
   }
+  closeViewGLStats.dying = dying;
   closeViewGLStats.models = count;
   admitBeasts(g, draws, n, Q, now, reduce);
   { const B = MODEL_STATE.beasts, Fk = MODEL_STATE.folk; for (let i = 0; i < Fk.count; i++) B.items[B.count++] = Fk.items[i]; } admitApatoProps(g.enemies, MODEL_STATE.beasts, Q.glScale === 1 ? 'full' : 'low', now, reduce, (x, y) => surfaceZ(g.map, x, y), prepareCloseViewBeastMesh); // the Earth Apatosaurus's spires, hands and rocks: small solid meshes (close-view-beast-apato.ts) // drawn by the beast slot's program
@@ -4864,6 +4886,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const body = MODEL_STATE.admitted.has(it), Kc = CLOSE_VIEW.creatures.contact, foot = foe && body ? Math.max(Kc.min, Math.min(Kc.max, creatureFootprint(actorModelKey(foe)) * Kc.share)) : 0; // a body's stance (CLOSE_VIEW.creatures.contact)
       if (body && !afloat) shadow(SX, SY, sc, SA); const r = Cs.radius * sc; if (!afloat) { if (foot > 0) flatD(SX, SY - .05, foot * sc * 1.15, 0, Kc.alpha * b * SA, 0); else flatD(SX, SY - .05, r * 1.15, 0, Cs.alpha * b * 1.6 * SA, 0); }
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
+  for (let i = 0; i < MODEL_STATE.nDying; i++) { const o = i * 4, X = MODEL_STATE.dying[o], Y = MODEL_STATE.dying[o + 1], scD = MODEL_STATE.dying[o + 2], Kc = CLOSE_VIEW.creatures.contact; // a fallen body's shadow (CLOSE_VIEW.creatures.death)
+    flatD(X, Y - .05, Kc.max * scD, 0, Kc.alpha * MODEL_STATE.dying[o + 3], 0); }
   GLB.nBoard = bv; GLB.nHint = nHint;
   // CLOSE_VIEW_WATER: where the Wayfarer's figure meets the water, a broken ring of foam at the waterline and (in motion) ripples
   // spreading from it and fading; reduced motion keeps the still ring. Four quads at most, on the water's own height.
