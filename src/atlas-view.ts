@@ -175,7 +175,14 @@ export function compassQuestCue(quest, cues) {
   for (const kind of kinds) { const cue = list.find((q) => q.signalKind === kind); if (cue) return cue; }
   return null;
 }
-export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [] } = {}) {
+// A seed hunt (tall-towers.ts TALL_TOWERS.seedHunt, the nearest live one; main.ts passes it as seedHuntGuidance gives it) comes
+// last, after a pick and a quest's waymark cue: in its own section the needle points at the seed itself, or at the door of the crossing it lies in.
+export function seedHuntGuidance(hunt, names = {}) {
+  if (!hunt || hunt.state !== "active" || !Number.isInteger(hunt.rx) || !Number.isInteger(hunt.ry)) return null;
+  const at = hunt.where === "crossing" ? hunt.door : (hunt.where === "ground" || hunt.where === "tree") ? hunt : null;
+  return { area: "overworld", rx: hunt.rx, ry: hunt.ry, ...(at && Number.isInteger(at.x) && Number.isInteger(at.y) ? { x: at.x, y: at.y } : {}), kind: "guidance", name: `Seed hunt: ${names[hunt.kind] || "a seed"}` };
+}
+export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [], seedHunt = null } = {}) {
   const hunt = save?.viewport?.contracts?.[save?.viewport?.activeHuntId];
   if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
   if (hunt && COMPASS_HUNT_LIVE.includes(hunt.status) && Number.isInteger(hunt.target?.rx) && Number.isInteger(hunt.target?.ry)) return { area: "overworld", rx: hunt.target.rx, ry: hunt.target.ry, kind: "guidance", name: hunt.title || "Viewport guidance" };
@@ -183,7 +190,7 @@ export function compassGuidance(save, { area = "overworld", pin = null, pick = n
   if (area !== "overworld") return null;
   if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
   const cue = compassQuestCue(compassQuest(save), cues);
-  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : null;
+  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : seedHunt || null;
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per

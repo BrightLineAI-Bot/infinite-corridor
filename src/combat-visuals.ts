@@ -282,12 +282,17 @@ export function viewportClosedTick(seq, { dt = 0, fallen = false, live = false, 
   return ev;
 }
 // The static: a few small noise frames drawn once (cols wide, the screen's aspect), upscaled and scrolled when drawn.
-export function viewportNoiseFrames(makeCanvas, quality = "balanced", aspect = 1.4, seed = 0x51a7) {
+export function viewportNoiseFrames(makeCanvas, quality = "balanced", aspect = 1.4, seed = 0x51a7) { return staticFrames(makeCanvas, quality, aspect, seed, VIEWPORT_STATIC_TINT, null); }
+const VIEWPORT_STATIC_TINT = Object.freeze([.9, 1, .97]); // the death static's grey-teal
+// The one static generator (the death's Viewport Closed and the low-health edge share it): the same seeded grain, coloured by
+// `tint` (r, g, b multipliers of the grain's value); `mask(x, y, cols, rows, f)` (0..1), when given, sets each grain's opacity.
+function staticFrames(makeCanvas, quality, aspect, seed, tint, mask) {
   const q = VIEWPORT_CLOSED.quality[quality] || VIEWPORT_CLOSED.quality.balanced, cols = q.cols, rows = Math.max(8, Math.min(cols * 3, Math.round(cols * (Number(aspect) || 1.4)))), frames = [];
+  const tr = tint[0], tg = tint[1], tb = tint[2];
   let s = seed >>> 0;
   for (let f = 0; f < q.frames; f++) {
     const c = makeCanvas(cols, rows), x = c.getContext("2d"), img = x.createImageData(cols, rows), d = img.data;
-    for (let i = 0; i < d.length; i += 4) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; const v = 34 + ((s >>> 24) * .8 | 0); d[i] = v * .9; d[i + 1] = v; d[i + 2] = v * .97; d[i + 3] = 255; }
+    for (let i = 0; i < d.length; i += 4) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; const v = 34 + ((s >>> 24) * .8 | 0); d[i] = v * tr; d[i + 1] = v * tg; d[i + 2] = v * tb; d[i + 3] = mask ? 255 * mask((i >> 2) % cols, ((i >> 2) / cols) | 0, cols, rows, f) : 255; }
     x.putImageData(img, 0, 0); frames.push(c);
   }
   return frames;
@@ -338,4 +343,65 @@ export function drawViewportClosed(ctx, stage, w, h, t, art = {}, quality = "bal
     if (art.scan) { ctx.globalAlpha = a * .5; ctx.fillStyle = art.scan; ctx.fillRect(x0 - 4, y - size * .7, total + size, size * 1.6); }
   }
   ctx.restore();
+}
+
+// LOW-HEALTH EDGE (Tim, 2026-11-18: "the screen should get a red tinge around the edges when you get to 30% health or below —
+// the danger zone"; refined the same day: the Viewport Closed static, tinted red, creeping in only at the screen's edges).
+// At `threshold` of maximum health or below (and still alive) a band of the death's own static (staticFrames, its seed and grain)
+// stands at every edge, red (`tint`). `reach` is the band's depth as a share of the shorter screen side: `min` at the threshold,
+// `max` near 0, in `steps` (the frames are re-made only when the step changes); `soft` is the share of the band over which it
+// thins and `ragged` the jitter of its inner edge. `alpha` grows the same way. It flickers on the death static's own ticks
+// (VIEWPORT_CLOSED.flickerHz: frame and mirroring re-picked; on `dip` of the ticks, rising with the danger, it dips to `dipTo`).
+// Reduced Motion (and Safe Mode): the death sequence draws no static at all; a warning must not vanish, so the band holds one
+// still frame at `still` of its alpha. While the fall cue (FALL_RESCUE.flash) shows, it yields: one red cue at a time.
+export const LOW_HEALTH_EDGE = Object.freeze({
+  threshold: .3,
+  reach: Object.freeze({ min: .04, max: .14, fullAt: .5 }), // Tim 2026-11-18: a thin mist at 30% health; by 15% (level .5) it reaches just past the Oculus button's inner edge
+  steps: 8,
+  soft: .6,
+  ragged: .3,
+  alpha: Object.freeze({ min: .14, max: .32 }),
+  tint: Object.freeze([1, .12, .1]),
+  dip: Object.freeze({ min: .06, max: .24 }),
+  dipTo: .45,
+  still: .85,
+  seed: 0x2ed9,
+});
+// 0 at the threshold, rising to 1 at no health; -1 above the threshold, or dead.
+export function lowHealthEdgeLevel(hp, maxHp) {
+  const v = Number(hp), max = Number(maxHp), T = LOW_HEALTH_EDGE.threshold;
+  if (!(v > 0) || !(max > 0) || v / max > T + 1e-9) return -1;
+  return vcClamp(1 - v / max / T);
+}
+// The band's depth (share of the shorter screen side) for a step 0..steps.
+export function lowHealthEdgeReach(step) { const L = LOW_HEALTH_EDGE; return L.reach.min + (L.reach.max - L.reach.min) * vcClamp(step / (L.steps * (L.reach.fullAt || 1))); }
+const LHE_STATE = { show: false, level: 0, step: 0, alpha: 0, pick: 0, flipX: false, flipY: false, still: false, tick: 0 };
+// One frame's state, in a reused object (no allocation). fallCue: the fall's doom cue is drawn this frame.
+export function lowHealthEdgeState(g, now, fallCue = false) {
+  const L = LOW_HEALTH_EDGE, o = LHE_STATE, level = g?.fallen ? -1 : lowHealthEdgeLevel(g?.player?.hp, g?.save?.maxHp);
+  o.show = level >= 0 && !fallCue; o.level = level < 0 ? 0 : level; o.step = Math.ceil(o.level * L.steps);
+  o.still = !!(g?.presentation?.reduceMotion || g?.presentation?.safeMode);
+  const clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, tick = o.still ? 0 : Math.floor((Number(clock) || 0) / 1000 * VIEWPORT_CLOSED.flickerHz);
+  const base = L.alpha.min + (L.alpha.max - L.alpha.min) * o.level, dip = L.dip.min + (L.dip.max - L.dip.min) * o.level;
+  o.tick = tick;
+  if (o.still) { o.alpha = base * L.still; o.pick = 0; o.flipX = o.flipY = false; }
+  else { o.alpha = vcHash(tick + 9) < dip ? base * L.dipTo : base; o.pick = vcHash(tick + 31); const fl = vcHash(tick + 53); o.flipX = fl >= .5; o.flipY = (fl * 4 | 0) % 2 === 1; }
+  if (!o.show) o.alpha = 0;
+  return o;
+}
+// The red edge frames for a band step: the death static's frames (same grain), masked to the edges with a ragged inner edge.
+export function lowHealthEdgeFrames(makeCanvas, quality = "balanced", aspect = 1.4, step = 0) {
+  const L = LOW_HEALTH_EDGE, reach = lowHealthEdgeReach(step), a = Number(aspect) || 1.4, short = Math.min(1, a);
+  return staticFrames(makeCanvas, quality, a, L.seed, L.tint, (x, y, cols, rows, f) => {
+    const dx = Math.min(x + .5, cols - x - .5) / cols, dy = Math.min(y + .5, rows - y - .5) / rows * a, t = 1 - Math.min(dx, dy) / short / reach;
+    return vcClamp((t + (vcHash(x * 73856093 ^ y * 19349663 ^ f * 83492791) - .5) * L.ragged) / L.soft);
+  });
+}
+// Draws the band: one drawImage of a small frame, nearest-neighbour, mirrored per tick. frames: lowHealthEdgeFrames.
+export function drawLowHealthEdge(ctx, state, w, h, frames) {
+  if (!state?.show || !(state.alpha > 0) || !frames?.length) return;
+  const f = frames[Math.min(frames.length - 1, Math.floor(state.pick * frames.length))];
+  ctx.save(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = Math.min(1, state.alpha); ctx.imageSmoothingEnabled = false;
+  if (state.flipX || state.flipY) { ctx.translate(state.flipX ? w : 0, state.flipY ? h : 0); ctx.scale(state.flipX ? -1 : 1, state.flipY ? -1 : 1); }
+  ctx.drawImage(f, 0, 0, w, h); ctx.restore();
 }
