@@ -28,6 +28,12 @@ export const TRI_ART = Object.freeze({
   // `from` (head units, just ahead of the brow horns' roots) the snout is drawn `k` as long and, toward the beak, up to `deep` as deep
   // about the mouth line `mid`. Every form, both views (Close View reads it too); the brow horns are not moved.
   muzzle: Object.freeze({ from: .2, k: .82, deep: 1.12, mid: -.01, ramp: .12 }),
+  // the ridden frill (Tim, 2026-11-19: the rider "mid-back, just behind / almost between the shoulder blades ... I just don't want him to
+  // clip into the frill. If needed, make the frill not so large, or angle it a little"): `size` of the wild one's, set `fwd` forward on
+  // the skull (head units; and `pull` x the head's pull back in the horn release, so it rides forward on the skull) and tipped forward (more upright) `tilt` radians, further by `follow` x how far the head comes up nose first
+  // (`recoil` x the horn release's), so it never sweeps back into the rider. The ridden mount only (e.mountView); both views agree
+  // (close-view-beast-triceratops.ts TRICERATOPS_RIG.riddenFrill).
+  riddenFrill: Object.freeze({ size: .85, fwd: .04, pull: 1, tilt: .3, follow: 1.4, recoil: 3 }),
   whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
 });
 // The face's outline in head units before the squat muzzle (drawHead's H; Tim, 2026-11-19: "the tip of the beak is kind of hanging
@@ -283,13 +289,14 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   const mv = (p) => ctx.moveTo(p[0], -p[1]), ln = (p) => ctx.lineTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
   const shape = (pts) => { ctx.beginPath(); mv(H(pts[0][0], pts[0][1])); for (let i = 1; i < pts.length; i++) ln(H(pts[i][0], pts[i][1])); ctx.closePath(); };
   // the frill: a broad shield rising up and back from the skull, its rim scalloped with pale knobs, two dark spots inside
-  const fk0 = FM.frill, fc = fk0 < 1 ? H(-.03 - .12 * (1 - fk0), .22 * (.3 + .7 * fk0)) : H(-.03, .22 * (fk0 === 1 ? 1 : .55 + .45 * fk0)), fa = -(ha + 1.0), rx = .28 * FM.frill, ry = .36 * FM.frill;
+  const RF = e.mountView ? A.riddenFrill : null, hpz = RF ? Math.max(0, -(Number(e.mountHornPose?.pitch) || 0)) : 0, hpr = RF ? Math.max(0, -(Number(e.mountHornPose?.reach) || 0)) / S : 0; // the ridden frill (TRI_ART.riddenFrill)
+  const fk0 = FM.frill, fc = RF ? H(-.03 + RF.fwd + RF.pull * hpr, .22) : fk0 < 1 ? H(-.03 - .12 * (1 - fk0), .22 * (.3 + .7 * fk0)) : H(-.03, .22 * (fk0 === 1 ? 1 : .55 + .45 * fk0)), fa = -(ha + 1.0) + (RF ? RF.tilt + RF.follow * (Math.max(0, V.pitch) + Math.max(0, V.head) * .65) + RF.recoil * hpz : 0), rx = .28 * FM.frill * (RF ? RF.size : 1), ry = .36 * FM.frill * (RF ? RF.size : 1);
   ctx.save(); ctx.translate(fc[0], -fc[1]); ctx.rotate(fa);
   ctx.fillStyle = A.knob; for (let i = 0; i < 11; i++) { const a = -Math.PI * .95 + i * Math.PI * 1.15 / 10, kx = Math.cos(a) * rx * 1.03, ky = Math.sin(a) * ry * 1.03; ctx.beginPath(); ctx.arc(kx, ky, FM.frill === 1 ? .03 : .03 * Math.sqrt(FM.frill), 0, TAU); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6; ctx.stroke(); }
   const fg = ctx.createRadialGradient(0, .12, .02, 0, 0, ry); fg.addColorStop(0, A.frillInner); fg.addColorStop(.7, A.frill); fg.addColorStop(1, A.frillEdge);
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fillStyle = fg; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
   ctx.strokeStyle = "rgba(255,240,160,.55)"; ctx.lineWidth = .02; ctx.beginPath(); ctx.ellipse(0, 0, rx * .82, ry * .84, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  { const fk = FM.frill; ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2 * fk, sy2 * fk, .055 * fk, .08 * fk, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // the spots keep their place on a small frill
+  { const fk = FM.frill * (RF ? RF.size : 1); ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2 * fk, sy2 * fk, .055 * fk, .08 * fk, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // the spots keep their place on a small frill
   ctx.restore();
   // the brow horns: long, curving forward and up out of the brow; the far one first, behind the skull, the near one over it
   const bk = FM.brow, bx0 = .165, by0 = .1, brow = (dx, dy, near) => { const b0 = HB(.13 + dx, .1 + dy), b1 = HB(.2 + dx, .095 + dy), mid = HB(scl(.3, bx0, bk) + dx, scl(.3, by0, bk) + dy), tip = HB(scl(.5, bx0, bk) + dx, scl(.4, by0, bk) + dy);

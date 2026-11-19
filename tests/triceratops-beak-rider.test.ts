@@ -128,20 +128,48 @@ export function closeViewRiderClearance() {
   return worst;
 }
 
+// Tim, 2026-11-19: "He should sit mid-back, just behind / almost between the shoulder blades ... I just don't want him to clip into the
+// frill." Where the standard view's shoulder and haunch masses are drawn (tiles from the Wayfarer, along the facing).
+function standardLegMasses() {
+  const xs: number[] = []; let m = [1, 0, 0, 1, 0, 0]; const st: number[][] = [];
+  const mul = (a: number, b: number, c: number, d: number, e: number, f: number) => { const [A, B, C, D, E, F] = m; m = [A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, A * e + C * f + E, B * e + D * f + F]; };
+  const ctx: any = new Proxy({ save: () => st.push(m.slice()), restore: () => { m = st.pop()!; }, translate: (x: number, y: number) => mul(1, 0, 0, 1, x, y), scale: (x: number, y: number) => mul(x, 0, 0, y, 0, 0),
+    rotate: (a: number) => mul(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0), setTransform: (a: number, b: number, c: number, d: number, e: number, f: number) => { m = [a, b, c, d, e, f]; },
+    ellipse: (x: number, y: number, rx: number, ry: number) => { if (Math.abs(ry / rx - 1.25) < 1e-9) xs.push(m[0] * x + m[2] * y + m[4]); },
+    createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }), measureText: () => ({ width: 0 }) } as any, { get: (o, k) => k in o ? o[k] : k === "drawImage" ? undefined : () => {}, set: () => true });
+  drawMount(ctx, { id: "masses", beast: "triceratops", variant: "normal" }, { x: 5, y: 5, facing: "right", walkPhase: 0 }, 40, 1000, 0, true);
+  return { hip: (Math.min(...xs) - 5.5 * 40) / 40, shoulder: (Math.max(...xs) - 5.5 * 40) / 40 };
+}
+
+test("the seat is mid-back just behind the shoulders in both views, at the same height", () => {
+  const B = MOUNT_BEASTS.triceratops, { hip, shoulder } = standardLegMasses(), at = (B.seatX - hip) / (shoulder - hip);
+  assert.ok(at > .6 && at < .8, `standard view: ${at.toFixed(2)} of the way from the hips to the shoulders`);
+  const W = TRICERATOPS_SKELETON.bindWorld, arm = W[TRICERATOPS_SKELETON.index.armR * 3], thigh = W[TRICERATOPS_SKELETON.index.thighR * 3], seatF = (TRICERATOPS_RIG as any).seatF;
+  const cv = (seatF - thigh) / (arm - thigh); assert.ok(cv > .6 && cv < .8 && seatF < arm, `Close View: ${cv.toFixed(2)} of the way from the hips to the forelimbs' roots`);
+  assert.ok(Math.abs(W[TRICERATOPS_SKELETON.index.saddle * 3] - seatF) < 1e-6, "the skinned saddle is under the seat");
+  assert.ok(Math.abs(TRICERATOPS_SEAT * B.scale - B.seat) < .1, "Close View's back at the seat is the standard view's seat height");
+});
+
 test("standard view: the rider sits behind the frill, clear of it through every ridden move, both ways and both tacks", () => {
-  assert.ok(MOUNT_BEASTS.triceratops.seatX < 0);
   const c = standardRiderClearance(); assert.ok(c > 0, `frill to rider ${c}`);
 });
 
 test("Close View: the rider's card stands on the saddle, and the ridden frill stays clear of the rider through every move", () => {
   // the card's rider is at the Wayfarer (no sideways shift on the card), the skinned saddle under them at the seat's height
   MOUNT_DRAW.skipBody = true;
-  try { const seat = drawMount(frillCtx(() => {}), { id: "cv", beast: "triceratops", variant: "normal" }, { x: 5, y: 5, facing: "right", walkPhase: 0 }, 40, 1000); assert.equal(seat.dx, 0); }
-  finally { MOUNT_DRAW.skipBody = false; }
+  try { const seat = drawMount(frillCtx(() => {}), { id: "cv", beast: "triceratops", variant: "normal" }, { x: 5, y: 5, facing: "right", walkPhase: 0 }, 40, 1000); assert.equal(seat.dx, 0);
+    // painted where Close View sees the saddle on the card (close-view.ts riddenSeatOnCard), whichever way the mount faces
+    MOUNT_DRAW.seatDx = .3; MOUNT_DRAW.seatUp = .05; const s2 = drawMount(frillCtx(() => {}), { id: "cv", beast: "triceratops", variant: "normal" }, { x: 5, y: 5, facing: "left", walkPhase: 0 }, 40, 1000, 0, true);
+    assert.equal(s2.dx, 12); assert.equal(s2.up, (MOUNT_BEASTS.triceratops.seat + .05) * 40); }
+  finally { MOUNT_DRAW.skipBody = false; MOUNT_DRAW.seatDx = MOUNT_DRAW.seatUp = 0; }
   assert.ok(Math.abs(TRICERATOPS_SEAT * MOUNT_BEASTS.triceratops.scale - MOUNT_BEASTS.triceratops.seat) < .1);
   assert.ok(TRICERATOPS_RIG.riddenFrill.tilt > 0);
   const c = closeViewRiderClearance(); assert.ok(c > 0, `frill to rider ${c}`);
   // a wild herd's frill is as it was bound (the ridden setting is the mount's only)
   const tr = createTriceratopsTrack(); sampleTriceratops(tr, { id: "w", kind: "triceratops", hp: 1, maxHp: 1, pack: null, facingX: 1 } as any, { x: 5, y: 5, z: 0, scale: 1.8, now: 1000, reduce: true, tier: "full", target: null, dead: false } as any);
   const i = TRICERATOPS_SKELETON.index.frill; assert.deepEqual([tr.pose.off[i * 3], tr.pose.off[i * 3 + 1], tr.pose.off[i * 3 + 2]], [0, 0, 0]);
+  // the ridden frill is drawn smaller than a wild one's (a wild herd's and the hatchling's are unchanged)
+  const span = (e: any) => { const m: any = triceratopsMesh("full", e), P = m.positions, SK = m.skin; let lo = Infinity, hi = -Infinity; for (let v = 0; v < m.vertexCount; v++) if ((SK[v * 4] | 0) === i) { lo = Math.min(lo, P[v * 3 + 1]); hi = Math.max(hi, P[v * 3 + 1]); } return hi - lo; };
+  const wild = span(null), ridden = span({ mountView: true, triceratopsDisposition: "good" }); assert.ok(Math.abs(ridden / wild - TRICERATOPS_RIG.riddenFrill.size) < .05, `ridden ${ridden} vs wild ${wild}`);
+  assert.equal(TRI_ART.riddenFrill.size, TRICERATOPS_RIG.riddenFrill.size, "both views draw the ridden frill the same size");
 });
