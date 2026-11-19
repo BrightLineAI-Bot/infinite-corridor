@@ -71,7 +71,8 @@ import {
   APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
-import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
+import { SEED_HUNT_PICK } from "./atlas-view.ts"; // the compass pick of a seed hunt (2026-11-19)
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
@@ -5602,7 +5603,7 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
-    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); this.sync(); return r; } // 2026-11-11
+    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
     if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
@@ -6056,6 +6057,7 @@ export class Game {
     const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
     journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");
     (this.questNotices ||= []).push({ title: "SEED HUNT", detail: `${S.name} · ${target.rx},${target.ry} · marked on the Atlas`, kind: "discovery" });
+    setCompassChoice(this.save, { pick: `${SEED_HUNT_PICK}${id}` }); // Tim, 2026-11-19: a seed hunt started at a lookout is accepted: the compass points at it (atlas-view.ts objectiveKey)
     return { hunt, fresh: true, text };
   }
   // Lay the seed of each live hunt aiming here, over the place as loaded (after the world caches, so they lie as they would
@@ -8052,6 +8054,7 @@ export class Game {
     const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
     Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
     journalOnce(this.save, "hatchling:quest", `${M.offer} (${site.rx},${site.ry})`, "Beast Hotel");
+    setCompassChoice(this.save, { follow: { kind: "rescue" } }); // 2026-11-19 (Tim): taking the quest points the compass at it
     (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: `${site.rx},${site.ry} · marked on the Atlas`, kind: "discovery" });
     if (o) o.state = "sick";
     return { ok: true, message: (this.message = M.offer), quest: q };
@@ -8894,9 +8897,9 @@ export class Game {
     if (e.mothChrysalis) this.hatchMoth(e); // release 708
     if (e.worldBeast === TURTLE_SHELL.beast && this.save.worldBeasts?.[e.worldBeast]) this._shellCycle = this.save.worldBeasts[e.worldBeast].cycle; // the kill's cycle, before the fall advances it
     if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; if (e.worldBeast === TURTLE_SHELL.beast) this.restTurtleShell(e, this._shellCycle); } // release 235
-    if (e.worldBeast) { const civ = openFarQuest(this.save, e.worldBeast, this.rx, this.ry); if (civ) { const C = farQuestInfo(civ); journalOnce(this.save, `far-quest:${civ}`, C.quest, C.name); (this.questNotices ||= []).push({ title: C.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // release 716
+    if (e.worldBeast) { const civ = openFarQuest(this.save, e.worldBeast, this.rx, this.ry); if (civ) { const C = farQuestInfo(civ); journalOnce(this.save, `far-quest:${civ}`, C.quest, C.name); setCompassChoice(this.save, { follow: { kind: "far", id: civ, name: C.name } }); /* 2026-11-19 (Tim): a new quest is a choice: the compass follows it */ (this.questNotices ||= []).push({ title: C.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // release 716
     if (e.stalker) { const won = stalkerSlain(this.save); if (ECHOES.stalker && this.save.echoes?.owned && !this.save.echoes.owned.stalker) { this.save.echoes.owned.stalker = true; won.echo = "stalker"; } /* release 699: Stalker's Mist */ for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
-    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; const dom = openFarQuest(this.save, "questingBeast", this.rx, this.ry); if (dom) { const D = FAR_DOMAINS[dom]; journalOnce(this.save, `far-quest:${dom}`, D.quest, D.name.replace(/^the /, "The ")); (this.questNotices ||= []).push({ title: D.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // 723: far out, it opens the quest to its domain
+    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; const dom = openFarQuest(this.save, "questingBeast", this.rx, this.ry); if (dom) { const D = FAR_DOMAINS[dom]; journalOnce(this.save, `far-quest:${dom}`, D.quest, D.name.replace(/^the /, "The ")); setCompassChoice(this.save, { follow: { kind: "far", id: dom, name: farQuestInfo(dom)?.name || D.name } }); (this.questNotices ||= []).push({ title: D.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // 723: far out, it opens the quest to its domain
     if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
     if (e.ambient) {
       e.rewarded = true;

@@ -30,10 +30,10 @@ export function inventory(root, { ignoreGit = false } = {}) {
 export const inventoryDigest = files => sha256(JSON.stringify(Object.fromEntries(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)))));
 
 function versionText(text, token) {
-  return text.replaceAll("?v=1020", `?v=${token}`).replaceAll('const release = "1020"', `const release = "${token}"`)
-    .replaceAll('"Game release":"1020"', `"Game release":"${token}"`).replaceAll("${CACHE_PREFIX}v1020", "${CACHE_PREFIX}" + token)
-    .replaceAll("${PREFIX}pg1-r1020", "${PREFIX}" + token)
-    .replace(/\brelease\s*:\s*1020\b/g, `release: "${token}"`).replaceAll("Release 1020", `Release ${token}`);
+  return text.replaceAll("?v=1021", `?v=${token}`).replaceAll('const release = "1021"', `const release = "${token}"`)
+    .replaceAll('"Game release":"1021"', `"Game release":"${token}"`).replaceAll("${CACHE_PREFIX}v1021", "${CACHE_PREFIX}" + token)
+    .replaceAll("${PREFIX}pg1-r1021", "${PREFIX}" + token)
+    .replace(/\brelease\s*:\s*1021\b/g, `release: "${token}"`).replaceAll("Release 1021", `Release ${token}`);
 }
 
 // Freeze a complete release once. Preview assets are copies of these exact
