@@ -342,7 +342,7 @@ export function sampleApatoClone(tr, e, env) {
 // the marks, the beam's track, the waves, the saplings); what stands up from it is drawn here with the scene's camera-facing cards
 // (close-view.ts `card`: kind 7 a stone spike, kind 0 a dark disc, kind 11 an added glow of the colour given). Bounded by the
 // beast's own pools (APATO.caps); nothing allocated. `card(X, Y, z0, z1, halfWidth, kind, alpha, colour, light)`.
-export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, rockZ0: 1.3, rockUp: 1.6, rockFall: 1.3, rockLow: .45, beamZ: 3.4, beamCards: 34, beamW: .12, beamGrow: .1, star: .09, resolveRoots: 18, waveDust: 8, venomDrops: 8, trail: .22, sapGrow: .7, sapSize: [.9, 1.1], sapTall: [.6, 1.4] });
+export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, rockZ0: 1.3, rockUp: 1.6, rockFall: 1.3, rockLow: .45, beamZ: 3.4, beamCards: 56, beamW: .12, beamGrow: .1, star: .09, resolveRoots: 18, waveDust: 8, venomDrops: 8, trail: .22, sapGrow: .7, sapSize: [.9, 1.1], sapTall: [.6, 1.4] });
 export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve = null) {
   const Cd = APATO_CARDS, t = reduce ? 0 : now / 1000;
   // Earth Resolve (its Echo): roots rising round the sigil's rim (short stone-dark spikes) and a green glow at its heart, fading at its end
@@ -352,9 +352,9 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve
   for (const e of enemies || []) {
     if (e.apatoDazed > 0 && !e.dead) { const z = 2.2 * Math.max(.6, Number(e.scale) || 1) * .55; for (let i = 0; i < 4; i++) { const a = t * 3 + i * Math.PI / 2; card(e.x + .5 + Math.cos(a) * .6, e.y + .75 + Math.sin(a) * .6, z - Cd.star, z + Cd.star, Cd.star, 11, .9, 0xfff6a0, 0); } }
     const eye = e.apatoEyeCV; if (eye && !reduce && !e.dead) { const age = (now - eye.slamAt) / APATO_FX.dustMs; if (age >= 0 && age < 1) { // dust and grit thrown up where a head struck
-      const big = e.kind === 'earthApato' ? 1.6 : .8, fade = 1 - age, r = big * (.2 + .7 * smooth(age)), n = APATO_FX.dustPuffs;
+      const big = e.kind === 'earthApato' ? 1.6 : .8, fade = 1 - age, r = big * (.35 + .7 * smooth(age)), n = APATO_FX.dustPuffs;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .2, x = eye.sx + Math.cos(a) * r, y = eye.sy + Math.sin(a) * r, h = big * (.1 + .3 * age) * (1 + .3 * (i % 2)), w = big * (.26 + .26 * age);
-        card(x, y, h * .2, h * .2 + w * 1.4, w, 0, .26 * fade, 0, 0); card(x, y, h * .3, h * .3 + w * 1.1, w * .85, 11, .22 * fade, 0xc8a878, 0); }
+        card(x, y, h * .2, h * .2 + w * 1.4, w, 0, .4 * fade, 0, 0); card(x, y, h * .3, h * .3 + w * 1.1, w * .85, 11, .32 * fade, 0xc8a878, 0); }
       for (let i = 0; i < 4; i++) { const a = i * 1.7 + .5, k = smooth(age * 1.6), x = eye.sx + Math.cos(a) * big * .5 * k, y = eye.sy + Math.sin(a) * big * .5 * k, z = big * .9 * Math.sin(Math.PI * Math.min(1, age * 1.3)); card(x, y, z, z + .07, .05, 0, .9 * fade, 0, 0); } } } // flung clods
     if (e.kind !== 'earthApato' || e.dead) continue;
     const F = e.apatoFx; if (!F) continue;
@@ -374,7 +374,7 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve
       const eye = e.apatoEyeCV, live = !!eye && Math.abs(now - eye.at) < 250, n = Cd.beamCards, ex = B.x + B.ax * B.len + .5, ey = B.y + B.ay * B.len + .62;
       const sx = live ? eye.x : B.x + .5, sy = live ? eye.y : B.y + .62, step = Math.hypot(ex - sx, ey - sy) / n, sz = live ? eye.z : Cd.beamZ, gz = live ? eye.gz : 0, flick = reduce ? 1 : .9 + .1 * Math.sin(t * 40);
       for (let i = 0; i <= n; i++) { const k = i / n, x = sx + (ex - sx) * k, y = sy + (ey - sy) * k, z = sz + (gz + .12 - sz) * k, dz = Math.abs(sz - gz) / n, w = (Cd.beamW + Cd.beamGrow * k) * flick;
-        card(x, y, z - w - dz * 1.2, z + w + dz * 1.2, Math.max(w * 1.4, step * .8), 11, .45, 0xf4ff9a, 0, live); card(x, y, z - w * .4 - dz * 1.2, z + w * .4 + dz * 1.2, Math.max(w * .5, step * .7), 11, .9, 0xffffff, 0, live); } // overlapping, so the column reads unbroken
+        const gap = dz * 1.2 + step * .5; card(x, y, z - w - gap, z + w + gap, Math.max(w * 1.4, step * .8), 11, .4, 0xf4ff9a, 0, live); card(x, y, z - w * .4 - gap, z + w * .4 + gap, Math.max(w * .5, step * .6), 11, .8, 0xffffff, 0, live); } // overlapping, so the column reads unbroken
       if (live) card(sx, sy, sz - .22, sz + .22, .26, 11, .9, 0xffffff, 0, true); } // the flare at its eyes
   }
 }
