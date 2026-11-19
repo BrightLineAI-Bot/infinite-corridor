@@ -199,13 +199,12 @@ function cleanMount(m) {
 }
 export function ensureMounts(save) {
   const q = save.mounts && typeof save.mounts === "object" && !Array.isArray(save.mounts) ? save.mounts : {};
-  const all = (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i);
+  const all = removeFreeTriceratops(q, (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i)); // before the one-of-each-variant rule, so a caught one is never shadowed by the gift
   const temporary = all.filter(m => !persistentMount(m)).slice(-MOUNT_RIDE.cap);
   const permanent = all.filter(persistentMount).filter((m, i, a) => a.findIndex(o => o.beast === m.beast && o.variant === m.variant) === i);
   const stable = all.filter(m => temporary.includes(m) || permanent.includes(m));
   const caught = q.caught && typeof q.caught === "object" ? Object.fromEntries(Object.entries(q.caught).map(([k, v]) => [k, Math.max(0, Math.floor(Number(v) || 0))])) : {};
   save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding && !m.recovery && (!persistentMount(m) || m.hp > 0)) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
-  removeFreeTriceratops(save.mounts);
   ensureHatchling(save.mounts); // the Triceratops hatchling (hatchling.ts)
   return save.mounts;
 }
@@ -214,15 +213,13 @@ export function ensureMounts(save) {
 // Riding it, the Wayfarer is set down where it stood (`freeTriceratopsDismount`: game.ts moves them to safe footing on load).
 export const FREE_TRICERATOPS_ID = /^mount-free-triceratops-v1(-\d+)?$/;
 export const FREE_TRICERATOPS_REMOVAL = 1;
-function removeFreeTriceratops(q) {
-  if (Number(q.freeTriceratopsRemoved) >= FREE_TRICERATOPS_REMOVAL) return;
-  const free = q.stable.filter(m => persistentMount(m) && FREE_TRICERATOPS_ID.test(m.id));
-  if (free.length) {
-    if (free.some(m => m.id === q.riding)) { q.riding = null; q.freeTriceratopsDismount = true; }
-    if (free.some(m => m.id === q.last)) delete q.last;
-    q.stable = q.stable.filter(m => !free.includes(m));
-  }
+function removeFreeTriceratops(q, all) {
+  if (Number(q.freeTriceratopsRemoved) >= FREE_TRICERATOPS_REMOVAL) return all;
   q.freeTriceratopsRemoved = FREE_TRICERATOPS_REMOVAL;
+  const free = all.filter(m => persistentMount(m) && FREE_TRICERATOPS_ID.test(m.id)); if (!free.length) return all;
+  if (free.some(m => m.id === q.riding)) { q.riding = null; q.freeTriceratopsDismount = true; }
+  if (free.some(m => m.id === q.last)) delete q.last;
+  return all.filter(m => !free.includes(m));
 }
 // Release 734's production gift, withdrawn (Tim, 2026-11-19: every journey earns the Triceratops through the Beast Hotel rescue,
 // hatchling.ts). Kept as the production load/save hook: it only normalises the stable now (ensureMounts removes the old gift once).
