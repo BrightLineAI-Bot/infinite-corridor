@@ -71,7 +71,7 @@ test('one data table: arming, the grace and the Quandrix slam\'s charge numbers'
 });
 
 test('five Lattice tool forms, selectable, each only with its own weapon', () => {
-  assert.equal(TOOL_FORM_KEYS.length, 12);
+  assert.equal(TOOL_FORM_KEYS.length, 13); // 2026-11-19: Rapid Reload (hit-cast-passives.ts), a pinned count Tim approved updating
   for (const id of WEAPON_ART_IDS) { assert.ok(TOOL_FORMS[id]); assert.ok(TOOL_FORM_KEYS.includes(`field:${id}`)); const f = fieldForm(`field:${id}`); assert.equal(f.name, A[id].name); assert.ok(f.text.length > 40); }
   for (const id of WEAPON_ART_IDS) for (const weapon of Object.keys(WEAPONS)) {
     const { s } = arena(id, { weapon }); assert.equal(artFor(s), weapon === weaponOf(id) ? id : null, `${id} with ${weapon}`);

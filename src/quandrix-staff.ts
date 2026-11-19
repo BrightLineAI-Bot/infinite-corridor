@@ -221,7 +221,7 @@ function finish(game, now, held) {
   const K = game.quandrix, H = K.hold, h = H.hand, S = QUANDRIX.slam;
   if (H.mode === "fist") burst(game, h.x, h.y, QUANDRIX.fist.burst.radius, QUANDRIX.fist.burst.share, QUANDRIX.fist.burst.stun, now, "fist");
   else if (H.released) { burst(game, h.x, h.y, S.burst.radius, S.burst.released, S.burst.stun, now, "released"); game.message = QUANDRIX.messages.released; } // let go early: its clock ran out
-  else { const w = slamWindow(held); burst(game, h.x, h.y, S.burst.radius, slamBurstShare(held), S.burst.stun, now, w);
+  else { const w = slamWindow(held), src = (game._staffSrc ||= { melee: false, rr: 0 }); if (typeof game.chargedRelease === "function") src.rr = game.chargedRelease(); /* hit-cast-passives.ts Rapid Reload: the charged slam */ burst(game, h.x, h.y, S.burst.radius, slamBurstShare(held), S.burst.stun, now, w); if (src) src.rr = 0;
     if (w === "perfect") game.message = QUANDRIX.messages.perfect; else if (w === "overcharge") game.message = QUANDRIX.messages.overcharge; }
   h.on = false; clearHits(h); endHold(K);
 }

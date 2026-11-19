@@ -296,7 +296,7 @@ export function echoHit(game, now, enemy, damage) {
     const C = H.cunning;
     if (now - mark.m1 <= C.windowMs) {
       mark.m1 = mark.m2 = -Infinity; mark.coolUntil = now + C.cooldownMs;
-      const gore = Math.max(1, Math.round(damage * C.gore)), before = Math.max(0, enemy.hp);
+      const gore = Math.max(1, Math.round(damage * C.gore * (game.vulnScale?.(enemy, now) ?? 1))), before = Math.max(0, enemy.hp);
       enemy.hp -= gore; enemy.hitFlash = .18;
       enemy.hitStun = Math.max(enemy.hitStun || 0, enemy.boss || enemy.eliteId ? C.stagger * C.bossStagger : C.stagger);
       game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
@@ -327,7 +327,7 @@ function emberBurst(game, now, at, damage) {
   for (let i = 0; i < n; i++) {
     const e = list[i];
     if (e.dead || e.untargetable || e.kind === "npc" || !(e.hp > 0) || Math.hypot(e.x + .5 - x, e.y + .45 - y) > E.radius + .2) continue;
-    const before = e.hp; e.hp -= isBurning(e, now) ? Math.round(base * E.burning) : base; e.hitFlash = .18;
+    const before = e.hp; e.hp -= Math.round((isBurning(e, now) ? base * E.burning : base) * (game.vulnScale?.(e, now) ?? 1)); e.hitFlash = .18; // Tempo's window: every source
     game.astralPlayerHit?.(e, Math.max(0, before - Math.max(0, e.hp)));
     if (e.hp <= 0 && !e.dead) { e.dead = true; game.defeatEnemy?.(e); }
   }
@@ -335,6 +335,7 @@ function emberBurst(game, now, at, damage) {
 
 export function echoEvent(game, event, now, data = {}) {
   if (event === "hit") return void echoHit(game, now, data.enemy, data.damage);
+  if (event === "spell") game.passiveCast?.(now); // hit-cast-passives.ts: Arcane Edge, Glyph Mine, Casting Wind, Echoing Cast (with or without Echoes set)
   const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
   if (!eq.length) return;
   if (event === "dodge") {

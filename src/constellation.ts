@@ -16,6 +16,7 @@ import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
 import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.ts";
 import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.ts"; // awakened arts: each primary's own move (2026-11-13)
 import { TESSERACTS } from "./tesseracts.ts";
+import { PASSIVE_TEXT } from "./hit-cast-passives.ts"; // the on-cast nodes (Tim, 2026-11-19)
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -49,6 +50,12 @@ export const BRANCHES = {
     { id: "anchor", name: "Long Step", text: `Rift Step reaches ${RIFT.longStep} tiles farther. It still stops short of walls, ledges and ground it cannot stand on.` }] },
 };
 export const BRANCH_IDS = Object.keys(BRANCHES);
+// On-cast and on-hit nodes (Tim's batch, 2026-11-19; rules and numbers: hit-cast-passives.ts). One more node a branch, beside its
+// modifier: learned for a point once the discipline has a rank, kept in save.constellation.mods like the modifier (nothing new is
+// saved; a respec refunds it). Always on, whatever is active. They have no secondary form and are not Lattice passives.
+const EXTRA_NODES = { form: "arcane-edge", motion: "casting-wind", veil: "pocket-time", force: "echoing-cast", rift: "glyph-mine" };
+const EXTRA_NAMES = { "arcane-edge": "Arcane Edge", "casting-wind": "Casting Wind", "pocket-time": "Pocket Time", "echoing-cast": "Echoing Cast", "glyph-mine": "Glyph Mine" };
+for (const [bid, id] of Object.entries(EXTRA_NODES)) BRANCHES[bid].extras = [{ id, name: EXTRA_NAMES[id], text: PASSIVE_TEXT[id] }];
 // How each modifier and capstone works (release 157, for the Arcanum's labels): "cast" is a new ability for slot A or B;
 // "while" works only while the branch's discipline is active; "changes" alters how the discipline behaves; "always" is
 // a permanent passive. `spells` names a node that also changes your spells (or the glyphs set in them).
@@ -58,6 +65,8 @@ export const NODE_EFFECTS = {
   "thorned-veil": { kind: "while" }, sanctuary: { kind: "while" }, "mirror-veil": { kind: "while" },
   overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
   "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
+  "arcane-edge": { kind: "always", spells: "Each cast empowers your next three melee attacks." }, "casting-wind": { kind: "always", spells: "Each cast gives back stamina." }, "pocket-time": { kind: "always" },
+  "echoing-cast": { kind: "always", spells: "Every fourth cast repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each cast leaves a sigil that bursts." },
 };
 
 // Secondary passives (release 359; Tim, 2026-10-23: "develop an additional passive for each one that you can select...
@@ -184,6 +193,16 @@ export function chooseCap(save, branch, capId) {
   if (save.constellation.caps[branch]) save.constellation.caps2[branch] = capId; else save.constellation.caps[branch] = capId;
   if (capId === "aerial-step") { save.magicSkills.learned["aerial-step"] = 1; }
   return { ok: true, message: `${cap.name} crowns the ${b.name} branch.` };
+}
+// An extra node (EXTRA_NODES): a point, once the branch's discipline has a rank.
+export function learnExtra(save, branch, id) {
+  const b = BRANCHES[branch], node = b?.extras?.find((q) => q.id === id);
+  if (!node) return { ok: false, message: "Unknown node." };
+  if (save.constellation.mods[id]) return { ok: false, message: `${node.name} is already yours.` };
+  if (skillRank(save, b.active) < 1) return { ok: false, message: `Learn ${APERTURE_SKILLS[b.active].name} first.` };
+  if (pointsFree(save) < 1) return { ok: false, message: "No constellation points free." };
+  save.constellation.mods[id] = true;
+  return { ok: true, message: `${node.name} joins the constellation.` };
 }
 export const respecCost = (save) => 2 + Math.ceil(pointsSpent(save) / 2);
 // Only at shrines (the UI offers it there). Refunds every rank, modifier and capstone; grandfathered bonus stays.
