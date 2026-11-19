@@ -120,12 +120,47 @@ test('the cutout is a modest ellipse round the Wayfarer, nearer than her only; o
   assert.equal(GLF.cutC[1], 1, 'over the walls\' tops: wall tiles read as rock'); assert.ok(Math.abs(GLF.cutC[2] - K.rock) < 1e-6 && Math.abs(GLF.cutC[3] - K.under) < 1e-6, 'the rock\'s and the underside\'s shares (dark stone)'); assert.ok(Math.abs(GLF.cutNear - K.near) < 1e-9, 'nothing at the lens');
   CV.closeViewPan(0, -1e5, T); frame(g, 3); assert.equal(CV.closeViewCutout().below, true); assert.equal(GLF.cutB[3], 1);
   const src = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
-  assert.match(src, /if \(cutAway\(v_depth, v_nrm\.z\)\) discard;/, 'the walls\' depth pass cuts');
+  // 2026-11-19 (Tim's bug, the floor and ceiling cut): the depth pass also hands the fragment's height, so a level floor or ceiling is cut only between the eye and the body
+  assert.match(src, /if \(cutAway\(v_depth, v_nrm\.z, v_world\.z\)\) discard;/, 'the walls\' depth pass cuts');
   assert.match(src, /u_cutC\.x < 0\.5 \/\* the eye over the ceiling/, 'the environment leaves the ceiling out over it');
-  assert.match(src, /if \(r >= 1\.0 \|\| depth >= u_cut\.w\) return false;/, 'outside the ellipse, or behind her, nothing is cut');
+  // 2026-11-19 (Tim's bug, the floor and ceiling cut): nor a level floor or ceiling that does not stand between the eye and her
+  assert.match(src, /if \(r >= 1\.0 \|\| depth >= u_cut\.w \|\| !across\) return false;/, 'outside the ellipse, or behind her, nothing is cut');
   // the low tier: a hard edge (no dither)
   g.presentation = { effectiveQuality: 'low', reduceMotion: true }; CV.closeViewPan(0, -CV.closeViewCamera().pitchUser / C.crescent.pitch, T); frame(g, 3);
   if (CV.closeViewCutout().on) assert.equal(GLF.cutB[2], 0);
+}));
+
+// Tim's bug (2026-11-19, the Pentagon, Close View indoors): the cutout took black half-ovals out of the floor in front of the
+// Wayfarer and the ceiling over her, though neither stood between the eye and her. A level floor or ceiling is cut only when its
+// height lies between the eye's and the body's: the eye between floor and ceiling cuts neither; over the ceiling or under the floor, that one is cut.
+test('the cutout leaves the floor and the ceiling whole while the eye is between them, and cuts the one the eye is beyond', () => withGPU(() => {
+  const m = K.level; assert.ok(m > 0 && m < .1, `a small margin (${m})`);
+  const ceil = C.walls.height, body = O.focus;
+  // the classification itself (close-view.ts cutFlatAcross; the shader's `across` is the same test)
+  assert.equal(CV.cutFlatAcross(0, 1.7, body), false, 'eye above the floor: the floor under her stays');
+  assert.equal(CV.cutFlatAcross(ceil, 1.7, body), false, 'eye under the ceiling: the ceiling over her stays');
+  assert.equal(CV.cutFlatAcross(0, 0, body), false, 'eye at the floor: not beyond it');
+  assert.equal(CV.cutFlatAcross(0, -1.1, body), true, 'eye under the floor: the floor is between, cut');
+  assert.equal(CV.cutFlatAcross(ceil, ceil + 1, body), true, 'eye over the ceiling: the ceiling is between, cut');
+  assert.equal(CV.cutFlatAcross(1.5, 2.2, body), true, 'a raised floor between a high eye and a low body: cut');
+  // the frame's uniforms: the eye's height, the body's and the margin
+  const { g } = room(); g.presentation = { effectiveQuality: 'balanced', reduceMotion: true }; frame(g, 2); face(0); frame(g, 20);
+  if (!CV.closeViewStats.gl) return; // no GPU scene in this environment
+  const c = CV.closeViewCamera(), z = (k: number) => GLF.cutZ[k];
+  assert.ok(Math.abs(z(0) - c.height) < 1e-4 && Math.abs(z(1) - (c.anchorZ + body)) < 1e-4 && Math.abs(z(2) - m) < 1e-6, `handed to the depth pass (${[...GLF.cutZ].map((v) => v.toFixed(2))})`);
+  assert.ok(c.height > c.anchorZ && c.height < ceil, 'the default framing: the eye between floor and ceiling');
+  assert.equal(CV.cutFlatAcross(c.anchorZ, z(0), z(1), z(2)), false, 'the floor is not cut'); assert.equal(CV.cutFlatAcross(ceil, z(0), z(1), z(2)), false, 'the ceiling is not cut');
+  CV.closeViewPan(0, 1e5, T); frame(g, 3); assert.ok(z(0) > ceil, 'from high above');
+  assert.equal(CV.cutFlatAcross(ceil, z(0), z(1), z(2)), true, 'over the ceiling: it is cut'); assert.equal(CV.cutFlatAcross(c.anchorZ, z(0), z(1), z(2)), false, 'the floor stays');
+  CV.closeViewPan(0, -1e5, T); frame(g, 3); assert.ok(z(0) < c.anchorZ, 'from below');
+  assert.equal(CV.cutFlatAcross(c.anchorZ, z(0), z(1), z(2)), true, 'under the floor: it is cut'); assert.equal(CV.cutFlatAcross(ceil, z(0), z(1), z(2)), false, 'the ceiling stays');
+  // the shader: the level parts (half-integer edges, the varying is interpolated) are cut only across, at the lens and in the ellipse
+  const src = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
+  assert.match(src, /bool level = part > 19\.5 && part < 22\.5 \|\| part > 9\.5 && part < 11\.5;/, 'floors, ceilings, a slab\'s underside and beams are level');
+  assert.match(src, /bool across = !level \|\| z - min\(u_cutZ\.x, u_cutZ\.y\) > u_cutZ\.z && max\(u_cutZ\.x, u_cutZ\.y\) - z > u_cutZ\.z;/, 'between the eye and the body');
+  assert.match(src, /if \(depth < u_cutNear && across\) return true;/, 'at the lens, only across');
+  assert.match(src, /if \(r >= 1\.0 \|\| depth >= u_cut\.w \|\| !across\) return false;/, 'in the ellipse, only across');
+  assert.match(src, /if \(part > 19\.5\) \{/, 'the walls\' shading pass takes the floor and ceiling at a half-integer edge');
 }));
 
 test('sight: a creature behind a wall or out of reach is out of sight; announced beasts stay; the budget is bounded', () => {

@@ -32,6 +32,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
+import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
@@ -284,6 +285,9 @@ export const CLOSE_VIEW = Object.freeze({
     // tops): the ceiling is left out and a wall tile's floor reads as solid rock (`rock`, of the theme's stone); eye under the floor:
     // the floor's underside (`under`, a share of the theme's stone) hides everything above it except inside the ellipse. `near`:
     // walls and trim nearer the eye than this (tiles) are left out everywhere, so a wall the eye stands in or against never fills the view.
+    // `level` (Tim's bug, 2026-11-19): a level floor or ceiling (an interior heightfield's) is cut, in the ellipse or at the lens,
+    // only when its height lies more than this (tiles) inside the span between the eye's height and the body's (cutFlatAcross):
+    // the floor under the Wayfarer and the ceiling over her stay whole unless the eye is beyond them.
     // Tim's review (2026-11-18): indoors the orbit stands at each preset's `orbitDistance` / `orbitHeight` (CLOSE_VIEW.presets),
     // nearer than the old boom, so the Wayfarer is bigger on screen; outdoors (the overworld, courts, roofs) is unchanged. The
     // cutout is a little wider (radius 1.05 -> 1.25 tiles at the body), still bounded by `maxShare` of the screen.
@@ -296,7 +300,7 @@ export const CLOSE_VIEW = Object.freeze({
       // `fit`: the preset's own radius is never less than this times the distance at which the Wayfarer's whole body (framing.
       // bodyHeight) fills the screen's height less its margins: a short landscape screen keeps her whole (her own zoom may go nearer)
       fit: 1.05,
-      cutout: Object.freeze({ on: true, radius: 1.25, tall: 1.5, minPx: 56, maxShare: .42, stop: .35, soft: .3, hard: Object.freeze({ low: true, balanced: false, full: false }), rock: .32, under: .28, near: .45 }) }),
+      cutout: Object.freeze({ on: true, radius: 1.25, tall: 1.5, minPx: 56, maxShare: .42, stop: .35, soft: .3, hard: Object.freeze({ low: true, balanced: false, full: false }), rock: .32, under: .28, near: .45, level: .02 }) }),
     // The occluder window (2026-11-13): whatever stands between the eye and the Wayfarer's body (`body` tiles over their feet)
     // is cut open by a dithered cone, `eye` tiles wide at the camera and `radius` at the body, softened over the outer `soft`
     // share, to `keep` opacity at its core, ending `stop` tiles short of the body (close-view-gl.ts OCC_GLSL). Solids and the
@@ -1988,7 +1992,7 @@ function lookHeroAlpha(g, base) {
     && segDist2(px, py, px, py, LOOK.eyeX, LOOK.eyeY, LOOK.tx, LOOK.ty) < L.heroClear * L.heroClear || Math.hypot(px - LOOK.eyeX, py - LOOK.eyeY) < L.heroClear;
   return between ? lerp(base, Math.min(base, L.heroFade), LOOK.k) : base;
 }
-globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats, cutout: () => ({ ...CUT }), gl: () => ({ props: GLF.props, terrain: GLF.terrain, cut: [...GLF.cut], cutB: [...GLF.cutB], cutC: [...GLF.cutC], near: GLF.cutNear }) }; // read by the browser harness and the lab's console (diagnostics only)
+globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats, cutout: () => ({ ...CUT }), gl: () => ({ props: GLF.props, terrain: GLF.terrain, cut: [...GLF.cut], cutB: [...GLF.cutB], cutC: [...GLF.cutC], cutZ: [...GLF.cutZ], near: GLF.cutNear }) }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
 export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && closeViewWanted(g); }
@@ -2269,15 +2273,19 @@ export function closeViewPitchRange() {
 // the ellipse's centre (device px, from the bottom), its half width (device px) and the depth nearer than which it cuts; on, its
 // height share, soft share, eye under the floor; eye over the ceiling, eye over the walls' tops or in a wall, the rock's and the underside's shares of the stone.
 // Centred on the Wayfarer's body (or, zoomed in Look mode, on its subject). CUT keeps the same in CSS px for tests and the boards.
-const CUT = { on: false, sx: 0, sy: 0, rx: 0, ry: 0, depth: 0, below: false, above: false, solid: false };
+const CUT = { on: false, sx: 0, sy: 0, rx: 0, ry: 0, depth: 0, below: false, above: false, solid: false, eyeZ: 0, bodyZ: 0 };
+// Does a level floor or ceiling at height z stand between the eye and the Wayfarer's body (close-view-gl.ts WALL_CUT_GLSL's
+// `across`, the same test)? Only then may the cutout take it away (Tim's bug, 2026-11-19).
+export const cutFlatAcross = (z, eyeZ, bodyZ, margin = CLOSE_VIEW.camera.orbit.cutout.level) => z - Math.min(eyeZ, bodyZ) > margin && Math.max(eyeZ, bodyZ) - z > margin;
 function wallCutout(g, F, w, h, Q) {
-  const O = CLOSE_VIEW.camera.orbit, K = O.cutout, p = g.player, scale = F.devW / Math.max(1, F.w); CUT.on = false; F.cut.fill(0); F.cutB.fill(0); F.cutC.fill(0); F.cutNear = 0;
+  const O = CLOSE_VIEW.camera.orbit, K = O.cutout, p = g.player, scale = F.devW / Math.max(1, F.w); CUT.on = false; F.cut.fill(0); F.cutB.fill(0); F.cutC.fill(0); F.cutZ.fill(0); F.cutNear = 0;
   if (!orbitOn() || !K.on) return CUT;
   F.cutNear = K.near;
   const look = LOOK.k > .5 && LOOK.key && Number.isFinite(LOOK.tx), X = look ? LOOK.tx : footX(p), Y = look ? LOOK.ty : footY(p);
   const foot = look ? LOOK.tz : Number.isFinite(HERO_FEET.z) ? HERO_FEET.z : surfaceZ(g.map, X, Y), Z = look ? foot : foot + O.focus, floorZ = surfaceZ(g.map, CAM.cx, CAM.cy);
   CUT.below = CAM.hc < floorZ - .02 && !interiorTerrain(g.map); CUT.above = !F.outdoor && CAM.hc > (F.ceilH || CLOSE_VIEW.walls.height) - .05;
   CUT.solid = !F.outdoor && (CAM.hc > CLOSE_VIEW.walls.height - .05 || wallAt(g.map, CAM.cx, CAM.cy));
+  CUT.eyeZ = CAM.hc; CUT.bodyZ = Z; F.cutZ[0] = CAM.hc; F.cutZ[1] = Z; F.cutZ[2] = K.level; // a level floor or ceiling: cut only between these
   const q = project(X, Y, Z); if (!q) { // the body is behind the eye (it cannot be: the orbit looks at it), or at the lens: nothing is cut
     F.cutC[0] = CUT.above ? 1 : 0; F.cutC[1] = CUT.solid ? 1 : 0; F.cutC[2] = K.rock; F.cutC[3] = K.under; return CUT; }
   const k = CAM.F / Math.max(CLOSE_VIEW.near, q.depth), rx = Math.max(K.minPx, Math.min(K.maxShare * Math.min(w, h), K.radius * k));
@@ -2657,7 +2665,8 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
   MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
-  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; }
+  HATCH_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.hatchling; // the hatchling's body is skinned: his card is left empty
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; HATCH_DRAW.skipBody = false; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -3953,6 +3962,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
   // 2026-11-14 (CLOSE_VIEW_BEAST_SIGHT): two passes, nearest first in each: the beasts of your section, then every other body,
   // so a nearer creature of a roster kind (a pen's stag, the Stalker's copies) never takes a section beast's slot.
   admitRiddenTriceratops(g, Q, now, reduce, tier);
+  admitHatchling(g, now, reduce, tier);
   for (let pass = 0; pass < 2; pass++) for (let oi = n - 1; oi >= 0 && (big < maxB || small < maxM || dc < DUELIST_SLOT.maxDuelists || tc < TRICERATOPS_SLOT.maxBodies); oi--) {
     const it = order[oi], foe = itemKind[it] === 1 ? boardFoe[it] : null;
     if (!foe || closeViewSectionBeast(foe) !== (pass === 0) || MODEL_STATE.admitted.has(it) || !closeViewBeastEligible(foe, g) || draws[itemRef[it]]?.enemy !== foe) continue;
@@ -4011,6 +4021,22 @@ function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
   const frame = sampleTriceratops(RIDDEN.track, a, E); if (!frame) return;
   const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch;
+}
+// The Triceratops hatchling (hatchling.ts), out in his baby or young form: his skinned body on the Triceratops rig with his form's
+// proportions (close-view-beast-triceratops.ts triceratopsMesh: `triForm`), at his form's scale, on his own track. One body at most;
+// the lowest quality setting keeps his card. Reads only his presentation (hatchling-render.ts hatchlingPresentation).
+const HATCH_CV = { track: null, form: '', actor: { id: 'hatchling', kind: 'triceratops', triForm: 'baby', hp: 1, maxHp: 1, pack: null, facingX: 1 },
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, air: 0 } };
+function admitHatchling(g, now, reduce, tier) {
+  MODEL_STATE.beasts.hatchling = false;
+  const pr = tier === 'low' ? null : hatchlingPresentation(g, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, reduce); if (!pr) { HATCH_CV.track = null; return; }
+  const a = HATCH_CV.actor, E = HATCH_CV.env; a.triForm = pr.form; a.pack = pr.pack; a.facingX = pr.face;
+  if (!prepareCloseViewBeastMesh(triceratopsMesh(tier, a))) { HATCH_CV.track = null; return; }
+  if (!HATCH_CV.track || HATCH_CV.form !== pr.form) { HATCH_CV.track = createTriceratopsTrack(); HATCH_CV.form = pr.form; }
+  const x = pr.x + .5, y = pr.y + .82; E.x = x; E.y = y; E.z = surfaceZ(g.map, x, y - .07) + pr.hop; E.scale = pr.closeViewScale; E.now = now; E.reduce = reduce; E.tier = tier;
+  BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y; E.target = BEAST_TARGET;
+  const frame = sampleTriceratops(HATCH_CV.track, a, E); if (!frame) return;
+  const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.hatchling = true;
 }
 // 2026-11-13 (Tim: "every interactable character should have a real 3D body in Close View"): the townsfolk (close-view-folk.ts).
 // Nearest first, up to FOLK_SLOT.maxFolk for the tier; past it, or without the GPU's beast program, a person keeps its card. A

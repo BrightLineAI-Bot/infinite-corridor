@@ -78,10 +78,16 @@ export const RAPID_RELOAD = { shots: 3, share: .2, cooldownMs: 1500, ring: 8, or
 //   boss-class foe (monster-pack.ts staggerClass "boss") takes at most `bossCap` of its maximum health from one reflect; the
 //   stagger governor still holds its poise. A blow with no creature behind it (a trap) has nothing to go back to.
 // The parried blow's riders (burn, poison, bleed, confusion, slow, stun, curses, the frenzy) are not laid on the Wayfarer.
+// The reflect is the Wayfarer's own hit (Tim, 2026-11-19: "reflected damage can count as your own hit"): a turned shot or a
+// sent-back bolt strikes through the same projectile hit path as her tool shots, and direct reflected damage calls game.ts landHit
+// as a hit does, so it gives the frenzy blow, on-hit Echoes, the on-hit passives' counts and marks (Tempo, Sanctuary's leech),
+// kill credit and everything a kill sets off. It is not melee, not a tool shot and no charged release, and it carries no glyphs
+// (nothing of hers loosed it). Its damage stays `reflect` times the blow (bosses `bossCap`), never scaled again: not by her
+// damage scale, glyphs, Tempo's window, Shatterpoint or the Power Aegis empowerment (passiveHit adds no bonus strike to it).
 // Command grabs are never parried (`grabs`, and any ATTACK_MODULES move tagged "grab"; `stalkerGrabs`: the Stalker's ape arm;
 // `seaGrabs`: the sea creatures that bite and drag): the hold takes you even inside the window, and the Aegis blocks their
-// damage exactly as it always did. Reflected shots are never reflected again (a psychic wall lets them by), and reflected damage
-// never parries anything, so nothing ping-pongs.
+// damage exactly as it always did. Reflected shots are never reflected again (a psychic wall lets them by), and reflected damage,
+// and anything its on-hit effects set off, never parries anything (game.ts `_reflecting`), so nothing ping-pongs.
 export const POWER_AEGIS = { windowMs: 450, reach: 4, stun: .6, bossShare: .3, staminaShare: .5, buffMs: 2500, bonus: .4, toolBonus: .2,
   reflect: 1.5, bossCap: .15, /* Tim 2026-11-19: a perfect parry is a hard manoeuvre, so the reflect is substantial (Thorned Veil gives 30% passively) */ shotSpeed: 1.6, boltSpeed: 9, shotTurn: 10, shotLife: 2.4, seek: 12,
   grabs: ["psyGrab", "spinoGrab", "stegoJaws", "apatoWrap", "apatoCloneCoil", "wormGrab"], stalkerGrabs: ["grab", "grabPull"], seaGrabs: ["bogLurker", "angler"] };
@@ -95,7 +101,7 @@ export const PASSIVE_TEXT = {
   "casting-wind": `Each cast gives back ${pct(CASTING_WIND.share)} of your stamina (under Essence Walk, never more than half what the cast cost).`,
   "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
   "echoing-cast": `Every ${ECHOING_CAST.every}th cast repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
-  "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, the blow goes back (a shot turns round and flies at its shooter; a blow, roar, beam or blast lands on its maker), its burn, poison or slow never takes hold, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more (tool shots ${pct(POWER_AEGIS.toolBonus)}). Command grabs cannot be parried. Later in the ward it blocks as always.`,
+  "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, the blow goes back (a shot turns round and flies at its shooter; a blow, roar, beam or blast lands on its maker; it counts as your own hit), its burn, poison or slow never takes hold, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more (tool shots ${pct(POWER_AEGIS.toolBonus)}). Command grabs cannot be parried. Later in the ward it blocks as always.`,
   "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once.`,
 };
 
@@ -159,12 +165,13 @@ export function passiveHit(game, e, actual, now, src = null) {
   if (!e || !(actual > 0) || !Number.isFinite(now)) return;
   const m = mask(game, now), r0 = e[MARK], vuln = !!r0 && r0.vuln > now;
   if (!m && !vuln) return;
+  const reflected = !!src && typeof src === "object" && src.aegisReflected === true; // Power Aegis: a blow sent back (game.ts reflectBlow, turnShot)
   const S = state(game), melee = src === "melee" || (!!src && typeof src === "object" && (src.melee === true || src.brawler === true));
   let bonus = vuln ? TEMPO.vuln : 0;
   if (m & B_SHATTER && staggered(e)) bonus += SHATTERPOINT.bonus;
   if (m & B_EDGE && melee) bonus += edgeHit(game, S, e, now);
   if (m & B_AEGIS && (Number(game.powerAegisUntil) || 0) > now) bonus += melee ? POWER_AEGIS.bonus : src && typeof src === "object" && src.glyphHost === "tool" ? POWER_AEGIS.toolBonus : 0; // Power Aegis
-  if (bonus > 0) strike(game, e, actual * bonus);
+  if (bonus > 0 && !reflected) strike(game, e, actual * bonus); // a Power Aegis reflect deals its own amount only (no double dip)
   if (m & B_TEMPO && !e.dead) tempoCount(e, now);
   if (m & B_POCKET && melee) pocket(game, S, now);
   if (m & B_RELOAD && src && typeof src === "object" && src.rr > 0) reloadCount(S, src.rr);

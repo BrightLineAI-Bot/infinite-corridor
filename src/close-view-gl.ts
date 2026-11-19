@@ -448,6 +448,7 @@ void main() {
   if (u_outdoor.x > 0.5 && dir.z >= 0.0) { outColor = vec4(finish(outdoorSky(dir, true)), 1.0); return; }
   if (u_terrain > .5) { // the heightfield's floors are its own mesh; the eye over the walls or in one (the orbit): a wall tile, or off the floor, reads as solid rock
     if (u_cutC.y > 0.5 && dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; if (wallAt(ivec2(floor(P)))) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((t - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); }
+    else if (u_cutC.y > 0.5 && dir.z > 1e-5 && u_ceil.y > 0.5 && u_hc < u_ceil.x) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; if (wallAt(ivec2(floor(P)))) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((t - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); } // the eye in a wall, looking up: the wall's mass over it reads as rock too, never a black void (2026-11-19)
     outColor = vec4(finish(col), 1.0); return; }
   if (dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     float depth = t /* dir's component along the view axis is 1: t is the camera depth */, fogK = clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0);
@@ -501,6 +502,7 @@ void main() {
       vec3 N = u_ceil.w > 0.5 ? bump(vec3(0.0, 0.0, -1.0), W3, h * 0.04) : vec3(0.0, 0.0, -1.0); vec3 dif, spe; lightsAt(W3, N, 0.0, dif, spe);
       c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5);
       if (u_hall.x > 0.0) col = mix(col, hallBackdrop(dir), 0.24 + dark * 0.25); }
+    else if (u_cutC.y > 0.5 && (m.a & 1u) == 1u) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); // the eye in a wall, looking up: rock, never a black void (2026-11-19)
     else col = u_fog;
   }
   outColor = vec4(finish(col), 1.0);
@@ -530,7 +532,7 @@ uniform vec4 u_stoneP; uniform vec4 u_wallP; uniform vec3 u_mortar; uniform vec3
 // stoneP: course, block, bevel, roughness; wallP: damp height, damp amount, bump on, top falloff; arch: spring, radius, band, -
 void main() {
   vec3 c = v_col; float along = v_tex.x, u = v_tex.y, z = v_tex.z, top = v_tex.w, part = v_nrm.z, mat = v_nrm.w, deco = v_meta.x;
-  if (part >= 20.0) {
+  if (part > 19.5) { // (a half-integer edge: an interpolated part can land a hair under its integer, 2026-11-19)
     vec2 P = v_world.xy; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     vec3 N = normalize(cross(dFdx(v_world), dFdy(v_world)));
     if (part < 20.5 && N.z < 0.0 || part >= 20.5 && N.z > 0.0) N = -N;
@@ -562,7 +564,7 @@ void main() {
   if (part > 11.5 && part < 12.5) { // 2026-11-11: a growth or a feature of the Deep (a cap, a shard, a column...): its own colour, lit from within by deco
     N0 = normalize(N0); c = v_col * (0.82 + 0.3 * vnoise(vec2(along * 7.0, z * 9.0) + v_meta.w));
     emit = v_col * deco * (u_shimmer.z > 0.5 ? 1.0 : 0.85 + 0.15 * sin(u_time * 0.0017 + v_meta.w)); shin = deco > 0.05 ? 20.0 : 0.0; wet = deco * 0.4;
-  } else if (part >= 10.0) { // structural ceiling beams and their undersides
+  } else if (part > 9.5) { // structural ceiling beams and their undersides
     vec2 surface = abs(N0.z) > 0.5 ? v_world.xy : vec2(along, top - z);
     if (mat < 0.5) {
       h = ashlar(surface, u_stoneP.x * 0.62, u_stoneP.y, u_stoneP.z, u_stoneP.w, id, mortar);
@@ -693,14 +695,20 @@ void main() {
 // (u_cut.w) inside the screen ellipse round it is cut away, its outer u_cutB.z share screen-door dithered; with the eye under the
 // floor everything outside the ellipse is left to the floor's underside; with the eye over the ceiling the ceiling's beams and
 // bays are left out; and anything nearer the eye than u_cutNear (orbit.cutout.near) is left out everywhere. Only this depth pass discards: the shading pass (depth EQUAL) then has nothing to shade there.
-const WALL_CUT_GLSL = `uniform vec4 u_cut; uniform vec4 u_cutB; uniform vec4 u_cutC; uniform float u_cutNear;
-bool cutAway(float depth, float part) {
-  if (u_cutC.x > 0.5 && (part >= 10.0 && part < 11.5 || part >= 20.5 && part < 21.5)) return true;
-  if (depth < u_cutNear) return true; // at the lens: a face the eye stands at (a wall it is in or against) never fills the view
+// Tim's bug (2026-11-19): a level floor or ceiling (an interior heightfield's floor, its pits' floors, its ceiling and a slab's
+// underside: parts 20-22; the ceiling's beams: parts 10-11) only stands between the eye and the Wayfarer when its height lies
+// between theirs (u_cutZ: the eye's height, the body's, the margin; close-view.ts cutFlatAcross mirrors it). Otherwise the floor
+// he stands on and the ceiling over him are never cut (in the ellipse nor at the lens), which had left black half-ovals in both.
+const WALL_CUT_GLSL = `uniform vec4 u_cut; uniform vec4 u_cutB; uniform vec4 u_cutC; uniform float u_cutNear; uniform vec4 u_cutZ;
+bool cutAway(float depth, float part, float z) {
+  if (u_cutC.x > 0.5 && (part > 9.5 && part < 11.5 || part >= 20.5 && part < 21.5)) return true;
+  bool level = part > 19.5 && part < 22.5 || part > 9.5 && part < 11.5; // a floor, a ceiling, a slab's underside, a beam (half-integer edges: the varying is interpolated)
+  bool across = !level || z - min(u_cutZ.x, u_cutZ.y) > u_cutZ.z && max(u_cutZ.x, u_cutZ.y) - z > u_cutZ.z; // between the eye and the body
+  if (depth < u_cutNear && across) return true; // at the lens: a face the eye stands at (a wall it is in or against) never fills the view
   if (u_cutB.x < 0.5) return false;
   float r = length((gl_FragCoord.xy - u_cut.xy) / max(vec2(u_cut.z, u_cut.z * u_cutB.y), vec2(1.0)));
   if (u_cutB.w > 0.5 && r >= 1.0) return true;
-  if (r >= 1.0 || depth >= u_cut.w) return false;
+  if (r >= 1.0 || depth >= u_cut.w || !across) return false;
   if (u_cutB.z <= 0.0) return true;
   const float bayerW[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0); ivec2 pc = ivec2(gl_FragCoord.xy) & 3;
   return smoothstep(1.0 - u_cutB.z, 1.0, r) <= (bayerW[pc.y * 4 + pc.x] + 0.5) / 16.0;
@@ -716,8 +724,8 @@ precision highp float; uniform vec4 u_cut; uniform vec4 u_cutB; out vec4 outColo
 void main() { if (length((gl_FragCoord.xy - u_cut.xy) / max(vec2(u_cut.z, u_cut.z * u_cutB.y), vec2(1.0))) < 1.0) discard; outColor = vec4(0.0); }`;
 const WALL_DEPTH_FS = `#version 300 es
 precision highp float;
-in vec4 v_tex; in vec4 v_nrm; in float v_depth; uniform vec4 u_arch; out vec4 outColor;
-` + WALL_CUT_GLSL + `void main() { if (v_nrm.z > 3.5 && v_nrm.z < 4.5 && (v_tex.z < u_arch.x || length(vec2(v_tex.y - 0.5, v_tex.z - u_arch.x)) < u_arch.y)) discard; if (cutAway(v_depth, v_nrm.z)) discard; outColor = vec4(0.0); }`;
+in vec3 v_world; in vec4 v_tex; in vec4 v_nrm; in float v_depth; uniform vec4 u_arch; out vec4 outColor;
+` + WALL_CUT_GLSL + `void main() { if (v_nrm.z > 3.5 && v_nrm.z < 4.5 && (v_tex.z < u_arch.x || length(vec2(v_tex.y - 0.5, v_tex.z - u_arch.x)) < u_arch.y)) discard; if (cutAway(v_depth, v_nrm.z, v_world.z)) discard; outColor = vec4(0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- creatures: camera-facing cards from the sprite atlas
 // a_meta: opacity, hit flash, silhouette (0 none; up to 1 a creature's; 1 + a the Wayfarer's; 3 + a a far creature out of sight, the
@@ -1162,6 +1170,7 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   occA: new Float32Array(4), occB: new Float32Array(4), occC: new Float32Array(4), occSolid: 0, occTerrain: 0, edge: 0,
   // the orbit's cutout (close-view.ts wallCutout; WALL_CUT_GLSL): zero, nothing is cut
   cut: new Float32Array(4), cutB: new Float32Array(4), cutC: new Float32Array(4), cutNear: 0,
+  cutZ: new Float32Array(4), // the eye's height, the body's and the margin: a level floor or ceiling is cut only between them (2026-11-19)
   // the sight field (close-view.ts visSeen, 2026-11-18): 1 indoors with it, so the props leave out what stands on a tile out of sight
   sight: 0,
   // towering structures (close-view-outdoor.ts outdoorTowerAir): the air below and above the eye and its colour; the cloud deck
@@ -1184,7 +1193,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
     gl.uniform3fv(u.u_amb, F.amb); gl.uniform3fv(u.u_torch, F.torch); gl.uniform4fv(u.u_torchP, F.torchP); gl.uniform4fv(u.u_lp, F.lp); gl.uniform4fv(u.u_lc, F.lc); gl.uniform1i(u.u_nl, F.nl);
     gl.uniform4fv(u.u_fogP, F.fogP); gl.uniform3fv(u.u_fog, F.fog); gl.uniform3fv(u.u_haze, F.haze); gl.uniform4fv(u.u_grade, F.grade); gl.uniform4fv(u.u_finish, F.finish);
     if (u.u_water) gl.uniform4fv(u.u_water, F.water); gl.uniform4fv(u.u_sun, F.sun); gl.uniform3fv(u.u_sunC, F.sunC); gl.uniform4fv(u.u_tower, F.tower); gl.uniform4fv(u.u_towerR, F.towerR); gl.uniform3fv(u.u_towerC, F.towerC); };
-  const cutU = (P) => { if (P.U.u_cut) gl.uniform4fv(P.U.u_cut, F.cut); if (P.U.u_cutB) gl.uniform4fv(P.U.u_cutB, F.cutB); if (P.U.u_cutC) gl.uniform4fv(P.U.u_cutC, F.cutC); if (P.U.u_cutNear) gl.uniform1f(P.U.u_cutNear, F.cutNear); }; // the orbit's cutout
+  const cutU = (P) => { if (P.U.u_cut) gl.uniform4fv(P.U.u_cut, F.cut); if (P.U.u_cutB) gl.uniform4fv(P.U.u_cutB, F.cutB); if (P.U.u_cutC) gl.uniform4fv(P.U.u_cutC, F.cutC); if (P.U.u_cutNear) gl.uniform1f(P.U.u_cutNear, F.cutNear); if (P.U.u_cutZ) gl.uniform4fv(P.U.u_cutZ, F.cutZ); }; // the orbit's cutout
   gl.clearColor(F.fog[0], F.fog[1], F.fog[2], 1); gl.clearDepth(1); gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   // 1. walls, trim, arches and props: the static buffer, opaque, with depth (first, so the environment is never shaded where a wall stands)
   gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
