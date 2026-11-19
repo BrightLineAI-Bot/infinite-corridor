@@ -14,7 +14,7 @@ import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } f
 import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.ts"; // release 459 // release 395 // release 315; 321: the drone
 import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.ts"; // release 339; 341
 import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.ts";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount } from "./beast-mounts.ts"; // release 748: the stable
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.ts"; // release 748: the stable
 import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.ts";
 import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.ts";
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
@@ -28,6 +28,7 @@ import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStat
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
 import { skylandLabel, SEEDS, seedCount } from "./skylands.ts";
+import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.ts"; // the seed hunts: the Atlas marker and the compass
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
 import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
@@ -43,7 +44,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest } from "./atlas-view.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -216,6 +217,13 @@ const UTILITY_ICONS = {
 };
 // Slot D (2026-11-15): the tools that draw as an icon on whichever slot holds them (the utility button's three), and each slot
 // button's input action back to its slot.
+// Tim, 2026-11-18: the Triceratops's own slot icons while riding (TRICERATOPS_CONTROLS): a horn lunge, a lowered-head bash, a flying horn.
+const MOUNT_CONTROL_COLOR = "#e0b45a";
+const MOUNT_CONTROL_ICONS = {
+  dash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h6M2 12h6M3 16h6" stroke="#e0b45a" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><path d="M10 17c0-5 3-9 8-10l3-3-1 5c1 3 0 7-4 9z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M18 7l4-4M17 10l5-1" stroke="#f4ead2" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  bash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c0-6 4-10 10-10 3 0 5 2 5 5 0 3-3 5-7 5z" fill="#c9a36a" stroke="#4a3418" stroke-width=".8"/><path d="M14 9l6-5M17 13l6-2M6 12l-3-4" stroke="#f4ead2" stroke-width="1.6" stroke-linecap="round"/><path d="M20 16l2 1M19 19l2 2M17 20l0 3" stroke="#ffe08a" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  horn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9" stroke="#e0b45a" stroke-width="1.4" stroke-dasharray="2 2" stroke-linecap="round"/><path d="M10 9.5l11 2.5-11 2.5c-1-1.6-1-3.4 0-5z" fill="#f4ead2" stroke="#4a3418" stroke-width=".8"/><circle cx="21" cy="12" r="1.2" fill="#ffe08a"/></svg>',
+};
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
@@ -650,13 +658,14 @@ function navigationTargets() {
     huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint,farQuest=activeFarQuest(save); // release 716: a quest to a far civilisation
   const quest=compassQuest(save); // 2026-11-12: the relay leads or the Cairn Keeper's errand (a quest with no fixed section); before, any unmade relay choice counted
   const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx].join(":");
+  const seedHunt=nearestSeedHunt(save,game.rx,game.ry); // tall towers: the nearest live seed hunt (atlas-view.ts seedHuntGuidance)
+  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx,seedHunt?.tower,seedHunt?.where,seedHunt?.x,seedHunt?.y,seedHunt?.door?.x,seedHunt?.door?.y].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   // Tim (2026-11-12): the compass points only at an objective (atlas-view.ts compassGuidance): a Journal pin, the tracked hunt,
   // a far quest (release 716), a target chosen by tapping, or the waymarks a quest with no fixed section follows. Else no needle.
   const cues=game.area==="overworld"&&quest&&!pick?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues});
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues})||(game.area==="overworld"?seedHuntGuidance(seedHunt,seedHunt?{[seedHunt.kind]:SEEDS[seedHunt.kind]?.name}:{}):null); // a seed hunt last, as compassGuidance's seedHunt
   navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
   return navigationCache;
 }
@@ -1504,7 +1513,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1001,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1003,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1528,7 +1537,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1001,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1001\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1003,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1003\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1540,7 +1549,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1001,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1003,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1781,6 +1790,7 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
+  for(const q of activeSeedHunts(save))pins.push({rx:q.rx,ry:q.ry,color:TALL_TOWERS.seedHunt.marker,inner:SEEDS[q.kind]?.color||"#ffffff",label:`Seed hunt: ${SEEDS[q.kind]?.name||"a seed"}`,seed:true}); // tall towers: each live seed hunt, a glinting seed-shaped marker
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
   for(const r of retreatsUnderWay(save))pins.push({rx:r.rx,ry:r.ry,color:"#ff8f4a",label:`${WORLD_BEASTS[r.id].name}, retreating`}); // release 605: a retreat can be followed on the Atlas
@@ -1792,6 +1802,7 @@ function drawAtlasPins(w,h,cell){
     if(x>=E&&y>=E&&x<=w-E&&y<=h-E){ // on the map: a pin standing on its section
       mctx.fillStyle="rgba(0,0,0,.35)";mctx.beginPath();mctx.ellipse(x,y,S*.55,S*.22,0,0,7);mctx.fill();
       if(p.mark){mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x,y-S*2.6);mctx.stroke();mctx.beginPath();mctx.moveTo(x,y-S*2.6);mctx.lineTo(x+S*1.6,y-S*2.1);mctx.lineTo(x,y-S*1.6);mctx.closePath();mctx.fillStyle=p.color;mctx.fill();mctx.stroke();mctx.restore();continue} // release 355: a map mark is a small flag
+      if(p.seed){const cy=y-S*1.5;mctx.beginPath();mctx.moveTo(x,cy-S*1.3);mctx.quadraticCurveTo(x+S*.95,cy,x,cy+S*1.1);mctx.quadraticCurveTo(x-S*.95,cy,x,cy-S*1.3);mctx.closePath();mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();mctx.fillStyle=p.inner;mctx.beginPath();mctx.ellipse(x,cy+S*.1,S*.32,S*.55,0,0,7);mctx.fill();mctx.restore();continue} // tall towers: a seed hunt is a seed-shaped marker, the seed's own colour at its heart
       mctx.beginPath();mctx.moveTo(x,y);mctx.bezierCurveTo(x-S*.2,y-S*.8,x-S,y-S*1.3,x-S,y-S*2);mctx.arc(x,y-S*2,S,Math.PI,0);mctx.bezierCurveTo(x+S,y-S*1.3,x+S*.2,y-S*.8,x,y);mctx.closePath();
       mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();
       mctx.fillStyle="#091018";mctx.beginPath();mctx.arc(x,y-S*2,S*.38,0,7);mctx.fill();
@@ -2527,10 +2538,10 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
   const short=(n)=>n>=10000?`${(n/1000).toFixed(n>=100000?0:1)}k`:String(n);hudSet(hudEl("#xpCompact"),"text",`LV ${save.level} · XP ${short(save.xp)}/${short(next)}`);hudSet(hudEl("#apCompact"),"text",`AP ${short(aperture)}${apertureNext ? "/" + short(apertureNext) : ""} · T${tier} · S${stageOf(save)}`);/* release 279: the creature stage */hudSet(hudEl("#apCompact"),"title",`${apertureBand(aperture).name} band`);
-  const states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
+  const mountJump = game.triceratopsControls?.(), states = actionReadiness(game, now), SLOT_OF_ACTION = (slotOfAction ||= Object.fromEntries(SLOTS.map((q) => [SLOT_ACTIONS[q], q])));
   for (const [action, state] of Object.entries(states)) {
     const button = hudEl(`[data-action="${action}"]`), slotOf = SLOT_OF_ACTION[action];
-    if (!button || (slotOf && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
+    if (!button || (slotOf && !state.mount && UTILITY_TOOL_ICONS[slotTool(save, slotOf)?.tool])) continue; // a slot holding Build, Robot or Drone labels itself below
 
     const cooling = state.remaining > 0,
       fraction = cooling ? Math.min(1, state.remaining / state.duration) : 0,
@@ -2540,6 +2551,8 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
       ? `${state.remaining.toFixed(state.remaining < 1 ? 1 : 0)}s`
       : action === "potion"
         ? `×${state.count}`
+        : state.mount
+          ? state.name // Tim, 2026-11-18: a Triceratops attack names itself under its icon
         : action === "dodge"
           ? `${state.cost} STA`
           : state.essence != null
@@ -2552,8 +2565,11 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
     hudSet(button,"class:unavailable",state.available === false);
     hudSet(button,"data-cooldown",label);
     if (action === "tool") hudSet(button,"class:empowered",state.empowered === true && !!state.rounds); /* gold count while empowered rounds are held */
-    hudSet(button,"aria-label",`${action} ${label}`);
+    hudSet(button,"aria-label",action === "jump" && mountJump ? `Jump: Triceratops ${mountJump.jump} ${label}` : `${action} ${label}`);
   }
+  // Tim, 2026-11-18: riding a Triceratops, Jump reads as its landing (Stomp; the Silly Goose's Drill), and back to Jump on getting down.
+  { const ab = hudEl('[data-action="interact"]'), h = game.mountHoldProgress?.() || 0; if (ab) { hudSet(ab, "class:holding", h > 0); hudSet(ab, "--hold", `${Math.round(h * 100)}%`); } } // hold Act: the call fills the button (MOUNT_RIDE.callHold)
+  { const jb = hudEl('[data-action="jump"]'); if (jb) { hudSet(jb, "text", mountJump ? mountJump.jump : "Jump"); hudSet(jb, "class:mount-control", !!mountJump); } }
   { const pb = hudEl('[data-action="potion"]'); if (pb) hudSet(pb, "data-tier", potionToDrink(save)); } // release 339: the bottle takes the tier's colour
   // Release 261: the spell preset button shows which preset (1 or 2) is in the slots (the slots are lettered, so no clash).
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
@@ -2570,7 +2586,14 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   for (const slot of SLOTS) { const action = SLOT_ACTIONS[slot], n = slotLabel(slot), util = slot === "d";
     const button = hudEl(`[data-action="${action}"]`), c = slotted(save, slot), t = !c && slotTool(save, slot); // release 309: Build or the item in A or B
     if (!button) continue;
+    const mc = states[action]?.mount && TRICERATOPS_CONTROLS[action]; // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks
+    if (mc) { const key = `mount:${mc.attack}`;
+      if (button.dataset.slotKey !== key) { button.dataset.slotKey = key; const sym = Object.assign(document.createElement("span"), { className: "slot-sym mount-sym" }); sym.innerHTML = MOUNT_CONTROL_ICONS[mc.attack]; button.replaceChildren(sym, Object.assign(document.createElement("span"), { className: "slot-letter", textContent: n })); button.style.setProperty("--slot", MOUNT_CONTROL_COLOR); hudSet(button, "class:spent", false); hudSet(button, "data-kind", ""); }
+      hudSet(button, "class:mount-control", true); hudSet(button, "class:mount-active", states[action].active === true); hudSet(button, "class:lantern-lit", false); setBuffFill(button, 0);
+      hudSet(button, "aria-label", `Slot ${n}: Triceratops ${mc.name}, ${states[action].cost} stamina${states[action].available === false ? ", not ready" : ""}`); continue; }
+    hudSet(button, "class:mount-control", false); hudSet(button, "class:mount-active", false);
     const key = c ? c.key : t ? `tool:${t.tool}:${t.item || ""}` : "empty", toolIcon = t && UTILITY_TOOL_ICONS[t.tool];
+    if (toolIcon) { hudSet(button, "class:cooling", false); hudSet(button, "class:unavailable", false); hudSet(button, "--cooldown", "0%"); } // never set for these, unless the Triceratops borrowed the slot
     if (button.dataset.slotKey !== key) { button.dataset.slotKey = key;
       const sym = Object.assign(document.createElement("span"), { className: toolIcon && util ? "utility-icon" : "slot-sym", textContent: c ? c.symbol : t?.tool === "lantern" ? LANTERN.symbol : t ? "" : "+" });
       if (toolIcon) sym.innerHTML = toolIcon(); else if (t?.tool === "item") sym.innerHTML = ITEM_ICONS[t.item] || "?";
