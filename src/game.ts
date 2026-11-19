@@ -138,7 +138,7 @@ import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonI
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
 import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
-import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale } from "./the-deep.ts";
+import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
@@ -358,7 +358,7 @@ export function pinDungeonLayout(save, id) {
   return history;
 }
 // Release 677 (the-deep.ts): every floor of the Deep has an Ember Door where you arrive; only floor 1 keeps its free way out.
-// A lair of the Deep (the-deep.ts DEEP_SPECIALS, DEEP_FLOOR_GEN 3): its beast is the floor's guardian, in the guardian's place. The
+// A lair of the Deep (the-deep.ts DEEP_SPECIALS, DEEP_FLOOR_GEN 3; more rows at 4): its beast is the floor's guardian, in the guardian's place. The
 // Poison Crypt's theme has already made the guardian its Mire Heart (underlands.ts mireCrypt); the floor's history takes the Crypt's
 // state (wiped with the floor, game.ts resetDeepFloor), so the seeplings and the lair work as in any Poison Crypt.
 // DUNGEON_CHARTING: the body the walkable ground is worked out for (the Wayfarer on foot: a jump of one step up, any drop down), and the
@@ -8682,7 +8682,7 @@ export class Game {
     onConstellationKill(this);
     const firstSpoils = takeFirstSpoils(this.save, e); // release 263: a world beast's first kill: its Sigil and Echo for certain
     const roomBeast = noteRoomBeastKill(this.save, e); // a big-room Wild Stegosaurus or a room/interloper Spinosaurus: recorded, and its Echo certain
-    const echo = echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast || roomBeast, this.save.dropCounter, firstSpoils || roomBeast), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
+    const echo = e.deepLair && deepSpecialRow(e.deepLair)?.noEcho ? null /* the-deep.ts DEEP_SPECIALS `noEcho` (Tim, 2026-11-19): such a lair pays its guardian cache only */ : echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast || roomBeast, this.save.dropCounter, firstSpoils || roomBeast), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
     if (echo) this.glyphNotice = echoNote;
     if (e.hordeOf) { const r = hordeKill(this.save, dungeonHistory(this.save, e.hordeOf)); if (r) { this.glyphNotice = r.message; if (r.sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + r.sigils; } /* release 273: a Sigil at the end of each wave */ if (r.cleared) { if (r.unlocked) r.message += latticeNote(this.save) + townNote(this.save); /* 2026-11-05: a horde's piece can unlock the Gate */ this.glyphNotice = r.message; this.defeatNotice = { title: "THE HORDE IS BROKEN", detail: r.message, kind: "danger" }; journalOnce(this.save, `horde-cleared:${e.hordeOf}`, r.message, "The Gate Revenant horde"); } } } // release 269
     if (!e.hordeOf) { const sigils = sigilDrop(this.save, e, this.map, this.save.dropCounter, firstSpoils); if (sigils) { const c = (this.save.consumables ||= {}); c.crossingSigil = (c.crossingSigil || 0) + sigils; this.glyphNotice = `A Crossing Sigil falls from ${e.packName || e.name || "the fallen"}.${echoNote ? " " + echoNote : ""}`; } } // release 263 (269: none from a horde Revenant)
@@ -10928,6 +10928,18 @@ export class Game {
     Object.assign(c, { deepLair: id, deepScaled: true, boss: true, hp, maxHp: hp, damage: Math.max(1, Math.round(v.damage * k.damage)), staggerResistance: v.staggerResistance, speedMultiplier: v.speed, attackGap: v.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: row.name });
     if (c.baseDamage) c.baseDamage = c.damage; delete c.worldBeast; return c;
   }
+  // A lair beast whose row says `contain` (the-deep.ts DEEP_SPECIALS; Tim, 2026-11-19): its moves were made for open land, and a few
+  // carry it through stone (the Briar Stag's leap shadow, the Ashen Moth's dive). Landed, with its body overlapping rock, it could not
+  // move again (moveAxis refuses any step from a footing that is not open); it is set on the nearest open ground instead. Only while
+  // it is on the ground (not aloft or untargetable mid-move); one footing check a frame, nothing allocated unless it is in rock.
+  containDeepLair() {
+    const row = deepSpecialRow(this.map.deepLair.id); if (!row?.contain) return;
+    const w = mapWidth(this.map, this.area);
+    for (const e of this.enemies) {
+      if (!e.deepLair || e.dead || e.aloft || e.untargetable || e.retreating || footprintOpen(this.map, w, e.x, e.y, true)) continue;
+      const to = nearestOpenFootprint(this.map, w, e, DEEP_SPECIALS.containReach); if (to) { e.x = to.x; e.y = to.y; }
+    }
+  }
   placeDeepStair(history) {
     if (this.area !== "dungeon" || !this.map?.deepFloor || !history?.combatClear?.completed || this.map.objects.some((o) => o.kind === "deepStair")) return null;
     const exit = this.map.objects.find((o) => o.id === "expedition-fast-exit") || this.map.entry; if (!exit) return null;
@@ -12235,6 +12247,7 @@ export class Game {
     this._astralDamagePending=true;
     if (this.area === "overworld" || this.area === "dungeon") this.tickWorldBeasts(dt); // release 239 (release 249: in dungeons too)
     if (this.area === "dungeon" && this.map?.pentArena) this.tickPentagonArena(dt); // the Stillworks' beast wakes
+    if (this.area === "dungeon" && this.map?.deepLair) this.containDeepLair(); // the-deep.ts DEEP_SPECIALS `contain`: a lair beast set back on open ground
     this.tickStalker(dt, now); // release 678
     if (this.area === "overworld" && (this._shoreCheck = (this._shoreCheck || 0) - dt) <= 0) { this._shoreCheck = .5; if ((this.save.materials?.wood || 0) >= WOOD.skiffCost && this.save.capabilities?.swim && !this.nearestObject() && !this.wayglassNear(false) && this.shoreWater() && now > (this.woodHintAt || 0)) { this.woodHintAt = now + 15000; this.message = `Act: build a skiff here (${WOOD.skiffCost} wood).`; } }
     // Release 283: dungeon water is deadly. Entered (or still swum) without stamina it drowns; otherwise it wounds quickly.

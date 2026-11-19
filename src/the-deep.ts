@@ -49,7 +49,10 @@ export const THE_DEEP = {
 // Generation 3 (Unreleased; Tim's log at about floor 50: "if you're in the depths, it should spawn all of these types of dungeons, maybe
 // not the Threefold dungeons, but those other different special creature dungeons"): a share of floors are lairs (DEEP_SPECIALS),
 // rolled per floor, more often the deeper the floor. A floor that is not a lair is generated exactly as at generation 2.
-export const DEEP_FLOOR_GEN = { version: 3 };
+// Generation 4 (Unreleased; Tim, 2026-11-19: more Deep lairs): four more lair beasts (DEEP_SPECIALS rows with `gen: 4`). The floor's
+// generation 3 roll is made first, unchanged; then a second hashed roll gives the floor to one of the new lairs at the new rows'
+// share of all the weight. A generation 4 floor that the second roll does not take is the generation 3 floor exactly.
+export const DEEP_FLOOR_GEN = { version: 4 };
 export const deepFloorGen = (history) => Math.max(1, Math.floor(Number(history?.deepGen) || 1));
 export const deepIdFor = (seed, rx, ry) => `the-deep:${seed}:${rx}:${ry}`;
 export const isDeepId = (id) => String(id || "").startsWith("the-deep:");
@@ -78,7 +81,7 @@ export const guardianAffixes = (floor) => floor >= THE_DEEP.guardianTwo ? 2 : 1;
 // The item level bonus for loot on `floor` of a shaft whose deepest floor is `best`.
 export function lootBonus(floor, best) { const L = THE_DEEP.loot; return floor >= (best || 0) - L.near ? Math.min(L.max, Math.floor(floor / L.per)) : 0; }
 
-// ------------------------------------------------------------------------------------------------ lairs (DEEP_FLOOR_GEN 3)
+// ------------------------------------------------------------------------------------------------ lairs (DEEP_FLOOR_GEN 3, 4)
 // The special creature floors of the Deep: every creature dungeon the game has, save the Threefold (Tim) and the Gate Revenant horde
 // (it follows you out across the land, locks a piece of the Far Gate and drops Crossing Sigils, none of which the Deep has):
 // - poisonCrypt: the Poison Crypt (underlands.ts MIRE_CRYPT): the Mire Heart (the Morphing Blob) in its lair, seeplings from the pools.
@@ -86,6 +89,14 @@ export function lootBonus(floor, best) { const L = THE_DEEP.loot; return floor >
 // - tremorWorm: a Lava Bog floor held by the Tremor Worm (its own burrowing moves: it travels under the floor, surfaces on open ground).
 // - voidWalker: a Geode Hollow floor held by the Void Walker (as in the Stillworks, its Supernova burns but never scars the floor).
 // - wildStego, spinoRex: the big-room beasts of the great buildings, on a Rootbound Deep and a Fungal Hollow floor.
+// From DEEP_FLOOR_GEN 4 (`gen: 4`; Tim, 2026-11-19), the world beasts' kin, each with its own moves (no new AI):
+// - mountainTurtle: a Frozen Deep floor (its comets and dash leave frost and fire as effects only; the sea ice is the overworld's).
+// - briarStag: a Rootbound floor (its brambles, roots, groves and mire are effects; game.ts containDeepLair sets it back on open
+//   ground should its leap's shadow, which follows you through stone, come down inside it).
+// - ashenMoth: a Lava Bog floor (its dive stops where its lane ends; no chrysalis, which only the great trees hang).
+// - astralWorm: a Star Hive floor (its ink, rings and mirages are its own bounded state; as kin it never makes for a Wayglass).
+// Not lairs, by Tim's word (2026-11-19): the Lightning Giant, the Nanobot Knight, the Crimson Tyrant and the Doom Chaser.
+// `contain`: set back on open ground should it come down in rock (game.ts containDeepLair). `noEcho`: its fall leaves no Echo (Tim, 2026-11-19: the lair pays the floor's guardian cache only; game.ts defeatEnemy).
 // Each lair beast is the floor's guardian (its spawn, its place and its role: felling it opens the Deep Stair). It is the beast's kin,
 // not the roaming hunt (no tries, retreat, bounty or Echo), tuned to the Wayfarer as the world beasts are, times `lair` by floor
 // (game.ts tuneDeepLair) in place of the floor's own +hp/+damage, and it carries no affix or boss kit.
@@ -101,10 +112,15 @@ export const DEEP_SPECIALS = {
     { id: "voidWalker", weight: 2, theme: "geode", beast: "voidWalker", name: "The Void Walker", lore: "The light here bends toward a point that is not there. The Void Walker keeps this floor." },
     { id: "wildStego", weight: 2, theme: "rootwood", beast: "wildStego", name: "The Wild Stegosaurus", lore: "Roots, plates and a low, slow breathing. The Wild Stegosaurus has made this floor its own." },
     { id: "spinoRex", weight: 2, theme: "fungal", beast: "spinoRex", name: "The Spinosaurus", lore: "Under the glowing caps the air smells of blood. The Spinosaurus hunts this floor." },
+    { id: "mountainTurtle", gen: 4, noEcho: true, contain: true, weight: 2, theme: "frozen", beast: "mountainTurtle", name: "The Mountain Turtle", lore: "Frost furs the walls, and the floor trembles to slow, enormous steps. The Mountain Turtle has walked down even here." },
+    { id: "briarStag", gen: 4, noEcho: true, contain: true, weight: 2, theme: "rootwood", beast: "briarStag", name: "The Briar Stag", lore: "Brambles have grown through the stone, and somewhere among the roots an antlered crown is burning. The Briar Stag ruts on this floor." },
+    { id: "ashenMoth", gen: 4, noEcho: true, contain: true, weight: 2, theme: "lavaBog", beast: "ashenMoth", name: "The Ashen Moth", lore: "Grey ash drifts up from the cracks like snow falling the wrong way. Two embers watch you from above: the Ashen Moth." },
+    { id: "astralWorm", gen: 4, noEcho: true, weight: 2, theme: "starHive", beast: "astralWorm", name: "The Astral Worm", lore: "The dark between the cells is deeper than it should be, and it moves. The Astral Worm is unfolding on this floor." },
   ],
   // The lair beast's factors on the world beast's vitals (pentagon-arena.ts pentagonArenaVitals): `at1` on floor 1, `perFloor` more for
   // each floor below it, at most `max`.
   lair: { hp: { at1: .8, perFloor: .025, max: 3 }, damage: { at1: .9, perFloor: .012, max: 2 } },
+  containReach: 4, // tiles game.ts containDeepLair looks for open ground round a `contain` beast that came down in rock
 };
 // The share of floors that are lairs at `floor`.
 export function specialChance(floor) {
@@ -113,14 +129,23 @@ export function specialChance(floor) {
   for (let i = 1; i < C.length; i++) if (f <= C[i][0]) { const [a, p] = C[i - 1], [b, q] = C[i]; return p + (q - p) * (f - a) / (b - a); }
   return C[C.length - 1][1];
 }
-// The lair of a floor (a DEEP_SPECIALS row), or null: from generation 3 on, fixed per seed, shaft and floor.
+// The rows a floor of generation `gen` may roll from (a row arrives at its `gen`, 3 if none).
+const rowGen = (r) => Number(r.gen) || 3;
+const pickRow = (rows, h) => { const total = rows.reduce((n, r) => n + r.weight, 0); let k = h % total; for (const r of rows) { if (k < r.weight) return r; k -= r.weight; } return null; };
+// The lair of a floor (a DEEP_SPECIALS row), or null: from generation 3 on, fixed per seed, shaft and floor. Generation 3's roll over
+// its own rows is made exactly as before; each later generation that added rows then takes the floor for one of them at their share
+// of the weight so far (a second hash), else leaves the earlier answer as it was.
 export function floorSpecial(seed, id, floor, gen = DEEP_FLOOR_GEN.version) {
   if (!(gen >= 3)) return null;
   const S = DEEP_SPECIALS, h = hashSeed(`${seed}:deep-special:v${S.version}:${id}:${floor}`);
   if ((h % 10000) / 10000 >= specialChance(floor)) return null;
-  const total = S.rows.reduce((n, r) => n + r.weight, 0); let k = hashSeed(`${seed}:deep-special-row:v${S.version}:${id}:${floor}`) % total;
-  for (const r of S.rows) { if (k < r.weight) return r; k -= r.weight; }
-  return null;
+  let row = pickRow(S.rows.filter((r) => rowGen(r) === 3), hashSeed(`${seed}:deep-special-row:v${S.version}:${id}:${floor}`));
+  for (let g = 4; g <= gen; g++) {
+    const added = S.rows.filter((r) => rowGen(r) === g); if (!added.length) continue;
+    const have = S.rows.reduce((n, r) => n + (rowGen(r) < g ? r.weight : 0), 0), more = added.reduce((n, r) => n + r.weight, 0);
+    if ((hashSeed(`${seed}:deep-special-gen:v${S.version}:${g}:${id}:${floor}`) % 10000) / 10000 < more / (have + more)) row = pickRow(added, hashSeed(`${seed}:deep-special-row:v${S.version}:${g}:${id}:${floor}`));
+  }
+  return row;
 }
 export const deepSpecialRow = (id) => DEEP_SPECIALS.rows.find((r) => r.id === id) || null;
 // The lair beast's factors on `floor`.

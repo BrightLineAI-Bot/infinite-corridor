@@ -5,7 +5,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, generatePinnedDungeon, pinDungeonLayout } from '../src/game.ts';
+import { Game, generatePinnedDungeon, pinDungeonLayout, footprintOpen } from '../src/game.ts';
+import { hashSeed } from '../src/random.ts';
 import { shaftHere, deepIdFor, deepShaft, DEEP_FLOOR_GEN, DEEP_SPECIALS, floorSpecial, specialChance, lairScale, floorPlan, floorScale } from '../src/the-deep.ts';
 import { generateExpeditionDungeon, THEME_POOL_VERSION } from '../src/underlands.ts';
 import { dungeonHistory } from '../src/interactions.ts';
@@ -118,4 +119,109 @@ test('a lair floor survives a reload as it was, and the next floor leaves its Cr
   for (const q of g2.enemies) if (!q.dead && !q.ambient) { q.hp = 0; g2.defeatEnemy(q); q.dead = true; }
   const st = g2.map.objects.find((o) => o.kind === 'deepStair'); g2.player.x = st.x; g2.player.y = st.y; assert.ok(g2.interact('descend', st.id).ok);
   const next = floorSpecial(SEED, id, floor + 1); if (next?.id !== 'poisonCrypt') assert.ok(!g2.mireHere(), 'the Crypt went with its floor');
+});
+
+// ------------------------------------------------------------------------------------------------ DEEP_FLOOR_GEN 4 (Tim, 2026-11-19)
+// Four more lairs, the world beasts' kin with their own moves: the Mountain Turtle, the Briar Stag, the Ashen Moth and the Astral Worm.
+// Never the Lightning Giant, the Nanobot Knight, the Crimson Tyrant or the Doom Chaser (Tim). A floor rolled at generation 3 keeps
+// its lair (or none) exactly; a generation 4 floor is either the generation 3 answer or one of the new lairs.
+const NEW_LAIRS = ['mountainTurtle', 'briarStag', 'ashenMoth', 'astralWorm'];
+const NEVER = ['lightningGiant', 'nanobotKnight', 'crimsonTyrant', 'doomChaser'];
+// The generation 3 roll as it shipped, frozen here: six rows, weights 3 3 3 2 2 2.
+const GEN3_ROWS = [['poisonCrypt', 3], ['psychicCrystal', 3], ['tremorWorm', 3], ['voidWalker', 2], ['wildStego', 2], ['spinoRex', 2]];
+function gen3Roll(seed, id, floor) {
+  if ((hashSeed(`${seed}:deep-special:v1:${id}:${floor}`) % 10000) / 10000 >= specialChance(floor)) return null;
+  let k = hashSeed(`${seed}:deep-special-row:v1:${id}:${floor}`) % 15;
+  for (const [r, w] of GEN3_ROWS) { if (k < w) return r; k -= w; }
+  return null;
+}
+
+test('generation 4 roll: generation 3 floors keep their lairs; a generation 4 floor is the generation 3 answer or a new lair, at the new weights', () => {
+  assert.equal(DEEP_FLOOR_GEN.version, 4);
+  assert.deepEqual(DEEP_SPECIALS.rows.filter((r) => r.gen === 4).map((r) => r.id), NEW_LAIRS);
+  for (const r of DEEP_SPECIALS.rows) assert.ok(!NEVER.includes(r.beast) && !NEVER.includes(r.id), `${r.id}: Tim does not want this lair`);
+  const counts = new Map(); let n = 0, same = 0, moved = 0;
+  for (let k = 0; k < 300; k++) {
+    const seed = 'G' + k, id = deepIdFor(seed, 20 + k, -k);
+    for (let f = 1; f <= 80; f++) {
+      const three = floorSpecial(seed, id, f, 3), four = floorSpecial(seed, id, f, 4);
+      assert.equal(three?.id ?? null, gen3Roll(seed, id, f), `${seed} floor ${f}: generation 3 as it shipped`);
+      if (three) assert.ok(!three.gen, 'generation 3 never rolls a generation 4 row');
+      assert.equal(!!three, !!four, 'the same floors are lairs');
+      if (!four) continue;
+      n++; counts.set(four.id, (counts.get(four.id) || 0) + 1); assert.ok(!NEVER.includes(four.beast));
+      if (four.id === three.id) same++; else { moved++; assert.ok(NEW_LAIRS.includes(four.id), `${four.id} replaced ${three.id}`); }
+    }
+  }
+  const total = DEEP_SPECIALS.rows.reduce((a, r) => a + r.weight, 0), fresh = NEW_LAIRS.reduce((a, id) => a + DEEP_SPECIALS.rows.find((r) => r.id === id).weight, 0);
+  assert.ok(Math.abs(moved / n - fresh / total) < .03, `new lairs ${moved}/${n}`); assert.ok(same > moved);
+  for (const r of DEEP_SPECIALS.rows) assert.ok(Math.abs((counts.get(r.id) || 0) / n - r.weight / total) < .025, `${r.id} ${counts.get(r.id)} of ${n}`);
+  for (const id of NEW_LAIRS) { const r = DEEP_SPECIALS.rows.find((q) => q.id === id); assert.ok(MONSTER_PACK[r.beast] && WORLD_BEASTS[r.beast]); assert.ok(r.noEcho); assert.ok(r.lore && r.name && r.theme); }
+});
+
+test('a generation 4 floor that is not one of the new lairs is the generation 3 floor byte for byte', () => {
+  const { s, id } = shaft(); let plain = 0, fresh = 0;
+  const pinned = (floor, gen) => { deepShaft(s, id).floor = floor; delete s.consequences.dungeons[id]; pinDungeonLayout(s, id); dungeonHistory(s, id).deepGen = gen; return generatePinnedDungeon(s, id); };
+  for (let floor = 1; floor <= 90; floor++) {
+    const lair = floorSpecial(s.seed, id, floor, 4), map = pinned(floor, 4);
+    if (lair?.gen === 4) { fresh++; assert.equal(map.deepLair.id, lair.id); assert.equal(map.theme, lair.theme); continue; }
+    plain++; const { deepGen: a, ...four } = map, { deepGen: b, ...three } = pinned(floor, 3); assert.equal(a, 4); assert.equal(b, 3);
+    assert.equal(JSON.stringify(four), JSON.stringify(three), `floor ${floor}: generation 4 without a new lair is generation 3`);
+  }
+  assert.ok(plain > 40 && fresh > 2, `${plain} plain, ${fresh} new lairs`);
+});
+
+// Stand the Wayfarer (who cannot die here) by the beast and let it fight for `frames` frames, circling.
+function brawl(g, e, frames, t0 = 1000) {
+  const W = g.map.width, p = g.player; p.maxHp = 1e9;
+  for (const [dx, dy] of [[3, 0], [0, 3], [-3, 0], [0, -3], [0, 0]]) { const x = Math.round(e.x) + dx, y = Math.round(e.y) + dy, t = g.map.tiles[y * W + x]; if (t && !t.blocked && !LETHAL_KINDS.has(t.kind)) { p.x = x; p.y = y; break; } }
+  const attacks = new Set();
+  for (let t = 0; t < frames; t++) {
+    const d = Math.floor(t / 8) % 4, input = { state: { x: [1, 0, -1, 0][d], y: [0, 1, 0, -1][d] }, consume: () => false, held: () => false };
+    p.hp = 1e9; g.update(.05, t % 32 < 24 ? input : idle, t0 + t * 50); if (e.pack?.attack) attacks.add(e.pack.attack);
+  }
+  return attacks;
+}
+test('each new lair fights on a Deep floor: its moves run without leaving a mark on the stone, it stays on open ground, and its fall opens the stair and pays no Echo', () => {
+  for (const seed of [SEED, 'LAIRS4']) {
+    const { s, g, id } = shaft(seed);
+    for (const want of NEW_LAIRS) {
+      let floor = 2; while (floorSpecial(seed, id, floor)?.id !== want) floor++;
+      goTo(g, floor); const row = DEEP_SPECIALS.rows.find((r) => r.id === want);
+      assert.equal(g.map.deepLair.id, want); assert.equal(g.message, row.lore); assert.equal(g.map.theme, row.theme);
+      const e = g.enemies.find((q) => q.deepLair && !q.dead); assert.ok(e, `${seed} ${want} on floor ${floor}`);
+      assert.equal(e.kind, row.beast); assert.equal(e.dungeonRole, 'gateWarden'); assert.ok(e.boss && !e.worldBeast && !e.kitRole && !(e.affixes || []).length);
+      assert.ok(e.maxHp > 100 && e.damage >= 1, `${want} ${e.maxHp}/${e.damage}`);
+      const tiles = JSON.stringify(g.map.tiles), beasts = JSON.stringify(s.worldBeasts || {});
+      const attacks = brawl(g, e, 300);
+      assert.ok(attacks.size >= 2, `${seed} ${want}: it fought (${[...attacks]})`);
+      assert.equal(JSON.stringify(g.map.tiles), tiles, `${seed} ${want}: no move changed the floor`);
+      assert.ok(!g.save.voidScars?.areas || !Object.keys(g.save.voidScars.areas).some((q) => q.includes('the-deep:')));
+      assert.equal(g.seaIce ?? null, null, 'no sea ice in the Deep');
+      const W = g.map.width; if (!e.aloft && !e.untargetable && row.contain) { g.update(.05, idle, 1000 + 301 * 50); assert.ok(e.aloft || e.untargetable || footprintOpen(g.map, W, e.x, e.y, true), `${seed} ${want} stands on open ground`); }
+      assert.ok(!g.enemies.some((q) => q.worldBeast), 'no world beast joins it');
+      const echoes = JSON.stringify(s.echoes.owned);
+      for (const q of g.enemies) if (!q.dead && !q.ambient) { q.hp = 0; g.defeatEnemy(q); q.dead = true; }
+      assert.ok(g.map.objects.some((o) => o.kind === 'deepStair'), `${want}: the stair opens`); assert.ok(deepShaft(s, id).best >= floor);
+      assert.equal(JSON.stringify(s.echoes.owned), echoes, `${want}: no Echo`);
+      assert.equal(JSON.stringify(s.worldBeasts || {}), beasts, `${want}: no hunt began, ended or paid`);
+      assert.ok(!(s.turtleShells?.shells || []).length, 'no shell is left in the Deep');
+    }
+  }
+});
+
+test('a new lair resumes exactly after a save and load, mid-fight, and still opens the stair', () => {
+  const { s, g, id } = shaft();
+  for (const want of NEW_LAIRS) {
+    let floor = 2; while (floorSpecial(SEED, id, floor)?.id !== want) floor++;
+    goTo(g, floor); const e = g.enemies.find((q) => q.deepLair && !q.dead); brawl(g, e, 60); e.hp = Math.round(e.maxHp * .6);
+    g.snapshotArea(false); const m = migrateSave(JSON.parse(JSON.stringify(s))), g2 = new Game(m, 0); g2.loadArea('dungeon', false);
+    assert.equal(g2.map.deepLair.id, want); assert.equal(g2.map.deepGen, 4);
+    const b = g2.enemies.find((q) => q.deepLair && !q.dead); assert.ok(b, want);
+    for (const key of ['id', 'kind', 'hp', 'maxHp', 'damage', 'deepLair', 'boss', 'x', 'y']) assert.equal(b[key], e[key], `${want} ${key}`);
+    if (want === 'astralWorm') assert.equal(JSON.stringify(b.astral), JSON.stringify(e.astral), 'the Worm\'s own state resumes as it was');
+    brawl(g2, b, 40);
+    for (const q of g2.enemies) if (!q.dead && !q.ambient) { q.hp = 0; g2.defeatEnemy(q); q.dead = true; }
+    assert.ok(g2.map.objects.some((o) => o.kind === 'deepStair'), `${want}: the stair opens after the reload`);
+  }
 });
