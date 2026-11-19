@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Unreleased — the Second Wayfarer's ending
+
+Tim (2026-11-19) changed the end of the Second Wayfarer (release 1024): the trail stays on the overworld, and at the last stop you find her body, laid out still beside the folded suit and the gifts, under a note in blood in a hand that does not know what letters are. Its words, "NO ONE IS AHEAD OF YOU NOW", replace "Nobody is ahead of you now" as the closing line. Who wrote it is never said and is no named entity.
+
+**CODE:** `src/second-wayfarer.ts`: new `SECOND_LAST_WORDS` ("NO ONE IS AHEAD OF YOU NOW") and `SECOND_HAND` (the stone's writing, described in plain text, then the words; bare prints go back the way you came). `SECOND_TRACES[5]` is now her body, the suit, the bundle, her own last note and `SECOND_HAND`; `SECOND_ENDING` closes on `SECOND_LAST_WORDS`; `SECOND_PASSED_LAST` (last sighting passed at sea) is her in a drifting boat with the same words. `SECOND_SIGHTINGS[4]` and `SECOND_TRACES[4]` gain one foreshadowing sentence each. `secondTraceName` names the last trace "Someone lying still", then "Wenna Callow". `game.ts` QUEST COMPLETE detail reads "no one is ahead of you now". `renderer.ts drawSecondTrace` default case draws her lying still, the folded suit, mask and bundle, a flat stone with short dark-red square strokes, and bare prints going the other way; fixed canvas calls, no allocation.
+
+**BOUNDARY:** Text and drawing only. No generation, number or save change: `save.lore.second` is untouched, the trail, its sections and the compass are as in 1024, and a Journal entry already written by a finished trail keeps its old text (journalOnce never rewrites); rereads in the Arcana and Tome show the new words. Restrained by rule: no wound or gore, nothing named, and the hand is not fractal.
+
 ## Release 1025 — Triceratops faces
 
 Tim (2026-11-19) found the baby hatchling's face too cartoonish (eyes too big, face too crazy) and every Triceratops's beak still a little long. He kept the baby's size.
