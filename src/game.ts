@@ -4065,7 +4065,7 @@ export class Game {
       { const p = this.pentagonSigil(); if (p) this.map.objects.push(p); this.pentagonFindingArrive(); this._pentOfferAt = null; this._pentOfferWait = 0; } // Pentagon finding: a sigil toward the Pentagon whose catchment holds this section; hunts reached or done
       if (this.map.pentagon) this.roofDwell = { sleepers: this.roofSleepers(), told: false }; // roof-dwellers.ts: asleep, outside the enemy list, until the Wayfarer is on the roof
       for (const o of this.map.objects)
-        if (o.kind === "dungeon")
+        if (o.kind === "dungeon" && !o.beastHotelDoor) // the Beast Hotel door is no crossing: it keeps its own history (beastHotelId) when entered
           dungeonHistory(
             this.save,
             dungeonId(

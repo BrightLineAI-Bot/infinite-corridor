@@ -99,25 +99,26 @@ export function drawHatchPen(ctx, o, s, now, reduce = false) {
 }
 
 // His drawn-only visuals (game.hatchVisuals: bounded, runtime only).
-export function drawHatchVisuals(ctx, g, toScreen, s, reduce = false) {
-  const list = g.hatchVisuals; if (!list?.length) return;
+// `flat` (Close View: drawn on its floor) lays them on the ground: no height, so they lie under him and run along the ground to the foe.
+export function drawHatchVisuals(ctx, g, toScreen, s, reduce = false, flat = false) {
+  const list = g.hatchVisuals; if (!list?.length) return; const up = flat ? 0 : 1;
   ctx.save(); ctx.lineCap = "round";
   for (const v of list) {
     const k = Math.max(0, Math.min(1, v.life / (v.total || 1))), [x, y] = toScreen(v);
     if (v.kind === "beamCharge") { // three beams from the three horn tips, focusing ahead of the nose as he charges
-      const f = 1 - k, sc = v.sc || 1, d = v.dx < 0 ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s;
-      for (const T of HATCH_ART.tips) { const tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s, ex = tx + (fx - tx) * Math.min(1, .3 + f), ey = ty + (fy - ty) * Math.min(1, .3 + f);
+      const f = 1 - k, sc = v.sc || 1, d = v.dx < 0 ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s * up;
+      for (const T of HATCH_ART.tips) { const tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s * up, ex = tx + (fx - tx) * Math.min(1, .3 + f), ey = ty + (fy - ty) * Math.min(1, .3 + f);
         ctx.globalAlpha = .35 + .6 * f; ctx.strokeStyle = HATCH_ART.beam; ctx.lineWidth = Math.max(2, s * .09); ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = Math.max(1, s * .035); ctx.stroke(); }
       const r = s * (.05 + .2 * f) * (reduce ? 1 : 1 + .12 * Math.sin(f * 40)), gr = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 2.2);
       gr.addColorStop(0, "rgba(255,255,255,.95)"); gr.addColorStop(.45, "rgba(255,240,170,.7)"); gr.addColorStop(1, "rgba(255,220,120,0)"); ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fx, fy, r * 2.2, 0, TAU); ctx.fill();
     } else if (v.kind === "beam") { // the blast: from the focus along his aim, thick and bright, thinning as it fades
-      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s, ey = y2 - F[1] * sc * s * .8;
+      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, F = HATCH_ART.focus, fx = x + d * F[0] * sc * s, fy = y - F[1] * sc * s * up, ey = y2 - F[1] * sc * s * .8 * up;
       ctx.globalAlpha = .45 * k; ctx.strokeStyle = HATCH_ART.beam; ctx.lineWidth = s * .6 * k + 3; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(x2, ey); ctx.stroke();
       ctx.globalAlpha = k; ctx.lineWidth = s * .3 * k + 2; ctx.stroke(); ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = s * .12 * k + 1; ctx.stroke();
       ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(fx, fy, s * .22 * k + 2, 0, TAU); ctx.fill();
     } else if (v.kind === "bolt") { // a gatling horn bolt: a bright streak with a glowing head, from a horn tip to the foe
-      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, T = HATCH_ART.tips[(v.n || 0) % 3], tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s, ey = y2 - s * .4, f = 1 - k;
+      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, T = HATCH_ART.tips[(v.n || 0) % 3], tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s * up, ey = y2 - s * .4 * up, f = 1 - k;
       const px = tx + (x2 - tx) * f, py = ty + (ey - ty) * f, L = Math.hypot(x2 - tx, ey - ty) || 1, ux = (x2 - tx) / L, uy = (ey - ty) / L;
       ctx.globalAlpha = 1; ctx.strokeStyle = HATCH_ART.bolt; ctx.lineWidth = Math.max(3, s * .12); ctx.beginPath(); ctx.moveTo(px - ux * s * .7, py - uy * s * .7); ctx.lineTo(px, py); ctx.stroke();
       ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = Math.max(1.5, s * .05); ctx.stroke(); ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, s * .1), 0, TAU); ctx.fill();

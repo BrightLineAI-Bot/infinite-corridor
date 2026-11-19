@@ -107,7 +107,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   drawBrawlerAuras(ctx, game, toScreen, s, t, projectedShots != null); // release 485: Aegis, Shadow Boxing (on Close View's floor: its charge streak only)
   drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
-  drawHatchVisuals(ctx, game, toScreen, s, !!(game.presentation?.reduceMotion || game.presentation?.safeMode)); // the Triceratops hatchling's beams, bolts, whirls, chill, heals and buffs
+  drawHatchVisuals(ctx, game, toScreen, s, !!(game.presentation?.reduceMotion || game.presentation?.safeMode), !!projectedShots); // the Triceratops hatchling's beams, bolts, whirls, chill, heals and buffs
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   drawQuandrix(ctx, game, toScreen, s, t, projectedShots); // the Quandrix Staff: hands, the fist, the slam, suction and the ring
   drawWeaponArts(ctx, game, toScreen, s, t); // weapon arts: the armed glint, the charge ring, eruptions, streams, the javelin, ki and the seal
