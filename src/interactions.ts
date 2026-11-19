@@ -47,6 +47,18 @@ export function commitRelay(s,choice,context){const id=dungeonId(s.seed,s.worldG
 // become an item or another price.
 export const STAT_RESPEC={marks:500};
 export function retrainStats(s){const spent=Object.values(s.stats||{}).reduce((n,v)=>n+Math.max(0,(Number(v)||1)-1),0);if(!spent)return{ok:false,message:'Oren: “Nothing to unlearn yet. Come back when you have trained.”'};if((Number(s.currency)||0)<STAT_RESPEC.marks)return{ok:false,message:`Oren: “Retraining takes time. ${STAT_RESPEC.marks} marks; you have ${Number(s.currency)||0}.”`};s.currency-=STAT_RESPEC.marks;for(const k of Object.keys(s.stats))s.stats[k]=1;s.statPoints=(Number(s.statPoints)||0)+spent;return{ok:true,message:`Oren drills the old habits out of you (−${STAT_RESPEC.marks} marks). ${spent} stat points returned: spend them again in Pack.`,transition:'retrain'};}
+// What a finished action says, by action (2026-11-19, first-hour fixes: it said "Enter complete." or "Challenge complete."), with
+// the object's name where it has one. An action not listed says it is done in plain words.
+export const ACTION_DONE=Object.freeze({
+  enter:(o)=>`You step into ${o?.name||'the crossing'}.`,
+  exit:()=>'You climb back out into the open air.',
+  challenge:(o)=>`You call out to ${o?.name||'it'}. Nothing answers. Not yet.`,
+  activate:(o)=>`${o?.name||'It'} wakes under your hand.`,
+  open:(o)=>`You open ${o?.name||'it'}.`,
+  inspect:(o)=>`You look ${o?.name?`over ${o.name}`:'it over'} closely.`,
+  use:(o)=>`You use ${o?.name||'it'}.`,
+});
+export const actionDone=(o,a)=>ACTION_DONE[a]?ACTION_DONE[a](o):`You ${String(a||'act').replace(/([A-Z])/g,' $1').toLowerCase()}${o?.name?` ${o.name}`:''}.`;
 export function validActions(o,s){
  if(!perceived(o,s))return[];
  if(o.kind==='npc'){const n=npcState(s,o.id);if(n?.status==='dead'||s.worldFlags[o.id+':dead'])return[];const list=(o.actions||[]).filter(a=>a!=='standDown'||n?.disposition==='hostile');if(o.id==='warden-oren'&&n?.disposition!=='hostile'&&!list.includes('retrain'))list.splice(1,0,'retrain');/* release 347: added here, not to the generated Refuge, so the region stays byte-identical */return list;}
@@ -123,5 +135,5 @@ export function applyInteraction(o,a,s,context='global',place={}){
  if(o.kind==='architecturalDistrict'&&a==='inspect'){const descriptions={city:'Apartment shells surround a plaza where something dragged the streetlights into a circle.',arcology:'A silent transit lattice still routes power toward rooms that no longer exist.',cloister:'Weathered sanctums face an empty court; their carved saints have been turned toward the Corridor.'},text=descriptions[o.districtStyle]||'The district keeps the shape of lives that vanished.';o.state='read';gainAperture(s,1,'district:'+context+':'+o.id,'Architecture becomes another language of the Corridor.');journalOnce(s,'district:'+context+':'+o.id,text,o.name||'Architectural ruin');return{ok:true,message:text+' Aperture +1.',transition:'district'};}
  const n=applyNarrative(o,a,s,context+':'+o.id+':'+a);if(n){if(o.kind!=='npc')o.state='used';return{...n,message:spoils&&n.message?n.message+' '+spoils:n.message,transition:o.kind}}
  const key=o.id+':'+a;if(o.kind==='rock'&&a==='chip'){if(s.worldFlags[key])return{ok:false,message:'Nothing loose left on this rock.'};const had=Number(s.materials?.stone)||0;if(had>=DIG.carryStone)return{ok:false,message:`You can carry no more stone (${DIG.carryStone}).`};s.worldFlags[key]=true;const n=addStone(s,DIG.stone.chip);return{ok:true,message:`You chip ${DIG.stone.chip===1?'a stone':DIG.stone.chip+' stone'} free. Stone ${n}${n>=DIG.carryStone?', all you can carry':''}.`}}if(o.kind==='rock'&&a==='break')addStone(s,DIG.stone.break);if(o.kind==='tree'&&a==='cut'){o.state='fallen';s.worldFlags[key]=true;return{ok:true,message:o.crossingTiles?.length?'The trunk crashes across the gap, making a lasting log crossing.':o.environmental?'The tree falls and clears the ground around it.':'The ashwood falls across the fissure.'}}if(o.kind==='tree'&&a==='ignite'){o.state='charred';s.worldFlags[key]=true;return{ok:true,message:'Fire runs through the dry crown. A blackened landmark remains.'}}if(o.kind==='tree'&&a==='climb')return{ok:true,message:'You cross the high roots.'};if(o.kind==='rock'){o.state=a==='break'?'broken':'moved';s.worldFlags[key]=true;if(o.id==='rock-1')s.worldFlags['rock-1:opened']=true;return{ok:true,message:(o.environmental?(a==='break'?'The boulder fractures into low rubble.':'The boulder rolls aside with a deep scrape.'):'The stone shifts. A cache glints beyond.')+(a==='break'&&DIG.stone.break>0?` You gather ${DIG.stone.break} stone.`:'')}}
- s.worldFlags[key]=true;return{ok:true,message:a[0].toUpperCase()+a.slice(1)+' complete.'+(spoils?' '+spoils:''),transition:o.kind};
+ s.worldFlags[key]=true;return{ok:true,message:actionDone(o,a)+(spoils?' '+spoils:''),transition:o.kind};
 }
