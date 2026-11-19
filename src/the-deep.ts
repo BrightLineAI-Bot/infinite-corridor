@@ -106,12 +106,12 @@ export const DEEP_SPECIALS = {
   version: 1, // the roll's hash namespace
   chance: [[1, .1], [10, .2], [25, .3], [50, .42], [100, .55]],
   rows: [
-    { id: "poisonCrypt", weight: 3, theme: "poisonCrypt", beast: "morphingBlob", heart: true, name: "The Mire Heart", lore: "The floor sinks into a green mire. Something in its pools is all one thing, and it is gathering itself." },
-    { id: "psychicCrystal", weight: 3, theme: "river", beast: "psychicCrystal", pool: 6, name: "The Psychic Crystal", lore: "A black river runs through this floor, and a pale light drifts over it. The Psychic Crystal haunts this water." },
-    { id: "tremorWorm", weight: 3, theme: "lavaBog", beast: "tremorWorm", name: "The Tremor Worm", lore: "The ash crust shivers under your feet. Something long is swimming through the stone below: the Tremor Worm." },
-    { id: "voidWalker", weight: 2, theme: "geode", beast: "voidWalker", name: "The Void Walker", lore: "The light here bends toward a point that is not there. The Void Walker keeps this floor." },
-    { id: "wildStego", weight: 2, theme: "rootwood", beast: "wildStego", name: "The Wild Stegosaurus", lore: "Roots, plates and a low, slow breathing. The Wild Stegosaurus has made this floor its own." },
-    { id: "spinoRex", weight: 2, theme: "fungal", beast: "spinoRex", name: "The Spinosaurus", lore: "Under the glowing caps the air smells of blood. The Spinosaurus hunts this floor." },
+    { id: "poisonCrypt", noEcho: true, weight: 3, theme: "poisonCrypt", beast: "morphingBlob", heart: true, name: "The Mire Heart", lore: "The floor sinks into a green mire. Something in its pools is all one thing, and it is gathering itself." },
+    { id: "psychicCrystal", noEcho: true, weight: 3, theme: "river", beast: "psychicCrystal", pool: 6, name: "The Psychic Crystal", lore: "A black river runs through this floor, and a pale light drifts over it. The Psychic Crystal haunts this water." },
+    { id: "tremorWorm", noEcho: true, weight: 3, theme: "lavaBog", beast: "tremorWorm", name: "The Tremor Worm", lore: "The ash crust shivers under your feet. Something long is swimming through the stone below: the Tremor Worm." },
+    { id: "voidWalker", noEcho: true, weight: 2, theme: "geode", beast: "voidWalker", name: "The Void Walker", lore: "The light here bends toward a point that is not there. The Void Walker keeps this floor." },
+    { id: "wildStego", noEcho: true, weight: 2, theme: "rootwood", beast: "wildStego", name: "The Wild Stegosaurus", lore: "Roots, plates and a low, slow breathing. The Wild Stegosaurus has made this floor its own." },
+    { id: "spinoRex", noEcho: true, weight: 2, theme: "fungal", beast: "spinoRex", name: "The Spinosaurus", lore: "Under the glowing caps the air smells of blood. The Spinosaurus hunts this floor." },
     { id: "mountainTurtle", gen: 4, noEcho: true, contain: true, weight: 2, theme: "frozen", beast: "mountainTurtle", name: "The Mountain Turtle", lore: "Frost furs the walls, and the floor trembles to slow, enormous steps. The Mountain Turtle has walked down even here." },
     { id: "briarStag", gen: 4, noEcho: true, contain: true, weight: 2, theme: "rootwood", beast: "briarStag", name: "The Briar Stag", lore: "Brambles have grown through the stone, and somewhere among the roots an antlered crown is burning. The Briar Stag ruts on this floor." },
     { id: "ashenMoth", gen: 4, noEcho: true, contain: true, weight: 2, theme: "lavaBog", beast: "ashenMoth", name: "The Ashen Moth", lore: "Grey ash drifts up from the cracks like snow falling the wrong way. Two embers watch you from above: the Ashen Moth." },

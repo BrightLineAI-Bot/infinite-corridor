@@ -157,6 +157,8 @@ test('generation 4 roll: generation 3 floors keep their lairs; a generation 4 fl
   assert.ok(Math.abs(moved / n - fresh / total) < .03, `new lairs ${moved}/${n}`); assert.ok(same > moved);
   for (const r of DEEP_SPECIALS.rows) assert.ok(Math.abs((counts.get(r.id) || 0) / n - r.weight / total) < .025, `${r.id} ${counts.get(r.id)} of ${n}`);
   for (const id of NEW_LAIRS) { const r = DEEP_SPECIALS.rows.find((q) => q.id === id); assert.ok(MONSTER_PACK[r.beast] && WORLD_BEASTS[r.beast]); assert.ok(r.noEcho); assert.ok(r.lore && r.name && r.theme); }
+  // Tim 2026-11-19: lair beasts drop the regular guardian cache only, never an Echo (old and new lairs alike)
+  for (const r of DEEP_SPECIALS.rows) assert.ok(r.noEcho, `${r.id} drops no Echo`);
 });
 
 test('a generation 4 floor that is not one of the new lairs is the generation 3 floor byte for byte', () => {
