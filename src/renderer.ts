@@ -1492,6 +1492,35 @@ export function drawSurveyorLink(ctx, o, s, now) {
   const glint = .5 + .5 * Math.sin(now / 500 + o.x * 3); ctx.fillStyle = `rgba(255,240,190,${.25 + .5 * glint})`; ctx.beginPath(); ctx.arc(-s * .12, -s * .06, Math.max(1, s * .035), 0, 7); ctx.fill();
   ctx.restore();
 }
+// The Second Wayfarer (second-wayfarer.ts): boot prints going on ahead, the left heel a little deeper; unread, the last of them
+// holds a faint warm light. No allocation beyond the canvas calls.
+function secondPrints(ctx, x0, y0, s, n, dx, dy, alpha) {
+  const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+  for (let i = 0; i < n; i++) { const side = i % 2 ? 1 : -1, px = x0 + ux * i * s * .32 - uy * side * s * .07, py = y0 + uy * i * s * .32 + ux * side * s * .07;
+    ctx.fillStyle = `rgba(36,30,24,${alpha * (1 - i / (n + 2))})`; ctx.beginPath(); ctx.ellipse(px, py, s * .055, s * .09, Math.atan2(uy, ux) + Math.PI / 2, 0, 7); ctx.fill(); }
+}
+export function drawSecondFootprints(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .5) * s, read = o.state === "read";
+  ctx.save(); secondPrints(ctx, cx - s * 1.1, cy + s * .2, s, 5, 1, -.18, read ? .35 : .6);
+  if (!read) { const a = .18 + .14 * Math.sin(now / 700 + o.x); ctx.fillStyle = `rgba(255,226,170,${a})`; ctx.beginPath(); ctx.arc(cx + s * .3, cy, s * .32, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+export function drawSecondTrace(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read";
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, "rgba(255,226,170,.32)"); g.addColorStop(1, "rgba(255,226,170,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  secondPrints(ctx, cx + s * .35, cy + s * .1, s, 4, 1, -.3, read ? .3 : .5);
+  ctx.translate(cx, cy); ctx.globalAlpha = read ? .7 : 1; ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+  switch (o.index) {
+    case 0: ctx.fillStyle = "#4a4038"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .22, s * .1, 0, 0, 7); ctx.fill(); if (!read) { ctx.fillStyle = `rgba(255,140,60,${.5 + .3 * Math.sin(now / 300)})`; ctx.beginPath(); ctx.arc(0, s * .06, s * .06, 0, 7); ctx.fill(); } ctx.fillStyle = "#c8a060"; ctx.fillRect(s * .2, -s * .02, s * .14, s * .08); break; // a banked fire, a cake on a stone
+    case 1: ctx.strokeStyle = "#4a6aa8"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(-s * .05, -s * .2); ctx.quadraticCurveTo(s * .1, 0, -s * .02, s * .18); ctx.moveTo(-s * .05, -s * .2); ctx.quadraticCurveTo(-s * .2, 0, -s * .12, s * .16); ctx.stroke(); break; // a blue ribbon
+    case 2: ctx.fillStyle = "#3e4a30"; ctx.beginPath(); ctx.ellipse(0, s * .06, s * .26, s * .12, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#e8e0cc"; ctx.rotate(-.2); ctx.fillRect(-s * .1, -s * .06, s * .2, s * .14); ctx.strokeRect(-s * .1, -s * .06, s * .2, s * .14); break; // a hollow in the grass, a ledger page
+    case 3: ctx.fillStyle = "#8a6a44"; ctx.beginPath(); ctx.ellipse(0, s * .02, s * .14, s * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1e1a16"; ctx.fillRect(-s * .08, -s * .02, s * .16, s * .02); break; // a water skin
+    case 4: ctx.fillStyle = "#5a6a52"; ctx.beginPath(); ctx.moveTo(-s * .12, s * .16); ctx.lineTo(-s * .12, -s * .04); for (let k = 0; k < 4; k++) { ctx.lineTo(-s * .1 + k * s * .065, -s * .2); ctx.lineTo(-s * .07 + k * s * .065, -s * .04); } ctx.lineTo(s * .14, s * .16); ctx.closePath(); ctx.fill(); ctx.stroke(); break; // a worn glove
+    default: ctx.fillStyle = "#5a6a52"; ctx.fillRect(-s * .22, -s * .02, s * .44, s * .18); ctx.strokeRect(-s * .22, -s * .02, s * .44, s * .18); ctx.fillStyle = "#c8c4b4"; ctx.beginPath(); ctx.ellipse(0, -s * .08, s * .12, s * .09, 0, 0, 7); ctx.fill(); ctx.stroke(); // a folded suit, the mask on it
+  }
+  ctx.restore();
+}
 // Release 551: Abel Corwin's statue, kneeling on a low plinth in pale Far Sleep stone, a brass chain from his boot to his hand.
 export function drawSurveyorStatue(ctx, o, s, now) {
   const cx = (o.x + .5) * s, base = (o.y + .92) * s, stone = "#d9d4c6", shade = "#a8a294", edge = "#5f5a50";
@@ -3108,6 +3137,8 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
+          } else if (o.kind === "secondFootprints") { drawSecondFootprints(ctx, o, s, now); // the Second Wayfarer
+          } else if (o.kind === "secondTrace") { drawSecondTrace(ctx, o, s, now);
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {

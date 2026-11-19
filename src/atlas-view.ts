@@ -2,6 +2,7 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
+import { secondWayfarerTarget } from "./second-wayfarer.ts";
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
@@ -226,7 +227,7 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
   }
   if (f.kind === "far") { const q = save?.farQuests?.[f.id]; return q?.status === "open" && ok(q) ? at(q.rx, q.ry, f.name || "Far quest") : null; }
   if (f.kind === "rescue") return ok(rescue) ? { ...rescue } : null;
-  if (f.kind === "quest") return cue(f.id);
+  if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
   if (f.kind === "marker") {
     if (f.id === "waypoint") { const w = save?.manualWaypoint; return ok(w) && (w.area == null || w.area === "overworld") ? at(w.rx, w.ry, String(w.label || COMPASS_MENU.waypointName)) : null; }
     const color = Number(String(f.id).slice(5)), m = normalizeMapMarks(save?.mapMarks).find((q) => q.color === color);

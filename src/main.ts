@@ -255,6 +255,7 @@ import { warmWayfindingSignals } from "./world.ts";
 import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
 import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
+import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, secondBegun, secondFound, secondNext, secondTraceText } from "./second-wayfarer.ts"; // the Second Wayfarer
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
 import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.ts"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
@@ -672,8 +673,8 @@ function navigationTargets() {
   // player's own markers (save.manualWaypoint, save.mapMarks) draw a needle only when chosen (no second, manual needle).
   const f=compassPin?null:compassFollow,pick=game.area==="overworld"&&!compassPin&&!f?compassObjective():null;
   const hunt=f?.kind==="hunt"?save.viewport?.contracts?.[f.id]:null,far=f?.kind==="far"?save.farQuests?.[f.id]:null,rescueQ=f?.kind==="rescue"?save.mounts?.hatchling?.quest:null,
-    mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;
-  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest].join(":");
+    mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;const sw=f?.kind==="quest"&&f.id==="second"?save.lore?.second:null,swKey=sw?`${sw.found}:${sw.spot?.i},${sw.spot?.x},${sw.spot?.y}`:"";/* the Second Wayfarer: its next sighting moves as traces are read */
+  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   const cues=game.area==="overworld"&&quest?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
@@ -780,6 +781,7 @@ function activeQuests(){
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
   // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
   // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
+  { const at=secondNext(save);if(at)add(SECOND_WAYFARER.title,`Someone dressed as you, a section ahead. Go where they marked: ${secondFound(save)} of ${SECOND_WAYFARER.sightings} found.`,at,{kind:"quest",id:"second"}); } // the Second Wayfarer's trail: the compass follows it once taken up
   if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null,{kind:"quest",id:"errand"}); // 2026-11-11: the first quest
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null,{kind:"quest",id:"leads"});
@@ -1562,6 +1564,8 @@ function renderArcana(out){
   const rung=bellsRung(save).split("").filter(Boolean);arcanaCard(out,"The Seven Bells",rung.length,BELLS.count,hints.bells.where,rung.map((k)=>[`The bell for ${BELL_GLIMPSES[k]?.who||"someone"}`,(BELL_GLIMPSES[k]?.lines||[]).join(" ")]),rung.length>=BELLS.count?BELL_FINAL:null,false,hints.bells);
   const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,hints.surveyor.where,links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null,false,hints.surveyor);
   const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,hints.pages.where,pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null,false,hints.pages);
+  { const n=secondFound(save),begun=secondBegun(save),at=secondNext(save),read=begun?[["Footprints",SECOND_FOOTPRINTS.read(save.lore.second.trail[0])],...Array.from({length:n},(_,i)=>[`${i+1}`,save.lore.second.passed?.includes(i)?secondTraceText(save,i):`${SECOND_SIGHTINGS[i]} ${secondTraceText(save,i)}`])]:[];
+    if(begun)arcanaCard(out,SECOND_WAYFARER.title,n,SECOND_WAYFARER.sightings,at?`the sections they marked; the next is ${at.rx}, ${at.ry}`:"the sections they marked",read,n>=SECOND_WAYFARER.sightings?SECOND_ENDING:null); } // the Second Wayfarer: shown once the footprints are found (unknown until then)
   const met=ilseMet(save).split("").filter(Boolean),meetings=Object.keys(ILSE_MEETINGS);arcanaCard(out,"Ilse",met.length,meetings.length,"lit roads, now and then",met.map((k)=>[ILSE_MEETINGS[k]?.name||"Ilse",(ILSE_MEETINGS[k]?.lines||[]).join(" ")]),null);
   const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
   const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
@@ -1587,6 +1591,10 @@ function renderTome(out){
     for(let i=0;i<Math.min(found.length,T.pieces.length);i++){const p=document.createElement("p");p.className="options-note";p.textContent=T.pieces[i];ts.append(p)}
     if(found.length>=T.pieces.length){const e=document.createElement("p");e.className="lore-book mastered";e.textContent=T.ending;ts.append(e)}
     out.append(ts)}
+  if(secondBegun(save)){const n=secondFound(save),ws=document.createElement("section"),wh=document.createElement("h3");ws.className="library-book";wh.textContent=`${SECOND_WAYFARER.title} (${n} of ${SECOND_WAYFARER.sightings})`;ws.append(wh); /* the Second Wayfarer: what they left, in order */
+    for(let i=0;i<n;i++){const p=document.createElement("p");p.className="options-note";p.textContent=secondTraceText(save,i);ws.append(p)}
+    if(n>=SECOND_WAYFARER.sightings){const e=document.createElement("p");e.className="lore-book mastered";e.textContent=SECOND_ENDING;ws.append(e)}
+    out.append(ws)}
   // Release 197: the Elder Wanderers, once one has been heard: every rule heard, drawn small, and the count.
   const elderRules=eldersHeard(save);if(elderRules.length){const es=document.createElement("section"),eh=document.createElement("h3"),en=document.createElement("p"),grid=document.createElement("div"),p=elderProgress(save);es.className="library-book";eh.textContent="The Elder Wanderers";en.className="lore-book"+(p.mastered?" mastered":"");en.textContent=`${p.found} of ${p.total} patterns${p.mastered?" · Mastered":""}`;grid.className="elder-grid";es.append(eh,en,grid);out.append(es);
     for(const rule of elderRules){const c=document.createElement("canvas");c.title=`Rule ${rule}`;grid.append(c);requestAnimationFrame(()=>paintRule(c,rule,"single",{cols:31,rows:16,reduceMotion:true,rowsOf:ruleRows}))}}
