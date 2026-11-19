@@ -168,10 +168,9 @@ test('Rapid Reload: every 3rd charged release that hits gives back 20% stamina; 
 test('Rapid Reload reads the real charged releases: a charged Carbine beam and a charged Orbit Volley; a tap never', () => {
   const { s, g } = arena({ fields: ['rapid-reload'] }); s.equipment.secondary = { id: 'secondary-spark-coil', slot: 'secondary', name: 'Carbine', tier: 'rare', power: 5, upgradeRank: 6, glyphs: [] }; s.rounds = { empowered: 9 };
   const n0 = g.projectiles.length; g.carbineFire(1000, { x: 1, y: 0 }, 0);
-  const tap = g.projectiles.slice(n0).find((q) => q.carbine); if (tap) assert.ok(!(tap.rr > 0), 'a tap is no release');
+  const tap = g.projectiles.slice(n0).find((q) => q.carbine); assert.ok(tap && !(tap.rr > 0), 'a tap is no release');
   const n1 = g.projectiles.length; g.carbineFire(3000, { x: 1, y: 0 }, CARBINE.charge.full);
-  const beam = g.projectiles.slice(n1).find((q) => q.carbine); if (beam) assert.ok(beam.rr > 0, 'a charged beam is');
-  assert.ok(tap || beam, 'the Carbine fired');
+  const beam = g.projectiles.slice(n1).find((q) => q.carbine); assert.ok(beam && beam.rr > 0, 'a charged beam is');
   // Orbit Volley: a charged launch carries its release to the burst
   const B = arena({ fields: ['rapid-reload'] }); B.g.orbit = { start: 0, where: `${B.g.area}:${B.g.areaId()}` }; B.g.launchOrbit(false, 2200); assert.ok(B.g.orbit.flight.rr > 0);
   const C = arena({ fields: ['rapid-reload'] }); C.g.orbit = { start: 0, where: `${C.g.area}:${C.g.areaId()}` }; C.g.launchOrbit(false, 300); assert.equal(C.g.orbit.flight.rr, 0, 'barely held');
