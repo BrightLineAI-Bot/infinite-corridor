@@ -40,11 +40,11 @@ function neckPath(ctx) {
 function alongNeck(ctx, k, from = 0) { ctx.beginPath(); for (let i = from; i <= N; i++) { const j = Math.min(N, i + 1), h = Math.max(0, i - 1), tx = NX[j] - NX[h], ty = NY[j] - NY[h], m = Math.hypot(tx, ty) || 1; const x = NX[i] - ty / m * NR[i] * k, y = NY[i] + tx / m * NR[i] * k; if (i > from) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); }
 // a dust burst and cracks where a head (or a clone's) strikes the ground: `age` 0..1 over APATO_FX.dustMs
 export const APATO_FX = Object.freeze({ cock: -.35, snap: 28, dustMs: 650, dustPuffs: 7, cracks: 5 });
-function slamDust(ctx, A, x, y, u, age, scale = 1) {
+function slamDust(ctx, A, x, y, u, age, scale = 1, part = 3) { // part: 1 the cracks (under the head), 2 the dust (over it)
   if (!(age >= 0 && age < 1)) return; const r = u * scale * (.18 + .55 * smooth(age)), fade = 1 - age;
   ctx.save(); ctx.strokeStyle = A.earthDark; ctx.globalAlpha = fade * .9; ctx.lineWidth = Math.max(1, u * .02 * scale); ctx.lineCap = "round";
-  for (let i = 0; i < APATO_FX.cracks; i++) { const a = i / APATO_FX.cracks * TAU + .4, l = u * scale * (.25 + .12 * (i % 2)) * Math.min(1, age * 4); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l * .5, y + Math.sin(a) * l * .3 + u * .02); ctx.lineTo(x + Math.cos(a + .25) * l, y + Math.sin(a + .25) * l * .6); ctx.stroke(); }
-  for (let i = 0; i < APATO_FX.dustPuffs; i++) { const a = i / APATO_FX.dustPuffs * TAU, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .45 - u * scale * .12 * age; ctx.globalAlpha = fade * .55; ctx.fillStyle = i % 2 ? A.earthLight : A.earth; ctx.beginPath(); ctx.arc(px, py, u * scale * (.06 + .07 * age), 0, TAU); ctx.fill(); }
+  if (part & 1) for (let i = 0; i < APATO_FX.cracks; i++) { const a = i / APATO_FX.cracks * TAU + .4, l = u * scale * (.25 + .12 * (i % 2)) * Math.min(1, age * 4); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l * .5, y + Math.sin(a) * l * .3 + u * .02); ctx.lineTo(x + Math.cos(a + .25) * l, y + Math.sin(a + .25) * l * .6); ctx.stroke(); }
+  if (part & 2) for (let i = 0; i < APATO_FX.dustPuffs; i++) { const a = i / APATO_FX.dustPuffs * TAU, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .45 - u * scale * .12 * age; ctx.globalAlpha = fade * .55; ctx.fillStyle = i % 2 ? A.earthLight : A.earth; ctx.beginPath(); ctx.arc(px, py, u * scale * (.06 + .07 * age), 0, TAU); ctx.fill(); }
   ctx.restore();
 }
 function fillNeck(ctx, A, u, light = true) {
@@ -99,6 +99,7 @@ export function drawEarthApato(ctx, q, now = 0) {
   if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (2 * A.stride * 2 * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
   if (e.apatoPose === "slam" && M.pose !== "slam") M.slamAt = now; else if (M.slamAt != null && now - M.slamAt > APATO_FX.dustMs) M.slamAt = null; M.pose = e.apatoPose; // the moment of contact
+  if (e.apatoPose === "stomp" && M.step !== e.apatoStep) { if (M.step != null) M.stepAt = now; M.step = e.apatoStep; } else if (e.apatoPose !== "stomp") M.step = null; // a foot coming down in the stomp chase
   const T = poseTargets(e, dead), rate = e.apatoPose === "slam" ? APATO_FX.snap : A.ease, ease = (cur, to) => !(dt > 0) || reduce ? to : cur + (to - cur) * Math.min(1, dt * rate); // the slam snaps down
   M.lift = ease(M.lift, T.lift); M.reach = ease(M.reach, T.reach); M.front = ease(M.front, T.front); M.glow = ease(M.glow, Math.max(0, Math.min(1, Number(e.apatoGlow) || 0)));
   const stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0)), wob = stun && !reduce ? Math.sin(t * 9) * .15 * stun : 0;
@@ -136,16 +137,19 @@ export function drawEarthApato(ctx, q, now = 0) {
   // near legs
   if (dead) for (const lx of A.legX) { ctx.fillStyle = A.hideDark; ctx.strokeStyle = A.outline; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.ellipse(lx * u + u * .18, -u * .08, u * .22, u * .08, 0, 0, TAU); ctx.fill(); ctx.stroke(); } // folded legs
   else for (const [lx, o] of [[A.legX[1], 0], [A.legX[0], 1.6 + Math.PI]]) { const s0 = step(o) * mv, lift = (lx > 0 ? M.front * .32 + (stepFar ? 0 : stepUp * .3) : 0) + Math.max(0, s0) * .06 * mv; drawLeg(ctx, A, u, lx * u, lx > 0 ? foreL : hindL, lift, s0 * A.stride * .5, false); }
+  if (!reduce && M.stepAt != null && now - M.stepAt < APATO_FX.dustMs) { const st = Number(e.apatoStep) || 0, fore = st % 4 < 2; slamDust(ctx, A, (fore ? A.legX[0] : A.legX[1]) * u + (st % 2 ? 0 : u * A.farShift), 0, u, (now - M.stepAt) / APATO_FX.dustMs, .9); } // dust where the foot came down
   // the neck and head (unless the neck is out across the ground)
   const sx = L * .8, sy = by - H * .2 - front * .5;
   if (!lashing) {
     const shake = (e.apatoPose === 'leaf' || e.apatoPose === 'leafReady') && !reduce ? Math.sin(t * (e.apatoPose === 'leaf' ? 16 : 6)) * .18 : 0, lift = M.lift + wob + shake, reach = M.reach, down = Math.max(0, -lift), up = Math.max(0, lift), restY = by - u * A.headY;
     const hx = u * (1.38 + .5 * reach + .45 * down - .22 * up), hy = restY - u * A.headLift * up + (-u * .12 - restY) * smooth(down);
     const hx2 = Math.max(sx + u * .3, hx), c1x = sx + u * (.32 + .2 * reach + .2 * down), c1y = sy - u * (.22 + .15 * up) + u * .15 * down, c2x = hx2 - u * (.42 + .1 * up - .3 * down), c2y = hy + u * (.42 + .3 * up - .4 * down);
-    sampleNeck(sx, sy, c1x, c1y, c2x, c2y, hx2, hy, A.neckRoot * u, A.neckTip * u); fillNeck(ctx, A, u, true);
+    sampleNeck(sx, sy, c1x, c1y, c2x, c2y, hx2, hy, A.neckRoot * u, A.neckTip * u);
+    if (!reduce && M.slamAt != null) slamDust(ctx, A, NX[N] + u * .1, -u * .02, u, (now - M.slamAt) / APATO_FX.dustMs, 1.2, 1); // the ground cracks under the head
+    fillNeck(ctx, A, u, true);
     const ang = Math.atan2(NY[N] - NY[N - 2], NX[N] - NX[N - 2]), headA = e.apatoPose === "beamLift" || e.apatoPose === "beam" || e.apatoPose === "sweep" ? Math.min(ang, .25) : ang * .6 + (lift < 0 ? .5 : .15);
     drawHead(ctx, A, u, NX[N], NY[N], headA, M.glow, e.apatoPose === "leaf" || e.apatoPose === "wrapTrack" ? .5 : 0, reduce, t);
-    if (!reduce && M.slamAt != null) slamDust(ctx, A, NX[N] + u * .1, -u * .02, u, (now - M.slamAt) / APATO_FX.dustMs, 1.2);
+    if (!reduce && M.slamAt != null) slamDust(ctx, A, NX[N] + u * .1, -u * .02, u, (now - M.slamAt) / APATO_FX.dustMs, 1.2, 2);
   } // else: the neck runs out from its chest over the ground (drawApatoGround draws it, rising to the chest)
   ctx.restore();
 }
@@ -164,6 +168,7 @@ export function drawApatoClone(ctx, q, now = 0) {
   for (const [lx, o, far] of [[-.25, 1.6, true], [.25, 0, true], [-.25, 0, false], [.25, 1.6 + Math.PI, false]]) { const s0 = Math.sin(ph + o) * mv; ctx.lineWidth = u * (far ? .08 : .1); ctx.strokeStyle = far ? A.barkDark : A.bark; ctx.beginPath(); ctx.moveTo(lx * u, by + H * .4); ctx.quadraticCurveTo(lx * u + s0 * u * .06, by * .4, lx * u + s0 * u * .1, -Math.max(0, s0) * u * .05); ctx.stroke(); ctx.lineWidth = u * .03; ctx.beginPath(); ctx.moveTo(lx * u + s0 * u * .1, 0); ctx.lineTo(lx * u + s0 * u * .1 + u * .08, u * .01); ctx.moveTo(lx * u + s0 * u * .1, 0); ctx.lineTo(lx * u + s0 * u * .1 - u * .06, u * .01); ctx.stroke(); }
   // a branching tail
   const tw = e.apatoPose === "tail" ? Math.sin(t * 14) * .5 : reduce ? 0 : Math.sin(t * 1.6) * .1;
+  if (e.apatoPose === "tail" && !reduce) { ctx.save(); ctx.globalAlpha = .35; ctx.strokeStyle = A.barkLight; ctx.lineCap = "round"; for (let i = 0; i < 3; i++) { ctx.lineWidth = u * (.05 - i * .012); ctx.beginPath(); ctx.ellipse(-L * 1.2, by + u * .1, L * 1.3, u * .3, 0, Math.PI * (.55 + i * .08) + tw, Math.PI * (1.25 + i * .05) + tw); ctx.stroke(); } ctx.restore(); } // the whip's swoosh
   ctx.strokeStyle = A.bark; ctx.lineWidth = u * .07; ctx.beginPath(); ctx.moveTo(-L * .8, by); ctx.quadraticCurveTo(-L * 1.6, by + u * (.05 + tw * .3), -L * 2.3, by + u * (.25 - tw * .4)); ctx.stroke();
   ctx.lineWidth = u * .03; ctx.beginPath(); ctx.moveTo(-L * 1.7, by + u * .12); ctx.lineTo(-L * 1.9, by - u * .1); ctx.moveTo(-L * 2.1, by + u * .2); ctx.lineTo(-L * 2.4, by + u * .05); ctx.stroke();
   ctx.fillStyle = A.leaf; for (const [lx, ly] of [[-L * 1.9, by - u * .12], [-L * 2.4, by + u * .03]]) { ctx.beginPath(); ctx.ellipse(lx, ly, u * .05, u * .03, .5, 0, TAU); ctx.fill(); }
@@ -204,7 +209,7 @@ export function drawApatoGround(ctx, e, s, now, opts = {}) {
   const A = APATO_ART, quiet = !!opts.quiet, cap = !!opts.capture, t = quiet ? 0 : now / 1000, F = e.apatoFx;
   ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
   // saplings (standing: drawn in Close View itself when it captures the floor)
-  for (const q of e.apatoSaplings || []) { const x = SX(q.x, s), y = SY(q.y, s); drawApatoSapling(ctx, x, y, s, Math.min(1, (q.grow || 0) / .7), q.grow > 0 && e.apatoBeam?.on ? .8 : 0, t); }
+  for (const q of e.apatoSaplings || []) { const x = SX(q.x, s), y = SY(q.y, s); if (cap) { ctx.fillStyle = "rgba(60,40,20,.5)"; ctx.beginPath(); ctx.ellipse(x, y, s * .2, s * .09, 0, 0, TAU); ctx.fill(); } else drawApatoSapling(ctx, x, y, s, Math.min(1, (q.grow || 0) / .7), q.grow > 0 && e.apatoBeam?.on ? .8 : 0, t); } // Close View stands the tree itself up (close-view-beast-apato.ts)
   // the wrap's coil mark: a ring of vine that follows you, then closes
   const W = e.apatoWrap;
   if (W?.on && (W.phase === "track" || W.phase === "lunge")) { const x = SX(W.x, s), y = SY(W.y, s), r = 1.15 * s; ring(ctx, x, y, r, W.phase === "lunge" ? DANGER_STRONG : DANGER_FILL, DANGER_EDGE, W.phase === "track");
@@ -243,7 +248,8 @@ export function drawApatoGround(ctx, e, s, now, opts = {}) {
       if (!cap) drawHand(ctx, A, x, y, s, rise * sink, q.throws > 0 && q.next < .5, t); }
     for (const q of F.rocks) { if (!q.on) continue; const x = SX(q.x, s), y = SY(q.y, s); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(x, y, s * .22, s * .1, 0, 0, TAU); ctx.fill(); ring(ctx, x, y, .4 * s, DANGER_FILL, null); if (!cap) drawRock(ctx, A, x, y - s * .6, s * .28, t * 6); }
     // leaves and thorns
-    for (const q of F.leaves) { if (!q.on) continue; const x = SX(q.x, s), y = SY(q.y, s); ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(x, y, s * .14, s * .06, 0, 0, TAU); ctx.fill(); if (!cap) drawLeaf(ctx, A, x, y - s * .45, s * 1.6, q.thorn ? Math.atan2(q.vy, q.vx) : quiet ? 0 : q.spin * 14, !!q.thorn); }
+    for (const q of F.leaves) { if (!q.on) continue; const x = SX(q.x, s), y = SY(q.y, s);
+      if (!cap && !quiet) { const m = Math.hypot(q.vx || 0, q.vy || 0) || 1, dx = (q.vx || 0) / m, dy = (q.vy || 0) / m; ctx.strokeStyle = q.thorn ? "rgba(232,224,192,.45)" : "rgba(160,240,90,.4)"; ctx.lineWidth = Math.max(1, s * .05); ctx.beginPath(); ctx.moveTo(x, y - s * .45); ctx.lineTo(x - dx * s * .7, y - s * .45 - dy * s * .7 * .6); ctx.stroke(); } /* its flight streak */ ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(x, y, s * .14, s * .06, 0, 0, TAU); ctx.fill(); if (!cap) drawLeaf(ctx, A, x, y - s * .45, s * 1.6, q.thorn ? Math.atan2(q.vy, q.vx) : quiet ? 0 : q.spin * 14, !!q.thorn); }
     // stomp waves: rings along the ground (jump them)
     for (const q of F.waves) { if (!q.on) continue; const x = SX(q.x, s), y = SY(q.y, s), r = Math.max(.05, q.r) * s; ctx.strokeStyle = DANGER_EDGE; ctx.lineWidth = Math.max(2, s * .14); ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = "rgba(140,100,60,.7)"; ctx.lineWidth = Math.max(1, s * .06); ctx.stroke(); }
     // root necks: vines from its back to a hunting bud
@@ -261,7 +267,8 @@ function drawGroundNeck(ctx, A, s, xs, ys, n, e, t, quiet) {
   for (let i = 0; i <= m; i++) { const k = 1 - i / last, wave = quiet || i === 0 ? 0 : Math.sin(t * 8 - i * .9) * s * .05 * (i / last);
     NSX[i] = i === 0 ? (e.x + .5) * s + fx * A.bodyLen * .8 * u : SX(xs[i], s); NSY[i] = (i === 0 ? (e.y + .82) * s : SY(ys[i], s)) - chestH * k * k - s * .28 * (1 - k * k) + wave; }
   ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(0,0,0,.2)"; ctx.lineWidth = s * .3; ctx.beginPath(); for (let i = 1; i <= m; i++) { const x = SX(xs[i], s), y = SY(ys[i], s); if (i > 1) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); // its shadow on the ground
+  if (!quiet) for (let i = 1; i <= 3 && m - i >= 1; i++) { const x = SX(xs[m - i], s), y = SY(ys[m - i], s), k = ((t * 3 + i * .33) % 1); ctx.fillStyle = i % 2 ? A.earthLight : A.earth; ctx.globalAlpha = .45 * (1 - k); ctx.beginPath(); ctx.arc(x + (i - 2) * s * .12, y - k * s * .3, s * (.08 + .1 * k), 0, TAU); ctx.fill(); } // dust where its head skims
+  ctx.globalAlpha = 1; ctx.strokeStyle = "rgba(0,0,0,.2)"; ctx.lineWidth = s * .3; ctx.beginPath(); for (let i = 1; i <= m; i++) { const x = SX(xs[i], s), y = SY(ys[i], s); if (i > 1) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); // its shadow on the ground
   const W = (i) => u * (A.neckRoot - (A.neckRoot - A.neckTip) * Math.pow(i / last, .7)) * 1.9;
   for (let pass = 0; pass < 3; pass++) for (let i = 0; i < m; i++) {
     const x0 = i ? (NSX[i - 1] + NSX[i]) / 2 : NSX[0], y0 = i ? (NSY[i - 1] + NSY[i]) / 2 : NSY[0], x1 = (NSX[i] + NSX[i + 1]) / 2, y1 = (NSY[i] + NSY[i + 1]) / 2, w = W(i + .5);
