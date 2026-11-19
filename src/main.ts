@@ -3178,11 +3178,11 @@ function openGlyphs(){arcanumShell('glyphs','Glyphs & Resonances',`Glyph dust ${
  arcanumFooter()}
 // Creature Echoes (release 99): defeated creatures' signature moves set into three notches.
 function openEchoes(){const used=notchesUsed(save.echoes.equipped);
- arcanumShell('echoes',`Creature Echoes`,`${used} of ${NOTCHES} notches set. An Echo is a defeated creature’s signature move, carried in you; it triggers on your own dodges, jumps, kills, wounds, casts and shots. Guardians always leave theirs.`);
+ arcanumShell('echoes',`Creature Echoes`,`${used} of ${NOTCHES} notches set. An Echo is a defeated creature’s signature move, carried in you; it triggers on your own dodges, jumps, hits, kills, wounds, casts and shots. Guardians always leave theirs.`);
  body.append(el('p','arc-notches',`Notches ${'◆'.repeat(used)}${'◇'.repeat(Math.max(0,NOTCHES-used))}`));
  const grid=el('div','arc-grid');
  for(const id of ECHO_IDS){const e=ECHOES[id],owned=save.echoes.owned[id],on=save.echoes.equipped.includes(id),creature=e.creature||MONSTER_PACK[id]?.name||id,c=el(owned?'button':'div','arc-card echo-card'+(on?' on':'')+(owned?'':' unknown'));if(owned)c.type='button';
-  c.append(el('span','arc-card-sigil','◆'.repeat(e.cost)),el('strong','',owned?e.name:'Unknown Echo'),el('small','',owned?`${creature} — ${e.text}`:`Defeat a ${creature} to take it.`));
+  c.append(el('span','arc-card-sigil','◆'.repeat(e.cost)),el('strong','',owned?e.name:'Unknown Echo'),el('small','',owned?`${creature} — ${e.text}`:(e.taken||`Defeat a ${creature} to take it.`)));
   if(owned){c.append(el('em','arc-state',on?'Set — tap to set aside':`Tap to set · ${e.cost} notch${e.cost===1?'':'es'}`));c.onclick=()=>{const r=toggleEcho(save,id);game.message=r.message;persist();openEchoes()}}
   grid.append(c)}
  body.append(grid);arcanumFooter()}

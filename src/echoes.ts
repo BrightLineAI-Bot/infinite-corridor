@@ -2,7 +2,8 @@
 //
 // Defeating a pack creature can leave an Echo of its signature attack. Echoes sit in notches (NOTCHES total; each
 // costs 1-3, Hollow Knight charm style) and trigger from things the Wayfarer already does (dodging, landing a jump,
-// killing, being hurt, casting, firing, facing a foe, standing still), so they add moves without new buttons.
+// killing, landing a hit (ON_HIT_ECHOES, 2026-11-18), being hurt, casting, firing, facing a foe, standing still), so they add
+// moves without new buttons.
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
@@ -82,9 +83,11 @@ export const ECHOES = {
   listener: { name: "Listener's Answer", cost: 3, trigger: "hurt", module: "mirrorSwap", text: "Being hurt answers back: the nearest foe within 3 tiles takes the blow too." },
   questingBeast: { name: "Beast's Spines", cost: 3, trigger: "kill", module: "spikeVolley", text: "Kills fling spines into up to two nearby foes." },
   morphingBlob: { name: "Blob's Spatter", cost: 2, trigger: "hurt", module: "blobGasCloud", text: "Being hurt spatters ooze around you that slows foes by 40% for 3 s." },
-  bloblet: { name: "Bloblet Mend", cost: 1, trigger: "kill", module: "blobBloblets", text: "Kills mend 3 health." },
+  // On-hit rework (Tim, 2026-11-18): ON_HIT_ECHOES.mend.
+  bloblet: { name: "Bloblet Mend", cost: 1, trigger: "hit", module: "blobBloblets", text: "Each hit you land mends 1% of your maximum health, at most 3 times a second." },
   tremorWorm: { name: "Worm's Upheaval", cost: 3, trigger: "dodge", module: "wormRise", text: "Each dodge heaves the ground under a foe within 5 tiles (the nearest one not already marked); each puddle bursts a moment later, one after another." },
-  wormTentacle: { name: "Tentacle Ember", cost: 1, trigger: "kill", module: "wormTentacles", text: "Kills set the nearest foe within 4 tiles burning." },
+  // On-hit rework (Tim, 2026-11-18): ON_HIT_ECHOES.ember.
+  wormTentacle: { name: "Tentacle Ember", cost: 1, trigger: "hit", module: "wormTentacles", text: "Each hit you land lays an ember on that foe; the third bursts, striking it and foes within 1.5 tiles for 40% of that hit (×1.75 against burning foes). Embers fade after 3 s without a hit." },
   mountainTurtle: { name: "Turtle's Ward", cost: 3, trigger: "hurt", module: "turtleShield", text: "Being hurt grows ice over you: no blow lands for a second (once every 8 s)." },
   nanobotKnight: { name: "Nanite Seekers", cost: 3, trigger: "kill", module: "knightOrbs", text: "Kills loose nanite seekers into up to two foes within 5 tiles." },
   lightningGiant: { name: "Giant's Arc", cost: 3, trigger: "kill", module: "giantArcs", text: "Kills arc lightning into up to three foes within 5 tiles." },
@@ -154,6 +157,11 @@ export const WALL_CLING = {
   // one jump (kick.push × a walk, 4.8 tiles a second, × JUMP.base .52 s: 2.5 tiles).
   pentagon: { grip: ["outer", "balcony"], stand: ["balcony", "stair"], below: 3, near: 4 },
 };
+// Triceratops Cunning (Tim, 2026-11-18). The Triceratops stays `noEcho` in MONSTER_PACK: only a Bad (hostile) one leaves this, certain
+// on the first such kill (`from` and `certain`, read by echoDrop). Good and Silly Goose ones, ridden mounts and catches never do.
+// Its rules: ON_HIT_ECHOES.cunning.
+ECHOES.triceratops = { name: "Triceratops Cunning", cost: 2, trigger: "hit", module: "ramCharge", creature: "Triceratops", from: { triceratopsDisposition: "bad" }, certain: true,
+  taken: "Defeat a hostile Triceratops to take it.", text: "Each hit you land marks the foe with a horn. The third hit on the same foe within 3 s gores it for +60% of that hit and staggers it for 0.4 s (once every 2 s a foe)." };
 export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
 // The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
 // never lays another. `id` is the new effect's id; `aim` the facing it slams toward (the Close View afterimage's yaw).
@@ -199,8 +207,10 @@ export const echoKindOf = (enemy) => typeof enemy?.packKind === "string" ? enemy
 export const MINION_ECHOES = { bloblet: "morphingBlob", wormTentacle: "tremorWorm" };
 export function echoDrop(save, enemy, guardian, n, certain = false) {
   const id = echoKindOf(enemy), minion = !!id && Object.hasOwn(MINION_ECHOES, id);
-  if (!id || !ECHOES[id] || save.echoes.owned[id] || (enemy.summonedBy && !minion) || enemy.noRewards) return null;
-  if (minion) certain = true;
+  if (!id || !ECHOES[id] || save.echoes.owned[id] || (enemy.summonedBy && !minion) || enemy.noRewards || enemy.caught) return null;
+  const from = ECHOES[id].from; // only a creature of this nature leaves it (the Triceratops: a Bad one)
+  if (from && Object.keys(from).some((k) => enemy[k] !== from[k])) return null;
+  if (minion || ECHOES[id].certain) certain = true;
   // A mixed roll: the raw FNV hash modulo 100 runs well under the stated chance when only the counter changes.
   if (!certain && rng(`${save.seed}:echo-drop:v${ECHO_VERSION}:${enemy.id}:${n}`)() * 100 >= (guardian ? ECHO_DROPS.guardian : ECHO_DROPS.ordinary)) return null;
   save.echoes.owned[id] = true;
@@ -233,7 +243,98 @@ export function mistRot(e, world) {
 // large burst. So let's go back to that."
 export const UPHEAVAL = { damage: 1.3, delay: 600, radius: 1.4, range: 5 };
 
+// ---------------------------------------------------------------- on-hit Echoes (Tim, 2026-11-18)
+// The Game calls echoEvent(game, "hit", now, { enemy, damage }) when the Wayfarer's own blow lands on a foe (game.ts landHit): a
+// swing or cut, a punch or slam, a tool shot or sling stone, a spell's projectile or pulse, a weapon art, the staff's hands, a mount's
+// horn, the Shadow Clone's swing. `damage` is the health it took (after the Wayfarer's damage scale). Never from burns, bleeds or
+// poison ticks, nor from anything an Echo or a glyph or passive proc does (glyphWorld's damage and blast are never hits), nor from
+// a glyph's Echo copy of a blow: no Echo can feed another. The hit path allocates nothing; the marks live on the foe, non-enumerable
+// (never saved: a resume drops them), one small record per foe struck while an on-hit Echo is set.
+export const ON_HIT_ECHOES = {
+  // At most this many hits a second (a fixed one-second window) reach the on-hit Echoes; more are ignored.
+  perSecond: 12,
+  // A foe's hits closer together than this count once (a volley's shards, a field's simultaneous pulses); the Fourfold
+  // Daggers' second cut (80 ms) still counts.
+  perFoeGapMs: 60,
+  // Triceratops Cunning: `marks` hits on one foe within `windowMs` gore it for `gore` of the last hit's damage and stagger it
+  // `stagger` s (bosses and elites a `bossStagger` share, as every Wayfarer stagger; the stagger governor still holds). No
+  // knockback. Then the foe takes no marks for `cooldownMs`.
+  cunning: { marks: 3, windowMs: 3000, gore: .6, stagger: .4, bossStagger: .25, cooldownMs: 2000 },
+  // Bloblet Mend (Tim, revised 2026-11-18): each hit mends `share` of maximum health, at most `perSecond` times in any second.
+  mend: { share: .01, perSecond: 3 },
+  // Tentacle Ember (Tim, revised 2026-11-18): each hit lays a stack on that foe; the `stacks`th bursts it in embers, `share` of
+  // that hit's damage to it and to every foe within `radius` tiles of it, times `burning` against a foe already burning (any
+  // burn: glyphs, fire spells and Echoes all burn through `glyphBurn`). It ignites nothing. Stacks clear on the burst, and lapse
+  // when the foe goes `lapseMs` without a hit. The burst is never a hit itself.
+  ember: { stacks: 3, share: .4, radius: 1.5, burning: 1.75, lapseMs: 3000 },
+};
+export const ON_HIT_IDS = ["triceratops", "bloblet", "wormTentacle"];
+const HIT_MARK = Symbol("onHitMark");
+// Which on-hit Echoes are set (a bit per ON_HIT_IDS entry), worked out once a frame.
+function onHitMask(game, now) {
+  if (game._hitMaskAt === now && game._hitMaskSave === game.save) return game._hitMask;
+  const eq = activeEchoes(game.save); let m = 0;
+  for (let i = 0; i < ON_HIT_IDS.length; i++) if (eq.includes(ON_HIT_IDS[i])) m |= 1 << i;
+  game._hitMaskAt = now; game._hitMaskSave = game.save; game._hitMask = m; return m;
+}
+function hitMark(e) {
+  let m = e[HIT_MARK];
+  if (!m) { m = { last: -Infinity, m1: -Infinity, m2: -Infinity, coolUntil: -Infinity, embers: 0, emberAt: -Infinity }; Object.defineProperty(e, HIT_MARK, { value: m, writable: true, configurable: true, enumerable: false }); }
+  return m;
+}
+// The foe's runtime marks (tests and diagnostics); null when it has none.
+export const onHitMarkOf = (e) => e?.[HIT_MARK] || null;
+export function echoHit(game, now, enemy, damage) {
+  const mask = onHitMask(game, now); if (!mask || !enemy || !(damage > 0) || !Number.isFinite(now)) return false;
+  const H = ON_HIT_ECHOES, mark = hitMark(enemy);
+  if (now - mark.last < H.perFoeGapMs) return false;
+  if (!(now - (game._hitWindowAt ?? -Infinity) < 1000)) { game._hitWindowAt = now; game._hitWindowN = 0; }
+  if (game._hitWindowN >= H.perSecond) return false;
+  game._hitWindowN++; mark.last = now;
+  const live = !enemy.dead && enemy.hp > 0, save = game.save, p = game.player;
+  if (mask & 1 && live && now >= mark.coolUntil) { // Triceratops Cunning
+    const C = H.cunning;
+    if (now - mark.m1 <= C.windowMs) {
+      mark.m1 = mark.m2 = -Infinity; mark.coolUntil = now + C.cooldownMs;
+      const gore = Math.max(1, Math.round(damage * C.gore)), before = Math.max(0, enemy.hp);
+      enemy.hp -= gore; enemy.hitFlash = .18;
+      enemy.hitStun = Math.max(enemy.hitStun || 0, enemy.boss || enemy.eliteId ? C.stagger * C.bossStagger : C.stagger);
+      game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
+      (game.glyphVisuals ||= []).push({ kind: "burst", x: enemy.x + .5, y: enemy.y + .45, radius: .7, life: .3, max: .3 });
+      if (enemy.hp <= 0 && !enemy.dead) { enemy.dead = true; game.defeatEnemy?.(enemy); }
+    } else { mark.m1 = mark.m2; mark.m2 = now; }
+  }
+  if (mask & 2 && p.hp > 0) { // Bloblet Mend: the last `perSecond` (3) mends' times, oldest first
+    const M = H.mend, max = save.maxHp || p.maxHp || p.hp;
+    if (!(now - (game._hitMend0 ?? -Infinity) < 1000)) {
+      const before = p.hp; game.grantHitHeal?.(max * M.share, now, enemy); // the shared heal-on-hit budget (TESSERACTS.hitHealCap)
+      if (p.hp > before) { game._hitMend0 = game._hitMend1 ?? -Infinity; game._hitMend1 = game._hitMend2 ?? -Infinity; game._hitMend2 = now; if (game._echoLastHp !== undefined) game._echoLastHp += p.hp - before; } // a mend is never read as a wound's absence
+    }
+  }
+  if (mask & 4) { // Tentacle Ember
+    const E = H.ember;
+    if (now - mark.emberAt > E.lapseMs) mark.embers = 0;
+    mark.embers++; mark.emberAt = now;
+    if (mark.embers >= E.stacks) { mark.embers = 0; mark.emberAt = -Infinity; emberBurst(game, now, enemy, damage); }
+  }
+  return true;
+}
+export const isBurning = (e, now) => (e?.glyphBurn?.until || 0) > now;
+// The ember burst: straight to health (never game.landHit or glyphWorld, so it is no hit and no proc), each blow the Wayfarer's.
+function emberBurst(game, now, at, damage) {
+  const E = ON_HIT_ECHOES.ember, x = at.x + .5, y = at.y + .45, base = Math.max(1, Math.round(damage * E.share)), list = game.enemies || [], n = list.length; // foes a kill brings in are not struck
+  (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius: E.radius, life: .35, max: .35 });
+  for (let i = 0; i < n; i++) {
+    const e = list[i];
+    if (e.dead || e.untargetable || e.kind === "npc" || !(e.hp > 0) || Math.hypot(e.x + .5 - x, e.y + .45 - y) > E.radius + .2) continue;
+    const before = e.hp; e.hp -= isBurning(e, now) ? Math.round(base * E.burning) : base; e.hitFlash = .18;
+    game.astralPlayerHit?.(e, Math.max(0, before - Math.max(0, e.hp)));
+    if (e.hp <= 0 && !e.dead) { e.dead = true; game.defeatEnemy?.(e); }
+  }
+}
+
 export function echoEvent(game, event, now, data = {}) {
+  if (event === "hit") return void echoHit(game, now, data.enemy, data.damage);
   const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
   if (!eq.length) return;
   if (event === "dodge") {
@@ -271,8 +372,6 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("doomChaser")) { const foe = nearest(game, at.x, at.y, 6, data.enemy)[0]; if (foe) { const c = centre(foe); world.blast(c.x, c.y, 1.4, Math.round(dmg * .8)); world.arc(data.enemy, foe, "#a060ff"); } } // release 710
     if (eq.includes("ashenMoth")) { const foe = nearest(game, at.x, at.y, 5, data.enemy)[0]; if (foe) { foe.glyphBurn = { until: now + 3000, dps: Math.max(2, Math.round(dmg * .35)), tick: 0 }; world.arc(data.enemy, foe, "#ff8a2a"); } } // release 706
     if (eq.includes("lightningGiant")) for (const e of nearest(game, at.x, at.y, 5, data.enemy).slice(0, 3)) { world.arc(data.enemy, e, "#7fd6ff"); world.damage(e, Math.round(dmg * .7)); } // release 257
-    if (eq.includes("bloblet")) p.hp = Math.min(p.maxHp || save.maxHp || p.hp, p.hp + 3); // release 235
-    if (eq.includes("wormTentacle")) { const foe = nearest(game, at.x, at.y, 4, data.enemy)[0]; if (foe) { foe.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, foe, "#ff7a2a"); } } // release 237
     if (eq.includes("amalgam")) (game.echoPatches ||= []).push({ kind: "flesh", x: at.x, y: at.y, radius: 1.3, until: now + 4000, slow: .55 });
     if (eq.includes("cinderSeraph")) for (const e of nearest(game, at.x, at.y, 4).slice(0, 3)) { e.glyphBurn = { until: now + 2500, dps: Math.max(2, Math.round(dmg * .3)), tick: 0 }; world.arc(data.enemy, e, "#ff9a4a"); }
   } else if (event === "hurt") {
