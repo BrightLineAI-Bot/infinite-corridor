@@ -15,12 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1018 (this merge, #688); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1020 (this merge, #690); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1020 | Claude | claude/target-follow-camera / #690 | Close View target-follow camera; held-stick spin fix | Merged (#690); preview follows. |
+| 1019 | Claude | claude/cutout-floor-ceiling / #689 | Close View cutout spares the floor and ceiling (cut only from beyond), no black voids, no floor streaks | Merged (#689); preview follows. |
 | 1018 | Claude | claude/aegis-reflect-hits / #688 | Power Aegis reflected damage counts as your own hit (on-hit Echoes, Tempo count, frenzy cure, kill credit), without double-dipping bonus strikes | Merged (#688); preview follows. |
 | 1017 | Claude | claude/triceratops-hatchling | Triceratops hatchling: Beast Hotel rescue quest, baby (support) and young (damage) companion forms, growth from fight XP, form choice in the Pack; free Triceratops withdrawn from every journey; new modules hatchling and hatchling-render; grant-test and home-town digest edits (Tim approved) | In flight. |
 | 1016 | Claude | claude/aegis-reflect-strength / #686 | Power Aegis reflect 1.5x the blow; boss cap 15% of max health per reflect | Merged (#686); preview follows. |

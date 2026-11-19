@@ -115,11 +115,15 @@ test('movement is relative to the current camera after a Target toggle recenters
   let swung = 0;
   for (let i = 0; i < 90; i++) {
     frame(g, 1); const yaw = CV.closeViewCamera().yaw;
+    // 2026-11-19 (Tim, the spin loop): a stick held through the swing now keeps its basis (it walks straight; see
+    // close-view-target-follow.test.ts), so each frame here starts from a stick let go and pushed afresh, which reads the view as it is now.
+    // The probes are let go again before the next frame: nobody actually walks here, and a stick still held would draw the swing to its own heading.
+    const rest = () => { const r = { x: 0, y: 0 }; CV.closeViewSteer(g, r, now); CV.closeViewUnsteer(r); }; rest();
     for (const [sx, sy, rel] of [[0, -1, 0], [1, 0, Math.PI / 2], [0, 1, Math.PI], [-1, 0, -Math.PI / 2]]) {
       const s = { x: sx, y: sy }; CV.closeViewSteer(g, s, now);
       assert.ok(Math.abs(wrap(Math.atan2(s.y, s.x) - (yaw + rel))) < 1e-9, `frame ${i}: stick (${sx}, ${sy}) follows the current view`); CV.closeViewUnsteer(s);
     }
-    swung = Math.max(swung, Math.abs(wrap(yaw - oldYaw)));
+    rest(); swung = Math.max(swung, Math.abs(wrap(yaw - oldYaw)));
   }
   assert.ok(Math.abs(wrap(CV.closeViewCamera().yaw - body)) < .02, 'the view settled behind the Wayfarer');
   assert.ok(swung > 1.2, 'the view really turned');
