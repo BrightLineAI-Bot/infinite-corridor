@@ -11,7 +11,7 @@ import { latticePassives } from "./transit-lattice.ts";
 import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.ts";
 import { QUANDRIX } from "./quandrix-staff.ts";
 import { WEAPON_ARTS } from "./weapon-arts.ts";
-import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD } from "./hit-cast-passives.ts"; // Tim's on-hit and charge passives (2026-11-19)
+import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD, POWER_AEGIS } from "./hit-cast-passives.ts"; // Tim's on-hit and charge passives (2026-11-19)
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -23,6 +23,8 @@ export const FIELD_PASSIVES = {
   // On-hit (Tim, 2026-11-19; hit-cast-passives.ts): they need no spell in play, and work in every fight.
   tempo: { name: "Tempo", text: PASSIVE_TEXT.tempo, rules: TEMPO },
   shatterpoint: { name: "Shatterpoint", text: PASSIVE_TEXT.shatterpoint, rules: SHATTERPOINT },
+  // The Aegis's perfect parry (Tim, 2026-11-19; hit-cast-passives.ts POWER_AEGIS, game.ts perfectParry): a spell's passive.
+  "power-aegis": { name: "Power Aegis", text: PASSIVE_TEXT["power-aegis"], rules: POWER_AEGIS },
 };
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.

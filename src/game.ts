@@ -175,7 +175,7 @@ import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, f
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.ts"; // release 487
-import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -193,7 +193,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
-export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
+export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "parryFlashAt" /* Power Aegis: the perfect window, the empowerment, the flash (drawn only) */, "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
@@ -201,7 +201,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
 export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
-export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
+export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
   const p = game.player || {};
@@ -7096,6 +7096,7 @@ export class Game {
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
     amount *= weakenScale(source, now); // Arcane Edge's Dusk: a weakened foe's blows take less
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
+    this.parryBlow(source);
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
     p.invulnerableUntil = now + tacticsHurtWindow(source, now, options.beam ? 320 : 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
@@ -10130,13 +10131,33 @@ export class Game {
     const fx = { id: `spell-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: spell.id, brawler: true, x, y, life: spell.lifetime, radius: spell.radius, pulse: spell.pulse, untilPulse: 0, damage: Math.max(1, Math.round(damage)), pulseIndex: 0, hits: {}, glyphHost: "spell", glyphSpell: spell.id, ...extra };
     this.effects.push(fx); return fx;
   }
+  // Power Aegis (hit-cast-passives.ts POWER_AEGIS): every damage path a foe's blow, shot or blast takes notes it here (`foe`: the
+  // creature that struck, or null for a shot or a blast); update reads it once, where the Aegis turns blows aside. Allocates nothing.
+  parryBlow(foe) { if (!((this.aegisPerfectUntil || 0) > 0)) return; this._parryHit = true; if (foe && typeof foe === "object" && !this._parryFoe) this._parryFoe = foe; }
+  // A perfect parry: the window closes (one a cast), the Aegis is ready again, part of an Essence Walk price comes back, the
+  // empowerment starts, and a foe that struck from within `reach` tiles staggers (bosses, world beasts and elites `bossShare`).
+  perfectParry(now = this.lastUpdateNow || 0, foe = null) {
+    const P = POWER_AEGIS, p = this.player;
+    this.aegisPerfectUntil = 0;
+    if (!powerAegisOn(this.save)) return false;
+    const cds = (this.save.magicSkills ||= {}).cooldowns ||= {}; cds["spell:aegis"] = 0; this.aegisLockUntil = 0;
+    if (this.aegisPaid > 0 && p.hp > 0) p.stamina = Math.min(Number(this.save.maxStamina) || Number(p.stamina) || 0, (Number(p.stamina) || 0) + this.aegisPaid * P.staminaShare);
+    this.aegisPaid = 0;
+    this.powerAegisUntil = now + P.buffMs; this.parryFlashAt = now; this.parryCue = true; // main.ts plays the cue (NOTICE_SOUNDS.parry)
+    let staggered = false;
+    if (foe && !foe.dead && foe.kind !== "npc" && !foe.staggerImmune && !foe.untargetable && this.enemies.includes(foe) && Math.hypot(foe.x - p.x, foe.y - p.y) <= P.reach) {
+      foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? P.stun * P.bossShare : P.stun); foe.hitFlash = Math.max(Number(foe.hitFlash) || 0, .18); staggered = true; // the stagger governor (monster-pack.ts) still bounds it
+    }
+    this.message = `Perfect! The Aegis parries${staggered ? " and your foe reels" : ""}. Power Aegis: ${P.buffMs / 1000} s.`;
+    return true;
+  }
   castBrawler(spell, cds, key, now = this.lastUpdateNow || 0) {
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
     const B = BRAWLER[spell.id], p = this.player, cx = p.x + .5, cy = p.y + .45;
     cds[key] = spell.cooldown * this.glyphLoadout("spell", spell.id).mods.cooldown * (1 - pairingMods(this.save).cooldown) * (1 - armorGlyphBonus(this.save).spellCooldown);
     if (spell.essence) { this.essenceUntil = now + ESSENCE_WALK.seconds * 1000; echoEvent(this, "spell", now); this.message = "Essence Walk: your spells need not wait; recovering ones cost stamina."; return true; } // Essence Walk (2026-11-05): a recast refreshes the window, never stacks
     if (spell.id === "imbue-weapon") { this.imbueUntil = now + IMBUE.seconds * 1000; echoEvent(this, "spell", now); const n = wayfarerDamage(this.imbueBonus(now)); this.message = n > 0 ? `Imbue Weapon: your melee hits carry ${n} magic damage.` : "Imbue Weapon: with no Focus put in, your weapon carries no magic."; return true; } // Imbue Weapon (2026-11-04)
-    if (spell.id === "aegis") { this.aegisUntil = now + B.ms; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485
+    if (spell.id === "aegis") { this.aegisUntil = now + B.ms; this.aegisPerfectUntil = powerAegisOn(this.save) ? now + Math.min(B.ms, POWER_AEGIS.windowMs) : 0; this.aegisPaid = 0; echoEvent(this, "spell", now); this.message = "Aegis: every blow is turned aside."; return true; } // release 485; Power Aegis opens its perfect window (hit-cast-passives.ts POWER_AEGIS)
     if (spell.id === "shadow-boxing") { this.boxingUntil = now + B.seconds * 1000; echoEvent(this, "spell", now); this.message = "Shadow Boxing: your swings follow your foe."; if (echoPlan(this.glyphLoadout("spell", spell.id)) && !this.shadowCloneActive(now)) { const o = cloneOffset(null, this.save.lastAim, SHADOW_CLONE.near); this.shadowClone = { ox: o.x, oy: o.y, until: now + BRAWLER_ECHO.echoClone * 1000, boxing: true }; this.message += " An echo of you boxes beside you."; } return true; } // release 485; 503: Echo spawns a short melee clone
     return false;
   }
@@ -11510,6 +11531,7 @@ export class Game {
     if (!ok) { settleCastWind(this, false); return false; }
     if (spell.id === "orbit-volley" && this.orbit && !this.orbit.flight) this.orbit.essence = true; // its launch leaves the cooldown alone
     p.stamina = Math.max(0, p.stamina - cost); settleCastWind(this, true);
+    if (spell.id === "aegis") this.aegisPaid = cost; // Power Aegis: a perfect parry gives back POWER_AEGIS.staminaShare of it
     this.message = `${this.message} (Essence Walk: ${cost} stamina.)`;
     // ESSENCE_WALK.lockout: spent down too far for another, it is locked for its whole cooldown, Essence Walk or not.
     if (essenceLockout(spell.id) && spell.id === "aegis" && p.stamina < cost) { const full = this.spellCooldownFor(spell); cds[key] = Math.max(cds[key] || 0, full); this.aegisLockUntil = now + full * 1000; this.message += ` Your stamina is spent: ${spell.name} is locked for ${Math.ceil(full)}s.`; }
@@ -11825,6 +11847,7 @@ export class Game {
     reconcileAstralCompanions(this);
     this.syncAstralRiders();
     const p = this.player, hpStart = p.hp;
+    this._parryHit = false; this._parryFoe = null; // Power Aegis: the blows of this frame (parryBlow)
     if (this.ordinaryCloseViewBody()) this._hurtVisualWitness = false;
     this._consumeVisualAcceptedHp = null;
     this.markWalked(); // DIG_GATES: the floor walked in an interior
@@ -12280,7 +12303,7 @@ export class Game {
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
         p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
-        if (shot.hostile) this.noteHurtVisualImpact();
+        if (shot.hostile) this.noteHurtVisualImpact(); this.parryBlow(null); // Power Aegis: a shot parried is turned aside (never reflected)
         p.invulnerableUntil=now+700;
       },
       (shot, e) => (e.kind === "nanobotKnight" && this.scatterCheck(e, shot.damageType === "physical", !!shot.glyphHost && glyphsReachSwarm(this.glyphLoadout(shot.glyphHost)), now)) ? 0 : shot.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(shot.glyphHost), e, shot.damage, { echo: !!shot.echo }, now) : shot.damage,
@@ -12292,7 +12315,7 @@ export class Game {
       this.shotOccluder(), // Close View only: raised ground stops the Wayfarer's shots (tool-forms.ts RANGED_OCCLUSION)
     );
     if(combatNpcTargets.length)this.syncNpcDamage("projectile");
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();p.invulnerableUntil=now+700}}
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();this.parryBlow(null);p.invulnerableUntil=now+700}}
     const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
     if(this.effects.length)this.tickHammerClaps(dt); // the awakened Hammerfall's clap: its closing lines draw foes in (brawler-spells.ts HAMMER_CLAP.pull)
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
@@ -12378,7 +12401,7 @@ export class Game {
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
-      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2},
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e)},
       pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}},
       // Leviathans (W4): krakens raise bounded tentacles (summoned, no rewards) and the Stormkraken inks the sea.
       tentacles:(o)=>this.enemies.filter(q=>!q.dead&&q.summonedBy===o.id).length+seaSummons.filter(q=>q.summonedBy===o.id).length,
@@ -12442,7 +12465,7 @@ export class Game {
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );
-        this.noteHurtVisualImpact();
+        this.noteHurtVisualImpact(); this.parryBlow(e); // Power Aegis
         p.invulnerableUntil = now + tacticsHurtWindow(e, now, 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
       }
       if((e.ai?.pathRetryAt||0)!==pathRetryBefore)this.performanceStats.pathfindingWork++;
@@ -12506,6 +12529,10 @@ export class Game {
     for(const {owner,amount} of drainCredits)if(!owner.dead&&owner.hp>0){owner.hp=Math.min(owner.maxHp,owner.hp+amount*creditScale);if(owner.astral)owner.astral.hp=owner.hp;}
     this._astralDrainCredits=[];
     this.applyInkShield(hpStart, now); // release 461: Ink Shield
+    // Power Aegis (hit-cast-passives.ts POWER_AEGIS): a blow inside the Aegis's perfect window is parried (once a cast). Read from
+    // the blows themselves (parryBlow), so a blow the plating or an Ink Shield took is still a parry; the Aegis below turns it aside.
+    if (this._parryHit && !fellIntoHazard && now < (this.aegisPerfectUntil || 0) && now < (this.aegisUntil || 0)) this.perfectParry(now, this._parryFoe);
+    this._parryHit = false; this._parryFoe = null;
     // Release 485: Aegis turns every blow aside; Shadow Boxing takes `guard` off what gets through. A fall is not a blow.
     if (p.hp < hpStart && !fellIntoHazard) { if (now < (this.aegisUntil || 0)) p.hp = hpStart; else if (now < (this.boxingUntil || 0)) p.hp = hpStart - (hpStart - p.hp) * (1 - BRAWLER["shadow-boxing"].guard); }
     if (p.hp < hpStart || p.hp < (this._consumeVisualAcceptedHp ?? -Infinity)) this.cancelConsumeVisual('hurt');
