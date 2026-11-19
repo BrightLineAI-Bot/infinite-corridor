@@ -9,6 +9,9 @@ import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
 import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
+import { drawPoisonIcon } from "./apato-poison.ts";
+import { drawEarthResolveSigil } from "./apato-render.ts";
+import { insideResolve } from "./echoes.ts"; // the Earth Apatosaurus's root venom
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -2898,7 +2901,7 @@ export function render(ctx, g, w, h, now) {
   const captureRift = stillworksCapture ? (effect, draw) => draws.push({ x: effect.x, y: effect.y, fn: draw }) : null;
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),closeViewCapturing()?{...g.presentation,capture:true}:g.presentation,captureRift); // capture: Close View draws what stands above the floor itself (the dino duel's falling rock)
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode), capture: closeViewCapturing() });
   for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
@@ -3589,7 +3592,7 @@ export function render(ctx, g, w, h, now) {
     ctx.fillRect(0, 0, w, h);
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
-    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
+    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); if (g.save?.apatoPoison?.stacks > 0) drawPoisonIcon(ctx, w / 2 + s * (g.save?.bleed?.left > 0 ? 1.05 : .5) + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
   if (!worldCapture && !closeViewCapturing()) { const doomed = !!g.fallDoomed?.(); drawLowHealth(ctx, g, w, h, now, doomed); if (doomed) drawFallDoom(ctx, g, w, h, now); } // LOW_HEALTH_EDGE yields to the fall cue (one red cue at a time). FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
@@ -3716,6 +3719,7 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
 function drawEchoPatches(ctx,g,s,now){
+  if(g.earthResolve)drawEarthResolveSigil(ctx,g.earthResolve,s,now,insideResolve(g),!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); // Earth Resolve, the Earth Apatosaurus's Echo (apato-render.ts)
   for(const m of glyphMinesOf(g)){const k=Math.max(0,Math.min(1,(m.until-now)/GLYPH_MINE.lifeMs)),x=m.x*s,y=m.y*s,r=GLYPH_MINE.trigger*s;ctx.strokeStyle=`rgba(190,150,255,${.35+.5*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()} // Glyph Mine sigils (hit-cast-passives.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}

@@ -32,6 +32,7 @@ import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
+import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
 import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.ts"; // 2026-11-13: the townsfolk's skinned bodies
@@ -4503,7 +4504,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
   }
   closeViewGLStats.models = count;
   admitBeasts(g, draws, n, Q, now, reduce);
-  { const B = MODEL_STATE.beasts, Fk = MODEL_STATE.folk; for (let i = 0; i < Fk.count; i++) B.items[B.count++] = Fk.items[i]; } // drawn by the beast slot's program
+  { const B = MODEL_STATE.beasts, Fk = MODEL_STATE.folk; for (let i = 0; i < Fk.count; i++) B.items[B.count++] = Fk.items[i]; } admitApatoProps(g.enemies, MODEL_STATE.beasts, Q.glScale === 1 ? 'full' : 'low', now, reduce, (x, y) => surfaceZ(g.map, x, y), prepareCloseViewBeastMesh); // the Earth Apatosaurus's spires, hands and rocks: small solid meshes (close-view-beast-apato.ts) // drawn by the beast slot's program
   return offset ? state.vertices.subarray(0, offset) : null;
 }
 // Five canonical stationary spells only. Recipes are immutable module data;
@@ -4929,6 +4930,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
     const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
     card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
+  drawApatoCloseFx(g.enemies, card, reduce, now, g.earthResolve || null); // the Earth Apatosaurus: its spires, hands, rocks, leaves, seeds, roots and beam stand up from the floor (close-view-beast-apato.ts)
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }
     const k = Math.max(0, Math.min(1, fx.life / A.life)), w = A.width * (.4 + .6 * k); card(fx.x, fx.y, 0, A.height, w, 11, .85 * k, A.colors.glow, 0); card(fx.x, fx.y, 0, A.height, w * .4, 11, k, A.colors.flash, 0);

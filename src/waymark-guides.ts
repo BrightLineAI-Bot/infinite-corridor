@@ -34,7 +34,7 @@ export const WAYMARK_GUIDES = {
   seaVersion: 23,   // the landscape version whose open sea rules a host out (pinned: a later landscape must not move version 1 hosts)
   seaMargin: .25,   // the quick open-sea test settles from 16 samples when they are this far from the sea share; else all 256
   domainClear: 2,   // sections round a far domain's heart that never host
-  lairSkip: ["astralWorm", "voidWalker"], // beasts a lair never calls (as for passing beasts: the Worm's companion rules, the Walker's dungeon home)
+  lairSkip: ["astralWorm", "voidWalker", "earthApato"], // beasts a lair never calls (as for passing beasts: the Worm's companion rules, the Walker's dungeon home; the Earth Apatosaurus, so every lair an existing journey would be shown is the one it was)
   lairEarly: "a crossing", // what a red mark leads to while no free world beast is woken: the nearest crossing not entered, within `reach` (save state only; no host moves)
   kinds: { // `origin` shifts each kind's lattice: with these the three bands never share a section (skyway x 3-6 y 3-6, shrine x and y 8-1, lair x 8-1 y 3-6, mod 10)
     skyway: { signal: "crossing", name: "a skyway", origin: [0, 0], minDepth: 6 },

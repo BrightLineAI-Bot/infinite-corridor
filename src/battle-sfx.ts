@@ -29,7 +29,7 @@ export const BATTLE_SFX = {
   // The Stegosaurus answers a Spinosaurus roar after `delay` s (hashed in the range), at most once in `gap` s.
   answer: { delay: [.6, 1.1], gap: 2.5 },
   // Footfalls: one each `stride` tiles walked on the ground, `stepGap` s apart at the least.
-  stride: { spinoRex: 1.7, wildStego: 1.25 }, stepGap: .3,
+  stride: { spinoRex: 1.7, wildStego: 1.25, earthApato: 1.9 }, stepGap: .3,
   roll: { max: 4.4, release: .25 },
   // The Wild Stegosaurus's roar (bellowStego, bellowShort): its fundamental (Hz; the Spinosaurus's sits at 48-72), the second saw's
   // detune, the snarl's rise (s), the rasp's band (Hz), its level and its formant's, the growl's tremolo (Hz) and the drive into the soft clipper.
@@ -43,7 +43,7 @@ export const BATTLE_SFX = {
     biteSpino: [.85, 3], biteStego: [.62, 3], rakeSpino: [.42, 3], rakeStego: [.36, 3], whoosh: [.32, 2], whooshHeavy: [.36, 2], whooshLight: [.24, 2],
     tailSpino: [.85, 3], tailStego: [.72, 3], slam: [.85, 3], slamBig: [.95, 3], impact: [.8, 3], wheelRoll: [.34, 3], wheelCrunch: [.75, 3],
     digScrape: [.3, 2], fling: [.42, 2], rockets: [.45, 3], boneVolley: [.42, 3], boneCrackle: [.32, 2], spear: [.62, 3], crunch: [.85, 3],
-    chew: [.6, 3], woodCrack: [.75, 3], roarHit: [.6, 3], footSpino: [.42, 1], footStego: [.32, 1], shed: [.5, 3],
+    chew: [.6, 3], woodCrack: [.75, 3], roarHit: [.6, 3], footSpino: [.42, 1], footStego: [.32, 1], footApato: [.5, 1], shed: [.5, 3],
     thrash: [.62, 3], strain: [.4, 2], rockfall: [.62, 3],
   },
 };
@@ -51,23 +51,27 @@ export const BATTLE_SFX = {
 export const DUEL_SOUNDS = {
   windup: {
     spinoRoar: "inhale", spinoLeapSlam: "roarSpino", spinoBodySlam: "roarSpino", spinoGrab: "growlSpino", spinoBite: "growlSpino", spinoDigFling: "digScrape", spinoRibSpears: "boneCrackle", spinoBoneVolley: "boneCrackle",
+    apatoNeckSlam: "bellowShort", apatoWrap: "strain", apatoBeam: "inhale", apatoBeamSweep: "inhale", apatoStomp: "bellowStego", apatoHydra: "digScrape",
     stegoWheel: "bellowStego", stegoTailSlam: "bellowStego", stegoTreeClub: "bellowStego", stegoPounce: "bellowShort", stegoRearSwipe: "bellowShort", stegoPlateRockets: "bellowShort",
   },
-  roar: { spinoRoar: "roarBig", spinoArrive: "roarBig" },
-  swing: { stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
-  land: { stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig" },
+  roar: { spinoRoar: "roarBig", spinoArrive: "roarBig", apatoBeam: "roarBig", apatoBeamSweep: "roarBig" },
+  swing: { apatoLash: "whooshHeavy", apatoWrap: "whoosh", apatoLeaves: "whooshLight", stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
+  land: { stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig", apatoNeckSlam: "slamBig", apatoStomp: "slamBig", apatoStep: "slam", apatoSpires: "impact", apatoSpireStamp: "slam", apatoSeeds: "slam", apatoWrapThrow: "slam" },
   // A blow that connects with the other duellist (and only then).
   hit: {
     spinoBite: "biteSpino", spinoBodySlam: "biteSpino", spinoClaw: "rakeSpino", spinoTailSwipe: "tailSpino", spinoLeapSlam: "impact", spinoGrab: "chew", spinoRibSpears: "spear", spinoRoar: "roarHit",
     stegoBite: "biteStego", stegoClaw: "rakeStego", stegoRearSwipe: "rakeStego", stegoTailWhack: "tailStego", stegoTailSlam: "tailStego", stegoWheel: "wheelCrunch", stegoPounce: "impact", stegoTreeClub: "woodCrack", stegoBreach: "impact", stegoJaws: "thrash", spinoGrabSlam: "impact",
+    apatoNeckSlam: "impact", apatoLash: "biteStego", apatoWrap: "thrash", apatoStomp: "impact", apatoSpires: "spear", apatoLeaves: "rakeStego", apatoHydra: "rakeSpino", apatoHands: "impact",
   },
-  grab: { spinoGrab: "crunch", stegoJaws: "crunch" }, lift: { spinoGrab: "strain", stegoJaws: "bellowShort" }, rock: { dinoRock: "rockfall" }, feed: { dinoFeed: "chew" },
-  flee: { spinoRex: "growlSpino", wildStego: "bellowStego" }, shed: { spinoFossil: "shed" }, roll: { stegoWheel: "wheelRoll" },
-  fling: { spinoDigFling: "fling" }, launch: { stegoPlateRockets: "rockets", spinoBoneVolley: "boneVolley" },
+  grab: { spinoGrab: "crunch", stegoJaws: "crunch", apatoWrap: "crunch" }, lift: { spinoGrab: "strain", stegoJaws: "bellowShort" }, rock: { dinoRock: "rockfall" }, feed: { dinoFeed: "chew" },
+  flee: { spinoRex: "growlSpino", wildStego: "bellowStego", earthApato: "bellowStego" }, shed: { spinoFossil: "shed" }, roll: { stegoWheel: "wheelRoll" },
+  fling: { spinoDigFling: "fling", apatoHands: "fling" }, launch: { stegoPlateRockets: "rockets", spinoBoneVolley: "boneVolley", apatoHydra: "digScrape", apatoHands: "digScrape" },
 };
 // Blows and grabs play whatever the duel's state (they are the duel); the rest only while one is held.
 const CONTACT = new Set(["hit", "grab"]);
 const RIVAL = { spinoRex: "wildStego", wildStego: "spinoRex" };
+// The Earth Apatosaurus (Tim, 2026-11-18) duels both: a blow between any duelling pair (dino-duel.ts DINO_DUEL.pairs) is contact.
+const rivals = (who, victim) => RIVAL[who] === victim || (who === "earthApato" && (victim === "spinoRex" || victim === "wildStego")) || (victim === "earthApato" && (who === "spinoRex" || who === "wildStego"));
 const ROARS = new Set(["roarSpino", "roarBig"]);
 export const SFX_NAMES = Object.keys(BATTLE_SFX.sounds);
 
@@ -127,7 +131,7 @@ export class BattleSfx {
   cue(c, listener, now = this.now()) {
     if (!c || this.muted) return false;
     const table = DUEL_SOUNDS[c.phase], name = table?.[c.move];
-    if (CONTACT.has(c.phase)) { if (!name || RIVAL[c.who] !== c.victim) return false; }
+    if (CONTACT.has(c.phase)) { if (!name || !rivals(c.who, c.victim)) return false; }
     else if (!this.dueling) return false;
     if (c.phase === "rollEnd") { this.stopRoll(c.id, now); return true; }
     if (!name) return false;
@@ -154,13 +158,13 @@ export class BattleSfx {
       r.where.gain.setTargetAtTime(at.gain, now, .05); if (r.pan) r.pan.pan.setTargetAtTime(at.pan, now, .05);
     }
     if (!this.dueling || !this.pair) return;
-    for (const e of [this.pair.spino, this.pair.stego]) {
+    for (const e of [this.pair.spino, this.pair.stego, this.pair.apato]) {
       if (!e || e.dead) continue;
       const st = this.steps[e.id] ||= { x: e.x, y: e.y, at: -Infinity }, up = e.aloft || e.spinoAir > .05 || e.stegoAir > .05 || e.stegoRoll > 0 || e.stegoSwim === 1 || e.spinoHeldBy;
       if (up) { st.x = e.x; st.y = e.y; continue; }
       if (Math.hypot(e.x - st.x, e.y - st.y) >= (BATTLE_SFX.stride[e.kind] || 1.5) && now - st.at >= BATTLE_SFX.stepGap) {
         st.x = e.x; st.y = e.y; st.at = now;
-        this.play(e.kind === "spinoRex" ? "footSpino" : "footStego", { x: e.x, y: e.y, listener, at: now + BATTLE_SFX.lead });
+        this.play(e.kind === "spinoRex" ? "footSpino" : e.kind === "earthApato" ? "footApato" : "footStego", { x: e.x, y: e.y, listener, at: now + BATTLE_SFX.lead });
       }
     }
   }
@@ -377,6 +381,7 @@ const SYNTH = {
   woodCrack(t, out, L) { const p = { src: [], nodes: [] }, a = this.noiseBurst(p, t, out, L, "bandpass", 1700, 3, .001, .06).end, b = this.noiseBurst(p, t + .02, out, L * .5, "bandpass", 800, 2, .01, .25).end, d = this.thump(p, t, out, L * .8, 90, 45, .4); return { ...p, end: Math.max(a, b, d) }; },
   roarHit(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L, 70, 36, .5), b = this.noiseBurst(p, t, out, L * .6, "lowpass", 140, .8, .04, 1).end; return { ...p, end: Math.max(a, b) }; },
   footSpino(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 58, 36, .34) }; },
+  footApato(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 44, 28, .42) }; }, // the Earth Apatosaurus: the deepest tread
   footStego(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 76, 48, .24) }; },
   // the grabs: the slammed body coming down (a swish and a heavy body thump), the lift's strain (a low, straining growl), and rockfall
   thrash(t, out, L) { const p = { src: [], nodes: [] }, a = this.sweep(p, t, out, L * .55, .22, 300, 1100), b = this.thump(p, t + .14, out, L, 88, 40, .34), d = this.noiseBurst(p, t + .14, out, L * .45, "bandpass", 520, 1.2, .004, .12).end; return { ...p, end: Math.max(a, b, d) }; },

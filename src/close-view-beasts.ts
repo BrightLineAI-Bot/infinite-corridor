@@ -20,6 +20,7 @@ import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } f
 import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.ts";
 import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.ts";
 import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
+import { createApatoTrack, sampleApato, apatoMesh, APATO_RIG, createApatoCloneTrack, sampleApatoClone, apatoCloneMesh, CLONE_RIG } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
 import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.ts";
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 
@@ -88,6 +89,10 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   wildStego: Object.freeze({ mesh: stegoMesh, createTrack: createStegoTrack, sample: sampleStego, get scale() { return STEGO_RIG.closeViewScale; } }),
   // the Spinosaurus: its hide, then (spinoFossil, through the shed) its bones, the mesh chosen by the foe as the Listener's
   spinoRex: Object.freeze({ mesh: spinoMesh, createTrack: createSpinoTrack, sample: sampleSpino, get scale() { return SPINO_RIG.closeViewScale; } }),
+  // the Earth Apatosaurus: its long neck a chain of bones laid along the game's own path (the lash, the wrap); its tree clones are small
+  // wooden minions in the minion allowance (BEAST_SLOT.minion: on the low tier they keep their billboards)
+  earthApato: Object.freeze({ mesh: apatoMesh, createTrack: createApatoTrack, sample: sampleApato, get scale() { return APATO_RIG.closeViewScale; } }),
+  apatoClone: Object.freeze({ mesh: apatoCloneMesh, createTrack: createApatoCloneTrack, sample: sampleApatoClone, minion: true, get scale() { return CLONE_RIG.closeViewScale; } }),
   // the Gaunt: the converted Rogue body, slimmed, hooded and armed per kind (close-view-beast-duelist.ts); their own slots
   // the Triceratops of the herds (all three dispositions share the hide); the ridden mount is admitted by close-view.ts itself
   triceratops: Object.freeze({ mesh: triceratopsMesh, createTrack: createTriceratopsTrack, sample: sampleTriceratops, herd: true, lowBillboard: true, eligible: (e) => !e.mountView, get scale() { return TRICERATOPS_RIG.closeViewScale; } }),

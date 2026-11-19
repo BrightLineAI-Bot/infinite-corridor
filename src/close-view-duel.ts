@@ -18,9 +18,10 @@ export const DUEL_STAGE = Object.freeze({ margin: .1, maxSep: 3.5, ease: 5, pass
 // The parts a move strikes with (left out of the spacing while that move is on, so the blow reaches the other body).
 export const DUEL_STRIKES = Object.freeze({
   spinoBite: ['head', 'neck'], spinoGrab: ['head', 'neck'], spinoBodySlam: ['head', 'neck'], spinoLeapSlam: ['head', 'neck'], spinoRoar: ['head'], spinoClaw: ['arms', 'head'], spinoTailSwipe: ['tail'], spinoRibSpears: ['arms'],
+  apatoNeckSlam: ['head', 'neck'], apatoLash: ['head', 'neck'], apatoWrap: ['head', 'neck'], apatoStomp: ['legs'], apatoLeaves: ['head'],
   stegoBite: ['head', 'neck'], stegoJaws: ['head', 'neck'], stegoClaw: ['legs', 'head'], stegoRearSwipe: ['legs', 'head', 'neck'], stegoTailWhack: ['tail'], stegoTailSlam: ['tail'], stegoBuck: ['tail', 'legs'], stegoPounce: ['legs', 'head'], stegoTreeClub: ['head', 'neck'],
 });
-const SPACE_A = new Uint8Array(40), SPACE_B = new Uint8Array(40);
+const SPACE_A = new Uint8Array(40), SPACE_B = new Uint8Array(40); // at most 40 capsules a body (the Earth Apatosaurus has 21)
 function spaceMask(kind, e, out) { const strike = DUEL_STRIKES[e?.pack?.attack] || null, C = DUEL_CAPSULES[kind]; for (let i = 0; i < C.length; i++) out[i] = strike && strike.includes(C[i][3]) ? 0 : 1; }
 // [bone, to (a bone, or a point [f, r, u] in the first bone's frame), radius (model units), group]
 export const DUEL_CAPSULES = Object.freeze({
@@ -31,6 +32,14 @@ export const DUEL_CAPSULES = Object.freeze({
     ['thighL', 'shinL', .1, 'legs'], ['shinL', 'metaL', .06, 'legs'], ['metaL', 'footL', .045, 'legs'],
     ['thighR', 'shinR', .1, 'legs'], ['shinR', 'metaR', .06, 'legs'], ['metaR', 'footR', .045, 'legs'],
     ['armL', 'foreL', .04, 'arms'], ['foreL', 'handL', .035, 'arms'], ['armR', 'foreR', .04, 'arms'], ['foreR', 'handR', .035, 'arms'],
+  ]),
+  // the Earth Apatosaurus (close-view-beast-apato.ts): its barrel, the base of its neck, its tail, its pillar legs (the long neck and the
+  // head are left out of the spacing: it reaches over the other body with them)
+  earthApato: Object.freeze([
+    ['pelvis', 'spine', .44, 'trunk'], ['spine', 'chest', .44, 'trunk'], ['chest', 'n1', .3, 'trunk'], ['n1', 'n3', .17, 'neck'], ['n3', 'n6', .14, 'neck'], ['n6', 'n9', .11, 'neck'], ['n9', 'head', .09, 'neck'], ['head', [.3, 0, -.03], .07, 'head'],
+    ['pelvis', 'tail1', .35, 'tail'], ['tail1', 'tail2', .25, 'tail'], ['tail2', 'tail3', .17, 'tail'], ['tail3', 'tail4', .11, 'tail'], ['tail4', 'tail5', .07, 'tail'],
+    ['thighL', 'shinL', .16, 'legs'], ['shinL', 'footHL', .12, 'legs'], ['thighR', 'shinR', .16, 'legs'], ['shinR', 'footHR', .12, 'legs'],
+    ['armL', 'foreL', .14, 'legs'], ['foreL', 'footFL', .11, 'legs'], ['armR', 'foreR', .14, 'legs'], ['foreR', 'footFR', .11, 'legs'],
   ]),
   wildStego: Object.freeze([
     ['pelvis', 'spine', .25, 'trunk'], ['spine', 'chest', .23, 'trunk'], ['chest', 'neck1', .14, 'trunk'],
@@ -114,19 +123,29 @@ function penetration(na, nb, push, ux, uy) {
   return worst;
 }
 export function spaceDuellists(tracks, now) {
-  let spino = null, stego = null, ts = null, tt = null;
-  for (const [q, t] of tracks) { if (t.seen !== now || q.dead) continue; if (q.kind === 'spinoRex' && !spino) { spino = q; ts = t; } else if (q.kind === 'wildStego' && !stego) { stego = q; tt = t; } }
+  let spino = null, stego = null, apato = null, ts = null, tt = null, ta = null;
+  for (const [q, t] of tracks) { if (t.seen !== now || q.dead) continue; if (q.kind === 'spinoRex' && !spino) { spino = q; ts = t; } else if (q.kind === 'wildStego' && !stego) { stego = q; tt = t; } else if (q.kind === 'earthApato' && !apato) { apato = q; ta = t; } }
+  // the Earth Apatosaurus's duels (Tim, 2026-11-18): it and the one it duels (or else the other in sight), as the original pair
+  if (apato && (!spino || !stego || apato.dinoDuel)) {
+    const fid = apato.dinoDuel?.foe, foe = fid ? (spino?.id === fid ? spino : stego?.id === fid ? stego : null) : spino || stego, tf = foe === spino ? ts : tt;
+    if (foe && tf && !foe.apatoHeldBy) { spacePair(ta, 'earthApato', apato, tf, foe.kind, foe, now); if (foe === spino && tt) tt.duelSep = 0; else if (ts) ts.duelSep = 0; return; }
+    if (ta) ta.duelSep = 0;
+  }
   if (!spino || !stego || spino.stegoHeldBy || stego.spinoHeldBy) { if (tt) tt.duelSep = 0; return; } // any two in sight: the push never pops as a duel ends
-  const D = DUEL_STAGE, na = duelCapsules(ts, 'spinoRex', CAP_A), nb = duelCapsules(tt, 'wildStego', CAP_B); spaceMask('spinoRex', spino, SPACE_A); spaceMask('wildStego', stego, SPACE_B);
-  let ux = tt.frame.x - ts.frame.x, uy = tt.frame.y - ts.frame.y; const um = Math.hypot(ux, uy); if (um < 1e-6) { ux = 1; uy = 0; } else { ux /= um; uy /= um; }
-  // the least push that clears them (the whole push, applied to the stego in the measure)
+  spacePair(ts, 'spinoRex', spino, tt, 'wildStego', stego, now);
+}
+// The push between one pair (`a` first, `b` the one whose record keeps the eased push), as spaceDuellists describes.
+function spacePair(ta, ka, qa, tb, kb, qb, now) {
+  const D = DUEL_STAGE, na = duelCapsules(ta, ka, CAP_A), nb = duelCapsules(tb, kb, CAP_B); spaceMask(ka, qa, SPACE_A); spaceMask(kb, qb, SPACE_B);
+  let ux = tb.frame.x - ta.frame.x, uy = tb.frame.y - ta.frame.y; const um = Math.hypot(ux, uy); if (um < 1e-6) { ux = 1; uy = 0; } else { ux /= um; uy /= um; }
+  // the least push that clears them (the whole push, applied to the second in the measure)
   let need = 0; for (let pass = 0; pass < D.passes; pass++) { const pen = penetration(na, nb, need, ux, uy); if (pen <= 0) break; need += pen; }
   need = Math.min(need, D.maxSep * 2);
-  const dt = Number.isFinite(tt.duelSepAt) ? Math.max(0, Math.min(.1, (now - tt.duelSepAt) / 1000)) : 0; tt.duelSepAt = now;
-  const cur = Number(tt.duelSep) || 0, eased = dt > 0 ? cur + (need - cur) * Math.min(1, dt * D.ease) : need;
-  tt.duelSep = Math.max(need, Math.min(cur, eased));
-  const half = tt.duelSep / 2; shiftBeastTrack(tt, ux * half, uy * half, 0); shiftBeastTrack(ts, -ux * half, -uy * half, 0);
-  tt.heldBy = ts.heldBy = null;
+  const dt = Number.isFinite(tb.duelSepAt) ? Math.max(0, Math.min(.1, (now - tb.duelSepAt) / 1000)) : 0; tb.duelSepAt = now;
+  const cur = Number(tb.duelSep) || 0, eased = dt > 0 ? cur + (need - cur) * Math.min(1, dt * D.ease) : need;
+  tb.duelSep = Math.max(need, Math.min(cur, eased));
+  const half = tb.duelSep / 2; shiftBeastTrack(tb, ux * half, uy * half, 0); shiftBeastTrack(ta, -ux * half, -uy * half, 0);
+  tb.heldBy = ta.heldBy = null;
 }
 // Once a frame, after the beasts are sampled: the spacing, then the holds.
 export function stageDuel(tracks, now) {

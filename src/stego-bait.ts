@@ -29,7 +29,7 @@ export const STEGO_BAIT = Object.freeze({
   // retreating, practice and grazing beasts). World beasts, the Questing Beast and the Wild Stegosaurus itself are lured.
   ignore: Object.freeze(["farArrayBoss", "farArraySummon", "pentFinaleBeast", "pentBoss", "gloomFinale", "gloomOrbOf", "mireHeart", "buildingGuardian", "keyKeeper", "passingBeast", "retreating", "fleeTo", "passiveBehavior", "ambient", "skyEcho"]),
   ignoreKinds: Object.freeze(["gloomvast", "mothChrysalis"]),
-  bossBeasts: Object.freeze(["worldBeast", "questingBeast", "stegoRoom"]), // `boss` creatures that are lured all the same (the roaming beasts)
+  bossBeasts: Object.freeze(["worldBeast", "questingBeast", "stegoRoom", "apatoRoom"]), // `boss` creatures that are lured all the same (the roaming beasts)
   // the drawings (standard view; Close View shows them as cards)
   art: Object.freeze({ tailLen: .9, tailWidth: .2, spikes: 4, spikeLen: .26, meat: "#c8455a", meatDark: "#7a1c2c", bone: "#f2ead8", ring: "rgba(255,210,31,.55)", flies: 3 }),
   say: Object.freeze({
