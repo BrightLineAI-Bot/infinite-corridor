@@ -29,13 +29,13 @@ export const TRICERATOPS_RIG = Object.freeze({
   legHeight: .5, // the hip and shoulder joints over the feet (body units): a form's shorter legs lower the body by its share of this
   formHeadLift: Object.freeze({ baby: .03 }), // the hatchling's baby form carries his big head higher (body units over the head bone)
   // the seat (Tim, 2026-11-19: "mid-back, just behind / almost between the shoulder blades"): body units along the back from the root,
-  // a little behind the forelimbs' roots (the arm bones at .2; the hips at -.3), so four fifths of the way from the hips to the shoulders
+  // a little behind the forelimbs' roots (the arm bones at .2; the hips at -.3), about three quarters of the way from the hips to the shoulders
   seatF: .08,
   // the ridden frill (Tim, 2026-11-19: "I just don't want him to clip into the frill. If needed, make the frill not so large, or angle it a
-  // little"): drawn `size` of the wild one's, tipped forward `tilt` radians and set `fwd` forward and `down` lower on the skull (body
+  // little"): drawn `size` of the wild one's, its dish `sweep` as deep (its wings stay in front of the rider seen from the side), tipped forward `tilt` radians and set `fwd` forward and `down` lower on the skull (body
   // units), and tipped further by `follow` x how far the head comes up nose first (`recoil` x the horn release's) so it never sweeps back
   // into the rider seated behind the shoulders. The ridden meshes only: wild herds and the hatchling keep theirs.
-  riddenFrill: Object.freeze({ size: .85, tilt: .45, follow: 1.5, recoil: 2.4, fwd: .13, down: .04 }),
+  riddenFrill: Object.freeze({ size: .85, sweep: .45, tilt: .45, follow: 1.5, recoil: 3.2, fwd: .13, down: .04 }),
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
   budget: Object.freeze({ full: 3218, balanced: 1694, low: 668 }),
 });
@@ -179,8 +179,8 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  { const FK = FM.frill * (saddle ? G0.riddenFrill.size : 1), R = .32 * HS * FK, Hh = .38 * HS * FK, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
-    const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = -((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS;
+  { const FK = FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+    const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = (-((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS) * SW;
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
     for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) { const a = -.12 + (Math.PI + .24) * c / (cols - 1); row.push(rimAt(a, rr)); } grid.push(row); ring.push(['frill', 'frill', 0]); }
     const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = -.12 + (Math.PI + .24) * c / (cols - 1); return rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };

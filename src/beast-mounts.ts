@@ -33,8 +33,10 @@ export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
 // 2.7), the seat on the top of the back. `tack: "barrel"` draws the saddle's girth round the barrel (beast-mounts-render.ts) down to
 // `belly` (tiles above the feet at the saddle). Presentation only: his contact, reach and attacks (TRICERATOPS_ATTACKS) never read
 // the scale; the seat is also where hostile hits find the rider (riderLiftOf), which follows the drawing by design (release 748).
-// seatX (2026-11-19, Tim: "the rider should be positioned behind the frill"): the saddle over the hips, clear of the frill through
-// every ridden move (was -.28). Standard view; Close View seats the rider at its card's middle (beast-mounts-render.ts).
+// seatX (2026-11-19, Tim: "mid-back, just behind / almost between the shoulder blades ... I just don't want him to clip into the
+// frill"): the saddle just behind the shoulder mass, two thirds of the way from the haunch (was -.6, over the hips), the ridden frill
+// smaller and tipped clear of him (triceratops-render.ts TRI_ART.riddenFrill). Standard view; Close View seats the rider over the
+// skinned body's saddle (close-view-beast-triceratops.ts TRICERATOPS_RIG.seatF, close-view.ts riddenSeatOnCard).
 MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.02, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 // Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.

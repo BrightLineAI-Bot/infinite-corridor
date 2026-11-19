@@ -113,16 +113,20 @@ export function standardRiderClearance() {
   }
   return worst;
 }
-export function closeViewRiderClearance() {
-  const B = MOUNT_BEASTS.triceratops, FR = TRICERATOPS_SKELETON.index.frill; let worst = Infinity;
+// Close View's rider: a capsule round the seat (TRICERATOPS_RIG.seatF along the heading from the Wayfarer, where close-view.ts paints the
+// rider on the card). `side`: measured in the side silhouette only (along the heading and up), so the frill's wings never cross the
+// rider seen from the side either.
+export function closeViewRiderClearance(side = false) {
+  const B = MOUNT_BEASTS.triceratops, FR = TRICERATOPS_SKELETON.index.frill, seatAt = (TRICERATOPS_RIG as any).seatF * B.scale; let worst = Infinity;
   for (const reduce of [false, true]) for (const variant of ["good", "silly"]) for (const move of [...MOVES, ...(variant === "silly" ? ["drill"] : [])]) for (const yaw of [0, 2.2]) {
     const tr = createTriceratopsTrack(), e: any = { id: "m", kind: "triceratops", mountView: true, triceratopsDisposition: variant, hp: 1, maxHp: 1, pack: null, facingX: 1, mountDrill: move === "drill" };
     for (let i = 0; i < 40; i++) {
       const air = airAt(move, i, 40), env: any = { x: 5, y: 5, z: 0, scale: B.scale, now: 1000 + i * 16, reduce, tier: "full", target: null, dead: false, yaw, air, horn: HORN[move] || null, drill: move === "drill" ? { angle: i * .5, pivot: 1.05 } : null };
       const f: any = sampleTriceratops(tr, e, env); if (i < 12) continue;
-      const m = f.mesh, P = m.positions, SK = m.skin, K = f.skin, z0 = env.z + B.seat + air; // the card's rider stands at the Wayfarer, on the seat
+      const m = f.mesh, P = m.positions, SK = m.skin, K = f.skin, z0 = env.z + B.seat + air, rx = env.x + Math.cos(f.yaw) * seatAt, ry = env.y + Math.sin(f.yaw) * seatAt; // the rider, on the seat
       for (let v = 0; v < m.vertexCount; v++) { if ((SK[v * 4] | 0) !== FR) continue; const o = FR * 12, q = [0, 1, 2].map((r) => K[o + r * 4] * P[v * 3] + K[o + r * 4 + 1] * P[v * 3 + 1] + K[o + r * 4 + 2] * P[v * 3 + 2] + K[o + r * 4 + 3]);
-        const cz = Math.max(z0 - RIDER.down, Math.min(z0 + RIDER.up, q[2])); worst = Math.min(worst, Math.hypot(q[0] - env.x, q[1] - env.y, q[2] - cz) - RIDER.radius); }
+        const cz = Math.max(z0 - RIDER.down, Math.min(z0 + RIDER.up, q[2])), along = (q[0] - rx) * Math.cos(f.yaw) + (q[1] - ry) * Math.sin(f.yaw);
+        worst = Math.min(worst, (side ? Math.hypot(along, q[2] - cz) : Math.hypot(q[0] - rx, q[1] - ry, q[2] - cz)) - RIDER.radius); }
     }
   }
   return worst;
@@ -151,7 +155,7 @@ test("the seat is mid-back just behind the shoulders in both views, at the same 
 });
 
 test("standard view: the rider sits behind the frill, clear of it through every ridden move, both ways and both tacks", () => {
-  const c = standardRiderClearance(); assert.ok(c > 0, `frill to rider ${c}`);
+  const c = standardRiderClearance(); assert.ok(c > .15, `frill to rider ${c}`);
 });
 
 test("Close View: the rider's card stands on the saddle, and the ridden frill stays clear of the rider through every move", () => {
@@ -164,7 +168,8 @@ test("Close View: the rider's card stands on the saddle, and the ridden frill st
   finally { MOUNT_DRAW.skipBody = false; MOUNT_DRAW.seatDx = MOUNT_DRAW.seatUp = 0; }
   assert.ok(Math.abs(TRICERATOPS_SEAT * MOUNT_BEASTS.triceratops.scale - MOUNT_BEASTS.triceratops.seat) < .1);
   assert.ok(TRICERATOPS_RIG.riddenFrill.tilt > 0);
-  const c = closeViewRiderClearance(); assert.ok(c > 0, `frill to rider ${c}`);
+  const c = closeViewRiderClearance(); assert.ok(c > .15, `frill to rider ${c}`);
+  const cs = closeViewRiderClearance(true); assert.ok(cs > 0, `frill to rider, side silhouette ${cs}`);
   // a wild herd's frill is as it was bound (the ridden setting is the mount's only)
   const tr = createTriceratopsTrack(); sampleTriceratops(tr, { id: "w", kind: "triceratops", hp: 1, maxHp: 1, pack: null, facingX: 1 } as any, { x: 5, y: 5, z: 0, scale: 1.8, now: 1000, reduce: true, tier: "full", target: null, dead: false } as any);
   const i = TRICERATOPS_SKELETON.index.frill; assert.deepEqual([tr.pose.off[i * 3], tr.pose.off[i * 3 + 1], tr.pose.off[i * 3 + 2]], [0, 0, 0]);
