@@ -1509,7 +1509,8 @@ export function drawSecondTrace(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read";
   ctx.save();
   if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, "rgba(255,226,170,.32)"); g.addColorStop(1, "rgba(255,226,170,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
-  secondPrints(ctx, cx + s * .35, cy + s * .1, s, 4, 1, -.3, read ? .3 : .5);
+  if (o.index >= 5) secondPrints(ctx, cx - s * .55, cy + s * .26, s, 4, -1, .35, read ? .26 : .42); // the last: bare prints going back the way you came
+  else secondPrints(ctx, cx + s * .35, cy + s * .1, s, 4, 1, -.3, read ? .3 : .5);
   ctx.translate(cx, cy); ctx.globalAlpha = read ? .7 : 1; ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
   switch (o.index) {
     case 0: ctx.fillStyle = "#4a4038"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .22, s * .1, 0, 0, 7); ctx.fill(); if (!read) { ctx.fillStyle = `rgba(255,140,60,${.5 + .3 * Math.sin(now / 300)})`; ctx.beginPath(); ctx.arc(0, s * .06, s * .06, 0, 7); ctx.fill(); } ctx.fillStyle = "#c8a060"; ctx.fillRect(s * .2, -s * .02, s * .14, s * .08); break; // a banked fire, a cake on a stone
@@ -1517,7 +1518,22 @@ export function drawSecondTrace(ctx, o, s, now) {
     case 2: ctx.fillStyle = "#3e4a30"; ctx.beginPath(); ctx.ellipse(0, s * .06, s * .26, s * .12, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#e8e0cc"; ctx.rotate(-.2); ctx.fillRect(-s * .1, -s * .06, s * .2, s * .14); ctx.strokeRect(-s * .1, -s * .06, s * .2, s * .14); break; // a hollow in the grass, a ledger page
     case 3: ctx.fillStyle = "#8a6a44"; ctx.beginPath(); ctx.ellipse(0, s * .02, s * .14, s * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1e1a16"; ctx.fillRect(-s * .08, -s * .02, s * .16, s * .02); break; // a water skin
     case 4: ctx.fillStyle = "#5a6a52"; ctx.beginPath(); ctx.moveTo(-s * .12, s * .16); ctx.lineTo(-s * .12, -s * .04); for (let k = 0; k < 4; k++) { ctx.lineTo(-s * .1 + k * s * .065, -s * .2); ctx.lineTo(-s * .07 + k * s * .065, -s * .04); } ctx.lineTo(s * .14, s * .16); ctx.closePath(); ctx.fill(); ctx.stroke(); break; // a worn glove
-    default: ctx.fillStyle = "#5a6a52"; ctx.fillRect(-s * .22, -s * .02, s * .44, s * .18); ctx.strokeRect(-s * .22, -s * .02, s * .44, s * .18); ctx.fillStyle = "#c8c4b4"; ctx.beginPath(); ctx.ellipse(0, -s * .08, s * .12, s * .09, 0, 0, 7); ctx.fill(); ctx.stroke(); // a folded suit, the mask on it
+    default: { // the last (Tim, 2026-11-19): her, lying still, the folded suit and mask beside her with the bundle, and the writing in blood on a stone at her head. Restrained: no wound is drawn.
+      ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(-s * .1, s * .14, s * .42, s * .09, 0, 0, 7); ctx.fill(); // her shadow
+      ctx.fillStyle = "#5a4636"; ctx.beginPath(); ctx.ellipse(-s * .08, s * .06, s * .32, s * .085, 0, 0, 7); ctx.fill(); ctx.stroke(); // a plain brown dress, lying along the ground
+      ctx.fillStyle = "#cdbca6"; ctx.beginPath(); ctx.arc(-s * .44, s * .05, s * .075, 0, 7); ctx.fill(); ctx.stroke(); // her face, turned up
+      ctx.strokeStyle = "#9a948a"; ctx.lineWidth = Math.max(1, s * .035); ctx.beginPath(); ctx.arc(-s * .44, s * .05, s * .075, Math.PI * .55, Math.PI * 1.45); ctx.stroke(); // grey hair
+      ctx.fillStyle = "#cdbca6"; ctx.fillRect(-s * .2, s * .02, s * .07, s * .05); // hands folded on her breast
+      ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+      ctx.fillStyle = "#5a6a52"; ctx.fillRect(s * .16, s * .1, s * .3, s * .12); ctx.strokeRect(s * .16, s * .1, s * .3, s * .12); // the folded suit
+      ctx.fillStyle = "#c8c4b4"; ctx.beginPath(); ctx.ellipse(s * .31, s * .08, s * .08, s * .06, 0, 0, 7); ctx.fill(); ctx.stroke(); // the mask on it
+      ctx.fillStyle = "#d8c48a"; ctx.fillRect(s * .26, s * .03, s * .045, s * .03); ctx.fillStyle = "#8a6a44"; ctx.fillRect(s * .32, s * .02, s * .04, s * .035); ctx.fillStyle = "#b07898"; ctx.fillRect(s * .29, -s * .005, s * .03, s * .025); // the bundle
+      ctx.fillStyle = "#6e6a62"; ctx.beginPath(); ctx.ellipse(-s * .56, -s * .16, s * .17, s * .1, -.15, 0, 7); ctx.fill(); ctx.stroke(); // the flat stone at her head
+      ctx.strokeStyle = "#6a1712"; ctx.lineWidth = Math.max(1, s * .022); ctx.beginPath(); // the writing: short square strokes, shaking and uneven
+      for (let k = 0; k < 9; k++) { const lx = -s * .67 + (k % 5) * s * .05 + (k * 7 % 3) * s * .006, ly = -s * .21 + (k > 4 ? s * .07 : 0) + (k * 5 % 4) * s * .005, h = s * (.025 + (k * 3 % 4) * .006);
+        if (k % 3 === 0) { ctx.moveTo(lx, ly); ctx.lineTo(lx + s * .028, ly); ctx.lineTo(lx + s * .026, ly + h); } else if (k % 3 === 1) { ctx.moveTo(lx, ly); ctx.lineTo(lx + s * .004, ly + h); ctx.moveTo(lx + s * .024, ly + s * .003); ctx.lineTo(lx + s * .022, ly + h); } else { ctx.moveTo(lx, ly + h); ctx.lineTo(lx, ly); ctx.lineTo(lx + s * .026, ly + h * .5); } }
+      ctx.stroke(); ctx.fillStyle = "rgba(110,23,18,.55)"; ctx.beginPath(); ctx.ellipse(-s * .45, -s * .1, s * .04, s * .015, .4, 0, 7); ctx.fill(); // a dark smear where the hand rested
+    }
   }
   ctx.restore();
 }

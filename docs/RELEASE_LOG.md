@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1027 (this merge); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1028 (this merge, #696); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1028 | Claude | claude/second-wayfarer-ending / #696 | The Second Wayfarer's ending: her body and the note in blood | Merged (#696); preview follows. |
 | 1027 | Claude | claude/triceratops-beak-rider | Triceratops beak and rider: beak hook joined to the snout on every form in both views; rider behind the frill (saddle back in the standard view, ridden frill more upright in Close View); no save change | In flight. |
 | 1026 | Claude | claude/creature-solidity-2 / #699 | Close View creatures stay solid: no distance dither, outdoor reach to the real fog, lit by the floor's own light, grounded bodies on stance-sized shadows, heavier hit reactions with a body flash, a quiet break-apart-and-sink death; three test edits (Tim approved); no save change | Merged as `6231c3f70783` (#699). |
 | 1025 | Claude | claude/hatchling-face / #695 | Triceratops faces: the hatchling baby reads as a young Triceratops (smaller eyes, modest head, squat beak, horn nubs, small frill); every Triceratops beak a little shorter and deeper; drawing only, no save change | Merged as `6a859d2b933c` (#695). |

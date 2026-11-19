@@ -9,7 +9,7 @@ import { freshSave, migrateSave, normalizeCompassFollow, setCompassChoice } from
 import { Game } from '../src/game.ts';
 import { STORY_BUDGET, threadIn, storyVersionFor } from '../src/threads.ts';
 import { compassFollowTarget } from '../src/atlas-view.ts';
-import { SECOND_WAYFARER, SECOND_TRACES, SECOND_SIGHTINGS, SECOND_ENDING, secondFootprintsIn, secondSightingAfter, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace, secondNext, secondFound, secondDone, secondBegun, ensureSecondWayfarer, secondWayfarerTarget, secondTraceText } from '../src/second-wayfarer.ts';
+import { SECOND_WAYFARER, SECOND_TRACES, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_LAST_WORDS, SECOND_HAND, SECOND_PASSED_LAST, secondFootprintsIn, secondSightingAfter, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace, secondNext, secondFound, secondDone, secondBegun, ensureSecondWayfarer, secondWayfarerTarget, secondTraceText } from '../src/second-wayfarer.ts';
 
 const dmap = () => ({ width: 24, height: 24, entry: { x: 4, y: 5 }, objects: [], tiles: Array.from({ length: 576 }, (_, i) => ({ x: i % 24, y: Math.floor(i / 24), kind: 'floor', blocked: false })) });
 const omap = (sea = false) => ({ width: 32, height: 32, objects: [], tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: sea ? 'water' : 'grass', blocked: false })) });
@@ -134,5 +134,36 @@ test('wired: Journal quest and Arcana, the Tome, the renderer, and the module li
   assert.match(readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), /o\.kind === "secondTrace"\) \{ drawSecondTrace/);
   assert.match(readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8'), /'second-wayfarer'/);
   for (const sw of ['../sw.js', '../proving-ground/sw.js']) assert.match(readFileSync(new URL(sw, import.meta.url), 'utf8'), /src\/second-wayfarer\.js\?v=/);
-  for (const text of [...SECOND_SIGHTINGS, ...SECOND_TRACES.map((f) => f({ rx: 1, ry: 2 })), SECOND_ENDING]) assert.doesNotMatch(text, /Corridor (is|has) (made|density)|unread/i, 'shown, never stated');
+  for (const text of [...SECOND_SIGHTINGS, ...SECOND_TRACES.map((f) => f({ rx: 1, ry: 2 })), SECOND_ENDING, SECOND_PASSED_LAST]) assert.doesNotMatch(text, /Corridor (is|has) (made|density)|unread/i, 'shown, never stated');
+});
+
+// Tim, 2026-11-19: the ending changes. At the last stop you find her, laid out still beside the folded suit and the gifts, under a
+// note in blood in a hand that does not know what letters are. The closing line "Nobody is ahead of you now" becomes the note's
+// own words, NO ONE IS AHEAD OF YOU NOW, in the Journal, the banner, the Arcana card and the Tome. Text and drawing only.
+test('the ending (Tim, 2026-11-19): her body at the last stop, the note in blood, and its words as the closing line everywhere', () => {
+  assert.equal(SECOND_LAST_WORDS, 'NO ONE IS AHEAD OF YOU NOW');
+  assert.ok(SECOND_ENDING.endsWith(`${SECOND_LAST_WORDS}.`), 'the closing line is the note');
+  const last = SECOND_TRACES[5]();
+  assert.match(last, /^She is lying on her back in the grass, very still/); assert.match(last, /folded, the mask laid on top of it/); assert.match(last, /a lock of grey hair/);
+  assert.match(last, /Wenna Callow\."/); assert.ok(last.endsWith(SECOND_HAND)); assert.ok(SECOND_PASSED_LAST.includes(SECOND_LAST_WORDS), 'passed at sea, the same words');
+  assert.match(SECOND_HAND, /in blood/); assert.match(SECOND_HAND, /The hand is wrong/); assert.ok(SECOND_HAND.includes(`It says: ${SECOND_LAST_WORDS}.`));
+  assert.doesNotMatch(last, /bare feet\./, 'she no longer simply walks home');
+  for (const text of [last, SECOND_ENDING, SECOND_PASSED_LAST, ...SECOND_SIGHTINGS, ...SECOND_TRACES.slice(0, 5).map((f) => f({ rx: 1, ry: 2 }))]) {
+    assert.doesNotMatch(text, /nobody is ahead/i); assert.doesNotMatch(text, /Elder|fractal|Listener|Far Array|Wanderer|Silver Key/i, 'who wrote it is never named');
+    assert.doesNotMatch(text, /wound|gore|guts|torn open|entrails/i, 'restrained');
+  }
+  assert.match(SECOND_TRACES[4]({ rx: 1, ry: 2 }), /footprints round my fire that are not mine, bare/, 'something follows her too');
+  for (const f of ['../src/game.ts', '../src/main.ts', '../src/second-wayfarer.ts']) assert.doesNotMatch(readFileSync(new URL(f, import.meta.url), 'utf8'), /nobody is ahead of you/i, f);
+  assert.match(readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8'), /title: "QUEST COMPLETE", detail: `\$\{SECOND_WAYFARER\.title\} · no one is ahead of you now`/);
+  const r = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'), draw = r.slice(r.indexOf('export function drawSecondTrace'), r.indexOf('export function drawSurveyorStatue'));
+  for (const part of ['lying along the ground', 'the folded suit', 'the bundle', 'the flat stone at her head', 'the writing: short square strokes', 'bare prints going back']) assert.ok(draw.includes(part), part);
+  // played to the end: the last stop is her, named once read; the Journal ends on the note's words
+  const seed = 'ENDSEED', id = findFootprints(seed), s = freshSave(); s.seed = seed; pinned(s, id); readSecondFootprints(s, addSecondFootprints(dmap(), s, id));
+  for (let i = 0; i < SECOND_WAYFARER.sightings - 1; i++) { const at = secondNext(s); readSecondTrace(s, addSecondTrace(omap(), s, at.rx, at.ry).object); }
+  const at = secondNext(s), lay = addSecondTrace(omap(), s, at.rx, at.ry); assert.equal(lay.object.name, 'Someone lying still');
+  const done = readSecondTrace(s, lay.object); assert.ok(done.done); assert.equal(lay.object.name, 'Wenna Callow'); assert.equal(done.text, last);
+  assert.ok(done.message.endsWith(`${SECOND_LAST_WORDS}.`)); assert.equal(secondTraceText(s, 5), last, 'reread in the Arcana and the Tome');
+  // a journey that finished under release 1024 keeps its saved Journal entry and trail as they were
+  const old = migrateSave(JSON.parse(JSON.stringify({ ...s, narrative: { ...s.narrative, journal: [{ recordId: 'second-wayfarer:end', title: SECOND_WAYFARER.title, text: 'Nobody is ahead of you now.' }] } })));
+  assert.deepEqual(old.lore.second, s.lore.second); assert.ok(old.narrative.journal.some((j) => j.recordId === 'second-wayfarer:end' && j.text === 'Nobody is ahead of you now.'), 'saved text is not rewritten');
 });
