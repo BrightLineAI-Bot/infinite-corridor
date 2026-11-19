@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import * as CV from '../src/close-view.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { compassMenuModel, compassGuidance, seedHuntObjectives, objectiveKey, compassSectionHint, COMPASS_MENU, MAP_MARKS, normalizeMapMarks } from '../src/atlas-view.ts';
-import { freshSave, migrateSave } from '../src/types.ts';
+import { freshSave, migrateSave, setCompassChoice } from '../src/types.ts';
 import { serializeSave, deserializeSave } from '../src/save-codec.ts';
 
 const MAIN = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
@@ -171,14 +171,23 @@ test('the menu lists quests, seed hunts, nearby objectives and your markers, gro
   assert.equal(compassMenuModel({ area: 'arena' }).count, 0);
 });
 
-test('the followed target is highlighted: a pin, the tap cycle\'s pick, or the needle\'s own section', () => {
+// Changed 2026-11-19 (Tim: the compass is sticky; markers are opt-in): the highlight is exactly the choice (a pin, a followed
+// source, a pick), never a guess from the needle's section; a marker is chosen as a followed source, not pinned.
+test('the followed target is highlighted: a pin, a followed hunt, quest or marker, or the tap cycle\'s pick', () => {
   const w = world(), here = { rx: 2, ry: 2 }, cur = (m) => m.groups.flatMap((g) => g.rows).filter((r) => r.current).map((r) => r.label);
-  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, pin: { rx: 7, ry: 1, name: 'Rose mark' } })), ['Rose mark']);
+  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, follow: { kind: 'marker', id: 'mark:0' } })), ['Rose mark']);
+  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, follow: { kind: 'marker', id: 'waypoint' } })), ['Old mill']);
+  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, pin: { rx: 7, ry: 1, name: 'Rose mark' } })), [], 'a marker is never a pin row');
   assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, pin: { rx: 4, ry: -2, name: 'Hunt: The Ashen Stag' } })), ['Hunt: The Ashen Stag']);
   assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, pickKey: 'seed-hunt:tower:9,9' })), ['Seed hunt · Ember Seed']);
   assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, pickKey: '3,2' })), ['Crossing: The Long Stair']);
-  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, guidance: { rx: 4, ry: -2, name: 'The Ashen Stag' } })), ['Hunt: The Ashen Stag'], 'a tracked hunt the needle follows');
+  assert.deepEqual(cur(compassMenuModel({ area: 'overworld', here, ...w, guidance: { rx: 4, ry: -2, name: 'The Ashen Stag' } })), [], 'a needle nobody chose is not guessed');
+  const followed = [{ title: 'Hunt: The Ashen Stag', at: { rx: 4, ry: -2 }, follow: { kind: 'hunt', id: 'h1' } }, { title: 'Relay leads', at: null, follow: { kind: 'quest', id: 'leads' } }];
+  const fm = compassMenuModel({ area: 'overworld', here, quests: followed, follow: { kind: 'quest', id: 'leads' } });
+  assert.deepEqual(fm.groups[0].rows.map((r) => [r.label, r.hint, r.current]), [['Hunt: The Ashen Stag', '4 sections north-east', false], ['Relay leads', COMPASS_MENU.waymarksHint, true]], 'a quest with no section is listed when it can be followed');
+  assert.deepEqual(fm.groups[0].rows[0].choose, { kind: 'follow', follow: { kind: 'hunt', id: 'h1' }, name: 'Hunt: The Ashen Stag' });
   assert.equal(compassMenuModel({ area: 'overworld', here, ...w, pickKey: '3,2' }).clearable, true);
+  assert.equal(fm.clearable, true);
 });
 
 test('in a dungeon the menu lists the door points the compass cycles, the chosen one highlighted', () => {
@@ -189,22 +198,26 @@ test('in a dungeon the menu lists the door points the compass cycles, the chosen
   assert.equal(compassMenuModel({ area: 'dungeon', here: { x: 5, y: 4 }, doors }).groups[0].rows[0].current, true, 'no pick: the first, as the compass points');
 });
 
-// ---- choosing a row: main.ts chooseCompassTarget and rememberGuidance, lifted with their state
+// ---- choosing a row: main.ts chooseCompassTarget, chooseGuidance and rememberGuidance, lifted with their state (types.ts
+// setCompassChoice writes the save). Changed 2026-11-19 (Tim: the compass is sticky; markers are opt-in): a marker is followed, not
+// pinned, and a pick is never pinned to beat a tracked hunt, because nothing leads a choice any more.
 function chooser(save, objectives) {
   const all = objectives;
-  const make = new Function('save', 'compassGuidance', 'objectiveKey', 'all', `
-    let compassPick=null,compassPin=null,dungeonCompassPick=null,closed=0;const game={message:""},navigationCache={key:1},persist=()=>{};
+  const make = new Function('save', 'compassGuidance', 'objectiveKey', 'setCompassChoice', 'all', `
+    let compassPick=null,compassPin=null,compassFollow=null,guidanceSeen=save.guidance,dungeonCompassPick=null,closed=0;const game={message:""},navigationCache={key:1},persist=()=>{};
     const compassObjective=()=>compassPick===null?null:all.find(o=>objectiveKey(o)===compassPick)||null;
-    const navigationTargets=()=>({guidance:compassGuidance(save,{area:"overworld",pin:compassPin,pick:compassPin?null:compassObjective()})});
+    const navigationTargets=()=>({guidance:compassGuidance(save,{area:"overworld",pin:compassPin,follow:compassPin?null:compassFollow,pick:compassPin||compassFollow?null:compassObjective()})});
     const closeCompassMenu=()=>{closed++};
+    ${lift('syncGuidance')}
     ${lift('rememberGuidance')}
+    ${lift('chooseGuidance')}
     ${lift('chooseCompassTarget')}
-    return {choose:chooseCompassTarget,get state(){return{compassPick,compassPin,dungeonCompassPick,closed,message:game.message,guidance:navigationTargets().guidance}}};`);
-  return make(save, compassGuidance, objectiveKey, all);
+    return {choose:chooseCompassTarget,sync:syncGuidance,get state(){return{compassPick,compassPin,compassFollow,dungeonCompassPick,closed,message:game.message,guidance:navigationTargets().guidance}}};`);
+  return make(save, compassGuidance, objectiveKey, setCompassChoice, all);
 }
 
-test('a row sets the compass by the tap cycle\'s pick (or the Journal\'s pin), persists in the save, and closes the menu', () => {
-  const w = world(), s = freshSave(); s.seed = 'COMPASS-MENU';
+test('a row sets the compass (a pick, a pin or a followed source), persists in the save, and closes the menu', () => {
+  const w = world(), s = freshSave(); s.seed = 'COMPASS-MENU'; s.mapMarks = w.marks; s.manualWaypoint = { kind: 'section', ...w.waypoint };
   const m = compassMenuModel({ area: 'overworld', here: { rx: 2, ry: 2 }, ...w }), row = (label) => m.groups.flatMap((g) => g.rows).find((r) => r.label === label);
   const k = chooser(s, w.objectives);
   k.choose(row('Seed hunt · Ember Seed'));
@@ -213,13 +226,17 @@ test('a row sets the compass by the tap cycle\'s pick (or the Journal\'s pin), p
   assert.equal(k.state.guidance.rx, 9); assert.equal(k.state.guidance.x, 3, 'the seed itself, as the cycle points'); assert.match(k.state.message, /Compass: Seed hunt · Ember Seed · 7 sections south-east/);
   const back = migrateSave(deserializeSave(serializeSave(s))); assert.deepEqual(back.guidance, { pick: 'seed-hunt:tower:9,9', pin: null }, 'survives a save and load');
   k.choose(row('Violet mark'));
-  assert.deepEqual(s.guidance, { pick: 'seed-hunt:tower:9,9', pin: { rx: -3, ry: 2, name: 'Violet mark' } }, 'a marker is pinned, as the Journal pins');
-  assert.equal(k.state.guidance.name, 'Violet mark'); assert.deepEqual(normalizeMapMarks(w.marks).length, 2, 'the marks are unchanged');
-  k.choose(row('Crossing: The Long Stair')); assert.deepEqual(s.guidance, { pick: '3,2', pin: null }, 'a pick lets the pin go, as the tap cycle does');
-  // a tracked Viewport hunt leads any pick (compassGuidance): the chosen objective is pinned so the needle really follows it
+  assert.deepEqual(s.guidance, { pick: null, pin: null, follow: { kind: 'marker', id: 'mark:2' } }, 'a marker is followed, and only because it was chosen');
+  assert.equal(k.state.guidance.name, 'Violet mark'); assert.deepEqual([k.state.guidance.rx, k.state.guidance.ry], [-3, 2]); assert.deepEqual(normalizeMapMarks(w.marks).length, 2, 'the marks are unchanged');
+  assert.deepEqual(migrateSave(deserializeSave(serializeSave(s))).guidance.follow, { kind: 'marker', id: 'mark:2' }, 'the followed marker survives a save and load');
+  k.choose(row('Old mill')); assert.equal(k.state.guidance.name, 'Old mill'); assert.deepEqual(s.guidance.follow, { kind: 'marker', id: 'waypoint' });
+  s.manualWaypoint = null; k.sync(); assert.equal(k.state.guidance, null, 'the chosen waypoint cleared: no needle, nothing else takes over');
+  k.choose(row('Crossing: The Long Stair')); assert.deepEqual(s.guidance, { pick: '3,2', pin: null }, 'a pick lets the follow go, as the tap cycle does');
+  // a tracked Viewport hunt no longer leads a pick
   s.viewport = { activeHuntId: 'h1', contracts: { h1: { id: 'h1', status: 'tracking', title: 'The Ashen Stag', target: { rx: 4, ry: -2 } } } };
-  k.choose(row('A buried signal')); assert.deepEqual(s.guidance.pin, { rx: 1, ry: 5, name: 'A buried signal' }); assert.equal(k.state.guidance.name, 'A buried signal');
-  k.choose({ label: '', choose: { kind: 'none' } }); assert.deepEqual(s.guidance, { pick: null, pin: null }, '"Point nowhere" lets it go'); assert.equal(k.state.closed, 5);
+  k.choose(row('A buried signal')); assert.deepEqual(s.guidance, { pick: '1,5', pin: null }); assert.equal(k.state.guidance.name, 'A buried signal');
+  k.choose(row('Hunt: The Ashen Stag')); assert.deepEqual(s.guidance.pin, { rx: 4, ry: -2, name: 'Hunt: The Ashen Stag' }, 'a quest row without a followed source pins, as the Journal does');
+  k.choose({ label: '', choose: { kind: 'none' } }); assert.deepEqual(s.guidance, { pick: null, pin: null }, '"Point nowhere" lets it go'); assert.equal(k.state.closed, 7);
   k.choose({ label: 'Door point 2: STAIR', hint: '', choose: { kind: 'door', id: 'a::2' } }); assert.equal(k.state.dungeonCompassPick, 'a::2', 'in a dungeon: the door point');
 });
 

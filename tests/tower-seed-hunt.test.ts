@@ -11,7 +11,7 @@ import { Game, footprintOpen, seedHuntGround, seedHuntSpots, walkerCrossingMap }
 import { reachableFrom, canReturnTo, elevationAt, LETHAL_KINDS } from '../src/landscape.ts';
 import { TALL_TOWERS, ensureSeedHunts, seedHuntCandidates, seedHuntKind, activeSeedHunts, nearestSeedHunt } from '../src/tall-towers.ts';
 import { SEEDS, SEED_FINDS } from '../src/skylands.ts';
-import { compassGuidance, seedHuntGuidance } from '../src/atlas-view.ts';
+import { compassGuidance, seedHuntGuidance, seedHuntObjectives } from '../src/atlas-view.ts';
 import { serializeSave, deserializeSave } from '../src/persistence.ts';
 
 const H = TALL_TOWERS.seedHunt;
@@ -158,12 +158,14 @@ test('several towers, several hunts: each its own section, marked on the Atlas a
   const s = freshSave(); s.seed = 'TOWERS'; const a = lookFromTower('TOWERS', -3, 3, s), b = lookFromTower('TOWERS', 0, 9, a.g.save);
   const hunts = b.g.save.seedHunts; assert.equal(Object.keys(hunts).length, 2); const [h1, h2] = [hunts[a.id], hunts[b.id]];
   assert.ok(h1 && h2 && !(h1.rx === h2.rx && h1.ry === h2.ry), 'two different sections'); assert.equal(activeSeedHunts(b.g.save).length, 2);
-  // the compass: with no other objective, the nearest hunt; a quest still comes first
+  // the compass. Changed 2026-11-19 (Tim: the compass is sticky and only an active choice moves it): the nearest hunt no longer
+  // leads by itself; a hunt chosen by tapping the compass or in its menu (a pick) does.
   const near = nearestSeedHunt(b.g.save, h2.rx, h2.ry); assert.equal(near.tower, b.id);
-  const guide = compassGuidance(b.g.save, { area: 'overworld', seedHunt: seedHuntGuidance(near, { [near.kind]: SEEDS[near.kind].name }) });
+  const pick = seedHuntObjectives(activeSeedHunts(b.g.save), { [near.kind]: SEEDS[near.kind].name }, h2.rx, h2.ry)[0];
+  const guide = compassGuidance(b.g.save, { area: 'overworld', pick });
   assert.deepEqual([guide.rx, guide.ry], [h2.rx, h2.ry]); assert.match(guide.name, /Seed hunt/);
-  assert.deepEqual(compassGuidance(b.g.save, { area: 'overworld', farQuest: { rx: 1, ry: 1, name: 'far' }, seedHunt: guide }).name, 'far');
-  assert.equal(compassGuidance(b.g.save, { area: 'overworld' }), null, 'no hunt passed, no needle');
+  assert.equal(compassGuidance(b.g.save, { area: 'overworld', seedHunt: seedHuntGuidance(near, { [near.kind]: SEEDS[near.kind].name }) }), null, 'the nearest hunt alone: no needle');
+  assert.equal(compassGuidance(b.g.save, { area: 'overworld' }), null, 'no hunt chosen, no needle');
   // in its section, the needle points at the seed itself
   travel(b.g, h2.rx, h2.ry); const g2 = seedHuntGuidance(b.g.save.seedHunts[b.id]); const hh = b.g.save.seedHunts[b.id];
   if (hh.where === 'crossing') assert.deepEqual([g2.x, g2.y], [hh.door.x, hh.door.y]); else assert.deepEqual([g2.x, g2.y], [hh.x, hh.y]);

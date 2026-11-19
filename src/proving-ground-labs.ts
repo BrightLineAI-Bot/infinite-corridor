@@ -10,7 +10,7 @@ import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, a
 import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.ts";
 import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.ts";
 import { DIG, planDig } from "./digging.ts";
-import { freshSave, migrateSave } from "./types.ts";
+import { freshSave, migrateSave, setCompassChoice } from "./types.ts";
 import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.ts";
 import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.ts";
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
@@ -1034,7 +1034,8 @@ function navigationFixture(scenario,seed,now){const kind=scenario.includes("rest
  if(scenario==="travel-pair"){const second=findNavigationRegion(seed,"checkpoint",1);save.checkpoints[`${second.rx},${second.ry}`]={rx:second.rx,ry:second.ry,x:second.object.x,y:second.object.y,name:second.object.name};diagnostics.travelDestinations=Object.keys(save.checkpoints)}
  if(scenario==="activated-rest-point"){save.activeCheckpoint={rx:site.rx,ry:site.ry,x:object.x,y:object.y,name:object.name};save.worldFlags[`rest:${site.rx},${site.ry}:${object.id}`]=true}
  if(["manual-waypoint","dual-compass"].includes(scenario))save.manualWaypoint={kind:"section",area:"overworld",rx:site.rx+2,ry:site.ry+1,label:"Manual test waypoint"};
- if(["hunt-guidance","dual-compass"].includes(scenario)){save.viewport.activeHuntId="lab-hunt";save.viewport.contracts["lab-hunt"]={id:"lab-hunt",title:"Proving Hunt",status:"tracking",target:{rx:site.rx-3,ry:site.ry+2}}}
+ if(["hunt-guidance","dual-compass"].includes(scenario)){save.viewport.activeHuntId="lab-hunt";save.viewport.contracts["lab-hunt"]={id:"lab-hunt",title:"Proving Hunt",status:"tracking",target:{rx:site.rx-3,ry:site.ry+2}};setCompassChoice(save,{follow:{kind:"hunt",id:"lab-hunt"}})}/* 2026-11-19 (Tim): a hunt drives the compass only when chosen; the lab's hunt stands for one accepted */
+ if(scenario==="manual-waypoint")setCompassChoice(save,{follow:{kind:"marker",id:"waypoint"}});/* 2026-11-19: markers are opt-in; this lab's waypoint is the chosen one */
  if(scenario==="quest-guidance")save.narrative.facts["crossing.objective"]=true;
  if(scenario==="death-marker")save.lastDeath={schema:1,sequence:1,areaKind:"overworld",rx:site.rx,ry:site.ry,x:object.x+2,y:object.y,label:"Last death",valid:true};
  if(scenario==="save-reconstruction"){const restored=roundTripScratch(save);diagnostics.reconstructed={checkpointKeys:Object.keys(restored.checkpoints),activeCheckpoint:restored.activeCheckpoint}}

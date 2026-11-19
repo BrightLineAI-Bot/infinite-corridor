@@ -13,7 +13,18 @@ const perception=()=>({schema:1,aperture:0,passiveSeconds:0,awarded:{},announced
 const codex=()=>({creatures:{},places:{},features:{},variants:{},peoplePlaces:{}});
 // Release 279: save.guidance = { pick: "rx,ry" | null, pin: { rx, ry, name } | null } (additive): the compass's chosen target.
 // 2026-11-19: a pick may also be "seed-hunt:<tower id>", a live seed hunt chosen by tapping the compass (atlas-view.ts objectiveKey).
-export function normalizeGuidance(g){if(!g||typeof g!=='object')return null;const pick=typeof g.pick==='string'&&(/^-?\d+,-?\d+$/.test(g.pick)||/^seed-hunt:tower:\S{1,200}$/.test(g.pick))?g.pick:null,p=g.pin,pin=p&&Number.isInteger(p.rx)&&Number.isInteger(p.ry)?{rx:p.rx,ry:p.ry,name:String(p.name||'').slice(0,120)}:null;return pick||pin?{...g,pick,pin}:null}
+// Tim, 2026-11-19 ("the compass points at exactly the one target the player last actively chose"): save.guidance.follow (additive,
+// absent when unset) is a chosen source the needle follows while it lasts: { kind: "hunt", id } (a Viewport hunt, accepted or made
+// "Guidance active"), { kind: "far", id, name? } (a far quest when it opens), { kind: "rescue" } (the hatchling's rescue, given by
+// his mother), { kind: "quest", id: "leads" | "errand" } (a quest with no fixed section, by the section's waymarks) or
+// { kind: "marker", id: "waypoint" | "mark:<0-2>" } (one of the player's own Atlas markers, chosen in the compass menu). At most one
+// of pick, pin and follow is set by the writers (setCompassChoice); main.ts reads pin, then follow, then pick.
+export const COMPASS_FOLLOW_KINDS=Object.freeze(['hunt','far','rescue','quest','marker']);
+export function normalizeCompassFollow(f){if(!f||typeof f!=='object'||!COMPASS_FOLLOW_KINDS.includes(f.kind))return null;if(f.kind==='rescue')return{...f,kind:'rescue'};const id=typeof f.id==='string'&&f.id.length&&f.id.length<=200?f.id:null;if(!id)return null;if(f.kind==='quest'&&!['leads','errand'].includes(id))return null;if(f.kind==='marker'&&!/^(waypoint|mark:[0-9])$/.test(id))return null;return{...f,kind:f.kind,id,...(f.name!==undefined?{name:String(f.name).slice(0,120)}:{})}}
+export function normalizeGuidance(g){if(!g||typeof g!=='object')return null;const pick=typeof g.pick==='string'&&(/^-?\d+,-?\d+$/.test(g.pick)||/^seed-hunt:tower:\S{1,200}$/.test(g.pick))?g.pick:null,p=g.pin,pin=p&&Number.isInteger(p.rx)&&Number.isInteger(p.ry)?{rx:p.rx,ry:p.ry,name:String(p.name||'').slice(0,120)}:null,follow=normalizeCompassFollow(g.follow);const{follow:_f,...rest}=g;return pick||pin||follow?{...rest,pick,pin,...(follow?{follow}:{})}:null}
+// The one writer of the compass's choice: every active choice (the tap cycle, the compass menu, the Journal, accepting a hunt or a
+// quest) replaces whatever was chosen before; nothing else calls it. Unknown fields of save.guidance are kept.
+export function setCompassChoice(save,{pick=null,pin=null,follow=null}={}){const{pick:_a,pin:_b,follow:_c,...rest}=save.guidance&&typeof save.guidance==='object'?save.guidance:{},f=normalizeCompassFollow(follow);save.guidance={...rest,pick:typeof pick==='string'?pick:null,pin:pin&&Number.isInteger(pin.rx)&&Number.isInteger(pin.ry)?{rx:pin.rx,ry:pin.ry,name:String(pin.name||'')}:null,...(f?{follow:f}:{})};return save.guidance}
 // Dungeon door wayfinding is additive at save schema 14. Door ids are area-scoped by game.ts; the bounds keep a damaged
 // or hand-edited journey from growing the Atlas contract without limit. Unknown top-level fields remain intact.
 const navigationId=(v,max=240)=>typeof v==='string'&&v.length>0&&v.length<=max?v:null;
