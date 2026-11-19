@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1022 (this merge, #692); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1023 (this merge, #693); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1023 | Claude | claude/close-view-polish / #693 | Close View polish pass: pitch continuity, sight parity and fades, eased zoom/drag/recentre, transition cross-fades, hit-stop | Merged (#693); preview follows. |
 | 1022 | Claude | claude/rift-mines-encumbered / #692 | Glyph Mine × Rift Step void; Encumbered pull build-up | Merged (#692); preview follows. |
 | 1021 | Claude | claude/oculus-look-compass-menu / #691 | Look mode on the Oculus hold; compass quick menu; sticky compass target; WAYPOINT REACHED | Merged (#691); preview follows. |
 | 1020 | Claude | claude/target-follow-camera / #690 | Close View target-follow camera; held-stick spin fix | Merged (#690); preview follows. |
