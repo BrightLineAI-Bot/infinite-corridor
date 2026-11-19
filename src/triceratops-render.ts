@@ -53,11 +53,14 @@ export const TRI_POSES = Object.freeze({
 // `triForm` (the herds, the mount) keeps exactly the adult's numbers (TRI_FORM_ADULT).
 // head: the head's scale; leg: leg bone lengths and the hip's height; legW: leg and haunch thickness; girth: body depth; length: the
 // spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none); snout: the face
-// in front of the eye shortened toward it (a round baby face, a small beak).
-export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0, snout: 1 });
+// in front of the eye shortened toward it (a round baby face, a small beak); jugal: the cheek horn's size; lift / nod: the head carried
+// higher (body units) and nose up (radians) in the standard view (Close View: TRICERATOPS_RIG.formHeadLift).
+export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 });
 export const TRI_FORMS = Object.freeze({
-  baby: Object.freeze({ head: 1.5, leg: .85, legW: 1.3, girth: 1.18, length: .72, frill: .55, brow: .2, nose: .42, eye: 1.85, cheek: 1, snout: .72 }),
-  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1 }),
+  // Tim, 2026-11-19 (size pass): a cute little baby that is still clearly a Triceratops: a tiny frill, barely any horns (nubs), rounder
+  // and chubbier, a bigger head on a shorter body, big eyes, short stubby legs.
+  baby: Object.freeze({ head: 1.7, leg: .74, legW: 1.35, girth: 1.22, length: .62, frill: .25, brow: .06, nose: .16, eye: 2.15, cheek: 1, snout: .45, jugal: .3, lift: .1, nod: .22 }),
+  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, girth: 1.08, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
 export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
 const scl = (v, c, k) => k === 1 ? v : c + (v - c) * k; // a horn point scaled about its base (exactly the adult's at 1)
@@ -242,7 +245,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   ctx.save();
   if (horn) { const nx = flip * (PX[is] + .1) * u, ny = -(PY[is] + .05) * u; ctx.translate(nx + flip * horn.reach * u, ny + horn.lower * u); ctx.rotate(flip * horn.pitch); ctx.translate(-nx, -ny); }
   ctx.scale(flip * u, u);
-  drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM);
+  drawHead(ctx, A, hx, FM.lift ? hy + FM.lift : hy, FM.nod ? ha + FM.nod : ha, V, e, t, reduce, dead, lw, poseName, FM);
   ctx.restore();
   // a charge's dust, and the stomp's ring at the forefeet
   const dashing = e.mountView && (e.mountHornPose?.phase === "dash" || e.mountHornPose?.phase === "bash" && triceratopsHornAmount(e.mountHornPose) > .3);
@@ -270,7 +273,7 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   const fg = ctx.createRadialGradient(0, .12, .02, 0, 0, ry); fg.addColorStop(0, A.frillInner); fg.addColorStop(.7, A.frill); fg.addColorStop(1, A.frillEdge);
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fillStyle = fg; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
   ctx.strokeStyle = "rgba(255,240,160,.55)"; ctx.lineWidth = .02; ctx.beginPath(); ctx.ellipse(0, 0, rx * .82, ry * .84, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2, sy2, .055, .08, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
+  { const fk = FM.frill; ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .55; for (const [sx2, sy2] of [[-.08, -.12], [.09, -.1]]) { ctx.beginPath(); ctx.ellipse(sx2 * fk, sy2 * fk, .055 * fk, .08 * fk, sx2 * 2, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; } // the spots keep their place on a small frill
   ctx.restore();
   // the brow horns: long, curving forward and up out of the brow; the far one first, behind the skull, the near one over it
   const bk = FM.brow, bx0 = .165, by0 = .1, brow = (dx, dy, near) => { const b0 = H(.13 + dx, .1 + dy), b1 = H(.2 + dx, .095 + dy), mid = H(scl(.3, bx0, bk) + dx, scl(.3, by0, bk) + dy), tip = H(scl(.5, bx0, bk) + dx, scl(.4, by0, bk) + dy);
@@ -290,7 +293,7 @@ function drawHead(ctx, A, hx, hy, ha, V, e, t, reduce, dead, lw, poseName, FM = 
   const skull = [[-.06, .11], [.06, .15], [.18, .13], [.29, .085], [.35, .05], [.35, -.035], [.24, -.055], [.12, -.075], [.02, -.11], [-.05, -.12], [-.09, -.02]];
   ctx.beginPath(); mv(H(...skull[0])); for (let i = 1; i <= skull.length; i++) { const a = skull[i - 1], b = skull[i % skull.length]; qc(H(...a), H((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)); } ctx.closePath();
   { const g0 = H(.15, .15), g1 = H(.15, -.12), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.bodyLight); g.addColorStop(.55, A.body); g.addColorStop(1, A.bodyDark); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }
-  shape([[-.03, -.07], [-.1, -.17], [.04, -.11]]); ctx.fillStyle = A.hornBase; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
+  { const jk = FM.jugal; shape([[-.03, -.07], [scl(-.1, -.005, jk), scl(-.17, -.09, jk)], [.04, -.11]]); } ctx.fillStyle = A.hornBase; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .8; ctx.stroke();
   // the upper beak: a big hooked parrot beak of dark keratin, curling down over the lower one, a pale cutting edge and a sheen on top
   ctx.beginPath(); mv(H(.3, .058)); qc(H(.39, .058), H(.412, -.01)); qc(H(.412, -.058), H(.385, -.072)); qc(H(.382, -.05), H(.352, -.046)); ln(H(.31, -.04)); qc(H(.29, .015), H(.3, .07)); ctx.closePath();
   { const g0 = H(.35, .07), g1 = H(.38, -.08), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]); g.addColorStop(0, A.beakLight); g.addColorStop(.45, A.beak); g.addColorStop(1, A.outline); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); }

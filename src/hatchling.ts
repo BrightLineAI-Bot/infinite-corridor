@@ -2,9 +2,9 @@
 // The rescue site is marked on the Atlas and the compass, a few sections from the hometown. A pack of creatures guards a pen there,
 // and freeing the hatchling makes him the Wayfarer's companion. He grows from a share of the experience the Wayfarer earns from fights
 // while he is out. He has three forms:
-//   baby  (about the Wayfarer's size; support): light buffs (one of each kind at most, refreshed, never doubled), a good heal now and
+//   baby  (a little smaller than the Wayfarer; support): light buffs (one of each kind at most, refreshed, never doubled), a good heal now and
 //         then, a chill that slows or freezes nearby foes, and barely any damage;
-//   young (medium; damage): a charged three-beam horn blast, gatling horns, a tail whirl, a bite, a charge and forefoot stomps, and he
+//   young (about the Stalker's cat form; damage): a charged three-beam horn blast, gatling horns, a tail whirl, a bite, a charge and forefoot stomps, and he
 //         walks with and around the Wayfarer and picks fights with nearby foes;
 //   big   the rideable Triceratops (beast-mounts.ts: the normal persistent mount, release 1006 body, 1002 controls).
 // Once a form is unlocked it stays unlocked. The Pack chooses which form a hold of Act (MOUNT_RIDE.callHold) calls.
@@ -35,9 +35,11 @@ export const HATCHLING = f({
   // `young` / `big`: the companion experience each form unlocks at (cumulative). Tuned for about 3 hours of play from baby to young
   // and about 4 more to big at ordinary kill rates (about 1,800 Wayfarer experience an hour in the mid game).
   growth: f({ share: .5, young: 2700, big: 6300 }),
+  // `scale`: the standard view's; `closeViewScale`: Close View's body (Tim, 2026-11-19 size pass: the baby a little shorter than the
+  // Wayfarer in both views, the young about the Stalker's cat form; presentation only).
   forms: f({
-    baby: f({ name: "Baby", scale: 1.15, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
-    young: f({ name: "Young", scale: 1.4, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
+    baby: f({ name: "Baby", scale: .74, closeViewScale: 1.08, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
+    young: f({ name: "Young", scale: 1, closeViewScale: 1.2, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
     big: f({ name: "Big", scale: 2.1, speed: 0, rideable: true, text: "rideable" }),
   }),
   formIds: f(["baby", "young", "big"]),

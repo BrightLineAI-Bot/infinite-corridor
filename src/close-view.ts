@@ -3990,7 +3990,7 @@ function admitHatchling(g, now, reduce, tier) {
   const a = HATCH_CV.actor, E = HATCH_CV.env; a.triForm = pr.form; a.pack = pr.pack; a.facingX = pr.face;
   if (!prepareCloseViewBeastMesh(triceratopsMesh(tier, a))) { HATCH_CV.track = null; return; }
   if (!HATCH_CV.track || HATCH_CV.form !== pr.form) { HATCH_CV.track = createTriceratopsTrack(); HATCH_CV.form = pr.form; }
-  const x = pr.x + .5, y = pr.y + .82; E.x = x; E.y = y; E.z = surfaceZ(g.map, x, y - .07) + pr.hop; E.scale = pr.scale; E.now = now; E.reduce = reduce; E.tier = tier;
+  const x = pr.x + .5, y = pr.y + .82; E.x = x; E.y = y; E.z = surfaceZ(g.map, x, y - .07) + pr.hop; E.scale = pr.closeViewScale; E.now = now; E.reduce = reduce; E.tier = tier;
   BEAST_TARGET.x = g.player.x; BEAST_TARGET.y = g.player.y; E.target = BEAST_TARGET;
   const frame = sampleTriceratops(HATCH_CV.track, a, E); if (!frame) return;
   const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.hatchling = true;

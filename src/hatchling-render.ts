@@ -11,6 +11,8 @@ const TAU = Math.PI * 2;
 export const HATCH_ART = Object.freeze({
   // the young form's prance and the baby's hop while walking (tiles, and hops a second); none under Reduced Motion
   prance: Object.freeze({ young: .07, baby: .05, rate: 9 }),
+  // his drawn height in tiles by form (the tallest of his Close View body and card: Close View's look framing and card bounds)
+  height: Object.freeze({ baby: 1.2, young: 1.7 }),
   beam: "#fff2b0", beamCore: "#ffffff", bolt: "#ffe680", chill: "#bfe9ff", heal: "#8ff0a4", whirl: "rgba(255,240,160,", stomp: "rgba(185,168,136,",
   buff: Object.freeze({ damage: "#ff9a5a", defence: "#9ad0ff", stamina: "#b8f07a" }),
   // where the young form's horns are, in tiles x his scale from his feet (along his facing, up): the two brow horn tips and the nose horn,
@@ -22,7 +24,7 @@ export const HATCH_DRAW = { skipBody: false };
 // One reused actor each (no per-frame allocation beyond them).
 const COMPANION = { id: "hatchling", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: 1, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
 const MAMA = { id: "hatch-mama", kind: "triceratops", x: 0, y: 0, scale: 1.9, facingX: -1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, resting: "sick" };
-const BABY = { id: "hatch-pen-baby", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: .9, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
+const BABY = { id: "hatch-pen-baby", kind: "triceratops", triForm: "baby", x: 0, y: 0, scale: HATCHLING.forms.baby.scale, facingX: 1, pack: null, hp: 1, maxHp: 1, reduceMotion: false, poiseBreak: 0 };
 const PACKS = { charge: { attack: "ramCharge", phase: "attack" }, beam: { attack: "ramCharge", phase: "windup" }, whirl: { attack: "heavySweep", phase: "attack" }, stompUp: { attack: "shockwave", phase: "windup" }, stomp: { attack: "shockwave", phase: "attack" }, gatling: { attack: "shockwave", phase: "windup" }, bite: { attack: "ramCharge", phase: "attack" } };
 const Q = { k: 0, b: 0, u: 0, s: 0, t: 0, flip: 1, e: null, state: "idle" };
 
@@ -37,7 +39,7 @@ export function hatchlingPack(out) {
 export function hatchlingPresentation(g, now, reduce = false) {
   const h = g?.save?.mounts?.hatchling, o = h?.out; if (!o || !h.owned || h.form === "big" || o.area !== g.areaStateId?.()) return null;
   const P = HATCH_ART.prance, hop = !reduce && o.moving ? Math.abs(Math.sin(now / 1000 * P.rate)) * (P[h.form] || 0) : 0;
-  return { form: h.form, x: o.x, y: o.y, face: o.face < 0 ? -1 : 1, scale: HATCHLING.forms[h.form].scale, hop, pack: hatchlingPack(o) };
+  return { form: h.form, x: o.x, y: o.y, face: o.face < 0 ? -1 : 1, scale: HATCHLING.forms[h.form].scale, closeViewScale: HATCHLING.forms[h.form].closeViewScale || HATCHLING.forms[h.form].scale, hop, pack: hatchlingPack(o) };
 }
 function body(ctx, actor, s, now, cx, by) {
   Q.k = cx; Q.b = by; Q.u = s * actor.scale; Q.s = s; Q.t = now / 1000; Q.flip = actor.facingX < 0 ? -1 : 1; Q.e = actor; Q.state = actor.pack ? (actor.pack.phase === "windup" ? "windup" : "attack") : "idle";
@@ -46,7 +48,7 @@ function body(ctx, actor, s, now, cx, by) {
 // The companion's draw entry for the renderer's depth-sorted list (or null). Its fn paints him at his feet.
 export function hatchlingDraw(ctx, g, s, now) {
   const reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), pr = hatchlingPresentation(g, now, reduce); if (!pr) return null;
-  return { x: pr.x, y: pr.y, hatchling: true, nativeHeight: pr.form === "young" ? 1.9 : 1.2, fn: () => drawHatchlingCompanion(ctx, g, s, now, reduce) };
+  return { x: pr.x, y: pr.y, hatchling: true, nativeHeight: HATCH_ART.height[pr.form] || HATCH_ART.height.baby, fn: () => drawHatchlingCompanion(ctx, g, s, now, reduce) };
 }
 export function drawHatchlingCompanion(ctx, g, s, now, reduce = false) {
   const pr = hatchlingPresentation(g, now, reduce); if (!pr) return false;
