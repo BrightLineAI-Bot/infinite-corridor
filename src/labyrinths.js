@@ -7,15 +7,15 @@
 //
 // A labyrinth is one closed building on the overworld with one door. Inside it is a maze of chambers, each an area of its own,
 // joined by doors (the same level) and ladders (up to a loft, down to a cellar or a subcellar). The chambers are:
-//   hall    rooms split by inner walls (great-buildings.js?v=r984-93a51644afcb's floor plan)
+//   hall    rooms split by inner walls (great-buildings.js?v=r1012-ffa69513a699's floor plan)
 //   court   an open-air hedge maze: outside, but still inside the labyrinth
 //   cellar  a stone maze under the ground (two levels down is a subcellar)
 //   gaps    a gallery of platforms over a drop: jump the one-tile gaps; fall and you land in a cellar somewhere else
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng, byHash } from "./random.js?v=r984-93a51644afcb";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r984-93a51644afcb";
+import { hashSeed, rng, byHash } from "./random.js?v=r1012-ffa69513a699";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r1012-ffa69513a699";
 
 export const LABYRINTHS = {
   version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
@@ -45,7 +45,7 @@ export const LABYRINTHS = {
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
     // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld. Its
     // rooms are laid out as the Old Keep's (`building`); Tim (2026-11-04): "let's use the clockwork dungeon theme, and the mosaic
-    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r984-93a51644afcb's Brass Engine and Mosaic
+    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r1012-ffa69513a699's Brass Engine and Mosaic
     // Sanctum tiles, see SHELL_THEMES): the halls and galleries are clockwork, the courts, undercrofts and the vault mosaic.
     shell: { name: "The Shell-Labyrinth", hall: "Gear Hall", court: "Mosaic Court", cellar: "Mosaic Undercroft", subcellar: "Deep Undercroft", gaps: "Gallery of Gears", vault: "Heart of the Shell", building: "keep",
       themes: { hall: "clockwork", gaps: "clockwork", court: "mosaic", cellar: "mosaic", vault: "mosaic" } },
@@ -399,7 +399,7 @@ export const ROOM_MAZES = {
   guards: { share: .4, max: 6, roofMax: 3 }, // of a floor's rooms, guarded (one each), at most
   deadCache: .3, lookoutCache: .6, caches: 4, // a dead-end room's cache; a dead-end floor's; at most this many
   props: .3, // share of a room's edge tiles (never in line with a doorway) that hold a prop
-  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r984-93a51644afcb's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
+  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r1012-ffa69513a699's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
   // and the floors between by style.
   themes: {
     keep: [{ name: "Crypt", floor: "ossuary", prop: "sarcophagus", u: 1 }, { name: "Chapel", floor: "templeMosaic", prop: "templePillar", u: 1, q: 1 }, { name: "Solar", floor: "carpetFloor" },
@@ -713,14 +713,28 @@ export function labFogOf(map, stored = undefined) {
 }
 const blocks = (T, k) => !!T[k]?.blocked;
 // A Bresenham line from (x, y) to (tx, ty): clear when no tile strictly between is blocked, nor a diagonal step squeezes
-// between two blocked tiles.
-function clearLine(T, W, x, y, tx, ty) {
+// between two blocked tiles. `wall`: what blocks (the fog of war's own rule unless given; sight lines pass sightWallAt).
+function clearLine(T, W, x, y, tx, ty, wall = blocks) {
   const dx = tx - x, dy = ty - y, sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, ax = Math.abs(dx), ay = Math.abs(dy); let err = ax - ay;
   while (x !== tx || y !== ty) { const e2 = 2 * err, mx = e2 > -ay, my = e2 < ax;
-    if (mx && my && blocks(T, y * W + x + sx) && blocks(T, (y + sy) * W + x)) return false;
+    if (mx && my && wall(T, y * W + x + sx) && wall(T, (y + sy) * W + x)) return false;
     if (mx) { err -= ay; x += sx; } if (my) { err += ax; y += sy; }
-    if ((x !== tx || y !== ty) && blocks(T, y * W + x)) return false; }
+    if ((x !== tx || y !== ty) && wall(T, y * W + x)) return false; }
   return true;
+}
+// The sight from tile (ox, oy) out to `R` tiles, into `sight` (a byte a tile, cleared first within reach + 1): 1 for a tile a
+// line reaches (either way along it), 2 for a wall beside open floor in sight (a room's walls whole). Shared by the fog of war
+// (labFogLook) and the Close View sight field (sightField). About π·R² short lines, no allocation.
+function sightFrom(T, W, H, ox, oy, R, sight, wall = blocks) {
+  const n = Math.floor(R), R2 = R * R;
+  for (let ty = Math.max(0, oy - n); ty <= Math.min(H - 1, oy + n); ty++) for (let tx = Math.max(0, ox - n); tx <= Math.min(W - 1, ox + n); tx++) {
+    const dx = tx - ox, dy = ty - oy; if (dx * dx + dy * dy > R2) continue;
+    if (!clearLine(T, W, ox, oy, tx, ty, wall) && !clearLine(T, W, tx, ty, ox, oy, wall)) continue; // either way along the line (symmetric)
+    sight[ty * W + tx] = 1; }
+  for (let ty = Math.max(0, oy - n - 1); ty <= Math.min(H - 1, oy + n + 1); ty++) for (let tx = Math.max(0, ox - n - 1); tx <= Math.min(W - 1, ox + n + 1); tx++) {
+    const k = ty * W + tx; if (sight[k] || !wall(T, k)) continue; let lit = false;
+    for (let ny = Math.max(0, ty - 1); ny <= Math.min(H - 1, ty + 1) && !lit; ny++) for (let nx = Math.max(0, tx - 1); nx <= Math.min(W - 1, tx + 1); nx++) { const j = ny * W + nx; if (sight[j] === 1 && !wall(T, j)) { lit = true; break; } }
+    if (lit) sight[k] = 2; }
 }
 // Narrow reuse for door discovery in rooms that deliberately have no fog overlay.
 export function labDoorInSight(map, ox, oy, tx, ty) {
@@ -736,16 +750,10 @@ export function labFogLook(map, ox, oy, stored = undefined) {
   const F = labFogOf(map, stored); if (!F) return null;
   const { W, H, seen, sight } = F, T = map.tiles; ox = Math.max(0, Math.min(W - 1, ox | 0)); oy = Math.max(0, Math.min(H - 1, oy | 0));
   const at = oy * W + ox; if (at === F.at) return F;
-  F.at = at; F.looks++; sight.fill(0); const R = Number(map.lightRadius) > 0 ? Number(map.lightRadius) : LAB_FOG.radius /* 2026-11-11: a longer light (lore.ts lightRadius), set by game.ts */, n = Math.floor(R), R2 = R * R; let grew = false;
-  for (let ty = Math.max(0, oy - n); ty <= Math.min(H - 1, oy + n); ty++) for (let tx = Math.max(0, ox - n); tx <= Math.min(W - 1, ox + n); tx++) {
-    const dx = tx - ox, dy = ty - oy; if (dx * dx + dy * dy > R2) continue;
-    if (!clearLine(T, W, ox, oy, tx, ty) && !clearLine(T, W, tx, ty, ox, oy)) continue; // either way along the line (symmetric)
-    const k = ty * W + tx; sight[k] = 1; if (!seen[k]) { seen[k] = 1; grew = true; } }
-  // a wall beside open floor in sight is in sight (a room's walls whole, not ragged where a line grazed past them)
-  for (let ty = Math.max(0, oy - n - 1); ty <= Math.min(H - 1, oy + n + 1); ty++) for (let tx = Math.max(0, ox - n - 1); tx <= Math.min(W - 1, ox + n + 1); tx++) {
-    const k = ty * W + tx; if (sight[k] || !blocks(T, k)) continue; let lit = false;
-    for (let ny = Math.max(0, ty - 1); ny <= Math.min(H - 1, ty + 1) && !lit; ny++) for (let nx = Math.max(0, tx - 1); nx <= Math.min(W - 1, tx + 1); nx++) { const j = ny * W + nx; if (sight[j] === 1 && !blocks(T, j)) { lit = true; break; } }
-    if (lit) { sight[k] = 2; if (!seen[k]) { seen[k] = 1; grew = true; } } }
+  F.at = at; F.looks++; sight.fill(0); const R = Number(map.lightRadius) > 0 ? Number(map.lightRadius) : LAB_FOG.radius /* 2026-11-11: a longer light (lore.ts lightRadius), set by game.ts */, n = Math.floor(R); let grew = false;
+  // the lines, then a wall beside open floor in sight is in sight (a room's walls whole, not ragged where a line grazed past them)
+  sightFrom(T, W, H, ox, oy, R, sight);
+  for (let ty = Math.max(0, oy - n - 1); ty <= Math.min(H - 1, oy + n + 1); ty++) for (let tx = Math.max(0, ox - n - 1); tx <= Math.min(W - 1, ox + n + 1); tx++) { const k = ty * W + tx; if (sight[k] && !seen[k]) { seen[k] = 1; grew = true; } }
   F.stamp++; if (grew) F.dirty = true; return F;
 }
 // 0: never seen; 1: seen, out of sight; 2: in sight. Off the chamber: never seen. A map without fog: in sight.
@@ -767,4 +775,142 @@ export function ensureLabFog(save) {
   const D = save?.consequences?.dungeons; if (!D || typeof D !== "object") return save;
   for (const h of Object.values(D)) if (h && typeof h === "object" && "labFog" in h && !labFogValid(h.labFog)) delete h.labFog;
   return save;
+}
+
+// ------------------------------------------------------------------------------------------------ sight lines
+// Sight lines (Tim, 2026-11-18: "we shouldn't be able to see creatures that are in the distance or behind walls... it should be a
+// surprise... faint silhouettes only"). Presentation only: nothing here moves, spawns, damages or saves anything.
+//
+// A creature the Wayfarer has no line of sight to is drawn, in both views, only as a faint neutral silhouette: no colour-coded
+// threat, no health bar, name, affix or rank markers (drawSightSilhouette here, drawn by renderer.ts; Close View draws the same captured card,
+// see close-view.ts). With a line of sight it is drawn as before. Lock-on (close-view.ts) takes only creatures in sight, and an
+// already locked one keeps the lock while it passes briefly behind cover (CLOSE_VIEW.lock.lostSec).
+//
+// The line: the straight segment from the Wayfarer's feet to the creature's (x + .5, y + .75, where the lock reads them), walked
+// tile by tile (the fog of war's rule, labyrinths.ts clearLine, on the exact segment): clear when no wall tile stands on it from
+// the Wayfarer's own tile up to (not including) the creature's, and no step through a corner squeezes between two. A wall is a
+// blocked tile that is not open ground (water, lava, pits, chasms, sky; the same rule the Close View camera and lock use for walls). Indoors (a dungeon, a building, any map with a
+// building) sight reaches the map's light (map.lightRadius, the fog of war's, release 785) or `indoor.range` tiles, and walls stop
+// it. In the open overworld nothing on the ground is tall enough to hide a creature, so only `outdoor.range` (distance) applies.
+//
+// Bounded (mobile performance): a result is kept per creature while neither its tile nor the Wayfarer's changes (and for at most
+// `ttlFrames` frames, so an opened door is seen); at most `maxChecks` fresh lines are walked a frame (each at most range + 1
+// tiles long, so a frame walks a few hundred tiles at worst). Past the cap a creature keeps its last answer; one never checked yet
+// is hidden for that frame (never a reveal).
+//
+// Exemptions (systems that announce a creature on purpose keep doing so): a passing world beast (world-beasts.ts PASSING: "Far
+// off, ... moves through": a sight to watch), a retreating world beast (announced as fleeing through), and a world beast on
+// ground the Supernova scarred (release 409: nothing fights unseen in the white). And `sectionBeastReach`: a beast of the section
+// (close-view-beasts.ts closeViewSectionBeast: a world beast, the Questing Beast, the Stalker) is never hidden by distance alone
+// (Tim, 2026-11-14: "the world bosses should always be visible whenever they're in the same section as you"); walls still hide it.
+//
+// Version 2 (Tim's review, 2026-11-18: "anything not in his line of sight is simply not shown"; "far away... faint silhouettes, a
+// hint of where to go... near ones not shown at all, so they can ambush"). Out of sight, a creature within `hideNear` tiles of
+// the Wayfarer is not drawn at all (both views); farther, it is the faint silhouette. Indoors 8; outdoors 0 (the open world keeps
+// version 1: beyond the 14 tiles' reach, a silhouette). creatureSightLevel: 2 in sight, 1 the silhouette, 0 not drawn.
+// `field` (Close View's orbit indoors, close-view.ts): the tiles in the Wayfarer's sight, `radius` tiles round her tile, worked
+// out by the fog of war's own lines (sightFrom) only when her tile changes (or `refreshMs` after, so an opened door is seen);
+// the GPU mask hides every other tile as unseen (dark), and its walls, props, lights and loot with it.
+export const SIGHT_LINES = Object.freeze({
+  version: 2,
+  indoor: Object.freeze({ range: 7, walls: true, hideNear: 8 }),
+  outdoor: Object.freeze({ range: 14, walls: false, hideNear: 0 }),
+  field: Object.freeze({ on: true, radius: 12, refreshMs: 400 }),
+  maxChecks: 40, // fresh line walks a frame, at most
+  ttlFrames: 20, // a kept answer is walked again after this many frames
+  // the silhouette: one neutral colour for every creature, faint, with a slightly firmer rim (Standard View and Close View's card)
+  silhouette: Object.freeze({ rgb: Object.freeze([148, 154, 162]), alpha: .16, rim: .26, width: .5, height: .82, head: .2,
+    through: .22 }), // version 2: Close View draws a far one's shape at this opacity over walls and the dark (close-view-gl.ts BOARD_FS, the hint pass)
+  exempt: Object.freeze({ passing: true, retreating: true, scarred: true, sectionBeastReach: true }),
+});
+
+const EXEMPT_KIND = /water|ocean|shallow|lava|river|canyon|abyss|chasm|void|pit|sky|star|cloud/i; // close-view.ts WALL_EXEMPT
+export const sightWall = (t) => !!t && t.blocked === true && !t.chasm && !t.doorway && !EXEMPT_KIND.test(String(t.kind || ""));
+
+// Is the straight segment from (ax, ay) to (bx, by) (world tiles) clear of walls? Every tile it passes through, from the start's up to
+// (not including) the end's, is tested, in order (a grid walk, Amanatides and Woo): at most |dx| + |dy| + 2 tiles. Through a tile's corner
+// exactly, the step squeezes between two tiles: blocked only when both are walls.
+function segmentClear(T, W, H, ax, ay, bx, by) {
+  let x = Math.floor(ax), y = Math.floor(ay); const ex = Math.floor(bx), ey = Math.floor(by), dx = bx - ax, dy = by - ay;
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, tdx = dx !== 0 ? Math.abs(1 / dx) : Infinity, tdy = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+  let tx = dx !== 0 ? (dx > 0 ? x + 1 - ax : ax - x) * tdx : Infinity, ty = dy !== 0 ? (dy > 0 ? y + 1 - ay : ay - y) * tdy : Infinity;
+  const wall = (cx, cy) => cx < 0 || cy < 0 || cx >= W || cy >= H || sightWall(T[cy * W + cx]);
+  if (wall(x, y) && (x !== ex || y !== ey)) return false; // the Wayfarer's own tile walled up (as the old lock line read it)
+  for (let n = Math.abs(ex - x) + Math.abs(ey - y) + 2; n > 0 && (x !== ex || y !== ey); n--) {
+    if (Math.abs(tx - ty) < 1e-9) { if (wall(x + sx, y) && wall(x, y + sy)) return false; x += sx; y += sy; tx += tdx; ty += tdy; }
+    else if (tx < ty) { x += sx; tx += tdx; } else { y += sy; ty += tdy; }
+    if ((x !== ex || y !== ey) && wall(x, y)) return false;
+  }
+  return true;
+}
+
+const STATE = { frame: 0, checks: 0, walks: 0 };
+const MEMO = new WeakMap(); // creature -> { map, pt, ct, frame, v }
+// Start a frame's budget (renderer.ts render calls this once a frame; anything else may too, it only resets the count).
+export function sightFrame() { STATE.frame++; STATE.checks = 0; }
+export const sightStats = () => ({ frame: STATE.frame, checks: STATE.checks, walks: STATE.walks });
+
+const outdoorMap = (g) => g?.area === "overworld" && !g?.map?.building;
+export function sightRule(g) { const S = SIGHT_LINES, out = outdoorMap(g); const R = out ? S.outdoor.range : Number(g?.map?.lightRadius) > 0 ? Math.max(S.indoor.range, Number(g.map.lightRadius)) : S.indoor.range; return { range: R, walls: out ? S.outdoor.walls : S.indoor.walls, hideNear: out ? S.outdoor.hideNear : S.indoor.hideNear }; }
+const scarredAt = (g, e) => { const w = g.map?.width || 32, t = g.map?.tiles?.[Math.floor(Number(e?.y) + .5) * w + Math.floor(Number(e?.x) + .5)]; return !!t?.voidScar; };
+export function sightExempt(g, e) {
+  const X = SIGHT_LINES.exempt; if (!e) return false;
+  return (X.passing && !!e.passingBeast) || (X.retreating && !!e.worldBeast && !!e.retreating) || (X.scarred && !!e.worldBeast && scarredAt(g, e));
+}
+// Does the Wayfarer have a line of sight to (x, y) (feet, world tiles)? Not cached: a single walk (tests, one-off checks).
+const sectionBeast = (e) => !!e && !!(e.worldBeast || e.questingBeast || e.passingBeast || (e.stalker && !e.stalkerKin && !e.stalkerDecoy)); // close-view-beasts.ts closeViewSectionBeast
+// `beast`: the creature at (x, y) is a beast of the section (sectionBeastReach: no limit of reach for it).
+export function sightLineTo(g, x, y, beast = false) {
+  const p = g?.player, map = g?.map; if (!p || !map || !Array.isArray(map.tiles)) return true;
+  const { range, walls } = sightRule(g), px = p.x + .5, py = p.y + .75;
+  if (!(beast && SIGHT_LINES.exempt.sectionBeastReach) && Math.hypot(x - px, y - py) > range) return false; if (!walls) return true;
+  const W = Math.max(1, Number(map.width) || 32), H = Math.max(1, Math.floor(map.tiles.length / W));
+  return segmentClear(map.tiles, W, H, px, py, x, y);
+}
+// Is the creature in the Wayfarer's sight (cached and bounded, see above)?
+export function creatureInSight(g, e) {
+  if (!e || !g?.player || !g.map) return true; if (sightExempt(g, e)) return true;
+  const map = g.map, p = g.player, W = Math.max(1, Number(map.width) || 32);
+  const pt = Math.floor(p.y + .75) * W + Math.floor(p.x + .5), ex = Number(e.x) + .5, ey = Number(e.y) + .75, ct = Math.floor(ey) * W + Math.floor(ex);
+  let m = MEMO.get(e);
+  if (m && m.map === map && m.pt === pt && m.ct === ct && STATE.frame - m.frame < SIGHT_LINES.ttlFrames) return m.v;
+  if (STATE.checks >= SIGHT_LINES.maxChecks) return m && m.map === map ? m.v : false; // over the frame's budget: the last answer, else hidden
+  STATE.checks++; STATE.walks++;
+  const v = sightLineTo(g, ex, ey, sectionBeast(e));
+  if (!m) { m = { map, pt, ct, frame: STATE.frame, v }; MEMO.set(e, m); } else { m.map = map; m.pt = pt; m.ct = ct; m.frame = STATE.frame; m.v = v; }
+  return v;
+}
+// How a creature is drawn (version 2): 2 in the Wayfarer's sight (as before), 1 out of sight but farther than the rule's
+// `hideNear` (the faint silhouette: a hint of where to go), 0 out of sight and near (not drawn: it can ambush). Bounded as
+// creatureInSight (the distance is one hypot).
+export function creatureSightLevel(g, e) {
+  if (creatureInSight(g, e)) return 2; const p = g?.player; if (!p || !e) return 1;
+  const near = sightRule(g).hideNear; return near > 0 && Math.hypot(Number(e.x) - p.x, Number(e.y) - p.y) <= near ? 0 : 1;
+}
+// The sight field (version 2, Close View's orbit indoors): the tiles in the Wayfarer's sight, out to `field.radius`, by the fog
+// of war's own lines with sight's walls (sightWall: water, lava and chasms do not block). Kept per map; worked out again only
+// when her tile changes, or `refreshMs` after the last time (a door opened); `stamp` changes only when the field does (the GPU
+// mask is rebuilt then). Null outdoors (no walls), or with the field off. `now`: ms (any clock; NaN: only the tile counts).
+const FIELDS = new WeakMap(); const wallAtK = (T, k) => sightWall(T[k]);
+export function sightField(g, now = NaN) {
+  const map = g?.map, p = g?.player, Fd = SIGHT_LINES.field; if (!Fd.on || !p || !map || !Array.isArray(map.tiles) || !sightRule(g).walls) return null;
+  const W = Math.max(1, Number(map.width) || 32), H = Math.max(1, Math.floor(map.tiles.length / W));
+  let F = FIELDS.get(map); if (!F || F.W !== W || F.H !== H) { F = { W, H, sight: new Uint8Array(W * H), next: new Uint8Array(W * H), at: -1, when: -Infinity, stamp: 0, builds: 0 }; FIELDS.set(map, F); }
+  const ox = Math.max(0, Math.min(W - 1, Math.floor(p.x + .5))), oy = Math.max(0, Math.min(H - 1, Math.floor(p.y + .75))), at = oy * W + ox;
+  if (at === F.at && !(now - F.when >= Fd.refreshMs)) return F;
+  const nx = F.next; nx.fill(0); sightFrom(map.tiles, W, H, ox, oy, Fd.radius, nx, wallAtK); F.builds++;
+  let same = true; for (let i = 0; i < nx.length; i++) if ((nx[i] > 0) !== (F.sight[i] > 0)) { same = false; break; }
+  if (!same || F.at < 0) { F.next = F.sight; F.sight = nx; F.stamp++; }
+  F.at = at; F.when = Number.isFinite(now) ? now : F.when; return F;
+}
+// Is tile (x, y) (whole tiles) in the field? Off the map: no.
+export const sightFieldAt = (F, x, y) => x >= 0 && y >= 0 && x < F.W && y < F.H && F.sight[y * F.W + x] > 0;
+// The faint neutral silhouette (Standard View, and Close View's card of a creature out of sight): an outline of a body and a head
+// sized by the creature's scale, one colour for every kind. `s`: px a tile. No allocation beyond the path.
+export function drawSightSilhouette(ctx, e, s) {
+  const S = SIGHT_LINES.silhouette, sc = Math.max(.6, Math.min(4, Number(e?.scale) || 1)), cx = (Number(e.x) + .5) * s, foot = (Number(e.y) + .82) * s;
+  const bw = S.width * sc * s / 2, bh = S.height * sc * s, hr = S.head * sc * s, col = `rgb(${S.rgb[0]},${S.rgb[1]},${S.rgb[2]})`;
+  ctx.save(); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, s * .04);
+  ctx.beginPath(); ctx.ellipse(cx, foot - bh * .42, bw, bh * .42, 0, 0, Math.PI * 2); ctx.moveTo(cx + hr, foot - bh - hr * .2); ctx.arc(cx, foot - bh - hr * .2, hr, 0, Math.PI * 2);
+  ctx.globalAlpha = S.alpha; ctx.fill(); ctx.globalAlpha = S.rim; ctx.stroke(); ctx.restore();
 }

@@ -7,10 +7,11 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r984-93a51644afcb";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r984-93a51644afcb";
-import { QUANDRIX } from "./quandrix-staff.js?v=r984-93a51644afcb";
-import { WEAPON_ARTS } from "./weapon-arts.js?v=r984-93a51644afcb";
+import { latticePassives } from "./transit-lattice.js?v=r1012-ffa69513a699";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r1012-ffa69513a699";
+import { QUANDRIX } from "./quandrix-staff.js?v=r1012-ffa69513a699";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r1012-ffa69513a699";
+import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // Tim's on-hit and charge passives (2026-11-19)
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
@@ -19,6 +20,9 @@ export const FIELD_PASSIVES = {
   "charged-air": { name: "Charged Air", text: "While one of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider; the Great Sweep deals 25% more and spreads 30% wider.", scale: 1.5, damage: .25, blast: 1.3, grow: .18 },
   spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists, Hammerfall and the Great Sweep too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
   "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
+  // On-hit (Tim, 2026-11-19; hit-cast-passives.ts): they need no spell in play, and work in every fight.
+  tempo: { name: "Tempo", text: PASSIVE_TEXT.tempo, rules: TEMPO },
+  shatterpoint: { name: "Shatterpoint", text: PASSIVE_TEXT.shatterpoint, rules: SHATTERPOINT },
 };
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.
@@ -42,6 +46,8 @@ Object.assign(TOOL_FORMS, {
   "ki-blast": { name: ART["ki-blast"].name, text: `With the Iron Fists: ${ARM} Your next punch fires a ki blast ${ART["ki-blast"].range} tiles ahead; on the uppercut you leap and fire it from the air for ${Math.round((ART["ki-blast"].air - 1) * 100)}% more. Scales with Might.` },
   transpose: { name: ART.transpose.name, text: `With the Salvage Blade: ${ARM} You set a seal on the ground (${ART.transpose.radius}-tile radius) for ${ART.transpose.base} s (${ART.transpose.perfectBase} s from a perfect release); each melee hit adds ${ART.transpose.perHit} s, up to ${ART.transpose.cap} s. Standing in it all your magic damage is ${Math.round(ART.transpose.spellDamage * 100)}% greater (spells, Imbue Weapon, dodge bursts, and the Carbine, Spark Coil, Lumen Spindle, Aether Orrery and Quandrix Staff) and you take ${Math.round(ART.transpose.damageTaken * 100)}% more damage, for ${ART.transpose.linger} s after you step out. One seal at a time.` },
 });
+// Rapid Reload (Tim, 2026-11-19; hit-cast-passives.ts RAPID_RELOAD): every charged release counts, whatever the tool or weapon.
+TOOL_FORMS["rapid-reload"] = { name: "Rapid Reload", text: PASSIVE_TEXT["rapid-reload"], rules: RAPID_RELOAD };
 export const FIELD_KEYS = Object.keys(FIELD_PASSIVES).map((id) => `field:${id}`);
 export const TOOL_FORM_KEYS = Object.keys(TOOL_FORMS).map((id) => `field:${id}`);
 export function fieldForm(key) {

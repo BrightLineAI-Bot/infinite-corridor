@@ -6,11 +6,11 @@
 // (monster-pack.ts ATTACK_MODULES.qb*, QB_MOVES, QB_ORB): the rend lands as its wind-up ends, every flurry swipe on its strike
 // tick, the pounce rises, dives and lands with the game's phases, the spiral turns with its orbs, the wave lands its slam,
 // the barrage gallops. Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE, QB_MOVES } from "./monster-pack.js?v=r984-93a51644afcb";
+import { ATTACK_MODULES, packWindupScale, QB_MOVES } from "./monster-pack.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 export const QB_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)
@@ -259,7 +259,7 @@ const V = new Float64Array(K), W = new Float64Array(K);
 const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
 function lerpVec(o, a, b, t) { const A = POSE_VEC[a], Bv = POSE_VEC[b]; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
 function lerpInto(o, b, t) { const Bv = POSE_VEC[b]; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
-function phaseOf(s, id) { const m = ATTACK_MODULES[id] || {}, dur = s.phase === 'windup' ? (m.windup || .3) * (s.paced ? BOSS_PACE.windup : 1) : s.phase === 'active' ? m.active || 0 : s.phase === 'recover' ? m.recover || .3 : 0; return dur > 0 ? clamp01(1 - (Number(s.t) || 0) / dur) : 1; }
+function phaseOf(s, id) { const m = ATTACK_MODULES[id] || {}, dur = s.phase === 'windup' ? (m.windup || .3) * packWindupScale(s) : s.phase === 'active' ? m.active || 0 : s.phase === 'recover' ? m.recover || .3 : 0; return dur > 0 ? clamp01(1 - (Number(s.t) || 0) / dur) : 1; }
 const ACT = { aim: false, aimX: 0, aimY: 0, watch: false, still: false, gallop: false, contact: 0, phase: '', beat: -1, beatK: 0, fire: 0, airTuck: 0, spinYaw: NaN };
 function act(e, tr, now, target) {
   const s = e.pack, id = s?.attack, ph = s?.phase, d = s?.data || {}, x = id ? phaseOf(s, id) : 0;

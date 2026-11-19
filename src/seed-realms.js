@@ -7,6 +7,10 @@
 //   the pathways the miners left (some only trestles), and ghosts walk them: Gloomwisps and the husk's own dead.
 // - Crimson Seed: a great ship adrift. Plated decks, glass floors and windows that look out on the galaxy, a hangar open to
 //   space crossed on catwalks, robots on watch, and some of the cosmos's own creatures come aboard.
+// - Abyssal Seed (Tim, 2026-11-15, the bizarro world): the Askew, halls that are almost right. Tilted rooms laid out twice, as in
+//   a mirror (but not quite), walled in wrong colours over a void whose galaxy is the wrong colour, with fragments of floor
+//   drifting in it; ordinary creatures walk it, drawn rounded and soft (monster-render.ts drawBizarroCreature). Rarer than
+//   the other seeds. Its heart is a Rift Colossus; besides the usual rewards it gives up a glyph and some Lumen Dust.
 //
 // Generation is a pure function of the world seed, the realm's kind and the count of that seed used (`seedPouch.used`), versioned
 // by SEED_REALMS.version in the realm's id (`seedrealm:<seed>:v<N>:<kind>:<n>`): the same id always lays the same realm, and a
@@ -19,13 +23,13 @@
 // Rewards: more Aperture Crystals than any crossing holds (each widens the Aperture once), caches, now and then a seed, and
 // Divine Viscera when the realm's heart falls (once). Never a Tesseract: those come only from keeps and the Pentagon.
 // Pure rules and generation; game.ts runs it, seed-realm-render.ts draws it.
-import { hashSeed, rng } from "./random.js?v=r984-93a51644afcb";
-import { annotateDungeon } from "./dungeon-framework.js?v=r984-93a51644afcb";
+import { hashSeed, rng } from "./random.js?v=r1012-ffa69513a699";
+import { annotateDungeon } from "./dungeon-framework.js?v=r1012-ffa69513a699";
 
 export const SEED_REALMS = {
   version: 1,
   prefix: "seedrealm",
-  seeds: { pumice: "husk", crimson: "ship" }, // which seed opens which realm
+  seeds: { pumice: "husk", crimson: "ship", abyssal: "abyss" }, // which seed opens which realm
   activeCap: 8, // creatures simulated at once (arenas.ts activeDungeonEnemies)
   maxSpawns: 42, // every placed creature, wisps included (a wisp splits at most HAUNT.split.max times, up to HAUNT.split.cap)
   minFromEntry: 7, // no creature this close to the way in
@@ -33,6 +37,10 @@ export const SEED_REALMS = {
   crystal: { aperture: 3 }, // each Aperture Crystal, once
   cache: [{ id: "marks", label: "marks", weight: 40, n: [40, 90] }, { id: "lumenDust", label: "Lumen Dust", weight: 20, n: [2, 4] }, { id: "cinderIron", label: "Cinder Iron", weight: 20, n: [2, 4] }, { id: "weaponSphere", label: "a Weapon Sphere", weight: 10, n: [1, 1] }, { id: "armorSphere", label: "an Armor Sphere", weight: 10, n: [1, 1] }],
   seed: { chance: .3, weights: [["pumice", 3], ["crimson", 3], ["opal", 2], ["fossilized", 2]] }, // a seed lying somewhere inside
+  // Seed table 2 (the bizarro world): the same chance, an Abyssal Seed now among the kinds (the rarest). Realms opened from this
+  // release on carry `seedTable: 2` in their session record, and every Askew uses it; a realm opened before keeps table 1.
+  seedTables: { 1: [["pumice", 3], ["crimson", 3], ["opal", 2], ["fossilized", 2]], 2: [["pumice", 3], ["crimson", 3], ["opal", 2], ["fossilized", 2], ["abyssal", 1]] },
+  seedTable: 2, // the table a realm opened now records
   viscera: { base: 2, perRings: 25, max: 5 }, // when the heart falls: base, +1 for each `perRings` rings out from Ember Refuge, at most `max`
   exit: { hop: [6, 16], near: 12 }, // where leaving sets you down: a known Watcher's shrine within `near` sections, else `hop` sections off
   husk: {
@@ -51,6 +59,15 @@ export const SEED_REALMS = {
     perRoom: [1, 2], kinds: [["deckSentry", 4], ["hullWarden", 3], ["riveter", 3], ["riftLynx", 1], ["lumenWraith", 1], ["voidSentinel", 1]],
     heart: "helmSovereign",
   },
+  abyss: {
+    name: "The Askew", label: "halls where everything is slightly wrong", size: 64, cacheName: "Wrong-Way Chest", loreName: "Mirror Writing",
+    rooms: [4, 6], room: { w: [6, 10], h: [5, 8] }, tilt: .42, gap: 3, entryRoom: { w: 10, h: 6 }, heartRoom: { w: 14, h: 9 }, pathWidth: 2, extraLinks: 2,
+    pillars: [2, 4], flaws: [2, 4], fragments: .16, // pillars laid twice (mirrored), flaws once (one side only); the share of the void beside the halls with a drifting fragment
+    crystals: [4, 6], caches: [3, 4], lore: 2,
+    perRoom: [2, 3], kinds: [["ashling", 3], ["ashenHound", 3], ["glassMite", 3], ["coilStalker", 2], ["sparkWarden", 2], ["veilMoth", 2], ["cinderWisp", 2], ["voidSentinel", 1], ["hollowMarshal", 1]],
+    heart: "riftColossus",
+    boon: { glyph: 1, lumenDust: 3 }, // the heart's own gift, beside the viscera: a glyph and a little Lumen Dust, once
+  },
   lore: {
     husk: [
       "Scratched into the rock beside a rail: the shift tallies, hundreds of them, and below them all, in another hand: WE WENT TOO DEEP AND FOUND THE OUTSIDE.",
@@ -64,10 +81,16 @@ export const SEED_REALMS = {
       "A notice: OBSERVATION DECK CLOSED FOR REPAIR. The glass beneath it is whole. Whatever needed repairing was not the glass.",
       "The helm's log, one line repeated: HOLDING COURSE. HOLDING COURSE. HOLDING COURSE.",
     ],
+    abyss: [
+      "Writing on the wall, backwards. Read in the polished floor it says: YOU HAVE BEEN HERE BEFORE. YOU WERE TALLER.",
+      "A map of the corridor, every road where it should be, every road the wrong way round.",
+      "A note in your own hand that you do not remember writing: the colours are fine. it is you.",
+      "Someone has drawn the creatures here as they ought to look, and crossed each drawing out.",
+    ],
   },
   text: {
     offer: (name) => `Offer a ${name}`,
-    enter: { husk: "The seed sinks into the sigil. The eye opens on a world bored hollow, and you step down into it.", ship: "The seed sinks into the sigil. The eye opens on a great ship drifting through the dark, and you are aboard." },
+    enter: { husk: "The seed sinks into the sigil. The eye opens on a world bored hollow, and you step down into it.", ship: "The seed sinks into the sigil. The eye opens on a great ship drifting through the dark, and you are aboard.", abyss: "The seed sinks into the sigil, and the eye opens the wrong way. You step through into halls that are almost right." },
     rift: "Step through the Fading Rift (the realm comes apart for good)",
     onward: "Take the Way Onward (the realm comes apart for good)",
     sealed: "The Way Onward is dark. It opens when the heart of this place falls.",
@@ -75,7 +98,18 @@ export const SEED_REALMS = {
     leftShrine: "Behind you the realm comes apart like smoke, and is gone. You stand beside another of the Watcher's shrines.",
     beacon: "The beacon takes your light. Fall here, and you rise here.",
     beaconLit: "The beacon burns. You rest a moment.",
-    won: { husk: "The Last Foreman falls apart into dust and lamp-light. The Way Onward opens.", ship: "The Helm Sovereign powers down. The Way Onward opens." },
+    won: { husk: "The Last Foreman falls apart into dust and lamp-light. The Way Onward opens.", ship: "The Helm Sovereign powers down. The Way Onward opens.", abyss: "The Colossus folds into itself the wrong way and is gone. The Way Onward opens." },
+    journal: {
+      husk: "A Pumice Seed given to the Watcher's shrine opened a way down into a mining world bored hollow, haunted by its dead. Nothing there lasts: when you leave, it is gone.",
+      ship: "A Crimson Seed given to the Watcher's shrine opened a way aboard a great ship adrift among the stars. Nothing aboard it lasts: when you leave, it is gone.",
+      abyss: "An Abyssal Seed given to the Watcher's shrine opened the Askew: halls that are almost right, every colour turned, every room leaning, the creatures soft and rounded as if drawn by someone who had only heard of them. Nothing there lasts: when you leave, it is gone.",
+    },
+    wonJournal: {
+      husk: "You laid the Last Foreman to rest. The husk's heart gave up Divine Viscera, and a Way Onward opened where it fell.",
+      ship: "You brought down the Helm Sovereign. The ship's heart gave up Divine Viscera, and a Way Onward opened on its bridge.",
+      abyss: "You brought down the Askew's Colossus. It gave up Divine Viscera, a glyph and a little Lumen Dust, all the right colour, and a Way Onward opened where it folded away.",
+    },
+    wonTitle: { husk: "THE FOREMAN RESTS", ship: "THE HELM FALLS", abyss: "THE ASKEW RIGHTS ITSELF" },
   },
 };
 
@@ -140,9 +174,10 @@ export function realmCacheFind(key) {
 }
 function pickWeighted(list, h) { const total = list.reduce((a, [, w]) => a + w, 0); let r = h % total; for (const [k, w] of list) { if (r < w) return k; r -= w; } return list[0][0]; }
 // The seed lying in realm `id`, or null. Pure.
-export function realmSeedRoll(id) {
+// `table` (SEED_REALMS.seedTables): 1 for a realm opened before the bizarro world, 2 since. The chance is the same in both.
+export function realmSeedRoll(id, table = 1) {
   const S = SEED_REALMS.seed; if ((hashSeed(`realm-seed:v1:${id}`) % 10000) / 10000 >= S.chance) return null;
-  return pickWeighted(S.weights, hashSeed(`realm-seed-kind:v1:${id}`));
+  return pickWeighted(SEED_REALMS.seedTables[table] || S.weights, hashSeed(`realm-seed-kind:v1:${id}`));
 }
 // Where leaving realm `id` (opened at `from`) sets the Wayfarer down: the nearest-but-one known Watcher's shrine within
 // `exit.near` sections (from the Atlas), else a section `exit.hop` off in a direction drawn from the id. { rx, ry, x?, y? }.
@@ -282,12 +317,70 @@ function generateShip(seed, id, p) {
   return { map, r, rooms };
 }
 
+// The Askew (Abyssal Seed). The left half is laid first: the way in at the foot of the middle line, the heart at its head, side
+// rooms tilted each by its own angle, all joined by 2-wide halls (a spanning tree, nearest first, and a few more for loops; a
+// hall over the void is a bridge) and a few pillars kept only where nothing is cut off. Then the half is copied across the
+// middle as in a mirror (a mirrored room leans the other way), and only then are the flaws laid: a few more pillars on one side
+// only, so the mirror is not quite true. Void beside a room becomes wall; void a little further off may show a fragment of floor
+// drifting (paint only: the void is still void). Every hall stays on the left of the middle line until the copy, so the copy
+// never cuts one.
+function generateAbyss(seed, id, p) {
+  const R = SEED_REALMS.abyss, r = rng(`${seed}:seed-realm:v1:abyss:${id}`), { W, H, tiles, at } = baseMap(seed, id, p, R), mid = (W >> 1) - 1; // x <= mid is the left half
+  const rooms = [], floor = (t, extra) => setTile(t, "abyssFloor", extra);
+  // a room: the tiles within its half-extents once turned back by its tilt; on the left half only
+  const lay = (cx, cy, w, h, tilt, i) => { const c = Math.cos(tilt), sn = Math.sin(tilt), reach = Math.ceil(Math.hypot(w, h) / 2) + 1; let n = 0;
+    for (let y = Math.floor(cy) - reach; y <= Math.ceil(cy) + reach; y++) for (let x = Math.floor(cx) - reach; x <= Math.min(mid, Math.ceil(cx) + reach); x++) {
+      const t = at(x, y); if (!t || x < 2 || y < 2 || y > H - 3) continue; const dx = x + .5 - cx, dy = y + .5 - cy, u = dx * c + dy * sn, v = -dx * sn + dy * c;
+      if (Math.abs(u) <= w / 2 && Math.abs(v) <= h / 2) { floor(t, { room: i, tilt }); n++; } } return n; };
+  const E = R.entryRoom, Hh = R.heartRoom;
+  const entry = { x: W / 2, y: H - 4 - E.h / 2, w: E.w, h: E.h, tilt: 0, role: "entry", i: 0 }, heart = { x: W / 2, y: 3 + Hh.h / 2, w: Hh.w, h: Hh.h, tilt: 0, role: "heart", i: 1 };
+  rooms.push(entry, heart);
+  const want = span(r, R.rooms);
+  for (let tries = 0; rooms.length < want + 2 && tries < 400; tries++) {
+    const w = span(r, R.room.w), h = span(r, R.room.h), rad = Math.hypot(w, h) / 2, c = { x: 3 + rad + r() * (mid - 3 - 2 * rad), y: heart.y + Hh.h / 2 + rad + 2 + r() * (entry.y - E.h / 2 - heart.y - Hh.h / 2 - 2 * rad - 4), w, h, tilt: (r() * 2 - 1) * R.tilt, role: "room" };
+    if (c.x + rad > mid - 3) continue;
+    if (rooms.every((q) => Math.hypot(q.x - c.x, q.y - c.y) >= rad + Math.hypot(q.w, q.h) / 2 + R.gap)) { c.i = rooms.length; rooms.push(c); }
+  }
+  for (const q of rooms) lay(q.x, q.y, q.w, q.h, q.tilt, q.i);
+  // the halls: from a room's middle (on the left of the line for the two on it) to another's, across then along, or along then across
+  const node = (q) => ({ x: Math.min(mid, Math.floor(q.x)), y: Math.floor(q.y) });
+  const links = [], inTree = new Set([0]);
+  while (inTree.size < rooms.length) { let best = null; for (const a of inTree) for (const b of rooms) { if (inTree.has(b.i)) continue; const d = Math.hypot(rooms[a].x - b.x, rooms[a].y - b.y); if (!best || d < best.d) best = { a, b: b.i, d }; } inTree.add(best.b); links.push(best); }
+  const pairs = []; for (let a = 0; a < rooms.length; a++) for (let b = a + 1; b < rooms.length; b++) if (!links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) pairs.push({ a, b, d: Math.hypot(rooms[a].x - rooms[b].x, rooms[a].y - rooms[b].y) });
+  pairs.sort((u, v) => u.d - v.d || u.a - v.a || u.b - v.b); for (const q of pairs.slice(0, R.extraLinks)) links.push(q);
+  const hall = (x, y, axis) => { for (let dy = 0; dy < R.pathWidth; dy++) for (let dx = 0; dx < R.pathWidth; dx++) { const t = at(x - dx, y + dy); if (t && t.chasm && t.x <= mid && t.x > 1 && t.y > 1 && t.y < H - 2) setTile(t, "abyssBridge", { bridgeAxis: axis }); } };
+  for (const l of links) { const A = node(rooms[l.a]), B = node(rooms[l.b]), across = r() < .5, turn = across ? { x: B.x, y: A.y } : { x: A.x, y: B.y };
+    for (const [P, Q] of [[A, turn], [turn, B]]) { const n = Math.max(Math.abs(Q.x - P.x), Math.abs(Q.y - P.y)), axis = Q.x !== P.x ? "x" : "y"; for (let i = 0; i <= n; i++) hall(Math.round(P.x + (Q.x - P.x) * i / Math.max(1, n)), Math.round(P.y + (Q.y - P.y) * i / Math.max(1, n)), axis); } }
+  const map = { width: W, height: H, tiles, entry: { x: Math.floor(entry.x) - 1, y: Math.floor(entry.y) } }, need = rooms.map((q) => node(q));
+  const roomTiles = (q) => tiles.filter((t) => t.room === q.i && t.kind === "abyssFloor");
+  const pillar = (pool, n, salt) => { for (let k = 0; n > 0 && k < 40; k++) { const q = pool[Math.floor(r() * pool.length)]; if (!q) return; const cells = roomTiles(q).filter((t) => Math.hypot(t.x + .5 - q.x, t.y + .5 - q.y) >= 1.5 && !t.blocked);
+    if (cells.length && guarded(map, map.entry, need, [cells[Math.floor(r() * cells.length)]], FLOOR("abyssPillar", { blocked: true, room: q.i, [salt]: true }))) n--; } };
+  pillar(rooms.slice(2), span(r, R.pillars), "pillar");
+  // the mirror: every tile on the left copied across the middle line; a side room's copy is a room of its own, leaning the other way
+  const side = rooms.length; for (const q of rooms.slice(2)) rooms.push({ ...q, x: W - q.x, tilt: -q.tilt, i: q.i + side - 2, role: "room", mirror: q.i });
+  for (let y = 0; y < H; y++) for (let x = 0; x <= mid; x++) { const a = at(x, y), b = at(W - 1 - x, y), keep = { x: b.x, y: b.y, realm: b.realm, detail: b.detail }; for (const k of Object.keys(b)) delete b[k];
+    Object.assign(b, a, keep, a.room !== undefined && a.room > 1 ? { room: a.room + side - 2 } : {}, a.tilt ? { tilt: -a.tilt } : {}, a.bridgeAxis ? { bridgeAxis: a.bridgeAxis } : {}, { mirrored: true }); }
+  for (const q of rooms) q.x = Math.floor(q.x) - (q.mirror === undefined && q.role !== "room" ? 1 : 0), q.y = Math.floor(q.y);
+  // the flaws: on one side only
+  const all = rooms.map((q) => ({ x: Math.min(W - 2, Math.max(1, q.x)), y: q.y })), sideRooms = rooms.filter((q) => q.role === "room");
+  for (const q of all) { const t = at(q.x, q.y); if (!walk(t)) { const nearT = tiles.find((u) => u.room !== undefined && walk(u) && Math.abs(u.x - q.x) + Math.abs(u.y - q.y) <= 3); if (nearT) { q.x = nearT.x; q.y = nearT.y; } } }
+  for (let n = span(r, R.flaws), k = 0; n > 0 && k < 40; k++) { const q = sideRooms[Math.floor(r() * sideRooms.length)]; if (!q) break; const cells = roomTiles(q).filter((t) => Math.hypot(t.x + .5 - q.x, t.y + .5 - q.y) >= 1.5);
+    if (cells.length && guarded(map, map.entry, all, [cells[Math.floor(r() * cells.length)]], FLOOR("abyssPillar", { blocked: true, room: q.i, flaw: true }))) n--; }
+  // walls round the rooms (void beside a room's floor), then the drifting fragments a little further off
+  const roomy = (t) => !!t && (t.kind === "abyssFloor" || t.kind === "abyssPillar");
+  for (const t of tiles) if (t.chasm) { let wall = false; for (let dy = -1; dy <= 1 && !wall; dy++) for (let dx = -1; dx <= 1; dx++) if (roomy(at(t.x + dx, t.y + dy))) { wall = true; break; } if (wall) setTile(t, "abyssWall", { blocked: true }); }
+  for (const t of tiles) if (t.chasm) { let close = false; for (let dy = -3; dy <= 3 && !close; dy++) for (let dx = -3; dx <= 3; dx++) { const q = at(t.x + dx, t.y + dy); if (q && !q.chasm) { close = true; break; } }
+    if (close && (hashSeed(`${id}:frag:${Math.min(t.x, W - 1 - t.x)},${t.y}`) % 1000) / 1000 < R.fragments && (hashSeed(`${id}:frag-off:${t.x},${t.y}`) % 5)) t.fragment = true; }
+  return { map, r, rooms: rooms.map((q) => ({ x: q.x, y: q.y, i: q.i, role: q.role })) };
+}
+
 // Lays realm `id` (a v1 id). Returns a dungeon map: tiles, entry, objects (realmObject: exit, crystal, cache, seed, beacon,
-// lore) and creature spawns (one seedRealmHeart). The same id always lays the same realm.
-export function generateSeedRealm(seed, id) {
+// lore) and creature spawns (one seedRealmHeart). The same id always lays the same realm. `opts.seedTable`: the realm seed
+// table (SEED_REALMS.seedTables) its session recorded; a husk or ship without one uses table 1, the Askew always table 2.
+export function generateSeedRealm(seed, id, opts = {}) {
   const p = parseSeedRealmId(id);
   if (!p || !seedRealmVersionKnown(p.v)) return null;
-  const R = SEED_REALMS[p.realm], built = p.realm === "husk" ? generateHusk(seed, id, p) : generateShip(seed, id, p), { map, rooms, r } = built, W = map.width, H = map.height, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : map.tiles[y * W + x]);
+  const R = SEED_REALMS[p.realm], built = p.realm === "husk" ? generateHusk(seed, id, p) : p.realm === "abyss" ? generateAbyss(seed, id, p) : generateShip(seed, id, p), { map, rooms, r } = built, W = map.width, H = map.height, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? null : map.tiles[y * W + x]);
   const objects = [], spawns = [], taken = new Set(), key = (t) => t.y * W + t.x;
   const seen = realmReach(map), sound = (t) => walk(t) && seen[key(t)] && !taken.has(key(t)) && !t.door;
   // The nearest tile to (x, y) that `ok` allows, searched ring by ring outward (ties: the first in row order).
@@ -316,9 +409,9 @@ export function generateSeedRealm(seed, id) {
   const hangar = rooms.find((q) => q.role === "hangar"), spread = hangar ? [hangar, ...order] : order;
   const crystals = span(r, R.crystals), caches = span(r, R.caches);
   for (let i = 0; i < crystals && spread.length; i++) place(pickIn(spread[i % spread.length], `crystal${i}`), { id: `realm-crystal-${i}`, kind: "realmCrystal", realmObject: "crystal", name: "Aperture Crystal", state: "ready", actions: ["attune"], actionLabels: { attune: `Attune (Aperture +${SEED_REALMS.crystal.aperture})` } });
-  for (let i = 0; i < caches && order.length; i++) place(pickIn(order[(i * 2 + 1) % order.length], `cache${i}`), { id: `realm-cache-${i}`, kind: "realmCache", realmObject: "cache", name: p.realm === "ship" ? "Supply Locker" : "Ore Cart", state: "closed", actions: ["open"], actionLabels: { open: "Open" } });
-  const seedKind = realmSeedRoll(id); if (seedKind && order.length) place(pickIn(order[0], "seed"), { id: "realm-seed", kind: "realmSeed", realmObject: "seed", seed: seedKind, name: "A seed", state: "waiting", actions: ["take"], actionLabels: { take: "Pick it up" } });
-  const lines = SEED_REALMS.lore[p.realm]; for (let i = 0; i < R.lore && order.length; i++) { const room = order[(i * 3 + 2) % order.length], line = lines[(hashSeed(`${id}:lore`) + i) % lines.length]; place(pickIn(room, `lore${i}`), { id: `realm-lore-${i}`, kind: "realmLore", realmObject: "lore", name: p.realm === "ship" ? "Cracked Panel" : "Scratched Stone", lore: line, state: "quiet", actions: ["read"], actionLabels: { read: "Read" } }); }
+  for (let i = 0; i < caches && order.length; i++) place(pickIn(order[(i * 2 + 1) % order.length], `cache${i}`), { id: `realm-cache-${i}`, kind: "realmCache", realmObject: "cache", name: R.cacheName || (p.realm === "ship" ? "Supply Locker" : "Ore Cart"), state: "closed", actions: ["open"], actionLabels: { open: "Open" } });
+  const seedKind = realmSeedRoll(id, p.realm === "abyss" ? SEED_REALMS.seedTable : opts.seedTable || 1); if (seedKind && order.length) place(pickIn(order[0], "seed"), { id: "realm-seed", kind: "realmSeed", realmObject: "seed", seed: seedKind, name: "A seed", state: "waiting", actions: ["take"], actionLabels: { take: "Pick it up" } });
+  const lines = SEED_REALMS.lore[p.realm]; for (let i = 0; i < R.lore && order.length; i++) { const room = order[(i * 3 + 2) % order.length], line = lines[(hashSeed(`${id}:lore`) + i) % lines.length]; place(pickIn(room, `lore${i}`), { id: `realm-lore-${i}`, kind: "realmLore", realmObject: "lore", name: R.loreName || (p.realm === "ship" ? "Cracked Panel" : "Scratched Stone"), lore: line, state: "quiet", actions: ["read"], actionLabels: { read: "Read" } }); }
   // the creatures: some in every room but the way in, and knots of wisps in the husk
   const dweller = (q, k) => { const t = pickIn(q, `spawn${k}`); if (!t || Math.hypot(t.x - entry.x, t.y - entry.y) < SEED_REALMS.minFromEntry) return null; taken.add(key(t)); return t; };
   let k = 0; const per = R.perIsland || R.perRoom;
@@ -326,7 +419,7 @@ export function generateSeedRealm(seed, id) {
   if (R.knots) for (let n = span(r, R.knots), j = 0; j < n && order.length; j++) { const q = order[(j * 2) % order.length]; for (let w = 0; w < R.knot && spawns.length < SEED_REALMS.maxSpawns; w++, k++) { const t = dweller(q, k); if (t) spawns.push({ id: `${id}:w${k}`, kind: "gloomwisp", x: t.x, y: t.y, haunt: "realm", traits: [] }); } }
   const T = SEED_REALMS.threat; for (const s of spawns) s.realmThreat = { hp: T.hp, damage: T.damage };
   Object.assign(map, {
-    seed, id, recipe: "seedRealm", name: R.name, identity: R.label, danger: p.realm === "ship" ? "robots and open space" : "the drop, and the dead", objects, enemySpawns: spawns,
+    seed, id, recipe: "seedRealm", name: R.name, identity: R.label, danger: p.realm === "ship" ? "robots and open space" : p.realm === "abyss" ? "the void, and things almost familiar" : "the drop, and the dead", objects, enemySpawns: spawns,
     seedRealm: { v: p.v, kind: p.kind, realm: p.realm, n: p.n }, activeEnemyCap: SEED_REALMS.activeCap,
   });
   annotateDungeon(map, { classification: "seed-realm", generatorVersion: p.v, sizeProfile: "deep" });
@@ -344,4 +437,4 @@ export function seedRealmFingerprint(map) {
   return hashSeed(JSON.stringify([map.width, map.height, map.entry, map.tiles, map.objects, map.enemySpawns])).toString(36);
 }
 // A small minimap colour (seed-realm-render and the Atlas may use it).
-export const SEED_REALM_COLORS = { husk: "#8a7f72", ship: "#9fb4c8" };
+export const SEED_REALM_COLORS = { husk: "#8a7f72", ship: "#9fb4c8", abyss: "#5fd1b0" };

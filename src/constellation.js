@@ -8,13 +8,15 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.js?v=r984-93a51644afcb";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r984-93a51644afcb"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r984-93a51644afcb";
-import { pairingMods } from "./spell-slots.js?v=r984-93a51644afcb";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r984-93a51644afcb";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r984-93a51644afcb";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r984-93a51644afcb"; // awakened arts: each primary's own move (2026-11-13)
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.js?v=r1012-ffa69513a699";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1012-ffa69513a699"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1012-ffa69513a699";
+import { pairingMods } from "./spell-slots.js?v=r1012-ffa69513a699";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1012-ffa69513a699";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1012-ffa69513a699";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1012-ffa69513a699"; // awakened arts: each primary's own move (2026-11-13)
+import { TESSERACTS } from "./tesseracts.js?v=r1012-ffa69513a699";
+import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // the on-cast nodes (Tim, 2026-11-19)
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -23,6 +25,11 @@ export const POINT_EVERY = 6;
 export const AWAKEN_COST = 6; // lumen dust
 // Rift Step distances in tiles: base reach (plus its rank), and the Long Step capstone's extra (release 259).
 export const RIFT = { reach: 2, longStep: 2 };
+// Sanctuary (Tim, 2026-11-18; replaces its flat mend of 20% of health over Veil Guard): while Veil Guard holds, each of the Wayfarer's
+// hits (game.ts landHit) heals `leech` of the health it took, and heals from hits on elites and stronger may reach
+// TESSERACTS.hitHealCapElite of maximum health a second; all of it from the one heal-on-hit budget (game.ts grantHitHeal).
+export const SANCTUARY = { leech: .12 };
+const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
   form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your strikes set foes burning." }, caps: [
     { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer and you take 15% less damage while it holds." },
@@ -31,7 +38,7 @@ export const BRANCHES = {
     { id: "aerial-step", name: "Aerial Step", text: "Learn Aerial Step: briefly cross water, canyons and pits." },
     { id: "slipstream", name: "Slipstream", text: "While Quickening holds, every dodge refunds its stamina." }] },
   veil: { name: "Veil", active: "veil-guard", mod: { id: "thorned-veil", name: "Thorned Veil", text: "While Veil Guard holds, the nearest foe takes back 30% of each blow." }, caps: [
-    { id: "sanctuary", name: "Sanctuary", text: "Veil Guard mends 20% of your health over its duration." },
+    { id: "sanctuary", name: "Sanctuary", text: `While Veil Guard holds, your hits heal ${pct(SANCTUARY.leech)} of the damage they deal, and health from hits on elites, bosses, guardians and great beasts may reach ${pct(TESSERACTS.hitHealCapElite)} of your maximum a second instead of ${pct(TESSERACTS.hitHealCap)}.` }, // Tim 2026-11-18: SANCTUARY; was a flat 20% mend over the guard
     { id: "mirror-veil", name: "Mirror Veil", text: "The first blow during Veil Guard is undone entirely." }] },
   force: { name: "Force", active: "force-channel", mod: { id: "overflow", name: "Overflow", text: "While Force Channel holds, spells recover 25% faster." }, caps: [
     { id: "amplifier", name: "Amplifier", text: "While Force Channel holds, glyph and Echo strikes deal 50% more." },
@@ -43,6 +50,12 @@ export const BRANCHES = {
     { id: "anchor", name: "Long Step", text: `Rift Step reaches ${RIFT.longStep} tiles farther. It still stops short of walls, ledges and ground it cannot stand on.` }] },
 };
 export const BRANCH_IDS = Object.keys(BRANCHES);
+// On-cast and on-hit nodes (Tim's batch, 2026-11-19; rules and numbers: hit-cast-passives.ts). One more node a branch, beside its
+// modifier: learned for a point once the discipline has a rank, kept in save.constellation.mods like the modifier (nothing new is
+// saved; a respec refunds it). Always on, whatever is active. They have no secondary form and are not Lattice passives.
+const EXTRA_NODES = { form: "arcane-edge", motion: "casting-wind", veil: "pocket-time", force: "echoing-cast", rift: "glyph-mine" };
+const EXTRA_NAMES = { "arcane-edge": "Arcane Edge", "casting-wind": "Casting Wind", "pocket-time": "Pocket Time", "echoing-cast": "Echoing Cast", "glyph-mine": "Glyph Mine" };
+for (const [bid, id] of Object.entries(EXTRA_NODES)) BRANCHES[bid].extras = [{ id, name: EXTRA_NAMES[id], text: PASSIVE_TEXT[id] }];
 // How each modifier and capstone works (release 157, for the Arcanum's labels): "cast" is a new ability for slot A or B;
 // "while" works only while the branch's discipline is active; "changes" alters how the discipline behaves; "always" is
 // a permanent passive. `spells` names a node that also changes your spells (or the glyphs set in them).
@@ -52,6 +65,8 @@ export const NODE_EFFECTS = {
   "thorned-veil": { kind: "while" }, sanctuary: { kind: "while" }, "mirror-veil": { kind: "while" },
   overflow: { kind: "while", spells: "Spells recover 25% faster." }, amplifier: { kind: "while", spells: "Glyph strikes from your spells deal 50% more." }, "resonant-force": { kind: "changes" },
   "rift-wake": { kind: "changes" }, fold: { kind: "changes" }, anchor: { kind: "changes" },
+  "arcane-edge": { kind: "always", spells: "Each cast empowers your next three melee attacks." }, "casting-wind": { kind: "always", spells: "Each cast gives back stamina." }, "pocket-time": { kind: "always" },
+  "echoing-cast": { kind: "always", spells: "Every fourth cast repeats at half power." }, "glyph-mine": { kind: "always", spells: "Each cast leaves a sigil that bursts." },
 };
 
 // Secondary passives (release 359; Tim, 2026-10-23: "develop an additional passive for each one that you can select...
@@ -66,6 +81,9 @@ export const ALT_PASSIVES = {
   "cinder-heart": { name: "Kindling", kind: "changes", text: "When Ember Form begins it bursts, scorching everything around you.", radius: 2.6, damage: 10, perLevel: 2 },
   "light-feet": { name: "Second Wind", kind: "always", text: "Each dodge restores 3 health.", heal: 3 },
   "aerial-step": { name: "Long Quickening", kind: "changes", text: "Quickening lasts 50% longer. (Aerial Step cannot be cast while this is chosen.)", duration: 1.5 },
+  // 2026-11-15 (Tim): the Quickening discipline's own secondary form, mirroring Long Quickening on Aerial Step: chosen, Quickening
+  // is no longer cast and Aerial Step holds `charges` more (APERTURE_SKILLS["aerial-step"].charges + this). Keyed by the discipline.
+  quickening: { name: "Quickened Stride", kind: "changes", text: "Aerial Step holds a second charge. (Quickening cannot be cast while this is chosen.)", charges: 1, discipline: true, affects: "aerial-step" },
   slipstream: { name: "Afterimage", kind: "while", text: "While Quickening holds, each dodge leaves a burst where you started.", radius: 1.6, damage: 6, perLevel: 1 },
   "thorned-veil": { name: "Veil Pulse", kind: "while", text: "While Veil Guard holds, each blow you take pulses back at every foe within 2 tiles for 15% of it.", share: .15, reach: 2 },
   sanctuary: { name: "Long Veil", kind: "changes", text: "Veil Guard lasts 50% longer.", duration: 1.5 },
@@ -110,10 +128,10 @@ export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };
   if (!altUnlocked(save)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
-  if (!hasNode(save, id)) return { ok: false, message: "Learn it first." };
+  if (!(alt.discipline ? skillRank(save, id) > 0 : hasNode(save, id))) return { ok: false, message: "Learn it first." }; // a discipline's own form (Quickened Stride): once it has a rank
   const c = save.constellation; c.alt ||= {};
   if (c.alt[id]) delete c.alt[id]; else c.alt[id] = true;
-  const primary = Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
+  const primary = alt.discipline ? APERTURE_SKILLS[id] : Object.values(BRANCHES).flatMap((b) => [b.mod, ...b.caps]).find((q) => q.id === id);
   return { ok: true, message: c.alt[id] ? `${alt.name} (secondary) replaces ${primary.name}.` : `${primary.name} (primary) is back in place of ${alt.name}.` };
 }
 
@@ -176,6 +194,16 @@ export function chooseCap(save, branch, capId) {
   if (capId === "aerial-step") { save.magicSkills.learned["aerial-step"] = 1; }
   return { ok: true, message: `${cap.name} crowns the ${b.name} branch.` };
 }
+// An extra node (EXTRA_NODES): a point, once the branch's discipline has a rank.
+export function learnExtra(save, branch, id) {
+  const b = BRANCHES[branch], node = b?.extras?.find((q) => q.id === id);
+  if (!node) return { ok: false, message: "Unknown node." };
+  if (save.constellation.mods[id]) return { ok: false, message: `${node.name} is already yours.` };
+  if (skillRank(save, b.active) < 1) return { ok: false, message: `Learn ${APERTURE_SKILLS[b.active].name} first.` };
+  if (pointsFree(save) < 1) return { ok: false, message: "No constellation points free." };
+  save.constellation.mods[id] = true;
+  return { ok: true, message: `${node.name} joins the constellation.` };
+}
 export const respecCost = (save) => 2 + Math.ceil(pointsSpent(save) / 2);
 // Only at shrines (the UI offers it there). Refunds every rank, modifier and capstone; grandfathered bonus stays.
 export function respec(save) {
@@ -190,6 +218,8 @@ export function respec(save) {
 
 // ---------------------------------------------------------------- runtime hooks (called by Game)
 const activeIs = (save, id) => save.magicSkills?.active?.id === id && save.magicSkills.active.remaining > 0;
+// Sanctuary holds (SANCTUARY): Veil Guard active and the node working. A save that took it before simply gets the new effect.
+export const sanctuaryOn = (save) => activeIs(save, "veil-guard") && nodeOn(save, "sanctuary");
 export function skillDurationScale(save, id) {
   if (id === "ember-form") return nodeOn(save, "colossus") ? 1.5 : altOn(save, "colossus") ? ALT_PASSIVES.colossus.duration : 1;
   if (id === "quickening" && altOn(save, "aerial-step")) return ALT_PASSIVES["aerial-step"].duration; // release 359
@@ -218,7 +248,7 @@ export function onConstellationKill(game) {
 export function onSkillEnded(game, id, now) {
   if (id === "ember-form" && nodeOn(game.save, "cinder-heart")) game.glyphWorld(now).blast(game.player.x + .5, game.player.y + .45, 2.6, 10 + 2 * (game.save.level || 1));
 }
-// Per frame: veil nodes react to wounds, Sanctuary mends, Overflow speeds spells.
+// Per frame: veil nodes react to wounds, Overflow speeds spells (Sanctuary heals on hits: SANCTUARY).
 export function tickConstellation(game, dt, now) {
   const s = game.save, p = game.player, lost = game._cLastHp !== undefined ? game._cLastHp - p.hp : 0;
   const near = (r) => game.enemies.filter((e) => !e.dead && !e.untargetable && Math.hypot(e.x - p.x, e.y - p.y) < r);
@@ -234,7 +264,6 @@ export function tickConstellation(game, dt, now) {
       if (nodeOn(s, "mirror-veil") && !s.magicSkills.active.mirrored) { s.magicSkills.active.mirrored = true; p.hp += lost; game.message = "Mirror Veil turns the blow aside."; }
       else if (nodeOn(s, "thorned-veil")) { const foe = game.enemies.filter((e) => !e.dead && !e.untargetable).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; if (foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 3) game.glyphWorld(now).damage(foe, Math.max(2, Math.round(lost * .3))); }
     }
-    if (nodeOn(s, "sanctuary")) { const skill = APERTURE_SKILLS["veil-guard"], span = skill.duration + Math.max(0, skillRank(s, "veil-guard") - 1); game._cMend = (game._cMend || 0) + s.maxHp * .2 / span * dt; const whole = Math.floor(game._cMend); if (whole) { game._cMend -= whole; p.hp = Math.min(s.maxHp, p.hp + whole); } }
   }
   if (activeIs(s, "force-channel") && altOn(s, "overflow")) for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (!k.startsWith("spell:") && k !== "force-channel") s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * ALT_PASSIVES.overflow.rate); // release 359: Wellspring
   if (activeIs(s, "force-channel") && nodeOn(s, "overflow")) { game.spellCooldownRemaining = Math.max(0, game.spellCooldownRemaining - dt * .25); for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (k.startsWith("spell:")) s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * .25); }
@@ -282,8 +311,9 @@ function riftCommit(game, now, R, from, best, fromLevel) {
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
   if (skillInfusion({ magicSkills: { riftInfuse: 1 }, spellGlyphs: s.spellGlyphs }).length) st.riftInfuse = SKILL_INFUSE_AFTER_STEP; // release 297: its glyphs ride on hits for a while
   game.message = "Rift Step.";
-  // Tim (2026-11-12): every Rift Step falls. A glide or the drone's lift carries on in the air; anything else lands where it arrived.
-  if (best.footing && game.landBlink && !game.glide && !game.droneLift) game.landBlink(best.footing, fromLevel, now);
+  // Tim (2026-11-12): every Rift Step falls. An open glide or the drone's lift carries on in the air; anything else lands where it
+  // arrived. A step taken while falling steps out of the fall (game.ts FALL_RESCUE.rift, Tim 2026-11-18).
+  if (best.footing && game.landBlink && !(game.glide && game.glide.open !== false) && !game.droneLift) game.landBlink(best.footing, fromLevel, now); // FALL_RESCUE.rift: a great tree's closed freefall is stepped out of too
   game.sync();
   return true;
 }
@@ -336,6 +366,23 @@ export function riftStepTo(game, now, target) {
   const c = riftAimCheck(game, target, now);
   if (!c.ok) { if (c.why !== "charges") game.message = c.why === "reach" ? `Rift Step reaches ${c.reach} tiles.` : c.why === "path" ? "Something on the way turns the step aside." : "Rift Step cannot stand there."; return false; }
   return riftCommit(game, now, c.R, { x: game.player.x, y: game.player.y }, c.best, c.startLevel);
+}
+// Aerial Step's charges (Tim, 2026-11-15): APERTURE_SKILLS["aerial-step"].charges, and Quickened Stride's (Quickening's secondary
+// form, chosen and open) on top. The count is save.magicSkills.aerialCharges (additive; absent reads as full, or one short while the
+// old single cooldown still runs); each spent charge comes back on cooldowns["aerial-step"], one at a time, as Rift Step's do.
+export const quickenedStride = (save) => skillRank(save, "quickening") > 0 && altChosen(save, "quickening");
+export const aerialChargeMax = (save) => Math.max(1, Math.floor(Number(APERTURE_SKILLS["aerial-step"].charges) || 1)) + (quickenedStride(save) ? ALT_PASSIVES.quickening.charges : 0);
+export function aerialChargesNow(save) {
+  const st = save.magicSkills, max = aerialChargeMax(save); if (!st) return max;
+  const n = Number(st.aerialCharges), have = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : (st.cooldowns?.["aerial-step"] || 0) > 0 ? max - 1 : max;
+  return Math.min(max, have);
+}
+// One frame of recharge (after the cooldowns have ticked): a finished cooldown returns a charge and starts the next while one is missing.
+export function tickAerialCharges(save, cooldown) {
+  const st = save.magicSkills; if (!st || !skillRank(save, "aerial-step")) return;
+  const max = aerialChargeMax(save); let n = aerialChargesNow(save);
+  if (n < max && (st.cooldowns["aerial-step"] || 0) <= 0) { n += 1; if (n < max) st.cooldowns["aerial-step"] = cooldown; }
+  st.aerialCharges = n;
 }
 export function tickRiftCharges(save) {
   const st = save.magicSkills; if (!st || !skillRank(save, "rift-step")) return;

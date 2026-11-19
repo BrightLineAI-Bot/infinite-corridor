@@ -1,4 +1,4 @@
-import { hashSeed } from "./random.js?v=r984-93a51644afcb";
+import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
 
 export const DUNGEON_CONTRACT_SCHEMA = "infinite-corridor-dungeon/1.0.0";
 export const DUNGEON_DISCOVERY_SCHEMA = 1;
@@ -166,4 +166,69 @@ export function dungeonPointDiscovered(map, point) {
 export function dungeonDiscoveryReport(map) {
   const total = map?.dungeonContract?.graph?.chunks.length || 0, revealed = map?._dungeonRevealed?.size || 0;
   return { totalChunks: total, revealedChunks: Math.min(total, revealed), unexploredChunks: Math.max(0, total - revealed), currentMode: map?._dungeonRevealMode || "normal" };
+}
+
+// ------------------------------------------------------------------------------------------------ charting (Unreleased)
+// Tim's log: clearing the fog from every walkable tile of a dungeon floor pays a bonus of `bonus` of the Aperture earned on that floor,
+// in every dungeon. "Walkable" is the ground the Wayfarer can stand on from the floor's ways in with base movement (no swimming, no robot,
+// a jump of one step up, any drop down): a tile behind a wall, across water or lava, in a pit, or on a ledge no step reaches is left out,
+// so 100% can always be reached. A sealed gate counts as ground (it opens in the floor's own course). The fog is the floor's own record:
+// a labyrinth chamber's tile fog (labyrinths.ts LAB_FOG) where it has one, else the dungeon discovery's chunks (a chunk is charted once
+// revealed; standing on any tile of it reveals it). A floor with neither (an arena, a building floor without fog) is never charted.
+// The record is on the floor's dungeon history (`charted`: { [level]: { earned, paid, done } }; additive at schema 14, normalised by
+// ensureCharting): the Aperture earned while on the floor, what the bonus has paid, and whether it was charted. The bonus is owed on
+// what was earned (`round(earned * bonus) - paid`), paid when the floor is charted and topped up if more is earned on it later; it
+// never pays twice for the same Aperture, and leaving and coming back changes nothing. A floor of the Deep is a new floor each visit
+// (its history goes with it, game.ts resetDeepFloor), so each visit has its own record.
+export const DUNGEON_CHARTING = { version: 1, bonus: .2, maxTiles: 65536, maxLevels: 64, message: "Every corner charted", topUp: "Charted ground" };
+const chartMemo = new WeakMap();
+// The floor's walkable ground, worked out once per map object: `open(tile)` whether a tile can be stood on, `step(fx, fy, tx, ty)`
+// whether base movement crosses between neighbouring tiles, `seeds` the tiles it starts from (the ways in). { W, H, reach, chunks, tiles }.
+export function chartableGround(map, open, step, seeds = []) {
+  const kept = map ? chartMemo.get(map) : null; if (kept) return kept;
+  const W = Number(map?.width) || 0, H = W ? (Number(map.height) || Math.floor((map.tiles?.length || 0) / W)) : 0;
+  const out = { W, H, reach: new Uint8Array(Math.max(0, Math.min(W * H, DUNGEON_CHARTING.maxTiles))), chunks: new Set(), tiles: 0 };
+  if (map) chartMemo.set(map, out);
+  if (!W || !H || W * H > DUNGEON_CHARTING.maxTiles) return out;
+  const q = [];
+  for (const p of seeds) { const x = Math.round(Number(p?.x)), y = Math.round(Number(p?.y)), k = y * W + x; if (x >= 0 && y >= 0 && x < W && y < H && !out.reach[k] && open(map.tiles[k])) { out.reach[k] = 1; q.push(k); } }
+  for (let i = 0; i < q.length; i++) {
+    const k = q[i], x = k % W, y = (k - x) / W;
+    for (let d = 0; d < 4; d++) {
+      const nx = x + (d === 0 ? 1 : d === 1 ? -1 : 0), ny = y + (d === 2 ? 1 : d === 3 ? -1 : 0), n = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || out.reach[n] || !open(map.tiles[n]) || !step(x, y, nx, ny)) continue;
+      out.reach[n] = 1; q.push(n);
+    }
+  }
+  out.tiles = q.length; for (const k of q) out.chunks.add(dungeonChunkId(map, k % W, Math.floor(k / W)));
+  return out;
+}
+// How much of the walkable ground is charted: by `seen` (a byte a tile, the labyrinth fog) when given, else by `revealed` (chunk ids).
+// { total, charted, pct (whole percent, 100 only when done), done }; total 0 when there is nothing to chart.
+export function chartProgress(ground, { seen = null, revealed = null } = {}) {
+  let total = 0, charted = 0;
+  if (seen) { total = ground.tiles; for (let k = 0; k < ground.reach.length; k++) if (ground.reach[k] && seen[k]) charted++; }
+  else { total = ground.chunks.size; const r = revealed instanceof Set ? revealed : new Set(revealed || []); for (const id of ground.chunks) if (r.has(id)) charted++; }
+  const done = total > 0 && charted >= total;
+  return { total, charted, done, pct: total ? (done ? 100 : Math.min(99, Math.floor(100 * charted / total))) : 0 };
+}
+// A floor's record on its dungeon history (`level`: the discovery level key, "root" for a single floor).
+export function chartRecord(history, level = "root") {
+  const C = (history.charted && typeof history.charted === "object" && !Array.isArray(history.charted)) ? history.charted : (history.charted = {});
+  return (C[level] ||= { earned: 0, paid: 0, done: false });
+}
+// What the bonus owes on a record now (0 until the floor is charted).
+export const chartOwed = (rec) => rec?.done ? Math.max(0, Math.round((Number(rec.earned) || 0) * DUNGEON_CHARTING.bonus) - (Number(rec.paid) || 0)) : 0;
+// Saves (freshSave / migrateSave): each dungeon history's `charted` kept as { [level]: { earned, paid, done } } with whole, non-negative
+// numbers (a record that is not an object is dropped; other fields on a record are kept). Additive at schema 14.
+export function ensureCharting(save) {
+  const D = save?.consequences?.dungeons; if (!D || typeof D !== "object") return save;
+  const n = (v) => { const k = Math.floor(Number(v)); return Number.isFinite(k) && k > 0 ? k : 0; };
+  for (const h of Object.values(D)) {
+    if (!h || typeof h !== "object" || !("charted" in h)) continue;
+    const src = h.charted && typeof h.charted === "object" && !Array.isArray(h.charted) ? h.charted : {}, out = {};
+    for (const [level, r] of Object.entries(src).slice(0, DUNGEON_CHARTING.maxLevels)) if (r && typeof r === "object" && !Array.isArray(r)) out[String(level)] = { ...r, earned: n(r.earned), paid: n(r.paid), done: r.done === true };
+    h.charted = out;
+  }
+  return save;
 }

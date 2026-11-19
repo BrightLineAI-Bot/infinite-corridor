@@ -11,11 +11,11 @@
 //
 // Body units are the standard view's (a tile times the actor's scale). monster-pack.ts reaches close-view.ts, which loads this
 // module before monster-pack.ts has finished loading, so its tables are read lazily (never at module load).
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r984-93a51644afcb";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 export const TURTLE_RIG = Object.freeze({
   closeViewScale: 1.25, // drawn a quarter larger than the standard view, like every Close View beast (presentation only)
@@ -201,7 +201,7 @@ const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
 function lerpVec(o, a, b, t) { const A = POSE_VEC[a] || POSE_VEC.idle, Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
 function lerpInto(o, b, t) { const Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
 function phaseOf(pack, id) {
-  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? m.active || 0 : m.recover || .5;
+  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? m.active || 0 : m.recover || .5;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 // spin: 0 still .. 1 full speed in its shell; shield: the dome's growth (0..1); paw: the forefeet scrape before the rush

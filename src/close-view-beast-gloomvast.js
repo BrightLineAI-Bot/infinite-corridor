@@ -11,11 +11,11 @@
 // gloom down, draws its corona down into its mouth and looses the grave lights, gathers and plunges, and draws the light into
 // itself as it calls the Dark. Veiled among its cold lights it keeps the standard view's billboard (close-view-beasts.ts).
 // Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r984-93a51644afcb";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, solveTwoBone, writeSkin, meshBuilder,
   clamp01, smooth, span, kick, wobble,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 // the pose vector: body lean (+ forward), head (+ thrown back), mouth open, hand target (forward, out, up; in the upper body's
 // frame), veil spread (+ raised and out), veil sweep (+ wrapped forward), body swell, corona drawn in (+ in, - flared),
@@ -245,7 +245,7 @@ function keyPose(out, keys, x) {
   const [x0, a] = keys[i], [x1, b] = keys[Math.min(keys.length - 1, i + 1)], k = x1 > x0 ? smooth((x - x0) / (x1 - x0)) : 1, A = POSE_VEC[a], Bv = POSE_VEC[b];
   for (let n = 0; n < NP; n++) out[n] = A[n] + (Bv[n] - A[n]) * k;
 }
-const phaseLength = (id, pack) => { const m = ATTACK_MODULES[id] || {}; return pack.phase === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? m.active || .5 : m.recover || .5; };
+const phaseLength = (id, pack) => { const m = ATTACK_MODULES[id] || {}; return pack.phase === 'windup' ? (m.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? m.active || .5 : m.recover || .5; };
 // a direction in a bone's frame to world (its scale left in; aimWorld normalises)
 function toWorld(P, i, f, r, u, out) { const W = P.wr, o = i * 9; for (let k = 0; k < 3; k++) out[k] = W[o + k] * f + W[o + 3 + k] * r + W[o + 6 + k] * u; return out; }
 

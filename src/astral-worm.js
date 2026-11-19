@@ -1,9 +1,10 @@
-import { hashSeed } from './random.js?v=r984-93a51644afcb';
+import { hashSeed } from './random.js?v=r1012-ffa69513a699';
+import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1012-ffa69513a699';
 // Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({
   name: 'Astral Worm', version: 1, speed: 3.4, travelSeconds: .9, maxStep: 1 / 60, maxFrame: .25,
-  windup: .65, recovery: .65, morphTime: .35, cloneCount: 4, cloneHpShare: .12, cloneLife: 7,
+  windup: .65 * WORLD_BOSS_PACE.windup, recovery: .65 * WORLD_BOSS_PACE.gap, morphTime: .35, cloneCount: 4, cloneHpShare: .12, cloneLife: 7,
   cloneRadius: 2.8, cloneTrackSpeed: 1.05, cloneGrace: 1.4, cloneTick: .4, drainShare: .12,
   beamRadius: .9, beamLife: 3.5, beamTick: .25, beamShare: .15,
   inkCount: 3, inkWarning: .65, inkOutbound: .48, inkSplat: .65, inkRecall: .48,
@@ -15,12 +16,12 @@ export const ASTRAL = Object.freeze({
   ringCount: 4, ringInner: .35, ringWidth: .85, ringSpacing: 1.2, ringWarning: .6, ringActive: .16, ringGap: .22,
   hostileWalkerChance: .025, allyWalkerChance: .005, maxCompanions: 1,
 });
-// Register only on the reviewed Gate baseline: inherits its strength floor, retries and Questing dominance.
+// Register only on the reviewed Gate baseline: inherits its strength floor and Questing dominance (2026-11-18: no tries; the engagement window is its only limit).
 export const ASTRAL_PROFILE = Object.freeze({ kind: 'astralWorm', name: 'The Astral Worm', chance: .02,
-  minDepth: 5, tries: 4, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
+  minDepth: 5, cooldownSlain: 20, cooldownEscaped: 26, hitsToKill: 64, hpPerLevel: 30,
   damageShare: .24, speed: 1.35, attackGap: .2, staggerResistance: .95, rewardMarks: 190, rewardPerLevel: 18,
   nativeHpFloor: 4760, nativeDamageFloor: 78, dungeonChance: .02, dungeonMinLevel: 1,
-  patience: 180, home: 'wayglass', retreatMoves: 'astral-wayglass',
+  home: 'wayglass', retreatMoves: 'astral-wayglass',
   flee: 'The Astral Worm draws its limbs into ink and turns toward the nearest reachable Wayglass.',
   homeLine: 'The Astral Worm pools beneath the Wayglass and slips from sight.',
   arrive: 'Black ink hangs above the ground. The Astral Worm unfolds.',

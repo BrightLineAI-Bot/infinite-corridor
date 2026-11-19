@@ -8,12 +8,12 @@
 //
 // Body units u are the standard view's (a tile times the actor's scale). Read lazily: monster-pack.ts reaches close-view.ts,
 // which loads this module before briar-stag-render.ts and monster-pack.ts have finished loading.
-import { STAG_ART } from "./briar-stag-render.js?v=r984-93a51644afcb";
-import { ATTACK_MODULES, BOSS_PACE, STAG } from "./monster-pack.js?v=r984-93a51644afcb";
+import { STAG_ART } from "./briar-stag-render.js?v=r1012-ffa69513a699";
+import { ATTACK_MODULES, packWindupScale, STAG } from "./monster-pack.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const STAG_RIG = Object.freeze({
@@ -277,7 +277,7 @@ const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
 function lerpVec(o, a, b, t) { const A = POSE_VEC[a] || POSE_VEC.idle, Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
 function lerpInto(o, b, t) { const Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
 function phaseOf(pack, id) {
-  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? m.active || 0 : m.recover || .5;
+  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? m.active || 0 : m.recover || .5;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 const ACT = { aim: false, aimX: 0, aimY: 0, watch: false, still: false, gallop: false, contact: 0, phase: '', paw: 0, shake: 0, beat: -1, beatK: 0, fire: 0, glow: 0, airTuck: 0 };

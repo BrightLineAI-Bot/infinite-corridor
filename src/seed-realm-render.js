@@ -2,24 +2,29 @@
 // seen through glass, windows and the drop is one cached galaxy image and two cached ship silhouettes, drawn each frame only
 // through the cosmos tiles in view (drawRealmCosmos: one clip, at most three images); objects and the realms' own creatures are
 // plain canvas paths (the creatures through the pack sprite cache, monster-render.ts). Original art.
-import { hashSeed } from "./random.js?v=r984-93a51644afcb";
-import { dungeonTileVisibility } from "./dungeon-framework.js?v=r984-93a51644afcb";
-import { SEEDS } from "./skylands.js?v=r984-93a51644afcb";
+import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
+import { dungeonTileVisibility } from "./dungeon-framework.js?v=r1012-ffa69513a699";
+import { SEEDS } from "./skylands.js?v=r1012-ffa69513a699";
+import { SEED_REALMS } from "./seed-realms.js?v=r1012-ffa69513a699";
 
 export const REALM_PAINT = {
   husk: { floor: ["#6f665c", "#675f55"], grit: "#00000026", path: ["#7a6f60", "#73685a"], tie: "#4a3a2a", rail: "#a6a29a", rock: ["#3d3631", "#37312c"], rockTop: "#4f4741", ore: ["#7fd8c4", "#ffd27a"], plank: "#6b5134", plankDark: "#3e2e1d", rim: "rgba(170,200,255,.45)" },
   ship: { deck: ["#4b535c", "#465058"], seam: "#2a3037", bolt: "#7c8894", grate: ["#3a4149", "#363d45"], bar: "#22272d", wall: ["#262b31", "#23282e"], wallTop: "#39414a", hull: "#4a5562", glassSky: "#060814", frame: "#8fb4d6", catwalk: "#5c6670", light: "#ff4a5a" },
+  // The Askew (the bizarro world): every colour a turn wrong. The floor is a checker laid along each room's own tilt, the walls
+  // are lit from below, the void is green and its galaxy magenta; fragments of floor drift in the void beside the halls.
+  abyss: { floor: ["#3e6f66", "#7d4f74"], grain: "#ffffff22", wall: ["#1d1430", "#22183a"], wallLit: "#7dffd8", wallTop: "#120c1f", pillar: "#2b1f44", seam: "#ff7ad9", plank: ["#c8f0d8", "#8fc7b0"], plankDark: "#2f5a4c", rail: "#ff8ad8", void: "#06140f", rim: "rgba(255,120,220,.55)", fragShadow: "#0000004d" },
   stars: ["#ffffff55", "#cfe0ff66", "#ffe9c466"],
   // The cosmos behind the glass: the galaxy image's size (tiles), how much it moves with the camera (0 fixed to the screen,
   // 1 fixed to the world), how strongly it shows; the ships: how many, their size (tiles), the seconds to cross the sky.
-  cosmos: { size: 26, parallax: .22, alpha: { husk: .45, ship: .8 }, ships: 2, shipSize: [5, 3], crossing: [140, 220], shipParallax: .32 },
+  cosmos: { size: 26, parallax: .22, alpha: { husk: .45, ship: .8, abyss: .7 }, ships: 2, shipSize: [5, 3], crossing: [140, 220], shipParallax: .32 },
 };
 const hh = (x, y, k = 0) => hashSeed(`${x},${y},${k}`);
 function stars(ctx, px, py, s, x, y, n) { for (let i = 0; i < n; i++) { const q = hh(x, y, i + 7); if (q % 3 === 0) continue; ctx.fillStyle = REALM_PAINT.stars[q % 3]; const r = q % 13 === 0 ? 1.6 : 1; ctx.fillRect(px + (q % 97) / 97 * s, py + ((q >> 8) % 97) / 97 * s, r, r); } }
 
 // A seed realm's tile, painted into the ground cache. True when drawn (a realm's open drop is the ordinary starfield).
 export function drawRealmTile(ctx, t, x, y, s, tiles, w) {
-  if (!t?.realm || (t.chasm && !t.catwalk)) return false;
+  if (!t?.realm || (t.chasm && !t.catwalk && !t.fragment)) return false;
+  if (t.realm === "abyss") return drawAskewTile(ctx, t, x, y, s, tiles, w);
   const P = REALM_PAINT[t.realm] || REALM_PAINT.husk, px = x * s, py = y * s, d = t.detail || 0, at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], gap = (dx, dy) => { const q = at(dx, dy); return !q || q.chasm; };
   const fill = (c) => { ctx.fillStyle = c; ctx.fillRect(px, py, s + 1, s + 1); };
   switch (t.kind) {
@@ -73,18 +78,58 @@ export function drawRealmTile(ctx, t, x, y, s, tiles, w) {
   return true;
 }
 
+// The Askew's tiles (seed-realms.ts generateAbyss), painted once into the ground cache.
+function drawAskewTile(ctx, t, x, y, s, tiles, w) {
+  const P = REALM_PAINT.abyss, px = x * s, py = y * s, d = t.detail || 0, at = (dx, dy) => tiles?.[(y + dy) * w + x + dx], gap = (dx, dy) => { const q = at(dx, dy); return !q || q.chasm; };
+  const fill = (c) => { ctx.fillStyle = c; ctx.fillRect(px, py, s + 1, s + 1); };
+  switch (t.kind) {
+    case "abyssFloor": {
+      const a = t.tilt || 0, c = Math.cos(a), sn = Math.sin(a), u = (x + .5) * c + (y + .5) * sn, v = -(x + .5) * sn + (y + .5) * c; // the checker runs along the room's own tilt
+      fill(P.floor[(Math.floor(u / 2) + Math.floor(v / 2)) & 1]);
+      ctx.save(); ctx.beginPath(); ctx.rect(px, py, s + 1, s + 1); ctx.clip(); ctx.strokeStyle = P.grain; ctx.lineWidth = Math.max(1, s * .04);
+      for (let i = -1; i <= 1; i++) { const ox = px + s / 2 - sn * i * s * .4, oy = py + s / 2 + c * i * s * .4; ctx.beginPath(); ctx.moveTo(ox - c * s, oy - sn * s); ctx.lineTo(ox + c * s, oy + sn * s); ctx.stroke(); }
+      ctx.restore();
+      break;
+    }
+    case "abyssBridge": {
+      fill(P.void); stars(ctx, px, py, s, x, y, 2); const along = t.bridgeAxis === "x";
+      for (let i = 0; i < 3; i++) { ctx.fillStyle = P.plank[(i + d) & 1]; if (along) ctx.fillRect(px + s * (.05 + i * .32), py + s * .1, s * .26, s * .8); else ctx.fillRect(px + s * .1, py + s * (.05 + i * .32), s * .8, s * .26); }
+      ctx.fillStyle = P.rail; if (along) { ctx.fillRect(px, py + s * .08, s + 1, Math.max(1, s * .05)); ctx.fillRect(px, py + s * .87, s + 1, Math.max(1, s * .05)); } else { ctx.fillRect(px + s * .08, py, Math.max(1, s * .05), s + 1); ctx.fillRect(px + s * .87, py, Math.max(1, s * .05), s + 1); }
+      break;
+    }
+    case "abyssWall": case "abyssPillar": {
+      const pillar = t.kind === "abyssPillar";
+      fill(pillar ? P.pillar : P.wall[d & 1]); ctx.fillStyle = P.wallTop; ctx.fillRect(px, py, s + 1, s * .22);
+      ctx.fillStyle = P.wallLit; ctx.globalAlpha = .55; ctx.fillRect(px, py + s * .86, s + 1, s * .14); ctx.globalAlpha = 1; // lit from below: the light is the wrong way up
+      if (pillar || d === 3) { ctx.fillStyle = P.seam; ctx.fillRect(px + s * .46, py + s * .25, Math.max(1, s * .08), s * .58); }
+      break;
+    }
+    case "abyss": { // a fragment of floor drifting in the void (the tile is still the void)
+      fill(P.void); stars(ctx, px, py, s, x, y, 3);
+      const q = hh(x, y, 41), cx = px + s * (.3 + (q % 40) / 100), cy = py + s * (.3 + ((q >> 6) % 40) / 100), r = s * (.16 + ((q >> 12) % 12) / 100), a = ((q >> 16) % 628) / 100;
+      ctx.fillStyle = P.fragShadow; ctx.beginPath(); ctx.ellipse(cx, cy - r * .9, r * .9, r * .3, 0, 0, 7); ctx.fill(); // its shadow falls upward
+      ctx.fillStyle = P.floor[q & 1]; ctx.beginPath(); for (let i = 0; i < 5; i++) { const b = a + i * 1.257, rr = r * (.7 + ((q >> (i * 3)) % 7) / 20); ctx[i ? "lineTo" : "moveTo"](cx + Math.cos(b) * rr, cy + Math.sin(b) * rr * .7); } ctx.closePath(); ctx.fill();
+      ctx.fillStyle = P.wall[1]; ctx.fillRect(cx - r * .6, cy + r * .45, r * 1.2, Math.max(1, r * .25));
+      return true;
+    }
+    default: return false;
+  }
+  if (!t.blocked) { ctx.fillStyle = P.rim; const k = Math.max(1, s * .05); if (gap(0, -1)) ctx.fillRect(px, py, s + 1, k); if (gap(-1, 0)) ctx.fillRect(px, py, k, s + 1); if (gap(1, 0)) ctx.fillRect(px + s - k, py, k + 1, s + 1); if (gap(0, 1)) ctx.fillRect(px, py + s - k, s + 1, k + 1); }
+  return true;
+}
+
 // ------------------------------------------------------------------------------------------------ the cosmos
 const COSMOS = { galaxy: new Map(), ships: new Map() }; // cached images, by realm and tile size (at most a few)
 function canvasOf(w, h) { if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(w, h); if (typeof document !== "undefined" && document.createElement) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; } return null; }
 function galaxyImage(realm, px) {
   const key = `${realm}:${px}`; if (COSMOS.galaxy.has(key)) return COSMOS.galaxy.get(key);
   const c = canvasOf(px, px), g = c?.getContext?.("2d"); if (!g) { COSMOS.galaxy.set(key, null); return null; }
-  const m = px / 2, ship = realm === "ship";
-  const neb = g.createRadialGradient(m, m, 0, m, m, m); neb.addColorStop(0, ship ? "rgba(255,226,200,.9)" : "rgba(255,170,110,.75)"); neb.addColorStop(.12, ship ? "rgba(200,150,255,.45)" : "rgba(200,90,60,.35)"); neb.addColorStop(.5, ship ? "rgba(60,80,170,.18)" : "rgba(90,40,40,.14)"); neb.addColorStop(1, "rgba(0,0,0,0)");
+  const m = px / 2, ship = realm === "ship", askew = realm === "abyss"; // the Askew's galaxy is the wrong colour: green at the heart, magenta arms
+  const neb = g.createRadialGradient(m, m, 0, m, m, m); neb.addColorStop(0, askew ? "rgba(170,255,200,.85)" : ship ? "rgba(255,226,200,.9)" : "rgba(255,170,110,.75)"); neb.addColorStop(.12, askew ? "rgba(255,90,210,.45)" : ship ? "rgba(200,150,255,.45)" : "rgba(200,90,60,.35)"); neb.addColorStop(.5, askew ? "rgba(40,140,90,.2)" : ship ? "rgba(60,80,170,.18)" : "rgba(90,40,40,.14)"); neb.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = neb; g.fillRect(0, 0, px, px);
   for (let arm = 0; arm < (ship ? 3 : 2); arm++) for (let i = 0; i < 260; i++) { // the arms: dots along a log spiral
     const f = i / 260, a = arm * (Math.PI * 2 / (ship ? 3 : 2)) + f * 5.2, r = m * (.08 + f * .85), j = (hh(i, arm, 5) % 100) / 100 - .5;
-    const x = m + Math.cos(a + j * .4) * r, y = m + Math.sin(a + j * .4) * r * .55; g.fillStyle = `rgba(${ship ? "220,220,255" : "255,210,170"},${(.7 * (1 - f)).toFixed(2)})`; g.fillRect(x, y, 1.4, 1.4);
+    const x = m + Math.cos(a + j * .4) * r, y = m + Math.sin(a + j * .4) * r * .55; g.fillStyle = `rgba(${askew ? "255,140,230" : ship ? "220,220,255" : "255,210,170"},${(.7 * (1 - f)).toFixed(2)})`; g.fillRect(x, y, 1.4, 1.4);
   }
   COSMOS.galaxy.set(key, c); if (COSMOS.galaxy.size > 4) COSMOS.galaxy.delete(COSMOS.galaxy.keys().next().value); return c;
 }
@@ -97,7 +142,7 @@ function shipImage(i, px) {
   g.fillStyle = "#ffb070"; g.fillRect(0, H * .44, W * .04, H * .12); // the drive
   COSMOS.ships.set(key, c); if (COSMOS.ships.size > 6) COSMOS.ships.delete(COSMOS.ships.keys().next().value); return c;
 }
-const cosmosTile = (t) => !!t?.realm && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk && !t.bored));
+const cosmosTile = (t) => !!t?.realm && (t.kind === "shipGlass" || t.kind === "shipStarWindow" || (t.chasm && !t.catwalk && !t.bored)); // the Askew's drifting fragments too: its galaxy shows over them
 const VIEW_TILES = [];
 // Per frame: the galaxy (and, aboard the ship, slow ships passing) seen through the cosmos tiles in view. `view` is the tile
 // rectangle drawn, (cx, cy) the camera's world point in tiles.
@@ -134,7 +179,10 @@ export function drawRealmObject(ctx, o, s, now) {
     const tall = used ? .25 : .75; ctx.fillStyle = used ? "#5a5466" : "#c9a8ff"; ctx.beginPath(); ctx.moveTo(cx, cy + s * .22 - s * tall); ctx.lineTo(cx + s * .16, cy - s * .05); ctx.lineTo(cx + s * .1, cy + s * .22); ctx.lineTo(cx - s * .1, cy + s * .22); ctx.lineTo(cx - s * .16, cy - s * .05); ctx.closePath(); ctx.fill();
     if (!used) { ctx.fillStyle = "#f2e8ff"; ctx.beginPath(); ctx.moveTo(cx, cy + s * .22 - s * tall); ctx.lineTo(cx + s * .05, cy - s * .05); ctx.lineTo(cx - s * .04, cy + s * .1); ctx.closePath(); ctx.fill(); ctx.fillStyle = "#8fe8ff"; ctx.beginPath(); ctx.moveTo(cx - s * .26, cy + s * .2); ctx.lineTo(cx - s * .2, cy - s * .1); ctx.lineTo(cx - s * .12, cy + s * .2); ctx.fill(); }
   } else if (o.kind === "realmCache") {
-    const open = o.state === "used", ship = o.name === "Supply Locker";
+    const open = o.state === "used", ship = o.name === "Supply Locker", askew = o.name === SEED_REALMS.abyss.cacheName;
+    if (askew) { // a chest standing on its lid, its hinges on top
+      ctx.fillStyle = "#00000055"; ctx.fillRect(cx - s * .34, cy + s * .32, s * .68, s * .1); ctx.fillStyle = "#7d4f74"; ctx.fillRect(cx - s * .32, cy - s * .1, s * .64, s * .42); ctx.fillStyle = open ? "#06140f" : "#3e6f66"; ctx.fillRect(cx - s * .32, cy + s * .14, s * .64, s * .18);
+      ctx.fillStyle = "#7dffd8"; for (const u of [-.2, .2]) ctx.fillRect(cx + s * u - s * .04, cy - s * .16, s * .08, s * .08); ctx.restore(); return; }
     ctx.fillStyle = "#00000055"; ctx.fillRect(cx - s * .36, cy + s * .32, s * .72, s * .1);
     if (ship) { ctx.fillStyle = "#5b6672"; ctx.fillRect(cx - s * .3, cy - s * .35, s * .6, s * .7); ctx.fillStyle = open ? "#11151a" : "#3d4651"; ctx.fillRect(cx - s * .24, cy - s * .28, s * .48, s * .56); ctx.fillStyle = open ? "#5ad1ff" : "#ffcf6a"; ctx.fillRect(cx + s * .14, cy - s * .05, s * .05, s * .1); }
     else { ctx.fillStyle = "#5a4630"; ctx.fillRect(cx - s * .34, cy - s * .12, s * .68, s * .42); ctx.fillStyle = "#3a2c1d"; ctx.fillRect(cx - s * .34, cy - s * .12, s * .68, s * .08); ctx.fillStyle = "#222"; for (const u of [-.22, .22]) { ctx.beginPath(); ctx.arc(cx + s * u, cy + s * .32, s * .07, 0, 7); ctx.fill(); }
@@ -149,6 +197,7 @@ export function drawRealmObject(ctx, o, s, now) {
     else { ctx.fillStyle = "#2a2730"; ctx.fillRect(cx - s * .12, cy - s * .62, s * .24, s * .1); }
   } else if (o.kind === "realmLore") {
     const ship = o.name === "Cracked Panel";
+    if (o.name === SEED_REALMS.abyss.loreName) { ctx.fillStyle = "#22183a"; ctx.fillRect(cx - s * .26, cy - s * .32, s * .52, s * .62); ctx.fillStyle = "#ff8ad8aa"; for (let i = 0; i < 4; i++) ctx.fillRect(cx + s * .18 - s * (.36 - (i % 2) * .12), cy - s * .22 + i * s * .12, s * (.36 - (i % 2) * .12), Math.max(1, s * .03)); ctx.restore(); return; } // the writing runs from the right
     ctx.fillStyle = ship ? "#2a3240" : "#57504a"; ctx.fillRect(cx - s * .26, cy - s * .32, s * .52, s * .62); ctx.fillStyle = ship ? "#5ad1ff88" : "#d8cbb488"; for (let i = 0; i < 4; i++) ctx.fillRect(cx - s * .18, cy - s * .22 + i * s * .12, s * (.36 - (i % 2) * .12), Math.max(1, s * .03));
   }
   ctx.restore();

@@ -1,5 +1,6 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r984-93a51644afcb';
+import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1012-ffa69513a699';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r1012-ffa69513a699';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.
@@ -23,7 +24,7 @@ export function projectileLaunchMetadata(shot, anchor, support=0) {
   return readProjectileVisualLaunch({v:1,dx:anchor.x-shot.x,dy:anchor.y-shot.y,dz:anchor.z-support-shotVisualHeight(shot)});
 }
 export function projectileVisualPoint(shot, support=0, x=shot.x, y=shot.y, age=shot.age) {
-  const launch=readProjectileVisualLaunch(shot.visualLaunch),t=Number.isFinite(age)&&age>=0?Math.min(1,age/PLAYER_DRONE_VISUAL.settleSeconds):1,w=launch?1-t*t*(3-2*t):0;
+  const launch=readProjectileVisualLaunch(shot.visualLaunch),settle=launch&&Number.isFinite(launch.settle)&&launch.settle>0&&launch.settle<=1?launch.settle:PLAYER_DRONE_VISUAL.settleSeconds/* a launch may carry its own settle time (the Triceratops's horn shot) */,t=Number.isFinite(age)&&age>=0?Math.min(1,age/settle):1,w=launch?1-t*t*(3-2*t):0;
   return {x:x+(launch?.dx||0)*w,y:y+(launch?.dy||0)*w,z:finite(support,0)+shotVisualHeight(shot,age)+(launch?.dz||0)*w};
 }
 export function readProjectileVisualFlight(raw){const d=Number(raw?.duration);return raw&&typeof raw==='object'&&!Array.isArray(raw)&&raw.v===1&&Number.isFinite(d)&&d>0&&d<=8?{...raw,v:1,duration:d}:null;}
@@ -102,7 +103,7 @@ export function packActionPresentation(actor, modules, windupScale = 1.2, now = 
   const s = actor?.pack, action = s?.attack, family = PACK_ACTION_FAMILIES[action];
   if (!family || !modules[action]) return null;
   const phase = s.phase, spec = modules[action];
-  let duration = phase === 'windup' ? (spec.windup || .5) * (s.paced ? windupScale : 1)
+  let duration = phase === 'windup' ? (spec.windup || .5) * (s.paced ? windupScale * (s.worldPaced ? WORLD_BOSS_PACE.windup : 1) : 1) // 2026-11-18: world-boss pacing (boss-kit.ts)
     : phase === 'recover' ? spec.recover : phase === 'active' ? (action === 'sweepBeam' ? s.data?.total || spec.active * (actor.boss ? 1.25 : 1) : spec.active)
     : ({ strike: .32, track: 1, lock: .45, travel: 2.6, erupt: .75, stunned: 1.4 })[phase];
   if (action === 'ramCharge' && phase === 'recover' && actor.stunnedUntil > 0 && now >= actor.stunnedUntil && now < actor.stunnedUntil + 300) duration = .3;

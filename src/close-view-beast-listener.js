@@ -15,12 +15,12 @@
 // The two bodies share the bone hierarchy; each has its own bind fit (CLOAK_FIT, MORPH_FIT: the same names and parents with
 // each body's joint positions), and the pose switches fit with the form. The reflections and the worms keep their billboards
 // (close-view-beasts.ts). Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r984-93a51644afcb";
-import { MORPH_FORM } from "./listener-morph.js?v=r984-93a51644afcb";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1012-ffa69513a699";
+import { MORPH_FORM } from "./listener-morph.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 export const LISTENER_RIG = Object.freeze({
   closeViewScale: 1.25, // as every Close View beast (presentation only)
@@ -356,7 +356,7 @@ function lerpInto(b, t) { const T = TBL[ACT.form], Bv = T[b] || T.idle; for (let
 // progress through the current phase (0 at its start, 1 at its end) on the game's own attack clock
 function phaseOf(pack, id) {
   const m = ATTACK_MODULES[id] || {}, ph = pack.phase;
-  const dur = ph === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : ph === 'active' ? m.active || 0 : ph === 'strike' ? LISTENER_RIG.strikeMs / 1000 : ph === 'recover' ? m.recover || .5 : 0;
+  const dur = ph === 'windup' ? (m.windup || .5) * packWindupScale(pack) : ph === 'active' ? m.active || 0 : ph === 'strike' ? LISTENER_RIG.strikeMs / 1000 : ph === 'recover' ? m.recover || .5 : 0;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 // a committed blow: anticipation to `wind` over the first `load` of the windup, the fast travel to `hit` at its end (the
@@ -560,7 +560,7 @@ export function sampleListener(tr, e, env) {
       const ar = reduce ? 0 : .03 * wobble(t * .9, s * 3);
       armIK(P, fit, tag, s, Wv[o] + sway, Wv[o + 1], Wv[o + 2] + ar, R.upperArm, R.foreArm, S, cf, sf);
       const jawArm = s > 0 && ACT.reach > 0;
-      if (jawArm) { D[0] = ACT.reachX - P.wp[BI.handR * 3]; D[1] = ACT.reachY - P.wp[BI.handR * 3 + 1]; D[2] = env.z + .45 - P.wp[BI.handR * 3 + 2]; const l = Math.hypot(D[0], D[1], D[2]) || 1; for (let k = 0; k < 3; k++) D[k] /= l; }
+      if (jawArm) { resolveBone(P, BI.handR); D[0] = ACT.reachX - P.wp[BI.handR * 3]; D[1] = ACT.reachY - P.wp[BI.handR * 3 + 1]; D[2] = env.z + .45 - P.wp[BI.handR * 3 + 2]; const l = Math.hypot(D[0], D[1], D[2]) || 1; for (let k = 0; k < 3; k++) D[k] /= l; }
       else if (cabled) { const c = CSLOT[s < 0 ? 6 : 7]; D[0] = CAB[c * 2]; D[1] = CAB[c * 2 + 1]; D[2] = .05; }
       else chestDir(P, Wv[od], Wv[od + 1], Wv[od + 2], D);
       // the wrist turns into the tendril

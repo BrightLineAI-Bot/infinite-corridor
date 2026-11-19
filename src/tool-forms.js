@@ -1,5 +1,5 @@
-import { stampAttackVisual } from "./action-motion.js?v=r984-93a51644afcb";
-import { hashSeed } from "./random.js?v=r984-93a51644afcb";
+import { stampAttackVisual } from "./action-motion.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -661,7 +661,7 @@ function release(game, c, now) {
   const O = ORRERY, S = state(game), o = centre(game), power = game.orreryPower(), d = c.dir;
   if (room(game) > 0 && count(game, "big") < O.caps.bigs) { const round = typeof game.takeRound === "function" ? game.takeRound(game.glyphLoadout("tool").count("echo")) : "ordinary"; // ROUNDS: the great orb takes a round
     if (!round) { S.charge = null; return; }
-    shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, toolRange("aether-orrery") / O.big.speed, power * chargeShare(c.held) * roundDamage(round), { knife: true, grow: O.big.grow, ...(round === "empowered" ? { empowered: true } : {}) }); }
+    shot(game, "big", o.x + d.x * .4, o.y + d.y * .4, d, O.big.speed, toolRange("aether-orrery") / O.big.speed, power * chargeShare(c.held) * roundDamage(round), { knife: true, grow: O.big.grow, ...(round === "empowered" ? { empowered: true } : {}), rr: typeof game.chargedRelease === "function" ? game.chargedRelease() : 0 /* hit-cast-passives.ts Rapid Reload: the great orb is a charged release */ }); }
   const h = S.halo;
   if (h && h.where === game.orreryWhere()) { h.idle = O.halo.idle; const volley = id(game, "volley"), ahead = nearest(game, o.x, o.y, O.cube.out, 6).filter((e) => (e.x + .5 - o.x) * d.x + (e.y + .45 - o.y) * d.y > 0); // forward: each laser at a foe ahead (a different one where it can), else a fan
     for (let i = 0; i < h.n && room(game) > 0 && count(game, "cube") < O.caps.lasers; i++) { const f = ahead.length ? ahead[i % ahead.length] : null, a = (i - (h.n - 1) / 2) * .18, cs = Math.cos(a), sn = Math.sin(a), ld = f ? unit(f.x + .5 - h.pts[i].x, f.y + .45 - h.pts[i].y, d.x, d.y) : { x: d.x * cs - d.y * sn, y: d.x * sn + d.y * cs };

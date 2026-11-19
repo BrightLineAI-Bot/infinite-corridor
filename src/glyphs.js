@@ -7,8 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r984-93a51644afcb";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r984-93a51644afcb";
+import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1012-ffa69513a699";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -222,6 +222,18 @@ export function giftResonances(save) {
   for (const id of added) save.glyphCodex.resonances[id] = true;
   return added;
 }
+// Unreleased (Tim: triads should "just be unlocked for current saves"): the same one-time gift for the six triads. A journey
+// already under way (past level 1) when it is first opened in this release has every triad written into its codex, once; a new
+// journey is only marked and discovers them in play. Triads always worked by socketing; this only fills the codex.
+// State: save.triadGift (additive). Returns the ids it wrote.
+export function giftTriads(save) {
+  if (!save?.glyphCodex || save.triadGift) return [];
+  save.triadGift = 1;
+  if (!((Number(save.level) || 1) > 1)) return [];
+  const added = Object.keys(TRIADS).filter((id) => !save.glyphCodex.resonances[id]);
+  for (const id of added) save.glyphCodex.resonances[id] = true;
+  return added;
+}
 export function discoverResonances(save, loadout) {
   const fresh = loadout.resonances.filter((id) => !save.glyphCodex.resonances[id]);
   for (const id of fresh) save.glyphCodex.resonances[id] = true;
@@ -286,7 +298,7 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
   if (e.dead && loadout.resonant("undertow")) world.heal((world.maxHp || 0) * .05);
 }
 // Burn and slow, ticked by the Game every frame. Returns enemies killed by burning.
-export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}, scale = 1) { // scale: the Wayfarer's damage scale (WAYFARER_DAMAGE), burns being the Wayfarer's
+export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}, scale = 1, scaleOf = null) { // scaleOf(e, now): a foe's own damage multiple (hit-cast-passives.ts vulnScale: Tempo) // scale: the Wayfarer's damage scale (WAYFARER_DAMAGE), burns being the Wayfarer's
   for (const e of enemies) {
     if (e.dead) continue;
     const slowed = (e.glyphSlow?.until || 0) > now;
@@ -295,7 +307,7 @@ export function tickGlyphStatus(enemies, dt, now, onBurnDeath = () => {}, scale 
     const b = e.glyphBurn;
     if (!b) continue;
     if (b.until <= now) { delete e.glyphBurn; continue; }
-    b.tick = (b.tick || 0) + b.dps * dt * scale;
+    b.tick = (b.tick || 0) + b.dps * dt * scale * (scaleOf ? scaleOf(e, now) : 1);
     const whole = Math.floor(b.tick);
     if (whole > 0) { b.tick -= whole; e.hp -= whole; e.hitFlash = Math.max(e.hitFlash || 0, .06); if (e.hp <= 0) { e.dead = true; onBurnDeath(e); } }
   }
@@ -353,5 +365,9 @@ export function craftGlyph(save, id) {
 }
 export function describeHost(save, host) {
   const l = hostLoadout(save, host);
-  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances: host === "armor" ? [] : l.resonances.map((id) => ({ id, ...RESONANCES[id] })) }; // armor glyphs do not resonate
+  // Pairs never resonate in armor, but armor triads do (armorGlyphBonus), so the armor card lists those with their armor text.
+  // Unreleased (Tim's log: triads read "✦ undefined: undefined"): entries resolve through resonanceInfo, which knows triads.
+  const resonances = host === "armor" ? triadsOf(l.glyphs).map((id) => ({ id, name: TRIADS[id].name, pair: TRIADS[id].pair, text: TRIADS[id].armorText }))
+    : l.resonances.map((id) => resonanceInfo(id) && { id, ...resonanceInfo(id) }).filter(Boolean);
+  return { glyphs: l.glyphs.map((id) => ({ id, name: GLYPHS[id].name, text: GLYPHS[id].text[host] })), resonances };
 }

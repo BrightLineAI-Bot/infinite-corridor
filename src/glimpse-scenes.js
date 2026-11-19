@@ -1,8 +1,8 @@
 // More Glimpses (release 199 onward; docs/narrative-bible.md section 5). Each scene is a draw function
 // (ctx, t, w, h, state) painting frame t ∈ [0, 1] of a first-person view; `state` holds what a scene builds once.
 // Canvas 2D only, no assets. The catalogue entries are in glimpses.ts.
-import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r984-93a51644afcb";
-import { paintHand } from "./glimpse-hand.js?v=r984-93a51644afcb";
+import { TAU, clamp, lerp, smooth, seeded, mix, rgba, makeCanvas, glow, vignette } from "./glimpse-paint.js?v=r1012-ffa69513a699";
+import { paintHand } from "./glimpse-hand.js?v=r1012-ffa69513a699";
 
 // Soft cloud built from many shaded puffs: lit from above, shadowed beneath.
 function cloudSprite(seed, light, shade) {
@@ -347,4 +347,66 @@ function drawWall(ctx, t, w, h, state) {
   vignette(ctx, w, h, .85, "#050406");
 }
 
-export const SCENES = { theSky: drawSky, rainAtWindow: drawRain, underTheIce: drawIce, theSpheres: drawSpheres, edgeLight: drawEdge, glyphRain: drawGlyphs, insideTheWall: drawWall };
+// ------------------------------------------------------------------ The Shutter
+// Tim, 2026-11-15: a rare Glimpse of the Corridor's own dwellers dreading a figure that keeps returning, told so the player knows
+// it only at the end. You stand at a shutter at night, looking down a road. Far off a Wayglass brightens; a figure stands up out
+// of its light and comes this way. Your grey, long-fingered hand draws the shutter to a slit, and the view shakes a little. The
+// figure passes close: a covered face, a muted green cloak, a glint of bronze at the clasp. Then only the road, and the lit glass.
+const SHUTTER = { glass: [.37, .5], horizon: .5, frame: [.12, .88], open: [.3, .035], teal: "#7fe8d8", cloak: ["#121814", "#46564a"], bronze: "#d9a55a" };
+function shutterFigure(ctx, x, y, s, T, lit, near) {
+  const bob = Math.abs(Math.sin(T * 4.2)) * s * .012;
+  const sway = Math.sin(T * 2.1) * s * .01, cloak = () => { ctx.beginPath(); ctx.moveTo(-s * .17 + sway, 0); ctx.lineTo(s * .16 + sway, 0); ctx.quadraticCurveTo(s * .14, -s * .4, s * .125, -s * .62); ctx.quadraticCurveTo(s * .1, -s * .7, s * .05, -s * .72); ctx.lineTo(-s * .05, -s * .72); ctx.quadraticCurveTo(-s * .11, -s * .7, -s * .13, -s * .62); ctx.quadraticCurveTo(-s * .15, -s * .4, -s * .17 + sway, 0); ctx.closePath(); };
+  ctx.save(); ctx.translate(x, y - bob);
+  ctx.fillStyle = mix(SHUTTER.cloak[0], SHUTTER.cloak[1], near); cloak(); ctx.fill();
+  ctx.strokeStyle = rgba("#060807", .35 * near); ctx.lineWidth = Math.max(1, s * .006); for (const k of [-.06, .02, .08]) { ctx.beginPath(); ctx.moveTo(s * k * .8, -s * .58); ctx.lineTo(s * k * 1.4 + sway, 0); ctx.stroke(); } // the folds
+  ctx.fillStyle = mix("#0e1210", "#323c36", near); ctx.beginPath(); ctx.ellipse(0, -s * .8, s * .075, s * .095, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(-s * .085, -s * .7); ctx.quadraticCurveTo(0, -s * .66, s * .085, -s * .7); ctx.lineTo(s * .05, -s * .75); ctx.lineTo(-s * .05, -s * .75); ctx.closePath(); ctx.fill(); // the hood, falling to the shoulders
+  if (near > .15) { ctx.fillStyle = rgba("#08090a", .85 * near); ctx.fillRect(-s * .066, -s * .82, s * .132, s * .06); } // the face, covered
+  glow(ctx, s * .025, -s * .64, Math.max(2, s * .045), SHUTTER.bronze, .12 + .55 * near); // the clasp
+  ctx.strokeStyle = rgba(SHUTTER.teal, .4 * lit); ctx.lineWidth = Math.max(1, s * .012); cloak(); ctx.stroke(); // rim light from the glass behind
+  ctx.restore();
+}
+function drawShutter(ctx, t, w, h, state) {
+  const T = t * 14, u = Math.min(w, h), [gx, gy] = [SHUTTER.glass[0] * w, SHUTTER.glass[1] * h], [top, bottom] = [SHUTTER.frame[0] * h, SHUTTER.frame[1] * h];
+  if (!state.shutter || state.shutter.w !== w || state.shutter.h !== h) {
+    const r = seeded(1115), W = Math.max(2, w >> 1), H = Math.max(2, h >> 1), c = makeCanvas(W, H), g = c.getContext("2d"), hy = SHUTTER.horizon * H;
+    const sky = g.createLinearGradient(0, 0, 0, hy); sky.addColorStop(0, "#04060c"); sky.addColorStop(1, "#16202c"); g.fillStyle = sky; g.fillRect(0, 0, W, hy + 1);
+    for (let k = 0; k < 90; k++) { g.fillStyle = rgba("#dfe8ff", .2 + r() * .5); g.fillRect(r() * W, r() * hy * .9, 1, 1); }
+    g.fillStyle = "#0a0d10"; g.beginPath(); g.moveTo(0, hy); for (let x = 0; x <= W; x += W / 16) g.lineTo(x, hy - H * (.01 + .03 * r())); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill(); // low hills, then the dark field
+    g.fillStyle = "#262a2c"; g.beginPath(); g.moveTo(SHUTTER.glass[0] * W + W * .01, hy + 1); g.lineTo(W * .98, H); g.lineTo(W * .12, H); g.closePath(); g.fill(); // the road
+    for (let k = 0; k < 160; k++) { const y = hy + (H - hy) * r() ** .7, x = r() * W; g.strokeStyle = rgba("#2c3a2e", .5); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - .5) * 3, y - 2 - r() * 4 * (y - hy) / (H - hy)); g.stroke(); }
+    state.shutter = { w, h, c };
+  }
+  // the hand trembles once the shutter is drawn
+  const fear = smooth(.55, .62, t) * (1 - smooth(.9, .97, t)), sx = Math.sin(T * 31) * u * .002 * fear, sy = Math.cos(T * 27) * u * .0015 * fear;
+  const half = lerp(SHUTTER.open[0], SHUTTER.open[1], smooth(.46, .7, t)) * w, ox0 = w * .5 - half, ox1 = w * .5 + half;
+  ctx.fillStyle = "#020203"; ctx.fillRect(0, 0, w, h);
+  ctx.save(); ctx.translate(sx, sy); ctx.beginPath(); ctx.rect(ox0, top, ox1 - ox0, bottom - top); ctx.clip();
+  ctx.drawImage(state.shutter.c, 0, 0, w, h);
+  // the Wayglass, brightening; a figure stands up out of its light and walks this way
+  const lit = smooth(.08, .22, t) * (1 - .4 * smooth(.3, .5, t)) + .25 * Math.sin(T * 2) ** 2 * smooth(.08, .2, t);
+  ctx.fillStyle = "#1c2426"; ctx.fillRect(gx - u * .006, gy - u * .06, u * .012, u * .06);
+  glow(ctx, gx, gy - u * .04, u * (.05 + .14 * lit), SHUTTER.teal, .25 + .6 * lit);
+  const rise = smooth(.16, .3, t), walk = smooth(.3, .66, t), pass = smooth(.7, .9, t);
+  if (rise > 0 && pass <= 0) { const p = walk * walk, x = lerp(gx + u * .015, w * .6, walk), y = lerp(gy, h * 1.04, p), s = lerp(u * .045, h * .62, p) * (walk > 0 ? 1 : rise);
+    shutterFigure(ctx, x, y, s, T, 1 - walk * .6, smooth(.35, .66, t)); }
+  if (pass > 0 && pass < 1) shutterFigure(ctx, lerp(w * .2, w * .8, pass), h * 1.12, h * .95, T, .3, 1); // close by the window, passing
+  ctx.restore();
+  // the shutter boards, lit along their inner edges by what is outside
+  ctx.save(); ctx.translate(sx, sy);
+  for (const [x0, x1, edge] of [[-10, ox0, ox0], [ox1, w + 10, ox1]]) {
+    ctx.fillStyle = "#17110c"; ctx.fillRect(x0, top - 2, x1 - x0, bottom - top + 4);
+    ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = Math.max(1, u * .003);
+    for (let x = edge === ox0 ? edge - u * .07 : edge + u * .07; edge === ox0 ? x > x0 : x < x1; x += edge === ox0 ? -u * .07 : u * .07) { ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); }
+    const e = ctx.createLinearGradient(edge, 0, edge + (edge === ox0 ? -u * .05 : u * .05), 0); e.addColorStop(0, rgba(SHUTTER.teal, .1 + .12 * lit)); e.addColorStop(1, rgba(SHUTTER.teal, 0));
+    ctx.fillStyle = e; ctx.fillRect(Math.min(edge, edge + (edge === ox0 ? -u * .05 : u * .05)), top, u * .05, bottom - top);
+  }
+  ctx.fillStyle = "#0c0907"; ctx.fillRect(-10, -10, w + 20, top + 10); ctx.fillRect(-10, bottom, w + 20, h - bottom + 10); // lintel and sill
+  // your hand on the right board, drawing it closed: grey, long in the finger, not quite a person's
+  const hand = smooth(.4, .48, t) * (1 - smooth(.86, .95, t));
+  if (hand > 0) paintHand(ctx, { x: ox1 + u * .075, y: h * .6, angle: -Math.PI / 2 - .35, mirror: -1, s: u * .15, curl: .62 + .2 * smooth(.46, .7, t), splay: .25, long: 1.3, thin: .8, hook: 1, foreshorten: .85, thumb: "side",
+    skin: { base: "#5e6c66", shade: "#1a2220", light: "#94a29c" }, rim: { color: SHUTTER.teal, a: .25 * lit + .1, width: .03 }, light: -2.9, sleeve: { color: "#1c1814", len: u * .3 }, alpha: hand, time: T, seed: 1115 });
+  ctx.restore();
+  vignette(ctx, w, h, .8, "#020203");
+}
+
+export const SCENES = { theSky: drawSky, rainAtWindow: drawRain, underTheIce: drawIce, theSpheres: drawSpheres, edgeLight: drawEdge, glyphRain: drawGlyphs, insideTheWall: drawWall, theShutter: drawShutter };

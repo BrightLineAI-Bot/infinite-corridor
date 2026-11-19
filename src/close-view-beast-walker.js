@@ -6,12 +6,12 @@
 // so the body only gathers, gestures and moves (docs/void-walker-design.md, docs/close-view-boss-rig-manifest.md): restrained
 // stance and steps, hands gathered and brought down as the rends are cast, arms opened for the wraiths and rifts, a
 // supernova charge, the dash's forward lean, the teleport's flicker. Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r984-93a51644afcb";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
-import { WALKER_BODY } from "./close-view-beast-walker-body.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
+import { WALKER_BODY } from "./close-view-beast-walker-body.js?v=r1012-ffa69513a699";
 
 function walkerJoints() {
   const J = WALKER_BODY.joints, d = (a, b) => Math.hypot(J[a][0] - J[b][0], J[a][1] - J[b][1], J[a][2] - J[b][2]);
@@ -116,7 +116,7 @@ const setVec = (o, n) => o.set(POSE_VEC[n] || POSE_VEC.idle);
 function lerpVec(o, a, b, t) { const A = POSE_VEC[a] || POSE_VEC.idle, Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] = A[k] + (Bv[k] - A[k]) * t; }
 function lerpInto(o, b, t) { const Bv = POSE_VEC[b] || POSE_VEC.idle; for (let k = 0; k < K; k++) o[k] += (Bv[k] - o[k]) * t; }
 function phaseOf(pack, id) {
-  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * (pack.paced ? BOSS_PACE.windup : 1) : pack.phase === 'active' ? m.active || 0 : pack.phase === 'recover' ? m.recover || .5 : 0;
+  const m = ATTACK_MODULES[id] || {}, dur = pack.phase === 'windup' ? (m.windup || .5) * packWindupScale(pack) : pack.phase === 'active' ? m.active || 0 : pack.phase === 'recover' ? m.recover || .5 : 0;
   return dur > 0 ? clamp01(1 - (Number(pack.t) || 0) / dur) : 1;
 }
 const OPEN = new Set(['voidWraiths', 'voidRifts', 'voidConstellation', 'voidHorizons']);

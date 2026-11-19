@@ -1,56 +1,60 @@
-import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r984-93a51644afcb"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { ACTION_MOTION } from "./action-motion.js?v=r984-93a51644afcb"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r984-93a51644afcb"; // a dodge's after-images replace the single dodge ghost
-import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r984-93a51644afcb"; // the weighted Cleaver swing (2026-11-14)
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r1012-ffa69513a699"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { vulnerableUntil, glyphMinesOf, GLYPH_MINE } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // Tempo marks, Glyph Mine sigils (2026-11-19)
+import { ACTION_MOTION } from "./action-motion.js?v=r1012-ffa69513a699"; // the Cinder Pike's standard-view thrust clock
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r1012-ffa69513a699";
+import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.js?v=r1012-ffa69513a699"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r1012-ffa69513a699"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
-import { drawQuandrixStaff } from "./quandrix-staff.js?v=r984-93a51644afcb";
-import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r984-93a51644afcb"; // the Stego Bait (Tim, 2026-11-12)
-import { shakeOffset } from "./spino-rex.js?v=r984-93a51644afcb";
-import { drawBleedIcon } from "./bleed.js?v=r984-93a51644afcb";
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r984-93a51644afcb"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r984-93a51644afcb";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r984-93a51644afcb"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r984-93a51644afcb";
-import { astralBeamAnchors } from "./astral-worm.js?v=r984-93a51644afcb";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r984-93a51644afcb";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r984-93a51644afcb";
-import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r984-93a51644afcb';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r984-93a51644afcb";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r984-93a51644afcb";
-import { ruleRows } from "./elders.js?v=r984-93a51644afcb";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r984-93a51644afcb";
-import { BOAT } from "./boats.js?v=r984-93a51644afcb";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r984-93a51644afcb";
-import { isMarineTile } from "./world-beasts.js?v=r984-93a51644afcb";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL } from "./game.js?v=r984-93a51644afcb"; // 613: Starfield rafts
-import { SEASONS, treeSeason } from "./seasons.js?v=r984-93a51644afcb";
-import { setTreeSeason } from "./landscape-render.js?v=r984-93a51644afcb";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r984-93a51644afcb";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r984-93a51644afcb";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r984-93a51644afcb";
-import { TREES } from "./trees.js?v=r984-93a51644afcb";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r984-93a51644afcb";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r984-93a51644afcb";
-import { KIT_MOVES } from "./boss-kit.js?v=r984-93a51644afcb";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r984-93a51644afcb"; // release 587; travel seeds
-import { drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r984-93a51644afcb";
-import { drawSpinoBiteOverlay } from "./spino-render.js?v=r984-93a51644afcb";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r984-93a51644afcb"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r984-93a51644afcb"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r984-93a51644afcb";
-import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r984-93a51644afcb"; // Close View: a beast in your section is captured wherever it stands in it
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r984-93a51644afcb"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r984-93a51644afcb"; // release 748: pens sized for the beast
-import { drawMount, drawMountFront } from "./beast-mounts-render.js?v=r984-93a51644afcb"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r984-93a51644afcb";
-import { drawRelayNode } from "./relay-network.js?v=r984-93a51644afcb";
-import { structureOccupancy } from "./world.js?v=r984-93a51644afcb";
-import { roofDeckById } from "./roof-decks.js?v=r984-93a51644afcb"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r984-93a51644afcb";
-import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r984-93a51644afcb"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow } from "./labyrinths.js?v=r984-93a51644afcb";
-import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r984-93a51644afcb"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving } from "./close-view.js?v=r984-93a51644afcb"; // Close View: three hooks below, marked CLOSE VIEW
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r1012-ffa69513a699";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r1012-ffa69513a699"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r1012-ffa69513a699";
+import { drawBleedIcon } from "./bleed.js?v=r1012-ffa69513a699";
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r1012-ffa69513a699"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1012-ffa69513a699";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r1012-ffa69513a699"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r1012-ffa69513a699";
+import { astralBeamAnchors } from "./astral-worm.js?v=r1012-ffa69513a699";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r1012-ffa69513a699";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r1012-ffa69513a699";
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r1012-ffa69513a699';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r1012-ffa69513a699";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r1012-ffa69513a699";
+import { ruleRows } from "./elders.js?v=r1012-ffa69513a699";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r1012-ffa69513a699";
+import { BOAT } from "./boats.js?v=r1012-ffa69513a699";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r1012-ffa69513a699";
+import { isMarineTile } from "./world-beasts.js?v=r1012-ffa69513a699";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.js?v=r1012-ffa69513a699"; // 613: Starfield rafts
+import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.js?v=r1012-ffa69513a699"; // the low-health edge: the death static, red, at the edges
+import { SEASONS, treeSeason } from "./seasons.js?v=r1012-ffa69513a699";
+import { setTreeSeason, bizarroWash } from "./landscape-render.js?v=r1012-ffa69513a699";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r1012-ffa69513a699";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r1012-ffa69513a699";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r1012-ffa69513a699";
+import { TREES } from "./trees.js?v=r1012-ffa69513a699";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1012-ffa69513a699";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r1012-ffa69513a699";
+import { KIT_MOVES } from "./boss-kit.js?v=r1012-ffa69513a699";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r1012-ffa69513a699"; // release 587; travel seeds
+import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r1012-ffa69513a699";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r1012-ffa69513a699";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r1012-ffa69513a699"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r1012-ffa69513a699"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r1012-ffa69513a699";
+import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1012-ffa69513a699"; // Close View: a beast in your section is captured wherever it stands in it
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r1012-ffa69513a699"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r1012-ffa69513a699"; // release 748: pens sized for the beast
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.js?v=r1012-ffa69513a699";
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.js?v=r1012-ffa69513a699"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r1012-ffa69513a699";
+import { drawRelayNode } from "./relay-network.js?v=r1012-ffa69513a699";
+import { structureOccupancy } from "./world.js?v=r1012-ffa69513a699";
+import { roofDeckById } from "./roof-decks.js?v=r1012-ffa69513a699"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r1012-ffa69513a699";
+import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r1012-ffa69513a699"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.js?v=r1012-ffa69513a699"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r1012-ffa69513a699"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.js?v=r1012-ffa69513a699"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -64,6 +68,65 @@ export function nativeWindupDuration(e) {
 }
 export function nativeActionShape(e) { return e.telegraph > 0 ? MELEE_PATTERNS[e.meleePhase?.id]?.shape || null : e.strikeGeometry?.kind || null; }
 // Native player bodies replace only the body. These existing state-owned cues remain in the residual atlas.
+// Aerial Step's rings in the standard view (close-view.ts AERIAL_RINGS, aerialRingState): two thin blue ellipses round the feet at
+// (x, foot) in pixels, gliding up to the shins and back half a cycle apart; the far half fainter, behind the legs. `half` 0 draws the
+// far halves (before the body), 1 the near halves (after it). No allocation.
+export function drawAerialRingsStd(ctx, g, x, foot, s, now, half) {
+  const S = aerialRingState(g, now); if (!S || !(S.a > 0)) return; const R = AERIAL_RINGS, D = R.std;
+  ctx.save(); ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) { const y = foot - (k ? S.h1 : S.h0) * D.shin * s;
+    if (!half) { ctx.globalAlpha = S.a * R.back; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, Math.PI, 2 * Math.PI); ctx.stroke(); }
+    else { ctx.globalAlpha = S.a; ctx.strokeStyle = R.color; ctx.lineWidth = Math.max(1, D.width * s / 40); ctx.beginPath(); ctx.ellipse(x, y, D.rx * s, D.ry * s, 0, 0, Math.PI); ctx.stroke(); ctx.strokeStyle = R.core; ctx.lineWidth = Math.max(.6, D.width * s / 80); ctx.stroke(); } }
+  ctx.restore();
+}
+// Aerial Step's cast in the standard view (close-view-hero.ts AERIAL_CAST_POSE draws it on the rig in Close View): the sprite
+// leans into its facing and two arms sweep back behind the shoulders, hands flat (palms down), over the sweep's own eased envelope
+// (aerialCastLead). Cut short, it eases out over AERIAL_CAST_POSE.outMs. Runtime only (AERIAL_STD); nothing allocated.
+const AERIAL_STD = { p: 1, at: -Infinity };
+export function aerialCastStd(g, now) {
+  const p = g.player, v = p?.castVisual, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (v?.spellKind === "aerial-step" && v.cancelled !== true && clock < (p.castUntil || 0)) { AERIAL_STD.p = 1 - ((p.castUntil || 0) - clock) / (Number(v.durationMs) || ACTION_MOTION.castMs); AERIAL_STD.at = clock; return aerialCastLead(AERIAL_STD.p); }
+  const age = clock - AERIAL_STD.at; if (!(age >= 0 && age < AERIAL_CAST_POSE.outMs) || AERIAL_STD.p >= 1) return 0;
+  const u = age / AERIAL_CAST_POSE.outMs; return aerialCastLead(AERIAL_STD.p) * (1 - u * u * (3 - 2 * u));
+}
+// AERIAL_HANDS_FREE in the standard view (close-view-hero.ts): through Aerial Step's cast, and its ease-out when cut short, the
+// weapon in hand (the sprite's blade and the Quandrix Staff) is not drawn; it is back once the cast is over. Read only.
+export function aerialHandsFreeStd(g, now) {
+  const p = g?.player, v = p?.castVisual, clock = g?.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
+  if (v?.spellKind === "aerial-step" && v.cancelled !== true && clock < (p.castUntil || 0)) return true;
+  const age = clock - AERIAL_STD.at; return age >= 0 && age < AERIAL_CAST_POSE.outMs && AERIAL_STD.p < 1;
+}
+// FALL_RESCUE.flash (game.ts): while a fall would kill where it lands now (game.fallDoomed), the screen's edges pulse red over the fall's
+// own clock (paused: held); Reduced Motion holds a steady tint. One gradient a frame, only while doomed.
+function drawFallDoom(ctx, g, w, h, now) {
+  const F = FALL_RESCUE.flash, clock = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, still = !!(g.presentation?.reduceMotion || g.presentation?.safeMode);
+  const a = still ? F.still : F.alpha * (.55 + .45 * Math.sin(clock / F.pulseMs * Math.PI * 2)), r1 = Math.hypot(w, h) / 2;
+  if (!(a > 0) || !(r1 > 0)) return;
+  const v = ctx.createRadialGradient(w / 2, h / 2, r1 * F.inner, w / 2, h / 2, r1); v.addColorStop(0, `rgba(${F.color},0)`); v.addColorStop(1, `rgba(${F.color},${a.toFixed(3)})`);
+  ctx.save(); ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); ctx.restore();
+}
+// LOW_HEALTH_EDGE (combat-visuals.ts): at 30% health or below, the death's static creeps in red at the screen's edges, in both
+// views. Its few small frames are made once per band step, quality and screen shape (one cache entry); a frame is one drawImage.
+const LHE_ART = { key: "", frames: [] };
+function lheCanvas(cw, ch) { const c = document.createElement("canvas"); c.width = cw; c.height = ch; return c; }
+function drawLowHealth(ctx, g, w, h, now, fallCue) {
+  const st = lowHealthEdgeState(g, now, fallCue); if (!st.show || !(w > 0) || !(h > 0) || typeof document === "undefined") return;
+  const q = g.presentation?.effectiveQuality, quality = q === "low" || q === "full" ? q : "balanced", aspect = Math.round(h / w * 10) / 10, key = `${quality}:${aspect}:${st.step}`;
+  if (key !== LHE_ART.key) { LHE_ART.key = key; LHE_ART.frames = lowHealthEdgeFrames(lheCanvas, quality, aspect, st.step); }
+  drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
+}
+let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
+const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
+function drawAerialArmsStd(ctx, x, y, s, facing, k) {
+  const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
+  ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, s * .07);
+  for (let i = -1; i <= 1; i += 2) {
+    const sx = cx + (side ? i * .05 : i * .15) * s, sy = cy + (side ? 0 : .02 * s);
+    const hx = side ? sx - side * A.back * k * s + i * .03 * s : sx + i * A.spread * k * s, hy = sy + A.hang * (1 - k) * s + (side ? -A.up * k * s : up ? A.up * k * s : -A.up * 1.5 * k * s);
+    ctx.strokeStyle = A.arm; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo((sx + hx) / 2, (sy + hy) / 2 + .02 * s); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = A.hand; ctx.beginPath(); ctx.ellipse(hx, hy, Math.max(1.5, s * .06), Math.max(1, s * .03), 0, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
 export function drawNativePlayerDecorations(ctx, g, s, now) {
   const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
   const x=(p.x+.5)*s,foot=(p.y+.82)*s;
@@ -166,7 +229,7 @@ export function drawNativeCreatureFloor(ctx, g, e, s, now) {
   if (e.fracShaman) {
     for (const k of [0, 1]) { const f = (t * .8 + k * .5) % 1; ctx.globalAlpha = p.alpha * (1 - f); ring(s * (.8 + f * .9), '#be78ffcc', Math.max(2, s * .07)); }
     ctx.globalAlpha = p.alpha * .35; ctx.strokeStyle = '#be78ff'; ctx.lineWidth = Math.max(2, s * .07);
-    let links = 0; for (const m of g.enemies) { if (links >= 20) break; if (m.dead || m.hidden || m.gloomVeil || m.wardBy !== e.id || !m.warded || !shownInDungeon(g, m)) continue;
+    let links = 0; for (const m of g.enemies) { if (links >= 20) break; if (m.dead || m.hidden || m.gloomVeil || m.wardBy !== e.id || !m.warded || !shownInDungeon(g, m) || !creatureInSight(g, m)) continue;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo((m.x + .5) * s, (m.y + .82) * s); ctx.stroke(); links++; }
   }
   if (p.stagger) drawDazed(ctx, e, s, quiet ? 0 : now, p.stagger, 'floor');
@@ -275,6 +338,45 @@ export function rendererDiagnostics() { return { ...renderCacheStats }; }
 // `ground` (its checks, any rebuild or patch, and the copy to the screen); main.ts adds what it draws after render(). Every part
 // is reset when a timed render begins, so a frame that returns early never reports the frame before's numbers.
 export const renderTimings = { on: false, ground: 0, world: 0, overlay: 0, view: 0, groundImage: 0, endedAt: 0 }; // endedAt: when the last timed render returned
+function drawBeastHotelBed(ctx, bed, tileSize, now, reducedMotion) {
+  const x = (bed.x + .5) * tileSize;
+  const y = (bed.y + .75) * tileSize;
+  const u = tileSize;
+  ctx.save();
+  ctx.fillStyle = "#4a3729";
+  ctx.fillRect(x - .83*u, y - .72*u, 1.66*u, .72*u);
+  ctx.fillStyle = "#dfd5bd";
+  ctx.fillRect(x - .73*u, y - .66*u, 1.46*u, .55*u);
+  if (bed.recovering) {
+    const breath = reducedMotion ? 0 : Math.sin(now / 540) * .026*u;
+    ctx.fillStyle = "#597467";
+    ctx.beginPath();
+    ctx.ellipse(x - .13*u, y - .37*u, .55*u, .24*u + breath, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#f2cf35";
+    ctx.beginPath();
+    ctx.ellipse(x + .42*u, y - .53*u, .26*u, .18*u, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#fff0a0";
+    for (const offset of [-.11, .02, .12]) {
+      ctx.beginPath();
+      ctx.moveTo(x+(.4+offset)*u,y-.59*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.77*u);
+      ctx.lineTo(x+(.49+offset)*u,y-.56*u);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#f4f6ef";
+    ctx.fillRect(x + .58*u, y - .49*u, .23*u, .05*u);
+    ctx.fillStyle = "#b94143";
+    ctx.fillRect(x + .76*u, y - .49*u, .05*u, .05*u);
+  } else {
+    drawPackMonster(ctx, {
+      id: bed.id, kind: "triceratops", packKind: "triceratops",
+      x: bed.x, y: bed.y - .23, scale: 1.38, facingX: 1, reduceMotion: reducedMotion,
+    }, tileSize, now, "right");
+  }
+  ctx.restore();
+}
 function renderableObject(g,o){
   // Keep progression/interaction records, but do not repaint a consumed physical door or gate.
   const width = Math.max(1,Number(g.map?.width)||(g.area === "dungeon" ? 24 : 32));
@@ -1625,6 +1727,12 @@ export function drawGateRevenant(ctx, e, s, now, ox = 0, oy = 0) { // exported f
   ctx.fill();
   ctx.restore();
 }
+// Turns what is drawn next about the joint (x, y) by `angle` radians (clockwise); returns whether the caller must restore.
+function limbTurn(ctx, x, y, angle) {
+  if (!angle) return false;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.translate(-x, -y);
+  return true;
+}
 function actor(
   ctx,
   x,
@@ -1639,6 +1747,7 @@ function actor(
   segments = 1,
   segmentSpacing = 0,
   palette = null, // release 679: a tree's seasonal colours
+  limbs = null, // the core bestiary's limb pose (monster-render.ts coreLimbPose): arms, jaws, weapons and tails swing on their joints
 ) {
   const p = palette || COLORS[kind] || COLORS.ashling,
     k = x * s + s / 2,
@@ -1677,11 +1786,14 @@ function actor(
       Math.max(2, Math.round(h * s * sc)),
     );
   };
+  const fl = facing === "left" ? -1 : 1; // limb joints below are at (k + a * s * sc, base + b * s * sc - bob) for body units (a, b)
   if(kind==="voidSentinel" || kind==="gateRevenant"){
     ctx.lineCap="round";
     for(let i=0;i<7;i++){
       const side=i%2?-1:1,a=-Math.PI*.15+(i/6)*Math.PI*1.3,wave=Math.sin(Number(frame)*.18+i*1.7)*.18,len=(.48+(i%3)*.12)*s*sc;
+      const t=limbTurn(ctx,k,base-s*.38*sc,(i%2?1:-1)*coreLimbAngle(limbs,"tentacle")); // each tentacle curls on its root on the attack clocks
       ctx.strokeStyle=i===0&&state==="attack"?"#ff6e89":p[i%2];ctx.lineWidth=Math.max(2,s*.07*sc);ctx.beginPath();ctx.moveTo(k,base-s*.38*sc);ctx.quadraticCurveTo(k+Math.cos(a+wave)*len*.55+side*s*.08,base-s*.38*sc+Math.sin(a+wave)*len*.45,k+Math.cos(a+wave)*len,base-s*.38*sc+Math.sin(a+wave)*len);ctx.stroke();
+      if(t)ctx.restore();
     }
   }
   if (kind === "player") {
@@ -1692,32 +1804,62 @@ function actor(
     rect(p[2], 0.04, -0.66, 0.04, 0.04);
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
-    rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05);
+    if (!STD_HANDS_FREE) rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand (AERIAL_HANDS_FREE: put away for Aerial Step's cast)
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
   else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
   else if(kind==='knifeChoir'){rect(p[1],-.2,-.72,.4,.68);for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.strokeStyle=p[0];ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(k,base-s*.4*sc);ctx.lineTo(k+Math.cos(a)*s*.55*sc,base-s*.4*sc+Math.sin(a)*s*.45*sc);ctx.stroke()}rect(p[2],-.08,-.62,.16,.14)}
   else if (kind === "glassMite") {
+    // legs splay and gather on their hips (the pair on the side it faces leads); the crystal crown and the mandibles move apart
+    for (const q of [-0.3, -0.1, 0.12, 0.3]) { const t = limbTurn(ctx, k + (q + .025) * s * sc, base + (-.12) * s * sc - bob, fl * coreLimbAngle(limbs, (q > 0) === (fl > 0) ? "lead" : "off")); rect(p[0], q, -0.12, 0.05, 0.19); if (t) ctx.restore(); }
+    for (const side of [-1, 1]) { const t = limbTurn(ctx, k + (side * .045) * s * sc, base + (-.1) * s * sc - bob, -side * coreLimbAngle(limbs, "jaw")); rect(p[2], side < 0 ? -.08 : .04, -0.1, 0.04, 0.09); if (t) ctx.restore(); }
     rect(p[1], -0.31, -0.29, 0.62, 0.22);
-    for (const q of [-0.3, -0.1, 0.12, 0.3]) rect(p[0], q, -0.12, 0.05, 0.19);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.29) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.17, -0.48, 0.18, 0.25);
     rect(p[2], -0.09, -0.43, 0.04, 0.1);
     rect(p[0], 0.04, -0.42, 0.15, 0.19);
+    if (t) ctx.restore();
   } else if (kind === "sparkWarden") {
     rect(p[1], -0.15, -0.7, 0.3, 0.65);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.7) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.2, -0.78, 0.4, 0.16);
+    if (t) ctx.restore();
+    // the staff, turned about the fist toward the side it faces
+    t = limbTurn(ctx, k + (-.275) * s * sc, base + (-.35) * s * sc - bob, fl * coreLimbAngle(limbs, "staff"));
     rect(p[2], -0.3, -0.75, 0.05, 0.7);
+    if (t) ctx.restore();
     for (let q = 0; q < 3; q++) rect(p[2], -0.1, -0.57 + q * 0.15, 0.2, 0.04);
   } else if (kind === "ashenHound") {
-    rect(p[1],-.32,-.34,.62,.3);rect(p[0],.12,-.48,.3,.28);rect(p[2],.34,-.42,.06,.06);rect(p[0],-.38,-.45,.2,.09);rect(p[1],-.25,-.12,.08,.18);rect(p[1],.18,-.12,.08,.18);
+    // drawn facing right, as always: the tail, hind leg and foreleg on their joints, the head on its neck with a hinged jaw
+    let t = limbTurn(ctx, k + (-.18) * s * sc, base + (-.41) * s * sc - bob, coreLimbAngle(limbs, "tail")); rect(p[0],-.38,-.45,.2,.09); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (-.21) * s * sc, base + (-.12) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1],-.25,-.12,.08,.18); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.22) * s * sc, base + (-.12) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1],.18,-.12,.08,.18); if (t) ctx.restore();
+    rect(p[1],-.32,-.34,.62,.3);
+    t = limbTurn(ctx, k + (.15) * s * sc, base + (-.36) * s * sc - bob, coreLimbAngle(limbs, "head"));
+    const j = limbTurn(ctx, k + (.2) * s * sc, base + (-.22) * s * sc - bob, coreLimbAngle(limbs, "jaw")); rect(p[1],.2,-.25,.2,.06); if (j) ctx.restore();
+    rect(p[0],.12,-.48,.3,.23);rect(p[2],.34,-.42,.06,.06);
+    if (t) ctx.restore();
   } else if (kind === "veilMoth") {
-    rect(p[1],-.07,-.55,.14,.5);rect(p[0],-.42,-.62,.34,.35);rect(p[0],.08,-.62,.34,.35);rect(p[2],-.03,-.7,.06,.08);
+    // the wings beat on their roots, the far one mirroring the near
+    for (const side of [-1, 1]) { const t = limbTurn(ctx, k + (side * .08) * s * sc, base + (-.5) * s * sc - bob, side * coreLimbAngle(limbs, "wing")); rect(p[0], side < 0 ? -.42 : .08, -.62, .34, .35); if (t) ctx.restore(); }
+    rect(p[1],-.07,-.55,.14,.5);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[2],-.03,-.7,.06,.08); if (t) ctx.restore();
   } else if (kind === "rootBrute") {
-    rect(p[1],-.34,-.62,.68,.6);rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05);rect(p[0],-.47,-.5,.16,.52);rect(p[0],.31,-.5,.16,.52);
+    rect(p[1],-.34,-.62,.68,.6);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[0],-.27,-.82,.54,.27);rect(p[2],-.14,-.73,.08,.05); if (t) ctx.restore();
+    // the knotted arms on their shoulders (the one on the side it faces leads)
+    for (const side of [-1, 1]) { t = limbTurn(ctx, k + (side * .39) * s * sc, base + (-.48) * s * sc - bob, fl * coreLimbAngle(limbs, side === fl ? "lead" : "off")); rect(p[0], side < 0 ? -.47 : .31, -.5, .16, .52); if (t) ctx.restore(); }
   } else if (kind === "coilStalker") {
-    rect(p[1],-.28,-.5,.56,.42);rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.34,-.4,.68,.06);rect(p[2],-.04,-.62,.08,.08);
+    // the head strikes on its neck toward the side it faces; two fangs gape under it and shut
+    rect(p[1],-.28,-.5,.56,.42);rect(p[2],-.34,-.4,.68,.06);
+    const t = limbTurn(ctx, k + (0) * s * sc, base + (-.5) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
+    for (const side of [-1, 1]) { const f = limbTurn(ctx, k + (side * .085) * s * sc, base + (-.48) * s * sc - bob, -side * coreLimbAngle(limbs, "jaw")); rect(p[2], side < 0 ? -.1 : .07, -.48, .03, .07); if (f) ctx.restore(); }
+    rect(p[0],-.18,-.7,.36,.24);rect(p[2],-.04,-.62,.08,.08);
+    if (t) ctx.restore();
   } else if (kind === "cinderWisp") {
-    rect(p[1],-.18,-.55,.36,.38);rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12);rect(p[2],-.1,-.18,.2,.12);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.2) * s * sc - bob, fl * coreLimbAngle(limbs, "tail")); rect(p[2],-.1,-.18,.2,.12); if (t) ctx.restore();
+    rect(p[1],-.18,-.55,.36,.38);
+    t = limbTurn(ctx, k + (0) * s * sc, base + (-.52) * s * sc - bob, fl * coreLimbAngle(limbs, "head")); rect(p[0],-.12,-.72,.24,.24);rect(p[2],-.06,-.63,.12,.12); if (t) ctx.restore();
   } else if (kind === "voidSentinel") {
     ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.42*sc,s*.3*sc,s*.36*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.lineWidth=Math.max(2,s*.04);ctx.stroke();rect(p[0],-.2,-.66,.4,.22);rect(p[2],-.07,-.57,.14,.08);
   } else if (kind === "gateRevenant") {
@@ -1725,28 +1867,48 @@ function actor(
   } else if (kind === "hollowMarshal") {
     rect(p[1], -0.29, -0.66, 0.58, 0.62);
     rect(p[0], -0.36, -0.62, 0.72, 0.18);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.6) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.23, -0.83, 0.46, 0.23);
     rect("#181717", -0.15, -0.75, 0.3, 0.07);
-    rect(p[2], 0.3, -0.57, 0.09, 0.48);
+    if (t) ctx.restore();
+    // the halberd, carried on the side it faces and turned about the fist: levelled, reaped up from low or chopped down
+    t = limbTurn(ctx, k + (fl * .345) * s * sc, base + (-.2) * s * sc - bob, fl * coreLimbAngle(limbs, "weapon"));
+    rect(p[2], fl > 0 ? 0.3 : -0.39, -0.57, 0.09, 0.48);
+    rect(p[2], fl > 0 ? 0.28 : -0.41, -0.66, 0.13, 0.07);
+    if (t) ctx.restore();
   } else if (kind === "riftColossus") {
+    // drawn as always (the great arm on the right): each arm on its shoulder, the head on its neck
+    let t = limbTurn(ctx, k + (-.32) * s * sc, base + (-.55) * s * sc - bob, coreLimbAngle(limbs, "off")); rect(p[0], -0.49, -0.57, 0.35, 0.48); if (t) ctx.restore();
     rect(p[1], -0.41, -0.72, 0.7, 0.68);
-    rect(p[0], -0.49, -0.57, 0.35, 0.48);
-    rect(p[0], 0.13, -0.88, 0.38, 0.75);
-    rect("#22191a", -0.18, -0.8, 0.28, 0.22);
-    rect(p[2], -0.09, -0.7, 0.08, 0.07);
+    t = limbTurn(ctx, k + (.32) * s * sc, base + (-.82) * s * sc - bob, coreLimbAngle(limbs, "lead")); rect(p[0], 0.13, -0.88, 0.38, 0.75); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (-.04) * s * sc, base + (-.6) * s * sc - bob, coreLimbAngle(limbs, "head")); rect("#22191a", -0.18, -0.8, 0.28, 0.22); rect(p[2], -0.09, -0.7, 0.08, 0.07); if (t) ctx.restore();
   } else if (kind === "mossGrazer") {
-    rect(p[1], -.34, -.35, .62, .28); rect(p[0], .16, -.52, .27, .25); rect(p[2], .33, -.45, .06, .06); rect(p[1], -.24, -.13, .07, .18); rect(p[1], .18, -.13, .07, .18);
+    let t = limbTurn(ctx, k + (-.2) * s * sc, base + (-.13) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1], -.24, -.13, .07, .18); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.215) * s * sc, base + (-.13) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1], .18, -.13, .07, .18); if (t) ctx.restore();
+    rect(p[1], -.34, -.35, .62, .28);
+    t = limbTurn(ctx, k + (.2) * s * sc, base + (-.35) * s * sc - bob, coreLimbAngle(limbs, "head")); rect(p[0], .16, -.52, .27, .25); rect(p[2], .33, -.45, .06, .06); if (t) ctx.restore();
   } else if (kind === "lanternDoe") {
-    rect(p[1], -.28, -.39, .55, .3); rect(p[0], .12, -.62, .25, .28); rect(p[2], .25, -.55, .07, .07); rect(p[1], -.2, -.14, .06, .22); rect(p[1], .16, -.14, .06, .22); rect(p[2], .19, -.79, .04, .21); rect(p[2], .31, -.79, .04, .21);
+    let t = limbTurn(ctx, k + (-.17) * s * sc, base + (-.14) * s * sc - bob, coreLimbAngle(limbs, "hind")); rect(p[1], -.2, -.14, .06, .22); if (t) ctx.restore();
+    t = limbTurn(ctx, k + (.19) * s * sc, base + (-.14) * s * sc - bob, coreLimbAngle(limbs, "fore")); rect(p[1], .16, -.14, .06, .22); if (t) ctx.restore();
+    rect(p[1], -.28, -.39, .55, .3);
+    t = limbTurn(ctx, k + (.18) * s * sc, base + (-.38) * s * sc - bob, coreLimbAngle(limbs, "head")); rect(p[0], .12, -.62, .25, .28); rect(p[2], .25, -.55, .07, .07); rect(p[2], .19, -.79, .04, .21); rect(p[2], .31, -.79, .04, .21); if (t) ctx.restore();
   } else if (kind === "hushling") {
-    ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);
+    ctx.fillStyle=p[2]+"55";ctx.beginPath();ctx.arc(k,base-s*.4*sc,s*.38*sc,0,7);ctx.fill();rect(p[1],-.18,-.55,.36,.4);const t=limbTurn(ctx,k + (0) * s * sc, base + (-.52) * s * sc - bob,fl*coreLimbAngle(limbs,"head"));rect(p[0],-.13,-.7,.26,.24);rect(p[2],-.05,-.62,.1,.08);if(t)ctx.restore();
   } else if (kind === "ashling") {
     rect(p[1], -0.2, -0.55, 0.4, 0.5);
+    let t = limbTurn(ctx, k + (0) * s * sc, base + (-.5) * s * sc - bob, fl * coreLimbAngle(limbs, "head"));
     rect(p[0], -0.16, -0.72, 0.32, 0.24);
     rect(p[0], -0.25, -0.83, 0.08, 0.2);
     rect(p[0], 0.17, -0.83, 0.08, 0.2);
     rect(p[2], -0.08, -0.65, 0.04, 0.04);
-    rect(p[1], -0.28, -0.28, 0.12, 0.25);
+    if (t) ctx.restore();
+    // two clawed arms on their shoulders (the one on the side it faces leads the swing)
+    for (const side of [-1, 1]) {
+      t = limbTurn(ctx, k + (side * .23) * s * sc, base + (-.44) * s * sc - bob, fl * coreLimbAngle(limbs, side === fl ? "lead" : "off"));
+      rect(p[0], side < 0 ? -0.29 : 0.17, -0.46, 0.12, 0.27);
+      rect(p[2], side < 0 ? -0.28 : 0.18, -0.2, 0.1, 0.05);
+      if (t) ctx.restore();
+    }
   } else if (kind === "npc" || kind === "shipwright" || kind === "villager" || kind === "militia" || TRAVELER_LOOKS.has(kind)) {
     rect(p[1], -0.22, -0.58, 0.44, 0.56);
     rect(p[0], -0.18, -0.75, 0.36, 0.23);
@@ -2514,6 +2676,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
       if (!dungeon && g.map?.canopy?.box) drawCanopyBehindTrunk(gc, T, mw, s, g.map.canopy.box, (q, x, y) => tile(gc, q, x, y, s, T, mw, activeBuildingId, scarSurface)); } // great-tree review: platforms behind the trunk, drawn over its face
     finally { setLandscapeStaticPass(false); }
     if (g.map.farInk && !dungeon) inkWash(gc, mw, mh, s, top); // release 719: the Ink Wastes
+    if (g.map.bizarro && !dungeon) bizarroWash(gc, mw, mh, s); // the bizarro pockets (strange.ts BIZARRO): everything a colour off
     Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, scarSurface, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }
@@ -2606,7 +2769,8 @@ export const standardStep = () => ({ off: STEP.off, ground: STEP.ground }); // f
 export function render(ctx, g, w, h, now) {
   const timedView = renderTimings.on && !closeViewCapturing(), tv = timedView ? performance.now() : 0; // a capture is a render inside the frame's own
   if (timedView) { renderTimings.ground = renderTimings.world = renderTimings.overlay = renderTimings.view = renderTimings.groundImage = 0; }
-  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
+  if (!closeViewCapturing()) sightFrame(); // labyrinths.ts sight lines: one bounded budget of fresh line walks a frame (both views)
+  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { drawLowHealth(ctx, g, w, h, now, false); if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   if (timedView) renderTimings.view = t0 - tv;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
@@ -2653,7 +2817,8 @@ export function render(ctx, g, w, h, now) {
     : g.area === "overworld" && g.skyAir != null && jumping && !g.deckHop /* roof decks: a hop on or onto a roof is drawn as an ordinary jump */
       ? Math.max(groundLift(p.x, p.y), g.skyAir * LIFT_PER_LEVEL * (g.skyAirScale || 1) - (worldCapture ? liftAt(g.map, mw, p.x, p.y) : 0))
       : null;
-  const fallLift = g.fall && g.area === "overworld" && Number.isFinite(g.fall.z) ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1)) : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it
+  const fallLift = g.fall && Number.isFinite(g.fall.z) ? g.area === "overworld" ? Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL * (g.fall.scale || 1))
+    : g.area === "dungeon" ? flatFloor ? Math.max(0, g.fall.z - (interior ? supportLevel : g.elevationHere?.(p.x, p.y) || 0)) * LIFT_PER_LEVEL : Math.max(groundLift(p.x, p.y), g.fall.z * LIFT_PER_LEVEL) : null : null; // FALL (game.ts): a fall is drawn at its height, and the camera follows it (FALL_EVERYWHERE: indoors too, over the floor drawn flat)
   const stepLift = standardStepEase(g, hopLift ?? groundLift(p.x, p.y), jumping, now, worldCapture || closeViewCapturing() || fallLift != null || !!g.glide || !!g.droneLift || g.area !== "overworld" || !!g.save?.boat?.aboard, lift / s); // a step up or down a level (or a hop's landing on the next branch) is eased, never cut (standardStepEase)
   const viewLift = worldCapture ? 0 : g.glide && g.area === "overworld" ? discLift(g.glide.z) * CANOPY_LIFT : fallLift ?? (hopLift ?? groundLift(p.x, p.y)) + stepLift; // 637: a glide is drawn at the great tree's scale // release 635: the camera follows a glide's height
   const spinoShakeAt = shakeOffset(g.spinoShake, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Spinosaurus's roar (spino-rex.ts): none under reduced motion
@@ -2689,7 +2854,7 @@ export function render(ctx, g, w, h, now) {
   // Release 635: high up, the ground gives way to sky: blue fading in with height, drifting cloud, the great tree drawn again
   // over it so its branches stay in sight. Height in levels: a glide's, or the tile underfoot's on a great tree's section.
   let skyA = 0, heightNow = 0; // the Wayfarer's height in levels on a great tree's section (the crown veil reads it)
-  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? (g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0)) : 0, floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
+  if (g.area === "overworld" && !worldCapture) { const H = g.glide ? g.glide.z : g.map?.canopy?.top ? Math.max(g.skyAir != null && jumping ? Math.max(g.skyAir, tileUnder(g.map, mw, p.x, p.y)?.elev || 0) : (tileUnder(g.map, mw, p.x, p.y)?.elev || 0), g.aerialHeld?.() ? g.fall.z : 0) : 0, /* Aerial Step: the held air's height */ floor = g.glide ? 0 : canopyFloorReveal(g.map?.canopy, H), a = Math.max(floor, Math.min(1, (H - SKY.from) / (SKY.full - SKY.from))); skyA = a; heightNow = H; // a hop over a gap keeps its height; a canopy grove's floor is gone up among its crowns (CANOPY_FLOOR)
     if (a > 0) { drawSkyAbove(ctx, p.x * s - w / 2, (p.y - viewLift) * s - h / 2, w, h, a, now, s); if (floor > 0) drawCanopyFloor(ctx, g.map.canopy, s, floor); const c = g.map?.canopy?.box; if (c) { for (let y = Math.max(0, c.y); y < Math.min(mh, c.y + c.n); y++) for (let x = Math.max(0, c.x); x < Math.min(mw, c.x + c.n); x++) { const q = g.map.tiles[y * mw + x]; if (q?.canopy) tile(ctx, q, x, y, s, g.map.tiles, mw); } drawCanopyBehindTrunk(ctx, g.map.tiles, mw, s, c, (q, x, y) => tile(ctx, q, x, y, s, g.map.tiles, mw)); } } }
   const t1 = timed ? performance.now() : 0;
   for(const h of g.eliteHazards||[])if(visibleInCamera(h,l,t,r,b,h.radius||2)){const root=h.kind==='root-eruption',arming=h.arming>0;ctx.fillStyle=root?(arming?'#d1a75d22':'#758f3f66'):"#81994a55";ctx.strokeStyle=root?(arming?'#efd389cc':'#b7ce68dd'):"#b7ce6877";ctx.lineWidth=arming?3:2;ctx.beginPath();ctx.ellipse((h.x+.5)*s,(h.y+.65)*s,h.radius*s,h.radius*s*.55,0,0,7);ctx.fill();ctx.stroke();if(root){ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.moveTo((h.x+.5)*s,(h.y+.65)*s);ctx.lineTo((h.x+.5+Math.cos(a)*h.radius)*s,(h.y+.65+Math.sin(a)*h.radius*.55)*s)}ctx.stroke()}}
@@ -2824,7 +2989,8 @@ export function render(ctx, g, w, h, now) {
         y: o.disc ? o.y + SKY_DISCS.radius + .002 : o.y, x: o.x, lift: o.disc ? discLift(o.elev || 0) : 0, // release 587: a skyway door stands on its disc
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
-          if (o.kind === "wayfindingCue") waymark(ctx,o,s);
+          if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
           else if(o.kind==="displacementTrap"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle='#806d8b66';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,s*.22,.3,5.5);ctx.stroke()}
@@ -2927,7 +3093,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "saplingDais" || o.kind === "riteAshes") { drawRiteTree(ctx, o, s, now); // the Rite of Ascendancy
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
-          } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "seedFind") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawSeedFind(ctx, o, s, now); if (L) ctx.restore(); // travel seeds; a seed hunt's seed high in a great tree is drawn up there (tall-towers.ts)
           } else if (o.kind === "stegoTail") { drawStegoTail(ctx, o, s, now); // the Stego Bait: the severed tail, lying where it fell
           } else if (o.kind === "worldCache") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawWorldCache(ctx, o, s, now); if (L) ctx.restore(); // world caches (world.ts WORLD_CACHES)
           } else if (o.kind === "cacheLever") { drawPentLever(ctx, o, s, now); // and the lever that lifts an alcove's bars
@@ -2959,7 +3125,8 @@ export function render(ctx, g, w, h, now) {
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
-      draws.push({
+      if (!creatureInSight(g, e)) { if (!e.hidden && !e.ambient && creatureSightLevel(g, e) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
+      else draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
         enemy: e,
         alpha: phaseShielded(e) ? PHASE_SHIELD.alpha : undefined, // a linked-invulnerable creature the Wayfarer can walk through is ghosted (Close View reads it too)
@@ -2978,7 +3145,7 @@ export function render(ctx, g, w, h, now) {
           if ((e.affixes?.length || e.warded || e.fracShaman) && !(e.stalker && e.hidden)) { ctx.save(); const cx = (e.x + .5) * s, cy = (e.y + .45) * s, tt = now / 1000; // release 657: affixes, wards, shamans; 691: a lurking Stalker gives nothing away (695: nor a veiled or mirage one); 694: the comment had swallowed the save and cx/cy/tt
             if (e.affixes?.includes("droneSwarm")) for (let i = 0; i < AFFIXES.droneSwarm.count; i++) { const d = dronePos(e, i, tt), dx = d.x * s, dy = d.y * s; ctx.fillStyle = "#2b3a1e"; ctx.strokeStyle = AFFIXES.droneSwarm.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx, dy - s * .12); ctx.lineTo(dx + s * .12, dy); ctx.lineTo(dx, dy + s * .12); ctx.lineTo(dx - s * .12, dy); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#e9ffb0"; ctx.fillRect(dx - 1.5, dy - 1.5, 3, 3); }
             if (e.warded) { ctx.strokeStyle = `rgba(180,140,255,${.5 + .3 * Math.sin(now / 180)})`; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.arc(cx, cy, s * (.55 + (e.bodyRadius || .4) * .5), 0, 7); ctx.stroke(); }
-            if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
+            if (e.fracShaman) { ctx.strokeStyle = `rgba(190,120,255,${.55 + .35 * Math.sin(now / 140)})`; ctx.lineWidth = Math.max(2, s * .07); for (const k of [0, 1]) { const rr = s * (.8 + ((tt * .8 + k * .5) % 1) * .9); ctx.globalAlpha = 1 - ((tt * .8 + k * .5) % 1); ctx.beginPath(); ctx.ellipse(cx, (e.y + .82) * s, rr, rr * .45, 0, 0, 7); ctx.stroke(); } ctx.globalAlpha = .35; for (const m of g.enemies) if (!m.dead && m.wardBy === e.id && m.warded && creatureInSight(g, m)) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo((m.x + .5) * s, (m.y + .45) * s); ctx.stroke(); } ctx.globalAlpha = 1; }
             const names = affixNames(e); if (names.length) { ctx.font = `${Math.max(9, s * .24)}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe2b0"; ctx.strokeStyle = "#000b"; ctx.lineWidth = 3; const ty = (e.y - (e.scale || 1) * .55) * s + ((e.packName && e.fracRank === "rare") || e.fracWarden ? s * .32 : 0); ctx.strokeText(names.join(" · "), cx, ty); ctx.fillText(names.join(" · "), cx, ty); }
             ctx.restore(); }
           const f = e.ai?.facing || "down",
@@ -2997,7 +3164,8 @@ export function render(ctx, g, w, h, now) {
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
           if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "wildStego", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
-          if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
+          if (drawsBizarro(g.map, g.area, e) && drawBizarroCreature(ctx, e, e.x + ox, e.y + oy, s, f, e.telegraph > 0 ? "telegraph" : e.strike > 0 ? "attack" : "walk", e.kind === "voidSentinel" ? now / 180 : Math.floor(e.ai?.step || 0))) { /* the bizarro world: the rounded style, only in the Askew and a bizarro pocket (monster-render.ts drawsBizarro) */ }
+          else if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
             e.x + ox,
@@ -3011,6 +3179,8 @@ export function render(ctx, g, w, h, now) {
             e.scale,
             e.segments,
             e.segmentSpacing,
+            null,
+            coreLimbPose(e, now, cueQuiet), // the core bestiary's limbs swing on its attack clocks (monster-render.ts)
           );
           if (e.strike > 0) {
             ctx.strokeStyle = "#c28152cc";
@@ -3035,7 +3205,13 @@ export function render(ctx, g, w, h, now) {
     else draws.push({ y: d.y - .75 + d.r, fn: () => drawSkyDisc(ctx, d, s, now) });
   }
   const captureDrone=closeViewCapturing()&&(closeViewBareFloor()||closeViewWorldCapture())&&!!g.droneUp?.()&&!!g.droneAt; // Close View play-through of 926 (bug 7): the open world's scene (world capture) places the drone model too, not only interiors
+  const mountRide = g.mountRide?.(), mountPose = triceratopsHornPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+  const drillPose = triceratopsDrillPose(g, mountRide, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), mountBounds = drillPose ? TRICERATOPS_DRILL_POSE : TRICERATOPS_HORN_POSE;
+  // Reserve the whole rotating portrait, including its support clearance, in the
+  // atlas. The fixed camera envelope also prevents zoom pulses during a drill.
+  const mountComposite = mountRide?.beast === "triceratops" ? { halfWidth: drillPose ? TRICERATOPS_COMPOSITE.halfWidth : mountBounds.halfWidth, height: (drillPose ? TRICERATOPS_COMPOSITE.drillHeight : mountBounds.height) + Math.max(0, lift / s), below: 0, frameHalfWidth: TRICERATOPS_COMPOSITE.halfWidth, frameHeight: mountRide.variant === "silly" ? TRICERATOPS_COMPOSITE.frameHeight : TRICERATOPS_COMPOSITE.normalHeight, aim: drillPose || mountPose, viewFacing: null, viewAim: null } : null;
   const playerDraw = {
+    mountComposite,
     nativeLift: playerFormPresentation(g)?.lift || 0,
     nativeEffects: captureDrone || !!playerFormPresentation(g)?.mech || (g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now) < (p.stunnedUntil || 0),
     nativeDecorations: () => drawNativePlayerDecorations(ctx,g,s,g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now),
@@ -3060,6 +3236,7 @@ export function render(ctx, g, w, h, now) {
         );
         ctx.fill();
       }
+      if (fallLift != null && !g.glide) { const up = playerDraw.lift || 0; if (up > .04) { const k = Math.max(.35, 1 - up / 6); ctx.fillStyle = "#05050466"; ctx.beginPath(); ctx.ellipse((p.x + .5) * s, (p.y + .82 + up) * s, s * .22 * k, s * .07 * k, 0, 0, 7); ctx.fill(); } } // FALL: the shadow on the ground below, smaller the higher the fall (the height cue)
       if (g.area === "overworld" && g.save.boat?.aboard) {
         // A jump lifts the skiff with the Wayfarer (release 158: leap a rogue wave's crest).
         const shieldLeft = Number(g.save.boat.shield) || 0; // release 269: under the hull guard, the skiff is a longboat (flickering back in its last 10 s)
@@ -3082,7 +3259,14 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      const ride = g.area === "overworld" ? g.mountRide?.() : null, seatInfo = ride ? drawMount(ctx, ride, p, s, now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      // The Silly Goose's drill (Tim, 2026-11-18: no spin of the body): mount, saddle and rider stay upright as one group, with a small
+      // wobble; the spin is the whirlwind round him (triceratops-render.ts). The shadow stays at the feet.
+      if (drillPose) {
+        drawMountShadow(ctx, mountRide, p, s, lift);
+        const w = (Number(drillPose.bank) || 0) * .35, fx = (p.x + .5) * s, fy = (p.y + .82) * s - lift;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(w); ctx.scale(1, 1); ctx.translate(-fx, -fy); // one upright group (unit scale: never flipped)
+      }
+      const ride = mountRide, mountFacing = drillPose ? triceratopsDrillFacing(mountComposite?.viewFacing, drillPose) : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3092,8 +3276,12 @@ export function render(ctx, g, w, h, now) {
       const suited = (mech && g.save.mech?.empowered === true) || seaSuit; // release 389: empowered, the robot is a svelte silver suit in the Wayfarer's place
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
-      const rushLean = kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
+      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; // AERIAL_HANDS_FREE: the weapon put away for the cast
+      const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
+      if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 0); // Aerial Step: the rings' far halves, behind the legs
       if (suited) drawPowerSuit(ctx, p.x, p.y - (lift + mechLift + hover) / s, s, p.facing, now, Math.floor(p.walkPhase || 0), now < (p.attackUntil || 0), g.mechBoosting || seaSuit); else actor(
         ctx,
         p.x + (seatInfo ? seatInfo.dx / s : 0), // release 748: on the mount's back
@@ -3103,15 +3291,18 @@ export function render(ctx, g, w, h, now) {
         p.facing,
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
-      );
-      if (rushLean) { ctx.restore(); drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
-      if (!suited && !mech && !kd && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
+      ); STD_HANDS_FREE = false;
+      if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
+      if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
+      if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them
+      if (!suited && !mech && !kd && !handsFree && g.save.activeWeaponSlot !== "secondary" && isQuandrixStaff(g.save.equipment?.primary)) drawQuandrixStaff(ctx, (p.x + .5 + (seatInfo ? seatInfo.dx / s : 0)) * s, (p.y + .45) * s - lift - seat, s, p.facing, now < (p.attackUntil || 0), p.attackVisual?.aim || g.save.lastAim); // the Quandrix Staff in hand (2026-11-13)
       if (seatInfo) drawMountFront(ctx); // release 748: a riding bowl's near rim over the rider
       // Stegosaur's Grip: holding a wall, both hands reach up onto it (a still pose; nothing moves, so Reduced Motion is unchanged).
       if (g.wallCling && !suited && !mech) drawClingGrip(ctx, p.x, p.y - lift / s, s, g.wallCling.nx, g.wallCling.ny);
       if (!suited && !mech && !kd && !seatInfo && !g.wallCling) drawFallArms(ctx, g, p.x, p.y - lift / s, s, now); // FALL_POSE: the arms out, flapping a little on a long fall
       if (kd) { ctx.restore(); drawShockSparks(ctx, (p.x + .5) * s, (p.y + .9) * s - lift, s, now); }
       if (subHidden) ctx.restore();
+      if (drillPose) ctx.restore();
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "front", 0, false, g.mechBoosting);
       if (drone&&!captureDrone) { const carry = !!g.mechBoosting; drawDrone(ctx, carry ? p.x : g.droneAt.x, carry ? p.y - (lift + mechLift) / s - .62 : g.droneAt.y - lift / s, s, p.facing, now, carry, g.droneHealFx || 0); // release 321
         const m = g.save.mech, bx = (p.x + .08) * s, by = (p.y + 1.1) * s - lift, bw = s * .84, bh = Math.max(3, s * .08); // carry (blue) and mend readiness (green)
@@ -3247,7 +3438,7 @@ export function render(ctx, g, w, h, now) {
     if (veiled.length) { drawPackTelegraphs(ctx, veiled, s, now, () => true, { ground: groundLift, reduceMotion: quiet }); drawGloomVeiled(ctx, veiled, s, now, { low: budget.quality === "low", reduceMotion: quiet }); }
   }
   for (const e of g.enemies)
-    if (!e.dead && shownInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && !e.gloomVeil && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2)) {
+    if (!e.dead && shownInDungeon(g,e) && !e.ambient && !e.hidden && !e.aloft && !e.gloomVeil && visibleInCamera(e,l,t,r,b,e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2) && creatureInSight(g, e)) { // no health bar out of sight (labyrinths.ts sight lines)
       const barY = e.kind === "stalker" ? e.y - .1 - Math.max(0, (Number(e.scale) || 1) - 1) * .75 - (Number(e.stalkLift) || 0) : e.packKind ? e.y - 0.1 - Math.max(0, (Number(e.scale) || 1) - 1) * 0.75 - (e.flying ? 0.35 : 0) - (e.kind === "psychicCrystal" ? crystalLift(e) : 0) : e.y - 0.1;
       ctx.fillStyle = "#211617";
       ctx.fillRect(e.x * s, barY * s, s, 3);
@@ -3255,7 +3446,7 @@ export function render(ctx, g, w, h, now) {
       ctx.fillRect(e.x * s, barY * s, (s * e.hp) / e.maxHp, 3);
     }
   drawEchoPatches(ctx,g,s,now);
-  drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2),bareFloor);
+  drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2)&&creatureInSight(g,e),bareFloor);
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
@@ -3399,11 +3590,12 @@ export function render(ctx, g, w, h, now) {
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
     if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
+  if (!worldCapture && !closeViewCapturing()) { const doomed = !!g.fallDoomed?.(); drawLowHealth(ctx, g, w, h, now, doomed); if (doomed) drawFallDoom(ctx, g, w, h, now); } // LOW_HEALTH_EDGE yields to the fall cue (one red cue at a time). FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
     hasLevels = g.map?.landscape && (g.map._hasLevels ??= g.map.tiles.some((q) => (q.elev || 0) > 0)),
-    label = hasLevels ? `${place} · ${levelName(elevationAt(g.map, mw, g.player.x, g.player.y))}` : place;
+    label = hasLevels ? `${place} · ${levelName(g.aerialHeld?.() ? Math.floor(g.fall.z + 1e-6) : elevationAt(g.map, mw, g.player.x, g.player.y))}` : place; // Aerial Step: the held level
   ctx.fillStyle = "#151411ee";
   // Sits just beneath Map and Pack (release 183), aligned with them, never wider than the space before the next control.
   const labelY = h - (g.labelInset ?? 122), labelX = g.labelX ?? 8,
@@ -3505,10 +3697,11 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
     if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
+    if(vulnerableUntil(e)>now){const k=.5+.5*Math.sin(t*9);ctx.strokeStyle=`rgba(255,96,140,${.55+.35*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();for(let q=0;q<4;q++){const a=q*Math.PI/2+t*1.5,r=s*.5;ctx.moveTo(cx+Math.cos(a)*r*.62,cy-s*.1+Math.sin(a)*r*.62);ctx.lineTo(cx+Math.cos(a)*r,cy-s*.1+Math.sin(a)*r)}ctx.stroke()} // Tempo's window (hit-cast-passives.ts): a pink broken ring
     if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
-    if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
+    if(v.kind==="arc"){if(v.z>0&&(bareFloor||closeViewCapturing()))continue;/* a raised arc (the Triceratops's Bash, at its horns: TRICERATOPS_HORN_SHOT.bashArc) is drawn lifted by Close View itself */const lz=v.z>0?(v.z-.37)*s:0;ctx.globalAlpha=a;ctx.beginPath();ctx.moveTo(v.x*s,v.y*s-lz);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15-lz;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s-lz);if(lz){ctx.strokeStyle="rgba(58,38,10,.7)";ctx.lineWidth=Math.max(3,s*.12);ctx.stroke();}/* raised over the beast: a dark edge so it reads against the hide */ctx.strokeStyle=v.color;ctx.lineWidth=Math.max(1.5,s*(lz?.07:.06));ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */
@@ -3523,6 +3716,7 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
 function drawEchoPatches(ctx,g,s,now){
+  for(const m of glyphMinesOf(g)){const k=Math.max(0,Math.min(1,(m.until-now)/GLYPH_MINE.lifeMs)),x=m.x*s,y=m.y*s,r=GLYPH_MINE.trigger*s;ctx.strokeStyle=`rgba(190,150,255,${.35+.5*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()} // Glyph Mine sigils (hit-cast-passives.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}

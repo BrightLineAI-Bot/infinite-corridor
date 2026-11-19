@@ -1,41 +1,42 @@
-import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r984-93a51644afcb';
-import { ordinaryContactEnemy } from './actor-contact.js?v=r984-93a51644afcb';
-import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r984-93a51644afcb";
-import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r984-93a51644afcb"; // the Close View lab
-import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r984-93a51644afcb";
-import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r984-93a51644afcb";
-import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r984-93a51644afcb";
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r984-93a51644afcb";
-import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r984-93a51644afcb";
-import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r984-93a51644afcb";
-import { DIG, planDig } from "./digging.js?v=r984-93a51644afcb";
-import { freshSave, migrateSave } from "./types.js?v=r984-93a51644afcb";
-import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r984-93a51644afcb";
-import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r984-93a51644afcb";
-import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r984-93a51644afcb";
-import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r984-93a51644afcb";
-import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r984-93a51644afcb";
-import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r984-93a51644afcb";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r984-93a51644afcb";
-import { ELITE_DEFINITIONS } from "./elites.js?v=r984-93a51644afcb";
-import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r984-93a51644afcb";
-import { isAdventureKind, adventureSpawnSpot } from "./adventure-creatures.js?v=r984-93a51644afcb"; // adventure creatures: the combat lab places them by habitat
-import { LETHAL_KINDS } from "./landscape.js?v=r984-93a51644afcb";
-import { BIOMES, biomeFor } from "./landscape.js?v=r984-93a51644afcb";
-import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r984-93a51644afcb";
-import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r984-93a51644afcb";
-import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r984-93a51644afcb";
-import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r984-93a51644afcb";
-import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r984-93a51644afcb";
-import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r984-93a51644afcb";
-import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r984-93a51644afcb";
-import { ensureLattice } from "./transit-lattice.js?v=r984-93a51644afcb";
-import { ensureSlots, setSlot } from "./spell-slots.js?v=r984-93a51644afcb";
-import { fieldOn } from "./lattice-fields.js?v=r984-93a51644afcb";
-import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r984-93a51644afcb";
-import { AFFIXES, SHAMAN } from "./affixes.js?v=r984-93a51644afcb";
-import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r984-93a51644afcb";
-import { validActions } from "./interactions.js?v=r984-93a51644afcb";
+import { stableMount, startRide, damagePersistentMount } from "./beast-mounts.js?v=r1012-ffa69513a699";
+import { RECOVERY_CONTEXT } from './proving-ground-recovery.js?v=r1012-ffa69513a699';
+import { ordinaryContactEnemy } from './actor-contact.js?v=r1012-ffa69513a699';
+import { Game, footprintOpen, hasLineOfSight, skySummitLanding } from "./game.js?v=r1012-ffa69513a699";
+import { PENTAGON, pentagonPlan, pentagonVaultId } from "./pentagon.js?v=r1012-ffa69513a699"; // the Close View lab
+import { PENTAGON_ARENA, pentagonArenaId } from "./pentagon-arena.js?v=r1012-ffa69513a699";
+import { ensureCloseView, CLOSE_VIEW_HOOKS, closeViewThemeLivedIn } from "./close-view.js?v=r1012-ffa69513a699";
+import { BUILDINGS, buildingHere } from "./great-buildings.js?v=r1012-ffa69513a699";
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding, carveCloseViewCrawl } from "./close-view-room-routing.js?v=r1012-ffa69513a699";
+import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHeight, elevationAt } from "./landscape.js?v=r1012-ffa69513a699";
+import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.js?v=r1012-ffa69513a699";
+import { DIG, planDig } from "./digging.js?v=r1012-ffa69513a699";
+import { freshSave, migrateSave } from "./types.js?v=r1012-ffa69513a699";
+import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.js?v=r1012-ffa69513a699";
+import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.js?v=r1012-ffa69513a699";
+import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.js?v=r1012-ffa69513a699";
+import { applyDungeonDiscovery, dungeonDiscoveryReport, revealDungeonAt } from "./dungeon-framework.js?v=r1012-ffa69513a699";
+import { createCombatant, CREATURE_FORMS, MELEE_PATTERNS } from "./combat.js?v=r1012-ffa69513a699";
+import { VIEWPORT_CLOSED } from "./combat-visuals.js?v=r1012-ffa69513a699";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r1012-ffa69513a699";
+import { ELITE_DEFINITIONS } from "./elites.js?v=r1012-ffa69513a699";
+import { PACK_KINDS, isPackKind, MONSTER_PACK } from "./monster-pack.js?v=r1012-ffa69513a699";
+import { isAdventureKind, adventureSpawnSpot } from "./adventure-creatures.js?v=r1012-ffa69513a699"; // adventure creatures: the combat lab places them by habitat
+import { LETHAL_KINDS } from "./landscape.js?v=r1012-ffa69513a699";
+import { BIOMES, biomeFor } from "./landscape.js?v=r1012-ffa69513a699";
+import { GLYPH_IDS, RESONANCES, GLYPHS, ensureGlyphState, normalizeSockets } from "./glyphs.js?v=r1012-ffa69513a699";
+import { ECHO_IDS, ensureEchoState } from "./echoes.js?v=r1012-ffa69513a699";
+import { ensureConstellation, learnRank, learnMod, chooseCap } from "./constellation.js?v=r1012-ffa69513a699";
+import { generateExpeditionDungeon, LAYOUTS, UNDER_THEMES } from "./underlands.js?v=r1012-ffa69513a699";
+import { placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r1012-ffa69513a699";
+import { generateItem, ITEM_TIERS, APERTURE_SKILLS, APERTURE_BANDS, SPELLS, compareItemStats, upgradeEquipment, learnApertureSkill, apertureBand, normalizeItemUpgrade, primaryProfile, rangedWeapon } from "./items.js?v=r1012-ffa69513a699";
+import { ensureMech, setEmpowered, DRONE } from "./vehicle-gates.js?v=r1012-ffa69513a699";
+import { ensureLattice } from "./transit-lattice.js?v=r1012-ffa69513a699";
+import { ensureSlots, setSlot } from "./spell-slots.js?v=r1012-ffa69513a699";
+import { fieldOn } from "./lattice-fields.js?v=r1012-ffa69513a699";
+import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from "./foundry.js?v=r1012-ffa69513a699";
+import { AFFIXES, SHAMAN } from "./affixes.js?v=r1012-ffa69513a699";
+import { addDungeonReciter, addDungeonElder } from "./travelers.js?v=r1012-ffa69513a699";
+import { validActions } from "./interactions.js?v=r1012-ffa69513a699";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -106,6 +107,7 @@ export const LABORATORIES = [
   { id: "combat", label: "Monster & Elite Combat Arena", status: "implemented", description: "Pick an environment and a creature, then press Start test." },
   { id: "combat-assets", label: "Combat Asset Lab", status: "implemented", description: "Close View production gallery for representative weapons, tools, spells, and monster forms in a generated interior." },
   { id: "creature-assets", label: "Creature Asset Lab", status: "implemented", description: "Close View production roster, Foundry morphology, and decorated-variant witnesses in generated interior geometry." },
+  { id: "triceratops-recovery", label: "Triceratops Recovery Lab", status: "implemented", description: "Scratch capture dispositions, riding injury, and Beast Hotel recovery for the Triceratops." },
   { id: "wayglass", label: "Wayglass, Checkpoint & Compass Lab", status: "implemented", description: "Production navigation, recovery, migration, Atlas, and dual-arrow fixtures." },
   { id: "environment", label: "Bespoke Environment & District Lab", status: "implemented", description: "Production districts, overworld landmarks, domains, and arena families." },
   { id: "hunts", label: "Hunt, Domain & Boss Arena Lab", status: "implemented", description: "Scratch Viewport lifecycle, creature, elite, and boss-arena fixtures." },
@@ -177,6 +179,12 @@ const CREATURE_ASSETS = [
   { id: "dungeon-reciter", label: "Visible actor: dungeon Reciter", source: "addDungeonReciter", actor: "traveler" },
   { id: "elder-wanderer", label: "Visible actor: Elder Wanderer", source: "addDungeonElder", actor: "traveler" },
 ];
+const TRICERATOPS_RECOVERY = [
+  { id: "triceratops-hotel", label: "Triceratops · Beast Hotel recovery", kind: "triceratops", source: "monster-pack", hotel: true },
+  { id: "triceratops-good", label: "Triceratops · Good", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "good" },
+  { id: "triceratops-silly", label: "Triceratops · Silly Goose", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "silly" },
+  { id: "triceratops-bad", label: "Triceratops · Bad", kind: "triceratops", source: "monster-pack", triceratopsDisposition: "bad" },
+];
 const WAYGLASS_SCENARIOS=["unactivated-wayglass","activated-wayglass","travel-pair","rest-point","activated-rest-point","broken-observatory","manual-waypoint","quest-guidance","hunt-guidance","dual-compass","death-marker","save-reconstruction","legacy-migration","drought-corpus"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FAMILIES.map(id=>({id:`arena-${id}`,label:`${id.replaceAll("-"," ")} arena`})),{id:"temporary-hunt-arena",label:"Temporary hunt arena"},{id:"persistent-arena",label:"Persistent arena entrance"},{id:"sentinel-domain",label:"Sentinel manufactory domain"},{id:"rootbound-domain",label:"Rootbound crown domain"}];
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
@@ -196,6 +204,7 @@ export function scenariosForLab(lab) {
   if (lab === "combat") return CREATURES;
   if (lab === "combat-assets") return COMBAT_ASSETS;
   if (lab === "creature-assets") return CREATURE_ASSETS;
+  if (lab === "triceratops-recovery") return TRICERATOPS_RECOVERY;
   if(lab==="wayglass")return WAYGLASS_SCENARIOS;
   if(lab==="environment")return ENVIRONMENTS;
   if(lab==="hunts")return HUNTS;
@@ -710,6 +719,39 @@ function admittedGallerySpawn(save,spec,at){
   throw new Error(`No deterministic admitted Foundry witness for ${spec.id}.`);
 }
 
+function triceratopsLab(spec, seed, now) {
+  const { save, game } = gameForOverworld(seed, 0, 0, now);
+  if (spec.hotel) {
+    const { mount } = stableMount(save, "triceratops", { triceratopsDisposition: "good" });
+    startRide(save, mount.id);
+    damagePersistentMount(save, 1, { puncture: true, home: "0,0", location: "world:0,0" });
+    game.loadArea("overworld", false);
+    game.enemies = [];
+    const door = game.map.objects.find(o => o.beastHotelDoor);
+    if (door) Object.assign(game.player, { x: door.x, y: door.y + 1 });
+  } else {
+    Object.assign(save.materials, { wood: 80, stone: 80, cinderIron: 80 });
+    setBuildKind(save, "enclosure");
+    for (let y = 3; y <= 16; y++) for (let x = 5; x <= 19; x++) {
+      Object.assign(game.map.tiles[y * (game.map.width || 32) + x], {
+        kind: "grass", blocked: false, structure: null, buildingId: null,
+        slope: false, elev: 0, chasm: false, hole: false, environment: null,
+      });
+    }
+    game.map.objects = game.map.objects.filter(o => o.x < 5 || o.x > 19 || o.y < 3 || o.y > 16);
+    Object.assign(game.player, { x: 10, y: 6, facing: "down" });
+    const beast = game.createEnemyFromSpawn({
+      id: "pg-triceratops:" + spec.triceratopsDisposition,
+      kind: "triceratops", triceratopsDisposition: spec.triceratopsDisposition, x: 11.5, y: 8.5,
+    }, "overworld");
+    beast.hp = Math.max(1, Math.floor(beast.maxHp / 8));
+    game.enemies = [beast];
+    game.message = "Build an enclosure around the living Triceratops, then close the opening with another enclosure.";
+  }
+  game.sync();
+  return { lab: "triceratops-recovery", scenario: spec.id, label: spec.label, seed, save, game, production: true,
+    diagnostics: { triceratops: { scratch: true, stage: spec.hotel ? "hotel" : "capture", disposition: spec.triceratopsDisposition || null } } };
+}
 function creatureAssetFixture(scenario,seed,now){
   const spec=CREATURE_ASSETS.find((q)=>q.id===scenario)||CREATURE_ASSETS[0],fixture=closeViewFixture("grand-hall",seed,now),{game,save}=fixture,placement=assetLane(game),at={x:placement.foe.x,y:placement.foe.y};
   Object.assign(game.player,{x:placement.player.x,y:placement.player.y,facing:placement.dx<0?"left":placement.dx>0?"right":placement.dy<0?"up":"down"});save.lastAim={x:placement.dx,y:placement.dy};
@@ -754,7 +796,8 @@ function creatureAssetFixture(scenario,seed,now){
   }else if(spec.variant==="drone-swarm")spawns=[{id:"proving:creature-assets:drone-rare",kind:spec.kind,x:at.x,y:at.y,fractured:true,fracRank:"rare",affixes:["droneSwarm"]}];
   else if(spec.variant==="guardian-volcanic")spawns=[{id:"proving:creature-assets:volcanic-guardian",kind:spec.kind,x:at.x,y:at.y,dungeonRole:"gateWarden",fractured:true,fracRank:"rare",affixes:["volcanic"]}];
   else spawns=[{id:`proving:creature-assets:${spec.id}`,kind:spec.kind,x:at.x,y:at.y}];
-  game.enemies=spawns.map((spawn)=>game.createEnemyFromSpawn(spawn,"dungeon"));game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];game.message=`${spec.label}. Production creature state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
+  game.enemies=spawns.map((spawn)=>game.createEnemyFromSpawn(spawn,"dungeon"));
+  game.projectiles=[];game.effects=[];game.eliteHazards=[];game.affixHazards=[];game.message=`${spec.label}. Production creature state in a scratch Close View gallery; this fixture does not claim native-model completion.`;game.sync();
   const enemy=game.enemies[0],pack=MONSTER_PACK[enemy.kind],hauntBlocked=spec.source==="haunt-pack"&&!enemy.packKind;
   return{...fixture,lab:"creature-assets",scenario:spec.id,label:spec.label,primary:placement.player,diagnostics:{roster:{kind:enemy.kind,name:enemy.packName||enemy.foundryName||spec.label,form:enemy.foundryBody||pack?.render||enemy.kind,scale:enemy.scale,palette:foundry?.candidate.palette??pack?.palette??ORDINARY_ASSET_PALETTES[enemy.kind]??null,movement:enemy.foundryMovement||enemy.movement||(enemy.range>0?"ranged":"grounded"),actions:enemy.foundryAttack?[enemy.foundryAttack]:[...(enemy.packAttacks||enemy.meleePatterns?.length?enemy.packAttacks||enemy.meleePatterns:ORDINARY_ASSET_ACTIONS[enemy.kind]||[])],source:spec.source,resolvedSource:foundry?{pipeline:"admittedFoundrySpawn",key:foundry.key,candidate:foundry.candidate,validation:foundry.validation}:"createEnemyFromSpawn",capability:hauntBlocked?"blocked: production haunt pack fields did not construct":"fixture witness only; native body/action/attachments/FX evidence remains separate",variant:spec.variant||null,affixes:[...(enemy.affixes||[])],wardBy:enemy.wardBy||null,foundryValidated:enemy.foundryValidated===true},placement:{player:{x:placement.player.x,y:placement.player.y,elev:placement.player.elev||0},foe:{x:placement.foe.x,y:placement.foe.y,elev:placement.foe.elev||0},unobstructedTiles:5},sceneEnemies:game.enemies.map((q)=>({id:q.id,kind:q.kind,fracRank:q.fracRank||null,fracShaman:!!q.fracShaman,affixes:[...(q.affixes||[])],wardBy:q.wardBy||null}))}};
 }
@@ -1069,6 +1112,7 @@ export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVIN
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
   if(lab==="combat-assets")return combatAssetFixture(scenario,cleanSeed,now);
   if(lab==="creature-assets")return creatureAssetFixture(scenario,cleanSeed,now);
+  if(lab==="triceratops-recovery")return triceratopsLab(TRICERATOPS_RECOVERY.find(q=>q.id===scenario)||TRICERATOPS_RECOVERY[0],cleanSeed,now);
   let fixture;
   if(lab==="ordinary-dungeon")fixture=ordinaryFixture(scenario,cleanSeed,cleanVariant,now,["compact","standard","extended"].includes(sizeProfile)?sizeProfile:"standard");
   else if(lab==="forge")fixture=forgeFixture(scenario,cleanSeed,cleanVariant,now);

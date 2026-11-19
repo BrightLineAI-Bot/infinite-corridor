@@ -1,10 +1,10 @@
-import{worldBeastsHeld}from'./world-beasts.js?v=r984-93a51644afcb';import{guideTarget,guideLairBeast,guideLairAwake,guideCrossing}from'./waymark-guides.js?v=r984-93a51644afcb';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r984-93a51644afcb';
-import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r984-93a51644afcb';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r984-93a51644afcb';
-export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r984-93a51644afcb';
-import{arenaEligible}from'./arenas.js?v=r984-93a51644afcb';
-import{annotateDungeon}from'./dungeon-framework.js?v=r984-93a51644afcb';
-import{reachableFrom,canReturnTo,LETHAL_KINDS,elevationAt}from'./landscape.js?v=r984-93a51644afcb';import{grantSeed,SEEDS}from'./skylands.js?v=r984-93a51644afcb';import{ensureTheDeep}from'./the-deep.js?v=r984-93a51644afcb';import{isClod}from'./canyon.js?v=r984-93a51644afcb';/* world caches */
-import{APERTURE_BANDS}from'./items.js?v=r984-93a51644afcb';import{hashSeed,rng,pick}from'./random.js?v=r984-93a51644afcb';import{storySiteFor}from'./story.js?v=r984-93a51644afcb';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
+import{worldBeastsHeld}from'./world-beasts.js?v=r1012-ffa69513a699';import{guideTarget,guideLairBeast,guideLairAwake,guideCrossing}from'./waymark-guides.js?v=r1012-ffa69513a699';import{REFUGE_NPCS,WAYSTATION_NPCS}from'./types.js?v=r1012-ffa69513a699';
+import{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r1012-ffa69513a699';export{deepV2Id,isDeepV2Id,deepV2Descriptor,generateDeepV2Dungeon}from'./deep-dungeons.js?v=r1012-ffa69513a699';
+export{generateVariedDungeon,generateBespokeArena}from'./arenas.js?v=r1012-ffa69513a699';
+import{arenaEligible}from'./arenas.js?v=r1012-ffa69513a699';
+import{annotateDungeon}from'./dungeon-framework.js?v=r1012-ffa69513a699';
+import{reachableFrom,canReturnTo,LETHAL_KINDS,elevationAt}from'./landscape.js?v=r1012-ffa69513a699';import{grantSeed,SEEDS}from'./skylands.js?v=r1012-ffa69513a699';import{ensureTheDeep}from'./the-deep.js?v=r1012-ffa69513a699';import{isClod}from'./canyon.js?v=r1012-ffa69513a699';/* world caches */
+import{APERTURE_BANDS}from'./items.js?v=r1012-ffa69513a699';import{hashSeed,rng,pick}from'./random.js?v=r1012-ffa69513a699';import{storySiteFor}from'./story.js?v=r1012-ffa69513a699';export const SECTION_SIZE=32,PASSAGE_WIDTH=3;const terrain=['ash','glass','ember'];
 function passage(seed,axis,a,b){const r=rng(`${seed}:edge:${axis}:${a}:${b}`);return 5+Math.floor(r()*22)}export function sectionExits(seed,rx,ry){return{north:passage(seed,'h',rx,ry),south:passage(seed,'h',rx,ry+1),west:passage(seed,'v',rx,ry),east:passage(seed,'v',rx+1,ry)}}
 function carve(tiles,x,y,kind='ash'){if(kind==='refuge'&&x===12&&y===17)return;if(x>=0&&x<32&&y>=0&&y<32)tiles[y*32+x]={...tiles[y*32+x],x,y,kind,blocked:false}}
 function supply(seed,rx,ry,tiles,w=32){const r=rng(`${seed}:supplies:v2:${rx}:${ry}`),rare=w===32&&r()<.06,types=['restorativeDraught','ironbarkTonic','lumenPhial','secondary'],spots=w===24?[[6,6],[7,6],[6,7]]:[[15,17],[17,17],[15,18],[17,18]],[x,y]=spots[Math.floor(r()*spots.length)],supplyType=rare?'crossingSigil':types[Math.floor(r()*types.length)];return{id:`supply-${rx}-${ry}`,kind:supplyType==='secondary'?'weaponCache':'supplyCache',supplyType,x,y,state:'ready',actions:['collect']}}

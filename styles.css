@@ -66,6 +66,7 @@ body {
 .shock-pips i { width: 14px; height: 6px; border: 1px solid #3d5a6a; background: #0b1218; transform: skewX(-20deg); }
 .shock-pips[data-count="1"] i:nth-child(-n+1), .shock-pips[data-count="2"] i:nth-child(-n+2), .shock-pips[data-count="3"] i { background: #7fd6ff; border-color: #eafaff; box-shadow: 0 0 4px #7fd6ff; }
 .shock-pips.stunned i { background: #eafaff; border-color: #ffffff; }
+.reload-pips[data-count="1"] i:nth-child(-n+1), .reload-pips[data-count="2"] i:nth-child(-n+2), .reload-pips[data-count="3"] i { background: #ffd36a; border-color: #fff4d0; box-shadow: 0 0 4px #ffd36a; } /* Rapid Reload (hit-cast-passives.ts) */
 #healthText {
   font-size: 10px;
   color: #eee3cb;
@@ -1150,3 +1151,19 @@ body.proving-ground .left-controls .oculus-button { top: calc(env(safe-area-inse
 .utility-slot button.utility .slot-sym { font-size: 17px; line-height: 1; pointer-events: none; }
 .utility-slot button.utility .slot-sym svg { display: block; width: 22px; height: 22px; margin: 0 auto; }
 .utility-slot button.utility[data-utility="cast"], .utility-slot button.utility[data-utility="item"], .utility-slot button.utility[data-utility="lantern"], .utility-slot button.utility[data-utility="empty"] { border-color: var(--slot); color: var(--slot); }
+/* Tim, 2026-11-18: riding a Triceratops, slots B, C and D are its attacks (main.ts MOUNT_CONTROL_ICONS) and Jump reads Stomp or
+   Drill. A warm horn-gold rim marks them as the mount's; the pressed attack glows while it runs (no animation, so Reduced Motion
+   needs nothing more). The names sit where a cooldown or stamina cost does. */
+.buttons button.mount-control { border-color: #e0b45a; box-shadow: inset 0 0 0 1px #5a4320; }
+.buttons button.mount-control::after { content: attr(data-cooldown); font-size: 7px; letter-spacing: .02em; color: #f1dca8; white-space: nowrap; }
+.buttons button.mount-control .slot-sym svg { width: 20px; height: 20px; }
+.buttons button.mount-control.mount-active { box-shadow: 0 0 10px #ffd07a, inset 0 0 0 2px #ffd07a; background-color: #4a3519; }
+.action-diamond button.core.jump.mount-control { color: #f1dca8; }
+/* Hold Act to call the mount or get down (MOUNT_RIDE.callHold, about 0.6 s): a gold sweep fills the Act button as it is held. It
+   follows the hold itself, not an animation, so Reduced Motion needs nothing more. */
+.action-diamond button.core.act.holding { background: conic-gradient(#e0b45aa6 var(--hold, 0%), transparent 0), radial-gradient(circle at 45% 35%, #403b318c, #1c1b1873 72%); border-color: #e0b45a; }
+
+/* 2026-11-18: equipped gear stats and the smith's previews (main.ts gearStatList, previewRows) */
+.gear-grid.with-stats{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.gear-card .gear-stats{grid-column:1/-1;margin:.4rem 0 0}.gear-card .gear-stats span{font-size:.7rem;color:#cfc3a8}
+.smith-action{margin:.3rem 0}.smith-action>button{max-width:100%;white-space:normal;text-align:left}.smith-action .forge-preview{margin:.25rem 0 .1rem}.smith-action>button.reforge-up{color:#91d79a;border-color:#4f8c58;background:#17351e}.smith-action>button.reforge-down{color:#e58c87;border-color:#9a4c48;background:#3e1818}.forge-preview span,.gear-stats span{overflow-wrap:anywhere}
+.salvage-yield small{display:block;margin-top:.3rem;color:#aaa18f;font-size:.74rem}

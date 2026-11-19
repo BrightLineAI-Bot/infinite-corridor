@@ -9,11 +9,11 @@
 // hold lifts the head with the jaws open on the prey (the game draws the prey), spinoDig buries the snout, and the fossil's rib
 // spears grow out of the ribcage to the sides and thrust together ahead of it. Nothing here changes timing, damage, reach or
 // targeting.
-import { SPINO_ART, SPINO_POSE_KEYS, spinoPoseVector, spinoStrike, spinoFossilShare } from "./spino-render.js?v=r984-93a51644afcb";
+import { SPINO_ART, SPINO_POSE_KEYS, spinoPoseVector, spinoStrike, spinoFossilShare } from "./spino-render.js?v=r1012-ffa69513a699";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r984-93a51644afcb";
+} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
 
 export const SPINO_RIG = Object.freeze({
   // the beasts share the Giant's Close View size (Tim, 2026-11-11)
@@ -369,7 +369,7 @@ export function sampleSpino(tr, e, env) {
   // the arms: the hands to their places in the body's frame (two-bone IK), elbows back; a slash cocks a hand high then rakes it down
   const ri = BI.chest * 9, sc = Math.hypot(P.wr[ri], P.wr[ri + 1], P.wr[ri + 2]) || 1;
   for (const [tag, s] of [['L', -1], ['R', 1]]) {
-    const ai = BI['arm' + tag]; H[0] = P.wp[ai * 3]; H[1] = P.wp[ai * 3 + 1]; H[2] = P.wp[ai * 3 + 2];
+    const ai = BI['arm' + tag]; resolveBone(P, ai); H[0] = P.wp[ai * 3]; H[1] = P.wp[ai * 3 + 1]; H[2] = P.wp[ai * 3 + 2];
     const c = s < 0 ? W[KI.clawL] : W[KI.clawR], raise = W[KI.arms], swingA = reduce ? 0 : moving * .05 * Math.sin(cyc + (s > 0 ? 0 : Math.PI)) + .015 * wobble(t * .7, s);
     // the hand's place (chest frame: f, r, u from the shoulder)
     let hf = .2 + swingA + raise * .1 + (c < 0 ? -c * -.05 : c * .22), hr = s * (.04 + raise * .1), hu = -.28 + raise * .22 + (c < 0 ? -c * .42 : -c * .05);

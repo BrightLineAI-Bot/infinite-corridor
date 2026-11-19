@@ -1,6 +1,6 @@
 // Authored Close View bodies for the Pentagon, its dungeon grotesques and its blue haunts.
 // Geometry follows the original monster-render silhouettes; presentation metadata controls admission.
-import { prism, bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r984-93a51644afcb';
+import { prism, bevel, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r1012-ffa69513a699';
 
 const E5 = ellipsoid(5, 1), E6 = ellipsoid(6, 2), E8 = ellipsoid(8, 3);
 const limb = (points, color, swing, px, pz, sides = 4) => part(curvedTube(points, sides), 0, 0, 0, 1, 1, 1, color, swing, px, pz);
@@ -74,32 +74,38 @@ const mirrorY = (tris) => tris.map((t) => [t[0], t[2], t[1]].map(([x, y, z]) => 
 // Weeping Saint (standard view: a pale bell-robed statue, veiled head, both hands over the face, red tears). The robe flares to
 // the floor like a plinth instead of standing on dark legs; long sleeved arms end in hands that cover the face at rest.
 const saintHand = ellipsoid(5, 2), saintStone = 0xc9c1b4, saintShade = 0xa79f93, saintPale = 0xe2dbcf, saintTear = 0x8a1a1a;
+// Realms pass (2026-11-15): the bowed head and veil ride their own neck joint (82), so the head lifts as the hands tear away and
+// snaps down into the blow; the robe bows forward from the hips and the sleeves hang wide from sculpted shoulders.
+const saintNeck = [.08, 1.34];
 const weepingSaint = [
-  part(verticalLoft([[0, .40, 0], [-.03, .29, .40], [.02, .20, .86], [.10, .15, 1.26]], 6), 0, 0, 0, 1, 1, 1, saintStone),
-  part(E6, .17, 0, 1.51, .18, .17, .17, saintPale, 0, .17, 1.53, 0, true),
+  part(verticalLoft([[0, .40, 0], [-.04, .30, .42], [.0, .21, .88], [.08, .17, 1.24]], 6), 0, 0, 0, 1, 1, 1, saintStone),
+  part(E6, .16, 0, 1.50, .17, .16, .17, saintPale, 82, ...saintNeck, 0, true),
   // the veil falls from the crown down the back of the head to the shoulders
-  part(membrane([[.21, 0, 1.705], [.08, -.23, 1.54], [-.12, -.16, 1.16], [-.12, .16, 1.16], [.08, .23, 1.54]]), 0, 0, 0, 1, 1, 1, saintShade),
+  part(membrane([[.20, 0, 1.72], [.07, -.23, 1.53], [-.13, -.17, 1.14], [-.13, .17, 1.14], [.07, .23, 1.53]]), 0, 0, 0, 1, 1, 1, saintShade, 82, ...saintNeck),
   // a cloak train behind the hem
-  part(membrane([[-.12, 0, .90], [-.30, -.20, .30], [-.40, -.10, 0], [-.40, .10, 0], [-.30, .20, .30]]), 0, 0, 0, 1, 1, 1, saintShade),
+  part(membrane([[-.12, 0, .90], [-.32, -.22, .30], [-.44, -.10, 0], [-.44, .10, 0], [-.32, .22, .30]]), 0, 0, 0, 1, 1, 1, saintShade),
 ];
 for (const side of [-1, 1]) weepingSaint.push(
   // red tears run from beneath the covering hands down the cheeks
-  part(membrane([[.36, side * .04, 1.45], [.36, side * .08, 1.45], [.345, side * .065, 1.26]]), 0, 0, 0, 1, 1, 1, 0xb01c1c),
-  limb([[.03, side * .20, 1.25, .075], [.16, side * .30, 1.38, .055], [.30, side * .13, 1.48, .04]], saintStone, side < 0 ? 50 : 51, .03, 1.25),
-  part(saintHand, .345, side * .065, 1.51, .05, .065, .09, saintPale, side < 0 ? 50 : 51, .03, 1.25, 0, true),
+  part(membrane([[.33, side * .04, 1.44], [.33, side * .08, 1.44], [.32, side * .065, 1.25]]), 0, 0, 0, 1, 1, 1, 0xb01c1c, 82, ...saintNeck),
+  limb([[.02, side * .21, 1.24, .085], [.16, side * .31, 1.36, .062], [.30, side * .13, 1.47, .042]], saintShade, side < 0 ? 50 : 51, .03, 1.25),
+  part(saintHand, .335, side * .065, 1.50, .05, .065, .09, saintPale, side < 0 ? 50 : 51, .03, 1.25, 0, true),
 );
 
 // Hanged Choir (standard view: four pale shrouded bodies hung by cords from a dark beam, green eyes, toes dangling). Each singer
-// is one wrapped shroud swinging from its own cord.
+// is a hooded head over one wrapped shroud, lamp-green eyes and a dark open singing mouth, swinging from its own cord (32-35).
+// 2026-11-15 forms pass: a head and shoulders of its own instead of one sack.
 const hangedChoir = [block(0, 0, 1.86, .07, .64, .05, 0x151312), limb([[0, 0, 2.03, .03], [0, 0, 1.88, .025]], 0x6b6358, 31, 0, 1.86)];
 for (let i = 0; i < 4; i++) {
-  const y = (i - 1.5) * .30, swing = 32 + i, top = 1.60 - (i % 2) * .06, shroud = i % 2 ? 0xc6bba3 : 0xd8cfb8;
+  const y = (i - 1.5) * .30, swing = 32 + i, top = 1.60 - (i % 2) * .06, shroud = i % 2 ? 0xc6bba3 : 0xd8cfb8, hood = i % 2 ? 0xd8cfb8 : 0xe6dfcc;
   hangedChoir.push(
-    part(curvedTube([[0, y, 1.82, .014], [.02, y, top, .012]], 3), 0, 0, 0, 1, 1, 1, 0x8b8172, swing, .01, 1.82),
-    part(verticalLoft([[0, .05, 0], [.005, .125, -.10], [-.01, .105, -.55], [-.02, .015, -.88]], 5), .02, y, top, 1, 1, 1, shroud, swing, .01, 1.82),
-    part(membrane([[.152, y - .085, top - .12], [.152, y - .015, top - .12], [.146, y - .05, top - .18]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
-    part(membrane([[.152, y + .015, top - .12], [.152, y + .085, top - .12], [.146, y + .05, top - .18]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
-    part(curvedTube([[.0, y, top - .84, .022], [.05, y, top - .97, .01]], 3), 0, 0, 0, 1, 1, 1, 0x5b5550, swing, .01, 1.82),
+    part(curvedTube([[0, y, 1.82, .014], [.01, y, top - .02, .012]], 3), 0, 0, 0, 1, 1, 1, 0x8b8172, swing, .01, 1.82),
+    part(ellipsoid(4, 1), .02, y, top - .1, .1, .095, .11, hood, swing, .01, 1.82, 0, true),
+    part(verticalLoft([[0, .075, 0], [-.012, .13, -.26], [-.025, .025, -.74]], 5), .02, y, top - .17, 1, 1, 1, shroud, swing, .01, 1.82),
+    part(membrane([[.12, y - .03, top - .135], [.12, y + .03, top - .135], [.115, y, top - .175]]), 0, 0, 0, 1, 1, 1, 0x241c18, swing, .01, 1.82),
+    part(membrane([[.115, y - .072, top - .07], [.118, y - .018, top - .078], [.114, y - .045, top - .112]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
+    part(membrane([[.118, y + .018, top - .078], [.115, y + .072, top - .07], [.114, y + .045, top - .112]]), 0, 0, 0, 1, 1, 1, 0xd1e86a, swing, .01, 1.82),
+    part(curvedTube([[.0, y, top - .9, .022], [.05, y, top - 1.0, .01]], 3), 0, 0, 0, 1, 1, 1, 0x5b5550, swing, .01, 1.82),
   );
 }
 
@@ -140,18 +146,21 @@ for (let i = 0; i < 3; i++) {
 }
 
 // The Amalgam (standard view: a lumpy pale-flesh mound, several small screaming faces set in it, thin pale limbs splayed out).
-const fleshHead = ellipsoid(5, 2), flesh = 0xd7a597, fleshShade = 0xb47f74, fleshFace = 0xf2d0c4, fleshMouth = 0x3a1a1c, fleshLimb = 0xe3c2b6;
+// 2026-11-15 forms pass: three fused lumps instead of one ball, sallow flesh with darker folds, the faces as swollen knots
+// with a howling mouth and one eye each, six jointed arms and two stunted ones.
+const fleshHead = ellipsoid(5, 2), flesh = 0xbfa09a, fleshShade = 0x86686a, fleshFace = 0xdcc2b8, fleshMouth = 0x3a1a1c, fleshLimb = 0xcfb4ac;
 const amalgam = [
-  part(E8, -.05, 0, .60, .50, .42, .40, flesh, 0, -.05, .60, 0, true),
+  part(ellipsoid(7, 2), -.05, 0, .56, .5, .42, .38, flesh, 0, -.05, .56, 0, true),
+  part(ellipsoid(5, 2), -.24, .06, .84, .3, .28, .25, fleshShade, 0, -.24, .84, 0, true),
 ];
-for (const [y, z, s, swing] of [[-.18, .78, .13, 56], [.20, .86, .12, 57], [.03, .56, .11, 56]]) { const x = front(-.05, .60, .46, .39, .37, y, z, 0) - s * .35; amalgam.push(
-  part(fleshHead, x, y, z, s * .7, s, s * 1.15, fleshFace, swing, .10, .70, 0, true),
-  part(membrane([[x + s * .72, y - s * .35, z - s * .1], [x + s * .72, y + s * .35, z - s * .1], [x + s * .74, y, z - s * .75]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
-  part(membrane([[x + s * .7, y - s * .45, z + s * .45], [x + s * .7, y - s * .12, z + s * .45], [x + s * .7, y - s * .28, z + s * .2]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
+for (const [y, z, s, swing] of [[-.17, .74, .13, 56], [.2, .8, .12, 57], [.04, .5, .11, 56]]) { const x = front(-.05, .56, .46, .39, .35, y, z, 0) - s * .25; amalgam.push(
+  part(fleshHead, x, y, z, s * .75, s, s * 1.2, fleshFace, swing, .10, .70, 0, true),
+  part(membrane([[x + s * .74, y - s * .38, z - s * .15], [x + s * .74, y + s * .38, z - s * .15], [x + s * .78, y, z - s * .85]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
+  part(membrane([[x + s * .7, y - s * .5, z + s * .5], [x + s * .7, y - s * .12, z + s * .48], [x + s * .72, y - s * .3, z + s * .22]]), 0, 0, 0, 1, 1, 1, fleshMouth, swing, .10, .70),
 ); }
 for (let i = 0; i < 3; i++) for (const side of [-1, 1]) {
-  const x = .24 - i * .26, s = 50 + i * 2 + (side > 0 ? 1 : 0);
-  amalgam.push(limb([[x, side * .32, .58, .055], [x + (i === 0 ? .20 : i === 1 ? .02 : -.14), side * .60, .44, .04], [x + (i === 0 ? .26 : i === 1 ? .04 : -.20), side * .72, .03, .018]], i === 1 ? fleshShade : fleshLimb, s, x, .58, 3));
+  const x = .24 - i * .26, s = 50 + i * 2 + (side > 0 ? 1 : 0), reach = i === 0 ? .22 : i === 1 ? .03 : -.16;
+  amalgam.push(limb([[x, side * .32, .56, .055], [x + reach, side * .62, .5, .04], [x + reach * 1.3, side * .76, .03, .016]], i === 1 ? fleshShade : fleshLimb, s, x, .56, 3));
 }
 
 // Gnawing Maw (standard view: a brick wall set with an oval red maw, a ring of white teeth and a dark throat).
@@ -191,15 +200,21 @@ for (const side of [-1, 1]) for (const level of [0, 1]) cinderSeraph.push(part(s
 for (const side of [-1, 1]) cinderSeraph.push(part(side > 0 ? seraphSmall : mirrorY(seraphSmall), -.05, 0, .52, 1, 1, 1, seraphAsh, side > 0 ? 22 : 23, -.08, 1.00));
 
 // Lumen Wraith (standard view: a pale hooded shroud with a ragged hem, one great cyan lens for a face, four cyan ribbons).
+// 2026-11-15 forms pass: a shroud that flares to its hem and narrows to sloped shoulders, a deep cowl (64) carrying the dark
+// face and lens, two long sleeves (50/51) that reach for the bite and frame the beam, and four flat light ribbons (60-63).
 const wraithShroud = 0xdcecf2, wraithHood = 0xc9e2ec, wraithFace = 0x2c3b52, wraithCyan = 0x7fe7ff;
+const ribbon = (y) => { const c = [[-.16, y, .98], [-.34, y * 1.25, .52], [-.4, y * 1.55, 0]], w = [.05, .04, .015];
+  return membrane([c[0].map((q, k) => k === 1 ? q - w[0] : q), c[1].map((q, k) => k === 1 ? q - w[1] : q), c[2].map((q, k) => k === 1 ? q - w[2] : q),
+    c[2].map((q, k) => k === 1 ? q + w[2] : q), c[1].map((q, k) => k === 1 ? q + w[1] : q), c[0].map((q, k) => k === 1 ? q + w[0] : q)]); };
 const lumenWraith = [
-  part(verticalLoft([[0, .31, 0], [-.03, .34, .30], [.01, .30, .68], [.07, .21, 1.02]], 7), 0, 0, .34, 1, 1, 1, wraithShroud),
-  part(E6, .10, 0, 1.50, .22, .21, .22, wraithHood, 64, .04, 1.26, 0, true),
-  part(membrane([[.322, 0, 1.64], [.322, -.12, 1.57], [.322, -.12, 1.43], [.322, 0, 1.36], [.322, .12, 1.43], [.322, .12, 1.57]]), 0, 0, 0, 1, 1, 1, wraithFace, 64, .04, 1.26),
-  part(axisX(hex), .33, 0, 1.50, .02, .10, .10, wraithCyan, 64, .04, 1.26),
-  part(E5, .355, 0, 1.50, .03, .05, .05, 0xf6fdff, 64, .04, 1.26),
+  part(verticalLoft([[0, .34, 0], [-.05, .27, .36], [.0, .26, .7], [.06, .17, .98]], 7), 0, 0, .3, 1, 1, 1, wraithShroud),
+  part(E6, .05, 0, 1.47, .24, .2, .23, wraithHood, 64, .04, 1.26, 0, true),
+  part(membrane([[.292, 0, 1.6], [.292, -.11, 1.54], [.292, -.11, 1.4], [.292, 0, 1.34], [.292, .11, 1.4], [.292, .11, 1.54]]), 0, 0, 0, 1, 1, 1, wraithFace, 64, .04, 1.26),
+  part(axisX(hex), .3, 0, 1.47, .02, .09, .09, wraithCyan, 64, .04, 1.26),
+  part(E5, .322, 0, 1.47, .028, .045, .045, 0xf6fdff, 64, .04, 1.26),
 ];
-for (let i = 0; i < 4; i++) { const y = (i - 1.5) * .14; lumenWraith.push(limb([[-.16, y, .42, .04], [-.26, y * 1.1, .22, .03], [-.36, y * 1.4, .02, .012]], i % 2 ? wraithCyan : 0xa8eefa, 60 + i, -.16, .42, 3)); }
+for (const side of [-1, 1]) lumenWraith.push(limb([[.04, side * .22, 1.16, .085], [.3, side * .27, .8, .03]], wraithHood, side < 0 ? 50 : 51, .04, 1.16));
+for (let i = 0; i < 4; i++) lumenWraith.push(part(ribbon((i - 1.5) * .13), 0, 0, 0, 1, 1, 1, i % 2 ? wraithCyan : 0xa8eefa, 60 + i, -.16, .98));
 
 // Veil Spinner (standard view: a dark violet abdomen with a red diamond, a small head with a cluster of pink eyes, eight dark legs
 // whose knees ride above the body). The abdomen (24) tips on its waist for the web spit.
@@ -215,7 +230,7 @@ const veilSpinner = [
 ];
 for (let i = 0; i < 4; i++) for (const side of [-1, 1]) {
   const x = .20 - i * .10, reach = [.20, .07, -.07, -.20][i], s = 70 + i * 2 + (side > 0 ? 1 : 0);
-  veilSpinner.push(limb([[x, side * .12, .50, .035], [x + reach * .7, side * .40, .78, .028], [x + reach * 1.5, side * .68, .02, .01]], i % 2 ? 0x2b2230 : 0x4a3d4f, s, x, .50, 3));
+  veilSpinner.push(limb([[x, side * .12, .50, .035], [x + reach * .7, side * .40, .78, .028], [x + reach * 1.5, side * .68, .02, .01]], i % 2 ? 0x46394c : 0x5e4c66, s, x, .50, 3));
 }
 
 // Rift Lynx (standard view: a sleek dark-navy cat, a fan of violet rift crystals over the shoulders, a white eye, a long tail).
@@ -338,14 +353,17 @@ const spinnerLegs = (front, mid, rear) => ({ 70: front, 71: front, 72: mid, 73: 
 const beetleLegs = (front, rest) => ({ 90: front, 91: front, 92: rest, 93: rest, 94: rest, 95: rest });
 export const PENTAGON_JOINT_POSE = Object.freeze({
   // Both covering hands tear away from the face: one long arm drives the stab, both rake down in the sweep.
+  // The head (82) lifts out of the hands in the coil, then snaps down into the blow and sags as it settles.
   weepingSaint: P({
-    longStab: { 51: PJ(-.7, 1.05, .25), 50: PJ(-.35, .5, .1, .15) },
-    clawSweep: { 50: PJ(-1.05, 1.4, .35), 51: PJ(-.85, 1.15, .35, .2) },
-    '*': { 50: PJ(-.5, .7, .15), 51: PJ(-.5, .7, .15, .1) },
+    longStab: { 51: PJ(-1.05, .78, .28), 50: PJ(-.3, .2, .05, .2), 82: PJ(-.35, .3, .1) },
+    clawSweep: { 50: PJ(-1.35, 1.55, .4), 51: PJ(-1.1, 1.35, .4, .2), 82: PJ(-.4, .45, .15, .1) },
+    '*': { 50: PJ(-.5, .7, .15), 51: PJ(-.5, .7, .15, .1), 82: PJ(-.2, .25) },
   }),
   // The singers swing back on their cords in the dive and whip through after it; they lift apart to scatter sigils.
   hangedChoir: P({
     diveBomb: { 31: PJ(-.1, .3, -.2), 32: PJ(-.2, .5, -.45), 33: PJ(-.25, .55, -.5, .08), 34: PJ(-.3, .6, -.55, .16), 35: PJ(-.35, .65, -.6, .24) },
+    // The sigils: the outer singers kick up and apart, the inner pair rock back, then all four fling forward in a ripple.
+    sigilScatter: { 31: PJ(-.1, .2), 32: PJ(.55, -.7, .2), 33: PJ(-.4, .6, -.15, .1), 34: PJ(.4, -.6, .15, .2), 35: PJ(-.55, .7, -.2, .3) },
     '*': { 31: PJ(-.1, .15), 32: PJ(.3, -.45, .1), 33: PJ(-.3, .45, -.1, .1), 34: PJ(.3, -.45, .1, .2), 35: PJ(-.3, .45, -.1, .3) },
   }),
   // The cage rears back on its chain and pitches its flame-face forward; the orbs trail behind it.
@@ -353,27 +371,42 @@ export const PENTAGON_JOINT_POSE = Object.freeze({
   // The blade arm (36) draws high and cuts down the line; the off hand and the mirror face counter; the shards fan and close.
   mirrorShade: P({
     longStab: { 36: PJ(-1.0, .12, .22), 37: PJ(.45, -.55), 44: PJ(-.2, .25), 40: PJ(.3, -.35), 41: PJ(-.3, .35), 43: PJ(.3, -.35, 0, .2) },
+    // Clones: the blade is raised to the ceiling like a conductor's baton, the face tips up, and the shards fan wide on the cue.
+    mirrorClones: { 36: PJ(-1.45, -.7, .2), 37: PJ(-.9, -1.2), 44: PJ(-.3, -.35), 40: PJ(-.6, .9, .1), 41: PJ(.6, -.9, -.1), 43: PJ(-.6, .9, .1, .15) },
+    // Swap: the blade crosses the chest, the face turns down, the shards close round the body and burst open as it changes place.
+    mirrorSwap: { 36: PJ(.7, .95, -.2), 37: PJ(-.6, .3), 44: PJ(.35, -.3), 40: PJ(.55, -.8), 41: PJ(-.55, .8), 43: PJ(.55, -.8, 0, .1) },
     '*': { 36: PJ(-.6, -1.25, .1), 37: PJ(-.4, -.95), 44: PJ(.12, -.25), 40: PJ(.45, -.55), 41: PJ(-.45, .55), 43: PJ(.45, -.55, 0, .2) },
   }),
   // The faces (56/57) rear back and lunge out to bite; the limbs (50-55) gather under the mass and shove it forward.
   amalgam: P({
-    bite: { 56: PJ(-.45, .75, .2), 57: PJ(-.4, .7, .2, .1), 50: PJ(-.3, .45), 51: PJ(-.3, .45), 52: PJ(.15, -.25), 53: PJ(.15, -.25), 54: PJ(.3, -.45, 0, .2), 55: PJ(.3, -.45, 0, .2) },
+    bite: { 56: PJ(-.42, .5, .18), 57: PJ(-.38, .46, .18, .1), 50: PJ(-.45, .6, .1), 51: PJ(-.45, .6, .1, .06), 52: PJ(.15, -.25), 53: PJ(.15, -.25), 54: PJ(.35, -.5, 0, .2), 55: PJ(.35, -.5, 0, .2) },
+    // The bloom: front arms reach up and forward, rear arms up and back, the faces strain upward, then everything slams down
+    // and out as the flesh bursts. The brood birth: the arms dig in and the faces turn down to the floor as the mass heaves.
+    fleshBloom: { 56: PJ(-.4, .32, .14), 57: PJ(-.36, .3, .14, .1), 50: PJ(-.95, .4, .15), 51: PJ(-.95, .4, .15, .05), 52: PJ(-.55, .3), 53: PJ(.55, -.3), 54: PJ(.9, -.35, -.1, .1), 55: PJ(.9, -.35, -.1, .15) },
+    broodBirth: { 56: PJ(.4, -.5, -.1), 57: PJ(.4, -.5, -.1, .1), 50: PJ(.35, -.6), 51: PJ(.35, -.6, 0, .08), 52: PJ(.3, -.4), 53: PJ(.3, -.4, 0, .08), 54: PJ(-.4, .5, 0, .15), 55: PJ(-.4, .5, 0, .2) },
     '*': { 56: PJ(-.3, -.5), 57: PJ(-.3, -.5, 0, .1), 50: PJ(-.4, -.55), 51: PJ(-.4, -.55), 52: PJ(.3, -.45), 53: PJ(-.3, .45), 54: PJ(.4, -.6, 0, .2), 55: PJ(.4, -.6, 0, .2) },
   }),
   // The jaws gape and slam; the inhale holds them wide while the feelers reach out and drag in.
   gnawingMaw: P({
-    bite: { 20: PJ(-.55, .2, .1), 21: PJ(.55, -.2, -.1), 55: PJ(.3, -.4), 56: PJ(.3, -.4), 57: PJ(-.3, .4), 58: PJ(-.3, .4) },
+    bite: { 20: PJ(-.7, .25, .12), 21: PJ(.7, -.25, -.12), 55: PJ(.35, -.45), 56: PJ(.35, -.45), 57: PJ(-.35, .45), 58: PJ(-.35, .45) },
+    // Devour: the lips peel wide and hold; the feelers reach out over the floor, then haul in as the pull ends.
+    devourPull: { 20: PJ(-.4, -.55), 21: PJ(.4, .55), 55: PJ(-.75, .55, .2, .1), 56: PJ(-.75, .55, .2, .15), 57: PJ(.75, -.55, -.2, .2), 58: PJ(.75, -.55, -.2, .25) },
     '*': { 20: PJ(-.25, -.32), 21: PJ(.25, .32), 55: PJ(-.6, .5, 0, .2), 56: PJ(-.6, .5, 0, .25), 57: PJ(.6, -.5, 0, .3), 58: PJ(.6, -.5, 0, .35) },
   }),
   // Wings cup forward before the dive and sweep back to streamline it, then flare to brake; the cast lifts and beats down.
   cinderSeraph: P({
     diveBomb: { 22: PJ(-.45, .8, -.55), 23: PJ(-.45, .8, -.55, .08), 24: PJ(-.25, .7, -.3) },
+    // Firefall: the wings rise and spread back to gather, then beat forward together to throw the fire, the tail flicking up.
+    firefall: { 22: PJ(.75, -.95, .25), 23: PJ(.75, -.95, .25, .1), 24: PJ(.4, -.55, .15) },
     '*': { 22: PJ(.6, -.6, .2), 23: PJ(.6, -.6, .2, .08), 24: PJ(.25, -.35) },
   }),
   // The hooded lens rears and snaps down to bite or aims along the beam; the ribbons stream behind.
   lumenWraith: P({
-    bite: { 64: PJ(-.45, .7, .2), 60: PJ(-.3, .45, 0, .2), 61: PJ(-.3, .45, 0, .25), 62: PJ(-.3, .45, 0, .3), 63: PJ(-.3, .45, 0, .35) },
-    '*': { 64: PJ(-.3, .2), 60: PJ(-.2, .55, 0, .1), 61: PJ(.2, .45, 0, .15), 62: PJ(-.2, .45, 0, .2), 63: PJ(.2, .55, 0, .25) },
+    bite: { 64: PJ(-.55, .85, .25), 50: PJ(.45, -1.15, -.25), 51: PJ(.35, -1.0, -.2, .12), 60: PJ(-.3, .45, .1, .2), 61: PJ(-.3, .45, .1, .25), 62: PJ(-.3, .45, .1, .3), 63: PJ(-.3, .45, .1, .35) },
+    // Beam: the lens draws back to charge, then levels down the line and holds while both sleeves rise to frame it; the ribbons
+    // stream back from the recoil.
+    sweepBeam: { 64: PJ(-.5, .4), 50: PJ(-.7, -1.35, .15), 51: PJ(-.7, -1.35, .15, .08), 60: PJ(-.3, .75, 0, .1), 61: PJ(.3, .65, 0, .15), 62: PJ(-.3, .65, 0, .2), 63: PJ(.3, .75, 0, .25) },
+    '*': { 64: PJ(-.32, .24, .08), 50: PJ(-.7, -1.35, .15), 51: PJ(-.7, -1.35, .15, .08), 60: PJ(-.2, .55, 0, .1), 61: PJ(.2, .45, 0, .15), 62: PJ(-.2, .45, 0, .2), 63: PJ(.2, .55, 0, .25) },
   }),
   // Spit: the abdomen cocks up and the body kicks back on release. Bite: forelegs rear, head and fangs drive down. Leap: all
   // legs fold for the spring and splay in the air.
@@ -386,29 +419,47 @@ export const PENTAGON_JOINT_POSE = Object.freeze({
   // A raking forepaw (lead -2, then 2) with the hind legs loading and driving; the head dips into the blow; the tail streams.
   riftLynx: P({
     clawSweep: { [-2]: PJ(-1.0, .7, .2), 2: PJ(-.55, .4, .1, .2), [-1]: PJ(.25, -.35), 1: PJ(.25, -.35), 84: PJ(-.25, .4, .1), 80: PJ(.3, -.4, 0, .3), 81: PJ(-.25, .35, 0, .35) },
+    // Blink: it sinks low and coils every leg under it, the head pinned flat; the strike is both forepaws thrown out together.
+    blinkStrike: { [-2]: PJ(.45, -.95, .25), 2: PJ(.45, -.95, .25), [-1]: PJ(-.45, .55), 1: PJ(-.45, .55), 84: PJ(.3, -.2, .1), 80: PJ(-.4, .5, 0, .2), 81: PJ(-.4, .5, 0, .25) },
     '*': { [-2]: PJ(-.65, .55, .15), 2: PJ(-.65, .55, .15, .1), [-1]: PJ(.35, -.5), 1: PJ(.35, -.5), 84: PJ(-.2, .35), 80: PJ(.4, -.3, 0, .3), 81: PJ(.4, -.3, 0, .35) },
   }),
   // Segments coil behind the head and snap through after it; the maw gapes and clamps.
-  sunderjaw: P({ '*': { 20: PJ(-.3, .3, .1), 83: PJ(.25, -.3, .1, .2), 84: PJ(.35, -.45, .15, .35) } }),
+  sunderjaw: P({
+    bite: { 20: PJ(-.45, .4, .15), 83: PJ(.3, -.35, .1, .2), 84: PJ(.45, -.55, .15, .35) },
+    // The ambush: the tail segments drive down and the maw bursts up out of the ground, then whips back over.
+    burrowAmbush: { 20: PJ(.3, -.55, .2), 83: PJ(-.4, .5, -.1, .15), 84: PJ(-.55, .7, -.15, .3) },
+    '*': { 20: PJ(-.3, .3, .1), 83: PJ(.25, -.3, .1, .2), 84: PJ(.35, -.45, .15, .35) },
+  }),
   // Ram: forehooves paw, hind legs load, the head drops the horns and tosses after the hit. Stomp: forequarters rise and slam.
   thunderhorn: P({
     ramCharge: { 24: PJ(.35, .5, -.35), [-2]: PJ(-.45, .3), 2: PJ(-.25, .3, 0, .15), [-1]: PJ(.35, -.35), 1: PJ(.35, -.35) },
     shockwave: { [-2]: PJ(-.9, .45, .1), 2: PJ(-.9, .45, .1, .05), [-1]: PJ(.3, -.3), 1: PJ(.3, -.3), 24: PJ(-.35, .45) },
+    // Bite: the head tucks and hooks the horns up through the target, hind legs driving.
+    bite: { 24: PJ(-.45, .75, .25), [-2]: PJ(-.25, .35), 2: PJ(-.25, .35, 0, .1), [-1]: PJ(.3, -.35), 1: PJ(.3, -.35) },
     '*': { 24: PJ(-.3, .6, .15), [-2]: PJ(-.2, .3), 2: PJ(-.2, .3), [-1]: PJ(.2, -.25), 1: PJ(.2, -.25) },
   }),
   // Mortar: the barrel lowers to aim, kicks back on the shot and settles while the forelegs brace. Bite: mandibles open and snap.
   siegeBeetle: P({
     mortarVolley: { 30: PJ(.3, -.55, .2), 20: PJ(.15, -.1), 21: PJ(-.15, .1), ...beetleLegs(PJ(-.15, .35), PJ(.1, -.2)) },
+    // Bite: the mandibles splay wide, the forelegs rear and the shell tips the head down into the snap.
+    bite: { 20: PJ(-.7, .4, .12), 21: PJ(.7, -.4, -.12), 30: PJ(.15, -.2), ...beetleLegs(PJ(-.4, .45, .1), PJ(.12, -.18)) },
     '*': { 20: PJ(-.5, .3, .1), 21: PJ(.5, -.3, -.1), 30: PJ(.1, -.15), ...beetleLegs(PJ(-.25, .35), PJ(.1, -.15)) },
   }),
   // The grin gapes and clamps; the tail of gas whips behind it.
   gloomwisp: P({
-    bite: { 20: PJ(-.25, .1), 21: PJ(.25, -.1), 100: PJ(.3, -.4, 0, .1), 101: PJ(.3, -.45, 0, .2), 102: PJ(.3, -.4, 0, .3) },
+    bite: { 20: PJ(-.35, .15), 21: PJ(.35, -.15), 100: PJ(.3, -.4, 0, .1), 101: PJ(.3, -.45, 0, .2), 102: PJ(.3, -.4, 0, .3) },
+    // Bewilder: the grin stretches wide in a slow leer while the plume curls up under it, then snaps out behind.
+    wispBewilder: { 20: PJ(-.4, -.25), 21: PJ(.4, .25), 100: PJ(-.6, .7, .2, .1), 101: PJ(.6, -.7, -.2, .2), 102: PJ(-.6, .7, .2, .3) },
     '*': { 20: PJ(-.2, -.3), 21: PJ(.2, .3), 100: PJ(-.4, .5, 0, .1), 101: PJ(.4, -.5, 0, .2), 102: PJ(-.4, .5, 0, .3) },
   }),
   // Hooked arms wind back and rake through in turn; the inhale and howl hold the grin wide with the arms flung out.
   gloomgorge: P({
-    clawSweep: { 25: PJ(-1.0, .75, .25), 26: PJ(-.6, .5, .15, .2), 20: PJ(-.15, .1), 21: PJ(.15, -.1), [-1]: PJ(.15, -.2), 1: PJ(.15, -.2) },
+    // Overhand rakes: each hooked arm is hauled up over the crown and whipped down through the target, the second a beat behind.
+    clawSweep: { 25: PJ(-1.7, -.55, 1.0), 26: PJ(-1.3, -.5, .9, .2), 20: PJ(-.25, .15), 21: PJ(.25, -.15), [-1]: PJ(.15, -.2), 1: PJ(.15, -.2) },
+    // Devour: both arms reach far out, then scoop back to the belly while the grin gapes and holds.
+    devourPull: { 25: PJ(-.75, -.35, .7), 26: PJ(-.75, -.35, .7, .08), 20: PJ(-.35, -.55), 21: PJ(.35, .55) },
+    // Howl: the arms are flung up and back, the grin opens to its widest, the feet brace.
+    gorgeHowl: { 25: PJ(-1.1, -1.8, .2), 26: PJ(-1.1, -1.8, .2, .05), 20: PJ(-.4, -.6), 21: PJ(.4, .6), [-1]: PJ(.2, -.25), 1: PJ(.2, -.25) },
     leapSlam: { 25: PJ(-1.1, .55, .2), 26: PJ(-1.1, .55, .2, .05), [-1]: PJ(.35, -.4), 1: PJ(.35, -.4) },
     '*': { 20: PJ(-.25, -.4), 21: PJ(.25, .4), 25: PJ(-.3, -.75, .15), 26: PJ(-.3, -.75, .15, .1) },
   }),
