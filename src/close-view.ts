@@ -30,7 +30,7 @@ import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureI
 import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.ts";
 import { SIGIL_CELLS } from "./watcher.ts";
 import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts";
-import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh } from "./close-view-beast-triceratops.ts";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
 import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
@@ -2739,8 +2739,9 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   if (useGL && MODEL_STATE.beasts.count) { gc.save(); gc.setTransform(ts, 0, 0, ts, gox, goy); gc.translate(Tx, Ty); try { drawBeastShadows(gc, s); } finally { gc.restore(); } }
   let packed;
   MOUNT_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.ridden; // the ridden Triceratops's body is skinned: its card keeps the saddle and rider
+  if (MOUNT_DRAW.skipBody) riddenSeatOnCard(); // where on the card (it stands at the Wayfarer) the saddle just behind the shoulders is seen
   HATCH_DRAW.skipBody = useGL && !!MODEL_STATE.beasts.hatchling; // the hatchling's body is skinned: his card is left empty
-  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; HATCH_DRAW.skipBody = false; }
+  try { packed = packBillboards(g, draws, n, s, turnFacing, hasNativeModels ? MODEL_STATE.admitted : null); } catch (err) { if (useGL) return abortCloseViewGLFrame(); throw err; } finally { MOUNT_DRAW.skipBody = false; MOUNT_DRAW.seatDx = MOUNT_DRAW.seatUp = 0; HATCH_DRAW.skipBody = false; }
   if (useGL) { if (!glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, fogFar, Tx, Ty, gox, goy, s, ts, models, shots, flatWorld, outdoor)) return abortCloseViewGLFrame(); }
   else {
   for (let oi = 0; oi < n; oi++) { const it = order[oi];
@@ -4161,10 +4162,10 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
 // at the mount's own scale, and follows only the accepted pose fields: its heading, the horn pose, the Silly Goose's drill roll (an axial
 // turn about its middle, kept above its support) and the leap's lift. The lowest quality setting keeps the whole card.
 const RIDDEN = { track: null, mount: '', actor: { id: '', kind: 'triceratops', mountView: true, mountDrill: false, triceratopsDisposition: 'good', hp: 1, mountHornPose: null, pack: null, facingX: 1 },
-  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0, pivot: 1 }, yaw: NaN, x: NaN, y: NaN, pitch: null };
+  env: { x: 0, y: 0, z: 0, scale: 1, now: 0, reduce: false, tier: 'full', target: null, dead: false, yaw: NaN, air: 0, horn: null, drill: null }, drill: { angle: 0, pivot: 1 }, yaw: NaN, x: NaN, y: NaN, pitch: null, seatX: 0, seatY: 0 };
 const RIDDEN_FACING_YAW = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
 function admitRiddenTriceratops(g, Q, now, reduce, tier) {
-  MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null;
+  MODEL_STATE.beasts.ridden = false; RIDDEN.pitch = null; RIDDEN.seatX = RIDDEN.seatY = 0;
   const ride = g.mountRide?.(), d = capturedPlayer;
   if (!TRICERATOPS_CLOSE_VIEW.riddenBody || tier === 'low' || ride?.beast !== 'triceratops' || !d?.mountComposite) { RIDDEN.track = null; return; }
   const p = g.player, a = RIDDEN.actor, E = RIDDEN.env, mesh = triceratopsMesh(tier, Object.assign(a, { triceratopsDisposition: ride.variant === 'silly' ? 'silly' : 'good' }));
@@ -4185,6 +4186,17 @@ function admitRiddenTriceratops(g, Q, now, reduce, tier) {
   E.now = now; E.reduce = reduce; E.tier = tier; E.yaw = RIDDEN.yaw; E.horn = horn; E.drill = drill ? RIDDEN.drill : null; E.target = null; E.dead = false;
   const frame = sampleTriceratops(RIDDEN.track, a, E); if (!frame) return;
   const B = MODEL_STATE.beasts; B.items[B.count++] = frame; B.ridden = true; RIDDEN.pitch = frame.neckPitch;
+  // the rider's card stands over the saddle, just behind the shoulders (TRICERATOPS_RIG.seatF along the body's heading as drawn)
+  const seat = TRICERATOPS_RIG.seatF * E.scale; RIDDEN.seatX = Math.cos(frame.yaw) * seat; RIDDEN.seatY = Math.sin(frame.yaw) * seat;
+}
+// The seat (RIDDEN.seatX/Y from the Wayfarer, world tiles, at the seat's height) seen through the camera on the rider card's plane (the
+// card stands upright at the Wayfarer, across the view): MOUNT_DRAW.seatDx along the card, seatUp up it (tiles). The card's quad never
+// moves (its framing is the composite's), only where the saddle and rider are painted on it; exact from every side.
+function riddenSeatOnCard() {
+  const E = RIDDEN.env, wx = E.x - CAM.cx, wy = E.y - CAM.cy, D = wx * CAM.fx + wy * CAM.fy, v = RIDDEN.seatX * CAM.fx + RIDDEN.seatY * CAM.fy;
+  if (!(D > .2) || !(D + v > .2)) { MOUNT_DRAW.seatDx = MOUNT_DRAW.seatUp = 0; return; }
+  const t = D / (D + v), sz = E.z + MOUNT_BEASTS.triceratops.seat; // the ray from the eye to the seat meets the card's plane at t
+  MOUNT_DRAW.seatDx = t * ((wx + RIDDEN.seatX) * CAM.rx + (wy + RIDDEN.seatY) * CAM.ry) - (wx * CAM.rx + wy * CAM.ry); MOUNT_DRAW.seatUp = (t - 1) * (sz - CAM.hc);
 }
 // The Triceratops hatchling (hatchling.ts), out in his baby or young form: his skinned body on the Triceratops rig with his form's
 // proportions (close-view-beast-triceratops.ts triceratopsMesh: `triForm`), at his form's scale, on his own track. One body at most;
