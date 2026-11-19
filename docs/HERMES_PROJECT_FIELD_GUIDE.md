@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Music in background: the score plays on while the app is hidden
+## Release 1007 — Music in background: the score plays on while the app is hidden
 
 Tim, 2026-11-19: "add a background playing option so that when I close the phone or close the app the music keeps playing in the background... Make it an option in the audio options." Options → Audio → Music in background, off by default.
 
