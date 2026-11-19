@@ -14,6 +14,30 @@ Tim (2026-11-19, the Pentagon, "The Ward of Bones · The Rust Lane", Close View 
 
 **BOUNDARY:** Presentation only: no save, generation, world or rule change. Walls, trim, pillars, props and wall tops between the eye and the body are cut exactly as before (the ceiling's beams now follow the ceiling); the high (rock tops) and under-the-floor views are unchanged. One more uniform a frame (`u_cutZ`) and a few shader comparisons; no new per-frame allocation, draw call or program. The sight field's dark fog is unchanged.
 
+## Release 1018 — Power Aegis: the reflect is your own hit
+
+Tim (2026-11-19): "reflected damage can count as your own hit." He also confirmed grabs cannot be parried or reflected.
+
+**CODE:** `game.ts turnShot` no longer marks a turned shot `minor` (and clears `glyphHost`, `rr`, `echo`, `shard` on it); the sent-back bolt in `aegisReflect` is no longer `minor`. Both strike through the same `updateProjectiles` hit path as a tool shot, so its `onDefeat` (kill credit), `frenzyBlow` and `landHit` run as for any of the Wayfarer's shots. `reflectBlow` now calls `frenzyBlow` and `landHit(foe, actual, now, REFLECT_HIT)` after its damage and kill, inside its `_reflecting` guard. `REFLECT_HIT` is a frozen module constant `{ aegisReflected: true }`, so nothing is allocated. `landHit` sets `_reflecting` while a reflect's on-hit effects run (src `aegisReflected`), so an on-hit Echo's damage can never parry. `hit-cast-passives.ts passiveHit` reads `src.aegisReflected` and skips its bonus strike, but its counts and marks still apply. Tests are in `tests/power-aegis.test.ts`.
+
+**BOUNDARY:** A reflect is a hit of the Wayfarer's for on-hit Echoes, on-hit passive counts and marks (Tempo; Sanctuary's leech), the frenzy cure, kill credit and everything a kill sets off (drops, experience, kill Echoes, constellation kill hooks). It is not melee, a tool shot or a charged release, so it gets no Arcane Edge, Pocket Time or Rapid Reload, and it carries no glyphs, because nothing of hers loosed it. Its damage stays `POWER_AEGIS.reflect` times the blow, capped by `bossCap` on boss-class foes. It is not scaled by `wayfarerDamage`, glyphs, Tempo's window, Shatterpoint or the Power Aegis empowerment. A perfect parry already staggers the foe past Shatterpoint's threshold, so Shatterpoint would always add 40% and break the boss cap. Reflected damage and its on-hit effects never parry, and turned shots are never turned again. Command grabs (`grabs`, `stalkerGrabs`, `seaGrabs` including the Bog Lurker and Lantern Angler) are never parried. No save, generator or presentation change.
+
+## Release 1017 — The Triceratops hatchling
+
+Tim (2026-11-19) designed the hatchling: the Beast Hotel rescue quest, three growth forms (support baby, damage young, rideable big), growth from a share of fight experience, and form choice in the Pack. He then chose to withdraw the free Triceratops from every journey so everyone does the quest, and approved the matching edits to tests/triceratops-production-grant.test.ts and the home-town digest in tests/close-view-overworld-793.test.ts (the Beast Hotel door now always stands in the home town).
+
+**CODE:** src/hatchling.ts holds the HATCHLING data table (quest, growth share and thresholds, forms, follow, buffs, baby support, young moves, bounds) and the pure rules; save.mounts.hatchling is normalised by ensureHatchling from ensureMounts. beast-mounts.ts withdraws the release-734 production grant (the mount-free-triceratops-v1 id family) once per journey, dismounting a Wayfarer riding it. game.ts tickHatchling runs the companion, growth and hold-Act summoning of the chosen form; main.ts adds the Pack row and the Atlas/compass marker; src/hatchling-render.ts draws the baby and young in Standard View, and Close View reuses the Triceratops rig with form proportions.
+
+**BOUNDARY:** Additive at schema 14; the rescue site is seeded and version-pinned (HATCHLING.quest.version). One companion at a time; his effects and visuals are capped (maxEffects, maxVisuals) and share the Wayfarer's effects list. Caught Triceratops variants, the hotel recovery system and every other mount are unchanged. The only generation change is the Beast Hotel door in the home town. Sizes and buffs (Tim, 2026-11-19): HATCHLING.forms carry a Standard View `scale` (baby .74, young 1) and a `closeViewScale` (1.2, 1.2); the baby stands a little below the Wayfarer and the young about the Stalker's cat form. TRI_FORMS.baby gives a big round head, short snout, huge eyes, a tiny frill and horn nubs; every new form factor is 1 for the adult, so wild, ridden and Silly Triceratops are unchanged. The baby's buffs are +2% damage, `damageTaken: -.1` (a flat 10% cut through hurtScale, passed through armorGlyphBonus) and +5% stamina recovery.
+
+## Release 1016 — Power Aegis: a substantial reflect
+
+Tim (2026-11-19): "the reflect can be pretty substantial... other moves already send back 30 or 40%... it's a hard manoeuvre."
+
+**CODE:** `hit-cast-passives.ts POWER_AEGIS.reflect` 1 → 1.5 and `bossCap` .05 → .15 (of a boss-class foe's maximum health per reflect). Tests compute expected reflects from the table.
+
+**BOUNDARY:** Numbers only; no rule, save or presentation change. Thorned Veil's passive 30% return is unchanged.
+
 ## Release 1015 — Power Aegis reflects; tool bonus
 
 Tim (2026-11-19): tool shots share the empowerment; a perfect parry reflects anything back (shots, roars, beams, blows) except command grabs, which still land.

@@ -9,7 +9,7 @@ import { createCombatant } from '../src/combat.ts';
 import { ensureLattice } from '../src/transit-lattice.ts';
 import { FIELD_KEYS, fieldForm, FIELD_PASSIVES } from '../src/lattice-fields.ts';
 import { latticePassiveGroups, toggleLatticePassive } from '../src/constellation.ts';
-import { POWER_AEGIS, powerAegisLeft } from '../src/hit-cast-passives.ts';
+import { POWER_AEGIS, powerAegisLeft, TEMPO, passiveMarkOf } from '../src/hit-cast-passives.ts';
 import { BRAWLER, ESSENCE_WALK } from '../src/brawler-spells.ts';
 import { SPELLS } from '../src/items.ts';
 import { ATTACK_MODULES, reflectShotStep } from '../src/monster-pack.ts';
@@ -207,6 +207,8 @@ test('a parried shot turns round, gold and friendly, and strikes the creature th
   g.projectiles.push(shotAt(p, 'enemy-shot-foe-1'));
   let turned = null; run(g, t, t + 1300, () => { turned ||= g.projectiles.find((q) => q.aegisReflected) || null; }); // before the ashling's own lunge
   assert.ok(turned, 'turned round'); assert.equal(turned.hostile, false); assert.equal(turned.seekId, 'foe', 'at its shooter');
+  // 2026-11-19 (Tim: "reflected damage can count as your own hit"): a turned shot is no longer `minor`; it is the Wayfarer's own
+  assert.ok(!turned.minor && !turned.glyphHost && !(turned.rr > 0), 'her own hit, with no glyphs and no charged release');
   assert.equal(g.player.hp, 100, 'the Wayfarer takes nothing');
   assert.equal(5000 - e.hp, Math.round(25 * POWER_AEGIS.reflect), 'its own damage back (the reflect multiple)');
   assert.equal(cds(g)['spell:aegis'], 0, 'still a parry: refunded'); assert.match(g.message, /Perfect!/);
@@ -231,8 +233,9 @@ test('roars, beams and area blasts go back to their maker; their riders never ta
     const { g, e, t } = warded({ gap: 6 });
     inject(g, (w) => { w.hurt(e, 30, { jumpable: false, source, ...opts }); riders(w); w.bleed(); w.ignite(3, 4); w.apatoPoison(2, 'wrap'); });
     run(g, t, t + 2 * FRAME);
+    // 2026-11-19 (Tim: the reflect should be substantial): expected damages are the blow times POWER_AEGIS.reflect (now 1.5)
     const now = g.lastUpdateNow;
-    assert.equal(g.player.hp, 100, `${source}: blocked`); assert.equal(5000 - e.hp, 30, `${source}: sent back to its maker 6 tiles off`);
+    assert.equal(g.player.hp, 100, `${source}: blocked`); assert.equal(5000 - e.hp, Math.round(30 * POWER_AEGIS.reflect), `${source}: sent back to its maker 6 tiles off`);
     assert.ok(!(g.playerFire?.left > 0), `${source}: no burn`); assert.ok(!(g.save.bleed?.left > 0), `${source}: no bleed`);
     assert.ok(!(g.save.elites?.status?.poison > 0) && !(g.save.poison?.stacks > 0), `${source}: no poison`);
     assert.ok(!(g.player.slowUntil > now) && !(g.player.confusedUntil > now) && !(g.player.stunnedUntil > now) && !(g.player.shockCount > 0), `${source}: no slow, confusion, stun or shock`);
@@ -254,7 +257,7 @@ test('real pack effects: a burning tree\'s touch goes back to its maker; a creat
   { const { g, e, t, p } = warded({ gap: 5 });
     g.packEffects = [{ id: 'thorn', kind: 'thorn', owner: 'foe', x: p.x + 1.4, y: p.y, vx: -6, vy: 0, radius: .3, arming: 0, life: 2, damage: 18 }];
     let bolt = null; run(g, t, t + 2000, () => { bolt ||= g.projectiles.find((q) => q.aegisReflected) || null; });
-    assert.ok(bolt && bolt.hostile === false && bolt.seekId === 'foe', 'sent back as a shot'); assert.equal(5000 - e.hp, 18, 'its damage'); assert.equal(g.player.hp, 100); }
+    assert.ok(bolt && bolt.hostile === false && bolt.seekId === 'foe', 'sent back as a shot'); assert.equal(5000 - e.hp, Math.round(18 * POWER_AEGIS.reflect), 'its damage'); assert.equal(g.player.hp, 100); }
 });
 
 test('command grabs are not parried: the Spinosaurus Grab takes you inside the perfect window; the Aegis still blocks its damage', () => {
@@ -287,7 +290,7 @@ test('bosses and world beasts take the same reflect, but never more than bossCap
   const small = warded({ boss: true, gap: 3 }); inject(small.g, (w) => w.hurt(small.e, 40, { jumpable: false, source: 'sweepBeam', beam: true })); run(small.g, small.t, small.t + 2 * FRAME);
   assert.ok(5000 - small.e.hp > 0 && 5000 - small.e.hp < cap, `an ordinary boss blow goes back whole (${5000 - small.e.hp})`);
   const plain = warded({ gap: 3 }); inject(plain.g, (w) => w.hurt(plain.e, 1000, { jumpable: false, source: 'sweepBeam' })); run(plain.g, plain.t, plain.t + 2 * FRAME);
-  assert.equal(5000 - plain.e.hp, 1000, 'an ordinary foe: no cap');
+  assert.equal(5000 - plain.e.hp, Math.round(1000 * POWER_AEGIS.reflect), 'an ordinary foe: no cap');
   assert.equal(g.reflectDamage(e, 100000), cap, 'a reflected shot on a boss: the same cap'); assert.equal(g.reflectDamage(plain.e, 100000), 100000);
 });
 
@@ -296,7 +299,7 @@ test('no ping-pong: a turned shot passes a psychic wall, never hurts the Wayfare
   g.projectiles.push(shotAt(p, 'enemy-shot-foe-a'), shotAt(p, 'enemy-shot-foe-b', 25, .01));
   let flashes = 0, last = 0; run(g, t, t + 1300, () => { if (g.parryFlashAt > 0 && g.parryFlashAt !== last) { flashes++; last = g.parryFlashAt; } });
   assert.equal(flashes, 1, 'one parry a cast'); assert.equal(g.player.hp, 100);
-  assert.equal(5000 - e.hp, 25, 'only the first goes back; the second is only turned aside');
+  assert.equal(5000 - e.hp, Math.round(25 * POWER_AEGIS.reflect), 'only the first goes back; the second is only turned aside');
   const q = { x: 5, y: 5, dx: 1, dy: 0, damage: 10, hostile: false, aegisReflected: true, hits: {} };
   reflectShotStep(q, [{ kind: 'psyWall', id: 'w', x: 4.8, y: 4.55, nx: 1, ny: 0, arming: 0 }], .6);
   assert.equal(q.hostile, false, 'a psychic wall does not turn it back'); assert.equal(q.reflectedBy, undefined);
@@ -316,4 +319,74 @@ test('soak: shots, roars and bolts parried and sent back every frame for 60 s wi
   });
   for (const v of [g.player.hp, e.hp, g.powerAegisUntil, g.reflectFlashAt, ...g.projectiles.map((q) => q.x + q.y + q.damage)]) assert.ok(Number.isFinite(Number(v)), String(v));
   assert.equal(g.player.hp, 100); assert.ok(g.projectiles.length <= 64 && g.packEffects.length <= 16 && g.effects.length < 64, `bounded (${g.projectiles.length}, ${g.packEffects.length})`);
+});
+
+// ---------------------------------------------------------------- the reflect is the Wayfarer's own hit (Tim, 2026-11-19)
+// "reflected damage can count as your own hit": turned shots, sent-back bolts and direct reflects give on-hit passives, on-hit
+// Echoes, the frenzy blow and kill credit; the reflect's own damage stays `reflect` times the blow (no double dip).
+const holding = (g, ...keys) => { g.save.lattice.passives = ['field:power-aegis', ...keys]; };
+const withEmber = (g) => { g.save.echoes = { ...(g.save.echoes || {}), owned: { wormTentacle: true }, equipped: ['wormTentacle'] }; };
+
+test('a reflected melee blow is a hit: it advances Tempo, and its damage is the reflect alone (no Shatterpoint or empowerment on top)', () => {
+  const { g, e, t } = warded({ gap: 3 }); holding(g, 'field:tempo', 'field:shatterpoint'); e.hitStun = 1; // staggered: Shatterpoint would add 40% to a real hit
+  inject(g, (w) => w.hurt(e, 30, { jumpable: false, source: 'sweepBeam' }));
+  run(g, t, t + 2 * FRAME);
+  assert.equal(g.player.hp, 100); assert.ok(g.powerAegisUntil > g.lastUpdateNow, 'Power Aegis empowerment holds');
+  assert.equal(5000 - e.hp, Math.round(30 * POWER_AEGIS.reflect), 'exactly the reflect: no Shatterpoint, empowerment or Tempo bonus');
+  assert.equal(passiveMarkOf(e)?.n, 1, 'Tempo counted the reflect as a hit');
+  // four more reflects (each a hit, past Tempo's gap): the fifth opens the window
+  let at = g.lastUpdateNow;
+  for (let i = 0; i < TEMPO.hits - 1; i++) { at += 200; g.reflectBlow(e, 10, at); }
+  assert.ok(passiveMarkOf(e).vuln > at, 'the fifth hit marks the foe');
+  const b = e.hp; g.reflectBlow(e, 10, at + 50); assert.equal(b - e.hp, 10, 'inside the window a reflect still deals only its own amount');
+});
+
+test('a reflected shot is a hit: it lands through landHit and its kill gives kill credit', () => {
+  const { g, e, t, p } = warded({ gap: 4 }); withEmber(g); e.hp = 30;
+  const kills = []; const de = g.defeatEnemy.bind(g); g.defeatEnemy = (q) => { kills.push(q.id); return de(q); };
+  const lands = []; const lh = g.landHit.bind(g); g.landHit = (q, n, now, src) => { if (src?.aegisReflected) lands.push(n); return lh(q, n, now, src); };
+  const xp = Number(g.save.xp) || 0;
+  g.projectiles.push(shotAt(p, 'enemy-shot-foe-k'));
+  run(g, t, t + 1300);
+  assert.equal(g.player.hp, 100); assert.ok(e.dead, 'the reflect killed it');
+  assert.deepEqual(kills, ['foe'], 'kill credit: defeated once, by the Wayfarer'); assert.ok(e.rewarded && (Number(g.save.xp) || 0) > xp, 'the kill rewards her');
+  assert.deepEqual(lands, [30], 'the turned shot landed as her hit (landHit)');
+});
+
+test('a reflect cures the frenzy as a hit does (direct, and a turned shot)', () => {
+  { const { g, e } = warded({ gap: 3 }); e.kind = 'doomChaser'; g.frenzy = { active: true, cure: 0, left: 10, forget: 10 };
+    g.reflectBlow(e, 10, g.lastUpdateNow); assert.equal(g.frenzy.cure, 1, 'a direct reflect is a blow'); }
+  { const { g, e, t, p } = warded({ gap: 4 }); e.kind = 'doomChaser'; g.frenzy = { active: true, cure: 0, left: 10, forget: 10 };
+    g.projectiles.push(shotAt(p, 'enemy-shot-foe-f'));
+    run(g, t, t + 1300, () => { if (g.frenzy) g.frenzy.left = 10; });
+    assert.equal(g.frenzy?.cure, 1, 'a turned shot is a blow'); }
+});
+
+test('no recursion: an on-hit Echo\'s damage from a reflect never parries, even with a window open', () => {
+  // direct reflects: the third lays Tentacle Ember's burst (damage through game.vulnScale), which here tries to parry
+  { const { g, e } = warded({ gap: 3 }); withEmber(g); let tries = 0, parried = 0;
+    g.vulnScale = (q, now) => { tries++; if (g.parryBlow(e, now, 50, null, null, 1)) parried++; return 1; };
+    let at = g.lastUpdateNow;
+    for (let i = 0; i < 3; i++) { at += 300; g.aegisPerfectUntil = g.aegisUntil = at + 400; g.reflectBlow(e, 20, at); }
+    assert.ok(tries >= 1, 'the ember burst went off'); assert.equal(parried, 0, 'nothing it does parries');
+    assert.equal(g._parryBack, false); assert.equal(g._reflecting, false, 'the guard is lifted after');
+    assert.ok(5000 - e.hp > 60, 'the burst struck as well'); }
+  // a turned shot: the window is re-opened while it flies; the ember from its hit still parries nothing
+  { const { g, e, t, p } = warded({ gap: 4 }); withEmber(g); let tries = 0, parried = 0, turned = null;
+    g.landHit(e, 5, t - 400); g.landHit(e, 5, t - 200); // two embers already on it
+    g.vulnScale = (q, now) => { tries++; if (g.parryBlow(e, now, 50, null, null, 1)) parried++; return 1; };
+    g.projectiles.push(shotAt(p, 'enemy-shot-foe-r'));
+    run(g, t, t + 1300, (now) => { const q = g.projectiles.find((s) => s.aegisReflected); if (q && !turned) turned = q; if (turned) g.aegisPerfectUntil = g.aegisUntil = now + 400; });
+    assert.ok(turned && tries >= 1, 'the reflected shot set off the ember'); assert.equal(parried, 0, 'and nothing parried');
+    assert.equal(g._reflecting, false); }
+});
+
+test('grabs are still never parried or reflected (Tim, 2026-11-19), the Bog Lurker and Lantern Angler included', () => {
+  const { g, e } = warded({ gap: 2 }), now = g.lastUpdateNow;
+  assert.ok(now < g.aegisPerfectUntil);
+  for (const id of POWER_AEGIS.grabs) assert.equal(g.parryBlow(null, now, 30, null, id, 1), false, id);
+  for (const kind of POWER_AEGIS.stalkerGrabs) assert.equal(g.parryBlow({ id: 'ape', stalkAct: { kind } }, now, 30, null, null, 1), false, kind);
+  for (const seaKind of POWER_AEGIS.seaGrabs) assert.equal(g.parryBlow({ id: seaKind, seaKind }, now, 30, null, null, 1), false, seaKind);
+  assert.deepEqual(POWER_AEGIS.seaGrabs, ['bogLurker', 'angler']);
+  assert.equal(g._parryBack, false); assert.equal(e.hp, 5000, 'nothing went back');
 });

@@ -15,12 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1015 (this merge, #685); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1018 (this merge, #688); production serves `r1012-ffa69513a699`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1018 | Claude | claude/aegis-reflect-hits / #688 | Power Aegis reflected damage counts as your own hit (on-hit Echoes, Tempo count, frenzy cure, kill credit), without double-dipping bonus strikes | Merged (#688); preview follows. |
+| 1017 | Claude | claude/triceratops-hatchling | Triceratops hatchling: Beast Hotel rescue quest, baby (support) and young (damage) companion forms, growth from fight XP, form choice in the Pack; free Triceratops withdrawn from every journey; new modules hatchling and hatchling-render; grant-test and home-town digest edits (Tim approved) | In flight. |
+| 1016 | Claude | claude/aegis-reflect-strength / #686 | Power Aegis reflect 1.5x the blow; boss cap 15% of max health per reflect | Merged (#686); preview follows. |
 | 1015 | Claude | claude/aegis-reflect / #685 | Power Aegis reflects parried attacks (shots, bolts, blows, roars, beams; command grabs excluded; 5% boss cap); tool shots +20% while empowered | Merged (#685); preview follows. |
 | 1014 | Claude | claude/aegis-parry / #684 | Power Aegis (Lattice passive): a perfect parry in the Aegis's first 0.45 s negates the blow, staggers the attacker, refunds the cooldown and empowers melee +40% for 2.5 s | Merged (#684); preview follows. |
 | 1013 | Claude | claude/earth-apatosaurus / #683 | The Earth Apatosaurus world beast: tree clones, root venom, duels with the Spinosaurus and Stegosaurus, Earth Resolve Echo; 4 new modules; six roster-test lines updated (Tim approved); additive saves | Merged as `f95a13a10413` (#683); preview r1013-f95a13a10413; not published. |
