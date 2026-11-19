@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Refinement to +20 with Divine Viscera past 1,000
+## Release 1004 — Refinement to +20 with Divine Viscera past 1,000
 
 Tim (2026-11-18): "If you get past 1000, you can unlock the secondary upgrade feature, which lets you upgrade your weapons and armor to +20... Divine Viscera will be the currency for these upgrades instead of armor/weapon spheres." He chose: unlock the first time you reach a town past 1,000 (the far realms' straight-line measure), and every piece of gear can reach +20, any rarity.
 
