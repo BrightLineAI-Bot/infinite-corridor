@@ -3,8 +3,8 @@
 // attacking, while the Wayfarer can interact with them, until they die"). The contract checked here:
 // - a live creature in view is never screen-door dithered by the fog's edge (CLOSE_VIEW.creatures.fogDither false), and in the
 //   open world it is kept to the GPU's own fog (OUTDOOR.view), not the floor's shorter radius, on every tier;
-// - creatures share the Wayfarer's broad exposure with a form fill (CLOSE_VIEW_ACTOR_LOOK expose/contrast/form; rims kept
-//   as edge separation only), in the model and beast programs;
+// - creatures take the floor's light where they stand (Tim, 2026-11-19: no lighting of their own), shaded for volume by `form`
+//   but never brighter than the floor, in the model and beast programs;
 // - bodies stand on the floor (CREATURE_GROUND) on a contact shadow sized to their stance (CLOSE_VIEW.creatures.contact);
 // - a slain body falls, rests on the floor, lies whole and sinks (CLOSE_VIEW.creatures.death), opaque, capped per tier;
 // - a blow's weight scales the flinch and the grounded slide back, and the body flashes white-hot first (CREATURE_MOTION.impact);
@@ -61,6 +61,9 @@ test('the tables: no fog-edge dither for live creatures, outdoor reach, contact,
   assert.equal(C.fogDither, false); assert.equal(C.outdoorReach, true);
   assert.ok(C.contact.min > 0 && C.contact.max > C.contact.min && C.contact.alpha > 0 && C.contact.alpha <= 1);
   assert.ok(C.death.holdMs > 0 && C.death.sinkMs > 0 && C.death.sink > 0);
+  assert.equal(C.death.jitter, undefined, 'no shimmer'); assert.equal(C.death.ring, undefined, 'no ring'); assert.ok(430 + C.death.holdMs + C.death.sinkMs < 1600, 'gone within 1.6 s');
+  const Pc = C.death.pieces; assert.ok(Pc.spread > 0 && Pc.spread <= .6 && Pc.shrink > 0 && Pc.shrink < 1 && Pc.settle >= 1, 'small bits settling on the floor');
+  assert.ok(C.death.drift > 0 && C.death.drift <= .35 && C.death.grey.every((c: number) => c < .4), 'a slight darkening and desaturation only');
   assert.ok(C.death.cap.low <= C.death.cap.balanced && C.death.cap.balanced <= C.death.cap.full && C.death.cap.full <= 8, 'bounded per tier');
   const I = CREATURE_MOTION.impact; assert.ok(I.light < 1 && I.heavy > 1 && I.knock > 0 && I.knock < .3 && I.flashMs <= 120);
 });
@@ -83,12 +86,21 @@ test('a creature walking in from far out never thins: one opacity, every frame',
   assert.ok(seen.length >= 35, `drawn on the walk (${seen.length})`); assert.ok(seen.every(a => a === 1), `opaque every frame (min ${Math.min(...seen)})`);
 }));
 
-test('shading: the Wayfarer-like exposure and form fill are in the model and beast programs; rims are only edge separation', () => {
-  const L = CLOSE_VIEW_ACTOR_LOOK, src = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
-  assert.ok(L.expose > .7 && L.expose <= 1 && L.contrast > 0 && L.contrast < 1 && L.form > 0 && L.rim < 1 && L.spec < .25);
-  assert.match(src, /mix\(vec3\(\$\{glf\(CLOSE_VIEW_ACTOR_LOOK\.expose\)\}\), dif, \$\{glf\(CLOSE_VIEW_ACTOR_LOOK\.contrast\)\}\)/);
-  assert.match(src, /CLOSE_VIEW_ACTOR_LOOK\.form/);
-  const beast = beastFragmentBody(L as any); assert.ok(beast.includes(L.expose.toFixed(4)) && beast.includes(L.form.toFixed(4)), 'world beasts share it');
+test('lighting matches the surroundings (Tim, 2026-11-19): a body takes the floor\'s light where it stands, shaded for volume, never brighter', () => {
+  const L: any = CLOSE_VIEW_ACTOR_LOOK, src = readFileSync(new URL('../src/close-view-gl.ts', import.meta.url), 'utf8');
+  assert.equal(L.rim, 0, 'no rim'); assert.equal(L.spec, 0, 'no highlight of its own'); assert.ok(L.form > 0 && L.form <= 1);
+  assert.equal(L.expose, undefined); assert.equal(L.sky, undefined);
+  const model = src.slice(src.indexOf('const MODEL_FS'), src.indexOf('// ----', src.indexOf('const MODEL_FS')));
+  assert.match(model, /lightsAt\(v_pos, vec3\(0\.0, 0\.0, 1\.0\), 0\.0, env, envS\)/, 'the floor\'s own light evaluation at the body');
+  assert.match(model, /vec3 lit = mix\(env, min\(dif, env\), \$\{glf\(CLOSE_VIEW_ACTOR_LOOK\.form\)\}\)/);
+  assert.ok(!/CLOSE_VIEW_ACTOR_LOOK\.floor/.test(model), 'no light floor in the model program');
+  const beast = beastFragmentBody(L); assert.ok(beast.includes('mix(env, min(dif, env), ' + L.form.toFixed(4) + ')') && !beast.includes(L.floor.toFixed(4)), 'world beasts the same');
+  // the same rule per channel: never above the floor's light L; with the body facing the light it is L; turned away, darker
+  const lit = (env: number, own: number) => env + (Math.min(own, env) - env) * L.form;
+  for (const env of [0, .05, .2, .6, 1.4]) for (const own of [0, env * .3, env, env * 1.8]) assert.ok(lit(env, own) <= env + 1e-12, `${env}/${own}`);
+  assert.equal(lit(.3, .5), .3, 'a face toward the light: the floor\'s light'); assert.ok(lit(.3, .1) < .3, 'a face away: darker');
+  const dim = [0, .5, 1, 2].map(k => lit(.04, .04 * k)), mean = dim.reduce((a, b) => a + b, 0) / dim.length;
+  assert.ok(mean <= .04 && mean > .02, `a body in a dim corner is as dim as the corner (${mean.toFixed(3)})`);
 });
 
 test('bodies stand on the floor: grounded families touch it, designed hovering bodies do not', () => {

@@ -38,9 +38,9 @@ void main() {
   if (dot(normal, toEye) < 0.0 && v_emit >= 3) normal = -normal; // flat glyphs and bolts light from either face
   vec3 dif, spe; lightsAt(v_pos, normal, 14.0, dif, spe);
   float rim = 1.0 - max(0.0, dot(normal, toEye));
-  vec3 lit = max(mix(vec3(${glf(L.expose ?? 1)}), dif, ${glf(L.contrast ?? 1)}), vec3(${glf(L.floor)})) * (1.0 + ${glf(L.sky ?? 0)} * normal.z) * (1.0 + ${glf(L.form ?? 0)} * (dot(normal, normalize(toEye + vec3(0.0, 0.0, 1.2))) - 0.55)); // the creatures' light (CLOSE_VIEW_ACTOR_LOOK, solidity pass 2)
-  vec3 color = v_col * lit + spe * ${glf(L.spec ?? .3)} + (vec3(${L.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${L.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(L.rim ?? 1)};
+  vec3 env, envS; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, env, envS); vec3 lit = mix(env, min(dif, env), ${glf(L.form ?? 0)}); // the floor's light here, shaded for volume only (CLOSE_VIEW_ACTOR_LOOK, Tim 2026-11-19)
+  vec3 color = v_col * lit + spe * ${glf(L.spec ?? 0)} + (vec3(${L.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${L.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(L.rim ?? 0)};
   float emit = v_emit > 0 ? 1.0 : 0.0;
   // lit from within: the channel's brightness (0 dark glass, 1 its colour, above 1 running white-hot)
   vec3 glowC = v_col * ${glf(L.glow)} * k + vec3(max(k - 1.0, 0.0) * 0.35);
