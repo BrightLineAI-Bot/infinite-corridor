@@ -10,7 +10,7 @@
 // the shared pose table (TRI_POSES) so the two views agree. Nothing here reads attack timing or changes the game.
 //
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = scale x closeViewScale.
-import { TRI_ART, TRI_POSES, TRI_KEYS, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.ts";
+import { TRI_ART, TRI_POSES, TRI_KEYS, TRI_FORMS, TRI_FORM_ADULT, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
@@ -96,7 +96,8 @@ function markAt(f) {
   for (const [a, b] of [MARKS.haunch, MARKS.shoulder]) if (f >= a && f <= b) return 1;
   return 0;
 }
-function buildTriceratopsMesh(tier, saddle) {
+function buildTriceratopsMesh(tier, saddle, form = null) {
+  const FM = TRI_FORMS[form] || TRI_FORM_ADULT, sc = (v, c, k) => k === 1 ? v : c + (v - c) * k; // the hatchling forms (triceratops-render.ts TRI_FORMS)
   const C = palette(), d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(TRICERATOPS_SKELETON, d);
   // The hide: one loft from the tail tip to the neck, the back lighter, a pale belly, warm bands across the back and darker-yellow
   // markings over the haunches and shoulders (on the flanks, where the leg masses meet the body).
@@ -108,9 +109,9 @@ function buildTriceratopsMesh(tier, saddle) {
     return c;
   };
   const hide = BODY.map((r, i) => [r, i]).filter(([, i]) => !low || i % 2 === 0 || i === 1 || i === BODY.length - 1);
-  B.color(C.body).loft({ seg: low ? 8 : full ? 16 : 12, sections: hide.map(([[f, u, rx, rz, a, b, w]]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
+  B.color(C.body).loft({ seg: low ? 8 : full ? 16 : 12, sections: hide.map(([[f, u, rx, rz, a, b, w]]) => ({ at: [f, 0, u], rx: rx * FM.girth, rz: rz * FM.girth, bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
   // ---- the head (bone-local, the standard view's head scaled by its headScale; f forward, u up)
-  const HS = HS0, hb = (p) => at('head', [SPINE_AT.head[0] + p[0] * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS]);
+  const HS = HS0 * FM.head, hb = (p) => at('head', [SPINE_AT.head[0] + p[0] * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS]);
   const HW = (p) => [SPINE_AT.head[0] + p[0] * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS];
   B.bone('head');
   // The skull (2026-11-18 pass 2): deep and broad at the cheeks (the jugal flare), the brow rising behind the eyes, the snout narrowing
@@ -124,17 +125,19 @@ function buildTriceratopsMesh(tier, saddle) {
   // the brow horns: each grows out of a swelling of the brow, thick at the base, curving forward and up to a fine tip (one lofted skin)
   for (const s of [-1, 1]) {
     if (!low) B.color(C.body).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });
-    const pts = [[.105, s * .066, .1], [.15, s * .074, .16], [.22, s * .08, .23], [.29, s * .085, .28], [.38, s * .088, .315], [.45, s * .088, .33]], rad = [.05, .042, .034, .025, .014, .002];
+    const bk = FM.brow, pts = [[.105, s * .066, .1], [.15, s * .074, .16], [.22, s * .08, .23], [.29, s * .085, .28], [.38, s * .088, .315], [.45, s * .088, .33]].map(([x, y, z]) => [sc(x, .105, bk), y, sc(z, .1, bk)]), rad = [.05, .042, .034, .025, .014, .002].map((r, i) => bk < 1 ? r * (1 - (1 - bk) * i / 6) + (i === 5 ? .012 * (1 - bk) : 0) : r * (bk > 1 ? 1 + (bk - 1) * .5 : 1)); // a short form's tip stays rounded (a nub)
     const use = low ? [0, 2, 4, 5] : [0, 1, 2, 3, 4, 5];
     B.loft({ seg: low ? 4 : full ? 8 : 6, caps: false, sections: use.map((i) => ({ at: HW(pts[i]), rx: rad[i] * HS, rz: rad[i] * HS, bones: ['head', 'head', 0] })), tone: (i, k, st) => lerpHex(C.hornBase, C.horn, i / (use.length - 1)) });
     // the cheek horns (the jugal points) under the frill's edge
     if (!low) B.color(C.hornBase).lathe({ at: hb([-.01, s * .115, -.07]), F: [-.35, s * .55, -.75], rings: [[0, .03 * HS], [.075 * HS, 0]], seg: 4, caps: false });
     // the eyes: big and bright, a dark pupil looking forward
-    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS, .02 * HS, .032 * HS], rings: low ? 2 : 3, seg: low ? 5 : 7 });
-    B.color(C.pupil).ellipsoid({ at: hb([.115, s * .11, .05]), radius: [.018 * HS, .009 * HS, .02 * HS], rings: 2, seg: low ? 4 : 5 });
+    const ek = FM.eye;
+    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS * ek, .02 * HS * (ek === 1 ? 1 : .5 + .5 * ek), .032 * HS * ek], rings: low ? 2 : 3, seg: low ? 5 : 7 });
+    B.color(C.pupil).ellipsoid({ at: hb([.115, s * (ek === 1 ? .11 : .1 + .01 * ek), .05]), radius: [.018 * HS * ek, .009 * HS * ek, .02 * HS * ek], rings: 2, seg: low ? 4 : 5 });
+    if (FM.cheek > 0 && !low) B.color(0xf2a49a).ellipsoid({ at: hb([.17, s * .085, -.03]), radius: [.04 * HS, .012 * HS, .025 * HS], rings: 2, seg: 5 }); // the baby's pink cheeks
   }
   // the nose horn: short, blunt and leaning forward off the top of the snout
-  B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r]) => ({ at: HW([f, 0, u]), rx: r * HS, rz: r * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) });
+  { const nk = FM.nose; B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r], i) => ({ at: HW([sc(f, .255, nk), 0, sc(u, .055, nk)]), rx: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, rz: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) }); }
   // the lower jaw (opens with the pose), its beak tip dark; the ridden Silly Goose's tongue
   { const J = TRICERATOPS_SKELETON.bindWorld, j = BI.jaw * 3; B.bone('jaw');
     B.color(C.dark).loft({ seg: low ? 5 : 8, sections: [[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(([f, u, rx, rz]) => ({ at: [J[j] + f * HS, 0, J[j + 2] + u * HS], rx: rx * HS, rz: rz * HS, bones: ['jaw', 'jaw', 0] })),
@@ -144,7 +147,7 @@ function buildTriceratopsMesh(tier, saddle) {
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  { const R = .32 * HS, Hh = .38 * HS, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+  { const R = .32 * HS * FM.frill, Hh = .38 * HS * FM.frill, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
     const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = -((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS;
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
     for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) { const a = -.12 + (Math.PI + .24) * c / (cols - 1); row.push(rimAt(a, rr)); } grid.push(row); ring.push(['frill', 'frill', 0]); }
@@ -167,7 +170,7 @@ function buildTriceratopsMesh(tier, saddle) {
     const W = TRICERATOPS_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], parent = L.hind ? 'pelvis' : 'chest';
     const name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low, src = L.hind ? HIND : FORE;
     const rows = src.filter((_, i) => !low || i % 2 === 0 || i === src.length - 1);
-    B.color(C.body).loft({ seg: low ? 6 : full ? 10 : 8, up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w, inset]) => ({ at: [x, y * inset, z + u], rx, rz, bones: [name(a), name(b), w] })),
+    B.color(C.body).loft({ seg: low ? 6 : full ? 10 : 8, up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w, inset]) => ({ at: [x, y * inset, z + u], rx: rx * FM.legW, rz: rz * FM.legW, bones: [name(a), name(b), w] })),
       tone: (i, k, st) => i >= rows.length - 1 ? C.dark : lerpHex(C.body, C.dark, Math.max(0, -st) * .3 + i * .025) });
     B.bone(L.foot).color(C.pad).ellipsoid({ at: [.01, 0, -.005], radius: [.11, .1, .04], rings: low ? 2 : 3, seg: low ? 6 : 9 });
     if (!low) for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.toe).ellipsoid({ at: [.085, s * .045, -.008], radius: [.026, .02, .024], rings: 2, seg: 4 }); }
@@ -211,9 +214,10 @@ function buildTriceratopsMesh(tier, saddle) {
   return B.done();
 }
 const MESHES = new Map();
-function meshFor(tier, saddle) { const k = `${saddle || 'wild'}:${tier}`; let m = MESHES.get(k); if (!m) { m = buildTriceratopsMesh(tier, saddle); MESHES.set(k, m); } return m; }
-// The body this actor shows: the wild hide, or (the ridden mount) the hide with its saddle, the Silly Goose's own tack.
-export function triceratopsMesh(tier = 'full', e = null) { return meshFor(tier, e?.mountView ? (e.triceratopsDisposition === 'silly' ? 'silly' : 'normal') : null); }
+function meshFor(tier, saddle, form = null) { const k = `${form || saddle || 'wild'}:${tier}`; let m = MESHES.get(k); if (!m) { m = buildTriceratopsMesh(tier, saddle, form); MESHES.set(k, m); } return m; }
+// The body this actor shows: the wild hide, or (the ridden mount) the hide with its saddle, the Silly Goose's own tack; the hatchling's
+// baby or young form (hatchling.ts) its own proportions, unsaddled.
+export function triceratopsMesh(tier = 'full', e = null) { return TRI_FORMS[e?.triForm] ? meshFor(tier, null, e.triForm) : meshFor(tier, e?.mountView ? (e.triceratopsDisposition === 'silly' ? 'silly' : 'normal') : null); }
 
 // ------------------------------------------------------------------------------------------------ the track
 export function createTriceratopsTrack() {

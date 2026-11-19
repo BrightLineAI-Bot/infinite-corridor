@@ -166,6 +166,8 @@ import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensur
 import { questingBeastFor, questingBeastHoldNote, questingBeastWindow, questingBeastLeaves, questingBeastLost, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
+import { HATCHLING, hatchlingBonus, feedHatchling, tickBuffs, clearBuffs, grantBuff, nextBuffKind, chooseRescueSite, guardKind, guardId, pickMove, moveTime, formUnlocked } from "./hatchling.ts"; // the Triceratops hatchling
+const HATCH_SPOTS = Object.freeze([[-1, 0], [-1, .6], [-1, -.6], [0, 1], [0, -1], [1, 0], [-1.6, 0], [0, 1.6]]); // where the hatchling comes out beside the Wayfarer (tiles; mirrored to her facing)
 import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.ts";
 import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.ts";
 import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.ts";
@@ -1165,7 +1167,7 @@ export function regionalScale(e, q) {
 // Release 383: the empowered robot adds MECH_POWER.damage to every blow, magic shot and spell, by the same path as the armor glyphs.
 // Release 447 (meals.ts): a Refuge meal adds its bonus by the same path, while it lasts; release 459 (marginalia.ts): so do
 // the marginalia of the crossing you are in.
-const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun, seal = transposeBonus(save); if (!save?.meal && !run && !seal) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); if (seal) { out.spellDamage = (out.spellDamage || 0) + seal.spellDamage; out.damageTaken = (out.damageTaken || 0) + seal.damageTaken; } /* weapon-arts.ts Transpose: standing in the seal */ return out; };
+const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun, seal = transposeBonus(save), hb = hatchlingBonus(save); if (!save?.meal && !run && !seal && !hb) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (hb) add(hb); /* the hatchling's buffs (hatchling.ts) */ if (run) add(marginBonus(save, save.session.activeDungeonId)); if (seal) { out.spellDamage = (out.spellDamage || 0) + seal.spellDamage; out.damageTaken = (out.damageTaken || 0) + seal.damageTaken; } /* weapon-arts.ts Transpose: standing in the seal */ return out; };
 // Roll-3 Tesseract lines (tesseracts.ts): more damage from every blow (damageTaken), and a health cost that stops at
 // TESSERACTS.harmFloor of maximum health (never kills; below the floor it costs nothing).
 const RESOLVE_GUARD = new WeakMap(); // Earth Resolve: the damage-taken scale this frame while she stands in her sigil (echoes.ts tickEarthResolve; runtime only)
@@ -3077,6 +3079,7 @@ export class Game {
     const savedCleaverCue = this.player.attackVisual?.cleaverChoreography;
     this._resumeDeck = s.playerRuntime.roofDeck; // roof decks: a save on a roof's edge is not stranded (loadArea; restoreRoofDeck below)
     this._resumeNow = now; this.loadArea(this.area, false); this._resumeDeck = null; this._resumeNow = null;
+    if (save.mounts?.freeTriceratopsDismount) this.settleFreeDismount(); // the withdrawn free Triceratops (beast-mounts.ts): set down on safe ground
     if (savedCleaverCue && this.player.attackVisual) this.player.attackVisual.cleaverChoreography = savedCleaverCue;
     this.player.consumeVisual = normalizeConsumeVisual(s.playerRuntime.consumeVisual);
     this.player.cachePickupVisual = normalizePersistentCachePickupVisual(s.playerRuntime.cachePickupVisual);
@@ -4077,6 +4080,7 @@ export class Game {
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
     this.placeCaches(); // world caches (world.ts WORLD_CACHES): last, over the place as loaded; new ground and new crossings only
+    this.placeHatchRescue(); // the hatchling's rescue site (hatchling.ts): the pen and its guards, over the place as loaded
     this.placeSeedHunt(); // the seed hunts (tall-towers.ts TALL_TOWERS.seedHunt): an object over the place as loaded, after the caches
     this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
     this.mireTimer = 0; this.mirePool = 0;
@@ -5545,7 +5549,7 @@ export class Game {
     if (o && !objectId && SHORE_PASSIVE.includes(o.kind) && this.shoreWater() && canBuildSkiff(this.save)) return this.buildSkiffHere();
     // Tim, 2026-11-18: Act with nothing near no longer calls the mount or gets you down; it arms the hold (mountHoldTick, MOUNT_RIDE.callHold),
     // and a tap reads as it did before mounts.
-    if (!o && !objectId && !action && this.mountCallable()) this.mountHold = { t: 0, shown: null };
+    if (!o && !objectId && !action && this.actCallable()) this.mountHold = { t: 0, shown: null };
     if (!o)
       return {
         ok: false,
@@ -5553,6 +5557,8 @@ export class Game {
       };
     this.talkVisual = { id: o.id, at: this.lastUpdateNow || 0 }; // presentation only: Close View townsfolk gesture as they are spoken to (close-view-folk.ts)
     if (o.kind === "beastHotelBed") return this.beastHotelVisit(o.mountId);
+    if (o.kind === "hatchMama") return this.hatchMamaTalk(o); // the Triceratops hatchling's rescue (hatchling.ts)
+    if (o.kind === "hatchPen") return this.freeHatchling(o);
     if (o.beastHotelDoor) return this.enterBeastHotel(o);
     if (this.rite && this.area === "overworld") { const why = riteExit(o, action || validActions(o, this.save)[0]); if (why) { this.message = why; return { ok: false, message: why, riteSealed: true }; } } // RITE_LOCKDOWN: no door, gate or fold off the rite's ground
     if (o.towerSeal && o.kind === "dungeon" && !towerUnsealed(this.save, o.towerSeal)) { this.message = towerSealText(o.roofHatch ? TOWER_SEAL.messages.hatch : TOWER_SEAL.messages.sealed, o.towerSeal); return { ok: false, message: this.message, sealed: true }; } // TOWER_SEAL: the central tower's ways in want its key (or its lever)
@@ -6320,7 +6326,7 @@ export class Game {
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
-    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);clearPoison(this.save);this.apatoPin=null;this.earthResolve=null;/* the Earth Apatosaurus's venom and coils end with the fall too */this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
+    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);clearPoison(this.save);this.apatoPin=null;this.earthResolve=null;/* the Earth Apatosaurus's venom and coils end with the fall too */this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.hatchlingFall(); /* the hatchling's buffs end; he goes to rest */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
     if (hole) { p.x = hole.x; p.y = hole.y; relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); p.invulnerableUntil = now + 2000; this.fallen = null; for (const e of this.enemies) if (!e.dead) e.aggro = false; this.snapshotArea(); this.message = `${HOLE_DROPS.messages.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return; } // the same floor; nothing lost (release 345)
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
@@ -7925,16 +7931,26 @@ export class Game {
   }
   // Act with nothing near in the open world: get down, or call the mount ridden last.
   mountCallable() { return (this.area === "overworld" || isBeastHotelId(this.save.session.activeDungeonId)) && ensureMounts(this.save).stable.length > 0; }
-  actMount() { if (!this.mountCallable()) return null; return ridingMount(this.save) ? this.dismount() : this.summonMount(); }
+  // The hatchling (hatchling.ts): with his baby or young form chosen the hold calls him out or sends him back (anywhere); with the big
+  // form it calls the normal Triceratops he grew into. Without him, as before.
+  hatchlingCallable() { const h = this.save.mounts?.hatchling; return !!h?.owned && h.form !== "big"; }
+  actCallable() { return this.hatchlingCallable() || this.mountCallable(); }
+  actMount() {
+    if (this.hatchlingCallable()) return this.toggleHatchling();
+    if (!this.mountCallable()) return null;
+    const h = this.save.mounts?.hatchling, big = h?.owned && h.form === "big" && !ridingMount(this.save) ? this.save.mounts.stable.find(m => m.beast === "triceratops" && m.variant === "normal") : null;
+    if (big) return this.summonMount(big.id);
+    return ridingMount(this.save) ? this.dismount() : this.summonMount();
+  }
   // Tim, 2026-11-18: hold Act (an Act press with nothing near) for MOUNT_RIDE.callHold seconds to call the mount or get down. While it
   // fills, the message says so (and mountHoldProgress fills the Act button); letting go first cancels and the tap reads as before mounts.
   // A finished hold waits for the button to be released.
   mountHoldTick(dt, held) {
     const q = this.mountHold; if (!q) return null;
-    if (!held || !this.mountCallable() || aboard(this.save)) { this.mountHold = null; if (q.t >= 0 && q.shown && this.message === q.shown) this.message = "Nothing nearby responds."; return null; } // let go early: the tap reads as it did before mounts
+    if (!held || !this.actCallable() || aboard(this.save)) { this.mountHold = null; if (q.t >= 0 && q.shown && this.message === q.shown) this.message = "Nothing nearby responds."; return null; } // let go early: the tap reads as it did before mounts
     if (q.t < 0) return null;
     q.t += dt;
-    if (q.t < MOUNT_RIDE.callHold) { if (!q.shown) this.message = q.shown = ridingMount(this.save) ? "Getting down…" : "Calling your mount…"; return null; }
+    if (q.t < MOUNT_RIDE.callHold) { if (!q.shown) this.message = q.shown = this.hatchlingCallable() ? (this.save.mounts.hatchling.out ? "Sending him to rest…" : "Calling your Triceratops…") : ridingMount(this.save) ? "Getting down…" : "Calling your mount…"; return null; }
     q.t = -1e9; q.shown = null; return this.actMount();
   }
   mountHoldProgress() { const q = this.mountHold; return q && q.t >= 0 ? Math.min(1, q.t / MOUNT_RIDE.callHold) : 0; }
@@ -7972,7 +7988,7 @@ export class Game {
   }
   placeBeastHotel() {
     this.map.objects = this.map.objects.filter(o => !o.beastHotelDoor);
-    const home = homeCenter(this.save); if (this.rx !== home.rx || this.ry !== home.ry || !ensureMounts(this.save).stable.some(persistentMount)) return;
+    const home = homeCenter(this.save); if (this.rx !== home.rx || this.ry !== home.ry || !ensureMounts(this.save).hatchling) return; // every journey: the hatchling's mother waits there (hatchling.ts), as do recovering companions
     const glass = this.map.objects.find(o => o.kind === "checkpoint") || { x: 16, y: 16 };
     const at = this.townSpot(glass) || this.townIndoorSpot(); if (!at) return;
     this.map.objects.push({ id: `beast-hotel-door:${homeKey(this.save)}`, kind: "dungeon", beastHotelDoor: true, dungeonId: beastHotelId(homeKey(this.save)), name: "Beast Hotel", ...at, state: "open", actions: ["enter"] });
@@ -7987,12 +8003,13 @@ export class Game {
     this.save.session.activeDungeonId = door.dungeonId; this.save.session.activeDungeonLevelId = null;
     const h = dungeonHistory(this.save, door.dungeonId); h.visits++; h.visitOpen = true;
     this.loadArea("dungeon"); this.player.x = this.map.entry.x; this.player.y = this.map.entry.y - 1; this.settleArrival(); this.sync();
-    return { ok: true, message: (this.message = "Beast Hotel: visit your companion's bed. Early recovery offers a fight; retrieval is free.") };
+    return { ok: true, message: (this.message = this.save.mounts?.hatchling?.owned ? "Beast Hotel: visit your companion's bed. Early recovery offers a fight; retrieval is free." : "Beast Hotel: a sick mother Triceratops lies in the straw. Speak to her.") };
   }
   refreshBeastHotel() {
     if (!this.map.beastHotel) return;
     const mounts = ensureMounts(this.save).stable.filter(m => persistentMount(m) && m.recovery);
     this.map.objects = this.map.objects.filter(o => o.kind === "exit");
+    { const h = this.save.mounts.hatchling, Q = HATCHLING.quest; this.map.objects.push({ id: "hatch-mama", kind: "hatchMama", name: Q.names.mama, x: 18, y: 14, state: h.owned ? "well" : "sick", actions: ["talk"] }); } // the hatchling's mother
     this.enemies = this.enemies.filter(e => e.beastHotelOpponent && mounts.some(m => m.id === e.beastHotelOpponent && !m.recovery.encounterComplete));
     for (let i = 0; i < mounts.length; i++) {
       const m = mounts[i], r = m.recovery, healthy = r.progress >= TRICERATOPS_RIDE.recoveryTransitions;
@@ -8017,6 +8034,197 @@ export class Game {
     }
     m.recovery.encounterStarted = true; this.refreshBeastHotel(); this.sync();
     return { ok: true, message: (this.message = "Defeat the hostile Triceratops occupying this bed, then return here to retrieve your companion.") };
+  }
+  // ---------------------------------------------------------------- the Triceratops hatchling (hatchling.ts)
+  // The rescue: his mother at the Beast Hotel gives the quest; the site (version-pinned from the seed and the hometown, on previewed
+  // ground that joins the section's edges) is kept on the quest. Previews never touch the save.
+  hatchMamaTalk(o) {
+    const h = ensureMounts(this.save).hatchling, q = h.quest, Q = HATCHLING.quest, M = Q.messages;
+    if (h.owned) return { ok: true, message: (this.message = M.thanks) };
+    if (q.state === "active") return { ok: true, message: (this.message = `${M.already} (${q.rx},${q.ry} on your Atlas.)`) };
+    const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
+    Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
+    journalOnce(this.save, "hatchling:quest", `${M.offer} (${site.rx},${site.ry})`, "Beast Hotel");
+    (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: `${site.rx},${site.ry} · marked on the Atlas`, kind: "discovery" });
+    if (o) o.state = "sick";
+    return { ok: true, message: (this.message = M.offer), quest: q };
+  }
+  // On every overworld load of the site: the pen (its spot chosen once, on open level ground the rules can walk to, and kept) and the
+  // guards not yet driven off. Objects and actors laid over the place as loaded: never a tile, never a generator change.
+  placeHatchRescue() {
+    const h = this.save.mounts?.hatchling, q = h?.quest; if (this.area !== "overworld" || !q || q.state !== "active" || h.owned || q.rx !== this.rx || q.ry !== this.ry) return null;
+    const M = this.map, W = mapWidth(M, this.area), Q = HATCHLING.quest, seed = this.save.seed;
+    const stands = (x, y) => Number.isFinite(x) && Number.isFinite(y) && footprintOpen(M, W, x, y) && !footprintHazard(M, W, x, y);
+    if (!stands(q.x, q.y)) {
+      const P = seedHuntSpots(M), list = P?.ground || [];
+      let t = list.length ? list[hashSeed(`${seed}:hatchling-pen:v${Q.version}`) % list.length] : null;
+      if (!t) t = M.tiles.filter((u) => stands(u.x, u.y) && !(Number(u.elev) > 0)).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0];
+      if (!t) return null; q.x = t.x; q.y = t.y;
+    }
+    if (M.objects.some((o) => o.kind === "hatchPen")) return null;
+    const pen = { id: "hatch-pen", kind: "hatchPen", name: Q.names.pen, x: q.x, y: q.y, state: "guarded", actions: ["free"] }; M.objects.push(pen);
+    for (let i = 0; i < Q.guards; i++) {
+      const id = guardId(i); if (q.cleared.includes(id) || this.enemies.some((e) => e.id === id)) continue;
+      let at = null; for (let k = 0; k < 8 && !at; k++) { const a = (i / Q.guards + k / 8) * Math.PI * 2, x = Math.round(q.x + Math.cos(a) * Q.ring), y = Math.round(q.y + Math.sin(a) * Q.ring); if (stands(x, y)) at = { x, y }; }
+      const e = this.createEnemyFromSpawn({ id, kind: guardKind(seed, i, q.v || Q.version), ...(at || { x: q.x, y: q.y }) }, "overworld"); this.enemies.push(e);
+    }
+    pen.state = this.hatchGuardsLeft() ? "guarded" : "open";
+    const k = `hatch:${this.rx},${this.ry}`; if (this._hatchTold !== k) { this._hatchTold = k; (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: Q.messages.arrive, kind: "discovery" }); }
+    return pen;
+  }
+  hatchGuardsLeft() { let n = 0; for (const e of this.enemies) if (!e.dead && e.hp > 0 && String(e.id).startsWith("hatchling-guard:")) n++; return n; }
+  hatchGuardDown(e) {
+    const q = this.save.mounts?.hatchling?.quest; if (!q || q.state !== "active" || q.cleared.includes(e.id)) return;
+    q.cleared.push(e.id); const pen = this.map.objects?.find((o) => o.kind === "hatchPen"); if (pen) pen.state = this.hatchGuardsLeft() ? "guarded" : "open";
+  }
+  freeHatchling(o) {
+    const h = ensureMounts(this.save).hatchling, q = h.quest, Q = HATCHLING.quest;
+    if (h.owned || q.state !== "active") { this.map.objects = this.map.objects.filter((u) => u !== o); return { ok: false, message: (this.message = "The pen is empty.") }; }
+    if (this.hatchGuardsLeft()) return { ok: false, message: (this.message = Q.messages.guarded) };
+    this.map.objects = this.map.objects.filter((u) => u !== o);
+    h.owned = true; q.state = "rescued"; h.form = "baby"; if (ridingMount(this.save)) this.dismount();
+    this.sendHatchlingOut({ x: o.x, y: o.y });
+    journalOnce(this.save, "hatchling:rescued", `${Q.messages.freed} (${q.rx},${q.ry})`, "Beast Hotel");
+    (this.questNotices ||= []).push({ title: "TRICERATOPS HATCHLING", detail: "your companion · hold Act to call or rest him · Pack → Supplies", kind: "discovery" });
+    this.sync(); return { ok: true, message: (this.message = Q.messages.freed) };
+  }
+  // Out and back (the hold of Act). He comes out beside the Wayfarer on open ground, never in a wall or a hazard.
+  hatchSpot(x, y) {
+    const M = this.map, W = mapWidth(M, this.area), ok = (a, b) => footprintOpen(M, W, a, b) && !footprintHazard(M, W, a, b), f = this.player.facing === "left" ? 1 : -1;
+    for (const [dx, dy] of HATCH_SPOTS) if (ok(x + dx * f, y + dy)) return { x: x + dx * f, y: y + dy };
+    return { x, y };
+  }
+  sendHatchlingOut(at = this.player) {
+    const h = this.save.mounts.hatchling, B = HATCHLING.baby, spot = this.hatchSpot(at.x, at.y);
+    h.out = { area: this.areaStateId(), x: spot.x, y: spot.y, face: this.player.facing === "left" ? -1 : 1, seq: 0, timers: { buff: 0, heal: B.heal.every, chill: B.chill.every, nip: 0 }, cd: {}, act: null };
+    this.hatchVisuals = [];
+    return h.out;
+  }
+  toggleHatchling() {
+    const h = this.save.mounts.hatchling, F = HATCHLING.forms[h.form], who = `your ${F.name.toLowerCase()} Triceratops`;
+    if (h.out) { h.out = null; this.hatchVisuals = []; return { ok: true, message: (this.message = `${who[0].toUpperCase()}${who.slice(1)} goes off to rest. Hold Act to call him again.`) }; }
+    if (ridingMount(this.save)) this.dismount();
+    this.sendHatchlingOut(); return { ok: true, message: (this.message = `${who[0].toUpperCase()}${who.slice(1)} trots to your side.`) };
+  }
+  chooseHatchlingForm(form) {
+    const h = ensureMounts(this.save).hatchling; if (!formUnlocked(h, form)) return { ok: false, message: (this.message = "That form is not grown yet.") };
+    const was = h.out; h.form = form;
+    if (form === "big") { h.out = null; this.hatchVisuals = []; }
+    else if (was) { was.act = null; was.cd = {}; }
+    return { ok: true, message: (this.message = `A hold of Act now calls your ${HATCHLING.forms[form].name.toLowerCase()} Triceratops.`) };
+  }
+  // Growth: a share of the experience the Wayfarer earns from a fight while he is out (or ridden in his big form).
+  hatchlingFeed(n) {
+    const h = this.save.mounts?.hatchling; if (!h?.owned || !(n > 0)) return [];
+    const ride = ridingMount(this.save), out = !!h.out || h.form === "big" && ride?.beast === "triceratops" && ride.variant === "normal";
+    if (!out) return [];
+    const grown = feedHatchling(h, n);
+    for (const k of grown) {
+      const F = HATCHLING.forms[k]; if (k === "big") this.grantBigTriceratops();
+      journalOnce(this.save, `hatchling:grown:${k}`, `Your Triceratops has grown into his ${F.name.toLowerCase()} form (${F.text}). Choose it in Pack → Supplies.`, "Beast Hotel");
+      (this.questNotices ||= []).push({ title: `${F.name.toUpperCase()} FORM UNLOCKED`, detail: `your Triceratops · ${F.text} · Pack → Supplies`, kind: "discovery" });
+    }
+    return grown;
+  }
+  // The big form is the rideable normal Triceratops (beast-mounts.ts); one already owned (a caught Good one) is him.
+  grantBigTriceratops() {
+    const q = ensureMounts(this.save); if (q.stable.some((m) => m.beast === "triceratops" && m.variant === "normal")) return null;
+    const m = { id: "mount-hatchling-triceratops-v1", beast: "triceratops", variant: "normal", caughtAt: Math.max(0, Number(this.save.playSeconds) || 0), left: MOUNT_RIDE.seconds, seen: [], hp: TRICERATOPS_RIDE.health, defeats: 0, recovery: null, hatchling: true };
+    q.stable.push(m); return m;
+  }
+  // A death: his buffs end and he goes to rest (statuses never outlive a fall).
+  hatchlingFall() { const h = this.save.mounts?.hatchling; if (!h) return; clearBuffs(h); h.out = null; this.hatchVisuals = []; }
+  // The withdrawn free Triceratops was being ridden when this journey was saved: the Wayfarer stands where it stood, moved to the
+  // nearest ground that leads somewhere when that spot is not safe footing on foot.
+  settleFreeDismount() {
+    delete this.save.mounts.freeTriceratopsDismount; this._mountHp = null;
+    const p = this.player, M = this.map, W = mapWidth(M, this.area), H = mapHeight(M, this.area);
+    if (footprintOpen(M, W, p.x, p.y) && !footprintHazard(M, W, p.x, p.y)) return false;
+    let to = null;
+    if (this.area === "overworld" && M.landscape) to = nearestReturnable(M, W, H, { x: 16, y: 16 }, { x: Math.floor(p.x + .5), y: Math.floor(p.y + .72) });
+    if (!to) to = M.tiles.filter((t) => footprintOpen(M, W, t.x, t.y) && !footprintHazard(M, W, t.x, t.y)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y) || a.y - b.y || a.x - b.x)[0];
+    if (to) { p.x = to.x; p.y = to.y; this.sync(); }
+    return !!to;
+  }
+  // His foe: alive, hostile and targetable (never a townsperson, a grazer or a passing beast).
+  hatchFoeOk(e) { return !!e && !e.dead && e.hp > 0 && !e.untargetable && !e.hidden && e.kind !== "npc" && !e.ambient && !e.passiveBehavior && !e.astralAllyOf && !e.friendly && !e.retreating && !e.passingBeast && !e.fleeTo && !(e.skirmishId && !e.skirmishProvoked); }
+  hatchFoe(x, y, range) { let best = null, d0 = range; for (const e of this.enemies) { if (!this.hatchFoeOk(e)) continue; const d = Math.hypot(e.x + .5 - x, e.y + .45 - y); if (d <= d0) { d0 = d; best = e; } } return best; }
+  hatchVisual(v) { const list = (this.hatchVisuals ||= []); if (list.length >= HATCHLING.maxVisuals) list.shift(); v.total = v.life; list.push(v); }
+  // His blows share the Wayfarer's effects list (updateEffects: kills, experience and the damage scale as hers); at most
+  // HATCHLING.maxEffects of his shots are live at once. `hits` is shared by a shot's circles, so one beam strikes each foe once.
+  hatchHit(x, y, radius, share, opt = {}) {
+    let live = 0, last = null; for (const fx of this.effects) if (fx.hatch && fx.life > 0 && fx.hatchShot !== last) { live++; last = fx.hatchShot; }
+    if (live >= HATCHLING.maxEffects && !opt.shot) return false;
+    const id = opt.shot || `hatch-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`;
+    this.effects.push({ id: `${id}:${x.toFixed(2)},${y.toFixed(2)}`, kind: "hatch-hit", hatch: true, hatchShot: id, x, y, life: .12, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.meleePower() * share)), pulseIndex: 0, hits: opt.hits || {}, ...(opt.stun ? { stun: opt.stun } : {}) });
+    return id;
+  }
+  hatchMove(o, dx, dy) { const M = this.map, W = mapWidth(M, this.area); const moved = moveAxis(o, dx, dy, M, W); if (Math.abs(dx) > .001) o.face = dx < 0 ? -1 : 1; return moved; }
+  hatchWalkTo(o, tx, ty, speed, dt, stop = .2) {
+    const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy); if (d <= stop) { o.moving = 0; return true; }
+    const step = Math.min(d - stop, speed * dt); this.hatchMove(o, dx / d * step, dy / d * step); o.moving = 1; return false;
+  }
+  tickHatchling(dt, now) {
+    const h = this.save.mounts.hatchling, list = this.hatchVisuals;
+    tickBuffs(h, dt);
+    if (list?.length) { let n = 0; for (const v of list) { v.life -= dt; if (v.life > 0) list[n++] = v; } list.length = n; }
+    const o = h.out, p = this.player; if (!o || !h.owned || h.form === "big" || !(p.hp > 0) || !(dt > 0)) return;
+    const F = HATCHLING.forms[h.form], Fo = HATCHLING.follow, here = this.areaStateId();
+    if (o.area !== here || Math.hypot(o.x - p.x, o.y - p.y) > Fo.far) { const s = this.hatchSpot(p.x, p.y); o.x = s.x; o.y = s.y; o.area = here; o.act = null; }
+    for (const k in o.cd) { o.cd[k] -= dt; if (!(o.cd[k] > 0)) delete o.cd[k]; }
+    if (h.form === "baby") this.tickHatchBaby(h, o, F, dt, now); else this.tickHatchYoung(h, o, F, dt, now);
+  }
+  hatchFollow(o, F, dt, now, orbit = null) {
+    const p = this.player, Fo = HATCHLING.follow, side = p.facing === "left" ? 1 : p.facing === "right" ? -1 : 0, up = p.facing === "up" ? 1 : p.facing === "down" ? -1 : 0;
+    let tx = p.x + side * Fo.back, ty = p.y + up * Fo.back;
+    if (orbit) { const a = (now / 1000) * orbit.rate; tx = p.x + Math.cos(a) * orbit.radius; ty = p.y + Math.sin(a) * orbit.radius * .6; } // walking with and round her
+    if (Math.hypot(tx - o.x, ty - o.y) > (orbit ? .25 : Fo.near * .6)) this.hatchWalkTo(o, tx, ty, F.speed * (Math.hypot(p.x - o.x, p.y - o.y) > 4 ? 1.5 : 1), dt, .1); else o.moving = 0;
+  }
+  tickHatchBaby(h, o, F, dt, now) {
+    const B = HATCHLING.baby, p = this.player, T = o.timers, max = this.save.maxHp || p.maxHp || 100, cx = o.x + .5, cy = o.y + .45;
+    this.hatchFollow(o, F, dt, now);
+    T.buff -= dt; if (T.buff <= 0) { const kind = nextBuffKind(this.save.seed, o.seq, o.lastBuff); grantBuff(h, kind); o.lastBuff = kind; o.seq++; T.buff = HATCHLING.buffs.every; this.hatchVisual({ kind: "buff", buff: kind, x: p.x + .5, y: p.y + .45, life: .9 }); }
+    T.heal = Math.max(0, T.heal - dt); if (T.heal <= 0 && p.hp < max * B.heal.below) { p.hp = Math.min(max, p.hp + max * B.heal.share); T.heal = B.heal.every; this.hatchVisual({ kind: "heal", x: p.x + .5, y: p.y + .45, x2: cx, y2: cy, life: 1 }); }
+    T.chill = Math.max(0, T.chill - dt);
+    if (T.chill <= 0) {
+      const C = B.chill; let any = 0;
+      for (const e of this.enemies) { if (!this.hatchFoeOk(e) || Math.hypot(e.x + .5 - cx, e.y + .45 - cy) > C.radius) continue; any++; e.glyphSlow = { until: Math.max(e.glyphSlow?.until || 0, now + C.slowMs), factor: Math.min(e.glyphSlow?.factor || 1, C.slow) }; }
+      if (any) { // the nearest are frozen a moment (a boss or an elite much less)
+        for (let k = 0; k < C.freezeMax; k++) { const e = this.hatchFoe(cx, cy, C.radius); if (!e || e._hatchFrozen === now) break; e._hatchFrozen = now; if (!e.staggerImmune) e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId || e.worldBeast ? C.freeze * C.bossShare : C.freeze); }
+        for (const e of this.enemies) if (e._hatchFrozen === now) delete e._hatchFrozen;
+        T.chill = C.every; this.hatchVisual({ kind: "chill", x: cx, y: cy, r: C.radius, life: .8 });
+      }
+    }
+    T.nip = Math.max(0, T.nip - dt);
+    if (T.nip <= 0) { const e = this.hatchFoe(cx, cy, B.nip.range); if (e) { this.hatchHit(e.x + .5, e.y + .45, B.nip.radius, B.nip.share); o.face = e.x + .5 >= cx ? 1 : -1; o.biteAt = 0; T.nip = B.nip.every; this.hatchVisual({ kind: "nip", x: e.x + .5, y: e.y + .45, life: .25 }); } }
+  }
+  tickHatchYoung(h, o, F, dt, now) {
+    const Y = HATCHLING.young, p = this.player, cx = () => o.x + .5, cy = () => o.y + .45;
+    if (o.act) { this.runHatchAct(o, dt); return; }
+    let foe = o.target ? this.enemies.find((e) => e.id === o.target) : null;
+    if (!this.hatchFoeOk(foe) || Math.hypot(foe.x - p.x, foe.y - p.y) > Y.aggro * 1.5) foe = this.hatchFoe(p.x + .5, p.y + .45, Y.aggro);
+    o.target = foe?.id || null;
+    if (!foe) { this.hatchFollow(o, F, dt, now, Y.orbit); return; }
+    const fx = foe.x + .5, fy = foe.y + .45, d = Math.hypot(fx - cx(), fy - cy()), kind = pickMove(o, d, this.save.seed);
+    o.face = fx >= cx() ? 1 : -1;
+    if (!kind) { this.hatchWalkTo(o, foe.x, foe.y, F.speed, dt, 1.1); return; }
+    const M = Y.moves[kind], ux = (fx - cx()) / (d || 1), uy = (fy - cy()) / (d || 1);
+    o.act = { kind, left: moveTime(kind), n: 0, x: d ? ux : o.face, y: d ? uy : 0, target: foe.id, phase: "go" }; o.cd[kind] = M.cd; o.seq++; o.moving = 0;
+    if (kind === "beam") this.hatchVisual({ kind: "beamCharge", x: cx(), y: cy(), dx: o.act.x, dy: o.act.y, life: M.charge });
+  }
+  runHatchAct(o, dt) {
+    const a = o.act, M = HATCHLING.young.moves[a.kind], total = moveTime(a.kind), cx = o.x + .5, cy = o.y + .45; a.left -= dt; const t = total - a.left;
+    const foe = this.enemies.find((e) => e.id === a.target), alive = this.hatchFoeOk(foe);
+    if (a.kind === "beam" && a.n === 0 && t >= M.charge) { // three beams focused at the horn, then one blast along the aim, stopped by walls
+      a.n = 1; const W = mapWidth(this.map, this.area), shot = `hatch-beam-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, hits = {}; let ex = cx, ey = cy;
+      for (let s = M.step; s <= M.length; s += M.step) { const x = cx + a.x * s, y = cy + a.y * s; if (!projectileTileOpen(this.map, W, x, y)) break; this.hatchHit(x, y, M.radius, M.share, { shot, hits }); ex = x; ey = y; }
+      this.hatchVisual({ kind: "beam", x: cx + a.x * .6, y: cy + a.y * .6, x2: ex, y2: ey, life: .3 });
+    } else if (a.kind === "gatling") { while (a.n < M.shots && t >= a.n * M.gap) { a.n++; const tx = alive ? foe.x + .5 : cx + a.x * 3, ty = alive ? foe.y + .45 : cy + a.y * 3; this.hatchHit(tx, ty, M.radius, M.share); this.hatchVisual({ kind: "bolt", x: cx + a.x * .5, y: cy + a.y * .5, x2: tx, y2: ty, life: .16 }); } }
+    else if (a.kind === "charge") { if (a.left > 0) this.hatchMove(o, a.x * M.speed * dt, a.y * M.speed * dt); }
+    else if (a.kind === "whirl") { while (a.n < M.pulses && t >= a.n * M.gap) { a.n++; this.hatchHit(cx, cy, M.radius, M.share); this.hatchVisual({ kind: "whirl", x: cx, y: cy, r: M.radius, life: .3 }); } }
+    else if (a.kind === "stomp") { while (a.n < M.hits && t >= a.n * M.gap + .08) { a.n++; this.hatchHit(cx + a.x * .7, cy + a.y * .7, M.radius, M.share); this.hatchVisual({ kind: "stomp", x: cx + a.x * .7, y: cy + a.y * .7, r: M.radius, life: .3 }); } }
+    else if (a.kind === "bite" && a.n === 0 && t >= .15) { a.n = 1; this.hatchHit(alive ? foe.x + .5 : cx + a.x * .8, alive ? foe.y + .45 : cy + a.y * .8, M.radius, M.share); }
+    if (a.left <= 0) { if (a.kind === "charge") { this.hatchHit(o.x + .5 + a.x * .5, o.y + .45 + a.y * .5, M.radius, M.share, { stun: M.stun }); this.hatchVisual({ kind: "stomp", x: o.x + .5 + a.x * .5, y: o.y + .45 + a.y * .5, r: M.radius, life: .3 }); } o.act = null; }
   }
   // Release 678: the Stalker (stalker.ts). Ground it may stand on: open, not lethal, never inside a building, shelter or town.
   stalkerBarred(x, y) {
@@ -8763,7 +8971,8 @@ export class Game {
     this.save.currency += marks;
     const oldHp = this.save.maxHp,
       oldStamina = this.save.maxStamina,
-      levels = awardExperience(this.save, Math.round((e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10) * Math.max(1, Number(e.xpMultiplier) || 1) * rankXp(e))); // 651: champions and rares give more // release 399: harder (farther, deeper) foes give more
+      xpGain = Math.round((e.seaKind ? SEA_CREATURES[e.seaKind].xp : e.boss ? 35 : 10) * Math.max(1, Number(e.xpMultiplier) || 1) * rankXp(e)),
+      levels = awardExperience(this.save, xpGain); this.hatchlingFeed(xpGain); if (String(e.id).startsWith("hatchling-guard:")) this.hatchGuardDown(e); // the hatchling grows from fights he is out for // 651: champions and rares give more // release 399: harder (farther, deeper) foes give more
     if (levels) {
       this.player.hp = Math.min(
         this.save.maxHp,
@@ -11252,7 +11461,7 @@ export class Game {
   // build's own on-kill effects. No lasting flag, glyph, Echo, Sigil, key, relic, Tesseract, Aperture or quest progress.
   respawnReward(e) {
     const R = RESPAWN.reward; e.rewarded = true; this.save.currency += R.marks;
-    const oldHp = this.save.maxHp, oldStamina = this.save.maxStamina, levels = awardExperience(this.save, Math.max(1, Math.round(10 * Math.max(1, Number(e.xpMultiplier) || 1) * R.xp)));
+    const oldHp = this.save.maxHp, oldStamina = this.save.maxStamina, xpGain = Math.max(1, Math.round(10 * Math.max(1, Number(e.xpMultiplier) || 1) * R.xp)), levels = awardExperience(this.save, xpGain); this.hatchlingFeed(xpGain);
     if (levels) { this.player.hp = Math.min(this.save.maxHp, this.player.hp + this.save.maxHp - oldHp); this.player.stamina = Math.min(this.save.maxStamina, this.player.stamina + this.save.maxStamina - oldStamina); this.player.maxStamina = this.save.maxStamina; this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`; }
     else this.message = `Recovered ${R.marks} mark${R.marks === 1 ? "" : "s"} from the fallen creature.`;
     this.defeatNotice = enemyDefeatNotice(e, this.area);
@@ -11899,6 +12108,7 @@ export class Game {
     if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) this.playerFire = null; } // release 708: burning (water puts it out)
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
+    if (this.save.mounts?.hatchling) this.tickHatchling(dt, now); // the Triceratops hatchling (hatchling.ts)
     if (this.fistCharge) { const held = fistHeld(this.fistCharge, now); if (!input.held?.(this.fistCharge.action) || held > IRON_FISTS.tapGrace + IRON_FISTS.chargeTime + 1) { const c = this.fistCharge,wait=this.startupGuardWait(now),waiting=Number.isFinite(wait)&&wait<=ACTION_MOTION.attackBufferMs;this.fistCharge=null;const perfect=fistPerfect(held),onBeat=c.onBeat===true;if(waiting)this.fistReleaseIntent={step:c.step||1,charge:fistCharge(held),perfect,onBeat,direction:c.direction,expiresAt:now+ACTION_MOTION.attackBufferMs};else{this._fistInputUpdate=true;try{this.fistPunch(c.step||1,fistCharge(held),now,c.direction,perfect,onBeat);}finally{this._fistInputUpdate=false;}} } } // release 483; 489; 493: the Iron Fists dash punch strikes when its button is let go
     if (this.cycloneHold) this.tickCycloneHold(now, input.held?.(this.cycloneHold.action) === true); // the Cyclone Heel: let go (or landed), it spins
     let mountPress = null; const mounted = this.triceratopsControls(); // Tim, 2026-11-18: riding a Triceratops, B/C/D are its attacks through the accepted Dodge path
