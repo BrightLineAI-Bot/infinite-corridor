@@ -49,7 +49,7 @@ Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not
 
 Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
 
-## Unreleased — Close View visibility
+## Release 1030 — Close View visibility
 
 Tim (2026-11-19): the translucent blue creature shape must not show creatures through props (crates, cabinets, furniture, card props), only where walls or solid architecture hide them, and never for creatures within about two tiles of the Wayfarer, engaging her, or dying (this also ends spiky parts showing translucent behind a crate); creatures between the camera and the Wayfarer fade to about .35 so they do not hide her; and creatures have no lighting of their own (no card light floor).
 
