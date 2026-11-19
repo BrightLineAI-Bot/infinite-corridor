@@ -443,6 +443,18 @@ export const CLOSE_VIEW = Object.freeze({
   // `occludedAlpha`: the brackets' strength while the locked foe is briefly out of sight. `edge`: px inside the screen's edge
   // for the pointer to a locked foe off screen.
   targetMode: Object.freeze({ scanSec: .2, wDist: .55, wAngle: .3, wClose: .35, wAggro: .08, wWindup: .2, switchMargin: .1, reach: 2, reachHold: .25, threatRange: 3.5, nearerBy: 1.5, switchHold: .9, rate: 9, maxRate: 270, strafeForward: .35, strafeGain: 4, strafePull: .6, lostSec: 2.4, markSec: .4, markScale: 1.9, occludedAlpha: .38, edge: 26 }),
+  // Target-mode follow (Tim, 2026-11-19: "when there are no enemies around, the camera should gently and gracefully move to be
+  // behind the Wayfarer, so as he moves and walks the camera follows him ... not spinning around him, and it must not conflict
+  // with the user's own camera control"). While target mode is on and nothing is locked, the view's yaw rides a critically
+  // damped spring (`rate` per second, never faster than `maxRate` degrees a second) toward the Wayfarer's world-space travel
+  // heading (the assist's low-passed walk direction, CLOSE_VIEW.assist.headTau), whatever save.closeViewAutoFollow says (the lit
+  // button is the opt-in). Only while they really travel (`minHead` tiles a second); idle, it stops (the swing bleeds off at
+  // `settle` per second). Never within `deadband` degrees, never when walking toward the camera (more than `cone` degrees off:
+  // a backpedal never spins the view round), never in Look mode or while a drag / the crescent holds the view, and only `delay`
+  // seconds after the player last turned the view, easing in over `ramp` seconds. Reduced motion: rate and maxRate times
+  // `reducedScale` (gentler, still no overshoot). The held stick's basis stays latched meanwhile (closeViewSteer), so the
+  // heading chased is stable and the follow can never feed back into the walk.
+  targetFollow: Object.freeze({ delay: 1, ramp: 1, rate: 1.6, maxRate: 55, deadband: 1.5, cone: 120, minHead: .5, settle: 6, reducedScale: .5 }),
   // crescent: the pan rail, a thin arc round the outside of the action cluster, `gap` px beyond the cluster's half width, from
   // `from` degrees (screen angles: 0 is right, -90 up, 180 left) round over the top and down the left side to `to` degrees.
   // It is drawn `width` px wide at `idle` opacity (`active` while touched) and answers within `band` px of the arc; it sits
@@ -975,7 +987,7 @@ const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.c
   || openAirAt(g.map, g.player.x, g.player.y);
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
-const CAM = { orbitBase: NaN, orbitR: 0, orbitElev: 0, rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
+const CAM = { orbitBase: NaN, orbitR: 0, orbitElev: 0, rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, stickYaw: NaN, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
   focal: 1, focalV: 0,
   // the map the camera last chose a view for (its area and section), and a pending snap of every spring (CLOSE_VIEW.camera.crossing)
   area: "", secX: 0, secY: 0, snapNext: false,
@@ -1301,11 +1313,17 @@ function turnCamera(g, now) {
   const target = lockTick(g, dt);
   if (!CAM.targetRecentre && !Number.isFinite(CAM.recentre)) CAM.basisFollow = false; // the swing is over: latch where it ended
   if (CAM.targetRecentre) {
-    const goal = Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : CAM.recentre, diff = wrap(goal - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
+    // The spin loop (Tim, 2026-11-19: Target pressed with the stick held sideways spun the Wayfarer and the camera round until
+    // the stick was let go): this swing chased the body's live yaw while the held stick's basis followed the view, so the walk,
+    // the body and the view chased each other for good. Now a held stick keeps its latched basis (closeViewSteer) and, with
+    // nothing locked, the swing goes to where it is walking (CAM.stickYaw, world space, fixed while the stick is held): one
+    // bounded swing to behind the Wayfarer, then the walk carries straight on. Idle, or locked, it is the body's yaw as before.
+    const walking = !target && Math.hypot(CAM.sx, CAM.sy) >= CLOSE_VIEW.input.idle && Number.isFinite(CAM.stickYaw);
+    const goal = walking ? CAM.stickYaw : Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : CAM.recentre, diff = wrap(goal - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); if (Math.hypot(CAM.sx, CAM.sy) < CLOSE_VIEW.input.idle) CAM.inputYaw = CAM.yaw;
     CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt);
     const bodySettled = Number.isFinite(CAM.bodyDesiredYaw) && Math.abs(wrap(CAM.bodyYaw - CAM.bodyDesiredYaw)) < .01;
-    if (CAM.bodyRevision > CAM.targetRevision && Math.abs(diff) < .01 && bodySettled && !CAM.bodyTransient) { CAM.targetRecentre = false; CAM.recentre = NaN; }
+    if (CAM.bodyRevision > CAM.targetRevision && Math.abs(diff) < .01 && (walking || bodySettled && !CAM.bodyTransient)) { CAM.targetRecentre = false; CAM.recentre = NaN; CAM.basisFollow = false; } // settled: a held basis stays where it is
     return;
   }
   if (target) { // locked: the view swings to keep the foe framed beyond the Wayfarer
@@ -1321,6 +1339,7 @@ function turnCamera(g, now) {
   if (Number.isFinite(CAM.recentre)) { // a double tap on the crescent: swing round behind the Wayfarer (the walk's basis turns with it)
     const diff = wrap(CAM.recentre - CAM.yaw), step = Math.sign(diff) * Math.min(Math.abs(diff), P.recentreRate * dt);
     CAM.yaw = wrap(CAM.yaw + step); CAM.inputYaw = wrap(CAM.inputYaw + step); CAM.yawV = 0; CAM.pitchUser *= Math.exp(-6 * dt); if (Math.abs(diff) < .01) CAM.recentre = NaN; return; }
+  if (CAM.targetMode) { targetFollow(now, dt, reduce); return; } // target mode, nothing locked: the view eases round behind the walk
   const A = CLOSE_VIEW.assist; if (g.save?.closeViewAutoFollow === false) { CAM.yawV = 0; return; } // the view moves only when the player moves it
   const since = (now - CAM.panAt) / 1000; if (since < A.delay) { CAM.yawV = 0; return; } // the crescent was touched lately: the view stays where it was put
   const speed = Math.hypot(CAM.headX, CAM.headY); if (speed < A.minHead) { CAM.yawV *= Math.exp(-4 * dt); return; } // no steady travel: nothing to follow
@@ -1328,6 +1347,19 @@ function turnCamera(g, now) {
   if (Math.abs(diff) > A.cone * DEG || Math.abs(diff) < A.deadband * DEG) { CAM.yawV *= Math.exp(-4 * dt); return; } // toward the camera, or near enough straight on
   const ease = CAM.panAt > -1e8 ? Math.min(1, (since - A.delay) / A.ramp) : 1;
   yawSpring(head, A.rate * slow * Math.max(.05, ease), A.maxRate * DEG * slow, dt);
+}
+// Target-mode follow (CLOSE_VIEW.targetFollow, Tim 2026-11-19): with target mode on and nothing locked, the view eases round
+// behind the Wayfarer's world-space travel heading while they walk; never in Look mode, while the player holds or has just
+// turned the view (a drag or the crescent keeps CAM.panAt fresh every frame), toward the camera, or when they stand still.
+function targetFollow(now, dt, reduce) {
+  const F = CLOSE_VIEW.targetFollow, slow = reduce ? F.reducedScale : 1, settle = () => { CAM.yawV *= Math.exp(-F.settle * dt); };
+  if (LOOK.on) { CAM.yawV = 0; return; }
+  const since = (now - CAM.panAt) / 1000; if (since < F.delay) { CAM.yawV = 0; return; } // the player's own turn stands
+  if (Math.hypot(CAM.headX, CAM.headY) < F.minHead) { settle(); return; } // not travelling: nothing to follow
+  const head = Math.atan2(CAM.headY, CAM.headX), diff = wrap(head - CAM.yaw);
+  if (Math.abs(diff) > F.cone * DEG || Math.abs(diff) < F.deadband * DEG) { settle(); return; } // walking at the camera, or behind already
+  const ease = CAM.panAt > -1e8 ? Math.min(1, (since - F.delay) / F.ramp) : 1;
+  yawSpring(head, F.rate * slow * Math.max(.05, ease), F.maxRate * DEG * slow, dt);
 }
 // A locked swing (CLOSE_VIEW.lock.accel): the critically damped spring's step, its speed capped at `cap`, gathering speed at most
 // `accel` (radians a second squared) and never faster than it could stop by the goal; a swing already under way is turned
@@ -1637,7 +1669,8 @@ function clearanceOffset(g, fx, fy, ax, ay, centered, dt, mix) {
 // for the gesture against the view's slow automatic chase (the assist turns toward where you already walk; a basis that
 // followed it would bend the walk into a spiral), but follows every turn you or a command make: a pan turns it at once, and
 // through a Target or double-tap recenter it follows the view frame by frame (Tim, 2026-11-11: a Target recenter kept the
-// stick on the old view, so he kept walking the old way). Locked on, the basis is the bearing to the foe (up walks at it,
+// stick on the old view, so he kept walking the old way; 2026-11-19: a stick held through it keeps its basis and the swing goes
+// to where it walks, so neither can chase the other into a spin). Locked on, the basis is the bearing to the foe (up walks at it,
 // sideways circles it at the distance held, CLOSE_VIEW.targetMode.strafe*). After a quick turnaround the held stick keeps the
 // basis it had until it is let go (it keeps walking the same way). Returns true when it changed the state (restore it with
 // closeViewUnsteer after Game.update, so the input's own smoothing never sees the turned vector).
@@ -1648,7 +1681,10 @@ export function closeViewSteer(g, state, now = NaN) {
   // first resumed render can preserve the camera's timers even when there were no paused frames.
   if (g.paused) { if (!Number.isFinite(CAM.pausedAt)) CAM.pausedAt = Number.isFinite(g.pauseStarted) ? g.pauseStarted : CAM.lastNow; CAM.dt = 0; return false; }
   const sx = Number(state.x) || 0, sy = Number(state.y) || 0, mag = Math.hypot(sx, sy), idle = mag < CLOSE_VIEW.input.idle;
-  if (idle) CAM.basisHold = false; if (CAM.basisFollow && !CAM.basisHold) CAM.inputYaw = CAM.yaw;
+  // Tim 2026-11-19 (the spin loop): a stick already held keeps its basis through a Target recenter, whose swing goes to where it
+  // walks (CAM.stickYaw); following that swing frame by frame fed the view back into the walk. Idle, or pushed afresh, it reads
+  // the view as it is. A double-tap recenter (a fixed goal) still turns a held basis with it.
+  if (idle) CAM.basisHold = false; if (CAM.basisFollow && !CAM.basisHold && (idle || !CAM.targetRecentre)) CAM.inputYaw = CAM.yaw;
   if (idle && !g.lockedTarget?.()) { CAM.inputYaw = CAM.yaw;
     // Neutral camera orbit never chooses an attack direction. Untargeted actions start
     // in front of the displayed body; Game still owns lock, auto aim and explicit taps.
@@ -1675,12 +1711,12 @@ export function closeViewSteer(g, state, now = NaN) {
   const fx = Math.cos(CAM.inputYaw), fy = Math.sin(CAM.inputYaw), rx = -fy, ry = fx;
   let wx = rx * sx - fx * sy, wy = ry * sx - fy * sy;
   if (pull) { wx += fx * pull * mag; wy += fy * pull * mag; const k = mag / Math.hypot(wx, wy); wx *= k; wy *= k; } // same speed, bent toward (or away from) the foe
-  CAM.sx = sx; CAM.sy = sy; state.x = wx; state.y = wy; CAM.steered = true; return true;
+  CAM.sx = sx; CAM.sy = sy; CAM.stickYaw = idle ? NaN : Math.atan2(wy, wx); state.x = wx; state.y = wy; CAM.steered = true; return true;
 }
 export function closeViewUnsteer(state) { if (CAM.steered && state) { state.x = CAM.sx; state.y = CAM.sy; } CAM.steered = false; }
 export function closeViewCamera() { return { orbit: orbitOn(), orbitRadius: CAM.orbitR, zoomScale: ORBIT_FRAME.scale, indoorOrbit: ORBIT_FRAME.indoor, elevation: CAM.orbitElev, yaw: CAM.yaw, inputYaw: CAM.inputYaw, distance: CAM.shown, anchorZ: CAM.zA, x: CAM.cx, y: CAM.cy, height: CAM.hc, shoulder: CAM.shoulder, rigOffset: CAM.rigOffset, pitch: Math.atan2(CAM.sinP, CAM.cosP), pitchUser: CAM.pitchUser, lockId: CAM.lockId, centeredRear: CAM.centeredRear, targetRecentre: CAM.targetRecentre, bodyYaw: CAM.bodyYaw, bodyDesiredYaw: CAM.bodyDesiredYaw, bodyTransient: CAM.bodyTransient, valid: CAM.valid, drawn: CAM.drawn }; }
 export const closeViewWallAt = (map, x, y) => wallAt(map, x, y); // for tests: is (x, y) inside a wall (or off the floor)?
-export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
+export function resetCloseViewCamera() { CAM.threat = CAM.threatV = CAM.threatFor = CAM.threatPull = CAM.duelPull = CAM.duelPullV = 0; CAM.targetMode = false; CAM.basisHold = false; CAM.basisFollow = false; CAM.stickYaw = NaN; CAM.strafeR = NaN; CAM.strafeId = null; CAM.map = null; CAM.bodyYaw = CAM.bodyDesiredYaw = NaN; CAM.bodyTransient = false; CAM.targetRecentre = false; CAM.centeredRear = false; CAM.recentre = NaN; CAM.valid = false; CAM.drawn = false; LOOK.on = false; LOOK.want = LOOK.s = LOOK.sV = 0; LOOK.map = null; lookForget(); }
 // ------------------------------------------------------------------------------------------------ Look mode (CLOSE_VIEW.camera.look)
 // Runtime only: nothing here is saved, and a reload starts with it off. `s` is the eased zoom, `want` the asked one; the subject
 // (`key`: its game object, null for the Wayfarer) and its aim point (tx, ty, tz, eased) are chosen after each frame's actors are
