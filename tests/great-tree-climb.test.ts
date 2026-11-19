@@ -169,7 +169,7 @@ test('the trunk is solid: the crown is entered only from the climb\'s last tile,
   }
   const { g } = loadAt(TIM.seed, ...TIM.sections.dead, TIM.version), rest = g.map.objects.find((o) => o.kind === 'crownRest');
   g.player.x = rest.x; g.player.y = rest.y; g.update(.05, idle, 1000); assert.ok(g.save.glider, 'the crown gives the glider');
-  g.update(.05, { state: { x: 1, y: 0 }, consume: () => false, held: () => false }, 1050); let t = 1100; for (let i = 0; i < 8 && !g.glide; i++) g.update(.05, { state: { x: 1, y: 0 }, consume: () => false, held: () => false }, t += 50);
+  g.update(.05, { state: { x: 1, y: 0 }, consume: () => false, held: () => false }, 1050); let t = 1100; for (let i = 0; i < 40 && !g.glide; i++) /* 2026-11-19 (TREE_FALL, Tim: a missed hop falls to the branch below): the freefall begins once the fall is TREE_FALL.clear levels down, so 8 frames became 40 */ g.update(.05, { state: { x: 1, y: 0 }, consume: () => false, held: () => false }, t += 50);
   assert.ok(g.glide, 'off the crown: a freefall (Jump opens the glider), not a death'); assert.ok(g.player.hp > 0);
 });
 

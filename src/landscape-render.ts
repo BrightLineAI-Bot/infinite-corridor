@@ -5,6 +5,7 @@ import { SEASONS } from "./seasons.ts";
 import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
 import { TREES, canopyBehindTrunk, canopyAboveCrown, canopyRepaint } from "./trees.ts";
 import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.ts";
+import { BIZARRO } from "./strange.ts"; // the bizarro pockets
 
 const TAU = Math.PI * 2;
 const cache = new Map();
@@ -692,6 +693,9 @@ export function drawCanopyAboveCrown(ctx, tiles, w, s, tr, draw) { const list = 
 // a full spray at a tip, hanging below the wood. A handful of ellipses per tile, no state.
 // Release 679 (seasons.ts): the season of the woods the section belongs to (renderer.ts sets it each frame).
 let treeSeasonNow = null;
+// The bizarro pockets (strange.ts BIZARRO): the ground cache, once built, is differenced with the wash colour, so every colour
+// of the section turns a little wrong. One full-size fill when the cache is built; nothing per frame.
+export function bizarroWash(gc, mw, mh, s) { gc.save(); gc.globalCompositeOperation = "difference"; gc.fillStyle = `rgb(${BIZARRO.wash.join(",")})`; gc.fillRect(0, 0, mw * s, mh * s); gc.restore(); }
 export function setTreeSeason(season) { treeSeasonNow = season || null; }
 function drawTreeWear(ctx, t, px, py, s) {
   const L = TREES.looks[t.look] || TREES.looks[0], n = t.leaves || 0, d = (t.x * 7 + t.y * 13) % 17, leaf = (treeSeasonNow && SEASONS.canopy[treeSeasonNow]) || L.leaf;

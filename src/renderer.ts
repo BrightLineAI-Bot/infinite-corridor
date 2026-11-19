@@ -1,4 +1,5 @@
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { vulnerableUntil, glyphMinesOf, GLYPH_MINE } from "./hit-cast-passives.ts"; // Tempo marks, Glyph Mine sigils (2026-11-19)
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
 import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts";
 import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.ts"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
@@ -27,8 +28,9 @@ import { BOAT } from "./boats.ts";
 import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.ts";
 import { isMarineTile } from "./world-beasts.ts";
 import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.ts"; // 613: Starfield rafts
+import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.ts"; // the low-health edge: the death static, red, at the edges
 import { SEASONS, treeSeason } from "./seasons.ts";
-import { setTreeSeason } from "./landscape-render.ts";
+import { setTreeSeason, bizarroWash } from "./landscape-render.ts";
 import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.ts";
 import { elevationAt, LETHAL_KINDS } from "./landscape.ts";
 import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.ts";
@@ -37,7 +39,7 @@ import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./af
 import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.ts";
 import { KIT_MOVES } from "./boss-kit.ts";
 import { SKY_DISCS, SEEDS } from "./skylands.ts"; // release 587; travel seeds
-import { coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
+import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.ts";
 import { drawSpinoBiteOverlay } from "./spino-render.ts";
 import { TURTLE_SHELL } from "./turtle-shell.ts"; // the Mountain Turtle's shell
 import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.ts"; // release 678
@@ -45,8 +47,8 @@ import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.ts";
 import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.ts"; // Close View: a beast in your section is captured wherever it stands in it
 import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.ts"; // the Pentagon's finale arena, the Stillworks
 import { penSide } from "./building.ts"; // release 748: pens sized for the beast
-import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFrame, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
-import { drawMount, drawMountFront } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.ts";
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.ts"; // release 748: the Wayfarer riding
 import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.ts";
 import { drawRelayNode } from "./relay-network.ts";
 import { structureOccupancy } from "./world.ts";
@@ -105,6 +107,16 @@ function drawFallDoom(ctx, g, w, h, now) {
   if (!(a > 0) || !(r1 > 0)) return;
   const v = ctx.createRadialGradient(w / 2, h / 2, r1 * F.inner, w / 2, h / 2, r1); v.addColorStop(0, `rgba(${F.color},0)`); v.addColorStop(1, `rgba(${F.color},${a.toFixed(3)})`);
   ctx.save(); ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); ctx.restore();
+}
+// LOW_HEALTH_EDGE (combat-visuals.ts): at 30% health or below, the death's static creeps in red at the screen's edges, in both
+// views. Its few small frames are made once per band step, quality and screen shape (one cache entry); a frame is one drawImage.
+const LHE_ART = { key: "", frames: [] };
+function lheCanvas(cw, ch) { const c = document.createElement("canvas"); c.width = cw; c.height = ch; return c; }
+function drawLowHealth(ctx, g, w, h, now, fallCue) {
+  const st = lowHealthEdgeState(g, now, fallCue); if (!st.show || !(w > 0) || !(h > 0) || typeof document === "undefined") return;
+  const q = g.presentation?.effectiveQuality, quality = q === "low" || q === "full" ? q : "balanced", aspect = Math.round(h / w * 10) / 10, key = `${quality}:${aspect}:${st.step}`;
+  if (key !== LHE_ART.key) { LHE_ART.key = key; LHE_ART.frames = lowHealthEdgeFrames(lheCanvas, quality, aspect, st.step); }
+  drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
@@ -2667,6 +2679,7 @@ function drawGroundCache(ctx, g, s, mw, mh, activeBuildingId, view, scarSurface)
       if (!dungeon && g.map?.canopy?.box) drawCanopyBehindTrunk(gc, T, mw, s, g.map.canopy.box, (q, x, y) => tile(gc, q, x, y, s, T, mw, activeBuildingId, scarSurface)); } // great-tree review: platforms behind the trunk, drawn over its face
     finally { setLandscapeStaticPass(false); }
     if (g.map.farInk && !dungeon) inkWash(gc, mw, mh, s, top); // release 719: the Ink Wastes
+    if (g.map.bizarro && !dungeon) bizarroWash(gc, mw, mh, s); // the bizarro pockets (strange.ts BIZARRO): everything a colour off
     Object.assign(ground, { map: g.map, s, scale, building: activeBuildingId, scarSurface, top, reveal, revealSize, revealIds: reveal && reveal !== "full" ? new Set(reveal) : null, refs: T.slice(), kinds: T.map((q) => q.kind), blocked: T.map((q) => q.blocked), elev: T.map((q) => q.elev) });
     renderCacheStats.groundBuilds = (renderCacheStats.groundBuilds || 0) + 1;
   }
@@ -2760,7 +2773,7 @@ export function render(ctx, g, w, h, now) {
   const timedView = renderTimings.on && !closeViewCapturing(), tv = timedView ? performance.now() : 0; // a capture is a render inside the frame's own
   if (timedView) { renderTimings.ground = renderTimings.world = renderTimings.overlay = renderTimings.view = renderTimings.groundImage = 0; }
   if (!closeViewCapturing()) sightFrame(); // labyrinths.ts sight lines: one bounded budget of fresh line walks a frame (both views)
-  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
+  if (!closeViewCapturing() && closeViewFrame(ctx, g, w, h, now, render)) { drawLowHealth(ctx, g, w, h, now, false); if (timedView) { renderTimings.endedAt = performance.now(); renderTimings.view = renderTimings.endedAt - tv; } return; } // CLOSE VIEW (1/3): indoors, the camera behind the Wayfarer, and the blend between cameras (close-view.ts)
   const timed = renderTimings.on, t0 = timed ? performance.now() : 0;
   if (timedView) renderTimings.view = t0 - tv;
   SEASON = g.area === "overworld" ? g.season || null : null; setTreeSeason(SEASON); // release 679
@@ -3083,7 +3096,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "saplingDais" || o.kind === "riteAshes") { drawRiteTree(ctx, o, s, now); // the Rite of Ascendancy
           } else if (o.kind === "crownRest") { const cx = (o.x + .5) * s, cy = (o.y + .6) * s, lit = g.save?.activeCheckpoint?.crown && g.save.activeCheckpoint.rx === g.rx && g.save.activeCheckpoint.ry === g.ry, pulse = .55 + .45 * Math.sin(now / 420); ctx.save(); ctx.strokeStyle = lit ? `rgba(160,255,170,${.5 + .4 * pulse})` : "rgba(200,230,190,.45)"; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(cx, cy, s * .42, s * .2, 0, 0, 7); ctx.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + now / 2000; ctx.fillStyle = lit ? "#9dffae" : "#cfe8c4"; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * s * .42, cy + Math.sin(a) * s * .2, s * .07, s * .035, a, 0, 7); ctx.fill(); } ctx.restore(); // release 669: the Crown Rest
           } else if (o.kind === "canopyGate") { drawCanopyGate(ctx, o, s, now); // release 631
-          } else if (o.kind === "seedFind") { drawSeedFind(ctx, o, s, now); // travel seeds
+          } else if (o.kind === "seedFind") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawSeedFind(ctx, o, s, now); if (L) ctx.restore(); // travel seeds; a seed hunt's seed high in a great tree is drawn up there (tall-towers.ts)
           } else if (o.kind === "stegoTail") { drawStegoTail(ctx, o, s, now); // the Stego Bait: the severed tail, lying where it fell
           } else if (o.kind === "worldCache") { const L = o.cacheElev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawWorldCache(ctx, o, s, now); if (L) ctx.restore(); // world caches (world.ts WORLD_CACHES)
           } else if (o.kind === "cacheLever") { drawPentLever(ctx, o, s, now); // and the lever that lifts an alcove's bars
@@ -3154,7 +3167,8 @@ export function render(ctx, g, w, h, now) {
           }
           if (e.kind === "stalker") { drawStalkerMarks(ctx, e, s, now); drawStalker(ctx, e, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); return; } // release 678
           if (e.packKind && drawPackMonster(ctx, { ...e, x: e.x + ox, y: e.y + oy, ...(["voidWalker", "psychicCrystal", "lightningGiant"].includes(e.kind) ? { marine: !astralMountPresentation(e) && marineAt(e) } : {}), ...(e.kind === "astralWorm" ? { astralBeamGroundLiftDelta: (()=>{ const a=astralBeamAnchors({...e.astral,x:e.x,y:e.y,scale:Math.max(.6,Number(e.scale)||1),facingX:e.astral?.facingX||e.facingX||1});return groundLift(e.x,e.y)-groundLift(a.ground.x,a.ground.y); })() } : {}), ...(["voidWalker", "astralWorm", "astralMirage", "lightningGiant", "wildStego", "spinoRex"].includes(e.kind) || MONSTER_PACK[e.kind]?.adventureKin ? { reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}), ...(e.kind === "psychicCrystal" ? { flightLiftDelta: crystalLift(e) - groundLift(e.x, e.y), reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) } : {}) }, s, now, f)) return;
-          if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
+          if (drawsBizarro(g.map, g.area, e) && drawBizarroCreature(ctx, e, e.x + ox, e.y + oy, s, f, e.telegraph > 0 ? "telegraph" : e.strike > 0 ? "attack" : "walk", e.kind === "voidSentinel" ? now / 180 : Math.floor(e.ai?.step || 0))) { /* the bizarro world: the rounded style, only in the Askew and a bizarro pocket (monster-render.ts drawsBizarro) */ }
+          else if (e.kind === "gateRevenant") drawGateRevenant(ctx, e, s, now, ox, oy); // release 271
           else actor(
             ctx,
             e.x + ox,
@@ -3248,13 +3262,14 @@ export function render(ctx, g, w, h, now) {
         if (g.save.boat.sub) { const sw = bw * BOAT.sub.hull / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.subHull) || 0) / BOAT.sub.hull); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx - sw - 3, by - 1, sw + 2, bh + 2); ctx.fillStyle = "#d8dee5"; ctx.fillRect(bx - 2 - sw * left, by, sw * left, bh); } // release 311: the submersible's plating, silver, to the left
         if (shield > 0) { const gw = bw * BOAT.shield.bonus / BOAT.maxHull, left = Math.min(1, (Number(g.save.boat.guardHull) || 0) / BOAT.shield.bonus); ctx.fillStyle = "#0b1218cc"; ctx.fillRect(bx + bw + 1, by - 1, gw + 2, bh + 2); ctx.fillStyle = "#ff2fb4"; ctx.fillRect(bx + bw + 2, by, gw * left, bh); }
       }
-      // An axial roll of the whole composite keeps the saddle, rider and mount together, tail first.
+      // The Silly Goose's drill (Tim, 2026-11-18: no spin of the body): mount, saddle and rider stay upright as one group, with a small
+      // wobble; the spin is the whirlwind round him (triceratops-render.ts). The shadow stays at the feet.
       if (drillPose) {
-        const aim = mountComposite?.viewAim || drillPose, pivotX = (p.x + .5) * s, pivotY = (p.y + .82 - drillPose.pivot) * s - lift;
-        const frame = triceratopsDrillFrame(drillPose, aim, lift / s);
-        ctx.save(); ctx.translate(pivotX, pivotY - frame.clearance * s); ctx.rotate(frame.angle); ctx.scale(1, drillPose.roll); ctx.translate(-pivotX, -pivotY);
+        drawMountShadow(ctx, mountRide, p, s, lift);
+        const w = (Number(drillPose.bank) || 0) * .35, fx = (p.x + .5) * s, fy = (p.y + .82) * s - lift;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(w); ctx.scale(1, 1); ctx.translate(-fx, -fy); // one upright group (unit scale: never flipped)
       }
-      const ride = mountRide, mountFacing = drillPose ? "left" : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
+      const ride = mountRide, mountFacing = drillPose ? triceratopsDrillFacing(mountComposite?.viewFacing, drillPose) : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
       const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
@@ -3578,7 +3593,7 @@ export function render(ctx, g, w, h, now) {
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
     if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); if (g.save?.apatoPoison?.stacks > 0) drawPoisonIcon(ctx, w / 2 + s * (g.save?.bleed?.left > 0 ? 1.05 : .5) + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
-  if (!worldCapture && !closeViewCapturing() && g.fallDoomed?.()) drawFallDoom(ctx, g, w, h, now); // FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
+  if (!worldCapture && !closeViewCapturing()) { const doomed = !!g.fallDoomed?.(); drawLowHealth(ctx, g, w, h, now, doomed); if (doomed) drawFallDoom(ctx, g, w, h, now); } // LOW_HEALTH_EDGE yields to the fall cue (one red cue at a time). FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
   const place = g.area === "overworld" ? `SECTION ${g.rx},${g.ry}` : g.map.name.toUpperCase(),
@@ -3685,10 +3700,11 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
     if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
+    if(vulnerableUntil(e)>now){const k=.5+.5*Math.sin(t*9);ctx.strokeStyle=`rgba(255,96,140,${.55+.35*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();for(let q=0;q<4;q++){const a=q*Math.PI/2+t*1.5,r=s*.5;ctx.moveTo(cx+Math.cos(a)*r*.62,cy-s*.1+Math.sin(a)*r*.62);ctx.lineTo(cx+Math.cos(a)*r,cy-s*.1+Math.sin(a)*r)}ctx.stroke()} // Tempo's window (hit-cast-passives.ts): a pink broken ring
     if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
-    if(v.kind==="arc"){ctx.strokeStyle=v.color;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1.5,s*.06);ctx.beginPath();ctx.moveTo(v.x*s,v.y*s);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s);ctx.stroke();ctx.globalAlpha=1}
+    if(v.kind==="arc"){if(v.z>0&&(bareFloor||closeViewCapturing()))continue;/* a raised arc (the Triceratops's Bash, at its horns: TRICERATOPS_HORN_SHOT.bashArc) is drawn lifted by Close View itself */const lz=v.z>0?(v.z-.37)*s:0;ctx.globalAlpha=a;ctx.beginPath();ctx.moveTo(v.x*s,v.y*s-lz);const mx=(v.x+v.tx)/2*s+Math.sin(t*40)*s*.15,my=(v.y+v.ty)/2*s+Math.cos(t*37)*s*.15-lz;ctx.lineTo(mx,my);ctx.lineTo(v.tx*s,v.ty*s-lz);if(lz){ctx.strokeStyle="rgba(58,38,10,.7)";ctx.lineWidth=Math.max(3,s*.12);ctx.stroke();}/* raised over the beast: a dark edge so it reads against the hide */ctx.strokeStyle=v.color;ctx.lineWidth=Math.max(1.5,s*(lz?.07:.06));ctx.stroke();ctx.globalAlpha=1}
     else if(v.kind==="heal"){const rise=(1-a)*s*.6;ctx.font=`bold ${Math.max(10,Math.round(s*.32))}px system-ui,sans-serif`;ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle=`rgba(0,0,0,${a*.8})`;ctx.fillStyle=`rgba(120,240,140,${a})`;ctx.strokeText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.fillText(`+${v.amount}`,v.x*s,v.y*s-rise);ctx.textAlign="start"}
     else if(v.kind==="mist"){const r=s*(.35+(1-a)*.5),gr=ctx.createRadialGradient(v.x*s,v.y*s,0,v.x*s,v.y*s,r);gr.addColorStop(0,`rgba(214,226,240,${.55*a})`);gr.addColorStop(1,"rgba(150,172,200,0)");ctx.fillStyle=gr;ctx.beginPath();ctx.arc(v.x*s,v.y*s,r,0,7);ctx.fill()}/* release 699: Stalker's Mist rots a foe */
     else if(v.kind==="steam"){const f=1-a;ctx.fillStyle=`rgba(236,248,250,${.42*a})`;for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(v.x*s+(k-1)*s*.2+Math.sin(f*5+k*2)*s*.06,v.y*s-f*s*(.5+k*.12),s*(.06+.07*f),0,7);ctx.fill()}}/* the healing hot springs (HOT_SPRINGS): a wisp of steam */
@@ -3704,6 +3720,7 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
 function drawEchoPatches(ctx,g,s,now){
   if(g.earthResolve)drawEarthResolveSigil(ctx,g.earthResolve,s,now,insideResolve(g),!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); // Earth Resolve, the Earth Apatosaurus's Echo (apato-render.ts)
+  for(const m of glyphMinesOf(g)){const k=Math.max(0,Math.min(1,(m.until-now)/GLYPH_MINE.lifeMs)),x=m.x*s,y=m.y*s,r=GLYPH_MINE.trigger*s;ctx.strokeStyle=`rgba(190,150,255,${.35+.5*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()} // Glyph Mine sigils (hit-cast-passives.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}

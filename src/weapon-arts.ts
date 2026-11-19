@@ -268,6 +268,7 @@ function release(game, now, held) {
   const dx = H.dx, dy = H.dy, fistStep = H.step; endHold(K); K.latch = true;
   if (!A || game.artBlocked(now)) { if (A && id === "ki-blast") game.artFistTap(now, { x: dx, y: dy }, fistStep); return false; } // fizzles; the charge stays stored (the fists' held punch is thrown as a tap)
   K.armed = false; K.presses = 0;
+  K.rr = typeof game.chargedRelease === "function" ? game.chargedRelease() : 0; // hit-cast-passives.ts Rapid Reload: an art is a charged release (game.ts artBlow reads it)
   const power = Math.max(0, Number(game.artPower(now)) || 0) * share * (A.share ?? 1); // A.share: the art's own weight (balance)
   if (id === "lava-slash") {
     // 2026-11-14: the dash is travelled (game.artRush); the slam lands on arrival (landLavaSlash). In the air, or with nothing

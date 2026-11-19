@@ -55,7 +55,7 @@ test('walking off a ledge with Aerial Step holds the height: no fall, no damage,
 
 test('off a great tree with the glider owned, Aerial Step still holds the height (no freefall glide); without it the freefall begins', () => {
   for (const held of [true, false]) { const g = wayfarer(); g.save.glider = true; ledge(g, 6); const d = drive(g); if (held) cast(g, d.now());
-    for (let i = 0; i < 60; i++) { g.lastCrownAt = d.now(); d.step(1); } // as if just off a great tree's canopy (treeLaunch)
+    for (let i = 0; i < 90 && !g.glide; i++) { g.lastCrownAt = d.now(); d.step(1); } // as if just off a great tree's canopy (treeLaunch). 2026-11-19 (TREE_FALL, Tim: a missed hop falls to the branch below): the freefall now begins once the fall is TREE_FALL.clear levels down, so 60 frames became 90, stopping once it has begun
     if (held) { assert.equal(g.glide, null, 'no glide'); assert.equal(g.aerialHeld(), true); assert.equal(g.fall.z, 6); } else assert.ok(g.glide, 'the freefall glide, as before'); }
 });
 

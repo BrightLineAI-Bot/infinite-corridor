@@ -7,6 +7,7 @@ import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.
 import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { labFogOf, labFogState } from "./labyrinths.ts";
+import { TALL_TOWERS } from "./tall-towers.ts";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -175,7 +176,31 @@ export function compassQuestCue(quest, cues) {
   for (const kind of kinds) { const cue = list.find((q) => q.signalKind === kind); if (cue) return cue; }
   return null;
 }
-export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [] } = {}) {
+// A seed hunt (tall-towers.ts TALL_TOWERS.seedHunt, the nearest live one; main.ts passes it as seedHuntGuidance gives it) comes
+// last, after a pick and a quest's waymark cue: in its own section the needle points at the seed itself, or at the door of the crossing it lies in.
+export function seedHuntGuidance(hunt, names = {}) {
+  if (!hunt || hunt.state !== "active" || !Number.isInteger(hunt.rx) || !Number.isInteger(hunt.ry)) return null;
+  const at = hunt.where === "crossing" ? hunt.door : (hunt.where === "ground" || hunt.where === "tree") ? hunt : null;
+  return { area: "overworld", rx: hunt.rx, ry: hunt.ry, ...(at && Number.isInteger(at.x) && Number.isInteger(at.y) ? { x: at.x, y: at.y } : {}), kind: "guidance", name: `Seed hunt: ${names[hunt.kind] || "a seed"}` };
+}
+// Seed hunts in the compass's quest list (Tim, 2026-11-19: the seed hunt should be one of the quests the player cycles through
+// by tapping the compass, so he can select it and have the compass point to it). Each live hunt (`hunts`, tall-towers.ts
+// activeSeedHunts) is one entry, named by TALL_TOWERS.seedHunt.compassLabel, nearest first (then by tower id): a tracked entry is
+// the compass's pick, so compassGuidance points at the hunt's section and, inside it, at the seed or at the door of its crossing
+// (seedHuntGuidance's spot). Its pick key (`objectiveKey`) is the tower's, so it never stands in for another objective in the
+// same section. Pure: a few objects per live hunt, built when main.ts rebuilds its objective list.
+export const SEED_HUNT_PICK = "seed-hunt:";
+export const objectiveKey = (o) => o?.kind === "seedHunt" ? `${SEED_HUNT_PICK}${o.tower}` : `${o?.rx},${o?.ry}`;
+export function seedHuntObjectives(hunts, names = {}, rx = 0, ry = 0) {
+  const out = [];
+  for (const h of hunts || []) {
+    const g = seedHuntGuidance(h, names); if (!g || typeof h.tower !== "string") continue;
+    out.push({ kind: "seedHunt", tower: h.tower, rx: g.rx, ry: g.ry, ...(Number.isInteger(g.x) ? { x: g.x, y: g.y } : {}), name: TALL_TOWERS.seedHunt.compassLabel.replace("{seed}", names[h.kind] || "a seed") });
+  }
+  const far = (o) => Math.max(Math.abs(o.rx - rx), Math.abs(o.ry - ry));
+  return out.sort((a, b) => far(a) - far(b) || (a.tower < b.tower ? -1 : a.tower > b.tower ? 1 : 0));
+}
+export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [], seedHunt = null } = {}) {
   const hunt = save?.viewport?.contracts?.[save?.viewport?.activeHuntId];
   if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
   if (hunt && COMPASS_HUNT_LIVE.includes(hunt.status) && Number.isInteger(hunt.target?.rx) && Number.isInteger(hunt.target?.ry)) return { area: "overworld", rx: hunt.target.rx, ry: hunt.target.ry, kind: "guidance", name: hunt.title || "Viewport guidance" };
@@ -183,7 +208,7 @@ export function compassGuidance(save, { area = "overworld", pin = null, pick = n
   if (area !== "overworld") return null;
   if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
   const cue = compassQuestCue(compassQuest(save), cues);
-  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : null;
+  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : seedHunt || null;
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per

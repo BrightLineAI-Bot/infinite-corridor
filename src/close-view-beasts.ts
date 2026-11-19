@@ -22,6 +22,7 @@ import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-vie
 import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.ts";
 import { createApatoTrack, sampleApato, apatoMesh, APATO_RIG, createApatoCloneTrack, sampleApatoClone, apatoCloneMesh, CLONE_RIG } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
 import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.ts";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 
 // A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
 // visible whenever they're in the same section as you... You should know where they are"). The Close View had kept every
@@ -41,6 +42,10 @@ export function closeViewSectionBeast(e) {
 // The Gaunt (duelists.ts) are ordinary creatures, not world beasts: they take their own slots (DUELIST_SLOT), so a band of them
 // never takes a world beast's, and a world beast never takes theirs. Past these, one keeps its standard-view billboard.
 export const DUELIST_SLOT = Object.freeze({ maxDuelists: 3, triangles: Object.freeze({ full: 1600, balanced: 1250, low: 950 }) });
+// The Triceratops (2026-11-18): a herd of two to four takes its own slots (a herd member never takes a world beast's, and a
+// world beast never takes theirs); past `fullBodies` the farther ones draw the balanced mesh. The ridden mount has one more
+// (close-view.ts, beast-mounts.ts TRICERATOPS_CLOSE_VIEW). The lowest quality setting keeps their standard-view billboards.
+export const TRICERATOPS_SLOT = Object.freeze({ maxBodies: 4, fullBodies: 2 });
 const duelistBody = (sample) => Object.freeze({ mesh: duelistMesh, createTrack: createDuelistTrack, sample, duelist: true, get scale() { return DUELIST_RIG.closeViewScale; } });
 
 export const CLOSE_VIEW_BEASTS = Object.freeze({
@@ -89,6 +94,8 @@ export const CLOSE_VIEW_BEASTS = Object.freeze({
   earthApato: Object.freeze({ mesh: apatoMesh, createTrack: createApatoTrack, sample: sampleApato, get scale() { return APATO_RIG.closeViewScale; } }),
   apatoClone: Object.freeze({ mesh: apatoCloneMesh, createTrack: createApatoCloneTrack, sample: sampleApatoClone, minion: true, get scale() { return CLONE_RIG.closeViewScale; } }),
   // the Gaunt: the converted Rogue body, slimmed, hooded and armed per kind (close-view-beast-duelist.ts); their own slots
+  // the Triceratops of the herds (all three dispositions share the hide); the ridden mount is admitted by close-view.ts itself
+  triceratops: Object.freeze({ mesh: triceratopsMesh, createTrack: createTriceratopsTrack, sample: sampleTriceratops, herd: true, lowBillboard: true, eligible: (e) => !e.mountView, get scale() { return TRICERATOPS_RIG.closeViewScale; } }),
   gauntDuelist: duelistBody(sampleDuelist),
   gauntCutthroat: duelistBody(sampleDuelist),
   gauntLongarm: duelistBody(sampleDuelist),
