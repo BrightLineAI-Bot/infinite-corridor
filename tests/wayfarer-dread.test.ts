@@ -63,8 +63,10 @@ test('hushed speech is hashed, rare, at most once a speaker, and absent on groun
   for (const [role, mk] of [['traveler', traveller], ['reciter', (i) => ({ ...traveller(i), reciter: 'rilke', name: 'A reciter' })], ['villager', folk]]) {
     let n = 0;
     for (let i = 0; i < N; i++) { const o = mk(i); const a = hushesNow('DREAD', o, 1, 1); assert.equal(hushesNow('DREAD', o, 1, 1), a, 'the same answer every time'); if (a) n++; assert.equal(hushesNow('DREAD', o, 1, 0), false, 'version 0: never'); assert.equal(hushesNow('DREAD', o, 1, undefined), false); }
-    const p = D.speech[role], share = n / N; assert.ok(Math.abs(share - p) < .01, `${role}: ${share} vs ${p}`);
+    // 2026-11-19 (Tim: hushed lines down to about 2%): pin the new rates, and keep the tolerance tight enough to tell them from the old .05/.04/.06.
+    const p = D.speech[role], share = n / N; assert.ok(Math.abs(share - p) < .005, `${role}: ${share} vs ${p}`);
   }
+  assert.deepEqual(D.speech, { traveler: .02, reciter: .016, villager: .024 });
   // A speaker spoken to again and again hushes at most once, then speaks as usual.
   const s = save('HUSH'); let speakers = 0, hushed = 0;
   for (let i = 0; i < 400; i++) { const o = folk(i); let times = 0; for (let k = 0; k < 30; k++) if (hushedSpeech(s, o, 1)) times++; assert.ok(times <= 1, o.id); speakers++; hushed += times; }

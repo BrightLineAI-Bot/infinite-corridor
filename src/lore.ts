@@ -265,7 +265,7 @@ export function ensureArcanaState(save) {
 // hushes, no creature cowers and the Glimpse is not offered.
 export const WAYFARER_DREAD = {
   version: 1,
-  speech: { traveler: .05, reciter: .04, villager: .06 },
+  speech: { traveler: .02, reciter: .016, villager: .024 }, // Tim 2026-11-19: "even less, maybe 2%" (was .05/.04/.06, same proportions)
   glimpse: { id: "theShutter", deaths: 3, chance: .1 },
   cower: {
     // kind: [chance on noticing, at full strength; "flee" | "hesitate"]

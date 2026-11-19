@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1009 (`1a0292f4cbc5`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1011 (this merge, #681); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1011 | Claude | claude/lairs-and-hush / #681 | Deep lairs gen 4 (Mountain Turtle, Briar Stag, Ashen Moth, Astral Worm); no lair drops an Echo; hushed lines rarer (about 2%) | Merged (#681); preview follows. |
 | 1010 | Claude | claude/hit-cast-passives | Eight passives: Tempo, Shatterpoint (Lattice fields), Rapid Reload (Lattice tool form), Arcane Edge, Casting Wind, Pocket Time, Echoing Cast, Glyph Mine (Constellation nodes); new module hit-cast-passives; pinned counts updated (Tim approved); no save change | In flight. |
 | 1009 | Claude | claude/bizarro-world | The bizarro world: Abyssal Seeds open the Askew (a seed realm with rounded creatures); rare version-gated overworld pockets; 12 rounded creature kinds; Abyssal Seed in tower seed hunts; no tile changes to old ground | Merged as `1a0292f4cbc5` (#679). |
 | 1008 | Claude | claude/minion-echoes | On-hit Echoes (hit trigger; Triceratops Cunning, Bloblet Mend, Tentacle Ember), minion Echoes now drop, Sanctuary leeches with a 15%/s cap vs elites+; one echoes.test.ts exception (Tim approved); no save change | Merged as `d97cfaa2129f` (#678). |
