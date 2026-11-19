@@ -83,7 +83,7 @@ export const RAPID_RELOAD = { shots: 3, share: .2, cooldownMs: 1500, ring: 8, or
 // damage exactly as it always did. Reflected shots are never reflected again (a psychic wall lets them by), and reflected damage
 // never parries anything, so nothing ping-pongs.
 export const POWER_AEGIS = { windowMs: 450, reach: 4, stun: .6, bossShare: .3, staminaShare: .5, buffMs: 2500, bonus: .4, toolBonus: .2,
-  reflect: 1, bossCap: .05, shotSpeed: 1.6, boltSpeed: 9, shotTurn: 10, shotLife: 2.4, seek: 12,
+  reflect: 1.5, bossCap: .15, /* Tim 2026-11-19: a perfect parry is a hard manoeuvre, so the reflect is substantial (Thorned Veil gives 30% passively) */ shotSpeed: 1.6, boltSpeed: 9, shotTurn: 10, shotLife: 2.4, seek: 12,
   grabs: ["psyGrab", "spinoGrab", "stegoJaws", "apatoWrap", "apatoCloneCoil", "wormGrab"], stalkerGrabs: ["grab", "grabPull"], seaGrabs: ["bogLurker", "angler"] };
 export const CAST_NODE_IDS = ["arcane-edge", "casting-wind", "pocket-time", "echoing-cast", "glyph-mine"];
 const pct = (v) => `${Math.round(v * 100)}%`;

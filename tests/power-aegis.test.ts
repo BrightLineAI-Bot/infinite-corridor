@@ -231,8 +231,9 @@ test('roars, beams and area blasts go back to their maker; their riders never ta
     const { g, e, t } = warded({ gap: 6 });
     inject(g, (w) => { w.hurt(e, 30, { jumpable: false, source, ...opts }); riders(w); w.bleed(); w.ignite(3, 4); w.apatoPoison(2, 'wrap'); });
     run(g, t, t + 2 * FRAME);
+    // 2026-11-19 (Tim: the reflect should be substantial): expected damages are the blow times POWER_AEGIS.reflect (now 1.5)
     const now = g.lastUpdateNow;
-    assert.equal(g.player.hp, 100, `${source}: blocked`); assert.equal(5000 - e.hp, 30, `${source}: sent back to its maker 6 tiles off`);
+    assert.equal(g.player.hp, 100, `${source}: blocked`); assert.equal(5000 - e.hp, Math.round(30 * POWER_AEGIS.reflect), `${source}: sent back to its maker 6 tiles off`);
     assert.ok(!(g.playerFire?.left > 0), `${source}: no burn`); assert.ok(!(g.save.bleed?.left > 0), `${source}: no bleed`);
     assert.ok(!(g.save.elites?.status?.poison > 0) && !(g.save.poison?.stacks > 0), `${source}: no poison`);
     assert.ok(!(g.player.slowUntil > now) && !(g.player.confusedUntil > now) && !(g.player.stunnedUntil > now) && !(g.player.shockCount > 0), `${source}: no slow, confusion, stun or shock`);
@@ -254,7 +255,7 @@ test('real pack effects: a burning tree\'s touch goes back to its maker; a creat
   { const { g, e, t, p } = warded({ gap: 5 });
     g.packEffects = [{ id: 'thorn', kind: 'thorn', owner: 'foe', x: p.x + 1.4, y: p.y, vx: -6, vy: 0, radius: .3, arming: 0, life: 2, damage: 18 }];
     let bolt = null; run(g, t, t + 2000, () => { bolt ||= g.projectiles.find((q) => q.aegisReflected) || null; });
-    assert.ok(bolt && bolt.hostile === false && bolt.seekId === 'foe', 'sent back as a shot'); assert.equal(5000 - e.hp, 18, 'its damage'); assert.equal(g.player.hp, 100); }
+    assert.ok(bolt && bolt.hostile === false && bolt.seekId === 'foe', 'sent back as a shot'); assert.equal(5000 - e.hp, Math.round(18 * POWER_AEGIS.reflect), 'its damage'); assert.equal(g.player.hp, 100); }
 });
 
 test('command grabs are not parried: the Spinosaurus Grab takes you inside the perfect window; the Aegis still blocks its damage', () => {
@@ -287,7 +288,7 @@ test('bosses and world beasts take the same reflect, but never more than bossCap
   const small = warded({ boss: true, gap: 3 }); inject(small.g, (w) => w.hurt(small.e, 40, { jumpable: false, source: 'sweepBeam', beam: true })); run(small.g, small.t, small.t + 2 * FRAME);
   assert.ok(5000 - small.e.hp > 0 && 5000 - small.e.hp < cap, `an ordinary boss blow goes back whole (${5000 - small.e.hp})`);
   const plain = warded({ gap: 3 }); inject(plain.g, (w) => w.hurt(plain.e, 1000, { jumpable: false, source: 'sweepBeam' })); run(plain.g, plain.t, plain.t + 2 * FRAME);
-  assert.equal(5000 - plain.e.hp, 1000, 'an ordinary foe: no cap');
+  assert.equal(5000 - plain.e.hp, Math.round(1000 * POWER_AEGIS.reflect), 'an ordinary foe: no cap');
   assert.equal(g.reflectDamage(e, 100000), cap, 'a reflected shot on a boss: the same cap'); assert.equal(g.reflectDamage(plain.e, 100000), 100000);
 });
 
@@ -296,7 +297,7 @@ test('no ping-pong: a turned shot passes a psychic wall, never hurts the Wayfare
   g.projectiles.push(shotAt(p, 'enemy-shot-foe-a'), shotAt(p, 'enemy-shot-foe-b', 25, .01));
   let flashes = 0, last = 0; run(g, t, t + 1300, () => { if (g.parryFlashAt > 0 && g.parryFlashAt !== last) { flashes++; last = g.parryFlashAt; } });
   assert.equal(flashes, 1, 'one parry a cast'); assert.equal(g.player.hp, 100);
-  assert.equal(5000 - e.hp, 25, 'only the first goes back; the second is only turned aside');
+  assert.equal(5000 - e.hp, Math.round(25 * POWER_AEGIS.reflect), 'only the first goes back; the second is only turned aside');
   const q = { x: 5, y: 5, dx: 1, dy: 0, damage: 10, hostile: false, aegisReflected: true, hits: {} };
   reflectShotStep(q, [{ kind: 'psyWall', id: 'w', x: 4.8, y: 4.55, nx: 1, ny: 0, arming: 0 }], .6);
   assert.equal(q.hostile, false, 'a psychic wall does not turn it back'); assert.equal(q.reflectedBy, undefined);
