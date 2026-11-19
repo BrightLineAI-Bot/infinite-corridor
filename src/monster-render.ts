@@ -14,6 +14,7 @@ import { astralMountPresentation } from "./astral-worm-mount.ts";
 import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.ts";
 import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.ts";
 import { drawWildStego } from "./wild-stego-render.ts"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawTriceratopsBody } from "./triceratops-render.ts"; // the Triceratops (2026-11-18)
 import { drawSpino, drawSpinoMarks } from "./spino-render.ts";
 import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.ts";
 import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.ts";
@@ -468,34 +469,6 @@ export function drawGloomDark(ctx, x, y, s, view, dark, opts = {}) {
 // eye, and a tail with four spikes (two stubs once cut). It reads e.stegoAir, e.stegoRoll, e.stegoSwim, e.stegoTail, e.stegoPlates,
 // e.stegoClimb and e.stegoTree; nothing moves on its own clock under reduced motion.
 const STEGO_LOOK = { body: "#2f6fd6", dark: "#163a7a", plate: "#a9dcff", belly: "#6f9fe6", eye: "#ffd23a", wood: "#6a4a2a", leaf: "#3f7a3a", water: "rgba(40,90,160,.55)" };
-function drawTriceratops(ctx, q) {
-  const { k, b, u, flip, state, p, e } = q, body = p[0], dark = p[1], pale = p[2], eye = p[3];
-  const charge = e.pack?.attack === "ramCharge", wind = state === "windup", active = state === "attack";
-  const tailBounce = ["silly", "bad"].includes(e.triceratopsDisposition) && e.pack?.attack === "heavySweep", bounce = tailBounce && active ? (e.reduceMotion ? u * .05 : Math.sin(q.t * 20) * u * .08) : 0;
-  const crouch = wind ? u * .08 : 0, lean = charge && active ? u * .12 : 0, X = (x) => k + flip * (x * u + lean), Y = (y) => b - y * u + crouch;
-  ctx.save(); shadowAt(ctx, k, b, u * .72, u * .15, .46);
-  // Four planted legs, a low barrel body, and a tail: readable at the same scale as the world dinosaurs.
-  ctx.fillStyle = dark;
-  for (const x of [-.42, -.18, .18, .42]) { ctx.fillRect(X(x) - u * .075, Y(.37), u * .15, u * .37); ctx.fillStyle = eye; ctx.fillRect(X(x) - u * .085, Y(.055), u * .17, u * .055); ctx.fillStyle = dark; }
-  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(-.05), Y(.52), u * .62, u * .32, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1, u * .025); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(X(-.58), Y(.62)); ctx.lineTo(X(-1.02), Y(.48) + bounce); ctx.lineTo(X(-.57), Y(.4)); ctx.closePath(); ctx.fillStyle = body; ctx.fill(); ctx.stroke();
-  // Only the neck articulates: saddle, torso and rider remain on their shared anchor.
-  const horn = e.mountView && e.mountHornPose;
-  ctx.save();
-  if (horn) { const nx = X(.35), ny = Y(.54); ctx.translate(nx + flip * horn.reach * u, ny + horn.lower * u); ctx.rotate(flip * horn.pitch); ctx.translate(-nx, -ny); }
-  // Frill and head. The shared yellow hide is invariant across good, silly and bad actors.
-  ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(X(.48), Y(.72), u * .31, u * .4, -.12 * flip, 0, TAU); ctx.fill();
-  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(X(.67), Y(.52), u * .31, u * .22, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = pale;
-  for (const [x, y, len] of [[.62,.72,.42],[.8,.68,.39],[.88,.52,.2]]) { ctx.beginPath(); ctx.moveTo(X(x),Y(y)); ctx.lineTo(X(x+len),Y(y+.1)); ctx.lineTo(X(x+.06),Y(y-.045)); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(X(.76), Y(.57), Math.max(1.5, u * .03), 0, TAU); ctx.fill();
-  ctx.restore();
-  // Windups lower the horns; the active sweep lifts the tail. Both remain escapable through the production attack telegraph.
-  if (wind) { ctx.strokeStyle = pale; ctx.lineWidth = Math.max(2, u * .035); ctx.beginPath(); ctx.arc(X(.84),Y(.62),u*.35,-.2,.55); ctx.stroke(); }
-  if (e.pack?.attack === "heavySweep" && active) { ctx.strokeStyle = pale; ctx.lineWidth = Math.max(2,u*.045); ctx.beginPath(); ctx.arc(X(-.68),Y(.5)+bounce,u*.55,2.8,4.7); ctx.stroke(); }
-  ctx.restore();
-}
 function drawWildStegoPlaceholder(ctx, q) {
   const { k, u, flip, e } = q, C = STEGO_LOOK, air = Math.max(0, (Number(e.stegoAir) || 0) + (Number(e.dinoLift) || 0)), roll = Math.max(0, Math.min(1, Number(e.stegoRoll) || 0)), swim = Number(e.stegoSwim) || 0, plates = Math.max(.15, Math.min(1, Number.isFinite(e.stegoPlates) ? e.stegoPlates : 1)), climb = Math.max(0, Math.min(1, Number(e.stegoClimb) || 0));
   const b = q.b - air * u * .45, quiet = !!e.reduceMotion;
@@ -563,7 +536,7 @@ const BODY = {
   lightningGiant(ctx, q) { drawLightningGiant(ctx, q, q.t * 1000); },
   briarStag(ctx, q) { drawBriarStag(ctx, q, q.t * 1000); }, // release 705
   wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
-  triceratops(ctx, q) { drawTriceratops(ctx, q); },
+  triceratops(ctx, q) { drawTriceratopsBody(ctx, q, q.t * 1000); }, // 2026-11-18: triceratops-render.ts
   spinoRex(ctx, q) { drawSpino(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
@@ -1438,7 +1411,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || e.kind === "triceratops" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);

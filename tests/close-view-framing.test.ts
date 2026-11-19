@@ -6,6 +6,7 @@ import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { interiorArchAt } from '../src/vehicle-gates.ts';
 import { MODEL_FLOATS, MODEL_MAX_VERTICES, writeCloseViewModel } from '../src/close-view-models.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 
 function recorder() {
   return new Proxy({ canvas: null, measureText: () => ({ width: 10 }),
@@ -76,7 +77,10 @@ test('the framing bound contains the existing hood through idle, walking and jum
 });
 
 for (const [w, h] of [[714, 668], [390, 844]]) for (const scenario of ['hive', 'arcology']) {
-  test(`${scenario}: entry, compressed orbit and jump stay in frame at ${w}x${h}`, () => {
+  // Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+  // cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+  // stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+  test(`${scenario}: entry, compressed orbit and jump stay in frame at ${w}x${h}`, () => legacyRig(() => {
     for (const preset of ['standard', 'close', 'wide']) {
       const f = fixture(scenario, preset);
       for (let i = 0; i < 50; i++) frame(f, w, h);
@@ -107,10 +111,13 @@ for (const [w, h] of [[714, 668], [390, 844]]) for (const scenario of ['hive', '
       }
       contained(f, w, h, `${preset} landed`);
     }
-  });
+  }));
 }
 
-test('an impossible full-body fit below a low arch centers the angular span while keeping solid geometry and finite projection', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced, which
+// stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('an impossible full-body fit below a low arch centers the angular span while keeping solid geometry and finite projection', () => legacyRig(() => {
   const f = fixture('cellar'), g = f.g, w = 714, h = 668;
   // A one-tile-wide north/south arch, with the player looking west: the wall
   // confines the boom to .3 tiles while the real jump brings the hood above the eye.
@@ -135,4 +142,4 @@ test('an impossible full-body fit below a low arch centers the angular span whil
   const mid = CV.closeViewProject(p.x + .5, p.y + .82, z + bodyHeight / 2);
   assert.ok(mid && Number.isFinite(mid.sx) && Number.isFinite(mid.sy), 'body center remains finite and in front of the eye');
   assert.equal(CV.CLOSE_VIEW.presets.standard.fov, 72, 'no FOV widening');
-});
+}));

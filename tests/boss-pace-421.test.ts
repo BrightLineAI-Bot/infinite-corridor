@@ -15,7 +15,9 @@ const fixture = (pace) => {
     hurt(owner, amount, options) { w.hurts.push({ owner: owner?.id, amount, ...options }); }, effects: () => w.fx,
     addEffect(f) { addPackEffect(w.fx, f, w.now); }, oceanAt: () => false };
   const e = createCombatant('psychicCrystal', 10, 12, true, []);
-  Object.assign(e, { id: 'paced', worldBeast: 'psychicCrystal', aggro: true, evasive: false, hp: 3000, maxHp: 3000, damage: 20 });
+  // 2026-11-18 (Tim): world beasts now also take WORLD_BOSS_PACE (world-boss-pacing.test.ts); this fixture measures BOSS_PACE alone, as a
+  // dungeon boss (was worldBeast: 'psychicCrystal').
+  Object.assign(e, { id: 'paced', boss: true, aggro: true, evasive: false, hp: 3000, maxHp: 3000, damage: 20 });
   e.pack = freshPackState(); e.pack.gap = 0; e.packAttacks = ['psyDebris']; e.packBossAttacks = []; w.enemies = [e];
   return { w, e };
 };

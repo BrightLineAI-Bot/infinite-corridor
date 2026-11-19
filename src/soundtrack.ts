@@ -106,7 +106,7 @@ export class Soundtrack {
     this.rand = seededRandom(options.seed ?? 7); this.seed = options.seed ?? 7;
     this.decks = []; this.retired = []; this.live = []; this.timer = null; this.hissSource = null;
     this.target = { songId: null, intensity: 0, change: "context" };
-    this.muted = false; this.paused = false; this.running = false;
+    this.muted = false; this.paused = false; this.running = false; this.lookahead = SOUNDTRACK.lookahead;
     this.stats = { voices: 0, peakVoices: 0, dropped: 0, notes: 0, liveNodes: 0, pastSkips: 0 };
     this.maxVoices = this.quality === "low" ? SOUNDTRACK.lowMaxVoices : SOUNDTRACK.maxVoices;
     this.buildGraph(options.out || ctx.destination, options.echo || null);
@@ -177,6 +177,9 @@ export class Soundtrack {
     paused = !!paused; if (paused === this.paused) return; this.paused = paused;
     const t = this.now(), g = this.pauseGain.gain; g.cancelScheduledValues(t); g.setTargetAtTime(paused ? SOUNDTRACK.pause.level : 1, t, SOUNDTRACK.pause.time);
   }
+  // How far ahead notes are scheduled: longer while the page is hidden with Music in background on (background-music.ts),
+  // where timers may run once a second; null restores the default.
+  setLookahead(seconds) { this.lookahead = Number.isFinite(seconds) && seconds > 0 ? seconds : SOUNDTRACK.lookahead; }
   // The score's level (0-1) reached over `seconds` from where it is now: the dino duel's fade out and back (soundtrack-director.ts DUEL).
   setHush(level, seconds = 1.5, now = this.now()) {
     level = Math.max(0, Math.min(1, Number(level) || 0)); if (level === this.hushLevel) return false; this.hushLevel = level;
@@ -214,7 +217,7 @@ export class Soundtrack {
       d.motionFrom = 1; d.leadFrom = 2;
       this.emit({ type: "start", songId: d.song.id, at: d.start });
     }
-    const horizon = now + SOUNDTRACK.lookahead;
+    const horizon = now + this.lookahead;
     for (let i = 0; i < this.decks.length; i++) {
       const d = this.decks[i];
       if (d.next < now) this.catchUp(d, now);

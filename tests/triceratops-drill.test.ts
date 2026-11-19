@@ -90,7 +90,7 @@ test("travel and duration caps hold for a distant target, while rider inputs ret
   const air=rider.airAttack.bind(rider),press=rider.pressSlot.bind(rider);
   rider.airAttack=(now,action)=>{if(action==="attack")attacked=true;return air(now,action);};
   rider.pressSlot=(slot,action,...a)=>{if(slot==="a"&&action==="spell")cast=true;return press(slot,action,...a);};
-  rider.update(.01,input("spell"),1040);rider.update(.01,input("attack"),1080);assert.ok(cast&&attacked);
+  rider.update(.01,input("spell"),1040);rider.update(.01,input("attack"),1080);assert.ok(!cast&&attacked,"Tim, 2026-11-18: riding, slot B is the Triceratops's Horn Dash, not a spell");
 });
 
 

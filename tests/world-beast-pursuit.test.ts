@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { generateRegion } from '../src/world.ts';
-import { WORLD_BEASTS, PURSUIT, BLOB_SPLIT, ensureWorldBeasts, canPursue } from '../src/world-beasts.ts';
+import { WORLD_BEASTS, PURSUIT, BLOB_SPLIT, ensureWorldBeasts, canPursue, BEAST_ENGAGEMENT, beastEngagementLeft } from '../src/world-beasts.ts';
 import { Game } from '../src/game.ts';
 
 // Release 259: world beasts pursue the Wayfarer across sections (Tim, 2026-10-21).
@@ -55,19 +55,21 @@ test('the Blob follows only one section; the Void Walker and Astral Worm keep th
   two.worldBeasts.lightningGiant.active.retreat = { home: { rx: 5, ry: 5, found: true }, side: null, legs: 0 }; assert.equal(canPursue(two, 'lightningGiant', 1, 1, -1, 0), false, 'not while retreating');
 });
 
-test('patience keeps counting through a pursuit; the chase count is normalised additively', () => {
-  const { g, s } = hunt('lightningGiant'), q = s.worldBeasts.lightningGiant.active; q.patience = 40;
-  cross(g, 1); assert.equal(s.worldBeasts.lightningGiant.active.patience, 40, 'kept across the crossing');
+// 2026-11-18 (Tim): the per-fight `patience` clock became the 15-minute engagement window (BEAST_ENGAGEMENT, `engagedAt` on
+// save.playSeconds); it keeps running through a pursuit as the patience clock did.
+test('the engagement window keeps running through a pursuit; the chase count is normalised additively', () => {
+  const { g, s } = hunt('lightningGiant'), q = s.worldBeasts.lightningGiant.active; q.engagedAt = (Number(s.playSeconds) || 0) - 40; const at = q.engagedAt;
+  cross(g, 1); assert.equal(s.worldBeasts.lightningGiant.active.engagedAt, at, 'kept across the crossing');
   const e = beast(g, 'lightningGiant'); e.aggro = true; g.player.x = e.x + 3; g.player.y = e.y;
   let t = 1000; for (let i = 0; i < 30; i++) { g.update(1 / 30, idle, t += 33); g.player.hp = 1e6; }
-  assert.ok(s.worldBeasts.lightningGiant.active.patience > 40, 'still counting');
+  assert.ok(beastEngagementLeft(s, 'lightningGiant') < BEAST_ENGAGEMENT.seconds - 40, 'still running');
   const o = freshSave(); o.worldBeasts = { tremorWorm: { active: { rx: 0, ry: 0, tries: 0, chase: '2.7', future: 1 }, cycle: 0 } }; ensureWorldBeasts(o, false);
   assert.equal(o.worldBeasts.tremorWorm.active.chase, 2); assert.equal(o.worldBeasts.tremorWorm.active.future, 1, 'unknown fields kept');
   o.worldBeasts.tremorWorm.active.chase = -3; ensureWorldBeasts(o, false); assert.equal('chase' in o.worldBeasts.tremorWorm.active, false);
 });
 
 function retreatBlob(grown) {
-  const h = hunt('morphingBlob'), { g, s, e } = h; s.worldBeasts.morphingBlob.active.patience = WORLD_BEASTS.morphingBlob.patience - .2;
+  const h = hunt('morphingBlob'), { g, s, e } = h; s.worldBeasts.morphingBlob.active.engagedAt = (Number(s.playSeconds) || 0) - BEAST_ENGAGEMENT.seconds + .2; // 2026-11-18 (Tim): was patience = 180 - .2
   if (grown) { e.blobAge = 1e9; e.blobMerged = .3; } g.player.x = e.x + 3; g.player.y = e.y;
   let t = 1000; for (let i = 0; i < 90 && !e.retreating; i++) { g.update(1 / 30, idle, t += 33); g.player.hp = 1e6; }
   assert.ok(e.retreating, 'it gives up'); return { ...h, t };

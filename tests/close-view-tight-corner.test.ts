@@ -4,6 +4,7 @@ import { createLabFixture } from '../src/proving-ground-labs.ts';
 import { interiorSurfaceHeight } from '../src/landscape.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 import * as CV from '../src/close-view.ts';
+const legacyRig = (run) => { const was = CV.CLOSE_VIEW_HOOKS.orbit; CV.CLOSE_VIEW_HOOKS.orbit = false; try { return run(); } finally { CV.CLOSE_VIEW_HOOKS.orbit = was; } }; // the pre-2026-11-18 collision rig
 
 const context = () => new Proxy({ canvas: null, measureText: () => ({ width: 10 }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
   createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), createPattern: () => ({}) }, {
@@ -47,7 +48,10 @@ function safe(g: any, c: ReturnType<typeof CV.closeViewCamera>) {
   for (let i = 1; i <= 40; i++) assert.equal(CV.closeViewWallAt(g.map, px + (c.x - px) * i / 40, py + (c.y - py) * i / 40), false);
 }
 
-test('Keep 5 and Pentagon 10 tight-corner orbits gain bounded focal room without changing orbit or clipping the body', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced (its
+// tight-corner focal relief), which stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('Keep 5 and Pentagon 10 tight-corner orbits gain bounded focal room without changing orbit or clipping the body', () => legacyRig(() => {
   const cases = [
     ['keep', { x: 23, y: 7 }, -17 * Math.PI / 18],
     ['pentagon', { x: 25, y: 4 }, -11 * Math.PI / 18],
@@ -64,9 +68,12 @@ test('Keep 5 and Pentagon 10 tight-corner orbits gain bounded focal room without
     }
     assert.ok(Math.abs(projected[0]!.sy - projected[1]!.sy) < (family === 'keep' ? 75 : 50), `${family}: bounded focal relief opens context around the compressed body`);
   }
-});
+}));
 
-test('ordinary Pentagon camera keeps its established preset while routed-corner relief recovers smoothly', () => {
+// Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are
+// cut away round the Wayfarer instead; tests/close-view-orbit-camera.test.ts). This test pins the collision rig it replaced (its
+// tight-corner focal relief), which stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
+test('ordinary Pentagon camera keeps its established preset while routed-corner relief recovers smoothly', () => legacyRig(() => {
   const ordinary = createLabFixture({ lab: 'close-view', scenario: 'outer', seed: 'CINDER-VERGE-47', now }).game;
   ordinary.enemies = []; ordinary.save.closeViewAutoFollow = false; ordinary.presentation = { effectiveQuality: 'full', reduceMotion: true };
   const baseline = at(ordinary, { x: ordinary.player.x, y: ordinary.player.y }, Math.PI);
@@ -79,4 +86,4 @@ test('ordinary Pentagon camera keeps its established preset while routed-corner 
   for (let i = 0; i < 170; i++) { const c = frame(f.game); safe(f.game, c); largest = Math.max(largest, Math.hypot(c.x - previous.x, c.y - previous.y, c.height - previous.height)); previous = c; }
   assert.ok(Math.abs(previous.yaw - yaw) < 1e-9, 'recovery never steers the orbit');
   assert.ok(previous.distance >= CV.CLOSE_VIEW.camera.minDistance && largest < .08, `bounded spring recovery is smooth (${largest})`);
-});
+}));
