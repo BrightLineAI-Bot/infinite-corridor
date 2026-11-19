@@ -555,7 +555,7 @@ export const CLOSE_VIEW = Object.freeze({
     // shimmer), and a faint ring (`ring` alpha, the wind-up ring's decal) marks where it is taken. Reduced Motion: drift and
     // sink only. Opaque throughout; no new pass, nothing allocated.
     death: Object.freeze({ holdMs: 650, sinkMs: 420, sink: .85, cap: Object.freeze({ low: 2, balanced: 5, full: 8 }),
-      grey: Object.freeze([.46, .47, .5]), drift: .85, quant: .06, jitter: .045, hz: 14, ring: .35 }) }),
+      grey: Object.freeze([.46, .47, .5]), drift: .85, quant: .06, jitter: .045, hz: 14, ring: 0 /* off: the only ring decal is the wind-up's red, which reads as a warning */ }) }),
   shade: Object.freeze({ x: .7, y: 1 }), // faces across x (east/west) take less of the torch than faces across y
   // Boundaries (version 2, Tim: "you couldn't really figure out which was what, and what the boundaries of everything were"):
   // every wall face has a dark outline on its corners and foot, a lighter cap line along its top (the wall's top edge, its
