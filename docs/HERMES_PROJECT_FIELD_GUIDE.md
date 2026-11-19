@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Glyph Mine × Rift Step, and Encumbered (pull build-up)
+## Release 1022 — Glyph Mine × Rift Step, and Encumbered (pull build-up)
 
 Tim (2026-11-19) asked for two features. First, Glyph Mine (the Rift branch's on-cast node) should work with Rift Step: each step leaves a mine at its start and its landing, and the mines link into a damaging void once the steps are spent. Second, a build-up status for pulls, like bleed or frostbite build-up: pull damage fills a meter on every creature, bosses and unmovable creatures included, and a full meter makes the creature Encumbered (5% more damage taken, 5% less dealt, 10 s). It is not called "Fractured": that name is already the challenge mode (`fractured.ts`, `e.fractured`).
 
