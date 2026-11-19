@@ -17,7 +17,7 @@
 //   e.apatoNeckLift (-1 down .. 1 up) and e.apatoNeckReach (0..1 stretched forward);
 //   e.apatoLash { on, n, xs, ys } (the true neck's path, from its shoulders, index 0, to its head, index n, in tiles);
 //   e.apatoBeam { on, x, y, ax, ay, len, width } (from the head, along ax, ay); e.apatoWrap { on, who, phase, t, x, y } (the mark);
-//   e.apatoStep (0..3, the foot that last came down in the stomp chase); e.apatoFx (the pools) and e.apatoSaplings ([{ x, y, grow }]).
+//   e.apatoStep (0..3, the foot that last came down in the stomp chase) and e.apatoStepLift (0..1, the next foot rising); e.apatoFx (the pools) and e.apatoSaplings ([{ x, y, grow }]).
 import { hashSeed } from "./random.ts";
 import { doseCreature, tickCreatureVenom } from "./apato-poison.ts";
 import { stegoRoomGround, stegoRoomSquare } from "./wild-stego.ts";
@@ -176,7 +176,7 @@ function lashRec(e) { const N = APATO.lash.segs; if (!e.apatoLash || !Array.isAr
 function beamRec(e) { return e.apatoBeam && typeof e.apatoBeam === "object" ? e.apatoBeam : (e.apatoBeam = { on: false, x: 0, y: 0, ax: 1, ay: 0, len: 0, width: APATO.beam.width }); }
 function wrapRec(e) { return e.apatoWrap && typeof e.apatoWrap === "object" ? e.apatoWrap : (e.apatoWrap = { on: false, who: null, phase: null, t: 0, x: 0, y: 0 }); }
 // The pose contract's resting values.
-export const apatoPoseDefaults = () => ({ apatoPose: null, apatoGlow: 0, apatoNeckLift: 0, apatoNeckReach: 0, apatoStep: 0 });
+export const apatoPoseDefaults = () => ({ apatoPose: null, apatoGlow: 0, apatoNeckLift: 0, apatoNeckReach: 0, apatoStep: 0, apatoStepLift: 0 });
 // A reload: no move, hazard, beam, wrap or lash resumes mid-way. Its saplings are kept (they lie on the ground).
 export function resetApatoRuntime(e) {
   Object.assign(e, apatoPoseDefaults()); clearPools(e);
@@ -393,7 +393,7 @@ export const APATO_RUN = {
     const q = quarry(w, s); turnToward(e, q.x, q.y, S.turn, w.dt);
     const h = heading(e), sp = .82 * S.speed * (e.speedMultiplier || 1) * w.dt, near = hyp(q.x - e.x, q.y - e.y) <= K.bodyRadius(e) + S.close * .6;
     if (!near && !w.move(e, h.x * sp, h.y * sp)) w.detour?.(e, sp);
-    d.next -= w.dt;
+    d.next -= w.dt; e.apatoStepLift = d.n < S.steps ? Math.max(0, Math.min(1, d.next / S.every)) : 0; // the forefoot rising for its next footfall (the art)
     if (d.next <= 0 && d.n < S.steps) { d.n++; d.next = S.every; e.apatoStep = d.n % 4; const side = d.n % 2 ? 1 : -1, r = K.bodyRadius(e) * .5, fx = e.x + h.x * r * (d.n % 4 < 2 ? .6 : -.6) - h.y * r * side, fy = e.y + h.y * r * (d.n % 4 < 2 ? .6 : -.6) + h.x * r * side;
       wave(e, w, fx, fy, S.wave, S.waveTime, dmg(e, "apatoStomp", S.waveShare), d.prey); K.cue(w, e, "land", "apatoStep", { x: fx, y: fy }); }
     if (d.n >= S.steps && d.next <= .2 && !d.slammed) { d.slammed = true; const at = { x: e.x + h.x * (K.bodyRadius(e) + S.close * .5), y: e.y + h.y * (K.bodyRadius(e) + S.close * .5) };

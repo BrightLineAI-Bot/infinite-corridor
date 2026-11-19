@@ -98,7 +98,8 @@ export function drawEarthApato(ctx, q, now = 0) {
   // far legs, then the tail, the body, the near legs
   const legTop = by + A.bodyH * u * .45, step = (o) => Math.sin(ph + o), hindL = legTop + front * .1, foreL = legTop - front;
   const legs = [[A.legX[1], 1.6, true], [A.legX[0], 0, true]];
-  if (!dead) for (const [lx, o, far] of legs) { const s0 = step(o) * mv, lift = (lx > 0 ? M.front * .28 : 0) + Math.max(0, s0) * .06 * mv; drawLeg(ctx, A, u, lx * u + u * A.farShift, (lx > 0 ? foreL : hindL) - u * .03, lift, s0 * A.stride * .5, far); }
+  const stepUp = e.apatoPose === 'stomp' ? Math.max(0, Math.min(1, Number(e.apatoStepLift) || 0)) : 0, stepFar = (Number(e.apatoStep) || 0) % 2 === 0; // the stomp chase: the next forefoot rising
+  if (!dead) for (const [lx, o, far] of legs) { const s0 = step(o) * mv, lift = (lx > 0 ? M.front * .28 + (stepFar ? stepUp * .3 : 0) : 0) + Math.max(0, s0) * .06 * mv; drawLeg(ctx, A, u, lx * u + u * A.farShift, (lx > 0 ? foreL : hindL) - u * .03, lift, s0 * A.stride * .5, far); }
   // the tail: a tapering whip with a sway
   { const sway = reduce ? 0 : Math.sin(t * 1.4 + ph * .5) * .1, tx0 = -A.bodyLen * u * .85, ty0 = by + u * .02;
     sampleNeck(tx0, ty0, tx0 - u * .5, ty0 + u * .05, tx0 - u * 1.1, ty0 + u * (.32 + sway), tx0 - A.tailLen * u, ty0 + u * (.55 - sway * 2), A.bodyH * u * .62, u * .018);
@@ -122,11 +123,11 @@ export function drawEarthApato(ctx, q, now = 0) {
   ctx.restore();
   // near legs
   if (dead) for (const lx of A.legX) { ctx.fillStyle = A.hideDark; ctx.strokeStyle = A.outline; ctx.lineWidth = Math.max(1, u * .02); ctx.beginPath(); ctx.ellipse(lx * u + u * .18, -u * .08, u * .22, u * .08, 0, 0, TAU); ctx.fill(); ctx.stroke(); } // folded legs
-  else for (const [lx, o] of [[A.legX[1], 0], [A.legX[0], 1.6 + Math.PI]]) { const s0 = step(o) * mv, lift = (lx > 0 ? M.front * .32 : 0) + Math.max(0, s0) * .06 * mv; drawLeg(ctx, A, u, lx * u, lx > 0 ? foreL : hindL, lift, s0 * A.stride * .5, false); }
+  else for (const [lx, o] of [[A.legX[1], 0], [A.legX[0], 1.6 + Math.PI]]) { const s0 = step(o) * mv, lift = (lx > 0 ? M.front * .32 + (stepFar ? 0 : stepUp * .3) : 0) + Math.max(0, s0) * .06 * mv; drawLeg(ctx, A, u, lx * u, lx > 0 ? foreL : hindL, lift, s0 * A.stride * .5, false); }
   // the neck and head (unless the neck is out across the ground)
   const sx = L * .8, sy = by - H * .2 - front * .5;
   if (!lashing) {
-    const lift = M.lift + wob, reach = M.reach, down = Math.max(0, -lift), up = Math.max(0, lift), restY = by - u * A.headY;
+    const shake = (e.apatoPose === 'leaf' || e.apatoPose === 'leafReady') && !reduce ? Math.sin(t * (e.apatoPose === 'leaf' ? 16 : 6)) * .18 : 0, lift = M.lift + wob + shake, reach = M.reach, down = Math.max(0, -lift), up = Math.max(0, lift), restY = by - u * A.headY;
     const hx = u * (1.38 + .5 * reach + .45 * down - .22 * up), hy = restY - u * A.headLift * up + (-u * .12 - restY) * smooth(down);
     const hx2 = Math.max(sx + u * .3, hx), c1x = sx + u * (.32 + .2 * reach + .2 * down), c1y = sy - u * (.22 + .15 * up) + u * .15 * down, c2x = hx2 - u * (.42 + .1 * up - .3 * down), c2y = hy + u * (.42 + .3 * up - .4 * down);
     sampleNeck(sx, sy, c1x, c1y, c2x, c2y, hx2, hy, A.neckRoot * u, A.neckTip * u); fillNeck(ctx, A, u, true);
@@ -193,10 +194,16 @@ export function drawApatoGround(ctx, e, s, now, opts = {}) {
     ctx.strokeStyle = A.vine; ctx.lineWidth = Math.max(2, s * .08); ctx.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * TAU * 1.5 + (quiet ? 0 : t * 2), rr = r * (1 - i / 48) * (1 - .3 * (W.phase === "lunge" ? W.t : 0)); const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * .6; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.stroke(); }
   // the beam on the ground (from under the head along its line) and its light
   const B = e.apatoBeam;
-  if (B?.on) { const x0 = SX(B.x, s), y0 = SY(B.y, s), x1 = SX(B.x + B.ax * B.len, s), y1 = SY(B.y + B.ay * B.len, s), wpx = B.width * s;
-    ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = "rgba(220,255,120,.35)"; ctx.lineWidth = wpx * 2.4; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-    ctx.strokeStyle = "rgba(250,255,190,.75)"; ctx.lineWidth = wpx * 1.1; ctx.stroke(); ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = Math.max(2, wpx * .35); ctx.stroke(); ctx.globalCompositeOperation = "source-over";
-    if (!cap) { const hy = y0 - s * 3.2; ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = "rgba(240,255,150,.5)"; ctx.lineWidth = wpx * .9; ctx.beginPath(); ctx.moveTo(x0, hy); ctx.lineTo(x1, y1); ctx.stroke(); ctx.globalCompositeOperation = "source-over"; } }
+  if (B?.on) { const x0 = SX(B.x, s), y0 = SY(B.y, s), x1 = SX(B.x + B.ax * B.len, s), y1 = SY(B.y + B.ay * B.len, s), wpx = B.width * s, flick = quiet ? 1 : .85 + .15 * Math.sin(t * 40);
+    // its track on the ground: a soft green band, a bright core, scorched sparks where it ends
+    ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = `rgba(190,255,100,${(.22 * flick).toFixed(3)})`; ctx.lineWidth = wpx * 1.7; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = `rgba(245,255,170,${(.55 * flick).toFixed(3)})`; ctx.lineWidth = wpx * .7; ctx.stroke(); ctx.strokeStyle = "rgba(255,255,235,.85)"; ctx.lineWidth = Math.max(1.5, wpx * .18); ctx.stroke();
+    const gl = ctx.createRadialGradient(x1, y1, 0, x1, y1, s * .8); gl.addColorStop(0, "rgba(255,255,200,.7)"); gl.addColorStop(1, "rgba(160,255,90,0)"); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x1, y1, s * .8, 0, TAU); ctx.fill();
+    if (!cap) { // the light from its eyes: from the head (where the body draws it, raised for the beam) down to the end of its track
+      const sc = Math.max(.6, Number(e.scale) || 1), u = s * sc, fx = (Number(e.facingX) || 1) < 0 ? -1 : 1, hx = (e.x + .5) * s + fx * u * 1.16, hy = (e.y + .82) * s - u * (APATO_ART.bodyY + APATO_ART.headY + APATO_ART.headLift * .9 + .05);
+      ctx.strokeStyle = `rgba(230,255,150,${(.35 * flick).toFixed(3)})`; ctx.lineWidth = wpx * .9; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,230,.8)"; ctx.lineWidth = Math.max(1.5, wpx * .22); ctx.stroke(); }
+    ctx.globalCompositeOperation = "source-over"; }
   // the lashing neck (and the wrap's neck once it has shot out): a snake across the ground, its head at the end
   const Lh = e.apatoLash;
   if (Lh?.on && Lh.n >= 1) { const n = Lh.n; ring(ctx, SX(Lh.xs[n], s), SY(Lh.ys[n], s), .75 * s, DANGER_FILL, DANGER_EDGE); if (!cap) drawGroundNeck(ctx, A, s, Lh.xs, Lh.ys, n, e, t, quiet); }
@@ -290,4 +297,27 @@ export function drawApatoMarks(ctx, e, s, now, quiet = false) {
     for (let i = 0; i < 4; i++) { const a = t * 3 + i * TAU / 4, px = x + Math.cos(a) * u * .35, py = y + Math.sin(a) * u * .1; ctx.beginPath(); for (let j = 0; j < 10; j++) { const r = j % 2 ? u * .03 : u * .07, b = j / 10 * TAU - Math.PI / 2; if (j) ctx.lineTo(px + Math.cos(b) * r, py + Math.sin(b) * r); else ctx.moveTo(px + Math.cos(b) * r, py + Math.sin(b) * r); } ctx.closePath(); ctx.fill(); ctx.stroke(); }
     ctx.restore(); }
   if (e.apatoVenom > 0 && !e.dead && !quiet) { const u = s * Math.max(.6, Number(e.scale) || 1), x = (e.x + .5) * s, y = (e.y + .82) * s - u * .9; ctx.save(); ctx.fillStyle = APATO_ART.venom; ctx.globalAlpha = .7; for (let i = 0; i < 4; i++) { const k = (t * .8 + i / 4) % 1; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2.3) * u * .4, y - k * u * .8, u * .04 * (1 - k * .5), 0, TAU); ctx.fill(); } ctx.restore(); }
+}
+// ---------------------------------------------------------------- Earth Resolve, its Echo: the root sigil under the Wayfarer
+// q: game.earthResolve { x, y (tile centre), r (tiles), at, until (ms) }. A glowing ring of runes with roots growing out from it along
+// the ground, their reach scaled with the radius; it brightens as she stands in it and fades over its last second. Floor only (both
+// views draw it: Close View's floor is the capture, and close-view-beast-apato.ts raises a few cheap root spikes from it).
+export const RESOLVE_ART = Object.freeze({ glow: "rgba(170,255,110,", rim: "rgba(90,180,60,", root: "#5a4026", rootLit: "#9cff5a", roots: 9, runes: 12, fade: 1000, grow: 450 });
+export function drawEarthResolveSigil(ctx, q, s, now, inside = false, quiet = false) {
+  if (!q) return false; const R = RESOLVE_ART, t = quiet ? 0 : now / 1000, x = q.x * s, y = q.y * s, r = q.r * s;
+  const fade = Math.max(0, Math.min(1, (q.until - now) / R.fade)), born = Math.max(0, Math.min(1, (now - q.at) / R.grow)), a = fade * (.55 + (inside ? .35 : 0) + (quiet ? 0 : .1 * Math.sin(t * 3)));
+  ctx.save(); ctx.lineCap = "round";
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, R.glow + (.22 * a).toFixed(3) + ")"); g.addColorStop(.75, R.glow + (.1 * a).toFixed(3) + ")"); g.addColorStop(1, R.glow + "0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, r, r * .6, 0, 0, Math.PI * 2); ctx.fill();
+  // roots: from under her feet out past the ring, curling; their reach is the sigil's
+  for (let i = 0; i < R.roots; i++) { const ang = i / R.roots * Math.PI * 2 + .3, len = r * (.85 + .3 * ((i * 7) % 3) / 2) * born, curl = (i % 2 ? 1 : -1) * .5, ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len * .6, mx = x + Math.cos(ang + curl * .5) * len * .55, my = y + Math.sin(ang + curl * .5) * len * .6 * .55;
+    ctx.globalAlpha = fade; ctx.strokeStyle = R.root; ctx.lineWidth = Math.max(2, s * .1 * (1 - i % 3 * .2)); ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
+    ctx.globalAlpha = a; ctx.strokeStyle = R.rootLit; ctx.lineWidth = Math.max(1, s * .03); ctx.stroke();
+    ctx.lineWidth = Math.max(1, s * .04); ctx.strokeStyle = R.root; ctx.globalAlpha = fade; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(ang + curl) * s * .25, ey + Math.sin(ang + curl) * s * .15); ctx.stroke(); }
+  // the ring and its runes
+  ctx.globalAlpha = 1; ctx.strokeStyle = R.rim + (.9 * a).toFixed(3) + ")"; ctx.lineWidth = Math.max(2, s * .07); ctx.beginPath(); ctx.ellipse(x, y, r * born, r * .6 * born, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = R.glow + a.toFixed(3) + ")"; ctx.lineWidth = Math.max(1, s * .035); ctx.beginPath(); ctx.ellipse(x, y, r * .78 * born, r * .47 * born, 0, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < R.runes; i++) { const ang = i / R.runes * Math.PI * 2 + t * .2, rx = x + Math.cos(ang) * r * .89 * born, ry = y + Math.sin(ang) * r * .535 * born, k = s * .09;
+    ctx.beginPath(); ctx.moveTo(rx - k, ry); ctx.lineTo(rx, ry - k * .7); ctx.lineTo(rx + k, ry); if (i % 2) { ctx.moveTo(rx, ry - k * .7); ctx.lineTo(rx, ry + k * .5); } ctx.stroke(); }
+  ctx.restore(); return true;
 }

@@ -92,6 +92,7 @@ import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, 
 import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
+import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -190,7 +191,7 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoSproutReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
@@ -198,7 +199,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
-export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoSproutReadyAt", "echoMirrorReadyAt"];
+export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
 export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
@@ -1079,7 +1080,8 @@ export function regionalScale(e, q) {
 const armorGlyphBonus = (save) => { const g = armorGlyphBase(save), b = mechEmpowered(save) ? { ...g, attackDamage: (g.attackDamage || 0) + MECH_POWER.damage, spellDamage: (g.spellDamage || 0) + MECH_POWER.damage } : g, run = save?.session?.marginRun, seal = transposeBonus(save); if (!save?.meal && !run && !seal) return b; const out = { ...b }, add = (bonus) => { for (const k of MEAL_STAT_FIELDS) if (bonus[k]) out[k] = (out[k] || 0) + bonus[k]; }; add(activeMealBonus(save)); if (run) add(marginBonus(save, save.session.activeDungeonId)); if (seal) { out.spellDamage = (out.spellDamage || 0) + seal.spellDamage; out.damageTaken = (out.damageTaken || 0) + seal.damageTaken; } /* weapon-arts.ts Transpose: standing in the seal */ return out; };
 // Roll-3 Tesseract lines (tesseracts.ts): more damage from every blow (damageTaken), and a health cost that stops at
 // TESSERACTS.harmFloor of maximum health (never kills; below the floor it costs nothing).
-const hurtScale = (save) => 1 + (armorGlyphBonus(save).damageTaken || 0);
+const RESOLVE_GUARD = new WeakMap(); // Earth Resolve: the damage-taken scale this frame while she stands in her sigil (echoes.ts tickEarthResolve; runtime only)
+const hurtScale = (save) => (1 + (armorGlyphBonus(save).damageTaken || 0)) * (RESOLVE_GUARD.get(save) ?? 1);
 export function tesseractHarm(save, player, share) { if (!(share > 0) || !(player.hp > 0)) return 0; const max = save.maxHp || 60, floor = Math.ceil(max * TESSERACTS.harmFloor); if (player.hp <= floor) return 0; const n = Math.min(player.hp - floor, Math.max(1, Math.round(max * share))); player.hp -= n; return n; }
 export const DAMAGE_NUMBERS = { life: 900, rise: .9, cap: 48 }; // release 461
 // Release 463 (Tim: "increase the enemies in the dungeons... 20% more health... 20% more damage... about twenty percent more
@@ -6119,7 +6121,7 @@ export class Game {
     this.jumpUntil = 0;
     this.projectiles = [];
     this.effects = [];
-    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);clearPoison(this.save);this.apatoPin=null;/* the Earth Apatosaurus's venom and coils end with the fall too */this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
+    this.eliteHazards=[];this.packEffects=[];Object.assign(eliteStateInPlace(this.save).status,{poison:0,poisonTick:0,stun:0,stunGuard:2});clearBleed(this.save);clearPoison(this.save);this.apatoPin=null;this.earthResolve=null;/* the Earth Apatosaurus's venom and coils end with the fall too */this.playerFire=null;this.frenzy=null;/* release 709: burning ends here too; 710: and the frenzy */ this.clearCarriedStates(); // release 736 (review F4): a grip, slow, confusion or stun, a glide or a swim never outlive a death
     input.reset?.();
     if (hole) { p.x = hole.x; p.y = hole.y; relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); p.invulnerableUntil = now + 2000; this.fallen = null; for (const e of this.enemies) if (!e.dead) e.aggro = false; this.snapshotArea(); this.message = `${HOLE_DROPS.messages.woke}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; this.sync(); return; } // the same floor; nothing lost (release 345)
     if (walk) { const e = this.map.entry || { x: 1, y: 7 }; p.x = e.x; p.y = e.y; p.invulnerableUntil = now + 2000; this.fallen = null; this.snapshotArea(); this.message = `${PENTAGON.finale.messages.fell}${before < 2 ? " Restorative draughts replenished to 2." : ""}`; return; } // the same floor, at the walkway's start, beside the doorway back
@@ -6937,7 +6939,7 @@ export class Game {
   }
   astralPlayerFell() { return !this._astralDamagePending && this.player.hp<=0; }
   syncAstralClone(e) { if(!e?.astralOwner)return;const owner=this.enemies.find(q=>q.id===e.astralOwner),clone=owner?.astral?.clones?.find(q=>q.id===e.id);if(clone)clone.hp=Math.max(0,Math.min(clone.hp,e.dead?0:Number(e.hp)||0)); }
-  astralPlayerHit(e, actual) { this.syncAstralClone(e);return recordAstralRiderDamage(e,actual,{playerInflicted:true},this.astralMountHost()); }
+  astralPlayerHit(e, actual) { if (actual > 0 && this.earthResolve) earthResolveHit(this, actual, this.lastUpdateNow || 0); /* Earth Resolve: lifesteal and growth from inside */ this.syncAstralClone(e);return recordAstralRiderDamage(e,actual,{playerInflicted:true},this.astralMountHost()); }
   syncAstralRiders() {
     if (this.paused) return;
     const host=this.astralMountHost();
@@ -8819,6 +8821,7 @@ export class Game {
     const bufferedFist=this.fistsEquipped();this.clearAttackBuffer();this.attackAction=bufferedToolTap&&bufferedFist?(held?'attack':null):"attack";this._fistInputUpdate=bufferedFist;this._fistBuffered=true;try{this.primaryAttack(now);}finally{this._fistInputUpdate=false;this._fistBuffered=false;this.attackAction=null;}return true;
   }
   primaryAttack(now = 0, _direction = null, echo = null) {
+    if (!echo) earthResolvePlant(this, now); // Earth Resolve: attacking while standing still plants the root sigil
     const committed=echo?.committed||null,followCut=echo?.daggerCut===1/* the Fourfold Daggers' second cut (tickGlyphs) */,isEcho=!!echo&&!committed&&(!followCut||echo.echoed===true);
     if(!echo){this.releasePendingToolUse(now);this.releasePendingMeleeContact(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary()||this.pendingMeleeContact?.v===1)return[];}
     if (this.penned(now)) return [];
@@ -11562,6 +11565,7 @@ export class Game {
       scale = m > 1 ? 1 / m : 1,
       x = rawX * scale,
       y = rawY * scale;
+    if (Math.hypot(rawX, rawY) > .15) this.resolveMovedAt = now; // Earth Resolve's stillness: the last moment of movement input
     if (this.apatoPin && this.apatoLatchInput(input)) { x = 0; y = 0; } // the Earth Apatosaurus's tree clones coiled round her: rooted, she mashes attack to break free
     if (now < (p.heldUntil || 0) && p.heldFirm) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "utility", "build", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); } // the Spinosaurus's jaws: held fast, nothing to do but wait
     else if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
@@ -12028,7 +12032,8 @@ export class Game {
     if (!(now < (p.heldUntil || 0))) p.heldFirm = false;
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
     { const v = tickPoison(this.save, dt, Number(this.save.maxHp) || p.maxHp || 100); if (v.damage > 0 && p.hp > 0) p.hp -= v.damage; if (v.gone && p.hp > 0) this.message = POISON.text.gone; } // the Earth Apatosaurus's root venom (apato-poison.ts)
-    if (this.apatoPin) this.apatoLatchSlip(); // a Rift Step or the Shadow Clone's step out of the clones' coils
+    if (this.apatoPin) this.apatoLatchSlip();
+    RESOLVE_GUARD.set(this.save, tickEarthResolve(this, now)); // Earth Resolve: its time, its cooldown, and the guard while she stands in it // a Rift Step or the Shadow Clone's step out of the clones' coils
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape

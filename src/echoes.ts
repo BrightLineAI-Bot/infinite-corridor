@@ -64,10 +64,13 @@ export function noteRoomBeastKill(save, e) {
 // slam's damage (and of its Imbue Weapon spark) and `stunShare` of its stagger. The afterimage is an ordinary effect, so it
 // keeps every rule the slam keeps (friendly fire, bosses and elites, poise, sanctuaries); it never lays another afterimage.
 export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
-// Apatosaur's Sprout (the Earth Apatosaurus, Tim 2026-11-18; proposed, for Tim to keep or veto): being hurt sprouts a sapling at your
-// feet, at most once each `cooldown` ms. Its roots snare foes within `radius` tiles (they move at `slow` of their pace for `seconds`
-// s) and it mends `mend` of your maximum health at once.
-export const APATO_ECHO = { cooldown: 7000, radius: 2, slow: .5, seconds: 2.5, mend: .04 };
+// Earth Resolve (the Earth Apatosaurus's Echo; Tim, 2026-11-18). Attacking while standing still (no movement input for `still` s when
+// the attack starts) plants a root sigil on the ground beneath you, `radius` tiles across at first. While you stand inside it you take
+// `guard` less damage and heal `lifesteal` of the damage you deal; outside it, nothing. It never hurts a foe. Each hit you land from
+// inside grows it by `grow` tiles (to `maxRadius`) and adds `extend` s to its time (from `seconds`, at most `cap` s after it was planted).
+// It stays where it was planted. When it ends, a new one can be planted `cooldown` ms later. Runtime only (game.earthResolve): a reload
+// drops the sigil; only its cooldown clock (player.echoResolveReadyAt) resumes, as the other Echo clocks do.
+export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .25, lifesteal: .1, cooldown: 4000 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -114,9 +117,9 @@ export const ECHOES = {
   // it adds an echo to the hit: a secondary, afterimage-like slam that does less damage"). SPINO_ECHO above; game.ts
   // plungeLand lays the afterimage. Taken as every world beast's is: certain on the first kill (takeFirstSpoils, echoDrop),
   // or on load for a Wayfarer who has slain it already (grantSlainEchoes reads save.worldBeasts).
-  // The Earth Apatosaurus (APATO_ECHO above; echoEvent "hurt"). Taken as every world beast's is: certain on the first kill, or on load.
-  earthApato: { name: "Apatosaur's Sprout", cost: 2, trigger: "hurt", module: "apatoSeeds",
-    text: `Being hurt sprouts a sapling at your feet (once every ${APATO_ECHO.cooldown / 1000} s): its roots snare foes within ${APATO_ECHO.radius} tiles, slowing them by half for ${APATO_ECHO.seconds} s, and it mends ${Math.round(APATO_ECHO.mend * 100)}% of your health.` },
+  // The Earth Apatosaurus (APATO_ECHO above; game.ts earthResolve*). Taken as every world beast's is: certain on the first kill, or on load.
+  earthApato: { name: "Earth Resolve", cost: 2, trigger: "still", module: "apatoSeeds",
+    text: `Attack while standing still and a root sigil grows under you. Standing inside it you take ${Math.round(APATO_ECHO.guard * 100)}% less damage and heal ${Math.round(APATO_ECHO.lifesteal * 100)}% of the damage you deal; each hit you land from inside grows it and makes it last longer (at most ${APATO_ECHO.cap} s). It stays where it grew, and returns ${APATO_ECHO.cooldown / 1000} s after it fades.` },
   spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
     text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
@@ -280,7 +283,6 @@ export function echoEvent(game, event, now, data = {}) {
     if (eq.includes("hangedChoir")) world.blast(me.x, me.y, 2.2, Math.round(dmg * .8));
     if (eq.includes("crystalCrab")) world.blast(me.x, me.y, 1.5, Math.round(dmg * .5));
     if (eq.includes("morphingBlob")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 2, until: now + 3000, slow: .6 }); // release 235
-    if (eq.includes("earthApato") && now >= (p.echoSproutReadyAt || 0)) { const A = APATO_ECHO, max = Number(save.maxHp) || p.maxHp || 100; (game.echoPatches ||= []).push({ kind: "web", sprout: true, x: me.x, y: me.y, radius: A.radius, until: now + A.seconds * 1000, slow: A.slow }); if (p.hp > 0) p.hp = Math.min(max, p.hp + Math.max(1, Math.round(max * A.mend))); game._echoLastHp = p.hp; p.echoSproutReadyAt = now + A.cooldown; } // Apatosaur's Sprout
     if (eq.includes("mountainTurtle") && now >= (p.echoWardReadyAt || 0)) { p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + 1000); p.echoWardReadyAt = now + 8000; } // release 241
     if (eq.includes("psychicCrystal")) for (const e of nearest(game, me.x, me.y, 3)) { const c = centre(e), m = Math.hypot(c.x - me.x, c.y - me.y) || 1; world.nudge(e, (c.x - me.x) / m * 1.5, (c.y - me.y) / m * 1.5); e.hitStun = Math.max(e.hitStun || 0, .25); } // release 249
     if (eq.includes("listener")) { const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#c9a6ff"); world.damage(foe, Math.round(dmg * .9)); } }
@@ -332,4 +334,28 @@ export function pounceBonus(game, now) {
   if (!hasEcho(game.save, "riftLynx") || now >= (game.player.echoPounceUntil || 0)) return 1;
   game.player.echoPounceUntil = 0;
   return 1.6;
+}
+
+// ---------------------------------------------------------------- Earth Resolve (APATO_ECHO): the Game calls these
+// An attack starts: plant the sigil under a Wayfarer who has stood still `still` s, if none is up and the cooldown has passed.
+export function earthResolvePlant(game, now) {
+  const A = APATO_ECHO, p = game.player;
+  if (!hasEcho(game.save, "earthApato") || game.earthResolve || !(p.hp > 0) || now < (p.echoResolveReadyAt || 0)) return null;
+  if (now - (Number(game.resolveMovedAt) || 0) < A.still * 1000) return null;
+  const c = centre(p); game.earthResolve = { x: c.x, y: c.y, r: A.radius, at: now, until: now + A.seconds * 1000, heal: 0, map: game.map || null }; return game.earthResolve;
+}
+export const insideResolve = (game) => { const q = game?.earthResolve, p = game?.player; if (!q || !p) return false; const c = centre(p); return Math.hypot(c.x - q.x, c.y - q.y) <= q.r; };
+// A hit the Wayfarer landed (`actual` health taken off the foe): from inside, it grows and extends the sigil and heals her.
+export function earthResolveHit(game, actual, now) {
+  const A = APATO_ECHO, q = game.earthResolve; if (!q || !(actual > 0) || !insideResolve(game)) return 0;
+  q.r = Math.min(A.maxRadius, q.r + A.grow); q.until = Math.min(q.at + A.cap * 1000, q.until + A.extend * 1000);
+  const p = game.player, max = Number(game.save.maxHp) || p.maxHp || 100; q.heal += actual * A.lifesteal; const n = Math.floor(q.heal + 1e-9);
+  if (n > 0 && p.hp > 0) { q.heal -= n; p.hp = Math.min(max, p.hp + n); game._echoLastHp = p.hp; } return n;
+}
+// Every frame: it ends when its time runs out; the cooldown starts then. Returns the damage-taken scale (1 - guard inside, else 1).
+export function tickEarthResolve(game, now) {
+  const q = game.earthResolve; if (!q) return 1;
+  if (q.map !== (game.map || null)) { game.earthResolve = null; return 1; } // left the area: it stays behind, and is gone
+  if (now >= q.until) { game.earthResolve = null; game.player.echoResolveReadyAt = now + APATO_ECHO.cooldown; return 1; }
+  return insideResolve(game) ? 1 - APATO_ECHO.guard : 1;
 }

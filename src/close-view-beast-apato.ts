@@ -232,7 +232,7 @@ export function sampleApato(tr, e, env) {
     if (coil) { for (let i = 0; i <= G.coil; i++) { const a = a0 + i * G.coilTurn * (1 + (reduce ? 0 : .04 * Math.sin(t * 3 + i))), r = G.coilR * (1 - .15 * i / G.coil); put(tx + Math.cos(a) * r, ty + Math.sin(a) * r, gz + G.coilLow + (G.coilHigh - G.coilLow) * i / G.coil); } }
     else put(tx - dxw / dm * .3, ty - dyw / dm * .3, gz + .5 + (mz - gz - .5) * (1 - k) * .5), put(tx, ty, gz + .45);
     neckAlong(tr, n);
-  } else neckCurve(tr, P, e, S, tr.lift + (reduce ? 0 : .03 * wobble(t * .5, 2)) + .3 * hit * 0 + daze * .2, tr.reach, lookTo);
+  } else neckCurve(tr, P, e, S, tr.lift + (reduce ? 0 : .03 * wobble(t * .5, 2)) + daze * .2 + ((name === 'leaf' || name === 'leafReady') && !reduce ? Math.sin(t * (name === 'leaf' ? 16 : 6)) * .15 : 0), tr.reach, lookTo + (name === 'leaf' && !reduce ? Math.sin(t * 11) * .5 : 0));
   layNeck(tr, P);
   const open = name === 'leaf' || name === 'leafReady' || name === 'wrapTrack' ? .5 : name === 'graze' && !reduce ? .25 * Math.max(0, Math.sin(t * 6)) : dead ? .3 : 0;
   setEuler(P, BI.jaw, 0, .5 * open, 0); resolveBone(P, BI.jaw);
@@ -244,6 +244,7 @@ export function sampleApato(tr, e, env) {
     const Lg = LEGS[k], top = BI[Lg.top], hi = top * 3, len = (Lg.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S;
     resolveBone(P, top); H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2];
     const lift = tr.gait.out[k * 4 + 2]; let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], fz = env.z + (G.foot + .01) * S + lift * G.footLift * S;
+    if (!Lg.hind && name === 'stomp' && (Number(e.apatoStepLift) || 0) > .02 && ((Number(e.apatoStep) || 0) % 2 === 0) === (Lg.side < 0)) { const up = smooth(Number(e.apatoStepLift)); fz += .35 * S * up * .4; fx += Math.cos(yaw) * .15 * S * up; fy += Math.sin(yaw) * .15 * S * up; } // the stomp chase: the next forefoot rising
     if (!Lg.hind && front > .01) { const q = boneLocalToWorld(P, 'chest', .45, Lg.side * G.shoulderWidth, -.55, TMP2); fx += (q[0] - fx) * front; fy += (q[1] - fy) * front; fz += (q[2] - fz) * front; }
     if (dead) { const q = boneLocalToWorld(P, 'root', Lg.hind ? SPINE.pelvis[0] : SPINE.chest[0], Lg.side * .25, G.foot + .2 * smooth(death / .3), TMP2); fx = q[0]; fy = q[1]; fz = q[2]; }
     T[0] = fx; T[1] = fy; T[2] = fz; void len;
@@ -330,16 +331,17 @@ export function sampleApatoClone(tr, e, env) {
 // the marks, the beam's track, the waves, the saplings); what stands up from it is drawn here with the scene's camera-facing cards
 // (close-view.ts `card`: kind 7 a stone spike, kind 0 a dark disc, kind 11 an added glow of the colour given). Bounded by the
 // beast's own pools (APATO.caps); nothing allocated. `card(X, Y, z0, z1, halfWidth, kind, alpha, colour, light)`.
-export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, beamZ: 3, beamCards: 9, star: .09 });
-export function drawApatoCloseFx(enemies, card, reduce = false, now = 0) {
+export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, beamZ: 3, beamCards: 9, star: .09, resolveRoots: 18 });
+export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve = null) {
   const Cd = APATO_CARDS, t = reduce ? 0 : now / 1000;
+  // Earth Resolve (its Echo): roots rising round the sigil's rim (short stone-dark spikes) and a green glow at its heart, fading at its end
+  if (resolve) { const fade = Math.max(0, Math.min(1, (resolve.until - now) / 1000)), born = Math.max(0, Math.min(1, (now - resolve.at) / 450)), n = Math.min(Cd.resolveRoots, Math.round(6 + resolve.r * 3));
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .3, x = resolve.x + Math.cos(a) * resolve.r * .9, y = resolve.y + .3 + Math.sin(a) * resolve.r * .9, h = (.35 + .25 * ((i * 7) % 3) / 2) * born * fade; card(x, y, 0, h, .07, 7, .9 * fade, 0, 0); }
+    card(resolve.x, resolve.y + .3, 0, .9 * fade, resolve.r * .5, 11, .35 * fade, 0x9cff5a, 0); }
   for (const e of enemies || []) {
     if (e.apatoDazed > 0 && !e.dead) { const z = 2.2 * Math.max(.6, Number(e.scale) || 1) * .55; for (let i = 0; i < 4; i++) { const a = t * 3 + i * Math.PI / 2; card(e.x + .5 + Math.cos(a) * .6, e.y + .75 + Math.sin(a) * .6, z - Cd.star, z + Cd.star, Cd.star, 11, .9, 0xfff6a0, 0); } }
     if (e.kind !== 'earthApato' || e.dead) continue;
     const F = e.apatoFx; if (!F) continue;
-    for (const q of F.spires) { if (!q.on || q.t < q.warn) continue; const k = Math.min(1, (q.t - q.warn) / .12), fade = Math.max(0, Math.min(1, (q.warn + q.up - q.t) / .25)); card(q.x + .5, q.y + .62, 0, Cd.spire * k * (.4 + .6 * fade), Cd.spireW, 7, .5 + .5 * fade, 0, 0); }
-    for (const q of F.hands) { if (!q.on) continue; const rise = Math.min(1, q.t / .7) * Math.max(0, Math.min(1, (q.life - q.t) / .5)); if (!(rise > 0)) continue; card(q.x + .5, q.y + .62, 0, Cd.hand * rise, Cd.handW, 7, .95, 0, 0); if (q.throws > 0 && q.next < .5) card(q.x + .5, q.y + .62, Cd.hand * rise, Cd.hand * rise + Cd.rock * 2, Cd.rock, 0, .9, 0, 0); }
-    for (const q of F.rocks) { if (q.on) card(q.x + .5, q.y + .62, Cd.rockZ, Cd.rockZ + Cd.rock * 2, Cd.rock, 0, .92, 0, 0); }
     for (const q of F.leaves) { if (q.on) card(q.x + .5, q.y + .62, Cd.leafZ - Cd.leaf, Cd.leafZ + Cd.leaf, Cd.leaf, 11, .85, q.thorn ? 0xe8e0c0 : 0x8fe04a, 0); }
     for (const q of F.seeds) { if (!q.on || q.delay > 0) continue; const k = Math.min(1, q.t / (q.total || 1)), x = q.fx + (q.tx - q.fx) * k, y = q.fy + (q.ty - q.fy) * k, z = 1.5 * (1 - k) + Math.sin(Math.PI * k) * Cd.seedArc; card(x + .5, y + .62, z, z + .2, .1, 0, .9, 0, 0); }
     for (const q of F.roots) { if (!q.on) continue; const rise = Math.min(1, q.t / .45) * Math.max(0, Math.min(1, (q.life - q.t) / .4));
@@ -347,4 +349,50 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0) {
       card(q.x + .5, q.y + .62, .1, .7, .3, 11, .7 * rise, 0xa8d65a, 0); }
     const B = e.apatoBeam; if (B?.on) for (let i = 0; i <= Cd.beamCards; i++) { const k = i / Cd.beamCards, x = B.x + B.ax * B.len * k, y = B.y + B.ay * B.len * k, z = Cd.beamZ * (1 - k) + .15; card(x + .5, y + .62, z - .25, z + .25, .3 + .1 * k, 11, .8, 0xf4ff9a, 0); }
   }
+}
+
+// ------------------------------------------------------------------------------------------------ standing hazards as real geometry
+// The rock spires, the earth hands (and the rock each holds) and the thrown rocks are small solid meshes drawn by the beast program
+// (one bone each: the skin matrix is written straight from the hazard's place, rise and spin). A frame for every pool slot is made
+// once (APATO.caps: 6 spires, 4 hands, 8 rocks), so a frame allocates nothing; close-view.ts appends the live ones to the beast list
+// as it does the folk. Triangles: PROP_TRIS below (a full set of 22 live props stays under one clone body per kind).
+const PROP_SKELETON = defineSkeleton([{ name: 'root', parent: null, at: [0, 0, 0] }]);
+const rockC = hex(A.rock), rockD = hex(A.rockDark), rockL = hex(A.rockLight), earthC = hex(A.earth), earthD = hex(A.earthDark), earthL = hex(A.earthLight), grassC = hex(A.grass);
+function buildSpire(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root');
+  B.color(rockD).lathe({ at: [0, 0, -.05], F: [0, 0, 1], U: [1, 0, 0], seg: low ? 5 : 7, rings: [[0, .5], [.1, .44], [.45, .3], [.8, .18], [1.15, .07], [1.3, 0]], caps: false });
+  if (!low) for (let i = 0; i < 3; i++) { const a = i * 2.1 + .4; B.color(i % 2 ? rockC : rockL).lathe({ at: [Math.cos(a) * .3, Math.sin(a) * .3, -.05], F: [Math.cos(a) * .35, Math.sin(a) * .35, 1], U: [0, 0, 1], seg: 4, rings: [[0, .16], [.3, .08], [.48, 0]], caps: false }); }
+  return B.done(); }
+function buildHand(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root');
+  B.color(earthD).ellipsoid({ at: [0, 0, 0], radius: [.42, .42, .1], rings: 2, seg: low ? 6 : 9 }); // the mound
+  B.color(earthC).lathe({ at: [0, 0, 0], F: [0, 0, 1], U: [1, 0, 0], seg: low ? 5 : 7, rings: [[0, .2], [.45, .17], [.78, .2]], caps: true }); // the forearm
+  B.color(earthL).ellipsoid({ at: [0, 0, .86], radius: [.2, .1, .14], rings: 2, seg: low ? 5 : 7 }); // the palm
+  for (let i = 0; i < 4; i++) { const sx = (i - 1.5) * .1, tilt = (i - 1.5) * .25; B.color(i % 2 ? earthC : earthD).lathe({ at: [sx, 0, .95], F: [tilt, .15, 1], U: [1, 0, 0], seg: low ? 3 : 4, rings: [[0, .05], [.22, .04], [.3, 0]], caps: false }); }
+  B.color(earthD).lathe({ at: [-.2, 0, .82], F: [-1, .2, .6], U: [0, 0, 1], seg: low ? 3 : 4, rings: [[0, .05], [.18, 0]], caps: false }); // thumb
+  if (!low) for (let i = 0; i < 3; i++) B.color(grassC).lathe({ at: [(i - 1) * .12, .14, .3 + i * .15], F: [0, .4, 1], U: [1, 0, 0], seg: 3, rings: [[0, .02], [.1, 0]], caps: false });
+  return B.done(); }
+function buildRock(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root'); B.color(rockC).ellipsoid({ at: [0, 0, 0], radius: [.3, .26, .24], rings: low ? 2 : 3, seg: low ? 5 : 6 }); if (!low) B.color(rockL).ellipsoid({ at: [-.1, .05, .12], radius: [.12, .1, .08], rings: 2, seg: 4 }); return B.done(); }
+const PROP_MESH = { full: null, low: null };
+export function apatoPropMeshes(tier = 'full') { const k = tier === 'low' ? 'low' : 'full'; return PROP_MESH[k] ||= { spire: buildSpire(k === 'low'), hand: buildHand(k === 'low'), rock: buildRock(k === 'low') }; }
+export const PROP_TRIS = Object.freeze({ get spire() { return apatoPropMeshes().spire.triangles; }, get hand() { return apatoPropMeshes().hand.triangles; }, get rock() { return apatoPropMeshes().rock.triangles; } });
+const propFrame = () => ({ kind: 'apatoProp', tier: 'full', mesh: null, skin: new Float32Array(12), boneCount: 1, alpha: 1, hit: 0, emitK: new Float32Array(4), emitA: Float32Array.from([1, 1, 1, 1]), x: 0, y: 0, z: 0, yaw: 0, scale: 1, shadow: 0, air: 0, feet: new Float64Array(8), phase: 'prop', contact: 0, cloud: false, fogCap: 1 });
+// One prop's skin: a uniform `size` (wide) by `tall` (up), turned `yaw`, at (x, y, z).
+function placeProp(f, mesh, x, y, z, yaw, size, tall, alpha) {
+  const c = Math.cos(yaw), s = Math.sin(yaw), k = f.skin; f.mesh = mesh; f.alpha = alpha; f.x = x; f.y = y; f.z = z;
+  k[0] = c * size; k[1] = -s * size; k[2] = 0; k[3] = x; k[4] = s * size; k[5] = c * size; k[6] = 0; k[7] = y; k[8] = 0; k[9] = 0; k[10] = tall; k[11] = z; return f;
+}
+// Appends this frame's live props to the beast list `B` ({ items, count }). zAt(x, y): the floor's height; prepare(mesh): upload once (false: skip).
+export function admitApatoProps(enemies, B, tier, now, reduce, zAt, prepare) {
+  const M = apatoPropMeshes(tier), t = reduce ? 0 : now / 1000; if (!prepare(M.spire) || !prepare(M.hand) || !prepare(M.rock)) return 0; let n = 0;
+  for (const e of enemies || []) {
+    if (e.kind !== 'earthApato' || e.dead || !e.apatoFx) continue; const F = e.apatoFx, P = e.apatoProps ||= { spires: F.spires.map(propFrame), hands: F.hands.map(propFrame), held: F.hands.map(propFrame), rocks: F.rocks.map(propFrame) };
+    Object.defineProperty(e, 'apatoProps', { value: P, enumerable: false, configurable: true, writable: true }); // presentation only, never saved
+    for (let i = 0; i < F.spires.length; i++) { const q = F.spires[i]; if (!q.on || q.t < q.warn) continue; const k = Math.min(1, (q.t - q.warn) / .12), fade = Math.max(0, Math.min(1, (q.warn + q.up - q.t) / .25)), X = q.x + .5, Y = q.y + .62;
+      B.items[B.count++] = placeProp(P.spires[i], M.spire, X, Y, zAt(X, Y) - .3 * (1 - fade), i * 1.7, .95, 1.6 * k * (.5 + .5 * fade), 1); n++; }
+    for (let i = 0; i < F.hands.length; i++) { const q = F.hands[i]; if (!q.on) continue; const rise = Math.min(1, q.t / .7) * Math.max(0, Math.min(1, (q.life - q.t) / .5)); if (!(rise > .02)) continue; const X = q.x + .5, Y = q.y + .62, z = zAt(X, Y), tall = 1.15 * rise;
+      B.items[B.count++] = placeProp(P.hands[i], M.hand, X, Y, z - .2 * (1 - rise), i * 2.3 + .3 * Math.sin(t * 2 + i), 1, tall, 1); n++;
+      if (q.throws > 0 && q.next < .6) { B.items[B.count++] = placeProp(P.held[i], M.rock, X, Y, z + tall * 1.12, t * 2, .9, .9, 1); n++; } }
+    for (let i = 0; i < F.rocks.length; i++) { const q = F.rocks[i]; if (!q.on) continue; const X = q.x + .5, Y = q.y + .62;
+      B.items[B.count++] = placeProp(P.rocks[i], M.rock, X, Y, zAt(X, Y) + .7, t * 9 + i, .9, .9, 1); n++; }
+  }
+  return n;
 }

@@ -11,7 +11,7 @@ import { APATO, APATO_CLONE, APATO_ATTACKS, APATO_ROOMS, APATO_START, APATO_RUN,
 import { POISON, ensureApatoPoison, dosePoison, tickPoison, poisonDps, tickCreatureVenom, doseCreature } from '../src/apato-poison.ts';
 import { DINO_DUEL, tickDinoDuels, duelPair } from '../src/dino-duel.ts';
 import { WORLD_BEASTS, PASSING, BEAST_APERTURE, PLACEMENT } from '../src/world-beasts.ts';
-import { ECHOES, APATO_ECHO, echoEvent } from '../src/echoes.ts';
+import { ECHOES, APATO_ECHO, earthResolvePlant, earthResolveHit, tickEarthResolve } from '../src/echoes.ts';
 import { behaviourProfile } from '../src/enemy-behaviour.ts';
 import { CLOSE_VIEW_BEASTS } from '../src/close-view-beasts.ts';
 import { apatoMesh, apatoCloneMesh, createApatoTrack, sampleApato, apatoBone, APATO_SKELETON } from '../src/close-view-beast-apato.ts';
@@ -20,7 +20,7 @@ import { BEAST_SLOT } from '../src/close-view-beast-rig.ts';
 import { sampleDuel, BOSS_THEMES } from '../src/soundtrack-director.ts';
 import { createCombatant } from '../src/combat.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, generatePinnedDungeon } from '../src/game.ts';
+import { Game, generatePinnedDungeon, PLAYER_CLOCKS, RESUME_PLAYER_CLOCKS } from '../src/game.ts';
 import { ensureWorldBeasts } from '../src/world-beasts.ts';
 
 const MOVES = MONSTER_PACK.earthApato.attacks, CLONE_MOVES = MONSTER_PACK.apatoClone.attacks;
@@ -225,12 +225,36 @@ test('exact resume: mid-fight its saplings, venom and hunt state come back; no m
   const v = arena(); v.enemies = saved; run(v, 10); assert.ok(v.hurts.length > 0, 'it fights on');
 });
 
-test("its Echo, Apatosaur's Sprout: being hurt sprouts a snaring sapling and mends a little, once each cooldown", () => {
-  const E = ECHOES.earthApato; assert.equal(E.name, "Apatosaur's Sprout"); assert.equal(E.trigger, 'hurt'); assert.ok(E.cost >= 1 && E.cost <= 3);
-  const s = freshSave(); s.echoes.owned.earthApato = true; s.echoes.equipped = ['earthApato']; const g = new Game(s, 0); g.player.hp = 50; const max = s.maxHp;
-  echoEvent(g, 'hurt', 10000); assert.ok((g.echoPatches || []).some((q) => q.sprout && q.slow === APATO_ECHO.slow), 'a snaring sapling'); assert.equal(g.player.hp, 50 + Math.max(1, Math.round(max * APATO_ECHO.mend)));
-  const hp = g.player.hp; echoEvent(g, 'hurt', 10000 + APATO_ECHO.cooldown - 1); assert.equal(g.player.hp, hp, 'not again within the cooldown');
-  echoEvent(g, 'hurt', 10000 + APATO_ECHO.cooldown); assert.ok(g.player.hp > hp);
+function resolveGame() { const s = freshSave(); s.seed = 'RESOLVE'; s.echoes.owned.earthApato = true; s.echoes.equipped = ['earthApato']; const g = new Game(s, 0); g.enemies = []; return { s, g, p: g.player }; }
+const still = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} };
+test('Earth Resolve (its Echo): planted only by an attack made standing still, and never during its cooldown', () => {
+  const E = ECHOES.earthApato; assert.equal(E.name, 'Earth Resolve'); assert.ok(E.cost >= 1 && E.cost <= 3 && /standing still/.test(E.text));
+  const { g } = resolveGame(), now = 50000;
+  g.resolveMovedAt = now - APATO_ECHO.still * 1000 + 50; assert.equal(earthResolvePlant(g, now), null, 'moving a moment ago: none');
+  g.resolveMovedAt = now - APATO_ECHO.still * 1000 - 1; const q = earthResolvePlant(g, now); assert.ok(q && q.r === APATO_ECHO.radius, 'standing still: planted, small');
+  assert.equal(earthResolvePlant(g, now + 10), null, 'one at a time');
+  assert.equal(tickEarthResolve(g, q.until), 1); assert.equal(g.earthResolve, null, 'it ends when its time runs out'); assert.equal(g.player.echoResolveReadyAt, q.until + APATO_ECHO.cooldown);
+  assert.equal(earthResolvePlant(g, q.until + APATO_ECHO.cooldown - 1), null, 'cooling down'); assert.ok(earthResolvePlant(g, q.until + APATO_ECHO.cooldown), 'then again, small, wherever she next attacks still');
+  const { g: n } = resolveGame(); n.save.echoes.equipped = []; n.resolveMovedAt = -1e6; assert.equal(earthResolvePlant(n, now), null, 'only with the Echo equipped');
+});
+test('Earth Resolve: hits landed inside grow and extend it, to its caps; lifesteal inside; nothing outside; it never hurts a foe', () => {
+  const { g, p } = resolveGame(), now = 50000; g.resolveMovedAt = 0; const q = earthResolvePlant(g, now), max = g.save.maxHp;
+  const foe = createCombatant('rootBrute', p.x + 1, p.y, true, []); foe.hp = foe.maxHp = 500; g.enemies.push(foe);
+  p.hp = 50; assert.equal(earthResolveHit(g, 100, now), Math.floor(100 * APATO_ECHO.lifesteal), 'heals its share of the damage dealt'); assert.equal(p.hp, 50 + 10);
+  assert.ok(Math.abs(q.r - (APATO_ECHO.radius + APATO_ECHO.grow)) < 1e-9 && q.until === now + (APATO_ECHO.seconds + APATO_ECHO.extend) * 1000, 'grown and extended');
+  for (let i = 0; i < 40; i++) earthResolveHit(g, 10, now); assert.equal(q.r, APATO_ECHO.maxRadius, 'to its largest'); assert.equal(q.until, q.at + APATO_ECHO.cap * 1000, 'never past 10 s');
+  assert.equal(foe.hp, 500, 'it never touches a foe'); for (let t = 0; t < 30; t++) tickEarthResolve(g, now + t * 33); assert.equal(foe.hp, 500);
+  p.x = q.x + q.r + 1; const r = q.r, hp = p.hp; assert.equal(earthResolveHit(g, 100, now), 0); assert.equal(q.r, r); assert.equal(p.hp, hp, 'outside: no heal, no growth');
+  assert.equal(tickEarthResolve(g, now + 100), 1, 'outside: no guard'); p.x = q.x - .5; p.y = q.y - .45; assert.equal(tickEarthResolve(g, now + 100), 1 - APATO_ECHO.guard, 'inside: the guard');
+  p.hp = max; p.invulnerableUntil = 0; g.update(1 / 30, still, now + 200); const a0 = p.hp; g.packHurt(null, 200, {}, now + 300); const inside = a0 - p.hp;
+  p.x = q.x + 6; p.hp = max; p.invulnerableUntil = 0; g.update(1 / 30, still, now + 400); const b0 = p.hp; g.packHurt(null, 200, {}, now + 500); const outside = b0 - p.hp;
+  assert.ok(inside > 0 && inside < outside * .85, `less damage inside (${inside} vs ${outside})`);
+});
+test('Earth Resolve resumes as the other Echo clocks: the cooldown comes back, the sigil does not', () => {
+  assert.ok(PLAYER_CLOCKS.includes('echoResolveReadyAt') && RESUME_PLAYER_CLOCKS.includes('echoResolveReadyAt'));
+  const { g } = resolveGame(); g.resolveMovedAt = 0; earthResolvePlant(g, 50000); g.player.echoResolveReadyAt = 70000;
+  const json = JSON.stringify(g.save); assert.ok(!json.includes('earthResolve'), 'the sigil is never saved');
+  const back = new Game(migrateSave(JSON.parse(json)), 0); assert.equal(back.earthResolve ?? null, null, 'a reload drops it');
 });
 
 // ------------------------------------------------------------------------------------------------ Close View
@@ -249,4 +273,14 @@ test('Close View: the long neck bends smoothly along the game\'s own lash path, 
     const cos = (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (Math.hypot(...u) * Math.hypot(...v) || 1); worst = Math.max(worst, Math.acos(Math.max(-1, Math.min(1, cos)))); }
   assert.ok(worst < 1.1, `no joint folds sharply (${worst.toFixed(2)} rad)`);
   const rest = createApatoTrack(); let R; for (let k = 0; k < 20; k++) R = sampleApato(rest, { ...e, apatoPose: null, apatoLash: null }, { now: 1000 + k * 33, scale: 2.64, x: 10.5, y: 10.75, z: 0, tier: 'low' }); assert.ok(R && apatoBone(rest, 'head')[2] > 3, 'at rest its head is held high');
+});
+
+test('world-boss pacing: the roaming and big-room Apatosaurus wind up by packWindupScale (its marks with them); its clones are not paced', async () => {
+  const { worldBossPaced, packWindupScale } = await import('../src/monster-pack.ts');
+  assert.ok(worldBossPaced({ worldBeast: 'earthApato' }) && worldBossPaced({ apatoRoom: true })); assert.ok(!worldBossPaced({ apatoCloneOf: 'x', kind: 'apatoClone' }));
+  const w = arena({ player: { x: 20, y: 22.5 } }); w.bossPace = true; const e = apato(w); e.worldBeast = 'earthApato'; e.boss = true;
+  run(w, .1); const s = e.pack; assert.ok(s.paced && s.worldPaced, 'paced as a world boss'); s.cd = {}; s.gap = 0; for (const k of MOVES) if (k !== 'apatoNeckSlam') s.cd[k] = 999;
+  let begun = null, landed = null; run(w, 6, () => { if (s.attack === 'apatoNeckSlam' && begun === null) begun = w.now; if (begun !== null && landed === null && w.hurts.some((h) => h.source === 'apatoNeckSlam')) landed = w.now; });
+  const want = ATTACK_MODULES.apatoNeckSlam.windup * packWindupScale(s); assert.ok(packWindupScale(s) > 1.2, 'stretched beyond BOSS_PACE alone');
+  assert.ok(Math.abs((landed - begun) / 1000 - want) < .1, `the slam lands as its windup ends (${((landed - begun) / 1000).toFixed(2)} s vs ${want.toFixed(2)} s)`);
 });

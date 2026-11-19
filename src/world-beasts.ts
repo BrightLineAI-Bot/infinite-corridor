@@ -174,9 +174,9 @@ export const WORLD_BEASTS = {
   // sections no older beast claimed and every older beast's roll is as it was. It roams the land only (never the sea), rarely, walks
   // home to the deep woods and is never seen passing. It is also met in big rooms (earth-apato.ts APATO_ROOMS). Its numbers: APATO.
   earthApato: {
-    kind: "earthApato", name: "The Earth Apatosaurus", chance: .009, /* rarer than the Spinosaurus: the combined roll stays under encounter-pacing's bound */ minDepth: 6, tries: 4, cooldownSlain: 26, cooldownEscaped: 30,
+    kind: "earthApato", name: "The Earth Apatosaurus", chance: .009, /* rarer than the Spinosaurus: the combined roll stays under encounter-pacing's bound */ minDepth: 6, cooldownSlain: 26, cooldownEscaped: 30,
     hitsToKill: 60, hpPerLevel: 28, damageShare: .21, speed: 1, attackGap: .28, staggerResistance: .97, rewardMarks: 205, rewardPerLevel: 20,
-    patience: 180, home: "forest", retreatMoves: "walk",
+    home: "forest", retreatMoves: "walk",
     flee: "The Earth Apatosaurus lifts its long neck, turns, and plods off toward the deep woods, saplings springing up in its tracks.",
     homeLine: "The Earth Apatosaurus wades in among the trees until only its neck shows above them, and then not even that.",
     arrive: "The ground here is new-turned, and young trees stand where none grew yesterday, all leaning the same way. Far above them a head on a long neck turns to look at you. The Earth Apatosaurus is here.",

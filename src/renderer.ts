@@ -8,7 +8,9 @@ import { drawQuandrixStaff } from "./quandrix-staff.ts";
 import { drawStegoTail, drawStegoBait } from "./stego-bait.ts"; // the Stego Bait (Tim, 2026-11-12)
 import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
-import { drawPoisonIcon } from "./apato-poison.ts"; // the Earth Apatosaurus's root venom
+import { drawPoisonIcon } from "./apato-poison.ts";
+import { drawEarthResolveSigil } from "./apato-render.ts";
+import { insideResolve } from "./echoes.ts"; // the Earth Apatosaurus's root venom
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -3701,6 +3703,7 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
 function drawEchoPatches(ctx,g,s,now){
+  if(g.earthResolve)drawEarthResolveSigil(ctx,g.earthResolve,s,now,insideResolve(g),!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); // Earth Resolve, the Earth Apatosaurus's Echo (apato-render.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}
     else if(q.kind==="flesh"){ctx.fillStyle=`rgba(150,40,60,${Math.min(.45,left*.2)})`;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.fillStyle=`rgba(220,120,130,${Math.min(.5,left*.2)})`;for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+Math.cos(k*1.3+now/700)*r*.6,y+Math.sin(k*1.7)*r*.35,s*.06,0,7);ctx.fill()}}

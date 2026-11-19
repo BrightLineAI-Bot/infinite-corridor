@@ -1116,7 +1116,7 @@ export const bossPaced = (e) => { const k = staggerClass(e); return k === "boss"
 // the windup (packWindupScale is the one clock both read), so a blow lands when its mark fills. Damage and per-attack cooldowns are
 // unchanged. Dungeon bosses, the Gate Revenant, the Stalker, elites and ordinary creatures are not world-paced.
 export { WORLD_BOSS_PACE }; // the table lives in boss-kit.ts, where the Astral Worm (astral-worm.ts) reads it too
-export const worldBossPaced = (e) => !!(e && (e.worldBeast || e.questingBeast || e.stegoRoom || e.spinoRoom || e.spinoInterloper));
+export const worldBossPaced = (e) => !!(e && (e.worldBeast || e.questingBeast || e.stegoRoom || e.apatoRoom || e.spinoRoom || e.spinoInterloper)); // the Earth Apatosaurus of a big room too (its tree clones are not)
 // How much longer a pack attack's windup runs than its module says (1 when the world is not paced): the one number the attack clock,
 // its ground telegraph and every renderer that measures the windup's progress share.
 export const packWindupScale = (s) => (s?.paced ? BOSS_PACE.windup * (s.worldPaced ? WORLD_BOSS_PACE.windup : 1) : 1);
@@ -1808,7 +1808,7 @@ function endAttack(e, s) {
   e.untargetable = false; e.hidden = false; e.aloft = false; e.iceShield = false; e.spinning = false; e.sliding = false; e.mist = false; e.thrusting = null; e.swing = null; e.giantPose = null; e.giantAir = 0; e.giantThrust = false; e.stagPose = null; e.stagAir = 0; e.stagMending = false; e.mothPose = null; e.mothAir = 0; e.mothCocoon = false; e.dragonPose = null; e.dragonAir = 0; e.dragonCharge = 0; e.doomRays = null; e.doomBreath = null;
   if (e.kind === "wildStego") { e.stegoPose = null; e.stegoAir = 0; e.stegoRoll = 0; e.stegoTree = null; e.stegoGrab = null; } // its water, tail, plates and climb are its own state, not the move's
   if (e.kind === "spinoRex") { e.spinoPose = null; e.spinoAir = 0; e.spinoDig = 0; e.spinoGrab = null; } // whatever it held is let go on its next frame (spinoTick: s.spinoHolding)
-  if (e.kind === "earthApato" || e.kind === "apatoClone") { e.apatoPose = null; e.apatoNeckReach = 0; if (e.apatoLash) e.apatoLash.on = false; if (e.apatoBeam) e.apatoBeam.on = false; if (e.apatoWrap) e.apatoWrap.on = false; s.windupTotal = 0; } // whatever it holds is let go on its next frame (apatoTick)
+  if (e.kind === "earthApato" || e.kind === "apatoClone") { e.apatoPose = null; e.apatoNeckReach = 0; e.apatoStepLift = 0; if (e.apatoLash) e.apatoLash.on = false; if (e.apatoBeam) e.apatoBeam.on = false; if (e.apatoWrap) e.apatoWrap.on = false; s.windupTotal = 0; } // whatever it holds is let go on its next frame (apatoTick)
 }
 function toPhase(s, phase, seconds) { s.phase = phase; s.t = seconds; }
 // The awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE; Tim 2026-11-14: "if they get frozen, the attack gets
