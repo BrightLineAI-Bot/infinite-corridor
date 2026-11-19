@@ -44,10 +44,10 @@ export const HATCHLING = f({
   // Following: he keeps about `near` tiles off, behind the Wayfarer; farther than `far` (or in another place) he catches up at once.
   follow: f({ near: 1.3, far: 12, back: 1.1 }),
   // The baby's buffs: one kind at a time is given every `every` seconds, for `seconds`; kinds stack, never two of a kind (a repeat
-  // refreshes its time). Bonus fields are the meal fields game.ts armorGlyphBonus already applies (fractions).
+  // refreshes its time). Bonus fields are the meal fields game.ts armorGlyphBonus already applies (fractions), plus damageTaken (hurtScale's multiplier).
   buffs: f({ every: 10, seconds: 40, kinds: f({
-    damage: f({ name: "damage", bonus: f({ attackDamage: .05, spellDamage: .05 }) }),
-    defence: f({ name: "defence", bonus: f({ defense: .05 }) }),
+    damage: f({ name: "damage", bonus: f({ attackDamage: .02, spellDamage: .02 }) }),
+    defence: f({ name: "defence", bonus: f({ damageTaken: -.1 }) }), // 10% less damage taken (game.ts hurtScale: a flat multiplier, not the capped reduction curve)
     stamina: f({ name: "stamina recovery", bonus: f({ staminaRegen: .05 }) }),
   }) }),
   baby: f({

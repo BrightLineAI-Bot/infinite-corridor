@@ -53,7 +53,8 @@ test("buffs stack across kinds, never two of a kind: a repeat refreshes its time
   assert.equal(Object.keys(h.buffs).filter((k) => k === "damage").length, 1);
   grantBuff(h, "defence"); grantBuff(h, "stamina");
   const B = hatchlingBonus(s), K = HATCHLING.buffs.kinds;
-  assert.equal(B.attackDamage, K.damage.bonus.attackDamage); assert.equal(B.defense, K.defence.bonus.defense); assert.equal(B.staminaRegen, K.stamina.bonus.staminaRegen);
+  assert.equal(B.attackDamage, K.damage.bonus.attackDamage); assert.equal(B.damageTaken, K.defence.bonus.damageTaken); assert.equal(B.staminaRegen, K.stamina.bonus.staminaRegen);
+  assert.deepEqual([K.damage.bonus.attackDamage, K.damage.bonus.spellDamage, K.defence.bonus.damageTaken, K.stamina.bonus.staminaRegen], [.02, .02, -.1, .05], "Tim: 2% damage, 10% less damage taken, 5% stamina recovery");
   assert.equal(grantBuff(h, "nonsense"), false);
   tickBuffs(h, T + 1); assert.deepEqual(h.buffs, {}); assert.equal(hatchlingBonus(s), null);
   grantBuff(h, "damage"); clearBuffs(h); assert.deepEqual(h.buffs, {});
