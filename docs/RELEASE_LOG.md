@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1001 (`390dea695fd5`); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1003 (this merge, #672); production serves `r984-93a51644afcb` (published 2026-11-17). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1003 | Claude | claude/tower-seed-hunt / #672 | Tall-tower summits start a seed hunt: an unexplored section 3-8 out marked on the Atlas, the seed on reachable ground, a tree platform or in a crossing; the Abyssal seed joins as the rarest kind once it exists | Merged (#672); preview follows. |
 | 1002 | Claude | claude/triceratops-controls | Triceratops controls: hold Act (0.6 s) to call or dismiss the mount; while riding, B/C/D are Horn Dash, Bash and Horn Shot and Jump is Stomp/Drill; three older tests updated with Tim's approval; no save change | In flight. |
 | 1001 | Claude | claude/world-boss-pacing / #671 | World bosses and the Questing Beast: a 15-minute engagement window is the only limit (no tries); 1.4x wind-ups and longer gaps on one shared clock | Merged (#671); preview follows. |
 | 1000 | Claude | claude/close-view-camera / #670 | Close View camera: fixed-distance orbit (nearer indoors), bounded see-through cutout, full-sphere tilt, nothing out of the Wayfarer's sight drawn indoors, near-hidden/far-silhouette creatures in both views, Look zoom kept as the normal distance | Merged (#670); preview follows. |

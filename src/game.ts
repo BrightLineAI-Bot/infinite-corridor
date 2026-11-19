@@ -118,7 +118,7 @@ import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-n
 import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.ts";
 import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.ts";
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
-import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay } from "./tall-towers.ts"; // tall towers (the Upwells)
+import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
 import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
@@ -143,7 +143,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
@@ -537,6 +537,47 @@ function towerInterior(save, id) {
   const map = generateTowerInterior(save.seed, id); if (!map) return null;
   for (const o of map.objects) { if (o.towerCache && h.towerCache) Object.assign(o, { state: "opened", actions: [] }); if (o.kind === "towerLookout" && h.towerLookout) o.state = "used"; }
   return map;
+}
+// The seed hunts (tall-towers.ts TALL_TOWERS.seedHunt). Where a hunt's seed may lie, read off the place as loaded and never
+// written into it. Overworld: the real movement rules (reachableFrom / canReturnTo, thin walls included: a climb of one level,
+// any drop) from the open ground nearest the middle, which must itself join a section edge both ways. `ground`: open, level,
+// dry ground there (`groundFrom` tiles off that start); `tree`: a great tree's platforms (t.canopy, above the ground) there;
+// `crossing`: the ordinary crossings whose door stands on that ground. Null when the section offers no such ground at all.
+const HUNT_N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const huntFooting = (t) => !!t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.chasm && !t.pit && !t.door && !t.perch && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t);
+const huntGround = (t) => huntFooting(t) && !t.slope && !t.canopy && !t.skyPlatform && !(Number(t.elev) > 0) && !/water|shallow|ocean|sea|mire|bog|pool|lava|void|abyss|canyon|river|pit|Gate|ice/i.test(String(t.kind));
+const huntTree = (t) => huntFooting(t) && !!t.canopy && !t.slope && Number(t.elev) > 0;
+export const huntCrossingDoor = (o) => o?.kind === "dungeon" && !o.dungeonId && !o.buildingDoor && !o.towerDoor && !o.beastHotelDoor && !o.viewportHuntId && /^dungeon-g\d/.test(String(o.id));
+export function seedHuntGround(map) {
+  const T = map?.tiles; if (!T || T.length !== 1024) return null;
+  const mid = T.filter(huntGround).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!mid) return null;
+  const go = reachableFrom(map, 32, 32, mid, true), back = canReturnTo(map, 32, 32, mid, true), ok = new Uint8Array(1024); let edge = false;
+  for (let i = 0; i < 1024; i++) if (go[i] && back[i]) { ok[i] = 1; const x = i % 32, y = (i - x) / 32; if (x === 0 || y === 0 || x === 31 || y === 31) edge = true; }
+  return edge ? { ok, start: { x: mid.x, y: mid.y } } : null;
+}
+export function seedHuntSpots(map) {
+  const G = seedHuntGround(map); if (!G) return null;
+  const busy = new Set(); for (const o of map.objects || []) { if (o.decor) continue; const ox = Math.round(o.x), oy = Math.round(o.y); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) busy.add((oy + dy) * 32 + ox + dx); }
+  const free = (t) => G.ok[t.y * 32 + t.x] && !busy.has(t.y * 32 + t.x) && t.x > 1 && t.y > 1 && t.x < 30 && t.y < 30 && footprintOpen(map, 32, t.x, t.y);
+  const ground = map.tiles.filter((t) => huntGround(t) && free(t) && Math.hypot(t.x - G.start.x, t.y - G.start.y) >= TALL_TOWERS.seedHunt.groundFrom);
+  const tree = map.tiles.filter((t) => huntTree(t) && free(t));
+  const crossing = (map.objects || []).filter((o) => huntCrossingDoor(o) && [[0, 0], ...HUNT_N4].some(([dx, dy]) => G.ok[(Math.round(o.y) + dy) * 32 + Math.round(o.x) + dx]));
+  return { ground, tree, crossing, start: G.start, ok: G.ok };
+}
+// Inside a crossing: on the entry's own level, joined to the entry on that level (shut doors laid as objects count as shut),
+// `crossingSteps` walking steps in, clear of other objects; else the nearest such tile past the entry. Null with no entry.
+export function seedHuntCrossingSpot(map, seed, id) {
+  const W = Math.max(1, Number(map?.width) || 24), T = map?.tiles || [], H = Math.floor(T.length / W), e = map?.entry; if (!e || !T.length) return null;
+  const at = (x, y) => x < 0 || y < 0 || x >= W || y >= H ? null : T[y * W + x], sx = Math.round(e.x), sy = Math.round(e.y); if (!at(sx, sy) || at(sx, sy).blocked) return null;
+  const shut = new Set(); for (const o of map.objects || []) if (o.blocked || ((o.kind === "labGate" || o.kind === "sealedGate") && o.state !== "open")) shut.add(Math.round(o.y) * W + Math.round(o.x));
+  const lvl = (x, y) => elevationAt(map, W, x, y), base = lvl(sx, sy), open = (t) => !!t && !t.blocked && !t.chasm && !t.pit && !LETHAL_KINDS.has(t.kind) && !shut.has(t.y * W + t.x) && Math.abs(lvl(t.x, t.y) - base) < 1e-6;
+  const dist = new Int32Array(W * H).fill(-1), q = [sy * W + sx]; dist[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) { const i = q[h], x = i % W, y = (i - x) / W; for (const [dx, dy] of HUNT_N4) { const b = at(x + dx, y + dy), j = (y + dy) * W + x + dx; if (!b || dist[j] >= 0 || !open(b)) continue; dist[j] = dist[i] + 1; q.push(j); } }
+  const busy = new Set(); for (const o of map.objects || []) busy.add(Math.round(o.y) * W + Math.round(o.x));
+  const [lo, hi] = TALL_TOWERS.seedHunt.crossingSteps, fits = (i) => !busy.has(i) && footprintOpen(map, W, i % W, (i - i % W) / W);
+  const band = q.filter((i) => dist[i] >= lo && dist[i] <= hi && fits(i)), list = band.length ? band : q.filter((i) => dist[i] > 0 && fits(i)).slice(0, 1);
+  if (!list.length) return null; const i = band.length ? list[seedHuntPick(seed, id, "crossing", list.length)] : list[0];
+  return { x: i % W, y: (i - i % W) / W, steps: dist[i] };
 }
 export function generatePinnedDungeon(save, id, options = {}) {
   if (isBeastHotelId(id)) {
@@ -3965,6 +4006,7 @@ export class Game {
     if (area === "overworld")
       this.save.explored[`${this.rx},${this.ry}`] = true;recordSectionVisit(this.save,this.rx,this.ry,this.map);
     this.placeCaches(); // world caches (world.ts WORLD_CACHES): last, over the place as loaded; new ground and new crossings only
+    this.placeSeedHunt(); // the seed hunts (tall-towers.ts TALL_TOWERS.seedHunt): an object over the place as loaded, after the caches
     this.hordeTimer = 0; if (area === "dungeon") this.applyHorde(); // release 269: a horde dungeon holds only its Revenants
     this.mireTimer = 0; this.mirePool = 0;
     if (area !== "dungeon" || this.clockArea !== "dungeon") this.dungeonClock = 0; this.clockArea = area; // release 271: Revenants hunt after GATE_REVENANT.huntAfter s in a dungeon
@@ -5439,7 +5481,7 @@ export class Game {
     if (o.skyway && (o.disc ? this.skyLevel || 0 : elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y)) < (o.elev || 0)) return { ok: false, message: (this.message = "The skyway door hangs above you. Climb the floating platforms to reach it: jump from one to the next.") }; // release 585
     if (o.kind === "canopyGate" && action === "plantFossil") return this.plantFossilSeed(o); // travel seeds: a sure way to another crown
     if (o.kind === "canopyGate" && !action && o.state === "open" && seedCount(this.save, "fossilized") > 0) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name} — enter, or plant a ${SEEDS.fossilized.name}.`) }; }
-    if (o.kind === "seedFind") return this.takeSeedFind(o);
+    if (o.kind === "seedFind") return o.seedHunt ? this.takeHuntSeed(o) : this.takeSeedFind(o); // a seed hunt's seed (tall-towers.ts) or one lying in the open
     if (o.kind === "stegoTail") return this.pickStegoTail(o); // the Stego Bait (stego-bait.ts)
     if (o.kind === "worldCache") return this.takeWorldCache(o); // world caches
     if (o.kind === "cacheLever") return this.pullCacheLever(o);
@@ -5881,7 +5923,75 @@ export class Game {
     const added = lookOut(this.save, P.rx, P.ry, towerTierOf(P.tier).lookout), first = !h.towerLookout; h.towerLookout = true; o.state = "used";
     this.message = first || added.length ? `${TALL_TOWERS.messages.lookout} ${added.length} section${added.length === 1 ? "" : "s"} newly charted.` : TALL_TOWERS.messages.lookedOut;
     journalOnce(this.save, `tall-tower:lookout:${this.areaId()}`, `From the lip of an ${TALL_TOWERS.name} at ${P.rx},${P.ry} you charted the land round it. ${TALL_TOWERS.lore}`, "The Upwells");
-    this.sync(); return { ok: true, message: this.message, charted: added };
+    const hunt = this.startSeedHunt(this.areaId(), P); if (hunt.text) this.message = `${this.message} ${hunt.text}`;
+    this.sync(); return { ok: true, message: this.message, charted: added, seedHunt: hunt.hunt };
+  }
+  // The seed hunt (TALL_TOWERS.seedHunt): once per tower, kept in save.seedHunts by its id. The target is the first section of
+  // the hunt's hashed order (undiscovered, in the band, no other live hunt's) whose previewed ground can hold a find; previews
+  // (walkerCrossingMap) never touch the save. Looked from again, the lookout recalls the glint while it still waits.
+  startSeedHunt(id, P) {
+    const hunts = ensureSeedHunts(this.save), H = TALL_TOWERS.seedHunt, M = H.messages, had = hunts[id];
+    if (had) return { hunt: had, fresh: false, text: had.state === "active" ? huntText(M.already, had) : "" };
+    const busy = new Set(Object.values(hunts).filter((q) => q.state === "active").map((q) => `${q.rx},${q.ry}`));
+    const list = seedHuntCandidates(this.save.seed, id, P.rx, P.ry, this.save.explored, busy).filter((c) => !this.save.atlas?.[`${c.rx},${c.ry}`]).slice(0, H.loads);
+    const target = list.find((c) => seedHuntGround(walkerCrossingMap(this.save, c.rx, c.ry)));
+    if (!target) return { hunt: null, fresh: true, text: M.none };
+    const kind = seedHuntKind(this.save.seed, id, seedHuntWeights(SEED_FINDS.overworld.weights, SEEDS)), S = SEEDS[kind], dx = target.rx - P.rx, dy = target.ry - P.ry;
+    const hunt = (hunts[id] = { v: 1, tower: id, from: { rx: P.rx, ry: P.ry }, rx: target.rx, ry: target.ry, kind, state: "active" });
+    const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
+    journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");
+    (this.questNotices ||= []).push({ title: "SEED HUNT", detail: `${S.name} · ${target.rx},${target.ry} · marked on the Atlas`, kind: "discovery" });
+    return { hunt, fresh: true, text };
+  }
+  // Lay the seed of each live hunt aiming here, over the place as loaded (after the world caches, so they lie as they would
+  // without it): never a tile, never a generator change. Its spot is chosen the first time and kept on the hunt; a kept spot
+  // that no longer holds footing is chosen again the same way. A crossing hunt's seed lies inside, on the entry's level.
+  placeSeedHunt() {
+    const M = this.map; if (!M?.tiles?.length || !this.save.seedHunts) return [];
+    const seed = this.save.seed, made = [], H = TALL_TOWERS.seedHunt, W = mapWidth(M, this.area);
+    const lay = (h, x, y, elev = 0) => { const S = SEEDS[h.kind]; const o = { id: `seed-hunt:${h.tower}`, kind: "seedFind", seedHunt: h.tower, seed: h.kind, name: S.name, x, y, state: "waiting", actions: ["take"], actionLabels: { take: `Pick up the ${S.name}` }, ...(elev > 0 ? { cacheElev: elev } : {}) }; M.objects.push(o); made.push(o); return o; };
+    const stands = (x, y) => Number.isInteger(x) && Number.isInteger(y) && footprintOpen(M, W, x, y) && !LETHAL_KINDS.has(M.tiles[y * W + x]?.kind);
+    if (this.area === "overworld") {
+      for (const h of seedHuntAt(this.save, this.rx, this.ry)) {
+        if (!SEEDS[h.kind] || M.objects.some((o) => o.seedHunt === h.tower)) continue;
+        if (h.where === "crossing" && h.dungeonId && M.objects.some((o) => huntCrossingDoor(o) && dungeonId(seed, this.save.worldGeneration, this.rx, this.ry, o.id) === h.dungeonId)) { this.tellSeedHunt(h, H.messages.arriveCrossing); continue; }
+        if ((h.where === "ground" || h.where === "tree") && stands(h.x, h.y) && (h.where === "ground" || elevationAt(M, W, h.x, h.y) === h.elev)) { lay(h, h.x, h.y, h.where === "tree" ? h.elev : 0); this.tellSeedHunt(h, h.where === "tree" ? H.messages.arriveTree : H.messages.arrive); continue; }
+        const P = seedHuntSpots(M), offered = { ground: !!P?.ground.length, tree: !!P?.tree.length, crossing: !!P?.crossing.length && !h.where };
+        const where = h.where && offered[h.where] ? h.where : seedHuntWhere(seed, h.tower, offered);
+        for (const k of ["x", "y", "elev", "dungeonId", "door", "inside"]) delete h[k];
+        if (where === "crossing") { const d = P.crossing[seedHuntPick(seed, h.tower, "door", P.crossing.length)]; Object.assign(h, { where, dungeonId: dungeonId(seed, this.save.worldGeneration, this.rx, this.ry, d.id), door: { x: Math.round(d.x), y: Math.round(d.y) } }); this.tellSeedHunt(h, H.messages.arriveCrossing); continue; }
+        let t = where ? P[where][seedHuntPick(seed, h.tower, where, P[where].length)] : null;
+        if (!t) { const open = M.tiles.filter((q) => stands(q.x, q.y) && !(Number(q.elev) > 0)).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x); t = open[0]; } // no ground the rules can read: the open footing nearest the middle
+        if (!t) continue;
+        const tree = where === "tree"; Object.assign(h, { where: tree ? "tree" : "ground", x: t.x, y: t.y, ...(tree ? { elev: Number(t.elev) || 0 } : {}) });
+        lay(h, t.x, t.y, tree ? h.elev : 0); this.tellSeedHunt(h, tree ? H.messages.arriveTree : H.messages.arrive);
+      }
+      return made;
+    }
+    if (this.area !== "dungeon") return made;
+    const id = this.areaId(), first = !M.multiLevel || !M.levels?.length || M.levelId === M.levels[0].id;
+    for (const h of Object.values(this.save.seedHunts)) {
+      if (h?.state !== "active" || h.where !== "crossing" || h.dungeonId !== id || !first || !SEEDS[h.kind] || M.objects.some((o) => o.seedHunt === h.tower)) continue;
+      let at = h.inside && stands(h.inside.x, h.inside.y) ? h.inside : null;
+      if (!at) { const q = seedHuntCrossingSpot(M, seed, h.tower); if (!q) continue; at = h.inside = { x: q.x, y: q.y }; }
+      lay(h, at.x, at.y); this.tellSeedHunt(h, H.messages.inside);
+    }
+    return made;
+  }
+  tellSeedHunt(h, text) { const k = `${h.tower}:${this.areaStateId()}`; if (this._seedHuntTold === k) return; this._seedHuntTold = k; (this.questNotices ||= []).push({ title: "SEED HUNT", detail: text, kind: "discovery" }); }
+  // Picking it up: the seed of that kind (the same item as any other), the hunt found, its marker gone; once only.
+  takeHuntSeed(o) {
+    const h = this.save.seedHunts?.[o.seedHunt], S = SEEDS[h?.kind], M = TALL_TOWERS.seedHunt.messages;
+    if (o.cacheElev && elevationAt(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y) < o.cacheElev) return { ok: false, message: (this.message = "It lies above you. Find the way up.") };
+    this.map.objects = this.map.objects.filter((q) => q !== o);
+    if (!h || h.state !== "active" || !S) { this.message = "Nothing is left here."; return { ok: false, message: this.message }; }
+    h.state = "found"; const n = grantSeed(this.save, h.kind), P = parseTowerId(h.tower);
+    const text = huntText(M.found, { seed: S.name, tx: h.from?.rx ?? P?.rx, ty: h.from?.ry ?? P?.ry, where: M.wheres[h.where] || M.wheres.ground });
+    journalOnce(this.save, `seed-hunt:found:${h.tower}`, `${text} (${h.rx},${h.ry})`, "The Upwells");
+    journalOnce(this.save, `seed:${h.kind}`, `You found a ${S.name}. ${S.text}`, "Seeds");
+    (this.questNotices ||= []).push({ title: S.name.toUpperCase(), detail: `seed hunt found · ${n} held · Pack → Supplies`, kind: "discovery" });
+    this.message = `${text} (${n} held.) ${S.text}`;
+    this.sync(); return { ok: true, message: this.message, seed: h.kind, hunt: h.tower };
   }
   // The cache at the lip: paid once (the history's `towerCache`, set before it pays), by the tower's tier (TALL_TOWERS.tiers[*].cache).
   openTowerCache(o) {
@@ -6201,7 +6311,7 @@ export class Game {
   // Wayfarer can walk to from the section's middle, never in a town, hamlet or far domain. Taken once.
   placeSeedFind() {
     const key = `${this.rx},${this.ry}`, M = this.map, seen = this.save.atlas?.[key];
-    if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind")) return null;
+    if (seen?.seedFindVersion !== SEED_FINDS.version || !M?.tiles?.length || M.settlement || M.hamlet || M.farDomain || M.objects.some((o) => o.kind === "seedFind" && !o.seedHunt)) return null;
     const kind = seedFindRoll(this.save.seed, "overworld", key); if (!kind || this.save.worldFlags[seedFindFlag("overworld", key)]) return null;
     const W = 32, taken = new Set(M.objects.map((o) => Math.round(o.y) * W + Math.round(o.x))), ground = (t) => t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.slope && !t.chasm && !LETHAL_KINDS.has(t.kind) && !isMarineTile(t) && !/water|shallow|ocean|mire|bog|pool|lava|void|abyss|canyon|river/i.test(String(t.kind));
     const start = M.tiles.filter(ground).sort((a, b) => Math.hypot(a.x - 16, a.y - 16) - Math.hypot(b.x - 16, b.y - 16) || a.y - b.y || a.x - b.x)[0]; if (!start) return null;
