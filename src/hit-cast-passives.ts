@@ -53,6 +53,21 @@ export const ECHOING_CAST = { every: 4, share: .5, delayMs: 400 };
 // more than it cost, so no stamina loop gains. `ring`: releases remembered at once.
 export const RAPID_RELOAD = { shots: 3, share: .2, cooldownMs: 1500, ring: 8, orbitFill: .5 };
 
+// Power Aegis (Tim, 2026-11-19: "a parry mechanic... a just-guard. The Aegis is a good vehicle for the parry... if you perfect-parry
+// an attack with the Aegis, it refunds the Aegis's cooldown so you can use it again... if you time it perfectly, you parry the move...
+// your next attack(s) — for the next 2–3 seconds — are empowered... Power Aegis. It's a passive"). A Transit Lattice field passive
+// (lattice-fields.ts FIELD_PASSIVES, `field:power-aegis`: nothing to learn, like Tempo). With it held, a blow that would land in
+// the first `windowMs` of an Aegis (game.ts castBrawler opens the window, `aegisPerfectUntil`) is a perfect parry (game.ts
+// perfectParry): the blow is turned aside as the Aegis turns every blow; a foe that struck from within `reach` tiles is staggered `stun` s (bosses,
+// world beasts, revenants and elites `bossShare` of it, monster-pack.ts staggerClass; the stagger governor still holds them);
+// the Aegis is ready again at once (its cooldown and any Essence Walk lockout cleared); `staminaShare` of the stamina an Essence
+// Walk cast of it cost comes back; and for `buffMs` the Wayfarer is empowered: melee attacks (swings, weapon arts, the Iron
+// Fists, Hammerfall and the Great Sweep) deal `bonus` more, tool shots `toolBonus` more (0: none). A shot or a blast parried
+// the same way gives the refund and the empowerment, but staggers nothing (it is not reflected). One parry an Aegis cast: the
+// window closes on the first. Outside the window, or without the passive, the Aegis is exactly as before.
+// `windowMs` is forgiving on purpose (Tim, 2026-11-19: "pretty generous"; touch latency on a phone): nearly half the 1 s ward.
+// A blow counts by the frame its damage lands, which is when its wind-up ends, so a wind-up that ends inside the window parries.
+export const POWER_AEGIS = { windowMs: 450, reach: 4, stun: .6, bossShare: .3, staminaShare: .5, buffMs: 2500, bonus: .4, toolBonus: 0 };
 export const CAST_NODE_IDS = ["arcane-edge", "casting-wind", "pocket-time", "echoing-cast", "glyph-mine"];
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const PASSIVE_TEXT = {
@@ -63,13 +78,14 @@ export const PASSIVE_TEXT = {
   "casting-wind": `Each cast gives back ${pct(CASTING_WIND.share)} of your stamina (under Essence Walk, never more than half what the cast cost).`,
   "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
   "echoing-cast": `Every ${ECHOING_CAST.every}th cast repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
+  "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more. Shots and blasts parry too, without the stagger. Later in the ward it blocks as always.`,
   "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once.`,
 };
 
 // ---------------------------------------------------------------- who has what
 export const castNodeOn = (save, id) => !!save?.constellation?.mods?.[id];
 const fieldHeld = (save, id) => latticePassives(save).includes(`field:${id}`);
-const B_TEMPO = 1, B_SHATTER = 2, B_POCKET = 4, B_EDGE = 8, B_RELOAD = 16;
+const B_TEMPO = 1, B_SHATTER = 2, B_POCKET = 4, B_EDGE = 8, B_RELOAD = 16, B_AEGIS = 32;
 function state(game) {
   let S = game._hcp;
   if (!S) {
@@ -83,11 +99,14 @@ function mask(game, now) {
   const S = state(game);
   if (S.maskAt === now && S.maskSave === game.save) return S.mask;
   const s = game.save; let m = 0;
-  if (fieldHeld(s, "tempo")) m |= B_TEMPO; if (fieldHeld(s, "shatterpoint")) m |= B_SHATTER; if (fieldHeld(s, "rapid-reload")) m |= B_RELOAD;
+  if (fieldHeld(s, "tempo")) m |= B_TEMPO; if (fieldHeld(s, "shatterpoint")) m |= B_SHATTER; if (fieldHeld(s, "rapid-reload")) m |= B_RELOAD; if (fieldHeld(s, "power-aegis")) m |= B_AEGIS;
   if (castNodeOn(s, "pocket-time")) m |= B_POCKET; if (castNodeOn(s, "arcane-edge")) m |= B_EDGE;
   S.maskAt = now; S.maskSave = s; S.mask = m; return m;
 }
 export const rapidReloadOn = (save) => fieldHeld(save, "rapid-reload");
+export const powerAegisOn = (save) => fieldHeld(save, "power-aegis");
+// Power Aegis's empowerment: ms left (0 when none, or without the passive).
+export const powerAegisLeft = (game, now) => { const u = Number(game?.powerAegisUntil) || 0; return u > now && powerAegisOn(game.save) ? u - now : 0; };
 
 // ---------------------------------------------------------------- per-foe marks (runtime only)
 const MARK = Symbol("hitCastMark");
@@ -127,6 +146,7 @@ export function passiveHit(game, e, actual, now, src = null) {
   let bonus = vuln ? TEMPO.vuln : 0;
   if (m & B_SHATTER && staggered(e)) bonus += SHATTERPOINT.bonus;
   if (m & B_EDGE && melee) bonus += edgeHit(game, S, e, now);
+  if (m & B_AEGIS && (Number(game.powerAegisUntil) || 0) > now) bonus += melee ? POWER_AEGIS.bonus : src && typeof src === "object" && src.glyphHost === "tool" ? POWER_AEGIS.toolBonus : 0; // Power Aegis
   if (bonus > 0) strike(game, e, actual * bonus);
   if (m & B_TEMPO && !e.dead) tempoCount(e, now);
   if (m & B_POCKET && melee) pocket(game, S, now);

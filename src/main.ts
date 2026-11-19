@@ -227,7 +227,7 @@ const MOUNT_CONTROL_ICONS = {
 };
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
-import { reloadPips } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
+import { reloadPips, powerAegisLeft } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
 import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.ts";
 import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
@@ -876,7 +876,8 @@ function voice(
   o.stop(when + duration + 0.05);
 }
 // A short cue for a notice that carries one (the Pentagon's shortcuts): a clank and a low settle, through the music bus.
-const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]] };
+const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]],
+  parry: [[1318.5, 0, 0.12, "square"], [1975.5, 0.02, 0.28, "triangle"], [987.77, 0.05, 0.4, "triangle"]] }; // Power Aegis: a bright struck-metal ring
 function playNoticeSound(kind) {
   const notes = NOTICE_SOUNDS[kind]; if (!audio || !notes || muted) return;
   try { const t = audio.currentTime; for (const [f, at, d, type] of notes) voice(f, t + at, d, 0.12, type); } catch { /* sound is a nicety */ }
@@ -2740,6 +2741,7 @@ function frame(now) {
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
+  if (game.parryCue) { game.parryCue = false; playNoticeSound("parry"); } // Power Aegis: a perfect parry's ring (hit-cast-passives.ts POWER_AEGIS)
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
@@ -2786,6 +2788,7 @@ function frame(now) {
       buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
     if (game.magicBuffRemaining > 0)
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
+    {const pa=powerAegisLeft(game,game.lastUpdateNow||0);if(pa>0)buffs.push(`POWER AEGIS ${(pa/1000).toFixed(1)}s`);} // Power Aegis (hit-cast-passives.ts): the parry's empowerment
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
     if(save.bleed?.left>0)buffs.push(`BLEED ${Math.ceil(save.bleed.left)}s · STILL ${Math.floor(save.bleed.still||0)}/${BLEED.stillSeconds}`); // the Spinosaurus's bleed (bleed.ts): stand still to stop it
