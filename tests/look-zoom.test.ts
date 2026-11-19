@@ -38,7 +38,7 @@ function fixture(scenario = 'heart') {
 const eyeDist = (c, x, y, z) => Math.hypot(c.x - x, c.y - y, c.height - z);
 function clearLine(g, ax, ay, bx, by) { for (let j = 1; j <= 40; j++) assert.equal(CV.closeViewWallAt(g.map, ax + (bx - ax) * j / 40, ay + (by - ay) * j / 40), false, `clear line ${j}`); }
 
-test('the compass: a tap stays a tap, a held press is Look mode, a slide cancels it', () => {
+test('the hold (2026-11-19: the Oculus for Look mode, the compass for its menu): a tap stays a tap, a held press fires, a slide cancels it', () => {
   const h = CV.createLookHold();
   h.down(1, 10, 10, 0); assert.equal(h.due(200), false); assert.equal(h.up(1, 200), false); assert.equal(h.takeClick(), false, 'a tap still steps the compass');
   h.down(2, 10, 10, 1000); assert.equal(h.due(1000 + L.holdMs - 1), false); assert.equal(h.due(1000 + L.holdMs), true); assert.equal(h.due(1000 + L.holdMs + 50), false, 'fires once');
@@ -49,12 +49,15 @@ test('the compass: a tap stays a tap, a held press is Look mode, a slide cancels
   h.down(4, 10, 10, 5000); assert.equal(h.due(5000 + L.holdMs), true); assert.equal(h.takeClick(), false, 'a hold that did nothing (standard view) leaves the click alone');
   assert.ok(L.holdMs >= 450, 'never fires on an ordinary tap (the input reads a tap as under 450 ms)');
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
-  assert.match(main, /navCompass\.addEventListener\("click",\(\)=>\{\n\s*if\(lookHold\.takeClick\(\)\)return;/, 'the compass click consults the hold first');
-  assert.match(main, /lookHold\.due\(performance\.now\(\)\)&&closeViewShowing\(game\)/, 'a hold toggles Look only in Close View');
-  assert.match(main, /lookHold\.up\(e\.pointerId,t==="pointerup"\?lookStamp\(e\):NaN\)&&closeViewShowing\(game\)/, 'or its late release, only in Close View');
+  // 2026-11-19 (Tim): Look mode's hold moved from the compass to the Oculus button (main.ts wireHold); the compass's hold now
+  // opens its quick menu. The same hold (createLookHold) and the same Close View gate, on the Oculus.
+  assert.match(main, /navCompass\.addEventListener\("click",\(\)=>\{\n\s*if\(compassHold\.takeClick\(\)\)return;/, 'the compass click consults the hold first');
+  assert.match(main, /h\.due\(performance\.now\(\)\)&&can\(\)/, 'a hold fires only where it can');
+  assert.match(main, /h\.up\(e\.pointerId,t==="pointerup"\?lookStamp\(e\):NaN\)&&can\(\)/, 'or its late release, likewise');
+  assert.match(main, /wireHold\(oculusButton,oculusButton,\{can:\(\)=>!game\.paused&&closeViewShowing\(game\),fire:toggleLook,/, 'the Oculus hold toggles Look only in Close View');
   assert.match(main, /closeViewLookActions\(game, input\.state\)/); assert.match(main, /closeViewLookGuard\(game\)/);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /id="navCompassHelp"[^>]*>[^<]*press and hold/, 'the long press has an accessible description');
+  assert.match(html, /id="oculusHelp"[^>]*>[^<]*press and hold[^<]*Look mode/, 'the long press has an accessible description (on the Oculus since 2026-11-19)');
 });
 
 // Tim, 2026-11-18: Close View's camera is now the fixed-distance orbit (CLOSE_VIEW.camera.orbit; walls never pull it in, they are

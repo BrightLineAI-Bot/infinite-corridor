@@ -45,7 +45,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey } from "./atlas-view.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -778,29 +778,96 @@ function renderQuests(out){
 }
 // Tapping the compass names its target and steps to the next objective (release 153).
 navCompass.setAttribute("role","button");navCompass.tabIndex=0;
-navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();toggleLook();return}if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
-// Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in Close View a press held on the compass toggles it (a tap
-// still steps the compass); in it a pinch on the game area zooms the camera and a drag orbits it. Attack, Dodge, a spell or the
-// Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only. The keyboard: Shift+Enter on the compass.
-const lookHold=createLookHold();let lookHinted=false,lookTimer=0,lookSwallowTimer=0;
+navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();openCompassMenu();return}if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
+// Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in it a pinch on the game area zooms the camera and a drag
+// orbits it. Attack, Dodge, a spell or the Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only.
+// 2026-11-19 (Tim): "holding the Oculus button turns Look mode on, and holding it again turns it off"; a short tap on the Oculus
+// still switches the view. The compass's hold no longer touches Look mode: it opens the compass's quick menu (openCompassMenu),
+// in either view. Both holds last CLOSE_VIEW.camera.look.holdMs (as the compass's did) and fill a ring while held (styles.css
+// .holding; a plain highlight under Reduced Motion). The keyboard: Shift+Enter on the Oculus button (Look), on the compass (the menu).
+let lookHinted=false;
 navCompass.setAttribute("aria-describedby","navCompassHelp");
 // The first time in a session the message line carries the one-line hint; after that a short word.
 function toggleLook(){if(!closeViewShowing(game)){game.message="Look mode works in Close View.";return false}const on=closeViewLookToggle(game);
-  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round, tap anything to look at it. Attack, Dodge, a spell or Tool ends it."):"Look mode off.";if(on)lookHinted=true;return on}
+  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round, tap anything to look at it. Hold the Oculus again, or Attack, Dodge, a spell or Tool, to end it."):"Look mode off.";if(on)lookHinted=true;return on}
 const lookStamp=e=>Number.isFinite(e.timeStamp)&&e.timeStamp>0?e.timeStamp:performance.now(); // when the finger moved, not when a busy frame got to it
-navCompass.addEventListener("pointerdown",e=>{lookHold.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(lookTimer);
-  lookTimer=setTimeout(()=>{if(lookHold.due(performance.now())&&closeViewShowing(game)){lookHold.hold();toggleLook();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
-navCompass.addEventListener("pointermove",e=>lookHold.move(e.pointerId,e.clientX,e.clientY));
-// A hold's swallowed click (r945 review): only the click its own release makes. A press cancelled, or slid off while held, makes
-// none, so the flag is dropped there; after a release it lapses within swallowMs, so a later Enter on the compass still works.
-for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])navCompass.addEventListener(t,e=>{clearTimeout(lookTimer);if(t==="pointercancel"||t!=="pointerup"&&lookHold.pressing)lookHold.drop();
-  if(t==="lostpointercapture")return;if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}
-  if(t==="pointerup"){clearTimeout(lookSwallowTimer);lookSwallowTimer=setTimeout(()=>lookHold.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
-navCompass.addEventListener("contextmenu",e=>{if(closeViewShowing(game))e.preventDefault()}); // a long press opens no menu there
+// A long press on a HUD button (close-view.ts createLookHold): `can` says whether a hold would do anything now (else no ring, and
+// the press stays a tap); `fire` is the hold; `tap` (the Oculus only) is the short press, made on the release. The compass's tap
+// is its own click (below), which consults takeClick first. A hold's swallowed click (r945 review): only the click its own release
+// makes. A press cancelled, or slid off while held, makes none, so the flag is dropped there; after a release it lapses within
+// swallowMs, so a later Enter still works.
+function wireHold(el,ring,{can,fire,tap=null}){
+  const h=createLookHold();let timer=0,swallowTimer=0,downId=null;const ringOff=()=>ring.classList.remove("holding");
+  el.addEventListener("pointerdown",e=>{if(e.button>0)return;downId=e.pointerId;h.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(timer);if(can())ring.classList.add("holding");
+    timer=setTimeout(()=>{ringOff();if(h.due(performance.now())&&can()){h.hold();fire();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
+  el.addEventListener("pointermove",e=>{h.move(e.pointerId,e.clientX,e.clientY);if(!h.pressing)ringOff()});
+  for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])el.addEventListener(t,e=>{clearTimeout(timer);ringOff();if(t==="pointercancel"||t!=="pointerup"&&h.pressing)h.drop();
+    if(t==="pointercancel")downId=null;if(t==="lostpointercapture")return;if(h.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&can()){h.hold();fire()}
+    if(t==="pointerup"){const mine=e.pointerId===downId;downId=null;if(tap&&mine&&!h.takeClick())tap();clearTimeout(swallowTimer);swallowTimer=setTimeout(()=>h.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
+  el.addEventListener("contextmenu",e=>e.preventDefault()); // a long press opens no browser menu
+  return h;
+}
+// The Oculus button: the input's own press (input.ts, made on pointerdown) gives way to this one, so a hold is never also a view
+// switch. Its tap latches the same "oculus" press (game.ts pressOculus, oculus.ts pressOculusButton) on the release; key O is unchanged.
+const oculusButton=$("#oculusButton");
+if(oculusButton){
+  oculusButton.onpointerdown=e=>{e.preventDefault();oculusButton.classList.add("pressed");clearTimeout(oculusButton.pressedTimer);oculusButton.pressedTimer=setTimeout(()=>oculusButton.classList.remove("pressed"),160)};
+  wireHold(oculusButton,oculusButton,{can:()=>!game.paused&&closeViewShowing(game),fire:toggleLook,tap:()=>{input.state.oculus=true}});
+  oculusButton.setAttribute("aria-describedby","oculusHelp");
+  oculusButton.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();toggleLook()}});
+  oculusButton.addEventListener("click",e=>{if(e.detail===0)input.state.oculus=true}); // Enter or Space on the focused button (a pointer tap is made on its release above)
+}
+const compassHold=wireHold(navCompass,navCompassSlot,{can:()=>!game.paused,fire:()=>openCompassMenu()});
 addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}if(closeViewHomeZoomTake())persist()});
 let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
+// The compass's quick menu (Tim, 2026-11-19; atlas-view.ts compassMenuModel): a hold on the compass opens a panel to the left of
+// the compass and the Oculus listing what the compass can point at (quests, seed hunts, the nearby objectives the tap cycles
+// through, the waypoint and marks you set on the Atlas; in a dungeon its door points). A tap on a row points the compass there,
+// kept as the tap cycle's pick or the Journal's pin are (save.guidance), and closes it. It only chooses: it never makes, moves or
+// clears a mark. The red X (top left), a tap outside, Escape or Back close it. The game pauses under it as under the Atlas and
+// the Journal (pauseForOverlay; Look mode is kept) and resumes as it closes; the pause menu, if it opens, closes it.
+const compassMenu=$("#compassMenu"),compassMenuList=$("#compassMenuList");let compassMenuOpen=false,compassMenuPaused=false;
+function compassMenuData(){
+  const here={rx:game.rx,ry:game.ry,x:game.player?.x,y:game.player?.y};
+  if(game.area==="dungeon")return compassMenuModel({area:"dungeon",here,doors:dungeonCompassPoints(),doorPick:dungeonCompassPick});
+  if(game.area!=="overworld")return compassMenuModel({area:game.area});
+  const objectives=objectiveList().map(o=>({...o,tag:OBJECTIVE_KINDS[o.kind]?.label||""})),guidance=navigationTargets().guidance,pick=compassObjective();
+  return compassMenuModel({area:"overworld",here,quests:activeQuests(),objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,pickKey:!compassPin&&pick&&guidance&&guidance.name===pick.name&&guidance.rx===pick.rx&&guidance.ry===pick.ry?objectiveKey(pick):null,guidance});
+}
+function renderCompassMenu(){
+  const m=compassMenuData(),out=[];
+  for(const g of m.groups){const sec=document.createElement("section"),h=document.createElement("h3");sec.className="compass-menu-group";h.textContent=g.title;sec.append(h);
+    for(const r of g.rows){const b=document.createElement("button"),name=document.createElement("span"),hint=document.createElement("span");b.type="button";b.className="compass-menu-row";b.dataset.row=r.id;b.setAttribute("aria-pressed",r.current?"true":"false");
+      name.className="cm-name";name.textContent=r.label;hint.className="cm-hint";hint.textContent=[r.current?"Following":"",r.tag,r.hint].filter(Boolean).join(" · ");
+      if(r.color){const sw=document.createElement("i");sw.className="cm-swatch";sw.style.background=r.color;b.append(sw)}b.append(name,hint);b.onclick=()=>chooseCompassTarget(r);sec.append(b)}
+    out.push(sec)}
+  if(!m.count){const p=document.createElement("p");p.className="compass-menu-empty";p.textContent=game.area==="overworld"?"Nothing for the compass to point at yet. Take a hunt or an errand, explore, or set a mark on the Atlas.":game.area==="dungeon"?"No door points found on this floor yet.":"The compass points to true north here.";out.push(p)}
+  if(m.clearable){const b=document.createElement("button");b.type="button";b.className="compass-menu-clear";b.textContent="Point nowhere";b.onclick=()=>chooseCompassTarget({label:"",choose:{kind:"none"}});out.push(b)}
+  compassMenuList.replaceChildren(...out);compassMenuList.scrollTop=0;return m;
+}
+function openCompassMenu(){
+  if(!compassMenu||compassMenuOpen||game.paused||glimpseRun)return false;
+  renderCompassMenu();compassMenu.hidden=false;compassMenuOpen=true;pauseForOverlay();compassMenuPaused=true;
+  const live=compassMenuList.querySelector('[aria-pressed="true"]');(live||$("#compassMenuClose"))?.focus?.({preventScroll:true});live?.scrollIntoView?.({block:"nearest"});return true;
+}
+function closeCompassMenu(resumeGame=true){
+  if(!compassMenuOpen)return false;compassMenuOpen=false;compassMenu.hidden=true;compassMenuList.replaceChildren();overlayClosedAt=performance.now();
+  const paused=compassMenuPaused;compassMenuPaused=false;if(resumeGame&&paused&&game.paused&&!pausePanel.open&&![atlas,panel,journal,optionsPanel].some(d=>d.open))resume();return true;
+}
+function chooseCompassTarget(r){
+  const c=r.choose;
+  if(c.kind==="door"){dungeonCompassPick=c.id}
+  else if(c.kind==="pick"){compassPick=c.key;compassPin=null;rememberGuidance();const g=navigationTargets().guidance;if(!(g&&g.rx===c.rx&&g.ry===c.ry&&g.name===c.name)){compassPin={rx:c.rx,ry:c.ry,name:c.name};rememberGuidance()}} // a tracked hunt or far quest leads a pick: pinned, the choice leads them
+  else if(c.kind==="pin"){compassPin={rx:c.rx,ry:c.ry,name:c.name};rememberGuidance()}
+  else{compassPick=null;compassPin=null;rememberGuidance()}
+  closeCompassMenu();
+  game.message=c.kind==="none"?"The compass points nowhere now. Tap or hold it to choose again.":`Compass: ${r.label}${r.hint?` · ${r.hint}`:""}.`;
+}
+$("#compassMenuClose")?.addEventListener("click",()=>closeCompassMenu());
+compassMenu?.querySelector(".compass-menu-backdrop")?.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();closeCompassMenu()}); // a tap outside only closes it
+compassMenu?.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeCompassMenu()}});
 navCompass.addEventListener("click",()=>{
-  if(lookHold.takeClick())return; // the release of a long press (Look mode) is not a tap
+  if(compassHold.takeClick())return; // the release of a long press (the compass menu) is not a tap
   if(performance.now()-overlayClosedAt<500)return;
   if(game.area==="dungeon"){
     const points=dungeonCompassPoints();
@@ -1323,6 +1390,7 @@ let leavingForProvingGround = false; // release 791: the journey was flushed for
 const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
 function pause(show = true, urgent = false) {
   if (show) { overlayPause = false; closeViewLookSet(game, false, true); } // the pause menu ends Look mode; a talk, a shop or another panel over the world keeps it
+  if (show) closeCompassMenu(false); // 2026-11-19: the pause menu closes the compass's quick menu (it stays paused under the menu)
   game.setPaused(true, performance.now());
   input.reset();
   persist(urgent);
@@ -1334,6 +1402,7 @@ function pauseForOverlay() {
 }
 function resume() {
   overlayPause = false; gearPick = null; // release 469
+  closeCompassMenu(false); // 2026-11-19: resuming closes the compass's quick menu
   $("#pauseError")?.remove();
   for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
@@ -2587,7 +2656,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
   // The Oculus's own button under the compass (2026-11-15): one tap switches the view. Teal toward Close View, amber back
   // (data-to); pressed while Close View shows; dimmed through its cooldown or where it cannot open (refreshOculusButton).
-  { const ob = hudEl("#oculusButton"); if (ob) { const to = oculusTarget(game), wait = (game.oculusReadyAt || 0) > now; hudSet(ob, "data-to", to); hudSet(ob, "aria-pressed", to === "top" ? "true" : "false"); hudSet(ob, "class:spent", wait); hudSet(ob, "aria-label", `Oculus: switch to ${to === "close" ? "Close View" : "the top-down view"}`); hudSet(ob, "title", `Oculus (O): ${to === "close" ? "Close View" : "top-down view"}`); } }
+  { const ob = hudEl("#oculusButton"); if (ob) { const to = oculusTarget(game), wait = (game.oculusReadyAt || 0) > now; hudSet(ob, "data-to", to); hudSet(ob, "aria-pressed", to === "top" ? "true" : "false"); hudSet(ob, "class:look-on", closeViewLookActive()); hudSet(ob, "class:spent", wait); hudSet(ob, "aria-label", `Oculus: switch to ${to === "close" ? "Close View" : "the top-down view"}`); hudSet(ob, "title", `Oculus (O): ${to === "close" ? "Close View" : "top-down view"}`); } }
   // Release 874: stepping through the Oculus flashes an iris over the screen (styles.css #oculusWarp; none under Reduced Motion).
   if (game.oculusWarp && game.oculusWarp !== oculusWarpShown) { oculusWarpShown = game.oculusWarp; let w = $("#oculusWarp"); if (!w) { w = Object.assign(document.createElement("div"), { id: "oculusWarp" }); w.setAttribute("aria-hidden", "true"); w.style.setProperty("--oculus-warp", `${OCULUS.warpMs}ms`); $("#app").append(w); } w.classList.remove("on"); w.classList.toggle("top", oculusWarpShown.to === "top"); void w.offsetWidth; w.classList.add("on"); }
   // The four slots (release 113: A and B; 874: C; 2026-11-15: D, the utility place), lettered A-D left to right on screen
@@ -3019,6 +3088,7 @@ for (const d of [panel, atlas, journal, optionsPanel])
 // The pause menu open: Continue (as release 125). In play: open the pause menu.
 function backPressed(){
   if(glimpseRun)return;
+  if(closeCompassMenu())return; // 2026-11-19: Back closes the compass's quick menu and resumes, as its X does
   const viewer=$("#creatureViewer");if(viewer?.open){viewer.close();return}
   const open=[panel,atlas,journal,optionsPanel].filter((d)=>d.open);
   if(open.length){overlayPause=false;for(const d of open)d.close();pause(true);return}
