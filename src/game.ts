@@ -71,6 +71,7 @@ import {
   APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
+import { SEED_HUNT_PICK } from "./atlas-view.ts"; // the compass pick of a seed hunt (2026-11-19)
 import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
@@ -6056,6 +6057,7 @@ export class Game {
     const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
     journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");
     (this.questNotices ||= []).push({ title: "SEED HUNT", detail: `${S.name} · ${target.rx},${target.ry} · marked on the Atlas`, kind: "discovery" });
+    setCompassChoice(this.save, { pick: `${SEED_HUNT_PICK}${id}` }); // Tim, 2026-11-19: a seed hunt started at a lookout is accepted: the compass points at it (atlas-view.ts objectiveKey)
     return { hunt, fresh: true, text };
   }
   // Lay the seed of each live hunt aiming here, over the place as loaded (after the world caches, so they lie as they would

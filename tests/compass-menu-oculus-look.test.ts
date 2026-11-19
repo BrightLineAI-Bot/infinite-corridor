@@ -204,7 +204,7 @@ test('in a dungeon the menu lists the door points the compass cycles, the chosen
 function chooser(save, objectives) {
   const all = objectives;
   const make = new Function('save', 'compassGuidance', 'objectiveKey', 'setCompassChoice', 'all', `
-    let compassPick=null,compassPin=null,compassFollow=null,guidanceSeen=save.guidance,dungeonCompassPick=null,closed=0;const game={message:""},navigationCache={key:1},persist=()=>{};
+    let compassPick=null,compassPin=null,compassFollow=null,guidanceSeen=save.guidance,dungeonCompassPick=null,closed=0;const compassArrival={on:false},compassArrivalReset=(q)=>{q.on=false};const game={message:""},navigationCache={key:1},persist=()=>{};
     const compassObjective=()=>compassPick===null?null:all.find(o=>objectiveKey(o)===compassPick)||null;
     const navigationTargets=()=>({guidance:compassGuidance(save,{area:"overworld",pin:compassPin,follow:compassPin?null:compassFollow,pick:compassPin||compassFollow?null:compassObjective()})});
     const closeCompassMenu=()=>{closed++};

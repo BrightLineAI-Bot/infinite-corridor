@@ -46,7 +46,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel } from "./atlas-view.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -619,7 +619,8 @@ const objective = $("#objective"),
   navCompass = $("#navCompass"), navCompassSlot = $("#navCompassSlot"), lookSubject = $("#lookSubject"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
-let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
+let navigationCache = { key: null, map: null, guidance: null, manual: null };
+const compassArrival = compassArrivalState(); // 2026-11-19 (Tim): WAYPOINT REACHED for the compass's target (atlas-view.ts COMPASS_ARRIVAL)
 // Release 153: the compass always has somewhere to point. Objectives are ranked nearest first (ties by kind, in this
 // order); tapping the compass steps to the next one. Explored sections still holding an unfinished challenge (an
 // Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
@@ -637,7 +638,7 @@ let objectiveCache={key:null,list:[],all:[]},compassPick=save.guidance?.pick??nu
 // syncGuidance picks their choice up). A pin outranks the others, a follow a pick, so one write always leaves one target.
 let compassFollow=save.guidance?.follow??null,guidanceSeen=save.guidance;
 function syncGuidance(){if(save.guidance===guidanceSeen)return;guidanceSeen=save.guidance;const g=save.guidance||{};compassPick=g.pick??null;compassPin=g.pin??null;compassFollow=g.follow??null;navigationCache.key=null}
-function rememberGuidance(){if(compassPin){compassPick=null;compassFollow=null}else if(compassFollow)compassPick=null;guidanceSeen=setCompassChoice(save,{pick:compassPick,pin:compassPin,follow:compassFollow});compassFollow=save.guidance.follow??null;navigationCache.key=null;persist()}
+function rememberGuidance(){compassArrivalReset(compassArrival);/* a new choice re-arms the arrival banner */if(compassPin){compassPick=null;compassFollow=null}else if(compassFollow)compassPick=null;guidanceSeen=setCompassChoice(save,{pick:compassPick,pin:compassPin,follow:compassFollow});compassFollow=save.guidance.follow??null;navigationCache.key=null;persist()}
 function chooseGuidance({pick=null,pin=null,follow=null}={}){compassPick=pick;compassPin=pin;compassFollow=follow;rememberGuidance()}
 // The section an area id belongs to: dungeon:seed:gN[:rx:ry:...] and arena:vN:seed:rx,ry.
 function sectionOfAreaId(id){const d=/^dungeon:[^:]+:g\d+(?::(-?\d+):(-?\d+))?/.exec(id);if(d)return d[1]===undefined?"0,0":`${d[1]},${d[2]}`;const a=/^arena:v\d+:[^:]+:(-?\d+),(-?\d+)/.exec(id);return a?`${a[1]},${a[2]}`:null}
@@ -727,12 +728,13 @@ function compassRotation(dx, dy) {
 // to north either.
 const DUNGEON_COMPASS_IDLE = "No door point. Open the Map and tap a door you have found to number it (up to 3); the compass then points to it. Tap the compass to switch between them.";
 function pointDungeonCompass(point) {
-  if (!point) { idleCompass(DUNGEON_COMPASS_IDLE); return; }
+  if (!point) { compassArrivalStep(compassArrival, false); idleCompass(DUNGEON_COMPASS_IDLE); return; }
   updateNavigationArrow(navGuidanceArrow, null);
   if (navCompass.hidden) navCompass.hidden = false;
   if (navManualArrow.hidden) navManualArrow.hidden = false;
   const dx = point.x - game.player.x, dy = point.y - game.player.y;
-  const arrived = Math.hypot(dx, dy) < .45;
+  const arrived = Math.hypot(dx, dy) < COMPASS_ARRIVAL.radius;
+  if (compassArrivalStep(compassArrival, arrived, point.id, NaN, NaN, point.x, point.y)) showEventBanner(COMPASS_ARRIVAL.banner, `Door point ${point.slot}: ${point.label}`, "discovery");
   hudSet(navCompass, "class:north", false);
   hudSet(navManualArrow, "class:dormant", false);
   hudSet(navManualArrow, "class:arrived", arrived);
@@ -758,9 +760,10 @@ function updateNavigationCompass(now = performance.now()) {
   }
   const targets=navigationTargets(),guidanceLabel=updateNavigationArrow(navGuidanceArrow,targets.guidance),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
   if(guidanceLabel)labels.push(`Guidance: ${guidanceLabel}`);if(manualLabel)labels.push(`Manual waypoint: ${manualLabel}`);
+  // 2026-11-19 (Tim): "WAYPOINT REACHED" once per arrival at whatever the compass points at (a pick, a pin, a followed hunt, quest,
+  // marker or seed hunt), by the needle's own rule; it re-arms after leaving or choosing again.
+  { const g=targets.guidance;if(compassArrivalStep(compassArrival,compassTargetArrived(g,game.area,game.rx,game.ry,game.player.x,game.player.y),g?.name??null,g?.rx,g?.ry,g?.x??NaN,g?.y??NaN))showEventBanner(COMPASS_ARRIVAL.banner,g.name,"discovery"); }
   if(!labels.length){idleCompass();return}hudSet(navCompass,"class:north",false);if(navCompass.hidden)navCompass.hidden=false;
-  const manualArrived=targets.manual&&game.area===targets.manual.area&&targets.manual.rx===game.rx&&targets.manual.ry===game.ry,arrivalKey=manualArrived?`${targets.manual.rx},${targets.manual.ry}`:null;
-  if(arrivalKey&&announcedManualArrival!==arrivalKey)showEventBanner("WAYPOINT REACHED",targets.manual.name,"discovery");announcedManualArrival=arrivalKey;
   const label=labels.join(". ");hudSet(navCompass,"aria-label",label);hudSet(navCompass,"title",label);
 }
 // Active quests (Journal tab, release 155): every hunt, errand and story lead in progress, with where it is and a
@@ -873,7 +876,7 @@ function closeCompassMenu(resumeGame=true){
 }
 function chooseCompassTarget(r){
   const c=r.choose;
-  if(c.kind==="door"){dungeonCompassPick=c.id}
+  if(c.kind==="door"){dungeonCompassPick=c.id;compassArrivalReset(compassArrival)}
   else if(c.kind==="pick")chooseGuidance({pick:c.key}); // 2026-11-19 (Tim): nothing leads a choice any more, so a pick is only a pick
   else if(c.kind==="pin")chooseGuidance({pin:{rx:c.rx,ry:c.ry,name:c.name}});
   else if(c.kind==="follow")chooseGuidance({follow:c.follow}); // a hunt or quest followed, or one of your markers (opt-in)
@@ -891,7 +894,7 @@ navCompass.addEventListener("click",()=>{
     const points=dungeonCompassPoints();
     const index=points.findIndex(door=>door.id===dungeonCompassPick);
     const next=points[index<0&&points.length>1?1:(index+1)%points.length];
-    dungeonCompassPick=next?.id??null;
+    dungeonCompassPick=next?.id??null;compassArrivalReset(compassArrival); // a choice re-arms the arrival banner
     game.message=next?`Door point ${next.slot}: ${next.label}${points.length>1?". Tap again for the next.":""}`:DUNGEON_COMPASS_IDLE;
     return;
   }
@@ -2011,7 +2014,7 @@ function toggleDungeonMapDoor(door){
     return;
   }
   if(!game.toggleDungeonDoorWaypoint(point.id))return;
-  if(!point.slot)dungeonCompassPick=point.id;
+  if(!point.slot){dungeonCompassPick=point.id;compassArrivalReset(compassArrival)}
   else if(dungeonCompassPick===point.id)dungeonCompassPick=null;
   persist();
   updateMapModeUI();

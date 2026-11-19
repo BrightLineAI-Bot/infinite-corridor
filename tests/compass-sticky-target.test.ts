@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave, normalizeGuidance, setCompassChoice, normalizeCompassFollow } from '../src/types.ts';
 import { serializeSave, deserializeSave } from '../src/save-codec.ts';
-import { compassGuidance, compassQuest, objectiveKey, seedHuntObjectives, MAP_MARKS } from '../src/atlas-view.ts';
+import { compassGuidance, compassQuest, objectiveKey, seedHuntObjectives, MAP_MARKS, SEED_HUNT_PICK, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from '../src/atlas-view.ts';
 import { rescueGuidance, HATCHLING } from '../src/hatchling.ts';
 import { CAIRN_KEEPER } from '../src/surveyor.ts';
 import { Game } from '../src/game.ts';
@@ -28,7 +28,7 @@ function lift(name) {
 
 // main.ts's compass state and navigationTargets, with the objective list the tap cycle would hold (`objectives()`).
 function compass(save, game, objectives = () => []) {
-  const make = new Function('save', 'game', 'compassGuidance', 'compassQuest', 'rescueGuidance', 'setCompassChoice', 'objectiveKey', 'objectives', `
+  const make = new Function('save', 'game', 'compassGuidance', 'compassQuest', 'rescueGuidance', 'setCompassChoice', 'objectiveKey', 'objectives', 'compassArrival', 'compassArrivalReset', `
     let navigationStats={lookups:0,rebuilds:0},navigationCache={key:null,map:null,guidance:null,manual:null},objectiveCache={all:[]};
     let compassPick=save.guidance?.pick??null,compassPin=save.guidance?.pin??null,compassFollow=save.guidance?.follow??null,guidanceSeen=save.guidance;
     const persist=()=>{};
@@ -39,7 +39,7 @@ function compass(save, game, objectives = () => []) {
     ${lift('chooseGuidance')}
     ${lift('navigationTargets')}
     return {targets:navigationTargets,choose:chooseGuidance,tapTo:(o)=>{compassPick=objectiveKey(o);compassPin=null;compassFollow=null;rememberGuidance()}};`);
-  return make(save, game, compassGuidance, compassQuest, rescueGuidance, setCompassChoice, objectiveKey, objectives);
+  return make(save, game, compassGuidance, compassQuest, rescueGuidance, setCompassChoice, objectiveKey, objectives, compassArrivalState(), compassArrivalReset);
 }
 const journey = (seed = 'STICKY') => { const s = freshSave(); s.seed = seed; return s; };
 const place = (rx, ry, area = 'overworld') => ({ area, rx, ry, map: { objects: [] }, player: { x: 16, y: 16 } });
@@ -116,9 +116,9 @@ test('the dungeon compass with no door point is idle: no needle to north, no N b
   const text = JSON.parse(DUNGEON_COMPASS_IDLE[1]);
   assert.equal(text, 'No door point. Open the Map and tap a door you have found to number it (up to 3); the compass then points to it. Tap the compass to switch between them.');
   const game = { area: 'dungeon', rx: 0, ry: 0, player: { x: 5, y: 5 } }, el = () => ({ hidden: false }), navCompass = { hidden: true, 'class:north': true }, guide = el(), manual = el();
-  const make = new Function('game', 'navCompass', 'navGuidanceArrow', 'navManualArrow', 'hudSet', 'compassRotation', 'compassHeading', 'DUNGEON_COMPASS_IDLE',
+  const make = new Function('game', 'navCompass', 'navGuidanceArrow', 'navManualArrow', 'hudSet', 'compassRotation', 'compassHeading', 'DUNGEON_COMPASS_IDLE', 'COMPASS_ARRIVAL', 'compassArrival', 'compassArrivalStep', 'showEventBanner',
     `${lift('updateNavigationArrow')}\n${lift('idleCompass')}\n${lift('pointDungeonCompass')}\nreturn {pointDungeonCompass};`);
-  const k = make(game, navCompass, guide, manual, (e, key, v) => { e[key] = v; }, () => 90, () => 'east', text);
+  const k = make(game, navCompass, guide, manual, (e, key, v) => { e[key] = v; }, () => 90, () => 'east', text, COMPASS_ARRIVAL, compassArrivalState(), compassArrivalStep, () => {});
   k.pointDungeonCompass(null);
   assert.equal(navCompass['class:north'], false, 'no north class (and so no N badge)'); assert.equal(guide.hidden, true); assert.equal(manual.hidden, true, 'no needle');
   assert.equal(navCompass.hidden, false, 'the dial stays'); assert.equal(navCompass['aria-label'], text); assert.equal(navCompass.title, text);
@@ -149,4 +149,50 @@ test('save.guidance.follow: additive at schema 14, normalised, kept through a sa
   assert.deepEqual(setCompassChoice(w, { follow: { kind: 'quest', id: 'leads' } }), { extra: 1, pick: null, pin: null, follow: { kind: 'quest', id: 'leads' } });
   assert.deepEqual(setCompassChoice(w, { pick: '0,4' }), { extra: 1, pick: '0,4', pin: null });
   assert.deepEqual(setCompassChoice(w), { extra: 1, pick: null, pin: null }, 'Point nowhere');
+});
+
+// Tim, 2026-11-19 (answers to the review questions): (2) a seed hunt started at a tower lookout counts as accepting it: the compass
+// points at that hunt; (3) "WAYPOINT REACHED" comes back for whatever the compass points at, once per arrival, by the needle's rule.
+test('starting a seed hunt at a tower lookout points the compass at it; looking again changes nothing', () => {
+  const s = freshSave(); s.seed = 'TOWERS'; s.guidance = { pick: null, pin: { rx: 9, ry: 9, name: 'Old pin' } };
+  const g = new Game(s, 0); g.rx = -3; g.ry = 3; g.loadArea('overworld', false);
+  const door = g.map.objects.find((o) => o.towerDoor); assert.ok(door); g.player.x = door.x; g.player.y = door.y; assert.ok(g.interact('enter', door.id).ok);
+  const look = g.map.objects.find((o) => o.kind === 'towerLookout'); g.player.x = 1; g.player.y = g.map.tallTower.summit.y + 1;
+  const r = g.interact('look', look.id), id = g.areaId(); assert.ok(r.ok && r.seedHunt, r.message);
+  assert.deepEqual(s.guidance, { pick: `${SEED_HUNT_PICK}${id}`, pin: null }, 'the new hunt is the compass\'s choice');
+  const hunt = s.seedHunts[id], list = seedHuntObjectives([hunt], { [hunt.kind]: 'Seed' }, -3, 3);
+  const k = compass(s, place(-3, 3), () => list); const t = k.targets().guidance; assert.deepEqual([t.rx, t.ry], [hunt.rx, hunt.ry]);
+  s.guidance = { pick: '1,1', pin: null }; g.interact('look', look.id); assert.deepEqual(s.guidance, { pick: '1,1', pin: null }, 'a hunt already started is no new choice');
+  assert.match(GAME, /setCompassChoice\(this\.save, \{ pick: `\$\{SEED_HUNT_PICK\}\$\{id\}` \}\)/);
+});
+
+test('arrival at the compass target: the needle\'s rule, once per arrival, re-armed by leaving or choosing again', () => {
+  // the rule: a target with no site is reached on its section; a site (and a door point) within the radius
+  const sec = { area: 'overworld', rx: 2, ry: 1, name: 'Hunt' }, site = { area: 'overworld', rx: 2, ry: 1, x: 10, y: 6, name: 'Seed hunt' };
+  assert.equal(COMPASS_ARRIVAL.radius, .45); assert.equal(COMPASS_ARRIVAL.banner, 'WAYPOINT REACHED');
+  assert.equal(compassTargetArrived(sec, 'overworld', 2, 1, 3, 30), true); assert.equal(compassTargetArrived(sec, 'overworld', 2, 2, 16, 16), false);
+  assert.equal(compassTargetArrived(sec, 'dungeon', 2, 1, 16, 16), false, 'dormant indoors');
+  assert.equal(compassTargetArrived(site, 'overworld', 2, 1, 10.5, 6.6), true); assert.equal(compassTargetArrived(site, 'overworld', 2, 1, 12, 6.5), false, 'in its section, not at its spot');
+  assert.equal(compassTargetArrived(null, 'overworld', 0, 0, 0, 0), false);
+  // once per arrival
+  const st = compassArrivalState(), step = (on, t = sec) => compassArrivalStep(st, on, t.name, t.rx, t.ry, t.x ?? NaN, t.y ?? NaN);
+  assert.equal(step(true), true, 'arrives: the banner'); assert.equal(step(true), false); assert.equal(step(true), false, 'standing there: no repeat');
+  assert.equal(step(false), false, 'leaves'); assert.equal(step(true), true, 'back again: once more');
+  compassArrivalReset(st); assert.equal(step(true), true, 'chosen again: re-armed');
+  assert.equal(step(true, site), true, 'a different target reached: its own banner');
+  // main.ts: the HUD runs it for the overworld target and the dungeon door point; a choice re-arms it
+  const update = lift('updateNavigationCompass');
+  assert.match(update, /compassArrivalStep\(compassArrival,compassTargetArrived\(g,game\.area,game\.rx,game\.ry,game\.player\.x,game\.player\.y\)[^\n]*showEventBanner\(COMPASS_ARRIVAL\.banner,g\.name,"discovery"\)/);
+  assert.doesNotMatch(MAIN, /announcedManualArrival/);
+  assert.match(lift('rememberGuidance'), /compassArrivalReset\(compassArrival\)/);
+  assert.match(lift('chooseCompassTarget'), /dungeonCompassPick=c\.id;compassArrivalReset\(compassArrival\)/);
+  // the dungeon door point, through the real pointDungeonCompass
+  const banners = [], game = { area: 'dungeon', player: { x: 5, y: 5 } }, nav = { hidden: false }, el = () => ({ hidden: false }), arrival = compassArrivalState();
+  const make = new Function('game', 'navCompass', 'navGuidanceArrow', 'navManualArrow', 'hudSet', 'compassRotation', 'compassHeading', 'DUNGEON_COMPASS_IDLE', 'COMPASS_ARRIVAL', 'compassArrival', 'compassArrivalStep', 'showEventBanner',
+    `${lift('updateNavigationArrow')}\n${lift('idleCompass')}\n${lift('pointDungeonCompass')}\nreturn pointDungeonCompass;`);
+  const point = make(game, nav, el(), el(), (e, k2, v) => { e[k2] = v; }, () => 0, () => '', 'idle', COMPASS_ARRIVAL, arrival, compassArrivalStep, (t, d) => banners.push([t, d]));
+  const door = { id: 'a::1', slot: 1, label: 'OUT', x: 5.2, y: 5 };
+  point(door); point(door); assert.deepEqual(banners, [['WAYPOINT REACHED', 'Door point 1: OUT']], 'once while standing at the door');
+  game.player.x = 9; point(door); game.player.x = 5; point(door); assert.equal(banners.length, 2, 'left and came back');
+  point(null); point(door); assert.equal(banners.length, 3, 'no door point in between re-arms it');
 });

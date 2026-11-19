@@ -235,6 +235,28 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
   return null;
 }
 
+// Arriving at the compass's target (Tim, 2026-11-19: "WAYPOINT REACHED" for whatever the compass points at, once per arrival). The
+// rule is the needle's: a target with no site position is reached on its section; a site within a section, and a dungeon door
+// point, within `radius` tiles (the door needle's own .45). The banner fires once as the arrival starts; it re-arms when the
+// Wayfarer leaves, the target changes, or the player chooses again (compassArrivalReset). The state is one small object reused
+// every HUD frame (no per-frame allocation); `id` and the coordinates say which target was reached.
+export const COMPASS_ARRIVAL = Object.freeze({ radius: .45, banner: "WAYPOINT REACHED" });
+// An overworld target `g` (navigationTargets' guidance) reached by a Wayfarer at (px, py) in section (rx, ry) of `area`. A site
+// is measured to the middle of its tile, as the needle aims.
+export function compassTargetArrived(g, area, rx, ry, px, py) {
+  if (!g || area !== g.area || g.rx !== rx || g.ry !== ry) return false;
+  if (!Number.isFinite(g.x)) return true;
+  return Math.hypot(g.x + .5 - px, g.y + .5 - py) < COMPASS_ARRIVAL.radius;
+}
+export const compassArrivalState = () => ({ on: false, id: null, rx: NaN, ry: NaN, x: NaN, y: NaN });
+export function compassArrivalReset(s) { s.on = false; return s; }
+// One HUD frame: `on` whether the target is reached now. True only on the frame an arrival starts (show the banner then).
+export function compassArrivalStep(s, on, id = null, rx = NaN, ry = NaN, x = NaN, y = NaN) {
+  if (!on) { s.on = false; return false; }
+  if (s.on && s.id === id && Object.is(s.rx, rx) && Object.is(s.ry, ry) && Object.is(s.x, x) && Object.is(s.y, y)) return false;
+  s.on = true; s.id = id; s.rx = rx; s.ry = ry; s.x = x; s.y = y; return true;
+}
+
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
 // section from a cached image, with markers at a fixed size. `step` is the factor of one zoom press.
 export const ATLAS_ZOOM = { base: 52, min: .02, max: 3.2, detail: .45, step: 1.35, placeZoom: 1.6 };

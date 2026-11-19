@@ -95,7 +95,7 @@ test('main.ts: no objective shows the compass dial with no needle; the old neare
   assert.match(main, /if\(!labels\.length\)\{idleCompass\(\);return\}/);
   // dungeons keep their door points (release 887); with none, 2026-11-19 (Tim: "two norths"), the idle compass, not a needle to north
   assert.match(main, /pointDungeonCompass\(points\.find\(door => door\.id === dungeonCompassPick\) \|\| points\[0\]\)/);
-  assert.match(main, /if \(!point\) \{ idleCompass\(DUNGEON_COMPASS_IDLE\); return; \}/);
+  assert.match(main, /if \(!point\) \{ compassArrivalStep\(compassArrival, false\); idleCompass\(DUNGEON_COMPASS_IDLE\); return; \}/);
 });
 
 test('crossingRolled gives exactly the landmark crossings the generator places, without building a section', () => {
