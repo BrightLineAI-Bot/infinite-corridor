@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1032 — Triceratops seat
+
+Tim (2026-11-19): the rider should sit mid-back, just behind (almost between) the shoulder blades, without clipping the frill; the frill may be made smaller or angled.
+
+**CODE:** Standard View seat: MOUNT_BEASTS.triceratops.seatX -.02 (0.66 of the way hips to shoulder). Close View seat: TRICERATOPS_RIG.seatF .08 body units (0.76 hips to shoulders; saddle bone and blanket follow). The Close View rider card's quad stays at the Wayfarer; close-view.ts riddenSeatOnCard projects the 3D seat onto the card plane and MOUNT_DRAW.seatDx/seatUp tell drawMount where to paint the seat and rider. Ridden frill: TRI_ART.riddenFrill {size .85, fwd .04, pull 1, tilt .3, follow 1.4, recoil 3} and TRICERATOPS_RIG.riddenFrill {size .85, sweep .45, tilt .45, follow 1.5, recoil 3.2, fwd .13, down .04}. tests/triceratops-beak-rider.test.ts pins the seat fractions and clearances.
+
+**BOUNDARY:** Presentation only: riderLiftOf, contact, attacks and seat height are unchanged; the card quad and so the composite framing are unchanged; wild herds and the hatchling keep their frill; the low tier keeps the whole card at seatX. Minimum frill-to-rider clearance over every ridden move: standard .191, Close View 3D .252 tiles.
+
 ## Release 1029 — Arcane Edge on skills, Encumbered tiers, a softer rift line, melee buffs on every melee source, honest skill texts
 
 Tim (2026-11-19): using an Aperture skill (movement skills too) should arm Arcane Edge like a spell, with the skill's own element, and nothing else of the on-cast passives; bosses should get harder to Encumber after each proc by the same tier mechanic as the freeze and the stagger, calming down as the freeze does; every melee buff should work on the fists and the melee tools (he named the Great Sweep and the Rift Bombard; the Blunderbuss stays as it is); the Rift Step void's line should strike softer than its triangle; and every skill and passive text should say what the code does (skill passives stay gated on their skill's buff).
