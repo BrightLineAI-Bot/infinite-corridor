@@ -2,12 +2,13 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1012-ffa69513a699";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1012-ffa69513a699";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1012-ffa69513a699";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1012-ffa69513a699";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r1012-ffa69513a699";
-import { TALL_TOWERS } from "./tall-towers.js?v=r1012-ffa69513a699";
+import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1031-b358b5a5ce4c";
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1031-b358b5a5ce4c";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1031-b358b5a5ce4c";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1031-b358b5a5ce4c";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1031-b358b5a5ce4c";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r1031-b358b5a5ce4c";
+import { TALL_TOWERS } from "./tall-towers.js?v=r1031-b358b5a5ce4c";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -149,11 +150,13 @@ function pentagonDoorRows(save, map, previous = null, knownRooms = null) {
 }
 
 // The compass points only at an objective (Tim, 2026-11-12: "I don't think the compass should point at anything unless you
-// have an objective, like if he gives you a quest... Otherwise you can just wander."). Pure: main.ts navigationTargets passes
-// what it already has (the Journal pin, the compass pick, the far quest, the section's waymark objects) and draws what comes back.
-// In order: a quest pinned in the Journal; the tracked hunt; a far quest; an objective the Wayfarer chose by tapping the compass;
-// then a quest that sends them to a kind of place with no fixed section, by the section's own waymarks (COMPASS_QUEST_CUES). With
-// none of these the compass has no needle: no nearest crossing, signal or landmark by default (releases 153-886 aimed at one).
+// have an objective, like if he gives you a quest... Otherwise you can just wander."). Tim, 2026-11-19: the compass is sticky and
+// points at exactly the one target the player last actively chose (save.guidance, written only by types.ts setCompassChoice): a
+// pin (the Journal's "Point compass here", a quest row of the compass menu), a followed source (a hunt or quest accepted, or one of
+// the player's own markers chosen in the menu; compassFollowTarget), or an objective chosen by tapping the compass or in the menu
+// (a pick). Nothing else retargets it: no tracked hunt, far quest, waymark cue, nearer seed hunt or marker leads by itself. A
+// chosen target that is finished or gone gives no needle until the next choice. Pure: main.ts navigationTargets passes what it
+// already has (the pin, the follow, the pick's objective, the section's waymark objects, the hatchling's rescue).
 export const COMPASS_HUNT_LIVE = Object.freeze(["accepted", "tracking", "target-located"]);
 export const COMPASS_QUEST_CUES = Object.freeze({
   leads: Object.freeze(["crossing", "danger", "event"]), // the relay leads (Viewport tracking hunt): "follow the wayfinding marks toward the buried crossings", as since release 153
@@ -176,8 +179,9 @@ export function compassQuestCue(quest, cues) {
   for (const kind of kinds) { const cue = list.find((q) => q.signalKind === kind); if (cue) return cue; }
   return null;
 }
-// A seed hunt (tall-towers.ts TALL_TOWERS.seedHunt, the nearest live one; main.ts passes it as seedHuntGuidance gives it) comes
-// last, after a pick and a quest's waymark cue: in its own section the needle points at the seed itself, or at the door of the crossing it lies in.
+// Where a seed hunt (tall-towers.ts TALL_TOWERS.seedHunt) leads: in its own section the needle points at the seed itself, or at
+// the door of the crossing it lies in. Since 2026-11-19 (Tim) only a hunt the player chose (a pick, seedHuntObjectives) leads it;
+// the nearest live hunt is never followed by itself.
 export function seedHuntGuidance(hunt, names = {}) {
   if (!hunt || hunt.state !== "active" || !Number.isInteger(hunt.rx) || !Number.isInteger(hunt.ry)) return null;
   const at = hunt.where === "crossing" ? hunt.door : (hunt.where === "ground" || hunt.where === "tree") ? hunt : null;
@@ -200,15 +204,58 @@ export function seedHuntObjectives(hunts, names = {}, rx = 0, ry = 0) {
   const far = (o) => Math.max(Math.abs(o.rx - rx), Math.abs(o.ry - ry));
   return out.sort((a, b) => far(a) - far(b) || (a.tower < b.tower ? -1 : a.tower > b.tower ? 1 : 0));
 }
-export function compassGuidance(save, { area = "overworld", pin = null, pick = null, farQuest = null, cues = [], seedHunt = null } = {}) {
-  const hunt = save?.viewport?.contracts?.[save?.viewport?.activeHuntId];
+export function compassGuidance(save, { area = "overworld", pin = null, follow = null, pick = null, cues = [], rescue = null } = {}) {
   if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
-  if (hunt && COMPASS_HUNT_LIVE.includes(hunt.status) && Number.isInteger(hunt.target?.rx) && Number.isInteger(hunt.target?.ry)) return { area: "overworld", rx: hunt.target.rx, ry: hunt.target.ry, kind: "guidance", name: hunt.title || "Viewport guidance" };
-  if (farQuest) return { area: "overworld", rx: farQuest.rx, ry: farQuest.ry, kind: "guidance", name: farQuest.name };
+  if (follow) return compassFollowTarget(save, follow, { area, cues, rescue });
   if (area !== "overworld") return null;
   if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
-  const cue = compassQuestCue(compassQuest(save), cues);
-  return cue ? { area: "overworld", rx: cue.targetRx, ry: cue.targetRy, kind: "guidance", name: cue.name || "Quest signal" } : seedHunt || null;
+  return null;
+}
+// Where a followed source (save.guidance.follow) is now, or null when it is finished or gone. A hunt points at its target section
+// while it is live (shown dormant indoors); a tracking hunt with no target yet follows the relay leads' waymarks, as since release
+// 153. A far quest points at its centre while open; the rescue at its site; a quest with no fixed section at the section's
+// waymarks (COMPASS_QUEST_CUES) while it is open; a marker at the Atlas waypoint or mark while it stands.
+export function compassFollowTarget(save, f, { area = "overworld", cues = [], rescue = null } = {}) {
+  const at = (rx, ry, name, extra = {}) => ({ area: "overworld", rx, ry, ...extra, kind: "guidance", name });
+  const ok = (o) => !!o && Number.isInteger(o.rx) && Number.isInteger(o.ry);
+  const cue = (quest) => { if (area !== "overworld" || compassQuest(save) !== quest) return null; const c = compassQuestCue(quest, cues); return c ? at(c.targetRx, c.targetRy, c.name || "Quest signal") : null; };
+  if (!f) return null;
+  if (f.kind === "hunt") {
+    const h = save?.viewport?.contracts?.[f.id];
+    if (!h || !COMPASS_HUNT_LIVE.includes(h.status)) return null;
+    return ok(h.target) ? at(h.target.rx, h.target.ry, h.title || "Viewport guidance") : h.kind === "tracking" ? cue("leads") : null;
+  }
+  if (f.kind === "far") { const q = save?.farQuests?.[f.id]; return q?.status === "open" && ok(q) ? at(q.rx, q.ry, f.name || "Far quest") : null; }
+  if (f.kind === "rescue") return ok(rescue) ? { ...rescue } : null;
+  if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
+  if (f.kind === "marker") {
+    if (f.id === "waypoint") { const w = save?.manualWaypoint; return ok(w) && (w.area == null || w.area === "overworld") ? at(w.rx, w.ry, String(w.label || COMPASS_MENU.waypointName)) : null; }
+    const color = Number(String(f.id).slice(5)), m = normalizeMapMarks(save?.mapMarks).find((q) => q.color === color);
+    return m ? at(m.rx, m.ry, `${MAP_MARKS.names[m.color]} mark`) : null;
+  }
+  return null;
+}
+
+// Arriving at the compass's target (Tim, 2026-11-19: "WAYPOINT REACHED" for whatever the compass points at, once per arrival). The
+// rule is the needle's: a target with no site position is reached on its section; a site within a section, and a dungeon door
+// point, within `radius` tiles (the door needle's own .45). The banner fires once as the arrival starts; it re-arms when the
+// Wayfarer leaves, the target changes, or the player chooses again (compassArrivalReset). The state is one small object reused
+// every HUD frame (no per-frame allocation); `id` and the coordinates say which target was reached.
+export const COMPASS_ARRIVAL = Object.freeze({ radius: .45, site: 1.5, banner: "WAYPOINT REACHED" }); // site: an overworld spot, measured in the open (the door radius is too tight there)
+// An overworld target `g` (navigationTargets' guidance) reached by a Wayfarer at (px, py) in section (rx, ry) of `area`. A site
+// is measured to the middle of its tile, as the needle aims.
+export function compassTargetArrived(g, area, rx, ry, px, py) {
+  if (!g || area !== g.area || g.rx !== rx || g.ry !== ry) return false;
+  if (!Number.isFinite(g.x)) return true;
+  return Math.hypot(g.x + .5 - px, g.y + .5 - py) < COMPASS_ARRIVAL.site;
+}
+export const compassArrivalState = () => ({ on: false, id: null, rx: NaN, ry: NaN, x: NaN, y: NaN });
+export function compassArrivalReset(s) { s.on = false; return s; }
+// One HUD frame: `on` whether the target is reached now. True only on the frame an arrival starts (show the banner then).
+export function compassArrivalStep(s, on, id = null, rx = NaN, ry = NaN, x = NaN, y = NaN) {
+  if (!on) { s.on = false; return false; }
+  if (s.on && s.id === id && Object.is(s.rx, rx) && Object.is(s.ry, ry) && Object.is(s.x, x) && Object.is(s.y, y)) return false;
+  s.on = true; s.id = id; s.rx = rx; s.ry = ry; s.x = x; s.y = y; return true;
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
@@ -287,4 +334,72 @@ export function renderDungeonWayfindingPanel(panel, view, map, { onToggleDoor = 
   if(!view.rooms){const note=doc.createElement("p");note.textContent="Only discovered markers are listed. Doors and routes may still require a key, objective or mechanism.";panel.append(note);return}
   const known=doc.createElement("details"),summary=doc.createElement("summary");summary.textContent=`Discovered chambers (${view.rooms.length})`;known.append(summary);const list=doc.createElement("ul");for(const room of view.rooms){const row=doc.createElement("li");row.textContent=`${room.floor} · ${room.name}${room.current?" · YOU ARE HERE":""}`;list.append(row)}known.append(list);panel.append(known);
   const connections=doc.createElement("details"),connectionTitle=doc.createElement("summary");connectionTitle.textContent=`Mapped connections (${view.connections.length})`;connections.append(connectionTitle);const explanation=doc.createElement("p");explanation.textContent="Between discovered chambers. This is not a record of travel order; secret doors and unrecorded side routes are omitted.";connections.append(explanation);const edges=doc.createElement("ul");for(const edge of view.connections){const row=doc.createElement("li");row.textContent=`${edge.source} ↔ ${edge.destination} · ${edge.kind}${edge.note?` · ${edge.note}`:""}`;edges.append(row)}connections.append(edges);panel.append(connections);
+}
+
+// The compass's quick menu (Tim, 2026-11-19: "holding the compass opens a quick compass menu... listing everything the compass
+// can point at"; then "purely a quick chooser: pick which of your existing quests/objectives (or existing map markers) the
+// compass points you toward. It must not create or place new markers. Keep it fast: open, tap one, done"). Pure: main.ts
+// gathers what the compass can already point at and this groups it into rows. Each row's `choose` says how main.ts points the
+// compass, by the mechanisms it already has: "pin" (save.guidance.pin, as the Journal's "Point compass here"), "pick"
+// (save.guidance.pick, the tap cycle's choice), "door" (the dungeon tap cycle's door point) or "none" (let the compass go, as the
+// cycle's last tap). The marks (save.mapMarks) and the waypoint (save.manualWaypoint) are only read: never added, moved or cleared.
+// 2026-11-19 (Tim: the compass is sticky; markers are opt-in): a row may also choose "follow" (types.ts save.guidance.follow): a
+// quest that carries a followed source (a hunt, far quest, the rescue, a quest that follows waymarks) and each of your markers,
+// which the needle then follows only because it was chosen here. The followed row is exactly the choice, never a guess.
+export const COMPASS_MENU = Object.freeze({
+  title: "Point the compass",
+  groups: Object.freeze({ quests: "Quests", seedHunts: "Seed hunts", nearby: "Nearby objectives", markers: "Your markers", doors: "Door points" }),
+  order: Object.freeze(["quests", "seedHunts", "nearby", "markers", "doors"]),
+  waypointName: "Your waypoint",
+  waymarksHint: "follows the waymarks",
+});
+export function compassHeadingWords(dx, dy) {
+  if (!dx && !dy) return "here";
+  return `${dy < 0 ? "north" : dy > 0 ? "south" : ""}${dy && dx ? "-" : ""}${dx < 0 ? "west" : dx > 0 ? "east" : ""}`;
+}
+// "3 sections north-east" or "this section": the cheap hint each overworld row carries.
+export function compassSectionHint(rx, ry, hereRx, hereRy) {
+  const dx = rx - hereRx, dy = ry - hereRy, away = Math.max(Math.abs(dx), Math.abs(dy));
+  return away ? `${away} section${away === 1 ? "" : "s"} ${compassHeadingWords(dx, dy)}` : "this section";
+}
+const sectionOk = (o) => !!o && Number.isInteger(o.rx) && Number.isInteger(o.ry);
+// opts: area ("overworld" | "dungeon" | other), here {rx, ry, x, y}, quests [{title, at:{rx,ry}|null, follow?}] (main.ts activeQuests),
+// objectives [{kind, rx, ry, name, tag?}] (the tap cycle's list, seed hunts first), waypoint (save.manualWaypoint), marks
+// (save.mapMarks), doors [{id, slot, label, x, y}] (the dungeon tap cycle's points), and what the needle follows now: pin
+// (save.guidance.pin), follow (save.guidance.follow), pickKey (the tap cycle's pick), doorPick (the dungeon pick). Returns { groups: [{ id, title, rows: [{ id, label, hint, tag, color, current, choose }] }],
+// count, clearable }. At most one row is `current`. Built only when the menu opens (never per frame).
+export function compassMenuModel({ area = "overworld", here = {}, quests = [], objectives = [], waypoint = null, marks = [], doors = [], pin = null, follow = null, pickKey = null, doorPick = null } = {}) {
+  const groups = Object.fromEntries(COMPASS_MENU.order.map((id) => [id, []]));
+  const hint = (o) => compassSectionHint(o.rx, o.ry, here.rx | 0, here.ry | 0);
+  if (area === "dungeon") {
+    const list = (doors || []).filter((d) => d && d.id != null);
+    const live = list.find((d) => d.id === doorPick) || list[0] || null; // as the dungeon compass points (main.ts pointDungeonCompass)
+    for (const d of list) {
+      const dx = Number(d.x) - Number(here.x), dy = Number(d.y) - Number(here.y), far = Math.hypot(dx, dy);
+      const words = compassHeadingWords(Math.abs(dx) < .5 ? 0 : Math.sign(dx), Math.abs(dy) < .5 ? 0 : Math.sign(dy));
+      groups.doors.push({ id: `door:${d.id}`, label: `Door point ${d.slot}: ${d.label}`, hint: !Number.isFinite(far) ? "" : far < .45 ? "here" : `${Math.max(1, Math.round(far))} paces ${words}`, tag: "", current: d === live, choose: { kind: "door", id: d.id } });
+    }
+  } else if (area === "overworld") {
+    for (const q of quests || []) {
+      const f = q?.follow && typeof q.follow === "object" && q.follow.kind ? q.follow : null;
+      if (f) groups.quests.push({ id: `follow:${f.kind}:${f.id ?? ""}`, label: String(q.title), hint: sectionOk(q.at) ? hint(q.at) : COMPASS_MENU.waymarksHint, tag: "", ...(sectionOk(q.at) ? { rx: q.at.rx, ry: q.at.ry } : {}), choose: { kind: "follow", follow: f, name: String(q.title) } });
+      else if (sectionOk(q?.at)) groups.quests.push({ id: `quest:${q.title}:${q.at.rx},${q.at.ry}`, label: String(q.title), hint: hint(q.at), tag: "", rx: q.at.rx, ry: q.at.ry, choose: { kind: "pin", rx: q.at.rx, ry: q.at.ry, name: String(q.title) } });
+    }
+    for (const o of objectives || []) {
+      if (!sectionOk(o)) continue;
+      const key = objectiveKey(o), row = { id: `pick:${key}`, label: String(o.name), hint: hint(o), tag: o.kind === "seedHunt" ? "" : String(o.tag || ""), rx: o.rx, ry: o.ry, key, choose: { kind: "pick", key, rx: o.rx, ry: o.ry, name: String(o.name) } };
+      (o.kind === "seedHunt" ? groups.seedHunts : groups.nearby).push(row);
+    }
+    if (sectionOk(waypoint) && (waypoint.area == null || waypoint.area === "overworld")) { const name = String(waypoint.label || COMPASS_MENU.waypointName); groups.markers.push({ id: "waypoint", label: name, hint: hint(waypoint), tag: "Waypoint", color: "#5fe7ee", rx: waypoint.rx, ry: waypoint.ry, choose: { kind: "follow", follow: { kind: "marker", id: "waypoint" }, name } }); }
+    for (const m of normalizeMapMarks(marks)) { const name = `${MAP_MARKS.names[m.color]} mark`; groups.markers.push({ id: `mark:${m.color}`, label: name, hint: hint(m), tag: `Section ${m.rx}, ${m.ry}`, color: MAP_MARKS.colors[m.color], rx: m.rx, ry: m.ry, choose: { kind: "follow", follow: { kind: "marker", id: `mark:${m.color}` }, name } }); }
+    // the one row the needle follows now, exactly the choice: a pin (by section and name, then by section alone), else the
+    // followed source, else the tap cycle's pick. Nothing is highlighted for a needle the player did not choose.
+    const all = COMPASS_MENU.order.flatMap((id) => groups[id]), at = (r, t) => r.rx === t.rx && r.ry === t.ry;
+    const live = sectionOk(pin) ? (all.find((r) => r.choose.kind === "pin" && at(r, pin) && r.choose.name === pin.name) || all.find((r) => r.choose.kind === "pin" && at(r, pin)))
+      : follow?.kind ? all.find((r) => r.choose.kind === "follow" && r.choose.follow.kind === follow.kind && (r.choose.follow.id ?? null) === (follow.id ?? null))
+      : pickKey != null ? all.find((r) => r.key === pickKey) : null;
+    for (const r of all) r.current = r === live;
+  }
+  const out = COMPASS_MENU.order.filter((id) => groups[id].length).map((id) => ({ id, title: COMPASS_MENU.groups[id], rows: groups[id] }));
+  return { groups: out, count: out.reduce((n, g) => n + g.rows.length, 0), clearable: area === "overworld" && (sectionOk(pin) || !!follow?.kind || pickKey != null) };
 }

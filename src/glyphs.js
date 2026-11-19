@@ -7,8 +7,8 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1031-b358b5a5ce4c";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -265,7 +265,7 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
   if (loadout.has("leech") && dealt > 0) world.heal(Math.max(dealt * GLYPHS.leech.hit[host], (world.maxHp || 0) * GLYPHS.leech.floor[host]) * loadout.count("leech") * (loadout.resonant("blood-tide") ? 2 : 1));
   if (loadout.has("heavy") && host !== "spell") e.hitStun = Math.max(e.hitStun || 0, .12 * boss + .1);
   if (loadout.has("tether")) {
-    if (host === "spell" && ctx.origin) { const dx = ctx.origin.x - (e.x + .5), dy = ctx.origin.y - (e.y + .45), m = Math.hypot(dx, dy) || 1, pull = Math.min(m, GLYPHS.tether.hit.spell); world.nudge?.(e, dx / m * pull, dy / m * pull); }
+    if (host === "spell" && ctx.origin) { const dx = ctx.origin.x - (e.x + .5), dy = ctx.origin.y - (e.y + .45), m = Math.hypot(dx, dy) || 1, pull = Math.min(m, GLYPHS.tether.hit.spell); world.nudge?.(e, dx / m * pull, dy / m * pull); if (!ctx.pulled) world.pull?.(e, dealt); /* Encumbered (hit-cast-passives.ts): a pull's damage, counted once when the pulse pulls already */ }
     else { if (loadout.resonant("grave-tether") && (e.glyphSlow?.until || 0) > now) e.hitStun = Math.max(e.hitStun || 0, 1 * boss); e.glyphSlow = { until: now + GLYPHS.tether.hit[host] * 1000, factor: .6 }; }
   }
   if (loadout.has("still")) e.hitStun = Math.max(e.hitStun || 0, GLYPHS.still.hit[host] * boss);
@@ -279,7 +279,7 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
       const amount = Math.max(1, Math.round(dealt * share));
       world.damage(next, amount, { chained: true });
       if (loadout.resonant("wildfire")) burn(next, GLYPHS.ignite.hit[host] || 2);
-      if (loadout.resonant("maelstrom")) { const dx = e.x - next.x, dy = e.y - next.y, m = Math.hypot(dx, dy) || 1, pull = Math.max(0, Math.min(1.2, m - .8)); if (pull > 0) world.nudge?.(next, dx / m * pull, dy / m * pull); } // release 529
+      if (loadout.resonant("maelstrom")) { const dx = e.x - next.x, dy = e.y - next.y, m = Math.hypot(dx, dy) || 1, pull = Math.max(0, Math.min(1.2, m - .8)); if (pull > 0) world.nudge?.(next, dx / m * pull, dy / m * pull); world.pull?.(next, amount); /* Encumbered: the dragging arc's damage */ } // release 529
       if (loadout.resonant("sanguine-storm")) world.heal(amount * .06); // release 529
       if (loadout.resonant("storm-lattice")) world.blast(next.x + .5, next.y + .45, 1, Math.max(1, Math.round(dealt * .4)), { chained: true });
       from = next;

@@ -11,9 +11,9 @@
 // Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill locks a piece of the Far Gate
 // (far-array.ts lockGatePiece; a seal of the Listener's call while LISTENER_CYCLE.sealsCall).
 // State: save.consequences.dungeons[id].horde = { total, left } (additive; decided once, on the first visit).
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { isDeepDungeonId } from "./world.js?v=r1012-ffa69513a699";
-import { ensureFarArray, piecesNeeded, gateOpen, lockGatePiece, LISTENER_CYCLE } from "./far-array.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { isDeepDungeonId } from "./world.js?v=r1031-b358b5a5ce4c";
+import { ensureFarArray, piecesNeeded, gateOpen, lockGatePiece, LISTENER_CYCLE } from "./far-array.js?v=r1031-b358b5a5ce4c";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.

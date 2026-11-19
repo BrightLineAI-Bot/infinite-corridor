@@ -1,8 +1,8 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r1012-ffa69513a699";
-import { OUTDOOR } from "./close-view-outdoor.js?v=r1012-ffa69513a699"; // the towering structures' faces, air and cloud deck (OUTDOOR.towering)
-import { buildVisualRevision } from "./building.js?v=r1012-ffa69513a699";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r1012-ffa69513a699';
-import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.js?v=r1012-ffa69513a699'; // release 891: world beasts' skinned bodies
+import { MODEL_FLOATS } from "./close-view-models.js?v=r1031-b358b5a5ce4c";
+import { OUTDOOR } from "./close-view-outdoor.js?v=r1031-b358b5a5ce4c"; // the towering structures' faces, air and cloud deck (OUTDOOR.towering)
+import { buildVisualRevision } from "./building.js?v=r1031-b358b5a5ce4c";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r1031-b358b5a5ce4c';
+import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.js?v=r1031-b358b5a5ce4c'; // release 891: world beasts' skinned bodies
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's
@@ -30,6 +30,10 @@ import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from '.
 //   and a low ground haze lit by the lights; a colour grade and vignette per theme; dust motes near lights (full tier).
 // - Nothing is ever drawn translucent to show the Wayfarer: the camera is pulled in along the boom instead (close-view.ts), and
 //   anything that must still hide them shows them as a crisp silhouette through it (the depth GREATER pass).
+// - That silhouette pass (Tim, 2026-11-19) compares against walls and solid architecture only: the props (crates, cabinets,
+//   furniture: the solids buffer's prop range, GLF.propA..propB) are drawn after it, so nothing shows through a prop; and only the
+//   model vertex runs close-view.ts lists (GLF.silRuns: the Wayfarer, and creatures not within CLOSE_VIEW_VISIBILITY.silhouette.near
+//   of her, not engaging her, not dying) take it. Cards and beasts carry the same rule in their own data.
 // - The fixed-distance orbit (Tim, 2026-11-18; close-view.ts CLOSE_VIEW.camera.orbit) replaces that pull: the camera keeps its
 //   distance, and walls, trim and ceilings between the eye and the Wayfarer are cut away inside a modest screen-space ellipse round
 //   her body (WALL_CUT_GLSL, in the walls' depth pass; the floor's underside in the environment pass). Only nearer than her body,
@@ -448,6 +452,7 @@ void main() {
   if (u_outdoor.x > 0.5 && dir.z >= 0.0) { outColor = vec4(finish(outdoorSky(dir, true)), 1.0); return; }
   if (u_terrain > .5) { // the heightfield's floors are its own mesh; the eye over the walls or in one (the orbit): a wall tile, or off the floor, reads as solid rock
     if (u_cutC.y > 0.5 && dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; if (wallAt(ivec2(floor(P)))) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((t - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); }
+    else if (u_cutC.y > 0.5 && dir.z > 1e-5 && u_ceil.y > 0.5 && u_hc < u_ceil.x) { float t = (u_ceil.x - u_hc) / dir.z; vec2 P = u_cam + dir.xy * t; if (wallAt(ivec2(floor(P)))) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((t - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); } // the eye in a wall, looking up: the wall's mass over it reads as rock too, never a black void (2026-11-19)
     outColor = vec4(finish(col), 1.0); return; }
   if (dir.z < -1e-5) { float t = -u_hc / dir.z; vec2 P = u_cam + dir.xy * t; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     float depth = t /* dir's component along the view axis is 1: t is the camera depth */, fogK = clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0);
@@ -501,6 +506,7 @@ void main() {
       vec3 N = u_ceil.w > 0.5 ? bump(vec3(0.0, 0.0, -1.0), W3, h * 0.04) : vec3(0.0, 0.0, -1.0); vec3 dif, spe; lightsAt(W3, N, 0.0, dif, spe);
       c *= dif * (1.0 - dark); col = atmos(c, W3, depth, dif * 0.5);
       if (u_hall.x > 0.0) col = mix(col, hallBackdrop(dir), 0.24 + dark * 0.25); }
+    else if (u_cutC.y > 0.5 && (m.a & 1u) == 1u) col = mix(u_stone * u_cutC.z * (0.75 + 0.4 * vnoise(P * 3.1)), u_fog, clamp((depth - u_fogP.x) / (u_fogP.y - u_fogP.x), 0.0, 1.0)); // the eye in a wall, looking up: rock, never a black void (2026-11-19)
     else col = u_fog;
   }
   outColor = vec4(finish(col), 1.0);
@@ -530,7 +536,7 @@ uniform vec4 u_stoneP; uniform vec4 u_wallP; uniform vec3 u_mortar; uniform vec3
 // stoneP: course, block, bevel, roughness; wallP: damp height, damp amount, bump on, top falloff; arch: spring, radius, band, -
 void main() {
   vec3 c = v_col; float along = v_tex.x, u = v_tex.y, z = v_tex.z, top = v_tex.w, part = v_nrm.z, mat = v_nrm.w, deco = v_meta.x;
-  if (part >= 20.0) {
+  if (part > 19.5) { // (a half-integer edge: an interpolated part can land a hair under its integer, 2026-11-19)
     vec2 P = v_world.xy; ivec2 T = ivec2(floor(P)); uvec4 m = maskAt(T);
     vec3 N = normalize(cross(dFdx(v_world), dFdy(v_world)));
     if (part < 20.5 && N.z < 0.0 || part >= 20.5 && N.z > 0.0) N = -N;
@@ -562,7 +568,7 @@ void main() {
   if (part > 11.5 && part < 12.5) { // 2026-11-11: a growth or a feature of the Deep (a cap, a shard, a column...): its own colour, lit from within by deco
     N0 = normalize(N0); c = v_col * (0.82 + 0.3 * vnoise(vec2(along * 7.0, z * 9.0) + v_meta.w));
     emit = v_col * deco * (u_shimmer.z > 0.5 ? 1.0 : 0.85 + 0.15 * sin(u_time * 0.0017 + v_meta.w)); shin = deco > 0.05 ? 20.0 : 0.0; wet = deco * 0.4;
-  } else if (part >= 10.0) { // structural ceiling beams and their undersides
+  } else if (part > 9.5) { // structural ceiling beams and their undersides
     vec2 surface = abs(N0.z) > 0.5 ? v_world.xy : vec2(along, top - z);
     if (mat < 0.5) {
       h = ashlar(surface, u_stoneP.x * 0.62, u_stoneP.y, u_stoneP.z, u_stoneP.w, id, mortar);
@@ -693,17 +699,27 @@ void main() {
 // (u_cut.w) inside the screen ellipse round it is cut away, its outer u_cutB.z share screen-door dithered; with the eye under the
 // floor everything outside the ellipse is left to the floor's underside; with the eye over the ceiling the ceiling's beams and
 // bays are left out; and anything nearer the eye than u_cutNear (orbit.cutout.near) is left out everywhere. Only this depth pass discards: the shading pass (depth EQUAL) then has nothing to shade there.
-const WALL_CUT_GLSL = `uniform vec4 u_cut; uniform vec4 u_cutB; uniform vec4 u_cutC; uniform float u_cutNear;
-bool cutAway(float depth, float part) {
-  if (u_cutC.x > 0.5 && (part >= 10.0 && part < 11.5 || part >= 20.5 && part < 21.5)) return true;
-  if (depth < u_cutNear) return true; // at the lens: a face the eye stands at (a wall it is in or against) never fills the view
+// Tim's bug (2026-11-19): a level floor or ceiling (an interior heightfield's floor, its pits' floors, its ceiling and a slab's
+// underside: parts 20-22; the ceiling's beams: parts 10-11) only stands between the eye and the Wayfarer when its height lies
+// between theirs (u_cutZ: the eye's height, the body's, the margin; close-view.ts cutFlatAcross mirrors it). Otherwise the floor
+// he stands on and the ceiling over him are never cut (in the ellipse nor at the lens), which had left black half-ovals in both.
+const WALL_CUT_GLSL = `uniform vec4 u_cut; uniform vec4 u_cutB; uniform vec4 u_cutC; uniform float u_cutNear; uniform vec4 u_cutZ;
+bool cutAway(float depth, float part, float z) {
+  if (u_cutC.x > 0.5 && (part > 9.5 && part < 11.5 || part >= 20.5 && part < 21.5)) return true;
+  bool level = part > 19.5 && part < 22.5 || part > 9.5 && part < 11.5; // a floor, a ceiling, a slab's underside, a beam (half-integer edges: the varying is interpolated)
+  bool across = !level || z - min(u_cutZ.x, u_cutZ.y) > u_cutZ.z && max(u_cutZ.x, u_cutZ.y) - z > u_cutZ.z; // between the eye and the body
+  if (depth < u_cutNear && across) return true; // at the lens: a face the eye stands at (a wall it is in or against) never fills the view
   if (u_cutB.x < 0.5) return false;
   float r = length((gl_FragCoord.xy - u_cut.xy) / max(vec2(u_cut.z, u_cut.z * u_cutB.y), vec2(1.0)));
   if (u_cutB.w > 0.5 && r >= 1.0) return true;
-  if (r >= 1.0 || depth >= u_cut.w) return false;
+  if (r >= 1.0 || depth >= u_cut.w || !across) return false;
   if (u_cutB.z <= 0.0) return true;
-  const float bayerW[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0); ivec2 pc = ivec2(gl_FragCoord.xy) & 3;
-  return smoothstep(1.0 - u_cutB.z, 1.0, r) <= (bayerW[pc.y * 4 + pc.x] + 0.5) / 16.0;
+  // the soft rim (the polish pass, 2026-11-19): an 8x8 ordered dither (64 levels, was 4x4's 16) under a smoother falloff, so the
+  // edge reads as a gradual fade rather than a coarse screen door. Bayer by bit interleave: reverse(interleave(x ^ y, y)).
+  ivec2 pc = ivec2(gl_FragCoord.xy) & 7; int bx = pc.x ^ pc.y, by = pc.y;
+  int bv = ((bx & 1) << 5) | ((by & 1) << 4) | ((bx & 2) << 2) | ((by & 2) << 1) | ((bx & 4) >> 1) | ((by & 4) >> 2);
+  float e = smoothstep(1.0 - u_cutB.z, 1.0, r); e = e * e * (3.0 - 2.0 * e);
+  return e <= (float(bv) + 0.5) / 64.0;
 }
 `;
 // The floor's underside seen from below (the orbit, 2026-11-18): a full-screen depth write at the near plane everywhere outside the
@@ -716,8 +732,8 @@ precision highp float; uniform vec4 u_cut; uniform vec4 u_cutB; out vec4 outColo
 void main() { if (length((gl_FragCoord.xy - u_cut.xy) / max(vec2(u_cut.z, u_cut.z * u_cutB.y), vec2(1.0))) < 1.0) discard; outColor = vec4(0.0); }`;
 const WALL_DEPTH_FS = `#version 300 es
 precision highp float;
-in vec4 v_tex; in vec4 v_nrm; in float v_depth; uniform vec4 u_arch; out vec4 outColor;
-` + WALL_CUT_GLSL + `void main() { if (v_nrm.z > 3.5 && v_nrm.z < 4.5 && (v_tex.z < u_arch.x || length(vec2(v_tex.y - 0.5, v_tex.z - u_arch.x)) < u_arch.y)) discard; if (cutAway(v_depth, v_nrm.z)) discard; outColor = vec4(0.0); }`;
+in vec3 v_world; in vec4 v_tex; in vec4 v_nrm; in float v_depth; uniform vec4 u_arch; out vec4 outColor;
+` + WALL_CUT_GLSL + `void main() { if (v_nrm.z > 3.5 && v_nrm.z < 4.5 && (v_tex.z < u_arch.x || length(vec2(v_tex.y - 0.5, v_tex.z - u_arch.x)) < u_arch.y)) discard; if (cutAway(v_depth, v_nrm.z, v_world.z)) discard; outColor = vec4(0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- creatures: camera-facing cards from the sprite atlas
 // a_meta: opacity, hit flash, silhouette (0 none; up to 1 a creature's; 1 + a the Wayfarer's; 3 + a a far creature out of sight, the
@@ -751,8 +767,17 @@ void main() { vec4 c = textureLod(u_ground, v_uv, 0.0);
 // silhouette out of a dark room; `emissive` lists the authored colours that are lit from within (embers, lantern glass, eyes,
 // sparks, rift seams): such a part takes `glow` of its own colour whatever the light, and only `emitFog` of the fog, so a
 // creature's eyes and embers are what you see first in the dark. Exact colours only (a part's colour, not a guess at it).
+// Lighting (Tim, 2026-11-19: "creatures shouldn't get their own lighting, they should just match the lighting of the
+// surroundings"). A body takes exactly the light the floor would take where it stands: `env` is lightsAt() at the vertex with
+// the floor's up normal (the same ambient, torch, sun and placed sources the floor's shader adds). `form` only redistributes
+// that light for volume: a face turned away from the lights takes its own (lower) lightsAt() share, mixed in by `form`, and
+// never more than `env` (lit = mix(env, min(own, env), form)), so a body is never brighter than the floor under it: dim in a
+// dim corner, torchlit in the torch. No light floor, no rim, no fill, no highlight of its own (`rim` 0, `spec` 0). `floor`
+// is no longer read by any shader (kept for tests/close-view-creature-materials.test.ts until that contract is updated).
+// Designed light is unchanged: emissive parts (`emissive`, `glow`) and the spectral rim of a ghost.
 export const CLOSE_VIEW_ACTOR_LOOK = Object.freeze({ fogLate: 2, spectralRim: Object.freeze([.45, .66, .92]), spectralGlow: .7, ghostFull: .4,
-  floor: .34, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
+  form: .6, rim: 0, spec: 0,
+  floor: .42, rimWarm: Object.freeze([.19, .15, .11]), rimCool: Object.freeze([.17, .2, .27]), glow: .85, emitFog: .55,
   emissive: Object.freeze([0xf3a55c /* ember: Ashling cracks, the Wayfarer's lamp */, 0xefb15d /* Cinder Wisp core */, 0xd1e86a /* Hanged Choir lamps */,
     0x9dff8a /* Grave Lantern glass */, 0xffc35a /* Cinder Seraph fire */, 0x7fe7ff /* Lumen Wraith light */, 0xff6b8a /* Veil Spinner eyes */,
     0xc58cff /* Rift Lynx seams */, 0xffd25a /* Thunderhorn charge */, 0xff9d4a /* Siege Beetle furnace */, 0x5aa6ff /* Gloomwisp eyes */,
@@ -786,8 +811,10 @@ void main() {
   float rim = 1.0 - max(0.0, dot(normal, toEye));
   const vec3 EMIT[${CLOSE_VIEW_ACTOR_LOOK.emissive.length}] = vec3[](${CLOSE_VIEW_ACTOR_LOOK.emissive.map(glc).join(', ')});
   float emit = 0.0; for (int i = 0; i < ${CLOSE_VIEW_ACTOR_LOOK.emissive.length}; i++) { vec3 e = abs(v_col - EMIT[i]); if (e.r + e.g + e.b < 0.012) emit = 1.0; }
-  vec3 color = v_col * max(dif, vec3(${glf(CLOSE_VIEW_ACTOR_LOOK.floor)})) + spe * 0.25 + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
-    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim;
+  vec3 env, envS; lightsAt(v_pos, vec3(0.0, 0.0, 1.0), 0.0, env, envS); // the floor's light here (Tim, 2026-11-19: match the surroundings)
+  vec3 lit = mix(env, min(dif, env), ${glf(CLOSE_VIEW_ACTOR_LOOK.form)}); // shading for volume only: never above the floor's light
+  vec3 color = v_col * lit + spe * ${glf(CLOSE_VIEW_ACTOR_LOOK.spec)} + (vec3(${CLOSE_VIEW_ACTOR_LOOK.rimWarm.map(glf).join(', ')}) * rim * rim
+    + vec3(${CLOSE_VIEW_ACTOR_LOOK.rimCool.map(glf).join(', ')}) * rim * rim * rim) * ${glf(CLOSE_VIEW_ACTOR_LOOK.rim)};
   color = mix(color, max(color, v_col * ${glf(CLOSE_VIEW_ACTOR_LOOK.glow)}), emit);
   float ghost = clamp((1.0 - v_alpha) / ${glf(CLOSE_VIEW_ACTOR_LOOK.ghostFull)}, 0.0, 1.0);
   color += (v_col * 0.5 + vec3(${CLOSE_VIEW_ACTOR_LOOK.spectralRim.map(glf).join(', ')})) * (0.18 + rim * rim) * ghost * ${glf(CLOSE_VIEW_ACTOR_LOOK.spectralGlow)};
@@ -972,7 +999,7 @@ void main() { float r = length(v_loc), a, k = v_meta.x, fogK = clamp((v_depth - 
   a = v_meta.y * pow(max(0.0, 1.0 - r), 2.4) * keep; outColor = vec4(hue(v_meta.z) * a, 0.0); }`;
 
 // ---------------------------------------------------------------------------------------------- state
-export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
+export const closeViewGLStats = { ready: false, failed: false, reason: "", frames: 0, drawCalls: 0, walls: 0, staticVerts: 0, staticBuilds: 0, boards: 0, decals: 0, lights: 0, maskBuilds: 0, uploads: 0, lost: false, models: 0, modelTriangles: 0, props: 0, dying: 0 }; // props: 2026-11-11, CLOSE_VIEW_PROPS models this frame
 // Coarse observational history only; never expose driver logs or probe hardware.
 const GPU_DIAGNOSTICS={attempted:false,contextLost:false,lastFailure:'none',frameFailure:'none',lastHeroFailure:'none'};
 export function closeViewGLDiagnostics(){return {
@@ -987,7 +1014,7 @@ const S = { canvas: null, gl: null, hero: null, beast: null, env: null, wall: nu
   tex: { ground: null, mask: null, grit: null, terrain: null }, outdoorKey: null, outdoorVerts: 0, groundW: 0, groundH: 0, gritReady: false, aniso: null, maskMap: null, maskAt: 0, maskW: 0, maskH: 0, maskData: null, lavaTiles: 0, staticKey: null, staticVerts: 0 };
 // The dynamic vertex arrays, grown by doubling (never per frame once warm).
 export const WALL_FLOATS = 20, BOARD_FLOATS = 9, DECAL_FLOATS = 9;
-export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0, nHint: 0 }; // nHint: far creatures' silhouettes among the boards (the hint pass)
+export const GLB = { board: new Float32Array(BOARD_FLOATS * 6 * 64), decal: new Float32Array(DECAL_FLOATS * 6 * 160), nBoard: 0, nDecal: 0, nGlowStart: 0, nHint: 0, nSilCard: 0 }; // nHint: far creatures' silhouettes among the boards (the hint pass)
 export function glEnsure(kind, verts) { const per = kind === "board" ? BOARD_FLOATS : DECAL_FLOATS, need = verts * per; let a = GLB[kind]; if (a.length >= need) return a; let n = a.length; while (n < need) n *= 2; const b = new Float32Array(n); b.set(a); GLB[kind] = b; return b; }
 
 function compile(gl, vs, fs) {
@@ -1162,8 +1189,14 @@ export const GLF = { devW: 1, devH: 1, w: 1, h: 1, cx: 0, cy: 0, fx: 1, fy: 0, r
   occA: new Float32Array(4), occB: new Float32Array(4), occC: new Float32Array(4), occSolid: 0, occTerrain: 0, edge: 0,
   // the orbit's cutout (close-view.ts wallCutout; WALL_CUT_GLSL): zero, nothing is cut
   cut: new Float32Array(4), cutB: new Float32Array(4), cutC: new Float32Array(4), cutNear: 0,
+  cutZ: new Float32Array(4), // the eye's height, the body's and the margin: a level floor or ceiling is cut only between them (2026-11-19)
   // the sight field (close-view.ts visSeen, 2026-11-18): 1 indoors with it, so the props leave out what stands on a tile out of sight
   sight: 0,
+  // the props' vertex range in the solids buffer (close-view-outdoor.ts propsAt..housesAt outdoors; the whole buffer indoors): drawn
+  // after the silhouette pass so a creature never shows through one (Tim, 2026-11-19). Empty (propB <= propA): nothing deferred.
+  propA: 0, propB: 0,
+  // the model buffer's vertex runs (start, count) that take the silhouette pass (close-view.ts buildActorModels); nSil -1: the whole buffer
+  silRuns: new Int32Array(2 * 16), nSil: -1, silFoes: 0, // silFoes: how many of those are creatures (the props wait only for a creature's silhouette)
   // towering structures (close-view-outdoor.ts outdoorTowerAir): the air below and above the eye and its colour; the cloud deck
   // (height, radius, alpha, drift), its noise (cover, softness, scale, edge) and its lit and shaded colours. Zero: none.
   tower: new Float32Array(4), towerR: new Float32Array(4), towerC: new Float32Array(3), deck: new Float32Array(4), deckP: new Float32Array(4), deckC: new Float32Array(3), deckS: new Float32Array(3) };
@@ -1184,7 +1217,7 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
     gl.uniform3fv(u.u_amb, F.amb); gl.uniform3fv(u.u_torch, F.torch); gl.uniform4fv(u.u_torchP, F.torchP); gl.uniform4fv(u.u_lp, F.lp); gl.uniform4fv(u.u_lc, F.lc); gl.uniform1i(u.u_nl, F.nl);
     gl.uniform4fv(u.u_fogP, F.fogP); gl.uniform3fv(u.u_fog, F.fog); gl.uniform3fv(u.u_haze, F.haze); gl.uniform4fv(u.u_grade, F.grade); gl.uniform4fv(u.u_finish, F.finish);
     if (u.u_water) gl.uniform4fv(u.u_water, F.water); gl.uniform4fv(u.u_sun, F.sun); gl.uniform3fv(u.u_sunC, F.sunC); gl.uniform4fv(u.u_tower, F.tower); gl.uniform4fv(u.u_towerR, F.towerR); gl.uniform3fv(u.u_towerC, F.towerC); };
-  const cutU = (P) => { if (P.U.u_cut) gl.uniform4fv(P.U.u_cut, F.cut); if (P.U.u_cutB) gl.uniform4fv(P.U.u_cutB, F.cutB); if (P.U.u_cutC) gl.uniform4fv(P.U.u_cutC, F.cutC); if (P.U.u_cutNear) gl.uniform1f(P.U.u_cutNear, F.cutNear); }; // the orbit's cutout
+  const cutU = (P) => { if (P.U.u_cut) gl.uniform4fv(P.U.u_cut, F.cut); if (P.U.u_cutB) gl.uniform4fv(P.U.u_cutB, F.cutB); if (P.U.u_cutC) gl.uniform4fv(P.U.u_cutC, F.cutC); if (P.U.u_cutNear) gl.uniform1f(P.U.u_cutNear, F.cutNear); if (P.U.u_cutZ) gl.uniform4fv(P.U.u_cutZ, F.cutZ); }; // the orbit's cutout
   gl.clearColor(F.fog[0], F.fog[1], F.fog[2], 1); gl.clearDepth(1); gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   // 1. walls, trim, arches and props: the static buffer, opaque, with depth (first, so the environment is never shaded where a wall stands)
   gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
@@ -1206,11 +1239,23 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   const occU = (P) => { gl.uniform4fv(P.U.u_occA, F.occA); gl.uniform4fv(P.U.u_occB, F.occB); gl.uniform4fv(P.U.u_occC, F.occC); };
   if (outdoor && F.relief > 0 && S.terr && S.terrVerts > 0) { const T = F.occTerrain > 0 && S.terrOcc ? S.terrOcc : S.terr; gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.useProgram(T.p); cam(T); light(T); outdoorU(T); if (T !== S.terr) occU(T);
     gl.bindVertexArray(T === S.terr ? S.vao.terr : S.vao.terrOcc); gl.drawArrays(gl.TRIANGLES, 0, S.terrVerts); calls++; }
-  if ((outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ const Pp = F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop; gl.useProgram(Pp.p); cam(Pp); light(Pp); sightU(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
-    if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2], c = Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // a roof left out: the rest in runs
+  // the props (GLF.propA..propB) wait until after the silhouette pass (Tim, 2026-11-19: no creature seen through a crate); not
+  // while the eye is under the floor (its underside hides all drawn after it)
+  const solids = (outdoor || (F.props > 0 && !!S.prop && S.outdoorKey !== null)) && S.outdoorVerts > 0, Pp = solids ? (F.occSolid > 0 && S.propOcc ? S.propOcc : S.prop) : null;
+  // only when some creature takes the silhouette pass this frame (else the props keep their place and their one call; the
+  // Wayfarer's own silhouette then still shows through them, as before)
+  let silAny = GLB.nBoard > 0 && GLB.nSilCard > 0 || (!!models?.length && F.nSil !== 0 && F.silFoes > 0); if (!silAny && beasts?.count && S.beast) for (let i = 0; i < beasts.count; i++) if (beasts.items[i].noSil === false) { silAny = true; break; }
+  const under = F.cutB[0] > 0.5 && F.cutB[3] > 0.5 && !!S.under && !!S.vao.under, pa = Math.max(0, F.propA | 0), pb = Math.min(S.outdoorVerts, F.propB | 0), defer = solids && silAny && !under && pb > pa;
+  const span = (a, c, only) => { const e = a + c; if (c <= 0) return; // only: the props' share of [a, a + c); else the rest of it
+    if (only) { const s0 = Math.max(a, pa), s1 = Math.min(e, pb); if (s1 > s0) { gl.drawArrays(gl.TRIANGLES, s0, s1 - s0); calls++; } return; }
+    if (!defer || e <= pa || a >= pb) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; return; }
+    if (pa > a) { gl.drawArrays(gl.TRIANGLES, a, pa - a); calls++; } if (e > pb) { gl.drawArrays(gl.TRIANGLES, pb, e - pb); calls++; } };
+  const solidRuns = (only) => { if (F.nRuns > 0) { for (let i = 0; i < F.nRuns; i++) { const a = F.runs[i * 2]; span(a, Math.min(F.runs[i * 2 + 1], S.outdoorVerts - a), only); } } else span(0, S.outdoorVerts, only); };
+  if (solids) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); /* the walls' colour pass leaves depth writes off */ gl.useProgram(Pp.p); cam(Pp); light(Pp); sightU(Pp); if (Pp !== S.prop) occU(Pp); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc);
+    if (F.nRuns > 0) { solidRuns(false); // a roof left out: the rest in runs
       if (F.nFades > 0 && S.propCut) { const P = S.propCut; gl.useProgram(P.p); cam(P); light(P); gl.bindVertexArray(S.vao.propCut); // a roof fading: dithered by its opacity (without the program, left out)
         for (let i = 0; i < F.nFades; i++) { const a = F.fades[i * 3], c = Math.min(F.fades[i * 3 + 1], S.outdoorVerts - a); if (c > 0) { gl.uniform1f(P.U.u_cut, F.fades[i * 3 + 2]); gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } } }
-    else { gl.drawArrays(gl.TRIANGLES, 0, S.outdoorVerts); calls++; } }
+    else solidRuns(false); }
   // 2. the environment: floor, ceiling, pits, lava; a full-screen triangle at the far plane, depth-tested and not written, so
   // the early depth test leaves every pixel a wall covers unshaded
   gl.depthMask(false); gl.useProgram(S.env.p); gl.uniform1f(S.env.U.u_terrain,F.terrain?1:0); cam(S.env); light(S.env); U.env(gl, S.env.U, F, S.lavaTiles);
@@ -1230,18 +1275,23 @@ export function drawSceneGL(ground, U, models = null, hero = null, beasts = null
   if (GLB.nBoard > 0) { useBoards(); cam(S.board); gl.uniform1i(S.board.U.u_ground, 0); gl.uniform2f(S.board.U.u_dev, F.devW, F.devH); gl.uniform4fv(S.board.U.u_grade, F.grade); gl.uniform4fv(S.board.U.u_finish, F.finish); gl.uniform3fv(S.board.U.u_fog, F.fog); gl.uniform4fv(S.board.U.u_fogP, F.fogP); gl.uniform3fv(S.board.U.u_sil, F.sil); gl.uniform3fv(S.board.U.u_silFoe, F.silFoe);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.board); gl.bufferData(gl.ARRAY_BUFFER, GLB.board.subarray(0, GLB.nBoard * BOARD_FLOATS), gl.DYNAMIC_DRAW);
     gl.depthFunc(gl.GREATER); gl.uniform1f(S.board.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++;
-    if (GLB.nHint > 0) { gl.depthFunc(gl.ALWAYS); gl.uniform1f(S.board.U.u_pass, 2); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; } // far creatures out of sight: the hint, wherever they stand (the bodies drawn after still cover it)
     gl.depthFunc(gl.LEQUAL); }
   if (hasModels) {
     gl.useProgram(model.p); cam(model); light(model); gl.uniform3fv(model.U.u_sil, F.sil);
     gl.bindVertexArray(S.vao.model); gl.bindBuffer(gl.ARRAY_BUFFER, S.vbo.model);
     gl.bufferData(gl.ARRAY_BUFFER, models, gl.DYNAMIC_DRAW);
     const vertices = models.length / MODEL_FLOATS;
-    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1); gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++;
+    gl.depthFunc(gl.GREATER); gl.uniform1f(model.U.u_pass, 1);
+    if (F.nSil < 0) { gl.drawArrays(gl.TRIANGLES, 0, vertices); calls++; } // no runs listed: the whole buffer (as before)
+    else for (let i = 0; i < F.nSil; i++) { const a = F.silRuns[i * 2], c = Math.min(F.silRuns[i * 2 + 1], vertices - a); if (c > 0) { gl.drawArrays(gl.TRIANGLES, a, c); calls++; } } // only the listed bodies
   }
-  if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; }
   const hasBeasts = !!(beasts?.count && S.beast);
   if(hasBeasts) { gl.depthFunc(gl.GREATER); calls += drawBeastsGL(gl,S.beast,beasts,1,cam,light,F.sil); }
+  // the deferred props, opaque, writing depth: they cover any creature silhouette behind them (and the bodies drawn next test against them)
+  if (defer) { gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.useProgram(Pp.p); gl.bindVertexArray(Pp === S.prop ? S.vao.prop : S.vao.propOcc); solidRuns(true); gl.depthMask(false); gl.enable(gl.BLEND); }
+  if (GLB.nHint > 0) useBoards(); // (nHint > 0: the cards were uploaded this frame)
+  if (GLB.nHint > 0) { gl.depthFunc(gl.ALWAYS); gl.uniform1f(S.board.U.u_pass, 2); gl.drawArrays(gl.TRIANGLES, 0, GLB.nBoard); calls++; gl.depthFunc(gl.LEQUAL); } // far creatures out of sight: the hint, wherever they stand, over walls and props (the bodies drawn after still cover it)
+  if(hasHero) { gl.depthFunc(gl.GREATER); drawHeroGL(gl,S.hero,hero,1,cam,light,F.sil); calls++; } // the Wayfarer's own silhouette: through props too
   if(hasModels || hasHero || hasBeasts) {
     gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     if(hasModels) { gl.useProgram(model.p); gl.bindVertexArray(S.vao.model); gl.uniform1f(model.U.u_pass, 0); gl.drawArrays(gl.TRIANGLES, 0, models.length/MODEL_FLOATS); calls++; }

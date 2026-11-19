@@ -13,11 +13,15 @@
 //   lands the last one itself. The kill is the other beast's: the Wayfarer gets nothing for it (game.ts dinoEaten), and the winner
 //   feeds `feed` s. "escape": the loser breaks off and flees (game.ts dinoEscape: a world beast's own retreat, keeping its wounds;
 //   any other off the edge of the area). The winner stays. If the Wayfarer kills one first, it is hers, with every reward.
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
 
 export const DINO_DUEL = {
   version: 1,
   kinds: ["spinoRex", "wildStego"],
+  // The pairs that duel, leader first (the leader's record runs the duel's clock; its id comes first in the hashed coin and ending).
+  // The first is the original duel, unchanged; the Earth Apatosaurus (Tim, 2026-11-18) duels each of the two, and they are listed
+  // after it so a Spinosaurus that meets both still finds the Wild Stegosaurus first. It never duels a Triceratops.
+  pairs: [["spinoRex", "wildStego"], ["earthApato", "spinoRex"], ["earthApato", "wildStego"]],
   range: 16, part: 24, partFor: 5, /* begun within `range`; ended when they stay more than `part` apart for `partFor` s */
   cap: 90, verdictAt: 50, breakAt: .35, hold: .3,
   escalate: { from: .025, to: .06, over: 60 }, /* a blow's share of the victim's health, from `from` to `to` over `over` s */
@@ -40,7 +44,9 @@ export const DINO_DUEL = {
   // Rockfall under a ceiling (any interior): `rocks` telegraphed for `warn` s in a ring around a slam, at most `live` at once, the
   // next slam's at least `gap` s later; each takes `share` of the slammer's damage from whatever stands under it (never the duellists).
   rockfall: { rocks: 3, live: 6, ring: [1.2, 4.2], warn: 1.1, radius: .75, share: .5, gap: .8 },
-  names: { spinoRex: "the Spinosaurus", wildStego: "the Wild Stegosaurus" },
+  names: { spinoRex: "the Spinosaurus", wildStego: "the Wild Stegosaurus", earthApato: "the Earth Apatosaurus" },
+  // The blow a winner lands at the cap (its sound cue).
+  finisher: { spinoRex: "spinoBite", wildStego: "stegoTailWhack", earthApato: "apatoNeckSlam" },
   text: { eaten: "{winner} devours {loser}. Its spoils are lost.", escape: "{loser} breaks off, badly wounded, and flees." },
 };
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -48,7 +54,11 @@ export function duelText(kind, winner, loser) {
   const N = DINO_DUEL.names, t = DINO_DUEL.text[kind] || "";
   return cap1(t.replace("{winner}", N[winner?.kind] || "the beast").replace("{loser}", N[loser?.kind] || "the beast"));
 }
-export const isDuellist = (e) => !!e && DINO_DUEL.kinds.includes(e.kind);
+export const DUEL_KINDS = Object.freeze([...new Set(DINO_DUEL.pairs.flat())]);
+export const isDuellist = (e) => !!e && DUEL_KINDS.includes(e.kind);
+// Do a and b duel each other (either way round)? And does `a` lead their duel?
+export const duelPair = (a, b) => !!a && !!b && a !== b && DINO_DUEL.pairs.some(([x, y]) => (a.kind === x && b.kind === y) || (a.kind === y && b.kind === x));
+export const duelLeads = (a, b) => !!a && !!b && DINO_DUEL.pairs.some(([x, y]) => a.kind === x && b.kind === y);
 const free = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.fleeTo && !e.passingBeast && !e.illusion && !e.dinoFled;
 export const duelShare = (t, E = DINO_DUEL.escalate) => E.from + (E.to - E.from) * Math.max(0, Math.min(1, (Number(t) || 0) / E.over));
 // The duel `e` is in, with `foe` (or any foe), or null.
@@ -93,8 +103,10 @@ export function tickDinoDuels(enemies, dt, ctx = {}) {
   const out = [], D = DINO_DUEL; if (!(dt > 0)) return out;
   const list = enemies || [], byId = (id) => list.find((q) => q.id === id) || null;
   for (const e of list) {
-    const d = duelOf(e); if (!d || e.kind !== D.kinds[0]) continue;
-    const foe = byId(d.foe), spino = e, stego = foe;
+    const d = duelOf(e); if (!d) continue;
+    const foe = byId(d.foe);
+    if (foe && !duelLeads(e, foe)) continue; // the other side leads this duel
+    const spino = e, stego = foe; // the leader and the led (the names of the first pair)
     if (!foe || !duelOf(foe, spino)) { clear(spino); continue; }
     // Wayfarer's share: what each lost since the last step that the other beast did not take
     for (const q of [spino, stego]) { const r = q.dinoDuel, hp = Number(q.hp) || 0, rival = (Number(r.byRival) || 0) - (Number(r.rivalSeen) || 0); r.byYou = (Number(r.byYou) || 0) + Math.max(0, (Number(r.hp) || 0) - hp - rival); r.hp = hp; r.rivalSeen = Number(r.byRival) || 0; }
@@ -118,17 +130,17 @@ export function tickDinoDuels(enemies, dt, ctx = {}) {
     if (d.verdict?.end === "kill" && d.t >= D.cap) {
       const loser = byId(d.verdict.loser), winner = byId(d.verdict.winner);
       if (ctx.kill) ctx.kill(winner, loser); else { loser.hp = 0; loser.dead = true; loser.noRewards = true; }
-      ctx.cue?.({ who: winner.kind, id: winner.id, phase: "hit", move: winner.kind === "spinoRex" ? "spinoBite" : "stegoTailWhack", x: loser.x, y: loser.y, victim: loser.kind, duel: true });
+      ctx.cue?.({ who: winner.kind, id: winner.id, phase: "hit", move: D.finisher[winner.kind] || "stegoTailWhack", x: loser.x, y: loser.y, victim: loser.kind, duel: true });
       if (!loser.dinoEaten) { loser.dinoEaten = true; ctx.eaten?.(loser, winner); out.push({ type: "eaten", loser: loser.id, winner: winner.id, t: d.t, capped: true }); }
       clear(spino, stego);
     }
   }
-  // new duels: each free Spinosaurus with the nearest free, roused Wild Stegosaurus in range
-  for (const spino of list) {
-    if (spino.kind !== D.kinds[0] || duelOf(spino) || !free(spino) || !spino.aggro) continue;
+  // new duels, pair by pair (the original first): each free leader with the nearest free, roused partner in range
+  for (const [ka, kb] of D.pairs) for (const spino of list) {
+    if (spino.kind !== ka || duelOf(spino) || !free(spino) || !spino.aggro) continue;
     let best = null, bd = D.range;
-    for (const q of list) { if (q.kind !== D.kinds[1] || duelOf(q) || !free(q) || !q.aggro) continue; const dd = Math.hypot(q.x - spino.x, q.y - spino.y); if (dd <= bd) { bd = dd; best = q; } }
-    if (best) { begin(spino, best, ctx.clock); out.push({ type: "start", spino: spino.id, stego: best.id }); }
+    for (const q of list) { if (q.kind !== kb || duelOf(q) || !free(q) || !q.aggro) continue; const dd = Math.hypot(q.x - spino.x, q.y - spino.y); if (dd <= bd) { bd = dd; best = q; } }
+    if (best) { begin(spino, best, ctx.clock); out.push(ka === "spinoRex" ? { type: "start", spino: spino.id, stego: best.id } : { type: "start", a: spino.id, b: best.id, spino: ka === "spinoRex" ? spino.id : kb === "spinoRex" ? best.id : null, stego: kb === "wildStego" ? best.id : null }); }
   }
   return out;
 }

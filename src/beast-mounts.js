@@ -5,8 +5,9 @@
 // Tim's decisions (2026-11-04): a catch pays nothing (no marks, materials, spoils, XP or reward flags; its hunt still ends as a
 // fall does); the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight can never be caught.
 // Data and save rules only; game.ts calls in, renderer.ts draws.
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { trapChance } from "./building.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { trapChance } from "./building.js?v=r1031-b358b5a5ce4c";
+import { ensureHatchling } from "./hatchling.js?v=r1031-b358b5a5ce4c";
 
 // One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale as a
 // mount, its real size as met in the world (Tim, 2026-11-04: "so you can be riding a pretty huge beast"; the pack form's scale x the
@@ -32,7 +33,9 @@ export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
 // 2.7), the seat on the top of the back. `tack: "barrel"` draws the saddle's girth round the barrel (beast-mounts-render.ts) down to
 // `belly` (tiles above the feet at the saddle). Presentation only: his contact, reach and attacks (TRICERATOPS_ATTACKS) never read
 // the scale; the seat is also where hostile hits find the rider (riderLiftOf), which follows the drawing by design (release 748).
-MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.28, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
+// seatX (2026-11-19, Tim: "the rider should be positioned behind the frill"): the saddle over the hips, clear of the frill through
+// every ridden move (was -.28). Standard view; Close View seats the rider at its card's middle (beast-mounts-render.ts).
+MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.6, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 // Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.
 export const TRICERATOPS_ATTACKS = {
@@ -198,29 +201,31 @@ function cleanMount(m) {
 }
 export function ensureMounts(save) {
   const q = save.mounts && typeof save.mounts === "object" && !Array.isArray(save.mounts) ? save.mounts : {};
-  const all = (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i);
+  const all = removeFreeTriceratops(q, (Array.isArray(q.stable) ? q.stable : []).map(cleanMount).filter(Boolean).filter((m, i, a) => a.findIndex((o) => o.id === m.id) === i)); // before the one-of-each-variant rule, so a caught one is never shadowed by the gift
   const temporary = all.filter(m => !persistentMount(m)).slice(-MOUNT_RIDE.cap);
   const permanent = all.filter(persistentMount).filter((m, i, a) => a.findIndex(o => o.beast === m.beast && o.variant === m.variant) === i);
   const stable = all.filter(m => temporary.includes(m) || permanent.includes(m));
   const caught = q.caught && typeof q.caught === "object" ? Object.fromEntries(Object.entries(q.caught).map(([k, v]) => [k, Math.max(0, Math.floor(Number(v) || 0))])) : {};
   save.mounts = Object.assign(q, { stable, riding: stable.some((m) => m.id === q.riding && !m.recovery && (!persistentMount(m) || m.hp > 0)) ? q.riding : null, seq: Math.max(0, Math.floor(Number(q.seq) || 0)), caught });
+  ensureHatchling(save.mounts); // the Triceratops hatchling (hatchling.ts)
   return save.mounts;
 }
-// A production-journey gift, deliberately separate from generic save creation/migration and scratch fixtures.
-// The permanent normal slot satisfies the grant even when injured or at the hotel; it is never replaced or healed.
-export function ensureProductionTriceratops(save) {
-  const q = ensureMounts(save);
-  if (Number.isSafeInteger(q.standardTriceratopsGrant) && q.standardTriceratopsGrant >= 1) return save;
-  if (!q.stable.some(m => m.beast === "triceratops" && m.variant === "normal")) {
-    const base = "mount-free-triceratops-v1"; let id = base, suffix = 1;
-    while (q.stable.some(m => m.id === id)) id = `${base}-${suffix++}`;
-    const caughtAt = Number.isFinite(save.playSeconds) ? Math.max(0, save.playSeconds) : 0;
-    // A distinct id namespace leaves the capture sequence alone. Older mounts retain their default-selection order.
-    q.stable.unshift({ id, beast: "triceratops", variant: "normal", caughtAt, left: MOUNT_RIDE.seconds, seen: [], hp: TRICERATOPS_RIDE.health, defeats: 0, recovery: null });
-  }
-  q.standardTriceratopsGrant = 1;
-  return save;
+// Tim, 2026-11-19: the free Triceratops (release 734's production gift, ids "mount-free-triceratops-v1" and its "-n" suffixes) is
+// taken from every journey, once (`freeTriceratopsRemoved` records it). Caught Triceratops and every other mount are untouched.
+// Riding it, the Wayfarer is set down where it stood (`freeTriceratopsDismount`: game.ts moves them to safe footing on load).
+export const FREE_TRICERATOPS_ID = /^mount-free-triceratops-v1(-\d+)?$/;
+export const FREE_TRICERATOPS_REMOVAL = 1;
+function removeFreeTriceratops(q, all) {
+  if (Number(q.freeTriceratopsRemoved) >= FREE_TRICERATOPS_REMOVAL) return all;
+  q.freeTriceratopsRemoved = FREE_TRICERATOPS_REMOVAL;
+  const free = all.filter(m => persistentMount(m) && FREE_TRICERATOPS_ID.test(m.id)); if (!free.length) return all;
+  if (free.some(m => m.id === q.riding)) { q.riding = null; q.freeTriceratopsDismount = true; }
+  if (free.some(m => m.id === q.last)) delete q.last;
+  return all.filter(m => !free.includes(m));
 }
+// Release 734's production gift, withdrawn (Tim, 2026-11-19: every journey earns the Triceratops through the Beast Hotel rescue,
+// hatchling.ts). Kept as the production load/save hook: it only normalises the stable now (ensureMounts removes the old gift once).
+export function ensureProductionTriceratops(save) { ensureMounts(save); return save; }
 export const mountById = (save, id) => ensureMounts(save).stable.find((m) => m.id === id) || null;
 export const ridingMount = (save) => { const q = save.mounts; return q?.riding ? q.stable?.find((m) => m.id === q.riding) || null : null; };
 export const mountName = (m) => persistentMount(m) && m.variant === "silly" ? "The Silly Goose Triceratops" : MOUNT_BEASTS[m?.beast]?.name || "Your mount";

@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1012-ffa69513a699";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1012-ffa69513a699";
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1031-b358b5a5ce4c";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1031-b358b5a5ce4c";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -881,8 +881,9 @@ export function outdoorScene(map, relief = false) { // relief: build the heightf
 }
 // outcrops, trees, props and houses in one buffer, the roofs last (one draw call, or one a run when a roof is left out).
 // housesAt: where the houses begin in it (a roof's start is counted from there); roofStart: where the roofs begin.
-function joinSolids(a, b, c) { const verts = a.verts + b.verts + c.verts, housesAt = a.verts + b.verts; if (verts === a.verts) return { data: a.data, verts, housesAt, roofStart: verts };
-  const data = new Float32Array(verts * OUTDOOR_FLOATS); data.set(a.data, 0); data.set(b.data, a.verts * OUTDOOR_FLOATS); data.set(c.data, housesAt * OUTDOOR_FLOATS); return { data, verts, housesAt, roofStart: housesAt + c.walls }; }
+// propsAt..housesAt: the props' vertices (close-view-gl.ts draws them after the creature silhouette pass, Tim 2026-11-19)
+function joinSolids(a, b, c) { const verts = a.verts + b.verts + c.verts, housesAt = a.verts + b.verts, propsAt = a.verts; if (verts === a.verts) return { data: a.data, verts, propsAt, housesAt, roofStart: verts };
+  const data = new Float32Array(verts * OUTDOOR_FLOATS); data.set(a.data, 0); data.set(b.data, a.verts * OUTDOOR_FLOATS); data.set(c.data, housesAt * OUTDOOR_FLOATS); return { data, verts, propsAt, housesAt, roofStart: housesAt + c.walls }; }
 // The props of an interior floor for the GPU (the same solids, on the floor's own heights), rebuilt only when one changes.
 const PROP_SCENES = new WeakMap();
 export function propScene(map, zAt = null, seen = null) { // seen: what the fog of war has shown (null: everything); an unseen prop is not built

@@ -4,15 +4,16 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1012-ffa69513a699";
-import { projectileVisualPoint } from "./actor-presentation.js?v=r1012-ffa69513a699";
-import { SHADOW_CLONE } from "./late-spells.js?v=r1012-ffa69513a699";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r1012-ffa69513a699";
-import { drawOrbit } from "./orbit-volley.js?v=r1012-ffa69513a699";
-import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r1012-ffa69513a699";
-import { drawQuandrix } from "./quandrix-staff.js?v=r1012-ffa69513a699"; // the Quandrix Staff (2026-11-13)
-import { drawWeaponArts } from "./weapon-arts.js?v=r1012-ffa69513a699"; // weapon arts (2026-11-13)
-import { drawAwakenedArts } from "./awakened-arts.js?v=r1012-ffa69513a699"; // awakened arts (2026-11-13)
+import { drawHatchVisuals } from "./hatchling-render.js?v=r1031-b358b5a5ce4c"; // the Triceratops hatchling
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1031-b358b5a5ce4c";
+import { projectileVisualPoint } from "./actor-presentation.js?v=r1031-b358b5a5ce4c";
+import { SHADOW_CLONE } from "./late-spells.js?v=r1031-b358b5a5ce4c";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r1031-b358b5a5ce4c";
+import { drawOrbit } from "./orbit-volley.js?v=r1031-b358b5a5ce4c";
+import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r1031-b358b5a5ce4c";
+import { drawQuandrix } from "./quandrix-staff.js?v=r1031-b358b5a5ce4c"; // the Quandrix Staff (2026-11-13)
+import { drawWeaponArts } from "./weapon-arts.js?v=r1031-b358b5a5ce4c"; // weapon arts (2026-11-13)
+import { drawAwakenedArts } from "./awakened-arts.js?v=r1031-b358b5a5ce4c"; // awakened arts (2026-11-13)
 // Appearance only: both views share the same tapered horn dimensions in world tiles.
 export const TRICERATOPS_HORN_VISUAL = Object.freeze({ color: "#fff0bd", tip: .34, base: -.18, radius: .095 });
 export function triceratopsHornFrame(shot) {
@@ -36,7 +37,7 @@ export const TRICERATOPS_HORN_TRAIL = Object.freeze({ length: .95, width: .07, f
 export const shotDrawPoint = (p) => p?.triceratopsHorn && p.visualLaunch ? projectileVisualPoint(p, 0) : p;
 export const hornScreenLift = (p) => p?.triceratopsHorn ? Math.max(0, (Number(p.visualHeight) || 0) - TRICERATOPS_HORN_TRAIL.feet) : 0;
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
-export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+export const standardProjectileColor = (p) => p.aegisReflected ? "#ffd36b" /* Power Aegis: a blow sent back (brawler-spells.ts PARRY_LOOK.spark) */ : p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q0) => { const q = shotDrawPoint(q0); return [
@@ -87,7 +88,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     if ((Number(p.age) || 0) < T.flashAge) { const k = 1 - (Number(p.age) || 0) / T.flashAge, r = T.flash * s * (.6 + .4 * k), gr = ctx.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,252,232,${(.9 * k).toFixed(3)})`); gr.addColorStop(1, "rgba(255,226,150,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
+    if (fx.hatch || fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
@@ -106,6 +107,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   drawBrawlerAuras(ctx, game, toScreen, s, t, projectedShots != null); // release 485: Aegis, Shadow Boxing (on Close View's floor: its charge streak only)
   drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
+  drawHatchVisuals(ctx, game, toScreen, s, !!(game.presentation?.reduceMotion || game.presentation?.safeMode), !!projectedShots); // the Triceratops hatchling's beams, bolts, whirls, chill, heals and buffs
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   drawQuandrix(ctx, game, toScreen, s, t, projectedShots); // the Quandrix Staff: hands, the fist, the slam, suction and the ring
   drawWeaponArts(ctx, game, toScreen, s, t); // weapon arts: the armed glint, the charge ring, eruptions, streams, the javelin, ki and the seal

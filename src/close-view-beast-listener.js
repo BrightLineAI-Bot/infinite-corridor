@@ -15,12 +15,12 @@
 // The two bodies share the bone hierarchy; each has its own bind fit (CLOAK_FIT, MORPH_FIT: the same names and parents with
 // each body's joint positions), and the pose switches fit with the form. The reflections and the worms keep their billboards
 // (close-view-beasts.ts). Nothing here changes timing, damage, reach or targeting.
-import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1012-ffa69513a699";
-import { MORPH_FORM } from "./listener-morph.js?v=r1012-ffa69513a699";
+import { ATTACK_MODULES, packWindupScale } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
+import { MORPH_FORM } from "./listener-morph.js?v=r1031-b358b5a5ce4c";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
+} from "./close-view-beast-rig.js?v=r1031-b358b5a5ce4c";
 
 export const LISTENER_RIG = Object.freeze({
   closeViewScale: 1.25, // as every Close View beast (presentation only)

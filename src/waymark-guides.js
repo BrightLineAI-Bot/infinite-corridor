@@ -17,12 +17,12 @@
 // their middle band put the next host of a kind 8-10 sections from the last in most cases (7-11 in nearly all; tests measure it).
 // The rest of the world is untouched: skyways, shrines and world-beast meetings still come by their own rolls too.
 // Cost: a handful of hashes and memoised cheap tests per cell, nine cells per kind per section entered; nothing per frame.
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { openSeaQuick } from "./landscape.js?v=r1012-ffa69513a699";
-import { hamletSection } from "./settlements.js?v=r1012-ffa69513a699";
-import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r1012-ffa69513a699";
-import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r1012-ffa69513a699";
-import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { openSeaQuick } from "./landscape.js?v=r1031-b358b5a5ce4c";
+import { hamletSection } from "./settlements.js?v=r1031-b358b5a5ce4c";
+import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r1031-b358b5a5ce4c";
+import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r1031-b358b5a5ce4c";
+import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r1031-b358b5a5ce4c";
 
 export const WAYMARK_GUIDES = {
   version: 1,       // the atlas pin (`guideVersion`) for ground first seen with the guides; a change to where hosts stand is a new version
@@ -34,7 +34,7 @@ export const WAYMARK_GUIDES = {
   seaVersion: 23,   // the landscape version whose open sea rules a host out (pinned: a later landscape must not move version 1 hosts)
   seaMargin: .25,   // the quick open-sea test settles from 16 samples when they are this far from the sea share; else all 256
   domainClear: 2,   // sections round a far domain's heart that never host
-  lairSkip: ["astralWorm", "voidWalker"], // beasts a lair never calls (as for passing beasts: the Worm's companion rules, the Walker's dungeon home)
+  lairSkip: ["astralWorm", "voidWalker", "earthApato"], // beasts a lair never calls (as for passing beasts: the Worm's companion rules, the Walker's dungeon home; the Earth Apatosaurus, so every lair an existing journey would be shown is the one it was)
   lairEarly: "a crossing", // what a red mark leads to while no free world beast is woken: the nearest crossing not entered, within `reach` (save state only; no host moves)
   kinds: { // `origin` shifts each kind's lattice: with these the three bands never share a section (skyway x 3-6 y 3-6, shrine x and y 8-1, lair x 8-1 y 3-6, mod 10)
     skyway: { signal: "crossing", name: "a skyway", origin: [0, 0], minDepth: 6 },

@@ -1,60 +1,64 @@
-import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r1012-ffa69513a699"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { vulnerableUntil, glyphMinesOf, GLYPH_MINE } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // Tempo marks, Glyph Mine sigils (2026-11-19)
-import { ACTION_MOTION } from "./action-motion.js?v=r1012-ffa69513a699"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r1012-ffa69513a699";
-import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.js?v=r1012-ffa69513a699"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
-import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r1012-ffa69513a699"; // the weighted Cleaver swing (2026-11-14)
+import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.js?v=r1031-b358b5a5ce4c"; // the Triceratops hatchling
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r1031-b358b5a5ce4c"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { vulnerableUntil, glyphMinesOf, GLYPH_MINE, riftMinesOf, riftVoidOf, RIFT_MINE, encumberedLeft, pullMeterOf } from "./hit-cast-passives.js?v=r1031-b358b5a5ce4c"; // Tempo marks, Glyph Mine sigils, rift mines and their void, Encumbered (2026-11-19)
+import { ACTION_MOTION } from "./action-motion.js?v=r1031-b358b5a5ce4c"; // the Cinder Pike's standard-view thrust clock
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r1031-b358b5a5ce4c";
+import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.js?v=r1031-b358b5a5ce4c"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r1031-b358b5a5ce4c"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
-import { drawQuandrixStaff } from "./quandrix-staff.js?v=r1012-ffa69513a699";
-import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r1012-ffa69513a699"; // the Stego Bait (Tim, 2026-11-12)
-import { shakeOffset } from "./spino-rex.js?v=r1012-ffa69513a699";
-import { drawBleedIcon } from "./bleed.js?v=r1012-ffa69513a699";
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r1012-ffa69513a699"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1012-ffa69513a699";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r1012-ffa69513a699"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r1012-ffa69513a699";
-import { astralBeamAnchors } from "./astral-worm.js?v=r1012-ffa69513a699";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r1012-ffa69513a699";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r1012-ffa69513a699";
-import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r1012-ffa69513a699';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r1012-ffa69513a699";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r1012-ffa69513a699";
-import { ruleRows } from "./elders.js?v=r1012-ffa69513a699";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r1012-ffa69513a699";
-import { BOAT } from "./boats.js?v=r1012-ffa69513a699";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r1012-ffa69513a699";
-import { isMarineTile } from "./world-beasts.js?v=r1012-ffa69513a699";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.js?v=r1012-ffa69513a699"; // 613: Starfield rafts
-import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.js?v=r1012-ffa69513a699"; // the low-health edge: the death static, red, at the edges
-import { SEASONS, treeSeason } from "./seasons.js?v=r1012-ffa69513a699";
-import { setTreeSeason, bizarroWash } from "./landscape-render.js?v=r1012-ffa69513a699";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r1012-ffa69513a699";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r1012-ffa69513a699";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r1012-ffa69513a699";
-import { TREES } from "./trees.js?v=r1012-ffa69513a699";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1012-ffa69513a699";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r1012-ffa69513a699";
-import { KIT_MOVES } from "./boss-kit.js?v=r1012-ffa69513a699";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r1012-ffa69513a699"; // release 587; travel seeds
-import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r1012-ffa69513a699";
-import { drawSpinoBiteOverlay } from "./spino-render.js?v=r1012-ffa69513a699";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r1012-ffa69513a699"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r1012-ffa69513a699"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r1012-ffa69513a699";
-import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1012-ffa69513a699"; // Close View: a beast in your section is captured wherever it stands in it
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r1012-ffa69513a699"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r1012-ffa69513a699"; // release 748: pens sized for the beast
-import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.js?v=r1012-ffa69513a699";
-import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.js?v=r1012-ffa69513a699"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r1012-ffa69513a699";
-import { drawRelayNode } from "./relay-network.js?v=r1012-ffa69513a699";
-import { structureOccupancy } from "./world.js?v=r1012-ffa69513a699";
-import { roofDeckById } from "./roof-decks.js?v=r1012-ffa69513a699"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r1012-ffa69513a699";
-import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r1012-ffa69513a699"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.js?v=r1012-ffa69513a699"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
-import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r1012-ffa69513a699"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.js?v=r1012-ffa69513a699"; // Close View: three hooks below, marked CLOSE VIEW
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r1031-b358b5a5ce4c";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r1031-b358b5a5ce4c"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r1031-b358b5a5ce4c";
+import { drawBleedIcon } from "./bleed.js?v=r1031-b358b5a5ce4c";
+import { drawPoisonIcon } from "./apato-poison.js?v=r1031-b358b5a5ce4c";
+import { drawEarthResolveSigil } from "./apato-render.js?v=r1031-b358b5a5ce4c";
+import { insideResolve } from "./echoes.js?v=r1031-b358b5a5ce4c"; // the Earth Apatosaurus's root venom
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r1031-b358b5a5ce4c"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1031-b358b5a5ce4c";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r1031-b358b5a5ce4c"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r1031-b358b5a5ce4c";
+import { astralBeamAnchors } from "./astral-worm.js?v=r1031-b358b5a5ce4c";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r1031-b358b5a5ce4c";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r1031-b358b5a5ce4c";
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r1031-b358b5a5ce4c';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r1031-b358b5a5ce4c";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r1031-b358b5a5ce4c";
+import { ruleRows } from "./elders.js?v=r1031-b358b5a5ce4c";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r1031-b358b5a5ce4c";
+import { BOAT } from "./boats.js?v=r1031-b358b5a5ce4c";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r1031-b358b5a5ce4c";
+import { isMarineTile } from "./world-beasts.js?v=r1031-b358b5a5ce4c";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.js?v=r1031-b358b5a5ce4c"; // 613: Starfield rafts
+import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.js?v=r1031-b358b5a5ce4c"; // the low-health edge: the death static, red, at the edges
+import { SEASONS, treeSeason } from "./seasons.js?v=r1031-b358b5a5ce4c";
+import { setTreeSeason, bizarroWash } from "./landscape-render.js?v=r1031-b358b5a5ce4c";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r1031-b358b5a5ce4c";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r1031-b358b5a5ce4c";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r1031-b358b5a5ce4c";
+import { TREES } from "./trees.js?v=r1031-b358b5a5ce4c";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1031-b358b5a5ce4c";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r1031-b358b5a5ce4c";
+import { KIT_MOVES } from "./boss-kit.js?v=r1031-b358b5a5ce4c";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r1031-b358b5a5ce4c"; // release 587; travel seeds
+import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r1031-b358b5a5ce4c";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r1031-b358b5a5ce4c";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r1031-b358b5a5ce4c"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r1031-b358b5a5ce4c"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r1031-b358b5a5ce4c";
+import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1031-b358b5a5ce4c"; // Close View: a beast in your section is captured wherever it stands in it
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r1031-b358b5a5ce4c"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r1031-b358b5a5ce4c"; // release 748: pens sized for the beast
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.js?v=r1031-b358b5a5ce4c";
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.js?v=r1031-b358b5a5ce4c"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
+import { drawRelayNode } from "./relay-network.js?v=r1031-b358b5a5ce4c";
+import { structureOccupancy } from "./world.js?v=r1031-b358b5a5ce4c";
+import { roofDeckById } from "./roof-decks.js?v=r1031-b358b5a5ce4c"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r1031-b358b5a5ce4c";
+import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r1031-b358b5a5ce4c"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.js?v=r1031-b358b5a5ce4c"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r1031-b358b5a5ce4c"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.js?v=r1031-b358b5a5ce4c"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -1488,6 +1492,51 @@ export function drawSurveyorLink(ctx, o, s, now) {
   const glint = .5 + .5 * Math.sin(now / 500 + o.x * 3); ctx.fillStyle = `rgba(255,240,190,${.25 + .5 * glint})`; ctx.beginPath(); ctx.arc(-s * .12, -s * .06, Math.max(1, s * .035), 0, 7); ctx.fill();
   ctx.restore();
 }
+// The Second Wayfarer (second-wayfarer.ts): boot prints going on ahead, the left heel a little deeper; unread, the last of them
+// holds a faint warm light. No allocation beyond the canvas calls.
+function secondPrints(ctx, x0, y0, s, n, dx, dy, alpha) {
+  const len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+  for (let i = 0; i < n; i++) { const side = i % 2 ? 1 : -1, px = x0 + ux * i * s * .32 - uy * side * s * .07, py = y0 + uy * i * s * .32 + ux * side * s * .07;
+    ctx.fillStyle = `rgba(36,30,24,${alpha * (1 - i / (n + 2))})`; ctx.beginPath(); ctx.ellipse(px, py, s * .055, s * .09, Math.atan2(uy, ux) + Math.PI / 2, 0, 7); ctx.fill(); }
+}
+export function drawSecondFootprints(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .5) * s, read = o.state === "read";
+  ctx.save(); secondPrints(ctx, cx - s * 1.1, cy + s * .2, s, 5, 1, -.18, read ? .35 : .6);
+  if (!read) { const a = .18 + .14 * Math.sin(now / 700 + o.x); ctx.fillStyle = `rgba(255,226,170,${a})`; ctx.beginPath(); ctx.arc(cx + s * .3, cy, s * .32, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+export function drawSecondTrace(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read";
+  ctx.save();
+  if (!read) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * .7); g.addColorStop(0, "rgba(255,226,170,.32)"); g.addColorStop(1, "rgba(255,226,170,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, s * .7, 0, 7); ctx.fill(); }
+  if (o.index >= 5) secondPrints(ctx, cx - s * .55, cy + s * .26, s, 4, -1, .35, read ? .26 : .42); // the last: bare prints going back the way you came
+  else secondPrints(ctx, cx + s * .35, cy + s * .1, s, 4, 1, -.3, read ? .3 : .5);
+  ctx.translate(cx, cy); ctx.globalAlpha = read ? .7 : 1; ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+  switch (o.index) {
+    case 0: ctx.fillStyle = "#4a4038"; ctx.beginPath(); ctx.ellipse(0, s * .08, s * .22, s * .1, 0, 0, 7); ctx.fill(); if (!read) { ctx.fillStyle = `rgba(255,140,60,${.5 + .3 * Math.sin(now / 300)})`; ctx.beginPath(); ctx.arc(0, s * .06, s * .06, 0, 7); ctx.fill(); } ctx.fillStyle = "#c8a060"; ctx.fillRect(s * .2, -s * .02, s * .14, s * .08); break; // a banked fire, a cake on a stone
+    case 1: ctx.strokeStyle = "#4a6aa8"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.moveTo(-s * .05, -s * .2); ctx.quadraticCurveTo(s * .1, 0, -s * .02, s * .18); ctx.moveTo(-s * .05, -s * .2); ctx.quadraticCurveTo(-s * .2, 0, -s * .12, s * .16); ctx.stroke(); break; // a blue ribbon
+    case 2: ctx.fillStyle = "#3e4a30"; ctx.beginPath(); ctx.ellipse(0, s * .06, s * .26, s * .12, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#e8e0cc"; ctx.rotate(-.2); ctx.fillRect(-s * .1, -s * .06, s * .2, s * .14); ctx.strokeRect(-s * .1, -s * .06, s * .2, s * .14); break; // a hollow in the grass, a ledger page
+    case 3: ctx.fillStyle = "#8a6a44"; ctx.beginPath(); ctx.ellipse(0, s * .02, s * .14, s * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#1e1a16"; ctx.fillRect(-s * .08, -s * .02, s * .16, s * .02); break; // a water skin
+    case 4: ctx.fillStyle = "#5a6a52"; ctx.beginPath(); ctx.moveTo(-s * .12, s * .16); ctx.lineTo(-s * .12, -s * .04); for (let k = 0; k < 4; k++) { ctx.lineTo(-s * .1 + k * s * .065, -s * .2); ctx.lineTo(-s * .07 + k * s * .065, -s * .04); } ctx.lineTo(s * .14, s * .16); ctx.closePath(); ctx.fill(); ctx.stroke(); break; // a worn glove
+    default: { // the last (Tim, 2026-11-19): her, lying still, the folded suit and mask beside her with the bundle, and the writing in blood on a stone at her head. Restrained: no wound is drawn.
+      ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(-s * .1, s * .14, s * .42, s * .09, 0, 0, 7); ctx.fill(); // her shadow
+      ctx.fillStyle = "#5a4636"; ctx.beginPath(); ctx.ellipse(-s * .08, s * .06, s * .32, s * .085, 0, 0, 7); ctx.fill(); ctx.stroke(); // a plain brown dress, lying along the ground
+      ctx.fillStyle = "#cdbca6"; ctx.beginPath(); ctx.arc(-s * .44, s * .05, s * .075, 0, 7); ctx.fill(); ctx.stroke(); // her face, turned up
+      ctx.strokeStyle = "#9a948a"; ctx.lineWidth = Math.max(1, s * .035); ctx.beginPath(); ctx.arc(-s * .44, s * .05, s * .075, Math.PI * .55, Math.PI * 1.45); ctx.stroke(); // grey hair
+      ctx.fillStyle = "#cdbca6"; ctx.fillRect(-s * .2, s * .02, s * .07, s * .05); // hands folded on her breast
+      ctx.strokeStyle = "#2a241c"; ctx.lineWidth = Math.max(1, s * .03);
+      ctx.fillStyle = "#5a6a52"; ctx.fillRect(s * .16, s * .1, s * .3, s * .12); ctx.strokeRect(s * .16, s * .1, s * .3, s * .12); // the folded suit
+      ctx.fillStyle = "#c8c4b4"; ctx.beginPath(); ctx.ellipse(s * .31, s * .08, s * .08, s * .06, 0, 0, 7); ctx.fill(); ctx.stroke(); // the mask on it
+      ctx.fillStyle = "#d8c48a"; ctx.fillRect(s * .26, s * .03, s * .045, s * .03); ctx.fillStyle = "#8a6a44"; ctx.fillRect(s * .32, s * .02, s * .04, s * .035); ctx.fillStyle = "#b07898"; ctx.fillRect(s * .29, -s * .005, s * .03, s * .025); // the bundle
+      ctx.fillStyle = "#6e6a62"; ctx.beginPath(); ctx.ellipse(-s * .56, -s * .16, s * .17, s * .1, -.15, 0, 7); ctx.fill(); ctx.stroke(); // the flat stone at her head
+      ctx.strokeStyle = "#6a1712"; ctx.lineWidth = Math.max(1, s * .022); ctx.beginPath(); // the writing: short square strokes, shaking and uneven
+      for (let k = 0; k < 9; k++) { const lx = -s * .67 + (k % 5) * s * .05 + (k * 7 % 3) * s * .006, ly = -s * .21 + (k > 4 ? s * .07 : 0) + (k * 5 % 4) * s * .005, h = s * (.025 + (k * 3 % 4) * .006);
+        if (k % 3 === 0) { ctx.moveTo(lx, ly); ctx.lineTo(lx + s * .028, ly); ctx.lineTo(lx + s * .026, ly + h); } else if (k % 3 === 1) { ctx.moveTo(lx, ly); ctx.lineTo(lx + s * .004, ly + h); ctx.moveTo(lx + s * .024, ly + s * .003); ctx.lineTo(lx + s * .022, ly + h); } else { ctx.moveTo(lx, ly + h); ctx.lineTo(lx, ly); ctx.lineTo(lx + s * .026, ly + h * .5); } }
+      ctx.stroke(); ctx.fillStyle = "rgba(110,23,18,.55)"; ctx.beginPath(); ctx.ellipse(-s * .45, -s * .1, s * .04, s * .015, .4, 0, 7); ctx.fill(); // a dark smear where the hand rested
+    }
+  }
+  ctx.restore();
+}
 // Release 551: Abel Corwin's statue, kneeling on a low plinth in pale Far Sleep stone, a brass chain from his boot to his hand.
 export function drawSurveyorStatue(ctx, o, s, now) {
   const cx = (o.x + .5) * s, base = (o.y + .92) * s, stone = "#d9d4c6", shade = "#a8a294", edge = "#5f5a50";
@@ -2898,7 +2947,7 @@ export function render(ctx, g, w, h, now) {
   const captureRift = stillworksCapture ? (effect, draw) => draws.push({ x: effect.x, y: effect.y, fn: draw }) : null;
   drawPackEffects(ctx,g.packEffects,s,now,(f)=>visibleInCamera(f,l,t,r,b,Math.max(3,f.radius||0,f.length||0)),(f)=>groundLift(f.x,f.y),closeViewCapturing()?{...g.presentation,capture:true}:g.presentation,captureRift); // capture: Close View draws what stands above the floor itself (the dino duel's falling rock)
   drawMorphEffects(ctx,g.enemies,s,now); // release 385: the Morphling's cables, jaw, lunge and rising
-  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode) });
+  drawPackTelegraphs(ctx,g.enemies.filter(e=>e.packKind&&!e.gloomVeil&&shownInDungeon(g,e)),s,now,(e)=>visibleInCamera(e,l,t,r,b,10),{ ground: groundLift, body: crystalLift, reduceMotion: !!(g.presentation?.reduceMotion || g.presentation?.safeMode), capture: closeViewCapturing() });
   for (const h of g.affixHazards || []) { const A = AFFIXES[h.kind] || KIT_MOVES[h.kind] /* release 668 */, x = h.x * s, y = h.y * s, R = h.radius * s, arming = now < h.armAt, k = arming ? Math.max(0, Math.min(1, 1 - (h.armAt - now) / ((A?.arm || .5) * 1000))) : 1; /* release 694: rounding put k a hair below 0 the frame a mark was laid, and a negative radius threw */ if (!A) continue; ctx.save(); // release 657: affix telegraphs and strikes
     if (arming) { ctx.strokeStyle = A.color; ctx.globalAlpha = .45 + .45 * k; ctx.lineWidth = Math.max(2, s * .06); ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.stroke(); ctx.fillStyle = A.color + "40"; ctx.beginPath(); ctx.ellipse(x, y, R * k, R * .6 * k, 0, 0, 7); ctx.fill(); }
     else if (h.kind === "volcanic" || h.kind === "venomous") { ctx.globalAlpha = Math.min(1, (h.until - now) / 600) * .75; const gr = ctx.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, h.kind === "volcanic" ? "#ffd27a" : "#d8ff9a"); gr.addColorStop(.5, A.color); gr.addColorStop(1, A.color + "00"); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, R, R * .6, 0, 0, 7); ctx.fill(); }
@@ -2990,6 +3039,8 @@ export function render(ctx, g, w, h, now) {
         alpha: o.kind === "tree" && g.area === "overworld" && g.map?.canopy?.top && behindGreatTrunk(g.map.canopy, o) ? GIANT_TREE.ghost : undefined, // great-tree review: a wood's tree standing where the trunk is drawn shows faint, behind it (version 18 ground grows none there)
         fn: () => {
           if (o.kind === "beastHotelBed") drawBeastHotelBed(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode));
+          else if (o.kind === "hatchMama") drawHatchMama(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the hatchling's mother (hatchling-render.ts)
+          else if (o.kind === "hatchPen") drawHatchPen(ctx, o, s, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the pen he is rescued from
           else if (o.kind === "wayfindingCue") waymark(ctx,o,s);
           else if (o.kind === "pentWaysign") pentagonSigilMark(ctx,o,s); // Pentagon finding: a sigil cut in the ground, its long point toward its Pentagon
           else if(o.kind==="shelterHazard"){const cx=(o.x+.5)*s,cy=(o.y+.5)*s;ctx.strokeStyle=o.state==='armed'?'#d68b58aa':'#6e665c77';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,s*.28,0,7);ctx.moveTo(cx-s*.2,cy);ctx.lineTo(cx+s*.2,cy);ctx.moveTo(cx,cy-s*.2);ctx.lineTo(cx,cy+s*.2);ctx.stroke()}
@@ -3102,6 +3153,8 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "tornPage") { drawTornPage(ctx, o, s, now); // release 595
           } else if (o.kind === "surveyorLink") { drawSurveyorLink(ctx, o, s, now); // release 505
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
+          } else if (o.kind === "secondFootprints") { drawSecondFootprints(ctx, o, s, now); // the Second Wayfarer
+          } else if (o.kind === "secondTrace") { drawSecondTrace(ctx, o, s, now);
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {
@@ -3122,13 +3175,15 @@ export function render(ctx, g, w, h, now) {
           } else {const kind=o.kind==="tree"&&o.vegetationForm==="shrub"?"treeShrub":o.kind==="tree"&&o.vegetationForm==="spindle"?"treeSpindle":o.kind;if(o.strange&&!o.strangeUsed)drawStrange(ctx,o,s,kind,now);else if(SEASON&&o.kind==="tree"&&o.state==="standing")drawSeasonTree(ctx,o,s,kind);else actor(ctx,o.x,o.y,s,kind,"down",0,o.state||"idle",false,o.scale||1);}
         },
       });
+  { const hd = hatchlingDraw(ctx, g, s, now); if (hd && visibleInCamera(hd, l, t, r, b, 2)) draws.push(hd); } // the Triceratops hatchling, out (hatchling-render.ts)
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
-      if (!creatureInSight(g, e)) { if (!e.hidden && !e.ambient && creatureSightLevel(g, e) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
+      { const cvLevel = closeViewCapturing() ? closeViewCreatureSight(g, e) : -1, seenNow = cvLevel >= 0 ? cvLevel === 2 : creatureInSight(g, e), sightFade = cvLevel >= 0 ? closeViewSightFade(g, e, seenNow) : seenNow ? 1 : 0; // the polish pass (close-view.ts): Close View's sight parity with the room drawn, and its fade in and out
+      if (!seenNow && !(sightFade > 0)) { if (!e.hidden && !e.ambient && (cvLevel >= 0 ? cvLevel : creatureSightLevel(g, e)) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
       else draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
-        enemy: e,
+        enemy: e, sightFade, // < 1: coming into or leaving Close View's sight (the polish pass)
         alpha: phaseShielded(e) ? PHASE_SHIELD.alpha : undefined, // a linked-invulnerable creature the Wayfarer can walk through is ghosted (Close View reads it too)
         nativeWindup: nativeWindupDuration(e),
         nativeActionShape: nativeActionShape(e),
@@ -3197,7 +3252,7 @@ export function render(ctx, g, w, h, now) {
             ctx.stroke();
           }
         },
-      });
+      }); }
   // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) {
@@ -3589,7 +3644,7 @@ export function render(ctx, g, w, h, now) {
     ctx.fillRect(0, 0, w, h);
   }
   { const quiet = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); // the Spinosaurus: its bite mark over the screen, and the Wayfarer's bleed icon with the still cure's ring (bleed.ts)
-    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
+    if (g.spinoBiteMark > 0) drawSpinoBiteOverlay(ctx, w, h, g.spinoBiteMark, quiet); if (g.save?.bleed?.left > 0) drawBleedIcon(ctx, w / 2 + s * .5 + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); if (g.save?.apatoPoison?.stacks > 0) drawPoisonIcon(ctx, w / 2 + s * (g.save?.bleed?.left > 0 ? 1.05 : .5) + spinoShakeAt.x, h / 2 + s * .7 + spinoShakeAt.y, s, g.save, now, quiet); }
   if (!worldCapture && !closeViewCapturing()) { const doomed = !!g.fallDoomed?.(); drawLowHealth(ctx, g, w, h, now, doomed); if (doomed) drawFallDoom(ctx, g, w, h, now); } // LOW_HEALTH_EDGE yields to the fall cue (one red cue at a time). FALL_RESCUE: a fall that would kill where it lands pulses red at the edges (over the light and darkness)
   // Area label, plus the player's height wherever the map has levels (operator ask 2026-10-14).
   ctx.font = "12px monospace";
@@ -3692,12 +3747,24 @@ function drawSweepFrost(ctx,e,q,cx,cy,s){
     for(let i=0;i<6;i++){const a=i*Math.PI/3+.3;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r*.82,cy+Math.sin(a)*r*.82);ctx.lineTo(cx+Math.cos(a)*r*(1.16+.06*k),cy+Math.sin(a)*r*(1.16+.06*k));ctx.stroke()}ctx.globalAlpha=1}
   else if(q.fill>0){ctx.globalAlpha=.75;ctx.strokeStyle="#bfe4ff";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.min(1,q.fill)*Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
 }
+// Encumbered: a violet weight under the foe's middle (two chains down to a block) and a dark ring at its feet, fading in its last
+// second; while the meter fills (not yet Encumbered), a thin violet arc round the feet, as full as the meter. A few strokes, no allocation.
+function drawEncumbered(ctx,cx,cy,s,left,fill,t,still){
+  ctx.save();ctx.lineWidth=Math.max(1.5,s*.05);
+  if(left>0){const a=Math.min(1,left)*(still?.85:.7+.15*Math.sin(t*4)),bx=cx,by=cy+s*.42;ctx.globalAlpha=a;ctx.strokeStyle="#9b7bff";ctx.fillStyle="rgba(20,12,34,.55)";
+    ctx.beginPath();ctx.ellipse(cx,by,s*.44,s*.15,0,0,7);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.05);ctx.lineTo(bx-s*.08,by-s*.04);ctx.moveTo(cx+s*.22,cy-s*.05);ctx.lineTo(bx+s*.08,by-s*.04);ctx.stroke();
+    ctx.fillStyle="#3a2a66";ctx.beginPath();ctx.moveTo(bx-s*.12,by-s*.02);ctx.lineTo(bx+s*.12,by-s*.02);ctx.lineTo(bx+s*.08,by-s*.16);ctx.lineTo(bx-s*.08,by-s*.16);ctx.closePath();ctx.fill();ctx.stroke()}
+  else{ctx.globalAlpha=.7;ctx.strokeStyle="#9b7bff";ctx.beginPath();ctx.ellipse(cx,cy+s*.42,s*.44,s*.15,0,-Math.PI/2,-Math.PI/2+Math.min(1,fill)*Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
 function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
     if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
     if(vulnerableUntil(e)>now){const k=.5+.5*Math.sin(t*9);ctx.strokeStyle=`rgba(255,96,140,${.55+.35*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();for(let q=0;q<4;q++){const a=q*Math.PI/2+t*1.5,r=s*.5;ctx.moveTo(cx+Math.cos(a)*r*.62,cy-s*.1+Math.sin(a)*r*.62);ctx.lineTo(cx+Math.cos(a)*r,cy-s*.1+Math.sin(a)*r)}ctx.stroke()} // Tempo's window (hit-cast-passives.ts): a pink broken ring
+    { const enc=encumberedLeft(e),fill=enc>0?0:pullMeterOf(e); if(enc>0||fill>0)drawEncumbered(ctx,cx,cy,s,enc,fill,t,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); } // Encumbered (hit-cast-passives.ts ENCUMBERED): Standard View, and Close View's floor
     if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
@@ -3715,7 +3782,21 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 }
 
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
+// Glyph Mine × Rift Step (hit-cast-passives.ts RIFT_MINE): the inky void, a line or a filled triangle, near black with a faint violet
+// edge, fading in its last second (the edge breathes; still under Reduced Motion); and the rift mines waiting to link, steady sigils.
+function drawRiftVoid(ctx,g,s,now){
+  const still=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),V=riftVoidOf(g),R=riftMinesOf(g);
+  if(V){const k=Math.min(1,Math.max(0,V.left)),edge=still?.55:.45+.2*Math.sin(now/260),w=RIFT_MINE.halfWidth*2*s,x=V.xs,y=V.ys;
+    ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.globalAlpha=k;ctx.beginPath();ctx.moveTo(x[0]*s,y[0]*s);for(let i=1;i<V.n;i++)ctx.lineTo(x[i]*s,y[i]*s);if(V.n>2)ctx.closePath();
+    ctx.strokeStyle=`rgba(150,105,255,${edge})`;ctx.lineWidth=w+Math.max(2,s*.08);ctx.stroke();
+    ctx.strokeStyle="rgba(6,3,12,.92)";ctx.lineWidth=w;ctx.stroke();if(V.n>2){ctx.fillStyle="rgba(6,3,12,.88)";ctx.fill()}
+    ctx.restore()}
+  if(R&&R.n>0){const r=GLYPH_MINE.trigger*s*.8;ctx.strokeStyle="rgba(150,105,255,.75)";ctx.fillStyle="rgba(10,5,20,.55)";ctx.lineWidth=Math.max(1.5,s*.05);
+    for(let i=0;i<R.n;i++){const x=R.xs[i]*s,y=R.ys[i]*s;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()}}
+}
 function drawEchoPatches(ctx,g,s,now){
+  drawRiftVoid(ctx,g,s,now);
+  if(g.earthResolve)drawEarthResolveSigil(ctx,g.earthResolve,s,now,insideResolve(g),!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); // Earth Resolve, the Earth Apatosaurus's Echo (apato-render.ts)
   for(const m of glyphMinesOf(g)){const k=Math.max(0,Math.min(1,(m.until-now)/GLYPH_MINE.lifeMs)),x=m.x*s,y=m.y*s,r=GLYPH_MINE.trigger*s;ctx.strokeStyle=`rgba(190,150,255,${.35+.5*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()} // Glyph Mine sigils (hit-cast-passives.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
     if(q.kind==="web"){ctx.strokeStyle=`rgba(230,235,240,${Math.min(.7,left)})`;ctx.lineWidth=1;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.6)}ctx.stroke();for(const f of[.4,.75,1]){ctx.beginPath();ctx.ellipse(x,y,r*f,r*f*.6,0,0,7);ctx.stroke()}}

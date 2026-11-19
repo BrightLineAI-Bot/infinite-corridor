@@ -7,22 +7,24 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r1012-ffa69513a699";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r1012-ffa69513a699";
-import { QUANDRIX } from "./quandrix-staff.js?v=r1012-ffa69513a699";
-import { WEAPON_ARTS } from "./weapon-arts.js?v=r1012-ffa69513a699";
-import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // Tim's on-hit and charge passives (2026-11-19)
+import { latticePassives } from "./transit-lattice.js?v=r1031-b358b5a5ce4c";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r1031-b358b5a5ce4c";
+import { QUANDRIX } from "./quandrix-staff.js?v=r1031-b358b5a5ce4c";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r1031-b358b5a5ce4c";
+import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD, POWER_AEGIS } from "./hit-cast-passives.js?v=r1031-b358b5a5ce4c"; // Tim's on-hit and charge passives (2026-11-19)
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {
   sanctum: { name: "Sanctum", text: "Standing inside one of your lingering spells, you take 20% less damage and mend 2% of your health each second.", guard: .2, mend: .02 },
   wellspring: { name: "Wellspring Ground", text: "Standing inside one of your lingering spells, your spells, Aperture skills and tools recover 30% faster.", rate: .3 },
   "charged-air": { name: "Charged Air", text: "While one of your spells is running, tool shots fly 50% bigger, deal 25% more and burst 30% wider; the Great Sweep deals 25% more and spreads 30% wider.", scale: 1.5, damage: .25, blast: 1.3, grow: .18 },
-  spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists, Hammerfall and the Great Sweep too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
+  spellblade: { name: "Spellblade", text: "While one of your spells is running, melee strikes (the Iron Fists, Hammerfall, the Great Sweep and your Shadow Clone's swings too) deal 20% more and reach 0.4 tiles farther.", damage: .2, reach: .4 },
   "drift-field": { name: "Drift Field", text: "A dodge drags your nearest lingering spell (within 6 tiles) along: it settles where you land.", reach: 6 },
   // On-hit (Tim, 2026-11-19; hit-cast-passives.ts): they need no spell in play, and work in every fight.
   tempo: { name: "Tempo", text: PASSIVE_TEXT.tempo, rules: TEMPO },
   shatterpoint: { name: "Shatterpoint", text: PASSIVE_TEXT.shatterpoint, rules: SHATTERPOINT },
+  // The Aegis's perfect parry (Tim, 2026-11-19; hit-cast-passives.ts POWER_AEGIS, game.ts perfectParry): a spell's passive.
+  "power-aegis": { name: "Power Aegis", text: PASSIVE_TEXT["power-aegis"], rules: POWER_AEGIS },
 };
 // Release 533 (tool-forms.ts): tool forms, Lattice-only passives that change how a tool works. Held like the field passives
 // (keys `field:<id>`), listed apart from them.

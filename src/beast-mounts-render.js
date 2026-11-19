@@ -2,9 +2,9 @@
 // or riding frame on its back (MOUNT_BEASTS.saddle), and the Wayfarer drawn last, on top, so even the biggest never hides them.
 // The pack beasts reuse monster-render's cached sprites (one per mount id); the Stalker is drawn as its cat; each saddle is painted
 // once into a small cached canvas per style, size and facing.
-import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1012-ffa69513a699";
-import { drawPackMonster } from "./monster-render.js?v=r1012-ffa69513a699";
-import { drawStalker } from "./stalker-render.js?v=r1012-ffa69513a699";
+import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1031-b358b5a5ce4c";
+import { drawPackMonster } from "./monster-render.js?v=r1031-b358b5a5ce4c";
+import { drawStalker } from "./stalker-render.js?v=r1031-b358b5a5ce4c";
 
 // One reused actor per frame (no per-frame allocation beyond it).
 const actor = { id: "", kind: "", packKind: "", x: 0, y: 0, scale: 1, facingX: 1, boss: false, hopLift: 0, stalkForm: "cat", stalkAct: { kind: "prowl", t: 0, total: 0 }, pack: null, mountView: true };
@@ -23,7 +23,7 @@ export function drawMount(ctx, m, p, s, now, liftPx = 0, reduceMotion = false, h
     else if (m.beast === "stalker") drawStalker(ctx, actor, s, now, reduceMotion);
     else drawPackMonster(ctx, actor, s, now, p.facing);
   } catch { /* a renderer that needs fight state it does not have draws nothing; the rider still shows */ }
-  const bob = reduceMotion ? 0 : (Number(B.bob) || 0) * Math.sin(now / 420) * s, seat = B.seat * s + bob, dx = (Number(B.seatX) || 0) * face * s;
+  const bob = reduceMotion ? 0 : (Number(B.bob) || 0) * Math.sin(now / 420) * s, seat = B.seat * s + bob, dx = barrel && MOUNT_DRAW.skipBody ? 0 : (Number(B.seatX) || 0) * face * s; // Close View: the card stands at the Wayfarer, over the skinned body's saddle (close-view-beast-triceratops.ts SEAT_F): the rider at its middle, the same from every side
   const u = s * Math.max(.8, Math.min(1.6, B.scale * .5)), sx = (p.x + .5) * s + dx, sy = (p.y + .8) * s - liftPx - seat;
   if (B.saddle === "girth") { drawSaddle(ctx, "girth", sx + (Number(B.bandX) || 0) * face * s, sy, (Number(B.band) || 1.4) * s / 1.6, B.seat * s, face); drawSaddle(ctx, "girthSeat", sx, sy, u, B.seat * s, face); } // the band round the body's axis; the seat on its back
   else if (barrel && MOUNT_DRAW.skipBody) { drawSaddle(ctx, "barrelSeat", sx, sy, u, 0, face); Object.assign(front, { style: "barrelGrip", x: sx, y: sy, u, drop: 0, face }); } // Close View's skinned body wears the blanket and girth: the card keeps the seat (and the rider's grip) under the rider

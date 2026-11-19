@@ -7,15 +7,15 @@
 //
 // A labyrinth is one closed building on the overworld with one door. Inside it is a maze of chambers, each an area of its own,
 // joined by doors (the same level) and ladders (up to a loft, down to a cellar or a subcellar). The chambers are:
-//   hall    rooms split by inner walls (great-buildings.js?v=r1012-ffa69513a699's floor plan)
+//   hall    rooms split by inner walls (great-buildings.js?v=r1031-b358b5a5ce4c's floor plan)
 //   court   an open-air hedge maze: outside, but still inside the labyrinth
 //   cellar  a stone maze under the ground (two levels down is a subcellar)
 //   gaps    a gallery of platforms over a drop: jump the one-tile gaps; fall and you land in a cellar somewhere else
 // The chambers form a tree, so there is one way through. The vault is the chamber farthest from the door, the one real end,
 // with the labyrinth's guardian, its treasure and a door that lets you out at the front. Dead ends sometimes hold a cache.
 // Everything is a hash of the seed and the section (`atlas.labVersion`, sections first seen from this release).
-import { hashSeed, rng, byHash } from "./random.js?v=r1012-ffa69513a699";
-import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r1012-ffa69513a699";
+import { hashSeed, rng, byHash } from "./random.js?v=r1031-b358b5a5ce4c";
+import { BUILDINGS, layFloor, layFloorV3, layFloorV4, addInteriorTerrain, farthest, guardianBeside } from "./great-buildings.js?v=r1031-b358b5a5ce4c";
 
 export const LABYRINTHS = {
   version: 4, // 4: styles rolled evenly (styleWeights), room mazes ~r2 (the vault by style, told at the door; keys); sections pinned to 3 keep their region's style and ~r1
@@ -45,7 +45,7 @@ export const LABYRINTHS = {
     hive: { name: "Hive Labyrinth", hall: "Brood Hall", court: "Spore Garden", cellar: "Burrow", subcellar: "Deep Burrow", gaps: "Rift Gallery", vault: "Queen's Chamber" },
     // The Shell-Labyrinth (turtle-shell.ts): the maze inside a slain Mountain Turtle's shell. Never rolled on the overworld. Its
     // rooms are laid out as the Old Keep's (`building`); Tim (2026-11-04): "let's use the clockwork dungeon theme, and the mosaic
-    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r1012-ffa69513a699's Brass Engine and Mosaic
+    // dungeon theme": each chamber is dressed in one of the two by its kind (`themes`, underlands.js?v=r1031-b358b5a5ce4c's Brass Engine and Mosaic
     // Sanctum tiles, see SHELL_THEMES): the halls and galleries are clockwork, the courts, undercrofts and the vault mosaic.
     shell: { name: "The Shell-Labyrinth", hall: "Gear Hall", court: "Mosaic Court", cellar: "Mosaic Undercroft", subcellar: "Deep Undercroft", gaps: "Gallery of Gears", vault: "Heart of the Shell", building: "keep",
       themes: { hall: "clockwork", gaps: "clockwork", court: "mosaic", cellar: "mosaic", vault: "mosaic" } },
@@ -399,7 +399,7 @@ export const ROOM_MAZES = {
   guards: { share: .4, max: 6, roofMax: 3 }, // of a floor's rooms, guarded (one each), at most
   deadCache: .3, lookoutCache: .6, caches: 4, // a dead-end room's cache; a dead-end floor's; at most this many
   props: .3, // share of a room's edge tiles (never in line with a doorway) that hold a prop
-  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r1012-ffa69513a699's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
+  // Room themes (a floor and a prop; `u`: drawn from underlands.js?v=r1031-b358b5a5ce4c's tiles; `q`: a 2x2 motif) by level: the undercroft, the roof,
   // and the floors between by style.
   themes: {
     keep: [{ name: "Crypt", floor: "ossuary", prop: "sarcophagus", u: 1 }, { name: "Chapel", floor: "templeMosaic", prop: "templePillar", u: 1, q: 1 }, { name: "Solar", floor: "carpetFloor" },
@@ -885,8 +885,12 @@ export function creatureInSight(g, e) {
 // creatureInSight (the distance is one hypot).
 export function creatureSightLevel(g, e) {
   if (creatureInSight(g, e)) return 2; const p = g?.player; if (!p || !e) return 1;
-  const near = sightRule(g).hideNear; return near > 0 && Math.hypot(Number(e.x) - p.x, Number(e.y) - p.y) <= near ? 0 : 1;
+  const r = sightRule(g), near = Math.min(r.hideNear, r.range); return near > 0 && Math.hypot(Number(e.x) - p.x, Number(e.y) - p.y) <= near ? 0 : 1;
 }
+// The polish pass (Tim, 2026-11-19: "creature visibility must match room visibility and lighting"): the ambush radius never reaches
+// past sight's own reach (hideNear 8 over range 7 had a creature in plain view at 7 to 8 tiles drawn as nothing at all, while the
+// room it stood in was drawn). Past the reach it is the silhouette, as the dark there is. Close View's orbit indoors goes further
+// (close-view.ts closeViewCreatureSight): a creature is drawn exactly where the sight field draws its floor.
 // The sight field (version 2, Close View's orbit indoors): the tiles in the Wayfarer's sight, out to `field.radius`, by the fog
 // of war's own lines with sight's walls (sightWall: water, lava and chasms do not block). Kept per map; worked out again only
 // when her tile changes, or `refreshMs` after the last time (a door opened); `stamp` changes only when the field does (the GPU

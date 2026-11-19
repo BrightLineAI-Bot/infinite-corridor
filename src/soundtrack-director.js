@@ -11,9 +11,9 @@
 // - A world beast or boss in the fight switches to its own theme (BOSS_THEMES, by bossKey), or the shared boss track.
 // - The dino duel (DUEL): while the Spinosaurus and the Wild Stegosaurus fight near the Wayfarer, the score is hushed (`hush`)
 //   and battle-sfx.ts carries the fight; no boss theme starts until it is over.
-import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r1012-ffa69513a699";
-import { apertureTier } from "./world.js?v=r1012-ffa69513a699";
-import { seededRandom } from "./soundtrack.js?v=r1012-ffa69513a699";
+import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r1031-b358b5a5ce4c";
+import { apertureTier } from "./world.js?v=r1031-b358b5a5ce4c";
+import { seededRandom } from "./soundtrack.js?v=r1031-b358b5a5ce4c";
 
 export const DIRECTOR = {
   engagedRange: 14, nearRange: 8, bossRange: 22,
@@ -39,19 +39,19 @@ export const CHAPTERS = [
 // It ends `linger` s after one falls, they part or the Wayfarer leaves (at once when the Wayfarer lands the kill: the victory
 // stinger then plays), and the music fades back in over `fadeIn` s. `undercurrent`: true keeps one sub drone and a slow heartbeat
 // (battle-sfx.ts BATTLE_SFX.undercurrent, -30 dB or less) under the battle; false is silence.
-export const DUEL = { kinds: ["spinoRex", "wildStego"], range: 16, leadIn: 1.5, linger: 4, fadeOut: 1.5, fadeIn: 2.5, undercurrent: true };
+export const DUEL = { kinds: ["spinoRex", "wildStego"], apato: "earthApato", range: 16, leadIn: 1.5, linger: 4, fadeOut: 1.5, fadeIn: 2.5, undercurrent: true };
 const duelAlive = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.passingBeast && !e.fleeTo && !e.illusion;
 // Is `a` going for `b`: its focus (SPINO hunt, STEGO rival) or the blow it is throwing?
-const duelTargets = (a, b) => !!a?.pack && (a.pack.spinoFocus === b.id || a.pack.stegoRival === b.id || (!!a.pack.attack && a.pack.data?.prey === b.id));
+const duelTargets = (a, b) => !!a?.pack && (a.pack.spinoFocus === b.id || a.pack.stegoRival === b.id || a.pack.apatoRival === b.id || (!!a.pack.attack && a.pack.data?.prey === b.id));
 // The duelling pair near the Wayfarer, or null: the nearest Spinosaurus and Wild Stegosaurus that meet the rule above.
 export function sampleDuel(game, range = DUEL.range) {
   const p = game?.player || {}, near = (e) => Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0)) <= range;
-  const spinos = [], stegos = [];
-  for (const e of game?.enemies || []) { if (!duelAlive(e) || !near(e)) continue; if (e.kind === DUEL.kinds[0]) spinos.push(e); else if (e.kind === DUEL.kinds[1]) stegos.push(e); }
-  for (const spino of spinos) for (const stego of stegos) {
-    if (Math.hypot(spino.x - stego.x, spino.y - stego.y) > range) continue;
-    if (duelTargets(spino, stego) || duelTargets(stego, spino) || (spino.aggro && stego.aggro)) return { spino, stego };
-  }
+  const spinos = [], stegos = [], apatos = [];
+  for (const e of game?.enemies || []) { if (!duelAlive(e) || !near(e)) continue; if (e.kind === DUEL.kinds[0]) spinos.push(e); else if (e.kind === DUEL.kinds[1]) stegos.push(e); else if (e.kind === DUEL.apato) apatos.push(e); }
+  const meets = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) <= range && (duelTargets(a, b) || duelTargets(b, a) || (a.aggro && b.aggro));
+  for (const spino of spinos) for (const stego of stegos) if (meets(spino, stego)) return { spino, stego };
+  // the Earth Apatosaurus's duels (Tim, 2026-11-18): the pair by kind, `apato` and the Spinosaurus or the Wild Stegosaurus
+  for (const apato of apatos) { for (const spino of spinos) if (meets(apato, spino)) return { apato, spino, stego: null }; for (const stego of stegos) if (meets(apato, stego)) return { apato, spino: null, stego }; }
   return null;
 }
 // Each world boss's own theme (Phase 2, Tim 2026-11-14): bossKey -> a song id in SONGS with boss: true (soundtrack-songs.ts,
@@ -62,7 +62,7 @@ export const BOSS_THEMES = {
   briarStag: "briarHunt", crimsonTyrant: "crimsonCrown", doomChaser: "longPursuit", lightningGiant: "thunderEngine",
   morphingBlob: "shapeless", mountainTurtle: "mountainWalks", nanobotKnight: "clockworkOath", psychicCrystal: "glassMind",
   tremorWorm: "underTheFloor", voidWalker: "walkerBetween", wildStego: "fernsAndPlates",
-  spinoRex: "riverStalker", "spinoRex:fossil": "bonesHunt",
+  spinoRex: "riverStalker", "spinoRex:fossil": "bonesHunt", earthApato: "rootedColossus", /* the Earth Apatosaurus (Tim, 2026-11-18) */
   astralWorm: "coilOfStars", questingBeast: "quarryBays", stalker: "eyesBehind", listener: "whatListens",
   gloomvast: "gloomRises", gateRevenant: "revenantsReturn", tyrantMosasaur: "deepTide",
 };
@@ -138,7 +138,7 @@ export function sampleMusic(game, memo = {}) {
   // The dino duel: the pair (kept in memo for battle-sfx.ts), and a fall of one of the last pair: by the Wayfarer, or by a beast.
   const pair = sampleDuel(game), last = memo.duelPair;
   let duelFall = null;
-  if (last && !pair) for (const e of [last.spino, last.stego]) if (e.dead || !(e.hp > 0)) duelFall = e.noRewards ? "beast" : "wayfarer";
+  if (last && !pair) for (const e of [last.spino, last.stego, last.apato]) if (e && (e.dead || !(e.hp > 0))) duelFall = e.noRewards ? "beast" : "wayfarer";
   memo.duelPair = pair;
   const cp = save.activeCheckpoint, home = save.hometowns?.home || "0,0";
   return {

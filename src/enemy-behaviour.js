@@ -16,9 +16,9 @@
 // and test world behaves exactly as before. Nothing here is saved: the runtime record `e.bhv` is not enumerable (a resumed
 // creature re-derives it; saves stay schema 14 and unchanged apart from the art's small numeric flags), all choices are hashed from stable ids (no Math.random), and the work
 // per frame is O(active creatures) plus a bounded kin check (BEHAVIOUR.spacing.scan).
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { cowerRoll, WAYFARER_DREAD } from "./lore.js?v=r1012-ffa69513a699"; // the Wayfarer's dread (Tim, 2026-11-15): a few lesser creatures cower
-import { createTactics, tacticsFrame, tacticsAllow, tacticsRing } from "./squad-tactics.js?v=r1012-ffa69513a699"; // squad tactics (Tim, 2026-11-15): roles, places, the surround, punish windows
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { cowerRoll, WAYFARER_DREAD } from "./lore.js?v=r1031-b358b5a5ce4c"; // the Wayfarer's dread (Tim, 2026-11-15): a few lesser creatures cower
+import { createTactics, tacticsFrame, tacticsAllow, tacticsRing } from "./squad-tactics.js?v=r1031-b358b5a5ce4c"; // squad tactics (Tim, 2026-11-15): roles, places, the surround, punish windows
 
 export const BEHAVIOUR_VERSION = 1;
 
@@ -108,7 +108,7 @@ function profileOfKind(kind) {
 // illusions, ambient and passive life, skirmishers, sea creatures, the Stalker, the Foundry's domains and anything unlisted).
 export function behaviourProfile(e) {
   if (!e || e.dead || e.kind === "npc") return null;
-  if (e.boss || e.eliteId || e.elite || e.worldBeast || e.questingBeast || e.gatePredator || e.marginWarden || e.fracWarden || e.packGuardian || e.stegoRoom || e.spinoRoom || e.spinoInterloper || e.farArrayBoss || e.pentBoss || e.pentFinaleBeast || e.buildingGuardian) return null;
+  if (e.boss || e.eliteId || e.elite || e.worldBeast || e.questingBeast || e.gatePredator || e.marginWarden || e.fracWarden || e.packGuardian || e.stegoRoom || e.apatoRoom || e.apatoCloneOf || e.kind === "earthApato" || e.kind === "apatoClone" /* the Earth Apatosaurus and its tree clones (its minions): no squad role */ || e.spinoRoom || e.spinoInterloper || e.farArrayBoss || e.pentBoss || e.pentFinaleBeast || e.buildingGuardian) return null;
   if (e.illusion || e.astralCompanionOf || e.astralAllyOf || e.passiveBehavior || e.ambient || e.skirmishId || e.seaKind || e.stalker || e.stalkerKin || e.stalkerDecoy || e.mirrorClone || e.morphWorm || e.blobletOf || e.wormOf || e.gloomOrbOf || e.roofDweller || e.domainFamily || e.foundryAttack || e.passingBeast || e.retreating || e.fleeTo || e.objectiveId) return null;
   if (e.dungeonRole && GUARDIAN_ROLES.has(e.dungeonRole)) return null;
   return profileOfKind(e.kind);

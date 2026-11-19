@@ -17,7 +17,7 @@
 // dungeon history (`towerCache`, `towerLookout`, `towerDoors`); the sections the lookouts charted live in `save.towerSight`
 // (additive, schema 14, `ensureTowerSight`). Every layout is checked by the same solver the tests use (`towerClimb`): the top
 // is reached from the bottom and from the raised door with the base kit, and every place reached can get back down.
-import { hashSeed, byHash } from "./random.js?v=r1012-ffa69513a699";
+import { hashSeed, byHash } from "./random.js?v=r1031-b358b5a5ce4c";
 
 const f = Object.freeze;
 export const TALL_TOWERS = f({

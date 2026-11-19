@@ -10,11 +10,11 @@
 // the shared pose table (TRI_POSES) so the two views agree. Nothing here reads attack timing or changes the game.
 //
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = scale x closeViewScale.
-import { TRI_ART, TRI_POSES, TRI_KEYS, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.js?v=r1012-ffa69513a699";
+import { TRI_ART, TRI_POSES, TRI_KEYS, TRI_FORMS, TRI_FORM_ADULT, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.js?v=r1031-b358b5a5ce4c";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1012-ffa69513a699";
+} from "./close-view-beast-rig.js?v=r1031-b358b5a5ce4c";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const TRICERATOPS_RIG = Object.freeze({
@@ -24,6 +24,11 @@ export const TRICERATOPS_RIG = Object.freeze({
   settle: 6, stepAt: .09, stepTime: .32, turnRate: 3.2, attackTurnRate: 8, standTurnRate: 2.2, standTurnMax: 1.5, footLift: .1, bob: .016,
   ease: 10, strikeEase: 18, deathMs: 2400, hitMs: 320, landMs: 380, tailBounce: .16,
   breathe: Object.freeze({ rate: 1.2, chest: .012 }),
+  smallFrill: Object.freeze([.08, -.03]), // a frill smaller than the adult's moved forward and down onto the skull (head units per share it lacks)
+  knobFrill: .3, // a frill smaller than this share of the adult's (the baby's) is a smooth little shield, no rim knobs
+  legHeight: .5, // the hip and shoulder joints over the feet (body units): a form's shorter legs lower the body by its share of this
+  formHeadLift: Object.freeze({ baby: .03 }), // the hatchling's baby form carries his big head higher (body units over the head bone)
+  riddenFrill: Object.freeze({ tilt: .35, follow: 1.4, recoil: 1.8, fwd: .12, down: .04 }), // the ridden frill (Tim, 2026-11-19: clear of the rider): tipped forward `tilt` radians and set `fwd` forward and `down` lower on the skull (body units), and tipped further by `follow` x how far the head comes up nose first (`recoil` x the horn release's) so it never sweeps back into the rider
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
   budget: Object.freeze({ full: 3218, balanced: 1694, low: 668 }),
 });
@@ -42,6 +47,7 @@ const BODY = [
   [-.32, .6, .29, .28, 'pelvis'], [-.19, .6, .315, .29, 'pelvis', 'spine', .5], [-.05, .59, .325, .29, 'spine'], [.08, .575, .315, .28, 'spine', 'chest', .5],
   [.2, .555, .28, .26, 'chest'], [.3, .55, .22, .235, 'chest', 'neck', .5], [.38, .53, .165, .18, 'neck'], [.45, .515, .135, .15, 'neck', 'head', .5], [.51, .505, .12, .135, 'head'],
 ];
+const TAIL_ROOT = -.44; // where the tail leaves the haunch (BODY's f)
 function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= f) { const a = BODY[i - 1], b = BODY[i], t = (f - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]; } return BODY[BODY.length - 1].slice(1, 4); }
 // The Silly Goose's drill whirlwind (Tim, 2026-11-18: no spin of the body, "show the spin with an effect"): `bands` helical ribbons of
 // dust and air round the long axis through `at` (f, u), `turns` turns each from the head (`front`) back past the tail tip (`back`),
@@ -49,7 +55,19 @@ function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= 
 // `alpha`). Built only into the ridden Silly Goose's full and balanced meshes, as the mesh's optional section: drawn only while drilling.
 const WHIRL = Object.freeze({ at: Object.freeze([-.3, .58]), front: .75, back: -1.55, radius: .5, tip: .05, turns: 2.2, width: .07, alpha: .55,
   bands: Object.freeze({ full: 3, balanced: 2 }), cols: Object.freeze({ full: 26, balanced: 12 }) });
-const SEAT_F = -.13, HS0 = TRI_ART.headScale * G0.headScale; // the head's scale (the standard view's, a little bigger in the round) // the saddle's place along the back (the standard view's seat sits over the body's middle)
+// The beak (Tim, 2026-11-19: "the tip of the beak is kind of hanging off; it's not connected"), head units [f, u, half width, half
+// height] before the squat muzzle (TRI_ART.muzzle) and a form's shorter snout are applied, so it moves back and deepens with the face.
+// upper: the skull's last sections, one skin that turns down at the front into the hook and closes to its point (no separate piece);
+// jaw: the lower jaw's sections (the lower beak at its end tucks inside the hook).
+export const TRICERATOPS_BEAK = Object.freeze({
+  upper: Object.freeze([[.3, -.028, .05, .084], [.335, -.04, .04, .068], [.358, -.06, .03, .036], [.362, -.085, .02, .024], [.363, -.106, 0, 0]].map(Object.freeze)),
+  jaw: Object.freeze([[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(Object.freeze)),
+});
+const BEAK = TRICERATOPS_BEAK;
+// the saddle's place along the back (body units; Tim, 2026-11-19: "the rider should be positioned behind the frill"): Close View's
+// rider card stands at the Wayfarer (the body's middle: beast-mounts-render.ts draws it there under MOUNT_DRAW.skipBody), so the saddle
+// sits there, over the middle of the back, and the ridden frill is set clear of it (TRICERATOPS_RIG.riddenFrill)
+const SEAT_F = 0, HS0 = TRI_ART.headScale * G0.headScale; // the head's scale (the standard view's, a little bigger in the round)
 const BONES = (() => {
   const W = {}, out = [], add = (name, parent, w) => { W[name] = w; const p = parent ? W[parent] : [0, 0, 0]; out.push({ name, parent, at: [w[0] - p[0], w[1] - p[1], w[2] - p[2]] }); };
   const S = (n) => [SPINE_AT[n][0], 0, SPINE_AT[n][1]];
@@ -96,7 +114,8 @@ function markAt(f) {
   for (const [a, b] of [MARKS.haunch, MARKS.shoulder]) if (f >= a && f <= b) return 1;
   return 0;
 }
-function buildTriceratopsMesh(tier, saddle) {
+function buildTriceratopsMesh(tier, saddle, form = null) {
+  const FM = TRI_FORMS[form] || TRI_FORM_ADULT, sc = (v, c, k) => k === 1 ? v : c + (v - c) * k; // the hatchling forms (triceratops-render.ts TRI_FORMS)
   const C = palette(), d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(TRICERATOPS_SKELETON, d);
   // The hide: one loft from the tail tip to the neck, the back lighter, a pale belly, warm bands across the back and darker-yellow
   // markings over the haunches and shoulders (on the flanks, where the leg masses meet the body).
@@ -108,51 +127,60 @@ function buildTriceratopsMesh(tier, saddle) {
     return c;
   };
   const hide = BODY.map((r, i) => [r, i]).filter(([, i]) => !low || i % 2 === 0 || i === 1 || i === BODY.length - 1);
-  B.color(C.body).loft({ seg: low ? 8 : full ? 16 : 12, sections: hide.map(([[f, u, rx, rz, a, b, w]]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
+  const TF = TAIL_ROOT, tl = (f) => FM.length === 1 || f >= TF ? f : TF + (f - TF) * FM.length; // a short form's tail drawn in toward the hips (the adult's exactly at 1)
+  B.color(C.body).loft({ seg: low ? 8 : full ? 16 : 12, sections: hide.map(([[f, u, rx, rz, a, b, w]]) => ({ at: [tl(f), 0, u], rx: rx * FM.girth, rz: rz * FM.girth, bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
   // ---- the head (bone-local, the standard view's head scaled by its headScale; f forward, u up)
-  const HS = HS0, hb = (p) => at('head', [SPINE_AT.head[0] + p[0] * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS]);
-  const HW = (p) => [SPINE_AT.head[0] + p[0] * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS];
+  const HS = HS0 * FM.head, HL = G0.formHeadLift[form] || 0, sk = FM.snout, sn = (f) => sk === 1 || f <= .12 ? f : .12 + (f - .12) * sk; // the face in front of the eye shortened (the baby's round face; exact for the adult)
+  // the squat muzzle (TRI_ART.muzzle, as the standard view): in front of its `from` the face drawn shorter and, toward the beak, deeper
+  // about the mouth line; HWb (the brow horns) is the head frame without it
+  const MZ = A.muzzle, mz = (f) => f > MZ.from ? MZ.from + (f - MZ.from) * MZ.k : f, dp = (f) => f > MZ.from ? 1 + (MZ.deep - 1) * smooth((f - MZ.from) / MZ.ramp) : 1;
+  const HWb = (p) => [SPINE_AT.head[0] + sn(p[0]) * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS + HL];
+  const HW = (p) => [SPINE_AT.head[0] + sn(mz(p[0])) * HS, p[1] * HS, SPINE_AT.head[1] + (MZ.mid + (p[2] - MZ.mid) * dp(p[0])) * HS + HL];
+  const hb = (p) => at('head', HW(p));
+  const dHS = HS - HS0, JF = .06 * dHS, JZ = -.07 * dHS + HL, FS = Math.max(0, 1 - FM.frill), FF = -.06 * dHS + G0.smallFrill[0] * HS * FS, FZ = .14 * dHS + HL + G0.smallFrill[1] * HS * FS; // a bigger head carries its jaw and frill with it; a small frill (the baby's) sits forward on the skull (0 for the adult and the young form)
   B.bone('head');
   // The skull (2026-11-18 pass 2): deep and broad at the cheeks (the jugal flare), the brow rising behind the eyes, the snout narrowing
   // to a hooked parrot beak; a dark cheek line runs back from the beak; it ends in the beak's dark keratin, all one skin.
-  const SKULL = [[-.09, 0, .085, .115], [-.02, .01, .125, .15], [.05, .02, .12, .15], [.12, .02, .09, .135], [.19, .005, .07, .115], [.26, -.015, .056, .095], [.3, -.028, .05, .084], [.335, -.04, .038, .068], [.355, -.05, .02, .044]];
-  const skull = low ? SKULL.filter((_, i) => i % 2 === 0) : SKULL, beakF = .3;
-  B.color(C.body).loft({ seg: low ? 7 : full ? 14 : 10, sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS, bones: ['head', 'head', 0] })),
+  const SKULL = [[-.09, 0, .085, .115], [-.02, .01, .125, .15], [.05, .02, .12, .15], [.12, .02, .09, .135], [.19, .005, .07, .115], [.26, -.015, .056, .095], ...BEAK.upper];
+  const skull = low ? SKULL.filter((_, i) => i % 2 === 0 || i === SKULL.length - 1) : SKULL, beakF = .3; // (low keeps the hook's point)
+  B.color(C.body).loft({ seg: low ? 7 : full ? 14 : 10, sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS * dp(f), bones: ['head', 'head', 0] })),
     tone: (i, k, st) => { const f = skull[i][0]; if (f >= beakF) return st > .2 ? C.beakLight : C.beak; if (st < -.2 && st > -.55 && f > .02) return lerpHex(C.dark, C.beak, .35); return st > .3 ? C.light : st < -.5 ? C.dark : C.body; } });
-  // the upper beak's hook, curling down over the lower beak
-  B.color(C.beak).lathe({ at: hb([.35, 0, -.055]), F: [.25, 0, -.97], rings: [[0, .03 * HS], [.035 * HS, .02 * HS], [.06 * HS, 0]], seg: low ? 4 : 6, rs: .75 });
   // the brow horns: each grows out of a swelling of the brow, thick at the base, curving forward and up to a fine tip (one lofted skin)
   for (const s of [-1, 1]) {
     if (!low) B.color(C.body).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });
-    const pts = [[.105, s * .066, .1], [.15, s * .074, .16], [.22, s * .08, .23], [.29, s * .085, .28], [.38, s * .088, .315], [.45, s * .088, .33]], rad = [.05, .042, .034, .025, .014, .002];
+    const bk = FM.brow, pts = [[.105, s * .066, .1], [.15, s * .074, .16], [.22, s * .08, .23], [.29, s * .085, .28], [.38, s * .088, .315], [.45, s * .088, .33]].map(([x, y, z]) => [sc(x, .105, bk), y, sc(z, .1, bk)]), rad = [.05, .042, .034, .025, .014, .002].map((r, i) => bk < 1 ? r * (1 - (1 - bk) * i / 6) + (i === 5 ? .012 * (1 - bk) : 0) : r * (bk > 1 ? 1 + (bk - 1) * .5 : 1)); // a short form's tip stays rounded (a nub)
     const use = low ? [0, 2, 4, 5] : [0, 1, 2, 3, 4, 5];
-    B.loft({ seg: low ? 4 : full ? 8 : 6, caps: false, sections: use.map((i) => ({ at: HW(pts[i]), rx: rad[i] * HS, rz: rad[i] * HS, bones: ['head', 'head', 0] })), tone: (i, k, st) => lerpHex(C.hornBase, C.horn, i / (use.length - 1)) });
+    B.loft({ seg: low ? 4 : full ? 8 : 6, caps: false, sections: use.map((i) => ({ at: HWb(pts[i]), rx: rad[i] * HS, rz: rad[i] * HS, bones: ['head', 'head', 0] })), tone: (i, k, st) => lerpHex(C.hornBase, C.horn, i / (use.length - 1)) });
     // the cheek horns (the jugal points) under the frill's edge
-    if (!low) B.color(C.hornBase).lathe({ at: hb([-.01, s * .115, -.07]), F: [-.35, s * .55, -.75], rings: [[0, .03 * HS], [.075 * HS, 0]], seg: 4, caps: false });
+    if (!low) B.color(C.hornBase).lathe({ at: hb([-.01, s * .115, -.07]), F: [-.35, s * .55, -.75], rings: [[0, .03 * HS * (FM.jugal === 1 ? 1 : .5 + .5 * FM.jugal)], [.075 * HS * FM.jugal, 0]], seg: 4, caps: false });
     // the eyes: big and bright, a dark pupil looking forward
-    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS, .02 * HS, .032 * HS], rings: low ? 2 : 3, seg: low ? 5 : 7 });
-    B.color(C.pupil).ellipsoid({ at: hb([.115, s * .11, .05]), radius: [.018 * HS, .009 * HS, .02 * HS], rings: 2, seg: low ? 4 : 5 });
+    const ek = FM.eye;
+    const big = ek > 1.3 && !low; // the baby's big round eyes: rounder, with a glint
+    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS * ek, .02 * HS * (ek === 1 ? 1 : .5 + .5 * ek), .032 * HS * ek], rings: big ? 4 : low ? 2 : 3, seg: big ? 10 : low ? 5 : 7 });
+    B.color(C.pupil).ellipsoid({ at: hb([.115, s * (ek === 1 ? .11 : .1 + .01 * ek), .05]), radius: [.018 * HS * ek, .009 * HS * ek, .02 * HS * ek], rings: big ? 3 : 2, seg: big ? 8 : low ? 4 : 5 });
+    if (big) B.color(0xffffff).ellipsoid({ at: hb([.125, s * (.112 + .01 * ek), .065]), radius: [.006 * HS * ek, .004 * HS * ek, .007 * HS * ek], rings: 2, seg: 4 });
+    if (FM.cheek > 0 && !low) B.color(0xf2a49a).ellipsoid({ at: hb([.17, s * .085, -.03]), radius: [.04 * HS, .012 * HS, .025 * HS], rings: 2, seg: 5 }); // the baby's pink cheeks
   }
   // the nose horn: short, blunt and leaning forward off the top of the snout
-  B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r]) => ({ at: HW([f, 0, u]), rx: r * HS, rz: r * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) });
+  { const nk = FM.nose; B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r], i) => ({ at: HW([sc(f, .255, nk), 0, sc(u, .055, nk)]), rx: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, rz: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) }); }
   // the lower jaw (opens with the pose), its beak tip dark; the ridden Silly Goose's tongue
   { const J = TRICERATOPS_SKELETON.bindWorld, j = BI.jaw * 3; B.bone('jaw');
-    B.color(C.dark).loft({ seg: low ? 5 : 8, sections: [[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(([f, u, rx, rz]) => ({ at: [J[j] + f * HS, 0, J[j + 2] + u * HS], rx: rx * HS, rz: rz * HS, bones: ['jaw', 'jaw', 0] })),
+    B.color(C.dark).loft({ seg: low ? 5 : 8, sections: BEAK.jaw.map(([f, u, rx, rz]) => ({ at: [J[j] + (sn(mz(f + .06)) - .06) * HS + JF, 0, J[j + 2] + (MZ.mid + .07 + (u - .07 - MZ.mid) * dp(f + .06)) * HS + JZ], rx: rx * HS, rz: rz * HS * dp(f + .06), bones: ['jaw', 'jaw', 0] })),
       tone: (i, k, st) => i >= 3 ? C.beak : st > .3 ? 0x7a2a1c : C.dark }); // the lower beak (its dark tip) under the hook
-    if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.26 * HS, 0, .035 * HS], radius: [.06 * HS, .022 * HS, .01 * HS], F: [1, 0, -.4], rings: 2, seg: low ? 4 : 6 }); }
+    if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.28 * HS, 0, .012 * HS], radius: [.07 * HS, .022 * HS, .01 * HS], F: [1, 0, -.3], rings: 2, seg: low ? 4 : 6 }); } // poking out under the hook
   // ---- the frill: a broad shield rising up and back off the skull, its front face orange, a pale rim with knobs
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  { const R = .32 * HS, Hh = .38 * HS, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+  { const R = .32 * HS * FM.frill, Hh = .38 * HS * FM.frill, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
     const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = -((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS;
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
     for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) { const a = -.12 + (Math.PI + .24) * c / (cols - 1); row.push(rimAt(a, rr)); } grid.push(row); ring.push(['frill', 'frill', 0]); }
     const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = -.12 + (Math.PI + .24) * c / (cols - 1); return rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
     const FB = TRICERATOPS_SKELETON.bindWorld, fo = BI.frill * 3; // the sheet takes model-space points: the frill bone's bind position added
-    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo], q[1] + FB[fo + 1], q[2] + FB[fo + 2]])), rowBones: ring, tone: (r, c) => r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
-    if (!low) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
-      B.color(C.knob).ellipsoid({ at: rimAt(a, 1.04), radius: [.022 * HS, .026 * HS, .026 * HS], rings: 2, seg: full ? 5 : 4 }); }
+    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
+    if (!low && FM.frill >= G0.knobFrill) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
+      const kp = rimAt(a, 1.04), kk = FM.frill === 1 ? 1 : Math.sqrt(FM.frill); kp[0] += FF; kp[2] += FZ; B.color(C.knob).ellipsoid({ at: kp, radius: [.022 * HS * kk, .026 * HS * kk, .026 * HS * kk], rings: 2, seg: full ? 5 : 4 }); } // a small frill's knobs smaller
   }
   // ---- legs: thick pillars of hide from the body to broad round feet with three pale toenails; markings over the leg tops
   // Each row: [u along the leg from its top joint, half width, half depth, bone a, bone b, weight on b, inset]. The top two rows sit inside
@@ -167,10 +195,11 @@ function buildTriceratopsMesh(tier, saddle) {
     const W = TRICERATOPS_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], parent = L.hind ? 'pelvis' : 'chest';
     const name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low, src = L.hind ? HIND : FORE;
     const rows = src.filter((_, i) => !low || i % 2 === 0 || i === src.length - 1);
-    B.color(C.body).loft({ seg: low ? 6 : full ? 10 : 8, up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w, inset]) => ({ at: [x, y * inset, z + u], rx, rz, bones: [name(a), name(b), w] })),
+    B.color(C.body).loft({ seg: low ? 6 : full ? 10 : 8, up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w, inset]) => { const lw = a === 'p' ? FM.legW : FM.legW / FM.leg; return { at: [x, y * inset, z + u], rx: rx * lw, rz: rz * lw, bones: [name(a), name(b), w] }; }),
       tone: (i, k, st) => i >= rows.length - 1 ? C.dark : lerpHex(C.body, C.dark, Math.max(0, -st) * .3 + i * .025) });
-    B.bone(L.foot).color(C.pad).ellipsoid({ at: [.01, 0, -.005], radius: [.11, .1, .04], rings: low ? 2 : 3, seg: low ? 6 : 9 });
-    if (!low) for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.toe).ellipsoid({ at: [.085, s * .045, -.008], radius: [.026, .02, .024], rings: 2, seg: 4 }); }
+    const pk = FM.leg === 1 ? 1 : FM.legW / FM.leg * .85; // a short form's round feet, as broad as its legs (the foot bone carries the legs' scale)
+    B.bone(L.foot).color(C.pad).ellipsoid({ at: [.01 * pk, 0, -.005], radius: [.11 * pk, .1 * pk, .04 * pk], rings: low ? 2 : 3, seg: low ? 6 : 9 });
+    if (!low) for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.toe).ellipsoid({ at: [.085 * pk, s * .045 * pk, -.008], radius: [.026 * pk, .02 * pk, .024 * pk], rings: 2, seg: 4 }); }
   }
   // ---- the saddle (ridden meshes): a blanket draped over the back, a girth round the barrel, a leather seat with cantle and pommel
   if (saddle) {
@@ -211,9 +240,10 @@ function buildTriceratopsMesh(tier, saddle) {
   return B.done();
 }
 const MESHES = new Map();
-function meshFor(tier, saddle) { const k = `${saddle || 'wild'}:${tier}`; let m = MESHES.get(k); if (!m) { m = buildTriceratopsMesh(tier, saddle); MESHES.set(k, m); } return m; }
-// The body this actor shows: the wild hide, or (the ridden mount) the hide with its saddle, the Silly Goose's own tack.
-export function triceratopsMesh(tier = 'full', e = null) { return meshFor(tier, e?.mountView ? (e.triceratopsDisposition === 'silly' ? 'silly' : 'normal') : null); }
+function meshFor(tier, saddle, form = null) { const k = `${form || saddle || 'wild'}:${tier}`; let m = MESHES.get(k); if (!m) { m = buildTriceratopsMesh(tier, saddle, form); MESHES.set(k, m); } return m; }
+// The body this actor shows: the wild hide, or (the ridden mount) the hide with its saddle, the Silly Goose's own tack; the hatchling's
+// baby or young form (hatchling.ts) its own proportions, unsaddled.
+export function triceratopsMesh(tier = 'full', e = null) { return TRI_FORMS[e?.triForm] ? meshFor(tier, null, e.triForm) : meshFor(tier, e?.mountView ? (e.triceratopsDisposition === 'silly' ? 'silly' : 'normal') : null); }
 
 // ------------------------------------------------------------------------------------------------ the track
 export function createTriceratopsTrack() {
@@ -232,6 +262,7 @@ export function createTriceratopsTrack() {
 const H = new Float64Array(3), T = new Float64Array(3), LEGBONES = new Int16Array(4), LENS = new Float64Array(3), TMP = [0, 0, 0], TV = new Float64Array(K);
 export function sampleTriceratops(tr, e, env) {
   const now = env.now, reduce = !!env.reduce, S = Math.max(.25, Math.min(6, Number(env.scale) || 1)), P = tr.pose, G = TRICERATOPS_RIG, ridden = !!e?.mountView;
+  const LK = (TRI_FORMS[e?.triForm] || TRI_FORM_ADULT).leg, legDrop = (1 - LK) * G.legHeight; // a hatchling form's legs (shorter: scaled bones, the body lowered onto them)
   const gapMs = Number.isFinite(tr.at) ? now - tr.at : Infinity, dt = Number.isFinite(gapMs) ? Math.min(.1, Math.max(0, gapMs / 1000)) : 0; tr.at = now;
   const dead = !!env.dead;
   if (dead && tr.deathAt == null) tr.deathAt = now;
@@ -287,7 +318,7 @@ export function sampleTriceratops(tr, e, env) {
   const bob = moving * G.bob * (.5 - .5 * Math.cos(cyc * 2)), sway = reduce ? 0 : moving * .012 * Math.sin(cyc), breathe = reduce ? 0 : Math.sin(t * Math.PI * 2 * G.breathe.rate / 3);
   const nd = Math.max(0, -pitch), chestF = SPINE_AT.chest[0] - SPINE_AT.pelvis[0];
   const bounce = triceratopsTailBounces(e) ? (reduce ? .5 : Math.sin(t * 20)) * G.tailBounce : 0; // the Silly Goose's and Bad's tail bounce, the hindquarters hopping with it
-  setOffset(P, BI.pelvis, lean, sway, Math.abs(bounce) * .12 -V[KI.crouch] * G.crouchDrop - bob + Math.sin(nd) * chestF - .03 * Math.abs(hit) - (horn && horn.phase !== 'dash' ? .02 : 0));
+  setOffset(P, BI.pelvis, lean, sway, -legDrop + Math.abs(bounce) * .12 -V[KI.crouch] * G.crouchDrop - bob + Math.sin(nd) * chestF - .03 * Math.abs(hit) - (horn && horn.phase !== 'dash' ? .02 : 0));
   setEuler(P, BI.pelvis, reduce ? 0 : -moving * .025 * Math.sin(cyc), -pitch, -sway * 1.4 + daze * .05); resolveBone(P, BI.pelvis);
   setEuler(P, BI.spine, 0, 0, 0); resolveBone(P, BI.spine);
   setEuler(P, BI.chest, 0, 0, 0); P.scl[BI.chest] = 1 + breathe * G.breathe.chest; resolveBone(P, BI.chest);
@@ -297,7 +328,9 @@ export function sampleTriceratops(tr, e, env) {
   setOffset(P, BI.neck, reach * .12, 0, -(horn ? Number(horn.lower) || 0 : 0)); /* the shove carries the head forward */ setEuler(P, BI.neck, look * .5, -head * .35 + hornPitch, 0); resolveBone(P, BI.neck);
   setEuler(P, BI.head, look * .4, -head * .3 + (reduce ? 0 : .02 * wobble(t * .7, 3)), -hit * .2 * tr.hitSide); resolveBone(P, BI.head);
   setEuler(P, BI.jaw, 0, .55 * clamp01(V[KI.open] + (dead ? .2 : 0)), 0); resolveBone(P, BI.jaw);
-  resolveBone(P, BI.frill);
+  // the ridden mount's frill stands a little more upright, and holds there as the head comes up (the recoil, the leap): it stays
+  // clear of the rider seated behind it (TRICERATOPS_RIG.riddenFrill); a wild one's is as bound
+  { const RF = G.riddenFrill; if (ridden) setOffset(P, BI.frill, RF.fwd, 0, -RF.down); setEuler(P, BI.frill, 0, ridden ? RF.tilt + RF.recoil * Math.max(0, -hornPitch) + RF.follow * (Math.max(0, pitch) + Math.max(0, V[KI.head]) * .65) : 0, 0); } resolveBone(P, BI.frill);
   for (let i = 0; i < TAIL.length; i++) { const w = (i + 1) / TAIL.length;
     const lift = V[KI.tailUp] * (i < 2 ? .4 : .25) + (i === 0 ? Math.max(0, pitch) * .8 : 0) + bounce * (i === 0 ? 1 : .4);
     const swing = V[KI.tailSide] * .4 + (reduce ? 0 : .05 * Math.sin(t * 1.6 - i * .6) * w * (1 - stun));
@@ -306,9 +339,10 @@ export function sampleTriceratops(tr, e, env) {
   setEuler(P, BI.whirl, 0, 0, env.drill ? env.drill.angle || 0 : 0); P.scl[BI.whirl] = env.drill ? 1 : .001; resolveBone(P, BI.whirl);
   // ------------------------------------------------------------------ the legs
   for (let k = 0; k < 4; k++) {
-    const L = LEGS[k], top = BI[L.top], hi = top * 3, len = (L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S;
+    const L = LEGS[k], top = BI[L.top], hi = top * 3, len = (L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S * LK;
+    P.scl[top] = LK;
     resolveBone(P, top); H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2]; // the hip or shoulder where its body is this frame
-    const lift = tr.gait.out[k * 4 + 2]; let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], fz = env.z + (G.foot + .005) * S + lift * G.footLift * S;
+    const lift = tr.gait.out[k * 4 + 2]; let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], fz = env.z + (G.foot + .005) * S * LK + lift * G.footLift * S * LK;
     const body = L.hind ? 'pelvis' : 'chest', bodyAt = (f, u, w) => { const p = boneLocalToWorld(P, body, f, L.side * (L.hind ? G.hipWidth : G.shoulderWidth), u, TMP); fx += (p[0] - fx) * w; fy += (p[1] - fy) * w; fz += (p[2] - fz) * w; };
     const W = TRICERATOPS_SKELETON.bindWorld, jf = W[hi] - W[BI[body] * 3], ju = W[hi + 2] - W[BI[body] * 3 + 2];
     if (env.drill) bodyAt(jf + (L.hind ? .08 : -.05), ju - len / S * .62, 1); // tucked tight through the roll
@@ -319,7 +353,7 @@ export function sampleTriceratops(tr, e, env) {
     T[0] = fx; T[1] = fy; T[2] = fz;
     const fold = Math.max(V[KI.tuck], env.drill ? 1 : 0, V[KI.frontLift] * (L.hind ? 0 : 1)), bend = Math.min(1, lift * .9 + fold * .8), toe = lift > 0 || fold > .05 ? -.4 * Math.max(lift, fold) : 0;
     LEGBONES[0] = top; LEGBONES[1] = BI[L.mid]; LEGBONES[2] = BI[L.low]; LEGBONES[3] = BI[L.foot];
-    LENS[0] = (L.hind ? G.femur : G.humerus) * S; LENS[1] = (L.hind ? G.tibia : G.radius) * S; LENS[2] = (L.hind ? G.hindCannon : G.foreCannon) * S;
+    LENS[0] = (L.hind ? G.femur : G.humerus) * S * LK; LENS[1] = (L.hind ? G.tibia : G.radius) * S * LK; LENS[2] = (L.hind ? G.hindCannon : G.foreCannon) * S * LK;
     // pillar legs: the low bone near upright
     poseAnimalLeg(P, LEGBONES, H, T, LENS, cf, sf, L.hind, bend, toe, L.hind ? -.04 - .5 * bend : .02 + .8 * bend);
     tr.frame.feet[k * 2] = tr.gait.out[k * 4 + 3]; tr.frame.feet[k * 2 + 1] = lift;

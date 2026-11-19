@@ -1,28 +1,29 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r1012-ffa69513a699"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple, attackLimbs } from "./adventure-creature-render.js?v=r1012-ffa69513a699"; // adventure creatures
-import { DUELIST_BODIES } from "./duelist-render.js?v=r1012-ffa69513a699"; // the Gaunt (duelists.ts)
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r1012-ffa69513a699";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r1012-ffa69513a699";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r1031-b358b5a5ce4c"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple, attackLimbs } from "./adventure-creature-render.js?v=r1031-b358b5a5ce4c"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.js?v=r1031-b358b5a5ce4c"; // the Gaunt (duelists.ts)
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r1031-b358b5a5ce4c";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r1012-ffa69513a699"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r1012-ffa69513a699";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r1031-b358b5a5ce4c"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r1031-b358b5a5ce4c";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r1012-ffa69513a699";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r1012-ffa69513a699";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r1012-ffa69513a699";
-import { drawWildStego } from "./wild-stego-render.js?v=r1012-ffa69513a699"; // the Wild Stegosaurus (Tim, 2026-11-12)
-import { drawTriceratopsBody } from "./triceratops-render.js?v=r1012-ffa69513a699"; // the Triceratops (2026-11-18)
-import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r1012-ffa69513a699";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r1012-ffa69513a699";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r1012-ffa69513a699";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r1012-ffa69513a699";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r1012-ffa69513a699";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r1031-b358b5a5ce4c";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r1031-b358b5a5ce4c";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r1031-b358b5a5ce4c";
+import { drawWildStego } from "./wild-stego-render.js?v=r1031-b358b5a5ce4c"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks, drawApatoCoilOver } from "./apato-render.js?v=r1031-b358b5a5ce4c"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { drawTriceratopsBody } from "./triceratops-render.js?v=r1031-b358b5a5ce4c"; // the Triceratops (2026-11-18)
+import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r1031-b358b5a5ce4c";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r1031-b358b5a5ce4c";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r1031-b358b5a5ce4c";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r1031-b358b5a5ce4c";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r1031-b358b5a5ce4c";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1012-ffa69513a699";
-import { ACTION_MOTION } from "./action-motion.js?v=r1012-ffa69513a699"; // the ordinary strike's length, for the core bestiary's Standard View motion
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1031-b358b5a5ce4c";
+import { ACTION_MOTION } from "./action-motion.js?v=r1031-b358b5a5ce4c"; // the ordinary strike's length, for the core bestiary's Standard View motion
 
 const TAU = Math.PI * 2;
 
@@ -538,6 +539,8 @@ const BODY = {
   wildStego(ctx, q) { drawWildStego(ctx, q, q.t * 1000); },
   triceratops(ctx, q) { drawTriceratopsBody(ctx, q, q.t * 1000); }, // 2026-11-18: triceratops-render.ts
   spinoRex(ctx, q) { drawSpino(ctx, q, q.t * 1000); },
+  earthApato(ctx, q) { drawEarthApato(ctx, q, q.t * 1000); },
+  apatoClone(ctx, q) { drawApatoClone(ctx, q, q.t * 1000); },
   ashenMoth(ctx, q) { drawAshenMoth(ctx, q, q.t * 1000); }, // release 706
   mothChrysalis(ctx, q) { drawMothChrysalis(ctx, q, q.t * 1000); }, // release 708
   crimsonTyrant(ctx, q) { drawCrimsonTyrant(ctx, q, q.t * 1000); }, // release 709
@@ -1411,7 +1414,7 @@ function drawPackSprite(ctx, e, s, now, facing, def) {
   if (e.kind === "astralWorm" || e.kind === "astralMirage") return false; // Continuous morphology has state outside the shared sprite key.
   const m = typeof ctx.getTransform === "function" && typeof ctx.drawImage === "function" ? ctx.getTransform() : null;
   if (!m || !Number.isFinite(m.a) || m.b || m.c || m.a <= 0 || m.d <= 0 || !e.id) return false;
-  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || e.kind === "triceratops" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
+  if (e.kind === "wormTentacle" || e.kind === "morphingBlob" || e.kind === "tremorWorm" || e.kind === "mountainTurtle" || e.kind === "nanobotKnight" || e.kind === "psychicCrystal" || e.kind === "voidWalker" || e.kind === "lightningGiant" || e.kind === "briarStag" || e.kind === "ashenMoth" || e.kind === "mothChrysalis" || e.kind === "crimsonTyrant" || e.kind === "doomChaser" || e.kind === "wildStego" || e.kind === "spinoRex" || e.kind === "triceratops" || e.kind === "earthApato" || e.kind === "apatoClone" || MONSTER_PACK[e.kind]?.farKin || MONSTER_PACK[e.kind]?.roofKin || MONSTER_PACK[e.kind]?.adventureKin || MONSTER_PACK[e.kind]?.duelistKin) return false; // exceptional bodies/poses are painted directly, including the Walker's teleport and dash states
   const scale = Math.max(.6, Number(e.scale) || 1), u = s * scale, k = (e.x + .5) * s, b = (e.y + .82) * s - (["astralWorm","astralMirage"].includes(e.kind)?0:e.hopLift || 0) * s * .2;
   const L = PACK_SPRITE.left * u, R = PACK_SPRITE.right * u, U = PACK_SPRITE.up * u, D = PACK_SPRITE.down * u;
   let sp = sprites.get(e.id);
@@ -1710,6 +1713,7 @@ function paintPackMonster(ctx, e, s, now, facing, def, sprite) {
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip});
   const riderAlpha=astralBoardingRiderAlpha(boarding),fullAlpha=ctx.globalAlpha;ctx.globalAlpha*=riderAlpha;
   if(riderAlpha>0)BODY[def.render]?.(ctx, q);
+  if (e.apatoHeldBy && !e.dead) drawApatoCoilOver(ctx, q, now); // coiled in the Earth Apatosaurus's neck (the duel): the coils' front over its body
   ctx.globalAlpha=fullAlpha;
   if(riding?.riding)drawAstralSaddle(ctx,{x:k,y:b,unit:u,form:riding.form,facing:flip,layer:'front'});
   if(boarding)drawAstralBoarding(ctx,boarding,{tile:s,unit:u,facing:flip,riderX:k,riderY:b,layer:'front'});
@@ -1790,6 +1794,9 @@ export function drawPackTelegraphs(ctx, enemies, s, now, visible = () => true, h
     { const b = !e.dead && visible(e) && bodyHitFootprint(e); if (b) { const by = (e.y + .6 - (heights.ground?.(e.x, e.y) || 0)) * s, R = b.radius * s; ctx.save(); ctx.fillStyle = b.armed ? DANGER.fillStrong : DANGER.fill; ctx.strokeStyle = DANGER.edge; ctx.lineWidth = 2; if (!b.armed) ctx.setLineDash([s * .15, s * .1]); ctx.beginPath(); ctx.ellipse((e.x + .5) * s, by, R, R * .6, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); } } // release 427: the body's own reach while it hits with it
     // the Spinosaurus's grab: its bite-mark reticle on its prey (spino-render.ts)
     if (e.kind === 'spinoRex' && !e.dead && e.spinoGrab && visible(e)) drawSpinoMarks(ctx, e, s, now, enemies, 0, !!heights.reduceMotion);
+    // the Earth Apatosaurus (apato-render.ts): its saplings, hazards, beam and lashing neck; a clone's coils; a duel foe's daze and venom
+    if (e.kind === 'earthApato' && !e.dead && visible(e)) drawApatoGround(ctx, e, s, now, { quiet: !!heights.reduceMotion, capture: !!heights.capture });
+    if ((e.apatoLatched || e.apatoDazed > 0 || e.apatoVenom > 0) && !e.dead && visible(e)) drawApatoMarks(ctx, e, s, now, !!heights.reduceMotion);
     const tele = e.pack?.tele;
     if (e.dead || !tele || !visible(e)) continue;
     const crystal = e.kind === "psychicCrystal", walker = e.kind === "voidWalker", ground = crystal || walker ? heights.ground?.(e.x, e.y) || 0 : 0;

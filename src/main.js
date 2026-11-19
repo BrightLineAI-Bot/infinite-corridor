@@ -1,58 +1,59 @@
-import { BOAT, forgeSubmersible } from "./boats.js?v=r1012-ffa69513a699"; // release 311
-import { createSoundtrack } from "./soundtrack.js?v=r1012-ffa69513a699";
-import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.js?v=r1012-ffa69513a699";
-import { createBackgroundMusic } from "./background-music.js?v=r1012-ffa69513a699"; // 2026-11-19: Music in background
-import { createBattleSfx } from "./battle-sfx.js?v=r1012-ffa69513a699"; // the dino duel's sounds of battle (Tim, 2026-11-14)
-import { swingIndicator, drawSwingSweep } from "./melee-swing.js?v=r1012-ffa69513a699"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
-import { BLEED } from "./bleed.js?v=r1012-ffa69513a699"; // the bleed status line
-import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r1012-ffa69513a699";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1012-ffa69513a699"; // release 393; 541: preset gear
-import { FRACTURED } from "./fractured.js?v=r1012-ffa69513a699"; // release 651: Fractured mode
-import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r1012-ffa69513a699"; // release 543
-import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r1012-ffa69513a699"; // release 551; 559
-import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork, reforgePreview, SALVAGE_YIELD, setSalvageYield, salvageYieldMode, salvageYieldText, salvagePaidText } from "./smithy.js?v=r1012-ffa69513a699";
-import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r1012-ffa69513a699"; // release 447
-import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r1012-ffa69513a699"; // release 459 // release 395 // release 315; 321: the drone
-import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r1012-ffa69513a699"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r1012-ffa69513a699";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.js?v=r1012-ffa69513a699"; // release 748: the stable
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r1012-ffa69513a699";
-import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r1012-ffa69513a699";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r1012-ffa69513a699";
-import { drawPentagonSigilIcon } from "./renderer.js?v=r1012-ffa69513a699";
-import { closeViewSurfacePick } from "./close-view.js?v=r1012-ffa69513a699"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.js?v=r1012-ffa69513a699"; // Close View (2026-11-06): interiors from behind the Wayfarer
-import { renderTimings } from "./renderer.js?v=r1012-ffa69513a699";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r1012-ffa69513a699";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.js?v=r1012-ffa69513a699";
-import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.js?v=r1012-ffa69513a699"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
-import { sectionAtlasColor } from "./atlas-colors.js?v=r1012-ffa69513a699";
-import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.js?v=r1012-ffa69513a699"; // release 573; biomeFor: a section a tall tower's lookout charted
-import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.js?v=r1012-ffa69513a699";
-import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.js?v=r1012-ffa69513a699"; // the seed hunts: the Atlas marker and the compass
-import { CREATURE_TRAITS, wayfarerDamage } from "./combat.js?v=r1012-ffa69513a699";
-import { nearestWonders, WONDERS } from "./wonders.js?v=r1012-ffa69513a699"; // release 674
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.js?v=r1012-ffa69513a699";
-import { STEGO_BAIT } from "./stego-bait.js?v=r1012-ffa69513a699"; // the Stego Bait (Pack → Supplies)
-import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r1012-ffa69513a699";
-import { curseDef } from "./haunts.js?v=r1012-ffa69513a699"; // release 737: the haunt curses on the HUD
-import { activeFarQuest } from "./far-realms.js?v=r1012-ffa69513a699"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
-import { drawPackPortrait } from "./monster-render.js?v=r1012-ffa69513a699";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r1012-ffa69513a699";
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r1012-ffa69513a699";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1012-ffa69513a699";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1012-ffa69513a699";
-import { linksKnown } from "./linked-dungeons.js?v=r1012-ffa69513a699";
-import { DIG } from "./digging.js?v=r1012-ffa69513a699";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey } from "./atlas-view.js?v=r1012-ffa69513a699";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r1012-ffa69513a699";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r1012-ffa69513a699";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r1012-ffa69513a699";
-import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r1012-ffa69513a699";
-import { questingBeastHoldNote } from "./questing-beast.js?v=r1012-ffa69513a699";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r1012-ffa69513a699";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r1012-ffa69513a699";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r1031-b358b5a5ce4c"; // release 311
+import { createSoundtrack } from "./soundtrack.js?v=r1031-b358b5a5ce4c";
+import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.js?v=r1031-b358b5a5ce4c";
+import { createBackgroundMusic } from "./background-music.js?v=r1031-b358b5a5ce4c"; // 2026-11-19: Music in background
+import { createBattleSfx } from "./battle-sfx.js?v=r1031-b358b5a5ce4c"; // the dino duel's sounds of battle (Tim, 2026-11-14)
+import { swingIndicator, drawSwingSweep } from "./melee-swing.js?v=r1031-b358b5a5ce4c"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
+import { BLEED } from "./bleed.js?v=r1031-b358b5a5ce4c"; // the bleed status line
+import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r1031-b358b5a5ce4c";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1031-b358b5a5ce4c"; // release 393; 541: preset gear
+import { FRACTURED } from "./fractured.js?v=r1031-b358b5a5ce4c"; // release 651: Fractured mode
+import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r1031-b358b5a5ce4c"; // release 543
+import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r1031-b358b5a5ce4c"; // release 551; 559
+import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork, reforgePreview, SALVAGE_YIELD, setSalvageYield, salvageYieldMode, salvageYieldText, salvagePaidText } from "./smithy.js?v=r1031-b358b5a5ce4c";
+import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r1031-b358b5a5ce4c"; // release 447
+import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r1031-b358b5a5ce4c"; // release 459 // release 395 // release 315; 321: the drone
+import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r1031-b358b5a5ce4c"; // release 339; 341
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r1031-b358b5a5ce4c";
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.js?v=r1031-b358b5a5ce4c"; // release 748: the stable
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r1031-b358b5a5ce4c";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r1031-b358b5a5ce4c";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r1031-b358b5a5ce4c";
+import { drawPentagonSigilIcon } from "./renderer.js?v=r1031-b358b5a5ce4c";
+import { closeViewSurfacePick } from "./close-view.js?v=r1031-b358b5a5ce4c"; // roof decks: the aimed Rift Step's tap
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.js?v=r1031-b358b5a5ce4c"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { renderTimings } from "./renderer.js?v=r1031-b358b5a5ce4c";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r1031-b358b5a5ce4c";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.js?v=r1031-b358b5a5ce4c";
+import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.js?v=r1031-b358b5a5ce4c"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
+import { sectionAtlasColor } from "./atlas-colors.js?v=r1031-b358b5a5ce4c";
+import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.js?v=r1031-b358b5a5ce4c"; // release 573; biomeFor: a section a tall tower's lookout charted
+import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.js?v=r1031-b358b5a5ce4c";
+import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.js?v=r1031-b358b5a5ce4c";
+import { HATCHLING, rescueGuidance, formUnlocked, growthProgress } from "./hatchling.js?v=r1031-b358b5a5ce4c"; // the Triceratops hatchling: the Pack row, the Atlas marker and the compass // the seed hunts: the Atlas marker and the compass
+import { CREATURE_TRAITS, wayfarerDamage } from "./combat.js?v=r1031-b358b5a5ce4c";
+import { nearestWonders, WONDERS } from "./wonders.js?v=r1031-b358b5a5ce4c"; // release 674
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
+import { STEGO_BAIT } from "./stego-bait.js?v=r1031-b358b5a5ce4c"; // the Stego Bait (Pack → Supplies)
+import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r1031-b358b5a5ce4c";
+import { curseDef } from "./haunts.js?v=r1031-b358b5a5ce4c"; // release 737: the haunt curses on the HUD
+import { activeFarQuest, farQuestInfo } from "./far-realms.js?v=r1031-b358b5a5ce4c"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
+import { drawPackPortrait } from "./monster-render.js?v=r1031-b358b5a5ce4c";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r1031-b358b5a5ce4c";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r1031-b358b5a5ce4c";
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1031-b358b5a5ce4c";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1031-b358b5a5ce4c";
+import { linksKnown } from "./linked-dungeons.js?v=r1031-b358b5a5ce4c";
+import { DIG } from "./digging.js?v=r1031-b358b5a5ce4c";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from "./atlas-view.js?v=r1031-b358b5a5ce4c";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r1031-b358b5a5ce4c";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r1031-b358b5a5ce4c";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r1031-b358b5a5ce4c";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r1031-b358b5a5ce4c";
+import { questingBeastHoldNote } from "./questing-beast.js?v=r1031-b358b5a5ce4c";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r1031-b358b5a5ce4c";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r1031-b358b5a5ce4c";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -164,7 +165,7 @@ function openShop(vendorId = "vendor-vela") {
   if (!panel.open) panel.showModal();
 }
 
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r1012-ffa69513a699";
+import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r1031-b358b5a5ce4c";
 import {
   Game,
   actionReadiness,
@@ -177,15 +178,15 @@ import {
   gearReadout,
   compareReadouts,
   forgePreview,
-} from "./game.js?v=r1012-ffa69513a699";
-import { createInput } from "./input.js?v=r1012-ffa69513a699";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r1012-ffa69513a699";
-import { STATS, freshSave } from "./types.js?v=r1012-ffa69513a699";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.js?v=r1012-ffa69513a699";
-import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r1012-ffa69513a699";
-import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r1012-ffa69513a699";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r1012-ffa69513a699";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r1012-ffa69513a699";
+} from "./game.js?v=r1031-b358b5a5ce4c";
+import { createInput } from "./input.js?v=r1031-b358b5a5ce4c";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r1031-b358b5a5ce4c";
+import { STATS, freshSave, setCompassChoice } from "./types.js?v=r1031-b358b5a5ce4c";
+import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.js?v=r1031-b358b5a5ce4c";
+import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r1031-b358b5a5ce4c";
+import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r1031-b358b5a5ce4c";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r1031-b358b5a5ce4c";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r1031-b358b5a5ce4c";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
 const ITEM_NAMES = { restorativeDraught: "Restorative Draught", highPotion: "High Potion", maxPotion: "Max Potion", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
@@ -207,8 +208,8 @@ const ITEM_ICONS = {
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { LANTERN, lanternLit, slotToolName, buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, assignPresetItem, SLOTS, SLOT_ACTIONS, SLOT_ORDER, slotLabel, FRAME_TOOLS, setPresetSlot } from "./spell-slots.js?v=r1012-ffa69513a699";
-import { OCULUS, drawOculusDais, oculusTarget, oculusAvailable } from "./oculus.js?v=r1012-ffa69513a699"; // release 874: the Oculus's dais and warp
+import { LANTERN, lanternLit, slotToolName, buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, assignPresetItem, SLOTS, SLOT_ACTIONS, SLOT_ORDER, slotLabel, FRAME_TOOLS, setPresetSlot } from "./spell-slots.js?v=r1031-b358b5a5ce4c";
+import { OCULUS, drawOculusDais, oculusTarget, oculusAvailable } from "./oculus.js?v=r1031-b358b5a5ce4c"; // release 874: the Oculus's dais and warp
 // Release 874: the utility button's icons. Build keeps the release-265 hammer; the frame shows the robot or, in drone mode, a
 // small rotor drone; the Oculus is an eye of light in a stone ring.
 const UTILITY_ICONS = {
@@ -227,17 +228,17 @@ const MOUNT_CONTROL_ICONS = {
 };
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
-import { reloadPips } from "./hit-cast-passives.js?v=r1012-ffa69513a699"; // Rapid Reload's pips (Tim, 2026-11-19)
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r1012-ffa69513a699";
-import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r1012-ffa69513a699";
-import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r1012-ffa69513a699";
-import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r1012-ffa69513a699";
-import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r1012-ffa69513a699";
-import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r1012-ffa69513a699";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1012-ffa69513a699";
-import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r1012-ffa69513a699"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
-import { worldStewardReport } from "./story.js?v=r1012-ffa69513a699";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r1012-ffa69513a699";
+import { reloadPips, powerAegisLeft } from "./hit-cast-passives.js?v=r1031-b358b5a5ce4c"; // Rapid Reload's pips (Tim, 2026-11-19)
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r1031-b358b5a5ce4c";
+import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r1031-b358b5a5ce4c";
+import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r1031-b358b5a5ce4c";
+import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r1031-b358b5a5ce4c";
+import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r1031-b358b5a5ce4c";
+import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r1031-b358b5a5ce4c";
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1031-b358b5a5ce4c";
+import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r1031-b358b5a5ce4c"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
+import { worldStewardReport } from "./story.js?v=r1031-b358b5a5ce4c";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r1031-b358b5a5ce4c";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -249,15 +250,16 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r1012-ffa69513a699";
-import { warmWayfindingSignals } from "./world.js?v=r1012-ffa69513a699";
-import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r1012-ffa69513a699"; // release 431
-import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r1012-ffa69513a699"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.js?v=r1012-ffa69513a699"; // release 627; arcana regions (2026-11-11)
-import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r1012-ffa69513a699"; // the Journal's Arcana tab
-import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r1012-ffa69513a699"; // release 605
-import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1012-ffa69513a699"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
-import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.js?v=r1012-ffa69513a699"; // release 791
+} from "./world.js?v=r1031-b358b5a5ce4c";
+import { warmWayfindingSignals } from "./world.js?v=r1031-b358b5a5ce4c";
+import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r1031-b358b5a5ce4c"; // release 431
+import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r1031-b358b5a5ce4c"; // release 595
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.js?v=r1031-b358b5a5ce4c"; // release 627; arcana regions (2026-11-11)
+import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, secondBegun, secondFound, secondNext, secondTraceText } from "./second-wayfarer.js?v=r1031-b358b5a5ce4c"; // the Second Wayfarer
+import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r1031-b358b5a5ce4c"; // the Journal's Arcana tab
+import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r1031-b358b5a5ce4c"; // release 605
+import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1031-b358b5a5ce4c"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
+import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.js?v=r1031-b358b5a5ce4c"; // release 791
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -618,7 +620,8 @@ const objective = $("#objective"),
   navCompass = $("#navCompass"), navCompassSlot = $("#navCompassSlot"), lookSubject = $("#lookSubject"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
-let navigationCache = { key: null, map: null, guidance: null, manual: null }, announcedManualArrival = null;
+let navigationCache = { key: null, map: null, guidance: null, manual: null };
+const compassArrival = compassArrivalState(); // 2026-11-19 (Tim): WAYPOINT REACHED for the compass's target (atlas-view.ts COMPASS_ARRIVAL)
 // Release 153: the compass always has somewhere to point. Objectives are ranked nearest first (ties by kind, in this
 // order); tapping the compass steps to the next one. Explored sections still holding an unfinished challenge (an
 // Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
@@ -630,7 +633,14 @@ let objectiveCache={key:null,list:[],all:[]},compassPick=save.guidance?.pick??nu
 // Release 279 (Tim: "when you close the map... it changes whatever way marker... or whatever active quest you have... it doesn't
 // maintain it"): the compass's choice and a Journal pin are kept in the save (save.guidance, additive), so nothing but the
 // Wayfarer's own choice changes them.
-function rememberGuidance(){save.guidance={pick:compassPick,pin:compassPin?{rx:compassPin.rx,ry:compassPin.ry,name:String(compassPin.name||"")}:null};navigationCache.key=null;persist()}
+// Tim, 2026-11-19: the compass is sticky. It points at exactly the one target last actively chosen (a pin, a followed source or a
+// pick; types.ts setCompassChoice), and only an active choice changes it: the tap cycle, the compass menu, the Journal's "Point
+// compass here", or accepting a hunt or quest (game.ts and the Viewport write save.guidance through setCompassChoice too, so
+// syncGuidance picks their choice up). A pin outranks the others, a follow a pick, so one write always leaves one target.
+let compassFollow=save.guidance?.follow??null,guidanceSeen=save.guidance;
+function syncGuidance(){if(save.guidance===guidanceSeen)return;guidanceSeen=save.guidance;const g=save.guidance||{};compassPick=g.pick??null;compassPin=g.pin??null;compassFollow=g.follow??null;navigationCache.key=null}
+function rememberGuidance(){compassArrivalReset(compassArrival);/* a new choice re-arms the arrival banner */if(compassPin){compassPick=null;compassFollow=null}else if(compassFollow)compassPick=null;guidanceSeen=setCompassChoice(save,{pick:compassPick,pin:compassPin,follow:compassFollow});compassFollow=save.guidance.follow??null;navigationCache.key=null;persist()}
+function chooseGuidance({pick=null,pin=null,follow=null}={}){compassPick=pick;compassPin=pin;compassFollow=follow;rememberGuidance()}
 // The section an area id belongs to: dungeon:seed:gN[:rx:ry:...] and arena:vN:seed:rx,ry.
 function sectionOfAreaId(id){const d=/^dungeon:[^:]+:g\d+(?::(-?\d+):(-?\d+))?/.exec(id);if(d)return d[1]===undefined?"0,0":`${d[1]},${d[2]}`;const a=/^arena:v\d+:[^:]+:(-?\d+),(-?\d+)/.exec(id);return a?`${a[1]},${a[2]}`:null}
 function openChallengeSections(){
@@ -656,20 +666,20 @@ function objectiveList(){
 function compassObjective(){if(compassPick===null)return null;objectiveList();return objectiveCache.all.find((o)=>objectiveKey(o)===compassPick)||null} // release 279: a pick that is merely far off is kept; 2026-11-12: a finished one leaves the compass without a needle (no nearest objective by default)
 function compassHeading(dx,dy){if(!dx&&!dy)return"here";return`${dy<0?"north":dy>0?"south":""}${dy&&dx?"-":""}${dx<0?"west":dx>0?"east":""}`}
 function navigationTargets() {
-  navigationStats.lookups++;
-  const huntId=save.viewport?.activeHuntId||null,hunt=huntId?save.viewport?.contracts?.[huntId]:null,
-    huntActive=!!hunt&&["accepted","tracking","target-located"].includes(hunt.status),manual=save.manualWaypoint,farQuest=activeFarQuest(save); // release 716: a quest to a far civilisation
-  const quest=compassQuest(save); // 2026-11-12: the relay leads or the Cairn Keeper's errand (a quest with no fixed section); before, any unmade relay choice counted
-  const pick=game.area==="overworld"&&!huntActive&&!compassPin?compassObjective():null;
-  const seedHunt=nearestSeedHunt(save,game.rx,game.ry); // tall towers: the nearest live seed hunt (atlas-view.ts seedHuntGuidance)
-  const key=[game.area,game.rx,game.ry,huntId,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,quest,manual?.area,manual?.rx,manual?.ry,manual?.label,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,farQuest?.id,farQuest?.rx,seedHunt?.tower,seedHunt?.where,seedHunt?.x,seedHunt?.y,seedHunt?.door?.x,seedHunt?.door?.y].join(":");
+  navigationStats.lookups++;syncGuidance();
+  // Tim, 2026-11-19: one needle, at exactly the target last actively chosen (atlas-view.ts compassGuidance): a pin, else a followed
+  // source (a hunt or quest accepted, or a marker chosen in the compass menu), else a pick. The tracked hunt, a far quest, quest
+  // waymarks, the nearest seed hunt, the hatchling's rescue and the Atlas waypoint no longer point the compass by themselves; the
+  // player's own markers (save.manualWaypoint, save.mapMarks) draw a needle only when chosen (no second, manual needle).
+  const f=compassPin?null:compassFollow,pick=game.area==="overworld"&&!compassPin&&!f?compassObjective():null;
+  const hunt=f?.kind==="hunt"?save.viewport?.contracts?.[f.id]:null,far=f?.kind==="far"?save.farQuests?.[f.id]:null,rescueQ=f?.kind==="rescue"?save.mounts?.hatchling?.quest:null,
+    mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;const sw=f?.kind==="quest"&&f.id==="second"?save.lore?.second:null,swKey=sw?`${sw.found}:${sw.spot?.i},${sw.spot?.x},${sw.spot?.y}`:"";/* the Second Wayfarer: its next sighting moves as traces are read */
+  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
-  // Tim (2026-11-12): the compass points only at an objective (atlas-view.ts compassGuidance): a Journal pin, the tracked hunt,
-  // a far quest (release 716), a target chosen by tapping, or the waymarks a quest with no fixed section follows. Else no needle.
-  const cues=game.area==="overworld"&&quest&&!pick?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,pick,farQuest,cues})||(game.area==="overworld"?seedHuntGuidance(seedHunt,seedHunt?{[seedHunt.kind]:SEEDS[seedHunt.kind]?.name}:{}):null); // a seed hunt last, as compassGuidance's seedHunt
-  navigationCache={key,map:game.map,guidance,manual:manual?{...manual,kind:"manual",name:manual.label||"Manual waypoint"}:null};
+  const cues=game.area==="overworld"&&quest?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,follow:f,pick,cues,rescue:rescueQ?rescueGuidance(save.mounts?.hatchling):null});
+  navigationCache={key,map:game.map,guidance,manual:null};
   return navigationCache;
 }
 function updateNavigationArrow(arrow,target){
@@ -714,25 +724,30 @@ function updateCompassFrame(now) {
 function compassRotation(dx, dy) {
   return closeViewCompassRotation(dx, dy); // north-up: the needle points at the objective on the map's own bearing
 }
+// Tim, 2026-11-19 ("two norths"): with no door point chosen the dungeon compass is idle like the overworld's (idleCompass: no
+// needle, no extra N badge beside the dial's own N) and says how to set one. Elsewhere outside the overworld there is no needle
+// to north either.
+const DUNGEON_COMPASS_IDLE = "No door point. Open the Map and tap a door you have found to number it (up to 3); the compass then points to it. Tap the compass to switch between them.";
 function pointDungeonCompass(point) {
+  if (!point) { compassArrivalStep(compassArrival, false); idleCompass(DUNGEON_COMPASS_IDLE); return; }
   updateNavigationArrow(navGuidanceArrow, null);
   if (navCompass.hidden) navCompass.hidden = false;
   if (navManualArrow.hidden) navManualArrow.hidden = false;
-  const dx = point ? point.x - game.player.x : 0, dy = point ? point.y - game.player.y : -1;
-  const arrived = !!point && Math.hypot(dx, dy) < .45;
-  hudSet(navCompass, "class:north", !point);
+  const dx = point.x - game.player.x, dy = point.y - game.player.y;
+  const arrived = Math.hypot(dx, dy) < COMPASS_ARRIVAL.radius;
+  if (compassArrivalStep(compassArrival, arrived, point.id, NaN, NaN, point.x, point.y)) showEventBanner(COMPASS_ARRIVAL.banner, `Door point ${point.slot}: ${point.label}`, "discovery");
+  hudSet(navCompass, "class:north", false);
   hudSet(navManualArrow, "class:dormant", false);
   hudSet(navManualArrow, "class:arrived", arrived);
   hudSet(navManualArrow, "transform", arrived ? "" : `rotate(${compassRotation(dx,dy)}deg)`);
-  const label = point ? `Door point ${point.slot}: ${point.label}${arrived ? " reached" : ""}` : "True north";
+  const label = `Door point ${point.slot}: ${point.label}${arrived ? " reached" : ""}`;
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
 // No objective (Tim, 2026-11-12: "Otherwise you can just wander"): the compass stays, its dial still turning to north, with no needle.
-function idleCompass() {
+function idleCompass(label = "No objective. Tap to choose one nearby, or hold for the list") {
   updateNavigationArrow(navGuidanceArrow, null); updateNavigationArrow(navManualArrow, null);
   if (navCompass.hidden) navCompass.hidden = false;
   hudSet(navCompass, "class:north", false);
-  const label = "No objective. Tap to choose one nearby";
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
 function updateNavigationCompass(now = performance.now()) {
@@ -746,78 +761,154 @@ function updateNavigationCompass(now = performance.now()) {
   }
   const targets=navigationTargets(),guidanceLabel=updateNavigationArrow(navGuidanceArrow,targets.guidance),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
   if(guidanceLabel)labels.push(`Guidance: ${guidanceLabel}`);if(manualLabel)labels.push(`Manual waypoint: ${manualLabel}`);
+  // 2026-11-19 (Tim): "WAYPOINT REACHED" once per arrival at whatever the compass points at (a pick, a pin, a followed hunt, quest,
+  // marker or seed hunt), by the needle's own rule; it re-arms after leaving or choosing again.
+  { const g=targets.guidance;if(compassArrivalStep(compassArrival,compassTargetArrived(g,game.area,game.rx,game.ry,game.player.x,game.player.y),g?.name??null,g?.rx,g?.ry,g?.x??NaN,g?.y??NaN))showEventBanner(COMPASS_ARRIVAL.banner,g.name,"discovery"); }
   if(!labels.length){idleCompass();return}hudSet(navCompass,"class:north",false);if(navCompass.hidden)navCompass.hidden=false;
-  const manualArrived=targets.manual&&game.area===targets.manual.area&&targets.manual.rx===game.rx&&targets.manual.ry===game.ry,arrivalKey=manualArrived?`${targets.manual.rx},${targets.manual.ry}`:null;
-  if(arrivalKey&&announcedManualArrival!==arrivalKey)showEventBanner("WAYPOINT REACHED",targets.manual.name,"discovery");announcedManualArrival=arrivalKey;
   const label=labels.join(". ");hudSet(navCompass,"aria-label",label);hudSet(navCompass,"title",label);
 }
 // Active quests (Journal tab, release 155): every hunt, errand and story lead in progress, with where it is and a
 // button that points the compass at it. Nothing here is drawn on the compass itself.
 function activeQuests(){
-  const out=[],add=(title,detail,at)=>out.push({title,detail,at:at&&Number.isInteger(at.rx)&&Number.isInteger(at.ry)?{rx:at.rx,ry:at.ry}:null});
-  for(const c of Object.values(save.viewport?.contracts||{}))if(["accepted","tracking","target-located"].includes(c?.status))add(`Hunt: ${c.title||"Viewport hunt"}`,`${c.id===save.viewport.activeHuntId?"Tracked hunt · ":""}${String(c.status).replace("-"," ")}${c.summary?` · ${c.summary}`:""}`,c.target);
+  // 2026-11-19 (Tim: the compass is sticky): an entry with `follow` is a source the compass can follow (types.ts
+  // save.guidance.follow); the Journal's "Point compass here" and the compass menu choose it, and it no longer leads by itself.
+  const out=[],add=(title,detail,at,follow=null)=>out.push({title,detail,at:at&&Number.isInteger(at.rx)&&Number.isInteger(at.ry)?{rx:at.rx,ry:at.ry}:null,...(follow?{follow}:{})});
+  for(const c of Object.values(save.viewport?.contracts||{}))if(["accepted","tracking","target-located"].includes(c?.status))add(`Hunt: ${c.title||"Viewport hunt"}`,`${c.id===save.viewport.activeHuntId?"Tracked hunt · ":""}${String(c.status).replace("-"," ")}${c.summary?` · ${c.summary}`:""}`,c.target,{kind:"hunt",id:c.id});
+  for(const[id,q]of Object.entries(save.farQuests||{}))if(q?.status==="open"){const name=farQuestInfo(id)?.name||id;add(name,"A far quest. Its people wait at the heart of their land.",q,{kind:"far",id,name})}
+  { const r=rescueGuidance(save.mounts?.hatchling);if(r)add(HATCHLING.quest.names.quest,"His mother at the Beast Hotel asked you to save him.",r,{kind:"rescue"}); }
   const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
   const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastHoldNote(save)}`,beast);
   const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
   // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
   // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
-  if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null); // 2026-11-11: the first quest
+  { const at=secondNext(save);if(at)add(SECOND_WAYFARER.title,`Someone dressed as you, a section ahead. Go where they marked: ${secondFound(save)} of ${SECOND_WAYFARER.sightings} found.`,at,{kind:"quest",id:"second"}); } // the Second Wayfarer's trail: the compass follows it once taken up
+  if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null,{kind:"quest",id:"errand"}); // 2026-11-11: the first quest
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
-  if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null);
+  if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null,{kind:"quest",id:"leads"});
   if(!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
   return out;
 }
 function renderQuests(out){
   const h=document.createElement("h3");h.textContent="Active quests";out.append(h);
-  const row=(title,detail,at,name)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
-    if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};rememberGuidance();openJournal("quests")}))}out.append(card)};
+  const row=(title,detail,at,name,follow=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
+    if(follow){const followed=!compassPin&&compassFollow?.kind===follow.kind&&(compassFollow.id??null)===(follow.id??null);card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
+    else if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};rememberGuidance();openJournal("quests")}))}out.append(card)};
   const quests=activeQuests();if(!quests.length){const p=document.createElement("p");p.className="options-note";p.textContent="No hunts or errands in progress. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
-  for(const q of quests)row(q.title,q.detail,q.at,q.title);
+  for(const q of quests)row(q.title,q.detail,q.at,q.title,q.follow);
   const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
-  if(compassPin)out.append(uiButton("Stop pointing the compass here",()=>{compassPin=null;rememberGuidance();openJournal("quests")}));
+  if(compassPin||compassFollow)out.append(uiButton("Stop pointing the compass",()=>{chooseGuidance();openJournal("quests")}));
 }
 // Tapping the compass names its target and steps to the next objective (release 153).
 navCompass.setAttribute("role","button");navCompass.tabIndex=0;
-navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();toggleLook();return}if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
-// Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in Close View a press held on the compass toggles it (a tap
-// still steps the compass); in it a pinch on the game area zooms the camera and a drag orbits it. Attack, Dodge, a spell or the
-// Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only. The keyboard: Shift+Enter on the compass.
-const lookHold=createLookHold();let lookHinted=false,lookTimer=0,lookSwallowTimer=0;
+navCompass.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();openCompassMenu();return}if(e.key==="Enter"||e.key===" "){e.preventDefault();navCompass.click()}});
+// Look mode (Tim, 2026-11-13; close-view.ts CLOSE_VIEW.camera.look): in it a pinch on the game area zooms the camera and a drag
+// orbits it. Attack, Dodge, a spell or the Tool end it (closeViewLookActions); Action and Jump keep it. Runtime only.
+// 2026-11-19 (Tim): "holding the Oculus button turns Look mode on, and holding it again turns it off"; a short tap on the Oculus
+// still switches the view. The compass's hold no longer touches Look mode: it opens the compass's quick menu (openCompassMenu),
+// in either view. Both holds last CLOSE_VIEW.camera.look.holdMs (as the compass's did) and fill a ring while held (styles.css
+// .holding; a plain highlight under Reduced Motion). The keyboard: Shift+Enter on the Oculus button (Look), on the compass (the menu).
+let lookHinted=false;
 navCompass.setAttribute("aria-describedby","navCompassHelp");
 // The first time in a session the message line carries the one-line hint; after that a short word.
 function toggleLook(){if(!closeViewShowing(game)){game.message="Look mode works in Close View.";return false}const on=closeViewLookToggle(game);
-  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round, tap anything to look at it. Attack, Dodge, a spell or Tool ends it."):"Look mode off.";if(on)lookHinted=true;return on}
+  game.message=on?(lookHinted?"Look mode on.":"Look mode: pinch to zoom, drag to look round, tap anything to look at it. Hold the Oculus again, or Attack, Dodge, a spell or Tool, to end it."):"Look mode off.";if(on)lookHinted=true;return on}
 const lookStamp=e=>Number.isFinite(e.timeStamp)&&e.timeStamp>0?e.timeStamp:performance.now(); // when the finger moved, not when a busy frame got to it
-navCompass.addEventListener("pointerdown",e=>{lookHold.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(lookTimer);
-  lookTimer=setTimeout(()=>{if(lookHold.due(performance.now())&&closeViewShowing(game)){lookHold.hold();toggleLook();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
-navCompass.addEventListener("pointermove",e=>lookHold.move(e.pointerId,e.clientX,e.clientY));
-// A hold's swallowed click (r945 review): only the click its own release makes. A press cancelled, or slid off while held, makes
-// none, so the flag is dropped there; after a release it lapses within swallowMs, so a later Enter on the compass still works.
-for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])navCompass.addEventListener(t,e=>{clearTimeout(lookTimer);if(t==="pointercancel"||t!=="pointerup"&&lookHold.pressing)lookHold.drop();
-  if(t==="lostpointercapture")return;if(lookHold.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&closeViewShowing(game)){lookHold.hold();toggleLook()}
-  if(t==="pointerup"){clearTimeout(lookSwallowTimer);lookSwallowTimer=setTimeout(()=>lookHold.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
-navCompass.addEventListener("contextmenu",e=>{if(closeViewShowing(game))e.preventDefault()}); // a long press opens no menu there
+// A long press on a HUD button (close-view.ts createLookHold): `can` says whether a hold would do anything now (else no ring, and
+// the press stays a tap); `fire` is the hold; `tap` (the Oculus only) is the short press, made on the release. The compass's tap
+// is its own click (below), which consults takeClick first. A hold's swallowed click (r945 review): only the click its own release
+// makes. A press cancelled, or slid off while held, makes none, so the flag is dropped there; after a release it lapses within
+// swallowMs, so a later Enter still works.
+function wireHold(el,ring,{can,fire,tap=null}){
+  const h=createLookHold();let timer=0,swallowTimer=0,downId=null;const ringOff=()=>ring.classList.remove("holding");
+  el.addEventListener("pointerdown",e=>{if(e.button>0)return;downId=e.pointerId;h.down(e.pointerId,e.clientX,e.clientY,lookStamp(e));clearTimeout(timer);if(can())ring.classList.add("holding");
+    timer=setTimeout(()=>{ringOff();if(h.due(performance.now())&&can()){h.hold();fire();navigator.vibrate?.(12)}},CLOSE_VIEW.camera.look.holdMs+10)});
+  el.addEventListener("pointermove",e=>{h.move(e.pointerId,e.clientX,e.clientY);if(!h.pressing)ringOff()});
+  for(const t of["pointerup","pointercancel","pointerleave","lostpointercapture"])el.addEventListener(t,e=>{clearTimeout(timer);ringOff();if(t==="pointercancel"||t!=="pointerup"&&h.pressing)h.drop();
+    if(t==="pointercancel")downId=null;if(t==="lostpointercapture")return;if(h.up(e.pointerId,t==="pointerup"?lookStamp(e):NaN)&&can()){h.hold();fire()}
+    if(t==="pointerup"){const mine=e.pointerId===downId;downId=null;if(tap&&mine&&!h.takeClick())tap();clearTimeout(swallowTimer);swallowTimer=setTimeout(()=>h.drop(),CLOSE_VIEW.camera.look.swallowMs)}});
+  el.addEventListener("contextmenu",e=>e.preventDefault()); // a long press opens no browser menu
+  return h;
+}
+// The Oculus button: the input's own press (input.ts, made on pointerdown) gives way to this one, so a hold is never also a view
+// switch. Its tap latches the same "oculus" press (game.ts pressOculus, oculus.ts pressOculusButton) on the release; key O is unchanged.
+const oculusButton=$("#oculusButton");
+if(oculusButton){
+  oculusButton.onpointerdown=e=>{e.preventDefault();oculusButton.classList.add("pressed");clearTimeout(oculusButton.pressedTimer);oculusButton.pressedTimer=setTimeout(()=>oculusButton.classList.remove("pressed"),160)};
+  wireHold(oculusButton,oculusButton,{can:()=>!game.paused&&closeViewShowing(game),fire:toggleLook,tap:()=>{input.state.oculus=true}});
+  oculusButton.setAttribute("aria-describedby","oculusHelp");
+  oculusButton.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.shiftKey){e.preventDefault();toggleLook()}});
+  oculusButton.addEventListener("click",e=>{if(e.detail===0)input.state.oculus=true}); // Enter or Space on the focused button (a pointer tap is made on its release above)
+}
+const compassHold=wireHold(navCompass,navCompassSlot,{can:()=>!game.paused,fire:()=>openCompassMenu()});
 addEventListener("keydown",e=>{if(!closeViewLookActive()||e.repeat)return;if(e.key==="="||e.key==="+"){closeViewLookZoomBy(.25)}else if(e.key==="-"||e.key==="_"){closeViewLookZoomBy(-.25)}if(closeViewHomeZoomTake())persist()});
 let overlayClosedAt=-1e9; // release 279: the tap that closes the Atlas (or any panel) must not land on the compass beneath
+// The compass's quick menu (Tim, 2026-11-19; atlas-view.ts compassMenuModel): a hold on the compass opens a panel to the left of
+// the compass and the Oculus listing what the compass can point at (quests, seed hunts, the nearby objectives the tap cycles
+// through, the waypoint and marks you set on the Atlas; in a dungeon its door points). A tap on a row points the compass there,
+// kept as the tap cycle's pick or the Journal's pin are (save.guidance), and closes it. It only chooses: it never makes, moves or
+// clears a mark. The red X (top left), a tap outside, Escape or Back close it. The game pauses under it as under the Atlas and
+// the Journal (pauseForOverlay; Look mode is kept) and resumes as it closes; the pause menu, if it opens, closes it.
+const compassMenu=$("#compassMenu"),compassMenuList=$("#compassMenuList");let compassMenuOpen=false,compassMenuPaused=false;
+function compassMenuData(){
+  const here={rx:game.rx,ry:game.ry,x:game.player?.x,y:game.player?.y};
+  if(game.area==="dungeon")return compassMenuModel({area:"dungeon",here,doors:dungeonCompassPoints(),doorPick:dungeonCompassPick});
+  if(game.area!=="overworld")return compassMenuModel({area:game.area});
+  syncGuidance();const objectives=objectiveList().map(o=>({...o,tag:OBJECTIVE_KINDS[o.kind]?.label||""}));
+  return compassMenuModel({area:"overworld",here,quests:activeQuests(),objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
+}
+function renderCompassMenu(){
+  const m=compassMenuData(),out=[];
+  for(const g of m.groups){const sec=document.createElement("section"),h=document.createElement("h3");sec.className="compass-menu-group";h.textContent=g.title;sec.append(h);
+    for(const r of g.rows){const b=document.createElement("button"),name=document.createElement("span"),hint=document.createElement("span");b.type="button";b.className="compass-menu-row";b.dataset.row=r.id;b.setAttribute("aria-pressed",r.current?"true":"false");
+      name.className="cm-name";name.textContent=r.label;hint.className="cm-hint";hint.textContent=[r.current?"Following":"",r.tag,r.hint].filter(Boolean).join(" · ");
+      if(r.color){const sw=document.createElement("i");sw.className="cm-swatch";sw.style.background=r.color;b.append(sw)}b.append(name,hint);b.onclick=()=>chooseCompassTarget(r);sec.append(b)}
+    out.push(sec)}
+  if(!m.count){const p=document.createElement("p");p.className="compass-menu-empty";p.textContent=game.area==="overworld"?"Nothing for the compass to point at yet. Take a hunt or an errand, explore, or set a mark on the Atlas.":game.area==="dungeon"?DUNGEON_COMPASS_IDLE:"Nothing for the compass to point at here.";out.push(p)}
+  if(m.clearable){const b=document.createElement("button");b.type="button";b.className="compass-menu-clear";b.textContent="Point nowhere";b.onclick=()=>chooseCompassTarget({label:"",choose:{kind:"none"}});out.push(b)}
+  compassMenuList.replaceChildren(...out);compassMenuList.scrollTop=0;return m;
+}
+function openCompassMenu(){
+  if(!compassMenu||compassMenuOpen||game.paused||glimpseRun)return false;
+  renderCompassMenu();compassMenu.hidden=false;compassMenuOpen=true;pauseForOverlay();compassMenuPaused=true;
+  const live=compassMenuList.querySelector('[aria-pressed="true"]');(live||$("#compassMenuClose"))?.focus?.({preventScroll:true});live?.scrollIntoView?.({block:"nearest"});return true;
+}
+function closeCompassMenu(resumeGame=true){
+  if(!compassMenuOpen)return false;compassMenuOpen=false;compassMenu.hidden=true;compassMenuList.replaceChildren();overlayClosedAt=performance.now();
+  const paused=compassMenuPaused;compassMenuPaused=false;if(resumeGame&&paused&&game.paused&&!pausePanel.open&&![atlas,panel,journal,optionsPanel].some(d=>d.open))resume();return true;
+}
+function chooseCompassTarget(r){
+  const c=r.choose;
+  if(c.kind==="door"){dungeonCompassPick=c.id;compassArrivalReset(compassArrival)}
+  else if(c.kind==="pick")chooseGuidance({pick:c.key}); // 2026-11-19 (Tim): nothing leads a choice any more, so a pick is only a pick
+  else if(c.kind==="pin")chooseGuidance({pin:{rx:c.rx,ry:c.ry,name:c.name}});
+  else if(c.kind==="follow")chooseGuidance({follow:c.follow}); // a hunt or quest followed, or one of your markers (opt-in)
+  else chooseGuidance();
+  closeCompassMenu();
+  game.message=c.kind==="none"?"The compass points nowhere now. Tap or hold it to choose again.":`Compass: ${r.label}${r.hint?` · ${r.hint}`:""}.`;
+}
+$("#compassMenuClose")?.addEventListener("click",()=>closeCompassMenu());
+compassMenu?.querySelector(".compass-menu-backdrop")?.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();closeCompassMenu()}); // a tap outside only closes it
+compassMenu?.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeCompassMenu()}});
 navCompass.addEventListener("click",()=>{
-  if(lookHold.takeClick())return; // the release of a long press (Look mode) is not a tap
+  if(compassHold.takeClick())return; // the release of a long press (the compass menu) is not a tap
   if(performance.now()-overlayClosedAt<500)return;
   if(game.area==="dungeon"){
     const points=dungeonCompassPoints();
     const index=points.findIndex(door=>door.id===dungeonCompassPick);
     const next=points[index<0&&points.length>1?1:(index+1)%points.length];
-    dungeonCompassPick=next?.id??null;
-    game.message=next?`Door point ${next.slot}: ${next.label}${points.length>1?". Tap again for the next.":""}`:"The compass points to true north.";
+    dungeonCompassPick=next?.id??null;compassArrivalReset(compassArrival); // a choice re-arms the arrival banner
+    game.message=next?`Door point ${next.slot}: ${next.label}${points.length>1?". Tap again for the next.":""}`:DUNGEON_COMPASS_IDLE;
     return;
   }
-  if(game.area!=="overworld"){game.message="The compass points to true north.";return}
-  const list=objectiveList();if(!list.length){if(compassPick!==null){compassPick=null;rememberGuidance()}game.message="No objective nearby. Explore further to find one.";return}
+  if(game.area!=="overworld"){game.message="Nothing for the compass to point at here.";return}
+  syncGuidance(); // a hunt or quest just accepted is the current choice
+  const list=objectiveList();if(!list.length){game.message="No objective nearby. Explore further to find one, or hold the compass for your quests and markers.";return}
   // The first tap names the nearest objective; each later tap moves on to the next one, and the tap after the last lets the
   // compass go (2026-11-12: with no objective it has no needle).
   const current=compassObjective(),at=compassPick===null?0:list.indexOf(current)+1;
-  if(at>=list.length){compassPick=null;compassPin=null;rememberGuidance();game.message="The compass points nowhere now: no objective. Tap again to choose one.";return}
+  if(at>=list.length){compassPick=null;compassPin=null;compassFollow=null;rememberGuidance();game.message="The compass points nowhere now: no objective. Tap again to choose one.";return}
   const next=list[at];
-  compassPick=objectiveKey(next);compassPin=null;rememberGuidance(); // a seed hunt's key is its tower's (atlas-view.ts objectiveKey); every other objective's is its section
+  compassPick=objectiveKey(next);compassPin=null;compassFollow=null;rememberGuidance(); // a seed hunt's key is its tower's (atlas-view.ts objectiveKey); every other objective's is its section
   const away=Math.max(Math.abs(next.rx-game.rx),Math.abs(next.ry-game.ry));
   game.message=`Compass (${list.indexOf(next)+1}/${list.length}): ${next.name} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(next.rx-game.rx,next.ry-game.ry)}`:"in this section"} · section ${next.rx},${next.ry}. Tap again for the next.`;
 });
@@ -876,7 +967,8 @@ function voice(
   o.stop(when + duration + 0.05);
 }
 // A short cue for a notice that carries one (the Pentagon's shortcuts): a clank and a low settle, through the music bus.
-const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]] };
+const NOTICE_SOUNDS = { shortcut: [[196, 0, 0.18, "square"], [146.83, 0.12, 0.3, "triangle"], [98, 0.3, 0.55, "triangle"]],
+  parry: [[1318.5, 0, 0.12, "square"], [1975.5, 0.02, 0.28, "triangle"], [987.77, 0.05, 0.4, "triangle"]] }; // Power Aegis: a bright struck-metal ring
 function playNoticeSound(kind) {
   const notes = NOTICE_SOUNDS[kind]; if (!audio || !notes || muted) return;
   try { const t = audio.currentTime; for (const [f, at, d, type] of notes) voice(f, t + at, d, 0.12, type); } catch { /* sound is a nicety */ }
@@ -1322,6 +1414,7 @@ let leavingForProvingGround = false; // release 791: the journey was flushed for
 const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
 function pause(show = true, urgent = false) {
   if (show) { overlayPause = false; closeViewLookSet(game, false, true); } // the pause menu ends Look mode; a talk, a shop or another panel over the world keeps it
+  if (show) closeCompassMenu(false); // 2026-11-19: the pause menu closes the compass's quick menu (it stays paused under the menu)
   game.setPaused(true, performance.now());
   input.reset();
   persist(urgent);
@@ -1333,6 +1426,7 @@ function pauseForOverlay() {
 }
 function resume() {
   overlayPause = false; gearPick = null; // release 469
+  closeCompassMenu(false); // 2026-11-19: resuming closes the compass's quick menu
   $("#pauseError")?.remove();
   for (const d of [pausePanel, atlas, panel, journal, optionsPanel]) if (d.open) d.close();
   game.setPaused(false, performance.now());
@@ -1470,6 +1564,8 @@ function renderArcana(out){
   const rung=bellsRung(save).split("").filter(Boolean);arcanaCard(out,"The Seven Bells",rung.length,BELLS.count,hints.bells.where,rung.map((k)=>[`The bell for ${BELL_GLIMPSES[k]?.who||"someone"}`,(BELL_GLIMPSES[k]?.lines||[]).join(" ")]),rung.length>=BELLS.count?BELL_FINAL:null,false,hints.bells);
   const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,hints.surveyor.where,links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null,false,hints.surveyor);
   const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,hints.pages.where,pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null,false,hints.pages);
+  { const n=secondFound(save),begun=secondBegun(save),at=secondNext(save),read=begun?[["Footprints",SECOND_FOOTPRINTS.read(save.lore.second.trail[0])],...Array.from({length:n},(_,i)=>[`${i+1}`,save.lore.second.passed?.includes(i)?secondTraceText(save,i):`${SECOND_SIGHTINGS[i]} ${secondTraceText(save,i)}`])]:[];
+    if(begun)arcanaCard(out,SECOND_WAYFARER.title,n,SECOND_WAYFARER.sightings,at?`the sections they marked; the next is ${at.rx}, ${at.ry}`:"the sections they marked",read,n>=SECOND_WAYFARER.sightings?SECOND_ENDING:null); } // the Second Wayfarer: shown once the footprints are found (unknown until then)
   const met=ilseMet(save).split("").filter(Boolean),meetings=Object.keys(ILSE_MEETINGS);arcanaCard(out,"Ilse",met.length,meetings.length,"lit roads, now and then",met.map((k)=>[ILSE_MEETINGS[k]?.name||"Ilse",(ILSE_MEETINGS[k]?.lines||[]).join(" ")]),null);
   const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
   const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
@@ -1495,6 +1591,10 @@ function renderTome(out){
     for(let i=0;i<Math.min(found.length,T.pieces.length);i++){const p=document.createElement("p");p.className="options-note";p.textContent=T.pieces[i];ts.append(p)}
     if(found.length>=T.pieces.length){const e=document.createElement("p");e.className="lore-book mastered";e.textContent=T.ending;ts.append(e)}
     out.append(ts)}
+  if(secondBegun(save)){const n=secondFound(save),ws=document.createElement("section"),wh=document.createElement("h3");ws.className="library-book";wh.textContent=`${SECOND_WAYFARER.title} (${n} of ${SECOND_WAYFARER.sightings})`;ws.append(wh); /* the Second Wayfarer: what they left, in order */
+    for(let i=0;i<n;i++){const p=document.createElement("p");p.className="options-note";p.textContent=secondTraceText(save,i);ws.append(p)}
+    if(n>=SECOND_WAYFARER.sightings){const e=document.createElement("p");e.className="lore-book mastered";e.textContent=SECOND_ENDING;ws.append(e)}
+    out.append(ws)}
   // Release 197: the Elder Wanderers, once one has been heard: every rule heard, drawn small, and the count.
   const elderRules=eldersHeard(save);if(elderRules.length){const es=document.createElement("section"),eh=document.createElement("h3"),en=document.createElement("p"),grid=document.createElement("div"),p=elderProgress(save);es.className="library-book";eh.textContent="The Elder Wanderers";en.className="lore-book"+(p.mastered?" mastered":"");en.textContent=`${p.found} of ${p.total} patterns${p.mastered?" · Mastered":""}`;grid.className="elder-grid";es.append(eh,en,grid);out.append(es);
     for(const rule of elderRules){const c=document.createElement("canvas");c.title=`Rule ${rule}`;grid.append(c);requestAnimationFrame(()=>paintRule(c,rule,"single",{cols:31,rows:16,reduceMotion:true,rowsOf:ruleRows}))}}
@@ -1523,7 +1623,7 @@ async function enterProvingGround(button){
   if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release: "r1012-ffa69513a699",slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release: "r1031-b358b5a5ce4c",slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
     if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1547,7 +1647,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r1012-ffa69513a699",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r1012-ffa69513a699\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r1031-b358b5a5ce4c",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r1031-b358b5a5ce4c\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1559,7 +1659,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release: "r1012-ffa69513a699",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release: "r1031-b358b5a5ce4c",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -1800,6 +1900,7 @@ function drawAtlasPins(w,h,cell){
   { // Release 551 (surveyor.ts): with Corwin's twelve links, the crossings they lay in join into a brass chain on the Atlas, running on to his statue.
     const chain=surveyorChainPath(save); if(chain.length>1){mctx.save();mctx.strokeStyle="#c79a3e";mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.beginPath();chain.forEach((q,i)=>{const[x,y]=at(q.rx,q.ry);if(i)mctx.lineTo(x,y);else mctx.moveTo(x,y)});mctx.stroke();mctx.setLineDash([]);mctx.fillStyle="#e6c46a";for(const q of chain.slice(0,-1)){const[x,y]=at(q.rx,q.ry);mctx.beginPath();mctx.ellipse(x,y,3.5,2,0,0,7);mctx.fill()}mctx.restore();const st=chain.at(-1);pins.push({rx:st.rx,ry:st.ry,color:"#d9d4c6",label:"Abel Corwin's statue",mark:true})}}
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
+  {const r=rescueGuidance(save.mounts?.hatchling);if(r)pins.push({rx:r.rx,ry:r.ry,color:"#f2cf35",label:r.name,mark:true})} // the hatchling's rescue (hatchling.ts): a Triceratops-yellow flag
   for(const q of activeSeedHunts(save))pins.push({rx:q.rx,ry:q.ry,color:TALL_TOWERS.seedHunt.marker,inner:SEEDS[q.kind]?.color||"#ffffff",label:`Seed hunt: ${SEEDS[q.kind]?.name||"a seed"}`,seed:true}); // tall towers: each live seed hunt, a glinting seed-shaped marker
   for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
@@ -1921,7 +2022,7 @@ function toggleDungeonMapDoor(door){
     return;
   }
   if(!game.toggleDungeonDoorWaypoint(point.id))return;
-  if(!point.slot)dungeonCompassPick=point.id;
+  if(!point.slot){dungeonCompassPick=point.id;compassArrivalReset(compassArrival)}
   else if(dungeonCompassPick===point.id)dungeonCompassPick=null;
   persist();
   updateMapModeUI();
@@ -1933,7 +2034,7 @@ function renderDungeonWayfinding(view,map=game.map){
 }
 function updateMapModeUI(){
   const dungeon=game.area==="dungeon",local=dungeon&&mapMode==="dungeon";
-  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map${game.chartLine?.()?` · ${game.chartLine()}`:""}`:"Corridor Atlas";/* DUNGEON_CHARTING: how much of the floor is charted */atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;mapMarkButton().hidden=local;$("#mapLegend").hidden=local;const picker=$("#dungeonLevelPicker"),select=$("#dungeonLevelSelect"),progress=game.map.deepProgress;picker.hidden=!local||!game.map.multiLevel;if(!picker.hidden){const selectedId=select.value,discovered=new Set(progress?.discoveredLevelIds||[game.map.levelId]);select.replaceChildren(...(game.map.levels||[]).filter(q=>discovered.has(q.id)).map(q=>{const option=document.createElement("option");option.value=q.id;option.textContent=`${q.index+1}. ${q.name}${q.id===game.map.levelId?" · current":""}`;return option}));select.value=[...select.options].some(q=>q.value===selectedId)?selectedId:game.map.levelId;}$("#mapInstructions").textContent=local&&game.map.building?.pentagon&&game.map.building.node>=0?"Gold marks you; cyan marks your saved arrival. Numbered routes match the list below. Discovered chambers persist; previous-chamber guidance lasts until you leave or reload. Unexplored destinations stay unnamed.":local?"A bounded floor plan. Gold marks your current position. Use Discovered level to inspect known floors; hidden routes and levels remain absent until found.":"Tap an explored section to set the persistent cyan manual arrow. Violet guidance continues independently for quests and hunts.";
+  $("#mapModeToggle").hidden=!dungeon;$("#mapModeToggle").textContent=local?"Corridor Atlas":"Dungeon Map";$("#mapTitle").textContent=local?`${game.map.name||"Dungeon"} Map${game.chartLine?.()?` · ${game.chartLine()}`:""}`:"Corridor Atlas";/* DUNGEON_CHARTING: how much of the floor is charted */atlas.querySelector(".maptools").hidden=local;$("#mapHome").hidden=local;$("#mapWaypoint").hidden=local;mapMarkButton().hidden=local;$("#mapLegend").hidden=local;const picker=$("#dungeonLevelPicker"),select=$("#dungeonLevelSelect"),progress=game.map.deepProgress;picker.hidden=!local||!game.map.multiLevel;if(!picker.hidden){const selectedId=select.value,discovered=new Set(progress?.discoveredLevelIds||[game.map.levelId]);select.replaceChildren(...(game.map.levels||[]).filter(q=>discovered.has(q.id)).map(q=>{const option=document.createElement("option");option.value=q.id;option.textContent=`${q.index+1}. ${q.name}${q.id===game.map.levelId?" · current":""}`;return option}));select.value=[...select.options].some(q=>q.value===selectedId)?selectedId:game.map.levelId;}$("#mapInstructions").textContent=local&&game.map.building?.pentagon&&game.map.building.node>=0?"Gold marks you; cyan marks your saved arrival. Numbered routes match the list below. Discovered chambers persist; previous-chamber guidance lasts until you leave or reload. Unexplored destinations stay unnamed.":local?"A bounded floor plan. Gold marks your current position. Use Discovered level to inspect known floors; hidden routes and levels remain absent until found.":"Tap an explored section to set your waypoint. It is a marker only: to have the compass point at it, hold the compass and choose it.";
   if(local&&activeDungeonDoors(game).length)$("#mapInstructions").textContent="Blue: the door you came through. Purple: doors you’ve used. Tap a known door to set or clear a point (up to three). Tap the compass to cycle points; with none set it points north.";
   if(local){const cols=game.map.width||24,rows=game.map.height||Math.floor(game.map.tiles.length/cols),progress=game.map.deepProgress,required=progress?.requiredObjectiveIds?.length||game.map.objectives?.filter(q=>q.required).length||game.map.wings?.length||0,done=game.map.recipe==="deep-v1"?(progress?.defeatedWingIds?.length||0):(progress?.completedObjectiveIds?.length||0),deep=(game.map.deepDungeon||game.map.recipe==="deep-v1")?` · ${game.map.archetype||"threefold"}${game.map.multiLevel?` · level ${game.map.levelName}`:""} · objectives ${done}/${required}${progress?.gateOpened?" · final gate open":""}${progress?.activeAnchor?` · recovery ${progress.activeAnchor.name}`:""}`:"";$("#mapDetail").textContent=`${game.map.identity||"Dungeon"} · bounded ${cols} × ${rows} floor${deep} · position ${Math.floor(game.player.x)}, ${Math.floor(game.player.y)}`;}
   if(!local)renderDungeonWayfinding(null);
@@ -2196,6 +2297,15 @@ function openPack(tab) {
     const use = uiButton("Use", () => { panel.close(); openSigilAtlas(); }); // CROSSING_SIGIL: anywhere
     use.disabled = !(save.consumables.crossingSigil > 0);
     row.append(title, text, use); body.append(row);
+    { // The Triceratops hatchling (hatchling.ts; Tim, 2026-11-19): his growth and which form a hold of Act calls.
+      const h = ensureMounts(save).hatchling, hr = document.createElement("div"), ht = document.createElement("strong"), hp = document.createElement("p"); hr.className = "item consumable stable";
+      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her."; hr.append(ht, hp); }
+      else { const g2 = growthProgress(h), F = HATCHLING.forms[h.form]; ht.textContent = `Your Triceratops · ${F.name} form${h.out ? " · out" : ""}`;
+        hp.textContent = `${g2.next ? `Growing: ${g2.have}/${g2.need} toward his ${HATCHLING.forms[g2.next].name.toLowerCase()} form (he grows from ${Math.round(HATCHLING.growth.share * 100)}% of the experience you earn from fights while he is out).` : "Fully grown."} Hold Act to call the chosen form, or send him to rest.`;
+        hr.append(ht, hp); const line = document.createElement("div"); line.className = "stable-mount";
+        for (const k of HATCHLING.formIds) { const F2 = HATCHLING.forms[k], b = uiButton(`${F2.name}${h.form === k ? " ✓" : ""}`, () => { const r = game.chooseHatchlingForm(k); game.message = r.message; persist(); openPack("supplies"); }); b.title = formUnlocked(h, k) ? F2.text : "Not grown yet"; b.disabled = !formUnlocked(h, k) || h.form === k; line.append(b); }
+        hr.append(line); }
+      body.append(hr); }
     { // Release 748 (Tim, 2026-11-04): the stable, up to MOUNT_RIDE.cap caught beasts. Ride calls one beside you (as Act with nothing near does).
       const q = ensureMounts(save), sr = document.createElement("div"), stt = document.createElement("strong"), sp = document.createElement("p"); sr.className = "item consumable stable";
       const temporaryCount = q.stable.filter(m => !persistentMount(m)).length;
@@ -2406,10 +2516,10 @@ function openJournal(mode = "chronicle") {
       ["triangle",["Hollow triangle — World boss","Red marks lead toward a world boss: ground a world beast you have woken will claim when you arrive, or one that already holds its ground; before any has woken, the nearest crossing you have not entered. The corner filled with a red wedge faces the route."]],
       ["spiral",["Open spiral — Watcher's Shrine","Violet marks lead toward a Watcher's Shrine, the pristine tomb that folds the Corridor and carries you somewhere else. The open end of the spiral faces the route."]],
       ["pentagon",["Five-sided sigil — Pentagon","Gold sigils cut into the ground point toward a Pentagon not yet complete. The long point is the way; read one to learn how far."]],
-      ["guidance-arrow",["Violet compass arrow — Guidance","Tracks the active quest, Viewport hunt, or Corridor objective. It changes as that objective advances and never replaces a manual waypoint."]],
-      ["manual-arrow",["Cyan compass arrow — Manual waypoint","Tracks the explored Atlas section you selected. It remains until you clear or replace it, even while guidance is active."]],
+      ["guidance-arrow",["Violet compass arrow — Guidance","Points at the one target you chose: a quest or hunt you accepted, a quest you pointed it at in the Journal, an objective you tapped to, or a marker you chose in the compass's list (hold the compass). Nothing else moves it. When that target is finished or gone the compass has no needle until you choose again."]],
+      ["manual-arrow",["Cyan compass arrow — Door point","In a dungeon, points at the door you numbered on its Map; tap the compass to switch between them. Your waypoint and marks on the Atlas only get a needle when you choose one in the compass's list."]],
       ...ATLAS_SYMBOLS.map(symbol=>[`atlas-${symbol.kind}`,[symbol.label,symbol.description]]),
-      ["atlas",["Atlas controls","Drag with one finger to pan. Pinch with two fingers, use the mouse wheel or +/− to zoom; double-tap a section to zoom in on it. Zoomed far out, the Atlas becomes a world view of everything you have explored, with the regions you have heard tinted and named. World shows all of it; Go to… jumps to a region, or to a town, district or Wayglass inside it. Tap a section with a Wayglass to choose it for travel. Tap an explored section to select it, then use Set waypoint to guide the constellation compass."]],
+      ["atlas",["Atlas controls","Drag with one finger to pan. Pinch with two fingers, use the mouse wheel or +/− to zoom; double-tap a section to zoom in on it. Zoomed far out, the Atlas becomes a world view of everything you have explored, with the regions you have heard tinted and named. World shows all of it; Go to… jumps to a region, or to a town, district or Wayglass inside it. Tap a section with a Wayglass to choose it for travel. Tap an explored section to select it, then use Set waypoint to mark it; hold the compass and choose it to have the compass point there."]],
       ["travel",["Travel","Activate Wayglass beacons to travel to them from the Atlas. Dungeon travel remains sealed without a Crossing Sigil."]],
       ["combat",["Combat","Red or violet telegraphs show the exact threatened area. Dodge spends stamina; jumping avoids grounded impacts."]],
       ["aperture",["Aperture","Exploration, discoveries, and significant enemies raise Aperture, revealing hidden layers of known places."]]
@@ -2586,7 +2696,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   { const pb = hudEl('[data-action="preset"]'), n = String((save.magicSkills?.preset || 0) + 1); if (pb) { hudSet(pb, "text", n); hudSet(pb, "aria-label", `Spell preset ${n}: tap to switch`); } }
   // The Oculus's own button under the compass (2026-11-15): one tap switches the view. Teal toward Close View, amber back
   // (data-to); pressed while Close View shows; dimmed through its cooldown or where it cannot open (refreshOculusButton).
-  { const ob = hudEl("#oculusButton"); if (ob) { const to = oculusTarget(game), wait = (game.oculusReadyAt || 0) > now; hudSet(ob, "data-to", to); hudSet(ob, "aria-pressed", to === "top" ? "true" : "false"); hudSet(ob, "class:spent", wait); hudSet(ob, "aria-label", `Oculus: switch to ${to === "close" ? "Close View" : "the top-down view"}`); hudSet(ob, "title", `Oculus (O): ${to === "close" ? "Close View" : "top-down view"}`); } }
+  { const ob = hudEl("#oculusButton"); if (ob) { const to = oculusTarget(game), wait = (game.oculusReadyAt || 0) > now; hudSet(ob, "data-to", to); hudSet(ob, "aria-pressed", to === "top" ? "true" : "false"); hudSet(ob, "class:look-on", closeViewLookActive()); hudSet(ob, "class:spent", wait); hudSet(ob, "aria-label", `Oculus: switch to ${to === "close" ? "Close View" : "the top-down view"}`); hudSet(ob, "title", `Oculus (O): ${to === "close" ? "Close View" : "top-down view"}`); } }
   // Release 874: stepping through the Oculus flashes an iris over the screen (styles.css #oculusWarp; none under Reduced Motion).
   if (game.oculusWarp && game.oculusWarp !== oculusWarpShown) { oculusWarpShown = game.oculusWarp; let w = $("#oculusWarp"); if (!w) { w = Object.assign(document.createElement("div"), { id: "oculusWarp" }); w.setAttribute("aria-hidden", "true"); w.style.setProperty("--oculus-warp", `${OCULUS.warpMs}ms`); $("#app").append(w); } w.classList.remove("on"); w.classList.toggle("top", oculusWarpShown.to === "top"); void w.offsetWidth; w.classList.add("on"); }
   // The four slots (release 113: A and B; 874: C; 2026-11-15: D, the utility place), lettered A-D left to right on screen
@@ -2740,6 +2850,7 @@ function frame(now) {
   const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
+  if (game.parryCue) { game.parryCue = false; playNoticeSound("parry"); } // Power Aegis: a perfect parry's ring (hit-cast-passives.ts POWER_AEGIS)
   if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
@@ -2786,6 +2897,7 @@ function frame(now) {
       buffs.push(`IRONBARK ${Math.ceil(game.guardRemaining)}s`);
     if (game.magicBuffRemaining > 0)
       buffs.push(`LUMEN SURGE ${Math.ceil(game.magicBuffRemaining)}s`);
+    {const pa=powerAegisLeft(game,game.lastUpdateNow||0);if(pa>0)buffs.push(`POWER AEGIS ${(pa/1000).toFixed(1)}s`);} // Power Aegis (hit-cast-passives.ts): the parry's empowerment
     if(save.meal)buffs.push(`MEAL ${mealLeft(save.meal)}`); // release 447
     {const run=game.area==="dungeon"&&marginRun(save,game.areaId());if(run?.perks?.length)buffs.push(`MARGINALIA ${run.perks.map(id=>MARGINALIA[id]?.name||id).join(", ")}`)} // release 459
     if(save.bleed?.left>0)buffs.push(`BLEED ${Math.ceil(save.bleed.left)}s · STILL ${Math.floor(save.bleed.still||0)}/${BLEED.stillSeconds}`); // the Spinosaurus's bleed (bleed.ts): stand still to stop it
@@ -3016,6 +3128,7 @@ for (const d of [panel, atlas, journal, optionsPanel])
 // The pause menu open: Continue (as release 125). In play: open the pause menu.
 function backPressed(){
   if(glimpseRun)return;
+  if(closeCompassMenu())return; // 2026-11-19: Back closes the compass's quick menu and resumes, as its X does
   const viewer=$("#creatureViewer");if(viewer?.open){viewer.close();return}
   const open=[panel,atlas,journal,optionsPanel].filter((d)=>d.open);
   if(open.length){overlayPause=false;for(const d of open)d.close();pause(true);return}
@@ -3061,7 +3174,7 @@ function viewportReward(q){const bits=[];if(q.reward?.marks)bits.push(`${q.rewar
 function openViewport(){pauseForOverlay();if(pausePanel.open)pausePanel.close();const viewport=ensureViewportState(save);viewport.read=true;body.replaceChildren();const heading=document.createElement('h2'),intro=document.createElement('p');heading.textContent='Viewport';intro.textContent='Viewport gathers what the Corridor permits Ember to see. Some reports are clear. Others become legible only through travel.';body.append(heading,intro);
  const groups=[['active','Active hunt'],['available','Hunts & emerging threats'],['dormant','Resting in the rotation'],['recent','Recent arrivals'],['archive','Completed records']];
  for(const[group,label]of groups){const title=document.createElement('h3');title.textContent=label;body.append(title);let entries=[];if(group==='active')entries=Object.values(viewport.contracts).filter(q=>['accepted','tracking','target-located'].includes(q.status));else if(group==='available')entries=Object.values(viewport.contracts).filter(q=>['available','deferred'].includes(q.status));else if(group==='dormant')entries=Object.values(viewport.contracts).filter(q=>q.status==='dormant');else if(group==='recent')entries=viewport.recent;else entries=Object.values(viewport.contracts).filter(q=>['completed','archived'].includes(q.status));if(!entries.length){const empty=document.createElement('p');empty.className='viewport-empty';empty.textContent=group==='recent'?'Nothing meaningful has entered the record yet.':'No records in this section.';body.append(empty);continue}
-  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id,{avoid:(x,y)=>game.huntSiteAvoided(x,y)});/* release 557: off explored ground */if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}navigationCache.key=null;game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Guidance active',()=>{save.viewport.activeHuntId=q.id;navigationCache.key=null;game.message=`${q.title} is now shown by the violet guidance arrow.`;persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if((q.kind==='trial'||q.foundry)&&q.status==='completed'&&!q.decision){/* release 134: the decision now really admits the lifeform (Viewport bestiary) */for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Let it roam, but rarely'],['dungeon','Reserve for dungeons'],...(q.kind==='trial'?[['rework','Rework and return later']]:[]),['archive','Archive']])actions.append(uiButton(l,()=>{if(q.kind==='trial')foundryTrialDecision(save,q.id,d);if(d!=='rework'){q.status='completed';foundryAdmission(save,q.id,d)}persist();openViewport()}))}else if(q.decision&&q.foundry||q.kind==='trial'&&q.decision){const done=document.createElement('p');done.className='viewport-empty';done.textContent={corridor:'Admitted: it now roams the Corridor.',rare:'Admitted: it roams, rarely.',dungeon:'Admitted to the dungeons.',archive:'Archived.',rework:'Set aside for rework.'}[q.decision]||'';actions.append(done)}card.append(name,text,meta,actions);body.append(card)}
+  for(const q of entries){const card=document.createElement('article'),name=document.createElement('h3'),text=document.createElement('p'),meta=document.createElement('small'),actions=document.createElement('div');card.className='item viewport-card';name.textContent=q.title||q.id;text.textContent=q.text||q.summary||'The record remains incomplete.';meta.textContent=`${q.kind||'record'} · ${q.status||'recorded'}${q.target?` · ${q.target.rx},${q.target.ry}`:''}${q.reward?` · ${viewportReward(q)}`:''}`;actions.className='viewport-actions';if(['available','deferred'].includes(q.status)){actions.append(uiButton('Accept hunt',()=>{const r=acceptViewportHunt(save,q.id,{avoid:(x,y)=>game.huntSiteAvoided(x,y)});/* release 557: off explored ground */if(q.kind==='tracking'){save.narrative.facts['leads.active']=true}if(r.ok)chooseGuidance({follow:{kind:'hunt',id:q.id}});/* 2026-11-19 (Tim): accepting a hunt is a choice: the compass follows it */navigationCache.key=null;game.message=r.message;persist();openViewport()}));actions.append(uiButton('Archive',()=>{archiveViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if(['accepted','tracking','target-located'].includes(q.status)){actions.append(uiButton('Guidance active',()=>{save.viewport.activeHuntId=q.id;chooseGuidance({follow:{kind:'hunt',id:q.id}});/* 2026-11-19: a choice */navigationCache.key=null;game.message=`The compass now follows ${q.title}.`;persist();openViewport()}),uiButton('Defer',()=>{deferViewportHunt(save,q.id);navigationCache.key=null;persist();openViewport()}))}else if((q.kind==='trial'||q.foundry)&&q.status==='completed'&&!q.decision){/* release 134: the decision now really admits the lifeform (Viewport bestiary) */for(const[d,l]of[['corridor','Let it enter the Corridor'],['rare','Let it roam, but rarely'],['dungeon','Reserve for dungeons'],...(q.kind==='trial'?[['rework','Rework and return later']]:[]),['archive','Archive']])actions.append(uiButton(l,()=>{if(q.kind==='trial')foundryTrialDecision(save,q.id,d);if(d!=='rework'){q.status='completed';foundryAdmission(save,q.id,d)}persist();openViewport()}))}else if(q.decision&&q.foundry||q.kind==='trial'&&q.decision){const done=document.createElement('p');done.className='viewport-empty';done.textContent={corridor:'Admitted: it now roams the Corridor.',rare:'Admitted: it roams, rarely.',dungeon:'Admitted to the dungeons.',archive:'Archived.',rework:'Set aside for rework.'}[q.decision]||'';actions.append(done)}card.append(name,text,meta,actions);body.append(card)}
  }
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal();}
 // ---------------------------------------------------------------- the Arcanum (release 109)
@@ -3081,12 +3194,12 @@ function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphe
 // Release 157: element badges and Active/Passive tags so it is clear what each entry is and what it touches.
 function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.icon} ${a.name}`);b.style.setProperty('--elem',a.color);return b}
 function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
-function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name} is active`,false]}
+function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
- {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A, B, C or D, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while its discipline is active.'));sky.append(key)}
+ {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A, B, C or D, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while that skill\'s buff is running.'));sky.append(key)}
  // 2026-11-15 (Tim: "we can do a b c and d"): the four slots are lettered in their on-screen order (SLOT_ORDER, SLOT_LABELS).
  const inSlot=(key)=>SLOTS.find(q=>save.magicSkills.slots[q]===key),slotButtons=(key,after)=>[...SLOT_ORDER.map(q=>{const here=save.magicSkills.slots[q]===key,n=slotLabel(q),b=uiButton(here?`In slot ${n}`:`Set in ${n}`,()=>{const r=setSlot(save,q,key);game.message=r.message;persist();after();openSkills(atShrine)});if(here)b.disabled=true;return b})]; // release 309; 874: the Build button is slot C; 2026-11-15: D, the utility place
  // The four slots (release 874: C; 2026-11-15: D, the utility button), and the Pairing the attributes of B and C (save keys a and b) make.

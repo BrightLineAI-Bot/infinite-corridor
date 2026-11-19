@@ -1,7 +1,7 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1012-ffa69513a699';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1012-ffa69513a699';
-import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1012-ffa69513a699';
-import { sampleCycloneMotion } from './action-motion.js?v=r1012-ffa69513a699'; // the Cyclone Heel's motion, shared with Close View
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1031-b358b5a5ce4c';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1031-b358b5a5ce4c';
+import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1031-b358b5a5ce4c';
+import { sampleCycloneMotion } from './action-motion.js?v=r1031-b358b5a5ce4c'; // the Cyclone Heel's motion, shared with Close View
 const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
@@ -406,7 +406,8 @@ export function drawCleaverRushBlade(ctx, game, s, lift = 0) {
 // Your primary damage as a caster stays spells, skills and synergies"). A spell (items.ts `imbue-weapon`, cast through
 // castBrawler like Shadow Boxing) that lasts `seconds`. While it lasts every melee hit adds magic damage: each swing (and its
 // glyph echo strike, at the echo's share), each Iron Fists punch, and each Hammerfall and Great Sweep blow (the strikes
-// Spellblade calls melee). Not the Awakened crescent, the Shadow Clone's copies, tool shots, Mirage of Blades or the golem.
+// Spellblade calls melee), and the Shadow Clone's swing at its share (Tim, 2026-11-19: the clone's swing gets what hers gets;
+// game.ts cloneSwing). Not the Awakened crescent, tool shots (the clone's included), Mirage of Blades or the golem.
 // The amount per hit, before the Imbue spell's own glyph damage mod and the spell-damage multipliers of armor glyphs, meals
 // and pages (not Pairings, not melee multipliers): `focus` × (Focus − 1), plus `magic` × the magic bonus once Focus has had
 // `gate` points put in (scaled in linearly below that). Focus 1, the starting value, adds exactly nothing. Recasting while it
@@ -424,6 +425,39 @@ export function imbueAmount(focus, magicBonus) {
 export function imbueSpark(game, x, y, now) {
   const r = (game.imbueSparks ||= Array.from({ length: IMBUE.sparks }, () => ({ x: 0, y: 0, at: -1e9 }))), i = (game.imbueSparkAt = ((game.imbueSparkAt || 0) + 1) % r.length);
   r[i].x = x; r[i].y = y; r[i].at = now;
+}
+// Power Aegis (hit-cast-passives.ts POWER_AEGIS; game.ts perfectParry), drawn only: the parry's flash for `flashMs` from
+// `game.parryFlashAt` (a gold-white ring bursting out with `rays` sparks; still, at reduced motion or in safe mode: one ring that
+// fades where it stands), and while `game.powerAegisUntil` holds a gold glow round the Wayfarer with a glint at the weapon hand
+// (steady when still). The reflect's hit (game.ts reflectBlow) flashes on the creature it struck for `flashMs` from
+// `game.reflectFlashAt` at (`reflectFlashX`, `reflectFlashY`): a gold ring closing in with `rays` short sparks (still: one ring).
+// Drawn in both views: Close View draws these auras on its floor. No allocation.
+export const PARRY_LOOK = { flashMs: 380, rays: 8, ring: "#fff3c4", spark: "#ffd36b", glow: "#ffcf5a33", rim: "#ffd36b", glint: "#fff7dd" };
+function drawPowerAegis(ctx, game, toScreen, s, t, now, x, y) {
+  const L = PARRY_LOOK, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode);
+  const ra = now - (Number(game.reflectFlashAt) || -1e9);
+  if (ra >= 0 && ra < L.flashMs && Number.isFinite(game.reflectFlashX) && Number.isFinite(game.reflectFlashY)) {
+    const k = ra / L.flashMs, [fx, fy] = toScreen({ x: game.reflectFlashX + .5, y: game.reflectFlashY + .45 }), r = s * (still ? .7 : 1.1 - .5 * k);
+    ctx.globalAlpha = 1 - k; ctx.strokeStyle = L.spark; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(fx, fy, r, 0, 7); ctx.stroke();
+    if (!still) { ctx.strokeStyle = L.ring; ctx.lineWidth = 2; for (let i = 0; i < L.rays; i++) { const a = i * Math.PI * 2 / L.rays, r0 = r * .35, r1 = r * .8; ctx.beginPath(); ctx.moveTo(fx + Math.cos(a) * r0, fy + Math.sin(a) * r0); ctx.lineTo(fx + Math.cos(a) * r1, fy + Math.sin(a) * r1); ctx.stroke(); } }
+    ctx.globalAlpha = 1;
+  }
+  const age = now - (Number(game.parryFlashAt) || -1e9);
+  if (age >= 0 && age < L.flashMs) {
+    const k = age / L.flashMs, r = s * (still ? 1 : .9 + .7 * k);
+    ctx.globalAlpha = 1 - k; ctx.strokeStyle = L.ring; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+    if (!still) { ctx.strokeStyle = L.spark; ctx.lineWidth = 2; for (let i = 0; i < L.rays; i++) { const a = i * Math.PI * 2 / L.rays + .3, r0 = r * 1.05, r1 = r * (1.25 + .25 * k); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke(); } }
+    ctx.globalAlpha = 1;
+  }
+  const left = (Number(game.powerAegisUntil) || 0) - now;
+  if (left > 0) {
+    const k = Math.min(1, left / 600), pulse = still ? 1 : .8 + .2 * Math.sin(t * 9); // fades over its last .6 s
+    ctx.globalAlpha = (.3 + .4 * k) * pulse; ctx.fillStyle = L.glow; ctx.beginPath(); ctx.arc(x, y, s * .7, 0, 7); ctx.fill();
+    ctx.strokeStyle = L.rim; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, s * .7, 0, 7); ctx.stroke();
+    const f = game.save?.lastAim, m = Math.hypot(f?.x || 0, f?.y || 0) || 1, hx = x + (f?.x || 1) / m * s * .42, hy = y + (f?.y || 0) / m * s * .3; // the weapon hand, toward the aim
+    ctx.globalAlpha = (.55 + .45 * k) * pulse; ctx.fillStyle = L.glint; ctx.strokeStyle = L.rim; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, s * (still ? .11 : .09 + .03 * Math.sin(t * 14)), 0, 7); ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 // Aegis, Shadow Boxing and Imbue Weapon, as the Wayfarer wears them (drawn round the player).
 export function drawBrawlerAuras(ctx, game, toScreen, s, t, floor = false) {
@@ -444,6 +478,7 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t, floor = false) {
     ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
+  drawPowerAegis(ctx, game, toScreen, s, t, now, x, y);
   { const G = DASH_GHOSTS, n = shadowDashGhosts(game, G), L = DASH_LOOKS[dashKind(game)]; // a charge (Shadow Boxing's violet, the Cleaver's ember): a speed streak and afterimages along the path (every tier, safe mode too)
     if (n > 0) { const far = toScreen({ x: G[(n - 1) * 3] + .5, y: G[(n - 1) * 3 + 1] + .45 }); ctx.globalAlpha = .35 * G[2] / SHADOW_DASH.alpha; ctx.strokeStyle = L.streak; ctx.lineWidth = s * .22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(far[0], far[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.lineCap = "butt";
       // the bodies (Close View draws its own 3D afterimages over this floor streak)

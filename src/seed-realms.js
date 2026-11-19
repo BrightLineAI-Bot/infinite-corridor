@@ -23,8 +23,8 @@
 // Rewards: more Aperture Crystals than any crossing holds (each widens the Aperture once), caches, now and then a seed, and
 // Divine Viscera when the realm's heart falls (once). Never a Tesseract: those come only from keeps and the Pentagon.
 // Pure rules and generation; game.ts runs it, seed-realm-render.ts draws it.
-import { hashSeed, rng } from "./random.js?v=r1012-ffa69513a699";
-import { annotateDungeon } from "./dungeon-framework.js?v=r1012-ffa69513a699";
+import { hashSeed, rng } from "./random.js?v=r1031-b358b5a5ce4c";
+import { annotateDungeon } from "./dungeon-framework.js?v=r1031-b358b5a5ce4c";
 
 export const SEED_REALMS = {
   version: 1,

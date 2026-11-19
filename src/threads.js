@@ -7,12 +7,12 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r1012-ffa69513a699";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1012-ffa69513a699";
-import { BELLS, bellsRung } from "./bells.js?v=r1012-ffa69513a699";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1012-ffa69513a699";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1012-ffa69513a699";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1012-ffa69513a699";
+import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1031-b358b5a5ce4c";
+import { BELLS, bellsRung } from "./bells.js?v=r1031-b358b5a5ce4c";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1031-b358b5a5ce4c";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1031-b358b5a5ce4c";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1031-b358b5a5ce4c";
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -47,7 +47,10 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // (straight line, band `beyond`) the first ten's roll takes no slot, and its share joins the shared roll, so the whole 0.12 is
 // shared there among the far threads and the deep-band shared threads at their weights. Inside 1000 version 4 rolls exactly as
 // version 3, so the first ten can still be read on the way out. Crossings pinned at version 0 to 3 roll exactly as before.
-export const STORY_BUDGET = { version: 4, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12 }, firstTenGivesWay: 4 };
+// Story version 5 (2026-11-19): no thread changes and the budget stays 0.12; it marks the crossings first entered from then on, the
+// only ones that may hold the Second Wayfarer's footprints (second-wayfarer.ts SECOND_WAYFARER.storyVersion), where no thread
+// piece lies. Every roll here reads a version through `>=` or "the latest entry at or before", so version 5 rolls exactly as 4.
+export const STORY_BUDGET = { version: 5, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
