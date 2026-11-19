@@ -33,6 +33,14 @@ Quests as the way abilities are earned (Tim, 2026-11-19; a future direction, not
 
 Precedents already in the game: Bell Toll (finish the Seven Bells) and Lamplighter's Light (finish the Lamplighter's Round), from release 886 (`lore.ts` `ARCANA_PASSIVES`), are passives earned from quests.
 
+## Release 1027 — Triceratops beak and rider
+
+Tim (2026-11-19), after release 1025: the tip of every Triceratops's beak hung off the shortened snout, and when riding, the frill clipped into the rider; the rider should sit behind the frill.
+
+**CODE:** TRICERATOPS_BEAK (close-view-beast-triceratops.ts): the upper beak is the end of the skull's own surface and closes to the hook's point through the squat muzzle and shorter snout; the separate hook cone is gone (the low tier keeps the point); the jaw reads BEAK.jaw. TRI_BEAK (triceratops-render.ts): the standard-view skull, upper beak and lower beak, the lower beak tucked inside the hook. MOUNT_BEASTS.triceratops.seatX -.6 (beast-mounts.ts); under MOUNT_DRAW.skipBody the card's seat shift is 0 and SEAT_F is 0. TRICERATOPS_RIG.riddenFrill {tilt .35, follow 1.4, recoil 1.8, fwd .12, down .04} sets the ridden frill more upright and tips it further as the head rises. Covered by tests/triceratops-beak-rider.test.ts (4).
+
+**BOUNDARY:** Presentation only: seat height (riderLiftOf), attacks, the horn-shot origin, the card's position and the camera are unchanged; wild herds and the hatchling keep their frill; no save change; triangle counts within budget. Frill-to-rider clearance is positive over every ridden move (standard +0.237, Close View +0.099 tiles at the Horn Shot recoil).
+
 ## Release 1026 — Close View creatures stay solid
 
 Tim (2026-11-19): in Close View the world and the Wayfarer feel concrete but the creatures still feel ephemeral, a little wireframe-like; he wants that AAA feel in combat, as close as possible within the phone budget. He approved three existing-test edits: distant creatures stay opaque (creature-solidity.test.ts), the new death sequence (creature-motion.test.ts) and the dying body still present at 500 ms (close-view-enemy-opacity.test.ts).
