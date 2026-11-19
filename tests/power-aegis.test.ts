@@ -12,6 +12,7 @@ import { latticePassiveGroups, toggleLatticePassive } from '../src/constellation
 import { POWER_AEGIS, powerAegisLeft } from '../src/hit-cast-passives.ts';
 import { BRAWLER, ESSENCE_WALK } from '../src/brawler-spells.ts';
 import { SPELLS } from '../src/items.ts';
+import { ATTACK_MODULES, reflectShotStep } from '../src/monster-pack.ts';
 import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../src/persistence.ts';
 
 const DT = 1 / 60, FRAME = 1000 / 60;
@@ -131,14 +132,17 @@ test('bosses, world beasts and elites stagger only bossShare of it', () => {
   assert.ok(plain.lost === 0 && big.lost === 0);
 });
 
-test('projectiles: a perfectly timed Aegis parries a hostile shot (negated, not reflected): refund and empowerment, no stagger', () => {
+// 2026-11-19 (Tim: "projectiles should be reflected back"): this test pinned "negated, not reflected"; the shot now turns round
+// (no shooter here, so it simply flies back the way it came). The refund, the empowerment and "no stagger" are unchanged.
+test('projectiles: a perfectly timed Aegis parries a hostile shot (negated, turned round): refund and empowerment, no stagger', () => {
   const { g } = arena({ foe: false }); let t = 1000; ({ t } = run(g, t, 1100));
   g.castSpell('aegis'); const p = g.player;
   g.projectiles.push({ id: 'enemy-shot-x', x: p.x + .5 + 1.2, y: p.y + .42, dx: -1, dy: 0, speed: 4.2, life: 2.4, damage: 25, hostile: true, hits: {}, path: 'straight' });
   const r = run(g, t, t + 400);
   assert.ok(g.parryFlashAt > 0, 'parried'); assert.equal(g.player.hp, 100, 'negated');
   assert.equal(cds(g)['spell:aegis'], 0); assert.ok(g.powerAegisUntil > r.t);
-  assert.equal(g.projectiles.filter((q) => q.hostile === false || q.reflectedBy).length, 0, 'not reflected');
+  assert.equal(g.projectiles.filter((q) => q.hostile === false && q.aegisReflected).length, 1, 'turned round (2026-11-19: was "not reflected")');
+  assert.equal(g.projectiles.filter((q) => q.hostile).length, 0, 'nothing hostile left');
 });
 
 test('without the passive nothing changes: no window, the cooldown runs on, no empowerment', () => {
@@ -174,4 +178,142 @@ test('soak: the Aegis cast every frame with cooldowns wiped for 60 s under a rea
   for (const v of [g.player.hp, g.player.stamina, g.powerAegisUntil, g.aegisPerfectUntil, e.hitStun, e.hp]) assert.ok(Number.isFinite(Number(v) || 0) && !Number.isNaN(Number(v ?? 0)), String(v));
   assert.equal(g.player.hp, 100, 'every blow turned aside'); assert.ok(parries > 3, `parries ${parries}`);
   assert.ok(g.effects.length < 64 && g.projectiles.length < 64, 'bounded');
+});
+
+// ---------------------------------------------------------------- the reflect and the tool bonus (Tim, 2026-11-19)
+// `inject(g, fn)`: runs `fn(world, now)` inside the next frame's update, after the creatures have moved and before the Aegis
+// resolves the frame's blows (where a creature's blow lands), through the game's real pack world. Unhooks itself.
+function inject(g, fn) {
+  g.applyInkShield = (...a) => { delete g.applyInkShield; fn(g.packWorld(DT, g.lastUpdateNow), g.lastUpdateNow); return g.applyInkShield(...a); };
+}
+// A Wayfarer with the passive and the Aegis just cast, and a still foe of 5000 health `gap` tiles off.
+function warded({ boss = false, gap = 3, passive = true } = {}) {
+  const A = arena({ passive, foe: false }), { g } = A; let t = 1000; ({ t } = run(g, t, 1100));
+  const e = Object.assign(createCombatant('ashling', 10 + gap, 10, boss), { id: 'foe', hp: 5000, maxHp: 5000, damage: 20, aggro: false, speedMultiplier: 0, staggerImmune: true });
+  g.enemies = [e]; g.castSpell('aegis');
+  return { g, e, t, p: g.player };
+}
+const shotAt = (p, id, damage = 25, dy = 0) => ({ id, visualOwnerId: 'foe', x: p.x + .5 + 1.2, y: p.y + .42 + dy, dx: -1, dy: 0, speed: 4.2, life: 2.4, damage, hostile: true, hits: {}, path: 'straight' });
+
+test('tool shots: +20% while Power Aegis holds (Tim: tool shots get some of the empowerment)', () => {
+  assert.equal(POWER_AEGIS.toolBonus, .2);
+  const r = parryAt(Math.round(POWER_AEGIS.windowMs * .6)), at = r.g.parryFlashAt, b = r.e.hp;
+  r.g.landHit(r.e, 100, at + 100, { glyphHost: 'tool' }); assert.equal(b - r.e.hp, 20, 'a tool shot of 100: 20 more');
+  const c = r.e.hp; r.g.landHit(r.e, 100, at + POWER_AEGIS.buffMs + 50, { glyphHost: 'tool' }); assert.equal(c - r.e.hp, 0, 'not after');
+});
+
+test('a parried shot turns round, gold and friendly, and strikes the creature that loosed it', () => {
+  const { g, e, t, p } = warded({ gap: 4 });
+  g.projectiles.push(shotAt(p, 'enemy-shot-foe-1'));
+  let turned = null; run(g, t, t + 1300, () => { turned ||= g.projectiles.find((q) => q.aegisReflected) || null; }); // before the ashling's own lunge
+  assert.ok(turned, 'turned round'); assert.equal(turned.hostile, false); assert.equal(turned.seekId, 'foe', 'at its shooter');
+  assert.equal(g.player.hp, 100, 'the Wayfarer takes nothing');
+  assert.equal(5000 - e.hp, Math.round(25 * POWER_AEGIS.reflect), 'its own damage back (the reflect multiple)');
+  assert.equal(cds(g)['spell:aegis'], 0, 'still a parry: refunded'); assert.match(g.message, /Perfect!/);
+});
+
+test('a parried melee blow lands back on the attacker as direct damage, with the reflect flash', () => {
+  let carried = null, dealt = null;
+  const r = parryAt(Math.round(POWER_AEGIS.windowMs * .6), { before: (g) => {
+    const pb = g.parryBlow.bind(g), rb = g.reflectBlow.bind(g);
+    g.parryBlow = (...a) => { const ok = pb(...a); if (ok && carried === null) carried = a[2]; return ok; };
+    g.reflectBlow = (...a) => { const d = rb(...a); dealt ??= d; return d; };
+  } });
+  assert.equal(r.lost, 0); assert.ok(carried >= r.e.damage * .5, `carried ${carried}`);
+  assert.equal(dealt, Math.round(carried * POWER_AEGIS.reflect), 'the blow sent back');
+  assert.equal(5000 - r.e.hp, dealt, 'on the attacker');
+  assert.ok(r.g.reflectFlashAt >= r.at && r.g.reflectFlashX === r.e.x, 'the gold flash on it');
+});
+
+test('roars, beams and area blasts go back to their maker; their riders never take hold', () => {
+  const cases = [['doomRoar', {}, (w) => w.frenzy?.(99)], ['blobGasJet', { beam: true }, (w) => w.poison(4, 3)], ['spinoRoar', {}, (w) => { w.slow(.5, 2); w.confuse(2); w.stun(1); w.shockHit(); }]];
+  for (const [source, opts, riders] of cases) {
+    const { g, e, t } = warded({ gap: 6 });
+    inject(g, (w) => { w.hurt(e, 30, { jumpable: false, source, ...opts }); riders(w); w.bleed(); w.ignite(3, 4); w.apatoPoison(2, 'wrap'); });
+    run(g, t, t + 2 * FRAME);
+    const now = g.lastUpdateNow;
+    assert.equal(g.player.hp, 100, `${source}: blocked`); assert.equal(5000 - e.hp, 30, `${source}: sent back to its maker 6 tiles off`);
+    assert.ok(!(g.playerFire?.left > 0), `${source}: no burn`); assert.ok(!(g.save.bleed?.left > 0), `${source}: no bleed`);
+    assert.ok(!(g.save.elites?.status?.poison > 0) && !(g.save.poison?.stacks > 0), `${source}: no poison`);
+    assert.ok(!(g.player.slowUntil > now) && !(g.player.confusedUntil > now) && !(g.player.stunnedUntil > now) && !(g.player.shockCount > 0), `${source}: no slow, confusion, stun or shock`);
+    assert.ok(!g.frenzy?.active && !(g.frenzy?.build > 0), `${source}: no frenzy`);
+    assert.equal(cds(g)['spell:aegis'], 0, `${source}: a parry`); assert.ok(g.reflectFlashAt > 0, `${source}: the flash on its maker`);
+  }
+  // the same blow and riders without the passive: blocked as before, and the riders take hold
+  const { g, e, t } = warded({ passive: false });
+  inject(g, (w) => { w.hurt(e, 30, { jumpable: false, source: 'blobGasJet', beam: true }); w.poison(4, 3); w.ignite(3, 4); });
+  run(g, t, t + 2 * FRAME);
+  assert.equal(g.player.hp, 100); assert.equal(e.hp, 5000, 'nothing goes back'); assert.ok(g.save.elites.status.poison > 0 && g.playerFire.left > 0, 'riders land as before');
+});
+
+test('real pack effects: a burning tree\'s touch goes back to its maker; a creature\'s bolt flies back as a gold shot', () => {
+  { const { g, e, t, p } = warded({ gap: 5 });
+    g.packEffects = [{ id: 'tree', kind: 'burnTree', owner: 'foe', x: p.x, y: p.y, radius: 1, grow: 0, burn: 5, age: 0, arming: 0, life: 6, damage: 30, seed: 1 }];
+    run(g, t, t + 3 * FRAME);
+    assert.ok(5000 - e.hp > 0, 'the touch went back'); assert.ok(!(g.playerFire?.left > 0), 'no burn'); assert.equal(g.player.hp, 100); }
+  { const { g, e, t, p } = warded({ gap: 5 });
+    g.packEffects = [{ id: 'thorn', kind: 'thorn', owner: 'foe', x: p.x + 1.4, y: p.y, vx: -6, vy: 0, radius: .3, arming: 0, life: 2, damage: 18 }];
+    let bolt = null; run(g, t, t + 2000, () => { bolt ||= g.projectiles.find((q) => q.aegisReflected) || null; });
+    assert.ok(bolt && bolt.hostile === false && bolt.seekId === 'foe', 'sent back as a shot'); assert.equal(5000 - e.hp, 18, 'its damage'); assert.equal(g.player.hp, 100); }
+});
+
+test('command grabs are not parried: the Spinosaurus Grab takes you inside the perfect window; the Aegis still blocks its damage', () => {
+  const { g, t } = warded({ gap: 4 }), spino = Object.assign(createCombatant('spinoRex', 11, 10), { id: 'spino', hp: 9000, maxHp: 9000, speedMultiplier: 0 });
+  g.enemies.push(spino); assert.ok(g.lastUpdateNow < g.aegisPerfectUntil, 'inside the window');
+  let held = null;
+  inject(g, (w) => { held = w.spinoHold(spino, 2); w.hurt(spino, 30, { jumpable: false, source: 'spinoGrab', piercing: true, beam: true }); w.bleed(); });
+  run(g, t, t + 2 * FRAME);
+  assert.equal(held, true, 'the hold takes');
+  assert.ok(g.player.heldUntil > g.lastUpdateNow && g.player.heldBy === 'spino', 'held fast');
+  assert.equal(g.player.hp, 100, 'the Aegis blocks the damage as it always did');
+  assert.equal(spino.hp, 9000, 'nothing goes back'); assert.ok(g.save.bleed?.left > 0, 'the grab bleeds as before');
+  assert.ok(cds(g)['spell:aegis'] > 4 && !(g.powerAegisUntil > 0) && !(g.parryFlashAt > 0), 'no parry, no refund, no empowerment');
+  assert.ok(g.aegisPerfectUntil > g.lastUpdateNow, 'the window stays open for a real blow');
+  // the rule, per move: the table's grabs, every ATTACK_MODULES move tagged "grab", the Stalker's arm, the biting draggers
+  const now = g.lastUpdateNow;
+  for (const id of [...POWER_AEGIS.grabs, ...Object.values(ATTACK_MODULES).filter((m) => m.tags?.includes('grab')).map((m) => m.id)]) assert.equal(g.aegisGrab(null, id, now), true, id);
+  for (const id of ['spinoRoar', 'spinoBite', 'doomRoar', 'psyPush', 'sweepBeam', 'orb']) assert.equal(g.aegisGrab(null, id, now), false, id);
+  assert.equal(g.aegisGrab({ id: 'ape', stalkAct: { kind: 'grab' } }, null, now), true, 'the Stalker ape arm');
+  assert.equal(g.aegisGrab({ id: 'bog', seaKind: 'bogLurker' }, null, now), true, 'the Bog Lurker');
+  assert.equal(g.aegisGrab(spino, 'spinoBite', now), true, 'any blow from the creature holding you');
+});
+
+test('bosses and world beasts take the same reflect, but never more than bossCap of their health from one', () => {
+  const cap = Math.round(5000 * POWER_AEGIS.bossCap);
+  const { g, e, t } = warded({ boss: true, gap: 3 });
+  inject(g, (w) => w.hurt(e, 100000, { jumpable: false, source: 'sweepBeam', beam: true }));
+  run(g, t, t + 2 * FRAME);
+  assert.equal(5000 - e.hp, cap, 'capped'); assert.equal(g.player.hp, 100);
+  const small = warded({ boss: true, gap: 3 }); inject(small.g, (w) => w.hurt(small.e, 40, { jumpable: false, source: 'sweepBeam', beam: true })); run(small.g, small.t, small.t + 2 * FRAME);
+  assert.ok(5000 - small.e.hp > 0 && 5000 - small.e.hp < cap, `an ordinary boss blow goes back whole (${5000 - small.e.hp})`);
+  const plain = warded({ gap: 3 }); inject(plain.g, (w) => w.hurt(plain.e, 1000, { jumpable: false, source: 'sweepBeam' })); run(plain.g, plain.t, plain.t + 2 * FRAME);
+  assert.equal(5000 - plain.e.hp, 1000, 'an ordinary foe: no cap');
+  assert.equal(g.reflectDamage(e, 100000), cap, 'a reflected shot on a boss: the same cap'); assert.equal(g.reflectDamage(plain.e, 100000), 100000);
+});
+
+test('no ping-pong: a turned shot passes a psychic wall, never hurts the Wayfarer, and reflected damage parries nothing', () => {
+  const { g, e, t, p } = warded({ gap: 4 });
+  g.projectiles.push(shotAt(p, 'enemy-shot-foe-a'), shotAt(p, 'enemy-shot-foe-b', 25, .01));
+  let flashes = 0, last = 0; run(g, t, t + 1300, () => { if (g.parryFlashAt > 0 && g.parryFlashAt !== last) { flashes++; last = g.parryFlashAt; } });
+  assert.equal(flashes, 1, 'one parry a cast'); assert.equal(g.player.hp, 100);
+  assert.equal(5000 - e.hp, 25, 'only the first goes back; the second is only turned aside');
+  const q = { x: 5, y: 5, dx: 1, dy: 0, damage: 10, hostile: false, aegisReflected: true, hits: {} };
+  reflectShotStep(q, [{ kind: 'psyWall', id: 'w', x: 4.8, y: 4.55, nx: 1, ny: 0, arming: 0 }], .6);
+  assert.equal(q.hostile, false, 'a psychic wall does not turn it back'); assert.equal(q.reflectedBy, undefined);
+  g._reflecting = true; g.aegisPerfectUntil = g.aegisUntil = g.lastUpdateNow + 500;
+  assert.equal(g.parryBlow(e, g.lastUpdateNow, 10), false, 'reflected damage never parries'); g._reflecting = false;
+});
+
+test('soak: shots, roars and bolts parried and sent back every frame for 60 s with cooldowns wiped: no NaN, bounded', () => {
+  const { g, e, t, p } = warded({ gap: 2 }); e.staggerImmune = false; let n = 0;
+  run(g, t, t + 60000, () => {
+    cds(g)['spell:aegis'] = 0; g.castSpell('aegis'); g.player.invulnerableUntil = 0;
+    const k = n++ % 3;
+    if (k === 0 && g.projectiles.length < 48) g.projectiles.push({ ...shotAt(p, `enemy-shot-foe-${n}`, 5), x: p.x + .5 + .3 });
+    else if (k === 1) inject(g, (w) => { w.hurt(e, 5, { jumpable: false, source: 'doomRoar' }); w.poison(2, 2); });
+    else if (g.packEffects.length < 8) g.packEffects.push({ id: `t${n}`, kind: 'thorn', owner: 'foe', x: p.x + .6, y: p.y, vx: -6, vy: 0, radius: .3, arming: 0, life: 1, damage: 5 });
+    if (e.hp < 1000) e.hp = 5000;
+  });
+  for (const v of [g.player.hp, e.hp, g.powerAegisUntil, g.reflectFlashAt, ...g.projectiles.map((q) => q.x + q.y + q.damage)]) assert.ok(Number.isFinite(Number(v)), String(v));
+  assert.equal(g.player.hp, 100); assert.ok(g.projectiles.length <= 64 && g.packEffects.length <= 16 && g.effects.length < 64, `bounded (${g.projectiles.length}, ${g.packEffects.length})`);
 });

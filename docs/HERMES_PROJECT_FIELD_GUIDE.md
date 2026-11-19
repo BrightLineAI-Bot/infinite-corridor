@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1015 — Power Aegis reflects; tool bonus
+
+Tim (2026-11-19): tool shots share the empowerment; a perfect parry reflects anything back (shots, roars, beams, blows) except command grabs, which still land.
+
+**CODE:** `hit-cast-passives.ts POWER_AEGIS`: `toolBonus` .2; new `reflect` 1, `bossCap` .05, `shotSpeed` 1.6, `boltSpeed` 9, `shotTurn` 10, `shotLife` 2.4, `seek` 12, `grabs` (psyGrab, spinoGrab, stegoJaws, apatoWrap, apatoCloneCoil, wormGrab). `game.ts parryBlow` decides per blow (live window and not `aegisGrab`: the table list, any ATTACK_MODULES move tagged "grab", the Stalker's arm, the Bog Lurker and Lantern Angler, or the creature in `player.heldBy`). Hostile shots are turned (`turnShot`: friendly, gold, homing on the shooter or the nearest foe within `seek`); a creature's spent moving bolt (`packBoltSpent`) is answered with one friendly gold shot; every other blow goes back as direct damage (`aegisReflect`/`reflectBlow`, capped by `reflectDamage` for boss-class foes) with `reflectFlashAt` drawn by `drawPowerAegis`. `parryWard` suppresses the pack world's riders on a parried frame. `monster-pack.ts` lets a psychic wall pass an Aegis-reflected shot; `combat-visuals.ts` colours reflected shots gold.
+
+**BOUNDARY:** No save change. One reflect per parry; reflected damage is not the Wayfarer's hit (no on-hit passives, Echoes or frenzy cure) and never parries (`_reflecting`). Traps send nothing back (a turned trap shot homes on the nearest foe). Grabs behave exactly as before. Riders are suppressed only on the parry frame. Bolts are recognised by a spent moving effect within 2 tiles, not by a move list.
+
 ## Release 1014 — Power Aegis: the Aegis's perfect parry
 
 Tim (2026-11-19) asked for a just-guard on the Aegis as a passive. A blow timed into the start of the ward is parried: the Aegis is ready again and the Wayfarer's next attacks are empowered for a few seconds. He then asked for a generous window that reads well on a phone, so it is the first 0.45 s of the 1 s ward.

@@ -1558,7 +1558,7 @@ function launchKnightOrb(f, player) {
 // Coordinates use the projectile frame; the returned point includes travel left after reflection in this substep.
 export function reflectShotStep(q, effects, step = 0) {
   const dx = (q.dx || 0) * step, dy = (q.dy || 0) * step, end = { x: q.x + dx, y: q.y + dy };
-  if (q.hostile || q.dead) return end;
+  if (q.hostile || q.dead || q.aegisReflected) return end; // Power Aegis (game.ts turnShot): a shot the Aegis sent back is never reflected again
   let first = null;
   for (const f of effects || []) {
     if (f.kind !== "psyWall" || f.arming > 0 || q.reflectedBy === f.id) continue;

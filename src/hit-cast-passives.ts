@@ -62,12 +62,29 @@ export const RAPID_RELOAD = { shots: 3, share: .2, cooldownMs: 1500, ring: 8, or
 // world beasts, revenants and elites `bossShare` of it, monster-pack.ts staggerClass; the stagger governor still holds them);
 // the Aegis is ready again at once (its cooldown and any Essence Walk lockout cleared); `staminaShare` of the stamina an Essence
 // Walk cast of it cost comes back; and for `buffMs` the Wayfarer is empowered: melee attacks (swings, weapon arts, the Iron
-// Fists, Hammerfall and the Great Sweep) deal `bonus` more, tool shots `toolBonus` more (0: none). A shot or a blast parried
-// the same way gives the refund and the empowerment, but staggers nothing (it is not reflected). One parry an Aegis cast: the
-// window closes on the first. Outside the window, or without the passive, the Aegis is exactly as before.
+// Fists, Hammerfall and the Great Sweep) deal `bonus` more, tool shots `toolBonus` more (Tim, 2026-11-19: tool shots get some
+// of it). One parry an Aegis cast: the window closes on the first. Outside the window, or without the passive, the Aegis is
+// exactly as before.
 // `windowMs` is forgiving on purpose (Tim, 2026-11-19: "pretty generous"; touch latency on a phone): nearly half the 1 s ward.
 // A blow counts by the frame its damage lands, which is when its wind-up ends, so a wind-up that ends inside the window parries.
-export const POWER_AEGIS = { windowMs: 450, reach: 4, stun: .6, bossShare: .3, staminaShare: .5, buffMs: 2500, bonus: .4, toolBonus: 0 };
+// The reflect (Tim, 2026-11-19: "projectiles should be reflected back. It can reflect back basically anything — roars, beams,
+// basically anything... you send the damage back"; game.ts parryBlow, aegisReflect, reflectBlow). The parried blow goes back:
+//   a shot (the game's hostile projectiles, and a creature's moving bolt, orb, dart or debris) turns round, gold and friendly,
+//   and flies `shotSpeed` times as fast (a creature's bolt: sent back from the Wayfarer at `boltSpeed` tiles/s) at the creature
+//   that loosed it (else the nearest foe within `seek` tiles), homing `shotTurn`, for `shotLife` s, dealing `reflect` times its
+//   damage to the foes it meets;
+//   anything else (a blow, a roar, a beam, a breath, an aura, a shockwave, a blast on a marked spot) lands on the creature that
+//   made it as direct damage, `reflect` times what the blow carried, with a gold flash on it. A boss, world beast or other
+//   boss-class foe (monster-pack.ts staggerClass "boss") takes at most `bossCap` of its maximum health from one reflect; the
+//   stagger governor still holds its poise. A blow with no creature behind it (a trap) has nothing to go back to.
+// The parried blow's riders (burn, poison, bleed, confusion, slow, stun, curses, the frenzy) are not laid on the Wayfarer.
+// Command grabs are never parried (`grabs`, and any ATTACK_MODULES move tagged "grab"; `stalkerGrabs`: the Stalker's ape arm;
+// `seaGrabs`: the sea creatures that bite and drag): the hold takes you even inside the window, and the Aegis blocks their
+// damage exactly as it always did. Reflected shots are never reflected again (a psychic wall lets them by), and reflected damage
+// never parries anything, so nothing ping-pongs.
+export const POWER_AEGIS = { windowMs: 450, reach: 4, stun: .6, bossShare: .3, staminaShare: .5, buffMs: 2500, bonus: .4, toolBonus: .2,
+  reflect: 1, bossCap: .05, shotSpeed: 1.6, boltSpeed: 9, shotTurn: 10, shotLife: 2.4, seek: 12,
+  grabs: ["psyGrab", "spinoGrab", "stegoJaws", "apatoWrap", "apatoCloneCoil", "wormGrab"], stalkerGrabs: ["grab", "grabPull"], seaGrabs: ["bogLurker", "angler"] };
 export const CAST_NODE_IDS = ["arcane-edge", "casting-wind", "pocket-time", "echoing-cast", "glyph-mine"];
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const PASSIVE_TEXT = {
@@ -78,7 +95,7 @@ export const PASSIVE_TEXT = {
   "casting-wind": `Each cast gives back ${pct(CASTING_WIND.share)} of your stamina (under Essence Walk, never more than half what the cast cost).`,
   "pocket-time": `Each melee hit while a timed skill holds (Veil Guard, Ember Form, Quickening, Force Channel, Imbue Weapon, Shadow Boxing, Essence Walk) lengthens it ${POCKET_TIME.step} s, up to ${POCKET_TIME.cap} s a use.`,
   "echoing-cast": `Every ${ECHOING_CAST.every}th cast repeats ${ECHOING_CAST.delayMs / 1000} s later at ${pct(ECHOING_CAST.share)} power, free.`,
-  "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more. Shots and blasts parry too, without the stagger. Later in the ward it blocks as always.`,
+  "power-aegis": `Cast the Aegis just as a blow lands (within ${POWER_AEGIS.windowMs / 1000} s) to parry it: Perfect! The attacker staggers (bosses and elites briefly), the Aegis is ready again at once, the blow goes back (a shot turns round and flies at its shooter; a blow, roar, beam or blast lands on its maker), its burn, poison or slow never takes hold, and for ${POWER_AEGIS.buffMs / 1000} s your melee attacks deal ${pct(POWER_AEGIS.bonus)} more (tool shots ${pct(POWER_AEGIS.toolBonus)}). Command grabs cannot be parried. Later in the ward it blocks as always.`,
   "glyph-mine": `Each cast leaves a sigil at your feet; it bursts on the first foe to step in, or after ${GLYPH_MINE.lifeMs / 1000} s. Up to ${GLYPH_MINE.max} at once.`,
 };
 

@@ -428,10 +428,19 @@ export function imbueSpark(game, x, y, now) {
 // Power Aegis (hit-cast-passives.ts POWER_AEGIS; game.ts perfectParry), drawn only: the parry's flash for `flashMs` from
 // `game.parryFlashAt` (a gold-white ring bursting out with `rays` sparks; still, at reduced motion or in safe mode: one ring that
 // fades where it stands), and while `game.powerAegisUntil` holds a gold glow round the Wayfarer with a glint at the weapon hand
-// (steady when still). Drawn in both views: Close View draws these auras on its floor. No allocation.
+// (steady when still). The reflect's hit (game.ts reflectBlow) flashes on the creature it struck for `flashMs` from
+// `game.reflectFlashAt` at (`reflectFlashX`, `reflectFlashY`): a gold ring closing in with `rays` short sparks (still: one ring).
+// Drawn in both views: Close View draws these auras on its floor. No allocation.
 export const PARRY_LOOK = { flashMs: 380, rays: 8, ring: "#fff3c4", spark: "#ffd36b", glow: "#ffcf5a33", rim: "#ffd36b", glint: "#fff7dd" };
-function drawPowerAegis(ctx, game, s, t, now, x, y) {
+function drawPowerAegis(ctx, game, toScreen, s, t, now, x, y) {
   const L = PARRY_LOOK, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode);
+  const ra = now - (Number(game.reflectFlashAt) || -1e9);
+  if (ra >= 0 && ra < L.flashMs && Number.isFinite(game.reflectFlashX) && Number.isFinite(game.reflectFlashY)) {
+    const k = ra / L.flashMs, [fx, fy] = toScreen({ x: game.reflectFlashX + .5, y: game.reflectFlashY + .45 }), r = s * (still ? .7 : 1.1 - .5 * k);
+    ctx.globalAlpha = 1 - k; ctx.strokeStyle = L.spark; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(fx, fy, r, 0, 7); ctx.stroke();
+    if (!still) { ctx.strokeStyle = L.ring; ctx.lineWidth = 2; for (let i = 0; i < L.rays; i++) { const a = i * Math.PI * 2 / L.rays, r0 = r * .35, r1 = r * .8; ctx.beginPath(); ctx.moveTo(fx + Math.cos(a) * r0, fy + Math.sin(a) * r0); ctx.lineTo(fx + Math.cos(a) * r1, fy + Math.sin(a) * r1); ctx.stroke(); } }
+    ctx.globalAlpha = 1;
+  }
   const age = now - (Number(game.parryFlashAt) || -1e9);
   if (age >= 0 && age < L.flashMs) {
     const k = age / L.flashMs, r = s * (still ? 1 : .9 + .7 * k);
@@ -468,7 +477,7 @@ export function drawBrawlerAuras(ctx, game, toScreen, s, t, floor = false) {
     ctx.globalAlpha = 1; }
   if (now < (game.aegisUntil || 0)) { const k = (game.aegisUntil - now) / BRAWLER.aegis.ms; ctx.fillStyle = "#9fd0ff22"; ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2.5; ctx.globalAlpha = .4 + .6 * k; ctx.beginPath(); ctx.arc(x, y, s * .85, 0, 7); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * s * .85, y + Math.sin(a) * s * .85); ctx.lineTo(x + Math.cos(a + Math.PI / 3) * s * .85, y + Math.sin(a + Math.PI / 3) * s * .85); ctx.stroke(); } ctx.globalAlpha = 1; }
-  drawPowerAegis(ctx, game, s, t, now, x, y);
+  drawPowerAegis(ctx, game, toScreen, s, t, now, x, y);
   { const G = DASH_GHOSTS, n = shadowDashGhosts(game, G), L = DASH_LOOKS[dashKind(game)]; // a charge (Shadow Boxing's violet, the Cleaver's ember): a speed streak and afterimages along the path (every tier, safe mode too)
     if (n > 0) { const far = toScreen({ x: G[(n - 1) * 3] + .5, y: G[(n - 1) * 3 + 1] + .45 }); ctx.globalAlpha = .35 * G[2] / SHADOW_DASH.alpha; ctx.strokeStyle = L.streak; ctx.lineWidth = s * .22; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(far[0], far[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.lineCap = "butt";
       // the bodies (Close View draws its own 3D afterimages over this floor streak)

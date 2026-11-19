@@ -36,7 +36,7 @@ export const TRICERATOPS_HORN_TRAIL = Object.freeze({ length: .95, width: .07, f
 export const shotDrawPoint = (p) => p?.triceratopsHorn && p.visualLaunch ? projectileVisualPoint(p, 0) : p;
 export const hornScreenLift = (p) => p?.triceratopsHorn ? Math.max(0, (Number(p.visualHeight) || 0) - TRICERATOPS_HORN_TRAIL.feet) : 0;
 export const standardProjectile = (p) => !p.knife && !p.arcWave && !p.fireBomb && !p.shard && !p.orrery;
-export const standardProjectileColor = (p) => p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
+export const standardProjectileColor = (p) => p.aegisReflected ? "#ffd36b" /* Power Aegis: a blow sent back (brawler-spells.ts PARRY_LOOK.spark) */ : p.hostile ? (p.morphOrb?"#ff7be6":p.morphBarb?"#9a62b0":p.path==="grenade"?"#e36b4f":p.path==="arc"?"#f0c66e":p.homingTurnRate?"#b7ce83":p.splitAfter!=null?"#ef9b70":"#d28af0") : p.triceratopsHorn ? TRICERATOPS_HORN_VISUAL.color : p.droneRocket ? "#ff8a3d" : p.carbine ? (p.shadow ? "#b48cff" : "#7fe7ff") /* the Carbine's beam (tool-forms.ts CARBINE.colors.beam; the Shadow Clone's in CLONE_CARBINE.colors.beam) */ : p.damageType === "magic" ? "#9fe8db" : "#d6b276";
 export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   const s = Math.round(Math.max(28, Math.min(44, width / 12))),
     toScreen = (q0) => { const q = shotDrawPoint(q0); return [
