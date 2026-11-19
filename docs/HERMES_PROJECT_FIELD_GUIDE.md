@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — the Second Wayfarer's ending
+## Release 1028 — the Second Wayfarer's ending
 
 Tim (2026-11-19) changed the end of the Second Wayfarer (release 1024): the trail stays on the overworld, and at the last stop you find her body, laid out still beside the folded suit and the gifts, under a note in blood in a hand that does not know what letters are. Its words, "NO ONE IS AHEAD OF YOU NOW", replace "Nobody is ahead of you now" as the closing line. Who wrote it is never said and is no named entity.
 
