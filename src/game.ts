@@ -198,6 +198,7 @@ const PARRY_STRIKE = 1, PARRY_PACK = 3;
 // Tim, 2026-11-19: "reflected damage can count as your own hit". The `src` a direct reflect (reflectBlow) hands landHit: a hit of
 // the Wayfarer's, but not melee, not a tool shot and no charged release (hit-cast-passives.ts passiveHit reads `aegisReflected`).
 const REFLECT_HIT = Object.freeze({ aegisReflected: true });
+const CLONE_HIT = Object.freeze({ melee: true, clone: true }); // the Shadow Clone's swing (cloneSwing): a melee source (hit-cast-passives.ts isMeleeSource)
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
@@ -9100,7 +9101,7 @@ export class Game {
     }else{
       const e=executablePreparedEffect(q.payload.effect),fx={...e,id:`${q.id}-effect`,x:this.player.x+.5,y:this.player.y+.45,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true};this.effects.push(fx);base=fx;
       for(const c of q.payload.echoCopies||[])this.effects.push({...fx,id:`${q.id}-echo-${c.index||1}`,hits:{},delay:c.delayMs/1000,damage:Math.max(1,Math.round(fx.damage*c.share)),imbue:(fx.imbue||0)*c.share,echo:true,toolUseNewborn:true});
-      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-this.weaponBonus()},q.aim,now);
+      if(q.payload.cloneEligible&&q.payload.cloneProfile&&this.shadowCloneActive(now))this.cloneSwing({shape:'arc',range:1.75,arc:160,damage:(Number(q.payload.cloneProfile.damage)||1)-this.weaponBonus()},q.aim,now,1,true);
     }
     const v=this.player.attackVisual;if(v?.toolUse?.v===1&&v.toolUse.id===q.id&&v.toolUse.phase==='startup'&&!v.presentationCancelled){v.toolUse={...v.toolUse,phase:'released',releaseOffsetMs:q.startupMs};if(base&&q.payload.family==='shot')v.toolShotId=base.id;this.player.actionVisualUntil=now+(v.durationMs-q.startupMs);}
     return{released:true,cancelled:false};
@@ -9742,7 +9743,7 @@ export class Game {
     const held = q.mode === "shadow" && foe && Math.hypot(foe.x - p.x, foe.y - p.y) <= q.stop + C.shadow.leash; // still at her foe (a foe carried off past the leash is not struck through the air)
     if (held) { blow(foe.x + .5, foe.y + .45, .5, q.power, [foe], {}); if (q.splash > 0) blow(p.x + .5, p.y + .45, C.radius, q.splash, null, { [`1:${foe.id}`]: true }); } // every turn on her foe; a touch of it on foes at her leg
     else blow(p.x + .5, p.y + .45, C.radius, q.power, null, {});
-    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, { x: q.dirX, y: q.dirY }, now, 1, true); // the Shadow Clone throws its arc with each turn, as with each chain step (fistPunch)
   }
   cycloneFinish(now) {
     const q = this.cycloneHeel, F = IRON_FISTS; this.cycloneHeel = null; if (!q) return;
@@ -10536,7 +10537,7 @@ export class Game {
     const blade = this.spellbladeOn(now), air = kind === "great-sweep" && fieldOn(this.save, "charged-air") && this.spellRunning(now), SB = FIELD_PASSIVES.spellblade, CA = FIELD_PASSIVES["charged-air"];
     const skillReach = characterStats(this.save).skillReach; // Ember Form's reach (constellation.ts SKILL_MELEE), on the melee tools too (Tim, 2026-11-19)
     const fieldMult = (blade ? 1 + SB.damage : 1) * (air ? 1 + CA.damage : 1), fieldGrow = (kind === "great-sweep" && blade ? 1 + SB.reach / B.radius : 1) * (air ? CA.blast : 1) * (kind === "great-sweep" ? 1 + skillReach : 1);
-    if (kind === 'great-sweep') { const plan=echoPlan(this.glyphLoadout('tool')); this.startToolSwing(now,{mirage:false,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),radius:B.radius*fieldGrow,imbue:this.imbueBonus(now),healShare:boxing?.heal||0,echoCopies:(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1})),priorTool,priorPose,direction:sweepDirection}); this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); this.cancelConsumeVisual('tool'); this.message = 'Great Sweep!'; return true; } // great-sweep.ts (2026-11-14): the blade itself, swung all the way round, deals the damage
+    if (kind === 'great-sweep') { const plan=echoPlan(this.glyphLoadout('tool')); this.startToolSwing(now,{mirage:false,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),radius:B.radius*fieldGrow,imbue:this.imbueBonus(now),healShare:boxing?.heal||0,echoCopies:(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1})),priorTool,priorPose,direction:sweepDirection}); this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now, 1, true); this.cancelConsumeVisual('tool'); this.message = 'Great Sweep!'; return true; } // great-sweep.ts (2026-11-14): the blade itself, swung all the way round, deals the damage
     if(kind==='great-sweep'&&this.closeViewActionEligible()){
       const effectiveCooldown=B.cooldown*1000*this.glyphLoadout('tool').mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=toolUseStartupMs(kind,effectiveCooldown),counter=Number(this.save.toolUseCounter);if(startupMs==null||!Number.isSafeInteger(counter)||counter<0||counter>=Number.MAX_SAFE_INTEGER)return false;
       const id=`tool-use-${counter+1}`,plan=echoPlan(this.glyphLoadout('tool')),effect={kind,brawler:true,life:B.lifetime,radius:B.radius*fieldGrow,pulse:99,damage:Math.max(1,Math.round(this.toolPower()*B.share*(1+(boxing?.damage||0))*fieldMult)),glyphHost:'tool',healShare:boxing?.heal||0,imbue:this.imbueBonus(now)},echoCopies=(plan?.copies||[]).map((c,i)=>({delayMs:BRAWLER_ECHO.toolGap*1000*(i+1),share:c.share,index:i+1}));
@@ -10558,7 +10559,7 @@ export class Game {
     // The awakened Hammerfall's clap (brawler-spells.ts HAMMER_CLAP; Tim, 2026-11-14): one per press, in addition to the hammer's
     // blow and its Echo copies, waiting with the hammer and then on its own clock (saved with the area's effects).
     if (kind === "hammerfall" && main && this.save.equipment.secondary?.awakened) { const C = HAMMER_CLAP, vx = Number(visualAim?.x) || 0, vy = Number(visualAim?.y) || 0, n = Math.hypot(vx, vy), ax = n > 1e-6 ? vx / n : 1, ay = n > 1e-6 ? vy / n : 0; fx(main.x, main.y, { kind: "hammer-clap", clap: 1, ax, ay, radius: C.length, spread: C.spread, delay: main.delay, life: hammerClapSpan(), untilPulse: hammerClapStrikeAt(), damage: Math.max(1, Math.round(this.toolPower() * C.share * (1 + (boxing?.damage || 0)) * fieldMult)), imbue: 0, stun: C.stun }); clipHammerClap(this.effects[this.effects.length - 1], (x, y) => this.quandrixOpen(x, y)); } // the lines never pass a wall: clipped once, here, and kept on the effect
-    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now); // release 503: the Shadow Clone swings along
+    this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), now, 1, true); // release 503: the Shadow Clone swings along
     p.attackUntil = now + 240;
     const hammerDurationMs=B.delay*1000+B.lifetime*1000;
     const visualMs=kind==='great-sweep'?TOOL_ACTION_TIMING['great-sweep'].durationMs:hammerDurationMs;
@@ -11807,7 +11808,7 @@ export class Game {
     this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, level: fistCalloutLevel(perfect, onBeat) /* the HUD status meter (FIST_CALLOUT): presentation only */ }; // the chain loops: after the last step the cross comes next
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
     this.fistBeat = { at: now, ...fistBeatWindow(now, this.fistRecoverUntil), step, ax: d.x, ay: d.y }; if (rhythm) this.fistFlash = { at: now, rhythm: true }; // the next beat: the ball goes out with this step and is home as its window opens
-    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now); // release 503: the Shadow Clone throws a plain arc swing with each step
+    if(!delayed)this.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: primaryProfile(this.save.equipment.primary).damage }, d, now, 1, true); // release 503: the Shadow Clone throws a plain arc swing with each step
     const chained = now < (p.fistVisualUntil || 0) || now < (p.actionVisualUntil || 0); // a step thrown out of the last one's guard (Close View starts it from the guard)
     this.cancelConsumeVisual('attack');
     const T = CLOSE_VIEW_MELEE_TIMING[kick ? 'kick' : step === 1 ? 'dash' : step === 2 ? 'jab' : 'uppercut'];
@@ -11924,11 +11925,19 @@ export class Game {
   }
   // The clone's copy of a swing: the same blow from where it stands, at `share` of the damage (release 387: toward the
   // locked target when there is one).
-  cloneSwing(profile, dir, now, scale = 1) {
+  // Tim (2026-11-19): the clone's swing is a melee source (hit-cast-passives.ts isMeleeSource, CLONE_HIT): it gets what her own
+  // swing gets, at SHADOW_CLONE.share: Spellblade's damage, armor Volatile, Imbue Weapon's magic share, Ember Skin, Arcane Edge (a
+  // clone blow in the same attack rides the charge her blow took; alone it takes one), Pocket Time, Power Aegis, a Tesseract's
+  // melee heal. Reach: a copy of her swing (`profile`) already carries hers (Ember Form, Spellblade); the clone's own arc (`arc`:
+  // BRAWLER_ECHO.cloneArc, with the fists and the melee tools) is stretched here as a punch is.
+  cloneSwing(profile, dir, now, scale = 1, arc = false) {
     if (!this.shadowCloneActive(now) || this.shadowClone.charging) return;
+    const blade = this.spellbladeOn(now), SB = FIELD_PASSIVES.spellblade;
+    if (arc) profile = { ...profile, range: (profile.range + (blade ? SB.reach : 0)) * (1 + characterStats(this.save).skillReach) };
     const at = clonePosition(this.player, this.shadowClone), body = { ...this.player, x: at.x, y: at.y }; dir = this.cloneAimFrom(at) || dir;
     const hits = primaryAttackHits(body, this.enemies.filter((e) => !e.untargetable), this.map, mapWidth(this.map, this.area), profile, dir);
-    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); const before = Math.max(0, e.hp); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * SHADOW_CLONE.share * scale))); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } this.landHit(e, Math.max(0, before - Math.max(0, e.hp)), now); } // the clone's blow is hers: an on-hit Echo hit
+    const share = SHADOW_CLONE.share * scale, mult = (1 + armorGlyphBonus(this.save).attackDamage) * (blade ? 1 + SB.damage : 1), imbue = Math.round(this.imbueBonus(now) * share);
+    for (const e of hits) { if (e.kind === "npc" || e.dead) continue; alertEnemy(e); const before = Math.max(0, e.hp); e.hp -= wayfarerDamage(Math.max(1, Math.round((profile.damage + this.weaponBonus()) * mult * share)) + imbue); if (imbue > 0) imbueSpark(this, e.x + .5, e.y + .45, now); e.hitFlash = .18; if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); } const dealt = Math.max(0, before - Math.max(0, e.hp)); this.landHit(e, dealt, now, CLONE_HIT); if (dealt > 0) this.tesseractHitHeal("melee", now, e); } // the clone's blow is hers: an on-hit Echo hit, and melee
     this.shadowClone.swingUntil = now + 240; this.shadowClone.swingDir = { x: dir.x, y: dir.y };
   }
   // Release 309 (Tim: "we can click on a monster... and then that'll just be the targeting... our blasts and attacks and swings

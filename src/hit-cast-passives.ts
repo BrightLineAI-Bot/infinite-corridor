@@ -7,8 +7,8 @@
 // - Transit Lattice field passives (lattice-fields.ts FIELD_PASSIVES, keys `field:<id>`, nothing to learn): Tempo, Shatterpoint.
 // - A Transit Lattice tool form (lattice-fields.ts TOOL_FORMS): Rapid Reload.
 //
-// Hit rules are the `hit` trigger's (game.ts landHit): the Wayfarer's own blows only, never a burn's tick, a proc (glyphWorld) or an
-// Echo's copy; one attack counts once per foe (`gapMs`, as echoes.ts ON_HIT_ECHOES.perFoeGapMs). Extra damage these passives add
+// Hit rules are the `hit` trigger's (game.ts landHit): the Wayfarer's own blows only (her Shadow Clone's swing counts as hers, Tim
+// 2026-11-19), never a burn's tick, a proc (glyphWorld) or an Echo's copy; one attack counts once per foe (`gapMs`, as echoes.ts ON_HIT_ECHOES.perFoeGapMs). Extra damage these passives add
 // goes straight to health and is never a hit itself, so nothing chains. Per-foe marks are runtime only (a non-enumerable symbol on
 // the foe, never saved); the Game's own state is one object (`game._hcp`), so a hit allocates nothing.
 import { latticePassives } from "./transit-lattice.ts";
@@ -203,7 +203,8 @@ function strike(game, e, amount) {
 // ---------------------------------------------------------------- melee or not (one rule)
 // Tim, 2026-11-19: "whatever melee damage buffs, they should also work with the tools that do melee damage." The one line between
 // melee and the rest, for every melee-scoped buff that reads the hit (Arcane Edge, Pocket Time, Power Aegis's melee share, Ember
-// Skin's burn and a Tesseract's melee heal: game.ts landHit). Melee: a weapon swing ("melee"), a weapon art (`melee: true`), and
+// Skin's burn and a Tesseract's melee heal: game.ts landHit). Melee: a weapon swing ("melee"), a weapon art and the Shadow Clone's
+// swing (`melee: true`; Tim, 2026-11-19: the clone's swing gets what hers gets; one in the same attack rides her charge), and
 // every brawler blow (`brawler: true`): the Iron Fists' punches and kicks, Hammerfall (and its clap), the Great Sweep, the brawler
 // spells' blows and the Triceratops' landing slam. Never melee: a tool's shot (the Blunderbuss's pellets, the Needle Caster, the
 // Rift Bombard, the Spark Coil, the Lumen Spindle, the Carbine, the Orrery, the Mirage blades, the Quandrix Staff's hand), a spell

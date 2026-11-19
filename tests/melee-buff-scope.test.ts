@@ -96,3 +96,32 @@ test('the Blunderbuss is unchanged: a physical shot, its pellets read the melee 
   assert.equal(q[0].damage - p[0].damage, 8, 'Ember Form\'s melee bonus on the physical channel, as before');
   assert.equal(b[0].damage, p[0].damage, 'Spellblade does not touch it');
 });
+
+// The Shadow Clone's swing (Tim, 2026-11-19: it SHOULD get the melee buffs): game.ts cloneSwing lands with a melee source.
+import { BRAWLER_ECHO } from '../src/brawler-spells.ts';
+import { SHADOW_CLONE } from '../src/late-spells.ts';
+const withClone = (g) => { g.shadowClone = { ox: 0, oy: 0, until: 1e12 }; return g; };
+const cloneArc = (g, now = 1000) => g.cloneSwing({ ...BRAWLER_ECHO.cloneArc, damage: 10 }, { x: 1, y: 0 }, now, 1, true);
+
+test('the Shadow Clone\'s swing is melee: Ember Skin burns, a Tesseract heal is asked for, Spellblade adds its damage', () => {
+  const { g, e } = arena({ ember: true, nodes: ['ember-skin'], foes: [[11, 10]] }); withClone(g);
+  let heals = 0; const real = g.tesseractHitHeal.bind(g); g.tesseractHitHeal = (kind, ...a) => { if (kind === 'melee') heals++; return real(kind, ...a); };
+  const b = e.hp; cloneArc(g); assert.ok(e.hp < b, 'struck'); assert.ok(e.glyphBurn?.until > 1000, 'Ember Skin'); assert.equal(heals, 1, 'the melee heal');
+  const lost = (opts) => { const { g: h, e: f } = arena({ foes: [[11, 10]], ...opts }); withClone(h); const before = f.hp; cloneArc(h); return before - f.hp; };
+  const plain = lost({}), blade = lost({ spellblade: true });
+  assert.ok(blade > plain, `Spellblade (${blade} > ${plain})`);
+  assert.ok(SHADOW_CLONE.share > 0 && SHADOW_CLONE.share < 1);
+});
+
+test('the clone\'s own arc reaches farther with Spellblade and Ember Form, as a punch does', () => {
+  const R = BRAWLER_ECHO.cloneArc.range, x = 10 + R + .2; // just past the plain arc, inside Spellblade's +.4 and Ember Form's x1.3
+  const hit = (opts) => { const { g, e } = arena({ foes: [[x, 10]], ...opts }); withClone(g); const b = e.hp; cloneArc(g); return e.hp < b; };
+  assert.equal(hit({}), false, 'out of the plain arc'); assert.equal(hit({ spellblade: true }), true, 'Spellblade\'s reach'); assert.equal(hit({ ember: true }), true, 'Ember Form\'s reach');
+});
+
+test('Arcane Edge: a clone blow in the same attack rides her charge; alone it takes one', () => {
+  const { g, e } = arena({ nodes: ['arcane-edge'], foes: [[11, 10]] }); withClone(g); g.passiveCast(1000);
+  g.landHit(e, 50, 2000, 'melee'); const b = e.hp; cloneArc(g, 2000);
+  assert.equal(edgeCharges(g).n, ARCANE_EDGE.hits - 1, 'one charge for her swing and its clone copy'); assert.ok(b > e.hp);
+  cloneArc(g, 3000); assert.equal(edgeCharges(g).n, ARCANE_EDGE.hits - 2, 'a clone blow on its own spends one');
+});

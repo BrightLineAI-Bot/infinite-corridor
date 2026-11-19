@@ -41,7 +41,7 @@ export const skillMeleeBonus = (active, rank) => skillPart(active, rank, "melee"
 export const skillReachBonus = (active, rank) => skillPart(active, rank, "reach");
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
-  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall and the Great Sweep) set foes burning." }, caps: [
+  form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall, the Great Sweep and your Shadow Clone's swings) set foes burning." }, caps: [
     { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15%, softened at high defence)." },
     { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form runs out, it bursts, scorching everything around you. Another skill cutting it short skips the burst." }] },
   motion: { name: "Motion", active: "quickening", mod: { id: "light-feet", name: "Light Feet", text: "Dodges cost 3 less stamina." }, caps: [
