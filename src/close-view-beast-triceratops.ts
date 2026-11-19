@@ -28,6 +28,7 @@ export const TRICERATOPS_RIG = Object.freeze({
   knobFrill: .3, // a frill smaller than this share of the adult's (the baby's) is a smooth little shield, no rim knobs
   legHeight: .5, // the hip and shoulder joints over the feet (body units): a form's shorter legs lower the body by its share of this
   formHeadLift: Object.freeze({ baby: .03 }), // the hatchling's baby form carries his big head higher (body units over the head bone)
+  riddenFrill: Object.freeze({ tilt: .35, follow: 1.4, recoil: 1.8, fwd: .12, down: .04 }), // the ridden frill (Tim, 2026-11-19: clear of the rider): tipped forward `tilt` radians and set `fwd` forward and `down` lower on the skull (body units), and tipped further by `follow` x how far the head comes up nose first (`recoil` x the horn release's) so it never sweeps back into the rider
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
   budget: Object.freeze({ full: 3218, balanced: 1694, low: 668 }),
 });
@@ -54,7 +55,19 @@ function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= 
 // `alpha`). Built only into the ridden Silly Goose's full and balanced meshes, as the mesh's optional section: drawn only while drilling.
 const WHIRL = Object.freeze({ at: Object.freeze([-.3, .58]), front: .75, back: -1.55, radius: .5, tip: .05, turns: 2.2, width: .07, alpha: .55,
   bands: Object.freeze({ full: 3, balanced: 2 }), cols: Object.freeze({ full: 26, balanced: 12 }) });
-const SEAT_F = -.13, HS0 = TRI_ART.headScale * G0.headScale; // the head's scale (the standard view's, a little bigger in the round) // the saddle's place along the back (the standard view's seat sits over the body's middle)
+// The beak (Tim, 2026-11-19: "the tip of the beak is kind of hanging off; it's not connected"), head units [f, u, half width, half
+// height] before the squat muzzle (TRI_ART.muzzle) and a form's shorter snout are applied, so it moves back and deepens with the face.
+// upper: the skull's last sections, one skin that turns down at the front into the hook and closes to its point (no separate piece);
+// jaw: the lower jaw's sections (the lower beak at its end tucks inside the hook).
+export const TRICERATOPS_BEAK = Object.freeze({
+  upper: Object.freeze([[.3, -.028, .05, .084], [.335, -.04, .04, .068], [.357, -.062, .03, .04], [.359, -.086, .021, .026], [.36, -.106, 0, 0]].map(Object.freeze)),
+  jaw: Object.freeze([[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(Object.freeze)),
+});
+const BEAK = TRICERATOPS_BEAK;
+// the saddle's place along the back (body units; Tim, 2026-11-19: "the rider should be positioned behind the frill"): Close View's
+// rider card stands at the Wayfarer (the body's middle: beast-mounts-render.ts draws it there under MOUNT_DRAW.skipBody), so the saddle
+// sits there, over the middle of the back, and the ridden frill is set clear of it (TRICERATOPS_RIG.riddenFrill)
+const SEAT_F = 0, HS0 = TRI_ART.headScale * G0.headScale; // the head's scale (the standard view's, a little bigger in the round)
 const BONES = (() => {
   const W = {}, out = [], add = (name, parent, w) => { W[name] = w; const p = parent ? W[parent] : [0, 0, 0]; out.push({ name, parent, at: [w[0] - p[0], w[1] - p[1], w[2] - p[2]] }); };
   const S = (n) => [SPINE_AT[n][0], 0, SPINE_AT[n][1]];
@@ -128,12 +141,10 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   B.bone('head');
   // The skull (2026-11-18 pass 2): deep and broad at the cheeks (the jugal flare), the brow rising behind the eyes, the snout narrowing
   // to a hooked parrot beak; a dark cheek line runs back from the beak; it ends in the beak's dark keratin, all one skin.
-  const SKULL = [[-.09, 0, .085, .115], [-.02, .01, .125, .15], [.05, .02, .12, .15], [.12, .02, .09, .135], [.19, .005, .07, .115], [.26, -.015, .056, .095], [.3, -.028, .05, .084], [.335, -.04, .038, .068], [.355, -.05, .02, .044]];
-  const skull = low ? SKULL.filter((_, i) => i % 2 === 0) : SKULL, beakF = .3;
+  const SKULL = [[-.09, 0, .085, .115], [-.02, .01, .125, .15], [.05, .02, .12, .15], [.12, .02, .09, .135], [.19, .005, .07, .115], [.26, -.015, .056, .095], ...BEAK.upper];
+  const skull = low ? SKULL.filter((_, i) => i % 2 === 0 || i === SKULL.length - 1) : SKULL, beakF = .3; // (low keeps the hook's point)
   B.color(C.body).loft({ seg: low ? 7 : full ? 14 : 10, sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS * dp(f), bones: ['head', 'head', 0] })),
     tone: (i, k, st) => { const f = skull[i][0]; if (f >= beakF) return st > .2 ? C.beakLight : C.beak; if (st < -.2 && st > -.55 && f > .02) return lerpHex(C.dark, C.beak, .35); return st > .3 ? C.light : st < -.5 ? C.dark : C.body; } });
-  // the upper beak's hook, curling down over the lower beak
-  B.color(C.beak).lathe({ at: hb([.35, 0, -.055]), F: [.25, 0, -.97], rings: [[0, .03 * HS], [.035 * HS, .02 * HS], [.06 * HS, 0]], seg: low ? 4 : 6, rs: .75 });
   // the brow horns: each grows out of a swelling of the brow, thick at the base, curving forward and up to a fine tip (one lofted skin)
   for (const s of [-1, 1]) {
     if (!low) B.color(C.body).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });
@@ -154,9 +165,9 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   { const nk = FM.nose; B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r], i) => ({ at: HW([sc(f, .255, nk), 0, sc(u, .055, nk)]), rx: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, rz: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) }); }
   // the lower jaw (opens with the pose), its beak tip dark; the ridden Silly Goose's tongue
   { const J = TRICERATOPS_SKELETON.bindWorld, j = BI.jaw * 3; B.bone('jaw');
-    B.color(C.dark).loft({ seg: low ? 5 : 8, sections: [[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(([f, u, rx, rz]) => ({ at: [J[j] + (sn(mz(f + .06)) - .06) * HS + JF, 0, J[j + 2] + (MZ.mid + .07 + (u - .07 - MZ.mid) * dp(f + .06)) * HS + JZ], rx: rx * HS, rz: rz * HS * dp(f + .06), bones: ['jaw', 'jaw', 0] })),
+    B.color(C.dark).loft({ seg: low ? 5 : 8, sections: BEAK.jaw.map(([f, u, rx, rz]) => ({ at: [J[j] + (sn(mz(f + .06)) - .06) * HS + JF, 0, J[j + 2] + (MZ.mid + .07 + (u - .07 - MZ.mid) * dp(f + .06)) * HS + JZ], rx: rx * HS, rz: rz * HS * dp(f + .06), bones: ['jaw', 'jaw', 0] })),
       tone: (i, k, st) => i >= 3 ? C.beak : st > .3 ? 0x7a2a1c : C.dark }); // the lower beak (its dark tip) under the hook
-    if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.26 * HS, 0, .035 * HS], radius: [.06 * HS, .022 * HS, .01 * HS], F: [1, 0, -.4], rings: 2, seg: low ? 4 : 6 }); }
+    if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.28 * HS, 0, .012 * HS], radius: [.07 * HS, .022 * HS, .01 * HS], F: [1, 0, -.3], rings: 2, seg: low ? 4 : 6 }); } // poking out under the hook
   // ---- the frill: a broad shield rising up and back off the skull, its front face orange, a pale rim with knobs
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
@@ -317,7 +328,9 @@ export function sampleTriceratops(tr, e, env) {
   setOffset(P, BI.neck, reach * .12, 0, -(horn ? Number(horn.lower) || 0 : 0)); /* the shove carries the head forward */ setEuler(P, BI.neck, look * .5, -head * .35 + hornPitch, 0); resolveBone(P, BI.neck);
   setEuler(P, BI.head, look * .4, -head * .3 + (reduce ? 0 : .02 * wobble(t * .7, 3)), -hit * .2 * tr.hitSide); resolveBone(P, BI.head);
   setEuler(P, BI.jaw, 0, .55 * clamp01(V[KI.open] + (dead ? .2 : 0)), 0); resolveBone(P, BI.jaw);
-  resolveBone(P, BI.frill);
+  // the ridden mount's frill stands a little more upright, and holds there as the head comes up (the recoil, the leap): it stays
+  // clear of the rider seated behind it (TRICERATOPS_RIG.riddenFrill); a wild one's is as bound
+  { const RF = G.riddenFrill; if (ridden) setOffset(P, BI.frill, RF.fwd, 0, -RF.down); setEuler(P, BI.frill, 0, ridden ? RF.tilt + RF.recoil * Math.max(0, -hornPitch) + RF.follow * (Math.max(0, pitch) + Math.max(0, V[KI.head]) * .65) : 0, 0); } resolveBone(P, BI.frill);
   for (let i = 0; i < TAIL.length; i++) { const w = (i + 1) / TAIL.length;
     const lift = V[KI.tailUp] * (i < 2 ? .4 : .25) + (i === 0 ? Math.max(0, pitch) * .8 : 0) + bounce * (i === 0 ? 1 : .4);
     const swing = V[KI.tailSide] * .4 + (reduce ? 0 : .05 * Math.sin(t * 1.6 - i * .6) * w * (1 - stun));
