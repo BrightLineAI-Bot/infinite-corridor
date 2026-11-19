@@ -37,11 +37,22 @@ function neckPath(ctx) {
   for (let i = N; i >= 0; i--) { const j = Math.min(N, i + 1), h = Math.max(0, i - 1), tx = NX[j] - NX[h], ty = NY[j] - NY[h], m = Math.hypot(tx, ty) || 1, nx = -ty / m, ny = tx / m; ctx.lineTo(NX[i] - nx * NR[i], NY[i] - ny * NR[i]); }
   ctx.closePath();
 }
+function alongNeck(ctx, k, from = 0) { ctx.beginPath(); for (let i = from; i <= N; i++) { const j = Math.min(N, i + 1), h = Math.max(0, i - 1), tx = NX[j] - NX[h], ty = NY[j] - NY[h], m = Math.hypot(tx, ty) || 1; const x = NX[i] - ty / m * NR[i] * k, y = NY[i] + tx / m * NR[i] * k; if (i > from) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); }
+// a dust burst and cracks where a head (or a clone's) strikes the ground: `age` 0..1 over APATO_FX.dustMs
+export const APATO_FX = Object.freeze({ cock: -.35, snap: 28, dustMs: 650, dustPuffs: 7, cracks: 5 });
+function slamDust(ctx, A, x, y, u, age, scale = 1) {
+  if (!(age >= 0 && age < 1)) return; const r = u * scale * (.18 + .55 * smooth(age)), fade = 1 - age;
+  ctx.save(); ctx.strokeStyle = A.earthDark; ctx.globalAlpha = fade * .9; ctx.lineWidth = Math.max(1, u * .02 * scale); ctx.lineCap = "round";
+  for (let i = 0; i < APATO_FX.cracks; i++) { const a = i / APATO_FX.cracks * TAU + .4, l = u * scale * (.25 + .12 * (i % 2)) * Math.min(1, age * 4); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l * .5, y + Math.sin(a) * l * .3 + u * .02); ctx.lineTo(x + Math.cos(a + .25) * l, y + Math.sin(a + .25) * l * .6); ctx.stroke(); }
+  for (let i = 0; i < APATO_FX.dustPuffs; i++) { const a = i / APATO_FX.dustPuffs * TAU, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .45 - u * scale * .12 * age; ctx.globalAlpha = fade * .55; ctx.fillStyle = i % 2 ? A.earthLight : A.earth; ctx.beginPath(); ctx.arc(px, py, u * scale * (.06 + .07 * age), 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
 function fillNeck(ctx, A, u, light = true) {
   neckPath(ctx); ctx.fillStyle = A.hide; ctx.fill(); ctx.lineWidth = Math.max(1, u * .025); ctx.strokeStyle = A.outline; ctx.stroke();
   // the paler throat along its underside, and a light ridge along its top
   ctx.save(); neckPath(ctx); ctx.clip(); ctx.lineCap = "round";
   ctx.strokeStyle = A.belly; ctx.globalAlpha = .55; ctx.lineWidth = u * .07; ctx.beginPath(); for (let i = 0; i <= N; i++) { const j = Math.min(N, i + 1), h = Math.max(0, i - 1), tx = NX[j] - NX[h], ty = NY[j] - NY[h], m = Math.hypot(tx, ty) || 1; const x = NX[i] + ty / m * NR[i] * .75, y = NY[i] - tx / m * NR[i] * .75; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+  if (light) { ctx.strokeStyle = A.hideDark; ctx.globalAlpha = .28; ctx.lineWidth = Math.max(1, u * .012); for (let i = 2; i < N - 1; i += 2) { const tx = NX[i + 1] - NX[i - 1], ty = NY[i + 1] - NY[i - 1], m = Math.hypot(tx, ty) || 1, nx = ty / m, ny = -tx / m; ctx.beginPath(); ctx.moveTo(NX[i] + nx * NR[i], NY[i] + ny * NR[i]); ctx.quadraticCurveTo(NX[i] + tx / m * NR[i] * .35, NY[i] + ty / m * NR[i] * .35, NX[i] - nx * NR[i] * .2, NY[i] - ny * NR[i] * .2); ctx.stroke(); } } // a snake's belly scales
   if (light) { ctx.strokeStyle = A.hideLight; ctx.globalAlpha = .6; ctx.lineWidth = u * .035; ctx.beginPath(); for (let i = 0; i <= N; i++) { const j = Math.min(N, i + 1), h = Math.max(0, i - 1), tx = NX[j] - NX[h], ty = NY[j] - NY[h], m = Math.hypot(tx, ty) || 1; const x = NX[i] - ty / m * NR[i] * .55, y = NY[i] + tx / m * NR[i] * .55; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke(); }
   ctx.restore();
 }
@@ -79,7 +90,7 @@ function poseTargets(e, dead) {
   let front = 0;
   if (p === "seedStamp" || p === "spireStamp" || p === "handsCall") front = e.pack?.phase === "windup" ? .9 : 0;
   if (p === "stomp" && e.pack?.phase === "windup") front = .6;
-  return { lift: dead ? -1 : p === "graze" || p === "feed" ? -.9 : p === "beamLift" || p === "beam" || p === "sweep" ? .9 : lift, reach: dead ? .2 : reach, front };
+  return { lift: dead ? -1 : p === "graze" || p === "feed" ? -.9 : p === "beamLift" || p === "beam" || p === "sweep" ? .9 : lift, reach: dead ? .2 : p === "slamRaise" ? APATO_FX.cock : reach, front }; // the slam's wind-up: drawn back like a cobra
 }
 export function drawEarthApato(ctx, q, now = 0) {
   const A = APATO_ART, { k, u, flip, e } = q, b = q.b, reduce = !!e.reduceMotion, t = reduce ? 0 : now / 1000, M = memo(e, now), dead = !!e.dead || (e.hp <= 0 && e.maxHp > 0);
@@ -87,7 +98,8 @@ export function drawEarthApato(ctx, q, now = 0) {
   M.at = now; M.x = x; M.y = y;
   if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (2 * A.stride * 2 * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
-  const T = poseTargets(e, dead), ease = (cur, to) => !(dt > 0) || reduce ? to : cur + (to - cur) * Math.min(1, dt * A.ease);
+  if (e.apatoPose === "slam" && M.pose !== "slam") M.slamAt = now; else if (M.slamAt != null && now - M.slamAt > APATO_FX.dustMs) M.slamAt = null; M.pose = e.apatoPose; // the moment of contact
+  const T = poseTargets(e, dead), rate = e.apatoPose === "slam" ? APATO_FX.snap : A.ease, ease = (cur, to) => !(dt > 0) || reduce ? to : cur + (to - cur) * Math.min(1, dt * rate); // the slam snaps down
   M.lift = ease(M.lift, T.lift); M.reach = ease(M.reach, T.reach); M.front = ease(M.front, T.front); M.glow = ease(M.glow, Math.max(0, Math.min(1, Number(e.apatoGlow) || 0)));
   const stun = dead ? 0 : Math.max(0, Math.min(1, Number(e.poiseBreak) || 0)), wob = stun && !reduce ? Math.sin(t * 9) * .15 * stun : 0;
   const lashing = !!e.apatoLash?.on || (e.apatoWrap?.on && e.apatoWrap.phase !== "track"); // the neck runs out over the ground: drawn there (drawApatoGround)
@@ -133,6 +145,7 @@ export function drawEarthApato(ctx, q, now = 0) {
     sampleNeck(sx, sy, c1x, c1y, c2x, c2y, hx2, hy, A.neckRoot * u, A.neckTip * u); fillNeck(ctx, A, u, true);
     const ang = Math.atan2(NY[N] - NY[N - 2], NX[N] - NX[N - 2]), headA = e.apatoPose === "beamLift" || e.apatoPose === "beam" || e.apatoPose === "sweep" ? Math.min(ang, .25) : ang * .6 + (lift < 0 ? .5 : .15);
     drawHead(ctx, A, u, NX[N], NY[N], headA, M.glow, e.apatoPose === "leaf" || e.apatoPose === "wrapTrack" ? .5 : 0, reduce, t);
+    if (!reduce && M.slamAt != null) slamDust(ctx, A, NX[N] + u * .1, -u * .02, u, (now - M.slamAt) / APATO_FX.dustMs, 1.2);
   } // else: the neck runs out from its chest over the ground (drawApatoGround draws it, rising to the chest)
   ctx.restore();
 }
@@ -165,6 +178,10 @@ export function drawApatoClone(ctx, q, now = 0) {
   const sx = L * .7, sy = by - H * .3, hx = u * (.62 + .45 * reachN + (M.lift < 0 ? -M.lift * .25 : 0)), hy = by - u * (.6 + .45 * M.lift) + (M.lift < 0 ? u * .2 * -M.lift : 0);
   sampleNeck(sx, sy, sx + u * .15, sy - u * .35, hx - u * .15, hy + u * .05, hx, hy, u * .085, u * .045);
   neckPath(ctx); ctx.fillStyle = A.bark; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = Math.max(1, u * .018); ctx.stroke();
+  ctx.save(); neckPath(ctx); ctx.clip(); ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, u * .012); ctx.strokeStyle = A.barkDark; alongNeck(ctx, .45); alongNeck(ctx, -.3, 3); ctx.strokeStyle = A.barkLight; ctx.globalAlpha = .7; alongNeck(ctx, .05, 1); ctx.restore(); // grain along the wood
+  { const i = Math.round(N * .45), bx = NX[i], by2 = NY[i]; ctx.strokeStyle = A.barkDark; ctx.lineWidth = u * .025; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(bx, by2); ctx.lineTo(bx - u * .09, by2 - u * .08); ctx.stroke(); ctx.fillStyle = A.leaf; ctx.beginPath(); ctx.ellipse(bx - u * .1, by2 - u * .1, u * .035, u * .02, -.6, 0, TAU); ctx.fill(); } // a twig with a leaf
+  if (e.apatoPose === "slam" && M.pose !== "slam") M.slamAt = now; else if (M.slamAt != null && now - M.slamAt > APATO_FX.dustMs) M.slamAt = null; M.pose = e.apatoPose;
+  if (!reduce && M.slamAt != null) slamDust(ctx, A, hx + u * .08, -u * .02, u, (now - M.slamAt) / APATO_FX.dustMs, .6);
   ctx.save(); ctx.translate(hx, hy); ctx.rotate(.15); ctx.fillStyle = A.barkLight; ctx.strokeStyle = A.outline; ctx.beginPath(); ctx.ellipse(u * .06, 0, u * .1, u * .05, 0, 0, TAU); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#c8ff6a"; ctx.beginPath(); ctx.arc(u * .07, -u * .015, u * .015, 0, TAU); ctx.fill(); // a green eye-knot
   ctx.fillStyle = A.leaf; ctx.beginPath(); ctx.ellipse(0, -u * .06, u * .025, u * .045, -.4, 0, TAU); ctx.fill(); ctx.restore(); // a leaf on its crown

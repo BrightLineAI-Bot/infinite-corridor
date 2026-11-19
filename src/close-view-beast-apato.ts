@@ -10,7 +10,8 @@
 // the held Wayfarer or foe, its last five bones coiled round them. Each bone is placed by its offset in its parent's frame and aimed
 // at the next, never scaled, so the neck keeps its girth however far it runs (the skin between two bones stretches along the path).
 // Bounded: 39 bones, the triangle counts below; no allocation per frame.
-import { APATO_ART } from "./apato-render.ts";
+import { APATO_ART, APATO_FX } from "./apato-render.ts";
+import { APATO } from "./earth-apato.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
@@ -188,10 +189,10 @@ export function sampleApato(tr, e, env) {
   const death = tr.deathAt == null ? 0 : (now - tr.deathAt) / G.deathMs; if (death >= 1) return null;
   const x = tr.x, y = tr.y, t = reduce ? 0 : now / 1000, ox = env.x - (Number(e.x) || 0), oy = env.y - (Number(e.y) || 0), name = apatoPoseName(e), first = !Number.isFinite(tr.yaw);
   // eased neck and body values (the standard view's own targets)
-  const p = e.apatoPose, liftT = dead ? -1 : p === 'graze' || p === 'feed' ? -.9 : p === 'beamLift' || p === 'beam' || p === 'sweep' ? .9 : Number(e.apatoNeckLift) || 0, reachT = dead ? .2 : Number(e.apatoNeckReach) || 0;
+  const p = e.apatoPose, liftT = dead ? -1 : p === 'graze' || p === 'feed' ? -.9 : p === 'beamLift' || p === 'beam' || p === 'sweep' ? .9 : Number(e.apatoNeckLift) || 0, reachT = dead ? .2 : p === 'slamRaise' ? APATO_FX.cock : Number(e.apatoNeckReach) || 0;
   const frontT = (p === 'seedStamp' || p === 'spireStamp' || p === 'handsCall') && e.pack?.phase === 'windup' ? .9 : p === 'stomp' && e.pack?.phase === 'windup' ? .6 : 0;
   const ease = (cur, to, r = G.ease) => first || reduce || !(dt > 0) ? to : cur + (to - cur) * Math.min(1, dt * r);
-  tr.lift = ease(tr.lift, liftT); tr.reach = ease(tr.reach, reachT); tr.front = ease(tr.front, frontT, 12); tr.glow = ease(tr.glow, clamp01(Number(e.apatoGlow) || 0), 6);
+  const snap = p === 'slam' ? APATO_FX.snap : G.ease; tr.lift = ease(tr.lift, liftT, snap); tr.reach = ease(tr.reach, reachT, snap); // the slam snaps down from its cocked wind-up tr.front = ease(tr.front, frontT, 12); tr.glow = ease(tr.glow, clamp01(Number(e.apatoGlow) || 0), 6);
   const stun = dead ? 0 : clamp01(Number(e.poiseBreak) || 0), daze = stun && !reduce ? stun * Math.sin(t * 3.4) : 0;
   // facing: the game's heading (its body turns at its own pace there)
   const h = e.apatoHeading; let aim = h && Math.hypot(h.x, h.y) > .01 ? Math.atan2(h.y, h.x) : tr.yaw; if (!Number.isFinite(aim)) aim = (Number(e.facingX) || 1) < 0 ? Math.PI : 0;
@@ -236,6 +237,10 @@ export function sampleApato(tr, e, env) {
   layNeck(tr, P);
   const open = name === 'leaf' || name === 'leafReady' || name === 'wrapTrack' ? .5 : name === 'graze' && !reduce ? .25 * Math.max(0, Math.sin(t * 6)) : dead ? .3 : 0;
   setEuler(P, BI.jaw, 0, .5 * open, 0); resolveBone(P, BI.jaw);
+  // where its eyes are this frame (presentation only, never saved): the beam's column starts there (drawApatoCloseFx)
+  { const q = boneLocalToWorld(P, 'head', .12, 0, .05, TMP2); let eye = e.apatoEyeCV; if (!eye) { eye = { x: 0, y: 0, z: 0, gz: 0, at: -1, slamAt: -1e9, sx: 0, sy: 0 }; Object.defineProperty(e, 'apatoEyeCV', { value: eye, enumerable: false, configurable: true, writable: true }); }
+    eye.x = q[0]; eye.y = q[1]; eye.z = q[2]; eye.gz = gz; eye.at = now;
+    if (p === 'slam' && tr.pose0 !== 'slam') { eye.slamAt = now; eye.sx = q[0]; eye.sy = q[1]; } tr.pose0 = p; } // the slam's contact: dust where the head lands
   // the tail: a slow sway, lifted a little as it stamps
   for (let i = 0; i < TAIL.length; i++) { const w = (i + 1) / TAIL.length, swing = reduce ? 0 : (.06 * Math.sin(t * 1.3 - i * .55) * w + moving * .05 * Math.sin(cyc - i * .5)) * (1 - stun * .5);
     setEuler(P, TI[i], swing + (i === 0 ? hit * .1 * tr.hitSide : 0), -.03 + front * (i < 2 ? .18 : .05) + (dead ? .1 : 0), 0); resolveBone(P, TI[i]); }
@@ -279,7 +284,7 @@ const CI = CLONE_SKELETON.index;
 function buildCloneMesh(tier) {
   const low = tier === 'low', full = tier === 'full', B = meshBuilder(CLONE_SKELETON, TIER_DETAIL[tier]), bark = hex(A.bark), barkD = hex(A.barkDark), barkL = hex(A.barkLight), leaf = hex(A.leaf), leafD = hex(A.leafDark);
   const W = CLONE_SKELETON.bindWorld, bw = (n) => [W[CI[n] * 3], W[CI[n] * 3 + 1], W[CI[n] * 3 + 2]];
-  const grain = (i, k, st) => lerpHex(i % 2 ? bark : barkD, barkL, Math.max(0, st) * .4 + (k % 3 === 0 ? .15 : 0));
+  const grain = (i, k, st) => { const ridge = (k + (i >> 2)) % 3; return lerpHex(ridge === 0 ? lerpHex(barkD, 0x140c06, .45) : ridge === 1 ? bark : lerpHex(bark, barkL, .45), barkL, Math.max(0, st) * .25) }; // grain runs along the trunk, not round it
   B.color(bark).loft({ seg: low ? 5 : full ? 9 : 7, sections: [[-.85, .58, .02, .02, 'ct2'], [-.7, .6, .05, .05, 'ct2', 'ct1', .3], [-.45, .62, .12, .11, 'ct1', 'body', .3], [-.25, .64, .2, .19, 'body'], [.05, .66, .23, .21, 'body'], [.3, .66, .2, .19, 'body'], [.42, .72, .12, .12, 'body', 'c1', .5],
     [.5, .88, .085, .085, 'c1', 'c2', .5], [.6, 1.06, .07, .07, 'c2', 'c3', .5], [.68, 1.22, .06, .06, 'c3', 'chead', .6], [.74, 1.32, .055, .055, 'chead']].map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })), tone: grain });
   // bark: dark ridges running along the trunk, two knots and a broken branch stub (not on the low tier)
@@ -324,6 +329,8 @@ export function sampleApatoClone(tr, e, env) {
   setEuler(P, CI.ct1, tail * .6, .1, 0); resolveBone(P, CI.ct1); setEuler(P, CI.ct2, tail * .8, .15, 0); resolveBone(P, CI.ct2);
   for (const [n, o] of [['lfl', 0], ['lhr', 0], ['lfr', Math.PI], ['lhl', Math.PI]]) { setEuler(P, CI[n], 0, reduce || dead ? 0 : .35 * Math.sin(tr.phase + o) * Math.min(1, moved * 30), 0); resolveBone(P, CI[n]); }
   writeSkin(P);
+  if (p === 'slam' && tr.pose0 !== 'slam') { const q = boneLocalToWorld(P, 'chead', .1, 0, 0, TMP2); let eye = e.apatoEyeCV; if (!eye) { eye = { x: 0, y: 0, z: 0, gz: 0, at: -1, slamAt: -1e9, sx: 0, sy: 0 }; Object.defineProperty(e, 'apatoEyeCV', { value: eye, enumerable: false, configurable: true, writable: true }); }
+    eye.slamAt = now; eye.sx = q[0]; eye.sy = q[1]; eye.at = now; } tr.pose0 = p; // the clone's slam: dust where its head lands (presentation only)
   const F = tr.frame; F.emitK[0] = 1.2; F.emitK[1] = 0; F.emitK[2] = 0; F.emitK[3] = 0; F.emitA[0] = F.emitA[1] = F.emitA[2] = F.emitA[3] = 1;
   F.tier = env.tier || 'full'; F.mesh = apatoCloneMesh(F.tier); F.skin = P.skin; F.alpha = dead ? 1 - death : 1; F.hit = Math.max(0, Math.min(1, Number(e.hitFlash) || 0)) * .8 + Math.max(0, hit) * .4;
   F.x = x; F.y = y; F.z = env.z; F.yaw = tr.yaw; F.scale = S; F.air = 0; F.shadow = 1; F.phase = coil ? 'coil' : p || 'idle'; F.contact = 0; F.cloud = false;
@@ -335,7 +342,7 @@ export function sampleApatoClone(tr, e, env) {
 // the marks, the beam's track, the waves, the saplings); what stands up from it is drawn here with the scene's camera-facing cards
 // (close-view.ts `card`: kind 7 a stone spike, kind 0 a dark disc, kind 11 an added glow of the colour given). Bounded by the
 // beast's own pools (APATO.caps); nothing allocated. `card(X, Y, z0, z1, halfWidth, kind, alpha, colour, light)`.
-export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, beamZ: 3.4, beamCards: 22, star: .09, resolveRoots: 18 });
+export const APATO_CARDS = Object.freeze({ spire: 1.9, spireW: .42, rock: .26, rockZ: .7, hand: 1.2, handW: .34, leaf: .16, leafZ: .55, seedArc: 2.2, rootZ: 1.6, rootBeads: 7, rootR: .2, rockZ0: 1.3, rockUp: 1.6, rockFall: 1.3, rockLow: .45, beamZ: 3.4, beamCards: 34, beamW: .12, beamGrow: .1, star: .09, resolveRoots: 18, waveDust: 8, venomDrops: 8 });
 export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve = null) {
   const Cd = APATO_CARDS, t = reduce ? 0 : now / 1000;
   // Earth Resolve (its Echo): roots rising round the sigil's rim (short stone-dark spikes) and a green glow at its heart, fading at its end
@@ -344,11 +351,29 @@ export function drawApatoCloseFx(enemies, card, reduce = false, now = 0, resolve
     card(resolve.x, resolve.y + .3, 0, .9 * fade, resolve.r * .5, 11, .35 * fade, 0x9cff5a, 0); }
   for (const e of enemies || []) {
     if (e.apatoDazed > 0 && !e.dead) { const z = 2.2 * Math.max(.6, Number(e.scale) || 1) * .55; for (let i = 0; i < 4; i++) { const a = t * 3 + i * Math.PI / 2; card(e.x + .5 + Math.cos(a) * .6, e.y + .75 + Math.sin(a) * .6, z - Cd.star, z + Cd.star, Cd.star, 11, .9, 0xfff6a0, 0); } }
+    const eye = e.apatoEyeCV; if (eye && !reduce && !e.dead) { const age = (now - eye.slamAt) / APATO_FX.dustMs; if (age >= 0 && age < 1) { // dust and grit thrown up where a head struck
+      const big = e.kind === 'earthApato' ? 1.6 : .8, fade = 1 - age, r = big * (.2 + .7 * smooth(age)), n = APATO_FX.dustPuffs;
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + .2, x = eye.sx + Math.cos(a) * r, y = eye.sy + Math.sin(a) * r, h = big * (.12 + .25 * age) * (1 + .3 * (i % 2)), w = big * (.14 + .14 * age);
+        card(x, y, h * .2, h * .2 + w * 1.6, w, 0, .32 * fade, 0, 0); card(x, y, h * .3, h * .3 + w * 1.2, w * .8, 11, .3 * fade, 0xc8a878, 0); }
+      for (let i = 0; i < 4; i++) { const a = i * 1.7 + .5, k = smooth(age * 1.6), x = eye.sx + Math.cos(a) * big * .5 * k, y = eye.sy + Math.sin(a) * big * .5 * k, z = big * .9 * Math.sin(Math.PI * Math.min(1, age * 1.3)); card(x, y, z, z + .07, .05, 0, .9 * fade, 0, 0); } } } // flung clods
     if (e.kind !== 'earthApato' || e.dead) continue;
     const F = e.apatoFx; if (!F) continue;
     for (const q of F.leaves) { if (q.on) card(q.x + .5, q.y + .62, Cd.leafZ - Cd.leaf, Cd.leafZ + Cd.leaf, Cd.leaf, 11, .85, q.thorn ? 0xe8e0c0 : 0x8fe04a, 0); }
     for (const q of F.seeds) { if (!q.on || q.delay > 0) continue; const k = Math.min(1, q.t / (q.total || 1)), x = q.fx + (q.tx - q.fx) * k, y = q.fy + (q.ty - q.fy) * k, z = 1.5 * (1 - k) + Math.sin(Math.PI * k) * Cd.seedArc; card(x + .5, y + .62, z, z + .2, .1, 0, .9, 0, 0); }
-    const B = e.apatoBeam; if (B?.on) for (let i = 0; i <= Cd.beamCards; i++) { const k = i / Cd.beamCards, x = B.x + B.ax * B.len * k, y = B.y + B.ay * B.len * k, z = Cd.beamZ * (1 - k) + .15; card(x + .5, y + .62, z - .3, z + .3, .22 + .08 * k, 11, .55, 0xf4ff9a, 0); card(x + .5, y + .62, z - .12, z + .12, .08, 11, .9, 0xffffff, 0); }
+    // the stomp's waves: a skirt of dust thrown up along each ring as it runs (the ring itself is on the floor)
+    for (const q of F.waves) { if (!q.on || reduce) continue; const r = Math.max(.1, q.r), fade = 1 - Math.min(1, r / Math.max(.5, q.max || 1)), n = Cd.waveDust;
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + r * .7, x = q.x + .5 + Math.cos(a) * r, y = q.y + .62 + Math.sin(a) * r, h = .18 + .12 * ((i + Math.floor(r * 3)) % 2); card(x, y, 0, h, .2, 0, .28 * fade, 0, 0); card(x, y, .02, h * .8, .14, 11, .22 * fade, 0xc8a878, 0); } }
+    // the wrap's venom: green drops arcing from its mouth onto the one it holds, a sick haze round them
+    const W = e.apatoWrap, eyeW = e.apatoEyeCV; if (W?.on && W.phase === 'hold' && eyeW && Math.abs(now - eyeW.at) < 250) { const tx = W.x + .5, ty = W.y + .62, n = Cd.venomDrops;
+      card(tx, ty, .3, 1.7, .55, 11, .22, 0x7fe03a, 0);
+      for (let i = 0; i < n; i++) { const k = reduce ? (i + .5) / n : (t * 1.6 + i / n) % 1, x = eyeW.x + (tx - eyeW.x) * k, y = eyeW.y + (ty - eyeW.y) * k, z = eyeW.z + (eyeW.gz + 1.1 - eyeW.z) * k + Math.sin(Math.PI * k) * .35;
+        card(x, y, z - .06, z + .06, .06, 11, .85, 0x9cff3a, 0, true); } }
+    const B = e.apatoBeam; if (B?.on) { // one continuous column from its eyes (where Close View drew them this frame) to the far end of its line
+      const eye = e.apatoEyeCV, live = !!eye && Math.abs(now - eye.at) < 250, n = Cd.beamCards, ex = B.x + B.ax * B.len + .5, ey = B.y + B.ay * B.len + .62;
+      const sx = live ? eye.x : B.x + .5, sy = live ? eye.y : B.y + .62, sz = live ? eye.z : Cd.beamZ, gz = live ? eye.gz : 0, flick = reduce ? 1 : .9 + .1 * Math.sin(t * 40);
+      for (let i = 0; i <= n; i++) { const k = i / n, x = sx + (ex - sx) * k, y = sy + (ey - sy) * k, z = sz + (gz + .12 - sz) * k, dz = Math.abs(sz - gz) / n, w = (Cd.beamW + Cd.beamGrow * k) * flick;
+        card(x, y, z - w - dz, z + w + dz, w * 1.4, 11, .5, 0xf4ff9a, 0, live); card(x, y, z - w * .4 - dz, z + w * .4 + dz, w * .5, 11, .95, 0xffffff, 0, live); }
+      if (live) card(sx, sy, sz - .22, sz + .22, .26, 11, .9, 0xffffff, 0, true); } // the flare at its eyes
   }
 }
 
@@ -371,9 +396,10 @@ function buildHand(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.
   B.color(earthD).lathe({ at: [-.2, 0, .82], F: [-1, .2, .6], U: [0, 0, 1], seg: low ? 3 : 4, rings: [[0, .05], [.18, 0]], caps: false }); // thumb
   if (!low) for (let i = 0; i < 3; i++) B.color(grassC).lathe({ at: [(i - 1) * .12, .14, .3 + i * .15], F: [0, .4, 1], U: [1, 0, 0], seg: 3, rings: [[0, .02], [.1, 0]], caps: false });
   return B.done(); }
-function buildRoot(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root'); const vine = hex(A.vine), vineD = hex(A.vineDark), bud = hex(A.bud), thorn = hex(A.thorn), n = low ? 6 : 10, S = [];
-  for (let i = 0; i <= n; i++) { const f = i / n; S.push({ at: [f, 0, Math.pow(1 - f, 1.4) + .45 * Math.sin(Math.PI * f) + .04], rx: .055 - .02 * f, rz: .055 - .02 * f, bones: ['root', 'root', 0] }); }
-  B.color(vine).loft({ seg: low ? 4 : 6, sections: S, tone: (i, k, st) => (i + (k % 2)) % 3 ? vine : vineD });
+function buildRoot(low) { const B = meshBuilder(PROP_SKELETON, low ? .4 : 1); B.bone('root'); const vine = hex(A.vine), vineD = hex(A.vineDark), bud = hex(A.bud), thorn = hex(A.thorn), n = low ? 6 : 12, S = [];
+  // a serpent's neck: up out of the back, over in an arch with a sideways S, down to its bud on the ground; thick at the root
+  for (let i = 0; i <= n; i++) { const f = i / n, r = .11 - .05 * f; S.push({ at: [f, .16 * Math.sin(Math.PI * 2 * f) * (1 - f * .6), Math.pow(1 - f, 1.4) + .45 * Math.sin(Math.PI * f) + .05 * (1 - f) + .04], rx: r, rz: r * 1.1, bones: ['root', 'root', 0] }); }
+  B.color(vine).loft({ seg: low ? 4 : 6, sections: S, tone: (i, k, st) => st < -.3 ? lerpHex(vine, bud, .45) : (i + (k % 2)) % 3 ? vine : vineD }); // a paler belly, banded back
   B.color(bud).ellipsoid({ at: [1.02, 0, .08], radius: [.11, .08, .08], rings: 2, seg: low ? 5 : 7 });
   if (!low) for (const sd of [-1, 1]) B.color(thorn).lathe({ at: [1.08, sd * .05, .1], F: [1, sd * .6, .2], U: [0, 0, 1], seg: 3, rings: [[0, .025], [.08, 0]], caps: false });
   return B.done(); }
@@ -389,7 +415,7 @@ function placeProp(f, mesh, x, y, z, yaw, size, tall, alpha) {
 }
 // Appends this frame's live props to the beast list `B` ({ items, count }). zAt(x, y): the floor's height; prepare(mesh): upload once (false: skip).
 export function admitApatoProps(enemies, B, tier, now, reduce, zAt, prepare) {
-  const M = apatoPropMeshes(tier), t = reduce ? 0 : now / 1000; if (!prepare(M.spire) || !prepare(M.hand) || !prepare(M.rock) || !prepare(M.root)) return 0; let n = 0;
+  const Cd = APATO_CARDS, M = apatoPropMeshes(tier), t = reduce ? 0 : now / 1000; if (!prepare(M.spire) || !prepare(M.hand) || !prepare(M.rock) || !prepare(M.root)) return 0; let n = 0;
   for (const e of enemies || []) {
     if (e.kind !== 'earthApato' || e.dead || !e.apatoFx) continue; const F = e.apatoFx, P = e.apatoProps ||= { spires: F.spires.map(propFrame), hands: F.hands.map(propFrame), held: F.hands.map(propFrame), rocks: F.rocks.map(propFrame), roots: F.roots.map(propFrame) };
     Object.defineProperty(e, 'apatoProps', { value: P, enumerable: false, configurable: true, writable: true }); // presentation only, never saved
@@ -406,7 +432,8 @@ export function admitApatoProps(enemies, B, tier, now, reduce, zAt, prepare) {
         k[0] = dx; k[1] = -dy / L * w; k[2] = 0; k[3] = bx; k[4] = dy; k[5] = dx / L * w; k[6] = 0; k[7] = by; k[8] = 0; k[9] = 0; k[10] = h; k[11] = z0;
         B.items[B.count++] = f; n++; } }
     for (let i = 0; i < F.rocks.length; i++) { const q = F.rocks[i]; if (!q.on) continue; const X = q.x + .5, Y = q.y + .62;
-      B.items[B.count++] = placeProp(P.rocks[i], M.rock, X, Y, zAt(X, Y) + .7, t * 9 + i, .9, .9, 1); n++; }
+      const fly = Math.max(0, APATO.hands.range / APATO.hands.speed - q.left), z = Math.max(Cd.rockLow, Cd.rockZ0 + Cd.rockUp * fly - Cd.rockFall * fly * fly); // thrown from the palm in an arc
+      B.items[B.count++] = placeProp(P.rocks[i], M.rock, X, Y, zAt(X, Y) + z, (reduce ? 0 : now / 1000 * 9) + i, .9, .9, 1); n++; }
   }
   return n;
 }
