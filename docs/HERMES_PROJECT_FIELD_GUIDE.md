@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Unreleased — Power Aegis: a substantial reflect
+
+Tim (2026-11-19): "the reflect can be pretty substantial... other moves already send back 30 or 40%... it's a hard manoeuvre."
+
+**CODE:** `hit-cast-passives.ts POWER_AEGIS.reflect` 1 → 1.5 and `bossCap` .05 → .15 (of a boss-class foe's maximum health per reflect). Tests compute expected reflects from the table.
+
+**BOUNDARY:** Numbers only; no rule, save or presentation change. Thorned Veil's passive 30% return is unchanged.
+
 ## Release 1015 — Power Aegis reflects; tool bonus
 
 Tim (2026-11-19): tool shots share the empowerment; a perfect parry reflects anything back (shots, roars, beams, blows) except command grabs, which still land.
