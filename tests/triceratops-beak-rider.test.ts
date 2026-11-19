@@ -100,11 +100,11 @@ const RIDER = Object.freeze({ half: .25, up: 1, down: .25, radius: .22 }); // th
 
 export function standardRiderClearance() {
   const s = 40; let worst = Infinity;
-  for (const variant of ["normal", "silly"]) for (const face of ["right", "left"]) for (const move of [...MOVES, ...(variant === "silly" ? ["drill"] : [])]) {
-    const p: any = { x: 5, y: 5, facing: face, walkPhase: 0 }, m = { id: `beak-rider-${variant}-${face}-${move}`, beast: "triceratops", variant };
+  for (const reduce of [false, true]) for (const variant of ["normal", "silly"]) for (const face of ["right", "left"]) for (const move of [...MOVES, ...(variant === "silly" ? ["drill"] : [])]) {
+    const p: any = { x: 5, y: 5, facing: face, walkPhase: 0 }, m = { id: `beak-rider-${reduce}-${variant}-${face}-${move}`, beast: "triceratops", variant };
     for (let i = 0; i < 40; i++) {
       const air = airAt(move, i, 40); let pts: number[][] = [];
-      const seat = drawMount(frillCtx((q) => { pts = q; }), m, p, s, 1000 + i * 16, air * s, false, HORN[move] || null, face, move === "drill" ? { x: face === "right" ? -1 : 1, y: 0 } : null);
+      const seat = drawMount(frillCtx((q) => { pts = q; }), m, p, s, 1000 + i * 16, air * s, reduce, HORN[move] || null, face, move === "drill" ? { x: face === "right" ? -1 : 1, y: 0 } : null);
       if (i < 12) continue;
       assert.ok(pts.length, "the frill was drawn");
       const cx = (p.x + .5) * s + seat.dx, sy = (p.y + .8) * s - air * s - seat.up, x0 = cx - RIDER.half * s, x1 = cx + RIDER.half * s, y0 = sy - RIDER.up * s, y1 = sy + RIDER.down * s;
@@ -115,10 +115,10 @@ export function standardRiderClearance() {
 }
 export function closeViewRiderClearance() {
   const B = MOUNT_BEASTS.triceratops, FR = TRICERATOPS_SKELETON.index.frill; let worst = Infinity;
-  for (const variant of ["good", "silly"]) for (const move of [...MOVES, ...(variant === "silly" ? ["drill"] : [])]) for (const yaw of [0, 2.2]) {
+  for (const reduce of [false, true]) for (const variant of ["good", "silly"]) for (const move of [...MOVES, ...(variant === "silly" ? ["drill"] : [])]) for (const yaw of [0, 2.2]) {
     const tr = createTriceratopsTrack(), e: any = { id: "m", kind: "triceratops", mountView: true, triceratopsDisposition: variant, hp: 1, maxHp: 1, pack: null, facingX: 1, mountDrill: move === "drill" };
     for (let i = 0; i < 40; i++) {
-      const air = airAt(move, i, 40), env: any = { x: 5, y: 5, z: 0, scale: B.scale, now: 1000 + i * 16, reduce: false, tier: "full", target: null, dead: false, yaw, air, horn: HORN[move] || null, drill: move === "drill" ? { angle: i * .5, pivot: 1.05 } : null };
+      const air = airAt(move, i, 40), env: any = { x: 5, y: 5, z: 0, scale: B.scale, now: 1000 + i * 16, reduce, tier: "full", target: null, dead: false, yaw, air, horn: HORN[move] || null, drill: move === "drill" ? { angle: i * .5, pivot: 1.05 } : null };
       const f: any = sampleTriceratops(tr, e, env); if (i < 12) continue;
       const m = f.mesh, P = m.positions, SK = m.skin, K = f.skin, z0 = env.z + B.seat + air; // the card's rider stands at the Wayfarer, on the seat
       for (let v = 0; v < m.vertexCount; v++) { if ((SK[v * 4] | 0) !== FR) continue; const o = FR * 12, q = [0, 1, 2].map((r) => K[o + r * 4] * P[v * 3] + K[o + r * 4 + 1] * P[v * 3 + 1] + K[o + r * 4 + 2] * P[v * 3 + 2] + K[o + r * 4 + 3]);

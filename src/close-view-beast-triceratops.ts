@@ -60,7 +60,7 @@ const WHIRL = Object.freeze({ at: Object.freeze([-.3, .58]), front: .75, back: -
 // upper: the skull's last sections, one skin that turns down at the front into the hook and closes to its point (no separate piece);
 // jaw: the lower jaw's sections (the lower beak at its end tucks inside the hook).
 export const TRICERATOPS_BEAK = Object.freeze({
-  upper: Object.freeze([[.3, -.028, .05, .084], [.335, -.04, .04, .068], [.357, -.062, .03, .04], [.359, -.086, .021, .026], [.36, -.106, 0, 0]].map(Object.freeze)),
+  upper: Object.freeze([[.3, -.028, .05, .084], [.335, -.04, .04, .068], [.358, -.06, .03, .036], [.362, -.085, .02, .024], [.363, -.106, 0, 0]].map(Object.freeze)),
   jaw: Object.freeze([[-.04, .0, .08, .03], [.06, .005, .07, .03], [.15, .01, .052, .026], [.22, .014, .034, .02], [.26, .016, .01, .009]].map(Object.freeze)),
 });
 const BEAK = TRICERATOPS_BEAK;
