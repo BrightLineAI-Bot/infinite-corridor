@@ -71,7 +71,8 @@ import {
   APERTURE_TIER_DUE,
   progressLead,
 } from "./interactions.ts";
-import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks } from "./types.ts";
+import { SEED_HUNT_PICK } from "./atlas-view.ts"; // the compass pick of a seed hunt (2026-11-19)
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
@@ -177,7 +178,7 @@ import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, f
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.ts"; // release 487
-import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -187,12 +188,16 @@ import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, 
 import { addMargin, readMargin } from "./margins.ts";
 import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper } from "./surveyor.ts"; // release 505; 551: part two
+import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace } from "./second-wayfarer.ts"; // the Second Wayfarer (narrative bible, section 4)
 import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Power Aegis (game.ts parryBlow): how a blow reached the Wayfarer. A creature's own blow (the parry may stagger it), and a pack
 // creature's blow (that, and it may be one of its moving bolts, sent back as a shot).
 const PARRY_STRIKE = 1, PARRY_PACK = 3;
+// Tim, 2026-11-19: "reflected damage can count as your own hit". The `src` a direct reflect (reflectBlow) hands landHit: a hit of
+// the Wayfarer's, but not melee, not a tool shot and no charged release (hit-cast-passives.ts passiveHit reads `aegisReflected`).
+const REFLECT_HIT = Object.freeze({ aegisReflected: true });
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
@@ -3665,7 +3670,7 @@ export class Game {
       ? generatePinnedDungeon(this.save, loadingId, {levelId:this.save.session.activeDungeonLevelId||undefined})
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
-    if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
+    if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
@@ -3849,6 +3854,7 @@ export class Game {
     if(area==="overworld")this.reachRefinementTown(); // refinement (items.ts REFINEMENT): the first town past 1,000
     if(area==="overworld")addSurveyorStatue(this.map,this.save,this.rx,this.ry); // release 551: Corwin's statue, once the chain is whole
     if(area==="overworld"){const band=addTravelers(this.map,this.save.seed,this.rx,this.ry),reader=addReciter(this.map,this.save.seed,this.rx,this.ry,this.save),quill=addWanderer(this.map,this.save,this.rx,this.ry),note=wandererArrive(this.save,this.map,this.rx,this.ry);this.claimGuideLair();const beast=questingBeastFor(this.save,this.map,this.rx,this.ry),elder=addElder(this.map,this.save,this.rx,this.ry),worldBeastFound=worldBeastFor(this.save,this.map,this.rx,this.ry),worldBeast=beast&&!worldBeastFound?.retreating?null:worldBeastFound;if(worldBeast){this.map.enemySpawns.push(worldBeast);const companion=astralCompanionFor(this.save,worldBeast,{rx:this.rx,ry:this.ry},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[worldBeast.worldBeast];this.message=worldBeast.retreating?`${B.name} is fleeing through here toward ${BEAST_HOMES[B.home].name}. It cannot be hurt now.`:`${B.arrive} ${worldBeastHoldNote(this.save,worldBeast.worldBeast)}`}/* release 241: a fleeing beast says so, and passes through the Questing Beast's ground too *//* release 235: world beasts */if(!beast&&!worldBeast){const chrys=mothChrysalisFor(this.save,this.map,this.rx,this.ry);if(chrys){this.map.enemySpawns.push(chrys);this.message=CHRYSALIS.found}}/* release 708: the Ashen Moth's chrysalis on a great tree */addStrange(this.map,this.save,this.rx,this.ry);/* release 215: a rare strange tree or stone */addDigSpot(this.map,this.save,this.rx,this.ry);/* release 225: a rare patch of disturbed earth */const ilse=addIlse(this.map,this.save,this.rx,this.ry,!!farSleepSection(this.rx,this.ry));/* release 415: Ilse the Lamplighter */for(const id of mouthsIn(this.save,this.rx,this.ry))placeMouth(this.map,id);/* release 217: second mouths of linked dungeons */if(beast){this.map.enemySpawns.push(beast);this.message=`The Questing Beast hunts here. ${questingBeastHoldNote(this.save)}`}{const seenSky=this.save.atlas?.[`${this.rx},${this.ry}`],guidedSky=!!seenSky?.guideVersion&&guideHost(this.save.seed,"skyway",this.rx,this.ry);if((!seenSky||seenSky.skyVersion)&&!this.map.settlement&&(skylandSection(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1)||guidedSky)&&!this.map.objects.some(o=>o.kind==='skyStair')){const skyV=seenSky?.skyVersion||SKYLANDS.version,disc=skyV>=3?buildSkyDiscs(this.map,this.save.seed,this.rx,this.ry,guidedSky):null,top=disc?{x:disc.x-.5,y:disc.y-.75,elev:disc.level,disc:true}:skyV===2?buildSkyway(this.map,this.save.seed,this.rx,this.ry):null;/* release 585: the skyway ascent; 587: floating discs; waymark guides: a guided host with no room for the discs keeps the plain Sky Stair */const spot=skyV>=2&&(top||!guidedSky)?top:this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&!t.buildingId&&t.x>8&&t.x<24&&t.y>8&&t.y<24&&!this.map.objects.some(o=>Math.hypot(o.x-t.x,o.y-t.y)<2)).sort((a,b)=>Math.hypot(a.x-16,a.y-15)-Math.hypot(b.x-16,b.y-15))[0];if(spot&&top)this.map.objects.push({id:`skyway-${this.rx}-${this.ry}`,kind:'skyStair',name:'Skyway',skyway:true,elev:top.elev,...(top.disc?{disc:true}:{}),lore:'At the top of the floating steps a door of pale stone stands in the open air, and behind it is sky.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});else if(spot)this.map.objects.push({id:`sky-stair-${this.rx}-${this.ry}`,kind:'skyStair',name:'Sky Stair',lore:'A stair of pale stone climbs into the open air and stops. Above it, islands drift. The divine challenge is offered to anyone who climbs.',x:spot.x,y:spot.y,state:'open',actions:['ascend:0']});const annex=spot&&skyAnnexStair(this.save.seed,this.rx,this.ry,seenSky?.skyPlace||1),st=annex&&this.map.objects.find(o=>o.kind==='skyStair');if(st){Object.assign(st,{skyAnnex:true,name:`${st.name} · ${SKY_ANNEX.name}`,lore:SKY_ANNEX.messages.stair});this.message=SKY_ANNEX.messages.stair}/* release 678: the Skylands Deep Annex, named before you climb */const rec=spot&&this.save.atlas?.[`${this.rx},${this.ry}`];if(rec&&Array.isArray(rec.sites)&&!rec.sites.some(q=>q.kind==='skyStair'))rec.sites.push({kind:'skyStair',name:st?st.name:top?'Skyway':'Sky Stair',x:spot.x,y:spot.y})}}/* release 571: the Skylands */if(!beast&&!worldBeast){const passing=passingBeastFor(this.save,this.map,this.rx,this.ry,Object.keys(this.save.explored||{}).length);if(passing){this.map.enemySpawns.push(passing);passingSeen(this.save);/* sightings (2026-11-11): one passer between meetings */this.passingNote=`Far off, ${WORLD_BEASTS[passing.passingBeast].name} moves through, bound for ${BEAST_HOMES[WORLD_BEASTS[passing.passingBeast].home].name}. It pays you no mind: it is only passing through, a sight, not a hunt you can follow.`}}/* release 569 */if(beast||worldBeast){}else if(ilse)this.message=ilse.stage===5?"A lamp burns in the meadow with no post beneath it.":"Someone is tending a lamp nearby.";else if(elder)this.message="Something tall and silent walks the road.";else if(note)this.message=note;else if(quill)this.message="A cartographer on a moss grazer is sketching the horizon.";else if(reader)this.message=`${reader.name} walks by, murmuring.`;else if(band&&!this.map.skirmish&&!this.map.settlement)this.message=`${band.title} on the road.`}
+    if(area==="overworld")this.secondWayfarerArrive(); // the Second Wayfarer: seen at a distance on the next section of the trail (after the road's own arrivals, so its line is the one shown)
     this.activatedEncounterGroups=new Set;
     if(area==="dungeon"&&!this.map.seedRealm/* seed realms: no world beasts */){const haunt=worldBeastForDungeon(this.save,this.map,this.areaId());if(haunt){this.map.enemySpawns.push(haunt);const companion=astralCompanionFor(this.save,haunt,{dungeon:this.areaId(),level:this.map.levelId||"root"},this.map.enemySpawns.length);if(companion)this.map.enemySpawns.push(companion);const B=WORLD_BEASTS[haunt.worldBeast];this.beastNote=haunt.retreating?`${B.name} is retreating ${haunt.worldBeast === "voidWalker" ? "toward the nearest reachable dungeon door" : haunt.worldBeast === "astralWorm" ? "toward the nearest reachable Wayglass" : "toward the water"}. It cannot be hurt now.`:`${B.arriveDungeon||B.arrive} ${worldBeastHoldNote(this.save,haunt.worldBeast)}`}} /* release 249: the Psychic Crystal haunts dungeons with water */
     if (area === "dungeon" && !this.map.enemySpawns.some((q) => q.extraSpawn)) for (const q of this.extraDungeonSpawns()) this.map.enemySpawns.push(q); // release 463: more foes
@@ -4889,6 +4895,7 @@ export class Game {
       damage(e, amount) { if (e.dead) return; alertEnemy(e); const before = Math.max(0,e.hp); e.hp -= wayfarerDamage(amount * strikeAmplifier(game.save) * vulnScale(e, now)); /* Tim 2026-11-11: WAYFARER_DAMAGE; Tempo's window */ game.astralPlayerHit(e, Math.max(0,before-Math.max(0,e.hp))); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
       heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; const before = p.hp; p.hp = Math.min(game.save.maxHp, p.hp + whole); if (p.hp > before) (game.glyphVisuals ||= []).push({ kind: "heal", x: p.x + .5, y: p.y - .1, amount: p.hp - before, life: .9, max: .9 }); } },
       stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
+      pull(e, amount) { if (e && !e.dead) game.pullBuild(e, amount, now); }, // Encumbered: a pull's damage (glyphs.ts Tether, Maelstrom; echoes.ts Maw's Hunger)
       blast(x, y, radius, amount) {
         (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius, life: .35, max: .35 });
         for (const e of game.enemies) if (!e.dead && !e.untargetable && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + .2) this.damage(e, amount);
@@ -5067,6 +5074,17 @@ export class Game {
   }
   // Arcana rewards (threads.ts ARCANA_REWARDS, 2026-11-11): the hook run when a set is finished. No set names a reward yet, so
   // nothing is granted; when one does, its kind is applied here and announced, once (save.lore.arcanaClaimed).
+  // The Second Wayfarer (second-wayfarer.ts): coming into the trail's next section, they are seen far off and what they left is laid;
+  // a section with no open ground counts its sighting on arrival.
+  secondWayfarerArrive() {
+    const r = addSecondTrace(this.map, this.save, this.rx, this.ry); if (!r) return;
+    if (r.passed) { this.message = r.passed.message; this.noteSecondSighting(r.passed); }
+    else if (r.sighting) { this.message = r.sighting; (this.questNotices ||= []).push({ title: "SOMEONE AHEAD", detail: `far off, at the edge of this section · ${SECOND_WAYFARER.title}`, kind: "discovery" }); }
+  }
+  noteSecondSighting(r) {
+    journalOnce(this.save, `second-wayfarer:${r.index}`, r.passed ? r.text : `${SECOND_SIGHTINGS[r.index]} ${r.text}`, SECOND_WAYFARER.title); // what was seen at a distance, then what was left
+    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · nobody is ahead of you now`, kind: "quest" }); }
+  }
   settleArcana() {
     const paid = settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });
     // 2026-11-11: the passives the sets earn (lore.ts ARCANA_UNLOCKS), once each, announced and journalled.
@@ -5599,7 +5617,7 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
-    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); this.sync(); return r; } // 2026-11-11
+    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
     if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
@@ -5722,6 +5740,8 @@ export class Game {
     if (o.kind === "watcherTomb" && !action && this.area === "overworld" && o.where !== "crypt" && realmSeedKinds().some((k) => seedCount(this.save, k) > 0)) return this.offerSeedMenu(o); // seed realms: offer, or touch
     if (o.kind === "watcherTomb") return this.touchWatcherTomb(o); // release 289
     if (o.kind === "surveyorLink") { const r = takeSurveyorLink(this.save, o, this.areaId()); this.message = r.message; if (r.ok) journalOnce(this.save, `surveyor:${r.index}`, `Link ${r.total} of ${SURVEYOR.links}. "${r.note}"`, "The Surveyor's Chain"); if (r.ok && r.total >= SURVEYOR.links) { const at = surveyorStatueSection(this.save); this.message += ` On your Atlas the twelve crossings join into one chain, and it runs on to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`; journalOnce(this.save, "surveyor:map", `Laid end to end, the crossings where the links lay draw a chain across the Atlas. It runs on past the last of them to the edge of the Far Sleep, at ${at.rx}, ${at.ry}.`, "The Surveyor's Chain"); this.settleArcana(); } this.sync(); return r; } // release 505; 551: the last map
+    if (o.kind === "secondFootprints") { const r = readSecondFootprints(this.save, o); this.message = r.message; if (r.begun) { journalOnce(this.save, "second-wayfarer:footprints", r.message, SECOND_WAYFARER.title); setCompassChoice(this.save, { follow: { kind: "quest", id: "second" } }); /* taking up the trail is choosing it: the compass follows it (types.ts) */ (this.questNotices ||= []).push({ title: "SOMEONE AHEAD", detail: `${SECOND_WAYFARER.title} · section ${r.next.rx}, ${r.next.ry}`, kind: "quest" }); } this.sync(); return r; }
+    if (o.kind === "secondTrace") { const r = readSecondTrace(this.save, o); this.message = r.message; if (r.first) this.noteSecondSighting(r); this.sync(); return r; }
     if (o.kind === "surveyorStatue") { const r = visitSurveyorStatue(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, "surveyor:statue", r.message, "The Surveyor's Chain"); this.sync(); return r; } // release 551
     if (o.kind === "marginNote") { const r = readMargin(this.save, o); this.message = r.message; if (r.ok) { const reading = READINGS[o.readingId], known = readingKnown(this.save, o.readingId), prog = bookProgress(this.save, o.readingId); if (r.first) { journalOnce(this.save, `margin:${o.readingId}:${o.margin}`, r.message, known ? `Margins · ${reading.name}` : "Margins"); this.message += known ? ` (A margin of ${reading.name}: ${prog.found} of ${prog.total} fragments.)` : " (A fragment of a book you have not heard yet.)"; } } this.sync(); return r; } // release 455
     if (o.kind === "tornPage") { const r = readTornPage(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `torn-page:${o.reading}`, `A torn page: "${r.text}…"`, "The Torn Pages"); if (r.done) { journalOnce(this.save, "torn-page:book", PAGES_FINAL, "The Torn Pages"); this.settleArcana(); } } this.sync(); return r; } // release 595
@@ -6053,6 +6073,7 @@ export class Game {
     const text = huntText(M.glimpse, { dir: huntHeading(dx, dy), n: Math.max(Math.abs(dx), Math.abs(dy)), a: /^[AEIOU]/.test(S.name) ? "an" : "a", seed: S.name, rx: target.rx, ry: target.ry });
     journalOnce(this.save, `seed-hunt:${id}`, `${text} ${M.lore}`, "The Upwells");
     (this.questNotices ||= []).push({ title: "SEED HUNT", detail: `${S.name} · ${target.rx},${target.ry} · marked on the Atlas`, kind: "discovery" });
+    setCompassChoice(this.save, { pick: `${SEED_HUNT_PICK}${id}` }); // Tim, 2026-11-19: a seed hunt started at a lookout is accepted: the compass points at it (atlas-view.ts objectiveKey)
     return { hunt, fresh: true, text };
   }
   // Lay the seed of each live hunt aiming here, over the place as loaded (after the world caches, so they lie as they would
@@ -7103,7 +7124,7 @@ export class Game {
     const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
-    amount *= weakenScale(source, now); // Arcane Edge's Dusk: a weakened foe's blows take less
+    amount *= weakenScale(source, now) * foeDealtScale(source); // Arcane Edge's Dusk: a weakened foe's blows take less; an Encumbered one's too (ENCUMBERED.dealtMul)
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
     this.parryBlow(source, now, amount, null, options.source || null, PARRY_PACK); // Power Aegis: `amount` is what the blow carried
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
@@ -8049,6 +8070,7 @@ export class Game {
     const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
     Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
     journalOnce(this.save, "hatchling:quest", `${M.offer} (${site.rx},${site.ry})`, "Beast Hotel");
+    setCompassChoice(this.save, { follow: { kind: "rescue" } }); // 2026-11-19 (Tim): taking the quest points the compass at it
     (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: `${site.rx},${site.ry} · marked on the Atlas`, kind: "discovery" });
     if (o) o.state = "sick";
     return { ok: true, message: (this.message = M.offer), quest: q };
@@ -8827,11 +8849,19 @@ export class Game {
   }
   // On-hit Echoes (echoes.ts ON_HIT_ECHOES, Tim 2026-11-18): the Wayfarer's own blow landed, taking `actual` health. Never a burn's
   // tick nor a proc's damage (glyphWorld): those never call this. One reused record, so a hit allocates nothing.
-  landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || e.kind === "npc") return; const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */ }
+  landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || e.kind === "npc") return;
+    // Power Aegis: a reflect is the Wayfarer's own hit (Tim, 2026-11-19); whatever its on-hit effects do never parries (`_reflecting`), so nothing ping-pongs
+    const rf = !this._reflecting && !!src && typeof src === "object" && src.aegisReflected === true; if (rf) this._reflecting = true;
+    try { const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */ }
+    finally { if (rf) this._reflecting = false; } }
   // hit-cast-passives.ts hooks: a foe's damage multiple now (Tempo), a new charged release's id (Rapid Reload), a spell cast.
   vulnScale(e, now = this.lastUpdateNow || 0) { return vulnScale(e, now); }
   chargedRelease(cost = 0) { return chargedRelease(this, cost); }
   passiveCast(now = this.lastUpdateNow || 0) { passiveCast(this, now, CASTABLES[`spell:${this.save.equippedSpell}`]?.attr || null, Number(this._essencePaying) || 0); }
+  // Encumbered (hit-cast-passives.ts ENCUMBERED): damage a pull dealt fills the foe's meter (its class sets the threshold).
+  pullBuild(e, amount, now = this.lastUpdateNow || 0) { return pullBuild(this, e, amount, now, staggerClass(e)); }
+  // Glyph Mine × Rift Step (hit-cast-passives.ts RIFT_MINE): a step taken from `from` to `to`, `charges` left (constellation.ts riftCommit).
+  riftStepMine(from, to, charges, now = this.lastUpdateNow || 0) { return riftStepMine(this, from, to, charges, now); }
   frenzyBlow(e) { const f = this.frenzy; if (f?.active && e?.kind === "doomChaser" && !e.dead) f.cure = (f.cure || 0) + 1; }
   frenzyTick(dt) {
     const f = this.frenzy; if (!f) return; const d = this.enemies.find((q) => q.kind === "doomChaser" && !q.dead), p = this.player;
@@ -8887,9 +8917,9 @@ export class Game {
     if (e.mothChrysalis) this.hatchMoth(e); // release 708
     if (e.worldBeast === TURTLE_SHELL.beast && this.save.worldBeasts?.[e.worldBeast]) this._shellCycle = this.save.worldBeasts[e.worldBeast].cycle; // the kill's cycle, before the fall advances it
     if (e.worldBeast && WORLD_BEASTS[e.worldBeast]) { const B = WORLD_BEASTS[e.worldBeast], won = worldBeastSlain(this.save, e.worldBeast); journalOnce(this.save, `world-beast-slain:${e.worldBeast}:${this.save.worldBeasts[e.worldBeast].slain}`, `You slew ${B.name} at ${this.rx},${this.ry}.`, B.name); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `${B.name} · +${won.marks} marks`, kind: "danger" }; this.message = won.message; if (e.worldBeast === TURTLE_SHELL.beast) this.restTurtleShell(e, this._shellCycle); } // release 235
-    if (e.worldBeast) { const civ = openFarQuest(this.save, e.worldBeast, this.rx, this.ry); if (civ) { const C = farQuestInfo(civ); journalOnce(this.save, `far-quest:${civ}`, C.quest, C.name); (this.questNotices ||= []).push({ title: C.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // release 716
+    if (e.worldBeast) { const civ = openFarQuest(this.save, e.worldBeast, this.rx, this.ry); if (civ) { const C = farQuestInfo(civ); journalOnce(this.save, `far-quest:${civ}`, C.quest, C.name); setCompassChoice(this.save, { follow: { kind: "far", id: civ, name: C.name } }); /* 2026-11-19 (Tim): a new quest is a choice: the compass follows it */ (this.questNotices ||= []).push({ title: C.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // release 716
     if (e.stalker) { const won = stalkerSlain(this.save); if (ECHOES.stalker && this.save.echoes?.owned && !this.save.echoes.owned.stalker) { this.save.echoes.owned.stalker = true; won.echo = "stalker"; } /* release 699: Stalker's Mist */ for (let i = 0; i < STALKER.reward.drops; i++) this.obtainDrop("stalker"); for (const q of this.enemies) if (q.stalkerOf === e.id && !q.dead) { q.dead = true; q.noRewards = true; } journalOnce(this.save, `stalker-slain:${this.save.stalker.kills}`, `You killed the Stalker at ${this.rx},${this.ry}. It will hunt again, in time.`, "The Stalker"); this._stalkerWon = won; } // release 678
-    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; const dom = openFarQuest(this.save, "questingBeast", this.rx, this.ry); if (dom) { const D = FAR_DOMAINS[dom]; journalOnce(this.save, `far-quest:${dom}`, D.quest, D.name.replace(/^the /, "The ")); (this.questNotices ||= []).push({ title: D.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // 723: far out, it opens the quest to its domain
+    if (e.questingBeast) { const won = questingBeastSlain(this.save); journalOnce(this.save, `questing-beast-slain:${this.save.questingBeast.slain}`, `You slew the Questing Beast at ${this.rx},${this.ry}.`, "The Questing Beast"); this.defeatNotice = { title: "ARCHFIEND SLAIN", detail: `The Questing Beast · +${won.marks} marks`, kind: "danger" }; this.message = won.message; const dom = openFarQuest(this.save, "questingBeast", this.rx, this.ry); if (dom) { const D = FAR_DOMAINS[dom]; journalOnce(this.save, `far-quest:${dom}`, D.quest, D.name.replace(/^the /, "The ")); setCompassChoice(this.save, { follow: { kind: "far", id: dom, name: farQuestInfo(dom)?.name || D.name } }); (this.questNotices ||= []).push({ title: D.name.toUpperCase(), detail: "a new quest · follow your compass", kind: "discovery" }); } } // 723: far out, it opens the quest to its domain
     if (!e.ambient && !e.noRewards) { const done = wandererKill(this.save); if (done) { this.message = done; journalOnce(this.save, `wanderer-done:${this.save.wanderer.stage}`, done, "Old Quillon"); } }
     if (e.ambient) {
       e.rewarded = true;
@@ -10399,12 +10429,14 @@ export class Game {
   // its maximum health from one.
   reflectDamage(e, n) { const P = POWER_AEGIS; n = Number(n) || 0; return staggerClass(e) === "boss" ? Math.min(n, Math.max(1, Math.round((Number(e.maxHp) || 0) * P.bossCap))) : n; }
   // A parried game projectile turns round where it struck: friendly, gold, faster, homing on whoever loosed it (else the nearest
-  // foe), carrying POWER_AEGIS.reflect of its damage. `minor`: a foe's blow sent back, not the Wayfarer's (no on-hit passives).
+  // foe), carrying POWER_AEGIS.reflect of its damage. It is the Wayfarer's own shot (Tim, 2026-11-19: "reflected damage can count
+  // as your own hit"): the projectile hit path gives it the frenzy blow, on-hit Echoes and passives and kill credit as any of hers,
+  // but no glyphs (no tool, spell or weapon loosed it), no charged release, and its damage is the reflect's alone (`aegisReflected`).
   turnShot(q, now) {
     const P = POWER_AEGIS, to = this.reflectTarget(this.shotOwner(q), q.x, q.y);
     let dx = -(Number(q.dx) || 0), dy = -(Number(q.dy) || 0); if (to) { dx = to.x + .5 - q.x; dy = to.y + .45 - q.y; }
     const m = Math.hypot(dx, dy) || 1;
-    Object.assign(q, { dead: false, impact: null, hostile: false, aegisReflected: true, aegisAt: now, minor: true, dx: dx / m, dy: dy / m, speed: (Number(q.speed) || 4) * P.shotSpeed, life: P.shotLife, age: 0,
+    Object.assign(q, { dead: false, impact: null, hostile: false, aegisReflected: true, aegisAt: now, minor: false, glyphHost: null, rr: 0, echo: false, shard: false, dx: dx / m, dy: dy / m, speed: (Number(q.speed) || 4) * P.shotSpeed, life: P.shotLife, age: 0,
       damage: Math.max(1, Math.round((Number(q.damage) || 1) * P.reflect)), pierce: 0, path: "straight", homingTurnRate: 0, splitAfter: null, jumpable: false, seekId: to ? to.id : null, seekTurn: P.shotTurn });
     if (q.hits && typeof q.hits === "object") { for (const k in q.hits) delete q.hits[k]; } else q.hits = {};
     return true;
@@ -10416,19 +10448,23 @@ export class Game {
     if (this._parryShot || !(n > 0)) return 0;
     if (this._parryBolt) { const p = this.player, cap = this.area === "dungeon" ? 32 : 64, x = p.x + .5, y = p.y + .45, to = this.reflectTarget(this._reflectFoe, x, y);
       if (to && this.projectiles.length < cap) { const dx = to.x + .5 - x, dy = to.y + .45 - y, m = Math.hypot(dx, dy) || 1;
-        this.projectiles.push({ id: `aegis-bolt-${Math.round(now)}`, x: x + dx / m * .5, y: y + dy / m * .5, dx: dx / m, dy: dy / m, speed: P.boltSpeed, life: P.shotLife, age: 0, damage: Math.max(1, Math.round(n)), hostile: false, aegisReflected: true, aegisAt: now, minor: true, path: "straight", hits: {}, seekId: to.id, seekTurn: P.shotTurn });
+        this.projectiles.push({ id: `aegis-bolt-${Math.round(now)}`, x: x + dx / m * .5, y: y + dy / m * .5, dx: dx / m, dy: dy / m, speed: P.boltSpeed, life: P.shotLife, age: 0, damage: Math.max(1, Math.round(n)), hostile: false, aegisReflected: true, aegisAt: now, path: "straight", hits: {}, seekId: to.id, seekTurn: P.shotTurn });
         return n; } }
     return this.reflectBlow(this._reflectFoe, n, now);
   }
-  // Direct reflected damage on the creature that made the blow, with a gold flash on it (brawler-spells.ts drawPowerAegis).
+  // Direct reflected damage on the creature that made the blow, with a gold flash on it (brawler-spells.ts drawPowerAegis). It is
+  // the Wayfarer's own hit (landHit with REFLECT_HIT: on-hit Echoes and passives, the frenzy blow, kill credit); `_reflecting` holds
+  // throughout, so nothing it sets off parries.
   reflectBlow(foe, n, now = this.lastUpdateNow || 0) {
     if (!foe || foe.dead || !(foe.hp > 0) || foe.kind === "npc" || foe.untargetable || foe.illusion || foe.astralAllyOf || !this.enemies.includes(foe)) return 0;
     const d = Math.max(1, Math.round(this.reflectDamage(foe, n))), before = foe.hp;
     this._reflecting = true;
     try {
       foe.hp -= d; foe.hitFlash = .18; foe.aggro = true; foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? .1 : .18); // as a shot's hit; the stagger governor bounds it
-      this.astralPlayerHit(foe, Math.max(0, before - Math.max(0, foe.hp)));
-      if (foe.hp <= 0 && !foe.dead) { foe.dead = true; this.defeatEnemy(foe); }
+      const actual = Math.max(0, before - Math.max(0, foe.hp));
+      this.astralPlayerHit(foe, actual);
+      if (foe.hp <= 0 && !foe.dead) { foe.dead = true; this.defeatEnemy(foe); } // kill credit, as a shot's (updateProjectiles onDefeat)
+      this.frenzyBlow(foe); this.landHit(foe, actual, now, REFLECT_HIT); // the Wayfarer's own hit (Tim, 2026-11-19), in the order a shot's lands
     } finally { this._reflecting = false; }
     this.reflectFlashAt = now; this.reflectFlashX = foe.x; this.reflectFlashY = foe.y;
     return d;
@@ -12604,7 +12640,8 @@ export class Game {
         if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
-        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
+        const enc=encumberedAny(this)?foeDealtScale(this.shotOwner(shot)):1; // Encumbered: its shooter's shots deal less too
+        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*enc*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
         if (shot.hostile) this.noteHurtVisualImpact(); this.parryBlow(null, now, shot.damage, shot); // Power Aegis: a shot parried turns round (turnShot)
         p.invulnerableUntil=now+700;
       },
@@ -12629,7 +12666,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!fx.hostile && e.kind !== "npc" && actual > 0 && (fx.kind === "gravity-well" || fx.clap)) this.pullBuild(e, actual, now); /* Encumbered: the Gravity Well (and the perfect Orbit Volley's vortex) and the Hammerfall's clap pull */ if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y }, pulled: fx.kind === "gravity-well" || !!fx.clap }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
       (fx, e) => this.clapClear(fx, e), // the awakened Hammerfall's clap strikes only foes it can see from its centre line
     );
@@ -12703,7 +12740,7 @@ export class Game {
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
-      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;n*=foeDealtScale(e);/* Encumbered */p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
       pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}},
       // Leviathans (W4): krakens raise bounded tentacles (summoned, no rewards) and the Stormkraken inks the sea.
       tentacles:(o)=>this.enemies.filter(q=>!q.dead&&q.summonedBy===o.id).length+seaSummons.filter(q=>q.summonedBy===o.id).length,
@@ -12763,7 +12800,7 @@ export class Game {
         p.hp -= Math.max(
           1,
           Math.ceil(
-            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
+            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * foeDealtScale(e) * /* Encumbered; release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );

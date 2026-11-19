@@ -47,7 +47,10 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // (straight line, band `beyond`) the first ten's roll takes no slot, and its share joins the shared roll, so the whole 0.12 is
 // shared there among the far threads and the deep-band shared threads at their weights. Inside 1000 version 4 rolls exactly as
 // version 3, so the first ten can still be read on the way out. Crossings pinned at version 0 to 3 roll exactly as before.
-export const STORY_BUDGET = { version: 4, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12 }, firstTenGivesWay: 4 };
+// Story version 5 (2026-11-19): no thread changes and the budget stays 0.12; it marks the crossings first entered from then on, the
+// only ones that may hold the Second Wayfarer's footprints (second-wayfarer.ts SECOND_WAYFARER.storyVersion), where no thread
+// piece lies. Every roll here reads a version through `>=` or "the latest entry at or before", so version 5 rolls exactly as 4.
+export const STORY_BUDGET = { version: 5, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),

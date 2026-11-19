@@ -103,7 +103,7 @@ test('drag anywhere (the default): a drag outside the joystick pans on either si
   P.fire('pointerup', 1, 372, 700); ui.sync(); assert.ok(wrap(CV.closeViewCamera().yaw - y0) > .2, `dragging right turns the view right (${wrap(CV.closeViewCamera().yaw - y0).toFixed(3)})`);
   const beforeLeft = CV.closeViewCamera().yaw;
   assert.equal(P.fire('pointerdown', 2, 80, 400), true, 'an off-stick press on the left belongs to the camera');
-  P.fire('pointermove', 2, 132, 400); P.fire('pointerup', 2, 132, 400);
+  P.fire('pointermove', 2, 132, 400); P.fire('pointerup', 2, 132, 400); for (let i = 0; i < 20; i++) { T += 16; ui.sync(); } // 2026-11-19 polish: a release eases out what is left (no flush jump)
   assert.ok(wrap(CV.closeViewCamera().yaw - beforeLeft) > .2, 'a left-side drag outside the stick pans');
   let taps = 0; P.canvas.listeners.worldtap = [() => taps++]; P.fire('pointerdown', 3, 330, 250); P.fire('pointerup', 3, 332, 251); assert.equal(taps, 1, 'a tap on the right still reaches the world');
   const yl = CV.closeViewCamera().yaw; ui.lock.listeners.pointerdown[0]({ pointerId: 4, clientX: 360, clientY: 300, preventDefault() {}, stopPropagation() {} }); ui.lock.listeners.pointerup[0]({ pointerId: 4, clientX: 360, clientY: 300, preventDefault() {}, stopPropagation() {} });
