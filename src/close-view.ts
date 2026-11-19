@@ -785,7 +785,7 @@ export const CLOSE_VIEW = Object.freeze({
   // nearest `of` sources (`per` each; full tier only); `props`: at most `cards` card props (cobwebs, chains, bones) a frame (never within `nearCam` of the camera),
   // within `reach` tiles; `silhouette`: the Wayfarer's colour where a wall hides them (a creature's: `silhouetteFoe`), at
   // `silAlpha`; `sprite`: billboards at device resolution up to `cap` x CSS px, the nearest taking up to `nearShare` of the
-  // atlas; `boardLight`: a creature card's light, floor and ceiling (so a foe in the dark still reads); `nearFade`: with the camera close, the Wayfarer is never fainter than this.
+  // atlas; `boardLight`: a card's light, floor and ceiling, for the cards that are not creatures (a creature's card takes the floor's own light, no floor: CLOSE_VIEW_VISIBILITY, Tim 2026-11-19); `nearFade`: with the camera close, the Wayfarer is never fainter than this.
   atmosphere: Object.freeze({ lights: 8, flicker: Object.freeze([.12, 210]), flame: Object.freeze([.06, .12, .6]), motes: Object.freeze({ per: 9, of: 3, size: .022, alpha: .5, drift: .25 }),
     props: Object.freeze({ cards: 28, reach: 9, nearCam: 1.1 }), silhouette: Object.freeze([150, 200, 230]), silhouetteFoe: Object.freeze([220, 90, 70]), silAlpha: .7, sprite: Object.freeze({ cap: 3, nearShare: .55 }),
     boardLight: Object.freeze([.42, 1.25]), nearFade: .8 }),
@@ -3017,6 +3017,37 @@ function packBillboards(g, draws, n, s, facing, native = null) {
 // Creature solidity diagnostics (2026-11-14, for tests and the lab): how each creature was drawn on the last frame, and at what
 // opacity: 'model' (a native body), 'beast' (a skinned body on the beast rig), 'board' (its card) or 'none' (no room on the
 // card atlas). One small record per creature, kept with it; nothing is allocated per frame.
+// Close View visibility (Tim, 2026-11-19). The numbers as one table; tests/close-view-visibility.test.ts pins them.
+// silhouette: a creature's x-ray shape (close-view-gl.ts, the depth GREATER pass) shows only where walls or solid architecture
+//   hide it: props are drawn after that pass (GLF.propA..propB), so nothing is seen through a crate, a cabinet or furniture. And
+//   never for a creature within `near` tiles of the Wayfarer, one engaging her (winding up, striking, recovering, her locked
+//   target: foeEngaging), or a dying body. `runs`: the most model vertex runs the pass draws a frame (GLF.silRuns; past it the
+//   last run is extended, never a new draw call).
+// between: a creature standing between the camera and the Wayfarer, its card's screen box covering at least `overlap` of hers and
+//   nearer the eye than her by `depth` tiles, fades to `alpha` so she is never hidden; eased over `sec` (smoothstep, the polish
+//   pass's creature fade), in at once and out at once with Reduced Motion; held while paused.
+// Light: a creature card takes the floor's own light where it stands (closeViewFloorLight: the ambient, the carried light, the
+//   sun and the placed sources, with the floor's up normal), no floor of its own (it was CLOSE_VIEW.actors.boardLight's .42).
+export const CLOSE_VIEW_VISIBILITY = Object.freeze({
+  silhouette: Object.freeze({ near: 2, runs: 16 }),
+  between: Object.freeze({ alpha: .35, sec: CLOSE_VIEW_POLISH.fade.creatureSec, overlap: .2, depth: .3 }),
+});
+// Whether a creature may show its silhouette through a wall this frame (CLOSE_VIEW_VISIBILITY.silhouette). Pure; no allocation.
+export function closeViewSilhouetteAllowed(e, g) {
+  if (!e || typeof e !== "object" || e.dead || !((Number(e.hp) || 0) > 0) || !g?.player) return false;
+  const d = Math.hypot((Number(e.x) || 0) - (Number(g.player.x) || 0), (Number(e.y) || 0) - (Number(g.player.y) || 0));
+  return d > CLOSE_VIEW_VISIBILITY.silhouette.near && !foeEngaging(e, g);
+}
+// The floor's light at (X, Y, Z) as close-view-gl.ts lightsAt() gives it with the up normal (the floor's own shading), as one
+// level (the channels' mean, as lightLevel). A creature card takes exactly this: no floor, no boost. Exported for tests.
+export function closeViewFloorLight(F, X, Y, Z) {
+  let l = lumOf(F.amb); const tx = F.px - X, ty = F.py - Y, tz = F.torchP[2] - Z, td = Math.max(1e-3, Math.hypot(tx, ty, tz)), w = F.torchP[3];
+  l += lumOf(F.torch) * falloff(td, F.torchP[0]) * F.torchP[1] * Math.max(0, Math.min(1, (tz / td + w) / (1 + w)));
+  l += lumOf(F.sunC) * Math.max(0, Math.min(1, ((F.sun[2] || 0) + .12) / 1.12));
+  for (let i = 0; i < F.nl; i++) { const o = i * 4, qz = F.lp[o + 2] - Z, q = Math.max(1e-3, Math.hypot(F.lp[o] - X, F.lp[o + 1] - Y, qz)), k = falloff(q, F.lp[o + 3]) * F.lc[o + 3];
+    if (k > 0) l += (F.lc[o] + F.lc[o + 1] + F.lc[o + 2]) / 3 * k * Math.max(0, Math.min(1, (qz / q + .25) / 1.25)); }
+  return Math.max(0, l);
+}
 const SOLIDITY = new WeakMap();
 const solidityOf = (foe) => { let r = SOLIDITY.get(foe); if (!r) { r = { path: "", alpha: 0, frame: -1, near: false, engaging: false, d: Infinity, w: 0, seen: -2, body: -2, card: -2, m: NaN, mf: -2, wardAt: -Infinity, ward: 1 }; SOLIDITY.set(foe, r); } return r; };
 // CLOSE_VIEW.creatures.ward: a warded creature's Close View opacity this frame (`ward.alpha` while warded and for `ward.holdMs`
@@ -3055,11 +3086,17 @@ export function closeViewCreatureSolidWeight(e, g, dt) {
   r.seen = F; return r.w;
 }
 export const closeViewCreatureSolidity = (foe) => { const r = SOLIDITY.get(foe); return r && r.frame === closeViewStats.frames - 1 ? r : null; };
+export const closeViewCreatureBetween = (foe) => FOE_FADE.get(foe)?.bv ?? 1; // for tests: a creature's eased share of CLOSE_VIEW_VISIBILITY.between (1: untouched, down to its alpha)
 export const closeViewCreatureFade = (foe) => FOE_FADE.get(foe)?.c ?? 1; // for tests: a creature's eased share of the occluder window (CLOSE_VIEW.camera.occlude.creature)
 const FOE_FADE = new WeakMap(); // creature -> { a: its eased opacity, o: how far a wall hides it, eased } (one small object a creature, kept with it)
 function occludeBillboards(n, faces, paused = false, reduce = false, map = null) {
   const A = CLOSE_VIEW.actors, Cu = CLOSE_VIEW.cues, k = 1 - Math.exp(-Cu.fade * CAM.dt /* version 4: a repeat of the same instant changes nothing */);
   const Oc = CLOSE_VIEW.camera.occlude, kc = reduce ? 1 : 1 - Math.exp(-Oc.rate * CAM.dt); // a creature between the eye and the Wayfarer (the occluder window)
+  // CLOSE_VIEW_VISIBILITY.between: the Wayfarer's card box this frame (her screen box and depth), found once (bounded: one pass)
+  const Bw = CLOSE_VIEW_VISIBILITY.between, bdt = paused ? 0 : CAM.dt, bsec = reduce ? 0 : Bw.sec; let me = -1;
+  if (capturedPlayer) for (let j = 0; j < n; j++) if (itemKind[j] === 1 && captured?.[itemRef[j]] === capturedPlayer) { me = j; break; }
+  let mx0 = 0, mx1 = 0, my0 = 0, my1 = 0, mArea = 0, mDepth = 0;
+  if (me >= 0) { const sc = boardScale[me] || 1, kk = boardK[me], hw = CLOSE_VIEW.pick.bodyWidth * .5 * sc * kk; mx0 = boardX[me] - hw; mx1 = boardX[me] + hw; my1 = boardY[me]; my0 = my1 - A.height * .8 * sc * kk; mArea = (mx1 - mx0) * (my1 - my0); mDepth = itemDepth[me]; }
   for (let j = 0; j < n; j++) { if (itemKind[j] !== 1) continue;
     const sc = boardScale[j], kk = boardK[j], hw = CLOSE_VIEW.pick.bodyWidth * .5 * sc * kk, bx0 = boardX[j] - hw, bx1 = boardX[j] + hw, by1 = boardY[j], by0 = by1 - A.height * .8 * sc * kk, wx = boardWX[j], wy = boardWY[j];
     let upper = Infinity, lower = -Infinity, occ = 0;
@@ -3075,9 +3112,13 @@ function occludeBillboards(n, faces, paused = false, reduce = false, map = null)
       // Solid creatures (CLOSE_VIEW.creatures): the opacity is what the view asks this frame, never eased from nothing (it
       // was, at cues.fade a second, so every creature swam into sight and lagged behind the fog). Only the wall's hiding eases.
       const cut = Oc.creatureFade && OCC.on && (Number(foe.scale) || 0) >= Oc.creatureScale ? creatureOccluded(wx, wy, map ? surfaceZ(map, wx, wy) : 0, A.height * sc, CLOSE_VIEW.pick.bodyWidth * .5 * sc) : 1;
-      if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames }; FOE_FADE.set(foe, st); }
+      if (!st) { st = { o: occ, c: cut, f: closeViewStats.frames, v: NaN, bv: 1 }; FOE_FADE.set(foe, st); }
       st.o += (occ - st.o) * k; boardOcc[j] = st.o;
-      if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c; } } // not drawn last frame: no stale fade carried over
+      // between the eye and the Wayfarer (CLOSE_VIEW_VISIBILITY.between): its box covers enough of hers and it is nearer the eye
+      const ox = Math.min(bx1, mx1) - Math.max(bx0, mx0), oy = Math.min(by1, my1) - Math.max(by0, my0);
+      const want = me >= 0 && mArea > 0 && ox > 0 && oy > 0 && ox * oy >= Bw.overlap * mArea && itemDepth[j] < mDepth - Bw.depth ? 1 : 0;
+      st.v = !Number.isFinite(st.v) || st.f !== closeViewStats.frames - 1 ? want : fadeToward(st.v, want, bdt, bsec); st.bv = 1 - (1 - Bw.alpha) * smoothstep01(st.v);
+      if (!Number.isFinite(st.c) || st.f !== closeViewStats.frames - 1) st.c = cut; else if (!paused) st.c += (cut - st.c) * kc; st.f = closeViewStats.frames; boardB[j] *= st.c * st.bv; } } // not drawn last frame: no stale fade carried over
 }
 // Attack cues (CLOSE_VIEW.cues): winding up (its pattern's windup, or the plain telegraph), a creature glows and rings the floor.
 const foeWindingUp = (e) => e.telegraph > 0 || e.pack?.phase === "windup" || e.gateAttack?.phase === "windup";
@@ -4125,6 +4166,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     // a house that thins at mid range loses its scale); it still fades out at the fog's edge. A beast of your section does not:
     // it is solid wherever it stands in it, and takes at most CLOSE_VIEW_BEAST_SIGHT.fog of the fog's colour (fogCap).
     frame.alpha *= Math.max(0, Math.min(1, (boardB[it] ?? 1) * BEAST_FADE)); frame.fogCap = kept ? S.fog : 1; track.seen = now;
+    frame.noSil = !closeViewSilhouetteAllowed(foe, g); // CLOSE_VIEW_VISIBILITY.silhouette (close-view-beast-gl.ts drawBeastsGL)
     B.items[B.count++] = frame; MODEL_STATE.admitted.add(it); count(spec); noteSolidity(foe, 'beast', frame.alpha);
   }
   stageDuel(B.tracks, now); // the dino duel: the two bodies spaced, a held one drawn in the other's jaws (close-view-duel.ts)
@@ -4134,7 +4176,7 @@ function admitBeasts(g, draws, n, Q, now, reduce) {
     if (foe.dead && spec && !full(spec) && track.seen != null && now - track.seen < 4000) {
       BEAST_ENV.now = now; BEAST_ENV.reduce = reduce; BEAST_ENV.tier = tier; BEAST_ENV.dead = true;
       const frame = spec.mesh(tier, foe) && prepareCloseViewBeastMesh(spec.mesh(tier, foe)) ? spec.sample(track, foe, BEAST_ENV) : null;
-      if (frame) { B.items[B.count++] = frame; count(spec); continue; }
+      if (frame) { frame.noSil = true; B.items[B.count++] = frame; count(spec); continue; } // a dying body: no silhouette
     }
     if (foe.dead || now - (track.seen ?? -Infinity) > 120) B.tracks.delete(foe);
   }
@@ -4263,7 +4305,11 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     offset = next; count++;
     return true;
   };
-  const admit = (it, who, kind) => {
+  // CLOSE_VIEW_VISIBILITY.silhouette: the vertex runs that take the silhouette pass (GLF.silRuns), merged when contiguous
+  const SR = CLOSE_VIEW_VISIBILITY.silhouette.runs; GLF.nSil = 0; GLF.silFoes = 0;
+  const markSil = (from, to) => { const a = from / MODEL_FLOATS, b = to / MODEL_FLOATS; if (!(b > a)) return; const R = GLF.silRuns, k = GLF.nSil;
+    if (k > 0 && R[k * 2 - 2] + R[k * 2 - 1] === a) R[k * 2 - 1] += b - a; else if (k < SR && k * 2 + 1 < R.length) { R[k * 2] = a; R[k * 2 + 1] = b - a; GLF.nSil = k + 1; } else R[k * 2 - 1] = b - R[k * 2 - 2]; };
+  const admitBody = (it, who, kind) => {
     const d = draws[itemRef[it]], facing = FACING_VEC[who.ai?.facing || who.facing], pack = who.pack;
     const presentation = who === player ? null : actorPresentation(who);
     const walkerRig = kind === 'voidWalker' ? stillworksWalkerRigPose(g.map, who) : null;
@@ -4607,6 +4653,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     state.admitted.add(it);
     if (who !== player) noteSolidity(who, 'model', actor.alpha);
   };
+  const admit = (it, who, kind) => { const from = offset; admitBody(it, who, kind); if (offset > from && (who === player || closeViewSilhouetteAllowed(who, g))) { markSil(from, offset); if (who !== player) GLF.silFoes++; } };
   for (let oi = n - 1; oi >= 0 && count < limit; oi--) {
     const it = order[oi];
     if (itemKind[it] === 1 && draws[itemRef[it]] === capturedPlayer) {
@@ -4625,7 +4672,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     state.waterline[0] = fx; state.waterline[1] = fy; state.waterline[2] = surface; state.waterline[3] = W.cut * W.cut;
     state.waterRing[0] = fx; state.waterRing[1] = fy; state.waterRing[2] = water.ring; state.waterRing[3] = water.wake * (now < (g.subDiveUntil || 0) && water.dive > 0 ? .5 : 1) + .001;
     if (water.hull) { const k = state.skiff; k.x = a.x; k.y = a.y; k.yaw = a.yaw; k.reduceMotion = reduce; k.alpha = a.alpha ?? 1;
-      k.z = surface - .08 + (reduce ? 0 : water.bob * Math.sin((now - (g.presentationPausedMs || 0)) / water.bobMs)); offset = writeCloseViewModel(state.vertices, offset, k); }
+      k.z = surface - .08 + (reduce ? 0 : water.bob * Math.sin((now - (g.presentationPausedMs || 0)) / water.bobMs)); const k0 = offset; offset = writeCloseViewModel(state.vertices, offset, k); markSil(k0, offset); }
   }
   const admitAux = (it, d) => {
     const spec=d.nativeAux,a=spec.sample(now,reduce); if(!a||!modelSupported(a.kind))return;
@@ -4639,7 +4686,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
-    if(!append(actor))return;Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
+    const a0=offset;if(!append(actor))return;markSil(a0,offset);Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
   closeViewGLStats.auxModels=0;closeViewGLStats.auxKinds=Object.create(null);
@@ -4700,7 +4747,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (!(r.m > 0)) continue;
     const k = swapEase(r.m), ghost = Object.assign(state.swapGhost, track.actor); ghost.x = track.actor.x + foe.x - track.x; ghost.y = track.actor.y + foe.y - track.y; ghost.alpha = (track.actor.alpha ?? 1) * k; ghost.attachments = null; ghost.motionState = null;
     const next = writeCloseViewModel(state.vertices, offset, ghost); if (next === offset) continue;
-    offset = next; fading++; track.at = now; boardFade[it] = 1 - k;
+    if (closeViewSilhouetteAllowed(foe, g)) { markSil(offset, next); GLF.silFoes++; } offset = next; fading++; track.at = now; boardFade[it] = 1 - k;
   }
   closeViewGLStats.swapOut = fading;
   // the slain (CLOSE_VIEW.creatures.death): fall, lie whole, sink; newest first up to the tier's cap, each on its contact shadow
@@ -4971,6 +5018,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // indoors (and wherever the open world's scene is not drawn) the props alone, on the floor's own heights
   let solidsNow = F.outdoor ? openWorld.solids : null;
   F.props = 0; if (!openWorld && !(outdoor && flatWorld)) { PROP_Z.map = g.map; const ps = propScene(g.map, propZ, seen); if (ps && ps.solids.verts > 0 && glProps(ps)) { F.props = 1; solidsNow = ps.solids; } }
+  // the props' range in the solids buffer, drawn after the creature silhouettes (CLOSE_VIEW_VISIBILITY.silhouette): indoors the whole buffer
+  F.propA = F.props ? 0 : F.outdoor && solidsNow ? solidsNow.propsAt ?? 0 : 0; F.propB = F.props && solidsNow ? solidsNow.verts : F.outdoor && solidsNow ? solidsNow.housesAt ?? 0 : 0;
   // the occluder window (CLOSE_VIEW.camera.occlude): its cone, and whether solids or the ground stand in it this frame (a
   // bounded probe; only then the cutting programs). The section's edge melts into the haze (CLOSE_VIEW.camera.edgeFog).
   { const O = CLOSE_VIEW.camera.occlude, mw = Math.max(1, Number(g.map.width) || 32), mh = Math.max(1, Math.floor((g.map.tiles?.length || 0) / mw));
@@ -5013,7 +5062,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   let nb = 0; for (let i = 0; i < n; i++) if (itemKind[i] === 1) nb++;
   const B = glEnsure("board", nb * 6); let D = glEnsure("decal", (nb * 3 + 400) * 6); let bv = 0, dv = 0; const tw = GROUND.canvas.width, th2 = GROUND.canvas.height, RX = CAM.rx, RY = CAM.ry;
   const room = (verts) => { if ((dv + verts) * DECAL_FLOATS > D.length) D = glEnsure("decal", dv + verts + 600); };
-  let boardBase = 0, nHint = 0;
+  let boardBase = 0, nHint = 0, nSilCard = 0;
   const BV = (X, Y, Z, u, v, a, fl, gh, li) => { const b = bv * BOARD_FLOATS; B[b] = X; B[b + 1] = Y; B[b + 2] = Z + boardBase; B[b + 3] = u; B[b + 4] = v; B[b + 5] = a; B[b + 6] = fl; B[b + 7] = gh; B[b + 8] = li; bv++; };
   const DV = (X, Y, Z, lx, ly, kind, a, wd, li, absolute = false) => { const b = dv * DECAL_FLOATS; D[b] = X; D[b + 1] = Y; D[b + 2] = Z + (absolute ? 0 : surfaceZ(g.map, X, Y)); D[b + 3] = lx; D[b + 4] = ly; D[b + 5] = kind; D[b + 6] = a; D[b + 7] = wd; D[b + 8] = li; dv++; };
   const flatD = (X, Y, r, kind, a, wd, li = 1) => { room(6); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y - r, .01, 1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y - r, .01, -1, -1, kind, a, wd, li); DV(X + r, Y + r, .01, 1, 1, kind, a, wd, li); DV(X - r, Y + r, .01, -1, 1, kind, a, wd, li); };
@@ -5039,7 +5088,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     DV(ax + wx, ay + wy, .008, -1, 1, 10, a, 0, 0);
   };
   const card = (X, Y, z0, z1, hw, kind, a, wd, li, absolute = false) => { room(6); const base = absolute ? 0 : surfaceZ(g.map, X, Y); z0 += base; z1 += base; const lx = X - RX * hw, ly = Y - RY * hw, qx = X + RX * hw, qy = Y + RY * hw; DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z0, 1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z0, -1, -1, kind, a, wd, li, true); DV(qx, qy, z1, 1, 1, kind, a, wd, li, true); DV(lx, ly, z1, -1, 1, kind, a, wd, li, true); };
-  const bl0 = At.boardLight[0], bl1 = At.boardLight[1];
+  const bl0 = At.boardLight[0], bl1 = At.boardLight[1]; // the cards that are not creatures (CLOSE_VIEW_VISIBILITY: a creature's card takes the floor's light)
   for (let oi = 0; oi < n; oi++) { const it = order[oi]; if (itemKind[it] !== 1 || (!boardPW[it] && !MODEL_STATE.admitted.has(it))) continue;
     const cardBody = MODEL_STATE.admitted.has(it) && swapCard[it] !== 1; // a body fading in draws its whole card under it (creature-motion.ts swap)
     const sc = boardScale[it], hw = boardHalfWidth[it], foe = boardFoe[it], top = boardTop[it], X = boardWX[it], Y = boardWY[it], isPlayer = draws[itemRef[it]] === capturedPlayer, b = Math.max(isPlayer ? (LOOK.k > 0 && LOOK.key ? Math.min(At.nearFade, LOOK.heroAlpha) : At.nearFade) : 0, Math.min(1, boardB[it])); // the Wayfarer never fainter than nearFade (nothing see-through)
@@ -5052,9 +5101,9 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     const hint = !!draw.sightHidden && !isPlayer && !foe; // a far creature out of sight (labyrinths.ts SIGHT_LINES): its faint silhouette is drawn only by the hint pass, over walls (close-view-gl.ts BOARD_FS)
     const residual = cardBody, cb = hint ? 0 : b * boardFade[it]; // cb: the card's own opacity, its share of a cross-fade with the body
     const statusAlpha = residual && foe ? closeViewCreatureIntrinsicAlpha(foe) : 1;
-    const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : hint ? 3 + SIGHT_LINES.silhouette.through : isPlayer ? 1 + At.silAlpha : foe ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
+    const fl = !residual && foe && foe.hitFlash > 0 ? Cu.flash * Math.min(1, foe.hitFlash / Cu.flashSec) : 0, gh = residual ? 0 : hint ? 3 + SIGHT_LINES.silhouette.through : isPlayer ? 1 + At.silAlpha : foe && closeViewSilhouetteAllowed(foe, g) ? At.silAlpha * .7 * Math.min(1, b * 2) : 0, li = foe ? closeViewFloorLight(F, X, Y, surfaceZ(g.map, X, Y)) : Math.max(bl0, Math.min(bl1, lightLevel(F, X, Y, .9 * sc) * 1.6));
     if (boardPW[it]) { const front=residual?(draw.nativePanelOffset||0):0,bx=X-CAM.fx*front,by=Y-CAM.fy*front, ax = draw.wallAligned ? Math.sign(RX) || 1 : RX, ay = draw.wallAligned ? 0 : RY, lx = bx - ax * hw, ly = by - ay * hw, rxp = bx + ax * hw, ryp = by + ay * hw, zb = -boardBelow[it];
-    const gc = hint ? gh : gh * boardFade[it]; if (hint) nHint++; BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, zb, u1, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, top, u0, v0, cb, fl, gc, li); }
+    const gc = hint ? gh : gh * boardFade[it]; if (hint) nHint++; else if (gc > 0 && foe) nSilCard++; BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, zb, u1, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, zb, u0, v1, cb, fl, gc, li); BV(rxp, ryp, top, u1, v0, cb, fl, gc, li); BV(lx, ly, top, u0, v0, cb, fl, gc, li); }
     if (foe || isPlayer) { const SD = MODEL_STATE.shadowDash, dash = isPlayer && MODEL_STATE.admitted.has(it) && SD.active, SX = dash ? X + SD.x - g.player.x : X, SY = dash ? Y + SD.y - g.player.y : Y, SA = dash ? 1 - .6 * SD.wraith : statusAlpha; // a charging wraith's shadow goes with it
       const afloat = isPlayer && MODEL_STATE.waterRing[3] > 0; // in the water: its ripple below instead of a shadow on a floor
       const body = MODEL_STATE.admitted.has(it), Kc = CLOSE_VIEW.creatures.contact, foot = foe && body ? Math.max(Kc.min, Math.min(Kc.max, creatureFootprint(actorModelKey(foe)) * Kc.share)) : 0; // a body's stance (CLOSE_VIEW.creatures.contact)
@@ -5062,7 +5111,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       if (foe && foeWindingUp(foe)) flatD(X, Y - .05, r * (1 + Cu.ring) * 1.15, 1, Cu.ringAlpha * b * statusAlpha, CLOSE_VIEW.gl.ringWidth); } }
   for (let i = 0; i < MODEL_STATE.nDying; i++) { const o = i * 4, X = MODEL_STATE.dying[o], Y = MODEL_STATE.dying[o + 1], scD = MODEL_STATE.dying[o + 2], Kc = CLOSE_VIEW.creatures.contact; // a fallen body's shadow (CLOSE_VIEW.creatures.death)
     flatD(X, Y - .05, Kc.max * scD, 0, Kc.alpha * MODEL_STATE.dying[o + 3], 0); }
-  GLB.nBoard = bv; GLB.nHint = nHint;
+  GLB.nBoard = bv; GLB.nHint = nHint; GLB.nSilCard = nSilCard; // nSilCard: creature cards that take the silhouette pass (close-view-gl.ts defers the props only when something does)
   // CLOSE_VIEW_WATER: where the Wayfarer's figure meets the water, a broken ring of foam at the waterline and (in motion) ripples
   // spreading from it and fading; reduced motion keeps the still ring. Four quads at most, on the water's own height.
   { const R = MODEL_STATE.waterRing; if (R[3] > 0) { const wake = R[3], t = ((g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now) - (g.presentationPausedMs || 0)) / 1000 /* held while paused */, z = MODEL_STATE.waterline[2] + .012;

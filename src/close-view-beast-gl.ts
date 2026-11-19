@@ -86,13 +86,13 @@ export function prepareBeastMesh(gl, s, mesh) {
     s.failed = true; return false;
   } finally { gl.bindVertexArray(null); }
 }
-// Draw the frame's beasts in one actor phase (pass 1: silhouette through walls, 0: the body). Returns draw calls.
+// Draw the frame's beasts in one actor phase (pass 1: silhouette through walls, skipping a frame marked `noSil`; 0: the body). Returns draw calls.
 export function drawBeastsGL(gl, s, beasts, pass, cam, light, silhouette) {
   if (!s || !beasts?.count) return 0;
   const p = s.program, u = p.U; let calls = 0;
   gl.useProgram(p.p); cam(p); light(p); gl.uniform1f(u.u_pass, pass); gl.uniform3fv(u.u_sil, silhouette);
   for (let i = 0; i < beasts.count; i++) {
-    const f = beasts.items[i], r = s.meshes.get(f.mesh); if (!r) continue;
+    const f = beasts.items[i], r = s.meshes.get(f.mesh); if (!r || (pass === 1 && f.noSil)) continue; // noSil: no silhouette through walls (close-view.ts closeViewSilhouetteAllowed: near, engaging or dying)
     gl.bindVertexArray(r.vao); gl.uniform4fv(u.u_bones, f.skin, 0, f.boneCount * 12);
     gl.uniform1f(u.u_alpha, f.alpha); gl.uniform1f(u.u_hit, f.hit); gl.uniform1f(u.u_fogCap, Number.isFinite(f.fogCap) ? f.fogCap : 1); gl.uniform4fv(u.u_emitK, f.emitK); gl.uniform4fv(u.u_emitA, f.emitA);
     gl.drawElements(gl.TRIANGLES, f.cloud ? f.mesh.indices.length : f.mesh.coreIndices, gl.UNSIGNED_SHORT, 0); calls++;

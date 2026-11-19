@@ -16,7 +16,7 @@ import { actorPresentation, ACTOR_ALPHA } from '../src/actor-presentation.ts';
 import { PHASE_SHIELD } from '../src/affixes.ts';
 import { resetCloseViewGL } from '../src/close-view-gl.ts';
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, closeViewCamera, closeViewCreatureFog, closeViewCreatureFade, closeViewCreatureIntrinsicAlpha,
-  closeViewCreatureSolidity, closeViewCreatureSolidNear, closeViewCreatureWard, resetCloseViewCamera, setCloseViewCanvasFactory } from '../src/close-view.ts';
+  closeViewCreatureSolidity, closeViewCreatureSolidNear, closeViewCreatureWard, resetCloseViewCamera, setCloseViewCanvasFactory, closeViewCreatureBetween, CLOSE_VIEW_VISIBILITY } from '../src/close-view.ts';
 
 class MockGL {
   program: any = null; sources: string[] = [];
@@ -184,7 +184,10 @@ test('the occluder never cuts a creature next to the Wayfarer, between her and t
   for (let k = 0; k < 4; k++) frame(g, () => pin(e, at));
   assert.ok(depthOf(at) < depthOf(g.player), 'it stands between the camera and the Wayfarer');
   assert.equal(closeViewCreatureFade(e), 1, 'no occluder share');
-  assert.equal(closeViewCreatureSolidity(e)?.alpha, 1, 'drawn solid');
+  // Tim, 2026-11-19 (CLOSE_VIEW_VISIBILITY.between): a creature covering her from the camera eases to .35 so it never hides her;
+  // that fade is the only one it takes (the occluder window still never cuts it)
+  assert.ok(closeViewCreatureBetween(e) < 1 && closeViewCreatureBetween(e) >= CLOSE_VIEW_VISIBILITY.between.alpha, 'the between fade, easing in');
+  assert.ok(Math.abs(closeViewCreatureSolidity(e)?.alpha - closeViewCreatureBetween(e)) < 1e-6, 'drawn solid but for the between fade');
   // the cut is only in the scenery's programs (props and terrain), never in a creature's (models, cards, beasts)
   const cut = GL.sources.filter((t: string) => t.includes('occlude(v_pos)'));
   assert.ok(cut.length >= 1 && cut.every((t: string) => !t.includes('in float v_alpha') && !t.includes('u_emitA')), 'occluder programs are scenery only');
