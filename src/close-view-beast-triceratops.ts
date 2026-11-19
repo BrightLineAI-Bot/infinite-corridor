@@ -24,6 +24,7 @@ export const TRICERATOPS_RIG = Object.freeze({
   settle: 6, stepAt: .09, stepTime: .32, turnRate: 3.2, attackTurnRate: 8, standTurnRate: 2.2, standTurnMax: 1.5, footLift: .1, bob: .016,
   ease: 10, strikeEase: 18, deathMs: 2400, hitMs: 320, landMs: 380, tailBounce: .16,
   breathe: Object.freeze({ rate: 1.2, chest: .012 }),
+  smallFrill: Object.freeze([.08, -.03]), // a frill smaller than the adult's moved forward and down onto the skull (head units per share it lacks)
   knobFrill: .3, // a frill smaller than this share of the adult's (the baby's) is a smooth little shield, no rim knobs
   legHeight: .5, // the hip and shoulder joints over the feet (body units): a form's shorter legs lower the body by its share of this
   formHeadLift: Object.freeze({ baby: .03 }), // the hatchling's baby form carries his big head higher (body units over the head bone)
@@ -123,7 +124,7 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   const HWb = (p) => [SPINE_AT.head[0] + sn(p[0]) * HS, p[1] * HS, SPINE_AT.head[1] + p[2] * HS + HL];
   const HW = (p) => [SPINE_AT.head[0] + sn(mz(p[0])) * HS, p[1] * HS, SPINE_AT.head[1] + (MZ.mid + (p[2] - MZ.mid) * dp(p[0])) * HS + HL];
   const hb = (p) => at('head', HW(p));
-  const dHS = HS - HS0, JF = .06 * dHS, JZ = -.07 * dHS + HL, FF = -.06 * dHS, FZ = .14 * dHS + HL; // a bigger head carries its jaw and frill with it (0 for the adult)
+  const dHS = HS - HS0, JF = .06 * dHS, JZ = -.07 * dHS + HL, FS = Math.max(0, 1 - FM.frill), FF = -.06 * dHS + G0.smallFrill[0] * HS * FS, FZ = .14 * dHS + HL + G0.smallFrill[1] * HS * FS; // a bigger head carries its jaw and frill with it; a small frill (the baby's) sits forward on the skull (0 for the adult and the young form)
   B.bone('head');
   // The skull (2026-11-18 pass 2): deep and broad at the cheeks (the jugal flare), the brow rising behind the eyes, the snout narrowing
   // to a hooked parrot beak; a dark cheek line runs back from the beak; it ends in the beak's dark keratin, all one skin.
