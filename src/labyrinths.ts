@@ -885,8 +885,12 @@ export function creatureInSight(g, e) {
 // creatureInSight (the distance is one hypot).
 export function creatureSightLevel(g, e) {
   if (creatureInSight(g, e)) return 2; const p = g?.player; if (!p || !e) return 1;
-  const near = sightRule(g).hideNear; return near > 0 && Math.hypot(Number(e.x) - p.x, Number(e.y) - p.y) <= near ? 0 : 1;
+  const r = sightRule(g), near = Math.min(r.hideNear, r.range); return near > 0 && Math.hypot(Number(e.x) - p.x, Number(e.y) - p.y) <= near ? 0 : 1;
 }
+// The polish pass (Tim, 2026-11-19: "creature visibility must match room visibility and lighting"): the ambush radius never reaches
+// past sight's own reach (hideNear 8 over range 7 had a creature in plain view at 7 to 8 tiles drawn as nothing at all, while the
+// room it stood in was drawn). Past the reach it is the silhouette, as the dark there is. Close View's orbit indoors goes further
+// (close-view.ts closeViewCreatureSight): a creature is drawn exactly where the sight field draws its floor.
 // The sight field (version 2, Close View's orbit indoors): the tiles in the Wayfarer's sight, out to `field.radius`, by the fog
 // of war's own lines with sight's walls (sightWall: water, lava and chasms do not block). Kept per map; worked out again only
 // when her tile changes, or `refreshMs` after the last time (a door opened); `stamp` changes only when the field does (the GPU
