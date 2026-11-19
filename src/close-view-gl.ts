@@ -710,8 +710,12 @@ bool cutAway(float depth, float part, float z) {
   if (u_cutB.w > 0.5 && r >= 1.0) return true;
   if (r >= 1.0 || depth >= u_cut.w || !across) return false;
   if (u_cutB.z <= 0.0) return true;
-  const float bayerW[16] = float[16](0.0,8.0,2.0,10.0,12.0,4.0,14.0,6.0,3.0,11.0,1.0,9.0,15.0,7.0,13.0,5.0); ivec2 pc = ivec2(gl_FragCoord.xy) & 3;
-  return smoothstep(1.0 - u_cutB.z, 1.0, r) <= (bayerW[pc.y * 4 + pc.x] + 0.5) / 16.0;
+  // the soft rim (the polish pass, 2026-11-19): an 8x8 ordered dither (64 levels, was 4x4's 16) under a smoother falloff, so the
+  // edge reads as a gradual fade rather than a coarse screen door. Bayer by bit interleave: reverse(interleave(x ^ y, y)).
+  ivec2 pc = ivec2(gl_FragCoord.xy) & 7; int bx = pc.x ^ pc.y, by = pc.y;
+  int bv = ((bx & 1) << 5) | ((by & 1) << 4) | ((bx & 2) << 2) | ((by & 2) << 1) | ((bx & 4) >> 1) | ((by & 4) >> 2);
+  float e = smoothstep(1.0 - u_cutB.z, 1.0, r); e = e * e * (3.0 - 2.0 * e);
+  return e <= (float(bv) + 0.5) / 64.0;
 }
 `;
 // The floor's underside seen from below (the orbit, 2026-11-18): a full-screen depth write at the near plane everywhere outside the

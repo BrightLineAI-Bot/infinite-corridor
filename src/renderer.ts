@@ -58,7 +58,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } fro
 import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.ts"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -3132,10 +3132,11 @@ export function render(ctx, g, w, h, now) {
   { const sb = g.stegoBaitHere?.(); if (sb && visibleInCamera(sb, l, t, r, b, 2)) draws.push({ x: sb.x, y: sb.y, fn: () => drawStegoBait(ctx, sb, s, now) }); } // the Stego Bait laid down (Close View shows it as a card)
   for (const e of g.enemies)
     if (!e.dead && !e.gloomVeil /* the Gloomvast's Dark: its cold lights are drawn over the darkness, below */ && shownInDungeon(g,e) && visibleInCamera(e,l,t,r,b,closeViewCapturing() && closeViewSectionBeast(e) ? CLOSE_VIEW_BEAST_SIGHT.pad : e.kind === "psychicCrystal" || e.kind === "lightningGiant" ? 5 : 2))
-      if (!creatureInSight(g, e)) { if (!e.hidden && !e.ambient && creatureSightLevel(g, e) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
+      { const cvLevel = closeViewCapturing() ? closeViewCreatureSight(g, e) : -1, seenNow = cvLevel >= 0 ? cvLevel === 2 : creatureInSight(g, e), sightFade = cvLevel >= 0 ? closeViewSightFade(g, e, seenNow) : seenNow ? 1 : 0; // the polish pass (close-view.ts): Close View's sight parity with the room drawn, and its fade in and out
+      if (!seenNow && !(sightFade > 0)) { if (!e.hidden && !e.ambient && (cvLevel >= 0 ? cvLevel : creatureSightLevel(g, e)) === 1) draws.push({ x: e.x, y: e.y, sightHidden: true, fn: () => drawSightSilhouette(ctx, e, s) }); } // 2026-11-18 (labyrinths.ts sight lines): out of the Wayfarer's sight, a faint neutral silhouette only (no markers, no colour) when far, nothing at all when near (Tim's review: an ambush; SIGHT_LINES.indoor.hideNear); Close View takes it as a plain card
       else draws.push({
         y: e.y + (astralMountPresentation(e) ? .001 : 0), x: e.x,
-        enemy: e,
+        enemy: e, sightFade, // < 1: coming into or leaving Close View's sight (the polish pass)
         alpha: phaseShielded(e) ? PHASE_SHIELD.alpha : undefined, // a linked-invulnerable creature the Wayfarer can walk through is ghosted (Close View reads it too)
         nativeWindup: nativeWindupDuration(e),
         nativeActionShape: nativeActionShape(e),
@@ -3204,7 +3205,7 @@ export function render(ctx, g, w, h, now) {
             ctx.stroke();
           }
         },
-      });
+      }); }
   // Release 587: the skyway's floating discs, each sorted at its front edge; the Wayfarer standing on one is drawn just after it, lifted.
   const onDisc = g.skyLevel > 0 && g.map?.skyDiscs ? g.map.skyDiscs.find((d) => d.level === g.skyLevel && Math.hypot(p.x + .5 - d.x, p.y + .75 - d.y) <= d.r + .05) : null;
   for (const d of g.map?.skyDiscs || []) if (visibleInCamera({ x: d.x, y: d.y }, l, t, r, b, 3)) {
