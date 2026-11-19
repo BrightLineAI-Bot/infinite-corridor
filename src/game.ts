@@ -191,6 +191,9 @@ const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Power Aegis (game.ts parryBlow): how a blow reached the Wayfarer. A creature's own blow (the parry may stagger it), and a pack
 // creature's blow (that, and it may be one of its moving bolts, sent back as a shot).
 const PARRY_STRIKE = 1, PARRY_PACK = 3;
+// Tim, 2026-11-19: "reflected damage can count as your own hit". The `src` a direct reflect (reflectBlow) hands landHit: a hit of
+// the Wayfarer's, but not melee, not a tool shot and no charged release (hit-cast-passives.ts passiveHit reads `aegisReflected`).
+const REFLECT_HIT = Object.freeze({ aegisReflected: true });
 // Release 736 (full-game review F5/F6, C12/C13): every wall-clock timer (an absolute time on the update clock, in ms) the
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
@@ -8619,7 +8622,11 @@ export class Game {
   }
   // On-hit Echoes (echoes.ts ON_HIT_ECHOES, Tim 2026-11-18): the Wayfarer's own blow landed, taking `actual` health. Never a burn's
   // tick nor a proc's damage (glyphWorld): those never call this. One reused record, so a hit allocates nothing.
-  landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || e.kind === "npc") return; const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */ }
+  landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || e.kind === "npc") return;
+    // Power Aegis: a reflect is the Wayfarer's own hit (Tim, 2026-11-19); whatever its on-hit effects do never parries (`_reflecting`), so nothing ping-pongs
+    const rf = !this._reflecting && !!src && typeof src === "object" && src.aegisReflected === true; if (rf) this._reflecting = true;
+    try { const d = (this._hitData ||= { enemy: null, damage: 0 }); d.enemy = e; d.damage = actual; echoEvent(this, "hit", now, d); d.enemy = null; if (sanctuaryOn(this.save)) this.grantHitHeal(actual * SANCTUARY.leech, now, e); /* Sanctuary's leech */ passiveHit(this, e, actual, now, src); /* hit-cast-passives.ts: Tempo, Shatterpoint, Arcane Edge, Pocket Time, Rapid Reload (`src`: "melee", or the shot or effect) */ }
+    finally { if (rf) this._reflecting = false; } }
   // hit-cast-passives.ts hooks: a foe's damage multiple now (Tempo), a new charged release's id (Rapid Reload), a spell cast.
   vulnScale(e, now = this.lastUpdateNow || 0) { return vulnScale(e, now); }
   chargedRelease(cost = 0) { return chargedRelease(this, cost); }
@@ -10190,12 +10197,14 @@ export class Game {
   // its maximum health from one.
   reflectDamage(e, n) { const P = POWER_AEGIS; n = Number(n) || 0; return staggerClass(e) === "boss" ? Math.min(n, Math.max(1, Math.round((Number(e.maxHp) || 0) * P.bossCap))) : n; }
   // A parried game projectile turns round where it struck: friendly, gold, faster, homing on whoever loosed it (else the nearest
-  // foe), carrying POWER_AEGIS.reflect of its damage. `minor`: a foe's blow sent back, not the Wayfarer's (no on-hit passives).
+  // foe), carrying POWER_AEGIS.reflect of its damage. It is the Wayfarer's own shot (Tim, 2026-11-19: "reflected damage can count
+  // as your own hit"): the projectile hit path gives it the frenzy blow, on-hit Echoes and passives and kill credit as any of hers,
+  // but no glyphs (no tool, spell or weapon loosed it), no charged release, and its damage is the reflect's alone (`aegisReflected`).
   turnShot(q, now) {
     const P = POWER_AEGIS, to = this.reflectTarget(this.shotOwner(q), q.x, q.y);
     let dx = -(Number(q.dx) || 0), dy = -(Number(q.dy) || 0); if (to) { dx = to.x + .5 - q.x; dy = to.y + .45 - q.y; }
     const m = Math.hypot(dx, dy) || 1;
-    Object.assign(q, { dead: false, impact: null, hostile: false, aegisReflected: true, aegisAt: now, minor: true, dx: dx / m, dy: dy / m, speed: (Number(q.speed) || 4) * P.shotSpeed, life: P.shotLife, age: 0,
+    Object.assign(q, { dead: false, impact: null, hostile: false, aegisReflected: true, aegisAt: now, minor: false, glyphHost: null, rr: 0, echo: false, shard: false, dx: dx / m, dy: dy / m, speed: (Number(q.speed) || 4) * P.shotSpeed, life: P.shotLife, age: 0,
       damage: Math.max(1, Math.round((Number(q.damage) || 1) * P.reflect)), pierce: 0, path: "straight", homingTurnRate: 0, splitAfter: null, jumpable: false, seekId: to ? to.id : null, seekTurn: P.shotTurn });
     if (q.hits && typeof q.hits === "object") { for (const k in q.hits) delete q.hits[k]; } else q.hits = {};
     return true;
@@ -10207,19 +10216,23 @@ export class Game {
     if (this._parryShot || !(n > 0)) return 0;
     if (this._parryBolt) { const p = this.player, cap = this.area === "dungeon" ? 32 : 64, x = p.x + .5, y = p.y + .45, to = this.reflectTarget(this._reflectFoe, x, y);
       if (to && this.projectiles.length < cap) { const dx = to.x + .5 - x, dy = to.y + .45 - y, m = Math.hypot(dx, dy) || 1;
-        this.projectiles.push({ id: `aegis-bolt-${Math.round(now)}`, x: x + dx / m * .5, y: y + dy / m * .5, dx: dx / m, dy: dy / m, speed: P.boltSpeed, life: P.shotLife, age: 0, damage: Math.max(1, Math.round(n)), hostile: false, aegisReflected: true, aegisAt: now, minor: true, path: "straight", hits: {}, seekId: to.id, seekTurn: P.shotTurn });
+        this.projectiles.push({ id: `aegis-bolt-${Math.round(now)}`, x: x + dx / m * .5, y: y + dy / m * .5, dx: dx / m, dy: dy / m, speed: P.boltSpeed, life: P.shotLife, age: 0, damage: Math.max(1, Math.round(n)), hostile: false, aegisReflected: true, aegisAt: now, path: "straight", hits: {}, seekId: to.id, seekTurn: P.shotTurn });
         return n; } }
     return this.reflectBlow(this._reflectFoe, n, now);
   }
-  // Direct reflected damage on the creature that made the blow, with a gold flash on it (brawler-spells.ts drawPowerAegis).
+  // Direct reflected damage on the creature that made the blow, with a gold flash on it (brawler-spells.ts drawPowerAegis). It is
+  // the Wayfarer's own hit (landHit with REFLECT_HIT: on-hit Echoes and passives, the frenzy blow, kill credit); `_reflecting` holds
+  // throughout, so nothing it sets off parries.
   reflectBlow(foe, n, now = this.lastUpdateNow || 0) {
     if (!foe || foe.dead || !(foe.hp > 0) || foe.kind === "npc" || foe.untargetable || foe.illusion || foe.astralAllyOf || !this.enemies.includes(foe)) return 0;
     const d = Math.max(1, Math.round(this.reflectDamage(foe, n))), before = foe.hp;
     this._reflecting = true;
     try {
       foe.hp -= d; foe.hitFlash = .18; foe.aggro = true; foe.hitStun = Math.max(Number(foe.hitStun) || 0, staggerClass(foe) ? .1 : .18); // as a shot's hit; the stagger governor bounds it
-      this.astralPlayerHit(foe, Math.max(0, before - Math.max(0, foe.hp)));
-      if (foe.hp <= 0 && !foe.dead) { foe.dead = true; this.defeatEnemy(foe); }
+      const actual = Math.max(0, before - Math.max(0, foe.hp));
+      this.astralPlayerHit(foe, actual);
+      if (foe.hp <= 0 && !foe.dead) { foe.dead = true; this.defeatEnemy(foe); } // kill credit, as a shot's (updateProjectiles onDefeat)
+      this.frenzyBlow(foe); this.landHit(foe, actual, now, REFLECT_HIT); // the Wayfarer's own hit (Tim, 2026-11-19), in the order a shot's lands
     } finally { this._reflecting = false; }
     this.reflectFlashAt = now; this.reflectFlashX = foe.x; this.reflectFlashY = foe.y;
     return d;
