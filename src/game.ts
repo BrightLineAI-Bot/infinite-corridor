@@ -178,7 +178,7 @@ import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, f
 import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.ts"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
 import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.ts"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
 import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.ts"; // release 487
-import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { passiveHit, passiveCast, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.ts"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
 import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.ts";
 import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.ts";
 import { addIlse, meetIlse } from "./ilse.ts";
@@ -4893,6 +4893,7 @@ export class Game {
       damage(e, amount) { if (e.dead) return; alertEnemy(e); const before = Math.max(0,e.hp); e.hp -= wayfarerDamage(amount * strikeAmplifier(game.save) * vulnScale(e, now)); /* Tim 2026-11-11: WAYFARER_DAMAGE; Tempo's window */ game.astralPlayerHit(e, Math.max(0,before-Math.max(0,e.hp))); e.hitFlash = .18; if (e.hp <= 0) { e.dead = true; game.defeatEnemy(e); } },
       heal(amount) { game.glyphHealPool = (game.glyphHealPool || 0) + amount; const whole = Math.floor(game.glyphHealPool); if (whole > 0) { game.glyphHealPool -= whole; const before = p.hp; p.hp = Math.min(game.save.maxHp, p.hp + whole); if (p.hp > before) (game.glyphVisuals ||= []).push({ kind: "heal", x: p.x + .5, y: p.y - .1, amount: p.hp - before, life: .9, max: .9 }); } },
       stamina(amount) { p.stamina = Math.min(game.save.maxStamina, (p.stamina || 0) + amount); },
+      pull(e, amount) { if (e && !e.dead) game.pullBuild(e, amount, now); }, // Encumbered: a pull's damage (glyphs.ts Tether, Maelstrom; echoes.ts Maw's Hunger)
       blast(x, y, radius, amount) {
         (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius, life: .35, max: .35 });
         for (const e of game.enemies) if (!e.dead && !e.untargetable && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius + .2) this.damage(e, amount);
@@ -7108,7 +7109,7 @@ export class Game {
     const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
-    amount *= weakenScale(source, now); // Arcane Edge's Dusk: a weakened foe's blows take less
+    amount *= weakenScale(source, now) * foeDealtScale(source); // Arcane Edge's Dusk: a weakened foe's blows take less; an Encumbered one's too (ENCUMBERED.dealtMul)
     p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
     this.parryBlow(source, now, amount, null, options.source || null, PARRY_PACK); // Power Aegis: `amount` is what the blow carried
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
@@ -8842,6 +8843,10 @@ export class Game {
   vulnScale(e, now = this.lastUpdateNow || 0) { return vulnScale(e, now); }
   chargedRelease(cost = 0) { return chargedRelease(this, cost); }
   passiveCast(now = this.lastUpdateNow || 0) { passiveCast(this, now, CASTABLES[`spell:${this.save.equippedSpell}`]?.attr || null, Number(this._essencePaying) || 0); }
+  // Encumbered (hit-cast-passives.ts ENCUMBERED): damage a pull dealt fills the foe's meter (its class sets the threshold).
+  pullBuild(e, amount, now = this.lastUpdateNow || 0) { return pullBuild(this, e, amount, now, staggerClass(e)); }
+  // Glyph Mine × Rift Step (hit-cast-passives.ts RIFT_MINE): a step taken from `from` to `to`, `charges` left (constellation.ts riftCommit).
+  riftStepMine(from, to, charges, now = this.lastUpdateNow || 0) { return riftStepMine(this, from, to, charges, now); }
   frenzyBlow(e) { const f = this.frenzy; if (f?.active && e?.kind === "doomChaser" && !e.dead) f.cure = (f.cure || 0) + 1; }
   frenzyTick(dt) {
     const f = this.frenzy; if (!f) return; const d = this.enemies.find((q) => q.kind === "doomChaser" && !q.dead), p = this.player;
@@ -12620,7 +12625,8 @@ export class Game {
         if(shot.jumpable&&now<this.jumpUntil)return;
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
-        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
+        const enc=encumberedAny(this)?foeDealtScale(this.shotOwner(shot)):1; // Encumbered: its shooter's shots deal less too
+        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*enc*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
         if (shot.hostile) this.noteHurtVisualImpact(); this.parryBlow(null, now, shot.damage, shot); // Power Aegis: a shot parried turns round (turnShot)
         p.invulnerableUntil=now+700;
       },
@@ -12645,7 +12651,7 @@ export class Game {
         if (e.kind !== "npc") this.defeatEnemy(e);
       },
       (fx, e) => (fx.glyphHost && e.kind !== "npc" ? glyphDamage(this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, fx.damage, { echo: !!fx.echo }, now) : fx.damage) + (fx.imbue > 0 && e.kind !== "npc" ? (imbueSpark(this, e.x + .5, e.y + .45, now), Math.round(fx.imbue)) : 0), // release 335: a spell's pulses keep the glyphs it was cast with; Imbue Weapon: a punch's or tool blow's magic share
-      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y } }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
+      (fx, e, dealt, actual) => { this.astralPlayerHit(e,actual); if (!fx.hostile && e.kind !== "npc" && actual > 0 && (fx.kind === "gravity-well" || fx.clap)) this.pullBuild(e, actual, now); /* Encumbered: the Gravity Well (and the perfect Orbit Volley's vortex) and the Hammerfall's clap pull */ if (fx.brawler && !fx.echo) this.frenzyBlow(e); /* balance pack (C10): so is a punch */ if (fx.healShare && actual > 0 && this.player.hp > 0) this.player.hp = Math.min(this.save.maxHp, this.player.hp + Math.min(dealt, actual / WAYFARER_DAMAGE.scale) * fx.healShare); /* the heal keeps the unscaled blow */ /* release 493: Shadow Boxing heals from punches */ if (fx.glyphHost && e.kind !== "npc") { glyphHit(this.glyphWorld(now), this.glyphLoadout(fx.glyphHost, fx.glyphSpell), e, dealt, { echo: !!fx.echo, origin: { x: fx.x, y: fx.y }, pulled: fx.kind === "gravity-well" || !!fx.clap }); if (actual > 0) this.tesseractHitHeal(fx.glyphHost === "spell" || fx.damageType === "magic" ? "spell" : "melee", now, e); } if (fx.glyphHost === "spell" && !fx.hostile) runeStruck(this, e); /* awakened-arts.ts: a spell detonates a rune */ if (!fx.hostile && !fx.echo && !fx.afterimage) this.landHit(e, actual, now, fx); /* on-hit Echoes (never the Spinosaur's afterimage: an Echo's own slam) */ },
       wayfarerDamage, // Tim 2026-11-11: spell pulses, blasts and punches land at WAYFARER_DAMAGE.scale (hostile effects are skipped)
       (fx, e) => this.clapClear(fx, e), // the awakened Hammerfall's clap strikes only foes it can see from its centre line
     );
@@ -12719,7 +12725,7 @@ export class Game {
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
-      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;n*=foeDealtScale(e);/* Encumbered */p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
       pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}},
       // Leviathans (W4): krakens raise bounded tentacles (summoned, no rewards) and the Stormkraken inks the sea.
       tentacles:(o)=>this.enemies.filter(q=>!q.dead&&q.summonedBy===o.id).length+seaSummons.filter(q=>q.summonedBy===o.id).length,
@@ -12779,7 +12785,7 @@ export class Game {
         p.hp -= Math.max(
           1,
           Math.ceil(
-            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * /* release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
+            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * foeDealtScale(e) * /* Encumbered; release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
               (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
           ),
         );

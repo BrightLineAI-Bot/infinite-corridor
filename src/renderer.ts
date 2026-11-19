@@ -1,6 +1,6 @@
 import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.ts"; // the Triceratops hatchling
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { vulnerableUntil, glyphMinesOf, GLYPH_MINE } from "./hit-cast-passives.ts"; // Tempo marks, Glyph Mine sigils (2026-11-19)
+import { vulnerableUntil, glyphMinesOf, GLYPH_MINE, riftMinesOf, riftVoidOf, RIFT_MINE, encumberedLeft, pullMeterOf } from "./hit-cast-passives.ts"; // Tempo marks, Glyph Mine sigils, rift mines and their void, Encumbered (2026-11-19)
 import { ACTION_MOTION } from "./action-motion.ts"; // the Cinder Pike's standard-view thrust clock
 import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.ts";
 import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.ts"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
@@ -3699,12 +3699,24 @@ function drawSweepFrost(ctx,e,q,cx,cy,s){
     for(let i=0;i<6;i++){const a=i*Math.PI/3+.3;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r*.82,cy+Math.sin(a)*r*.82);ctx.lineTo(cx+Math.cos(a)*r*(1.16+.06*k),cy+Math.sin(a)*r*(1.16+.06*k));ctx.stroke()}ctx.globalAlpha=1}
   else if(q.fill>0){ctx.globalAlpha=.75;ctx.strokeStyle="#bfe4ff";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.min(1,q.fill)*Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
 }
+// Encumbered: a violet weight under the foe's middle (two chains down to a block) and a dark ring at its feet, fading in its last
+// second; while the meter fills (not yet Encumbered), a thin violet arc round the feet, as full as the meter. A few strokes, no allocation.
+function drawEncumbered(ctx,cx,cy,s,left,fill,t,still){
+  ctx.save();ctx.lineWidth=Math.max(1.5,s*.05);
+  if(left>0){const a=Math.min(1,left)*(still?.85:.7+.15*Math.sin(t*4)),bx=cx,by=cy+s*.42;ctx.globalAlpha=a;ctx.strokeStyle="#9b7bff";ctx.fillStyle="rgba(20,12,34,.55)";
+    ctx.beginPath();ctx.ellipse(cx,by,s*.44,s*.15,0,0,7);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.05);ctx.lineTo(bx-s*.08,by-s*.04);ctx.moveTo(cx+s*.22,cy-s*.05);ctx.lineTo(bx+s*.08,by-s*.04);ctx.stroke();
+    ctx.fillStyle="#3a2a66";ctx.beginPath();ctx.moveTo(bx-s*.12,by-s*.02);ctx.lineTo(bx+s*.12,by-s*.02);ctx.lineTo(bx+s*.08,by-s*.16);ctx.lineTo(bx-s*.08,by-s*.16);ctx.closePath();ctx.fill();ctx.stroke()}
+  else{ctx.globalAlpha=.7;ctx.strokeStyle="#9b7bff";ctx.beginPath();ctx.ellipse(cx,cy+s*.42,s*.44,s*.15,0,-Math.PI/2,-Math.PI/2+Math.min(1,fill)*Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
 function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
   const t=now/1000;
   for(const e of g.enemies){if(e.dead||!visible(e))continue;const cx=(e.x+.5)*s,cy=(e.y+.45)*s;
     if((e.glyphBurn?.until||0)>now){for(let k=0;k<3;k++){const f=(t*2.2+k/3)%1;ctx.fillStyle=`rgba(255,${140+k*30},60,${.75*(1-f)})`;ctx.beginPath();ctx.arc(cx+(k-1)*s*.18,cy-s*.1-f*s*.45,s*(.09-.05*f),0,7);ctx.fill()}}
     if((e.glyphSlow?.until||0)>now){ctx.strokeStyle="#6fd0c4cc";ctx.lineWidth=Math.max(1.5,s*.05);ctx.setLineDash([s*.12,s*.08]);ctx.beginPath();ctx.ellipse(cx,cy+s*.35,s*.42,s*.14,0,0,7);ctx.stroke();ctx.setLineDash([])}
     if(vulnerableUntil(e)>now){const k=.5+.5*Math.sin(t*9);ctx.strokeStyle=`rgba(255,96,140,${.55+.35*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();for(let q=0;q<4;q++){const a=q*Math.PI/2+t*1.5,r=s*.5;ctx.moveTo(cx+Math.cos(a)*r*.62,cy-s*.1+Math.sin(a)*r*.62);ctx.lineTo(cx+Math.cos(a)*r,cy-s*.1+Math.sin(a)*r)}ctx.stroke()} // Tempo's window (hit-cast-passives.ts): a pink broken ring
+    { const enc=encumberedLeft(e),fill=enc>0?0:pullMeterOf(e); if(enc>0||fill>0)drawEncumbered(ctx,cx,cy,s,enc,fill,t,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); } // Encumbered (hit-cast-passives.ts ENCUMBERED): Standard View, and Close View's floor
     if(e.sweepFreeze)drawSweepFrost(ctx,e,e.sweepFreeze,cx,cy,s); // the awakened Great Sweep's freeze (great-sweep.ts SWEEP_FREEZE): Standard View, and Close View's floor
     if((e.hitStun||0)>.35){ctx.fillStyle="#dbe8ff55";ctx.beginPath();ctx.arc(cx,cy,s*.42,0,7);ctx.fill();ctx.strokeStyle="#eef5ffaa";ctx.lineWidth=1;for(let k=0;k<3;k++){const a=k*2.1+.4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*s*.38,cy+Math.sin(a)*s*.38);ctx.stroke()}}}
   for(const v of g.glyphVisuals||[]){const a=Math.max(0,v.life/v.max);
@@ -3722,7 +3734,20 @@ function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
 }
 
 // Echo ground patches (release 99): webs, living flesh and incoming mortar marks.
+// Glyph Mine × Rift Step (hit-cast-passives.ts RIFT_MINE): the inky void, a line or a filled triangle, near black with a faint violet
+// edge, fading in its last second (the edge breathes; still under Reduced Motion); and the rift mines waiting to link, steady sigils.
+function drawRiftVoid(ctx,g,s,now){
+  const still=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),V=riftVoidOf(g),R=riftMinesOf(g);
+  if(V){const k=Math.min(1,Math.max(0,V.left)),edge=still?.55:.45+.2*Math.sin(now/260),w=RIFT_MINE.halfWidth*2*s,x=V.xs,y=V.ys;
+    ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.globalAlpha=k;ctx.beginPath();ctx.moveTo(x[0]*s,y[0]*s);for(let i=1;i<V.n;i++)ctx.lineTo(x[i]*s,y[i]*s);if(V.n>2)ctx.closePath();
+    ctx.strokeStyle=`rgba(150,105,255,${edge})`;ctx.lineWidth=w+Math.max(2,s*.08);ctx.stroke();
+    ctx.strokeStyle="rgba(6,3,12,.92)";ctx.lineWidth=w;ctx.stroke();if(V.n>2){ctx.fillStyle="rgba(6,3,12,.88)";ctx.fill()}
+    ctx.restore()}
+  if(R&&R.n>0){const r=GLYPH_MINE.trigger*s*.8;ctx.strokeStyle="rgba(150,105,255,.75)";ctx.fillStyle="rgba(10,5,20,.55)";ctx.lineWidth=Math.max(1.5,s*.05);
+    for(let i=0;i<R.n;i++){const x=R.xs[i]*s,y=R.ys[i]*s;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.fill();ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()}}
+}
 function drawEchoPatches(ctx,g,s,now){
+  drawRiftVoid(ctx,g,s,now);
   if(g.earthResolve)drawEarthResolveSigil(ctx,g.earthResolve,s,now,insideResolve(g),!!(g.presentation?.reduceMotion||g.presentation?.safeMode)); // Earth Resolve, the Earth Apatosaurus's Echo (apato-render.ts)
   for(const m of glyphMinesOf(g)){const k=Math.max(0,Math.min(1,(m.until-now)/GLYPH_MINE.lifeMs)),x=m.x*s,y=m.y*s,r=GLYPH_MINE.trigger*s;ctx.strokeStyle=`rgba(190,150,255,${.35+.5*k})`;ctx.lineWidth=Math.max(1.5,s*.05);ctx.beginPath();ctx.ellipse(x,y,r,r*.6,0,0,7);ctx.moveTo(x-r*.5,y);ctx.lineTo(x,y-r*.35);ctx.lineTo(x+r*.5,y);ctx.lineTo(x,y+r*.35);ctx.closePath();ctx.stroke()} // Glyph Mine sigils (hit-cast-passives.ts)
   for(const q of g.echoPatches||[]){const left=Math.max(0,(q.until-now)/1000),x=q.x*s,y=q.y*s,r=q.radius*s;
