@@ -4,6 +4,7 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
+import { drawHatchVisuals } from "./hatchling-render.ts"; // the Triceratops hatchling
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { projectileVisualPoint } from "./actor-presentation.ts";
 import { SHADOW_CLONE } from "./late-spells.ts";
@@ -87,7 +88,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
     if ((Number(p.age) || 0) < T.flashAge) { const k = 1 - (Number(p.age) || 0) / T.flashAge, r = T.flash * s * (.6 + .4 * k), gr = ctx.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,252,232,${(.9 * k).toFixed(3)})`); gr.addColorStop(1, "rgba(255,226,150,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
   ctx.shadowBlur = 0;
   for (const fx of game.effects) {
-    if (fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
+    if (fx.hatch || fx.brawler || fx.kind === "golem-punch" || fx.kind === "assault-lance" /* Continuous Assault: drawn by drawCarbine */ || fx.kind === "riteRubble" || fx.kind === "riteFlash") continue; // the rite's rubble and flash are drawn below; release 483: drawn by drawBrawler; 535: the golem by drawToolForms
     const [x, y] = toScreen(fx);
     ctx.strokeStyle = fx.hostile ? "#e35248cc" : "#b75235aa";
     ctx.lineWidth = 4;
@@ -106,6 +107,7 @@ export function drawRangedEffects(ctx,game,width,height,projectedShots=null) {
   drawBrawlerAuras(ctx, game, toScreen, s, t, projectedShots != null); // release 485: Aegis, Shadow Boxing (on Close View's floor: its charge streak only)
   drawOrbit(ctx, game, toScreen, s, t, projectedShots); // release 487: Orbit Volley
   drawToolForms(ctx, game, toScreen, s, t, projectedShots); // release 533: Nanoknives and the Arc Wave
+  drawHatchVisuals(ctx, game, toScreen, s, !!(game.presentation?.reduceMotion || game.presentation?.safeMode), !!projectedShots); // the Triceratops hatchling's beams, bolts, whirls, chill, heals and buffs
   drawOrrery(ctx, game, toScreen, s, t, projectedShots); // the Aether Orrery
   drawQuandrix(ctx, game, toScreen, s, t, projectedShots); // the Quandrix Staff: hands, the fist, the slam, suction and the ring
   drawWeaponArts(ctx, game, toScreen, s, t); // weapon arts: the armed glint, the charge ring, eruptions, streams, the javelin, ki and the seal
