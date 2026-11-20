@@ -2645,7 +2645,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
     // Version 2: the band's rows are mapped exactly at both its edges (the secant, not the tangent at its middle row), so the
     // floor is continuous across band seams and nothing crawls along them as the camera moves; its lateral scale is the one at
     // the geometric mean depth. And the texture is sampled smoothly (nearest-texel sampling of the magnified floor shimmered).
-    // Version 3 (Tim: "it looks kind of shit... we need some visual passes"): version 2 gave a whole band one lateral scale,
+    // Version 3 (Tim asked for more visual passes on its look): version 2 gave a whole band one lateral scale,
     // so anything running into the view (a rug's edge, a telegraph, a tile line) stepped sideways at every band seam. Now each
     // band is two triangles, each mapped exactly at its three corners: the floor is continuous everywhere, with no steps.
     // The band's corners on screen (x 0 and w, rows y1 and yPrev) and in the ground texture:

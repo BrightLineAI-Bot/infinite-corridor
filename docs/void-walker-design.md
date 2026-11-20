@@ -4,7 +4,7 @@ Recorded 2026-10-21 UTC / 2026-10-20 UTC-04; updated through S8 ocean encounter/
 
 ## Read this first
 
-1. Read [the original source transcript](void-walker-source-transcript.md), especially S2. It deliberately retains dictation errors and self-corrections.
+1. Read the original source transcript (not kept in the public repository), especially S2. It deliberately retains dictation errors and self-corrections.
 2. Use the stable requirement IDs below when implementing, reviewing, testing, or discussing omissions. Do not silently reinterpret the design to fit existing code.
 3. Inspect the actual diff, tests, and rendered behavior. Every requirement starts **NOT YET VERIFIED** here, including those an implementation may already appear to cover. Tests passing in an earlier routing-only checkpoint do not establish these combat requirements.
 4. Record implementation choices and deviations separately from owner requirements. A suggested tuning value is not a user-approved value.

@@ -160,7 +160,7 @@ Verified production is r825-0c066edbc1a0 (Publish42444668551); live identity and
 
 ## Void Walker design handoff — recorded 2026-10-21 UTC
 
-Before implementing or reviewing the Void Walker, read [the detailed owner design and acceptance record](void-walker-design.md) and [the verbatim dictated source](void-walker-source-transcript.md). The description includes player-scale proportions, cosmic rends, transient wraiths, teleport/evasion, tracking portal constellations, pulling event horizons/pulsars, and a terrain-consuming supernova with straight teleport-dash barrages and damaging afterimages. The record separates explicit requirements from interpretations and tuning choices; its review statuses begin **NOT YET VERIFIED**. It is a design handoff, not a completion or publication claim. It supersedes earlier statements that the appearance/combat description has not yet been supplied.
+Before implementing or reviewing the Void Walker, read [the detailed owner design and acceptance record](void-walker-design.md) and the verbatim dictated source (not kept in the public repository). The description includes player-scale proportions, cosmic rends, transient wraiths, teleport/evasion, tracking portal constellations, pulling event horizons/pulsars, and a terrain-consuming supernova with straight teleport-dash barrages and damaging afterimages. The record separates explicit requirements from interpretations and tuning choices; its review statuses begin **NOT YET VERIFIED**. It is a design handoff, not a completion or publication claim. It supersedes earlier statements that the appearance/combat description has not yet been supplied.
 
 ## Historical state — 2026-10-21
 
