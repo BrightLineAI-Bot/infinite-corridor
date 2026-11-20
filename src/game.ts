@@ -95,7 +95,7 @@ import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, s
 import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHitStop, holdFoe, foeHeld } from "./hitstop-actors.ts"; // per-actor hit-stop (Tim, 2026-11-19)
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
-import { itemCap, upgradeLimit, upgradedItem, unlockRefinement } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
+import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
@@ -158,7 +158,8 @@ import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FR
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
 import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.ts";
 import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.ts"; // progression Phase 3: an Exploration journey from before its table keeps what it had
-import { QUESTS, QUEST_IDS, questDue } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d)
+import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
+import { farCivAt } from "./far-realms.ts"; import { rosterGuardianKind, GUARDIAN_ROSTER } from "./monster-pack.ts"; // progression Phase 8: the Storm Halls' ground; the guardian roster
 import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.ts"; // progression Phase 6: milestones, the Reliquary and pity
 import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
@@ -3740,7 +3741,7 @@ export class Game {
     if(packAdopted&&!this.map.deepDungeon&&this.map.recipe!=="deep-v1"&&history.cisternGuardianChoice!=="gravitantBell"){
       const guardian=this.map.enemySpawns.find(e=>e.boss&&e.dungeonRole==="gateWarden"&&e.kind==="hollowMarshal");
       const guardianId=this.map.deepFloor&&this.map.deepGen>=2?`${packAreaId}:f${this.map.deepFloor}`:packAreaId;/* the-deep.ts DEEP_FLOOR_GEN 2: each floor of the Deep rolls its own guardian */
-      if(guardian){history.guardianKind??=history.ladder?ladderGuardian(this.save.seed,guardianId,history.ladder.tier,guardianKindFor(this.save.seed,guardianId),GUARDIAN_POOL):guardianKindFor(this.save.seed,guardianId);/* release 319 */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
+      if(guardian){if(history.guardianKind===undefined){const ros=exploring(this.save)&&history.monsterPack===MONSTER_PACK_VERSION?rosterGuardianKind(this.save.seed,this.questSection().rx,this.questSection().ry,guardianId):null,base=ros||guardianKindFor(this.save.seed,guardianId);history.guardianKind=history.ladder?ladderGuardian(this.save.seed,guardianId,history.ladder.tier,base,GUARDIAN_POOL):base;if(ros)history.guardianRoster=GUARDIAN_ROSTER.version}/* release 319; progression Phase 8: on ground first entered under Exploration the journey's seeded roster weighs the near rings (monster-pack.ts GUARDIAN_ROSTER) */guardian.kind=history.guardianKind;guardian.packGuardian=history.guardianKind!=="hollowMarshal"}
     }
     if(packAdopted&&this.map.encounterVersion&&this.map.monsterPack!==MONSTER_PACK_VERSION){this.map.enemySpawns=this.map.enemySpawns.filter(e=>!e.encounterSpawn);this.map.encounterVersion=0;this.map.encounterGroups=[]}
     if (area === "dungeon" && !this.map.beastHotel && !this.map.deepDungeon && !this.map.building && !this.map.seedRealm /* seed realms */ && this.map.recipe !== "deep-v1" && !String(this.areaId()).includes("aperture-annex") && hashSeed(`${this.save.seed}:gate-predator:v1:${this.areaId()}`) % 1000 < (history.gatePredatorSpawnThreshold || GATE_REVENANT.legacySpawnPerThousand))
@@ -4055,6 +4056,7 @@ export class Game {
     if (area === 'dungeon' && !this.map.arena && !this.save.session.activeDisplacement && !String(loadingId).startsWith('hunt-')) this.prepareDungeonCompletion();
     if (area === 'dungeon' && this.save.session.activeDisplacement) { const h = dungeonHistory(this.save, this.areaId()); if (!h.thresholdOpen) { const fell = this.enemies.find((e) => e.dead && !e.worldBeast && !e.questingBeast && (e.boss || isCrossingGuardian(e)) && (e.boss || !this.enemies.some((q) => !q.dead && isCrossingGuardian(q)))); if (fell) { h.thresholdOpen = true; h.thresholdDoor = { x: Math.round(fell.x), y: Math.round(fell.y) }; } } this.raiseThresholdDoor(); } // release 451: also for a guardian felled before this release
     this.reconcileConsequences();
+    this.questArea(area); // progression Phase 8: quest tokens laid again; an empty place gives way to the next
     const codex = (this.save.codex ||= { creatures: {}, places: {}, features: {} });
     codex.creatures ||= {};
     codex.places ||= {};
@@ -5362,6 +5364,7 @@ export class Game {
       return;
     }
     h.resolved = true; h.visitOpen = false; const tier = this.map.skyTier || 0;
+    { const ret = this.save.session?.dungeonReturn; this.questPlaceCleared("skyland", { rx: ret?.rx, ry: ret?.ry }); } // progression Phase 8: Tempo's Skyland, cleared on the metronome's beat
     if (skyAnnexNext(id) && isDivineRun(skyAnnexNext(id))) this.raiseVisceraAltar(); // release 682: before the annex's Divine Challenge
     if (skyAnnexNext(id)) { h.annexNext = skyAnnexNext(id); (this.questNotices ||= []).push({ title: `${SKY_ANNEX.name.toUpperCase()} · SKYWAY ${skyAnnexFloor(id)} OF 3 CLEARED`, detail: "the way down is now a stair of cloud to the next island · the reward waits at the top", kind: "quest" }); this.message = SKY_ANNEX.messages.next; this.sync(); return; } // release 678
     const won = completeSkyland(this.save, tier);
@@ -5621,6 +5624,7 @@ export class Game {
     if (o.kind === "worldCache") return this.takeWorldCache(o); // world caches
     if (o.kind === "cacheLever") return this.pullCacheLever(o);
     if (o.realmObject && this.area === "dungeon" && this.map?.seedRealm) return this.useRealmObject(o, action); // seed realms
+    if (o.kind === "questToken") return this.questTokenAct(o); // progression Phase 8: a heart, a sigil, the metronome
     if (o.kind === "tideBearer") return this.tideBearerAction(o, action);
     if (o.completionExit) {
       if (!dungeonHistory(this.save,this.areaId()).combatClear?.completed) return {ok:false,message:this.message='The return remains sealed while a required guardian lives.'};
@@ -5798,6 +5802,8 @@ export class Game {
     if (r.transition === "dungeon") this.glimpseCue = !this.save.lore?.glimpses?.[WAYFARER_DREAD.glimpse.id] && dreadGlimpseOffered(this.save.seed, o.dungeonId || o.id, this.save.worldFlags?.deaths, this.wayfarerDreadHere()) ? "returning" : "crossing"; // the Wayfarer's dread: now and then, the Glimpse of the one who keeps returning (seen once; glimpses.ts)
     if (r.transition === "retrain") { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); } // release 347
     if (o.talkKey && chosen === "speak") { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } // release 265: the farmer and the quarry keeper have more to say each time
+    if (r.ok && chosen === "speak") { const said = this.questSpeakTo(o); if (said) { this.message = `${o.name || "They"}: “${said}”`; r.message = this.message; } } // progression Phase 8: a quest's giver (a delivery, or their words)
+    if (r.ok && o.kind === "shipwreck" && chosen === "salvage") { const at = this.questSection(); this.questDone(questEvent(this.save, { on: "salvage", with: toolKey(this.save.equipment?.secondary), rx: at.rx, ry: at.ry }).done); } // progression Phase 8: Arc Wave's wrecks
     if (o.kind === "tree" && chosen === "cut") { applyFallenTreeCrossings(this.map); const before = Number(this.save.materials?.wood) || 0, total = addWood(this.save, woodFor(o)), n = total - before; this.message = n > 0 ? `${this.message} +${n} wood (${total}${total >= WOOD.carry ? ", all you can carry" : ""}).` : `${this.message} You can carry no more wood (${WOOD.carry}).`; r.message = this.message; }
     if(r.transition==="elitePortal"){
       this.save.session.dungeonReturn={rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y};this.save.session.activeDungeonId=`elite-portal:${this.save.seed}:knife-choir`;const h=dungeonHistory(this.save,this.save.session.activeDungeonId);h.visits++;h.visitOpen=true;this.loadArea('dungeon');this.player.x=4;this.player.y=5;relocateIfStranded(this.player,this.map,mapWidth(this.map,'dungeon'));this.settleArrival();/* release 439 */
@@ -8813,9 +8819,9 @@ export class Game {
   // completes the quest). A Questing Beast hunting elsewhere leaves that section for its own; one already here is just fought.
   domainTick(dt) {
     const v = this.domainVisit; if (!v || v.done || this.area !== "overworld" || !this.map?.farDomain) return;
-    if (this.enemies.some((e) => (v.id === "questingBeast" ? e.questingBeast : e.worldBeast === v.id) && !e.dead)) { v.done = true; return; }
+    if (this.enemies.some((e) => (v.id === "questingBeast" ? e.questingBeast : e.worldBeast === v.id) && !e.dead)) { v.done = true; this.questDone(questHome(this.save, v.id)); return; } // progression Phase 8: it is home (Ember Mend)
     v.clock += dt; if (v.clock < v.wait) return;
-    v.done = true; return this.summonDomainBeast();
+    v.done = true; const came = this.summonDomainBeast(); if (came) this.questDone(questHome(this.save, v.id)); return came;
   }
   summonDomainBeast() {
     const id = this.map?.farDomain; if (!id) return null;
@@ -8885,16 +8891,67 @@ export class Game {
   settleQuests() {
     const tier = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)), out = [];
     for (const id of QUEST_IDS) {
-      const Q = QUESTS[id]; if (!questDue(this.save, id, tier, ["owned", "open"].includes(stateV0(this.save, ROW_BY_ID[Q.ability])))) continue;
-      openQuest(this.save, id); out.push(id);
-      (this.questNotices ||= []).push({ title: QUEST_WORDS.open, detail: `${Q.title} · ${Q.giverName} asks for you · Journal → Leads`, kind: "quest" });
-      journalOnce(this.save, `quest:${id}:open`, `${Q.title}. ${Q.giverName} at the Refuge has work for you. ${Q.steps.map((q) => q.text).join(" ")}`, "Quests");
+      const Q = QUESTS[id], giverAt = this.questGiverAt(Q);
+      if (questOpen(this.save, id) && giverAt) { questState(this.save, id).giverAt = giverAt; continue; } // Phase 8: the quarry keeper moves with home
+      if (!questDue(this.save, id, tier, ["owned", "open"].includes(stateV0(this.save, ROW_BY_ID[Q.ability])))) continue;
+      openQuest(this.save, id, { giverAt }); out.push(id);
+      (this.questNotices ||= []).push({ title: QUEST_WORDS.open, detail: `${Q.title} · ${Q.giver ? `${Q.giverName} asks for you` : "far out, something calls"} · Journal → Leads`, kind: "quest" });
+      journalOnce(this.save, `quest:${id}:open`, `${Q.title}. ${Q.giver ? `${Q.giverName} ${Q.giver === "quarry-keeper" ? "at the Refuge quarry" : "at the Refuge"} has work for you.` : Q.opened || ""} ${Q.steps.map((q) => q.text).join(" ")}`, "Quests");
     }
     return out;
   }
+  // Where a quest's giver stands, when it is not the Refuge itself: Shale at the quarry (refuge-lands.ts), which belongs to home.
+  questGiverAt(Q) { if (Q?.giver !== "quarry-keeper") return null; const q = this.refugeLandsWhere()?.quarry; return q && Number.isInteger(q.rx) ? { rx: q.rx, ry: q.ry } : null; }
   // A place cleared that a quest's step may ask for (`place`: a quest-places.ts kind). Completed quests grant their ability.
-  questPlaceCleared(place) {
-    for (const id of questClear(this.save, place)) { const Q = QUESTS[id], n = grantWorld(this.save, Q.ability, "b", id); (this.questNotices ||= []).push({ title: QUEST_WORDS.done, detail: Q.title, kind: "quest" }); journalOnce(this.save, `quest:${id}:done`, Q.done, "Quests"); if (n) this.worldNotices([n]); }
+  questPlaceCleared(place, at = {}) { this.questDone(questClear(this.save, place, at)); }
+  // Completed quests grant their ability (world-finds.ts grantWorld: Exploration earned; Classic early, or the consolation).
+  questDone(ids) {
+    for (const id of ids || []) { const Q = QUESTS[id], n = grantWorld(this.save, Q.ability, "b", id); (this.questNotices ||= []).push({ title: QUEST_WORDS.done, detail: Q.title, kind: "quest" }); journalOnce(this.save, `quest:${id}:done`, Q.done, "Quests"); if (n) this.worldNotices([n]); }
+  }
+  // ---------------------------------------------------------------- progression Phase 8 (quests.ts, quest-places.ts)
+  // The section the Wayfarer's deed counts for (in a crossing, the section it opens from), and the tags of the area (quests.ts
+  // step `where`): the Hollow Husk, a canyon crater, a Pentagon, the Storm Halls.
+  questSection() { const r = this.area === "dungeon" ? this.save.session?.dungeonReturn : null; return { rx: Number.isInteger(r?.rx) ? r.rx : this.rx, ry: Number.isInteger(r?.ry) ? r.ry : this.ry }; }
+  questWhere() {
+    const out = [], M = this.map || {};
+    if (this.area === "dungeon" && M.seedRealm?.realm === "husk") out.push("husk");
+    if (this.area === "dungeon" && isCanyonId(this.areaId())) out.push("canyon");
+    if (this.area === "dungeon" && M.building?.pentagon) out.push("pentagon");
+    if (this.area === "overworld" && farCivAt(this.save.seed, this.rx + .5, this.ry + .5)?.id === "storm") out.push("storm");
+    return out;
+  }
+  // A foe felled: a quest's step may count it, or lay what it leaves (a heart, a sigil) where it fell.
+  questKill(e) {
+    if (!e || e.summonedBy || e.illusion || e.astralCompanionOf || !QUEST_IDS.some((id) => questOpen(this.save, id))) return;
+    const at = this.questSection(), r = questEvent(this.save, { on: "kill", kind: e.kind, where: this.questWhere(), far: Math.hypot(at.rx, at.ry), aegis: !!e.aegisTurned, force: this.save.magicSkills?.active?.id === "force-channel",
+      areaId: String(this.areaId()), x: e.x, y: e.y, rx: at.rx, ry: at.ry, at: Math.floor(Number(this.save.playSeconds) || 0) });
+    for (const o of r.lay) { (this.map.objects ||= []).push(o); this.message = `${o.name} lies where it fell. Act to collect it.`; }
+    this.questDone(r.done);
+  }
+  // Act on a quest token: collect it (a heart, a sigil) or wind it (the metronome).
+  questTokenAct(o) {
+    const r = questToken(this.save, o.token, o.at || null); this.map.objects = (this.map.objects || []).filter((q) => q !== o);
+    if (!r) return { ok: false, message: (this.message = `${o.name} crumbles: it was for a quest no longer waiting.`) };
+    this.message = r.step.need ? `${o.name}: ${r.n} of ${r.need}.${r.n >= r.need && !r.done.length ? ` ${r.step.needs ? "" : "Now take them back."}` : ""}`.trim() : `You wind the ${o.name.toLowerCase()}. It ticks, and everything on the islands starts to move on its beat.`;
+    if (r.step.need && r.n >= r.need && QUESTS[r.id].steps.some((q) => q.on === "speak")) this.message = `${o.name}: ${r.n} of ${r.need}. Take them to ${QUESTS[r.id].giverName}.`;
+    this.questDone(r.done); this.sync(); return { ok: true, message: this.message };
+  }
+  // A word with a quest's giver: a delivery, else their own words about it. Returns the line, or null.
+  questSpeakTo(o) { if (!o?.id) return null; const r = questSpeak(this.save, o.id); this.questDone(r.done); return r.line; }
+  // Open floor near the Wayfarer, for something a quest lays (the metronome).
+  questSpot() {
+    const p = this.player || {}, w = mapWidth(this.map, this.area), T = this.map?.tiles || [], x0 = Math.round(Number(p.x) || 0), y0 = Math.round(Number(p.y) || 0);
+    for (let r = 1; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const x = x0 + dx, y = y0 + dy, t = T[y * w + x];
+      if (t && !t.blocked && x > 0 && y > 0 && !(this.map.objects || []).some((o) => Math.round(o.x) === x && Math.round(o.y) === y)) return { x, y }; }
+    return { x: x0, y: y0 };
+  }
+  // As an area loads: the tokens a quest left in it laid again (and the metronome on its Skyland); a place pointed at that turns
+  // out empty gives way to the next (quest-places.ts questArrive).
+  questArea(area) {
+    if (!QUEST_IDS.some((id) => questOpen(this.save, id))) return;
+    const id = String(this.areaId()), ret = this.save.session?.dungeonReturn, sky = area === "dungeon" && isSkyland(id) && Number.isInteger(ret?.rx) ? { rx: ret.rx, ry: ret.ry } : null, spot = this.questSpot();
+    for (const o of questLay(this.save, { areaId: id, skyland: sky, x: spot.x, y: spot.y })) if (!(this.map.objects ||= []).some((q) => q.id === o.id)) this.map.objects.push(o);
+    questArrive(this.save, { area, rx: this.rx, ry: this.ry, areaId: id, objects: this.map.objects || [], enemies: [...(this.enemies || []), ...(this.map.enemySpawns || [])], horde: area === "dungeon" && !!this.save.consequences?.dungeons?.[id]?.horde });
   }
   // Where a reliquary is recorded: the dungeon area (a Deep floor by its floor; a labyrinth floor by its level), or the section.
   reliquaryArea(area = this.area) { if (area !== "dungeon") return `overworld:${this.rx},${this.ry}`; const id = this.areaStateId(); return this.map?.deepFloor ? `${id}:f${this.map.deepFloor}` : id; }
@@ -8969,6 +9026,7 @@ export class Game {
     if (e.roofDweller && e.roofBase) { const H = dungeonHistory(this.save, `${e.roofBase}:f1`); H.roofSlain = [...new Set([...(H.roofSlain || []), e.id])]; } // a roof dweller slain stays slain
     if(e.noRewards){e.rewarded=true;return}
     if (e.respawned) return this.respawnReward(e); // building respawns: experience, marks and now and then an item; nothing lasting
+    this.questKill(e); // progression Phase 8: a quest's step may count this foe (quest-places.ts questEvent)
     if(e.arenaId&&this.map?.arena){const history=dungeonHistory(this.save,this.areaId());history.resolved=true;history.guardianDefeated=true;history.visitOpen=false;this.defeatNotice={title:'WORLD THREAT BROKEN',detail:`${this.map.name} · the persistent arena falls quiet`,kind:'danger'}}
     if(e.foundryId){
       recordCreatureDefeat(this.save,e);
@@ -10461,6 +10519,7 @@ export class Game {
   // live window and never a command grab (aegisGrab). The first parried blow of a frame is the one that goes back; the window
   // closes at the end of that frame (one parry a cast). Allocates nothing; reflected damage never parries (`_reflecting`).
   parryBlow(foe, now = this.lastUpdateNow || 0, carried = 0, shot = null, attack = null, how = 0) {
+    if (foe && typeof foe === "object" && foe.kind === "gateRevenant" && now < (this.aegisUntil || 0)) foe.aegisTurned = true; // progression Phase 8: Power Aegis's quest (a Revenant's blow turned)
     if (this._reflecting || !(now < (this.aegisPerfectUntil || 0)) || !(now < (this.aegisUntil || 0))) return false;
     const body = foe && typeof foe === "object" ? foe : null;
     if (this.aegisGrab(body, attack, now)) return false; // a command grab goes through; the Aegis blocks its damage as always

@@ -944,6 +944,29 @@ export const PACK_BOSS_TEMPLATE = { hp: 3.4, damage: 1.3, scale: 1.35, cooldown:
 // (history.guardianKind), so only dungeons never entered can draw from the wider pool.
 export const GUARDIAN_POOL = ["hollowMarshal", "weepingSaint", "amalgam", "hangedChoir", "gnawingMaw", "sunderjaw", "thunderhorn", "cinderSeraph", "siegeBeetle", "lumenWraith", "mirrorShade", "strataEel", "veilSpinner", "riftLynx", "graveLantern", "pallidCrawler"];
 export function guardianKindFor(seed, identity) { return GUARDIAN_POOL[hashSeed(`${seed}:guardian:pack-v${MONSTER_PACK_VERSION}:${identity}`) % GUARDIAN_POOL.length]; }
+// The guardian roster (docs/progression-design.md revision 3, 2.4 and 7 row 8; progression Phase 8): per journey and per ring of
+// distance from the Ember Refuge (straight line; `rings` the outer edges of R0, R1 and R2), the seed orders GUARDIAN_POOL and the
+// first `favoured` kinds of that ring are `weight` times as likely as the rest, so the first crossings' guardians, and their
+// Echoes, differ from one journey to the next. Beyond the last ring every kind is as likely as today. Read only for a crossing
+// first entered on an Exploration journey (game.ts records history.guardianRoster = `version` with the kind it picks); every
+// other crossing keeps guardianKindFor. Pure: the same seed, ring and crossing give the same kind.
+export const GUARDIAN_ROSTER = Object.freeze({ version: 1, stream: "progression:v5:guardian-roster", rings: Object.freeze([6, 18, 50]), favoured: 4, weight: 3 });
+const rosterMemo = new Map();
+// The ring's seeded order (the favoured first).
+export function guardianRoster(seed, ring) {
+  const key = `${seed}:${ring}`; if (rosterMemo.has(key)) return rosterMemo.get(key);
+  const R = GUARDIAN_ROSTER, h = (k) => hashSeed(`${seed}:${R.stream}:r${ring}:${k}`), out = Object.freeze([...GUARDIAN_POOL].sort((a, b) => h(a) - h(b) || (a < b ? -1 : 1)));
+  if (rosterMemo.size > 64) rosterMemo.clear(); rosterMemo.set(key, out); return out;
+}
+export const rosterRing = (rx, ry) => { const d = Math.hypot(Number(rx) || 0, Number(ry) || 0); const i = GUARDIAN_ROSTER.rings.findIndex((r) => d <= r); return i < 0 ? null : i; };
+// The roster's kind for crossing `identity` at section (rx, ry), or null beyond the last ring.
+export function rosterGuardianKind(seed, rx, ry, identity) {
+  const R = GUARDIAN_ROSTER, ring = rosterRing(rx, ry); if (ring === null) return null;
+  const order = guardianRoster(seed, ring), total = R.favoured * R.weight + (order.length - R.favoured);
+  let roll = hashSeed(`${seed}:${R.stream}:pick:${identity}`) % total;
+  for (let i = 0; i < order.length; i++) { const w = i < R.favoured ? R.weight : 1; if (roll < w) return order[i]; roll -= w; }
+  return order[order.length - 1];
+}
 
 // Dungeon ecologies gain pack residents; each entry is [kind, encounter role].
 export const PACK_ECOLOGY_ADDITIONS = {

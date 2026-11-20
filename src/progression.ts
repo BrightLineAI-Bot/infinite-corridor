@@ -46,7 +46,7 @@ import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { SEEDS } from "./skylands.ts";
 import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.ts"; // Phase 6
-import { STORY_ROUTE_OF, STORY_SEEN, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld } from "./quests.ts"; // Phase 7
+import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.ts"; // Phase 7; Phase 8
 
 export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({
@@ -175,9 +175,9 @@ field("wellspring", ["caster"], W("d", "R2", "H", "A seeded thread (for example 
 field("charged-air", ["gunner"], W("a", "R4", "D", "Free when the Lattice opens"), "Charged Air: while a spell runs, tool shots grow and hit harder.");
 field("spellblade", ["spellblade"], W("a", "R4", "D", "Free when the Lattice opens"), "Spellblade: while a spell runs, melee strikes deal more and reach farther.");
 field("drift-field", ["caster"], W("c", "Sky", "D", "Glide 1,000 tiles"), "Drift Field: a dodge drags your nearest lingering spell along.");
-field("tempo", ["blade"], W("b", "R2", "D", "Wind the metronome in an Ember Foundry Pentagon's heart room, then defeat everything that moves on its beat"), "Tempo: every 5th hit on one foe opens a window. Hit it again, now.");
+field("tempo", ["blade"], W("b", "Sky", "D", "Climb a Sky Stair at least 50 sections out, wind the metronome on its first island, then clear the Skyland on its beat (moved from an Ember Foundry Pentagon, a theme not in the world)"), "Tempo: every 5th hit on one foe opens a window. Hit it again, now.");
 field("shatterpoint", ["blade", "brawler"], W("R", null, "X", "A reliquary, from the seeded pool"), "Shatterpoint: break a foe's poise and the next blows land heavier.");
-field("power-aegis", ["warden"], W("b", "R3", "D", "Use Aegis to turn a Gate Revenant's blow, then defeat it"), "Power Aegis: a perfect Aegis parry strikes back.");
+field("power-aegis", ["warden"], W("b", "R3", "D", "At least 50 sections from the Ember Refuge, use Aegis to turn a Gate Revenant's blow, then defeat it"), "Power Aegis: a perfect Aegis parry strikes back.");
 const arcana = (key, from, hint) => add("arcana", key, ARCANA_UNLOCKS[key]?.name, [], ["d", `Completing ${from}`], W("d", "R1", "D", `${from}, unchanged`), hint, "Always on once opened; nothing to press.", `Opened by completing ${from}.`, ["arcana", key]);
 arcana("passive:bell-toll", "the Seven Bells", "Bell Toll: a heavy blow tolls like a cracked bell, and foes near it reel.");
 arcana("passive:lamplight", "the Lamplighter's Round", "Lamplighter's Light: whatever light you see by reaches farther.");
@@ -187,7 +187,7 @@ const art = (id, controls, arch, v1, hint) => add("arts", `field:${id}`, TOOL_FO
 art("ki-blast", ART("Iron Fists"), ["brawler"], W("c", "R2", "D", "Defeat 15 foes with the Iron Fists' perfect-timing ball"), "Ki Blast: the armed punch fires a ki blast; from the uppercut, from the air.");
 art("cinder-javelin", ART("Cinder Pike"), ["blade"], W("d", "R1", "H", "The Ferryman's Fares: the pole he never needed, thrown across"), "Cinder Javelin: hurl the pike through a line of foes; it comes back.");
 art("transpose", ART("Salvage Blade"), ["spellblade"], W("d", "R2", "H", "The Tollkeeper's Keys: the glass key's keyhole, set down as a seal"), "Transpose: a seal on the ground; inside it, magic hits much harder.");
-art("blade-stream", ART("Fourfold Daggers"), ["blade"], W("b", "R2", "D", "Defeat every Lamplighter in a Lamplit City Pentagon before the first relights its lamp"), "Blade Stream: a storm of light slashes around you.");
+art("blade-stream", ART("Fourfold Daggers"), ["blade"], W("b", "Strange", "D", "In a Pentagon, defeat three Grave Lanterns before the first relights its lamp (moved from a Lamplit City Pentagon's Lamplighters, a theme not in the world)"), "Blade Stream: a storm of light slashes around you.");
 art("lava-slash", ART("Verge Cleaver"), ["brawler"], W("c", "R3", "D", "Defeat 30 foes in the Magma Rivers"), "Lava Slash: dash in and slam; the ground erupts.");
 art("mages-hand", "Set it in a Transit Lattice passive slot, equip the Quandrix Staff, and hold Attack [J]: the last hand you cast clenches into a fist.", ["caster"], W("d", "R5", "H", "The Tall Child's Slates: a hand the size of a door, offered gently"), "Mage's Hand: hold Attack and your last hand grabs foes and drags them in.");
 art("rapid-reload", "Set it in a Transit Lattice passive slot. Every charged release counts, whatever the weapon or tool.", ["gunner"], W("c", "R2", "D", "Land 200 charged releases"), "Rapid Reload: charged releases come back sooner.");
@@ -452,7 +452,7 @@ export function compendium(save) {
     for (const r0 of rows) {
       const state = states[r0.id]; if (state === "locked") continue;
       const r = worldView(save, v1 ? viewV1(r0) : r0); // Exploration's own words for the rows it changes (Phase 3); how a milestone or a reliquary gave it (Phase 6)
-      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${STORY_ROUTE_OF[r.id] ? STORY_RUMOUR : `${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}`}` : STATE_WORDS.owned,
+      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${boughtRumour(save, r.id) ? boughtRumour(save, r.id).where : STORY_ROUTE_OF[r.id] ? STORY_RUMOUR : `${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}`}` : STATE_WORDS.owned,
         ...(state === "rumoured" ? { hint: "", controls: "", does: "", obtained: "" } : { hint: r.hint, ...howTo(r) }) }); // a rumour names it, no more
     }
     groups.push({ id: g.id, title: g.title, total: rows.length, owned: entries.filter((e) => e.state === "owned").length, entries });
@@ -630,6 +630,8 @@ function leaveExploration(save, p) {
 // under Phase 3 it keeps everything today's rules have open at that moment (as a switch to Exploration does), then reads
 // table 2. Nothing it had closes; Aerial Step and Long Quickening it gains. A Classic journey is never touched. Returns the
 // number of ids kept, or 0.
+// Phase 8: likewise a journey on Phase 7's table (EXPLORATION.storyTable) keeps, on its first load under table 5, those of the
+// abilities Phase 8 withholds (its quests' and the Viscera forms) that today's rules have open at that moment.
 // Phase 6: an Exploration journey on Phase 3's table (EXPLORATION.coreTable) keeps, on its first load under table 3, those of the
 // milestone and reliquary abilities today's rules have open at that moment (learned forms, Lattice picks, Casting Wind once its
 // discipline has a rank), and nothing else: the core kit's gates it already reads.
@@ -637,7 +639,7 @@ export function adoptExploration(save) {
   const raw = save?.progression;
   if (!raw || raw.mode !== 1 || Number(raw.table) >= EXPLORATION.table) return 0;
   const from = Number(raw.table) || 1, p = ensureProgression(save);
-  const later = [...(from < EXPLORATION.worldTable ? Object.keys(WORLD_ROUTE_OF) : []), ...Object.keys(STORY_ROUTE_OF)]; // Phase 7: from table 3, only the b and d ones are new
+  const later = [...(from < EXPLORATION.worldTable ? Object.keys(WORLD_ROUTE_OF) : []), ...Object.keys(STORY_ROUTE_OF).filter((id) => STORY_SINCE[id] > from)]; // Phase 7: from table 3, only the b and d ones are new; Phase 8: from table 4, only its own
   const ids = from < EXPLORATION.coreTable ? switchKeeps(save) : later.filter((id) => ["owned", "open"].includes(stateV0(save, ROW_BY_ID[id])));
   const added = keepAll(p, ids);
   p.table = EXPLORATION.table;
@@ -711,7 +713,7 @@ function usable(save, row) {
 }
 function worldState(save, row) {
   if (STORY_ROUTE_OF[row.id] && storyWithheld(save, row.id)) return storyState(save, row); // Phase 7
-  if (worldWithheld(save, row.id)) { const m = MILESTONE_FOR[row.id]; return m && featCount(save, m.key) > 0 ? "open" : "locked"; }
+  if (worldWithheld(save, row.id)) { const m = MILESTONE_FOR[row.id]; return m && featCount(save, m.key) > 0 ? "open" : boughtRumour(save, row.id) ? "rumoured" : "locked"; } // Phase 8: a rumour bought with Viscera
   if (!earnedWorld(save, row.id) && !progressionKept(save, row.id)) return stateV0(save, row); // not withheld and not found (an old table): today's rules
   return usable(save, row) ? "owned" : "open";
 }
@@ -733,6 +735,7 @@ export function worldObtained(save, id) {
   if (e.route === "c" && m) return `Earned by a milestone${when}: ${m.name}, ${m.need.toLocaleString("en-US")}.`;
   if (e.route === "b") { const Q = QUESTS[e.from]; return `Earned by a quest${when}: ${Q ? `${Q.title}, for ${Q.giverName}. ${Q.done}` : "a quest."}`; }
   if (e.route === "d") { const t = threadReward(save, e.from); return `Given at the end of ${t ? `${t.title}${when}. ${t.hook}` : `a thread${when}.`}`; }
+  if (e.route === "V") return `Bought for ${Number(e.paid) || VISCERA_SHOP.forms[id] || 0} Divine Viscera${when}, at ${e.from === "forge" ? "Sela's forge" : "a smith's"}.`; // Phase 8
   return `Found in a ${RELIQUARY.name.toLowerCase()} at ${RELIQUARY.places[e.from] || "the bottom of something"}${when}.`;
 }
 const worldView = (save, row) => (row && earnedWorld(save, row.id) ? Object.freeze({ ...row, obtained: worldObtained(save, row.id) }) : row);
@@ -743,19 +746,27 @@ const worldView = (save, row) => (row && earnedWorld(save, row.id) ? Object.free
 // reward (H) as rumoured once its thread is begun ("a thread's ending"), a hidden one (X) stays unknown until it is yours.
 export const STORY_RUMOUR = "a thread's ending";
 const begun = (save, set) => set === "second" ? Array.isArray(save?.lore?.second?.trail) && save.lore.second.trail.length > 0 : Array.isArray(save?.lore?.threads?.[set]) && save.lore.threads[set].length > 0;
+// Phase 8: a Viscera form reads as open once refinement is (past 1,000 sections: on sale at Sela's forge and every smith), and any
+// withheld ability still unknown reads as rumoured once a rumour about it was bought (quests.ts boughtRumour).
+const refining = (save) => save?.refinement?.unlocked === true;
 function storyState(save, row) {
-  if (STORY_ROUTE_OF[row.id] === "b") return questOpen(save, QUEST_FOR[row.id]) ? "open" : "locked";
+  const route = STORY_ROUTE_OF[row.id], rumour = boughtRumour(save, row.id) ? "rumoured" : "locked";
+  if (route === "b") return questOpen(save, QUEST_FOR[row.id]) ? "open" : rumour;
+  if (route === "V") return refining(save) ? "open" : rumour;
   const set = carrierOf(save, row.id);
-  return STORY_SEEN[row.id] === "H" && set && begun(save, set) ? "rumoured" : "locked";
+  return STORY_SEEN[row.id] === "H" && set && begun(save, set) ? "rumoured" : rumour;
 }
 function storyWhere(save, row) {
   if (STORY_ROUTE_OF[row.id] === "d") return STORY_RUMOUR;
-  const id = QUEST_FOR[row.id], Q = QUESTS[id], step = questOpen(save, id) ? questStep(save, id) : null;
-  return step ? `a quest for ${Q.giverName}: ${step.text.charAt(0).toLowerCase()}${step.text.slice(1).replace(/\.$/, "")}` : `a quest that opens at ${APERTURE_BANDS[Q.gate.tier]?.name || `tier ${Q.gate.tier}`}`;
+  if (STORY_ROUTE_OF[row.id] === "V") return `for ${VISCERA_SHOP.forms[row.id]} Divine Viscera at Sela's forge or any smith`;
+  const id = QUEST_FOR[row.id], Q = QUESTS[id], step = questOpen(save, id) ? questStep(save, id) : null, who = Q.giver ? `for ${Q.giverName}` : "out on the far road";
+  const gate = `${APERTURE_BANDS[Q.gate.tier]?.name || `tier ${Q.gate.tier}`}${Q.gate.far ? `, once you have stood ${Q.gate.far.toLocaleString("en-US")} sections out` : ""}`;
+  return step ? `a quest ${who}: ${step.text.charAt(0).toLowerCase()}${step.text.slice(1).replace(/\.$/, "")}` : `a quest that opens at ${gate}`;
 }
 // "from the Clockmaker's Hours" / "from Hollis Dray's quest" for an ability a quest or a thread gave (save.feats.earned), else "".
 function storySource(save, id) {
-  const e = save?.feats?.earned?.[id]; if (!e || !["b", "d"].includes(e.route) || e.dust) return "";
+  const e = save?.feats?.earned?.[id]; if (!e || !["b", "d", "V"].includes(e.route) || e.dust) return "";
+  if (e.route === "V") return "bought with Divine Viscera"; // Phase 8
   if (e.route === "b") { const Q = QUESTS[e.from]; return Q ? `from ${Q.giverName}'s quest` : ""; }
   const t = threadReward(save, e.from); return t ? `from ${t.title.replace(/^The /, "the ")}` : "";
 }
