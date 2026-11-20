@@ -19,8 +19,8 @@ export const HATCH_ART = Object.freeze({
   // (far brow, near brow, nose), measured from the standard view's drawing in the pose each move shows: `tips` for the beam (his charge
   // wind-up: head lowered), `gatlingTips` for the gatling horns (the rear), and the focus ahead of the nose where the three beams meet
   // before the blast (2026-11-20: moved with his lion's carriage, the head carried up over the chest)
-  tips: Object.freeze([Object.freeze([1.05, 1.01]), Object.freeze([1.07, .95]), Object.freeze([1, .92])]), focus: Object.freeze([1.45, .9]),
-  gatlingTips: Object.freeze([Object.freeze([.37, 1.81]), Object.freeze([.43, 1.8]), Object.freeze([.43, 1.73])]),
+  tips: Object.freeze([Object.freeze([1.05, .99]), Object.freeze([1.07, .93]), Object.freeze([1, .9])]), focus: Object.freeze([1.45, .88]),
+  gatlingTips: Object.freeze([Object.freeze([.37, 1.78]), Object.freeze([.43, 1.78]), Object.freeze([.43, 1.71])]),
   straw: "#d9b860", strawDark: "#a8873a", post: "#6b4a26", postLight: "#8f6a3c", rope: "#c9b48a", sick: "#9fd28a",
 });
 export const HATCH_DRAW = { skipBody: false };

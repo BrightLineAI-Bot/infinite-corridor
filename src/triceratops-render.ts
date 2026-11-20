@@ -55,7 +55,7 @@ export const TRI_ART = Object.freeze({
   // into tufts (each tipped with a knob), in warmer, darker amber than his hide (`fill`: root, middle and rim colours; `knobFill`:
   // the tufts' knobs; `rays`: [from, to] shares out along the darker ridges from the root to each tuft). Still a frill: no fur.
   youngFrill: Object.freeze({
-    path: Object.freeze([[.07, .15], [.02, .2, -.054, .256], [-.091, .321, -.133, .264], [-.192, .313, -.212, .243], [-.286, .268, -.279, .194], [-.357, .191, -.324, .122], [-.395, .092, -.338, .039], [-.393, -.014, -.321, -.043], [-.352, -.111, -.275, -.113], [-.28, -.185, -.208, -.159], [-.188, -.227, -.131, -.178], [-.04, -.17]].map(Object.freeze)),
+    path: Object.freeze([[.07, .15], [.02, .2, -.054, .256], [-.091, .321, -.133, .264], [-.192, .313, -.212, .243], [-.286, .268, -.279, .194], [-.357, .191, -.324, .122], [-.395, .092, -.338, .039], [-.393, -.014, -.321, -.043], [-.352, -.111, -.275, -.113], [-.28, -.185, -.208, -.159], [-.188, -.227, -.131, -.178], [-.07, -.16, -.03, -.12]].map(Object.freeze)),
     base: Object.freeze([[-.03, .05, .07, .15]].map(Object.freeze)),
     knobs: Object.freeze([[-.092, .288], [-.182, .282], [-.264, .242], [-.327, .174], [-.361, .086], [-.359, -.008], [-.323, -.094], [-.259, -.159], [-.178, -.196]].map(Object.freeze)),
     spots: Object.freeze([]), knob: .016, grad: Object.freeze([-.03, .04, -.33, .06]), tint: 1, soft: false, k: 1,
@@ -142,7 +142,7 @@ export const TRI_FORMS = Object.freeze({
   // a tucked waist, strong haunches, long straight forelegs (foreLeg: their bones x as long as the hind legs'), the head carried up on a
   // short, thick, upright neck, and a long thick tail carried low
   young: Object.freeze({ head: 1.02, leg: 1.04, legW: 1.3, haunch: .98, foreW: 1.3, girth: 1, length: .94, frill: .52, brow: .45, nose: .8, eye: 1.02, cheek: 0, snout: .96, jugal: 0, lift: 0, nod: -.55,
-    neck: .92, tail: 1.32, stance: .14, foreLeg: 1.12, mid: 1.2, muscle: 1, thick: "young", heading: "young" }),
+    neck: .92, tail: 1.32, stance: .3, foreLeg: 1.12, mid: 1.2, muscle: 1, thick: "young", heading: "young" }),
 });
 // The standard view's own changes to a form (Close View keeps TRI_FORMS as they are; its body is built separately). The baby (Tim,
 // 2026-11-20: "too squat ... It needs a coherency visual redo"; "its back has a ridge that goes up too high"): longer legs, a slimmer,

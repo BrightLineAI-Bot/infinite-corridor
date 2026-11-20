@@ -42,7 +42,7 @@ export const TRICERATOPS_RIG = Object.freeze({
   // on a short thick neck, a long thick tail carried low, and a mane-like frill. baby: a small crest swept back along the skull.
   formBody: Object.freeze({
     young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.08, 1.06], [-.12, .86, .82], [-.02, .84, .8], [.1, .98, 1.08], [.2, 1.08, 1.2], [.3, 1.1, 1.18], [.38, 1.02, 1.04], [.51, .96, .96]].map(Object.freeze)),
-      tail: 1.3, pitch: .27, foreLeg: 1.24, neck: Object.freeze([-.06, -.17, -.16]), crouch: .02, foreW: 1.3, thigh: 1.1, muscle: 1, frillTilt: .85, frillShift: Object.freeze([.16, -.08]),
+      tail: 1.3, pitch: .33, foreLeg: 1.3, neck: Object.freeze([-.12, -.2, .22]), crouch: .03, foreW: 1.3, thigh: 1.12, muscle: 1, frillTilt: 1.1, frillShift: Object.freeze([.16, -.08]),
       mane: Object.freeze({ size: 1, tall: .85, wrap: .75, cone: .05, wrapBack: .3, tuft: .08 }) }),
     baby: Object.freeze({ crest: Object.freeze({ at: Object.freeze([-.05, .15]), radius: Object.freeze([.085, .09, .04]), F: Object.freeze([-.9, 0, .44]) }) }),
   }), // the hatchling's baby form carries his big head higher (body units over the head bone)
@@ -210,7 +210,7 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
     for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) row.push(rimAt(angle(c), rr * (MN && r === rows - 1 ? 1 + MN.tuft * (c % 2 ? -1 : 1) : 1))); grid.push(row); ring.push(['frill', 'frill', 0]); }
     const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = angle(c); return !MN && rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
-    const MC = MA ? MA.fill.map(hex) : null, mane = (r, c) => r === 0 ? C.body : r === rows - 1 ? (c % 2 ? MC[1] : MC[2]) : lerpHex(MC[0], MC[1], (r - 1) / Math.max(1, rows - 2)) ; // root in his hide, then amber to the darker tufts
+    const MC = MA ? MA.fill.map(hex) : null, mane = (r, c) => r === 0 ? C.body : r === rows - 1 ? (c % 2 ? MC[1] : lerpHex(MC[1], MC[2], .6)) : lerpHex(MC[0], MC[1], (r - 1) / Math.max(1, rows - 2)); // root in his hide, then amber to the darker tufts
     const FB = TRICERATOPS_SKELETON.bindWorld, fo = BI.frill * 3; // the sheet takes model-space points: the frill bone's bind position added
     B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => MN ? mane(r, c) : r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
     if (!low && MN) for (let c = 0; c < cols; c += 2) { const kp = rimAt(angle(c), 1 + MN.tuft * 1.15); kp[0] += FF; kp[2] += FZ; B.color(hex(MA.knobFill)).ellipsoid({ at: kp, radius: [.02 * HS, .024 * HS, .024 * HS], rings: 2, seg: full ? 5 : 4 }); } // a knob on each tuft
