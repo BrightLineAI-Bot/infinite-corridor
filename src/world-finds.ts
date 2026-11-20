@@ -6,6 +6,7 @@
 import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD } from "./journey-start.ts";
 import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue } from "./world-routes.ts";
 import { ROW_BY_ID, stateV0, ownership } from "./progression.ts";
+import { QUESTS, threadReward } from "./quests.ts"; // Phase 7: quests (b) and thread endings (d) grant here too
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
 const exploredCount = (save) => Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;
@@ -17,12 +18,22 @@ const exploredCount = (save) => Object.keys(save?.explored && typeof save.explor
 // threshold grants once and the next reliquary moves on. Returns a notice { id, name, route, from, given, dust, title, detail,
 // text } or null when it was already earned.
 export const WORLD_WORDS = Object.freeze({
-  milestone: "A MILESTONE", reliquary: "A RELIQUARY",
+  milestone: "A MILESTONE", reliquary: "A RELIQUARY", quest: "A QUEST'S END", thread: "A THREAD'S END",
   consolation: (n, name) => `${n} lumen dust · it would have taught ${name}, already yours`,
   given: (name, how) => `${name} · ${how}`,
   empty: "The reliquary is empty but for a little lumen dust: everything it could hold is already yours.",
   opened: "An opened reliquary. What it held is yours.",
 });
+const TITLES = Object.freeze({ c: WORLD_WORDS.milestone, R: WORLD_WORDS.reliquary, b: WORLD_WORDS.quest, d: WORLD_WORDS.thread });
+// How it came, in a few words (`from`: the milestone key, the reliquary's kind, the quest id, or the thread's set id), and the line
+// it is given with (a quest's or a thread's own hook, unhinged as written; Phase 7).
+function source(save, id, route, from) {
+  const m = MILESTONE_FOR[id];
+  if (route === "c" && m) return { how: `${m.name}: ${m.need.toLocaleString("en-US")}`, hook: "" };
+  if (route === "b") { const Q = QUESTS[from]; return { how: Q ? `${Q.title}, for ${Q.giverName}` : "a quest", hook: Q?.done || "" }; }
+  if (route === "d") { const t = threadReward(save, from); return { how: t ? `the end of ${t.title}` : "a thread's end", hook: t?.hook || "" }; }
+  return { how: `from ${RELIQUARY.places[from] || "the bottom of something"}`, hook: "" };
+}
 export function grantWorld(save, id, route, from = "") {
   const row = ROW_BY_ID[id]; if (!row || earnedWorld(save, id)) return null;
   const f = feats(save), had = exploring(save) ? !worldWithheld(save, id) : ["owned", "open"].includes(stateV0(save, row));
@@ -30,9 +41,9 @@ export function grantWorld(save, id, route, from = "") {
   if (had) { save.materials ||= {}; save.materials.lumenDust = (Number(save.materials.lumenDust) || 0) + RELIQUARY.consolation.dust; }
   else { const p = ensureProgression(save); if (!p.kept.includes(id)) p.kept = [...p.kept, id].slice(0, PROGRESSION_RECORD.keptMax); }
   pityReset(save);
-  const m = MILESTONE_FOR[id], how = route === "c" && m ? `${m.name}: ${m.need.toLocaleString("en-US")}` : `from ${RELIQUARY.places[from] || "the bottom of something"}`;
-  const title = route === "c" ? WORLD_WORDS.milestone : WORLD_WORDS.reliquary, detail = had ? WORLD_WORDS.consolation(RELIQUARY.consolation.dust, row.name) : WORLD_WORDS.given(row.name, how);
-  const text = had ? `${title === WORLD_WORDS.milestone ? `${how}.` : "A reliquary."} It would have taught ${row.name}, which is already yours: ${RELIQUARY.consolation.dust} lumen dust instead.` : `${route === "c" ? `${how}. ` : `In the reliquary: `}${row.hint || row.name}`;
+  const { how, hook } = source(save, id, route, from), title = TITLES[route] || WORLD_WORDS.reliquary, detail = had ? WORLD_WORDS.consolation(RELIQUARY.consolation.dust, row.name) : WORLD_WORDS.given(row.name, how);
+  const said = route === "c" ? `${how}. ` : route === "R" ? "In the reliquary: " : hook ? `${hook} ` : "";
+  const text = had ? `${route === "c" ? `${how}.` : route === "R" ? "A reliquary." : `${hook ? `${hook} ` : ""}${how.charAt(0).toUpperCase()}${how.slice(1)}.`} It would have taught ${row.name}, which is already yours: ${RELIQUARY.consolation.dust} lumen dust instead.` : `${said}${row.hint || row.name}`;
   return { id, name: row.name, route, from, given: !had, dust: had ? RELIQUARY.consolation.dust : 0, title, detail, text };
 }
 

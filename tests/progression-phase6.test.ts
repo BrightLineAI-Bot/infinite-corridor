@@ -11,6 +11,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 import { EXPLORATION, exploring, ensureFeats, FEAT_RECORD } from '../src/journey-start.ts';
 import { startJourney, switchProgression, ownership, stateV0, stateV1, compendium, adoptExploration, howToPage, hintSubjectsHeld, hintFor, PROGRESSION_ROWS, ROW_BY_ID } from '../src/progression.ts';
 import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, WORLD_ROUTE_OF, worldWithheld, earnedWorld, featCount, milestonesUnderWay, reliquaryOrder, reliquaryDue, reliquaryRoll } from '../src/world-routes.ts';
+import { STORY_WITHHELD } from '../src/quests.ts'; // Phase 7
 import { countFeat, grantWorld, reliquaryEnd, layReliquaries, openReliquary, nextFromPool, pityTick } from '../src/world-finds.ts';
 import { nearestHorde, nearestShaft, pityDue, pityLead, pitySince } from '../src/world-leads.ts';
 import { rumourTurn, liveRumours, nextRumour } from '../src/leads.ts';
@@ -62,10 +63,10 @@ test('Exploration withholds exactly the milestone (c) and reliquary (R) abilitie
   assert.equal(cR.length, 18); assert.equal(MILESTONES.length, 10); assert.equal(RELIQUARY.pool.length, 8);
   for (const id of RELIQUARY.pool) assert.equal(ROW_BY_ID[id].v1.route, 'R', id);
   for (const m of MILESTONES) assert.equal(ROW_BY_ID[m.ability].v1.route, 'c', m.ability);
-  assert.equal(EXPLORATION.table, 3);
+  assert.ok(EXPLORATION.table >= 3); // Phase 7 moved it to 4 (quests and threads: tests/progression-phase7.test.ts)
   // A journey where today's rules open everything: under Exploration only the c and R rows differ from the same journey
   // holding them all kept.
-  const s = rich(v1Save('WITHHOLD')), all = rich(v1Save('WITHHOLD')); all.progression.kept = [...all.progression.kept, ...WORLD_WITHHELD];
+  const s = rich(v1Save('WITHHOLD')), all = rich(v1Save('WITHHOLD')); all.progression.kept = [...all.progression.kept, ...WORLD_WITHHELD, ...STORY_WITHHELD]; s.progression.kept = [...s.progression.kept, ...STORY_WITHHELD]; // Phase 7's b and d: held apart here
   const a = ownership(s), b = ownership(all), differ = Object.keys(a).filter((id) => a[id] !== b[id]).sort();
   assert.deepEqual(differ, cR, 'exactly the c and R rows are shut');
   for (const id of cR) { assert.equal(a[id], 'locked', id); assert.ok(['owned', 'open'].includes(stateV0(s, ROW_BY_ID[id])), `${id}: Classic's rules have it`); assert.equal(b[id], stateV0(s, ROW_BY_ID[id]), id); }
@@ -73,10 +74,10 @@ test('Exploration withholds exactly the milestone (c) and reliquary (R) abilitie
   for (const id of cR.filter((q) => q.endsWith(':alt'))) { const node = id.slice(0, -4); assert.deepEqual(toggleAlt(s, node), { ok: false, message: WORLD_WAIT }, id); assert.equal(altOpen(s, node), false); }
   for (const id of cR.filter((q) => q.startsWith('field:'))) assert.deepEqual(toggleLatticePassive(s, id), { ok: false, message: WORLD_WAIT }, id);
   assert.deepEqual(learnExtra(s, 'motion', 'casting-wind'), { ok: false, message: WORLD_WAIT });
-  // what is still routed to Phases 7-8 stays open by today's rules
-  for (const id of ['ember-mend', 'colossus:alt', 'light-feet:alt', 'field:tempo', 'field:power-aegis', 'field:wellspring', 'field:arc-wave', 'field:mages-hand']) if (ROW_BY_ID[id]) assert.notEqual(a[id], 'locked', id);
+  // what is still routed to Phase 8 stays open by today's rules (Phase 7's quests and threads: tests/progression-phase7.test.ts)
+  for (const id of ['ember-mend', 'colossus:alt', 'light-feet:alt', 'field:tempo', 'field:power-aegis', 'field:arc-wave']) if (ROW_BY_ID[id]) assert.notEqual(a[id], 'locked', id);
   assert.ok(toggleAlt(s, 'colossus').ok, 'a Viscera form keeps today\'s switch'); assert.ok(toggleLatticePassive(s, 'field:tempo').ok, 'a quest\'s Lattice pick stays open');
-  assert.ok(learnExtra(s, 'form', 'arcane-edge').ok, 'a thread\'s extra node stays open');
+  assert.ok(learnExtra(s, 'form', 'arcane-edge').ok, 'a thread\'s extra node, kept, stays open');
   // Classic withholds nothing
   const c = rich(classicSave('WITHHOLD-C')); for (const id of cR) assert.equal(ownership(c)[id], stateV0(c, ROW_BY_ID[id]), id);
   assert.ok(toggleAlt(c, 'anchor').ok); assert.ok(toggleLatticePassive(c, 'field:rapid-reload').ok);

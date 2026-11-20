@@ -5,6 +5,7 @@
 import { secondWayfarerTarget } from "./second-wayfarer.ts";
 import { nearestCrossing } from "./leads.ts"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
 import { exploring } from "./journey-start.ts";
+import { questOfFollow } from "./quests.ts"; import { questTarget } from "./quest-places.ts"; // progression Phase 7: a followed quest
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
@@ -231,6 +232,7 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
   }
   if (f.kind === "far") { const q = save?.farQuests?.[f.id]; return q?.status === "open" && ok(q) ? at(q.rx, q.ry, f.name || "Far quest") : null; }
   if (f.kind === "rescue") return ok(rescue) ? { ...rescue } : null;
+  if (f.kind === "quest" && questOfFollow(f.id)) return questTarget(save, questOfFollow(f.id)); // progression Phase 7: the step's place (the giver's section, a Starfield crossing)
   if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : f.id === "errand" && here && area === "overworld" && compassQuest(save) === "errand" && exploring(save) ? nearestCrossing(save, here.rx | 0, here.ry | 0, here.objects) || cue(f.id) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
   if (f.kind === "marker") {
     if (f.id === "waypoint") { const w = save?.manualWaypoint; return ok(w) && (w.area == null || w.area === "overworld") ? at(w.rx, w.ry, String(w.label || COMPASS_MENU.waypointName)) : null; }

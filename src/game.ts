@@ -157,8 +157,9 @@ import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.t
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
 import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.ts";
-import { adoptExploration } from "./progression.ts"; // progression Phase 3: an Exploration journey from before its table keeps what it had
-import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick } from "./world-finds.ts"; // progression Phase 6: milestones, the Reliquary and pity
+import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.ts"; // progression Phase 3: an Exploration journey from before its table keeps what it had
+import { QUESTS, QUEST_IDS, questDue } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d)
+import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.ts"; // progression Phase 6: milestones, the Reliquary and pity
 import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -197,7 +198,7 @@ import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, 
 import { addMargin, readMargin } from "./margins.ts";
 import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper, resettleSurveyorLink } from "./surveyor.ts"; // release 505; 551: part two
-import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace } from "./second-wayfarer.ts"; // the Second Wayfarer (narrative bible, section 4)
+import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace, secondDone } from "./second-wayfarer.ts"; // the Second Wayfarer (narrative bible, section 4)
 import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.ts";
 import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.ts";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
@@ -355,6 +356,7 @@ export function platformUnder(map, x, y, t) {
   for (const m of map?.movers || []) { const c = platformPos(m, t); if (Math.abs(fx - c.x) <= H && Math.abs(fy - c.y) <= H) return m; }
   return null;
 }
+const WORLD_JOURNAL = Object.freeze({ c: "Milestones", R: "Reliquaries", b: "Quests", d: "Threads" }); // progression Phases 6-7: where a find is journalled
 export const chasmRoll = (seed, id) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < CHASM.chance;
 function carveChasm(map, seed, id) {
   const w = map.width || Math.round(Math.sqrt(map.tiles.length)), h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
@@ -3680,7 +3682,7 @@ export class Game {
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
     if(area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="warpDais"&&this.save.worldFlags[`warp-dais:${this.areaId()}:${o.id}`])o.state="attuned"; // release 301
     if(area==="dungeon"&&this.map.arenaKind==="dive"&&this.map.lair&&!this.map.objects.some(o=>o.kind==="diveOnward")){const w=mapWidth(this.map,area),L=this.map.lair,spot=[[-3,0],[3,0],[-3,2],[3,2],[0,3],[-2,-2],[2,-2]].map(([dx,dy])=>({x:L.x+dx,y:L.y+dy})).find(q=>{const t=this.map.tiles[q.y*w+q.x];return t&&!t.blocked&&!this.map.objects.some(o=>o.x===q.x&&o.y===q.y)});if(spot)this.map.objects.push({id:`${this.areaId()}:onward`,kind:"diveOnward",name:"Deep current",x:spot.x,y:spot.y,state:"open",actions:["follow"]})} // release 311: a grotto's lair holds a current to the next buoy
-    if(area==="overworld"){addCairnKeeper(this.map,this.rx,this.ry);/* 2026-11-11: the Cairn Keeper's errand */}this.settleArcana();/* 2026-11-11: sets finished (or finished before) earn their passives */
+    if(area==="overworld"){addCairnKeeper(this.map,this.rx,this.ry);/* 2026-11-11: the Cairn Keeper's errand */}this.settleArcana();/* 2026-11-11: sets finished (or finished before) earn their passives */this.settleQuests();/* progression Phase 7: a quest whose gate is met opens */
     if (area === "dungeon" && this.map.arenaKind === "dive") this.placeTideBearer(); // travel seeds: the Tide Bearer waits at the far end of every dive
     if(area==="overworld"){plantRefugeLands(this.map,this.rx,this.ry,this.refugeLandsWhere());for(const o of this.map.objects)if(o.talkKey)o.line=talkLine(o,this.refugeLandsWhere(),Number(this.save.worldFlags[o.talkKey])||0)} // release 265: the farm, the quarry and the farmer
     if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower&&!this.map.seedRealm/* seed realms: no wanderers */){const reader=addDungeonReciter(this.map,loadingId,this.save,mapWidth(this.map,area)),elder=addDungeonElder(this.map,loadingId,this.save,mapWidth(this.map,area));if(elder)this.message="Something tall and silent wanders these halls.";else if(reader)this.message=`${reader.name} wanders these halls, murmuring.`}
@@ -5098,10 +5100,12 @@ export class Game {
   }
   noteSecondSighting(r) {
     journalOnce(this.save, `second-wayfarer:${r.index}`, r.passed ? r.text : `${SECOND_SIGHTINGS[r.index]} ${r.text}`, SECOND_WAYFARER.title); // what was seen at a distance, then what was left
-    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · no one is ahead of you now`, kind: "quest" }); }
+    if (r.done) { journalOnce(this.save, "second-wayfarer:end", SECOND_ENDING, SECOND_WAYFARER.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${SECOND_WAYFARER.title} · no one is ahead of you now`, kind: "quest" }); this.settleArcana(); /* progression Phase 7: what they were */ }
   }
   settleArcana() {
-    const paid = settleArcanaRewards(this.save, (id, reward) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); });
+    // Progression Phase 7: a thread's ability (quests.ts) is granted through world-finds.ts grantWorld (Exploration: earned; Classic:
+    // given early, or a consolation when already yours); the Second Wayfarer's trail counts once it is whole.
+    const paid = settleArcanaRewards(this.save, (id, reward) => { if (reward.kind === "ability") { const n = grantWorld(this.save, reward.id, "d", id); if (n) this.worldNotices([n]); return; } (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); }, secondDone(this.save) ? ["second"] : []);
     // 2026-11-11: the passives the sets earn (lore.ts ARCANA_UNLOCKS), once each, announced and journalled.
     const opened = settleArcanaUnlocks(this.save, (id, u) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: `${u.name} opens`, kind: "quest" }); journalOnce(this.save, `arcana:${id}`, `${u.name} opens to you.${u.text ? ` ${u.text}` : ""}`, "Arcana"); });
     return [...paid, ...opened];
@@ -5635,7 +5639,7 @@ export class Game {
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
     if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor", saveFrame(this.save)) || "out past the black stone", { plain: exploring(this.save) }); const heard = r.idle ? this.rumourInstead(o) : null; if (heard) r.message = `"${heard}"`; this.message = `${o.name}: ${r.message}`; /* Phase 4: plain in Exploration; an idle line may be a rumour */ if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
-    if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; const said = firstJourneyLine(this.save, o.id) || this.rumourInstead(o); /* Phase 4: Hollis's first-journey line; a cook's idle words may be a rumour */ return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${said || o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
+    if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; const said = firstJourneyLine(this.save, o.id) || questTalk(this.save, o.id) /* Phase 7: a quest he gives */ || this.rumourInstead(o); /* Phase 4: Hollis's first-journey line; a cook's idle words may be a rumour */ return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${said || o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
       const run=beginListenerArena(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});if(!run)return{ok:false,message:this.message='The dais is still.'};
@@ -7593,6 +7597,7 @@ export class Game {
   eatAt(cookId, a, b) {
     const o = this.map?.objects?.find((q) => q.id === cookId && q.cook); if (!o || Math.hypot(o.x - this.player.x, o.y - this.player.y) > 3) return { ok: false, message: (this.message = "Meals are eaten at a cook's table, in town.") };
     const before = this.save.maxHp, r = eatMeal(this.save, a, b, o.name); this.message = r.message; if (!r.ok) return r;
+    { const fed = questMeal(this.save, o.id); if (fed.length) this.message = r.message = `${r.message} ${fed.join(" ")}`; } // progression Phase 7: a quest's meal (it holds while the meal lasts)
     this.refreshDerivedStats(); if (this.save.maxHp > before) this.player.hp = Math.min(this.save.maxHp, this.player.hp + this.save.maxHp - before); this.sync(); return r;
   }
   raiseTownAmenities() {
@@ -8872,7 +8877,24 @@ export class Game {
   // A milestone's deed: counted, and any threshold reached granted at once with a banner, a Journal line and (hints.ts) its hint.
   worldFeat(key, n = 1) { const notes = countFeat(this.save, key, n); if (notes.length) this.worldNotices(notes); return notes; }
   worldNotices(notes) {
-    for (const q of notes) { (this.questNotices ||= []).push({ title: q.title, detail: q.detail, kind: "discovery" }); this.message = q.text; journalOnce(this.save, `world-find:${q.id}`, q.text, q.route === "c" ? "Milestones" : "Reliquaries"); }
+    for (const q of notes) { (this.questNotices ||= []).push({ title: q.title, detail: q.detail, kind: "discovery" }); this.message = q.text; journalOnce(this.save, `world-find:${q.id}`, q.text, WORLD_JOURNAL[q.route] || "Reliquaries"); }
+  }
+  // ---------------------------------------------------------------- progression Phase 7 (quests.ts, quest-places.ts)
+  // A quest whose gate is met opens once (Exploration: while its ability is withheld; Classic: while today's rules do not give it):
+  // a banner, a Journal line, its places resolved and saved; the Journal's Leads list it and following it points the compass.
+  settleQuests() {
+    const tier = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)), out = [];
+    for (const id of QUEST_IDS) {
+      const Q = QUESTS[id]; if (!questDue(this.save, id, tier, ["owned", "open"].includes(stateV0(this.save, ROW_BY_ID[Q.ability])))) continue;
+      openQuest(this.save, id); out.push(id);
+      (this.questNotices ||= []).push({ title: QUEST_WORDS.open, detail: `${Q.title} · ${Q.giverName} asks for you · Journal → Leads`, kind: "quest" });
+      journalOnce(this.save, `quest:${id}:open`, `${Q.title}. ${Q.giverName} at the Refuge has work for you. ${Q.steps.map((q) => q.text).join(" ")}`, "Quests");
+    }
+    return out;
+  }
+  // A place cleared that a quest's step may ask for (`place`: a quest-places.ts kind). Completed quests grant their ability.
+  questPlaceCleared(place) {
+    for (const id of questClear(this.save, place)) { const Q = QUESTS[id], n = grantWorld(this.save, Q.ability, "b", id); (this.questNotices ||= []).push({ title: QUEST_WORDS.done, detail: Q.title, kind: "quest" }); journalOnce(this.save, `quest:${id}:done`, Q.done, "Quests"); if (n) this.worldNotices([n]); }
   }
   // Where a reliquary is recorded: the dungeon area (a Deep floor by its floor; a labyrinth floor by its level), or the section.
   reliquaryArea(area = this.area) { if (area !== "dungeon") return `overworld:${this.rx},${this.ry}`; const id = this.areaStateId(); return this.map?.deepFloor ? `${id}:f${this.map.deepFloor}` : id; }
@@ -9036,6 +9058,7 @@ export class Game {
         if ((this.map.deepFloor && deepFirst) || this.map.deepDungeon || this.map.recipe === 'deep-v1') { this.worldFeat("deepFloors"); this.reliquaryHere("deep", this.reliquaryArea("dungeon"), e); } // Phase 6: a Deep floor (or Deep crossing) cleared: a milestone's count, and one in ten
         if (deepFirst || !THE_DEEP.payoffOnce) claimDungeonPayoff(this.save,history,!!this.map.deepDungeon || this.map.recipe === 'deep-v1');
         journalOnce(this.save,`expedition-cleared:${this.areaId()}`,`${this.map.name} is cleared. Every required guardian fell; the expedition cache yielded upgrade material, marks and a draught. The return lattice leads to the entrance.`,this.map.name);
+        if (this.map.chasm) this.questPlaceCleared("starfield"); // progression Phase 7: a Starfield crossing cleared (Essence Walk's quest)
         installCompletionExit(this.map,history,e); if (this.placeAnnexStair(history)) this.annexStairNote = true; // release 675
         this.message = 'EXPEDITION CLEARED — reward secured. Interact with the Cleared Expedition Return to leave safely.';
         if (this.annexStairNote) { this.annexStairNote = false; const st = this.map.objects.find((o) => o.kind === 'annexStair'); if (st) { this.message = `${DEEP_ANNEX.messages.stair} ${st.floor} of ${DEEP_ANNEX.floors}. Or take the Cleared Return to leave; the annex waits.`; this.defeatNotice = { title: 'THE ANNEX STAIR OPENS', detail: `down to floor ${st.floor} of ${DEEP_ANNEX.floors} · or leave by the Cleared Return`, kind: 'discovery' }; } } // release 675
