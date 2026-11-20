@@ -33,13 +33,13 @@ export const TRICERATOPS_RIG = Object.freeze({
   // down] (body units) and a pitch (radians, + lowers the head) of the neck bone, the head carried with it; crouch: a standing crouch
   // (body units), foreW and thigh: the forelegs' and the thighs' thickness; muscle: the darker markings down the back of the thigh and the
   // front of the forearm (0..1); frillTilt: the frill swept back along the skull (radians, - back); frillShift: the frill moved [back/forward, up] on the skull (head units); crest: the frill in his own hide's
-  // colours (a juvenile crest, no plate).
+  // colours, a rounded swelling (a juvenile crest, no plate) in place of the frill.
   // young: "a dragon without wings": a thick tail, powerful haunches, a tight waist, a deep chest under strong shoulders, a long powerful
   // neck with the head low and forward, heavy forelimbs and a prowling crouch. baby: a small crest swept back along the skull.
   formBody: Object.freeze({
     young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.1, 1.06], [-.12, .9, .86], [-.02, .86, .8], [.1, .96, 1], [.2, 1.06, 1.08], [.3, 1.04, 1.02], [.38, .86, .88], [.51, .9, .92]].map(Object.freeze)),
-      tail: 1.18, neck: Object.freeze([.24, -.01, .05]), crouch: .012, foreW: 1.14, thigh: 1.1, muscle: 1, frillTilt: -.15 }),
-    baby: Object.freeze({ frillTilt: -.45, crest: true, frillShift: Object.freeze([.06, .02]) }),
+      tail: 1.18, neck: Object.freeze([.32, .02, .08]), crouch: .012, foreW: 1.14, thigh: 1.1, muscle: 1, frillTilt: -.3, frillShift: Object.freeze([-.02, .04]) }),
+    baby: Object.freeze({ crest: Object.freeze({ at: Object.freeze([-.05, .15]), radius: Object.freeze([.085, .09, .04]), F: Object.freeze([-.9, 0, .44]) }) }),
   }), // the hatchling's baby form carries his big head higher (body units over the head bone)
   // the seat (Tim, 2026-11-19: "mid-back, just behind / almost between the shoulder blades"): body units along the back from the root,
   // a little behind the forelimbs' roots (the arm bones at .2; the hips at -.3), about three quarters of the way from the hips to the shoulders
@@ -192,17 +192,20 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
       tone: (i, k, st) => i >= 3 ? C.beak : st > .3 ? 0x7a2a1c : C.dark }); // the lower beak (its dark tip) under the hook
     if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.28 * HS, 0, .012 * HS], radius: [.07 * HS, .022 * HS, .01 * HS], F: [1, 0, -.3], rings: 2, seg: low ? 4 : 6 }); } // poking out under the hook
   // ---- the frill: a broad shield rising up and back off the skull, its front face orange, a pale rim with knobs
+  // a juvenile crest (FB0.crest: the baby): no plate, a smooth rounded swelling carrying the skull's top line back and a little up, in his
+  // own hide (TRICERATOPS_RIG.formBody.baby.crest: [f, u] on the head, its radii [back, across, up] and its lean back), then no frill
+  if (FB0?.crest) { const K = FB0.crest; B.bone('head').color(lerpHex(C.body, C.dark, .2)).ellipsoid({ at: hb([K.at[0], 0, K.at[1]]), radius: K.radius.map((r) => r * HS), F: K.F, rings: low ? 2 : 4, seg: low ? 6 : 10 }); }
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  { const FK = FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+  if (!FB0?.crest) { const FK = FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
     const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = (-((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS) * SW;
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
     for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) { const a = -.12 + (Math.PI + .24) * c / (cols - 1); row.push(rimAt(a, rr)); } grid.push(row); ring.push(['frill', 'frill', 0]); }
     const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = -.12 + (Math.PI + .24) * c / (cols - 1); return rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
     const FB = TRICERATOPS_SKELETON.bindWorld, fo = BI.frill * 3; // the sheet takes model-space points: the frill bone's bind position added
-    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => FB0?.crest ? (r === rows - 1 ? lerpHex(C.body, C.dark, .6) : lerpHex(C.light, C.body, r / (rows - 1))) : r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
-    if (!low && FM.frill >= G0.knobFrill && !FB0?.crest) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
+    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
+    if (!low && FM.frill >= G0.knobFrill) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
       const kp = rimAt(a, 1.04), kk = FM.frill === 1 ? 1 : Math.sqrt(FM.frill); kp[0] += FF; kp[2] += FZ; B.color(C.knob).ellipsoid({ at: kp, radius: [.022 * HS * kk, .026 * HS * kk, .026 * HS * kk], rings: 2, seg: full ? 5 : 4 }); } // a small frill's knobs smaller
   }
   // ---- legs: thick pillars of hide from the body to broad round feet with three pale toenails; markings over the leg tops

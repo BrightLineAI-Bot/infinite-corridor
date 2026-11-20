@@ -41,8 +41,8 @@ export const TRI_ART = Object.freeze({
   // The hatchling forms' frills, grown out of the back of the skull (frillShelf; TRI_STD_FORMS[form].frillShelf names one), in head
   // units before the squat muzzle: `path` (from the skull's top round the rim to the back of the skull, then `base` points back
   // through the skull: [x, y] a point, [cx, cy, x, y] a curve), the rim's `knobs` [x, y] (radius `knob`), `spots` [x, y, rx, ry],
-  // and the gradient's line `grad` (the hide at the root to the frill's colours behind; `tint`: how far toward them). `soft`: its edge
-  // drawn in the shade colour, not the outline (a crest that is part of the head, not a plate on it).
+  // and the gradient's line `grad` (the hide at the root to the frill's colours behind; `tint`: how far toward them). `soft`: the skull's own
+  // hide with a darker band inside its rim (a crest that is part of the head, not a plate on it); `k`: drawn that size about its root.
   // shelf (the baby; Tim, 2026-11-20: "still doesn't look right": a small juvenile crest that carries the skull's top line back and a
   // little up, a soft rounded edge, no plate, no knobs);
   shelf: Object.freeze({
@@ -56,7 +56,7 @@ export const TRI_ART = Object.freeze({
     path: Object.freeze([[.07, .15], [.0, .175, -.06, .215], [-.12, .262, -.2, .268], [-.262, .268, -.258, .2], [-.25, .12, -.19, .06], [-.14, .005, -.09, -.045]].map(Object.freeze)),
     base: Object.freeze([[-.03, .05, .07, .15]].map(Object.freeze)),
     knobs: Object.freeze([[-.13, .262], [-.18, .272], [-.225, .265], [-.256, .235], [-.262, .185], [-.248, .135], [-.22, .09]].map(Object.freeze)),
-    spots: Object.freeze([[-.17, .2, .024, .017], [-.2, .135, .019, .014]].map(Object.freeze)), knob: .014, grad: Object.freeze([-.02, .1, -.22, .22]), tint: 1, soft: false,
+    spots: Object.freeze([[-.17, .2, .024, .017], [-.2, .135, .019, .014]].map(Object.freeze)), knob: .014, grad: Object.freeze([-.02, .1, -.22, .22]), tint: 1, soft: false, k: .88,
   }),
   // The player's ridden adult (Tim, 2026-11-20: the hatchling grown big, "set in her ways"): one brow horn broken off `at` of its length
   // (from its root), a jagged break across the stump. `side`: the animal's own left or right; `jag`: the break's points between its
@@ -132,11 +132,11 @@ export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1
 export const TRI_FORMS = Object.freeze({
   // Tim, 2026-11-19 (size pass) kept the body and size; face pass ("its eyes are too big ... It should look more like a Triceratops,
   // just smaller, just a little bit cuter"): a young animal, not a cartoon mascot. No pink cheek, near-adult eyes.
-  baby: Object.freeze({ head: 1.25, leg: .74, legW: 1.35, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1.22, length: .62, frill: .34 /* Close View: a small crest, no knobs (2026-11-20) */, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: 0, lift: .05, nod: .1 }),
+  baby: Object.freeze({ head: 1.25, leg: .74, legW: 1.35, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1.22, length: .62, frill: .3 /* Close View: a small crest, no knobs (2026-11-20) */, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: 0, lift: .05, nod: .1 }),
   // the young (Tim, 2026-11-20: "essentially a dragon without wings": in his prime, strong and ready to fight, muscular the way a big cat
   // is, not bulky): short horns and a smaller frill than the adult's, a longer, thicker neck with the head carried low and forward, a
   // deep chest, strong shoulders, a tight waist, powerful haunches, a long thick tail, heavy forelimbs and a prowling stance
-  young: Object.freeze({ head: 1.02, leg: 1.04, legW: 1.3, haunch: .98, foreW: 1.14, girth: 1, length: .94, frill: .62, brow: .45, nose: .8, eye: 1.02, cheek: 0, snout: .96, jugal: 0, lift: -.06, nod: -.1,
+  young: Object.freeze({ head: 1.02, leg: 1.04, legW: 1.3, haunch: .98, foreW: 1.14, girth: 1, length: .94, frill: .52, brow: .45, nose: .8, eye: 1.02, cheek: 0, snout: .96, jugal: 0, lift: -.06, nod: -.1,
     neck: 1.75, tail: 1.18, stance: .22, muscle: 1, thick: "young", heading: "young" }),
 });
 // The standard view's own changes to a form (Close View keeps TRI_FORMS as they are; its body is built separately). The baby (Tim,
@@ -337,7 +337,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
       for (let i = 0; i < 3; i++) { const bx = cx2 - hr * .75 + i * hr * .62, w = hr * .2; ctx.beginPath(); ctx.moveTo(bx, -cy2 - hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35, -cy2, bx + hr * .05, -cy2 + hr * 1.3); ctx.lineTo(bx + hr * .05 + w, -cy2 + hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35 + w, -cy2, bx + w, -cy2 - hr * 1.3); ctx.closePath(); ctx.fill(); }
       ctx.restore(); }
     // a muscular form (FM.muscle): the darker markings follow the thigh or forearm mass down the leg, inside its outline
-    if (near && FM.muscle) { ctx.save(); legOutline(ctx, true); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .55 * FM.muscle;
+    if (near && FM.muscle) { ctx.save(); legOutline(ctx, true); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .8 * FM.muscle;
       const bk = hind ? 1 : -1, w0 = W[1][hind ? 1 : 0] * wk, w1 = W[2][hind ? 1 : 0] * wk; // along the back of the thigh, the front of the forearm
       ctx.beginPath(); mv(C[4] - bk * C[6] * w0 * .15, C[5] - bk * C[7] * w0 * .15); qc(C[4] - bk * C[6] * w0 * 1.1, C[5] - bk * C[7] * w0 * 1.1, C[8] - bk * C[10] * w1 * 1.05, C[9] - bk * C[11] * w1 * 1.05);
       ln(C[8] - bk * C[10] * w1 * .55, C[9] - bk * C[11] * w1 * .55); qc(C[4] - bk * C[6] * w0 * .5, C[5] - bk * C[7] * w0 * .5, C[4] - bk * C[6] * w0 * .15, C[5] - bk * C[7] * w0 * .15); ctx.fill();
@@ -505,10 +505,11 @@ function brokenHorn(ctx, A, CH, b0, c1, tip, mid, b1, near, lw) {
   ctx.strokeStyle = CH.faceDark; ctx.lineWidth = lw * .6; ctx.beginPath(); m(J([.1, -.2])); l(J([.5, -.12])); l(J([.85, -.22])); ctx.stroke();
   ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.beginPath(); m(ef); for (const j of CH.jag) l(J(j)); l(eb); ctx.stroke();
 }
-function frillShelf(ctx, A, H, lw, S = A.shelf) {
-  const P = S.path, mv = (p) => ctx.moveTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
+function frillShelf(ctx, A, H0, lw, S = A.shelf) {
+  const P = S.path, k = S.k ?? 1, x0 = P[0][0], y0 = P[0][1], H = k === 1 ? H0 : (x, y) => H0(x0 + (x - x0) * k, y0 + (y - y0) * k), // drawn `k` its size about its root on the skull
+    mv = (p) => ctx.moveTo(p[0], -p[1]), qc = (a, b) => ctx.quadraticCurveTo(a[0], -a[1], b[0], -b[1]);
   ctx.fillStyle = A.knob; ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6;
-  for (const k of S.knobs) { const p = H(k[0], k[1]); ctx.beginPath(); ctx.arc(p[0], -p[1], S.knob, 0, TAU); ctx.fill(); ctx.stroke(); }
+  for (const kn of S.knobs) { const p = H(kn[0], kn[1]); ctx.beginPath(); ctx.arc(p[0], -p[1], S.knob * k, 0, TAU); ctx.fill(); ctx.stroke(); }
   const rim = (cmds, first) => { for (let i = first; i < cmds.length; i++) { const c = cmds[i]; if (c.length === 2) { const p = H(c[0], c[1]); ctx.lineTo(p[0], -p[1]); } else qc(H(c[0], c[1]), H(c[2], c[3])); } };
   // the fill: a frill's hide at the root to its colours behind; a soft crest is the skull's own hide (its gradient), the rim a little darker
   const g0 = S.soft ? H(.15, .15) : H(S.grad[0], S.grad[1]), g1 = S.soft ? H(.15, -.12) : H(S.grad[2], S.grad[3]), g = ctx.createLinearGradient(g0[0], -g0[1], g1[0], -g1[1]);
@@ -517,7 +518,7 @@ function frillShelf(ctx, A, H, lw, S = A.shelf) {
   ctx.beginPath(); mv(H(P[0][0], P[0][1])); rim(P, 1);
   if (S.soft) { ctx.save(); ctx.clip(); ctx.strokeStyle = A.bodyDark; ctx.globalAlpha = S.tint; ctx.lineWidth = lw * 5; ctx.stroke(); ctx.restore(); ctx.globalAlpha = 1; } // a soft darker band inside the rim
   ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke(); // the rim only (the skull's outline running on round it): no line where it meets the skull
-  ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .5; for (const sp of S.spots) { const p = H(sp[0], sp[1]); ctx.beginPath(); ctx.ellipse(p[0], -p[1], sp[2], sp[3], 0, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
+  ctx.fillStyle = A.frillSpot; ctx.globalAlpha = .5; for (const sp of S.spots) { const p = H(sp[0], sp[1]); ctx.beginPath(); ctx.ellipse(p[0], -p[1], sp[2] * k, sp[3] * k, 0, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
 }
 
 // The drill's whirlwind in body units at (0, 0) = the feet, y up drawn as -y: `bands` helices round the long axis at height cy, from
