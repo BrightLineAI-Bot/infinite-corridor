@@ -38,16 +38,16 @@ export const TRI_ART = Object.freeze({
 });
 // The standard view's legs (Tim, 2026-11-20: "The feet detach from the legs when he moves and walks, and the legs look like pillars
 // instead of real Triceratops legs"): jointed legs, each drawn as one shape from the joint to the foot, driven by one pose per leg.
-// cycle: body units travelled per gait cycle (x the form's leg); duty: the share of it a foot stays planted (it moves back exactly as
+// cycle: body units travelled per gait cycle (x the square root of the form's leg: a baby's short quick steps); duty: the share of it a foot stays planted (it moves back exactly as
 // fast as the body moves on, so it never slides); lift: the swinging foot's height (x leg); toeDrop / tuckToes: the toes hanging as
 // the foot lifts or the legs fold (radians); soft: the share of its full length a leg reaches before the lower bone stretches (up to
 // `stretch`); phase: each foot's place in the cycle (a four-beat walk: near hind, near fore, far hind, far fore); far: where the far
-// legs sit. hind / fore (body units; x leg for the bones, x the form's leg and leg thickness for the foot, x legW for the widths):
+// legs sit; creaseLeg: the shortest form's leg that shows the knee and ankle creases (the baby's stubby legs do not). hind / fore (body units; x leg for the bones, x the form's leg and leg thickness for the foot, x legW for the widths):
 // upper / lower bone, x: the foot's rest place ahead of the joint, top: how far the shape starts inside the body, w: [front, back]
 // half widths at the joint, mid upper bone, knee or elbow, mid lower bone and ankle; foot: h (height), toe (ahead of the ankle), heel
 // (behind it), nail (radius); nails: how many show.
 export const TRI_LEGS = Object.freeze({
-  cycle: .42, duty: .62, lift: .1, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12,
+  cycle: .48, duty: .62, lift: .1, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12, creaseLeg: .9,
   phase: Object.freeze({ nearHind: 0, nearFore: .25, farHind: .5, farFore: .75 }),
   far: Object.freeze({ jointHind: .05, jointFore: .045, jointUp: .03, footHind: .06, footFore: .05, up: .03 }),
   hind: Object.freeze({ upper: .27, lower: .25, x: .03, top: .06, nails: 3,
@@ -157,6 +157,24 @@ function memo(e, now) {
 }
 const N = TRI_ART.spine, PX = new Float64Array(N + 1), PY = new Float64Array(N + 1), PZ = new Float64Array(N + 1), NX = new Float64Array(N + 1), NY = new Float64Array(N + 1), DT = new Float64Array(N + 1), VT = new Float64Array(N + 1);
 const LP = new Float64Array(9), LC = new Float64Array(20), LO = new Float64Array(20), LF = new Float64Array(14), OV = new Float64Array(TRI_KEYS.length);
+const LX = new Float64Array(4);
+// The foot's outline in its frame at the ankle: [toe (1) or heel (-1) side, x as a share of that length, y as a share of the foot's height]
+const FOOT = Object.freeze([[1, .7, -.02], [1, 1, -.5], [1, 1.04, -1], [1, .8, -1], [-1, .75, -1], [-1, 1.08, -1], [-1, 1, -.4]].map(Object.freeze));
+// A leg's one shape (body units, y up): down the front from inside the body (the stroke starts below the haunch) to the ankle, round the
+// foot, and up the back; closed with a round top for the fill.
+const qTo = (ctx, ax, ay, bx, by) => ctx.quadraticCurveTo(ax, -ay, bx, -by);
+function legOutline(ctx, close) {
+  const O = LO, F = LF;
+  ctx.beginPath(); if (close) ctx.moveTo(O[0], -O[1]); else ctx.moveTo(O[4], -O[5]);
+  for (let j = 1; j < 4; j++) qTo(ctx, O[j * 4], O[j * 4 + 1], (O[j * 4] + O[j * 4 + 4]) / 2, (O[j * 4 + 1] + O[j * 4 + 5]) / 2);
+  ctx.lineTo(O[16], -O[17]); qTo(ctx, F[0], F[1], F[2], F[3]); qTo(ctx, F[4], F[5], F[6], F[7]); ctx.lineTo(F[8], -F[9]); qTo(ctx, F[10], F[11], F[12], F[13]); qTo(ctx, (F[12] + O[18]) / 2 - LX[2], (F[13] + O[19]) / 2 - LX[3], O[18], O[19]);
+  for (let j = 3; j > 0; j--) qTo(ctx, O[j * 4 + 2], O[j * 4 + 3], (O[j * 4 + 2] + O[j * 4 - 2]) / 2, (O[j * 4 + 3] + O[j * 4 - 1]) / 2);
+  if (close) { qTo(ctx, LX[0], LX[1], O[0], O[1]); ctx.closePath(); }
+}
+// Tests read each drawn leg here when `on` (20 numbers a leg, in drawing order: far hind, far fore, near hind, near fore): hind, near,
+// joint x y, knee x y, ankle x y, upper and lower bone, the sole's lowest y, the sole's middle x, the ground, the foot's height, its size, its tilt, the
+// ankle's front point and the heel's sole point (both corners of the leg's one drawn shape).
+export const TRI_LEG_PROBE = { on: false, count: 0, data: new Float64Array(80) };
 const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
 export function drawTriceratopsBody(ctx, q, now = 0) {
@@ -165,7 +183,8 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // movement: a gait phase from the distance travelled (the leap's lift taken back out of the ridden mount's drawn y)
   const x = Number(e.x) || 0, y = (Number(e.y) || 0) + air, dt = M.at == null ? 0 : Math.min(.1, Math.max(0, (now - M.at) / 1000)), moved = M.x == null ? 0 : Math.hypot(x - M.x, y - M.y);
   M.at = now; M.x = x; M.y = y;
-  const LG = TRI_LEGS, cyc = LG.cycle * FM.leg, legK = (FM.leg + FM.legW) / 2; // the gait's cycle in body units (a tile is max(.6, scale) body units)
+  TRI_LEG_PROBE.count = 0;
+  const LG = TRI_LEGS, cyc = LG.cycle * Math.sqrt(FM.leg), legK = (FM.leg + FM.legW) / 2; // the gait's cycle in body units (a tile is max(.6, scale) body units)
   if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (cyc * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
   if (dt > 0) M.airV = (air - M.air) / dt;
@@ -218,11 +237,14 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
     // the gait: planted for `duty` of the cycle (moving back exactly as fast as the body moves on: no sliding), then lifted and swung forward
     const p = ((ph / TAU + LG.phase[(near ? "near" : "far") + (hind ? "Hind" : "Fore")]) % 1 + 1) % 1, D = LG.duty;
     let xr, sw = 0; if (p < D) xr = cyc * (D / 2 - p); else { const s = (p - D) / (1 - D); xr = cyc * (-D / 2 + D * smooth(s)); sw = Math.sin(Math.PI * s); }
-    let fx = PX[i] + S.x + (near ? 0 : (hind ? F.footHind : F.footFore)) + xr * gait, fy = (near ? 0 : F.up) + S.foot.h * legK + LG.lift * FM.leg * sw * gait, fa = -LG.toeDrop * sw * gait;
+    let fx = PX[i] + S.x + (near ? 0 : (hind ? F.footHind : F.footFore)) + xr * gait, fy = (near ? 0 : F.up) + S.foot.h * legK + LG.lift * legK * sw * gait, fa = -LG.toeDrop * sw * gait;
     // folded (the leap, the drill, lying down) and the forefeet raised (the rear): the ankle drawn in toward the joint, the toes hanging
     const reach = (l1 + l2) * .9;
     if (V.tuck > .01) { const bx = hind ? .1 : -.06, by = -reach * .6, w = Math.min(1, V.tuck); fx += (jx + bx * cp - by * sp - fx) * w; fy += (jy + bx * sp + by * cp - fy) * w; fa -= LG.tuckToes * w; }
     if (!hind && V.frontLift > .01) { const bx = .14, by = -reach * .55, w = Math.min(1, V.frontLift); fx += (jx + bx * cp - by * sp - fx) * w; fy += (jy + bx * sp + by * cp - fy) * w; fa -= LG.tuckToes * w; }
+    // folded or lying down, the foot rests on the ground at the lowest (its tilted sole never below it)
+    { const ft = S.foot, cf = Math.cos(fa), sf = Math.sin(fa); let low = 0; for (let j = 0; j < 7; j++) { const f = FOOT[j], ly = (f[1] * (f[0] > 0 ? ft.toe : -ft.heel)) * sf + f[2] * ft.h * cf; if (ly < low) low = ly; }
+      fy = Math.max(fy, (near ? 0 : F.up) - low * legK); }
     // two-bone reach: a lower bone that cannot quite reach stretches a little (the knee stays soft); beyond that the foot leaves the ground with the leg
     const dx = fx - jx, dy = fy - jy, raw = Math.hypot(dx, dy) || 1e-3, ux = dx / raw, uy = dy / raw;
     if (raw > (l1 + l2) * LG.soft) l2 = Math.min(l2 * LG.stretch, raw / LG.soft - l1);
@@ -243,13 +265,10 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
       LO[j * 4] = x0 + nx * f; LO[j * 4 + 1] = y0 + ny * f; LO[j * 4 + 2] = x0 - nx * b; LO[j * 4 + 3] = y0 - ny * b; }
     // the foot in its own frame at the ankle (x forward, y up), turned by its tilt
     const ft = S.foot, fh = ft.h * legK, toe = ft.toe * legK, heel = ft.heel * legK, cf = Math.cos(fa), sf = Math.sin(fa);
-    const FT = LF, put = (j, lx, ly) => { FT[j * 2] = ax + lx * cf - ly * sf; FT[j * 2 + 1] = ay + lx * sf + ly * cf; };
-    put(0, toe * .7, -fh * .02); put(1, toe, -fh * .5); put(2, toe * 1.04, -fh); put(3, toe * .8, -fh); put(4, -heel * .75, -fh); put(5, -heel * 1.08, -fh); put(6, -heel, -fh * .4);
-    const path = (close) => { ctx.beginPath(); if (close) mv(LO[0], LO[1]); else mv(LO[4], LO[5]); // the outline starts below the haunch
-      for (let j = 1; j < 4; j++) qc(LO[j * 4], LO[j * 4 + 1], (LO[j * 4] + LO[j * 4 + 4]) / 2, (LO[j * 4 + 1] + LO[j * 4 + 5]) / 2);
-      ln(LO[16], LO[17]); qc(FT[0], FT[1], FT[2], FT[3]); qc(FT[4], FT[5], FT[6], FT[7]); ln(FT[8], FT[9]); qc(FT[10], FT[11], FT[12], FT[13]); qc((FT[12] + LO[18]) / 2 - u2x * fh * .1, (FT[13] + LO[19]) / 2 - u2y * fh * .1, LO[18], LO[19]);
-      for (let j = 3; j > 0; j--) qc(LO[j * 4 + 2], LO[j * 4 + 3], (LO[j * 4 + 2] + LO[j * 4 - 2]) / 2, (LO[j * 4 + 3] + LO[j * 4 - 1]) / 2);
-      if (close) { qc(C[0] - u1x * top, C[1] - u1y * top, LO[0], LO[1]); ctx.closePath(); } }; // a round top, inside the haunch
+    for (let j = 0; j < 7; j++) { const f = FOOT[j], lx = f[1] * (f[0] > 0 ? toe : -heel), ly = f[2] * fh; LF[j * 2] = ax + lx * cf - ly * sf; LF[j * 2 + 1] = ay + lx * sf + ly * cf; }
+    LX[0] = C[0] - u1x * top; LX[1] = C[1] - u1y * top; LX[2] = u2x * fh * .1; LX[3] = u2y * fh * .1;
+    if (TRI_LEG_PROBE.on && TRI_LEG_PROBE.count < 4) { const o = TRI_LEG_PROBE.count++ * 20, D = TRI_LEG_PROBE.data; D[o] = hind ? 1 : 0; D[o + 1] = near ? 1 : 0; for (let j = 0; j < 6; j++) D[o + 2 + j] = P[j]; D[o + 8] = P[7]; D[o + 9] = P[8];
+      D[o + 10] = Math.min(LF[5], LF[7], LF[9]); D[o + 11] = (LF[6] + LF[8]) / 2; D[o + 12] = near ? 0 : LG.far.up; D[o + 13] = fh; D[o + 14] = Math.hypot(toe * 1.04, fh) + heel * 1.08; D[o + 15] = fa; D[o + 16] = LO[16]; D[o + 17] = LO[17]; D[o + 18] = LF[8]; D[o + 19] = LF[9]; }
     // the haunch or shoulder: a solid rounded muscle where the leg meets the body, outlined only along its lower front, the thigh (or
     // upper arm) growing out of it; the markings (Tim, 2026-11-18), darker bands of his own yellow, curve across both
     const hr = (hind ? .19 : .14) * FM.legW, cx2 = jx + (hind ? .0 : .01), cy2 = jy - (hind ? .04 : .03);
@@ -257,19 +276,19 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
       ctx.fillStyle = g2; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.fill();
       ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, .15, 1.9); ctx.stroke(); }
     const g = ctx.createLinearGradient(LO[4], -LO[5], LO[6], -LO[7]); g.addColorStop(0, light); g.addColorStop(.5, tone); g.addColorStop(1, near ? A.bodyDark : A.shade);
-    path(true); ctx.fillStyle = g; ctx.fill();
+    legOutline(ctx, true); ctx.fillStyle = g; ctx.fill();
     if (near) { ctx.save(); ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .8;
       for (let i = 0; i < 3; i++) { const bx = cx2 - hr * .75 + i * hr * .62, w = hr * .2; ctx.beginPath(); ctx.moveTo(bx, -cy2 - hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35, -cy2, bx + hr * .05, -cy2 + hr * 1.3); ctx.lineTo(bx + hr * .05 + w, -cy2 + hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35 + w, -cy2, bx + w, -cy2 - hr * 1.3); ctx.closePath(); ctx.fill(); }
       ctx.restore(); }
     // the foot's darker pad, and the outline down both sides and round the foot (never across the top, inside the body)
-    ctx.fillStyle = near ? A.bodyDark : A.shade; ctx.globalAlpha = .55; ctx.beginPath(); mv(LO[16], LO[17]); qc(FT[0], FT[1], FT[2], FT[3]); qc(FT[4], FT[5], FT[6], FT[7]); ln(FT[8], FT[9]); qc(FT[10], FT[11], FT[12], FT[13]); ln(LO[18], LO[19]); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-    path(false); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
+    ctx.fillStyle = near ? A.bodyDark : A.shade; ctx.globalAlpha = .55; ctx.beginPath(); mv(LO[16], LO[17]); qc(LF[0], LF[1], LF[2], LF[3]); qc(LF[4], LF[5], LF[6], LF[7]); ln(LF[8], LF[9]); qc(LF[10], LF[11], LF[12], LF[13]); ln(LO[18], LO[19]); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    legOutline(ctx, false); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
     // blunt pale toenails along the foot's front
     ctx.fillStyle = near ? A.toe : A.hornBase; const r = ft.nail * legK;
     ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6;
     for (let c = 0; c < S.nails; c++) { const lx = toe * (.9 - c * .27), ly = -fh + r * .15, nx = ax + lx * cf - ly * sf, ny = ay + lx * sf + ly * cf; ctx.beginPath(); ctx.ellipse(nx, -ny, r * (1 - c * .1), r * (1.05 - c * .1), -fa, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     // the creases: a skin fold over the knee (or behind the elbow), two wrinkles round the ankle
-    if (near) { ctx.strokeStyle = A.shade; ctx.lineWidth = lw * .8; ctx.globalAlpha = .7; ctx.beginPath();
+    if (near && FM.leg >= LG.creaseLeg) { ctx.strokeStyle = A.shade; ctx.lineWidth = lw * .8; ctx.globalAlpha = .7; ctx.beginPath();
       const kw = W[2][hind ? 0 : 1] * wk * (hind ? 1 : -1), kcx = kx2 + nkx * kw * .55, kcy = ky2 + nky * kw * .55; mv(kcx - u1x * kw * .5, kcy - u1y * kw * .5); qc(kcx - nkx * kw * .25, kcy - nky * kw * .25, kcx + u2x * kw * .5, kcy + u2y * kw * .5);
       for (let c = 0; c < 2; c++) { const f = .55 + c * .22, px = kx2 + (ax - kx2) * (.72 + c * .12), py = ky2 + (ay - ky2) * (.72 + c * .12), wf = W[4][0] * wk * f, wb = W[4][1] * wk * f; mv(px - u2y * wf, py + u2x * wf); qc(px - u2x * .015, py - u2y * .015, px + u2y * wb * .6, py - u2x * wb * .6); }
       ctx.stroke(); ctx.globalAlpha = 1; }
