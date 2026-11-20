@@ -17,12 +17,12 @@
 // their middle band put the next host of a kind 8-10 sections from the last in most cases (7-11 in nearly all; tests measure it).
 // The rest of the world is untouched: skyways, shrines and world-beast meetings still come by their own rolls too.
 // Cost: a handful of hashes and memoised cheap tests per cell, nine cells per kind per section entered; nothing per frame.
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { openSeaQuick } from "./landscape.js?v=r1033-a2f1d1a7ea50";
-import { hamletSection } from "./settlements.js?v=r1033-a2f1d1a7ea50";
-import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r1033-a2f1d1a7ea50";
-import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r1033-a2f1d1a7ea50";
-import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { openSeaQuick } from "./landscape.js?v=r1048-85a8d476db24";
+import { hamletSection, oldTownAt } from "./settlements.js?v=r1048-85a8d476db24";
+import { pentagonCentre, pentagonAt } from "./pentagon.js?v=r1048-85a8d476db24";
+import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.js?v=r1048-85a8d476db24";
+import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.js?v=r1048-85a8d476db24";
 
 export const WAYMARK_GUIDES = {
   version: 1,       // the atlas pin (`guideVersion`) for ground first seen with the guides; a change to where hosts stand is a new version
@@ -45,12 +45,13 @@ export const WAYMARK_GUIDES = {
 export const GUIDE_KINDS = Object.keys(WAYMARK_GUIDES.kinds);
 export const GUIDE_SIGNALS = Object.fromEntries(GUIDE_KINDS.map((k) => [WAYMARK_GUIDES.kinds[k].signal, k]));
 
-const settledAt = new Set(["4,-2", "-5,3"]); // world.ts SETTLEMENTS (the two old towns); not imported, so world.ts may import this module
+// world.ts SETTLEMENTS (the two old towns), where this journey's frame puts them (settlements.ts oldTownAt; not world.ts, so
+// world.ts may import this module).
 const domainNear = (seed, rx, ry) => Object.keys(FAR_DOMAINS).some((id) => { const c = farDomainCentre(seed, id); return Math.abs(c.rx - rx) + Math.abs(c.ry - ry) <= WAYMARK_GUIDES.domainClear; });
 // May (rx, ry) host a destination of `kind`? Cheap tests only (the kinds' bands never meet, so no section hosts two).
 export function guideHostable(seed, kind, rx, ry) {
   const K = WAYMARK_GUIDES.kinds[kind];
-  if (Math.abs(rx) + Math.abs(ry) < K.minDepth || settledAt.has(`${rx},${ry}`) || pentagonCentre(rx, ry)) return false;
+  if (Math.abs(rx) + Math.abs(ry) < K.minDepth || oldTownAt(seed, rx, ry) || pentagonCentre(rx, ry)) return false;
   return !hamletSection(seed, rx, ry) && !domainNear(seed, rx, ry) && !openSeaQuick(seed, rx, ry, WAYMARK_GUIDES.seaMargin, WAYMARK_GUIDES.seaVersion);
 }
 const floorDiv = (a, n) => Math.floor(a / n);

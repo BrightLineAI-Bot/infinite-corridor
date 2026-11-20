@@ -1,59 +1,68 @@
-import { BOAT, forgeSubmersible } from "./boats.js?v=r1033-a2f1d1a7ea50"; // release 311
-import { createSoundtrack } from "./soundtrack.js?v=r1033-a2f1d1a7ea50";
-import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.js?v=r1033-a2f1d1a7ea50";
-import { createBackgroundMusic } from "./background-music.js?v=r1033-a2f1d1a7ea50"; // 2026-11-19: Music in background
-import { createBattleSfx } from "./battle-sfx.js?v=r1033-a2f1d1a7ea50"; // the dino duel's sounds of battle (Tim, 2026-11-14)
-import { swingIndicator, drawSwingSweep } from "./melee-swing.js?v=r1033-a2f1d1a7ea50"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
-import { BLEED } from "./bleed.js?v=r1033-a2f1d1a7ea50"; // the bleed status line
-import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r1033-a2f1d1a7ea50";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1033-a2f1d1a7ea50"; // release 393; 541: preset gear
-import { FRACTURED } from "./fractured.js?v=r1033-a2f1d1a7ea50"; // release 651: Fractured mode
-import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r1033-a2f1d1a7ea50"; // release 543
-import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r1033-a2f1d1a7ea50"; // release 551; 559
-import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork, reforgePreview, SALVAGE_YIELD, setSalvageYield, salvageYieldMode, salvageYieldText, salvagePaidText } from "./smithy.js?v=r1033-a2f1d1a7ea50";
-import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r1033-a2f1d1a7ea50"; // release 447
-import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r1033-a2f1d1a7ea50"; // release 459 // release 395 // release 315; 321: the drone
-import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r1033-a2f1d1a7ea50"; // release 339; 341
-import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r1033-a2f1d1a7ea50";
-import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.js?v=r1033-a2f1d1a7ea50"; // release 748: the stable
-import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r1033-a2f1d1a7ea50";
-import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r1033-a2f1d1a7ea50";
-import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r1033-a2f1d1a7ea50";
-import { drawPentagonSigilIcon } from "./renderer.js?v=r1033-a2f1d1a7ea50";
-import { closeViewSurfacePick } from "./close-view.js?v=r1033-a2f1d1a7ea50"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.js?v=r1033-a2f1d1a7ea50"; // Close View (2026-11-06): interiors from behind the Wayfarer
-import { renderTimings } from "./renderer.js?v=r1033-a2f1d1a7ea50";
-import { createProbe, PROBE } from "./diagnostic-probe.js?v=r1033-a2f1d1a7ea50";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.js?v=r1033-a2f1d1a7ea50";
-import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.js?v=r1033-a2f1d1a7ea50"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
-import { sectionAtlasColor } from "./atlas-colors.js?v=r1033-a2f1d1a7ea50";
-import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.js?v=r1033-a2f1d1a7ea50"; // release 573; biomeFor: a section a tall tower's lookout charted
-import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.js?v=r1033-a2f1d1a7ea50";
-import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.js?v=r1033-a2f1d1a7ea50";
-import { HATCHLING, rescueGuidance, formUnlocked, growthProgress } from "./hatchling.js?v=r1033-a2f1d1a7ea50"; // the Triceratops hatchling: the Pack row, the Atlas marker and the compass // the seed hunts: the Atlas marker and the compass
-import { CREATURE_TRAITS, wayfarerDamage } from "./combat.js?v=r1033-a2f1d1a7ea50";
-import { nearestWonders, WONDERS } from "./wonders.js?v=r1033-a2f1d1a7ea50"; // release 674
-import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.js?v=r1033-a2f1d1a7ea50";
-import { STEGO_BAIT } from "./stego-bait.js?v=r1033-a2f1d1a7ea50"; // the Stego Bait (Pack → Supplies)
-import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r1033-a2f1d1a7ea50";
-import { curseDef } from "./haunts.js?v=r1033-a2f1d1a7ea50"; // release 737: the haunt curses on the HUD
-import { activeFarQuest, farQuestInfo } from "./far-realms.js?v=r1033-a2f1d1a7ea50"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
-import { drawPackPortrait } from "./monster-render.js?v=r1033-a2f1d1a7ea50";
-import { landscapeAtlasColor } from "./landscape-render.js?v=r1033-a2f1d1a7ea50";
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r1033-a2f1d1a7ea50";
-import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1033-a2f1d1a7ea50";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1033-a2f1d1a7ea50";
-import { linksKnown } from "./linked-dungeons.js?v=r1033-a2f1d1a7ea50";
-import { DIG } from "./digging.js?v=r1033-a2f1d1a7ea50";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from "./atlas-view.js?v=r1033-a2f1d1a7ea50";
-import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r1033-a2f1d1a7ea50";
-import { startGlimpse, paintRule } from "./glimpse-render.js?v=r1033-a2f1d1a7ea50";
-import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r1033-a2f1d1a7ea50";
-import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r1033-a2f1d1a7ea50";
-import { questingBeastHoldNote } from "./questing-beast.js?v=r1033-a2f1d1a7ea50";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r1033-a2f1d1a7ea50";
-import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r1033-a2f1d1a7ea50";
+import { BOAT, forgeSubmersible } from "./boats.js?v=r1048-85a8d476db24"; // release 311
+import { createSoundtrack } from "./soundtrack.js?v=r1048-85a8d476db24";
+import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.js?v=r1048-85a8d476db24";
+import { createBackgroundMusic } from "./background-music.js?v=r1048-85a8d476db24"; // 2026-11-19: Music in background
+import { createBattleSfx } from "./battle-sfx.js?v=r1048-85a8d476db24"; // the dino duel's sounds of battle (Tim, 2026-11-14)
+import { swingIndicator, drawSwingSweep } from "./melee-swing.js?v=r1048-85a8d476db24"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
+import { BLEED } from "./bleed.js?v=r1048-85a8d476db24"; // the bleed status line
+import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.js?v=r1048-85a8d476db24";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1048-85a8d476db24"; // release 393; 541: preset gear
+import { FRACTURED } from "./fractured.js?v=r1048-85a8d476db24"; // release 651: Fractured mode
+import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.js?v=r1048-85a8d476db24"; // release 543
+import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.js?v=r1048-85a8d476db24"; // release 551; 559
+import { SMITHY, smithOpen, salvageItem, reforgeAffix, addSocket, masterwork, reforgePreview, SALVAGE_YIELD, setSalvageYield, salvageYieldMode, salvageYieldText, salvagePaidText } from "./smithy.js?v=r1048-85a8d476db24";
+import { MEAL, INGREDIENTS, INGREDIENT_IDS, mealName, mealPrice, mealPercent } from "./meals.js?v=r1048-85a8d476db24"; // release 447
+import { MARGINALIA, RULES as MARGIN_RULES, marginRun, ensureMarginalia } from "./marginalia.js?v=r1048-85a8d476db24"; // release 459 // release 395 // release 315; 321: the drone
+import { POTIONS, potionChoice, setPotionChoice, craftPotion, potionToDrink, potionsReady } from "./potions.js?v=r1048-85a8d476db24"; // release 339; 341
+import { BUILD, BUILD_KINDS, ensureBuild, setBuildKind, setContinuousBuild, activeBuildKind, PEN_COST, costText } from "./building.js?v=r1048-85a8d476db24";
+import { MOUNT_RIDE, MOUNT_BEASTS, SADDLE_NAMES, ensureMounts, mountName, mountLifeText, persistentMount, TRICERATOPS_CONTROLS } from "./beast-mounts.js?v=r1048-85a8d476db24"; // release 748: the stable
+import { stageOf, tierCap, apertureCeiling, listenerKills, STAGES } from "./stages.js?v=r1048-85a8d476db24";
+import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET_INPUT, viewportClosedTick, viewportClosedStage, viewportNoiseFrames, drawViewportClosed } from "./combat-visuals.js?v=r1048-85a8d476db24";
+import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.js?v=r1048-85a8d476db24";
+import { drawPentagonSigilIcon } from "./renderer.js?v=r1048-85a8d476db24";
+import { closeViewSurfacePick } from "./close-view.js?v=r1048-85a8d476db24"; // roof decks: the aimed Rift Step's tap
+import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.js?v=r1048-85a8d476db24"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { renderTimings } from "./renderer.js?v=r1048-85a8d476db24";
+import { createProbe, PROBE } from "./diagnostic-probe.js?v=r1048-85a8d476db24";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.js?v=r1048-85a8d476db24";
+import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.js?v=r1048-85a8d476db24"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
+import { sectionAtlasColor } from "./atlas-colors.js?v=r1048-85a8d476db24";
+import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.js?v=r1048-85a8d476db24"; // release 573; biomeFor: a section a tall tower's lookout charted
+import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.js?v=r1048-85a8d476db24";
+import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.js?v=r1048-85a8d476db24";
+import { HATCHLING, rescueGuidance, formUnlocked, growthProgress } from "./hatchling.js?v=r1048-85a8d476db24"; // the Triceratops hatchling: the Pack row, the Atlas marker and the compass // the seed hunts: the Atlas marker and the compass
+import { CREATURE_TRAITS, wayfarerDamage } from "./combat.js?v=r1048-85a8d476db24";
+import { nearestWonders, WONDERS } from "./wonders.js?v=r1048-85a8d476db24"; // release 674
+import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.js?v=r1048-85a8d476db24";
+import { STEGO_BAIT } from "./stego-bait.js?v=r1048-85a8d476db24"; // the Stego Bait (Pack → Supplies)
+import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.js?v=r1048-85a8d476db24";
+import { curseDef } from "./haunts.js?v=r1048-85a8d476db24"; // release 737: the haunt curses on the HUD
+import { activeFarQuest, farQuestInfo } from "./far-realms.js?v=r1048-85a8d476db24"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
+import { drawPackPortrait } from "./monster-render.js?v=r1048-85a8d476db24";
+import { landscapeAtlasColor } from "./landscape-render.js?v=r1048-85a8d476db24";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.js?v=r1048-85a8d476db24";
+import { compendium } from "./progression.js?v=r1048-85a8d476db24"; // the progression table and its compendium (docs/progression-design.md, Phase 1)
+import { startCards, START_KIT, PROGRESSION_MODES, switchProgression, switchText } from "./progression.js?v=r1048-85a8d476db24"; // Phase 2: the creator's cards and the mode switch
+import { modeInfo, progressionMode, EXPLORATION } from "./journey-start.js?v=r1048-85a8d476db24";
+import { howToPage, hintFor } from "./progression.js?v=r1048-85a8d476db24"; // Phase 4: how-to pages and hint text (docs/progression-design.md 4A)
+import { HINT_BUDGET, HINT_MODES, hintMode, hintQueue, hintScan, offerHint, hintStep, dismissHint, packDot, clearPackDot } from "./hints.js?v=r1048-85a8d476db24"; // Phase 4: first-use hints
+import { milestonesUnderWay, worldWithheld, WORLD_ROUTE_OF, MILESTONE_FOR, featCount, milestoneLine } from "./world-routes.js?v=r1048-85a8d476db24"; // Phase 6: milestones under way; what Exploration withholds
+import { questOfFollow, questStep, questState, threadReward, storyWithheld, STORY_SEEN, carrierOf, SEEDED_IDS, THREAD_REWARDS } from "./quests.js?v=r1048-85a8d476db24"; import { questLeads } from "./quest-places.js?v=r1048-85a8d476db24"; // Phase 7: quests and thread rewards
+import { visceraShop, buyVisceraForm, buyVisceraRumour } from "./world-finds.js?v=r1048-85a8d476db24"; // Phase 8: Divine Viscera at Sela's forge and every smith
+import { rumourLeads, compassCaption, noteFollow, leadDot } from "./leads.js?v=r1048-85a8d476db24"; // Phase 4: leads, rumours, the first-session caption, the Journal dot
+import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1048-85a8d476db24";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1048-85a8d476db24";
+import { linksKnown } from "./linked-dungeons.js?v=r1048-85a8d476db24";
+import { DIG } from "./digging.js?v=r1048-85a8d476db24";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from "./atlas-view.js?v=r1048-85a8d476db24";
+import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.js?v=r1048-85a8d476db24";
+import { startGlimpse, paintRule } from "./glimpse-render.js?v=r1048-85a8d476db24";
+import { eldersHeard, elderProgress, ruleRows } from "./elders.js?v=r1048-85a8d476db24";
+import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.js?v=r1048-85a8d476db24";
+import { questingBeastHoldNote } from "./questing-beast.js?v=r1048-85a8d476db24";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.js?v=r1048-85a8d476db24";
+import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.js?v=r1048-85a8d476db24";
 function uiButton(label, click) {
   const b = document.createElement("button");
   b.type = "button";
@@ -165,7 +174,7 @@ function openShop(vendorId = "vendor-vela") {
   if (!panel.open) panel.showModal();
 }
 
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r1033-a2f1d1a7ea50";
+import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.js?v=r1048-85a8d476db24";
 import {
   Game,
   actionReadiness,
@@ -178,15 +187,15 @@ import {
   gearReadout,
   compareReadouts,
   forgePreview,
-} from "./game.js?v=r1033-a2f1d1a7ea50";
-import { createInput } from "./input.js?v=r1033-a2f1d1a7ea50";
-import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r1033-a2f1d1a7ea50";
-import { STATS, freshSave, setCompassChoice } from "./types.js?v=r1033-a2f1d1a7ea50";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.js?v=r1033-a2f1d1a7ea50";
-import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r1033-a2f1d1a7ea50";
-import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r1033-a2f1d1a7ea50";
-import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r1033-a2f1d1a7ea50";
-import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r1033-a2f1d1a7ea50";
+} from "./game.js?v=r1048-85a8d476db24";
+import { createInput } from "./input.js?v=r1048-85a8d476db24";
+import { render as baseRender, renderScaleForViewport } from "./renderer.js?v=r1048-85a8d476db24";
+import { STATS, freshSave, setCompassChoice } from "./types.js?v=r1048-85a8d476db24";
+import { SPELLS, explorationGateOpen, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.js?v=r1048-85a8d476db24";
+import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.js?v=r1048-85a8d476db24";
+import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.js?v=r1048-85a8d476db24";
+import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.js?v=r1048-85a8d476db24";
+import { ECHOES, ECHO_IDS, NOTCHES, notchesUsed, toggleEcho, toggleLatticeEcho } from "./echoes.js?v=r1048-85a8d476db24";
 // Release 291: names and HUD glyphs for items on a preset's Build button.
 // Release 293 (Tim: "convincing symbols... relevant and easy to discern"): solid, filled item icons (spells stay line drawings).
 const ITEM_NAMES = { restorativeDraught: "Restorative Draught", highPotion: "High Potion", maxPotion: "Max Potion", ironbarkTonic: "Ironbark Tonic", lumenPhial: "Lumen Phial", clearrootAmpoule: "Clearroot Ampoule", hullShield: "Hull Shield", submersible: "Submersible Frame" };
@@ -208,8 +217,8 @@ const ITEM_ICONS = {
   submersible: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><rect x="16.4" y="2.6" width="2.6" height="7" rx=".8" fill="#8f979f"/><circle cx="12" cy="10" r="7" fill="#c9cfd6" stroke="#3a4048" stroke-width="1"/><circle cx="12" cy="9.4" r="4.2" fill="#2a6f86" stroke="#3a4048" stroke-width="1"/><path d="M10 7.8a2.6 2.6 0 0 1 3-1" stroke="#ffffff" stroke-width="1" fill="none"/><path d="M5.6 11.6 2.8 14.4l.6 2.6M18.4 11.6l2.8 2.8-.6 2.6" stroke="#7d858e" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="8.4" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><rect x="13.2" y="16.4" width="2.4" height="3.4" fill="#7d858e"/><path d="M7.8 20.4h3.6M12.6 20.4h3.6" stroke="#4b525a" stroke-width="1.6" stroke-linecap="round"/></svg>',  // release 315: the robot
   hullShield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 14.4h18.8l-2.8 5.6H5.4z" fill="#8a5a32" stroke="#3e2614" stroke-width="1"/><path d="M12 2.4 17.4 4.4v4.3c0 3.3-2.3 5.4-5.4 6.6-3.1-1.2-5.4-3.3-5.4-6.6V4.4z" fill="#3fb6c8" stroke="#d8f6fb" stroke-width="1.2"/><path d="M12 5.4v6.4M9.4 7.8h5.2" stroke="#0f3a42" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 21.4c2-1 4-1 6 0s4 1 6 0 4-1 6 0 2.6.5 3 .3" stroke="#7fc6e6" stroke-width="1.2" fill="none"/></svg>',
 };
-import { LANTERN, lanternLit, slotToolName, buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, assignPresetItem, SLOTS, SLOT_ACTIONS, SLOT_ORDER, slotLabel, FRAME_TOOLS, setPresetSlot } from "./spell-slots.js?v=r1033-a2f1d1a7ea50";
-import { OCULUS, drawOculusDais, oculusTarget, oculusAvailable } from "./oculus.js?v=r1033-a2f1d1a7ea50"; // release 874: the Oculus's dais and warp
+import { LANTERN, lanternLit, slotToolName, buffLeft, slotTool, CASTABLES, ATTRIBUTES, PAIRINGS, pairKey, slotted, setSlot, availableCastables, activePairing, ensureSlots , togglePreset, PRESETS, BUTTON_ITEMS, assignPresetItem, SLOTS, SLOT_ACTIONS, SLOT_ORDER, slotLabel, FRAME_TOOLS, setPresetSlot } from "./spell-slots.js?v=r1048-85a8d476db24";
+import { OCULUS, drawOculusDais, oculusTarget, oculusAvailable } from "./oculus.js?v=r1048-85a8d476db24"; // release 874: the Oculus's dais and warp
 // Release 874: the utility button's icons. Build keeps the release-265 hammer; the frame shows the robot or, in drone mode, a
 // small rotor drone; the Oculus is an eye of light in a stone ring.
 const UTILITY_ICONS = {
@@ -228,17 +237,18 @@ const MOUNT_CONTROL_ICONS = {
 };
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
-import { reloadPips, powerAegisLeft } from "./hit-cast-passives.js?v=r1033-a2f1d1a7ea50"; // Rapid Reload's pips (Tim, 2026-11-19)
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.js?v=r1033-a2f1d1a7ea50";
-import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r1033-a2f1d1a7ea50";
-import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r1033-a2f1d1a7ea50";
-import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r1033-a2f1d1a7ea50";
-import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r1033-a2f1d1a7ea50";
-import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r1033-a2f1d1a7ea50";
-import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1033-a2f1d1a7ea50";
-import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r1033-a2f1d1a7ea50"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
-import { worldStewardReport } from "./story.js?v=r1033-a2f1d1a7ea50";
-import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r1033-a2f1d1a7ea50";
+import { reloadPips, powerAegisLeft, encumberedAny } from "./hit-cast-passives.js?v=r1048-85a8d476db24"; // Rapid Reload's pips (Tim, 2026-11-19)
+import { WORLD_WAIT, BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altOpen, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups, learnAerialStep, capstoneOf, aerialDiscipline } from "./constellation.js?v=r1048-85a8d476db24";
+import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.js?v=r1048-85a8d476db24";
+import { DUNGEON_TRAPS } from "./dungeon-traps.js?v=r1048-85a8d476db24";
+import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.js?v=r1048-85a8d476db24";
+import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.js?v=r1048-85a8d476db24";
+import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.js?v=r1048-85a8d476db24";
+import { retiredJournalEntry } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): townsfolk cannot be harmed
+import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1048-85a8d476db24";
+import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.js?v=r1048-85a8d476db24"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
+import { worldStewardReport } from "./story.js?v=r1048-85a8d476db24";
+import { ensureViewportState,acceptViewportHunt,deferViewportHunt,archiveViewportHunt,foundryTrialDecision,foundryAdmission,huntIntegrationDiagnostics } from "./foundry.js?v=r1048-85a8d476db24";
 import {
   generateRegion as generateWorldRegion,
   generateDungeon,
@@ -250,16 +260,17 @@ import {
   perceived,
   wayfindingTargets,
   wayfindingCues,
-} from "./world.js?v=r1033-a2f1d1a7ea50";
-import { warmWayfindingSignals } from "./world.js?v=r1033-a2f1d1a7ea50";
-import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r1033-a2f1d1a7ea50"; // release 431
-import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r1033-a2f1d1a7ea50"; // release 595
-import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.js?v=r1033-a2f1d1a7ea50"; // release 627; arcana regions (2026-11-11)
-import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, secondBegun, secondFound, secondNext, secondTraceText } from "./second-wayfarer.js?v=r1033-a2f1d1a7ea50"; // the Second Wayfarer
-import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r1033-a2f1d1a7ea50"; // the Journal's Arcana tab
-import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r1033-a2f1d1a7ea50"; // release 605
-import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1033-a2f1d1a7ea50"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
-import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.js?v=r1033-a2f1d1a7ea50"; // release 791
+} from "./world.js?v=r1048-85a8d476db24";
+import { warmWayfindingSignals } from "./world.js?v=r1048-85a8d476db24";
+import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.js?v=r1048-85a8d476db24"; // release 431
+import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.js?v=r1048-85a8d476db24"; // release 595
+import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.js?v=r1048-85a8d476db24"; // release 627; arcana regions (2026-11-11)
+import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, secondBegun, secondFound, secondNext, secondTraceText } from "./second-wayfarer.js?v=r1048-85a8d476db24"; // the Second Wayfarer
+import { ILSE_MEETINGS, ilseMet } from "./ilse.js?v=r1048-85a8d476db24"; // the Journal's Arcana tab
+import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.js?v=r1048-85a8d476db24"; // release 605
+import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1048-85a8d476db24"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
+import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, provingGroundAccess, handoffRecord, writeHandoff } from "./proving-ground-handoff.js?v=r1048-85a8d476db24"; // release 791
+import { TRAINING_YARD, yardOffer, yardRequest, yardSetup } from "./training-yard.js?v=r1048-85a8d476db24"; // progression Phase 5: the how-to page's Try it
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -463,9 +474,44 @@ function watchQuests(now){
   Object.assign(questWatch,sig,{ready:true,save});}
   if(questQueue.length&&now>=questBannerFreeAt){const q=questQueue.shift();showEventBanner(q.title,q.detail,q.kind);questBannerFreeAt=now+QUEST_BANNER.gap}
 }
+// First-use hints (Progression Phase 4; docs/progression-design.md 4A.2, 4A.6; hints.ts): one short line on a small card under the
+// message line, once per journey per subject, never in a fight, a scene, a menu, Look mode or dialogue, one at a time, at least
+// 45 s apart and at most 4 in 10 minutes. ✕ dismisses it; "How to" opens the ability's page (the Journal pauses, as it always
+// does); it fades by itself. A banner subject (the first constellation point, the first lead) goes through the banner queue.
+// Checked on the banner queue's cadence (HINT_BUDGET.checkEvery); the holdings scan runs every HINT_BUDGET.scanEvery.
+const hints=hintQueue(),hintPos={x:NaN,y:NaN,map:null};let hintCheckedAt=-1e9,hintScannedAt=-1e9,hintArrivedAt=-1e9,hintFade=0,hintGuidance=save.guidance;
+const hintCard=(()=>{const c=document.createElement("aside"),t=document.createElement("span"),how=document.createElement("button"),x=document.createElement("button");c.id="hintCard";c.className="hint-card";c.setAttribute("role","status");c.hidden=true;t.className="hint-text";how.type="button";how.className="hint-how";how.textContent="How to";x.type="button";x.className="hint-close";x.setAttribute("aria-label","Dismiss hint");x.textContent="✕";c.append(t,how,x);($("#messageViewport")?.parentElement||document.body).append(c);return{c,t,how,x}})();
+function hideHint(){clearTimeout(hintFade);hintCard.c.classList.remove("visible");hintCard.c.hidden=true;dismissHint(hints)}
+hintCard.x.onclick=()=>hideHint();
+function showHint(h){
+  if(h.kind==="banner"){questQueue.push({title:h.title,detail:h.text,kind:"discovery"});return}
+  hintCard.t.textContent=h.text;hintCard.how.hidden=!h.howTo;hintCard.how.onclick=()=>{hideHint();openJournal(`howto:${h.howTo}`)};
+  hintCard.c.hidden=false;hintCard.c.classList.toggle("still",!!(settings.reduceMotion||settings.safeMode));requestAnimationFrame(()=>hintCard.c.classList.add("visible"));
+  clearTimeout(hintFade);hintFade=setTimeout(hideHint,HINT_BUDGET.showMs);
+}
+function hintBusy(){
+  if(game.paused||glimpseRun||compassMenuOpen||closeViewLookActive()||game.rite||game.fall||[atlas,panel,journal,optionsPanel,pausePanel].some((d)=>d?.open))return true;
+  for(const e of game.enemies)if(e&&!e.dead&&e.hp>0&&!e.ambient&&(e.aggro||e.pentArenaAwake))return true; // a foe aggroed or engaged (a boss, a Listener's, a Pentagon trial's)
+  return false;
+}
+const packButton=document.querySelector('[data-action="menu"]'),pausedJournalButton=$("#pausedJournal");
+function watchHints(now){
+  if(now-hintCheckedAt<HINT_BUDGET.checkEvery)return;hintCheckedAt=now;
+  const mode=hintMode(settings);
+  if(save.guidance!==hintGuidance){hintGuidance=save.guidance;if(hintGuidance&&(hintGuidance.pick||hintGuidance.pin||hintGuidance.follow))noteFollow(save)} // 4.3: a lead followed (types.ts setCompassChoice makes a new record each choice)
+  if(now-hintScannedAt>=HINT_BUDGET.scanEvery){hintScannedAt=now;for(const h of hintScan(save,mode))offerHint(save,hints,h,now,mode)}
+  if(game.leadNotice){game.leadNotice=false;offerHint(save,hints,hintFor(save,"lead:first"),now,mode)}
+  if(mode==="on"&&encumberedAny(game))offerHint(save,hints,hintFor(save,"status:encumbered"),now,mode);
+  if(hintPos.map!==game.map)hintArrivedAt=now;const moving=hintPos.map===game.map&&Math.hypot(game.player.x-hintPos.x,game.player.y-hintPos.y)>.05;hintPos.map=game.map;hintPos.x=game.player.x;hintPos.y=game.player.y;
+  const h=hintStep(save,hints,now,{busy:hintBusy(),moving,arrivedAt:hintArrivedAt,mode});if(h)showHint(h);
+  updateCompassCaption(); // the idle compass's first-session caption (4.1)
+  hudSet(packButton,"class:has-dot",packDot(save,mode)); // the first free constellation point (4A), until the Arcanum is opened
+  hudSet(pausedJournalButton,"class:has-dot",mode!=="off"&&game.area==="overworld"&&leadDot(save,!!(compassPin||compassFollow||compassPick))); // 4.3: no needle and no lead followed for a while
+}
 function updateWorldNotices() {
   if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);if(notice.sound)playNoticeSound(notice.sound);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
   watchQuests(performance.now());
+  watchHints(performance.now()); // Progression Phase 4
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
@@ -673,12 +719,13 @@ function navigationTargets() {
   // player's own markers (save.manualWaypoint, save.mapMarks) draw a needle only when chosen (no second, manual needle).
   const f=compassPin?null:compassFollow,pick=game.area==="overworld"&&!compassPin&&!f?compassObjective():null;
   const hunt=f?.kind==="hunt"?save.viewport?.contracts?.[f.id]:null,far=f?.kind==="far"?save.farQuests?.[f.id]:null,rescueQ=f?.kind==="rescue"?save.mounts?.hatchling?.quest:null,
-    mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;const sw=f?.kind==="quest"&&f.id==="second"?save.lore?.second:null,swKey=sw?`${sw.found}:${sw.spot?.i},${sw.spot?.x},${sw.spot?.y}`:"";/* the Second Wayfarer: its next sighting moves as traces are read */
-  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey].join(":");
+    mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;const sw=f?.kind==="quest"&&f.id==="second"?save.lore?.second:null,swKey=sw?`${sw.found}:${sw.spot?.i},${sw.spot?.x},${sw.spot?.y}`:"",pq=f?.kind==="quest"?questOfFollow(f.id):null,pqKey=pq?`${questStep(save,pq)?.key}:${(questState(save,pq)?.places||[]).length}`:"";/* progression Phase 7: a followed quest's step and place *//* the Second Wayfarer: its next sighting moves as traces are read */
+  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey,pqKey].join(":");
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   const cues=game.area==="overworld"&&quest?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,follow:f,pick,cues,rescue:rescueQ?rescueGuidance(save.mounts?.hatchling):null});
+  // `here` (Progression Phase 4, 4.1): on an Exploration journey the Cairn Keeper's errand points at the nearest crossing from here.
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,follow:f,pick,cues,rescue:rescueQ?rescueGuidance(save.mounts?.hatchling):null,here:{rx:game.rx,ry:game.ry,objects:game.map?.objects}});
   navigationCache={key,map:game.map,guidance,manual:null};
   return navigationCache;
 }
@@ -750,6 +797,13 @@ function idleCompass(label = "No objective. Tap to choose one nearby, or hold fo
   hudSet(navCompass, "class:north", false);
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
+// Progression Phase 4 (4.1): on a first session, while the compass has nothing to point at and no quest is taken yet, a small
+// caption under it says where work is found (leads.ts compassCaption); hints off hides it.
+const compassCaptionEl = (() => { const c = document.createElement("span"); c.className = "compass-caption"; c.setAttribute("aria-hidden", "true"); navCompassSlot?.append(c); return c; })();
+function updateCompassCaption() { // on the hints' cadence (watchHints); idle: no needle drawn (idleCompass hides both)
+  const cap = hintMode(settings) !== "off" ? compassCaption(save, { idle: !!navGuidanceArrow?.hidden && !!navManualArrow?.hidden, area: game.area }) : null;
+  hudSet(compassCaptionEl, "text", cap || ""); hudSet(navCompassSlot, "class:captioned", !!cap);
+}
 function updateNavigationCompass(now = performance.now()) {
   updateCompassFrame(now);
   { const look = closeViewLookActive(), name = look ? closeViewLookLabel() : ""; hudSet(navCompassSlot, "class:look-on", look); hudSet(navCompass, "aria-pressed", look ? "true" : "false");
@@ -773,6 +827,7 @@ function activeQuests(){
   // 2026-11-19 (Tim: the compass is sticky): an entry with `follow` is a source the compass can follow (types.ts
   // save.guidance.follow); the Journal's "Point compass here" and the compass menu choose it, and it no longer leads by itself.
   const out=[],add=(title,detail,at,follow=null)=>out.push({title,detail,at:at&&Number.isInteger(at.rx)&&Number.isInteger(at.ry)?{rx:at.rx,ry:at.ry}:null,...(follow?{follow}:{})});
+  for(const q of questLeads(save))add(q.title,q.detail,q.at,q.follow); // progression Phase 7: the quests (quest-places.ts), first
   for(const c of Object.values(save.viewport?.contracts||{}))if(["accepted","tracking","target-located"].includes(c?.status))add(`Hunt: ${c.title||"Viewport hunt"}`,`${c.id===save.viewport.activeHuntId?"Tracked hunt · ":""}${String(c.status).replace("-"," ")}${c.summary?` · ${c.summary}`:""}`,c.target,{kind:"hunt",id:c.id});
   for(const[id,q]of Object.entries(save.farQuests||{}))if(q?.status==="open"){const name=farQuestInfo(id)?.name||id;add(name,"A far quest. Its people wait at the heart of their land.",q,{kind:"far",id,name})}
   { const r=rescueGuidance(save.mounts?.hatchling);if(r)add(HATCHLING.quest.names.quest,"His mother at the Beast Hotel asked you to save him.",r,{kind:"rescue"}); }
@@ -788,13 +843,27 @@ function activeQuests(){
   if(save.worldFlags?.worldBossAwake&&!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
   return out;
 }
+// Progression Phase 7: threads begun whose ending holds a hinted reward (quests.ts, visibility H) and has not given it yet. A hidden
+// one (X) is never listed: its reward arrives unannounced.
+function threadLeads(){
+  const out=[],claimed=save.lore?.arcanaClaimed||{};
+  for(const set of [...Object.keys(THREAD_REWARDS),...SEEDED_IDS.map((id)=>carrierOf(save,id))]){const t=threadReward(save,set);if(!t||t.seen!=="H"||claimed[set]||!storyWithheld(save,t.ability))continue;
+    const T=THREADS[set],n=T?threadFound(save,set).length:0;if(!T||!n||n>=T.pieces.length)continue;out.push({title:T.title,detail:`${n} of ${T.pieces.length} · something waits at the end`})}
+  return out;
+}
+// Progression Phase 4 (docs/progression-design.md 4.2): the tab is Leads: quests in progress first, then the rumours heard
+// (leads.ts rumourLeads), each with "Point compass here" when it has a place (a hinted home's nearest edge, a wonder's section).
 function renderQuests(out){
-  const h=document.createElement("h3");h.textContent="Active quests";out.append(h);
+  const h=document.createElement("h3");h.textContent="Leads";out.append(h);
   const row=(title,detail,at,name,follow=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
     if(follow){const followed=!compassPin&&compassFollow?.kind===follow.kind&&(compassFollow.id??null)===(follow.id??null);card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
     else if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};rememberGuidance();openJournal("quests")}))}out.append(card)};
-  const quests=activeQuests();if(!quests.length){const p=document.createElement("p");p.className="options-note";p.textContent="No hunts or errands in progress. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  const quests=activeQuests(),rumours=rumourLeads(save);if(!quests.length&&!rumours.length){const p=document.createElement("p");p.className="options-note";p.textContent="No leads yet. Talk to the people of the Refuge: Maud by the cairn has work. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  if(quests.length){const qh=document.createElement("h3");qh.textContent="Quests";out.append(qh)}
   for(const q of quests)row(q.title,q.detail,q.at,q.title,q.follow);
+  if(rumours.length){const rh=document.createElement("h3");rh.textContent="Rumours";out.append(rh);for(const r of rumours)row(r.title,r.detail,r.at||null,r.title)}
+  {const ms=milestonesUnderWay(save);if(ms.length){const mh=document.createElement("h3");mh.textContent="Milestones";out.append(mh);for(const m of ms)row(m.line,`Something answers at ${m.need.toLocaleString("en-US")}.`,null,m.line)}} // Phase 6: each shown from its first count
+  {const ts=threadLeads();if(ts.length){const th=document.createElement("h3");th.textContent="Threads";out.append(th);for(const t of ts)row(t.title,t.detail,null,t.title)}} // Phase 7: a hinted thread reward, once its thread is begun
   const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
   if(compassPin||compassFollow)out.append(uiButton("Stop pointing the compass",()=>{chooseGuidance();openJournal("quests")}));
 }
@@ -854,7 +923,7 @@ function compassMenuData(){
   if(game.area==="dungeon")return compassMenuModel({area:"dungeon",here,doors:dungeonCompassPoints(),doorPick:dungeonCompassPick});
   if(game.area!=="overworld")return compassMenuModel({area:game.area});
   syncGuidance();const objectives=objectiveList().map(o=>({...o,tag:OBJECTIVE_KINDS[o.kind]?.label||""}));
-  return compassMenuModel({area:"overworld",here,quests:activeQuests(),objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
+  return compassMenuModel({area:"overworld",here,quests:[...activeQuests(),...rumourLeads(save).filter((r)=>r.at).map((r)=>({title:r.title,detail:r.detail,at:r.at}))]/* Phase 4: rumours with a place */,objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
 }
 function renderCompassMenu(){
   const m=compassMenuData(),out=[];
@@ -1465,17 +1534,30 @@ function recoverOverlay(error){
 }
 addEventListener("error",(event)=>recoverOverlay(event.error||event.message));
 addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
-const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Audio","System"];
+const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Hints","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
 function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 const journeyOperation=createExclusiveOperation();
 async function switchJourney(slot){if(slot===getActiveSlot()&&!saveBlocked()){resume();return}/* release 734: a blocked slot reloads, so a recovered or imported journey is what plays */try{const result=await journeyOperation.run(async()=>{await persist();await flushSaves();setActiveSlot(slot)});if(result.busy)return optionMessage("Another journey operation is already finishing.",true);location.reload()}catch(error){optionMessage(`Journey switch failed: ${error?.message||error}`,true)}}
 function journeyInput(label,value="",placeholder=""){const row=document.createElement("label"),caption=document.createElement("strong"),input=document.createElement("input");row.className="setting-row journey-input";caption.textContent=label;input.type="text";input.value=value;input.placeholder=placeholder;input.autocomplete="off";row.append(caption,input);return{row,input}}
-function renderJourneyCreator(meta){optionsBody.replaceChildren();const heading=document.createElement("h3"),note=document.createElement("p"),name=journeyInput("Journey name","Wayfarer"),seed=journeyInput("World seed","","Leave blank to generate a seed"),actions=document.createElement("div"),replace=!meta.empty;heading.textContent=replace?`Replace ${meta.name}`:`Start Journey ${meta.slot}`;note.className="options-note";note.textContent=replace?"The current journey will be retained as a recovery snapshot. Creation begins only after explicit confirmation.":"This creates an independent schema-14 journey and makes it active after the save completes.";actions.className="slot-actions";let confirmed=!replace,confirmInput=null;if(replace){const confirmRow=document.createElement("label");confirmInput=document.createElement("input");confirmInput.type="checkbox";confirmRow.className="setting-row";confirmRow.append("I understand this replaces the occupied slot",confirmInput);optionsBody.append(heading,note,name.row,seed.row,confirmRow)}else optionsBody.append(heading,note,name.row,seed.row);const create=uiButton(replace?"Confirm and start new journey":"Create journey",async()=>{confirmed=!replace||!!confirmInput?.checked;if(!confirmed)return optionMessage("Confirm replacement before creating the new journey.",true);create.disabled=true;cancel.disabled=true;optionMessage("Creating the new journey…");try{const result=await journeyOperation.run(()=>commitNewJourneyTransition({activeSlot:getActiveSlot(),targetSlot:meta.slot,targetEmpty:meta.empty,options:{name:name.input.value,seed:seed.input.value,replace},saveCurrent:persist}));if(result.busy){create.disabled=false;cancel.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}location.reload()}catch(error){create.disabled=false;cancel.disabled=false;optionMessage(`New journey was not created: ${error?.message||error}`,true)}}),cancel=uiButton("Cancel",()=>renderOptions("Journeys"));if(replace){create.disabled=true;confirmInput.onchange=()=>{create.disabled=!confirmInput.checked}}actions.append(create,cancel);optionsBody.append(actions);name.input.focus()}
+// Progression Phase 2 (docs/progression-design.md 4.0): the creator also asks the progression mode (Exploration recommended) and
+// shows "Choose your weapon" and "Choose your tool" cards read from the game's data (progression.ts startCards). Today's kit is
+// chosen already, so Create works at once; the choice sets only the starting kit (weapons are never gated; drops go on as now).
+function startCardGroup(title,kind,chosen){const box=document.createElement("fieldset"),legend=document.createElement("legend"),grid=document.createElement("div");box.className="start-choice";legend.textContent=title;grid.className="start-cards";for(const c of startCards(kind)){const label=document.createElement("label"),input=document.createElement("input"),text=document.createElement("span"),name=document.createElement("strong"),small=document.createElement("small");label.className="start-card";input.type="radio";input.name=`start-${kind}`;input.value=c.key;input.checked=c.key===chosen;name.textContent=c.name;small.textContent=`Scales with ${c.scales}. ${c.style}${c.goodWith.length?` Good with: ${c.goodWith.join(", ")}.`:""}`;text.append(name,small);label.append(input,text);grid.append(label)}box.append(legend,grid);return{box,value:()=>grid.querySelector("input:checked")?.value||chosen}}
+function startModeGroup(){const box=document.createElement("fieldset"),legend=document.createElement("legend"),grid=document.createElement("div");box.className="start-choice";legend.textContent="Progression";grid.className="start-cards";for(const m of[...PROGRESSION_MODES].reverse()){const label=document.createElement("label"),input=document.createElement("input"),text=document.createElement("span"),name=document.createElement("strong"),small=document.createElement("small");label.className="start-card";input.type="radio";input.name="start-mode";input.value=String(m.mode);input.checked=m.mode===START_KIT.defaults.mode;name.textContent=m.mode===1?`${m.name} (recommended)`:m.name;small.textContent=m.mode===1?`${m.text} Aegis is yours from the start.`:m.text;text.append(name,small);label.append(input,text);grid.append(label)}box.append(legend,grid);return{box,value:()=>Number(grid.querySelector("input:checked")?.value??START_KIT.defaults.mode)}}
+function renderJourneyCreator(meta){optionsBody.replaceChildren();const heading=document.createElement("h3"),note=document.createElement("p"),name=journeyInput("Journey name","Wayfarer"),seed=journeyInput("World seed","","Leave blank for a random world"),mode=startModeGroup(),weapon=startCardGroup("Choose your weapon","weapon",START_KIT.defaults.weapon),tool=startCardGroup("Choose your tool","tool",START_KIT.defaults.tool),choices=[mode.box,weapon.box,tool.box],actions=document.createElement("div"),replace=!meta.empty;heading.textContent=replace?`Replace ${meta.name}`:`Start Journey ${meta.slot}`;note.className="options-note";note.textContent=replace?"The current journey will be retained as a recovery snapshot. Creation begins only after explicit confirmation.":"This creates an independent schema-14 journey and makes it active after the save completes.";actions.className="slot-actions";let confirmed=!replace,confirmInput=null;if(replace){const confirmRow=document.createElement("label");confirmInput=document.createElement("input");confirmInput.type="checkbox";confirmRow.className="setting-row";confirmRow.append("I understand this replaces the occupied slot",confirmInput);optionsBody.append(heading,note,name.row,seed.row,...choices,confirmRow)}else optionsBody.append(heading,note,name.row,seed.row,...choices);const create=uiButton(replace?"Confirm and start new journey":"Create journey",async()=>{confirmed=!replace||!!confirmInput?.checked;if(!confirmed)return optionMessage("Confirm replacement before creating the new journey.",true);create.disabled=true;cancel.disabled=true;optionMessage("Creating the new journey…");try{const result=await journeyOperation.run(()=>commitNewJourneyTransition({activeSlot:getActiveSlot(),targetSlot:meta.slot,targetEmpty:meta.empty,options:{name:name.input.value,seed:seed.input.value,replace,mode:mode.value(),weapon:weapon.value(),tool:tool.value()},saveCurrent:persist}));if(result.busy){create.disabled=false;cancel.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}location.reload()}catch(error){create.disabled=false;cancel.disabled=false;optionMessage(`New journey was not created: ${error?.message||error}`,true)}}),cancel=uiButton("Cancel",()=>renderOptions("Journeys"));if(replace){create.disabled=true;confirmInput.onchange=()=>{create.disabled=!confirmInput.checked}}actions.append(create,cancel);optionsBody.append(actions);name.input.focus()}
 function renderJourneyRename(meta){optionsBody.replaceChildren();const heading=document.createElement("h3"),name=journeyInput("Journey name",meta.name),actions=document.createElement("div");heading.textContent=`Rename ${meta.name}`;actions.className="slot-actions";const saveName=uiButton("Save name",async()=>{const value=name.input.value.trim();if(!value)return optionMessage("Enter a journey name.",true);saveName.disabled=true;try{await renameJourney(meta.slot,value);await renderOptions("Journeys")}catch(error){saveName.disabled=false;optionMessage(`Rename failed: ${error?.message||error}`,true)}});actions.append(saveName,uiButton("Cancel",()=>renderOptions("Journeys")));optionsBody.append(heading,name.row,actions);name.input.focus()}
+// Progression Phase 2 (docs/progression-design.md section 6): Options -> Journeys -> Progression, for the journey in play. A switch
+// is allowed out of combat only, asks first, and says plainly what it does (progression.ts switchText); nothing is taken away.
+function renderProgressionToggle(){
+  const box=document.createElement("section"),h=document.createElement("h3"),p=document.createElement("p"),current=progressionMode(save),info=modeInfo(current),other=modeInfo(current===1?0:1);
+  box.className="journey-progression";h.textContent="Progression";p.className="options-note";p.textContent=`This journey: ${info.name}. ${info.text}`;
+  const button=uiButton(`Switch to ${other.name}`,async()=>{const fighting=!!game?.enemies?.some((e)=>e&&!e.dead&&e.aggro);if(!fighting&&!confirm(switchText(save,other.mode)))return;const r=switchProgression(save,other.mode,{fighting});if(r.ok){await persist();await renderOptions("Journeys")}optionMessage(r.message,!r.ok)});
+  box.append(h,p,button);return box;
+}
 async function renderJourneys(){
-  const active=getActiveSlot(),slots=await listJourneySlots(),grid=document.createElement("div");grid.className="slot-grid";
+  const active=getActiveSlot(),slots=await listJourneySlots(),grid=document.createElement("div");grid.className="slot-grid";if(!saveBlocked())optionsBody.append(renderProgressionToggle());
   for(const meta of slots){const card=document.createElement("section");card.className=`slot-card ${meta.health}${meta.slot===active?" active":""}`;const h=document.createElement("h3"),health=document.createElement("span"),details=document.createElement("p"),actions=document.createElement("div");h.textContent=meta.empty?`Empty Journey ${meta.slot}`:meta.name;health.className="health-badge";health.textContent=meta.slot===active?`${meta.health} · active`:meta.health;details.textContent=meta.empty?"Ready for a new Corridor.":`Level ${meta.level} · ${meta.location} · ${meta.explored} sections · ${meta.playSeconds?`${(meta.playSeconds/3600).toFixed(1)} h played · `:""}${Math.ceil(meta.bytes/1024)} KB${meta.updatedAt?` · ${new Date(meta.updatedAt).toLocaleDateString()}`:""}`;actions.className="slot-actions";
     if(meta.empty){actions.append(uiButton("New journey",()=>renderJourneyCreator(meta)))}
     else if(meta.health==="healthy"){
@@ -1546,7 +1628,8 @@ function arcanaCard(out, title, count, total, where, read, ending, open = false,
   meta.textContent = count >= total ? `Complete · ${total} of ${total} ${hint?.unit || ""}`.trim() : count ? `${count} of ${total} ${unit} · ${home ? `the rest most likely lie ${where}` : pages ? `still to find: ${where}` : `the rest lie in ${where}`}${here}` : `Not begun · ${home ? `most likely ${where}` : pages ? `one in each Reading: ${where}` : `look in ${where}`}${here}`;
   dots.textContent = Array.from({ length: total }, (_, i) => i < count ? "●" : "○").join(" "); dots.setAttribute("aria-label", `${count} of ${total}`);
   card.append(h, meta, dots);
-  { const u = hint && arcanaUnlockFrom(hint.id), U = u && ARCANA_UNLOCKS[u]; if (U) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = arcanaHas(save, u) ? `Opened: ${U.name}.` : `Completing it opens ${U.name}.`; card.append(p); } } // 2026-11-11: lore.ts ARCANA_UNLOCKS
+  { const u = hint && arcanaUnlockFrom(hint.id), U = u && ARCANA_UNLOCKS[u]; if (U) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = arcanaHas(save, u) ? `Opened: ${U.name}.` : `Completing it opens ${U.name}.`; card.append(p); } }
+  { const t = hint && threadReward(save, hint.id), got = !!(hint && save.lore?.arcanaClaimed?.[hint.id]); if (t && (got || t.seen === "H")) { const p = document.createElement("p"); p.className = "options-note"; p.textContent = got ? `Its end gave: ${t.name}.` : "Something waits at the end."; card.append(p); } } // progression Phase 7: a thread's reward, hinted (H) or, hidden (X), only once given // 2026-11-11: lore.ts ARCANA_UNLOCKS
   if (read.length || ending) { const d = document.createElement("details"), sum = document.createElement("summary"); sum.textContent = count >= total ? "Read it again" : "What you have read"; d.open = open; d.append(sum);
     for (const [label, text] of read) { const q = document.createElement("p"); if (label) { const b = document.createElement("strong"); b.textContent = `${label}. `; q.append(b); } q.append(text); d.append(q); }
     if (ending) { const q = document.createElement("p"), b = document.createElement("strong"); b.textContent = "The ending. "; q.append(b, ending); d.append(q); }
@@ -1565,15 +1648,48 @@ function renderArcana(out){
   const links=Array.isArray(save.lore?.surveyor?.links)?save.lore.surveyor.links:[];arcanaCard(out,"The Surveyor's Chain",links.length,SURVEYOR.links,hints.surveyor.where,links.slice().sort((a,b)=>a-b).map((i)=>[`Link ${i+1}`,SURVEYOR_NOTES[i]||""]),surveyorComplete(save)?"With every link, the last map turned out to be the world itself. Abel Corwin's statue stands where the Far Sleep begins.":null,false,hints.surveyor);
   const pages=pagesFound(save);arcanaCard(out,TORN_PAGES.title,pages.length,READING_ORDER.length,hints.pages.where,pages.map((r)=>[READINGS[r]?.name||r,PAGE_TEXT[r]||""]),pages.length>=READING_ORDER.length?PAGES_FINAL:null,false,hints.pages);
   { const n=secondFound(save),begun=secondBegun(save),at=secondNext(save),read=begun?[["Footprints",SECOND_FOOTPRINTS.read(save.lore.second.trail[0])],...Array.from({length:n},(_,i)=>[`${i+1}`,save.lore.second.passed?.includes(i)?secondTraceText(save,i):`${SECOND_SIGHTINGS[i]} ${secondTraceText(save,i)}`])]:[];
-    if(begun)arcanaCard(out,SECOND_WAYFARER.title,n,SECOND_WAYFARER.sightings,at?`the sections they marked; the next is ${at.rx}, ${at.ry}`:"the sections they marked",read,n>=SECOND_WAYFARER.sightings?SECOND_ENDING:null); } // the Second Wayfarer: shown once the footprints are found (unknown until then)
+    if(begun)arcanaCard(out,SECOND_WAYFARER.title,n,SECOND_WAYFARER.sightings,at?`the sections they marked; the next is ${at.rx}, ${at.ry}`:"the sections they marked",read,n>=SECOND_WAYFARER.sightings?SECOND_ENDING:null,false,{id:"second"}); } // the Second Wayfarer: shown once the footprints are found (unknown until then)
   const met=ilseMet(save).split("").filter(Boolean),meetings=Object.keys(ILSE_MEETINGS);arcanaCard(out,"Ilse",met.length,meetings.length,"lit roads, now and then",met.map((k)=>[ILSE_MEETINGS[k]?.name||"Ilse",(ILSE_MEETINGS[k]?.lines||[]).join(" ")]),null);
   const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
   const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
+}
+// The compendium (docs/progression-design.md section 5; Phase 1): a page of the Reciter's Tome, "What the Corridor Taught You".
+// The Pace line sits at its top for every player. It reads the save (progression.ts compendium) and writes nothing; an ability
+// not yet found is never named, only counted in its group's dots. Each known one opens to its hint, how-to and where it came from.
+function renderTaught(out){
+  const c=compendium(save),line=(cls,text)=>{const p=document.createElement("p");p.className=cls;p.textContent=text;return p};
+  out.append(uiButton("← The Reciter's Tome",()=>openJournal("tome")));
+  const h=document.createElement("h3");h.textContent=c.title;out.append(h);
+  const pace=line("options-note compendium-pace","");const b=document.createElement("strong");b.textContent="Pace. ";pace.append(b,c.paceText);out.append(pace);if(c.mode)out.append(line("options-note",`Progression: ${c.mode.name}. Switch it in Options → Journeys.`));
+  out.append(line("options-note",c.intro),line("options-note",c.before));
+  if(c.ahead.length){const a=document.createElement("article"),ah=document.createElement("h4");a.className="item arcana-card";ah.textContent="Level-ups ahead";a.append(ah);for(const q of c.ahead)a.append(line("options-note",`${q.label}: ${q.names.join(", ")}`));out.append(a)}
+  for(const g of c.groups){
+    const card=document.createElement("article"),gh=document.createElement("h4"),dots=line("compendium-dots",Array.from({length:g.total},(_,i)=>i<g.entries.length?"●":"○").join(" "));card.className="item arcana-card";gh.textContent=g.title;
+    const more=g.entries.length-g.owned;dots.setAttribute("aria-label",`${g.entries.length} of ${g.total} known`);card.append(gh,line("options-note",`${g.owned} of ${g.total} yours${more?` · ${more} more known`:""}`),dots);
+    for(const e of g.entries){const d=document.createElement("details"),sum=document.createElement("summary");sum.textContent=`${e.name} · ${e.label}`;d.append(sum);if(e.hint)d.append(line("options-note",e.hint));
+      for(const[label,text]of[["How to",e.controls],["What it does",e.does],["How it came",e.obtained]])if(text){const p=line("",""),k=document.createElement("strong");k.textContent=`${label}. `;p.append(k,text);d.append(p)}
+      if(e.state!=="rumoured")d.append(uiButton("How-to page",()=>openJournal(`howto:${e.id}`))); // Phase 4 (4A.3)
+      card.append(d)}
+    out.append(card)}
+}
+// An ability's how-to page (docs/progression-design.md 4A.3; progression.ts howToPage): controls, what it does with the game's
+// own numbers, and where it came from. Only for what the player knows (never a spoiler); readable at any time.
+function renderHowTo(out,id){
+  out.append(uiButton("← What the Corridor Taught You",()=>openJournal("taught")));
+  const page=howToPage(save,id),h=document.createElement("h3");
+  if(!page){h.textContent="How to";const p=document.createElement("p");p.className="options-note";p.textContent="Nothing known of this yet.";out.append(h,p);return}
+  h.textContent=`How to: ${page.name}`;out.append(h);const g=document.createElement("p");g.className="options-note";g.textContent=page.group+(page.hint?` · ${page.hint}`:"");out.append(g);
+  for(const[label,text]of page.sections){const sec=document.createElement("article"),sh=document.createElement("h4"),p=document.createElement("p");sec.className="item arcana-card howto-section";sh.textContent=label;p.textContent=text;sec.append(sh,p);out.append(sec)}
+  // Phase 5 (4A.4): Try it, for an owned ability the Training Yard can show, while Proving Ground access is on.
+  const offer=provingGroundAccess(settings)?yardOffer(save,id):null;
+  if(offer){const box=document.createElement("div"),note=document.createElement("p"),status=document.createElement("p");box.className="howto-try";note.className="options-note";note.textContent=`${TRAINING_YARD.practice}. ${TRAINING_YARD.name}: ${yardSetup(offer.id).text}`;status.className="options-note";status.setAttribute("role","status");
+    const b=uiButton(TRAINING_YARD.button,()=>{try{handOverJourney(b,{yard:yardRequest(save,offer.id),say:(text)=>{status.textContent=text},place:`the ${TRAINING_YARD.name}`})}catch(error){status.textContent=error?.message||String(error)}});b.id="howtoTryIt";box.append(b,note,status);out.append(box)}
 }
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
   const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
   intro.className="options-note";intro.textContent="The books you have heard in the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
+  out.append(uiButton("What the Corridor Taught You",()=>openJournal("taught"))); // the compendium and the Pace line (renderTaught)
   // Release 191: what the Corridor remembers, one entry per Reading with its fragments found. Only Readings already
   // heard are listed, and nothing hints at how many others there are (Tim, 2026-10-19).
   ensureLore(save);const books=document.createElement("section"),bth=document.createElement("h3"),bnote=document.createElement("p");books.className="library-book lore-books";bth.textContent="What the Corridor Remembers";bnote.className="options-note";bnote.textContent="Every region holds the residue of lives that are gone. Its fragments are passages heard from travellers and reciters, things glimpsed, and words found in crossings.";books.append(bth,bnote);
@@ -1619,14 +1735,17 @@ function renderTome(out){
 // flushed first, then one copy goes to the Proving Ground's own handoff database (proving-ground-handoff.ts) and the
 // laboratory page opens. Nothing comes back: Exit to game there reloads this page, which resumes the flushed journey.
 addEventListener("pageshow",()=>{leavingForProvingGround=false}); // back from the laboratory with this page kept in memory: saving resumes
-async function enterProvingGround(button){
-  if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
-  const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
+async function enterProvingGround(button){return handOverJourney(button)}
+// Progression Phase 5: a how-to page's Try it goes the same way, with `yard` (training-yard.ts yardRequest: owned abilities only)
+// in the one handoff record, and its own status line (`say`) in place of the Options message.
+async function handOverJourney(button,{yard=null,say=optionMessage,place="the Proving Ground"}={}){
+  if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
+  const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release: "r1033-a2f1d1a7ea50",slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
-    if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release: "r1048-85a8d476db24",slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
-  catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
+  catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
 function provingGroundRows(grid){for(const row of provingGroundOptionRows(settings)){if(row==="access"){const box=document.createElement("input");box.type="checkbox";box.checked=settings.provingGround!==false;box.onchange=()=>{updateSetting("provingGround",box.checked);renderOptions("System")};grid.append(settingRow("Proving Ground access",box,"Shows Enter Proving Ground here. Turn it off to hide it."))}else{const b=uiButton("Enter Proving Ground",()=>enterProvingGround(b)),row=document.createElement("div"),text=document.createElement("span");b.id="enterProvingGround";row.className="setting-row";text.innerHTML="<strong>Proving Ground</strong><br><small>Try things on a scratch copy of this journey. Nothing done there is saved; Exit to game brings you back here, exactly as you left.</small>";row.append(text,b);grid.append(row)}}}
 async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
   if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
@@ -1644,10 +1763,12 @@ async function renderSettings(category){const grid=document.createElement("div")
     const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));/* release 793: the camera control, its sensitivity */const cc=document.createElement("select");for(const[id,label]of[["drag","Drag anywhere (default)"],["crescent","Pan crescent"]]){const o=document.createElement("option");o.value=id;o.textContent=label;cc.append(o)}cc.value=save.closeViewCamera==="crescent"?"crescent":"drag";cc.onchange=()=>{save.closeViewCamera=cc.value;persist()};grid.append(settingRow("Camera control",cc,"Drag anywhere: drag the open screen outside the left joystick to turn the view. Start inside the joystick to move. Each finger keeps its role until you lift it, and buttons keep their own touches. Quick turnaround: hold the stick back toward the camera and swipe down on the right, and the view swings round behind you. Pan crescent: slide along the arc round the action buttons instead."));const sv=document.createElement("input");sv.type="range";sv.min=String(CLOSE_VIEW.drag.sensitivity[0]);sv.max=String(CLOSE_VIEW.drag.sensitivity[1]);sv.step="0.1";sv.value=String(save.closeViewSensitivity||1);sv.oninput=()=>{save.closeViewSensitivity=Number(sv.value);persist()};grid.append(settingRow("Camera sensitivity",sv,"How far the view turns for a drag (or a slide along the crescent). 1 is the default."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last turn the view (a drag, or the crescent), it slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
+  // Progression Phase 4 (4A.2): Options → Hints, per device. Turning hints back on never replays one already seen.
+  if(category==="Hints")grid.append(settingRow("Hints",selectSetting("hints",HINT_MODES),"One short line the first time you get or use something new, once each, never in a fight. Only new abilities leaves out statuses. The Journal's how-to pages stay readable either way."));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r1033-a2f1d1a7ea50",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r1033-a2f1d1a7ea50\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release: "r1048-85a8d476db24",copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release r1048-85a8d476db24\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1659,7 +1780,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release: "r1033-a2f1d1a7ea50",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release: "r1048-85a8d476db24",browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2299,7 +2420,7 @@ function openPack(tab) {
     row.append(title, text, use); body.append(row);
     { // The Triceratops hatchling (hatchling.ts; Tim, 2026-11-19): his growth and which form a hold of Act calls.
       const h = ensureMounts(save).hatchling, hr = document.createElement("div"), ht = document.createElement("strong"), hp = document.createElement("p"); hr.className = "item consumable stable";
-      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her."; hr.append(ht, hp); }
+      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : explorationGateOpen(save, "companion:hatchling") ? "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her." : `In Exploration a mother Triceratops comes to your hometown's Beast Hotel at the ${APERTURE_BANDS[EXPLORATION.gates["companion:hatchling"].tier].name} band of the Aperture.`; hr.append(ht, hp); }
       else { const g2 = growthProgress(h), F = HATCHLING.forms[h.form]; ht.textContent = `Your Triceratops · ${F.name} form${h.out ? " · out" : ""}`;
         hp.textContent = `${g2.next ? `Growing: ${g2.have}/${g2.need} toward his ${HATCHLING.forms[g2.next].name.toLowerCase()} form (he grows from ${Math.round(HATCHLING.growth.share * 100)}% of the experience you earn from fights while he is out).` : "Fully grown."} Hold Act to call the chosen form, or send him to rest.`;
         hr.append(ht, hp); const line = document.createElement("div"); line.className = "stable-mount";
@@ -2496,11 +2617,13 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode)b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Leads"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode||id==="tome"&&(mode==="taught"||mode.startsWith("howto:")))b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
+    if(mode==="taught"){renderTaught(out);if(!journal.open)journal.showModal();return;}
+    if(mode.startsWith("howto:")){renderHowTo(out,mode.slice(6));if(!journal.open)journal.showModal();return;} // Phase 4: an ability's how-to page
     if(mode==="arcana"){renderArcana(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
@@ -2547,14 +2670,9 @@ function openJournal(mode = "chronicle") {
     if(!journal.open)journal.showModal();
     return;
   }
-  const summary = document.createElement("p"),
-    refuge = save.consequences.settlements["ember-refuge"];
-  summary.textContent =
-    "Ember Refuge: " +
-    refuge.status +
-    " · reputation " +
-    refuge.reputation +
-    " · Relay: " +
+  const summary = document.createElement("p");
+  summary.textContent = // Tim (2026-11-20): townsfolk cannot be harmed; no standing or reputation to report
+    "Relay: " +
     (save.consequences.choices.relay || "undecided");
   out.append(summary);
   const arc=save.story?.arcs?.cartographersEcho;
@@ -2587,12 +2705,13 @@ function openJournal(mode = "chronicle") {
       (d.bypassed ? " · bypassed" : "");
     out.append(p);
   }
-  if (!save.narrative.journal.length) {
+  const entries = save.narrative.journal.filter((j) => !retiredJournalEntry(j)); // Tim (2026-11-20): the old harm entries stay in the save, unshown
+  if (!entries.length) {
     const empty = document.createElement("p");
     empty.textContent = "No discoveries recorded yet.";
     out.append(empty);
   } else
-    for (const entry of save.narrative.journal) {
+    for (const entry of entries) {
       const article = document.createElement("article"),
         title = document.createElement("h3"),
         text = document.createElement("p");
@@ -2888,9 +3007,7 @@ function frame(now) {
       game.area === "dungeon"
         ? game.map.name
         : game.rx === 0 && game.ry === 0
-          ? save.consequences.settlements["ember-refuge"].status === "fallen"
-            ? "Ember Refuge · FALLEN"
-            : "Ember Refuge · standing"
+          ? "Ember Refuge"
           : `Cinder Verge · ${game.rx}, ${game.ry}`;
     const buffs = [];
     if (game.guardRemaining > 0)
@@ -3194,9 +3311,9 @@ function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphe
 // Release 157: element badges and Active/Passive tags so it is clear what each entry is and what it touches.
 function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.icon} ${a.name}`);b.style.setProperty('--elem',a.color);return b}
 function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
-function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
+function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.kind||(n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind);/* n.kind: Exploration's Long Quickening capstone and Aerial Step discipline (progression Phase 3) */return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
-function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
+function openSkills(atShrine=false){arcanumAtShrine=atShrine;if(packDot(save,hintMode(settings)))clearPackDot(save);/* Phase 4: the Pack's dot goes once the Arcanum is opened */const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
  {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A, B, C or D, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while that skill\'s buff is running.'));sky.append(key)}
@@ -3233,7 +3350,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   {const boosts=[`Focus ${save.stats?.Focus||1}: +${wayfarerDamage(characterStats(save).magicBonus)} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
    const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
-  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365
+  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',storyWithheld(save,`spell:${show.id}`)?WORLD_WAIT:show.unlockTier?`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`:`Opens at level ${EXPLORATION.gates[`spell:${show.id}`]?.level} (Exploration).`)); // release 365; progression Phase 3: Exploration's spells by level
   card.append(head,path,detail);sky.append(card)}
  for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),modOn=!!save.constellation.mods[b.mod.id],caps=branchCaps(save,bid),mastered=rank>=skill.maxRank,open=value>=skill.threshold;
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
@@ -3241,8 +3358,9 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const path=el('div','arc-path'),detail=el('div','arc-detail');
   const nodes=[{id:'active',...(ALT_PASSIVES[skill.id]?.discipline?{ref:skill.id}:{}),name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
    {id:'mod',ref:b.mod.id,name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
-   ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'})),
-   ...(b.extras||[]).map(x=>{const own=!!save.constellation.mods[x.id];return{id:x.id,ref:x.id,extra:true,name:x.name,text:x.text,state:own?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!own,act:()=>learnExtra(save,bid,x.id),verb:'Learn'}})]; // Tim 2026-11-19: the branch's on-cast / on-hit node (hit-cast-passives.ts)
+   ...b.caps.map(c=>capstoneOf(save,c)).map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,...(c.kind?{kind:c.kind,lq:true,ref:null}:{}),/* Exploration's Long Quickening: no secondary form to show or swap */state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'})),
+   ...(b.extras||[]).map(x=>{const own=!!save.constellation.mods[x.id];return{id:x.id,ref:x.id,extra:true,name:x.name,text:x.text,state:own?'owned':rank>0&&!worldWithheld(save,x.id)?'ready':'locked',cost:1,can:rank>0&&!own&&!worldWithheld(save,x.id)/* Phase 6: Casting Wind is a milestone's */,act:()=>learnExtra(save,bid,x.id),verb:'Learn'}}), // Tim 2026-11-19: the branch's on-cast / on-hit node (hit-cast-passives.ts)
+   ...(bid==='motion'&&aerialDiscipline(save)?[(()=>{const A=APERTURE_SKILLS['aerial-step'],own=skillRank(save,'aerial-step')>0,ok=value>=EXPLORATION.aerialStep.aperture;return{id:'aerial',extra:true,aerial:true,kind:'cast',name:A.name,text:A.description,state:own?'owned':ok?'ready':'locked',cost:EXPLORATION.aerialStep.cost,can:ok&&!own,act:()=>learnAerialStep(save),verb:'Learn'}})()]:[])]; // progression Phase 3: in Exploration Aerial Step is a discipline of its own (Aperture 6, no prerequisite)
   // Release 359: a passive whose secondary form is chosen shows that form (name, text and kind).
   for(const n of nodes)if(n.ref&&altChosen(save,n.ref)){const A=ALT_PASSIVES[n.ref];Object.assign(n,{primaryName:n.name,primaryText:n.text,name:`${A.name} ⇄`,text:A.text,alt:true})}
   const focus=arcanumFocus?.branch===bid?nodes.find(n=>n.id===arcanumFocus.node):null;
@@ -3254,15 +3372,15 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const show=focus||nodes.find(n=>n.can)||nodes[0];
   {const[label,active]=nodeKind(show,skill),tags=el('div','arc-tags');if(attr)tags.append(elemBadge(attr));tags.append(kindTag(label,active));detail.append(el('strong','',show.name),tags,el('p','',show.text));if(NODE_EFFECTS[show.ref]?.spells)detail.append(el('small','arc-hint',`Also affects your spells: ${NODE_EFFECTS[show.ref].spells}`))}
   // Release 359: the other form of a passive, and the button that swaps them (from Infinite III, once learned).
-  if(show.ref&&ALT_PASSIVES[show.ref]){const A=ALT_PASSIVES[show.ref],learned=show.id==='active'?rank>0:show.state==='owned',open=altUnlocked(save),/* 2026-11-15: Quickening's own secondary form, Quickened Stride, once it has a rank */other=show.alt?{name:show.primaryName,text:show.primaryText,label:'Primary'}:{name:A.name,text:A.text,label:'Secondary'};
+  if(show.ref&&ALT_PASSIVES[show.ref]){const A=ALT_PASSIVES[show.ref],learned=show.id==='active'?rank>0:show.state==='owned',open=altOpen(save,show.ref),withheld=worldWithheld(save,`${show.ref}:alt`),/* 2026-11-15: Quickening's own secondary form, Quickened Stride, once it has a rank */other=show.alt?{name:show.primaryName,text:show.primaryText,label:'Primary'}:{name:A.name,text:A.text,label:'Secondary'};
    const box=el('div','arc-alt');box.append(el('small','arc-hint',`${show.alt?'Secondary form in use.':'Primary form in use.'} ${other.label} form: ${other.name} — ${other.text}`));
    const swap=uiButton(`⇄ Use ${other.label.toLowerCase()}: ${other.name}`,()=>{const r=toggleAlt(save,show.ref);game.message=r.message;syncCharacterStats(save);persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});
-   if(!open||!learned){swap.disabled=true;swap.title=!open?`Opens at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`:'Learn it first.'}box.append(swap);if(!open)box.append(el('small','arc-why',`Secondary forms open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`));detail.append(box)}
+   if(!open||!learned){swap.disabled=true;swap.title=withheld?'Not found yet.':!open?`Opens at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`:'Learn it first.'}box.append(swap);if(withheld){const m=MILESTONE_FOR[`${show.ref}:alt`];box.append(el('small','arc-why',m?`Not found yet: a milestone. ${milestoneLine(m,featCount(save,m.key))}.`:'Not found yet: it waits out in the world.'))}else if(!open)box.append(el('small','arc-why',`Secondary forms open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`));if(!(withheld&&WORLD_ROUTE_OF[`${show.ref}:alt`]==='R'&&!show.alt))detail.append(box)} // Phase 6: a reliquary's form stays unnamed until found
   if(show.can){const go=uiButton(`${show.verb} · ${show.cost} pt${show.cost>1?'s':''}`,()=>{const r=show.act();game.message=r.message;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
   // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
-  const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
+  const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.aerial&&show.state==='owned'?'aerial-step':show.id==='aerial-step'&&!show.lq&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
   if(castId)detail.append(...slotButtons(`skill:${castId}`,()=>{arcanumFocus={branch:bid,node:show.id}}));
-  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'||show.extra?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
+  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.aerial?`Opens at Aperture ${EXPLORATION.aerialStep.aperture}.`:show.id==='mod'||show.extra?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
   card.append(head,path,detail);sky.append(card)}
  body.append(sky);
  const seen=Object.keys(PAIRINGS).filter(k=>save.magicSkills.pairingsSeen?.[k]);body.append(el('h3','',`Pairings · ${seen.length} of ${Object.keys(PAIRINGS).length} found`));
@@ -3348,9 +3466,11 @@ function openLattice(view=latticeView){latticeView=view;const L=ensureLattice(sa
  if(!open){body.append(el('p','arc-why',latticeWhy(save)));arcanumFooter();return}
  const views=el('div','codex-tabs arc-subtabs lattice-views');for(const[id,label]of LATTICE_VIEWS){const b=uiButton(label,()=>openLattice(id));if(id===view)b.setAttribute('aria-current','page');views.append(b)}body.append(views);
  const held=latticePassives(save),echoes=latticeEchoes(save),rerun=(r)=>{game.message=r.message;syncCharacterStats(save);persist();openLattice()};
- const passiveCard=(key,showUnknown)=>{const field=String(key).startsWith('field:'),f=field?fieldForm(key):passiveForm(key),on=held.includes(key);if(!f)return null;const known=field||hasNode(save,f.id);if(!known&&!showUnknown)return null;
+ const passiveCard=(key,showUnknown)=>{const field=String(key).startsWith('field:'),f=field?fieldForm(key):passiveForm(key),on=held.includes(key);if(!f)return null;
+  const shut=!on&&worldWithheld(save,key),mile=shut&&MILESTONE_FOR[key];if(shut&&!mile)return null; // Phase 6: a reliquary's pick stays unnamed until found; a milestone's shows its count
+  const known=!shut&&(field||hasNode(save,f.id));if(!known&&!showUnknown)return null;
   const working=!field&&f.alt===altChosen(save,f.id),c=el('button','arc-card'+(on?' on':'')+(known?'':' unknown'));c.type='button';
-  c.append(el('strong','',field?`${f.name} · only in the Lattice`:`${f.name}${f.alt?' · secondary':' · primary'}`),el('small','',f.text),el('em','arc-state',!known?'Learn it in the constellation first':on?'In the Lattice — tap to clear':working?'Already working (your chosen form)':'Tap to draw it in'));
+  c.append(el('strong','',field?`${f.name} · only in the Lattice`:`${f.name}${f.alt?' · secondary':' · primary'}`),el('small','',f.text),el('em','arc-state',mile?`Not found yet: ${milestoneLine(mile,featCount(save,mile.key))}`:!known?'Learn it in the constellation first':on?'In the Lattice — tap to clear':working?'Already working (your chosen form)':'Tap to draw it in'));
   if(!known||(working&&!on))c.disabled=true;c.onclick=()=>rerun(toggleLatticePassive(save,key));return c};
  const echoCard=(id)=>{const e=ECHOES[id],on=echoes.includes(id),notched=save.echoes.equipped.includes(id),c=el('button','arc-card echo-card'+(on?' on':''));c.type='button';c.append(el('strong','',e.name),el('small','',e.text),el('em','arc-state',on?'In the Lattice — tap to clear':notched?'Already set in your notches':'Tap to draw it in (no notches used)'));if(notched&&!on)c.disabled=true;c.onclick=()=>rerun(toggleLatticeEcho(save,id));return c};
  const slotsBox=(kind)=>{const slots=latticeSlots(save,kind),set=kind==='echo'?echoes:held,box=el('section','arc-branch arc-lattice');box.append(el('h3','',kind==='echo'?`Echo slots · ${set.length}/${slots}`:`Passive slots · ${set.length}/${slots}`));
@@ -3395,7 +3515,14 @@ function openSmithy(note='',last=null){pauseForOverlay();if(pausePanel.open)paus
   body.append(row)}
  const sh=document.createElement('h3');sh.textContent='Salvage from your pack';body.append(sh,salvageYieldPicker(()=>openSmithy(note)));if(!(save.inventory||[]).length)body.append(Object.assign(document.createElement('p'),{textContent:'Nothing in your pack to salvage.'}));
  (save.inventory||[]).forEach((item,i)=>{const row=document.createElement('div');row.className='item';row.textContent=`${item.name} (${itemTier(item)}) `;row.append(uiButton(`Salvage · ${salvageYieldText(save,SMITHY.salvage.iron[itemTier(item)]||1)}${lock('salvage')}`,()=>act(salvageItem(save,i))));body.append(row)});
+ visceraShelf(body,'smith',(m)=>openSmithy(m));
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
+// Progression Phase 8 (docs/progression-design.md 2.2 route V, 3.4): once refinement is open (past 1,000 sections), Sela's forge
+// and every smith sell the four Viscera forms (quests.ts VISCERA_SHOP, prices as data) and a rumour of the nearest ability still
+// unknown. A form already yours, or one Classic's rules give, is not on the shelf.
+function visceraShelf(out,where,rerender){const shop=visceraShop(save);if(!shop.open)return;const h=document.createElement('h3'),p=document.createElement('p');h.textContent='Divine Viscera';p.className='options-note';p.textContent=`You hold ${shop.held} Divine Viscera. Four forms are cut from it, and it buys a rumour of something not yet known.`;out.append(h,p);
+ for(const f of shop.forms){if(!f.sells)continue;const row=document.createElement('div');row.className='item';row.textContent=`${f.name} · a secondary form `;row.append(uiButton(`Buy · ${f.price} Divine Viscera`,()=>{const r=buyVisceraForm(save,f.id,where);game.message=r.message;if(r.notice)game.worldNotices([r.notice]);persist();rerender(r.message)}));out.append(row)}
+ const row=document.createElement('div');row.className='item';row.textContent='A rumour of the nearest thing still unknown ';row.append(uiButton(`Buy · ${shop.rumour} Divine Viscera`,()=>{const at=game.questSection();const r=buyVisceraRumour(save,at.rx,at.ry);game.message=r.message;persist();rerender(r.message)}));out.append(row)}
 // Release 459 (marginalia.ts): a fallen Margin Warden's offer, and the Scrapbook on entering a crossing.
 function marginCard(id,label,onPick){const g=MARGINALIA[id],row=document.createElement('div'),t=document.createElement('strong'),d=document.createElement('p');row.className='item';t.textContent=g.name;d.textContent=g.text;row.append(t,d,uiButton(label,onPick));return row}
 function openMarginOffer(){const run=marginRun(save,game.areaId());if(!run?.offer?.length)return;pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren();const h=document.createElement('h2'),p=document.createElement('p'),found=ensureMarginalia(save).found;h.textContent='A Margin Warden falls';p.textContent='Its margin is written over with rules. Take one: it holds until you leave this crossing, and a new one goes into your Scrapbook. The crossing is calling reinforcements.';body.append(h,p);
@@ -3420,9 +3547,10 @@ function openKitchen(cookId,note=''){pauseForOverlay();if(pausePanel.open)pauseP
 function upgradeLabel(cost){if(cost.eligible)return cost.refine?`Refine to +${cost.rank+1} · ${cost.amount} Divine Viscera (you hold ${visceraHeld(save)})`:`Strengthen · ${cost.amount} ${cost.kind==='weaponSphere'?'weapon':'armor'} sphere${cost.amount===1?'':'s'}`;
  if(refinementOpen(save))return`Refinement limit reached (+${REFINEMENT.max})`;return`${lateUpgradeOpen(save)?'Upgrade limit reached':`Limit reached (Infinite IV + second Gate: +${LATE_UPGRADE.ranks})`} · ${refinementHint(save)}`}
 function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item,save),/* release 457 */row=document.createElement('div'),title=document.createElement('strong'),rows=cost.eligible?forgePreview(save,slot,'upgrade'):null/* 2026-11-18: the smith's before → after (game.ts forgePreview), every stat coloured */,preview=rows?previewRows(rows):gearStatList(gearReadout(save,slot,item));row.className='item';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;row.append(title,preview,uiButton(upgradeLabel(cost),()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
+ visceraShelf(body,'forge',()=>openForge()); // Phase 8: Divine Viscera
  const iron=document.createElement('div');iron.className='item';iron.textContent=`Cinder Iron ${save.materials.cinderIron||0} · weapon +${save.weaponLevel||0}`;iron.append(uiButton('Reinforce weapon · 3 iron',()=>{game.upgrade();persist();openForge()}),uiButton(`Smelt weapon sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'weaponSphere').message;persist();openForge()}),uiButton(`Smelt armor sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'armorSphere').message;persist();openForge()}));body.append(iron,salvageYieldPicker(openForge)); // release 259: moved here from the Pack; 383: smelting; 2026-11-18: what salvage yields
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
-function openInteraction(id, confirmAttack = false) {
+function openInteraction(id) { // Tim (2026-11-20): no strike-a-resident confirmation any more
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
   if(o.kind==='viewport')return openViewport();
@@ -3434,14 +3562,9 @@ function openInteraction(id, confirmAttack = false) {
   title.textContent =
     o.name || (o.kind === "dungeon" ? "Buried Crossing" : "Crossing Terminal");
   if (o.kind === "npc") {
-    const n = save.consequences.npcs[id];
-    description.textContent =
+    description.textContent = // Tim (2026-11-20): townsfolk cannot be harmed; no health, harm or death to show
       o.role +
-      " · " +
-      (n.status === "dead"
-        ? "dead"
-        : n.disposition + " · " + n.hp + "/36 health") +
-      ". Harm and death persist. " +
+      ". " +
       (id === "vendor-vela"
         ? "Vela supplies the refuge."
         : "Each resident helps hold the refuge together.");
@@ -3461,27 +3584,13 @@ function openInteraction(id, confirmAttack = false) {
   else description.textContent = o.lore ? (o.role ? `${o.role}. ` : "") + o.lore : o.role || "";
   body.append(title);
   if (description.textContent) body.append(description);
-  if (confirmAttack) {
-    const warning = document.createElement("p");
-    warning.textContent =
-      "Strike " +
-      o.name +
-      " for 18 damage? Repeated strikes can kill them permanently. You may stand down while they live.";
-    body.append(
-      warning,
-      uiButton("Strike " + o.name, () => performInteraction(id, "attack")),
-      uiButton("Keep weapon lowered", () => openInteraction(id)),
-    );
-  } else
-    for (const action of validActions(o, save)) {
+  for (const action of validActions(o, save)) {
       const labels = {
         speak: o.elder ? "Listen" : "Speak",
         touch: "Touch",
         chip: "Chip stone",
         dig: "Dig",
         trade: "Trade",
-        attack: "Attack " + o.name + "…",
-        standDown: "Stand down / Spare",
         retrain: `Retrain stats (${STAT_RESPEC.marks} marks)`, // release 347
         enter: "Enter",
         transit: "Transit", // the Pentagon's finale: its dais
@@ -3502,9 +3611,7 @@ function openInteraction(id, confirmAttack = false) {
       };
       body.append(
         uiButton(labels[action] || o.actionLabels?.[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
-          action === "attack"
-            ? openInteraction(id, true)
-            : performInteraction(id, action),
+          performInteraction(id, action),
         ),
       );
     }

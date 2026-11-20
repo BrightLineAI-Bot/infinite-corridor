@@ -1,7 +1,7 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1033-a2f1d1a7ea50';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1033-a2f1d1a7ea50';
-import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1033-a2f1d1a7ea50';
-import { sampleCycloneMotion } from './action-motion.js?v=r1033-a2f1d1a7ea50'; // the Cyclone Heel's motion, shared with Close View
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1048-85a8d476db24';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1048-85a8d476db24';
+import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1048-85a8d476db24';
+import { sampleCycloneMotion } from './action-motion.js?v=r1048-85a8d476db24'; // the Cyclone Heel's motion, shared with Close View
 const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes

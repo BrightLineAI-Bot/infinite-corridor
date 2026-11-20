@@ -7,12 +7,14 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1033-a2f1d1a7ea50";
-import { BELLS, bellsRung } from "./bells.js?v=r1033-a2f1d1a7ea50";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1033-a2f1d1a7ea50";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1033-a2f1d1a7ea50";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { IDENTITY_FRAME, saveFrame } from "./journey-start.js?v=r1048-85a8d476db24";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1048-85a8d476db24";
+import { BELLS, bellsRung } from "./bells.js?v=r1048-85a8d476db24";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1048-85a8d476db24";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1048-85a8d476db24";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1048-85a8d476db24";
+import { REWARD_CARRIERS, threadReward } from "./quests.js?v=r1048-85a8d476db24"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -316,10 +318,11 @@ export function threadIn(seed, dungeonId, version = 0, region = 0) {
   if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : laterThreadIn(seed, dungeonId, rx, ry);
   const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : null;
   const h = hashSeed(`${seed}:threads:which:v1:${dungeonId}`);
-  return r >= 1 ? weightedPick(here, h, (id) => homeWeight(id, rx, ry)) : here[h % here.length];
+  return r >= 1 ? weightedPick(here, h, (id) => homeWeight(id, rx, ry, regionFrame(seed, r))) : here[h % here.length];
 }
 // Region version 1: a thread whose home (lore.ts ARCANA_REGIONS.sets) holds this section weighs `homeWeight`; any other, 1.
-export const homeWeight = (id, rx, ry) => inArcanaHome(id, rx, ry) ? ARCANA_REGIONS.homeWeight : 1;
+// Region version 2 (a start-1 journey's crossings) asks with the journey's frame (`frame`, lore.ts regionFrame).
+export const homeWeight = (id, rx, ry, frame = IDENTITY_FRAME) => inArcanaHome(id, rx, ry, frame) ? ARCANA_REGIONS.homeWeight : 1;
 function weightedPick(list, h, weigh) { let k = h % list.reduce((n, id) => n + weigh(id), 0); for (const id of list) { k -= weigh(id); if (k < 0) return id; } return null; }
 // The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
 export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
@@ -341,7 +344,7 @@ function sharedThreadIn(seed, dungeonId, rx, ry, version, region = 0) {
   if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry, version)) return null;
   const here = sharedThreads(version, rx, ry); if (!here.length) return null;
   const h = hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`);
-  if (region >= 1) return weightedPick(here, h, (id) => threadWeight(id, version) * homeWeight(id, rx, ry)); // region version 1: home threads weigh more
+  if (region >= 1) return weightedPick(here, h, (id) => threadWeight(id, version) * homeWeight(id, rx, ry, regionFrame(seed, region))); // region version 1: home threads weigh more
   if (version < 2) return here[h % here.length]; // version 1: an even share, exactly as release 773 chose
   let k = h % here.reduce((n, id) => n + threadWeight(id, version), 0);
   for (const id of here) { k -= threadWeight(id, version); if (k < 0) return id; }
@@ -431,8 +434,8 @@ export const ARCANA_SETS = {
 export function arcanaWhere(save, id, live = ARCANA_REGIONS.live) {
   if (id === "pages") { const found = new Set(pagesFound(save)), left = READING_ORDER.filter((r) => !found.has(r)); if (!left.length) return null;
     const known = left.filter((r) => readingKnown(save, r)), unheard = left.length - known.length;
-    return [...known.map((r) => `${READINGS[r].name} (${readingRegionHint(r)})`), ...(unheard ? [`${unheard} in Readings not yet heard`] : [])].join("; "); }
-  if (live && ARCANA_REGIONS.sets[id]) return arcanaHint(id);
+    return [...known.map((r) => `${READINGS[r].name} (${readingRegionHint(r, saveFrame(save))})`), ...(unheard ? [`${unheard} in Readings not yet heard`] : [])].join("; "); }
+  if (live && ARCANA_REGIONS.sets[id]) return arcanaHint(id, saveFrame(save));
   return THREADS[id] ? null : ARCANA_SETS[id]?.where || null;
 }
 export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
@@ -444,11 +447,15 @@ export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
 // ({ kind, id, label }; empty: the unlocks Tim chose are lore.ts ARCANA_UNLOCKS, settled by settleArcanaUnlocks below). settleArcanaRewards hands every complete set with a reward not yet claimed to
 // `grant(setId, reward)` once, and records it in save.lore.arcanaClaimed ({ setId: true }; additive, normalised by
 // ensureThreadState), so a set finished before its reward existed is paid the first time the hook runs after.
-export const ARCANA_REWARDS = {};
+// Progression Phase 7 (quests.ts THREAD_REWARDS, SEEDED_REWARDS; docs/progression-design.md route d): each carrier's entry is a
+// function of the save, since two rewards are seeded per journey: it gives { kind: "ability", id, label, ... } or null (a
+// candidate thread that carries nothing on this journey, never claimed). `extraDone` names carriers finished outside the
+// Arcana list (the Second Wayfarer's trail, "second"; game.ts passes it).
+export const ARCANA_REWARDS = Object.fromEntries(REWARD_CARRIERS.map((id) => [id, (save) => threadReward(save, id)]));
 export const arcanaComplete = (save) => arcanaProgress(save, false).filter((r) => r.complete).map((r) => r.id);
-export function settleArcanaRewards(save, grant = () => {}) {
+export function settleArcanaRewards(save, grant = () => {}, extraDone = []) {
   const out = [];
-  for (const id of arcanaComplete(save)) { const reward = ARCANA_REWARDS[id]; if (!reward || save.lore?.arcanaClaimed?.[id]) continue;
+  for (const id of [...arcanaComplete(save), ...extraDone]) { const R = ARCANA_REWARDS[id], reward = typeof R === "function" ? R(save) : R; if (!reward || save.lore?.arcanaClaimed?.[id]) continue;
     ((save.lore ||= {}).arcanaClaimed ||= {})[id] = true; grant(id, reward); out.push(id); }
   return out;
 }

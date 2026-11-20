@@ -13,7 +13,7 @@
 //
 // Pure data and rules. game.ts runs the companion (tickHatchling), main.ts the Pack row and the Atlas, renderer and Close View draw him.
 // State: save.mounts.hatchling (additive at schema 14; normalised by ensureHatchling, which beast-mounts.ts ensureMounts calls).
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
 
 const f = Object.freeze;
 export const HATCHLING = f({
@@ -60,14 +60,21 @@ export const HATCHLING = f({
   young: f({
     aggro: 6.5, // he picks fights with foes this near the Wayfarer
     orbit: f({ radius: 1.9, rate: .55 }), // walking with and round the Wayfarer when there is no fight
+    // Tim, 2026-11-20: his own moves deal about as much as a +10% damage buff would, over the course of a real fight: about `dpsShare`
+    // of the damage the Wayfarer deals in the same fight (the real game update: the foes' own AI moving, keeping range and attacking,
+    // her walking, dodging and pressing at a realistic rate, his approach, cooldowns, misses and target switching; an early and a
+    // mid-game pack, a single affixed elite and a world-beast segment; tests/hatchling-young-damage.test.ts). The shares below are the
+    // first weights (beam 1.6, gatling .28, charge .8, whirl .6, stomp .5, bite .7) x .0838 (release 1042's .26 against a dummy
+    // measured about .29 of her damage in those fights). His hits carry their fractions (game.ts hatchHit), so they never round up.
+    dpsShare: .1,
     // Moves, in his order of preference. range: [min, max] tiles to the foe; cd: seconds; share: of the Wayfarer's melee power per hit.
     moves: f({
-      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: 1.6, length: 7, step: .7, radius: .55 }),
-      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .28, radius: .45 }),
-      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .8, radius: .9, stun: .3 }),
-      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .6, radius: 1.7 }),
-      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .5, radius: .8 }),
-      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .7, radius: .6 }),
+      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: .1341, length: 7, step: .7, radius: .55 }),
+      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .0235, radius: .45 }),
+      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .067, radius: .9, stun: .3 }),
+      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .0503, radius: 1.7 }),
+      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .0419, radius: .8 }),
+      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .0587, radius: .6 }),
     }),
   }),
   // Bounds: live companion effects (they share the Wayfarer's effects list) and drawn-only visuals.
@@ -107,6 +114,7 @@ function cleanOut(o) {
   o.timers = { buff: num(t.buff, 0, HATCHLING.buffs.every, 0), heal: num(t.heal, 0, HATCHLING.baby.heal.every, HATCHLING.baby.heal.every), chill: num(t.chill, 0, HATCHLING.baby.chill.every, HATCHLING.baby.chill.every), nip: num(t.nip, 0, HATCHLING.baby.nip.every, 0) };
   o.cd = {}; for (const k of HATCH_MOVE_IDS) { const s = num(cd[k], 0, HATCHLING.young.moves[k].cd, 0); if (s > 0) o.cd[k] = s; }
   o.act = cleanAct(o.act);
+  if ("carry" in o) o.carry = num(o.carry, 0, 1, 0); // the young's damage fraction carried to his next hit (game.ts hatchHit)
   return o;
 }
 function cleanAct(a) {

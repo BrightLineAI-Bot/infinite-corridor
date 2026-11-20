@@ -8,8 +8,8 @@
 // artifact refuses a laboratory graph that does) and nothing in this module names a production storage key, so nothing the
 // player does in the Proving Ground can reach a production journey. Exit to game opens the production page, which loads the
 // journey it flushed, untouched.
-import { Game } from "./game.js?v=r1033-a2f1d1a7ea50";
-import { migrateSave } from "./types.js?v=r1033-a2f1d1a7ea50";
+import { Game } from "./game.js?v=r1048-85a8d476db24";
+import { migrateSave } from "./types.js?v=r1048-85a8d476db24";
 
 export const PROVING_GROUND_HANDOFF = Object.freeze({
   namespace: "ic-proving-ground-scratch-v1", // the Proving Ground's storage namespace (proving-ground-mobile.ts resets it)
@@ -27,8 +27,10 @@ export const provingGroundAccess = (settings) => settings?.provingGround !== fal
 // The rows Options → System shows for it, in order: the setting always, the entry only while access is on.
 export const provingGroundOptionRows = (settings) => provingGroundAccess(settings) ? ["access", "enter"] : ["access"];
 
-export function handoffRecord(save, { release = null, slot = 1, returnUrl = "", now = Date.now() } = {}) {
-  return { format: PROVING_GROUND_HANDOFF.format, version: PROVING_GROUND_HANDOFF.version, release, slot, returnUrl: String(returnUrl || ""), createdAt: now, save };
+// Progression Phase 5: `yard` ({ ability, version }, training-yard.ts yardRequest) asks the laboratory for the Training Yard
+// preset with that owned ability; it rides in the same one record, so the copy, the database and the take-once rule are unchanged.
+export function handoffRecord(save, { release = null, slot = 1, returnUrl = "", now = Date.now(), yard = null } = {}) {
+  return { format: PROVING_GROUND_HANDOFF.format, version: PROVING_GROUND_HANDOFF.version, release, slot, returnUrl: String(returnUrl || ""), createdAt: now, save, ...(yard ? { yard: { ability: String(yard.ability || ""), version: Number(yard.version) || 1 } } : {}) };
 }
 
 function openHandoffDb(idb) {

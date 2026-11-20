@@ -1,6 +1,6 @@
 // Presentation-only contracts. No renderer/game imports: projectile producers and meshes share these anchors.
-import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1033-a2f1d1a7ea50';
-import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r1033-a2f1d1a7ea50';
+import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1048-85a8d476db24';
+import { FOUNDRY_BASE_BODIES, FOUNDRY_MODEL_METADATA, FOUNDRY_ATTACKS, FOUNDRY_MOVEMENTS, foundryModelKey } from './close-view-foundry-presentation.js?v=r1048-85a8d476db24';
 export const DEFAULT_PROJECTILE_VISUAL_HEIGHT = .66;
 export const DRONE_VISUAL_HEIGHT = .66;
 // Player drone: its source sprite carries above the player but its simulation point eases behind.

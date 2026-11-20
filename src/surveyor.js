@@ -8,8 +8,8 @@
 // not found (so the notes read in order however the crossings fall) and its page of notes, kept in the Journal. A crossing
 // gives at most one link. Part two (his statue at the edge of the Far Sleep, and the last map) is still to come.
 // State: save.lore.surveyor = { links: [index...], where: { index: dungeonId } } (additive; ensureSurveyor). Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { arcanaRate, regionVersionOf } from "./lore.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { arcanaRate, regionVersionOf, regionFrame } from "./lore.js?v=r1048-85a8d476db24";
 
 export const SURVEYOR = { links: 12, chance: .14, minRing: 8, minFromEntry: 6 };
 // His field notes, one per link, in the order they are found. Original writing for the game. The lengths of the same
@@ -46,7 +46,7 @@ const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 export function surveyorCrossing(seed, dungeonId, region = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return false;
   const rx = Number(m[1]), ry = Number(m[2]); if (Math.hypot(rx, ry) < SURVEYOR.minRing) return false;
-  return (hashSeed(`${seed}:surveyor:v1:${dungeonId}`) % 10000) / 10000 < (region >= 1 ? arcanaRate("surveyor", rx, ry) : SURVEYOR.chance);
+  return (hashSeed(`${seed}:surveyor:v1:${dungeonId}`) % 10000) / 10000 < (region >= 1 ? arcanaRate("surveyor", rx, ry, regionFrame(seed, region)) : SURVEYOR.chance);
 }
 // Lays the crossing's link on open floor away from the entry. Returns the object or null.
 // 2026-11-19 (first-hour fixes): the link lies only where the Wayfarer can walk to it from the entry with the real step rules
@@ -123,7 +123,8 @@ export function takeSurveyorLink(save, o, dungeonId) {
 // FAR_SLEEP_DEPTH along the line from the Refuge through the crossing of the twelfth link, stands his statue
 // (`surveyorStatueSection`, recorded once as save.lore.surveyor.statue so it never moves). Touching it closes the thread
 // (`statueSeen`). Original writing for the game.
-import { FAR_SLEEP_DEPTH, LETHAL_KINDS, canStep } from "./landscape.js?v=r1033-a2f1d1a7ea50";
+import { FAR_SLEEP_DEPTH, LETHAL_KINDS, canStep, farSleepSection } from "./landscape.js?v=r1048-85a8d476db24";
+import { saveFrame, toFrame, turnSection } from "./journey-start.js?v=r1048-85a8d476db24";
 
 export const SURVEYOR_STATUE_LINES = [
   "A man in a surveyor's coat, kneeling, carved from the same pale stone as the Far Sleep's terraces. One end of a brass chain is pinned under his boot; the rest runs up along his arm to the hand that holds it, the way you hold a chain to read a length.",
@@ -139,9 +140,26 @@ export function surveyorStatueSection(save) {
   const s = ensureSurveyor(save); if (s.links.length < SURVEYOR.links) return null;
   if (s.statue && Number.isInteger(s.statue.rx) && Number.isInteger(s.statue.ry)) return s.statue;
   let at = sectionOf(s.where[SURVEYOR.links - 1]) || [...s.links].reverse().map((i) => sectionOf(s.where[i])).find(Boolean);
+  const frame = saveFrame(save);
+  if (!frame.identity) { s.statue = turnedStatue(save, at, frame); return s.statue; }
   if (!at || (!at.rx && !at.ry)) { const h = hashSeed(`${save.seed}:surveyor-statue:v1`); at = { rx: h % 2 ? 1 : -1, ry: (h >>> 1) % 2 ? 1 : -1 }; }
   const depth = FAR_SLEEP_DEPTH + 1, d = Math.abs(at.rx) + Math.abs(at.ry), rx = Math.round(at.rx * depth / d), ry = (at.ry < 0 || (!at.ry && at.rx < 0) ? -1 : 1) * (depth - Math.abs(rx));
   s.statue = { rx, ry }; return s.statue;
+}
+// Progression Phase 2: on a journey created at start version 1 (journey-start.ts) the same rule is asked in the journey's frame:
+// the last link's bearing is turned into the frame (with no link bearing, the seeded diagonal is a diagonal of the frame), the
+// statue's section on the fixed diamond is found there, and turned back onto the journey's grid. A section the rounding leaves
+// on the near side of the turned edge steps one section further out along the line (bounded), so the statue always stands on
+// the Far Sleep's turned edge.
+function turnedStatue(save, at, frame) {
+  let [x, y] = at && (at.rx || at.ry) ? toFrame(frame, at.rx, at.ry) : [0, 0];
+  if (!x && !y) { const h = hashSeed(`${save.seed}:surveyor-statue:v1`); x = h % 2 ? 1 : -1; y = (h >>> 1) % 2 ? 1 : -1; }
+  const depth = FAR_SLEEP_DEPTH + 1, d = Math.abs(x) + Math.abs(y);
+  for (let k = 0; k < 8; k++) {
+    const cx = x * (depth + k) / d, cy = y * (depth + k) / d, t = turnSection(frame, cx, cy);
+    if (farSleepSection(t.rx, t.ry, frame)) return t;
+  }
+  return turnSection(frame, x * (depth + 8) / d, y * (depth + 8) / d);
 }
 // The chain on the Atlas: the crossings in link order, then the statue. Empty until all twelve are found.
 export function surveyorChainPath(save) {
@@ -179,6 +197,12 @@ export const CAIRN_LINES = {
   ],
   waiting: "\"The first crossing you go into. It'll be on the floor, worn bright on one side, where his thumb was.\"",
   after: (where) => `"So it was there. The rest went the way he did: ${where}. He never came back for them. You might."`,
+  // Exploration (docs/progression-design.md 4.1, Phase 4): her errand said plainly, with no riddle first; and, while it waits,
+  // where the compass leads. Classic keeps the lines above.
+  plain: {
+    first: "\"Levels'll make you sturdier, and Sela will teach you what the Refuge knows. Everything strange is out there: in the crossings, in what people dropped, in places nobody's walked. Go into the first crossing you find. There'll be a piece of chain on the floor. Keep it.\"",
+    waiting: "\"The first crossing you go into. Your compass points to the nearest one. The link will be on the floor. Keep it.\"",
+  },
   idle: [
     "\"I count the stones every morning. There's always the same number. I count them anyway.\"",
     "\"People ask what the cairn marks. The start, I tell them. Of what, they say. Of measuring.\"",
@@ -197,13 +221,15 @@ export function addCairnKeeper(map, rx, ry) {
   (map.objects ||= []).push(o); return o;
 }
 // Speaking with her. `where` is the chain's home in words. Returns { ok, message, started }.
-export function speakCairnKeeper(save, o, where = "out past the black stone") {
+// `plain` (an Exploration journey): the errand in plain words (CAIRN_LINES.plain). An idle line is marked `idle` (a rumour may
+// take its place, leads.ts).
+export function speakCairnKeeper(save, o, where = "out past the black stone", { plain = false } = {}) {
   const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})), found = ensureSurveyor(save).links.length;
-  if (!found && a.starter !== "set") { a.starter = "set"; if (o) o.line = CAIRN_LINES.first[1]; return { ok: true, started: true, message: CAIRN_LINES.first.join(" ") }; }
-  if (!found) return { ok: true, message: CAIRN_LINES.waiting };
+  if (!found && a.starter !== "set") { a.starter = "set"; if (o) o.line = plain ? CAIRN_LINES.plain.first : CAIRN_LINES.first[1]; return { ok: true, started: true, message: plain ? CAIRN_LINES.plain.first : CAIRN_LINES.first.join(" ") }; }
+  if (!found) return { ok: true, message: plain ? CAIRN_LINES.plain.waiting : CAIRN_LINES.waiting };
   if (a.starter === "set") { a.starter = "done"; return { ok: true, message: CAIRN_LINES.after(where) }; }
   a.talks = (Math.floor(Number(a.talks)) || 0) + 1;
-  return { ok: true, message: a.talks % 2 ? CAIRN_LINES.after(where) : CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
+  return a.talks % 2 ? { ok: true, message: CAIRN_LINES.after(where) } : { ok: true, idle: true, message: CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
 }
 // The errand's first link: while it is set and no link is found, any crossing entered from the land holds one: an ordinary
 // crossing, a deep one (deep-v1, deep-v2:<archetype>), a canopy crossing, and (2026-11-19) the Refuge's own crossing

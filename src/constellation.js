@@ -8,15 +8,18 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.js?v=r1033-a2f1d1a7ea50";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1033-a2f1d1a7ea50"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1033-a2f1d1a7ea50";
-import { pairingMods } from "./spell-slots.js?v=r1033-a2f1d1a7ea50";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1033-a2f1d1a7ea50";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1033-a2f1d1a7ea50";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1033-a2f1d1a7ea50"; // awakened arts: each primary's own move (2026-11-13)
-import { TESSERACTS } from "./tesseracts.js?v=r1033-a2f1d1a7ea50";
-import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1033-a2f1d1a7ea50"; // the on-cast nodes (Tim, 2026-11-19)
+import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1048-85a8d476db24";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1048-85a8d476db24"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1048-85a8d476db24";
+import { pairingMods } from "./spell-slots.js?v=r1048-85a8d476db24";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1048-85a8d476db24";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1048-85a8d476db24";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1048-85a8d476db24"; // awakened arts: each primary's own move (2026-11-13)
+import { TESSERACTS } from "./tesseracts.js?v=r1048-85a8d476db24";
+import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1048-85a8d476db24"; // the on-cast nodes (Tim, 2026-11-19)
+import { EXPLORATION, exploring } from "./journey-start.js?v=r1048-85a8d476db24"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
+import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1048-85a8d476db24"; // progression Phase 6: milestones and reliquaries
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -106,8 +109,12 @@ export const ALT_PASSIVES = {
   anchor: { name: "Rift Echo", kind: "changes", text: "Rift Step leaves a burst where you stood, scorching foes there.", radius: 1.8, damage: 8, perLevel: 1 },
 };
 export const altUnlocked = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)) >= ALT_UNLOCK_TIER;
+// Progression Phase 6 (world-routes.ts): a secondary form whose Exploration route is a milestone or a reliquary is shut until it is
+// found; a form found (earned or kept) opens its switch once its node is learned, before Infinite III too, in either mode.
+export const WORLD_WAIT = "Not found yet: it waits out in the world (Journal → Leads).";
+export const altOpen = (save, id) => (altUnlocked(save) || formFound(save, id)) && !formWithheld(save, id);
 // Is the secondary form chosen (and open) for a learned node?
-export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altUnlocked(save);
+export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altOpen(save, id);
 // The primary form works: the node is learned and its secondary is not chosen, or the Transit Lattice holds it (release 363).
 export const nodeOn = (save, id) => hasNode(save, id) && (!altChosen(save, id) || latticePassives(save).includes(id));
 // The secondary form works: chosen, or held in the Transit Lattice.
@@ -131,13 +138,17 @@ export function latticePassiveGroups() {
 }
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
+  if (worldWithheld(save, key) && !(save.lattice?.passives || []).includes(key)) return { ok: false, message: WORLD_WAIT }; // Phase 6: not found yet (one set before stays clearable)
   if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first
+  if (f.id === "aerial-step" && aerialDiscipline(save) && !(save.lattice?.passives || []).includes(key)) return { ok: false, message: `In Exploration ${EXPLORATION.aerialStep.cap.name} is the Motion capstone itself, and Aerial Step a discipline: neither has a form to draw into the Lattice.` };
   return toggleLatticeSlot(save, "passive", key, f.name, () => !hasNode(save, f.id) ? `Learn ${passiveForm(f.id).name} first: the Lattice draws in a form of a passive you know.` : f.alt === altChosen(save, f.id) ? `${f.name} already works: it is the form you have chosen.` : "");
 }
 export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };
-  if (!altUnlocked(save)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
+  if (id === "aerial-step" && aerialDiscipline(save)) return { ok: false, message: `${EXPLORATION.aerialStep.cap.name} has no secondary form in Exploration: it is the Motion capstone itself.` };
+  if (formWithheld(save, id)) return { ok: false, message: WORLD_WAIT }; // Phase 6: found in the world first
+  if (!altOpen(save, id)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
   if (!(alt.discipline ? skillRank(save, id) > 0 : hasNode(save, id))) return { ok: false, message: "Learn it first." }; // a discipline's own form (Quickened Stride): once it has a rank
   const c = save.constellation; c.alt ||= {};
   if (c.alt[id]) delete c.alt[id]; else c.alt[id] = true;
@@ -155,7 +166,8 @@ export function ensureConstellation(save) {
   save.constellation = { ...c, version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) }; if (!Object.keys(alt).length) delete save.constellation.alt; // release 736 (review S7): unknown fields kept
   // Reconciled on every load, so saves from before this release (or merged with fresh defaults) keep what they learned:
   // a learned Aerial Step claims the Motion capstone, and any overspend becomes grandfathered bonus points.
-  if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step")) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }
+  if (save.constellation.aerial !== true) delete save.constellation.aerial; // progression Phase 3: Aerial Step learned as Exploration's discipline (learnAerialStep)
+  if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step") && !save.constellation.aerial) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }
   save.constellation.bonus = Math.max(save.constellation.bonus, pointsSpent(save) - pointsEarned(save));
   return save;
 }
@@ -165,6 +177,7 @@ export function pointsSpent(save) {
   let n = 0;
   for (const b of Object.values(BRANCHES)) n += skillRank(save, b.active);
   n += Object.values(c.mods || {}).filter(Boolean).length + 2 * (Object.keys(c.caps || {}).length + Object.keys(c.caps2 || {}).length);
+  if (c.aerial === true && skillRank(save, "aerial-step") > 0) n += EXPLORATION.aerialStep.cost; // Exploration's Aerial Step discipline
   return n;
 }
 export const pointsFree = (save) => pointsEarned(save) + (save.constellation?.bonus || 0) - pointsSpent(save);
@@ -201,7 +214,7 @@ export function chooseCap(save, branch, capId) {
   if (pointsFree(save) < 2) return { ok: false, message: "A capstone needs 2 free points." };
   save.constellation.caps2 ||= {};
   if (save.constellation.caps[branch]) save.constellation.caps2[branch] = capId; else save.constellation.caps[branch] = capId;
-  if (capId === "aerial-step") { save.magicSkills.learned["aerial-step"] = 1; }
+  if (capId === "aerial-step" && !aerialDiscipline(save)) { save.magicSkills.learned["aerial-step"] = 1; } // in Exploration this slot is Long Quickening
   return { ok: true, message: `${cap.name} crowns the ${b.name} branch.` };
 }
 // An extra node (EXTRA_NODES): a point, once the branch's discipline has a rank.
@@ -209,11 +222,37 @@ export function learnExtra(save, branch, id) {
   const b = BRANCHES[branch], node = b?.extras?.find((q) => q.id === id);
   if (!node) return { ok: false, message: "Unknown node." };
   if (save.constellation.mods[id]) return { ok: false, message: `${node.name} is already yours.` };
+  if (worldWithheld(save, id)) return { ok: false, message: WORLD_WAIT }; // Phase 6: Casting Wind is a milestone's
   if (skillRank(save, b.active) < 1) return { ok: false, message: `Learn ${APERTURE_SKILLS[b.active].name} first.` };
   if (pointsFree(save) < 1) return { ok: false, message: "No constellation points free." };
   save.constellation.mods[id] = true;
   return { ok: true, message: `${node.name} joins the constellation.` };
 }
+// ---------------------------------------------------------------- Exploration's Aerial Step and Long Quickening (progression Phase 3)
+// In Exploration (journey-start.ts exploring) Aerial Step is a discipline of its own: one point once Aperture reaches
+// EXPLORATION.aerialStep.aperture, nothing else first. It is recorded as today's learned rank (magicSkills.learned["aerial-step"])
+// and save.constellation.aerial (additive; its point, which pointsSpent counts and a respec refunds). The Motion capstone keeps
+// its save id `aerial-step` and is Long Quickening (EXPLORATION.aerialStep.cap: Quickening lasts half again as long), with no
+// secondary form, so a journey that crowned Motion with Aerial Step under Classic holds both in Exploration. Classic is untouched.
+export const aerialDiscipline = (save) => exploring(save);
+export function learnAerialStep(save) {
+  const A = EXPLORATION.aerialStep, name = APERTURE_SKILLS["aerial-step"].name;
+  if (!aerialDiscipline(save)) return { ok: false, message: `${name} crowns the Motion branch under Classic rules.` };
+  if (skillRank(save, "aerial-step") > 0) return { ok: false, message: `${name} is already yours.` };
+  if ((save.perception?.aperture || 0) < A.aperture) return { ok: false, message: `${name} opens at Aperture ${A.aperture}.` };
+  if (pointsFree(save) < A.cost) return { ok: false, message: "No constellation points free." };
+  save.magicSkills.learned["aerial-step"] = 1; save.constellation.aerial = true;
+  return { ok: true, message: `${name} learned: walk on the air.` };
+}
+// The Motion capstone as the journey reads it: Exploration's Long Quickening in the slot `aerial-step`, else the node itself.
+export function capstoneOf(save, cap) {
+  return cap?.id === "aerial-step" && aerialDiscipline(save) ? { ...cap, name: EXPLORATION.aerialStep.cap.name, text: EXPLORATION.aerialStep.cap.text, kind: "changes" } : cap;
+}
+// Long Quickening holds: chosen as Aerial Step's secondary form (Classic), the Motion capstone in Exploration, or kept from an
+// Exploration capstone (save.progression.kept "aerial-step:alt") when the journey went Classic.
+export const longQuickeningOn = (save) => altOn(save, "aerial-step") || (hasNode(save, "aerial-step") && (aerialDiscipline(save) || (Array.isArray(save?.progression?.kept) && save.progression.kept.includes("aerial-step:alt"))));
+// Under Classic a chosen Long Quickening stands in for Aerial Step (release 359); in Exploration they are separate and both hold.
+export const aerialStepBlocked = (save) => !aerialDiscipline(save) && altOn(save, "aerial-step");
 export const respecCost = (save) => 2 + Math.ceil(pointsSpent(save) / 2);
 // Only at shrines (the UI offers it there). Refunds every rank, modifier and capstone; grandfathered bonus stays.
 export function respec(save) {
@@ -222,7 +261,7 @@ export function respec(save) {
   if (dust < cost) return { ok: false, message: `Respec needs ${cost} lumen dust (you have ${dust}).` };
   save.materials.lumenDust = dust - cost;
   save.magicSkills.learned = {}; save.magicSkills.selected = null; save.magicSkills.active = null;
-  save.constellation.mods = {}; save.constellation.caps = {}; save.constellation.caps2 = {}; delete save.constellation.alt;
+  save.constellation.mods = {}; save.constellation.caps = {}; save.constellation.caps2 = {}; delete save.constellation.alt; delete save.constellation.aerial;
   return { ok: true, message: `The shrine takes ${cost} lumen dust. Your constellation is unwritten.` };
 }
 
@@ -232,7 +271,7 @@ const activeIs = (save, id) => save.magicSkills?.active?.id === id && save.magic
 export const sanctuaryOn = (save) => activeIs(save, "veil-guard") && nodeOn(save, "sanctuary");
 export function skillDurationScale(save, id) {
   if (id === "ember-form") return nodeOn(save, "colossus") ? 1.5 : altOn(save, "colossus") ? ALT_PASSIVES.colossus.duration : 1;
-  if (id === "quickening" && altOn(save, "aerial-step")) return ALT_PASSIVES["aerial-step"].duration; // release 359
+  if (id === "quickening" && longQuickeningOn(save)) return ALT_PASSIVES["aerial-step"].duration; // release 359; Phase 3: Exploration's capstone
   if (id === "veil-guard" && altOn(save, "sanctuary")) return ALT_PASSIVES.sanctuary.duration;
   return 1;
 }
@@ -261,7 +300,7 @@ export function onSkillEnded(game, id, now) {
 // Per frame: veil nodes react to wounds, Overflow speeds spells (Sanctuary heals on hits: SANCTUARY).
 export function tickConstellation(game, dt, now) {
   const s = game.save, p = game.player, lost = game._cLastHp !== undefined ? game._cLastHp - p.hp : 0;
-  const near = (r) => game.enemies.filter((e) => !e.dead && !e.untargetable && Math.hypot(e.x - p.x, e.y - p.y) < r);
+  const near = (r) => game.enemies.filter((e) => !e.dead && !e.untargetable && !unharmablePerson(e) && Math.hypot(e.x - p.x, e.y - p.y) < r);
   if (activeIs(s, "ember-form")) { // release 359: Kindling (when it begins), Ember Ward, Ember Mend
     const st = s.magicSkills.active;
     if (altOn(s, "cinder-heart") && !st.kindled) { st.kindled = true; const A = ALT_PASSIVES["cinder-heart"]; game.glyphWorld(now).blast(p.x + .5, p.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); }
@@ -272,7 +311,7 @@ export function tickConstellation(game, dt, now) {
     if (lost > 0 && p.hp > 0) {
       if (altOn(s, "thorned-veil")) { const A = ALT_PASSIVES["thorned-veil"]; for (const foe of near(A.reach)) game.glyphWorld(now).damage(foe, Math.max(1, Math.round(lost * A.share))); } // release 359: Veil Pulse
       if (nodeOn(s, "mirror-veil") && !s.magicSkills.active.mirrored) { s.magicSkills.active.mirrored = true; p.hp += lost; game.message = "Mirror Veil turns the blow aside."; }
-      else if (nodeOn(s, "thorned-veil")) { const foe = game.enemies.filter((e) => !e.dead && !e.untargetable).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; if (foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 3) game.glyphWorld(now).damage(foe, Math.max(2, Math.round(lost * .3))); }
+      else if (nodeOn(s, "thorned-veil")) { const foe = game.enemies.filter((e) => !e.dead && !e.untargetable && !unharmablePerson(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; if (foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 3) game.glyphWorld(now).damage(foe, Math.max(2, Math.round(lost * .3))); }
     }
   }
   if (activeIs(s, "force-channel") && altOn(s, "overflow")) for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (!k.startsWith("spell:") && k !== "force-channel") s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * ALT_PASSIVES.overflow.rate); // release 359: Wellspring
@@ -315,7 +354,7 @@ function riftFooting(game, world, x, y, level, rise = 0) {
 function riftCommit(game, now, R, from, best, fromLevel) {
   const s = game.save, st = s.magicSkills, p = game.player, world = game.glyphWorld(now), len = Math.hypot(best.x - from.x, best.y - from.y), dx = len ? (best.x - from.x) / len : 0, dy = len ? (best.y - from.y) / len : 0;
   if (altOn(s, "anchor")) { const A = ALT_PASSIVES.anchor; world.blast(from.x + .5, from.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); } // release 359: Rift Echo
-  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= len; t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
+  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= len; t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !unharmablePerson(e) && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + (altOn(s, "rift-wake") ? ALT_PASSIVES["rift-wake"].guardMs : 150));
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));
@@ -406,12 +445,15 @@ export function awakenCheck(save, slot) {
   const item = save.equipment?.[slot];
   if (!item || (slot !== "primary" && slot !== "secondary")) return { ok: false, message: "Only a primary weapon or a tool can awaken." };
   if (item.awakened) return { ok: false, message: `${item.name} is already awakened.` };
+  if (!explorationGateOpen(save, "awakened:awakening")) return { ok: false, message: `${AWAKEN_WAIT} (Exploration: awakening opens at the ${APERTURE_BANDS[EXPLORATION.gates["awakened:awakening"].tier].name} band of the Aperture.)` };
   const n = normalizeItemUpgrade(item), cap = UPGRADE_CAPS[itemTier(n)];
   if ((n.upgradeRank || 0) < cap) return { ok: false, message: `Strengthen ${item.name} to +${cap} first (now +${n.upgradeRank || 0}).` };
   const reso = resonancesOf(item.glyphs || []);
   if (!reso.length) return { ok: false, message: `${item.name} must hold a Resonance in its sockets.` };
   return { ok: true, resonance: reso[0], message: `${item.name} can awaken in ${RESONANCES[reso[0]].name}.` };
 }
+// Sela's line while Exploration holds awakening back (design 3.6: it opens at Infinite II).
+export const AWAKEN_WAIT = "Sela turns the piece over. \"Something in your steel is asleep, not dead. Not yet, though.\"";
 export function awaken(save, slot) {
   const check = awakenCheck(save, slot);
   if (!check.ok) return check;

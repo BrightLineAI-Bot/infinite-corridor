@@ -36,6 +36,7 @@
 //   is allocated per frame. Everything runs on frame time (dt), so pause and background stop it exactly. A reload drops the
 //   drifting hands; the held or let-go hand is saved (playerRuntime.quandrixHold, `release.record`, savedQuandrixHold) and
 //   resumes as let go (the button is up after a reload), on its charge clock, with the foes it holds, and bursts on time.
+import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
 // combat.ts enemyBodyRadius, restated so this module stays a leaf (lattice-fields.ts reads its numbers).
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38);
 
@@ -79,7 +80,7 @@ export function slamBurstShare(held) {
 // How far round the ring is: 0 at the slam, 1 at `max` (the overcharge). The perfect window is [perfect[0], perfect[1]] / max.
 export const slamFill = (held) => Math.max(0, Math.min(1, (Number(held) || 0) / QUANDRIX.slam.max));
 export const staffAnchored = (e) => { if (!e) return true; for (const k of QUANDRIX.anchored) if (e[k]) return true; return false; };
-const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc" && Number(e.hp) > 0;
+const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && !unharmablePerson(e) && Number(e.hp) > 0;
 const touching = (e, x, y, r) => Math.hypot(e.x + .5 - x, e.y + .45 - y) < r + enemyBodyRadius(e);
 
 // ---------------------------------------------------------------- runtime state (game.quandrix, never saved)

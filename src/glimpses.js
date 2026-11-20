@@ -2,7 +2,8 @@
 // for a few seconds through someone's, or something's, eyes. This module holds the catalogue and the rules (where a
 // Glimpse may surface, how rarely it repeats, which fragment it gives); the drawing lives in glimpse-render.ts.
 // Pure data and rules: no DOM.
-import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r1033-a2f1d1a7ea50";
+import { readingAt, bookPieces, ensureLore, creditPiece } from "./lore.js?v=r1048-85a8d476db24";
+import { saveFrame } from "./journey-start.js?v=r1048-85a8d476db24";
 
 // `human` places a Glimpse on the drift from human residue (1) to the wholly unhuman (0). Near Ember Refuge the
 // Corridor offers mostly human Glimpses, far out mostly unhuman ones, but every region keeps some of the other end.
@@ -84,7 +85,7 @@ export function witnessGlimpse(save, id, rx, ry) {
   const first = !glimpseSeen(save, id);
   save.lore.glimpses[id] = glimpseSeen(save, id) + 1;
   if (!first) return null;
-  const readingId = readingAt(rx, ry), have = save.lore.pieces[readingId] || [];
+  const readingId = readingAt(rx, ry, saveFrame(save)), have = save.lore.pieces[readingId] || [];
   return creditPiece(save, readingId, bookPieces(readingId).find((p) => p.kind === "glimpse" && !have.includes(p.id)));
 }
 export function witnessedGlimpses(save) { return GLIMPSE_ALL.filter((id) => glimpseSeen(save, id)); }

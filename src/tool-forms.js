@@ -1,5 +1,6 @@
-import { stampAttackVisual } from "./action-motion.js?v=r1033-a2f1d1a7ea50";
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { stampAttackVisual } from "./action-motion.js?v=r1048-85a8d476db24";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -558,7 +559,7 @@ export function beamsTouching(x, y, body, pts, n, tether) {
   return k;
 }
 const unit = (x, y, fx = 1, fy = 0) => { const m = Math.hypot(x, y); return m > 1e-3 ? { x: x / m, y: y / m } : { x: fx, y: fy }; };
-const live = (e) => e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc";
+const live = (e) => e && !e.dead && !e.untargetable && !e.hidden && !unharmablePerson(e);
 
 // The runtime state (game.orrery), never saved: { halo: { n, angle, idle, where, pts }, charge: { held, action, dir, pulse },
 // pulse (the halo's contact clock) }. `pts` holds the orb places, reused every frame.

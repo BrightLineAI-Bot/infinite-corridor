@@ -22,8 +22,8 @@
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, mix, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1033-a2f1d1a7ea50";
-import { FOLK_BODIES, FOLK_BODY_CLASSES } from "./close-view-folk-body.js?v=r1033-a2f1d1a7ea50";
+} from "./close-view-beast-rig.js?v=r1048-85a8d476db24";
+import { FOLK_BODIES, FOLK_BODY_CLASSES } from "./close-view-folk-body.js?v=r1048-85a8d476db24";
 
 // ------------------------------------------------------------------------------------------------ the slot
 export const FOLK_SLOT = Object.freeze({
@@ -142,13 +142,13 @@ const NAMED = Object.freeze({ 'vendor-vela': 'vela', 'warden-oren': 'oren', 'kee
 export function folkHash(o) { let h = 2166136261; for (const c of String(o?.id ?? o?.name ?? `${o?.x},${o?.y}`)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 const pick = (pool, o) => pool[folkHash(o) % pool.length];
 // Which Close View body a world object takes: 'turtle' (Shale), 'folk' (a person), or null (it keeps what it has: an Elder
-// Wanderer keeps its own model; a fallen Refuge person their marker; anything not a character its card). `g` (optional): the game,
-// for the Refuge's and the waystations' people (a fallen one is not stood up).
+// Wanderer keeps its own model; anything not a character its card). `g` (optional): the game, kept for callers; townsfolk cannot
+// be harmed (Tim, 2026-11-20), so the Refuge's and the waystations' people always stand.
 export function closeViewFolkKind(o, g = null) {
   if (!o || typeof o !== 'object' || o.hidden === true || o.customArt || !Number.isFinite(Number(o.x)) || !Number.isFinite(Number(o.y))) return null;
   switch (o.kind) {
     case 'villager': return o.quarryTurtle ? 'turtle' : 'folk';
-    case 'npc': return g?.save?.consequences?.npcs?.[o.id]?.status === 'dead' ? null : 'folk';
+    case 'npc': return 'folk'; // Tim (2026-11-20): townsfolk cannot be harmed; a resident is never a fallen marker
     case 'traveler': return o.elder || (o.reciter && RECITER_NATIVE.has(o.look) && !o.mount && !o.folkGiant) ? null : 'folk'; // (an Elder and a reciter keep their own native models: renderer.ts nativeTraveler)
     case 'townKeeper': case 'townSmith': case 'shipwright': case 'tideBearer': case 'ilse': case 'shelterMerchant': return 'folk';
     default: return null;

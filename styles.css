@@ -1200,3 +1200,26 @@ body.reduce-motion .left-controls .oculus-button.holding::after, body.reduce-mot
 .compass-menu-empty { margin: 10px 4px; font: .9rem/1.35 sans-serif; color: #c8bda8; }
 .compass-menu-clear { display: block; width: 100%; min-height: 44px; margin: 8px 0 0; border: 1px dashed #80745f; border-radius: 9px; background: none; color: #c8bda8; font: .85rem sans-serif; }
 body.proving-ground .compass-menu-panel { top: calc(env(safe-area-inset-top) + 64px); }
+
+/* Progression Phase 2: the journey creator's mode, weapon and tool cards (main.ts startCardGroup) */
+.start-choice{border:1px solid #74654e55;border-radius:6px;margin:10px 0;padding:6px 8px}.start-choice legend{padding:0 4px;font-weight:bold}.start-cards{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.start-card{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid #665f50;border-radius:6px;cursor:pointer}.start-card input{margin-top:3px;flex:none}.start-card small{display:block;opacity:.85;margin-top:2px}.start-card:has(input:checked){border-color:#d8bd83;background:#d8bd8318}.journey-progression{margin-bottom:12px}
+/* Progression Phase 4 (docs/progression-design.md 4A.2): the first-use hint card, under the message line in the HUD (one line,
+   ✕ and "How to"; it fades by itself; Reduced Motion: no slide). The idle compass's first-session caption, and the dots on the
+   Pack button (a free constellation point) and the pause menu's Journal (4.3: no lead followed for a while). */
+.hint-card { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 4px 6px 4px 9px; border-left: 2px solid #f0c86a; border-radius: 6px; background: #141714e6; color: #f2dca6; font-size: 12px; line-height: 1.3; opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; pointer-events: auto; }
+.hint-card[hidden] { display: none; }
+.hint-card.visible { opacity: 1; transform: none; }
+.hint-card.still { transform: none; transition: opacity .25s; }
+.hint-card .hint-text { flex: 1; white-space: normal; }
+.hint-card button { min-width: 0; min-height: 28px; padding: 2px 8px; font-size: 11px; }
+.compass-caption { display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 4; max-width: min(56vw, 200px); padding: 2px 7px; border-radius: 8px; background: #141714d9; border: 1px solid #f0c86a44; color: #f2dca6; font-size: 11px; line-height: 1.3; white-space: normal; text-align: right; pointer-events: none; }
+.compass-slot.captioned:not(.look-on) .compass-caption { display: block; }
+.left-controls .compass-slot .compass-caption { top: calc(100% + 48px); }
+[data-action="menu"].has-dot, #pausedJournal.has-dot { position: relative; }
+[data-action="menu"].has-dot::after, #pausedJournal.has-dot::after { content: ""; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #f0c86a; box-shadow: 0 0 0 2px #141714; pointer-events: none; }
+body.proving-ground .hint-card, body.proving-ground .compass-caption { display: none !important; }
+/* Progression Phase 5: the Training Yard (proving-ground.ts openYard) hides the laboratory's developer chrome behind one bar */
+body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:none}
+.yard-bar{position:fixed;z-index:91;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(420px,calc(100vw - 16px));box-sizing:border-box;display:grid;gap:4px;padding:8px 10px;border:1px solid #58716d;border-radius:8px;background:rgba(8,16,18,.92);color:#e5e1d5;font-size:12px;text-align:center}
+.yard-bar[hidden]{display:none}.yard-bar strong{color:#f0d28e}.yard-bar .proving-buttons{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.yard-bar button{min-height:36px;padding:0 10px}.yard-bar button[hidden]{display:none}
+.howto-try{display:grid;gap:4px;margin-top:8px}

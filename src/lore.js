@@ -4,8 +4,9 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r1033-a2f1d1a7ea50";
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { RECITATIONS } from "./recitations.js?v=r1048-85a8d476db24";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { IDENTITY_FRAME, START_FRAME, activeFrame, frameFor, toFrame, turnBearing } from "./journey-start.js?v=r1048-85a8d476db24";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -34,8 +35,11 @@ const QUARTERS = { middle: { n: "riverThatRemembers", e: "transparentEye", s: "y
 export const PIECE_KINDS = ["voice", "recite", "glimpse", "margin", "last"];
 export function bookSize(readingId) { return Object.values(READINGS[readingId]?.pieces || {}).reduce((a, b) => a + b, 0); }
 
-export function readingAt(rx, ry) {
-  const x = Number(rx) || 0, y = Number(ry) || 0, depth = Math.abs(x) + Math.abs(y);
+// Progression Phase 2 (readings version 2, journey-start.ts START_FRAME.readings): on a journey created at start version 1 the
+// section is first turned into the journey's frame, so every quarter and band turns with it (and with them each Reading's Torn
+// Page and fragments, which ask readingAt). `frame` defaults to the journey in play; on any other journey it is the identity.
+export function readingAt(rx, ry, frame = activeFrame()) {
+  const [x, y] = toFrame(frame, rx, ry), depth = Math.abs(x) + Math.abs(y);
   if (depth <= READING_BANDS.campaign) return "longCampaign";
   if (depth > READING_BANDS.far) return "dreamlands";
   const q = -y >= Math.abs(x) ? "n" : y >= Math.abs(x) ? "s" : x > 0 ? "e" : "w"; // north is up the Atlas (ry < 0)
@@ -188,19 +192,28 @@ export const ARCANA_REGIONS = {
   },
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).
-export function inArcanaHome(id, rx, ry) {
-  const h = ARCANA_REGIONS.sets[id], x = Number(rx) || 0, y = Number(ry) || 0, d = Math.hypot(x, y); // straight-line from the Refuge
+// Region version 2 (journey-start.ts START_FRAME.regionVersion): on a journey created at start version 1 the section is first
+// turned into the journey's frame, so every home turns together (the bells stay opposite the chain). `frame` defaults to the
+// journey in play; the identity frame is the rule of every other journey.
+export function inArcanaHome(id, rx, ry, frame = activeFrame()) {
+  const h = ARCANA_REGIONS.sets[id], [x, y] = toFrame(frame, rx, ry), d = Math.hypot(x, y); // straight-line from the Refuge
   if (!h || d < h.from || d > h.to || !d) return false;
   const a = Math.atan2(-y, x) * 180 / Math.PI, off = Math.abs((((a - ARCANA_REGIONS.headings[h.toward]) % 360) + 540) % 360 - 180); // north is up the Atlas (ry < 0)
   return off <= 45 + 1e-9;
 }
 // The chance of a set with its own roll (bells, surveyor) in a crossing at (rx, ry) at region version 1.
-export const arcanaRate = (id, rx, ry) => { const h = ARCANA_REGIONS.sets[id]; return inArcanaHome(id, rx, ry) ? h.home : h.stray; };
+export const arcanaRate = (id, rx, ry, frame = IDENTITY_FRAME) => { const h = ARCANA_REGIONS.sets[id]; return inArcanaHome(id, rx, ry, frame) ? h.home : h.stray; };
+// The frame a crossing's region version asks with: the journey's (frameFor(seed)) from region version 2, else the identity.
+export const regionFrame = (seed, region) => (Number(region) >= START_FRAME.regionVersion ? frameFor(seed) : IDENTITY_FRAME);
+// A set's home bearing on this journey (its `toward`, turned by the frame).
+export const arcanaToward = (id, frame = activeFrame()) => { const h = ARCANA_REGIONS.sets[id]; return h ? turnBearing(frame, h.toward) : null; };
 // Where the rest of a set most likely lie, in words: "south-west of the Refuge, 25 to 50 sections out". Null with no home.
-export function arcanaHint(id) { const h = ARCANA_REGIONS.sets[id]; return h ? `${ARCANA_REGIONS.words[h.toward]} of the Refuge, ${h.from} to ${h.to} sections out` : null; }
+// The words read from the turned sector on a start-1 journey (`frame`, the journey in play by default).
+export function arcanaHint(id, frame = activeFrame()) { const h = ARCANA_REGIONS.sets[id]; return h ? `${ARCANA_REGIONS.words[arcanaToward(id, frame)]} of the Refuge, ${h.from} to ${h.to} sections out` : null; }
 // The region version a crossing's history takes the first time it is pinned: 0 for one generated, visited or pinned before
-// (or while the regions are not live), else the current version. Never changes once set.
-export const regionVersionFor = (seenBefore, live = ARCANA_REGIONS.live) => !seenBefore && live ? ARCANA_REGIONS.version : 0;
+// (or while the regions are not live), else the current version: 1, or 2 on a journey created at start version 1 (`start`,
+// save.progression.start: its homes are turned). Never changes once set.
+export const regionVersionFor = (seenBefore, live = ARCANA_REGIONS.live, start = 0) => !seenBefore && live ? (Number(start) >= START_FRAME.version ? START_FRAME.regionVersion : ARCANA_REGIONS.version) : 0;
 // A crossing's region version, as pinned (0 when missing).
 export const regionVersionOf = (save, dungeonId) => { const v = Number(save?.consequences?.dungeons?.[dungeonId]?.regionVersion); return Number.isInteger(v) && v > 0 ? v : 0; };
 // Where a Reading lies, as a region: its compass quarter (none for the Smoke Meadows and the Far Sleep, which ring the Refuge) and
@@ -211,10 +224,10 @@ export function readingRegion(id) {
   for (const [band, qs] of Object.entries(QUARTERS)) for (const [q, r] of Object.entries(qs)) if (r === id) return band === "middle" ? { toward: q, from: READING_BANDS.campaign + 1, to: READING_BANDS.middle } : { toward: q, from: READING_BANDS.middle + 1, to: READING_BANDS.far };
   return null;
 }
-export function readingRegionHint(id) {
+export function readingRegionHint(id, frame = activeFrame()) {
   const r = readingRegion(id); if (!r) return null;
   if (!r.toward) return r.to === null ? `every way, ${r.from} sections out and more` : `every way, within ${r.to} sections of the Refuge`;
-  return `${ARCANA_REGIONS.words[r.toward]}, ${r.from} to ${r.to} sections out`;
+  return `${ARCANA_REGIONS.words[turnBearing(frame, r.toward)]}, ${r.from} to ${r.to} sections out`;
 }
 
 // Arcana unlocks (2026-11-11; Tim: "don't invent lots of new passives"; the Seven Bells give a bell toll, the Lamplighter's Round

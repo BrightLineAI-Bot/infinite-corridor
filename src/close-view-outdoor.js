@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1033-a2f1d1a7ea50";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1033-a2f1d1a7ea50";
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1048-85a8d476db24";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1048-85a8d476db24";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -108,7 +108,7 @@ export const OUTDOOR = f({
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", oasis: "desert", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and

@@ -7,8 +7,9 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1033-a2f1d1a7ea50";
+import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1048-85a8d476db24";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
@@ -273,7 +274,7 @@ export function glyphHit(world, loadout, e, dealt, ctx = {}) {
     const [jumps, share] = GLYPHS.chain.hit[host], hit = new Set([e.id]);
     let from = e;
     for (let j = 0; j < jumps; j++) {
-      const next = world.enemies.filter((q) => !q.dead && !q.untargetable && !hit.has(q.id) && Math.hypot(q.x - from.x, q.y - from.y) < 2.6).sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
+      const next = world.enemies.filter((q) => !q.dead && !q.untargetable && !unharmablePerson(q) && !hit.has(q.id) && Math.hypot(q.x - from.x, q.y - from.y) < 2.6).sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
       if (!next) break;
       hit.add(next.id); world.arc?.(from, next, GLYPHS.chain.color);
       const amount = Math.max(1, Math.round(dealt * share));

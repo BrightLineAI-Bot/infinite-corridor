@@ -11,7 +11,7 @@
 //   is stopped when its note ends and its nodes disconnected when it has. One noise buffer and one reverb impulse are
 //   built once, never per note.
 // - Muted means nothing is scheduled at all. It never reads or writes game state.
-import { SONGS, STINGERS, WINDS, stepToSemi, chordSemis, pc, MODES } from "./soundtrack-songs.js?v=r1033-a2f1d1a7ea50";
+import { SONGS, STINGERS, WINDS, stepToSemi, chordSemis, pc, MODES } from "./soundtrack-songs.js?v=r1048-85a8d476db24";
 
 export const SOUNDTRACK = {
   lookahead: .12, interval: 25,

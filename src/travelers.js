@@ -4,12 +4,13 @@
 // Travellers: groups of people (some mounted) walk the trails or wander a section, stop when the Wayfarer comes near,
 // and talk. Peddlers trade. Old Quillon, a wandering cartographer, gives one errand at a time; finish it and the next
 // time you meet him he pays and hands you the next.
-import { hashSeed, rng, pick, byHash } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { LETHAL_KINDS } from "./landscape.js?v=r1033-a2f1d1a7ea50";
-import { hamletRoll } from "./settlements.js?v=r1033-a2f1d1a7ea50";
-import { RECITERS, RECITATIONS } from "./recitations.js?v=r1033-a2f1d1a7ea50";
-import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r1033-a2f1d1a7ea50";
-import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed, rng, pick, byHash } from "./random.js?v=r1048-85a8d476db24";
+import { LETHAL_KINDS } from "./landscape.js?v=r1048-85a8d476db24";
+import { hamletRoll } from "./settlements.js?v=r1048-85a8d476db24";
+import { RECITERS, RECITATIONS } from "./recitations.js?v=r1048-85a8d476db24";
+import { ELDERS, ELDER_NAME, elderPlan } from "./elders.js?v=r1048-85a8d476db24";
+import { saveFrame, frameFor } from "./journey-start.js?v=r1048-85a8d476db24";
+import { READINGS, readingAt, nextReadingLine, hearLine, heardLine, bookPieces, ensureLore, discoverReading, readingKnown } from "./lore.js?v=r1048-85a8d476db24";
 
 export const TRAVEL_VERSION = 1;
 export const TRAVEL = { reciterChance: 0.12, trailChance: 0.08, trailNearTown: 0.6, groupChance: 0.2, groupChanceOnTrail: 0.42, minDepth: 1, speed: 1.15, pauseRadius: 2.4, spacing: 0.9, wandererChance: 0.07, wandererChanceReady: 0.22 };
@@ -276,7 +277,7 @@ export function tickTravelers(map, player, dt) {
 // save (tests, old callers) a traveller still says their own lines in turn.
 export function travelerTalk(o, save = null) {
   const who = `${o.name}${o.role ? ` (${o.role})` : ""}${o.mount ? `, riding a ${o.mount.replace(/([A-Z])/g, " $1").toLowerCase()}` : ""}`;
-  const here = save ? readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0) : null, said = here ? readingSpeech(save, here, { reciter: false }) : null;
+  const here = save ? readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0, saveFrame(save)) : null, said = here ? readingSpeech(save, here, { reciter: false }) : null;
   if (said) return `${who}: “${said.text}”${placeNote(discoverReading(save, here))}${pieceNote(said.found, save)}`;
   const lines = o.lines?.length ? o.lines : ["Safe roads."], line = lines[(o.talk || 0) % lines.length];
   o.talk = (o.talk || 0) + 1;
@@ -431,7 +432,7 @@ function placeReciter(map, who, id, open, r, width, preview = false) {
 }
 export function addReciter(map, seed, rx, ry, save = null, preview = false) {
   if (!map || map.reciterWalk || map.skirmish || map.tiles?.length !== 1024 || Math.abs(rx) + Math.abs(ry) < TRAVEL.minDepth) return null;
-  const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild, readingAt(rx, ry)); if (!who) return null;
+  const who = reciterPlan(seed, `${rx}:${ry}`, save, map.settlement ? RECITER_CHANCE.town : RECITER_CHANCE.wild, readingAt(rx, ry, frameFor(seed))); if (!who) return null;
   const r = rng(`${seed}:reciter-walk:${rx}:${ry}`), open = map.tiles.filter((t) => t.x > 4 && t.y > 4 && t.x < 27 && t.y < 27 && walkable(t));
   // Route previews need only seeded occupancy, never live conversation/departure randomness.
   return placeReciter(map, who, `reciter:${rx},${ry}`, open, r, 32, preview);
@@ -478,7 +479,7 @@ function tickElder(map, player, dt, face) {
 // In a dungeon level: a reciter strolls near the entrance.
 export function addDungeonReciter(map, areaId, save, width) {
   if (!map || map.reciterWalk || !map.tiles?.length || !width) return null;
-  const who = reciterPlan(save?.seed, `dungeon:${areaId}:${map.levelStableId || ""}`, save, RECITER_CHANCE.dungeon, readingAt(save?.session?.rx ?? 0, save?.session?.ry ?? 0)); if (!who) return null;
+  const who = reciterPlan(save?.seed, `dungeon:${areaId}:${map.levelStableId || ""}`, save, RECITER_CHANCE.dungeon, readingAt(save?.session?.rx ?? 0, save?.session?.ry ?? 0, saveFrame(save))); if (!who) return null;
   const entry = map.entry || map.tiles.find(walkable), r = rng(`${areaId}:reciter-walk`);
   const open = map.tiles.filter((t) => walkable(t) && !t.environment && Math.hypot(t.x - entry.x, t.y - entry.y) > 1.5 && Math.hypot(t.x - entry.x, t.y - entry.y) < 7);
   if (open.length < 4) return null;
@@ -500,7 +501,7 @@ export function reciterTalk(o, save) {
   else at = unheardLine(save, who.id, lines.length);
   const found = hearLine(save, who.id, at, { reciter: true });
   // A reciter names the Reading only when it is one of that Reading's own voices.
-  const here = readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0), local = READINGS[here].voices.some(([id]) => id === who.id);
+  const here = readingAt(save.session?.rx ?? 0, save.session?.ry ?? 0, saveFrame(save)), local = READINGS[here].voices.some(([id]) => id === who.id);
   return `${who.name}: “${lines[at]}”${local ? placeNote(discoverReading(save, here)) : ""}${pieceNote(found, save)}`;
 }
 export const RECITER_PIECE_CHANCE = 0.4;

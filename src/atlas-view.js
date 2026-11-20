@@ -2,13 +2,16 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1033-a2f1d1a7ea50";
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1033-a2f1d1a7ea50";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1033-a2f1d1a7ea50";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1033-a2f1d1a7ea50";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1033-a2f1d1a7ea50";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r1033-a2f1d1a7ea50";
-import { TALL_TOWERS } from "./tall-towers.js?v=r1033-a2f1d1a7ea50";
+import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1048-85a8d476db24";
+import { nearestCrossing } from "./leads.js?v=r1048-85a8d476db24"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
+import { exploring } from "./journey-start.js?v=r1048-85a8d476db24";
+import { questOfFollow } from "./quests.js?v=r1048-85a8d476db24"; import { questTarget } from "./quest-places.js?v=r1048-85a8d476db24"; // progression Phase 7: a followed quest
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1048-85a8d476db24";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1048-85a8d476db24";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1048-85a8d476db24";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1048-85a8d476db24";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r1048-85a8d476db24";
+import { TALL_TOWERS } from "./tall-towers.js?v=r1048-85a8d476db24";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -204,9 +207,9 @@ export function seedHuntObjectives(hunts, names = {}, rx = 0, ry = 0) {
   const far = (o) => Math.max(Math.abs(o.rx - rx), Math.abs(o.ry - ry));
   return out.sort((a, b) => far(a) - far(b) || (a.tower < b.tower ? -1 : a.tower > b.tower ? 1 : 0));
 }
-export function compassGuidance(save, { area = "overworld", pin = null, follow = null, pick = null, cues = [], rescue = null } = {}) {
+export function compassGuidance(save, { area = "overworld", pin = null, follow = null, pick = null, cues = [], rescue = null, here = null } = {}) {
   if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
-  if (follow) return compassFollowTarget(save, follow, { area, cues, rescue });
+  if (follow) return compassFollowTarget(save, follow, { area, cues, rescue, here });
   if (area !== "overworld") return null;
   if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
   return null;
@@ -214,8 +217,10 @@ export function compassGuidance(save, { area = "overworld", pin = null, follow =
 // Where a followed source (save.guidance.follow) is now, or null when it is finished or gone. A hunt points at its target section
 // while it is live (shown dormant indoors); a tracking hunt with no target yet follows the relay leads' waymarks, as since release
 // 153. A far quest points at its centre while open; the rescue at its site; a quest with no fixed section at the section's
-// waymarks (COMPASS_QUEST_CUES) while it is open; a marker at the Atlas waypoint or mark while it stands.
-export function compassFollowTarget(save, f, { area = "overworld", cues = [], rescue = null } = {}) {
+// waymarks (COMPASS_QUEST_CUES) while it is open; a marker at the Atlas waypoint or mark while it stands. Progression Phase 4
+// (docs/progression-design.md 4.1): on an Exploration journey the Cairn Keeper's errand points at the nearest crossing instead
+// from `here` ({ rx, ry, objects }: the Wayfarer's section and its loaded objects; leads.ts nearestCrossing); Classic keeps the waymarks.
+export function compassFollowTarget(save, f, { area = "overworld", cues = [], rescue = null, here = null } = {}) {
   const at = (rx, ry, name, extra = {}) => ({ area: "overworld", rx, ry, ...extra, kind: "guidance", name });
   const ok = (o) => !!o && Number.isInteger(o.rx) && Number.isInteger(o.ry);
   const cue = (quest) => { if (area !== "overworld" || compassQuest(save) !== quest) return null; const c = compassQuestCue(quest, cues); return c ? at(c.targetRx, c.targetRy, c.name || "Quest signal") : null; };
@@ -227,7 +232,8 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
   }
   if (f.kind === "far") { const q = save?.farQuests?.[f.id]; return q?.status === "open" && ok(q) ? at(q.rx, q.ry, f.name || "Far quest") : null; }
   if (f.kind === "rescue") return ok(rescue) ? { ...rescue } : null;
-  if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
+  if (f.kind === "quest" && questOfFollow(f.id)) return questTarget(save, questOfFollow(f.id)); // progression Phase 7: the step's place (the giver's section, a Starfield crossing)
+  if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : f.id === "errand" && here && area === "overworld" && compassQuest(save) === "errand" && exploring(save) ? nearestCrossing(save, here.rx | 0, here.ry | 0, here.objects) || cue(f.id) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
   if (f.kind === "marker") {
     if (f.id === "waypoint") { const w = save?.manualWaypoint; return ok(w) && (w.area == null || w.area === "overworld") ? at(w.rx, w.ry, String(w.label || COMPASS_MENU.waypointName)) : null; }
     const color = Number(String(f.id).slice(5)), m = normalizeMapMarks(save?.mapMarks).find((q) => q.color === color);

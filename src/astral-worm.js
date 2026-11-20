@@ -1,5 +1,5 @@
-import { hashSeed } from './random.js?v=r1033-a2f1d1a7ea50';
-import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1033-a2f1d1a7ea50';
+import { hashSeed } from './random.js?v=r1048-85a8d476db24';
+import { WORLD_BOSS_PACE } from './boss-kit.js?v=r1048-85a8d476db24';
 // Registered natural encounter source on the reviewed r251/Gate baseline; not yet released.
 // All numbers are provisional design proposals, not owner-specified balance.
 export const ASTRAL = Object.freeze({

@@ -9,8 +9,9 @@
 // normalised here). Deeper crossings hold pages more often (`deepBonus` per band). Not listed among the Journal's Active quests
 // (Tim, release 581); each page read is written in the Journal, and the Reciter's Tome keeps the book with no title (main.ts).
 // All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { READINGS, READING_ORDER, READING_BANDS, readingAt } from "./lore.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { READINGS, READING_ORDER, READING_BANDS, readingAt } from "./lore.js?v=r1048-85a8d476db24";
+import { frameFor } from "./journey-start.js?v=r1048-85a8d476db24";
 
 export const TORN_PAGES = { chance: .06, deepBonus: .02, minDepth: 2, title: "A book with no title" };
 // What each page says. A page never names the book it was torn from, nor the Reading's book.
@@ -36,7 +37,7 @@ export function pageIn(seed, dungeonId) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
   const rx = Number(m[1]), ry = Number(m[2]), depth = Math.abs(rx) + Math.abs(ry); if (depth < TORN_PAGES.minDepth) return null;
   const band = depth > READING_BANDS.far ? 3 : depth > READING_BANDS.middle ? 2 : depth > READING_BANDS.campaign ? 1 : 0;
-  return (hashSeed(`${seed}:torn-pages:v1:${dungeonId}`) % 10000) / 10000 < TORN_PAGES.chance + TORN_PAGES.deepBonus * band ? readingAt(rx, ry) : null;
+  return (hashSeed(`${seed}:torn-pages:v1:${dungeonId}`) % 10000) / 10000 < TORN_PAGES.chance + TORN_PAGES.deepBonus * band ? readingAt(rx, ry, frameFor(seed)) : null; // the Reading of the journey's frame (journey-start.ts)
 }
 // Normalises lore.pages ({ readingId: dungeonId }); absent stays absent.
 export function ensurePageState(save) {

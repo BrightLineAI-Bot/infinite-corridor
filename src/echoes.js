@@ -7,9 +7,10 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1033-a2f1d1a7ea50";
-import { ENCUMBERED } from "./hit-cast-passives.js?v=r1033-a2f1d1a7ea50"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
+import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { rng } from "./random.js?v=r1048-85a8d476db24";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1048-85a8d476db24";
+import { ENCUMBERED } from "./hit-cast-passives.js?v=r1048-85a8d476db24"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -235,7 +236,7 @@ export const VOID_ECHO = { cooldown: 4000, delay: 500, radius: 1, range: 5, dama
 // ---------------------------------------------------------------- effects
 const echoDamage = (save) => 6 + Math.round(1.5 * (save.level || 1));
 function nearest(game, x, y, radius, skip = null) {
-  return game.enemies.filter((e) => !e.dead && !e.untargetable && e !== skip && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius).sort((a, b) => Math.hypot(a.x + .5 - x, a.y + .45 - y) - Math.hypot(b.x + .5 - x, b.y + .45 - y));
+  return game.enemies.filter((e) => !e.dead && !e.untargetable && !unharmablePerson(e) && e !== skip && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= radius).sort((a, b) => Math.hypot(a.x + .5 - x, a.y + .45 - y) - Math.hypot(b.x + .5 - x, b.y + .45 - y));
 }
 const centre = (q) => ({ x: q.x + .5, y: q.y + .45 });
 // Release 699: Stalker's Mist. While the dodge lasts the Wayfarer is mist; each foe within `reach` it passes through (once a
@@ -338,7 +339,7 @@ function emberBurst(game, now, at, damage) {
   (game.glyphVisuals ||= []).push({ kind: "burst", x, y, radius: E.radius, life: .35, max: .35 });
   for (let i = 0; i < n; i++) {
     const e = list[i];
-    if (e.dead || e.untargetable || e.kind === "npc" || !(e.hp > 0) || Math.hypot(e.x + .5 - x, e.y + .45 - y) > E.radius + .2) continue;
+    if (e.dead || e.untargetable || unharmablePerson(e) || !(e.hp > 0) || Math.hypot(e.x + .5 - x, e.y + .45 - y) > E.radius + .2) continue;
     const before = e.hp; e.hp -= Math.round((isBurning(e, now) ? base * E.burning : base) * (game.vulnScale?.(e, now) ?? 1)); e.hitFlash = .18; // Tempo's window: every source
     game.astralPlayerHit?.(e, Math.max(0, before - Math.max(0, e.hp)));
     if (e.hp <= 0 && !e.dead) { e.dead = true; game.defeatEnemy?.(e); }

@@ -72,7 +72,7 @@ export function dungeonWaterToll(player, dt, maxHp) {
 // Swamps (landscape version 2). Mire is walkable but slow; the blight mire's murk rots the body: each second in it
 // lowers maximum health (save.rot) until the Wayfarer rests at a Wayglass or rest point (or is recovered after a fall).
 export const MIRE = {
-  slow: { mireWater: .6, toxicMire: .6 },
+  slow: { mireWater: .6, toxicMire: .6, sinkSand: .55 }, // landscape 28: the Oasis Ergs' sinking sand slows the step (it never rots)
   // The poisoned murk and water rot; blight bog ground (the dry land between them) stays safe. Release 165: in any area.
   rotKinds: ["toxicMire", "toxicWater", "mireWater", "swampWater"], // release 185 (Tim): ordinary swamp murk and pools rot too; bog ground stays safe
   rotPerSecond: 1.5,

@@ -6,9 +6,10 @@
 // holds the same one until it is read (after that, an unread one of the same Reading). Reading it credits that Reading's margin fragment (lore.ts `margin:i`, ids fixed since
 // release 191) and keeps it in the Journal. The passage is a public-domain line already in the library (recitations.ts),
 // chosen per margin, never per crossing; the notes are original writing for the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
-import { READINGS, readingAt, readingLines, bookPieces, creditPiece, ensureLore } from "./lore.js?v=r1033-a2f1d1a7ea50";
-import { RECITATIONS } from "./recitations.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1048-85a8d476db24";
+import { READINGS, readingAt, readingLines, bookPieces, creditPiece, ensureLore } from "./lore.js?v=r1048-85a8d476db24";
+import { frameFor } from "./journey-start.js?v=r1048-85a8d476db24";
+import { RECITATIONS } from "./recitations.js?v=r1048-85a8d476db24";
 
 export const MARGINS = { chance: .2, minFromEntry: 5, maxPassage: 220 };
 // The notes, one per margin fragment of each Reading (counts match READINGS[id].pieces.margin). Each is [the words that
@@ -88,7 +89,7 @@ const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 // Which margin a crossing holds: { readingId, index } or null. Only ordinary crossings; any distance.
 export function marginIn(seed, dungeonId) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
-  const readingId = readingAt(Number(m[1]), Number(m[2])), count = READINGS[readingId]?.pieces?.margin || 0; if (!count) return null;
+  const readingId = readingAt(Number(m[1]), Number(m[2]), frameFor(seed)), count = READINGS[readingId]?.pieces?.margin || 0; if (!count) return null;
   const h = hashSeed(`${seed}:margins:v1:${dungeonId}`);
   return (h % 10000) / 10000 < MARGINS.chance ? { readingId, index: (h >>> 11) % count } : null;
 }
