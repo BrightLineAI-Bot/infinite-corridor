@@ -99,20 +99,29 @@ export const TRI_POSES = Object.freeze({
 });
 // The hatchling's growth forms (hatchling.ts; Tim, 2026-11-19) on the same rig, by multipliers of the adult's proportions. baby: a real
 // Triceratops scaled down and only mildly juvenile (a modestly bigger head, eyes a touch larger, a short squat beak, small horn nubs,
-// a small frill set back off the skull) on a short chubby body and stubby legs; young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
+// a short frill shelf growing out of the back of the skull: TRI_ART.shelf) on a short, rounded body with a low back and legs that show (Tim, 2026-11-20: "too squat ... a coherency visual redo"); young: in his prime, a little bulkier with thick legs, the horns and frill more prominent. Any actor without
 // `triForm` (the herds, the mount) keeps exactly the adult's numbers (TRI_FORM_ADULT).
 // head: the head's scale; leg: leg bone lengths and the hip's height; legW: leg and haunch thickness; girth: body depth; length: the
 // spine; frill: its size; brow / nose: horn length from its base; eye: the eye's size; cheek: a soft pink cheek (0 none); snout: the face
 // in front of the eye shortened toward it (a round baby face, a small beak); jugal: the cheek horn's size; lift / nod: the head carried
 // higher (body units) and nose up (radians) in the standard view (Close View: TRICERATOPS_RIG.formHeadLift).
+// Standard view only, optional: back (the back's height above the spine), mid (the midsection's length on top of TRI_ART.mid), frillShelf
+// (the frill drawn as TRI_ART.shelf instead of the shield).
 export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1, length: 1, frill: 1, brow: 1, nose: 1, eye: 1, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 });
 export const TRI_FORMS = Object.freeze({
   // Tim, 2026-11-19 (size pass) kept the body and size; face pass ("its eyes are too big ... It should look more like a Triceratops,
   // just smaller, just a little bit cuter"): a young animal, not a cartoon mascot. No pink cheek, near-adult eyes.
-  baby: Object.freeze({ head: 1.25, leg: .84, legW: 1.22, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1, back: .82, mid: 1.08, length: .66, frillShelf: true, frill: .6, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: .5, lift: .05, nod: .1 }),
-  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, haunch: .9, girth: 1.08, back: .92, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
+  baby: Object.freeze({ head: 1.25, leg: .74, legW: 1.35, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1.22, length: .62, frill: .45, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: .5, lift: .05, nod: .1 }),
+  young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, haunch: .9, girth: 1.08, back: .92 /* standard view: the back a little lower (2026-11-20) */, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
-export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
+// The standard view's own changes to a form (Close View keeps TRI_FORMS as they are; its body is built separately). The baby (Tim,
+// 2026-11-20: "too squat ... It needs a coherency visual redo"; "its back has a ridge that goes up too high"): longer legs, a slimmer,
+// slightly longer body with a lower back, legs that show, and the frill grown out of the skull, at the same height as before.
+export const TRI_STD_FORMS = Object.freeze({
+  baby: Object.freeze({ ...TRI_FORMS.baby, leg: .84, legW: 1.22, girth: 1, back: .82, mid: 1.08, length: .66, frillShelf: true }),
+  young: TRI_FORMS.young,
+});
+export const triForm = (e) => TRI_STD_FORMS[e?.triForm] || TRI_FORM_ADULT;
 const scl = (v, c, k) => k === 1 ? v : c + (v - c) * k; // a horn point scaled about its base (exactly the adult's at 1)
 export const TRI_KEYS = Object.freeze(["pitch", "head", "reach", "open", "crouch", "tailUp", "tailSide", "frontLift", "tuck", "lean"]);
 // The ridden horn attacks' body (2026-11-18 pass 2: "a real wind-up ... a body brace, and a recoil on release"; the dash and bash "real
