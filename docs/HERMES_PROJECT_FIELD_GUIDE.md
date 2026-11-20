@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1042 — Triceratops forms and indoor riding
+
+Tim (2026-11-20): one of the adult's horns chipped halfway; no cheek spikes on the baby and young so they grow in with age; the young his own form (a strong wingless dragon, muscular like a tiger, with a smaller frill); the baby's frill reworked; the young's own attacks worth about a 10% damage boost instead of a buff; and the big one rideable indoors where there is room.
+
+**CODE:** triceratops-render.ts: TRI_ART.chippedHorn / triceratopsChip and brokenHorn (both views; close-view-beast-triceratops.ts brokenHorn); TRI_FORMS jugal 0 for baby and young; TRI_SHAPE and the young's optional TRI_FORMS fields (neck, tail, stance, foreW, muscle, thick, heading); TRI_ART.shelf (the baby's crest) and youngFrill drawn by frillShelf(spec); TRICERATOPS_RIG.formBody (Close View per-form body, neck pose, crest). hatchling.ts HATCHLING.young.dpsShare .1 with the move shares scaled by .26 (measured .098-.100 of the Wayfarer's damage over 60 s). beast-mounts.ts TRICERATOPS_INDOOR {radius 2.25, minOpen .85, body 1.5}; game.ts mountRoomy (cached per map and tile), mountBlock, mountCallable, actMount and tickMount/mountArea let the persistent Triceratops come indoors where roomy and set the rider down in a cramped spot. Tests: triceratops-forms-detail (6), hatchling-young-damage (2), triceratops-indoors (7).
+
+**BOUNDARY:** Wild herds and the Silly Goose keep both horns; the Horn Shot origin is unchanged; the young gives the Wayfarer no buff; the indoor check runs once per footing tile; other mounts stay outdoors; no save format change; every form within its triangle budget.
+
 ## Release 1041 — progression phase 4: leads, hints, how-to
 
 Tim approved Phase 4 on 2026-11-20 (`docs/progression-design.md` revision 3, section 7 row 4, with sections 2.2, 2.5 G2, 2.6, 4.1-4.3 and 4A). Text and guidance only: nothing is granted, gated or taken away. No release number is taken yet.
