@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1039 — Triceratops proportions
+
+Tim (2026-11-20): the Triceratops's hind legs were cramped and squat and its back ridge too high (lengthen the midsection 10-15%); the baby was too squat, its back too high and its frill looked like it was just sitting there instead of attached.
+
+**CODE:** src/triceratops-render.ts: TRI_ART.mid 1.12 lengthens the spine between hips and shoulders, hipBack .036 and hipUp .06 keep the seat relation and carry the body higher; THICK lowers the back's peak; TRI_LEGS hind bones .28/.255 and fore bones .265/.25, the hind haunch a little smaller and higher. TRI_STD_FORMS holds the Standard View's own form numbers (read through triForm): the baby's leg .84, legW 1.22, girth 1, back .82, mid 1.08, length .66 and frillShelf; the young gains haunch .9 and back .92. frillShelf() draws the baby's frill from TRI_ART.shelf over the back of the skull. TRI_FORMS stays what Close View builds from.
+
+**BOUNDARY:** Drawing only: no save, gameplay or timing change. Close View meshes are byte-identical. MOUNT_BEASTS.triceratops.seatX is unchanged; the seat stays 0.67 of the way from hips to shoulders and frill clearance is .225 tiles. The baby's height and scale are unchanged.
+
 ## Release 1038 — progression phase 3: the core kit (Exploration only)
 
 Tim approved Phase 3 on 2026-11-20 (`docs/progression-design.md` revision 3, section 7 row 3, with sections 2.5 and 3). Gameplay changes only on journeys that read Exploration's rules; Classic is unchanged.
