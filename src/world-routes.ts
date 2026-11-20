@@ -24,6 +24,7 @@
 // one (world-finds.ts pityLead): a directed lead to the nearest place that holds a world ability within PITY.radius sections.
 import { hashSeed, rng } from "./random.ts";
 import { exploring, progressionKept, ensureFeats, FEAT_RECORD } from "./journey-start.ts";
+import { storyWithheld } from "./quests.ts"; // Phase 7: the quest (b) and thread (d) abilities built then
 
 // ---------------------------------------------------------------- milestones (route c): design section 3
 //   key      the counter (save.feats.counts), or `derived` (read from the save)
@@ -68,8 +69,9 @@ export const WORLD_WITHHELD = Object.freeze([...MILESTONES.map((m) => m.ability)
 export const WORLD_ROUTE_OF = Object.freeze(Object.fromEntries(WORLD_WITHHELD.map((id) => [id, MILESTONE_FOR[id] ? "c" : "R"])));
 
 export const earnedWorld = (save, id) => !!save?.feats?.earned && Object.prototype.hasOwnProperty.call(save.feats.earned, id);
-// Shut on this journey: Exploration (table 3 on), one of the c and R abilities, neither kept nor earned.
-export const worldWithheld = (save, id) => WORLD_WITHHELD.includes(id) && exploring(save) && !progressionKept(save, id) && !earnedWorld(save, id);
+// Shut on this journey: Exploration (table 3 on), one of the c and R abilities, neither kept nor earned. From Phase 7 (table 4) also
+// the b and d abilities whose quest or thread is built (quests.ts storyWithheld), so the Arcanum refuses them the same way.
+export const worldWithheld = (save, id) => (WORLD_WITHHELD.includes(id) && exploring(save) && !progressionKept(save, id) && !earnedWorld(save, id)) || storyWithheld(save, id);
 // A secondary form found (kept or earned): its switch works once its node is learned, before Infinite III too.
 export const formFound = (save, nodeId) => progressionKept(save, `${nodeId}:alt`) || earnedWorld(save, `${nodeId}:alt`);
 export const formWithheld = (save, nodeId) => worldWithheld(save, `${nodeId}:alt`);

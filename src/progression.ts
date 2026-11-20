@@ -46,6 +46,7 @@ import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { SEEDS } from "./skylands.ts";
 import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.ts"; // Phase 6
+import { STORY_ROUTE_OF, STORY_SEEN, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld } from "./quests.ts"; // Phase 7
 
 export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({
@@ -436,7 +437,7 @@ export function paceText(p) {
 
 // ---------------------------------------------------------------- the compendium (design section 5), Classic (v0)
 const STATE_WORDS = Object.freeze({ owned: "Yours", open: "Open to you", rumoured: "Rumoured" });
-const openWhere = (row, save) => WORLD_ROUTE_OF[row.id] ? worldWhere(save, row) : row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? (save?.mounts?.hatchling?.quest?.state === "active" ? "a quest is under way" : "the mother waits at the Beast Hotel") : row.group === "lattice" || row.group === "arts" ? "from the Transit Lattice" : row.group === "awakened" ? "at Sela's forge" : "from the Arcanum";
+const openWhere = (row, save) => WORLD_ROUTE_OF[row.id] || (STORY_ROUTE_OF[row.id] && (exploring(save) || earnedWorld(save, row.id))) ? worldWhere(save, row) : row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? (save?.mounts?.hatchling?.quest?.state === "active" ? "a quest is under way" : "the mother waits at the Beast Hotel") : row.group === "lattice" || row.group === "arts" ? "from the Transit Lattice" : row.group === "awakened" ? "at Sela's forge" : "from the Arcanum";
 export const COMPENDIUM = Object.freeze({
   title: "What the Corridor Taught You",
   intro: "Everything you can do, and how you came by it. What you have not found stays hidden: only its count shows.",
@@ -451,7 +452,7 @@ export function compendium(save) {
     for (const r0 of rows) {
       const state = states[r0.id]; if (state === "locked") continue;
       const r = worldView(save, v1 ? viewV1(r0) : r0); // Exploration's own words for the rows it changes (Phase 3); how a milestone or a reliquary gave it (Phase 6)
-      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}` : STATE_WORDS.owned,
+      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${STORY_ROUTE_OF[r.id] ? STORY_RUMOUR : `${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}`}` : STATE_WORDS.owned,
         ...(state === "rumoured" ? { hint: "", controls: "", does: "", obtained: "" } : { hint: r.hint, ...howTo(r) }) }); // a rumour names it, no more
     }
     groups.push({ id: g.id, title: g.title, total: rows.length, owned: entries.filter((e) => e.state === "owned").length, entries });
@@ -588,7 +589,7 @@ export function gateV1(row) {
 export function stateV1(save, row) {
   if (!save || !row) return "locked";
   const s = save;
-  if (WORLD_ROUTE_OF[row.id]) return worldState(s, row); // Phase 6: the milestone and reliquary abilities
+  if (WORLD_ROUTE_OF[row.id] || STORY_ROUTE_OF[row.id]) return worldState(s, row); // Phase 6: the milestone and reliquary abilities; Phase 7: the quest and thread ones
   if (row.id === "skill:aerial-step") return skillRank(s, "aerial-step") > 0 ? "owned" : apertureOf(s) >= EXPLORATION.aerialStep.aperture ? "open" : "locked";
   if (row.id === LQ) return hasNode(s, "aerial-step") ? "owned" : skillRank(s, "quickening") >= APERTURE_SKILLS.quickening.maxRank && s.constellation?.mods?.[BRANCHES.motion.mod.id] ? "open" : "locked";
   if (row.group === "spells") return spellOpen(s, row.own[1]) ? "owned" : "locked";
@@ -636,7 +637,8 @@ export function adoptExploration(save) {
   const raw = save?.progression;
   if (!raw || raw.mode !== 1 || Number(raw.table) >= EXPLORATION.table) return 0;
   const from = Number(raw.table) || 1, p = ensureProgression(save);
-  const ids = from < EXPLORATION.coreTable ? switchKeeps(save) : Object.keys(WORLD_ROUTE_OF).filter((id) => ["owned", "open"].includes(stateV0(save, ROW_BY_ID[id])));
+  const later = [...(from < EXPLORATION.worldTable ? Object.keys(WORLD_ROUTE_OF) : []), ...Object.keys(STORY_ROUTE_OF)]; // Phase 7: from table 3, only the b and d ones are new
+  const ids = from < EXPLORATION.coreTable ? switchKeeps(save) : later.filter((id) => ["owned", "open"].includes(stateV0(save, ROW_BY_ID[id])));
   const added = keepAll(p, ids);
   p.table = EXPLORATION.table;
   return added;
@@ -652,6 +654,7 @@ export const HINT_SUBJECTS = Object.freeze({
   "status:encumbered": Object.freeze({ kind: "status", text: "Encumbered: pull damage fills their meter; full, they hit softer and take more." }),
   "point:constellation": Object.freeze({ kind: "banner", title: "A CONSTELLATION POINT", text: "Spend it at Sela's lens: Pack → Arcanum.", ability: true }),
   "lead:first": Object.freeze({ kind: "banner", title: "A LEAD", text: "Hold the compass to follow it, or don't: leads keep." }),
+  "quest:first": Object.freeze({ kind: "ability", ability: true, text: "A quest: the Journal's Leads say what and where. Point the compass here to follow it." }), // Phase 7
 });
 // Gates that open on Exploration with a line of their own (design 3.6, 3.9): the rows go from locked to open at Infinite II.
 export const GATE_HINTS = Object.freeze({
@@ -668,6 +671,7 @@ export function hintSubjectsHeld(save, states = ownership(save)) {
     if (v1 && GATE_HINTS[r.id] && (st === "open" || st === "owned")) out.push(`gate:${r.id}`);
   }
   if (milestonesUnderWay(save).length) out.push("milestone:first"); // Phase 6 (4A.5): "Relays restored: 1 of 5. Something answers at 5."
+  if (QUEST_IDS.some((id) => questOpen(save, id))) out.push("quest:first"); // Phase 7
   return out;
 }
 // A subject's hint: { id, kind, text, title?, howTo? } (howTo: the row id whose page the card's "How to" opens), or null.
@@ -678,8 +682,8 @@ export function hintFor(save, id) {
   if (!row) return null;
   if (kind === "gate") return GATE_HINTS[rowId] ? { id, kind: "ability", text: GATE_HINTS[rowId], howTo: rowId } : null;
   if (kind !== "row" || !row.hint) return null;
-  const lv = exploring(save) ? levelGate(row) : null;
-  return { id, kind: "ability", text: lv ? `Level ${lv}: ${row.name} is yours. Set it in a slot in Pack → Arcanum.` : row.hint, howTo: rowId };
+  const lv = exploring(save) ? levelGate(row) : null, from = storySource(save, rowId); // 4A.5: a quest's or thread's gift names where it came from
+  return { id, kind: "ability", text: lv ? `Level ${lv}: ${row.name} is yours. Set it in a slot in Pack → Arcanum.` : from ? `${row.name}, ${from}: ${row.hint.replace(/^[^:]*:\s*/, "")}` : row.hint, howTo: rowId };
 }
 
 // The how-to page of one ability (4A.3): what the compendium knows of it, as a page. Null for anything not yet known to the
@@ -702,20 +706,24 @@ function usable(save, row) {
   if (kind === "alt") return a === "quickening" ? skillRank(save, "quickening") > 0 : hasNode(save, a);
   if (kind === "field") return latticeOpen(save);
   if (kind === "node") return hasNode(save, a);
+  if (kind === "spell") return spellOpen(save, a); // Phase 7: a quest's or thread's spell, once found, is set in a slot
   return false;
 }
 function worldState(save, row) {
+  if (STORY_ROUTE_OF[row.id] && storyWithheld(save, row.id)) return storyState(save, row); // Phase 7
   if (worldWithheld(save, row.id)) { const m = MILESTONE_FOR[row.id]; return m && featCount(save, m.key) > 0 ? "open" : "locked"; }
   if (!earnedWorld(save, row.id) && !progressionKept(save, row.id)) return stateV0(save, row); // not withheld and not found (an old table): today's rules
   return usable(save, row) ? "owned" : "open";
 }
 // What an open milestone or reliquary ability waits for (the compendium's "Open to you: ..." and a how-to page's "Not yet yours").
 function worldWhere(save, row) {
+  if (STORY_ROUTE_OF[row.id] && storyWithheld(save, row.id)) return storyWhere(save, row); // Phase 7
   const m = MILESTONE_FOR[row.id];
   if (worldWithheld(save, row.id)) return m ? `a milestone: ${milestoneLine(m, featCount(save, m.key))}` : "at the bottom of something";
   const [kind] = row.own;
   if (kind === "alt") return "found; learn its node in Pack → Arcanum to use it";
   if (kind === "field") return "found; it waits for the Transit Lattice (Infinite III and a Listener felled)";
+  if (kind === "spell") return "found; set it in a slot in Pack → Arcanum";
   return "found; learn it in Pack → Arcanum";
 }
 // How a milestone or a reliquary gave it (save.feats.earned), for the compendium and the how-to page.
@@ -723,6 +731,31 @@ export function worldObtained(save, id) {
   const e = save?.feats?.earned?.[id]; if (!e) return "";
   const m = MILESTONE_FOR[id], when = Number.isFinite(Number(e.at)) ? ` after ${Math.max(0, Number(e.at) / 3600).toFixed(1)} hours` : "";
   if (e.route === "c" && m) return `Earned by a milestone${when}: ${m.name}, ${m.need.toLocaleString("en-US")}.`;
+  if (e.route === "b") { const Q = QUESTS[e.from]; return `Earned by a quest${when}: ${Q ? `${Q.title}, for ${Q.giverName}. ${Q.done}` : "a quest."}`; }
+  if (e.route === "d") { const t = threadReward(save, e.from); return `Given at the end of ${t ? `${t.title}${when}. ${t.hook}` : `a thread${when}.`}`; }
   return `Found in a ${RELIQUARY.name.toLowerCase()} at ${RELIQUARY.places[e.from] || "the bottom of something"}${when}.`;
 }
 const worldView = (save, row) => (row && earnedWorld(save, row.id) ? Object.freeze({ ...row, obtained: worldObtained(save, row.id) }) : row);
+
+// ================================================================ Phase 7: quests (b) and thread rewards (d) (design 2.2, 2.8, 3, 5, 6, 7 row 7)
+// The rules are quests.ts; quest-places.ts resolves places; world-finds.ts grants. Exploration withholds exactly the b and d
+// abilities whose quest or thread is built (storyWithheld): a quest's reads as open while the quest is (its step), a hinted thread
+// reward (H) as rumoured once its thread is begun ("a thread's ending"), a hidden one (X) stays unknown until it is yours.
+export const STORY_RUMOUR = "a thread's ending";
+const begun = (save, set) => set === "second" ? Array.isArray(save?.lore?.second?.trail) && save.lore.second.trail.length > 0 : Array.isArray(save?.lore?.threads?.[set]) && save.lore.threads[set].length > 0;
+function storyState(save, row) {
+  if (STORY_ROUTE_OF[row.id] === "b") return questOpen(save, QUEST_FOR[row.id]) ? "open" : "locked";
+  const set = carrierOf(save, row.id);
+  return STORY_SEEN[row.id] === "H" && set && begun(save, set) ? "rumoured" : "locked";
+}
+function storyWhere(save, row) {
+  if (STORY_ROUTE_OF[row.id] === "d") return STORY_RUMOUR;
+  const id = QUEST_FOR[row.id], Q = QUESTS[id], step = questOpen(save, id) ? questStep(save, id) : null;
+  return step ? `a quest for ${Q.giverName}: ${step.text.charAt(0).toLowerCase()}${step.text.slice(1).replace(/\.$/, "")}` : `a quest that opens at ${APERTURE_BANDS[Q.gate.tier]?.name || `tier ${Q.gate.tier}`}`;
+}
+// "from the Clockmaker's Hours" / "from Hollis Dray's quest" for an ability a quest or a thread gave (save.feats.earned), else "".
+function storySource(save, id) {
+  const e = save?.feats?.earned?.[id]; if (!e || !["b", "d"].includes(e.route) || e.dust) return "";
+  if (e.route === "b") { const Q = QUESTS[e.from]; return Q ? `from ${Q.giverName}'s quest` : ""; }
+  const t = threadReward(save, e.from); return t ? `from ${t.title.replace(/^The /, "the ")}` : "";
+}

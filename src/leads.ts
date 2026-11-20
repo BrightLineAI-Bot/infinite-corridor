@@ -20,6 +20,7 @@ import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./j
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
 import { nearestHorde, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
+import { QUEST_IDS, questOpen } from "./quests.ts"; // Phase 7: quests count as leads
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -133,6 +134,7 @@ export function questLeadCount(save) {
   if (save?.narrative?.facts?.["leads.active"] && !save.narrative.facts["leads.complete"]) n++;
   if (save?.relayNetwork?.coordinate) n++;
   { const s = save?.lore?.second; if (s && Array.isArray(s.trail) && (s.found || 0) < s.trail.length) n++; }
+  for (const id of QUEST_IDS) if (questOpen(save, id)) n++; // Phase 7
   return n;
 }
 export const leadCount = (save) => questLeadCount(save) + liveRumours(save).length;
