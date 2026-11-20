@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1049 — Young Triceratops: single-target focus
+
+Tim (2026-11-20): the young should be more powerful against single targets than groups, with some single-target boss damage; his upright rear and height stay as they are.
+
+**CODE:** HATCHLING.young.focus (hatchling.ts) holds elite 2, boss 1.5, spread 1 and prefer; hatchTough and hatchFocus decide which foes count and their multiplier. Move shares now beam .0939, gatling .0141, charge .201, whirl .0302, stomp .0335, bite .0881. In game.ts, hatchHit splits the young form's damage by hatchCaught (a beam passes opt.caught for its whole line), runHatchAct multiplies each move's share by hatchFocus of its target, and tickHatchYoung prefers a tough foe in aggro range (hatchFoe tough). Measured by the real-update fight harness (tests/hatchling-young-damage.test.ts): early pack .088, mid pack .081, single elite .138, world beast .139.
+
+**BOUNDARY:** Only the young form's own hits are split or focused; the baby's nip, the Wayfarer's damage and every other damage source are unchanged. Shares stay in the data table. No save change (out.carry is reused). A hit allocates one small array when it is made, never per frame.
+
 ## Release 1048 — progression phase 8: far, sea, sky and strange quests; Divine Viscera; the guardian roster
 
 Tim approved Phase 8 on 2026-11-20 (`docs/progression-design.md` revision 3, section 7 row 8, with sections 2.2 routes b and V, 2.3, 2.4, 2.5 G2/G4/G6, 2.7 and 3). Built on Phase 7's branch (Release 1046, PR #717). No release number is taken.
