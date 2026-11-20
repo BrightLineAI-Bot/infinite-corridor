@@ -20,7 +20,7 @@ import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./j
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
 import { nearestHorde, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen } from "./quests.ts"; // Phase 7: quests count as leads
+import { QUEST_IDS, questOpen, boughtRumour, storyWithheld } from "./quests.ts"; // Phase 7: quests count as leads; Phase 8: a bought rumour
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -102,6 +102,8 @@ export const RUMOURS = Object.freeze({
   horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
     open: (save) => !save?.feats?.reliquary?.firsts?.horde && RELIQUARY.pool.some((id) => worldWithheld(save, id)),
     line: (h) => `A crossing ${h.d} section${h.d === 1 ? "" : "s"} off is thick with Gate Revenants, they say. Whoever breaks a horde finds something at the bottom.` }),
+  // Phase 8: a rumour bought with Divine Viscera (world-finds.ts buyVisceraRumour); never chosen by nextRumour.
+  viscera: Object.freeze({ modes: [0, 1], title: "A bought rumour", open: () => false, line: () => "" }),
   // Phase 6 (G3): the strong lead after a long dry spell (world-finds.ts pityLead); told by rumourTurn, never chosen by nextRumour.
   pity: Object.freeze({ modes: [1], title: "A strong lead", open: () => false, line: () => "" }),
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
@@ -118,6 +120,7 @@ export function rumourLive(save, r) {
   if (r.kind === "wonder") return Number.isInteger(r.rx) && Number.isInteger(r.ry) && !save?.atlas?.[`${r.rx},${r.ry}`];
   if (r.kind === "pity") return exploring(save) && pityLive(save, r);
   if (r.kind === "horde") return RUMOURS.horde.open(save) && !((Number(save?.consequences?.dungeons?.[r.dungeon]?.visits) || 0) > 0);
+  if (r.kind === "viscera") return typeof r.ability === "string" && !!boughtRumour(save, r.ability) && (!exploring(save) || storyWithheld(save, r.ability) || worldWithheld(save, r.ability)); // Phase 8: a rumour bought with Divine Viscera, until it is found
   const K = RUMOURS[r.kind]; if (!K) return false;
   if (K.passive) return !arcanaHas(save, K.passive);
   return K.open(save);

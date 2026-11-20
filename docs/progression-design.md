@@ -496,7 +496,7 @@ In v1 a learned node's secondary form must be found first; the switch works once
 | Form (of) | Route | Where / what | Seen |
 |---|---|---|---|
 | Ember Ward (Ember Skin) | c | Survive being set burning 20 times. The fire learns to bite back. | H |
-| Ember Mend (Colossus) | b | R5. Reach the Thornglass Caldera and survive there until the Questing Beast comes home. | D |
+| Ember Mend (Colossus) | b | R5. Reach the Thornglass Caldera and survive there until the Questing Beast comes home. (Opens once you have stood 1,000 sections out.) | D |
 | Kindling (Cinder Heart) | R~ | Reliquary | X |
 | Second Wind (Light Feet) | V | Divine Viscera | D |
 | Quickened Stride (Quickening) | c | Sky. Reach the far end of a Cloud Hold summit skyway without touching ground. | D |
@@ -504,7 +504,7 @@ In v1 a learned node's secondary form must be found first; the switch works once
 | Veil Pulse (Thorned Veil) | V | Divine Viscera | D |
 | Long Veil (Sanctuary) | R~ | Reliquary | X |
 | Stillwater (Mirror Veil) | c | Sea. Clear 10 dives. | D |
-| Wellspring (Overflow) | b | R5. In the Storm Halls, defeat a Coil Warden while Force Channel holds. The robots hum along. | D |
+| Wellspring (Overflow) | b | R5. In the Storm Halls, defeat a Coil Warden while Force Channel holds. The robots hum along. (Opens once you have stood 1,000 sections out.) | D |
 | Bulwark Channel (Amplifier) | V | Divine Viscera | D |
 | Harvest (Resonant Force) | c | Defeat 10 world beasts | H |
 | Rift Ward (Rift Wake) | R~ | Reliquary | X |
@@ -522,9 +522,9 @@ The Lattice opens as today (Infinite III plus one Listener).
 | Sanctum, Charged Air, Spellblade | a | **Free on opening**: one each for Warden, Gunner and Spellblade | D |
 | Drift Field | c | Sky. Use: glide 1,000 tiles. | D |
 | Wellspring Ground | d~ | The Drowned Library (example). The water reads, and now so does the ground. | H |
-| Tempo | b | R2. A metronome laid in an Ember Foundry Pentagon's heart room. Act: wind it, then defeat everything that starts moving on its beat. | D |
+| Tempo | b | **Sky (moved, Phase 8).** A metronome on the first island of any Skyland climbed from a Sky Stair at least 50 sections from the Ember Refuge. Act: wind it, then clear that Skyland: everything that starts moving on its beat. *Was:* an Ember Foundry Pentagon's heart room, a theme not in the world (`adventures.ts`, `since` null). | D |
 | Shatterpoint | R~ | Reliquary | X |
-| Power Aegis | b | R3. Use Aegis to turn a Gate Revenant's blow, then defeat it. It is impressed, in its way. | D |
+| Power Aegis | b | R3. At least 50 sections from the Ember Refuge, use Aegis to turn a Gate Revenant's blow, then defeat it. It is impressed, in its way. | D |
 | Bell Toll; Lamplighter's Light | d | The Seven Bells; the Lamplighter's Round. Unchanged. | D |
 
 ### 3.6 Weapon arts, tool forms, and awakening
@@ -534,13 +534,13 @@ The Lattice opens as today (Infinite III plus one Listener).
 | Ki Blast | c | Defeat 15 foes with the Iron Fists' perfect-timing ball. On the 15th, something leaves you on its own. | D |
 | Cinder Javelin | d | The Ferryman's Fares (fixed). The pole he never needed, thrown across. | H |
 | Transpose | d | The Tollkeeper's Keys (fixed). The glass key's keyhole, set down as a seal. | H |
-| Blade Stream | b | R2. Defeat every Lamplighter in a Lamplit City Pentagon before the first relights its lamp. | D |
+| Blade Stream | b | **Strange (moved, Phase 8).** In any Pentagon (its Heart is always Tomb-built: "Lamps for the Heart: forty"), defeat three Grave Lanterns before the first relights its lamp (two minutes from the first). *Was:* every Lamplighter in a Lamplit City Pentagon, a theme not in the world. | D |
 | Lava Slash | c | R3. Defeat 30 foes in the Magma Rivers. | D |
 | Mage's Hand | d | The Tall Child's Slates (fixed, R5). A hand the size of a door, offered gently. | H |
 | Rapid Reload | c | Use: land 200 charged releases | D |
-| Arc Wave | b~ | Sea. Act: salvage three shipwrecks with the Blunderbuss equipped. | D |
+| Arc Wave | b | Sea. Act: salvage three shipwrecks (open sea: by boat) with the Blunderbuss equipped. | D |
 | Cluster Shell | R~ | Reliquary | X |
-| Corridor Golem | b | Under, R2. Defeat five Earth Golems in canyon craters, Act: collect their hearts, and give them to the quarry keeper. She stacks a small man who stands up. | D |
+| Corridor Golem | b | Under, R2. Defeat five Earth Golems in canyon craters, Act: collect their hearts, and give them to the quarry keeper (Shale). She stacks a small man who stands up. | D |
 | Sunburst Ricochet | R~ | Reliquary | X |
 | Continuous Assault | d | The Tinker's Tags (fixed, R5). Tag 7, burnt into the copper by the robots, and their sky lasers with it. | X |
 | Mirage of Blades | R~ | Reliquary | X |
@@ -939,6 +939,8 @@ Smallest shippable first. Each phase is one release or a few, previewed for Tim,
 | **6. Milestones, Reliquary, pity** | Counters and thresholds; the reliquary object and its pool; the first-horde, Pentagon, seed-realm and vault certainties; horde rumours from Infinite II; the 200-section strong lead | v1 gating begins for c and R | Counter cost (integers only); a reliquary in a pinned crossing (laid over, never generated) | Pool determinism; certain finds fire once; chance rolls are seeded; pity gives a lead, never an ability; a v0 journey gets consolations |
 | **7. Quests (b) and thread rewards (d)** | The quest-step engine (resolved once, saved, relaxed; verbs from 2.8); thread endings granting through `ARCANA_REWARDS` | v1 gating for b and d | An unreachable step | The 1,000-seed simulation (G6): steps resolve, the cadence lands in its bands; a v2 table key never changes v1 results |
 | **8. Far, sea, sky, strange; Viscera** | The R3-R5 and layer quests; the four Viscera forms and the rumour purchase; the guardian roster | v1 | Biome-scan cost (bounded and cached, as `wonders.ts`) | Search bounds; price table; roster determinism |
+
+**Phase 8 as built (2026-11-20).** Tempo and Blade Stream were designed for Ember Foundry and Lamplit City Pentagons, two themes not in the world; Tim chose to move them rather than enable the themes: Tempo to a Skyland at least 50 sections out (a skyway-only find), Blade Stream to the Grave Lanterns of any Pentagon (section 3.5 and 3.6). Quest gates (the Aperture band; `src/quests.ts`): Corridor Golem 3, Tempo 6, Blade Stream 6, Glyph Mine 8, Arc Wave 8, Power Aegis 11, Essence Walk 13, Ember Mend and Wellspring 13 and 1,000 sections stood. At most three quests are open at once (G2). Viscera prices (`VISCERA_SHOP`): Second Wind 8, Veil Pulse 8, Bulwark Channel 10, Quick Fold 10, a rumour 3, at Sela's forge or any smith once refinement is open. The guardian roster favours four seeded kinds per ring (0-6, 7-18, 19-50 sections) at three times the weight, for crossings first entered under Exploration. The cadence check (2.7) runs as a simulation in `tests/progression-phase8.test.ts`; its numbers are a model, with assumptions written beside it.
 
 **Watching difficulty.** No numbers change in this plan; creature health and damage stay as they are.
 

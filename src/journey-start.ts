@@ -142,10 +142,14 @@ export const progressionMode = (save) => (save?.progression?.mode === 1 ? 1 : 0)
 //               Phase 7 (quests and thread rewards; quests.ts) moved it to 4: on table 4 Exploration also withholds the quest (b)
 //               and thread (d) abilities built then until they are earned. `worldTable` is Phase 6's table: an Exploration journey
 //               on table 2 or 3 keeps, on its first load under table 4, those of the newly withheld abilities today's rules had open.
+//               Phase 8 (the far, sea, sky and strange quests and the Viscera forms; quests.ts) moved it to 5: on table 5 Exploration
+//               withholds every b, d and V ability. `storyTable` is Phase 7's: a journey on it keeps, on its first load under table
+//               5, those of Phase 8's newly withheld abilities today's rules had open (progression.ts adoptExploration).
 export const EXPLORATION = Object.freeze({
-  table: 4,
+  table: 5,
   coreTable: 2,
   worldTable: 3,
+  storyTable: 4,
   gates: Object.freeze({
     "spell:ember-ring": Object.freeze({ level: 3 }), "spell:fire-burst": Object.freeze({ level: 6 }), "spell:grave-sun": Object.freeze({ level: 10 }),
     "awakened:awakening": Object.freeze({ tier: 12 }), "companion:hatchling": Object.freeze({ tier: 12 }),
@@ -189,15 +193,15 @@ export function ensureLeads(save) {
 // One additive record at schema 14, normalised here from freshSave and migrateSave (unknown fields kept), in both modes:
 //   save.feats  { v, counts, earned, reliquary, pity }
 //     counts     milestone counters (world-routes.ts MILESTONES keys -> whole numbers, at most FEAT_RECORD.countMax)
-//     earned     ability row id -> { route: "c" | "R" | "b" | "d", at (play seconds), from (what earned it), dust? (a consolation
-//                paid) }; Phase 7 adds routes "b" (a quest) and "d" (a thread's ending)
+//     earned     ability row id -> { route: "c" | "R" | "b" | "d" | "V", at (play seconds), from (what earned it), dust? (a consolation
+//                paid) }; Phase 7 adds routes "b" (a quest) and "d" (a thread's ending); Phase 8 "V" (bought)
 //     reliquary  { sites: { [site]: { kind, area, x, y, elev?, state: "waiting" | "opened", gave? } }, firsts: { [kind]: site } }:
 //                the reliquaries laid (at most FEAT_RECORD.sitesMax; opened ones go first), and which site took each certain find
 //     pity       { mark, owned, told }: the sections explored when an ability was last gained (or the last strong lead given),
 //                the abilities held then, and how many strong leads have been given
 export const FEAT_RECORD = Object.freeze({ v: 1, countMax: 1e7, sitesMax: 256, earnedMax: 256 });
 const SITE_STATES = Object.freeze(["waiting", "opened"]);
-const FEAT_ROUTES = Object.freeze(["c", "R", "b", "d"]);
+const FEAT_ROUTES = Object.freeze(["c", "R", "b", "d", "V"]); // Phase 8: "V", bought with Divine Viscera
 export function ensureFeats(save) {
   if (!save || typeof save !== "object") return null;
   const raw = plain(save.feats) ? save.feats : {}, R = FEAT_RECORD, counts = {}, earned = {}, sites = {}, firsts = {};
@@ -220,7 +224,11 @@ export function ensureFeats(save) {
 //              dungeon?, relaxed? }] }: the quests opened (at most QUEST_RECORD.openMax) and the places their steps were given,
 //              in order, never moved (QUEST_RECORD.placesMax each, the newest kept)
 //     threads  ability id -> thread id: the seeded thread rewards' picks, saved the first time they are read
-export const QUEST_RECORD = Object.freeze({ v: 1, openMax: 64, placesMax: 16 });
+//     Phase 8 adds, on a quest's own entry and only once used (journey-start.ts keeps them sound, unknown fields kept): counts
+//              { [step]: whole number }, window { step, at, n } (a time-limited step since its first), tokens [{ id, step, area, x,
+//              y }] (things a kill left to collect, at most QUEST_RECORD.tokensMax), seq (the last token's number), giverAt { rx,
+//              ry } (where its giver stands), and on a place `fixed`, `miss`, `used` and `flag`.
+export const QUEST_RECORD = Object.freeze({ v: 1, openMax: 64, placesMax: 16, tokensMax: 16 });
 const QUEST_STATES = Object.freeze(["open", "done"]);
 export function ensureQuests(save) {
   if (!save || typeof save !== "object") return null;
@@ -230,6 +238,12 @@ export function ensureQuests(save) {
     const steps = {}; for (const [k, v] of Object.entries(plain(q.steps) ? q.steps : {})) { const n = Number(v); if (k.length <= 32 && Number.isFinite(n) && n >= 0) steps[k] = Math.floor(n); }
     const places = (Array.isArray(q.places) ? q.places : []).filter((p) => plain(p) && typeof p.step === "string" && (p.relaxed === true || (Number.isInteger(p.rx) && Number.isInteger(p.ry)))).map((p) => ({ ...p })).slice(-R.placesMax);
     const at = Number(q.at); open[id] = { ...q, at: Number.isFinite(at) && at >= 0 ? Math.floor(at) : 0, steps, places };
+    // Phase 8's fields, normalised only where present (an entry without them stays as it was)
+    if (q.counts !== undefined) { const counts = {}; for (const [k, v] of Object.entries(plain(q.counts) ? q.counts : {})) { const n = Math.floor(Number(v)); if (k.length <= 32 && Number.isFinite(n) && n > 0) counts[k] = Math.min(1e6, n); } open[id].counts = counts; }
+    if (q.tokens !== undefined) open[id].tokens = (Array.isArray(q.tokens) ? q.tokens : []).filter((t) => plain(t) && typeof t.id === "string" && t.id.length <= 120 && typeof t.step === "string" && typeof t.area === "string" && Number.isFinite(Number(t.x)) && Number.isFinite(Number(t.y))).map((t) => ({ ...t, x: Math.round(Number(t.x)), y: Math.round(Number(t.y)) })).slice(-R.tokensMax);
+    if (q.window !== undefined) { const w = q.window; if (plain(w) && typeof w.step === "string" && Number.isFinite(Number(w.at)) && Number.isInteger(w.n) && w.n >= 0) open[id].window = { ...w, at: Number(w.at) }; else delete open[id].window; }
+    if (q.seq !== undefined) open[id].seq = wholeOr(q.seq, 0, 0);
+    if (q.giverAt !== undefined) { if (plain(q.giverAt) && Number.isInteger(q.giverAt.rx) && Number.isInteger(q.giverAt.ry)) open[id].giverAt = { rx: q.giverAt.rx, ry: q.giverAt.ry }; else delete open[id].giverAt; }
   }
   for (const [k, v] of Object.entries(plain(raw.threads) ? raw.threads : {})) if (k.length <= 64 && typeof v === "string" && v && v.length <= 64) threads[k] = v;
   save.quests = { ...raw, v: R.v, open, threads };

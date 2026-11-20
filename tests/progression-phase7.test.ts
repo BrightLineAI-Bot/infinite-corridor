@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave, setCompassChoice } from '../src/types.ts';
 import { EXPLORATION, exploring, ensureQuests, QUEST_RECORD, useJourneyFrame } from '../src/journey-start.ts';
 import { startJourney, switchProgression, ownership, stateV0, compendium, adoptExploration, howToPage, hintSubjectsHeld, hintFor, PROGRESSION_ROWS, ROW_BY_ID } from '../src/progression.ts';
-import { STORY, QUESTS, QUEST_IDS, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_WITHHELD, STORY_ROUTE_OF, STORY_LATER, STORY_OWN, REWARD_CARRIERS, storyWithheld, seededPick, seededThreads, threadReward, carrierOf, questOpen, questStep, questDue, stepPlace, questFollowId } from '../src/quests.ts';
+import { STORY, QUESTS, QUEST_IDS, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_WITHHELD, STORY_ROUTE_OF, STORY_LATER, STORY_OWN, REWARD_CARRIERS, PHASE7_STORY, storyWithheld, seededPick, seededThreads, threadReward, carrierOf, questOpen, questStep, questDue, stepPlace, questFollowId } from '../src/quests.ts';
 import { QUEST_PLACES, starfieldAt, questPlace, openQuest, questTarget, questLeads, questClear, placeSpent } from '../src/quest-places.ts';
 import { WORLD_WITHHELD, worldWithheld, earnedWorld } from '../src/world-routes.ts';
 import { grantWorld } from '../src/world-finds.ts';
@@ -26,7 +26,10 @@ import { generateRegion, regionSettled } from '../src/world.ts';
 import { Game } from '../src/game.ts';
 
 const band = (tier) => APERTURE_BANDS[tier].threshold;
-const v1Save = (seed = 'PHASE7') => { const s = freshSave(); s.seed = seed; return startJourney(s, {}); };
+// Phase 8 (tests/progression-phase8.test.ts) withholds its own quests' and the Viscera forms too; these tests hold those aside
+// (kept), so they see Phase 7's alone, as when it shipped.
+const P8 = STORY_WITHHELD.filter((id) => !PHASE7_STORY.includes(id));
+const v1Save = (seed = 'PHASE7') => { const s = freshSave(); s.seed = seed; startJourney(s, {}); s.progression.kept = [...s.progression.kept, ...P8]; return s; };
 const classicSave = (seed = 'PHASE7-C') => { const s = freshSave(); s.seed = seed; return startJourney(s, { mode: 0 }); };
 // Infinite III with a Listener felled, every discipline mastered: everything today's rules open is open.
 function rich(s, tier = 13) {
@@ -64,24 +67,23 @@ test('save.quests: additive at schema 14, normalised by freshSave and migrateSav
 test('Exploration withholds exactly the b and d abilities whose quest or thread is built; Phase 8\'s stay open', () => {
   const bd = PROGRESSION_ROWS.filter((r) => ['b', 'd'].includes(r.v1.route)).map((r) => r.id);
   const built = bd.filter((id) => !STORY_LATER[id] && !STORY_OWN[id]).sort();
-  assert.deepEqual([...STORY_WITHHELD].sort(), built, 'the withheld set is the b and d rows built, no more');
+  assert.deepEqual(STORY_WITHHELD.filter((id) => STORY_ROUTE_OF[id] !== 'V').sort(), built, 'the withheld set is the b and d rows built, no more (Phase 8 adds the V forms)');
   for (const id of [...Object.keys(STORY_LATER), ...Object.keys(STORY_OWN)]) assert.ok(bd.includes(id), `${id} is a b or d row`);
-  assert.deepEqual(STORY_WITHHELD.filter((id) => STORY_ROUTE_OF[id] === 'b'), BUILT_B);
+  assert.deepEqual(PHASE7_STORY.filter((id) => STORY_ROUTE_OF[id] === 'b'), BUILT_B);
   for (const id of STORY_WITHHELD) assert.equal(ROW_BY_ID[id].v1.route, STORY_ROUTE_OF[id], id);
   assert.equal(EXPLORATION.table, STORY.table);
   // a journey where today's rules open everything: under Exploration exactly the c, R, b and d rows built differ from the same journey holding them kept
   const s = rich(v1Save('WITHHOLD')), all = rich(v1Save('WITHHOLD')); all.progression.kept = [...all.progression.kept, ...WORLD_WITHHELD, ...STORY_WITHHELD];
   const a = ownership(s), b = ownership(all), differ = Object.keys(a).filter((id) => a[id] !== b[id]).sort();
-  assert.deepEqual(differ, [...WORLD_WITHHELD, ...STORY_WITHHELD].sort());
-  for (const id of STORY_WITHHELD) { assert.equal(a[id], 'locked', id); assert.ok(['owned', 'open'].includes(stateV0(s, ROW_BY_ID[id])), `${id}: Classic's rules have it`); assert.ok(storyWithheld(s, id) && worldWithheld(s, id), id); }
+  assert.deepEqual(differ, [...WORLD_WITHHELD, ...PHASE7_STORY].sort());
+  for (const id of PHASE7_STORY) { assert.equal(a[id], 'locked', id); assert.ok(['owned', 'open'].includes(stateV0(s, ROW_BY_ID[id])), `${id}: Classic's rules have it`); assert.ok(storyWithheld(s, id) && worldWithheld(s, id), id); }
   // the game refuses them
   for (const id of ['essence-walk', 'shadow-clone', 'gravity-well']) { assert.equal(spellOpen(s, id), false, id); assert.ok(!availableCastables(s).includes(`spell:${id}`), id); }
-  for (const id of STORY_WITHHELD.filter((q) => q.startsWith('field:'))) assert.deepEqual(toggleLatticePassive(s, id), { ok: false, message: WORLD_WAIT }, id);
+  for (const id of PHASE7_STORY.filter((q) => q.startsWith('field:'))) assert.deepEqual(toggleLatticePassive(s, id), { ok: false, message: WORLD_WAIT }, id);
   for (const [branch, id] of [['form', 'arcane-edge'], ['veil', 'pocket-time'], ['force', 'echoing-cast']]) assert.deepEqual(learnExtra(s, branch, id), { ok: false, message: WORLD_WAIT }, id);
-  // Phase 8's quests, the two Pentagon quests with nowhere to happen yet, and the rows with their own route: today's rules
-  for (const id of [...Object.keys(STORY_LATER), ...Object.keys(STORY_OWN)]) { assert.ok(!worldWithheld(s, id), id); assert.equal(a[id], b[id], id); }
-  assert.ok(toggleLatticePassive(s, 'field:tempo').ok); assert.ok(toggleLatticePassive(s, 'field:blade-stream').ok);
-  assert.ok(learnExtra(s, 'rift', 'glyph-mine').ok, 'a Phase 8 quest\'s node stays open'); assert.ok(toggleAlt(s, 'colossus').ok);
+  // the rows with their own route: today's rules (Phase 8 built the rest: STORY_LATER is empty; held aside here as kept)
+  assert.deepEqual(Object.keys(STORY_LATER), []);
+  for (const id of Object.keys(STORY_OWN)) { assert.ok(!worldWithheld(s, id), id); assert.equal(a[id], b[id], id); }
   // Classic withholds nothing
   const c = rich(classicSave('WITHHOLD-C')); for (const id of STORY_WITHHELD) { assert.equal(ownership(c)[id], stateV0(c, ROW_BY_ID[id]), id); assert.ok(!storyWithheld(c, id)); }
   for (const id of ['essence-walk', 'shadow-clone', 'gravity-well']) assert.ok(spellOpen(c, id));
@@ -236,7 +238,7 @@ test('G6, 1,000 seeds: every quest step resolves to reachable ground, every b an
   }
   for (let i = 0; i < 1000; i++) {
     const seed = `G6-${i}`, s = rich(v1Save(seed)); useJourneyFrame(s);
-    for (const id of QUEST_IDS) {
+    for (const id of QUEST_IDS.filter((q) => PHASE7_STORY.includes(QUESTS[q].ability))) { // Phase 8's quests: tests/progression-phase8.test.ts
       assert.ok(questDue(s, id, 13)); openQuest(s, id);
       for (const step of QUESTS[id].steps.filter((q) => q.place)) {
         const p = stepPlace(s, id, step.key); assert.ok(p && !p.relaxed, `${seed}: ${id}:${step.key} resolves to a section`);
