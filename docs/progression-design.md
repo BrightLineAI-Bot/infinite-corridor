@@ -1,40 +1,55 @@
 # Progression by exploration: a proposal
 
-**Status: a proposal for Tim, 2026-11-19. Nothing here is built.** No acquisition changes until Tim approves this (AGENT_CONTEXT, "Quests as the way abilities are earned"). The doc covers what exists today, what would be new, and which decisions are still open (section 8).
+**Status: revision 2, 2026-11-20. Nothing here is built.**
 
-Sources: Tim's direction of 2026-11-19 (`docs/AGENT_CONTEXT.md`; `docs/narrative-bible.md` section 8; field guide "Content stages"), `docs/stage-4-inventory.md`, and the current `src/`.
+- Revision 1 (2026-11-19) went to Tim. He took every recommendation in its open questions and added eleven notes (2026-11-20). This revision folds them in; what changed is listed at the end of this file.
+- No acquisition changes until the build phases (section 7) start.
+
+Sources: Tim's direction of 2026-11-19 and 2026-11-20 (`docs/AGENT_CONTEXT.md`; `docs/narrative-bible.md` section 8; field guide "Content stages"), `docs/stage-4-inventory.md`, and the current `src/`.
 
 ---
 
 ## 0. The idea in one screen
 
-**What changes for the player:**
+**Two progression modes, chosen per journey** and switchable in Options (section 6):
 
-- Levelling still makes you sturdier: health, stamina, stat points, and a few weapons shown in advance.
-- Everything strange is out in the world: in crossings, in threads, in places nobody has mapped. That covers the passives, the spells, the weapon arts, the forms, the Echoes and the odd gear.
-- Every ability gets a place, a person, a deed or a story it comes from, so the map of the story and the map of your build are the same map.
+- **Classic (v0)** is today's rules, unchanged.
+- **Exploration (v1)** is this design. New journeys default to it.
 
-Abilities are earned five ways:
+**In Exploration, the player gets:**
+
+- **A starting choice.** You pick a primary weapon and a tool from a screen that says what each scales with and how it plays. Aegis is yours from minute one, so parry builds work at once.
+- **A core kit from levelling and the Arcanum alone**, enough to play the whole game with any archetype:
+  - Aerial Step almost at once, and Rift Step soon after (traversal that makes the world breathable, and that Close View navigation needs);
+  - the general disciplines and the constellation modifiers and capstones;
+  - a short-cooldown starter spell (Cinder Dart, 2.5 s);
+  - an armoury pick every few levels.
+- **The wild things out in the world**: weapon arts, tool forms, most secondary forms, the strangest spells and passives, the hatchling, the Orrery. They come from quests, milestones, threads, the bottoms of dungeons, and late Divine Viscera. Each has a place, a person, a deed or a story behind it.
+- **A random world.** Every new journey gets a random seed. The starting town is always Ember Refuge, but nothing else about the start is fixed: no "always go north-west".
+
+**The routes:**
 
 | Code | Route | In one line |
 |---|---|---|
-| **a** | Levelling | "These are the level-ups." Shown ahead of time. |
-| **b** | Arcanum / Constellation quest | Spend the point, and the lens shows you where to go. Finishing the quest grants the ability. |
-| **c** | Milestone | Do a thing enough times: dungeons, Listeners, relays, skyways, the sea. |
-| **d** | Thread | Pick up a thread piece. Something waits at the end, or nothing is said. |
-| **V** | Divine Viscera | Bought late, from the endgame currency. Never a build's core. |
+| **a** | Levelling and the Arcanum | Levels, Aperture and constellation points. Shown ahead of time. The **core kit**. |
+| **b** | Quest | A person, the lens or a place opens it: "go here, do this". Finishing grants the ability. |
+| **c** | Milestone | Do a thing the game already has, enough times. |
+| **d** | Thread | Finish a thread. Something waits at the end, or nothing is said. |
+| **R** | Reliquary | Found at the bottom of a dungeon, sometimes. "There might be a crazy passive down there." |
+| **V** | Divine Viscera | A few late extras. Never a core. |
 
-Two more labels are used in the tables: **S**, held from the start, and **F**, found (loot, kills, captures, as today).
+Two more labels appear in the tables: **S**, held from the start (or chosen at the start), and **F**, found (loot, first kills, captures, as today).
 
 **Rules that keep it playable:**
 
-1. Every build archetype has a **core** that is directed and reachable near you once you are strong enough for it.
+1. Every archetype reaches viability by **levelling alone**. Exploration adds the wild half on top.
 2. You always hold **2 to 3 known leads**.
-3. A **pity rule** means a long walk always ends in something.
-4. Which ability waits where is **seeded per journey and version-pinned**: playthroughs differ, and nothing already placed ever moves.
-5. **No new story density.** Quests hang off threads, crossings, towns, lairs, bosses and places that already exist.
-6. **Existing journeys keep everything they have.**
-7. **Help without interruptions:** one-line first-use hints (never in a fight, one at a time), a how-to page per ability, and an optional training yard (section 4A).
+3. **Pity gives a lead, never an ability**, and only after a long dry spell (200 sections).
+4. Abilities come at a **measured pace**. A 40-hour, 1,300-section player has found about a third of the world's abilities, with plenty left for 1,000+ sections and the far realms (2.7).
+5. Placement is **seeded per journey and version-pinned**: nothing already placed ever moves.
+6. **No new story density**, and **no new input verbs**: every quest is Act, defeat, reach, survive, clear, or use what you already have (2.8).
+7. **Never take away.** Switching modes, or loading an old journey, keeps everything earned.
+8. **Help without interruptions**: one-line hints, how-to pages and a training yard (section 4A).
 
 ---
 
@@ -225,358 +240,465 @@ That last line is the gap this proposal closes.
 ### 2.1 What it builds on (already in the game)
 
 - **Quests with a compass.** Journal "Active quests", and a compass that points only where the player chooses; accepting a quest sets it (`save.guidance.follow`; field guide, release 1021). Quest kinds already exist: hunts, far quests, the rescue, the errand, relay leads and seed hunts.
-- **Homes on the map.** `lore.ts ARCANA_REGIONS` gives a ring of distance and a compass sector around the Refuge. The Journal says "the rest most likely lie south-west, 25 to 50 out".
-- **Story budget and versions.** Threads take shared slots at 0.12 a crossing. Each crossing is pinned to its story and region version the first time it is pinned (`game.ts pinDungeonLayout`).
-- **Places worked out once and saved.** The Second Wayfarer's six sightings are computed once from the seed and kept in the save (`second-wayfarer.ts`). Seed hunts are objects laid over a place as it loads, never a generator change (`tall-towers.ts`).
-- **"Said to stand there."** `wonders.ts` finds the nearest unexplored Sky Stair, great tree or Starfield from cheap hashes, and a traveller says which way it lies. That is a rumour engine.
-- **Reward hooks.** `lore.ts ARCANA_UNLOCKS` and `ARCANA_PASSIVES` are working, and `threads.ts ARCANA_REWARDS` is an empty general hook.
-- **Precedents for quest-earned abilities:** the Tidemantle, the hatchling, Bell Toll, Lamplighter's Light, the far quests that a beast's fall opens (`far-realms.ts`), and refinement opening at a town past 1,000 sections.
+- **Homes on the map.** `lore.ts ARCANA_REGIONS` gives a ring of distance and a compass sector around the Refuge, and the Journal names them ("south-west of the Refuge, 25 to 50 sections out").
+- **Story budget and versions.** Threads take shared slots at 0.12 a crossing. Crossings are pinned to their story and region versions the first time they are pinned (`game.ts pinDungeonLayout`).
+- **Places worked out once and saved.** The Second Wayfarer's sightings (`second-wayfarer.ts`). Seed hunts are objects laid over a place as it loads, never a generator change (`tall-towers.ts`).
+- **A rumour engine.** `wonders.ts` finds the nearest unexplored Sky Stair, great tree or Starfield from cheap hashes, and a traveller says which way it lies.
+- **Reward hooks.** `lore.ts ARCANA_UNLOCKS` and `ARCANA_PASSIVES` work; `threads.ts ARCANA_REWARDS` is an empty general hook.
+- **Precedents for quest-earned abilities:** the Tidemantle, the hatchling, Bell Toll, Lamplighter's Light, the far quests a beast's fall opens, and refinement opening at a far town.
+- **A random seed.** The journey creator already makes one when the field is left blank (`persistence.ts:316` `namedFresh`, `CORRIDOR-<time>`).
 
-### 2.2 The five routes in detail
+### 2.2 The routes in detail
 
-**(a) Levelling.** Health, stamina and stat points, as now. The Arcanum's new "Level-ups ahead" line names the next few gifts: "Level 4: Cinder Pike · Level 8: Needle Caster · Level 12: Fourfold Daggers · Level 16: Quandrix Staff". A few early spells move onto levels too (section 3). Aperture still opens the first disciplines and earns constellation points.
+**(a) Levelling and the Arcanum: the core kit.** This covers:
 
-**(b) Arcanum and Constellation quests.**
-- The power gate stays; what changes is what happens when it opens. Spending the point, or reaching the tier, **attunes** the node, and attuning opens a quest.
-- The node is shown half-lit with "The lens shows a place". Finishing the quest lights the node.
-- The quest names a place class and a condition, for example: "A Great Keep, west of the Refuge, 20 to 40 sections out", or "a desert at least 50 sections from the Ember Refuge".
-- Accepting the quest points the compass.
-- Attuning never spends a point that is lost. If you respec, the point returns and the quest stays in the Journal.
+- health, stamina and stat points, as now;
+- Aperture opening the disciplines;
+- constellation points buying modifiers and **capstones**;
+- the spells shown in advance by level;
+- the **armoury**: one weapon or tool of your choice at levels 4, 8, 12, 16, 20 and 24 (section 4.1).
+
+The Arcanum's "Level-ups ahead" line names what is next. Section 2.5 shows that every archetype is viable on this route alone.
+
+**(b) Quests.**
+- A quest opens when its gate is met (a tier, a level, a person spoken to, or a thread or place found). It names a place class and a condition, for example "a desert at least 50 sections from the Ember Refuge". Accepting it points the compass.
+- Quests use only existing verbs (2.8).
+- Givers are existing people: Sela, Oren, Vela, Hollis Dray, the Cairn Keeper, Ilse, Old Quillon, the Shipwright, the lookouts, the Beast Hotel mama, and the keepers, smiths and cooks of Listener towns.
 
 **(c) Milestones.**
-- Counters of things the player already does: crossings cleared, Deep levels charted, Listeners felled, relays restored, Pentagons finished, Skylands cleared, Rites of Ascendancy, seed-realm hearts, world beasts felled, sections walked, sea miles, skyway crossings, dives.
-- A milestone is shown once its first count is made ("Relays restored: 3 of 5").
-- Counters are cheap integers in the save. Most exist already: `farArray.listeners`, `relay-chain.count`, `roomBeastSlain`, charting. A few are new: sea miles, skyway crossings and dives.
+- Counters of things the player already does. Each threshold is shown once its first count is made ("Charged releases: 40 of 200").
+- Counters are integers in the save. Most exist already (`farArray.listeners`, `relay-chain.count`, `roomBeastSlain`, charting); a few are new (glide distance, spells cast airborne, poise breaks).
+- Thresholds are set so each one comes from playing the matching build, not from grinding.
 
 **(d) Threads.**
-- Finishing a thread grants its ability. Twenty-five carriers already exist: the 21 threads, the Seven Bells, the Surveyor's Chain, the Torn Pages and the Second Wayfarer.
-- On the thread's Arcana card, the reward is one of three kinds:
-  - *named*: "Completing it opens Pocket Time";
-  - *hinted*: "Something waits at the end";
-  - *hidden*: nothing is said.
-- No new thread pieces are written for this. Rewards hang off endings that already exist.
+- Finishing a thread grants its ability. Twenty-five carriers exist: the 21 threads, the Bells, the Chain, the Torn Pages and the Second Wayfarer.
+- On the Arcana card the reward is *named*, *hinted* ("something waits at the end") or *hidden*. No new thread pieces are written.
 
-**(V) Divine Viscera.**
-- Bought late, at Sela's Sphere Forge or any smith past 1,000 sections, where refinement already takes Viscera, and at the Pentagon dais.
-- **Secondary forms are bought here**: the other face of a star you already hold.
-- Also bought here: a **rumour**, which turns the nearest hidden ability into a hinted lead. That is an endgame pity valve.
-- Viscera never buys a build's core.
+**(R) The Reliquary: the bottom of the dungeon.** This route is new. Some dungeon ends hold a reliquary (a quest object laid in the completion room, as seed hunts are laid). It gives one ability from a small seeded **Reliquary pool** of 8 (section 3).
 
-**Found (F).** Loot, guardian drops, captures and first kills, as today. Tim's "some abilities are simply found at random" lives here and in the hidden routes.
+| Find | Chance |
+|---|---|
+| The first Revenant horde cleared (a taste horde counts) | Certain |
+| The first Pentagon Heart | Certain |
+| The first seed-realm heart | Certain |
+| The first Shell-Labyrinth vault | Certain |
+| Any other Deep floor's last room, labyrinth vault, Great Keep or Great Castle top | 1 in 10 |
+
+So any dungeon *might* end in something mad. The certain ones mean it is never a lottery forever.
+
+**(V) Divine Viscera.** Four secondary forms, plus the **rumour** purchase: pay to turn the nearest unknown ability into a hinted lead. Bought at Sela's forge or any smith past 1,000 sections (where refinement already takes Viscera).
+
+**(F) Found.** Loot, guardian glyphs, first-kill Echoes and captures, as today.
 
 ### 2.3 Tiers: where things wait
 
-Distances are straight-line from Ember Refuge, as the Arcana homes and the far realms measure them. **Layers** are not distances: they are the other maps.
+Distances are straight-line from Ember Refuge, as the Arcana homes and far realms measure them. **Layers** are the other maps.
 
 | Tier | Where | What waits there |
 |---|---|---|
-| **R0 Hearth** | The Refuge and 0-6 sections | The starting kit, the first errand, the first lead, the first Echo |
-| **R1 Near** | 3-18 | Every archetype's first core piece. Near threads (Lamplighter, Letters, Beekeeper, Ferryman). |
-| **R2 Middle** | 19-50 | Disciplines' quests (Veil, Force, Rift). Middle threads. Great Keeps, castles, labyrinths. |
-| **R3 Far** | 50-150 | "A desert at least 50 out", the Reckoning Fields, the Magma Rivers, the Rimeglaciers. Far threads. Capstones. |
-| **R4 Deep band** | 150-1,000 | Late capstones, heavy forms, the Second Surveyor, the Sleeper |
-| **R5 Beyond** | 1,000+ | Far realms, domains, civilisations, the far threads, Viscera |
-| **Sea** | Open sea, isles, dive sites, shipwrecks | Tidemantle-gated. Mosasaur-adjacent quests, dives. |
-| **Sky** | Great trees, skyways, Sky Stairs, Skylands, Cloud Hold, Upwells | Glider-gated. Motion and aerial abilities. |
-| **Under** | The Deep, chasms, canyons, Starfields | Charting milestones, Rift abilities |
-| **Strange** | Seed realms, the Askew, bizarro pockets, the Pentagon | Stage 4's strangest things |
+| **R0 Hearth** | The Refuge and 0-6 sections | The starting choice, the first errand, the first lead, the first Echo |
+| **R1 Near** | 3-18 | Near threads (the Lamplighter, the Letters, the Beekeeper, the Ferryman); the first quests |
+| **R2 Middle** | 19-50 | Middle threads; Great Keeps, castles, labyrinths; most quests |
+| **R3 Far** | 50-150 | "A desert at least 50 out"; the Reckoning Fields, the Magma Rivers, the Rimeglaciers; far threads |
+| **R4 Deep band** | 150-1,000 | Late quests; the Second Surveyor, the Sleeper |
+| **R5 Beyond** | 1,000+ | Far realms, domains, civilisations, the far threads, Viscera. **Four of the 45 world abilities live only here.** |
+| **Sea** | Open sea, isles, dive sites, shipwrecks | |
+| **Sky** | Great trees, skyways, Sky Stairs, Skylands, Cloud Hold, Upwells | |
+| **Under** | The Deep, chasms, canyons, Starfields | |
+| **Strange** | Seed realms, the Askew, bizarro pockets, the Pentagon | |
 
-**The power gate still applies.** A tier-13 ability's quest only opens at tier 13. Its distance is measured from where you are *then*: from your **current hometown** (Listener towns count), not from the Refuge. Late abilities therefore never send a player back to the start, and "far" stays relative to how far you have come.
+Power gates still apply: a quest needing tier 13 opens at tier 13. Its place is measured from your **current hometown** (Listener towns count), not from the Refuge, so a late ability never sends you back to the start.
 
 ### 2.4 Variety per playthrough, deterministically
 
-Some pairings are **fixed (F)** because the theme makes them: the Clockmaker's Hours gives Pocket Time, the Well-Digger's Rope gives Gravity Well. The rest sit in **seeded pools (~)**.
-
-- **Pools.** Each tier holds pools of abilities that are interchangeable for reward purposes (for example "R2 thread rewards", "R3 capstone sites", "Under milestones"). A journey's seed decides who sits where:
+- **Fixed pairs (F).** The theme makes them, for example the Clockmaker's Hours gives Pocket Time and the Well-Digger's Rope gives Gravity Well.
+- **Seeded pools (~).** The seed decides:
   - which ability each pool slot carries;
   - which compass sector a quest's home lies in;
-  - which of two to four candidate place classes the quest uses (a Great Keep, a castle or a labyrinth).
+  - which of two to four candidate place classes it uses;
+  - which 8 abilities fill the Reliquary pool's order.
 
-  So on one journey the Choir of Stones ends in Echoing Cast, and on another in Casting Wind. One player's Fold quest sends them to the Askew; another's to a Starfield crossing.
-- **The hash.** `hash(seed : progression : v<N> : <pool>)`, the same kind of seeded roll as `ARCANA_REGIONS` and the Second Wayfarer.
-- **Worked out once and saved.** A slot's assignment is realised and stored the first time it matters: when the quest opens, the thread starts, or a rumour names it. This is the Second Wayfarer's rule. Later table edits therefore never move anything already shown to the player.
-- **Version-pinned.** A journey records `progression.version` when it adopts the system.
-  - **Version 0** means today's rules, the legacy journeys.
-  - **Version 1** is the first table. New abilities, or a change to a pool, go into **version 2 keys** and never edit a version 1 entry. This is how threads add `shared: { <next version>: [...] }`.
-  - Crossings keep their own story and region versions, so a quest step never changes what a pinned crossing holds. Steps are objects laid over a place as it loads, like seed hunts, never tiles.
-- **The guardian roster.** Pack-creature Echoes come from crossing guardians. A seeded roster per journey and ring decides which guardian kinds are commonest near the Refuge, so the first Echoes differ between playthroughs. This is new, behind the same version pin.
+  The hash is `hash(seed : progression : v<N> : <pool>)`, like `ARCANA_REGIONS` and the Second Wayfarer.
+- **Worked out once and saved.** An assignment is stored when it first matters (a quest opens, a thread starts, a rumour names it, a reliquary is opened). Later table edits never move it.
+- **Version-pinned data.** `save.progression.table` records the table version a journey uses. New abilities or pool changes go into the next version's keys and never edit an older entry, the rule threads already follow. This **table version** is separate from the **mode** (v0 or v1, section 6).
+- **No tile changes.** Quest steps and reliquaries are objects laid over places as they load. Crossings keep their own story and region versions.
+- **The guardian roster.** A seeded roster per journey and ring decides which guardian kinds are commonest near the Refuge, so the first Echoes differ. This is new, and only for ground first seen under v1.
+- **Random starts** (section 4.0) add the largest difference of all: the map itself, and the directions of the starting stories.
 
 ### 2.5 Guarantees: builds come together
 
-**The archetypes.** Seven loose ones, defined by data, not classes; a player can mix freely.
+**G1, the levelling core.** Each archetype reaches a legitimate, complete build from levelling and the Arcanum alone. Exploration adds the second half: the arts, forms, secondary forms and strange passives. The archetypes are loose and defined by data, not classes.
 
-| Archetype | Core (all directed, all within R1 of eligibility) |
-|---|---|
-| Brawler (Might) | Iron Fists, Ki Blast, Hammerfall, Shadow Boxing |
-| Blade (Finesse) | Fourfold Daggers or Cinder Pike, its art, Tempo |
-| Spellblade (Focus melee) | Salvage Blade, Transpose, Imbue Weapon, Arcane Edge |
-| Caster | Quandrix Staff or the base spells, Mage's Hand, Echoing Cast, Wellspring Ground |
-| Gunner (tools) | Carbine or Blunderbuss, Rapid Reload, Charged Air |
-| Warden (guard) | Veil Guard, Aegis, Sanctum, Mirror Veil |
-| Beastcaller (Echo and companion) | Amplifier, the hatchling, a beast mount, Corridor Golem |
+| Archetype | Start choice | By levelling and the Arcanum alone (v1) | What exploration adds on top |
+|---|---|---|---|
+| Brawler (Might) | Iron Fists or Verge Cleaver; Hammerfall or Great Sweep | Ember Form, Force Channel, Ember Skin, Colossus, Resonant Force, Aegis; Shadow Boxing at Infinite III; the armoury | Ki Blast, Lava Slash, Corridor Golem, Mirage of Blades, Kindling |
+| Blade (Finesse) | Fourfold Daggers or Cinder Pike; Needle Caster | Quickening, Aerial Step, Rift Step, Light Feet, Slipstream, Fold, Long Step | Blade Stream, Cinder Javelin, Tempo, Shatterpoint, Afterimage |
+| Spellblade (Focus melee) | Salvage Blade; Spark Coil or Lumen Spindle | Cinder Dart, Ember Form, Ember Skin, Overflow; Imbue Weapon at Infinite III; Spellblade (free in the Lattice) | Transpose, Arcane Edge, Spell Runes |
+| Caster | Quandrix Staff; Spark Coil or Lumen Spindle | Cinder Dart (2.5 s), Ember Ring (level 3), Fire Burst (6), Grave Sun (10), Overflow, Amplifier; Orbit Volley at Infinite III | Mage's Hand, Echoing Cast, Glyph Mine, Wellspring Ground, Gravity Well, Essence Walk |
+| Gunner (tools) | Any primary; Spark Coil, Needle Caster or Rift Bombard | +6 turns them into the Carbine or Blunderbuss; Force Channel; Charged Air (free in the Lattice) | Rapid Reload, Continuous Assault, Arc Wave, Cluster Shell, Sunburst Ricochet, the Orrery |
+| Warden (guard) | Any | **Aegis from the start**, Veil Guard, Thorned Veil, Sanctuary, Mirror Veil; Stillpoint at Infinite III; Sanctum (free in the Lattice) | Power Aegis, Long Veil, Stillwater |
+| Beastcaller (Echo and companion) | Any | Echoes (first kills), Force Channel and Amplifier, beast mounts (pens) | The hatchling (Infinite II), Harvest, more Echoes |
 
-**G1, the core rule.** Every archetype's core is directed, fixed (not pooled), and placed within **R1 of the player's hometown at the moment they become eligible**. A brawler at tier 13 can always get Iron Fists and Ki Blast within about 18 sections. The weird, far and hidden things are the second half of a build, never the first.
+**G2, the lead floor.** At least **2** leads the player can act on now, and at most **3** directed quests open at once. When below 2, the next person spoken to gives a rumour about the nearest eligible ability, preferring the archetype of the equipped weapon and spells.
 
-**G2, the lead floor.** The Journal always shows at least **2 known leads** (named or hinted) the player can act on now. When it falls below 2, the next speaker the player talks to gives a **rumour**: a reciter, a villager, a town keeper, the cook, a lookout or Old Quillon. The rumour names the nearest eligible ability, preferring the archetype of the equipped weapon and spells. At most **3 directed quests** are open at once, so the Journal never becomes a checklist. Hints and rumours do not count toward the 3.
+**G3, pity is a lead, never an ability.** It replaces revision 1's "an ability every 40 sections", which would have given Tim about 30 abilities by section 400 just by walking.
 
-**G3, the pity rule.** A counter of new sections explored since the last ability gained. After **40** with nothing, the next crossing guardian or world cache holds a *found* ability from the eligible hidden pool. The surprise is real; it is just never too late. The number is data and is tuned in Phase 3.
+- A counter runs of new sections explored since the last ability **gained by any route**.
+- At **200**, the next rumour is a *strong* one: a directed lead to the nearest eligible world ability within about 15 sections of where you stand.
+- The counter starts again from that lead.
+- The ability itself still has to be earned. At Tim's pace (about 32 new sections an hour) that is one strong lead per six hours of dry play at most.
 
-**G4, never stranded.** A quest step that needs a place ("a desert at least 50 out") is resolved when the step opens.
-- It takes the nearest unexplored section meeting the condition, found by cheap biome and distance hashes as `wonders.ts` does. It is saved and never moves.
-- If none exists within a search budget, the condition relaxes: any section that far out, in that sector.
-- A step inside a crossing uses a crossing not yet entered, never a pinned one.
+**G4, never stranded.** A step needing a place is resolved when it opens:
+- it takes the nearest unexplored section meeting the condition, found by cheap biome and distance hashes (`wonders.ts`);
+- it is saved and never moves;
+- it relaxes to "any section that far out, in that sector" if the search budget runs out;
+- it uses only crossings not yet entered.
 
-**G5, the power match.** Nothing in R3 or beyond is a requirement for any core.
+**G5, the power match.** Nothing in R3 or beyond is ever needed for a G1 core.
 
-**G6, the reachability test.** Before anything ships, a simulation over 1,000 seeds checks that:
-- every archetype's core resolves within its radius;
+**G6, the tests.** A simulation over 1,000 seeds checks that:
+- every quest step resolves;
 - the lead floor holds;
-- at least one ability is gained every 40 sections on average across rings R1-R3.
+- the cadence (2.7) lands inside its bands.
 
 ### 2.6 How it fits the story budget
 
-- **No new density.** Quests are short errands: one line from a giver, one line on completion, and a Journal entry in the existing voice. They are not threads. The 0.12 thread budget is untouched.
-- **Anchors are existing things:**
-  - thread endings and Arcana sets;
-  - the Cairn Keeper, Sela, Oren, Vela, Hollis Dray, Ilse, Old Quillon, the Shipwright and the Upwell lookouts;
-  - the Beast Hotel mama;
-  - Listener towns and their smiths and cooks;
-  - crossing guardians, world beasts, Deep lairs and domains;
-  - Pentagons and their roofs;
-  - Skylands, Rites, seed realms, the Askew, shipwrecks and dive sites.
-- **Rumours** replace an idle line; they never add a speaker.
-- A new thread written later follows the existing rule: it takes a shared slot under a new story version.
-- Tone follows the bible: subtle, never explained, and hooks may be absurd (section 3) without breaking it. The Corridor is strange, and a quest can be.
+- Quests are short errands: one line from a giver, one on completion, a Journal entry in the existing voice. The 0.12 thread budget is untouched.
+- Rumours replace an idle line; they never add a speaker.
+- Reliquaries and quest objects sit in places that already exist.
+- Hooks can be absurd. The Corridor is strange, and a quest can be.
+
+### 2.7 Pacing: how many abilities, and when
+
+Calibrated on Tim's real journey: about **1,300 sections uncovered in 40+ hours** (about 32 new sections an hour), heading past 1,000 sections out.
+
+**The world pool under v1:** 45 abilities that are earned out in the world.
+
+| Group | Count |
+|---|---|
+| Spells | 3 |
+| On-cast extras | 5 |
+| Secondary forms | 11 |
+| Lattice passives | 5 |
+| Arts and forms | 13 |
+| The Orrery, the hatchling, the two Arcana passives | 4 |
+| Viscera forms | 4 |
+
+Echoes (37) are counted apart, since they come from first kills.
+
+**Expected cadence** for a player exploring at about Tim's pace. These are targets for the simulation (G6) and Tim's playtests, not promises.
+
+| Played | New sections | Core kit (route a) | World abilities found (of 45) | Echoes (of 37) |
+|---|---|---|---|---|
+| 1 h | ~30 | Start choice, Aegis, Cinder Dart, Ember Form or Quickening, Aerial Step | 0-1 | 1-2 |
+| 5 h | ~160 | + Rift Step, Veil Guard, Force Channel, modifiers, Ember Ring, Fire Burst, first armoury pick | 1-3 (a near thread, a first quest) | 4-6 |
+| 10 h | ~330 | + first capstones, Grave Sun | 3-5 | 6-9 |
+| 20 h | ~650 | + Infinite II: the hatchling's quest, awakening at Sela's | 7-10 | 10-14 |
+| 40 h | ~1,300 | + Infinite III: its spells, the Lattice with 3 free passives | **12-16** (about a third) | 15-20 |
+| 80 h | ~2,500 | Late capstones | 24-30 | 24-28 |
+| 150 h+ | 5,000+ | | 37-45: the far realms' 4, the last threads, Viscera forms | 33+ |
+
+**Expected by route at 40 hours** (about 14 in all):
+
+| Route | Expected | Of |
+|---|---|---|
+| b, quests | 5 | 10 |
+| c, milestones | 3 | 11 |
+| d, threads | 3 | 12 |
+| R, reliquaries | 3: the first horde, Pentagon, seed realm or vault, and about 1 in 10 of some 15 other dungeon ends | 8 |
+| V | 0 | 4 |
+
+**Levers if it is too slow or too fast:**
+- the Reliquary chance;
+- milestone thresholds;
+- the pity interval;
+- how many Lattice passives are free.
+
+All are data, and none touches creature numbers.
+
+**The Revenant horde.** Hordes are 5 crossings in 1,000 (`revenant-horde.ts:20`), with 28-44 revenants, or 12-18 in a taste horde. Tim has cleared one in 40 hours, so no route asks for more than **one** horde cleared, and that first clear is a certain reliquary. To make sure a player meets one:
+- from Infinite II, rumours can name the nearest unentered horde crossing, found by the horde's own hash as `wonders.ts` finds Sky Stairs;
+- a taste horde counts.
+
+### 2.8 Quest verbs: only what the game already has
+
+Every quest step is one of these. A quest may add a **condition** (a time limit, night, "while a meal lasts", "using Aegis"), but never a new action or button.
+
+| Verb | The existing input | Used for |
+|---|---|---|
+| **Act** | The Act button: speak, inspect, collect, open, salvage, ring, enter | Talking to givers; picking up a quest item; delivering it (speak to the person while holding it); a quest object laid in a place |
+| **Defeat** | Combat | A named foe, or N of a kind |
+| **Reach** | Moving | A section, place or height, under a condition |
+| **Survive** | Staying alive | N seconds in a place, as the Rite already asks |
+| **Clear** | Completing a crossing, floor, Pentagon, Skyland, horde or pocket | |
+| **Use** | An ability you own | Cast Aegis into a blow; glide a distance; land charged releases; cast while airborne |
+
+Revision 1's "kneel", "sit in a spring", "shout", "put out the lamps", "dropped if you dodge" and "dog-ear the map" are gone. Section 3 rewrites each hook in these verbs.
 
 ---
 
-## 3. A route for every ability
+## 3. A route for every ability (Exploration, v1)
 
 How to read the tables:
 
-- **Route:** a / b / c / d / V / S (start) / F (found). A **~** means the slot is seeded (2.4) and the line shows one example.
-- **Where / what** gives the tier from 2.3 and the hook, one line each, leaning into the weirdness.
-- **Seen:** **D** directed (named, can be followed), **H** hinted (something waits, a vague where), **X** hidden (a surprise).
+- **Route:** S / a / b / c / d / R / V / F, as in section 0. **~** means seeded: the line shows one example.
+- **Where / what** gives the tier and the hook, in the verbs of 2.8 (**Act, defeat, reach, survive, clear, use**).
+- **Seen:** **D** directed (named, can be followed), **H** hinted, **X** hidden.
 
-### 3.1 Disciplines
+Under Classic (v0), every row keeps its "Today" route from section 1. The quests are still there as extra routes (section 6).
+
+### 3.1 Disciplines: all core (a)
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Ember Form | a | Aperture 6, at Sela's lens. "Something in you is already on fire; Sela only names it." | D |
-| Quickening | a | Aperture 6, at Sela's lens | D |
-| Veil Guard | b | Attune at Aperture 18; R2. Stand in a Gloomwisp haunt's fog until it gets bored of you. | D |
-| Force Channel | b | Attune at 18; R2. Carry a Hollow Marshal's live terminal charge to a restored relay without dropping it (a hit drops it). | D |
-| Rift Step | b~ | Attune at 18; Under. Step into a Starfield crossing's gap and come out somewhere you have not been. | D |
-| Aerial Step | b | The Motion capstone; Sky. At a great tree's crown, step off the last branch and refuse to fall. | D |
+| Ember Form | a | Aperture 6, at Sela's lens | D |
+| Quickening | a | Aperture 6 | D |
+| **Aerial Step** | a | **Aperture 6, for one point, with no prerequisite.** In v1 it is a discipline of its own rather than the Motion capstone; its capstone slot in Motion goes to **Long Quickening**, promoted. Walk on air from the first hour. | D |
+| **Rift Step** | a | **Aperture 12** (today 18): soon after Aerial Step. The two combine: step, then hold the air. | D |
+| Veil Guard, Force Channel | a | Aperture 18 | D |
+
+Aperture 6 usually comes from the first signal sites and buried memories near the Refuge: the first hour.
 
 ### 3.2 Spells
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Cinder Dart | S | Starting kit | D |
+| **Cinder Dart** | S | Start. The short-cooldown spell (2.5 s, `items.ts:52`); the caster's bread. | D |
+| **Aegis** | S | Start (today tier 13). Parry builds work from minute one. | D |
 | Ember Ring | a | Level 3 | D |
 | Fire Burst | a | Level 6 | D |
-| Grave Sun | d | Letters Not Sent (R1). The last letter is addressed to you; inside it, a small black sun. | H |
-| Aegis | b | Tier 13, Warden core, R1. Oren gives his shield-word to whoever brings the Key Warden's key out of a castle maze unbroken. | D |
-| Shadow Boxing | b | Tier 13, Brawler core, R1. A Gaunt Duelist boxes his own shadow at a resonant crossing; beat him bare-handed. | D |
-| Imbue Weapon | b | Tier 13, Spellblade core, R1. Sela quenches your blade in something still alive: bring a Mire Heart's pulse. | D |
+| Grave Sun | a | Level 10 | D |
+| Shadow Boxing, Imbue Weapon, Orbit Volley, Stillpoint | a | Infinite III (tier 13), as today: cores | D |
 | Shadow Clone | d | The Second Wayfarer (fixed). Someone dressed as you leaves you, at the last, what they were. | X |
-| Gravity Well | d | The Well-Digger's Rope (fixed). The stone that never stops sinking, held in your hand. | H |
-| Stillpoint | d | What the Sleeper Dreams (fixed). A shell holding one held breath. | H |
-| Orbit Volley | c | Sky. Clear 3 Skylands: their small moons follow you home. | D |
-| Essence Walk | b~ | Tier 13, R2. Eat Hollis Dray's lumen-cap broth and walk a Starfield crossing the wrong way round. | D |
+| Gravity Well | d | The Well-Digger's Rope (fixed). The stone that never stops sinking, in your hand. | H |
+| Essence Walk | b~ | Tier 13, R2. Act: eat any meal at Hollis Dray's; while it lasts, clear a Starfield crossing. The broth goes the wrong way round. | D |
 
 ### 3.3 Constellation nodes
 
-Modifiers stay **a**: a point, as today. They are the plain spine of each branch.
-
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Ember Skin, Light Feet, Thorned Veil, Overflow, Rift Wake | a | A point once the discipline has a rank | D |
-| Colossus | b | R4/Strange. Let a Battlement Colossus step on you while Ember Form holds. Get up. | D |
-| Cinder Heart | b~ | R3. Carry an ember from the Magma Rivers to the Refuge hearth; it goes out if you dodge. | D |
-| Slipstream | b | R3. Outrun the Questing Beast's charge three times in one fight. | D |
-| Sanctuary | b~ | R2. Kneel at a Saint of the Low Water's spring with Veil Guard up while something bites you. | D |
-| Mirror Veil | d | The Mirror That Remembers (fixed). The last shard shows you, then doesn't. Warden core: see the open questions. | H |
-| Amplifier | b | R1 of eligibility, Beastcaller core. Ring the hollow relays in order until the hum learns your name (restore 3). | D |
-| Resonant Force | c | Fell 100 foes during Force Channel | D |
-| Fold | b~ | Strange. In the Askew, dog-ear the map: stand on two sections that should be far apart within 60 s. | D |
-| Long Step | c | Under. Rift Step across 100 gaps (canyon, chasm, water). | D |
-| Arcane Edge | d | The Toolmaker's Handles (fixed; Spellblade core: the thread is R1-R2). The unshaped stave worn to your grip teaches the blade to carry the spell. | H |
-| Casting Wind | c | Sky. Cast 30 spells while gliding or air-walking. | D |
+| 5 modifiers (Ember Skin, Light Feet, Thorned Veil, Overflow, Rift Wake) | a | A point, as today | D |
+| 10 capstones (Colossus, Cinder Heart, Long Quickening, Slipstream, Sanctuary, Mirror Veil, Amplifier, Resonant Force, Fold, Long Step) | a | Points, as today. Long Quickening takes Aerial Step's old slot. | D |
+| Arcane Edge | d | The Toolmaker's Handles (fixed). The unshaped stave worn to your grip teaches the blade to carry the spell. | H |
+| Casting Wind | c | Sky. Use: cast 30 spells while gliding or air-walking. | D |
 | Pocket Time | d | The Clockmaker's Hours (fixed). The last watch still runs, set to yours. | H |
-| Echoing Cast | d~ | The Choir of Stones (example). The chord sings your spells back, quieter. Caster core when it is pooled near. | H |
-| Glyph Mine | b | Strange. Mine five sigils from the Vein Wraiths of the Hollow Husk. | D |
+| Echoing Cast | d~ | The Choir of Stones (example). The chord sings your spells back, quieter. | H |
+| Glyph Mine | b | Strange. Defeat five Vein Wraiths in the Hollow Husk and Act: collect their sigils. Sela sets one under your feet. | D |
 
-**Secondary forms (16): route V.** Bought at Sela's forge or a far smith for Divine Viscera once the node is owned: "the other face of a star you already hold". There is one exception:
+### 3.4 Secondary forms: mostly out in the world
+
+In v1 a learned node's secondary form must be found first; the switch works once found. The Viscera four are the plainest stat forms.
+
+| Form (of) | Route | Where / what | Seen |
+|---|---|---|---|
+| Ember Ward (Ember Skin) | c | Survive being set burning 20 times. The fire learns to bite back. | H |
+| Ember Mend (Colossus) | b | R5. Reach the Thornglass Caldera and survive there until the Questing Beast comes home. | D |
+| Kindling (Cinder Heart) | R~ | Reliquary | X |
+| Second Wind (Light Feet) | V | Divine Viscera | D |
+| Quickened Stride (Quickening) | c | Sky. Reach the far end of a Cloud Hold summit skyway without touching ground. | D |
+| Afterimage (Slipstream) | R~ | Reliquary | X |
+| Veil Pulse (Thorned Veil) | V | Divine Viscera | D |
+| Long Veil (Sanctuary) | R~ | Reliquary | X |
+| Stillwater (Mirror Veil) | c | Sea. Clear 10 dives. | D |
+| Wellspring (Overflow) | b | R5. In the Storm Halls, defeat a Coil Warden while Force Channel holds. The robots hum along. | D |
+| Bulwark Channel (Amplifier) | V | Divine Viscera | D |
+| Harvest (Resonant Force) | c | Defeat 10 world beasts | H |
+| Rift Ward (Rift Wake) | R~ | Reliquary | X |
+| Quick Fold (Fold) | V | Divine Viscera | D |
+| Rift Echo (Long Step) | c | Under. Clear 10 Deep floors. | D |
+
+In v1, Long Quickening (today Aerial Step's secondary form) becomes the Motion capstone that Aerial Step leaves, keeping the save id `aerial-step` for the slot. It has no secondary form of its own, so v1 has 15 forms: 11 out in the world and 4 for Viscera.
+
+### 3.5 Transit Lattice field passives
+
+The Lattice opens as today (Infinite III plus one Listener).
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Quickened Stride | c | Sky. Cross a Cloud Hold summit skyway without touching ground. | D |
-| The other 15 forms | V | For example 6 Viscera each, a table value | D |
-
-### 3.4 Lattice field passives
-
-The Lattice itself still opens at tier 13 after a Listener falls. What goes in its slots must now be *earned*.
-
-| Ability | Route | Where / what | Seen |
-|---|---|---|---|
-| Sanctum | b | Warden core, R1. Sit in a Terrace Springs hot spring while a spell lingers, until the water hums. | D |
-| Wellspring Ground | d~ | The Drowned Library (example; Caster core when pooled near). The water reads, and now so does the ground. | H |
-| Charged Air | c | Gunner core. Fell the Lightning Giant; the air keeps its charge. | D |
-| Spellblade | b~ | R2. Strike 20 runed foes in a Lamplit City Pentagon. | D |
-| Drift Field | c | Sky. Drift 1,000 tiles on the glider. | D |
-| Tempo | b | Blade core, R1. A clockwork metronome in an Ember Foundry room: land five hits on each tick, ten ticks running. | D |
-| Shatterpoint | c | Break the poise of 25 elites | H |
-| Power Aegis | b | R3. Perfect-parry the Gate Revenant with Aegis. It is impressed, in its way. | D |
+| Sanctum, Charged Air, Spellblade | a | **Free on opening**: one each for Warden, Gunner and Spellblade | D |
+| Drift Field | c | Sky. Use: glide 1,000 tiles. | D |
+| Wellspring Ground | d~ | The Drowned Library (example). The water reads, and now so does the ground. | H |
+| Tempo | b | R2. A metronome laid in an Ember Foundry Pentagon's heart room. Act: wind it, then defeat everything that starts moving on its beat. | D |
+| Shatterpoint | R~ | Reliquary | X |
+| Power Aegis | b | R3. Use Aegis to turn a Gate Revenant's blow, then defeat it. It is impressed, in its way. | D |
 | Bell Toll; Lamplighter's Light | d | The Seven Bells; the Lamplighter's Round. Unchanged. | D |
 
-### 3.5 Weapon arts and tool forms
+### 3.6 Weapon arts, tool forms, and awakening
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Ki Blast | c | Brawler core. Finish 15 fights with the Iron Fists; on the 15th, you shout and something leaves. | D |
-| Cinder Javelin | d | The Ferryman's Fares (fixed, R1-R2). Throw the ferry pole across the river nobody crosses. | H |
-| Transpose | d | The Tollkeeper's Keys (fixed; Spellblade core: the thread is R2). The glass key's keyhole, set down as a seal. | H |
-| Blade Stream | b | Blade core, R1. In a Lamplit City Pentagon, put out every lamp before the first relights. | D |
-| Lava Slash | c | R3. Fell 30 foes standing in lava (the Magma Rivers). | D |
-| Mage's Hand | d~ | The Tall Child's Slates (example, R5). A hand the size of a door, offered gently. Caster core: a pooled near copy is guaranteed. | H |
-| Rapid Reload | c | Gunner core. Land 200 charged releases. | D |
-| Arc Wave | b~ | Sea. Salvage three shipwrecks in a storm with the Blunderbuss loaded. | D |
-| Cluster Shell | c | Strange. Burst 10 bizarro pockets' heart-forms with the Rift Bombard. | H |
-| Corridor Golem | b | Under, R2. Bring stones from five canyon craters to the quarry keeper; she stacks a small man who stands up. | D |
-| Sunburst Ricochet | c~ | Shatter 10 Prism Stilts with the Lumen Spindle | H |
+| Ki Blast | c | Defeat 15 foes with the Iron Fists' perfect-timing ball. On the 15th, something leaves you on its own. | D |
+| Cinder Javelin | d | The Ferryman's Fares (fixed). The pole he never needed, thrown across. | H |
+| Transpose | d | The Tollkeeper's Keys (fixed). The glass key's keyhole, set down as a seal. | H |
+| Blade Stream | b | R2. Defeat every Lamplighter in a Lamplit City Pentagon before the first relights its lamp. | D |
+| Lava Slash | c | R3. Defeat 30 foes in the Magma Rivers. | D |
+| Mage's Hand | d | The Tall Child's Slates (fixed, R5). A hand the size of a door, offered gently. | H |
+| Rapid Reload | c | Use: land 200 charged releases | D |
+| Arc Wave | b~ | Sea. Act: salvage three shipwrecks with the Blunderbuss equipped. | D |
+| Cluster Shell | R~ | Reliquary | X |
+| Corridor Golem | b | Under, R2. Defeat five Earth Golems in canyon craters, Act: collect their hearts, and give them to the quarry keeper. She stacks a small man who stands up. | D |
+| Sunburst Ricochet | R~ | Reliquary | X |
 | Continuous Assault | d | The Tinker's Tags (fixed, R5). Tag 7, burnt into the copper by the robots, and their sky lasers with it. | X |
-| Mirage of Blades | c | Fell 6 of the Gaunt with the Great Sweep | H |
+| Mirage of Blades | R~ | Reliquary | X |
 
-### 3.6 Awakening and awakened moves
+**Awakening: an analysis.**
 
-| Ability | Route | Where / what | Seen |
-|---|---|---|---|
-| Awakening | Forge, as today | Sela, lumen dust, cap and a Resonance | D |
-| Fissure, Returning Blades, Lance, Roundhouse Kick, Spell Runes | Forge, as today | They come with the awakened weapon | D |
-| Sweep freeze, Hammerfall clap | Forge, as today | | D |
+*Today*:
+- Sela awakens a primary or tool for 6 lumen dust once the piece is at its tier's cap and holds a Resonance (`constellation.ts:405`).
+- A common piece caps at +3, so a player who happens to socket a matching glyph pair can awaken within the first hours. The awakened move (Fissure, Returning Blades, Lance, Roundhouse Kick, Spell Runes; the Sweep freeze; the Hammerfall clap) comes with it.
+- Each move's "up" form needs its weapon art. Those sit in the Lattice, which opens at Infinite III.
 
-Awakening is a growth system. Its moves come with the weapon, so it stays a forge service.
+*The bands, from `items.ts` `APERTURE_BANDS`:*
+
+| Band | Tier | Aperture |
+|---|---|---|
+| Infinite | 11 | 1,525 |
+| Infinite II | 12 | 2,231 |
+| Infinite III | 13 | 3,255 |
+
+Stage 1 caps Aperture at the top of tier 12 (`stages.ts`), so **Infinite II is the last band reachable before the first Listener falls**, and Infinite III needs that kill.
+
+*Recommendation for v1: awakening opens at Infinite II.*
+- At Infinite, it would sit beside nothing else.
+- At Infinite II it is the power spike a player carries *into* the first Listener fight.
+- Infinite III then brings its spells and the Lattice, where the arts' "up" forms live. The spikes come one band apart instead of all at once.
+
+The work of awakening (cap, Resonance, dust) stays as it is. Sela's line when the band opens: "Something in your steel is asleep, not dead. Bring it to me."
+
+Items already awakened keep it, in both modes. Classic (v0) is unchanged.
 
 ### 3.7 Weapons, tools, armour, charm
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| Salvage Blade, Spark Coil | S | Starting kit | D |
-| Cinder Pike; Needle Caster; Fourfold Daggers; Quandrix Staff | a + F | Levels 4, 8, 12 and 16, shown in "Level-ups ahead", and loot | D |
-| Verge Cleaver, Lumen Spindle, Rift Bombard, armour, Quiet Compass | F | Loot | X |
-| Blunderbuss; Carbine | Upgrade | +6 on the Needle Caster or Spark Coil, as today. A transformation is its own reward. | D |
-| Iron Fists | b | Brawler core, tier 13, R1. A boxing ring chalked in a Great Keep courtyard: win three bouts against the Gaunt. | D |
-| Hammerfall | b | Brawler core, tier 13, R1. The quarry keeper's hammer fell into a canyon crater and an Earth Golem is using it. | D |
-| Great Sweep | b~ | Tier 13, R2. Mow a field of the Revenant horde in the Reckoning Fields. | D |
-| Aether Orrery | c + F | Sky. Stand on 3 Sky Stair summits at night. Also loot, as today. | D |
+| **One primary, one tool** | S | Chosen at the start (section 4.0) | D |
+| **Armoury picks** | a | Levels 4, 8, 12, 16, 20 and 24: Sela's armoury offers any primary or tool from the start list you do not own. This replaces the fixed level gifts (Cinder Pike at 4, Needle Caster at 8, Daggers at 12, Staff at 16) in v1. | D |
+| Blunderbuss; Carbine | a | +6 on the Needle Caster or Spark Coil, as today | D |
+| Verge Cleaver, Lumen Spindle, Rift Bombard and the rest, armour, charm | F | Loot, as today | X |
+| Aether Orrery | c + F | Sky. Reach three Sky Stair summits at night: the stars there have orbits you can borrow. Also loot, as today. | D |
 
-### 3.8 Echoes
+### 3.8 Echoes, glyphs, run perks
 
-**Keep the route: F, a first kill.** It is already the most convincing tie in the game. What is new:
+These stay as they are: **F**, a first kill, a drop or a Margin Warden.
 
-- **The seeded guardian roster** (2.4) decides which pack-creature Echoes are near on this journey.
-- **Hints:** a creature you have seen but whose Echo you lack appears as "rumoured" in the compendium.
+- Echoes are already the game's most convincing tie.
+- New under v1: the seeded **guardian roster** (2.4), and Echoes of seen creatures showing as "rumoured" in the compendium.
+- Listener's Answer is earned with the first Listener kill.
+- Resonances, Triads and Pairings stay emergent, discovered by combining.
+- Quick Ink, Inkwell and Ink Shield can also come from the Ink-Clerk's Blotters (R5).
 
-| Echoes | Route | Seen |
-|---|---|---|
-| 17 guardian Echoes | F~ (roster) | H once the creature is seen, else X |
-| 15 world-beast and unique Echoes | F (first kill) | D once the beast is known |
-| Bloblet Mend, Tentacle Ember | F (minion, once the parent falls) | X |
-| Stegosaur's Grip, Spinosaur's Echo, Earth Resolve, Triceratops Cunning | F (first kill) | H |
-| Listener's Answer | c (first Listener kill) | H |
-
-### 3.9 Glyphs, Resonances, Triads, Tesseracts
-
-| Ability | Route | Notes | Seen |
-|---|---|---|---|
-| 10 base glyphs | F | Drops, as today | X |
-| Gathered Breath | F | A rare drop, as today | X |
-| Resonances, Triads, Pairings | Emergent | Found by combining: the "exploring yourself" part of exploration. The compendium counts them ("5 of 8 Resonances heard"). | H |
-| Tesseract glyphs | F | Pentagon places, as today | H |
-
-### 3.10 Marginalia, potions, meals
+### 3.9 Mounts, companions, traversal
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
-| 17 marginalia | F | Margin Wardens, as today | X |
-| Quick Ink, Inkwell, Ink Shield | d / F | Also from the Ink-Clerk's Blotters (R5): the black ink knows them | H |
-| Potions; meals | S / economy | Unchanged. A meal is a supply, not an ability. | D |
+| Beast mounts, Triceratops | F | Pens and herds, as today | D |
+| **The hatchling** | b | **From Infinite II.** The mother Triceratops comes to the Beast Hotel when the band opens (her rescue quest then runs as today, `hatchling.ts:24`). A fully grown companion should not be a first-hour thing. | D |
+| Glider, Tidemantle, skiff, diving, robot, shovel, seeds, Lantern, Build, Oculus | As today | Already place-tied or a system | D |
 
-### 3.11 Mounts and companions
+### 3.10 Route totals (v1)
 
-| Ability | Route | Where / what | Seen |
-|---|---|---|---|
-| 9 beast mounts | F | Pen the hurt beast, as today | D |
-| Triceratops | F | Herds and the Beast Hotel, as today | D |
-| Hatchling | b | The mama's rescue, as today (already a quest). It counts as the Beastcaller core. | D |
+The world pool is 45 abilities:
 
-### 3.12 Traversal and utility
+| Route | Count |
+|---|---|
+| b, quests | 10 |
+| c, milestones | 11 |
+| d, threads | 12 (with Bell Toll and Lamplighter's Light) |
+| R, the Reliquary | 8 |
+| V, Viscera | 4 |
 
-| Ability | Route | Where / what | Seen |
-|---|---|---|---|
-| Lantern, Build, Oculus | S | Unchanged | D |
-| Leaf glider; Tidemantle; skiff; diving | F / b | Unchanged: already place- and quest-tied | D |
-| Robot / drone / submersible | b | R1. A foundry blueprint in a crossing chest; Sela can read it. Proposed, see the open questions. | H |
-| Shovel, travel seeds, Stego Bait, Crossing Sigil, Return Ember, rounds, sling | Unchanged | | D |
+**R5-only** (1,000+ sections): Mage's Hand, Continuous Assault, Ember Mend and Wellspring.
 
-### 3.13 Route totals (proposed)
+**The core kit (S and a):**
+- 6 disciplines;
+- 8 spells, including Aegis and Cinder Dart;
+- 5 modifiers and 10 capstones;
+- 3 free Lattice passives;
+- the start choice, 6 armoury picks and the two +6 transformations.
 
-The 115 abilities that today have no world tie would go as follows:
-
-| Route | Count | Notes |
-|---|---|---|
-| a | 14 | 5 modifiers, 2 disciplines, 3 spells, 4 milestone weapons |
-| b | 30 | |
-| c | 16 | |
-| d | 13 | Plus the 2 Arcana passives already there |
-| V | 15 | Secondary forms |
-| Forge, starting kit or upgrade | 13 | Awakening, 7 awakened moves, 2 starting weapons, Cinder Dart, Blunderbuss, Carbine |
-| F | The rest | Loot, as today |
-
-Exact numbers move with Tim's answers.
+**Unchanged (F and forge):** Echoes, glyphs, marginalia, loot, mounts, awakened moves.
 
 ---
 
 ## 4. Onboarding: the player knows from minute one
 
-**What the player should come away with in the first hour:** I grow by going out. Levels make me sturdier; the strange things are out there; there are quests; I choose where the compass points.
+**What the player should come away with in the first hour:** I chose how I fight. Levels make me sturdier and give me a full kit. The strange things are out there, and people will point me at them. I choose where the compass points.
 
-### 4.1 The first hour
+### 4.0 Random worlds, and the starting choice
 
-1. **Waking at Ember Refuge.** The Cairn Keeper, Maud Fennick, stands by the cairn as now. Her opening gains one line between her first two. This is a draft for Tim to rewrite:
-   > "Levels'll make you sturdier. That's all the Refuge can give you. Everything strange is out there: in the crossings, in what people dropped, in places nobody's walked yet. Abel knew. Go and get measured."
+**Random starts (both modes, new journeys only).**
 
-   She then sets the errand as today: the first crossing holds the chain's first link.
-2. **The first level-up** (level 2). Its message adds the "Level-ups ahead" line: "Ahead: Level 3 Ember Ring · Level 4 Cinder Pike · Level 6 Fire Burst". This is route (a), visibly.
-3. **The first crossing.** Each find shows one route:
+*Today:*
+- The very first journey on a device starts from `freshSave()`, whose seed is always `CINDER-VERGE-47` (`types.ts:37`, used by `persistence.ts:285`). Only a journey made in the creator gets a fresh `CORRIDOR-<time>` seed.
+- Around the Refuge, these are fixed for every seed:
+  - the hamlets **Glasshaven at (4,-2) and Coilmarket at (-5,3)** (`world.ts:142`);
+  - the **Arcana homes' compass sectors** (the Bells always south-west, the Surveyor's line always north-east, and so on; `lore.ts:165-190`).
+
+*Proposed:*
+- The first journey gets a random seed too.
+- Journeys created from now on record a **start version 1**. One seeded turn (a multiple of 45°, sometimes mirrored) is applied to everything directional around the start: the two hamlets' offsets (same distance, new bearing) and every Arcana home's sector. The bells and the chain stay opposite each other, the near threads stay near, and only the compass turns.
+- Text that names a direction reads it from the turned home, as `arcanaHint` already builds its words from data.
+- Under the bible's rule ("a changed home is a new region version") this is **region version 2**, given only to journeys created at start version 1. Existing journeys keep their fixed homes and hamlets.
+- The Refuge stays at (0,0) and stays the starting town. The Cairn Keeper still stands at its cairn. Nothing else is a fixed starter block: the rest of the map is made by how you explore.
+- The Proving Ground keeps its fixed laboratory seed.
+
+**The starting choice (both modes, new journeys).** After the name and seed, the journey creator shows two rows of cards, **Choose your weapon** and **Choose your tool**. Each card gives the name, what it scales with, its play style in one line, and a small "good with".
+
+| Weapon | Scales with | Play style |
+|---|---|---|
+| Salvage Blade | Focus | A short blade that grows with your magic. For spellblades. |
+| Cinder Pike | Finesse | A long thrust. Keep them at the end of your reach. |
+| Verge Cleaver | Might | A wide, heavy arc. Crowds. |
+| Iron Fists | Might | A combo on a beat, charged punches, a perfect-timing ball. Brawlers. |
+| Fourfold Daggers | Finesse | Paired cuts crossing in an X. Bosses, not crowds. |
+| Quandrix Staff | Focus | Slow spectral hands that strike again and again, at range. Casters. |
+
+| Tool | Scales with | Play style |
+|---|---|---|
+| Spark Coil | Focus | A straight magic bolt. At +6 it becomes the Carbine. |
+| Needle Caster | Finesse | Quick needles. At +6 it becomes the Blunderbuss. |
+| Lumen Spindle | Focus | A shot that flies out and comes back. |
+| Rift Bombard | Might | A lobbed shell that bursts. |
+| Hammerfall | Might | A brawler's slam. |
+| Great Sweep | Might | A great sweeping blade around you. |
+
+Scaling is from `items.ts` `WEAPON_SCALING` and `TOOL_SCALING`. The cards read it, so they follow any change.
+
+A default pair is preselected (Salvage Blade and Spark Coil, today's kit), so "Start" works at once. The choice is the item's identity only; the stats are the starting tier. Under Classic (v0) the choice is offered too (it only adds), and the rest of the start is as today.
+
+### 4.1 The first hour (Exploration)
+
+1. **Wake in Ember Refuge. The compass points at nothing** (as now). The Refuge's people are the tutorial: each has one first-journey line that points to a person, never a riddle.
+   - Vela (vendor): "New? Go and see Maud by the cairn. She sends everyone out sooner or later."
+   - Oren (warden): "Before you go past the wall, talk to Maud. And come back to me when you can block a blow." (Aegis is already in slot B.)
+   - Sela (keeper): "When the world starts to make sense to you, come to me. I'll read it." (The Arcanum.)
+   - Hollis Dray (cook): "Eat before you go. Maud won't feed you."
+2. **The Cairn Keeper, Maud Fennick, gives the first quest**, plainly:
+   > "Levels'll make you sturdier, and Sela will teach you what the Refuge knows. Everything strange is out there: in the crossings, in what people dropped, in places nobody's walked. Go into the first crossing you find. There'll be a piece of chain on the floor. Keep it."
+
+   Accepting the quest points the compass at "the nearest crossing". The errand now has a target: `wonders.ts`-style, the nearest crossing by hash.
+3. **The first signal site or buried memory** gives Aperture. At 6, Sela's lens opens: **Ember Form or Quickening, and Aerial Step**. Its first-use hint (4A): "Aerial Step: walk on the air at the height you cast it. Twice before you touch ground."
+4. **The first crossing** shows one route per find:
    - the chain link (exists);
-   - the guardian's Echo, certain as today: the first *found* power;
-   - a **guaranteed thread piece** from a near thread, rolled for this one crossing on new journeys. Its Arcana card says "something waits at the end" (d).
-4. **Back at the Refuge, or the first hamlet.** Sela's Arcanum now shows half-lit nodes ("the lens shows a place"). The first time the player opens it, a one-line card:
-   > "Some stars Sela can teach. Others you have to go and stand under."
-
-   A villager in the first hamlet has a rumour instead of an idle line: the first **hinted** lead. That makes two leads (G2).
-5. **The first attuned node** (Aperture 18, usually within the first hour or two). This is the first route (b) quest, directed, in R2. Accepting it points the compass.
+   - the guardian's Echo (a first kill);
+   - a guaranteed near thread piece, with "something waits at the end";
+   - the chance (1 in 10) of a reliquary if it is a Deep floor.
+5. **Back in town, the first rumour** comes from a villager or Glasshaven/Coilmarket resident (wherever they now lie): the first hinted lead. That makes two leads (G2).
+6. **Level 3: Ember Ring. Level 4: the first armoury pick.** The level-up line shows "Level-ups ahead".
 
 ### 4.2 The words the game uses
 
-- **"Lead"**: anything you know of and can act on (a quest, a rumour, a milestone in progress). The Journal's Active quests becomes **Leads**, with the quests first, then rumours.
-- **"Attuned"**: a node whose quest is open.
-- **"Something waits at the end"**: the hinted thread reward. "It does not say": hidden.
-- **The first lead banner**, once only:
-  > "A lead. Hold the compass to follow it, or don't: leads keep."
-- **No tutorial pop-ups beyond these.** The Cairn Keeper's line, the level-up line, Sela's card and the first-lead banner carry it.
+- **"Lead"**: anything you know of and can act on. The Journal's Active quests becomes **Leads**, with quests first, then rumours.
+- **"Something waits at the end"**: a hinted thread reward. "It does not say": hidden.
+- **The first lead banner**, once only: "A lead. Hold the compass to follow it, or don't: leads keep."
+- **No tutorial chain.** People, Maud's quest, the level-up line and the one-line hints (4A) carry it.
 
 ### 4.3 The compass leads without hand-holding
 
-- It never points by itself. Accepting a quest points it, as now. The compass's hold menu lists Leads.
-- Hinted leads give a sector and a range, the way the Arcana homes already do ("east of the Refuge, 19 to 35 sections out"). Following one sets the compass to the sector's nearest edge, not to the spot.
+- It never points by itself. Accepting a quest points it (as now), starting with Maud's.
+- Hinted leads give a sector and a range, as the Arcana homes do. Following one points at the sector's nearest edge.
 - Hidden things are never on the compass.
-- If the player has no needle set and **no** lead has been followed for a long while (for example 15 new sections), the Journal button shows a small dot. No arrow, no marker.
-
----
+- If no needle is set and no lead has been followed for 15 new sections, the Journal button shows a small dot. No arrow, no marker.
 
 ## 4A. Tutorials that don't break the flow
 
@@ -639,7 +761,7 @@ The Journal records that `journalOnce` writes today (refinement, shelter hazards
 
 ### 4A.4 A training yard
 
-Three options, from least to most work. The proposal recommends **(i) now and (ii) later**.
+Three options, from least to most work. Tim took the recommendation (2026-11-20): **(i) now and (ii) later**.
 
 **(i) "Try it" in the Proving Ground** (recommended first). The Proving Ground already does exactly the dangerous part right:
 
@@ -659,7 +781,7 @@ The how-to page's **Try it** button leads there through the existing handoff.
 What has to change:
 - the button must say plainly "Practice: nothing here is kept";
 - the laboratory's developer chrome is hidden in this preset;
-- it is only offered for abilities the player **owns** (it should not become a free preview of quest rewards). Lending one not yet owned is an open question.
+- it is only offered for abilities the player **owns** (it should not become a free preview of quest rewards). Tim agreed (2026-11-20).
 
 Risks:
 - leaving the game is a full page change; the Proving Ground hides the pause menu, and Exit reloads.
@@ -710,91 +832,126 @@ This shares the banner queue's spacing, so a hint and a quest banner never stack
 
 ## 5. The compendium
 
-A new page in the Reciter's Tome, **"What the Corridor Taught You"** (or in the Journal: Tim's choice).
-
-**Grouping.** By kind (disciplines, spells, nodes, the Lattice, arts and forms, Echoes, glyph combinations, gear, mounts, traversal). Each group shows a count of known against total: "Echoes: 11 of 37".
+A new page in the Reciter's Tome, **"What the Corridor Taught You"**. Each group shows a count of known against total: "Echoes: 11 of 37".
 
 **An entry has four states:**
 
 | State | What shows | When |
 |---|---|---|
 | Unknown | Nothing but the group count | Hidden routes until owned; everything else until rumoured |
-| Rumoured | The name and a vague where ("said to be found south, 20 to 40 sections out"), or "a thread's ending" | A rumour, a seen creature, a hinted thread card |
-| Open | The name, the route, the steps done and left, a Follow button | Quest open, milestone counting |
-| Owned | What it does, and **how it was earned**: where, when, from whom ("Pocket Time: the Clockmaker's Hours, finished 3 sections north of Larrow Ford") | On gain |
-
-The "how it was earned" line is the playthrough's own record. Two players comparing compendiums see different stories.
+| Rumoured | The name and a vague where, or "a thread's ending", or "at the bottom of something" (a Reliquary entry) | A rumour, a seen creature, a hinted thread card |
+| Open | The name, the route, the steps done and left, a Follow button | A quest open, a milestone counting |
+| Owned | What it does, **how it was earned** (where, when, from whom), and the How-to page (4A.3) | On gain |
 
 **Also on the page:**
 
-- **Level-ups ahead**: the next gifts by level.
-- **Kits**: a small row per archetype, showing how many of its core pieces are owned, rumoured or open. This answers "what is my build moving toward?" without a checklist of the whole world.
+- **Level-ups ahead**: spells and armoury picks by level; disciplines by Aperture.
+- **Kits**: a row per archetype, showing core pieces owned and the world additions known.
 
-**Existing journeys** see every owned ability as Owned, with the line "Before the Corridor kept count".
+**Under Classic (v0)** the compendium works the same, with two differences:
+- an ability today's rules make available shows as "Open to you: from the Arcanum" rather than as a lead;
+- owned abilities from before the compendium read "Before the Corridor kept count".
 
 ---
 
-## 6. Existing journeys
+## 6. Progression modes: Classic (v0) and Exploration (v1)
 
-**Never take away.** Everything a journey has, keeps working exactly as it does:
+Tim (2026-11-20): a toggle in Options. v0 is today's rules, v1 the new progression.
 
-- owned Echoes, glyphs, Tesseracts, marginalia, gear and mounts;
-- learned disciplines and nodes, and the secondary-form choices;
-- Lattice picks;
-- open spells.
+**The record.** `save.progression`, additive at schema 14 and normalised in `freshSave` and `migrateSave`:
 
-What is open to them today stays open.
+| Field | What it holds |
+|---|---|
+| `mode` | `"v0"` or `"v1"`, the rules |
+| `table` | The data-table version (2.4) |
+| `start` | The start version (4.0) |
+| `kept` | Ability ids kept across a switch |
+| `log` | The switches: mode, play time, section |
 
-**Version 0 stays version 0.**
+Unknown fields are kept, as elsewhere.
 
-- A journey from before the system records `progression.version = 0`: the legacy rules. Power gates keep granting what they grant today, so a version 0 journey that reaches tier 13 still gets the tier-13 spells and the Lattice picks as now.
-- On top of that, it **gets the new leads, quests and milestones as extra routes**. A quest for something it already owns is not offered. A thread reward it already owns pays a small consolation (lumen dust) and names what the thread "would have taught".
-- The compendium fills in from what it owns.
+**Defaults (recommended):**
 
-**New journeys** start at version 1: the new routes, the new gates.
+| Journey | Mode |
+|---|---|
+| New, from the journey creator | v1. The creator shows "Progression: Exploration (recommended) · Classic". |
+| The first journey on a new device | v1 |
+| Existing (no record) | v0. Nothing changes until the player chooses. |
 
-**An option for Tim (see the open questions):** let a version 0 player *choose* to switch to version 1 from the Options page, keeping everything owned and gating only what they have not yet unlocked. It would be one-way, behind a confirmation.
+**Switching, from Options → Journey → Progression.** Allowed any time out of combat. Each switch asks for confirmation, and says plainly what it does.
+
+*v0 → v1:*
+- Everything owned, learned or **open by today's rules at that moment** goes into `kept` and stays usable forever. That covers spells open at tier 13, Lattice picks, awakening and the hatchling quest.
+- Anything not yet open follows v1 from then on.
+- Quests for kept abilities are not offered.
+
+*v1 → v0:*
+- Today's rules apply at once: everything their gates would give unlocks, as if the journey had always been Classic.
+- Quests in progress stay in the Journal as extra routes.
+- Nothing is lost.
+
+*Switching back and forth* never takes anything away, so a player can unlock everything under v0 and return to v1 with it. That is the player's choice in a single-player game. The confirmation says so: "Abilities you have stay yours in either mode."
+
+**What runs under v0:**
+- Leads, rumours, milestones, thread rewards, Reliquaries, the compendium and hints all run, as **extra** routes.
+- A reward already owned pays a small consolation (lumen dust) and names what it "would have taught".
+- Rumours point only at abilities v0 does not already open.
+- Random starts and the starting choice apply to any *new* journey, whichever mode it chooses.
+- v0 never changes the start kit beyond the choice: Aegis stays at tier 13, Aerial Step stays a capstone, the level gifts stay fixed.
+
+**Existing journeys** load as v0 and change nothing. They keep their fixed seed, their homes, their hamlets and every ability.
+
+**The Proving Ground** copies the mode with the journey (one-way, scratch). Its labs grant what they grant today.
 
 ---
 
 ## 7. Build phases
 
-Each phase is one release or a few, previewed for Tim, the smallest shippable first. Every phase keeps the test floor and adds its own tests.
+Smallest shippable first. Each phase is one release or a few, previewed for Tim, keeps the 443-test floor, and adds the tests listed.
 
-| Phase | What ships | Gameplay change | Main risks | Tests it needs |
+| Phase | What ships | Gameplay change | Main risks | Tests |
 |---|---|---|---|---|
-| **1. The spine** | `src/progression.ts`: the data table of every ability (route, tier, pool, visibility, anchor class), pure. The compendium page showing **today's** routes honestly. "Level-ups ahead". | None: read-only | The table drifting from the code | Every ability id in `SPELLS`, `APERTURE_SKILLS`, `BRANCHES`, `ALT_PASSIVES`, `FIELD_PASSIVES`, `TOOL_FORMS`, `ECHOES`, `GLYPHS`, `MARGINALIA`, `MOUNT_IDS` and `MILESTONE_GEAR` has a row (a coverage test fails when a new ability is added without one). Compendium states. |
-| **2. Leads** | Journal "Leads"; rumours from existing speakers; the lead floor (G2); the first-lead banner; the Cairn Keeper's new line; the first-crossing thread piece on new journeys. `save.progression` additive at schema 14, normalised in `freshSave` and `migrateSave`. | Text and guidance only; nothing locked | Story budget (the rumours replace idle lines); the first-crossing roll must not touch pinned crossings | Migration and exact resume of `save.progression`; rumour determinism; the floor holds over a simulated walk; pinned crossings unchanged |
-| **2b. Hints and how-to pages** | First-use hints (4A.2) with the budget (4A.6); the Options → Hints setting; how-to pages from the data table (4A.3); the existing Journal explanations linked in. Can ship before any gating, and helps today's game too. | Presentation only | Hint spam; a hint firing mid-fight | Each subject shown once (`save.hints.seen` additive, migration test); suppressed while foes are engaged; the queue cap and gap; the coverage test requires a hint and a how-to for every row; the Off setting shows nothing |
-| **2c. Training yard** | (i) The "Training Yard" preset and the how-to page's Try it button, through the existing Proving Ground handoff. Later, (ii) the sparring post in towns. | None to production | The page switch feeling heavy; lending abilities not owned | The existing isolation tests still pass (no production storage key in the laboratory graph); the preset lends only owned abilities; Exit resumes the journey exactly |
-| **3. Milestones (c) and pity (G3)** | Counters, the milestone display, pity drops. On **version 1 journeys only**, the c-route abilities stop being free picks. | First real gating | Gating a Lattice pick a player relies on; counter cost on mobile (integers only) | Counter increments and their caps; version 0 journeys unchanged (old save fixtures); pity triggers at N |
-| **4. Attuned quests (b), first batch** | The quest-step engine: steps resolved once and saved (G4); objects over places as they load. The cores first: Iron Fists, Hammerfall, Shadow Boxing, Aegis, Sanctum, Tempo, Blade Stream, Imbue Weapon, Amplifier. | Gates the cores on version 1, directed and near | A step placed somewhere unreachable; Proving Ground isolation (labs must still grant everything from scratch state) | Reachability sim (G6) over 1,000 seeds; step resolution is deterministic and saved; relaxation fallback; exact resume mid-step |
-| **5. Thread rewards (d)** | Thread endings grant (`ARCANA_REWARDS`), with fixed and pooled slots seeded and realised once | Gates thread-tied abilities on version 1 | A thread nobody finds; the lead floor covers it by rumouring threads near | The pool permutation is stable per seed and version; a version 2 key never changes version 1 results; consolation on owned |
-| **6. Far, sea, sky and strange quests** | The R3-R5 and layer quests ("a desert at least 50 out", shipwrecks, Cloud Hold, the Askew) | More gating, all non-core | Long searches for a matching section; perf of the biome scan (bounded, cached per section as `wonders.ts` does) | Search bounds; relaxation; no generator change (landscape versions untouched) |
-| **7. Viscera and the guardian roster** | Secondary forms bought for Viscera (version 1); rumour purchase; the seeded guardian roster for new ground | Economy | Viscera supply versus price; the roster changing Echo pacing | Price table; roster determinism by version; version 0 ground keeps its guardians |
-| **8. Opt-in switch (if Tim wants it)** | An Options toggle from version 0 to version 1 | Player's choice | Confusing players; it must never remove anything | Owned-everything-kept test over real old save fixtures |
+| **1. The spine** | `src/progression.ts`: every ability's row (mode-0 route, mode-1 route, tier, pool, visibility, hint, how-to), pure. The compendium page showing today's routes. | None: read-only | The table drifting from the code | Coverage: every id in `SPELLS`, `APERTURE_SKILLS`, `BRANCHES`, `ALT_PASSIVES`, `FIELD_PASSIVES`, `TOOL_FORMS`, `ECHOES`, `GLYPHS`, `MARGINALIA`, `MOUNT_IDS` and `MILESTONE_GEAR` has a row |
+| **2. Modes, random starts, start choice** | `save.progression`; the Options toggle (v0/v1) with switch rules; the creator's mode, weapon and tool cards; random seed for the first journey; start version 1 (the turned hamlets and Arcana homes, region version 2) | New journeys only; existing ones are v0 and unchanged | A hamlet turned onto water or a blocked section (fall back to the next bearing); text naming the old directions | Migration (no record → v0; unknown fields kept); a switch keeps everything (`kept`); v1 → v0 unlocks by today's gates; the turn is deterministic per seed; existing seeds' hamlets and homes are unchanged; fixtures from real old saves |
+| **3. The core kit (v1)** | Aegis at the start; Aerial Step at Aperture 6 and Long Quickening as the Motion capstone; Rift Step at 12; spells by level (3, 6, 10); armoury picks; 3 free Lattice passives; awakening and the hatchling at Infinite II | v1 only | Aerial Step's save id (`aerial-step` kept for the slot); an old v1 test fixture | Each archetype's G1 core is reachable by levelling alone (scripted); v0 gates are byte-for-byte as today; exact resume |
+| **4. Leads, hints, how-to** | Journal "Leads"; rumours from existing speakers; the lead floor; first-journey lines for Vela, Oren, Sela, Hollis and Maud; Maud's errand pointing at the nearest crossing; first-use hints with their budget; how-to pages; Options → Hints | Text and guidance | Hint spam; a rumour line replacing a needed line | `save.hints.seen` migration; hints suppressed in fights; queue cap and gap; lead floor over a simulated walk |
+| **5. Training yard** | "Try it" from a how-to page into a Proving Ground preset (owned abilities only); later the town sparring post | None to production | The page switch feeling heavy | The existing isolation tests; the preset lends only owned abilities; Exit resumes exactly |
+| **6. Milestones, Reliquary, pity** | Counters and thresholds; the reliquary object and its pool; the first-horde, Pentagon, seed-realm and vault certainties; horde rumours from Infinite II; the 200-section strong lead | v1 gating begins for c and R | Counter cost (integers only); a reliquary in a pinned crossing (laid over, never generated) | Pool determinism; certain finds fire once; chance rolls are seeded; pity gives a lead, never an ability; a v0 journey gets consolations |
+| **7. Quests (b) and thread rewards (d)** | The quest-step engine (resolved once, saved, relaxed; verbs from 2.8); thread endings granting through `ARCANA_REWARDS` | v1 gating for b and d | An unreachable step | The 1,000-seed simulation (G6): steps resolve, the cadence lands in its bands; a v2 table key never changes v1 results |
+| **8. Far, sea, sky, strange; Viscera** | The R3-R5 and layer quests; the four Viscera forms and the rumour purchase; the guardian roster | v1 | Biome-scan cost (bounded and cached, as `wonders.ts`) | Search bounds; price table; roster determinism |
 
-**Risks that cut across all phases:**
+**Watching difficulty.** No numbers change in this plan; creature health and damage stay as they are.
 
-- **Fun early, power late.** Moving tier-13 gifts behind quests slows Infinite III builds. The near-core rule (G1) and the reachability sim are the guard.
-- **Save compatibility.** Everything is additive at schema 14, version-pinned, and never regenerates a journey.
-- **Story tone.** Hooks are drafts; Tim rewrites any.
-- **Tests ≠ device.** The pacing (one unlock per about 40 sections) needs Tim playing it.
+- *Why it matters:* Tim has already lowered player damage by about 10-20%. Under v1 the start is stronger than today (a chosen weapon, Aegis, Aerial Step, an armoury). From Infinite III on, though, a v1 character holds fewer Lattice picks, forms and arts than a v0 one, so it is **weaker for longer in the mid and late game**.
+- *How to watch it,* with nothing sent anywhere:
+  1. **Options → System, "Pace"**: hours played, new sections, abilities earned by route, Echoes, and deaths per hour, read from the save.
+  2. **A Proving Ground "v1 view"** of a real journey: a copy of Tim's save, read under v1 rules, lists what he would and would not hold at his hours and sections, against the cadence table (2.7).
+  3. **Checkpoints** in Tim's own v1 playtest at 2, 10, 20 and 40 hours. Things to note: time to fell the first world beast, the first Listener attempt, and deaths per hour against his v0 numbers.
+- *Levers, all data:* the free Lattice passives, the Reliquary chance, milestone thresholds, the pity interval, and moving one more piece into an archetype's core.
 
 ---
 
 ## 8. Open questions for Tim
 
-1. **Existing journeys.** Version 0 keeps today's rules plus the new quests as extras (recommended). Or should version 0 players be able to opt into the new gates (Phase 8)?
-2. **How much stays free?** The proposal keeps free: Ember Form and Quickening, the five modifiers, Cinder Dart, the level-gifted weapons, Echoes, glyphs, loot, mounts and all traversal. Everything else moves to quests, milestones, threads or Viscera. Too much or too little?
-3. **Secondary forms for Divine Viscera.** Is that the right "buy" list? Or should Viscera buy only rumours and rerolls, and the forms come from quests too?
-4. **Variety: how much is seeded?** The proposal fixes about half (the thematic pairs and all cores) and seeds the rest within each tier. More shuffle (even cores vary) or less?
-5. **The numbers.** The pity rule at 40 sections without a gain, the lead floor of 2, and at most 3 directed quests open. Also, does Mirror Veil (Warden core) stay a far thread, or get a near copy?
-6. **Where the compendium lives**, the Reciter's Tome or the Journal, and its name.
-7. **The Cairn Keeper's new line** and Sela's card: keep the drafts, or write your own?
-8. **Hints.** On by default with the budget in 4A.6? And should the hint teach the source ("from the Clockmaker's watch"), or only what the ability does?
-9. **Training yard.** "Try it" through the Proving Ground first, with town sparring posts later? And may it lend an ability the player has *not* earned yet (a preview), or only owned ones (recommended)?
+Tim took every recommendation of revision 1. These are the few decisions revision 2 raised:
+
+1. **Rift Step at Aperture 12** (today 18), to land "soon after" Aerial Step at 6. Or keep 18?
+2. **The armoury** replaces the fixed level gifts in v1 (a free pick at 4, 8, 12, 16, 20 and 24). Is that the right cadence? Should the Iron Fists, Hammerfall and Great Sweep be on the start cards from level 1, as proposed?
+3. **The start turn** rotates the hamlets and every Arcana home together. Should it also turn the Far Sleep's edge and the Surveyor's statue line (bigger, later-game landmarks), or leave those fixed?
+4. **The Pace line** in Options → System: visible to every player, or only while Proving Ground access is on?
 
 ---
 
-*Prepared from the code at `origin/main` 825204efc (release 1031 era). File and line references were checked against that tree; counts were read from the live tables (`ECHO_IDS` 37, `MARGINALIA` 20, `RESONANCES` 8, `TRIADS` 6, `MOUNT_IDS` 9).*
+## What changed in revision 2 (2026-11-20)
+
+- **Modes**: Classic (v0) and Exploration (v1), chosen per journey and switchable in Options, with defaults and switch rules (section 6).
+- **The start**: a weapon and tool choice screen; Aegis from the start; random seeds for every new journey; the hamlets and Arcana homes turned per seed (4.0).
+- **The core kit by levelling alone**: Aerial Step at Aperture 6; Rift Step at 12; Cinder Dart as the short-cooldown starter; spells by level; armoury picks; capstones by points; 3 free Lattice passives; a G1 table per archetype (2.5, 3).
+- **Secondary forms** are now mostly found in the world (11), with 4 for Viscera.
+- **Awakening at Infinite II**, with the analysis (3.6). **The hatchling at Infinite II.**
+- **Pity is now a lead, never an ability**, after 200 sections. A cadence table calibrated on Tim's 40 hours and 1,300 sections (2.7).
+- **The Reliquary** route: a mad find at the bottom of dungeons, certain on the first horde, Pentagon, seed realm and vault. Horde quests ask for one clear only, and rumours point to the nearest horde.
+- **Quest verbs** limited to Act, defeat, reach, survive, clear and use (2.8). Every hook in section 3 is rewritten in them.
+- **Onboarding**: the Refuge's people point to Maud; Maud's errand is plain and points the compass (4.1).
+- **Watching difficulty** without changing numbers (section 7). Build phases reordered: modes, starts and the core kit come early.
+- **Open questions** cut to the four that remain.
