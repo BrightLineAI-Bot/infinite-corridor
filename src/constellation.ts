@@ -8,7 +8,7 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.ts";
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.ts";
 import { HAMMER_CLAP } from "./brawler-spells.ts"; // the awakened Hammerfall's clap (2026-11-14)
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
@@ -17,6 +17,7 @@ import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.ts";
 import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.ts"; // awakened arts: each primary's own move (2026-11-13)
 import { TESSERACTS } from "./tesseracts.ts";
 import { PASSIVE_TEXT } from "./hit-cast-passives.ts"; // the on-cast nodes (Tim, 2026-11-19)
+import { EXPLORATION, exploring } from "./journey-start.ts"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -132,11 +133,13 @@ export function latticePassiveGroups() {
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
   if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first
+  if (f.id === "aerial-step" && aerialDiscipline(save) && !(save.lattice?.passives || []).includes(key)) return { ok: false, message: `In Exploration ${EXPLORATION.aerialStep.cap.name} is the Motion capstone itself, and Aerial Step a discipline: neither has a form to draw into the Lattice.` };
   return toggleLatticeSlot(save, "passive", key, f.name, () => !hasNode(save, f.id) ? `Learn ${passiveForm(f.id).name} first: the Lattice draws in a form of a passive you know.` : f.alt === altChosen(save, f.id) ? `${f.name} already works: it is the form you have chosen.` : "");
 }
 export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };
+  if (id === "aerial-step" && aerialDiscipline(save)) return { ok: false, message: `${EXPLORATION.aerialStep.cap.name} has no secondary form in Exploration: it is the Motion capstone itself.` };
   if (!altUnlocked(save)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
   if (!(alt.discipline ? skillRank(save, id) > 0 : hasNode(save, id))) return { ok: false, message: "Learn it first." }; // a discipline's own form (Quickened Stride): once it has a rank
   const c = save.constellation; c.alt ||= {};
@@ -155,7 +158,8 @@ export function ensureConstellation(save) {
   save.constellation = { ...c, version: CONSTELLATION_VERSION, mods: { ...c.mods }, caps, caps2, bonus: Math.max(0, Math.floor(Number(c.bonus) || 0)), ...(Object.keys(alt).length ? { alt } : {}) }; if (!Object.keys(alt).length) delete save.constellation.alt; // release 736 (review S7): unknown fields kept
   // Reconciled on every load, so saves from before this release (or merged with fresh defaults) keep what they learned:
   // a learned Aerial Step claims the Motion capstone, and any overspend becomes grandfathered bonus points.
-  if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step")) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }
+  if (save.constellation.aerial !== true) delete save.constellation.aerial; // progression Phase 3: Aerial Step learned as Exploration's discipline (learnAerialStep)
+  if (skillRank(save, "aerial-step") > 0 && !hasNode(save, "aerial-step") && !save.constellation.aerial) { if (!save.constellation.caps.motion) save.constellation.caps.motion = "aerial-step"; else save.constellation.caps2.motion = "aerial-step"; }
   save.constellation.bonus = Math.max(save.constellation.bonus, pointsSpent(save) - pointsEarned(save));
   return save;
 }
@@ -165,6 +169,7 @@ export function pointsSpent(save) {
   let n = 0;
   for (const b of Object.values(BRANCHES)) n += skillRank(save, b.active);
   n += Object.values(c.mods || {}).filter(Boolean).length + 2 * (Object.keys(c.caps || {}).length + Object.keys(c.caps2 || {}).length);
+  if (c.aerial === true && skillRank(save, "aerial-step") > 0) n += EXPLORATION.aerialStep.cost; // Exploration's Aerial Step discipline
   return n;
 }
 export const pointsFree = (save) => pointsEarned(save) + (save.constellation?.bonus || 0) - pointsSpent(save);
@@ -201,7 +206,7 @@ export function chooseCap(save, branch, capId) {
   if (pointsFree(save) < 2) return { ok: false, message: "A capstone needs 2 free points." };
   save.constellation.caps2 ||= {};
   if (save.constellation.caps[branch]) save.constellation.caps2[branch] = capId; else save.constellation.caps[branch] = capId;
-  if (capId === "aerial-step") { save.magicSkills.learned["aerial-step"] = 1; }
+  if (capId === "aerial-step" && !aerialDiscipline(save)) { save.magicSkills.learned["aerial-step"] = 1; } // in Exploration this slot is Long Quickening
   return { ok: true, message: `${cap.name} crowns the ${b.name} branch.` };
 }
 // An extra node (EXTRA_NODES): a point, once the branch's discipline has a rank.
@@ -214,6 +219,31 @@ export function learnExtra(save, branch, id) {
   save.constellation.mods[id] = true;
   return { ok: true, message: `${node.name} joins the constellation.` };
 }
+// ---------------------------------------------------------------- Exploration's Aerial Step and Long Quickening (progression Phase 3)
+// In Exploration (journey-start.ts exploring) Aerial Step is a discipline of its own: one point once Aperture reaches
+// EXPLORATION.aerialStep.aperture, nothing else first. It is recorded as today's learned rank (magicSkills.learned["aerial-step"])
+// and save.constellation.aerial (additive; its point, which pointsSpent counts and a respec refunds). The Motion capstone keeps
+// its save id `aerial-step` and is Long Quickening (EXPLORATION.aerialStep.cap: Quickening lasts half again as long), with no
+// secondary form, so a journey that crowned Motion with Aerial Step under Classic holds both in Exploration. Classic is untouched.
+export const aerialDiscipline = (save) => exploring(save);
+export function learnAerialStep(save) {
+  const A = EXPLORATION.aerialStep, name = APERTURE_SKILLS["aerial-step"].name;
+  if (!aerialDiscipline(save)) return { ok: false, message: `${name} crowns the Motion branch under Classic rules.` };
+  if (skillRank(save, "aerial-step") > 0) return { ok: false, message: `${name} is already yours.` };
+  if ((save.perception?.aperture || 0) < A.aperture) return { ok: false, message: `${name} opens at Aperture ${A.aperture}.` };
+  if (pointsFree(save) < A.cost) return { ok: false, message: "No constellation points free." };
+  save.magicSkills.learned["aerial-step"] = 1; save.constellation.aerial = true;
+  return { ok: true, message: `${name} learned: walk on the air.` };
+}
+// The Motion capstone as the journey reads it: Exploration's Long Quickening in the slot `aerial-step`, else the node itself.
+export function capstoneOf(save, cap) {
+  return cap?.id === "aerial-step" && aerialDiscipline(save) ? { ...cap, name: EXPLORATION.aerialStep.cap.name, text: EXPLORATION.aerialStep.cap.text, kind: "changes" } : cap;
+}
+// Long Quickening holds: chosen as Aerial Step's secondary form (Classic), the Motion capstone in Exploration, or kept from an
+// Exploration capstone (save.progression.kept "aerial-step:alt") when the journey went Classic.
+export const longQuickeningOn = (save) => altOn(save, "aerial-step") || (hasNode(save, "aerial-step") && (aerialDiscipline(save) || (Array.isArray(save?.progression?.kept) && save.progression.kept.includes("aerial-step:alt"))));
+// Under Classic a chosen Long Quickening stands in for Aerial Step (release 359); in Exploration they are separate and both hold.
+export const aerialStepBlocked = (save) => !aerialDiscipline(save) && altOn(save, "aerial-step");
 export const respecCost = (save) => 2 + Math.ceil(pointsSpent(save) / 2);
 // Only at shrines (the UI offers it there). Refunds every rank, modifier and capstone; grandfathered bonus stays.
 export function respec(save) {
@@ -222,7 +252,7 @@ export function respec(save) {
   if (dust < cost) return { ok: false, message: `Respec needs ${cost} lumen dust (you have ${dust}).` };
   save.materials.lumenDust = dust - cost;
   save.magicSkills.learned = {}; save.magicSkills.selected = null; save.magicSkills.active = null;
-  save.constellation.mods = {}; save.constellation.caps = {}; save.constellation.caps2 = {}; delete save.constellation.alt;
+  save.constellation.mods = {}; save.constellation.caps = {}; save.constellation.caps2 = {}; delete save.constellation.alt; delete save.constellation.aerial;
   return { ok: true, message: `The shrine takes ${cost} lumen dust. Your constellation is unwritten.` };
 }
 
@@ -232,7 +262,7 @@ const activeIs = (save, id) => save.magicSkills?.active?.id === id && save.magic
 export const sanctuaryOn = (save) => activeIs(save, "veil-guard") && nodeOn(save, "sanctuary");
 export function skillDurationScale(save, id) {
   if (id === "ember-form") return nodeOn(save, "colossus") ? 1.5 : altOn(save, "colossus") ? ALT_PASSIVES.colossus.duration : 1;
-  if (id === "quickening" && altOn(save, "aerial-step")) return ALT_PASSIVES["aerial-step"].duration; // release 359
+  if (id === "quickening" && longQuickeningOn(save)) return ALT_PASSIVES["aerial-step"].duration; // release 359; Phase 3: Exploration's capstone
   if (id === "veil-guard" && altOn(save, "sanctuary")) return ALT_PASSIVES.sanctuary.duration;
   return 1;
 }
@@ -406,12 +436,15 @@ export function awakenCheck(save, slot) {
   const item = save.equipment?.[slot];
   if (!item || (slot !== "primary" && slot !== "secondary")) return { ok: false, message: "Only a primary weapon or a tool can awaken." };
   if (item.awakened) return { ok: false, message: `${item.name} is already awakened.` };
+  if (!explorationGateOpen(save, "awakened:awakening")) return { ok: false, message: `${AWAKEN_WAIT} (Exploration: awakening opens at the ${APERTURE_BANDS[EXPLORATION.gates["awakened:awakening"].tier].name} band of the Aperture.)` };
   const n = normalizeItemUpgrade(item), cap = UPGRADE_CAPS[itemTier(n)];
   if ((n.upgradeRank || 0) < cap) return { ok: false, message: `Strengthen ${item.name} to +${cap} first (now +${n.upgradeRank || 0}).` };
   const reso = resonancesOf(item.glyphs || []);
   if (!reso.length) return { ok: false, message: `${item.name} must hold a Resonance in its sockets.` };
   return { ok: true, resonance: reso[0], message: `${item.name} can awaken in ${RESONANCES[reso[0]].name}.` };
 }
+// Sela's line while Exploration holds awakening back (design 3.6: it opens at Infinite II).
+export const AWAKEN_WAIT = "Sela turns the piece over. \"Something in your steel is asleep, not dead. Not yet, though.\"";
 export function awaken(save, slot) {
   const check = awakenCheck(save, slot);
   if (!check.ok) return check;
