@@ -155,7 +155,7 @@ import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
-import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt } from "./settlements.ts";
+import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
 import { useJourneyFrame, saveStart, saveFrame } from "./journey-start.ts";
 import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
@@ -3730,7 +3730,7 @@ export class Game {
     }
     const eliteState=ensureEliteState(this.save),eliteDefeated=eliteState.defeated;
     const meridian=ashenMeridianSection(this.save);/* (5,-2), or where a start-1 journey's frame turns it (foundry.ts) */if(area==='overworld'&&this.rx===meridian.rx&&this.ry===meridian.ry&&!eliteDefeated.vesperwing){const direct=this.save.viewport?.contracts?.['viewport-direct-vesperwing'];this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true,viewportHuntId:direct&&['accepted','target-located'].includes(direct.status)?direct.id:null});}
-    if(area==='overworld'&&this.rx===-7&&this.ry===4&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
+    const mire=fixedPlaceSection(this.save.seed,'mireApostle',saveFrame(this.save));/* (-7,4), or turned on a start-1 journey (settlements.ts) */if(area==='overworld'&&this.rx===mire.rx&&this.ry===mire.ry&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
     if(area==='overworld'&&oldTownAt(this.save.seed,this.rx,this.ry)==='-5,3'){/* in Coilmarket, wherever it stands */this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
     if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
     else if(area==='dungeon'&&this.map.recipe==='cistern') {

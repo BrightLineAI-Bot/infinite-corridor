@@ -27,7 +27,7 @@
 // The compendium (compendium()) and the Pace line (pace()) read the save as it is; nothing new is saved.
 import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.ts";
 import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame } from "./journey-start.ts";
-import { viewportContracts } from "./foundry.ts";
+import { freshViewportState } from "./foundry.ts";
 import { ensureSlots, PRESETS } from "./spell-slots.ts";
 import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.ts";
 import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.ts";
@@ -540,9 +540,10 @@ export function startJourney(save, options = {}) {
     const ms = save.magicSkills; ensureSlots(save);
     if (!Object.values(ms.slots).includes(A.id)) { ms.slots[A.slot] = A.id; for (let i = 0; i < PRESETS; i++) if (ms.presets?.[i] && !Object.values(ms.presets[i]).includes(A.id)) ms.presets[i][A.slot] = A.id; }
   }
-  // The Viewport's first hunt, turned with the frame (the other hunts are seeded already and left as they are).
-  const direct = viewportContracts(save.seed, saveFrame(save))[0], held = save.viewport?.contracts?.[direct.id];
-  if (held && held.status === "available") Object.assign(held, { target: { ...direct.target }, summary: direct.summary });
+  // The Viewport's hunts, from the journey's own seed and frame: freshSave made them before the seed was set (so every journey
+  // made in the creator had CINDER-VERGE-47's hunts). A new journey has touched none of them yet; the first hunt is turned.
+  // Journeys from before keep the hunts they have.
+  save.viewport = freshViewportState(save.seed, saveFrame(save));
   return save;
 }
 export { PROGRESSION_MODES };

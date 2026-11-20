@@ -12,12 +12,12 @@ import { startJourney, switchProgression, switchKeeps, ownership, stateV0, PROGR
 import { namedFresh, randomSeed } from '../src/persistence.ts';
 import { spellOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS } from '../src/items.ts';
 import { generateRegion, regionSettled } from '../src/world.ts';
-import { oldTownSections, oldTownAt, OLD_TOWNS, hamletSection } from '../src/settlements.ts';
+import { oldTownSections, oldTownAt, OLD_TOWNS, hamletSection, fixedPlaceSection } from '../src/settlements.ts';
 import { openSeaSection, farSleepSection, farSleepDepth, FAR_SLEEP_DEPTH, sectionRegion } from '../src/landscape.ts';
 import { readingAt, inArcanaHome, arcanaHint, readingRegionHint, ARCANA_REGIONS, READING_BANDS, regionVersionFor, regionFrame, arcanaRate } from '../src/lore.ts';
 import { pageIn } from '../src/torn-pages.ts';
 import { surveyorStatueSection, SURVEYOR } from '../src/surveyor.ts';
-import { viewportContracts, ashenMeridianTarget, ashenMeridianSection, ensureViewportState } from '../src/foundry.ts';
+import { viewportContracts, ashenMeridianTarget, ashenMeridianSection, ensureViewportState, freshViewportState } from '../src/foundry.ts';
 import { guideHostable } from '../src/waymark-guides.ts';
 import { learnRank } from '../src/constellation.ts';
 import { Game } from '../src/game.ts';
@@ -65,6 +65,8 @@ test('old journeys: no record loads as v0 at start 0, the identity frame, and th
   assert.equal(readingRegionHint('riverThatRemembers'), 'north, 7 to 18 sections out');
   const c = viewportContracts(OLD)[0]; assert.deepEqual([c.title, c.target, c.summary], ['The Ashen Meridian', { rx: 5, ry: -2 }, 'A Vesperwing circles an exposed crossing five sections east and two north.']);
   assert.deepEqual(ashenMeridianSection(m), { rx: 5, ry: -2 });
+  assert.deepEqual(fixedPlaceSection(TIM, 'mireApostle', saveFrame(m)), { rx: -7, ry: 4 });
+  const oldHunts = JSON.stringify(m.viewport.contracts); assert.equal(JSON.stringify(ensureViewportState(migrateSave(JSON.parse(JSON.stringify(m)))).contracts), oldHunts, 'an old journey keeps its hunts exactly');
   assert.equal(regionVersionFor(false), 1); assert.equal(regionVersionFor(false, true, 0), 1); assert.equal(regionVersionFor(true, true, 1), 0);
   // the statue keeps the old rule (a link in the north-east, and no link at all)
   const st = freshSave(); st.seed = TIM; st.lore.surveyor = { links: Array.from({ length: SURVEYOR.links }, (_, i) => i), where: { [SURVEYOR.links - 1]: `dungeon:${TIM}:g1:10:-10:x` } };
@@ -204,6 +206,11 @@ test('start version 1: every fixed direction turns together, and the words read 
     assert.deepEqual(c.target, t); assert.deepEqual(ashenMeridianSection(s), t); assert.equal(c.summary, `A Vesperwing circles an exposed crossing ${sectionWords(t.rx, t.ry)}.`);
     assert.ok(Math.abs(Math.hypot(t.rx, t.ry) - Math.hypot(5, 2)) <= 1); assert.ok(!oldTownAt(seed, t.rx, t.ry));
     assert.deepEqual(ensureViewportState(migrateSave(JSON.parse(JSON.stringify(s)))).contracts['viewport-direct-vesperwing'].target, t, 'kept across a reload');
+    // every hunt is the journey's own (not CINDER-VERGE-47's), and the Mire Apostle turns like the towns
+    assert.deepEqual(s.viewport, freshViewportState(seed, f));
+    assert.deepEqual(s.viewport.contracts['viewport-frontier-manufactory'].target, viewportContracts(seed)[2].target, 'seeded from the journey\'s own seed');
+    const mire = fixedPlaceSection(seed, 'mireApostle', f);
+    assert.ok(Math.abs(Math.hypot(mire.rx, mire.ry) - Math.hypot(7, 4)) <= 3.75); assert.ok(!oldTownAt(seed, mire.rx, mire.ry));
   }
 });
 
@@ -227,12 +234,16 @@ test('200-seed sweep: turned towns, first hunts and the Far Sleep\'s edge land o
       if (!f.identity) { assert.ok(!openSeaSection(seed, x, y), `${seed} town not at sea`); assert.ok(!hamletSection(seed, x, y), `${seed} town not on a hamlet`); }
     }
     const t = ashenMeridianTarget(seed, f);
+    const mire = fixedPlaceSection(seed, 'mireApostle', f);
+    assert.ok(Math.abs(Math.hypot(mire.rx, mire.ry) - Math.hypot(7, 4)) <= 3.75 && Math.abs(mire.rx) + Math.abs(mire.ry) >= 2 && !oldTownAt(seed, mire.rx, mire.ry, f), `${seed} mire`);
+    if (!f.identity) assert.ok(!openSeaSection(seed, mire.rx, mire.ry) && !hamletSection(seed, mire.rx, mire.ry), `${seed} mire ground`);
     assert.ok(Math.abs(t.rx) + Math.abs(t.ry) >= 3 && !oldTownAt(seed, t.rx, t.ry, f), `${seed} hunt`);
     assert.ok(Math.abs(Math.hypot(t.rx, t.ry) - Math.hypot(5, 2)) <= 1, `${seed} hunt distance`);
     for (let deg = 0; deg < 360; deg += 30) { const r = deg * Math.PI / 180, x = Math.cos(r), y = -Math.sin(r);
       assert.ok(!farSleepSection(Math.round(x * 23), Math.round(y * 23), f) && farSleepSection(Math.round(x * 37), Math.round(y * 37), f), `${seed} edge`); }
     assert.ok(sectionRegion(seed, 0, 0).type, 'the Refuge region reads');
   }
+  assert.ok([0, 1, 2].some((i) => JSON.stringify(v1Save(`HUNTS-${i}`).viewport.contracts['viewport-frontier-rootbound'].target) !== JSON.stringify(freshSave().viewport.contracts['viewport-frontier-rootbound'].target)), 'no longer CINDER-VERGE-47\'s hunts');
   assert.ok(Date.now() - t0 < 60000, 'bounded');
 });
 

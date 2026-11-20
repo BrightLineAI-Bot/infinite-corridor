@@ -4,7 +4,7 @@
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
 import { hashSeed, rng, pick, byHash } from "./random.ts";
 import { LETHAL_KINDS, openSeaSection } from "./landscape.ts";
-import { frameFor, placeTurned } from "./journey-start.ts";
+import { frameFor, placeTurned, turnSection } from "./journey-start.ts";
 import { relayCoordinate } from "./relay-network.ts";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
@@ -71,6 +71,25 @@ export function oldTownSections(seed, frame = frameFor(seed)) {
   }
   if (townMemo.size >= 16) townMemo.clear();
   townMemo.set(key, m); return m;
+}
+// Other fixed places of the old world (the Mire Apostle's section, -7,4; game.ts loadArea): on a start-1 journey turned by the
+// same frame, at the same distance, falling back to the next bearing off open sea, a hamlet, an old town or the Refuge's ring
+// (and, with every bearing refused, up to FIXED_PLACE_RULES.nearer sections nearer).
+export const FIXED_PLACES = Object.freeze({ mireApostle: Object.freeze([-7, 4]) });
+export const FIXED_PLACE_RULES = Object.freeze({ nearer: 3 });
+const placeMemo = new Map();
+export function fixedPlaceSection(seed, id, frame = frameFor(seed)) {
+  const at = FIXED_PLACES[id]; if (!at) return null;
+  const [cx, cy] = at; if (!frame || frame.identity) return { rx: cx, ry: cy };
+  const key = `${seed}:${frame.index}:${id}`; let r = placeMemo.get(key) || null; if (r) return r;
+  const towns = oldTownSections(seed, frame), ok = (rx, ry) => Math.abs(rx) + Math.abs(ry) >= OLD_TOWN_RULES.minDepth && !towns.has(`${rx},${ry}`) && !hamletSection(seed, rx, ry) && !openSeaSection(seed, rx, ry);
+  // every bearing at its own distance first; with all of them refused (open sea all round), one section nearer at a time
+  // (FIXED_PLACE_RULES.nearer at most: inside OPEN_SEA.minDepth no section is open sea)
+  const d = Math.hypot(cx, cy);
+  for (let k = 0; k <= FIXED_PLACE_RULES.nearer && !r; k++) { const f = (d - k) / d, at = placeTurned(frame, cx * f, cy * f, ok); if (ok(at.rx, at.ry)) r = at; }
+  r ||= turnSection(frame, cx, cy);
+  if (placeMemo.size >= 64) placeMemo.clear();
+  placeMemo.set(key, r); return r;
 }
 // The old town standing in (rx, ry) on this seed's journey (its SETTLEMENTS key), or null.
 export const oldTownAt = (seed, rx, ry, frame = frameFor(seed)) => oldTownSections(seed, frame).get(`${rx},${ry}`) || null;
