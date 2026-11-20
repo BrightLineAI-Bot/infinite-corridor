@@ -22,7 +22,7 @@ export const TRI_ART = Object.freeze({
   toe: "#fff3cf", pad: "#6b4a14", tongue: "#ff8ba0", mouth: "#7a2a1c",
   // shape: the spine from the tail tip (0) to the base of the skull (1)
   spine: 26, length: 1.42, hipAt: .42, shoulderAt: .73, hip: .6, crouchDrop: .14, headScale: 1.48,
-  stride: .14, settle: 6, ease: 10, strikeEase: 18,
+  settle: 6, ease: 10, strikeEase: 18,
   landMs: 380, lean: .12, tailBounce: .08, quietBounce: .05,
   // the face's squat beak (Tim, 2026-11-19: "its beak portion is still too long; it needs to be a little bit more squat"): in front of
   // `from` (head units, just ahead of the brow horns' roots) the snout is drawn `k` as long and, toward the beak, up to `deep` as deep
@@ -38,14 +38,15 @@ export const TRI_ART = Object.freeze({
 });
 // The standard view's legs (Tim, 2026-11-20: "The feet detach from the legs when he moves and walks, and the legs look like pillars
 // instead of real Triceratops legs"): jointed legs, each drawn as one shape from the joint to the foot, driven by one pose per leg.
-// cycle: body units travelled per gait cycle (x the square root of the form's leg: a baby's short quick steps); duty: the share of it a foot stays planted (it moves back exactly as
-// fast as the body moves on, so it never slides); lift: the swinging foot's height (x leg); toeDrop / tuckToes: the toes hanging as
-// the foot lifts or the legs fold (radians); soft: the share of its full length a leg reaches before the lower bone stretches (up to
-// `stretch`); phase: each foot's place in the cycle (a four-beat walk: near hind, near fore, far hind, far fore); far: where the far
-// legs sit; creaseLeg: the shortest form's leg that shows the knee and ankle creases (the baby's stubby legs do not). hind / fore (body units; x leg for the bones, x the form's leg and leg thickness for the foot, x legW for the widths):
-// upper / lower bone, x: the foot's rest place ahead of the joint, top: how far the shape starts inside the body, w: [front, back]
-// half widths at the joint, mid upper bone, knee or elbow, mid lower bone and ankle; foot: h (height), toe (ahead of the ankle), heel
-// (behind it), nail (radius); nails: how many show.
+// cycle: body units travelled per gait cycle (x the square root of the form's leg: a baby's short quick steps); duty: the share of
+// it a foot stays planted (it moves back exactly as fast as the body moves on, so it never slides); lift: the swinging foot's height
+// (x the form's leg and leg thickness); toeDrop / tuckToes: the toes hanging as the foot lifts or the legs fold (radians); soft: the
+// share of its full length a leg reaches before the lower bone stretches (up to `stretch`); creaseLeg: the shortest form's leg that
+// shows the knee and ankle creases (not the baby's stubby legs); phase: each foot's place in the cycle (a four-beat walk: near hind,
+// near fore, far hind, far fore); far: where the far legs sit. hind / fore (body units; x leg for the bones, x the form's leg and leg
+// thickness for the foot, x legW for the widths): upper / lower bone, x: the foot's rest place ahead of the joint, top: how far the
+// shape starts inside the body, w: [front, back] half widths at the joint, mid upper bone, knee or elbow, mid lower bone and ankle;
+// foot: h (height), toe (ahead of the ankle), heel (behind it), nail (radius); nails: how many show.
 export const TRI_LEGS = Object.freeze({
   cycle: .48, duty: .62, lift: .1, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12, creaseLeg: .9,
   phase: Object.freeze({ nearHind: 0, nearFore: .25, farHind: .5, farFore: .75 }),
