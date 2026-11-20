@@ -11,6 +11,7 @@
 // 2026-11-19), never a burn's tick, a proc (glyphWorld) or an Echo's copy; one attack counts once per foe (`gapMs`, as echoes.ts ON_HIT_ECHOES.perFoeGapMs). Extra damage these passives add
 // goes straight to health and is never a hit itself, so nothing chains. Per-foe marks are runtime only (a non-enumerable symbol on
 // the foe, never saved); the Game's own state is one object (`game._hcp`), so a hit allocates nothing.
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { latticePassives } from "./transit-lattice.ts";
 import { freezeRow } from "./great-sweep.ts"; // Encumbered's calm-down: the freeze's own `calm` (SWEEP_FREEZE)
 
@@ -381,7 +382,7 @@ function tickRift(game, S, dt, now) {
     V.tick -= T * Math.floor(V.tick / T); // one strike a tick however long the frame (never a burst of catch-up strikes)
     const list = game.enemies || []; let world = null;
     for (let i = 0; i < list.length; i++) {
-      const e = list[i]; if (e.dead || e.untargetable || e.kind === "npc" || !(e.hp > 0)) continue;
+      const e = list[i]; if (e.dead || e.untargetable || unharmablePerson(e) || !(e.hp > 0)) continue;
       if (!inRiftVoid(V, e.x + .5, e.y + .45, (Number(e.bodyRadius) || .38) - .38)) continue;
       (world ||= game.glyphWorld?.(now))?.damage(e, V.dmg);
     }
@@ -401,7 +402,7 @@ export function encumberThreshold(e, cls = null, tier = 0) {
 export const encumberTierOf = (e) => e?.[MARK]?.tier || 0;
 // Damage a pull dealt to `e` (or a pull's worth, for one with no damage): fills its meter; true when it becomes Encumbered.
 export function pullBuild(game, e, amount, now, cls = null) {
-  if (!e || e.dead || e.kind === "npc" || !(amount > 0) || !Number.isFinite(amount)) return false;
+  if (!e || e.dead || unharmablePerson(e) || !(amount > 0) || !Number.isFinite(amount)) return false;
   const r = mark(e); if (r.enc > 0) return false; // no build-up while Encumbered
   const E = ENCUMBERED, th = encumberThreshold(e, cls, r.tier);
   const S = state(game); r.th = th; r.cls = cls; r.pull += amount * E.gain; r.idle = 0; S.encLive = S.encSeen = true;
@@ -449,7 +450,7 @@ export function tickHitCastPassives(game, dt, now) {
     for (let i = 0; i < S.mines.length; i++) {
       const m = S.mines[i]; let go = now >= m.until;
       if (m.where !== where) { S.mines.splice(i--, 1); continue; }
-      if (!go) for (let k = 0; k < list.length; k++) { const e = list[k]; if (!e.dead && !e.untargetable && e.kind !== "npc" && Math.hypot(e.x + .5 - m.x, e.y + .45 - m.y) <= G.trigger) { go = true; break; } }
+      if (!go) for (let k = 0; k < list.length; k++) { const e = list[k]; if (!e.dead && !e.untargetable && !unharmablePerson(e) && Math.hypot(e.x + .5 - m.x, e.y + .45 - m.y) <= G.trigger) { go = true; break; } }
       if (!go) continue;
       S.mines.splice(i--, 1);
       const dmg = Math.max(1, Math.round((typeof game.spellPower === "function" ? Number(game.spellPower({ damage: G.power })) || G.power : G.power) * G.share));

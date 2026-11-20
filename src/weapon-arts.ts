@@ -29,6 +29,7 @@
 // Transpose's seal: standing in it, all the Wayfarer's magic damage (MAGIC_DAMAGE_SOURCES: spells, Imbue, dodge bursts, the
 // Carbine and every magic tool, the Quandrix Staff) deals `spellDamage` more and she takes `damageTaken` more from every blow
 // (game.ts armorGlyphBonus reads transposeBonus; quandrixPower adds transposeMagic).
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { latticePassives } from "./transit-lattice.ts";
 import { weaponKey } from "./items.ts";
 import { QUANDRIX } from "./quandrix-staff.ts";
@@ -156,7 +157,7 @@ export function artFor(save) {
   for (const id of WEAPON_ART_IDS) if (WEAPON_ARTS.arts[id].weapon === key) { chosen = id; break; }
   return chosen && latticePassives(save).includes(`field:${chosen}`) ? chosen : null;
 }
-const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc" && Number(e.hp) > 0;
+const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && !unharmablePerson(e) && Number(e.hp) > 0;
 const inside = (e, x, y, r) => Math.hypot(e.x + .5 - x, e.y + .45 - y) <= r + Math.max(0, enemyBodyRadius(e) - .38);
 
 // ---------------------------------------------------------------- runtime state (game.weaponArts, never saved)

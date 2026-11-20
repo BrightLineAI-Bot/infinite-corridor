@@ -238,6 +238,7 @@ import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
 import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.ts";
 import { ensureLattice, latticeOpen, latticeWhy, latticeSlots, nextSlotCost, unlockSlot, latticePassives, latticeEchoes, TRANSIT_LATTICE, LATTICE_LORE, KINDS as LATTICE_KINDS } from "./transit-lattice.ts";
 import { currentObjective, validActions, dungeonHistory, journalOnce, STAT_RESPEC } from "./interactions.ts";
+import { retiredJournalEntry } from "./townsfolk.ts"; // Tim (2026-11-20): townsfolk cannot be harmed
 import { applyDungeonDiscovery, dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.ts";
 import { LAB_FOG, labFogOf, labFogAt, labFogState } from "./labyrinths.ts"; // LAB_FOG: a labyrinth chamber's map shows only what has been seen
 import { worldStewardReport } from "./story.ts";
@@ -2583,14 +2584,9 @@ function openJournal(mode = "chronicle") {
     if(!journal.open)journal.showModal();
     return;
   }
-  const summary = document.createElement("p"),
-    refuge = save.consequences.settlements["ember-refuge"];
-  summary.textContent =
-    "Ember Refuge: " +
-    refuge.status +
-    " · reputation " +
-    refuge.reputation +
-    " · Relay: " +
+  const summary = document.createElement("p");
+  summary.textContent = // Tim (2026-11-20): townsfolk cannot be harmed; no standing or reputation to report
+    "Relay: " +
     (save.consequences.choices.relay || "undecided");
   out.append(summary);
   const arc=save.story?.arcs?.cartographersEcho;
@@ -2623,12 +2619,13 @@ function openJournal(mode = "chronicle") {
       (d.bypassed ? " · bypassed" : "");
     out.append(p);
   }
-  if (!save.narrative.journal.length) {
+  const entries = save.narrative.journal.filter((j) => !retiredJournalEntry(j)); // Tim (2026-11-20): the old harm entries stay in the save, unshown
+  if (!entries.length) {
     const empty = document.createElement("p");
     empty.textContent = "No discoveries recorded yet.";
     out.append(empty);
   } else
-    for (const entry of save.narrative.journal) {
+    for (const entry of entries) {
       const article = document.createElement("article"),
         title = document.createElement("h3"),
         text = document.createElement("p");
@@ -2924,9 +2921,7 @@ function frame(now) {
       game.area === "dungeon"
         ? game.map.name
         : game.rx === 0 && game.ry === 0
-          ? save.consequences.settlements["ember-refuge"].status === "fallen"
-            ? "Ember Refuge · FALLEN"
-            : "Ember Refuge · standing"
+          ? "Ember Refuge"
           : `Cinder Verge · ${game.rx}, ${game.ry}`;
     const buffs = [];
     if (game.guardRemaining > 0)
@@ -3458,7 +3453,7 @@ function upgradeLabel(cost){if(cost.eligible)return cost.refine?`Refine to +${co
 function openForge(){pauseForOverlay();if(pausePanel.open)pausePanel.close();body.replaceChildren(packTabBar('forge'));const h=document.createElement('h2'),intro=document.createElement('p');h.textContent='Sela’s Sphere Forge';intro.textContent=`Weapon Spheres ${save.materials.weaponSphere||0} · Armor Spheres ${save.materials.armorSphere||0}. Rank cost rises by one sphere each step; affixes and identity are preserved.`;body.append(h,intro);for(const slot of ['primary','secondary','armor','charm']){const item=save.equipment[slot];if(!item)continue;const cost=upgradeCost(item,save),/* release 457 */row=document.createElement('div'),title=document.createElement('strong'),rows=cost.eligible?forgePreview(save,slot,'upgrade'):null/* 2026-11-18: the smith's before → after (game.ts forgePreview), every stat coloured */,preview=rows?previewRows(rows):gearStatList(gearReadout(save,slot,item));row.className='item';title.textContent=`${slot.toUpperCase()} · ${item.name} +${item.upgradeRank||0}`;row.append(title,preview,uiButton(upgradeLabel(cost),()=>{game.upgradeEquipmentSlot(slot);persist();openForge()}));body.append(row)}for(const slot of ['primary','secondary']){const item=save.equipment[slot];if(!item)continue;const row=document.createElement('div'),t=document.createElement('strong'),c=awakenCheck(save,slot);row.className='item';t.textContent=item.awakened?`${slot.toUpperCase()} · ${item.name} · ${awakenedText(item)}`:`Awaken ${item.name}: ${c.message}`;row.append(t);if(c.ok)row.append(uiButton(`Awaken · ${AWAKEN_COST} lumen dust`,()=>{const r=awaken(save,slot);game.message=r.message;persist();openForge()}));body.append(row)}
  const iron=document.createElement('div');iron.className='item';iron.textContent=`Cinder Iron ${save.materials.cinderIron||0} · weapon +${save.weaponLevel||0}`;iron.append(uiButton('Reinforce weapon · 3 iron',()=>{game.upgrade();persist();openForge()}),uiButton(`Smelt weapon sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'weaponSphere').message;persist();openForge()}),uiButton(`Smelt armor sphere · ${SMELT.cost} iron`,()=>{game.message=smeltSphere(save,'armorSphere').message;persist();openForge()}));body.append(iron,salvageYieldPicker(openForge)); // release 259: moved here from the Pack; 383: smelting; 2026-11-18: what salvage yields
  body.append(uiButton('Return to world',resume));if(!panel.open)panel.showModal()}
-function openInteraction(id, confirmAttack = false) {
+function openInteraction(id) { // Tim (2026-11-20): no strike-a-resident confirmation any more
   const o = game.map.objects.find((q) => q.id === id);
   if (!o) return;
   if(o.kind==='viewport')return openViewport();
@@ -3470,14 +3465,9 @@ function openInteraction(id, confirmAttack = false) {
   title.textContent =
     o.name || (o.kind === "dungeon" ? "Buried Crossing" : "Crossing Terminal");
   if (o.kind === "npc") {
-    const n = save.consequences.npcs[id];
-    description.textContent =
+    description.textContent = // Tim (2026-11-20): townsfolk cannot be harmed; no health, harm or death to show
       o.role +
-      " · " +
-      (n.status === "dead"
-        ? "dead"
-        : n.disposition + " · " + n.hp + "/36 health") +
-      ". Harm and death persist. " +
+      ". " +
       (id === "vendor-vela"
         ? "Vela supplies the refuge."
         : "Each resident helps hold the refuge together.");
@@ -3497,27 +3487,13 @@ function openInteraction(id, confirmAttack = false) {
   else description.textContent = o.lore ? (o.role ? `${o.role}. ` : "") + o.lore : o.role || "";
   body.append(title);
   if (description.textContent) body.append(description);
-  if (confirmAttack) {
-    const warning = document.createElement("p");
-    warning.textContent =
-      "Strike " +
-      o.name +
-      " for 18 damage? Repeated strikes can kill them permanently. You may stand down while they live.";
-    body.append(
-      warning,
-      uiButton("Strike " + o.name, () => performInteraction(id, "attack")),
-      uiButton("Keep weapon lowered", () => openInteraction(id)),
-    );
-  } else
-    for (const action of validActions(o, save)) {
+  for (const action of validActions(o, save)) {
       const labels = {
         speak: o.elder ? "Listen" : "Speak",
         touch: "Touch",
         chip: "Chip stone",
         dig: "Dig",
         trade: "Trade",
-        attack: "Attack " + o.name + "…",
-        standDown: "Stand down / Spare",
         retrain: `Retrain stats (${STAT_RESPEC.marks} marks)`, // release 347
         enter: "Enter",
         transit: "Transit", // the Pentagon's finale: its dais
@@ -3538,9 +3514,7 @@ function openInteraction(id, confirmAttack = false) {
       };
       body.append(
         uiButton(labels[action] || o.actionLabels?.[action] || skylandLabel(action, save) || (/^descend:\d+$/.test(action) ? (action === 'descend:1' ? 'Descend · floor 1' : `Descend · checkpoint, floor ${action.slice(8)}`) : null) || action, () =>
-          action === "attack"
-            ? openInteraction(id, true)
-            : performInteraction(id, action),
+          performInteraction(id, action),
         ),
       );
     }

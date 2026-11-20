@@ -8,6 +8,7 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon } from "./items.ts";
 import { HAMMER_CLAP } from "./brawler-spells.ts"; // the awakened Hammerfall's clap (2026-11-14)
 import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
@@ -261,7 +262,7 @@ export function onSkillEnded(game, id, now) {
 // Per frame: veil nodes react to wounds, Overflow speeds spells (Sanctuary heals on hits: SANCTUARY).
 export function tickConstellation(game, dt, now) {
   const s = game.save, p = game.player, lost = game._cLastHp !== undefined ? game._cLastHp - p.hp : 0;
-  const near = (r) => game.enemies.filter((e) => !e.dead && !e.untargetable && Math.hypot(e.x - p.x, e.y - p.y) < r);
+  const near = (r) => game.enemies.filter((e) => !e.dead && !e.untargetable && !unharmablePerson(e) && Math.hypot(e.x - p.x, e.y - p.y) < r);
   if (activeIs(s, "ember-form")) { // release 359: Kindling (when it begins), Ember Ward, Ember Mend
     const st = s.magicSkills.active;
     if (altOn(s, "cinder-heart") && !st.kindled) { st.kindled = true; const A = ALT_PASSIVES["cinder-heart"]; game.glyphWorld(now).blast(p.x + .5, p.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); }
@@ -272,7 +273,7 @@ export function tickConstellation(game, dt, now) {
     if (lost > 0 && p.hp > 0) {
       if (altOn(s, "thorned-veil")) { const A = ALT_PASSIVES["thorned-veil"]; for (const foe of near(A.reach)) game.glyphWorld(now).damage(foe, Math.max(1, Math.round(lost * A.share))); } // release 359: Veil Pulse
       if (nodeOn(s, "mirror-veil") && !s.magicSkills.active.mirrored) { s.magicSkills.active.mirrored = true; p.hp += lost; game.message = "Mirror Veil turns the blow aside."; }
-      else if (nodeOn(s, "thorned-veil")) { const foe = game.enemies.filter((e) => !e.dead && !e.untargetable).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; if (foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 3) game.glyphWorld(now).damage(foe, Math.max(2, Math.round(lost * .3))); }
+      else if (nodeOn(s, "thorned-veil")) { const foe = game.enemies.filter((e) => !e.dead && !e.untargetable && !unharmablePerson(e)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; if (foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 3) game.glyphWorld(now).damage(foe, Math.max(2, Math.round(lost * .3))); }
     }
   }
   if (activeIs(s, "force-channel") && altOn(s, "overflow")) for (const k of Object.keys(s.magicSkills?.cooldowns || {})) if (!k.startsWith("spell:") && k !== "force-channel") s.magicSkills.cooldowns[k] = Math.max(0, s.magicSkills.cooldowns[k] - dt * ALT_PASSIVES.overflow.rate); // release 359: Wellspring
@@ -315,7 +316,7 @@ function riftFooting(game, world, x, y, level, rise = 0) {
 function riftCommit(game, now, R, from, best, fromLevel) {
   const s = game.save, st = s.magicSkills, p = game.player, world = game.glyphWorld(now), len = Math.hypot(best.x - from.x, best.y - from.y), dx = len ? (best.x - from.x) / len : 0, dy = len ? (best.y - from.y) / len : 0;
   if (altOn(s, "anchor")) { const A = ALT_PASSIVES.anchor; world.blast(from.x + .5, from.y + .45, A.radius, A.damage + A.perLevel * (s.level || 1)); } // release 359: Rift Echo
-  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= len; t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
+  if (nodeOn(s, "rift-wake")) { const hit = new Set(); for (let t = 0; t <= len; t += .4) for (const e of game.enemies) if (!e.dead && !e.untargetable && !unharmablePerson(e) && !hit.has(e.id) && Math.hypot(e.x - (from.x + dx * t), e.y - (from.y + dy * t)) < .8) { hit.add(e.id); world.damage(e, 6 + Math.round(1.5 * (s.level || 1))); } }
   (game.glyphVisuals ||= []).push({ kind: "arc", x: from.x + .5, y: from.y + .45, tx: best.x + .5, ty: best.y + .45, color: "#b48cff", life: .3, max: .3 });
   p.x = best.x; p.y = best.y; p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, now + (altOn(s, "rift-wake") ? ALT_PASSIVES["rift-wake"].guardMs : 150));
   st.riftCharges -= 1; st.cooldowns["rift-step"] = Math.max(st.cooldowns["rift-step"] || 0, riftCooldown(s, R.rank, R.gm));

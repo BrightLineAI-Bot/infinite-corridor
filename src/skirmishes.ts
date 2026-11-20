@@ -1,9 +1,11 @@
 // Skirmishes (release 111): now and then a wild section holds two factions at war with each other — glass mites against
 // ashlings, a brute against a hound pack, hamlet wardens against the watchers. They fight each other, not the Wayfarer,
-// until the Wayfarer strikes one: that unit (and, for creatures, its nearby kin) turns on the player with its normal AI.
+// until the Wayfarer strikes one: that creature (and its nearby kin) turns on the player with its normal AI. The wardens are
+// people and cannot be harmed or provoked by the Wayfarer at all (Tim, 2026-11-20).
 // When a side is wiped out the battle is settled for good (a world flag); creature victors then roam as ordinary foes.
 import { rng, pick } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
+import { keepPersonWhole } from "./townsfolk.ts";
 
 export const SKIRMISH_VERSION = 1;
 export const SKIRMISH = { chance: 0.07, warChance: 0.25, minDepth: 3, reach: 1.2, cooldown: 1.4, damageScale: 0.35, speed: 1.5, provokeRadius: 4, spread: 4 };
@@ -17,7 +19,8 @@ export const SKIRMISH_MATCHUPS = [
   { id: "wardens-overseers", a: { kind: "militia", label: "hamlet wardens", count: 3, war: 5, friendly: true }, b: { kind: "sparkWarden", label: "overseers", count: 2, war: 4 } },
   { id: "wardens-brutes", a: { kind: "militia", label: "hamlet wardens", count: 3, war: 6, friendly: true }, b: { kind: "rootBrute", label: "root brutes", count: 1, war: 3 } },
 ];
-// Wardens are people: sturdy, never rewarding to kill, and only hostile to a Wayfarer who strikes them.
+// Wardens are people: sturdy and never hostile to the Wayfarer; her blows cannot harm them (Tim, 2026-11-20; townsfolk.ts
+// unharmablePerson). Only the creatures of their skirmish can wound or kill them.
 export const MILITIA = { hp: 40, damage: 6 };
 
 export function skirmishPlan(seed, rx, ry) {
@@ -76,8 +79,9 @@ export function skirmishFields(spawn) {
 export function updateSkirmisher(e, units, map, dt, hooks = {}) {
   if (e.dead || e.skirmishProvoked) return false;
   e.hitFlash = Math.max(0, (e.hitFlash || 0) - dt); e.recoil = Math.max(0, (e.recoil || 0) - dt);
-  // A hit we did not deal (the player's) provokes this unit; creature kin nearby join in.
-  if (Number.isFinite(e.skirmishHp) && e.hp < e.skirmishHp) { provoke(e, units); return false; }
+  // A hit we did not deal (the player's) provokes this unit; creature kin nearby join in. Wardens are people (Tim, 2026-11-20:
+  // no non-hostile person can be harmed): such a blow is undone and never turns them on the Wayfarer (townsfolk.ts keepPersonWhole).
+  if (Number.isFinite(e.skirmishHp) && e.hp < e.skirmishHp) { if (e.skirmishFriendly) keepPersonWhole(e); else { provoke(e, units); return false; } }
   e.skirmishHp = e.hp;
   // Creatures only fight foes still in the skirmish; wardens keep fighting creatures that have turned on the Wayfarer.
   const foes = units.filter((q) => !q.dead && q.skirmishId === e.skirmishId && q.skirmishSide !== e.skirmishSide && (e.skirmishFriendly || !q.skirmishProvoked));
@@ -111,8 +115,8 @@ export function updateSkirmisher(e, units, map, dt, hooks = {}) {
   return true;
 }
 function provoke(e, units) {
+  if (e.skirmishFriendly) return; // a warden is never turned on the Wayfarer (Tim, 2026-11-20)
   e.skirmishProvoked = true; e.aggro = true;
-  if (e.skirmishFriendly) return;
   for (const q of units) if (!q.dead && q.skirmishId === e.skirmishId && q.skirmishSide === e.skirmishSide && Math.hypot(q.x - e.x, q.y - e.y) <= SKIRMISH.provokeRadius) { q.skirmishProvoked = true; q.aggro = true; }
 }
 function settle(e, units, hooks) {
