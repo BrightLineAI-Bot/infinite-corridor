@@ -99,7 +99,6 @@ import {
   selectRecordVariant,
   preconditionsMet,
   currentObjective,
-  recordNpcDamage,
   commitRelay,
   dungeonHistory,
   abandonDungeon,
@@ -588,7 +587,7 @@ test("Vela remains interactable after speech while narrative effects dedupe glob
   assert.equal(first.ok, true);
   assert.equal(second.duplicate, true);
   assert.equal(vela.state, "calm");
-  assert.deepEqual(validActions(vela, s), ["speak", "trade", "attack"]);
+  assert.deepEqual(validActions(vela, s), ["speak", "trade"]); // Tim 2026-11-20: townsfolk cannot be attacked (was ["speak", "trade", "attack"])
   assert.equal(s.narrative.journal.length, journal);
   applyInteraction(vela, "speak", s, "overworld:1:0:g1");
   assert.equal(s.narrative.journal.length, journal);
@@ -1141,7 +1140,9 @@ test("melee autoaim sees behind excludes walls and range and preserves ranged ai
     null,
   );
 });
-test("story is global order-independent and remains completable after Vela dies", () => {
+// Tim 2026-11-20: townsfolk cannot be harmed. This test once killed Vela (two "attack"s) and expected the solitary Array
+// route; now the strikes are refused, Vela lives and the story stays order-independent and completable.
+test("story is global order-independent and remains completable when Vela cannot be attacked", () => {
   const s = freshSave(),
     v = {
       id: "vendor-vela",
@@ -1149,9 +1150,10 @@ test("story is global order-independent and remains completable after Vela dies"
       state: "calm",
       actions: ["speak", "attack"],
     };
-  applyInteraction(v, "attack", s);
-  applyInteraction(v, "attack", s);
-  assert.match(currentObjective(s), /Hollow Marshal/);
+  assert.equal(applyInteraction(v, "attack", s).ok, false);
+  assert.equal(applyInteraction(v, "attack", s).ok, false);
+  assert.equal(s.consequences.npcs["vendor-vela"].status, "alive");
+  assert.match(currentObjective(s), /question Vela/);
   const sh = { id: "x", kind: "shrine", state: "quiet", actions: ["inspect"] };
   applyInteraction(sh, "inspect", s, "one");
   const n = s.narrative.journal.length;
@@ -1389,132 +1391,67 @@ test("three identifiable refuge residents and deliberate Act choice preserve neu
   assert.equal(g.save.consequences.npcs[v.id].hp, 36);
   assert.equal(g.shopRequested, undefined);
 });
-test("NPC wounds spare death and shop denial are permanent without rewards", async () => {
+// Tim 2026-11-20: townsfolk cannot be harmed. The four tests here once pinned the old harm system (an "attack" choice
+// wounding Vela to 18, Stand down, death, a closed shop and lost reputation; the Refuge falling to occupation monsters on its
+// last resident's death; melee collateral killing Vela; projectiles and spell pulses wounding her to 20). They now pin the
+// opposite: no source harms a resident, nothing is closed or occupied, and no rewards or journal deaths appear.
+test("residents cannot be attacked: no wound, no stand down, the shop stays open, no rewards", async () => {
   const { buyFromVela } = await import("../src/game.ts");
   const s = freshSave(),
     g = new Game(s, 0),
     v = g.map.objects.find((o) => o.id === "vendor-vela");
   Object.assign(g.player, { x: v.x, y: v.y });
+  s.currency = 100;
   const xp = s.xp,
     drops = s.dropCounter;
-  assert.equal(g.interact("attack", v.id).ok, true);
-  assert.equal(s.consequences.npcs[v.id].hp, 18);
-  assert.equal(buyFromVela(s, "restorativeDraught").ok, false);
-  assert.equal(g.interact("standDown", v.id).ok, true);
-  assert.equal(s.consequences.npcs[v.id].disposition, "spared");
-  const restored = new Game(
-    deserializeSave(serializeSave(g.exportSnapshot(3))),
-    100,
-  );
-  assert.equal(restored.save.consequences.npcs[v.id].hp, 18);
-  restored.interact("attack", v.id);
-  assert.equal(restored.save.consequences.npcs[v.id].status, "dead");
-  assert.equal(buyFromVela(restored.save, "restorativeDraught").ok, false);
-  assert.equal(restored.save.xp, xp);
-  assert.equal(restored.save.dropCounter, drops);
-  const rep = restored.save.consequences.settlements["ember-refuge"].reputation;
-  restored.interact("attack", v.id);
-  assert.equal(
-    restored.save.consequences.settlements["ember-refuge"].reputation,
-    rep,
-  );
-  assert.equal(
-    restored.save.narrative.journal.filter(
-      (j) => j.recordId === "death:" + v.id,
-    ).length,
-    1,
-  );
+  assert.equal(g.interact("attack", v.id).ok, false);
+  assert.equal(g.interact("standDown", v.id).ok, false);
+  assert.deepEqual(s.consequences.npcs[v.id], { hp: 36, status: "alive", disposition: "neutral" });
+  assert.equal(buyFromVela(s, "restorativeDraught").ok, true);
+  assert.equal(s.xp, xp);
+  assert.equal(s.dropCounter, drops);
+  assert.equal(s.consequences.settlements["ember-refuge"].reputation, 0);
+  assert.ok(!s.narrative.journal.some((j) => /^(death|spared):/.test(j.recordId)));
+  for (const o of g.map.objects.filter((q) => q.kind === "npc")) assert.ok(!validActions(o, s).some((a) => a === "attack" || a === "standDown"), o.id);
 });
-test("refuge falls only on final resident death and occupation snapshots never respawn defeated monsters", () => {
-  const g = new Game(freshSave(), 0),
-    residents = g.map.objects.filter((o) => o.kind === "npc");
-  for (let i = 0; i < residents.length; i++) {
-    recordNpcDamage(g.save, residents[i], 36);
-    g.reconcileConsequences();
-    assert.equal(
-      g.save.consequences.settlements["ember-refuge"].status,
-      i < 2 ? "standing" : "fallen",
-    );
-  }
-  const occupiers = g.enemies.filter((e) => e.id.startsWith("occupation-"));
-  assert.equal(occupiers.length, 2);
-  occupiers[0].hp = 0;
-  occupiers[0].dead = true;
-  occupiers[0].rewarded = true;
-  occupiers[1].hp = 7;
-  g.transitionSection(1, 0);
-  g.transitionSection(-1, 0);
-  assert.equal(g.enemies.find((e) => e.id === occupiers[0].id).dead, true);
-  assert.equal(g.enemies.find((e) => e.id === occupiers[1].id).hp, 7);
-  const r = new Game(deserializeSave(serializeSave(g.exportSnapshot(4))), 99);
-  assert.equal(
-    r.enemies.filter((e) => e.id.startsWith("occupation-")).length,
-    2,
-  );
-  assert.equal(r.enemies.find((e) => e.id === occupiers[0].id).dead, true);
-  assert.equal(
-    r.map.objects.filter((o) => o.kind === "npc" && !o.dead).length,
-    0,
-  );
+test("the refuge never falls and no occupation monsters appear", () => {
+  const g = new Game(freshSave(), 0);
+  g.reconcileConsequences();
+  assert.equal(g.save.consequences.settlements["ember-refuge"].status, "standing");
+  assert.equal(g.enemies.filter((e) => String(e.id).startsWith("occupation-")).length, 0);
+  assert.equal(g.map.objects.filter((o) => o.kind === "npc" && !o.dead).length, 3);
 });
-test("melee collateral can kill a neutral resident without enemy rewards", () => {
+test("melee never harms a neutral resident", () => {
   const g = new Game(freshSave(), 0),
     v = g.map.objects.find((o) => o.id === "vendor-vela");
   g.enemies = [];
   g.map.tiles.fill({ blocked: false });
   Object.assign(g.player, { x: v.x - 1, y: v.y });
   g.save.lastAim = { x: 1, y: 0 };
-  g.save.stats.Focus = 30; // Tim 2026-11-12: the Salvage Blade scales with Focus (items.ts WEAPON_SCALING)
+  g.save.stats.Focus = 30;
   g.primaryAttack(1);
-  assert.equal(g.save.consequences.npcs[v.id].status, "dead");
-  assert.equal(g.save.consequences.npcs[v.id].intent, "collateral");
+  assert.equal(g.save.consequences.npcs[v.id].status, "alive");
+  assert.equal(g.save.consequences.npcs[v.id].hp, 36);
   assert.equal(g.save.xp, 0);
   assert.equal(g.save.dropCounter, 0);
 });
-test("projectiles and spell pulses hurt NPCs once and preserve exact paused wounds", () => {
+test("projectiles and spell pulses never harm residents, across a paused reload", () => {
   for (const cause of ["projectile", "spell"]) {
     const g = new Game(freshSave(), 0),
       v = g.map.objects.find((o) => o.id === "vendor-vela");
     g.enemies = [];
     g.map.tiles.fill({ blocked: false });
     if (cause === "projectile")
-      g.projectiles = [
-        {
-          id: "collateral",
-          x: v.x - 1,
-          y: v.y + 0.45,
-          dx: 1,
-          dy: 0,
-          speed: 20,
-          life: 2,
-          damage: 18,
-        },
-      ];
+      g.projectiles = [{ id: "collateral", x: v.x - 1, y: v.y + 0.45, dx: 1, dy: 0, speed: 20, life: 2, damage: 18 }];
     else
-      g.effects = [
-        {
-          id: "collateral",
-          kind: "ember-ring",
-          x: v.x + 0.5,
-          y: v.y + 0.45,
-          life: 3,
-          radius: 0.5,
-          pulse: 1,
-          untilPulse: 0,
-          damage: 18,
-          pulseIndex: 0,
-          hits: {},
-        },
-      ];
+      g.effects = [{ id: "collateral", kind: "ember-ring", x: v.x + 0.5, y: v.y + 0.45, life: 3, radius: 0.5, pulse: 1, untilPulse: 0, damage: 18, pulseIndex: 0, hits: {} }];
     g.update(0.1, idle(), 1);
-    assert.equal(g.save.consequences.npcs[v.id].hp, 20);
+    assert.equal(g.save.consequences.npcs[v.id].hp, 36);
     g.setPaused(true, 2);
-    const r = new Game(
-      deserializeSave(serializeSave(g.exportSnapshot(2))),
-      100,
-    );
+    const r = new Game(deserializeSave(serializeSave(g.exportSnapshot(2))), 100);
     r.update(20, idle(), 200);
-    assert.equal(r.save.consequences.npcs[v.id].hp, 20);
+    assert.equal(r.save.consequences.npcs[v.id].hp, 36);
+    assert.equal(r.save.consequences.npcs[v.id].status, "alive");
     assert.equal(r.save.xp, 0);
   }
 });
@@ -1635,7 +1572,9 @@ test("canonical Marshal unlocks a reachable explicit Relay terminal and retains 
   assert.equal(g.interact("restore", terminal.id).ok, false);
   assert.equal(s.consequences.choices.relay, "sever");
 });
-test("v7 migration preserves old Relay completion dead Vela and unrelated exact runtime", () => {
+// Tim 2026-11-20: townsfolk cannot be harmed. An old save's dead Vela is restored on load (her old flag kept, unhonoured);
+// this test once expected her to stay dead.
+test("v7 migration preserves old Relay completion, restores a dead Vela and keeps unrelated exact runtime", () => {
   const old = freshSave();
   old.version = 7;
   delete old.consequences;
@@ -1649,7 +1588,9 @@ test("v7 migration preserves old Relay completion dead Vela and unrelated exact 
   const s = migrateSave(old);
   assert.equal(s.version, SAVE_VERSION);
   assert.equal(s.consequences.choices.relay, "restore");
-  assert.equal(s.consequences.npcs["vendor-vela"].status, "dead");
+  assert.equal(s.consequences.npcs["vendor-vela"].status, "alive");
+  assert.equal(s.consequences.npcs["vendor-vela"].retired.deadFlag, true);
+  assert.equal(s.worldFlags["vendor-vela:dead"], true, "the old flag is kept in place, not honoured");
   assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
   assert.equal(s.session.x, 7.25);
   assert.equal(s.session.playerRuntime.attackCooldown, 77);
@@ -1660,7 +1601,7 @@ test("v8 paused save roundtrip retains wounds choices active visit and effect de
   const s = freshSave(),
     g = new Game(s, 0),
     v = g.map.objects.find((o) => o.id === "vendor-vela");
-  recordNpcDamage(s, v, 5, "spell", "collateral");
+  // Tim 2026-11-20: townsfolk cannot be harmed; this test once wounded Vela by 5 first (recordNpcDamage is removed)
   g.effects = [
     {
       id: "pulse",
@@ -1684,19 +1625,20 @@ test("v8 paused save roundtrip retains wounds choices active visit and effect de
   assert.equal(r.paused, true);
 });
 
-test("fallen refuge closes its own thread while solitary Array and both chapter endings remain available", () => {
+// Tim 2026-11-20: townsfolk cannot be harmed. This test once killed every resident first and expected a fallen Refuge and its
+// closed thread; now the Refuge stays standing and its thread open, and the Array route and both endings remain available.
+test("the refuge stays standing while the Array route and both chapter endings remain available", () => {
   for (const ending of ["restore", "sever"]) {
     const s = freshSave(),
       g = new Game(s, 0);
     for (const o of g.map.objects.filter((o) => o.kind === "npc"))
-      recordNpcDamage(s, o, 36);
+      assert.equal(g.interact("attack", o.id).ok, false);
     g.reconcileConsequences();
     assert.deepEqual(s.consequences.threads["ember-refuge"], {
-      status: "resolved",
-      ending: "fallen",
+      status: "open",
+      ending: null,
     });
     assert.equal(s.consequences.threads["missing-crossing"].status, "open");
-    assert.match(currentObjective(s), /Array route/);
     const array = g.map.objects.find((o) => o.kind === "shrine");
     Object.assign(g.player, { x: array.x, y: array.y });
     g.interact("inspect", array.id);
@@ -1715,7 +1657,7 @@ test("fallen refuge closes its own thread while solitary Array and both chapter 
       ending,
     });
     assert.match(currentObjective(s), /resolved.*Explore further crossings/);
-    assert.equal(s.consequences.settlements["ember-refuge"].status, "fallen");
+    assert.equal(s.consequences.settlements["ember-refuge"].status, "standing");
     const exit = g.map.objects.find((o) => o.kind === "exit");
     Object.assign(g.player, { x: exit.x, y: exit.y });
     g.interact("exit", exit.id);
@@ -2145,7 +2087,7 @@ test("named sparse settlements are inhabited and special dungeons expose mechani
 test("standing settlements enforce a nine-tile sanctuary around residents",()=>{
   const s=freshSave(),g=new Game(s,0),z=settlementSanctuary(g.map,0,0,s),e=g.enemies[0];
   assert.equal(z.radius,9);Object.assign(e,{x:16,y:16,telegraph:1});assert.equal(enforceSanctuary(e,z),true);assert.ok(Math.hypot(e.x-16,e.y-16)>9);assert.equal(e.telegraph,0);
-  s.consequences.settlements['ember-refuge'].status='fallen';assert.equal(settlementSanctuary(g.map,0,0,s),null);
+  s.consequences.settlements['ember-refuge'].status='fallen';assert.equal(settlementSanctuary(g.map,0,0,s).radius,9,'Tim 2026-11-20: the Refuge can no longer fall; a stray old status is not honoured (it once removed the sanctuary)');
 });
 test("Viewport is reachable at Ember Refuge and tracking leads persist",()=>{
   const s=freshSave(),board=generateRegion(s.seed,0,0,1).objects.find(o=>o.kind==='viewport');
@@ -2405,12 +2347,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 1038 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 1043 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "1038"/);assert.match(html,/styles\.css\?v=1038/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1038`/);assert.match(sw,/styles\.css\?v=1038/);assert.match(sw,/proving-ground-labs\.js\?v=1038/);assert.match(sw,/dungeon-framework\.js\?v=1038/);assert.match(sw,/renderer\.js\?v=1038/);
-  assert.match(build,/release='1038'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "1043"/);assert.match(html,/styles\.css\?v=1043/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1043`/);assert.match(sw,/styles\.css\?v=1043/);assert.match(sw,/proving-ground-labs\.js\?v=1043/);assert.match(sw,/dungeon-framework\.js\?v=1043/);assert.match(sw,/renderer\.js\?v=1043/);
+  assert.match(build,/release='1043'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });

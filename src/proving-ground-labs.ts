@@ -11,6 +11,7 @@ import { sectionRegion, LANDSCAPE_VERSION, interiorTileLevel, interiorSurfaceHei
 import { BUILD, buildRefusal, setBuildKind, activeBuildKind } from "./building.ts";
 import { DIG, planDig } from "./digging.ts";
 import { freshSave, migrateSave, setCompassChoice } from "./types.ts";
+import { TRAINING_YARD, yardRefusal, yardSetup, yardName, lendYardAbility } from "./training-yard.ts"; // progression Phase 5
 import { generateRegion, generateDungeon, deepDungeonId, WAYGLASS_LATTICE_SIZE, wayglassLatticeAnchor } from "./world.ts";
 import { generateVariedDungeon, generateUnifiedDungeon, generateBespokeArena, ARENA_FAMILIES } from "./arenas.ts";
 import { DEEP_ARCHETYPE_IDS, deepV2Id, generateDeepV2Dungeon } from "./deep-dungeons.ts";
@@ -948,6 +949,37 @@ function testTileFixture(now) {
   const { save, game } = gameForOverworld(TEST_TILE.seed, TEST_TILE.rx, TEST_TILE.ry, now);
   stampTestTile(game.map); game.enemies = []; Object.assign(game.player, TEST_TILE.start); game.sync();
   return { lab: "test-tile", scenario: "standard", label: "Standard test tile", seed: TEST_TILE.seed, variant: 0, save, game, testTile: true, production: true };
+}
+// Progression Phase 5 (docs/progression-design.md 4A.4): the Training Yard. A scratch copy of the handed-over journey (the
+// Wayfarer's own kit: level, gear, slots, Echoes, passives) stands on the Standard Test Tile with practice dummies and the foes
+// the ability's setup names (training-yard.ts). Only an owned ability is lent (readied in its slot, notch or hand), on the copy;
+// an id that is not owned throws before anything is built. The copy leaves its world behind (the tile's seed and section, no
+// remembered areas), so the yard is the same ground for every journey. The record and its save are never written.
+export function createYardFixture(record, now = 0) {
+  const ability = record?.yard?.ability, save = migrateSave(structuredClone(record.save));
+  const refused = yardRefusal(save, ability); if (refused) throw new Error(refused);
+  const lent = lendYardAbility(save, ability), setup = yardSetup(ability), Y = TRAINING_YARD;
+  save.seed = TEST_TILE.seed; save.explored = { [`${TEST_TILE.rx},${TEST_TILE.ry}`]: true }; save.atlas = {};
+  Object.assign(save.session, { area: "overworld", rx: TEST_TILE.rx, ry: TEST_TILE.ry, x: TEST_TILE.start.x, y: TEST_TILE.start.y, areas: {}, activeDungeonId: null, dungeonReturn: null, veilReturn: null });
+  delete save.session.activeDungeonLevelId;
+  Object.assign(save.session.playerRuntime, { traversal: null, roofDeck: null });
+  Object.assign(save.position, { area: "overworld", rx: TEST_TILE.rx, ry: TEST_TILE.ry, x: TEST_TILE.start.x, y: TEST_TILE.start.y });
+  const game = new Game(save, now); game.installSystems();
+  if (game.paused) game.setPaused(false, now); // the how-to page paused it for the flush; the yard starts running
+  stampTestTile(game.map); game.map.name = Y.name;
+  Object.assign(game.player, TEST_TILE.start, { facing: "down" }); game.player.hp = Math.max(game.player.hp, save.maxHp || 0);
+  game.projectiles = []; game.effects = []; game.eliteHazards = [];
+  const p = game.player, W = game.map.width || 32, H = game.map.height || 32, R = Y.ring;
+  const open = game.map.tiles.filter((t) => !t.blocked && !t.structure && !t.slope && !(t.elev > 0) && !t.environment && t.x > 2 && t.y > 2 && t.x < W - 3 && t.y < H - 3).map((t) => ({ t, d: Math.hypot(t.x - p.x, t.y - p.y) }));
+  const ring = open.filter((q) => q.d >= R.near && q.d <= R.far).sort((a, b) => a.d - b.d || a.t.y - b.t.y || a.t.x - b.t.x).map((q) => q.t);
+  const centre = ring[0], spots = setup.cluster && centre ? ring.slice().sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y) || a.y - b.y || a.x - b.x) : ring.filter((_, i) => i % 4 === 0);
+  const dummies = spots.slice(0, setup.dummies).map((t, i) => Object.assign(game.createEnemyFromSpawn({ id: `proving:yard:dummy:${i}`, kind: Y.dummy.kind, x: t.x, y: t.y }, "overworld"), { hp: Y.dummy.hp, maxHp: Y.dummy.hp, passiveBehavior: "practice", aggro: false, yardDummy: true }));
+  const far = open.filter((q) => q.d >= R.foe - 1 && q.d <= R.foe + 1).sort((a, b) => a.d - b.d || a.t.y - b.t.y || a.t.x - b.t.x).map((q) => q.t);
+  const foes = setup.foes.map((kind, i) => far[i * 3] && game.createEnemyFromSpawn({ id: `proving:yard:foe:${kind}:${i}`, kind, x: far[i * 3].x, y: far[i * 3].y }, "overworld")).filter(Boolean);
+  game.enemies = [...dummies, ...foes];
+  game.message = `${Y.name}: ${lent} ${setup.text} ${Y.practice}.`;
+  game.sync();
+  return { lab: "yard", scenario: ability, label: `${Y.name}: ${yardName(ability)}`, name: yardName(ability), seed: TEST_TILE.seed, variant: 0, production: "handoff", journey: true, yard: true, ability, lent, setup: setup.key, record, save, game, testTile: true };
 }
 // The environments a creature can be tried in (release 279: a dropdown instead of a typed seed).
 export const COMBAT_ENVIRONMENTS = [

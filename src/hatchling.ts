@@ -60,14 +60,19 @@ export const HATCHLING = f({
   young: f({
     aggro: 6.5, // he picks fights with foes this near the Wayfarer
     orbit: f({ radius: 1.9, rate: .55 }), // walking with and round the Wayfarer when there is no fight
+    // Tim, 2026-11-20: his own moves deal about as much as a +10% damage buff would: his sustained damage while engaged is about
+    // `dpsShare` of the Wayfarer's (her melee power per accepted primary press, game.ts PRIMARY_PRESS), measured over a minute against a
+    // dummy (tests/hatchling-young-damage.test.ts). The shares below are the earlier weights (beam 1.6, gatling .28, charge .8,
+    // whirl .6, stomp .5, bite .7, which measured about .385) scaled by .26 to bring it to about .10.
+    dpsShare: .1,
     // Moves, in his order of preference. range: [min, max] tiles to the foe; cd: seconds; share: of the Wayfarer's melee power per hit.
     moves: f({
-      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: 1.6, length: 7, step: .7, radius: .55 }),
-      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .28, radius: .45 }),
-      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .8, radius: .9, stun: .3 }),
-      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .6, radius: 1.7 }),
-      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .5, radius: .8 }),
-      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .7, radius: .6 }),
+      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: .416, length: 7, step: .7, radius: .55 }),
+      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .073, radius: .45 }),
+      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .208, radius: .9, stun: .3 }),
+      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .156, radius: 1.7 }),
+      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .13, radius: .8 }),
+      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .182, radius: .6 }),
     }),
   }),
   // Bounds: live companion effects (they share the Wayfarer's effects list) and drawn-only visuals.

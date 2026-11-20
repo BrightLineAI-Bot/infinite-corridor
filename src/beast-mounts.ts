@@ -138,6 +138,14 @@ export function triceratopsDrillPose(g, mount, now, reduced = false) {
 }
 export const TRICERATOPS_RIDE = { health: 180, defeats: 3, recoveryTransitions: 20, recentLocations: 6, hotelVersion: 1 };
 export const persistentMount = (m) => PERSISTENT_MOUNT_IDS.includes(m?.beast);
+// Tim, 2026-11-20: the persistent Triceratops may be called and ridden indoors too (Pentagons, arcologies, keeps, dungeons), only where
+// there is room for her. Roomy: of the floor tiles whose centres lie within `radius` tiles of the Wayfarer's footing (her length with
+// the tail is about four and a half tiles), at least `minOpen` are open floor, and every one within `body` (her trunk) is open, with no
+// doorway. A three-wide corridor (15 of 21 open) or a doorway is cramped; a room five tiles across or more is roomy. Other mounts stay
+// outdoors. game.ts mountRoomy judges it (on a call, and when her footing moves into a new tile); `cramped` / `climbDown`: the messages.
+export const TRICERATOPS_INDOOR = Object.freeze({ radius: 2.25, minOpen: .85, body: 1.5,
+  cramped: "Too cramped in here for her: find a bigger room.", climbDown: "Too cramped here: you climb down." });
+export const indoorMount = (m) => persistentMount(m);
 export const triceratopsVariant = (actor) => actor?.triceratopsDisposition === "silly" || actor?.variant === "silly" ? "silly" : "normal";
 export const SADDLE_NAMES = { strap: "Saddled", harness: "Harnessed", frame: "Riding frame", bowl: "Riding bowl", girth: "Girth-strapped" };
 // Never penned or caught (Tim, 2026-11-04; the Nanobot Knight the same day: "not rideable").
