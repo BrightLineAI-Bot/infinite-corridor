@@ -135,8 +135,13 @@ export const progressionMode = (save) => (save?.progression?.mode === 1 ? 1 : 0)
 //               is Long Quickening (`cap`), which has no secondary form; Rift Step keeps its gate (Aperture 18).
 //   latticeFree the field passives that are the core kit's, free once the Transit Lattice opens (one each for the Warden, the
 //               Gunner and the Spellblade). Every other Lattice pick stays open as today until its own route is built.
+//   table       Phase 6 (milestones, the Reliquary and pity; world-routes.ts) moved it to 3: on table 3 Exploration also withholds
+//               the abilities whose route is a milestone (c) or a reliquary (R) until they are earned. `coreTable` is Phase 3's
+//               table: an Exploration journey on it keeps, on its first load under table 3, those of them today's rules had open
+//               (progression.ts adoptExploration), so nothing it could use closes.
 export const EXPLORATION = Object.freeze({
-  table: 2,
+  table: 3,
+  coreTable: 2,
   gates: Object.freeze({
     "spell:ember-ring": Object.freeze({ level: 3 }), "spell:fire-burst": Object.freeze({ level: 6 }), "spell:grave-sun": Object.freeze({ level: 10 }),
     "awakened:awakening": Object.freeze({ tier: 12 }), "companion:hatchling": Object.freeze({ tier: 12 }),
@@ -174,4 +179,30 @@ export function ensureLeads(save) {
     .filter((q, i, all) => all.findIndex((o) => o.id === q.id) === i).slice(-LEAD_RECORD.rumourMax);
   save.leads = { ...raw, v: LEAD_RECORD.v, told, rumours, followedAt: wholeOr(raw.followedAt, 0, 0) };
   return save.leads;
+}
+
+// ---------------------------------------------------------------- Phase 6: milestones, the Reliquary and pity (world-routes.ts)
+// One additive record at schema 14, normalised here from freshSave and migrateSave (unknown fields kept), in both modes:
+//   save.feats  { v, counts, earned, reliquary, pity }
+//     counts     milestone counters (world-routes.ts MILESTONES keys -> whole numbers, at most FEAT_RECORD.countMax)
+//     earned     ability row id -> { route: "c" | "R", at (play seconds), from (what earned it), dust? (a consolation paid) }
+//     reliquary  { sites: { [site]: { kind, area, x, y, elev?, state: "waiting" | "opened", gave? } }, firsts: { [kind]: site } }:
+//                the reliquaries laid (at most FEAT_RECORD.sitesMax; opened ones go first), and which site took each certain find
+//     pity       { mark, owned, told }: the sections explored when an ability was last gained (or the last strong lead given),
+//                the abilities held then, and how many strong leads have been given
+export const FEAT_RECORD = Object.freeze({ v: 1, countMax: 1e7, sitesMax: 256, earnedMax: 256 });
+const SITE_STATES = Object.freeze(["waiting", "opened"]);
+export function ensureFeats(save) {
+  if (!save || typeof save !== "object") return null;
+  const raw = plain(save.feats) ? save.feats : {}, R = FEAT_RECORD, counts = {}, earned = {}, sites = {}, firsts = {};
+  for (const [k, v] of Object.entries(plain(raw.counts) ? raw.counts : {})) { const n = Math.floor(Number(v)); if (k.length <= 64 && Number.isFinite(n) && n > 0) counts[k] = Math.min(R.countMax, n); }
+  for (const [k, v] of Object.entries(plain(raw.earned) ? raw.earned : {}).slice(0, R.earnedMax)) if (k && k.length <= 120 && plain(v) && (v.route === "c" || v.route === "R")) earned[k] = { ...v };
+  const rel = plain(raw.reliquary) ? raw.reliquary : {};
+  const list = Object.entries(plain(rel.sites) ? rel.sites : {}).filter(([k, v]) => k && k.length <= 300 && plain(v) && typeof v.area === "string" && Number.isFinite(Number(v.x)) && Number.isFinite(Number(v.y)));
+  const keep = [...list.filter(([, v]) => v.state !== "opened"), ...list.filter(([, v]) => v.state === "opened")].slice(0, R.sitesMax);
+  for (const [k, v] of list) if (keep.some(([q]) => q === k)) sites[k] = { ...v, x: Number(v.x), y: Number(v.y), state: SITE_STATES.includes(v.state) ? v.state : "waiting" };
+  for (const [k, v] of Object.entries(plain(rel.firsts) ? rel.firsts : {})) if (k.length <= 32 && typeof v === "string" && v) firsts[k] = v;
+  const pr = plain(raw.pity) ? raw.pity : {};
+  save.feats = { ...raw, v: R.v, counts, earned, reliquary: { ...rel, sites, firsts }, pity: { ...pr, mark: wholeOr(pr.mark, 0, 0), owned: wholeOr(pr.owned, 0, 0), told: wholeOr(pr.told, 0, 0) } };
+  return save.feats;
 }

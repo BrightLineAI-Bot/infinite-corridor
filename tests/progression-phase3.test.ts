@@ -91,8 +91,10 @@ test('the Lattice: Sanctum, Charged Air and Spellblade are free when it opens; e
   s.perception.aperture = band(13); assert.equal(stateV1(s, ROW_BY_ID['field:sanctum']), 'locked', 'and a Listener felled');
   s.farArray.listeners = 1;
   for (const id of EXPLORATION.latticeFree) assert.equal(ownership(s)[id], 'owned', id);
-  const others = PROGRESSION_ROWS.filter((r) => r.own[0] === 'field' && !EXPLORATION.latticeFree.includes(r.id));
-  assert.ok(others.length >= 18); for (const r of others) assert.equal(ownership(s)[r.id], 'open', `${r.id}: no route of its own yet, so open as today`);
+  // Phase 6: the picks whose route is a milestone (c) or a reliquary (R) now wait to be earned; every other stays open as today.
+  const others = PROGRESSION_ROWS.filter((r) => r.own[0] === 'field' && !EXPLORATION.latticeFree.includes(r.id)), later = others.filter((r) => !['c', 'R'].includes(r.v1.route));
+  assert.ok(others.length >= 18 && later.length >= 10); for (const r of later) assert.equal(ownership(s)[r.id], 'open', `${r.id}: no route of its own yet, so open as today`);
+  for (const r of others.filter((q) => ['c', 'R'].includes(q.v1.route))) assert.equal(ownership(s)[r.id], 'locked', `${r.id}: earned first (Phase 6)`);
   for (const key of ['field:sanctum', 'field:tempo']) assert.ok(toggleLatticePassive(s, key).ok, key);
   assert.deepEqual(s.lattice.passives, ['field:sanctum', 'field:tempo']);
 });

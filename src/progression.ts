@@ -45,6 +45,7 @@ import { INGREDIENTS } from "./meals.ts";
 import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { SEEDS } from "./skylands.ts";
+import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.ts"; // Phase 6
 
 export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({
@@ -377,7 +378,7 @@ export function stateV0(save, row) {
       return c === "cap" ? (rank >= APERTURE_SKILLS[br.active].maxRank && s.constellation?.mods?.[br.mod.id] ? "open" : "locked") : rank > 0 ? "open" : "locked";
     }
     case "alt": {
-      if (!altUnlocked(s)) return "locked";
+      if (!altUnlocked(s) && !formFound(s, a)) return "locked"; // Phase 6: a form found (a milestone or a reliquary) opens before Infinite III
       const learned = a === "quickening" ? skillRank(s, "quickening") > 0 : hasNode(s, a);
       return learned ? "owned" : "locked";
     }
@@ -435,7 +436,7 @@ export function paceText(p) {
 
 // ---------------------------------------------------------------- the compendium (design section 5), Classic (v0)
 const STATE_WORDS = Object.freeze({ owned: "Yours", open: "Open to you", rumoured: "Rumoured" });
-const openWhere = (row, save) => row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? (save?.mounts?.hatchling?.quest?.state === "active" ? "a quest is under way" : "the mother waits at the Beast Hotel") : row.group === "lattice" || row.group === "arts" ? "from the Transit Lattice" : row.group === "awakened" ? "at Sela's forge" : "from the Arcanum";
+const openWhere = (row, save) => WORLD_ROUTE_OF[row.id] ? worldWhere(save, row) : row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? (save?.mounts?.hatchling?.quest?.state === "active" ? "a quest is under way" : "the mother waits at the Beast Hotel") : row.group === "lattice" || row.group === "arts" ? "from the Transit Lattice" : row.group === "awakened" ? "at Sela's forge" : "from the Arcanum";
 export const COMPENDIUM = Object.freeze({
   title: "What the Corridor Taught You",
   intro: "Everything you can do, and how you came by it. What you have not found stays hidden: only its count shows.",
@@ -449,7 +450,7 @@ export function compendium(save) {
     const rows = ROWS.filter((r) => r.group === g.id), entries = [];
     for (const r0 of rows) {
       const state = states[r0.id]; if (state === "locked") continue;
-      const r = v1 ? viewV1(r0) : r0; // Exploration's own words for the rows it changes (Phase 3)
+      const r = worldView(save, v1 ? viewV1(r0) : r0); // Exploration's own words for the rows it changes (Phase 3); how a milestone or a reliquary gave it (Phase 6)
       entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}` : STATE_WORDS.owned,
         ...(state === "rumoured" ? { hint: "", controls: "", does: "", obtained: "" } : { hint: r.hint, ...howTo(r) }) }); // a rumour names it, no more
     }
@@ -587,6 +588,7 @@ export function gateV1(row) {
 export function stateV1(save, row) {
   if (!save || !row) return "locked";
   const s = save;
+  if (WORLD_ROUTE_OF[row.id]) return worldState(s, row); // Phase 6: the milestone and reliquary abilities
   if (row.id === "skill:aerial-step") return skillRank(s, "aerial-step") > 0 ? "owned" : apertureOf(s) >= EXPLORATION.aerialStep.aperture ? "open" : "locked";
   if (row.id === LQ) return hasNode(s, "aerial-step") ? "owned" : skillRank(s, "quickening") >= APERTURE_SKILLS.quickening.maxRank && s.constellation?.mods?.[BRANCHES.motion.mod.id] ? "open" : "locked";
   if (row.group === "spells") return spellOpen(s, row.own[1]) ? "owned" : "locked";
@@ -627,10 +629,15 @@ function leaveExploration(save, p) {
 // under Phase 3 it keeps everything today's rules have open at that moment (as a switch to Exploration does), then reads
 // table 2. Nothing it had closes; Aerial Step and Long Quickening it gains. A Classic journey is never touched. Returns the
 // number of ids kept, or 0.
+// Phase 6: an Exploration journey on Phase 3's table (EXPLORATION.coreTable) keeps, on its first load under table 3, those of the
+// milestone and reliquary abilities today's rules have open at that moment (learned forms, Lattice picks, Casting Wind once its
+// discipline has a rank), and nothing else: the core kit's gates it already reads.
 export function adoptExploration(save) {
   const raw = save?.progression;
   if (!raw || raw.mode !== 1 || Number(raw.table) >= EXPLORATION.table) return 0;
-  const p = ensureProgression(save), added = keepAll(p, switchKeeps(save));
+  const from = Number(raw.table) || 1, p = ensureProgression(save);
+  const ids = from < EXPLORATION.coreTable ? switchKeeps(save) : Object.keys(WORLD_ROUTE_OF).filter((id) => ["owned", "open"].includes(stateV0(save, ROW_BY_ID[id])));
+  const added = keepAll(p, ids);
   p.table = EXPLORATION.table;
   return added;
 }
@@ -660,10 +667,12 @@ export function hintSubjectsHeld(save, states = ownership(save)) {
     if (st === "owned" && r.hint) out.push(`row:${r.id}`);
     if (v1 && GATE_HINTS[r.id] && (st === "open" || st === "owned")) out.push(`gate:${r.id}`);
   }
+  if (milestonesUnderWay(save).length) out.push("milestone:first"); // Phase 6 (4A.5): "Relays restored: 1 of 5. Something answers at 5."
   return out;
 }
 // A subject's hint: { id, kind, text, title?, howTo? } (howTo: the row id whose page the card's "How to" opens), or null.
 export function hintFor(save, id) {
+  if (id === "milestone:first") { const q = milestonesUnderWay(save)[0]; return q ? { id, kind: "ability", text: `${q.line}. Something answers at ${q.need.toLocaleString("en-US")}.` } : null; }
   if (HINT_SUBJECTS[id]) { const H = HINT_SUBJECTS[id]; return { id, kind: H.kind, text: H.text, ...(H.title ? { title: H.title } : {}), ...(H.ability ? { ability: true } : {}) }; }
   const [kind, ...rest] = String(id).split(":"), rowId = rest.join(":"), row = ROW_BY_ID[rowId];
   if (!row) return null;
@@ -678,7 +687,42 @@ export function hintFor(save, id) {
 export function howToPage(save, id) {
   const row0 = ROW_BY_ID[ROW_ALIASES[id] || id]; if (!row0) return null;
   const state = progressionState(save, row0); if (state === "locked" || state === "rumoured") return null;
-  const row = exploring(save) ? viewV1(row0) : row0, h = howTo(row), group = GROUPS.find((g) => g.id === row.group);
+  const row = worldView(save, exploring(save) ? viewV1(row0) : row0), h = howTo(row), group = GROUPS.find((g) => g.id === row.group);
   return { id: row.id, name: row.name, group: group?.title || "", state, hint: row.hint || "",
     sections: [["Controls", h.controls], ["What it does", h.does], ["Where it came from", state === "owned" ? h.obtained : `Not yet yours: ${openWhere(row, save)}.`]].filter(([, t]) => t) };
 }
+
+// ================================================================ Phase 6: milestones, the Reliquary and pity (design 2.2, 2.5 G3, 3, 6, 7 row 6)
+// The rules are world-routes.ts; world-finds.ts grants. Exploration withholds exactly the milestone (c) and reliquary (R) abilities
+// until earned or kept (worldWithheld): a milestone under way reads as open (its count line), a reliquary's stays unknown (hidden,
+// X). Found (earned or kept), an ability is yours once it can be used: a form once its node is learned (before Infinite III too),
+// a Lattice pick once the Lattice opens, Casting Wind once learned; until then it reads as open, with what it waits for.
+function usable(save, row) {
+  const [kind, a] = row.own;
+  if (kind === "alt") return a === "quickening" ? skillRank(save, "quickening") > 0 : hasNode(save, a);
+  if (kind === "field") return latticeOpen(save);
+  if (kind === "node") return hasNode(save, a);
+  return false;
+}
+function worldState(save, row) {
+  if (worldWithheld(save, row.id)) { const m = MILESTONE_FOR[row.id]; return m && featCount(save, m.key) > 0 ? "open" : "locked"; }
+  if (!earnedWorld(save, row.id) && !progressionKept(save, row.id)) return stateV0(save, row); // not withheld and not found (an old table): today's rules
+  return usable(save, row) ? "owned" : "open";
+}
+// What an open milestone or reliquary ability waits for (the compendium's "Open to you: ..." and a how-to page's "Not yet yours").
+function worldWhere(save, row) {
+  const m = MILESTONE_FOR[row.id];
+  if (worldWithheld(save, row.id)) return m ? `a milestone: ${milestoneLine(m, featCount(save, m.key))}` : "at the bottom of something";
+  const [kind] = row.own;
+  if (kind === "alt") return "found; learn its node in Pack → Arcanum to use it";
+  if (kind === "field") return "found; it waits for the Transit Lattice (Infinite III and a Listener felled)";
+  return "found; learn it in Pack → Arcanum";
+}
+// How a milestone or a reliquary gave it (save.feats.earned), for the compendium and the how-to page.
+export function worldObtained(save, id) {
+  const e = save?.feats?.earned?.[id]; if (!e) return "";
+  const m = MILESTONE_FOR[id], when = Number.isFinite(Number(e.at)) ? ` after ${Math.max(0, Number(e.at) / 3600).toFixed(1)} hours` : "";
+  if (e.route === "c" && m) return `Earned by a milestone${when}: ${m.name}, ${m.need.toLocaleString("en-US")}.`;
+  return `Found in a ${RELIQUARY.name.toLowerCase()} at ${RELIQUARY.places[e.from] || "the bottom of something"}${when}.`;
+}
+const worldView = (save, row) => (row && earnedWorld(save, row.id) ? Object.freeze({ ...row, obtained: worldObtained(save, row.id) }) : row);
