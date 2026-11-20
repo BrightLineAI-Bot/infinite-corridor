@@ -15,10 +15,12 @@ export const HATCH_ART = Object.freeze({
   height: Object.freeze({ baby: 1.2, young: 1.7 }),
   beam: "#fff2b0", beamCore: "#ffffff", bolt: "#ffe680", chill: "#bfe9ff", heal: "#8ff0a4", whirl: "rgba(255,240,160,", stomp: "rgba(185,168,136,",
   buff: Object.freeze({ damage: "#ff9a5a", defence: "#9ad0ff", stamina: "#b8f07a" }),
-  // where the young form's horns are, in tiles x his scale from his feet (along his facing, up): the two brow horn tips and the nose horn,
-  // and the focus ahead of the nose where the three beams meet before the blast
-  // (2026-11-20: moved with his longer neck and lower head)
-  tips: Object.freeze([Object.freeze([1.13, .8]), Object.freeze([1.07, .72]), Object.freeze([1.18, .66])]), focus: Object.freeze([1.6, .62]),
+  // where the young form's horns are, in tiles x his scale from his feet (along his facing, up): the two brow horn tips and the nose horn
+  // (far brow, near brow, nose), measured from the standard view's drawing in the pose each move shows: `tips` for the beam (his charge
+  // wind-up: head lowered), `gatlingTips` for the gatling horns (the rear), and the focus ahead of the nose where the three beams meet
+  // before the blast (2026-11-20: moved with his lion's carriage, the head carried up over the chest)
+  tips: Object.freeze([Object.freeze([1.05, 1.01]), Object.freeze([1.07, .95]), Object.freeze([1, .92])]), focus: Object.freeze([1.45, .9]),
+  gatlingTips: Object.freeze([Object.freeze([.37, 1.81]), Object.freeze([.43, 1.8]), Object.freeze([.43, 1.73])]),
   straw: "#d9b860", strawDark: "#a8873a", post: "#6b4a26", postLight: "#8f6a3c", rope: "#c9b48a", sick: "#9fd28a",
 });
 export const HATCH_DRAW = { skipBody: false };
@@ -121,7 +123,7 @@ export function drawHatchVisuals(ctx, g, toScreen, s, reduce = false, flat = fal
       ctx.globalAlpha = k; ctx.lineWidth = s * .3 * k + 2; ctx.stroke(); ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = s * .12 * k + 1; ctx.stroke();
       ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(fx, fy, s * .22 * k + 2, 0, TAU); ctx.fill();
     } else if (v.kind === "bolt") { // a gatling horn bolt: a bright streak with a glowing head, from a horn tip to the foe
-      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, T = HATCH_ART.tips[(v.n || 0) % 3], tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s * up, ey = y2 - s * .4 * up, f = 1 - k;
+      const [x2, y2] = toScreen({ x: v.x2, y: v.y2 }), sc = v.sc || 1, d = x2 < x ? -1 : 1, T = HATCH_ART.gatlingTips[(v.n || 0) % 3], tx = x + d * T[0] * sc * s, ty = y - T[1] * sc * s * up, ey = y2 - s * .4 * up, f = 1 - k;
       const px = tx + (x2 - tx) * f, py = ty + (ey - ty) * f, L = Math.hypot(x2 - tx, ey - ty) || 1, ux = (x2 - tx) / L, uy = (ey - ty) / L;
       ctx.globalAlpha = 1; ctx.strokeStyle = HATCH_ART.bolt; ctx.lineWidth = Math.max(3, s * .12); ctx.beginPath(); ctx.moveTo(px - ux * s * .7, py - uy * s * .7); ctx.lineTo(px, py); ctx.stroke();
       ctx.strokeStyle = HATCH_ART.beamCore; ctx.lineWidth = Math.max(1.5, s * .05); ctx.stroke(); ctx.fillStyle = HATCH_ART.beamCore; ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, s * .1), 0, TAU); ctx.fill();

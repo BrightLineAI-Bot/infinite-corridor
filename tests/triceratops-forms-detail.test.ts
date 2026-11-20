@@ -76,9 +76,17 @@ test("the cheek spikes grow in with age: none on the baby or the young, in both 
   assert.ok(fills(drawn({}), TRI_ART.hornBase) > fills(drawn({ triForm: "young" }), TRI_ART.hornBase));
 });
 
-test("the young is his own form: a longer neck and tail, a tight waist under a deep chest, short horns, a smaller frill grown from the skull", () => {
+test("the young is his own form: a lion's carriage (high shoulders, long forelegs, the head up on a short neck), a long tail, a tight waist under a deep chest, short horns, a mane-like frill grown from the skull", () => {
   const Y = TRI_FORMS.young, T = TRI_SHAPE.thick.young, at = (s: number) => T.find((r) => r[0] === s)!;
-  assert.ok(Y.neck > 1.3 && Y.tail > 1 && Y.brow < 1 && Y.nose < 1);
+  assert.ok(Y.neck < 1.2 && Y.tail > 1 && Y.brow < 1 && Y.nose < 1);
+  // Tim, 2026-11-20: "the body of a lion with the head of a Triceratops": the back rises from the hips to the shoulders, the neck turns
+  // upright, the forelegs are longer than the hind legs, and the head is held level or a little raised (its nod takes back the neck's turn)
+  const HD = TRI_SHAPE.heading.young, hd = (s: number) => HD.find((r) => r[0] === s)!;
+  assert.ok(hd(.55)[1] > .1 && hd(.65)[1] > .1, "the back slopes down from the shoulders to the hips");
+  assert.ok(hd(.88)[1] > .5, "the neck carried upright");
+  assert.ok((Y as any).foreLeg > 1, "long forelegs");
+  assert.ok(hd(1)[1] + Y.nod > -.1 && hd(1)[1] + Y.nod < .2, "the head level or a little raised");
+  assert.ok(TRICERATOPS_RIG.formBody.young.pitch > 0 && TRICERATOPS_RIG.formBody.young.foreLeg > 1 && TRICERATOPS_RIG.formBody.young.mane, "Close View: high shoulders, long forelegs, the mane");
   assert.ok(at(.53)[2] < at(.74)[2] * .6, "the waist is tucked up well under the chest");
   assert.ok(at(.45)[1] > at(.53)[1], "the haunch stands over the waist");
   // the frill: between the baby's crest and the adult's shield, in both views
@@ -91,8 +99,8 @@ test("the young is his own form: a longer neck and tail, a tight waist under a d
   const Y0 = TRI_ART.youngFrill.path[0], B = TRI_ART.youngFrill.base; assert.deepEqual(B[B.length - 1].slice(-2), Y0);
   assert.equal(TRI_ART.shelf.knobs.length, 0, "the baby's crest has no rim knobs");
   assert.ok(TRI_ART.youngFrill.knobs.length > 0);
-  // Close View: a heavier, longer neck carried forward, heavier forelimbs
-  const FB = TRICERATOPS_RIG.formBody.young; assert.ok(FB.neck[0] > 0 && FB.foreW > 1 && FB.tail > 1);
+  // Close View: the head carried up on the neck, heavier forelimbs, a long tail
+  const FB = TRICERATOPS_RIG.formBody.young; assert.ok(FB.neck[1] < 0 && FB.foreW > 1 && FB.tail > 1);
 });
 
 test("every form stays within the triangle budget at every tier", () => {
