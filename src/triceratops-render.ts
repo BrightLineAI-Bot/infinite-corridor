@@ -25,7 +25,7 @@ export const TRI_ART = Object.freeze({
   // Tim, 2026-11-20 ("elongate the midsection ~10-15% ... the hind quarters aren't so cramped"; "bring the back down slightly"): the
   // spine's segments between the hips and the shoulders drawn `mid` x as long (the shoulders, forelegs and head move forward), the hips
   // set `hipBack` further back so he stays centred over his shadow, and the hips carried `hipUp` higher on the longer hind legs (TRI_LEGS.hind).
-  mid: 1.12, hipBack: .036, hipUp: .045,
+  mid: 1.12, hipBack: .036, hipUp: .06,
   settle: 6, ease: 10, strikeEase: 18,
   landMs: 380, lean: .12, tailBounce: .08, quietBounce: .05,
   // the face's squat beak (Tim, 2026-11-19: "its beak portion is still too long; it needs to be a little bit more squat"): in front of
@@ -62,9 +62,9 @@ export const TRI_LEGS = Object.freeze({
   cycle: .48, duty: .62, lift: .1, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12, creaseLeg: .9,
   phase: Object.freeze({ nearHind: 0, nearFore: .25, farHind: .5, farFore: .75 }),
   far: Object.freeze({ jointHind: .05, jointFore: .045, jointUp: .03, footHind: .06, footFore: .05, up: .03 }),
-  hind: Object.freeze({ upper: .285, lower: .265, x: .03, top: .06, nails: 3,
+  hind: Object.freeze({ upper: .28, lower: .255, x: .03, top: .06, nails: 3,
     w: Object.freeze([[.17, .15], [.16, .13], [.1, .095], [.085, .078], [.07, .066]].map(Object.freeze)), foot: Object.freeze({ h: .078, toe: .14, heel: .09, nail: .03 }) }),
-  fore: Object.freeze({ upper: .26, lower: .24, x: .02, top: .05, nails: 3,
+  fore: Object.freeze({ upper: .265, lower: .25, x: .02, top: .05, nails: 3,
     w: Object.freeze([[.12, .12], [.11, .115], [.078, .1], [.07, .064], [.06, .056]].map(Object.freeze)), foot: Object.freeze({ h: .068, toe: .12, heel: .075, nail: .026 }) }),
 });
 // The face's outline in head units before the squat muzzle (drawHead's H; Tim, 2026-11-19: "the tip of the beak is kind of hanging
@@ -109,7 +109,7 @@ export const TRI_FORM_ADULT = Object.freeze({ head: 1, leg: 1, legW: 1, girth: 1
 export const TRI_FORMS = Object.freeze({
   // Tim, 2026-11-19 (size pass) kept the body and size; face pass ("its eyes are too big ... It should look more like a Triceratops,
   // just smaller, just a little bit cuter"): a young animal, not a cartoon mascot. No pink cheek, near-adult eyes.
-  baby: Object.freeze({ head: 1.25, leg: .86, legW: 1.22, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1, back: .82, mid: 1.08, length: .66, frillShelf: true, frill: .6, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: .5, lift: .05, nod: .1 }),
+  baby: Object.freeze({ head: 1.25, leg: .84, legW: 1.22, haunch: .78 /* Tim 2026-11-20: smaller haunch and shoulder masses so the baby's legs show */, girth: 1, back: .82, mid: 1.08, length: .66, frillShelf: true, frill: .6, brow: .25, nose: .42, eye: 1.15, cheek: 0, snout: .68, jugal: .5, lift: .05, nod: .1 }),
   young: Object.freeze({ head: 1.06, leg: 1.04, legW: 1.22, haunch: .9, girth: 1.08, back: .92, length: 1, frill: 1.14, brow: 1.32, nose: 1.35, eye: 1.05, cheek: 0, snout: 1, jugal: 1, lift: 0, nod: 0 }),
 });
 export const triForm = (e) => TRI_FORMS[e?.triForm] || TRI_FORM_ADULT;
@@ -157,7 +157,7 @@ export const triceratopsTailBounces = (e) => ["silly", "bad"].includes(e?.tricer
 // The spine's natural headings (radians, y up, tail to head) and its half thickness above and below (body units), by share s.
 const HEADING = [[0, .3], [.2, .22], [.35, .1], [.43, .03], [.55, -.04], [.65, -.1], [.74, -.16], [.85, -.26], [1, -.22]];
 // (the back's peak lowered, Tim 2026-11-20: "it doesn't need such a large back ridge"; was .23, .3, .32, .3, .25, .19 over the back)
-const THICK = [[0, .02, .02], [.1, .05, .042], [.2, .085, .072], [.3, .135, .12], [.38, .205, .21], [.45, .255, .3], [.55, .27, .33], [.63, .26, .32], [.71, .225, .28], [.79, .182, .21], [.87, .15, .15], [.94, .13, .12], [1, .12, .11]];
+const THICK = [[0, .02, .02], [.1, .05, .042], [.2, .085, .072], [.3, .135, .12], [.38, .196, .21], [.45, .238, .3], [.55, .248, .33], [.63, .242, .32], [.71, .215, .28], [.79, .182, .21], [.87, .15, .15], [.94, .13, .12], [1, .12, .11]];
 function table(T, s, c) { if (s <= T[0][0]) return T[0][c]; for (let i = 1; i < T.length; i++) if (s <= T[i][0]) { const a = T[i - 1], b = T[i], f = (s - a[0]) / (b[0] - a[0]); return a[c] + (b[c] - a[c]) * f; } return T[T.length - 1][c]; }
 
 // Render-only memory per creature (the renderer paints a fresh copy each frame, so it is keyed by id), bounded.
