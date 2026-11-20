@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — world regions: the Oasis Ergs (landscape 28)
+## Release 1047 — world regions: the Oasis Ergs (landscape 28)
 
 The daily world-regions step (Tim, 2026-10-29: "find ways to make the map have interesting features... beautiful collections of regions... rich and vibrant... without decreasing performance"). Inventory of his list: lunar (Moonlands 579, Lunar Wastes 25), biomechanical (Carapace Wastes 625, Marrowworks 26), ice (Frostlands 573, Rimeglaciers 24), volcanic (Firelands 583, Magma Rivers 27), jungle (625, 631+), fog (Fog Moors 617), mountain ranges (Snowpeak, Rimeglaciers) all have a built region; living cities and open-world warp daises are travel/building work, not a region. "Marsh deserts" had only the Salt Marsh (625), a recoloured flat; this is the desert with water in it, far out, and a climbed relief.
 
