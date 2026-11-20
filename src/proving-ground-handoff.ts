@@ -27,8 +27,10 @@ export const provingGroundAccess = (settings) => settings?.provingGround !== fal
 // The rows Options → System shows for it, in order: the setting always, the entry only while access is on.
 export const provingGroundOptionRows = (settings) => provingGroundAccess(settings) ? ["access", "enter"] : ["access"];
 
-export function handoffRecord(save, { release = null, slot = 1, returnUrl = "", now = Date.now() } = {}) {
-  return { format: PROVING_GROUND_HANDOFF.format, version: PROVING_GROUND_HANDOFF.version, release, slot, returnUrl: String(returnUrl || ""), createdAt: now, save };
+// Progression Phase 5: `yard` ({ ability, version }, training-yard.ts yardRequest) asks the laboratory for the Training Yard
+// preset with that owned ability; it rides in the same one record, so the copy, the database and the take-once rule are unchanged.
+export function handoffRecord(save, { release = null, slot = 1, returnUrl = "", now = Date.now(), yard = null } = {}) {
+  return { format: PROVING_GROUND_HANDOFF.format, version: PROVING_GROUND_HANDOFF.version, release, slot, returnUrl: String(returnUrl || ""), createdAt: now, save, ...(yard ? { yard: { ability: String(yard.ability || ""), version: Number(yard.version) || 1 } } : {}) };
 }
 
 function openHandoffDb(idb) {

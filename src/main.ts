@@ -265,7 +265,8 @@ import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, se
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
 import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.ts"; // feel pass 1: fixed 60 Hz steps, interpolated drawing
-import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, handoffRecord, writeHandoff } from "./proving-ground-handoff.ts"; // release 791
+import { PROVING_GROUND_HANDOFF, provingGroundOptionRows, provingGroundAccess, handoffRecord, writeHandoff } from "./proving-ground-handoff.ts"; // release 791
+import { TRAINING_YARD, yardOffer, yardRequest, yardSetup } from "./training-yard.ts"; // progression Phase 5: the how-to page's Try it
 const $ = (s) => document.querySelector(s),
   canvas = $("#game"),
   ctx = canvas.getContext("2d", { alpha: false }), // release 159: opaque; render() paints every pixel
@@ -1663,6 +1664,10 @@ function renderHowTo(out,id){
   if(!page){h.textContent="How to";const p=document.createElement("p");p.className="options-note";p.textContent="Nothing known of this yet.";out.append(h,p);return}
   h.textContent=`How to: ${page.name}`;out.append(h);const g=document.createElement("p");g.className="options-note";g.textContent=page.group+(page.hint?` · ${page.hint}`:"");out.append(g);
   for(const[label,text]of page.sections){const sec=document.createElement("article"),sh=document.createElement("h4"),p=document.createElement("p");sec.className="item arcana-card howto-section";sh.textContent=label;p.textContent=text;sec.append(sh,p);out.append(sec)}
+  // Phase 5 (4A.4): Try it, for an owned ability the Training Yard can show, while Proving Ground access is on.
+  const offer=provingGroundAccess(settings)?yardOffer(save,id):null;
+  if(offer){const box=document.createElement("div"),note=document.createElement("p"),status=document.createElement("p");box.className="howto-try";note.className="options-note";note.textContent=`${TRAINING_YARD.practice}. ${TRAINING_YARD.name}: ${yardSetup(offer.id).text}`;status.className="options-note";status.setAttribute("role","status");
+    const b=uiButton(TRAINING_YARD.button,()=>{try{handOverJourney(b,{yard:yardRequest(save,offer.id),say:(text)=>{status.textContent=text},place:`the ${TRAINING_YARD.name}`})}catch(error){status.textContent=error?.message||String(error)}});b.id="howtoTryIt";box.append(b,note,status);out.append(box)}
 }
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
@@ -1714,14 +1719,17 @@ function renderTome(out){
 // flushed first, then one copy goes to the Proving Ground's own handoff database (proving-ground-handoff.ts) and the
 // laboratory page opens. Nothing comes back: Exit to game there reloads this page, which resumes the flushed journey.
 addEventListener("pageshow",()=>{leavingForProvingGround=false}); // back from the laboratory with this page kept in memory: saving resumes
-async function enterProvingGround(button){
-  if(saveBlocked())return optionMessage("This journey is not being saved just now, so the Proving Ground cannot take a copy of it.",true);
-  const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;optionMessage("Saving your journey for the Proving Ground…");
+async function enterProvingGround(button){return handOverJourney(button)}
+// Progression Phase 5: a how-to page's Try it goes the same way, with `yard` (training-yard.ts yardRequest: owned abilities only)
+// in the one handoff record, and its own status line (`say`) in place of the Options message.
+async function handOverJourney(button,{yard=null,say=optionMessage,place="the Proving Ground"}={}){
+  if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
+  const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1038,slot:getActiveSlot(),returnUrl:location.href.split("#")[0]}))});
-    if(result.busy){button.disabled=false;return optionMessage("Another journey operation is already finishing.",true)}
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1038,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
-  catch(error){button.disabled=false;optionMessage(`Could not enter the Proving Ground (${error?.message||error}). Your journey is unchanged.`,true)}}
+  catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
 function provingGroundRows(grid){for(const row of provingGroundOptionRows(settings)){if(row==="access"){const box=document.createElement("input");box.type="checkbox";box.checked=settings.provingGround!==false;box.onchange=()=>{updateSetting("provingGround",box.checked);renderOptions("System")};grid.append(settingRow("Proving Ground access",box,"Shows Enter Proving Ground here. Turn it off to hide it."))}else{const b=uiButton("Enter Proving Ground",()=>enterProvingGround(b)),row=document.createElement("div"),text=document.createElement("span");b.id="enterProvingGround";row.className="setting-row";text.innerHTML="<strong>Proving Ground</strong><br><small>Try things on a scratch copy of this journey. Nothing done there is saved; Exit to game brings you back here, exactly as you left.</small>";row.append(text,b);grid.append(row)}}}
 async function renderSettings(category){const grid=document.createElement("div");grid.className="settings-grid";
   if(category==="Performance"){grid.append(settingRow("Quality mode",selectSetting("quality",[["auto","Auto"],["low","Low"],["balanced","Balanced"],["full","Full"]]),`Active: ${currentQuality()}. Low uses a stable 1× render scale; other modes cap at 2×.`),settingRow("Safe mode",toggleSetting("safeMode"),"Reversible low-load presentation mode."),settingRow("Weather detail",toggleSetting("weather"),"Allows ambient weather when the renderer supports it."),settingRow("Performance diagnostics",toggleSetting("diagnostics"),"Records frame timings after the next reload."))}
