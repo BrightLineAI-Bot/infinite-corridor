@@ -11,11 +11,12 @@
 // once and reused (the oldest gives way when full), nothing allocated per frame. The Iron Fists' awakened kick is no longer
 // run here (2026-11-13): it is the fourth step of their combo (game.ts fistPunch), and Ki Blast's ground slam is game.ts's. A reload drops all of it; a new area drops
 // what is in play; a rune's foe gone drops the rune. Reduced motion and safe mode stop the turning and pulsing.
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { AWAKENED_ARTS, WEAPON_ARTS, awakenedFor, awakenedUp } from "./weapon-arts.ts";
 
 const M = AWAKENED_ARTS.moves, P = AWAKENED_ARTS.pools;
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
-const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc" && Number(e.hp) > 0;
+const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && !unharmablePerson(e) && Number(e.hp) > 0;
 const extra = (e) => Math.max(0, enemyBodyRadius(e) - .38);
 const centre = (game) => ({ x: game.player.x + .5, y: game.player.y + .45 });
 const fx = (e) => e.x + .5, fy = (e) => e.y + .45;
@@ -88,7 +89,7 @@ export function awakenedSwing(game, now, d, hit, struck = null) {
     const l = oldest(K.lances, (q) => q.life > 0, (q) => -q.life); l.life = A.life; l.x0 = x0; l.y0 = y0; l.x1 = x1; l.y1 = y1;
   } else if (id === "spell-runes") { // Tim, 2026-11-13: one rune a third swing, on the nearest struck foe not yet runed (so a crowd fills up); all runed: refresh the nearest
     let best = null, bestD = Infinity, near = null, nearD = Infinity;
-    if (struck) for (const e of struck) { if (!e || e.kind === "npc" || !hittable(e)) continue; const q = (fx(e) - c.x) ** 2 + (fy(e) - c.y) ** 2; if (q < nearD) { nearD = q; near = e; } if (!runeOn(game, e) && q < bestD) { bestD = q; best = e; } }
+    if (struck) for (const e of struck) { if (!e || unharmablePerson(e) || !hittable(e)) continue; const q = (fx(e) - c.x) ** 2 + (fy(e) - c.y) ** 2; if (q < nearD) { nearD = q; near = e; } if (!runeOn(game, e) && q < bestD) { bestD = q; best = e; } }
     const e = best || near; if (e) mark(K, e, power);
   }
   return true;

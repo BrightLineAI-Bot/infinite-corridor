@@ -47,11 +47,12 @@ test('every interactable person resolves to a skinned 3D body, never a card', ()
     let deep = 0; for (let i = 0; i < mesh.vertexCount; i++) deep = Math.max(deep, Math.abs(mesh.positions[i * 3]));
     assert.ok(deep > .1, `${o.id}: has depth, not a flat slab`);
   }
-  // Shale the quarry keeper is his stone turtle; an Elder Wanderer keeps its own 3D model; a fallen Refuge person keeps the marker
+  // Shale the quarry keeper is his stone turtle; an Elder Wanderer keeps its own 3D model
   assert.equal(closeViewFolkKind({ id: 'quarry-keeper', kind: 'villager', quarryTurtle: true, x: 1, y: 1 }), 'turtle');
   assert.equal(closeViewFolkKind({ id: 'elder', kind: 'traveler', elder: true, rule: 30, x: 1, y: 1 }), null);
   for (const look of ['pilgrim', 'mercenary', 'minstrel', 'scholar', 'traveler', 'cartographer']) assert.equal(closeViewFolkKind({ id: 'r', kind: 'traveler', reciter: 'r1', look, x: 1, y: 1 }), null, 'a reciter keeps its own native 3D model (renderer.ts nativeTraveler)');
-  assert.equal(closeViewFolkKind(REFUGE_NPCS[0] && { ...REFUGE_NPCS[0], kind: 'npc' }, { save: { consequences: { npcs: { [REFUGE_NPCS[0].id]: { status: 'dead' } } } } }), null);
+  // Tim 2026-11-20: townsfolk cannot be harmed; a Refuge person always stands (a stale 'dead' record once kept the marker, null)
+  assert.equal(closeViewFolkKind(REFUGE_NPCS[0] && { ...REFUGE_NPCS[0], kind: 'npc' }, { save: { consequences: { npcs: { [REFUGE_NPCS[0].id]: { status: 'dead' } } } } }), 'folk');
   for (const k of ['tree', 'chest', 'worldCache', 'dungeon', 'viewport']) assert.equal(closeViewFolkKind({ id: k, kind: k, x: 1, y: 1 }), null, `${k} is not a person`);
   // the named people have their own looks; every traveller look the world can deal has one
   for (const n of [...REFUGE_NPCS, ...WAYSTATION_NPCS]) assert.ok(Object.values(FOLK_LOOKS).includes(folkLook({ ...n, kind: 'npc' })), `${n.name} has a look of their own`);
