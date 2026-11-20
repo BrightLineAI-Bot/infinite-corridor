@@ -600,6 +600,7 @@ const V1_VIEW = Object.freeze({
   "skill:aerial-step": Object.freeze({ obtained: `Learned for a constellation point once Aperture reached ${EXPLORATION.aerialStep.aperture}.` }),
   [LQ]: Object.freeze({ controls: "Crown the Motion branch with it in Pack → Arcanum (Quickening mastered, Light Feet taken). Always on; nothing to press.", obtained: "Crowned the Motion branch for 2 points, once Quickening was mastered.", does: EXPLORATION.aerialStep.cap.text }),
   "awakened:awakening": Object.freeze({ obtained: "Awakened at Sela's forge, from Infinite II." }),
+  "spell:aegis": Object.freeze({ obtained: "Held from the start of the journey." }), // Phase 4: the how-to page says where it came from
   ...Object.fromEntries(Object.entries(EXPLORATION.gates).filter(([, g]) => g.level != null).map(([id, g]) => [id, Object.freeze({ obtained: `Opened at level ${g.level}.` })])),
   ...Object.fromEntries(EXPLORATION.latticeFree.map((id) => [id, Object.freeze({ obtained: "Free when the Transit Lattice opened." })])),
 });
@@ -632,4 +633,52 @@ export function adoptExploration(save) {
   const p = ensureProgression(save), added = keepAll(p, switchKeeps(save));
   p.table = EXPLORATION.table;
   return added;
+}
+
+// ================================================================ Phase 4: hints and how-to pages (design sections 4A.2, 4A.3, 4A.5)
+// A first-use hint is one short line, shown once per journey per subject (hints.ts schedules them; save.hints.seen keeps the
+// subjects shown or passed over). Every hint is text from this file: an ability's own row (`row:<id>`, its `hint`, when it is
+// first yours), a gate opening on Exploration (`gate:<id>`: a spell at its level, awakening and the hatchling at Infinite II),
+// or one of HINT_SUBJECTS below (a status, the first constellation point, the first lead). `kind` "ability" hints show under
+// Options → Hints "Only new abilities" too; "status" ones only with hints On; "banner" ones are a one-time event banner.
+export const HINT_SUBJECTS = Object.freeze({
+  "status:encumbered": Object.freeze({ kind: "status", text: "Encumbered: pull damage fills their meter; full, they hit softer and take more." }),
+  "point:constellation": Object.freeze({ kind: "banner", title: "A CONSTELLATION POINT", text: "Spend it at Sela's lens: Pack → Arcanum.", ability: true }),
+  "lead:first": Object.freeze({ kind: "banner", title: "A LEAD", text: "Hold the compass to follow it, or don't: leads keep." }),
+});
+// Gates that open on Exploration with a line of their own (design 3.6, 3.9): the rows go from locked to open at Infinite II.
+export const GATE_HINTS = Object.freeze({
+  "awakened:awakening": "Sela: \"Something in your steel is asleep, not dead. Bring it to me.\"",
+  "companion:hatchling": "Infinite II: a mother Triceratops waits at the Beast Hotel. She needs help.",
+});
+const levelGate = (row) => EXPLORATION.gates[row?.id]?.level;
+// The subject ids a journey has right now (owned rows; Exploration's opened gates), from its own rules' states.
+export function hintSubjectsHeld(save, states = ownership(save)) {
+  const out = [], v1 = exploring(save);
+  for (const r of ROWS) {
+    const st = states[r.id];
+    if (st === "owned" && r.hint) out.push(`row:${r.id}`);
+    if (v1 && GATE_HINTS[r.id] && (st === "open" || st === "owned")) out.push(`gate:${r.id}`);
+  }
+  return out;
+}
+// A subject's hint: { id, kind, text, title?, howTo? } (howTo: the row id whose page the card's "How to" opens), or null.
+export function hintFor(save, id) {
+  if (HINT_SUBJECTS[id]) { const H = HINT_SUBJECTS[id]; return { id, kind: H.kind, text: H.text, ...(H.title ? { title: H.title } : {}), ...(H.ability ? { ability: true } : {}) }; }
+  const [kind, ...rest] = String(id).split(":"), rowId = rest.join(":"), row = ROW_BY_ID[rowId];
+  if (!row) return null;
+  if (kind === "gate") return GATE_HINTS[rowId] ? { id, kind: "ability", text: GATE_HINTS[rowId], howTo: rowId } : null;
+  if (kind !== "row" || !row.hint) return null;
+  const lv = exploring(save) ? levelGate(row) : null;
+  return { id, kind: "ability", text: lv ? `Level ${lv}: ${row.name} is yours. Set it in a slot in Pack → Arcanum.` : row.hint, howTo: rowId };
+}
+
+// The how-to page of one ability (4A.3): what the compendium knows of it, as a page. Null for anything not yet known to the
+// player (locked) or only rumoured, so a page never spoils what is still to be found.
+export function howToPage(save, id) {
+  const row0 = ROW_BY_ID[ROW_ALIASES[id] || id]; if (!row0) return null;
+  const state = progressionState(save, row0); if (state === "locked" || state === "rumoured") return null;
+  const row = exploring(save) ? viewV1(row0) : row0, h = howTo(row), group = GROUPS.find((g) => g.id === row.group);
+  return { id: row.id, name: row.name, group: group?.title || "", state, hint: row.hint || "",
+    sections: [["Controls", h.controls], ["What it does", h.does], ["Where it came from", state === "owned" ? h.obtained : `Not yet yours: ${openWhere(row, save)}.`]].filter(([, t]) => t) };
 }

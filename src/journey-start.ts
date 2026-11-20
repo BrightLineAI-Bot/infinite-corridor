@@ -147,3 +147,31 @@ export const EXPLORATION = Object.freeze({
 export const exploring = (save) => progressionMode(save) === 1 && Number(save?.progression?.table) >= EXPLORATION.table;
 export const modeInfo = (mode) => PROGRESSION_MODES[mode === 1 ? 1 : 0];
 export const progressionKept = (save, id) => Array.isArray(save?.progression?.kept) && save.progression.kept.includes(id);
+
+// ---------------------------------------------------------------- Phase 4: hints and leads (docs/progression-design.md 4.1-4.3, 4A)
+// Two additive records at schema 14, normalised here from freshSave and migrateSave (unknown fields kept), in both modes:
+//   save.hints  { v, base, seen }: `seen` the first-use hint subjects already shown, dropped or passed over (ids only; at most
+//               HINT_RECORD.seenMax, newest kept), so each is shown once per journey; `base` is 1 once what the journey held
+//               when hints began was noted as seen without a word (hints.ts hintScan), so an old journey is not flooded.
+//   save.leads  { v, told, rumours, followedAt }: `told` the Refuge people who have said their first-journey line (by id);
+//               `rumours` the hinted leads heard (leads.ts: { id, kind, text, by, rx?, ry?, name?, at }), at most
+//               LEAD_RECORD.rumourMax; `followedAt` the sections explored when the compass last took a choice (4.3's dot).
+export const HINT_RECORD = Object.freeze({ v: 1, seenMax: 2048 });
+export const LEAD_RECORD = Object.freeze({ v: 1, rumourMax: 32, toldMax: 64 });
+export function ensureHints(save) {
+  if (!save || typeof save !== "object") return null;
+  const raw = plain(save.hints) ? save.hints : {};
+  const seen = [...new Set((Array.isArray(raw.seen) ? raw.seen : []).filter((id) => typeof id === "string" && id && id.length <= 200))].slice(-HINT_RECORD.seenMax);
+  save.hints = { ...raw, v: HINT_RECORD.v, base: raw.base === 1 ? 1 : 0, seen };
+  return save.hints;
+}
+export function ensureLeads(save) {
+  if (!save || typeof save !== "object") return null;
+  const raw = plain(save.leads) ? save.leads : {}, told = {};
+  for (const [k, v] of Object.entries(plain(raw.told) ? raw.told : {}).slice(0, LEAD_RECORD.toldMax)) if (v === true && k.length <= 120) told[k] = true;
+  const rumours = (Array.isArray(raw.rumours) ? raw.rumours : []).filter((q) => plain(q) && typeof q.id === "string" && q.id && typeof q.text === "string")
+    .map((q) => { const o = { ...q }; if (!(Number.isInteger(o.rx) && Number.isInteger(o.ry))) { delete o.rx; delete o.ry; } return o; })
+    .filter((q, i, all) => all.findIndex((o) => o.id === q.id) === i).slice(-LEAD_RECORD.rumourMax);
+  save.leads = { ...raw, v: LEAD_RECORD.v, told, rumours, followedAt: wholeOr(raw.followedAt, 0, 0) };
+  return save.leads;
+}

@@ -221,8 +221,9 @@ test('nothing is saved: the save keeps its shape before and after, fresh and mig
     const before = JSON.stringify(s); compendium(s); ownershipV0(s); pace(s); assert.equal(JSON.stringify(s), before);
   }
   // Phase 2 adds save.progression (journey-start.ts): a fresh or migrated save without a choice is Classic at start version 0.
-  const f = freshSave(); assert.ok(!('compendium' in f) && !('hints' in f)); assert.deepEqual([f.progression.mode, f.progression.start, f.progression.kept], [0, 0, []]);
-  const m = migrateSave(JSON.parse(JSON.stringify(f))); assert.ok(!('compendium' in m) && !('hints' in m)); assert.deepEqual(m.progression, f.progression);
+  // Phase 4 adds save.hints (the seen set; tests/progression-phase4.test.ts), empty on a fresh journey; the compendium saves nothing.
+  const f = freshSave(); assert.ok(!('compendium' in f)); assert.deepEqual(f.hints, { v: 1, base: 0, seen: [] }); assert.deepEqual([f.progression.mode, f.progression.start, f.progression.kept], [0, 0, []]);
+  const m = migrateSave(JSON.parse(JSON.stringify(f))); assert.ok(!('compendium' in m)); assert.deepEqual(m.hints, f.hints); assert.deepEqual(m.progression, f.progression);
 });
 
 test('wired: the Tome opens the compendium, and the module is built and precached', () => {

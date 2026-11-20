@@ -45,6 +45,9 @@ import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./tr
 import { compendium } from "./progression.ts"; // the progression table and its compendium (docs/progression-design.md, Phase 1)
 import { startCards, START_KIT, PROGRESSION_MODES, switchProgression, switchText } from "./progression.ts"; // Phase 2: the creator's cards and the mode switch
 import { modeInfo, progressionMode, EXPLORATION } from "./journey-start.ts";
+import { howToPage, hintFor } from "./progression.ts"; // Phase 4: how-to pages and hint text (docs/progression-design.md 4A)
+import { HINT_BUDGET, HINT_MODES, hintMode, hintQueue, hintScan, offerHint, hintStep, dismissHint, packDot, clearPackDot } from "./hints.ts"; // Phase 4: first-use hints
+import { rumourLeads, compassCaption, noteFollow, leadDot } from "./leads.ts"; // Phase 4: leads, rumours, the first-session caption, the Journal dot
 import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
@@ -231,7 +234,7 @@ const MOUNT_CONTROL_ICONS = {
 };
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
-import { reloadPips, powerAegisLeft } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
+import { reloadPips, powerAegisLeft, encumberedAny } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
 import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups, learnAerialStep, capstoneOf, aerialDiscipline } from "./constellation.ts";
 import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.ts";
 import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
@@ -466,9 +469,44 @@ function watchQuests(now){
   Object.assign(questWatch,sig,{ready:true,save});}
   if(questQueue.length&&now>=questBannerFreeAt){const q=questQueue.shift();showEventBanner(q.title,q.detail,q.kind);questBannerFreeAt=now+QUEST_BANNER.gap}
 }
+// First-use hints (Progression Phase 4; docs/progression-design.md 4A.2, 4A.6; hints.ts): one short line on a small card under the
+// message line, once per journey per subject, never in a fight, a scene, a menu, Look mode or dialogue, one at a time, at least
+// 45 s apart and at most 4 in 10 minutes. ✕ dismisses it; "How to" opens the ability's page (the Journal pauses, as it always
+// does); it fades by itself. A banner subject (the first constellation point, the first lead) goes through the banner queue.
+// Checked on the banner queue's cadence (HINT_BUDGET.checkEvery); the holdings scan runs every HINT_BUDGET.scanEvery.
+const hints=hintQueue(),hintPos={x:NaN,y:NaN,map:null};let hintCheckedAt=-1e9,hintScannedAt=-1e9,hintArrivedAt=-1e9,hintFade=0,hintGuidance=save.guidance;
+const hintCard=(()=>{const c=document.createElement("aside"),t=document.createElement("span"),how=document.createElement("button"),x=document.createElement("button");c.id="hintCard";c.className="hint-card";c.setAttribute("role","status");c.hidden=true;t.className="hint-text";how.type="button";how.className="hint-how";how.textContent="How to";x.type="button";x.className="hint-close";x.setAttribute("aria-label","Dismiss hint");x.textContent="✕";c.append(t,how,x);($("#messageViewport")?.parentElement||document.body).append(c);return{c,t,how,x}})();
+function hideHint(){clearTimeout(hintFade);hintCard.c.classList.remove("visible");hintCard.c.hidden=true;dismissHint(hints)}
+hintCard.x.onclick=()=>hideHint();
+function showHint(h){
+  if(h.kind==="banner"){questQueue.push({title:h.title,detail:h.text,kind:"discovery"});return}
+  hintCard.t.textContent=h.text;hintCard.how.hidden=!h.howTo;hintCard.how.onclick=()=>{hideHint();openJournal(`howto:${h.howTo}`)};
+  hintCard.c.hidden=false;hintCard.c.classList.toggle("still",!!(settings.reduceMotion||settings.safeMode));requestAnimationFrame(()=>hintCard.c.classList.add("visible"));
+  clearTimeout(hintFade);hintFade=setTimeout(hideHint,HINT_BUDGET.showMs);
+}
+function hintBusy(){
+  if(game.paused||glimpseRun||compassMenuOpen||closeViewLookActive()||game.rite||game.fall||[atlas,panel,journal,optionsPanel,pausePanel].some((d)=>d?.open))return true;
+  for(const e of game.enemies)if(e&&!e.dead&&e.hp>0&&!e.ambient&&(e.aggro||e.pentArenaAwake))return true; // a foe aggroed or engaged (a boss, a Listener's, a Pentagon trial's)
+  return false;
+}
+const packButton=document.querySelector('[data-action="menu"]'),pausedJournalButton=$("#pausedJournal");
+function watchHints(now){
+  if(now-hintCheckedAt<HINT_BUDGET.checkEvery)return;hintCheckedAt=now;
+  const mode=hintMode(settings);
+  if(save.guidance!==hintGuidance){hintGuidance=save.guidance;if(hintGuidance&&(hintGuidance.pick||hintGuidance.pin||hintGuidance.follow))noteFollow(save)} // 4.3: a lead followed (types.ts setCompassChoice makes a new record each choice)
+  if(now-hintScannedAt>=HINT_BUDGET.scanEvery){hintScannedAt=now;for(const h of hintScan(save,mode))offerHint(save,hints,h,now,mode)}
+  if(game.leadNotice){game.leadNotice=false;offerHint(save,hints,hintFor(save,"lead:first"),now,mode)}
+  if(mode==="on"&&encumberedAny(game))offerHint(save,hints,hintFor(save,"status:encumbered"),now,mode);
+  if(hintPos.map!==game.map)hintArrivedAt=now;const moving=hintPos.map===game.map&&Math.hypot(game.player.x-hintPos.x,game.player.y-hintPos.y)>.05;hintPos.map=game.map;hintPos.x=game.player.x;hintPos.y=game.player.y;
+  const h=hintStep(save,hints,now,{busy:hintBusy(),moving,arrivedAt:hintArrivedAt,mode});if(h)showHint(h);
+  updateCompassCaption(); // the idle compass's first-session caption (4.1)
+  hudSet(packButton,"class:has-dot",packDot(save,mode)); // the first free constellation point (4A), until the Arcanum is opened
+  hudSet(pausedJournalButton,"class:has-dot",mode!=="off"&&game.area==="overworld"&&leadDot(save,!!(compassPin||compassFollow||compassPick))); // 4.3: no needle and no lead followed for a while
+}
 function updateWorldNotices() {
   if(game.defeatNotice){const notice=game.defeatNotice;game.defeatNotice=null;showEventBanner(notice.title,notice.detail,notice.kind);if(notice.sound)playNoticeSound(notice.sound);questBannerFreeAt=performance.now()+QUEST_BANNER.gap;}
   watchQuests(performance.now());
+  watchHints(performance.now()); // Progression Phase 4
   {const done=takeCompletedReading();if(done)showEventBanner("RECITATION COMPLETE",`${done==="elders"?"The Elder Wanderers":READINGS[done].name} · Mastered`,"discovery");} // release 191 (Tim)
   if(game.glimpseCue){const cue=game.glimpseCue;game.glimpseCue=null;const id=glimpseRun?null:glimpseFor(save,cue,game.rx,game.ry,Math.random,{family:settings.familySafe});if(id)playGlimpse(id)} // release 193
   for (const e of game.enemies) if (!e.dead && (e.boss || e.apertureEncounter) && !announcedThreats.has(e.id)) {
@@ -681,7 +719,8 @@ function navigationTargets() {
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   const cues=game.area==="overworld"&&quest?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
-  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,follow:f,pick,cues,rescue:rescueQ?rescueGuidance(save.mounts?.hatchling):null});
+  // `here` (Progression Phase 4, 4.1): on an Exploration journey the Cairn Keeper's errand points at the nearest crossing from here.
+  const guidance=compassGuidance(save,{area:game.area,pin:compassPin,follow:f,pick,cues,rescue:rescueQ?rescueGuidance(save.mounts?.hatchling):null,here:{rx:game.rx,ry:game.ry,objects:game.map?.objects}});
   navigationCache={key,map:game.map,guidance,manual:null};
   return navigationCache;
 }
@@ -753,6 +792,13 @@ function idleCompass(label = "No objective. Tap to choose one nearby, or hold fo
   hudSet(navCompass, "class:north", false);
   hudSet(navCompass, "aria-label", label); hudSet(navCompass, "title", label);
 }
+// Progression Phase 4 (4.1): on a first session, while the compass has nothing to point at and no quest is taken yet, a small
+// caption under it says where work is found (leads.ts compassCaption); hints off hides it.
+const compassCaptionEl = (() => { const c = document.createElement("span"); c.className = "compass-caption"; c.setAttribute("aria-hidden", "true"); navCompassSlot?.append(c); return c; })();
+function updateCompassCaption() { // on the hints' cadence (watchHints); idle: no needle drawn (idleCompass hides both)
+  const cap = hintMode(settings) !== "off" ? compassCaption(save, { idle: !!navGuidanceArrow?.hidden && !!navManualArrow?.hidden, area: game.area }) : null;
+  hudSet(compassCaptionEl, "text", cap || ""); hudSet(navCompassSlot, "class:captioned", !!cap);
+}
 function updateNavigationCompass(now = performance.now()) {
   updateCompassFrame(now);
   { const look = closeViewLookActive(), name = look ? closeViewLookLabel() : ""; hudSet(navCompassSlot, "class:look-on", look); hudSet(navCompass, "aria-pressed", look ? "true" : "false");
@@ -791,13 +837,17 @@ function activeQuests(){
   if(save.worldFlags?.worldBossAwake&&!save.worldFlags?.worldBossDead)add("A great enemy","Something vast waits at the heart of the Corridor.",{rx:0,ry:0});
   return out;
 }
+// Progression Phase 4 (docs/progression-design.md 4.2): the tab is Leads: quests in progress first, then the rumours heard
+// (leads.ts rumourLeads), each with "Point compass here" when it has a place (a hinted home's nearest edge, a wonder's section).
 function renderQuests(out){
-  const h=document.createElement("h3");h.textContent="Active quests";out.append(h);
+  const h=document.createElement("h3");h.textContent="Leads";out.append(h);
   const row=(title,detail,at,name,follow=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
     if(follow){const followed=!compassPin&&compassFollow?.kind===follow.kind&&(compassFollow.id??null)===(follow.id??null);card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
     else if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};rememberGuidance();openJournal("quests")}))}out.append(card)};
-  const quests=activeQuests();if(!quests.length){const p=document.createElement("p");p.className="options-note";p.textContent="No hunts or errands in progress. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  const quests=activeQuests(),rumours=rumourLeads(save);if(!quests.length&&!rumours.length){const p=document.createElement("p");p.className="options-note";p.textContent="No leads yet. Talk to the people of the Refuge: Maud by the cairn has work. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
+  if(quests.length){const qh=document.createElement("h3");qh.textContent="Quests";out.append(qh)}
   for(const q of quests)row(q.title,q.detail,q.at,q.title,q.follow);
+  if(rumours.length){const rh=document.createElement("h3");rh.textContent="Rumours";out.append(rh);for(const r of rumours)row(r.title,r.detail,r.at||null,r.title)}
   const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
   if(compassPin||compassFollow)out.append(uiButton("Stop pointing the compass",()=>{chooseGuidance();openJournal("quests")}));
 }
@@ -857,7 +907,7 @@ function compassMenuData(){
   if(game.area==="dungeon")return compassMenuModel({area:"dungeon",here,doors:dungeonCompassPoints(),doorPick:dungeonCompassPick});
   if(game.area!=="overworld")return compassMenuModel({area:game.area});
   syncGuidance();const objectives=objectiveList().map(o=>({...o,tag:OBJECTIVE_KINDS[o.kind]?.label||""}));
-  return compassMenuModel({area:"overworld",here,quests:activeQuests(),objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
+  return compassMenuModel({area:"overworld",here,quests:[...activeQuests(),...rumourLeads(save).filter((r)=>r.at).map((r)=>({title:r.title,detail:r.detail,at:r.at}))]/* Phase 4: rumours with a place */,objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
 }
 function renderCompassMenu(){
   const m=compassMenuData(),out=[];
@@ -1468,7 +1518,7 @@ function recoverOverlay(error){
 }
 addEventListener("error",(event)=>recoverOverlay(event.error||event.message));
 addEventListener("unhandledrejection",(event)=>recoverOverlay(event.reason));
-const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Audio","System"];
+const optionCategories=["Journeys","Challenge","Performance","Camera","Controls","Accessibility","Hints","Audio","System"];
 let optionCategory="Journeys";
 function optionMessage(text,isError=false){let p=$("#optionsStatus");if(!p){p=document.createElement("p");p.id="optionsStatus";optionsBody.prepend(p)}p.textContent=text;p.className=isError?"options-note options-danger":"options-note"}
 function downloadText(name,text){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -1601,8 +1651,18 @@ function renderTaught(out){
     const more=g.entries.length-g.owned;dots.setAttribute("aria-label",`${g.entries.length} of ${g.total} known`);card.append(gh,line("options-note",`${g.owned} of ${g.total} yours${more?` · ${more} more known`:""}`),dots);
     for(const e of g.entries){const d=document.createElement("details"),sum=document.createElement("summary");sum.textContent=`${e.name} · ${e.label}`;d.append(sum);if(e.hint)d.append(line("options-note",e.hint));
       for(const[label,text]of[["How to",e.controls],["What it does",e.does],["How it came",e.obtained]])if(text){const p=line("",""),k=document.createElement("strong");k.textContent=`${label}. `;p.append(k,text);d.append(p)}
+      if(e.state!=="rumoured")d.append(uiButton("How-to page",()=>openJournal(`howto:${e.id}`))); // Phase 4 (4A.3)
       card.append(d)}
     out.append(card)}
+}
+// An ability's how-to page (docs/progression-design.md 4A.3; progression.ts howToPage): controls, what it does with the game's
+// own numbers, and where it came from. Only for what the player knows (never a spoiler); readable at any time.
+function renderHowTo(out,id){
+  out.append(uiButton("← What the Corridor Taught You",()=>openJournal("taught")));
+  const page=howToPage(save,id),h=document.createElement("h3");
+  if(!page){h.textContent="How to";const p=document.createElement("p");p.className="options-note";p.textContent="Nothing known of this yet.";out.append(h,p);return}
+  h.textContent=`How to: ${page.name}`;out.append(h);const g=document.createElement("p");g.className="options-note";g.textContent=page.group+(page.hint?` · ${page.hint}`:"");out.append(g);
+  for(const[label,text]of page.sections){const sec=document.createElement("article"),sh=document.createElement("h4"),p=document.createElement("p");sec.className="item arcana-card howto-section";sh.textContent=label;p.textContent=text;sec.append(sh,p);out.append(sec)}
 }
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
@@ -1679,6 +1739,8 @@ async function renderSettings(category){const grid=document.createElement("div")
     const ps=document.createElement("select");for(const[id,q]of Object.entries(CLOSE_VIEW.presets)){const o=document.createElement("option");o.value=id;o.textContent=q.label;ps.append(o)}ps.value=save.closeViewPreset||CLOSE_VIEW.defaultPreset;ps.onchange=()=>{save.closeViewPreset=ps.value;persist()};grid.append(settingRow("Close View camera",ps,"Standard: low and a little to the side. Close: tight and low. Wide: further back, a wider view."));/* release 793: the camera control, its sensitivity */const cc=document.createElement("select");for(const[id,label]of[["drag","Drag anywhere (default)"],["crescent","Pan crescent"]]){const o=document.createElement("option");o.value=id;o.textContent=label;cc.append(o)}cc.value=save.closeViewCamera==="crescent"?"crescent":"drag";cc.onchange=()=>{save.closeViewCamera=cc.value;persist()};grid.append(settingRow("Camera control",cc,"Drag anywhere: drag the open screen outside the left joystick to turn the view. Start inside the joystick to move. Each finger keeps its role until you lift it, and buttons keep their own touches. Quick turnaround: hold the stick back toward the camera and swipe down on the right, and the view swings round behind you. Pan crescent: slide along the arc round the action buttons instead."));const sv=document.createElement("input");sv.type="range";sv.min=String(CLOSE_VIEW.drag.sensitivity[0]);sv.max=String(CLOSE_VIEW.drag.sensitivity[1]);sv.step="0.1";sv.value=String(save.closeViewSensitivity||1);sv.oninput=()=>{save.closeViewSensitivity=Number(sv.value);persist()};grid.append(settingRow("Camera sensitivity",sv,"How far the view turns for a drag (or a slide along the crescent). 1 is the default."));const af=document.createElement("input");af.type="checkbox";af.checked=save.closeViewAutoFollow!==false;af.onchange=()=>{save.closeViewAutoFollow=af.checked;persist()};grid.append(settingRow("Close View auto-follow",af,"On: a moment after you last turn the view (a drag, or the crescent), it slowly follows your walk. Off: it turns only when you slide along the crescent (double tap it to put the view behind you; the bullseye at the right edge locks on)."))} // 2026-11-06
   if(category==="Controls")grid.append(settingRow("Drag sensitivity",rangeSetting("controlSensitivity",.7,1.8,.05),"Higher values reach full speed with a shorter finger drag."),settingRow("Movement deadzone",rangeSetting("controlDeadzone",0,.3,.01)),settingRow("Movement smoothing",rangeSetting("controlSmoothing",10,60,1),"Higher values respond more immediately."));
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
+  // Progression Phase 4 (4A.2): Options → Hints, per device. Turning hints back on never replays one already seen.
+  if(category==="Hints")grid.append(settingRow("Hints",selectSetting("hints",HINT_MODES),"One short line the first time you get or use something new, once each, never in a fight. Only new abilities leaves out statuses. The Journal's how-to pages stay readable either way."));
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
@@ -2531,12 +2593,13 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode||id==="tome"&&mode==="taught")b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Leads"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode||id==="tome"&&(mode==="taught"||mode.startsWith("howto:")))b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
     if(mode==="taught"){renderTaught(out);if(!journal.open)journal.showModal();return;}
+    if(mode.startsWith("howto:")){renderHowTo(out,mode.slice(6));if(!journal.open)journal.showModal();return;} // Phase 4: an ability's how-to page
     if(mode==="arcana"){renderArcana(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
@@ -3232,7 +3295,7 @@ function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.ic
 function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
 function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.kind||(n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind);/* n.kind: Exploration's Long Quickening capstone and Aerial Step discipline (progression Phase 3) */return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
-function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
+function openSkills(atShrine=false){arcanumAtShrine=atShrine;if(packDot(save,hintMode(settings)))clearPackDot(save);/* Phase 4: the Pack's dot goes once the Arcanum is opened */const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
  const sky=el('div','arc-sky');ensureSlots(save);
  {const key=el('section','arc-key');key.append(el('p','','Elements:'));for(const a of Object.keys(ATTRIBUTES))key.append(elemBadge(a));key.append(el('p','',''),kindTag('⚡ Active',true),el('span','',' you cast it from slot A, B, C or D, then it recovers. '),kindTag('Passive',false),el('span','',' works by itself once learned: always, or while that skill\'s buff is running.'));sky.append(key)}

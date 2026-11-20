@@ -197,6 +197,12 @@ export const CAIRN_LINES = {
   ],
   waiting: "\"The first crossing you go into. It'll be on the floor, worn bright on one side, where his thumb was.\"",
   after: (where) => `"So it was there. The rest went the way he did: ${where}. He never came back for them. You might."`,
+  // Exploration (docs/progression-design.md 4.1, Phase 4): her errand said plainly, with no riddle first; and, while it waits,
+  // where the compass leads. Classic keeps the lines above.
+  plain: {
+    first: "\"Levels'll make you sturdier, and Sela will teach you what the Refuge knows. Everything strange is out there: in the crossings, in what people dropped, in places nobody's walked. Go into the first crossing you find. There'll be a piece of chain on the floor. Keep it.\"",
+    waiting: "\"The first crossing you go into. Your compass points to the nearest one. The link will be on the floor. Keep it.\"",
+  },
   idle: [
     "\"I count the stones every morning. There's always the same number. I count them anyway.\"",
     "\"People ask what the cairn marks. The start, I tell them. Of what, they say. Of measuring.\"",
@@ -215,13 +221,15 @@ export function addCairnKeeper(map, rx, ry) {
   (map.objects ||= []).push(o); return o;
 }
 // Speaking with her. `where` is the chain's home in words. Returns { ok, message, started }.
-export function speakCairnKeeper(save, o, where = "out past the black stone") {
+// `plain` (an Exploration journey): the errand in plain words (CAIRN_LINES.plain). An idle line is marked `idle` (a rumour may
+// take its place, leads.ts).
+export function speakCairnKeeper(save, o, where = "out past the black stone", { plain = false } = {}) {
   const a = (save.arcana && typeof save.arcana === "object" ? save.arcana : (save.arcana = {})), found = ensureSurveyor(save).links.length;
-  if (!found && a.starter !== "set") { a.starter = "set"; if (o) o.line = CAIRN_LINES.first[1]; return { ok: true, started: true, message: CAIRN_LINES.first.join(" ") }; }
-  if (!found) return { ok: true, message: CAIRN_LINES.waiting };
+  if (!found && a.starter !== "set") { a.starter = "set"; if (o) o.line = plain ? CAIRN_LINES.plain.first : CAIRN_LINES.first[1]; return { ok: true, started: true, message: plain ? CAIRN_LINES.plain.first : CAIRN_LINES.first.join(" ") }; }
+  if (!found) return { ok: true, message: plain ? CAIRN_LINES.plain.waiting : CAIRN_LINES.waiting };
   if (a.starter === "set") { a.starter = "done"; return { ok: true, message: CAIRN_LINES.after(where) }; }
   a.talks = (Math.floor(Number(a.talks)) || 0) + 1;
-  return { ok: true, message: a.talks % 2 ? CAIRN_LINES.after(where) : CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
+  return a.talks % 2 ? { ok: true, message: CAIRN_LINES.after(where) } : { ok: true, idle: true, message: CAIRN_LINES.idle[Math.floor(a.talks / 2) % CAIRN_LINES.idle.length] };
 }
 // The errand's first link: while it is set and no link is found, any crossing entered from the land holds one: an ordinary
 // crossing, a deep one (deep-v1, deep-v2:<archetype>), a canopy crossing, and (2026-11-19) the Refuge's own crossing

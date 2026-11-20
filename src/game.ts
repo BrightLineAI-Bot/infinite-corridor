@@ -86,6 +86,7 @@ import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes
 import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt } from "./wonders.ts";
+import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.ts"; // progression Phase 4: first-journey lines, rumours and the lead floor
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
@@ -5648,8 +5649,8 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
-    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor", saveFrame(this.save)) || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
-    if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
+    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor", saveFrame(this.save)) || "out past the black stone", { plain: exploring(this.save) }); const heard = r.idle ? this.rumourInstead(o) : null; if (heard) r.message = `"${heard}"`; this.message = `${o.name}: ${r.message}`; /* Phase 4: plain in Exploration; an idle line may be a rumour */ if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
+    if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; const said = firstJourneyLine(this.save, o.id) || this.rumourInstead(o); /* Phase 4: Hollis's first-journey line; a cook's idle words may be a rumour */ return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${said || o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
       const run=beginListenerArena(this.save,{rx:this.rx,ry:this.ry,x:this.player.x,y:this.player.y});if(!run)return{ok:false,message:this.message='The dais is still.'};
@@ -5791,7 +5792,8 @@ export class Game {
     this.message = r.message;
     if (!r.ok) return r;
     if (r.transition === "supply" && o.state === "used" && chosen === "collect" && (o.kind === "supplyCache" || o.kind === "weaponCache")) this.stampCachePickupVisual(o.kind);
-    if (r.ok && o.kind === "traveler" && chosen === "speak" && !o.reciter && !o.wanderer && !o.rumourTold && this.area === "overworld") { const heard = wonderRumour(this.save, this.rx, this.ry, o.id || o.name); if (heard) { o.rumourTold = true; this.message = `${r.message} ${heard}`; } } // release 674: a traveller who has heard of a wonder says which way it lies (once)
+    if (r.ok && o.kind === "traveler" && chosen === "speak" && !o.reciter && !o.wanderer && !o.rumourTold && this.area === "overworld") { const heard = wonderRumour(this.save, this.rx, this.ry, o.id || o.name); if (heard) { o.rumourTold = true; this.message = `${r.message} ${heard}`; noteWonderLead(this.save, this.rx, this.ry, o.id || o.name); } } // release 674: a traveller who has heard of a wonder says which way it lies (once); Phase 4: kept as a lead
+    if (r.ok && o.kind === "npc" && chosen === "speak") { const first = firstJourneyLine(this.save, o.id), heard = first ? null : (o.id !== "vendor-vela" || r.duplicate) ? this.rumourInstead(o) : null, said = first || heard; if (said) { this.message = `${o.name || "The resident"}: “${said}”`; r.message = this.message; } } // Phase 4 (progression 4.1, G2): a first-journey line, or a rumour in place of an idle line (Vela's first words stand)
     if ((o.kind === "npc"||o.kind==="shelterMerchant"||o.kind==="traveler") && chosen === "trade") this.shopRequested = o.id;
     if (this.save.hp !== before)
       this.player.hp = Math.min(
@@ -8094,6 +8096,14 @@ export class Game {
     }
     m.recovery.encounterStarted = true; this.refreshBeastHotel(); this.sync();
     return { ok: true, message: (this.message = "Defeat the hostile Triceratops occupying this bed, then return here to retrieve your companion.") };
+  }
+  // Progression Phase 4 (docs/progression-design.md 2.5 G2, 2.6): while fewer than LEADS.floor leads stand, one of the people who
+  // already speak (leads.ts RUMOUR_SPEAKERS, the hamlets' folk and the Listener towns' cooks) tells a rumour in place of an idle line. Overworld only.
+  rumourInstead(o) {
+    if (this.area !== "overworld" || !o || !(RUMOUR_SPEAKERS.includes(o.id) || (o.cook && !o.refugeFarmer) || (o.kind === "npc" && o.settlement && o.settlement !== "ember-refuge"))) return null;
+    const t = rumourTurn(this.save, o.id || o.name || "", this.rx, this.ry); if (!t) return null;
+    if (t.first) this.leadNotice = true; // main.ts: the first lead's banner, once (hints.ts)
+    return t.text;
   }
   // ---------------------------------------------------------------- the Triceratops hatchling (hatchling.ts)
   // The rescue: his mother at the Beast Hotel gives the quest; the site (version-pinned from the seed and the hometown, on previewed
