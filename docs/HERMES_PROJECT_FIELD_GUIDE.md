@@ -4078,13 +4078,13 @@ The following original protocol is retained as historical evidence only. The lin
 
 ## Unreleased follow-on: Gate Revenant pressure kit
 
-**CODE:** The roaming gatePredator now has a separate bounded controller, actual3.6-unit chase against player base2.4, finite rapid fireball/lob/barrage attacks, sustained wall-clipped mouth-fire, and exactly reused Void Walker passing wraiths. Its final health/damage are increased with320HP/40damage floors and an approximate two-thirds player-scaled Walker reference; the floors take precedence where the ratio would nerf the old predator. New first-pinned layouts provisionally double rarity from12 to24 per1000; existing pins keep their old threshold. Ordinary terrain, exit/cross-section pursuit and shelter escape remain. See [exact owner dictation](gate-revenant-source-transcript.md), [audit/design](gate-revenant-design.md) and [implementation/validation](gate-revenant-implementation.md).
+**CODE:** The roaming gatePredator now has a separate bounded controller, actual3.6-unit chase against player base2.4, finite rapid fireball/lob/barrage attacks, sustained wall-clipped mouth-fire, and exactly reused Void Walker passing wraiths. Its final health/damage are increased with320HP/40damage floors and an approximate two-thirds player-scaled Walker reference; the floors take precedence where the ratio would nerf the old predator. New first-pinned layouts provisionally double rarity from12 to24 per1000; existing pins keep their old threshold. Ordinary terrain, exit/cross-section pursuit and shelter escape remain. See exact owner dictation (not kept in the public repository), [audit/design](gate-revenant-design.md) and [implementation/validation](gate-revenant-implementation.md).
 
 **BOUNDARY:** This is an isolated future prototype, not part of r251 clearance or a live release. §9.3 describes intermediate historical stats: legacy predator22 becomes36 after dungeon/global scaling, and deep final boss26 becomes43. Its claimed arena/hunt/elite exclusions are broader than the actual predator condition; this prototype preserves the condition rather than silently widening or narrowing eligibility. Deep final bosses are not upgraded. New protected regression files, final r251 integration, release assignment and publication remain pending.
 
 ## Unreleased follow-on: major-beast baseline and rematches
 
-**CODE:** World beasts now use an attainable level8 reference even for new characters; stronger existing tuning remains. Questing receives at least1.15× the strongest same-reference beast HP/damage, retaining its fastest existing cadence. Additional delivered-damage floor60 is provisional balance, not an owner number. Crystal/Walker dungeon level eligibility is1, with other environment/depth restrictions unchanged. Player death resets participating surviving major beasts to fullHP and spends all relevant attempts; third failure clears them without reward. Gate instead disappears after player death with no rematch counter. Source-area snapshots are captured before switching checkpoint coordinates. See [source](beast-level-eight-source-transcript.md) and [design/validation](beast-level-eight-design.md).
+**CODE:** World beasts now use an attainable level8 reference even for new characters; stronger existing tuning remains. Questing receives at least1.15× the strongest same-reference beast HP/damage, retaining its fastest existing cadence. Additional delivered-damage floor60 is provisional balance, not an owner number. Crystal/Walker dungeon level eligibility is1, with other environment/depth restrictions unchanged. Player death resets participating surviving major beasts to fullHP and spends all relevant attempts; third failure clears them without reward. Gate instead disappears after player death with no rematch counter. Source-area snapshots are captured before switching checkpoint coordinates. See source (not kept in the public repository) and [design/validation](beast-level-eight-design.md).
 
 **BOUNDARY:** Ordinary enemies are not globally buffed. Normal leave/reload retains wounds; no attempt count resets. Co-encounter spawn rules remain separate. This is a follow-on prototype, not live or included in current r251 review; protected regression updates and fresh shared-lifecycle review remain pending.
 
@@ -4174,7 +4174,7 @@ Tim's rules:
 
 ## Release 257: the Lightning Giant — 2026-10-21
 
-Tim's brief, verbatim, is in `docs/lightning-giant-source-transcript.md`:
+Tim's brief, verbatim, is in the owner's source transcript (not kept in the public repository):
 - **Body:** a giant robot, bigger than the Void Walker and about the Astral Worm's height, that bends its legs and moves its arms.
 - **Arcs:** Tesla-coil lightning arcs to the player and links the two.
 - **Shock:** knocks the player down, shaking, before they get up.

@@ -6,7 +6,7 @@ Current status, 2026-10-21: integrated in the single combined release 251 candid
 
 Unreleased, not a publication candidate. Branch `claude/gate-revenant-upgrade` is isolated from the ongoing r251 ocean work and provisionally based on a91cc8c54c088fc7430798c23b7e908722b6d1a1. Integrate the reviewed final r251 baseline and obtain fresh review before any release. No release markers or protected test/config/script files changed.
 
-Read `gate-revenant-source-transcript.md` for exact owner wording and `gate-revenant-design.md` for the historical read-only audit. The latter's initial planning status is superseded by this implementation record, not erased.
+Read the owner's source transcript (not kept in the public repository) for exact owner wording and `gate-revenant-design.md` for the historical read-only audit. The latter's initial planning status is superseded by this implementation record, not erased.
 
 ## Implemented scope
 

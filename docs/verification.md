@@ -72,7 +72,7 @@ The README supplies Android installation and offline verification instructions. 
 
 `tests/prototype.test.ts` is currently a monolithic suite. Do not split it through a broad mechanical rewrite. Extract tests only when the affected subsystem is already changing, preserving behavior and running the full suite before and after extraction.
 
-The intended future destination groups are:
+The intended future destination groups are below. These are proposed file names only; none of these seven files exists yet, and the suite has since grown as many smaller per-feature files in `tests/`:
 
 - `tests/generation.test.ts` for world, dungeon, arena, and deterministic content generation;
 - `tests/persistence.test.ts` for save serialization, slots, migrations, and resume state;

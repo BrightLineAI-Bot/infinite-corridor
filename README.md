@@ -1,131 +1,114 @@
 # Infinite Corridor
 
-An original, offline-first, single-player mobile adventure game for Android. The player carries one persistent character through procedurally generated realms, ruins, settlements, dungeons, and difficult encounters.
+> *There is a passage that touches everything that is, was, or could be.
+> Near the place you woke, it still remembers being human: ruined streets, a guttering refuge,
+> strangers reciting books they no longer know they once read.
+> Walk far enough and it forgets. The walls become something else. So, eventually, do the things that walk them.
+> No one ever told your story, so the Corridor cannot hold you on any page.
+> When you die, it sends you back to the last place that remembered you.*
 
-This repository contains the playable **Prototype 1** vertical slice.
+**[Play it in your browser →](https://brightlineai-bot.github.io/infinite-corridor/)**
 
-**Superseded 2026-10-18:** previews and publishing now run on GitHub Actions (`.github/workflows/preview.yml` and `publish.yml`); Tim's PC, Hermes and the Discord cards are retired. The current rule is in `AGENTS.md` (Publishing) and `docs/github-actions-release.md`. The text below is historical.
+Infinite Corridor is a single-player action adventure for phones, built as an installable web app that plays fully offline. You carry one persistent character, the Wayfarer, outward from Ember Refuge through an unbounded, procedurally generated world. It isn't a roguelike: the world and your character persist, and dying returns you to your last checkpoint with everything you carried.
 
-Under the operator decision of 2026-10-11, Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote); each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not instructions for new work. See [candidate review and promotion](docs/proposal-publication-workflow.md); previews carry their own code and assets, and production promotion never rebuilds an approved payload.
+This is a personal project by BrightLineAI, shared as a showcase. It isn't for sale and isn't accepting contributions.
 
-## Run locally
+*Snapshot: 20 November 2026, release 1048. The game is still in active development.*
 
-Requires Node.js 22 or newer. The prototype has no third-party runtime dependencies.
+---
 
-```powershell
-cd C:\AI-PROJECTS\infinite-corridor
-npm run dev
+## What's in it
+
+- **An endless, persistent world.** The overworld is a grid of 32×32 sections with no edge. Each journey has its own world seed, so a place stays the same once you've seen it, and what you change there is saved: the foes you've killed, the chests you've opened, the ground you've walked. The Atlas maps what you've explored, and Wayglasses let you travel back across it.
+- **Regions that change as you go out.** Ruined streets and hamlets near the Refuge give way to stranger country farther out: Salt Marshes, Savannas, canyons, Skylands reached by Sky Stairs, the Magma Rivers, and, 44 sections or more from the Refuge, the Oasis Ergs, a sand sea of seif dunes, wadis and turquoise oasis pools.
+- **Crossings and the Deep.** Dungeons lie beneath the land: single crossings, many-levelled descents, Pentagons, keeps and the floors of the Deep, some of them lairs of things that should not be woken.
+- **World beasts.** Huge roaming creatures with their own move sets and long fights, among them the Astral Worm, the Void Walker, the Gate Revenant, the Lightning Giant and the Earth Apatosaurus. Each has its own synthesised theme.
+- **Two ways to progress.** A new journey chooses a mode and a starting weapon and tool. In *Classic*, nothing is held back. In *Exploration* (recommended), most abilities are earned out in the world: through quests given by the people of the Refuge and beyond, through milestones that count what you already do, and from Reliquaries left at the bottom of places you finish. The Reciter's Tome keeps a compendium of everything you have learned (what you haven't found is counted, never named), and each ability's how-to page can send you to a Training Yard to try it on practice dummies, with nothing kept.
+- **A story you have to piece together.** The narrative is never explained outright. *Reciters*, wanderers half-dissolved into the Corridor, each speak one line of a public-domain book every time you meet them (Tolstoy, Dostoevsky, Hesse, Emerson, Rilke, Lovecraft's Randolph Carter stories, Musashi). *Glimpses* show you a few seconds through someone else's eyes, or something else's. Threads, rumours and quests such as the Missing Crossing, the Beekeeper's Jars and the Second Wayfarer lead farther out.
+- **Builds.** Weapons, tools, spells and disciplines, plus a Lattice of passives, glyphs and Echoes to combine them with. Gear can be salvaged, forged and refined.
+- **Mounts.** Free a Triceratops hatchling from the pen where a pack guards him, raise him as he grows from your fights, and ride him once he's grown.
+- **Townsfolk cannot be harmed.** The people of the Refuge, its waystations and the hamlets are never hurt by anything you do.
+- **Two ways to see it.** *Standard View* is a top-down action view. *Close View* is a low third-person camera with torchlight and fog, for the buildings, keeps and dungeons.
+- **A soundtrack made of code.** Thirty-odd original pieces of slow dungeon-synth, synthesised live in the browser (no audio files). The music shifts between calm, combat and boss tiers.
+- **Built for a phone.** Touch controls, three journey slots, quality tiers, and reduced-motion, high-contrast, text-size and family-safe settings.
+
+The full history of what has changed, release by release, is in [CHANGELOG.md](CHANGELOG.md).
+
+## Playing
+
+Open the [live game](https://brightlineai-bot.github.io/infinite-corridor/) in a recent mobile or desktop browser (Chrome is the main target).
+
+**Install it (Android):** open the link once while online, let it finish loading, then choose **Install app** or **Add to Home screen** from Chrome's menu. From then on it launches like an app and runs with no connection at all.
+
+**Updates:** installed copies pick up a new release the next time you open the game while online.
+
+**Touch:** a thumb stick to move and a cluster of on-screen buttons for attack, dodge, jump, act, tool, potion and the ability slots.
+
+**Keyboard (desktop):**
+
+| Key | Action |
+| --- | --- |
+| WASD or arrow keys | Move |
+| `J` | Attack |
+| Space | Dodge |
+| `K` | Jump |
+| `E` | Act / interact |
+| `H` | Potion |
+| `Q` or `R` | Tool |
+| `F`, `G`, `C`, `B` | Ability slots A to D |
+| `T` | Switch build preset |
+| `O` | Oculus (switch between Standard View and Close View) |
+| `M` | Atlas |
+| `L` | Journal |
+| `I` | Menu |
+| `P` or Escape | Pause |
+
+### Your saves
+
+- Saves live **only on your device**, in the browser's own storage (IndexedDB, with a small local mirror for safety). Nothing is uploaded and there are no accounts.
+- The game autosaves every few seconds and whenever you pause or switch away from the app. Coming back resumes you exactly where you were, paused.
+- There are three journey slots. A journey can be exported to a file and imported again from Options → Journeys.
+- Clearing your browser's site data for the game, or uninstalling the installed app, deletes your journeys. Export them first if you want to keep them.
+
+## Running it locally
+
+You need Node.js 22 or newer. There are no dependencies to install.
+
+```sh
+git clone https://github.com/BrightLineAI-Bot/infinite-corridor.git
+cd infinite-corridor
+npm run dev        # serves the game at http://localhost:5173
+npm test           # runs the test suite
+npm run build      # writes the static, installable build to dist/
 ```
 
-Open `http://localhost:5173` in a browser. Desktop controls are WASD or arrows to move, `J` to attack, Space to dodge, `K` to jump, `E` to interact, `H` to use a restorative draught, `M` for the atlas, `L` for the journal, `I` for the pack, and `P` or Escape to pause. The HUD shows prominent HEALTH, STAMINA, and XP progress bars. Ordinary enemies award 10 XP and bosses award 35 XP. Reaching the displayed threshold raises the level, preserves excess XP, awards one stat point, and increases the next threshold by 35% plus 10. Timed actions show their own recharge bar and countdown on the corresponding button; Potion shows the carried draught count. Touch controls use a compact, non-overlapping rune cluster: Jump north, Dodge south, Act west, Attack east, with Tool/Spell above and Potion southeast. Map and Pack sit above the movement thumb stick. Mute, Pause, and Journal are grouped under the compact HUD menu. Movement uses normalized diagonals, a shaped analog dead zone, wall sliding, and smoothed stick response. Each dodge costs 15 stamina and stamina regeneration—not a separate dodge cooldown—limits repeated dodges. Dodge follows the full current analog direction; after release it retains the last normalized movement vector, including diagonals, across pause and reload.
+To test offline play or installation, serve `dist/` over HTTPS (or `localhost`). Opening `dist/index.html` straight from disk won't work, because service workers need an HTTP(S) origin.
 
-The journal contains deterministic, original Cinder Verge discoveries. Narrative records are bundled offline, validated against `infinite-corridor-narrative/1.0.0`, and resolved through a small effect whitelist; gameplay never calls a network model or imports an external story database.
+If you change code while the dev server is running, the service worker may serve cached files. Unregister it and clear the site's caches in your browser's dev tools before testing again.
 
-Combat is deliberately paced: walking and directed dodges are capped, jumping evades contact attacks but not Spark Warden shots, enemy attacks use a clear windup and recovery, solid walls block impacts, and brief post-hit and checkpoint-recovery protection prevent unavoidable burst damage. Each enemy windup paints its exact radial gameplay danger footprint on the ground: melee rings are tight, ranged rings are larger, and urgency strengthens toward impact. The ring is a distance boundary, not a promise through cover—solid walls still block the actual strike. Accepted melee attacks quietly lock to the nearest visible target inside the equipped weapon's actual reach while retaining each weapon's full arc. Death never removes equipment, pack items, consumables, marks, materials, or XP; it only returns the Wayfarer to the active checkpoint and tops restorative draughts up to two when below that minimum. Restorative draughts heal 30 health without being wasted at full health; Ironbark tonics provide 45 seconds of damage-reducing guard and both supplies persist across saves. The presentation uses a restrained soot, rust, bone, and oxidized-metal palette with deterministic masonry wear.
+## How it's built
 
-The Missing Crossing is a compact, persistent mystery told through Vela or the Array, deterministic signal sites, the Hollow Marshal, and the restored relay. The shortened HUD keeps the current objective directly beneath the place name, with journal recaps for completed beats. New deterministic entrances can lead to the Hollow Relay, Root-Sunk Cistern, or Glass Kiln; individual dungeons retain independent snapshots and exact returns. Sparse, locally telegraphed spikes or fire vents and fixed-point vine swings add traversal without blocking the normal route. After the first user gesture, Web Audio generates an original restrained dungeon-synth pad and slow minor-pentatonic pulse; the HUD mute control persists and ramps cleanly without creating duplicate schedulers.
+- Plain TypeScript and JavaScript modules, a canvas renderer for Standard View and WebGL2 for Close View. No frameworks and no runtime dependencies.
+- **Deterministic generation:** the same seed, coordinates and generator version always produce the same place. Generators are versioned, so an existing journey keeps the world it started with.
+- **Durable saves:** the save format is versioned, and older saves are migrated forward rather than reset.
+- **The Proving Ground** (`/proving-ground/`) is a separate sandbox build, with its own storage and service worker, used to try content against a scratch copy of a journey (the Training Yard runs there). It never touches real saves.
+- Releases go out through GitHub Actions: each merged change is tested, built and frozen as a preview, and production is published only from a reviewed preview.
 
-The overworld is an unbounded grid of deterministic 32×32 sections. Walk through a three-tile boundary passage to enter a neighboring section, including negative coordinates. Each section is stable for the save's world-generation version; explored sections, landmarks, active encounters, object changes, waypoints, and checkpoints persist. The paused atlas shows explored sections and their immediate frontier. Tap an explored atlas cell to mark a waypoint.
+The game was developed with AI coding assistants. Some of the 2D bestiary and story-scene art was made with an image-generation tool.
 
-## Test and build
+## Credits
 
-```powershell
-npm test
-npm run build
-```
+- Made by **BrightLineAI**.
+- 3D character bodies (the Wayfarer and several creature and townsfolk forms) are converted from the **[Quaternius](https://quaternius.com/) RPG Character Pack**, released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Provenance and the conversion scripts are in [`docs/asset-sources/`](docs/asset-sources/).
+- The reciters' texts are US public-domain works: Leo Tolstoy (trans. Louise and Aylmer Maude), Fyodor Dostoevsky (trans. Constance Garnett and Eva Martin), Ralph Waldo Emerson, H. P. Lovecraft's Randolph Carter stories, and Hermann Hesse's *Siddhartha* (Project Gutenberg volunteer translation). The Rilke poems and Musashi's *Dokkōdō* were put into English for this game. Sources are listed in [`src/recitations.ts`](src/recitations.ts).
+- All music and sound are synthesised at runtime and original to this game.
 
-The static production PWA is written to `dist/`. Serve that directory from an HTTPS origin for phone installation; `localhost` is also treated as secure for local desktop testing. Do not open `dist/index.html` directly from the filesystem because service workers require an HTTP(S) origin.
+Details are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-For Test Bot candidate inspection, run `npm run start:proving-ground:fixture` and open `http://127.0.0.1:5174/proving-ground/`. This builds and serves the production-backed scratch laboratory on a fixed loopback port without network access or dependencies. It does not publish a preview or promote production. Stop with Ctrl+C.
+## For contributors
 
-### Private tailnet deployment
+The project isn't accepting contributions, but if you're reading the code: [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md) and [`.claude/`](.claude/) hold the development workflow and instructions for the AI coding assistants that work on the game, and [`docs/`](docs/) holds the design records, verification notes and per-release implementation notes. Much of `docs/` is a historical working record rather than current documentation.
 
-This host serves the validated production build at `https://orvar.tailc5115c.ts.net:10444/`.
+## License
 
-The route is tailnet-only (Tailscale Serve, never Funnel) and proxies to loopback `127.0.0.1:18882`. After `npm run build`, install or reconcile the limited-user startup task and route with:
-
-```powershell
-pwsh -NoProfile -File scripts\install-private-pwa.ps1
-```
-
-Roll back the route and startup task with:
-
-```powershell
-pwsh -NoProfile -File scripts\uninstall-private-pwa.ps1
-```
-
-Existing browser and Android saves remain client-local and are not deleted by route rollback.
-
-## Install on Android and verify offline play
-
-1. Build the project and host the contents of `dist/` on an HTTPS URL reachable by the phone.
-2. In current Android Chrome, open that URL once while online and wait for the game to finish loading.
-3. Open Chrome's menu and choose **Install app** or **Add to Home screen**, then launch **Infinite Corridor: Cinder Verge** from its installed icon.
-4. Move away from the refuge, interact or fight, and press **Pause**. Confirm the overlay says **Progress saved**.
-5. Cross at least one section boundary, open the atlas, and confirm the player marker and section coordinates. Close the installed app completely. Reopen it and press **Resume**. Confirm the character returns to the same section and exact position with the same health, stamina, encounter state, defeated or damaged enemies, and changed nearby objects. This must also work inside the dungeon. Dungeon exits return to their exact entrance location. Only death moves the character, returning them to the active checkpoint.
-6. With the app paused, enable airplane mode and disable Wi-Fi. Close and reopen the installed app, resume, and play through movement, combat, interaction, and a save/reopen cycle.
-7. Restore connectivity only after confirming the offline cycle. If a new build was deployed, open it online once so the updated service worker can replace the prior offline cache.
-
-Android can freeze or terminate a background app without warning. The game therefore writes an immediate local mirror when paused, hidden, frozen, or closed, while also maintaining its IndexedDB save. Returning to a visible app stays paused until the player explicitly resumes, so no combat time advances while the phone is asleep.
-
-## Product intent
-
-- Quiet, exploratory action RPG rather than a frantic enemy-density game.
-- Persistent world and character, not disposable roguelike runs.
-- Installable Android PWA that remains playable with no data connection.
-- Mobile controls that support deliberate play: movement, primary attack, dodge, jump, and contextual interaction.
-- Science-fantasy multiverse with sparse NPCs, magic and technology, original lore, and an “infinite corridor” structure.
-
-## Files
-
-- `docs/prototype-1-spec.md` — product requirements, content boundaries, technical architecture, and acceptance criteria.
-- `docs/codex-prototype-1-work-card.md` — bounded Codex implementation instruction.
-- `docs/design-decisions.md` — decisions preserved from Tim’s concept discussion and explicitly deferred scope.
-- `CHANGELOG.md`: release-relevant and user-visible change history.
-- `docs/work-log.md`: implementation-level work records and verification results.
-- `docs/verification.md`: current automated and manual verification gates.
-- `docs/decisions/README.md`: decision-record policy and template.
-
-## Intended development sequence
-
-1. Codex implements the Prototype 1 vertical slice from the work card.
-2. Test it on an Android phone as an installed PWA and validate the play loop.
-3. Only if the loop works, add more realms, item/ability depth, offline narrative content packs, and optional encrypted backup/sync.
-
-## IP boundary
-
-The game may take high-level genre lessons from isometric action RPGs and difficult exploratory games, but it must use wholly original names, lore, enemies, visual assets, maps, interfaces, narrative, and mechanics expression. It must not reproduce content from Diablo, Elden Ring, Dark Souls, Bloodborne, Remnant, Magic: The Gathering, or Gene Wolfe’s Solar Cycle.
-
-## Ranged weapons and supplies
-
-## Elite bestiary and contracts (save v10)
-
-Four uncommon elite classes extend the normal creature system: Vesperwing, Gravitant Bell, Mire Apostle, and Choir of Knives. Each keeps a stable silhouette, movement profile, signature modules, lore, and reward, while the world seed selects one or two compatible variable aspects. The resulting variant ID, modules, HP, hazards, summons, contract state, and defeat remain persistent.
-
-Signal Ledgers offer the marked Vesperwing hunt. Rare cisterns may contain a Gravitant Bell guardian; the Mire Apostle is a deterministic world beast; Coilmarket's Cantor Threshold opens after four ash-born kills and leads to the Choir. Elite rewards are one-time: marks, experience, weapon or armor spheres, codex knowledge, and—in the poison hunt—a Clearroot Ampoule. Spheres permanently upgrade the current weapon or armor from the Pack. This is optional progression without random rarity tiers or repeatable farming.
-
-Elite attacks retain visible windups and bounded fields. Gravity has a windup, duration, radius, force, and cooldown. Ooze pools expire and are capped. Poison ticks once per second, appears on the HUD, persists in save v10, and ends by expiry, death, or Clearroot. Summons are capped at three, have no rewards, and are cleaned up with their encounter snapshot.
-
-**Attack** (or `J`) uses the selected equipped weapon. Primary melee weapons retain their own cone, thrust, or broad arc and automatically turn toward the nearest visible enemy actually inside reach. Selecting the equipped secondary makes Attack fire it with the normal pending or last-direction aim; Attack always stows Tool mode. **Tool** (`R` or `Q`) toggles a persistent aiming mode for current ranged tools. While it is active, each world tap aims and immediately fires, and the mode remains active for repeated shots. Outside Tool mode, a world tap fires when ranged Attack is selected; melee Attack remains auto-targeted. **Spell** (`F`) casts the equipped Ember Ring at the pending target within range, leaving a persisted three-second 360-degree hazard. Spark Coil and Lumen Spindle bolts deal magic damage; Needle Caster shots deal physical damage. Lumen Phials provide a persisted 45-second magic-projectile surge.
-
-Static deterministic supply caches occur in every section and the Hollow Relay, while defeated enemies can drop restorative draughts with persisted anti-duplication and drought protection. Death tops draughts up to two, never reduces a larger count. Vela’s touch-accessible trade screen sells unlimited restorative draughts plus limited tonics, phials, and deterministic equipment; shop stock and purchases persist. The pack uses DOM-created controls for selecting and equipping weapons.
-## Durable choices (save v8)
-
-Ember Refuge has three named residents: Vela Quen, quartermaster; Oren Vale, warden; and Sela Rook, beacon keeper. Friendly markers, names, and roles distinguish them from enemies. Act opens their choices (speak, trade, the forge, attunement, retraining).
-
-Townsfolk cannot be harmed (Tim, 2026-11-20). No non-hostile person (the Refuge and waystation residents, villagers, hamlet wardens, traders, travellers, elders, Ilse, the Cairn Keeper) can be attacked, wounded or killed by any of the Wayfarer's blows, shots, spells, tools, Echoes, hazards, mounts or companions; they do not flinch or turn hostile, and every shop stays open. Older journeys that recorded wounded, hostile or dead residents, lost reputation or a fallen Refuge have them restored on load.
-
-The canonical Hollow Relay has a separate terminal behind its guardian. Restore reopens the signal and grants two draughts; Sever silences it and yields three lumen dust. Both permanently resolve the Missing Crossing, and only one can be chosen. Procedural dungeon guardians and chests cannot complete this story.
-
-At each dungeon entrance, Act offers Enter or Leave unexplored. The journal retains bypasses, visits, unresolved departures, and resolutions. Leaving or dying during an unresolved visit records one abandonment; returning retains encounters and supplies. Guardian defeat resolves ordinary dungeons, while the canonical Relay remains unresolved until its terminal choice. There is no deadline or automatic punishment for taking another route.
-
-Existing v1–v9 saves migrate to v10 without resetting the world, character, or runtime state. Earlier restored-Relay progress remains the Restore ending. Remaining attack timers, active effects, per-pulse hits, and encounter states retain their exact paused values on reload.
-
-Story endings close finite threads, never the game. Restore and Sever are distinct endings of the Missing Crossing thread. The journal exposes these durable outcomes for future procedural threads, and the HUD invites further exploration afterward. The infinite overworld and dungeon entrances remain available after every ending.
-
-
-Spell profiles deliberately trade power for recovery: Cinder Dart recovers in 2.5 seconds, Ember Ring in 6 seconds, and Grave Sun in 12 seconds. Choose the equipped spell in the Pack.
-
-The compact HUD uses larger text and purple level/XP emphasis. Long world and narrative messages automatically travel across the message window at a readable pace instead of being cut off; reduced-motion systems retain manual horizontal access. Tool is a small oval toggle above the larger Spell oval, and Potion matches the Spell control.
-
-The HUD presents the active Attack, Spell, and Tool as three vertically stacked lines and gives the full objective a wrapped row rather than truncating it. In the Atlas, **Return to active checkpoint** provides deliberate fast travel back to Ember Refuge or the latest activated checkpoint without death, healing, or loss of carried progress.
+Copyright © 2026 BrightLineAI. All rights reserved. The source is published for viewing and the game is free to play at the link above; no permission is granted to copy, modify, distribute or use the code or assets except as allowed by law. See [LICENSE](LICENSE). Third-party material keeps its own license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

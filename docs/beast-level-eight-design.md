@@ -1,6 +1,6 @@
 # Major-beast strength floor and fresh rematches
 
-Unreleased follow-on source prototype. Exact authority is in `beast-level-eight-source-transcript.md`; later Gate clarification is in `gate-revenant-source-transcript.md`. This work is not r251 publication clearance and does not alter ordinary enemies.
+Unreleased follow-on source prototype. Exact authority is in the owner's source transcript (not kept in the public repository); later Gate clarification is in the owner's source transcript (not kept in the public repository). This work is not r251 publication clearance and does not alter ordinary enemies.
 
 ## Owner requirements
 
