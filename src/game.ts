@@ -8189,8 +8189,11 @@ export class Game {
   hatchHit(x, y, radius, share, opt = {}) {
     let live = 0, last = null; for (const fx of this.effects) if (fx.hatch && fx.life > 0 && fx.hatchShot !== last) { live++; last = fx.hatchShot; }
     if (live >= HATCHLING.maxEffects && !opt.shot) return false;
-    const id = opt.shot || `hatch-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`;
-    this.effects.push({ id: `${id}:${x.toFixed(2)},${y.toFixed(2)}`, kind: "hatch-hit", hatch: true, hatchShot: id, x, y, life: .12, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.meleePower() * share)), pulseIndex: 0, hits: opt.hits || {}, ...(opt.stun ? { stun: opt.stun } : {}) });
+    const id = opt.shot || `hatch-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, h = this.save.mounts.hatchling, o = h?.form === "young" ? h.out : null;
+    // the young's hits carry their fractions on (out.carry), so his small shares land as their true share however low her power is
+    // (a hit never rounds up to a whole point); the baby's nip keeps its floor of one
+    let damage; if (o) { const v = this.meleePower() * share + (Number(o.carry) || 0); damage = Math.floor(v); o.carry = v - damage; } else damage = Math.max(1, Math.round(this.meleePower() * share));
+    this.effects.push({ id: `${id}:${x.toFixed(2)},${y.toFixed(2)}`, kind: "hatch-hit", hatch: true, hatchShot: id, x, y, life: .12, radius, pulse: 99, untilPulse: 0, damage, pulseIndex: 0, hits: opt.hits || {}, ...(opt.stun ? { stun: opt.stun } : {}) });
     return id;
   }
   hatchMove(o, dx, dy) { const M = this.map, W = mapWidth(M, this.area); const moved = moveAxis(o, dx, dy, M, W); if (Math.abs(dx) > .001) o.face = dx < 0 ? -1 : 1; return moved; }
