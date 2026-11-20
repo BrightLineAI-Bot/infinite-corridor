@@ -17,7 +17,8 @@ export const HATCH_ART = Object.freeze({
   buff: Object.freeze({ damage: "#ff9a5a", defence: "#9ad0ff", stamina: "#b8f07a" }),
   // where the young form's horns are, in tiles x his scale from his feet (along his facing, up): the two brow horn tips and the nose horn,
   // and the focus ahead of the nose where the three beams meet before the blast
-  tips: Object.freeze([Object.freeze([.86, .8]), Object.freeze([.8, .72]), Object.freeze([.92, .5])]), focus: Object.freeze([1.3, .64]),
+  // (2026-11-20: moved with his longer neck and lower head)
+  tips: Object.freeze([Object.freeze([1.13, .8]), Object.freeze([1.07, .72]), Object.freeze([1.18, .66])]), focus: Object.freeze([1.6, .62]),
   straw: "#d9b860", strawDark: "#a8873a", post: "#6b4a26", postLight: "#8f6a3c", rope: "#c9b48a", sick: "#9fd28a",
 });
 export const HATCH_DRAW = { skipBody: false };
