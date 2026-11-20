@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1042 (this merge); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1043 (this merge, #714); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1043 | Claude | claude/progression-phase-5 / #714 | Progression phase 5: the training yard (Try it on how-to pages opens a Proving Ground scratch copy; owned abilities only) | Merged (#714); preview follows. |
 | 1042 | Claude | claude/triceratops-forms-detail | Triceratops forms and indoor riding: chipped horn, baby crest, the young's own body and smaller frill, no cheek spikes on baby/young, young's attacks ~10% of the Wayfarer's damage, persistent Triceratops rideable indoors where roomy; no save change | In flight. |
 | 1041 | Claude | claude/progression-phase-4 / #712 | Progression phase 4: Journal leads and rumours, first-use hints, how-to pages, a plain first journey | Merged (#712); preview follows. |
 | 1040 | Claude | claude/townsfolk-unkillable / #711 | Townsfolk cannot be harmed: the harm/kill system removed; old saves restore residents and wardens | Merged (#711); preview follows. |

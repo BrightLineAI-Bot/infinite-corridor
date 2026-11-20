@@ -1218,3 +1218,8 @@ body.proving-ground .compass-menu-panel { top: calc(env(safe-area-inset-top) + 6
 [data-action="menu"].has-dot, #pausedJournal.has-dot { position: relative; }
 [data-action="menu"].has-dot::after, #pausedJournal.has-dot::after { content: ""; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #f0c86a; box-shadow: 0 0 0 2px #141714; pointer-events: none; }
 body.proving-ground .hint-card, body.proving-ground .compass-caption { display: none !important; }
+/* Progression Phase 5: the Training Yard (proving-ground.ts openYard) hides the laboratory's developer chrome behind one bar */
+body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:none}
+.yard-bar{position:fixed;z-index:91;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(420px,calc(100vw - 16px));box-sizing:border-box;display:grid;gap:4px;padding:8px 10px;border:1px solid #58716d;border-radius:8px;background:rgba(8,16,18,.92);color:#e5e1d5;font-size:12px;text-align:center}
+.yard-bar[hidden]{display:none}.yard-bar strong{color:#f0d28e}.yard-bar .proving-buttons{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.yard-bar button{min-height:36px;padding:0 10px}.yard-bar button[hidden]{display:none}
+.howto-try{display:grid;gap:4px;margin-top:8px}
