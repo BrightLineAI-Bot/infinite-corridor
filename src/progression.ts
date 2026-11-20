@@ -25,8 +25,8 @@
 // What each one does is read from the game's own tables (doesText), so the how-to never drifts from the game.
 //
 // The compendium (compendium()) and the Pace line (pace()) read the save as it is; nothing new is saved.
-import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.ts";
-import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame } from "./journey-start.ts";
+import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, spellOpenClassic, explorationGateOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.ts";
+import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame, EXPLORATION, exploring } from "./journey-start.ts";
 import { freshViewportState } from "./foundry.ts";
 import { ensureSlots, PRESETS } from "./spell-slots.ts";
 import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.ts";
@@ -46,7 +46,7 @@ import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { SEEDS } from "./skylands.ts";
 
-export const PROGRESSION_TABLE_VERSION = 1;
+export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({
   S: "Held from the start", a: "Levelling and the Arcanum", b: "A quest", c: "A milestone", d: "A thread's ending",
   R: "A reliquary", V: "Divine Viscera", F: "Found", U: "An upgrade", W: "The forge and the market",
@@ -198,8 +198,8 @@ art("nanoknives", FORM("Great Sweep"), ["brawler"], W("R", null, "X", "A reliqua
 
 // ---------------------------------------------------------------- 1.6 Awakening and awakened moves
 const FORGE = ["W", "At Sela's forge for 6 lumen dust, once the piece is at its cap and holds a Resonance"];
-const awake = (id, name, arch, hint, controls, does, own) => add("awakened", `awakened:${id}`, name, arch, FORGE, W("W", "R3", "D", "Awakening opens at Infinite II under v1; the work (cap, Resonance, dust) stays as it is"), hint, controls, "Awakened at Sela's forge.", own, does ? { does } : {});
-awake("awakening", "Awakening", [], "Awakening: a weapon or tool at its cap, holding a Resonance, can wake at Sela's forge.", "Strengthen a weapon or tool to its cap, socket a Resonance pair, then choose Awaken at Sela's forge (6 lumen dust).", "An awakened weapon keeps its Resonance's name and gains a move of its own; an awakened tool changes its shot.", ["awakened", "any"]);
+const awake = (id, name, arch, hint, controls, does, own) => add("awakened", `awakened:${id}`, name, arch, FORGE, W("W", "R3", "D", "An awakened piece's own move: awakening opens at Infinite II under v1"), hint, controls, "Awakened at Sela's forge.", own, does ? { does } : {});
+add("awakened", "awakened:awakening", "Awakening", [], FORGE, W("a", "R3", "D", "Infinite II (tier 12): Sela's forge opens awakening; the work (cap, Resonance, dust) stays as it is"), "Awakening: a weapon or tool at its cap, holding a Resonance, can wake at Sela's forge.", "Strengthen a weapon or tool to its cap, socket a Resonance pair, then choose Awaken at Sela's forge (6 lumen dust).", "Awakened at Sela's forge.", ["awakened", "any"], { does: "An awakened weapon keeps its Resonance's name and gains a move of its own; an awakened tool changes its shot." });
 const AWAKE_HINTS = { fissure: "Fissure: every third swing cracks the ground ahead, and it erupts.", "returning-blades": "Returning blades: every third press throws the pair out and back.",
   lance: "Lance: every third thrust extends a long line of cinder light.", roundhouse: "Roundhouse kick: the fourth step of the awakened combo.", "spell-runes": "Spell runes: every third swing runes a foe; your next spell detonates it." };
 for (const [id, arch, w] of [["fissure", ["brawler"], "Verge Cleaver"], ["returning-blades", ["blade"], "Fourfold Daggers"], ["lance", ["blade"], "Cinder Pike"], ["roundhouse", ["brawler"], "Iron Fists"], ["spell-runes", ["spellblade"], "Salvage Blade"]]) {
@@ -226,9 +226,9 @@ gear("lumen-spindle", "Lumen Spindle", "tool", ["caster", "spellblade", "gunner"
 gear("rift-bombard", "Rift Bombard", "tool", ["gunner"], LOOT, "Rift Bombard: a lobbed shell that bursts.", "Found as loot.", NEVER, "A lobbed shell that bursts.");
 gear("blunderbuss", "Blunderbuss", "tool", ["gunner"], ["U", "A Needle Caster strengthened to +6"], "Blunderbuss: three pellets at once.", "A Needle Caster strengthened to +6.", W("U", null, "D", "+6 on a Needle Caster, as today"), "Three pellets in a cone.");
 gear("carbine", "Carbine", "tool", ["gunner"], ["U", "A Spark Coil strengthened to +6"], "Carbine: hold to charge a beam.", "A Spark Coil strengthened to +6.", W("U", null, "D", "+6 on a Spark Coil, as today"), "A charged beam.");
-gear("iron-fists", "Iron Fists", "primary", ["brawler"], ["F", "Given at Infinite III (tier 13)", { tier: 13 }], "Iron Fists: a combo on a beat, charged punches, a perfect-timing ball.", "Given at Infinite III.", W("F", null, "X", "Joins the loot pool from the start on its own seeded stream; the tier-13 gift stays a sure copy"), "A combo on a beat, charged punches and a perfect-timing ball.");
-gear("hammerfall", "Hammerfall", "tool", ["brawler"], ["F", "Given at Infinite III (tier 13)", { tier: 13 }], "Hammerfall: a brawler's slam.", "Given at Infinite III.", W("F", null, "X", "Joins the loot pool from the start on its own seeded stream; the tier-13 gift stays a sure copy"), "A brawler's slam.");
-gear("great-sweep", "Great Sweep", "tool", ["brawler"], ["F", "Given at Infinite III (tier 13)", { tier: 13 }], "Great Sweep: a great blade sweeping around you.", "Given at Infinite III.", W("F", null, "X", "Joins the loot pool from the start on its own seeded stream; the tier-13 gift stays a sure copy"), "A great sweeping blade around you.");
+gear("iron-fists", "Iron Fists", "primary", ["brawler"], ["F", "Loot, and given at Infinite III (tier 13)", { tier: 13 }], "Iron Fists: a combo on a beat, charged punches, a perfect-timing ball.", "Given at Infinite III, or found as loot.", W("F", null, "X", "Loot from the start, on its own seeded stream (items.ts BRAWLER_LOOT, in both modes); the tier-13 gift stays a sure copy"), "A combo on a beat, charged punches and a perfect-timing ball.");
+gear("hammerfall", "Hammerfall", "tool", ["brawler"], ["F", "Loot, and given at Infinite III (tier 13)", { tier: 13 }], "Hammerfall: a brawler's slam.", "Given at Infinite III, or found as loot.", W("F", null, "X", "Loot from the start, on its own seeded stream (items.ts BRAWLER_LOOT, in both modes); the tier-13 gift stays a sure copy"), "A brawler's slam.");
+gear("great-sweep", "Great Sweep", "tool", ["brawler"], ["F", "Loot, and given at Infinite III (tier 13)", { tier: 13 }], "Great Sweep: a great blade sweeping around you.", "Given at Infinite III, or found as loot.", W("F", null, "X", "Loot from the start, on its own seeded stream (items.ts BRAWLER_LOOT, in both modes); the tier-13 gift stays a sure copy"), "A great sweeping blade around you.");
 gear("aether-orrery", "Aether Orrery", "tool", ["caster", "gunner"], ["F", "Given at Infinite III (tier 13), and loot", { tier: 13 }], "Aether Orrery: orbs of spell power; hold for a great one.", "Given at Infinite III, or found as loot.", NEVER, "A magic tool of orbiting shots.");
 gear("ash-wrap", "Ash Wrap", "armor", ["warden"], START, "Ash Wrap: plain armour that takes the edge off a blow.", "Worn from the start.", W("S", "R0", "D", "Worn from the start"), "Plain starting armour.");
 gear("kiln-mantle", "Kiln Mantle", "armor", ["warden"], LOOT, "Kiln Mantle: heavy armour for taking blows.", "Found as loot.", NEVER, "Armour that guards.");
@@ -337,7 +337,7 @@ export function doesText(row) {
   }
 }
 // The how-to page (design 4A.3): controls, what it does, and where it came from.
-export const howTo = (row) => ({ controls: row.controls, does: doesText(row), obtained: row.obtained });
+export const howTo = (row) => ({ controls: row.controls, does: row.doesV1 || doesText(row), obtained: row.obtained }); // doesV1: Exploration's words (viewV1, Phase 3)
 
 // ---------------------------------------------------------------- ownership under today's rules (mode 0)
 // States: "owned" (held, learned or open to use), "open" (today's rules make it available: take it in the Arcanum, or buy it),
@@ -370,7 +370,7 @@ export function stateV0(save, row) {
       if (a === "aerial-step") return skillRank(s, "quickening") >= APERTURE_SKILLS.quickening.maxRank && !!s.constellation?.mods?.["light-feet"] ? "open" : "locked";
       return apertureOf(s) >= (APERTURE_SKILLS[a]?.threshold ?? Infinity) ? "open" : "locked";
     }
-    case "spell": return spellOpen(s, a) ? "owned" : "locked";
+    case "spell": return spellOpenClassic(s, a) ? "owned" : "locked"; // today's rule; Exploration's level gates: stateV1
     case "node": {
       if (hasNode(s, a)) return "owned";
       const br = BRANCHES[b], rank = skillRank(s, br.active);
@@ -416,10 +416,10 @@ export const ownedV0 = (save, id) => stateV0(save, ROW_BY_ID[ROW_ALIASES[id] || 
 // ---------------------------------------------------------------- the Pace line (design section 7; every player)
 // Read from the save: hours played (playSeconds), new sections (explored), abilities owned by their route today, Echoes, and
 // deaths an hour (lastDeath.sequence counts every death).
-export function pace(save, states = ownershipV0(save)) {
+export function pace(save, states = ownershipV0(save), v1 = false) {
   const seconds = num(save?.playSeconds), hours = seconds / 3600, sections = Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;
   const byRoute = {};
-  for (const r of ROWS) if (!PACE_SKIPS.includes(r.group) && states[r.id] === "owned") byRoute[r.v0.route] = (byRoute[r.v0.route] || 0) + 1;
+  for (const r of ROWS) if (!PACE_SKIPS.includes(r.group) && states[r.id] === "owned") { const k = (v1 ? r.v1 : r.v0).route; byRoute[k] = (byRoute[k] || 0) + 1; } // an Exploration journey counts by its own routes
   const echoes = ROWS.filter((r) => r.group === "echoes"), deaths = Math.floor(num(save?.lastDeath?.sequence));
   return { hours, sections, sectionsPerHour: hours > 0 ? sections / hours : null, byRoute, abilities: Object.values(byRoute).reduce((n, v) => n + v, 0),
     echoes: echoes.filter((r) => states[r.id] === "owned").length, echoTotal: echoes.length, deaths, deathsPerHour: hours > 0 ? deaths / hours : null };
@@ -435,7 +435,7 @@ export function paceText(p) {
 
 // ---------------------------------------------------------------- the compendium (design section 5), Classic (v0)
 const STATE_WORDS = Object.freeze({ owned: "Yours", open: "Open to you", rumoured: "Rumoured" });
-const openWhere = (row) => row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? "a quest is under way" : "from the Arcanum";
+const openWhere = (row, save) => row.group === "supplies" ? "from a cook or the forge" : row.own[0] === "hatchling" ? (save?.mounts?.hatchling?.quest?.state === "active" ? "a quest is under way" : "the mother waits at the Beast Hotel") : row.group === "lattice" || row.group === "arts" ? "from the Transit Lattice" : row.group === "awakened" ? "at Sela's forge" : "from the Arcanum";
 export const COMPENDIUM = Object.freeze({
   title: "What the Corridor Taught You",
   intro: "Everything you can do, and how you came by it. What you have not found stays hidden: only its count shows.",
@@ -444,31 +444,35 @@ export const COMPENDIUM = Object.freeze({
 const AHEAD_GROUPS = Object.freeze(["disciplines", "spells"]);
 // The model the Journal draws. Unknown rows are never named: a group shows only how many it holds.
 export function compendium(save) {
-  const states = ownership(save), groups = [];
+  const states = ownership(save), groups = [], v1 = exploring(save);
   for (const g of GROUPS) {
     const rows = ROWS.filter((r) => r.group === g.id), entries = [];
-    for (const r of rows) {
-      const state = states[r.id]; if (state === "locked") continue;
-      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}` : STATE_WORDS.owned,
+    for (const r0 of rows) {
+      const state = states[r0.id]; if (state === "locked") continue;
+      const r = v1 ? viewV1(r0) : r0; // Exploration's own words for the rows it changes (Phase 3)
+      entries.push({ id: r.id, name: r.name, state, label: state === "open" ? `${STATE_WORDS.open}: ${openWhere(r, save)}` : state === "rumoured" ? `${STATE_WORDS.rumoured}: ${r.v0.how.charAt(0).toLowerCase()}${r.v0.how.slice(1)}` : STATE_WORDS.owned,
         ...(state === "rumoured" ? { hint: "", controls: "", does: "", obtained: "" } : { hint: r.hint, ...howTo(r) }) }); // a rumour names it, no more
     }
     groups.push({ id: g.id, title: g.title, total: rows.length, owned: entries.filter((e) => e.state === "owned").length, entries });
   }
-  // Level-ups ahead: today's directed gates not yet reached (disciplines by Aperture, spells and the Lattice by band).
-  const ahead = [], tier = tierOf(save), ap = apertureOf(save);
+  // Level-ups ahead: the directed gates not yet reached (disciplines by Aperture, spells and the Lattice by band; in Exploration
+  // also spells by level, Aerial Step at Aperture 6, awakening and the hatchling at Infinite II and the Lattice's free passives).
+  const ahead = [], tier = tierOf(save), ap = apertureOf(save), level = Math.max(1, Math.floor(Number(save?.level)) || 1);
   for (const r of ROWS) {
-    const gt = r.v0.gate; if (!gt || states[r.id] !== "locked" || !AHEAD_GROUPS.includes(r.group)) continue;
-    const label = gt.aperture != null ? (ap < gt.aperture ? `Aperture ${gt.aperture}` : null) : gt.tier != null && tier < gt.tier ? `${APERTURE_BANDS[gt.tier]?.name || `tier ${gt.tier}`}${gt.listeners ? " and a Listener felled" : ""}` : null;
+    const gt = v1 ? gateV1(r) : r.v0.gate; if (!gt || states[r.id] !== "locked" || !(AHEAD_GROUPS.includes(r.group) || (v1 && AHEAD_V1.includes(r.id)))) continue;
+    const label = gt.level != null ? (level < gt.level ? `Level ${gt.level}` : null) : gt.aperture != null ? (ap < gt.aperture ? `Aperture ${gt.aperture}` : null) : gt.tier != null && tier < gt.tier ? `${APERTURE_BANDS[gt.tier]?.name || `tier ${gt.tier}`}${gt.listeners ? " and a Listener felled" : ""}` : null;
     if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name] });
   }
-  const p = pace(save, states);
+  const p = pace(save, states, v1);
   return { title: COMPENDIUM.title, intro: COMPENDIUM.intro, before: COMPENDIUM.before, mode: modeInfo(progressionMode(save)), pace: p, paceText: paceText(p), ahead, groups };
 }
 
 // ================================================================ Phase 2: modes, the start choice (design sections 4.0 and 6)
-// The mode is save.progression.mode (journey-start.ts): 0 Classic, 1 Exploration. In this phase Exploration gates nothing new:
-// both modes read today's rules (stateV0), and an ability in save.progression.kept is held in either mode for good.
-export const progressionState = (save, row) => (row && progressionKept(save, row.id) ? "owned" : stateV0(save, row));
+// The mode is save.progression.mode (journey-start.ts): 0 Classic, 1 Exploration. Classic reads today's rules (stateV0); from
+// Phase 3 an Exploration journey on table 2 or later (exploring) reads its own (stateV1, below). An ability in
+// save.progression.kept stays open in either mode for good: shown as yours once held, else as open to you (a discipline kept
+// across a switch still has to be learned; awakening and the hatchling kept are open, not done).
+export const progressionState = (save, row) => { if (!row) return "locked"; const st = exploring(save) ? stateV1(save, row) : stateV0(save, row); return progressionKept(save, row.id) && st !== "owned" ? "open" : st; };
 export const ownership = (save) => Object.fromEntries(ROWS.map((r) => [r.id, progressionState(save, r)]));
 
 // ---------------------------------------------------------------- switching (design section 6)
@@ -486,14 +490,18 @@ export const SWITCH_TEXT = Object.freeze({
   done: (name, n) => `Progression is now ${name}.${n ? ` ${n} abilit${n === 1 ? "y is" : "ies are"} kept for good.` : ""}`,
 });
 const NEVER_GATED = Object.freeze(["F", "U", "W"]);
-export const switchKeeps = (save) => ROWS.filter((r) => !NEVER_GATED.includes(r.v1.route) && ["owned", "open"].includes(stateV0(save, r))).map((r) => r.id);
+// Awakening and the hatchling's rescue are open at every moment under today's rules (Sela's forge; the mother at the Beast Hotel),
+// so a switch to Exploration always keeps them (design section 6), as it keeps the three starter spells Classic opens at once.
+const OPEN_IN_CLASSIC = Object.freeze(["awakened:awakening", "companion:hatchling"]);
+export const switchKeeps = (save) => ROWS.filter((r) => !NEVER_GATED.includes(r.v1.route) && (OPEN_IN_CLASSIC.includes(r.id) || ["owned", "open"].includes(stateV0(save, r)))).map((r) => r.id);
 export function switchText(save, to) { return `${to === 1 ? SWITCH_TEXT.toExploration : SWITCH_TEXT.toClassic} ${SWITCH_TEXT.keep}`; }
 export function switchProgression(save, to, { fighting = false } = {}) {
   const p = ensureProgression(save), from = p.mode, mode = to === 1 ? 1 : 0, info = modeInfo(mode);
   if (from === mode) return { ok: false, message: SWITCH_TEXT.same(info.name) };
   if (fighting) return { ok: false, message: SWITCH_TEXT.fighting };
   let added = 0;
-  if (mode === 1) { const have = new Set(p.kept); for (const id of switchKeeps(save)) if (!have.has(id)) { have.add(id); added++; } p.kept = [...have].slice(0, PROGRESSION_RECORD.keptMax); }
+  if (mode === 1) { added = keepAll(p, switchKeeps(save)); p.table = Math.max(Number(p.table) || 1, EXPLORATION.table); } // Exploration from now on, on Phase 3's table
+  else if (exploring(save)) added = leaveExploration(save, p); // Classic's rules at once; what only Exploration gave stays
   p.log = [...p.log, { from, to: mode, playSeconds: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), section: `${save.session?.rx ?? 0},${save.session?.ry ?? 0}` }].slice(-PROGRESSION_RECORD.logMax);
   p.mode = mode;
   return { ok: true, from, to: mode, added, message: SWITCH_TEXT.done(info.name, added) };
@@ -512,6 +520,7 @@ export const START_KIT = Object.freeze({
   property: Object.freeze({ "salvage-blade": "steady", "cinder-pike": "reach", "verge-cleaver": "impact", "iron-fists": "brawler", "fourfold-daggers": FOURFOLD_DAGGERS.property, "quandrix-staff": QUANDRIX_STAFF.property,
     "spark-coil": "focus", "needle-caster": "quick", "lumen-spindle": "focus", "rift-bombard": "blast", hammerfall: "brawler", "great-sweep": "brawler" }),
   aegis: Object.freeze({ id: "spell:aegis", slot: "b", modes: Object.freeze([1]) }),
+  dart: "spell:cinder-dart", // Exploration's starter spell (Phase 3), set where a slot held a spell not yet open
 });
 const goodWith = (row) => row.archetypes.map((a) => ARCHETYPES[a]).filter(Boolean);
 // The cards, read from the game's data: the name and play style from the gear rows above, what it scales with from items.ts.
@@ -540,6 +549,13 @@ export function startJourney(save, options = {}) {
     const ms = save.magicSkills; ensureSlots(save);
     if (!Object.values(ms.slots).includes(A.id)) { ms.slots[A.slot] = A.id; for (let i = 0; i < PRESETS; i++) if (ms.presets?.[i] && !Object.values(ms.presets[i]).includes(A.id)) ms.presets[i][A.slot] = A.id; }
   }
+  // Phase 3: Exploration holds Cinder Dart from the start and the later starter spells by level, so a slot holding one not yet
+  // open (freshSave's Ember Ring in slot A) takes Cinder Dart instead, and it is the readied spell.
+  if (exploring(save)) {
+    const ms = save.magicSkills, dart = START_KIT.dart, closed = (k) => typeof k === "string" && k.startsWith("spell:") && !spellOpen(save, k.slice(6));
+    for (const slots of [ms.slots, ...(ms.presets || [])]) for (const q of Object.keys(slots || {})) if (["a", "b", "c", "d"].includes(q) && closed(slots[q])) slots[q] = Object.values(slots).includes(dart) ? null : dart;
+    if (!spellOpen(save, save.equippedSpell)) save.equippedSpell = dart.slice(6);
+  }
   // The Viewport's hunts, from the journey's own seed and frame: freshSave made them before the seed was set (so every journey
   // made in the creator had CINDER-VERGE-47's hunts). A new journey has touched none of them yet; the first hunt is turned.
   // Journeys from before keep the hunts they have.
@@ -547,3 +563,73 @@ export function startJourney(save, options = {}) {
   return save;
 }
 export { PROGRESSION_MODES };
+
+// ================================================================ Phase 3: the core kit (design sections 2.5, 3.1-3.9 and 7 row 3)
+// Exploration's gates are data in journey-start.ts (EXPLORATION) and are kept by the code that grants each thing: items.ts
+// spellOpen (Ember Ring, Fire Burst and Grave Sun by level), constellation.ts learnAerialStep / capstoneOf / longQuickeningOn
+// (Aerial Step a discipline at Aperture 6; Long Quickening the Motion capstone), constellation.ts awakenCheck (awakening from
+// Infinite II), game.ts hatchMamaHere (the hatchling's mother from Infinite II). Weapons are never gated: the Iron Fists,
+// Hammerfall and Great Sweep already drop from their own seeded stream in both modes (items.ts BRAWLER_LOOT), so no roll moves.
+// What waits for a later phase (quests, milestones, threads, reliquaries, Viscera) stays open by today's rules meanwhile.
+const LQ = "aerial-step:alt"; // Long Quickening: Classic's secondary form of the Aerial Step capstone, Exploration's Motion capstone
+const LATTICE_GATE = Object.freeze({ tier: TRANSIT_LATTICE.openTier, listeners: TRANSIT_LATTICE.openListeners });
+// The rows "Level-ups ahead" also names in Exploration, beside the disciplines and spells.
+const AHEAD_V1 = Object.freeze([...Object.keys(EXPLORATION.gates), ...EXPLORATION.latticeFree]);
+// A row's directed gate under Exploration: its EXPLORATION gate, Aerial Step's Aperture, the Lattice's opening, or today's.
+export function gateV1(row) {
+  if (!row) return null;
+  if (row.id === "skill:aerial-step") return { aperture: EXPLORATION.aerialStep.aperture };
+  if (EXPLORATION.gates[row.id]) return EXPLORATION.gates[row.id];
+  if (EXPLORATION.latticeFree.includes(row.id)) return LATTICE_GATE;
+  return row.v0.gate;
+}
+// A row's state under Exploration's rules (owned, open, rumoured or locked). Reads the save; never writes it.
+export function stateV1(save, row) {
+  if (!save || !row) return "locked";
+  const s = save;
+  if (row.id === "skill:aerial-step") return skillRank(s, "aerial-step") > 0 ? "owned" : apertureOf(s) >= EXPLORATION.aerialStep.aperture ? "open" : "locked";
+  if (row.id === LQ) return hasNode(s, "aerial-step") ? "owned" : skillRank(s, "quickening") >= APERTURE_SKILLS.quickening.maxRank && s.constellation?.mods?.[BRANCHES.motion.mod.id] ? "open" : "locked";
+  if (row.group === "spells") return spellOpen(s, row.own[1]) ? "owned" : "locked";
+  if (row.own[0] === "field") return !latticeOpen(s) ? "locked" : EXPLORATION.latticeFree.includes(row.id) ? "owned" : "open"; // the three are the core kit's; the rest stay open as today until their routes are built
+  const st = stateV0(s, row);
+  if (EXPLORATION.gates[row.id]) return st !== "locked" ? st : explorationGateOpen(s, row.id) ? "open" : "locked"; // awakening, the hatchling: open once their band is reached
+  return st;
+}
+// Exploration's words for the rows it changes: how each was earned, and Long Quickening as a capstone.
+const V1_VIEW = Object.freeze({
+  "skill:aerial-step": Object.freeze({ obtained: `Learned for a constellation point once Aperture reached ${EXPLORATION.aerialStep.aperture}.` }),
+  [LQ]: Object.freeze({ controls: "Crown the Motion branch with it in Pack → Arcanum (Quickening mastered, Light Feet taken). Always on; nothing to press.", obtained: "Crowned the Motion branch for 2 points, once Quickening was mastered.", does: EXPLORATION.aerialStep.cap.text }),
+  "awakened:awakening": Object.freeze({ obtained: "Awakened at Sela's forge, from Infinite II." }),
+  ...Object.fromEntries(Object.entries(EXPLORATION.gates).filter(([, g]) => g.level != null).map(([id, g]) => [id, Object.freeze({ obtained: `Opened at level ${g.level}.` })])),
+  ...Object.fromEntries(EXPLORATION.latticeFree.map((id) => [id, Object.freeze({ obtained: "Free when the Transit Lattice opened." })])),
+});
+export const viewV1 = (row) => (V1_VIEW[row?.id] ? Object.freeze({ ...row, ...V1_VIEW[row.id], ...(V1_VIEW[row.id].does ? { doesV1: V1_VIEW[row.id].does } : {}) }) : row);
+// Every row's state as the journey's own rules read it (Exploration's or Classic's), with what it keeps.
+export const ownershipV1 = (save) => Object.fromEntries(ROWS.map((r) => [r.id, stateV1(save, r)]));
+
+// Adds `ids` to save.progression.kept (never removes); returns how many were new.
+function keepAll(p, ids) {
+  const have = new Set(p.kept); let added = 0;
+  for (const id of ids) if (!have.has(id)) { have.add(id); added++; }
+  p.kept = [...have].slice(0, PROGRESSION_RECORD.keptMax); return added;
+}
+// Leaving Exploration for Classic: Classic's gates open at once by themselves. The one thing only Exploration's rules gave is
+// the Motion capstone read as Long Quickening: under Classic that slot is the Aerial Step capstone, so Aerial Step is granted
+// (as Classic's capstone always grants it) and Long Quickening is kept, so both stay. Returns how many ids were newly kept.
+function leaveExploration(save, p) {
+  if (!hasNode(save, "aerial-step")) return 0;
+  save.magicSkills ||= {}; save.magicSkills.learned ||= {};
+  if (skillRank(save, "aerial-step") < 1) save.magicSkills.learned["aerial-step"] = 1;
+  return keepAll(p, [LQ]);
+}
+// An Exploration journey from before Phase 3 (Release 1036, table 1) took Phase 2's start with today's rules. On its first load
+// under Phase 3 it keeps everything today's rules have open at that moment (as a switch to Exploration does), then reads
+// table 2. Nothing it had closes; Aerial Step and Long Quickening it gains. A Classic journey is never touched. Returns the
+// number of ids kept, or 0.
+export function adoptExploration(save) {
+  const raw = save?.progression;
+  if (!raw || raw.mode !== 1 || Number(raw.table) >= EXPLORATION.table) return 0;
+  const p = ensureProgression(save), added = keepAll(p, switchKeeps(save));
+  p.table = EXPLORATION.table;
+  return added;
+}
