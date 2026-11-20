@@ -19,6 +19,7 @@ import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.ts"; // awakened arts
 import { TESSERACTS } from "./tesseracts.ts";
 import { PASSIVE_TEXT } from "./hit-cast-passives.ts"; // the on-cast nodes (Tim, 2026-11-19)
 import { EXPLORATION, exploring } from "./journey-start.ts"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
+import { formFound, formWithheld, worldWithheld } from "./world-routes.ts"; // progression Phase 6: milestones and reliquaries
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -108,8 +109,12 @@ export const ALT_PASSIVES = {
   anchor: { name: "Rift Echo", kind: "changes", text: "Rift Step leaves a burst where you stood, scorching foes there.", radius: 1.8, damage: 8, perLevel: 1 },
 };
 export const altUnlocked = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)) >= ALT_UNLOCK_TIER;
+// Progression Phase 6 (world-routes.ts): a secondary form whose Exploration route is a milestone or a reliquary is shut until it is
+// found; a form found (earned or kept) opens its switch once its node is learned, before Infinite III too, in either mode.
+export const WORLD_WAIT = "Not found yet: it waits out in the world (Journal → Leads).";
+export const altOpen = (save, id) => (altUnlocked(save) || formFound(save, id)) && !formWithheld(save, id);
 // Is the secondary form chosen (and open) for a learned node?
-export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altUnlocked(save);
+export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altOpen(save, id);
 // The primary form works: the node is learned and its secondary is not chosen, or the Transit Lattice holds it (release 363).
 export const nodeOn = (save, id) => hasNode(save, id) && (!altChosen(save, id) || latticePassives(save).includes(id));
 // The secondary form works: chosen, or held in the Transit Lattice.
@@ -133,6 +138,7 @@ export function latticePassiveGroups() {
 }
 export function toggleLatticePassive(save, key) {
   const f = passiveForm(key); if (!f) return { ok: false, message: "That is not a passive." };
+  if (worldWithheld(save, key) && !(save.lattice?.passives || []).includes(key)) return { ok: false, message: WORLD_WAIT }; // Phase 6: not found yet (one set before stays clearable)
   if (f.field) return toggleLatticeSlot(save, "passive", key, f.name); // release 515: nothing to learn first
   if (f.id === "aerial-step" && aerialDiscipline(save) && !(save.lattice?.passives || []).includes(key)) return { ok: false, message: `In Exploration ${EXPLORATION.aerialStep.cap.name} is the Motion capstone itself, and Aerial Step a discipline: neither has a form to draw into the Lattice.` };
   return toggleLatticeSlot(save, "passive", key, f.name, () => !hasNode(save, f.id) ? `Learn ${passiveForm(f.id).name} first: the Lattice draws in a form of a passive you know.` : f.alt === altChosen(save, f.id) ? `${f.name} already works: it is the form you have chosen.` : "");
@@ -141,7 +147,8 @@ export function toggleAlt(save, id) {
   const alt = ALT_PASSIVES[id];
   if (!alt) return { ok: false, message: "That entry has no secondary form." };
   if (id === "aerial-step" && aerialDiscipline(save)) return { ok: false, message: `${EXPLORATION.aerialStep.cap.name} has no secondary form in Exploration: it is the Motion capstone itself.` };
-  if (!altUnlocked(save)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
+  if (formWithheld(save, id)) return { ok: false, message: WORLD_WAIT }; // Phase 6: found in the world first
+  if (!altOpen(save, id)) return { ok: false, message: `Secondary passives open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.` };
   if (!(alt.discipline ? skillRank(save, id) > 0 : hasNode(save, id))) return { ok: false, message: "Learn it first." }; // a discipline's own form (Quickened Stride): once it has a rank
   const c = save.constellation; c.alt ||= {};
   if (c.alt[id]) delete c.alt[id]; else c.alt[id] = true;
@@ -215,6 +222,7 @@ export function learnExtra(save, branch, id) {
   const b = BRANCHES[branch], node = b?.extras?.find((q) => q.id === id);
   if (!node) return { ok: false, message: "Unknown node." };
   if (save.constellation.mods[id]) return { ok: false, message: `${node.name} is already yours.` };
+  if (worldWithheld(save, id)) return { ok: false, message: WORLD_WAIT }; // Phase 6: Casting Wind is a milestone's
   if (skillRank(save, b.active) < 1) return { ok: false, message: `Learn ${APERTURE_SKILLS[b.active].name} first.` };
   if (pointsFree(save) < 1) return { ok: false, message: "No constellation points free." };
   save.constellation.mods[id] = true;

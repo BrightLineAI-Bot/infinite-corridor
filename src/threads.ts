@@ -14,6 +14,7 @@ import { BELLS, bellsRung } from "./bells.ts";
 import { SURVEYOR, surveyorFound } from "./surveyor.ts";
 import { TORN_PAGES, pagesFound } from "./torn-pages.ts";
 import { FAR_REALMS, farDistance } from "./far-realms.ts";
+import { REWARD_CARRIERS, threadReward } from "./quests.ts"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -446,11 +447,15 @@ export function arcanaProgress(save, live = ARCANA_REGIONS.live) {
 // ({ kind, id, label }; empty: the unlocks Tim chose are lore.ts ARCANA_UNLOCKS, settled by settleArcanaUnlocks below). settleArcanaRewards hands every complete set with a reward not yet claimed to
 // `grant(setId, reward)` once, and records it in save.lore.arcanaClaimed ({ setId: true }; additive, normalised by
 // ensureThreadState), so a set finished before its reward existed is paid the first time the hook runs after.
-export const ARCANA_REWARDS = {};
+// Progression Phase 7 (quests.ts THREAD_REWARDS, SEEDED_REWARDS; docs/progression-design.md route d): each carrier's entry is a
+// function of the save, since two rewards are seeded per journey: it gives { kind: "ability", id, label, ... } or null (a
+// candidate thread that carries nothing on this journey, never claimed). `extraDone` names carriers finished outside the
+// Arcana list (the Second Wayfarer's trail, "second"; game.ts passes it).
+export const ARCANA_REWARDS = Object.fromEntries(REWARD_CARRIERS.map((id) => [id, (save) => threadReward(save, id)]));
 export const arcanaComplete = (save) => arcanaProgress(save, false).filter((r) => r.complete).map((r) => r.id);
-export function settleArcanaRewards(save, grant = () => {}) {
+export function settleArcanaRewards(save, grant = () => {}, extraDone = []) {
   const out = [];
-  for (const id of arcanaComplete(save)) { const reward = ARCANA_REWARDS[id]; if (!reward || save.lore?.arcanaClaimed?.[id]) continue;
+  for (const id of [...arcanaComplete(save), ...extraDone]) { const R = ARCANA_REWARDS[id], reward = typeof R === "function" ? R(save) : R; if (!reward || save.lore?.arcanaClaimed?.[id]) continue;
     ((save.lore ||= {}).arcanaClaimed ||= {})[id] = true; grant(id, reward); out.push(id); }
   return out;
 }

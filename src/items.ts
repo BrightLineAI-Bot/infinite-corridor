@@ -3,6 +3,7 @@ import{rng,pick}from'./random.ts';
 import{CARBINE,TOOL_RANGE}from'./tool-forms.ts';
 import{FAR_REALMS,farDistance}from'./far-realms.ts';
 import{EXPLORATION,exploring}from'./journey-start.ts';
+import{storyWithheld}from'./quests.ts';/* progression Phase 7: a quest's or thread's spell waits until earned */
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:TOOL_RANGE['lumen-spindle'].range/10,turnAfter:TOOL_RANGE['lumen-spindle'].range/10,legs:true,damageType:'magic',path:'boomerang'}/* 2026-11-14 (tool-forms.ts TOOL_RANGE): `lifetime` is one leg (was 1.8 s with a turn at .8 s); game.ts fireSecondary flies it in legs */,'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:TOOL_RANGE['rift-bombard'].range/8/* 2026-11-14 (tool-forms.ts TOOL_RANGE; was 1.4 s, 11.2 tiles): it lands and bursts at its range */,radius:2.15,damageType:'physical'/* release 533 (Tim: "a goblin bazooka"): physical, so Might */,path:'grenade'},
@@ -69,7 +70,7 @@ export const SPELLS={'cinder-dart':{id:'cinder-dart',name:'Cinder Dart',cooldown
 // Progression Phase 3: spellOpenClassic is today's rule (Classic, and what a switch to Exploration keeps); spellOpen adds
 // Exploration's level gates (journey-start.ts EXPLORATION.gates: Ember Ring, Fire Burst and Grave Sun by level).
 export function spellOpenClassic(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier||(Array.isArray(save?.progression?.kept)&&save.progression.kept.includes(`spell:${id}`)))}
-export function spellOpen(save,id){return spellOpenClassic(save,id)&&explorationGateOpen(save,`spell:${id}`)}
+export function spellOpen(save,id){return spellOpenClassic(save,id)&&explorationGateOpen(save,`spell:${id}`)&&!storyWithheld(save,`spell:${id}`)}
 // Whether Exploration's gate on ability row `id` (EXPLORATION.gates) lets it through: always outside Exploration, and always for
 // an id the journey keeps (save.progression.kept); else the Wayfarer's level or the Aperture band must reach the gate.
 export function explorationGateOpen(save,id){const g=EXPLORATION.gates[id];if(!g||!exploring(save))return true;if(Array.isArray(save?.progression?.kept)&&save.progression.kept.includes(id))return true;if(g.level!=null&&(Math.floor(Number(save?.level))||1)<g.level)return false;if(g.tier!=null&&APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))<g.tier)return false;return true}

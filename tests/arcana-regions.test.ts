@@ -5,6 +5,7 @@
 // toward its home; crossings pinned before (region version 0) keep exactly what they offered.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { REWARD_CARRIERS } from '../src/quests.ts'; // progression Phase 7
 import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, pinDungeonLayout } from '../src/game.ts';
@@ -133,7 +134,7 @@ test('save: arcana rewards claimed and region pins are additive at schema 14; un
 });
 
 test('the completion reward hook: a set with a reward is paid once, through the game, and a set finished before is paid the next time it runs', () => {
-  assert.deepEqual(ARCANA_REWARDS, {}, 'no unlocks are tied to sets yet: Tim chooses');
+  assert.deepEqual(Object.keys(ARCANA_REWARDS).sort(), [...REWARD_CARRIERS].sort(), 'progression Phase 7: the thread rewards Tim approved (quests.ts), and nothing else');
   const s = freshSave(); s.seed = 'BELLS431'; assert.deepEqual(settleArcanaRewards(s), []); assert.deepEqual(arcanaComplete(s), []);
   ARCANA_REWARDS.bells = { kind: 'test', id: 'x', label: 'A test reward' }; ARCANA_REWARDS.lamplighter = { kind: 'test', id: 'y', label: 'Another' };
   try {

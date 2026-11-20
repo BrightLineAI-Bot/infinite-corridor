@@ -33,12 +33,17 @@ export const TRICERATOPS_RIG = Object.freeze({
   // down] (body units) and a pitch (radians, + lowers the head) of the neck bone, the head carried with it; crouch: a standing crouch
   // (body units), foreW and thigh: the forelegs' and the thighs' thickness; muscle: the darker markings down the back of the thigh and the
   // front of the forearm (0..1); frillTilt: the frill swept back along the skull (radians, - back); frillShift: the frill moved [back/forward, up] on the skull (head units); crest: the frill in his own hide's
-  // colours, a rounded swelling (a juvenile crest, no plate) in place of the frill.
-  // young: "a dragon without wings": a thick tail, powerful haunches, a tight waist, a deep chest under strong shoulders, a long powerful
-  // neck with the head low and forward, heavy forelimbs and a prowling crouch. baby: a small crest swept back along the skull.
+  // colours, a rounded swelling (a juvenile crest, no plate) in place of the frill; pitch: the trunk carried nose up about the hips (radians:
+  // high shoulders over lower hips), foreLeg (the forelegs' bones x as long), mane: the frill as a mane-like collar (`size` of the adult's, `tall` x as tall,
+  // wrapped `wrap` radians further round each side of the head and neck, opening forward as a cone `cone` deep (head units), its sides swept back `wrapBack` further along the neck, its rim scalloped into tufts
+  // `tuft` deep; TRI_ART.youngFrill's colours).
+  // young (Tim, 2026-11-20: "the body of a lion with the head of a Triceratops"): a lion's carriage: high shoulders over a deep raised
+  // chest, the back sloping down to lower hips, a tucked waist, strong haunches, long straight forelegs, the head carried up over the chest
+  // on a short thick neck, a long thick tail carried low, and a mane-like frill. baby: a small crest swept back along the skull.
   formBody: Object.freeze({
-    young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.1, 1.06], [-.12, .9, .86], [-.02, .86, .8], [.1, .96, 1], [.2, 1.06, 1.08], [.3, 1.04, 1.02], [.38, .86, .88], [.51, .9, .92]].map(Object.freeze)),
-      tail: 1.18, neck: Object.freeze([.32, .02, .08]), crouch: .012, foreW: 1.14, thigh: 1.1, muscle: 1, frillTilt: -.3, frillShift: Object.freeze([-.02, .04]) }),
+    young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.08, 1.06], [-.12, .86, .82], [-.02, .84, .8], [.1, .98, 1.08], [.2, 1.08, 1.2], [.3, 1.1, 1.18], [.38, 1.02, 1.04], [.51, .96, .96]].map(Object.freeze)),
+      tail: 1.3, pitch: .33, foreLeg: 1.3, neck: Object.freeze([-.12, -.2, .22]), crouch: .03, foreW: 1.3, thigh: 1.12, muscle: 1, frillTilt: 1.1, frillShift: Object.freeze([.16, -.08]),
+      mane: Object.freeze({ size: 1, tall: .85, wrap: .75, cone: .05, wrapBack: .3, tuft: .08 }) }),
     baby: Object.freeze({ crest: Object.freeze({ at: Object.freeze([-.05, .15]), radius: Object.freeze([.085, .09, .04]), F: Object.freeze([-.9, 0, .44]) }) }),
   }), // the hatchling's baby form carries his big head higher (body units over the head bone)
   // the seat (Tim, 2026-11-19: "mid-back, just behind / almost between the shoulder blades"): body units along the back from the root,
@@ -198,14 +203,18 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  if (!FB0?.crest) { const FK = FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK, rows = low ? 3 : full ? 5 : 4, cols = low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
-    const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = (-((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS) * SW;
+  if (!FB0?.crest) { const MN = FB0?.mane, MA = MN ? A.youngFrill : null, FK = MN ? MN.size : FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK * (MN ? MN.tall : 1), rows = low ? 3 : full ? 5 : 4, cols = MN ? (low ? 9 : full ? 19 : 13) : low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+    // the mane (formBody.mane): wrapped further round the sides, its rim scalloped into tufts (every other column out, the ones between in)
+    const a0 = MN ? -.12 - MN.wrap : -.12, aSpan = Math.PI + .24 + (MN ? 2 * MN.wrap : 0), angle = (c) => a0 + aSpan * c / (cols - 1);
+    const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = MN ? -r * (MN.cone + MN.wrapBack * Math.cos(a) ** 2) * HS : (-((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS) * SW; // the mane: an even collar opening forward
       return [Up[0] * y + Fw[0] * back, x, Up[2] * y + Fw[2] * back]; };
-    for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) { const a = -.12 + (Math.PI + .24) * c / (cols - 1); row.push(rimAt(a, rr)); } grid.push(row); ring.push(['frill', 'frill', 0]); }
-    const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = -.12 + (Math.PI + .24) * c / (cols - 1); return rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
+    for (let r = 0; r < rows; r++) { const rr = .18 + .82 * r / (rows - 1), row = []; for (let c = 0; c < cols; c++) row.push(rimAt(angle(c), rr * (MN && r === rows - 1 ? 1 + MN.tuft * (c % 2 ? -1 : 1) : 1))); grid.push(row); ring.push(['frill', 'frill', 0]); }
+    const spot = (r, c) => { const rr = .18 + .82 * r / (rows - 1), a = angle(c); return !MN && rr > .45 && rr < .85 && Math.abs(Math.sin(a)) > .55 && Math.abs(Math.cos(a)) > .2 && Math.abs(Math.cos(a)) < .65; };
+    const MC = MA ? MA.fill.map(hex) : null, mane = (r, c) => r === 0 ? C.body : r === rows - 1 ? (c % 2 ? MC[1] : lerpHex(MC[1], MC[2], .6)) : lerpHex(MC[0], MC[1], (r - 1) / Math.max(1, rows - 2)); // root in his hide, then amber to the darker tufts
     const FB = TRICERATOPS_SKELETON.bindWorld, fo = BI.frill * 3; // the sheet takes model-space points: the frill bone's bind position added
-    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
-    if (!low && FM.frill >= G0.knobFrill) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
+    B.sheet({ grid: grid.map((row) => row.map((q) => [q[0] + FB[fo] + FF, q[1] + FB[fo + 1], q[2] + FB[fo + 2] + FZ])), rowBones: ring, tone: (r, c) => MN ? mane(r, c) : r === rows - 1 ? C.frillEdge : !low && spot(r, c) ? C.frillSpot : r === 0 ? C.body : lerpHex(C.frillInner, C.frill, r / (rows - 1)) });
+    if (!low && MN) for (let c = 0; c < cols; c += 2) { const kp = rimAt(angle(c), 1 + MN.tuft * 1.15); kp[0] += FF; kp[2] += FZ; B.color(hex(MA.knobFill)).ellipsoid({ at: kp, radius: [.02 * HS, .024 * HS, .024 * HS], rings: 2, seg: full ? 5 : 4 }); } // a knob on each tuft
+    else if (!low && FM.frill >= G0.knobFrill) for (let i = 0; i <= (full ? 12 : 7); i++) { const a = -.06 + (Math.PI + .12) * i / (full ? 12 : 7);
       const kp = rimAt(a, 1.04), kk = FM.frill === 1 ? 1 : Math.sqrt(FM.frill); kp[0] += FF; kp[2] += FZ; B.color(C.knob).ellipsoid({ at: kp, radius: [.022 * HS * kk, .026 * HS * kk, .026 * HS * kk], rings: 2, seg: full ? 5 : 4 }); } // a small frill's knobs smaller
   }
   // ---- legs: thick pillars of hide from the body to broad round feet with three pale toenails; markings over the leg tops
@@ -311,7 +320,7 @@ export function createTriceratopsTrack() {
 const H = new Float64Array(3), T = new Float64Array(3), LEGBONES = new Int16Array(4), LENS = new Float64Array(3), TMP = [0, 0, 0], TV = new Float64Array(K);
 export function sampleTriceratops(tr, e, env) {
   const now = env.now, reduce = !!env.reduce, S = Math.max(.25, Math.min(6, Number(env.scale) || 1)), P = tr.pose, G = TRICERATOPS_RIG, ridden = !!e?.mountView;
-  const LK = (TRI_FORMS[e?.triForm] || TRI_FORM_ADULT).leg, FBd = G.formBody[e?.triForm] || null, legDrop = (1 - LK) * G.legHeight + (FBd?.crouch || 0); // a hatchling form's legs (shorter: scaled bones, the body lowered onto them)
+  const LKh = (TRI_FORMS[e?.triForm] || TRI_FORM_ADULT).leg, FBd = G.formBody[e?.triForm] || null, legDrop = (1 - LKh) * G.legHeight + (FBd?.crouch || 0), formPitch = FBd?.pitch || 0; // a hatchling form's legs (shorter: scaled bones, the body lowered onto them)
   const gapMs = Number.isFinite(tr.at) ? now - tr.at : Infinity, dt = Number.isFinite(gapMs) ? Math.min(.1, Math.max(0, gapMs / 1000)) : 0; tr.at = now;
   const dead = !!env.dead;
   if (dead && tr.deathAt == null) tr.deathAt = now;
@@ -368,7 +377,7 @@ export function sampleTriceratops(tr, e, env) {
   const nd = Math.max(0, -pitch), chestF = SPINE_AT.chest[0] - SPINE_AT.pelvis[0];
   const bounce = triceratopsTailBounces(e) ? (reduce ? .5 : Math.sin(t * 20)) * G.tailBounce : 0; // the Silly Goose's and Bad's tail bounce, the hindquarters hopping with it
   setOffset(P, BI.pelvis, lean, sway, -legDrop + Math.abs(bounce) * .12 -V[KI.crouch] * G.crouchDrop - bob + Math.sin(nd) * chestF - .03 * Math.abs(hit) - (horn && horn.phase !== 'dash' ? .02 : 0));
-  setEuler(P, BI.pelvis, reduce ? 0 : -moving * .025 * Math.sin(cyc), -pitch, -sway * 1.4 + daze * .05); resolveBone(P, BI.pelvis);
+  setEuler(P, BI.pelvis, reduce ? 0 : -moving * .025 * Math.sin(cyc), -pitch - formPitch, -sway * 1.4 + daze * .05); /* a form's own carriage (formBody.pitch: the young's high shoulders) */ resolveBone(P, BI.pelvis);
   setEuler(P, BI.spine, 0, 0, 0); resolveBone(P, BI.spine);
   setEuler(P, BI.chest, 0, 0, 0); P.scl[BI.chest] = 1 + breathe * G.breathe.chest; resolveBone(P, BI.chest);
   const look = env.target && !dead && !ridden ? (() => { const a = Math.atan2(env.target.y - y, env.target.x - x) - yaw; return Math.max(-.5, Math.min(.5, Math.atan2(Math.sin(a), Math.cos(a)))) * .5; })() : 0;
@@ -388,7 +397,7 @@ export function sampleTriceratops(tr, e, env) {
   setEuler(P, BI.whirl, 0, 0, env.drill ? env.drill.angle || 0 : 0); P.scl[BI.whirl] = env.drill ? 1 : .001; resolveBone(P, BI.whirl);
   // ------------------------------------------------------------------ the legs
   for (let k = 0; k < 4; k++) {
-    const L = LEGS[k], top = BI[L.top], hi = top * 3, len = (L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S * LK;
+    const L = LEGS[k], LK = L.hind ? LKh : LKh * (FBd?.foreLeg || 1), top = BI[L.top], hi = top * 3, len = (L.hind ? G.femur + G.tibia + G.hindCannon : G.humerus + G.radius + G.foreCannon) * S * LK; // (a form's longer forelegs: formBody.foreLeg)
     P.scl[top] = LK;
     resolveBone(P, top); H[0] = P.wp[hi]; H[1] = P.wp[hi + 1]; H[2] = P.wp[hi + 2]; // the hip or shoulder where its body is this frame
     const lift = tr.gait.out[k * 4 + 2]; let fx = tr.gait.out[k * 4], fy = tr.gait.out[k * 4 + 1], fz = env.z + (G.foot + .005) * S * LK + lift * G.footLift * S * LK;

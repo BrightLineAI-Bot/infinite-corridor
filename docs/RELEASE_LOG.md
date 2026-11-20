@@ -15,12 +15,15 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1043 (this merge, #714); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1046 (this merge, #717); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1046 | Claude | claude/progression-phase-7 / #717 | Progression phase 7: Hollis's Essence Walk quest and thread-ending rewards (Exploration withholds 11 quest/thread abilities; Classic gains them as extra routes) | Merged (#717); preview follows. |
+| 1045 | Claude | claude/young-lion-pose | Young Triceratops: lion carriage and mane-like frill (both views); his damage retuned to ~10% of the Wayfarer's over real fights; out.carry additive | In flight. |
+| 1044 | Claude | claude/progression-phase-6 / #715 | Progression phase 6: milestones, the Reliquary and pity leads (Exploration withholds the 18 milestone/reliquary abilities; Classic gains them as extra routes) | Merged (#715); preview follows. |
 | 1043 | Claude | claude/progression-phase-5 / #714 | Progression phase 5: the training yard (Try it on how-to pages opens a Proving Ground scratch copy; owned abilities only) | Merged (#714); preview follows. |
 | 1042 | Claude | claude/triceratops-forms-detail | Triceratops forms and indoor riding: chipped horn, baby crest, the young's own body and smaller frill, no cheek spikes on baby/young, young's attacks ~10% of the Wayfarer's damage, persistent Triceratops rideable indoors where roomy; no save change | In flight. |
 | 1041 | Claude | claude/progression-phase-4 / #712 | Progression phase 4: Journal leads and rumours, first-use hints, how-to pages, a plain first journey | Merged (#712); preview follows. |
