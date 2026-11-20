@@ -10,7 +10,8 @@ test('root agent instructions retain workflow and field-guide invariants', () =>
 });
 
 test('current workflow documentation separates implementation and publication approval', () => {
-  for (const path of ['README.md', 'docs/HERMES_PROJECT_FIELD_GUIDE.md', 'docs/proposal-publication-workflow.md']) {
+  // Tim (2026-11-20): README.md is now the public newcomer README; the workflow wording is checked in the field guide and the publication-workflow doc.
+  for (const path of ['docs/HERMES_PROJECT_FIELD_GUIDE.md', 'docs/proposal-publication-workflow.md']) {
     const text = read(path);
     const current = text.split('\n\n').slice(0, 5).join('\n\n');
     for (const pattern of [/Test Bot makes all code changes/, /operator-approved merge into local main/, /Hermes profile only investigates and publishes merged main/, /create, validate, publish-preview, promote/, /separate Discord approval card/, /disabled workspace-wide/, /Verdict Gate.*historical/]) assert.match(current, pattern, path);
