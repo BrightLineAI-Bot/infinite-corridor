@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1032 (this merge); production serves `r1031-b358b5a5ce4c`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1033 (this merge, #704); production serves `r1031-b358b5a5ce4c`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1033 | Claude | claude/first-hour-fixes / #704 | First-hour fixes: errand link reachable in every crossing; dormant world boss hidden; crossing death restores section; exact resume keeps extra foes and the Stalker | Merged (#704); preview follows. |
 | 1032 | Claude | claude/triceratops-seat | Triceratops seat: rider mid-back just behind the shoulders in both views; ridden frill .85 size and tipped forward; no save change | In flight. |
 | 1031 | Claude | claude/hitstop-actors / #702 | Per-actor hit-stop (Elden Ring style): only the Wayfarer and the struck foe pause | Merged (#702); preview follows. |
 | 1030 | Claude | claude/close-view-visibility / #701 | Close View visibility: silhouettes only behind walls; fade creatures blocking the Wayfarer; creature cards lit like their floor | Merged (#701); preview follows. |
