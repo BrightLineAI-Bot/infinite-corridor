@@ -65,7 +65,8 @@ test("every form, in every move, draws each leg jointed with its foot attached i
         // jointed: the upper bone reaches the knee, the lower bone runs from the knee to the ankle (stretching a little at most)
         assert.ok(Math.abs(Math.hypot(kx - jx, ky - jy) - l1) < 1e-9, `${label}: upper bone joined at the knee`);
         assert.ok(Math.abs(Math.hypot(ax - kx, ay - ky) - l2) < 1e-9, `${label}: lower bone joined at the ankle`);
-        assert.ok(Math.abs(l1 - S.upper * FM.leg) < 1e-12 && l2 >= S.lower * FM.leg - 1e-12 && l2 <= S.lower * FM.leg * TRI_LEGS.stretch + 1e-12, `${label}: bone lengths`);
+        const lk = FM.leg * (hind ? 1 : FM.foreLeg ?? 1); // (the young's longer forelegs)
+        assert.ok(Math.abs(l1 - S.upper * lk) < 1e-12 && l2 >= S.lower * lk - 1e-12 && l2 <= S.lower * lk * TRI_LEGS.stretch + 1e-12, `${label}: bone lengths`);
         // the foot hangs from the ankle: its sole within a foot's size of it
         assert.ok(Math.abs(L[o + 11] - ax) < L[o + 14] && ay - L[o + 10] > 0 && ay - L[o + 10] <= L[o + 14], `${label}: the foot hangs from the ankle`);
         // no foot sinks into the ground
