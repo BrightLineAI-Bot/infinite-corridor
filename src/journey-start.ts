@@ -9,7 +9,7 @@
 //   kept   ability ids (progression.ts row ids) held in either mode for good: the start's Aegis, and what a switch kept
 //   log    the switches: { from, to, playSeconds, section }, newest last (at most PROGRESSION_RECORD.logMax)
 //   kit    the starting choice, when one was made: { weapon, tool } (items.ts WEAPON_SCALING / TOOL_SCALING keys)
-// In this phase mode 1 gates nothing new: it is stored, shown and switchable, and the start below is its only difference.
+// Phase 2 stored, showed and switched the mode; Phase 3 (EXPLORATION below) gives Exploration its core kit and its own gates.
 //
 // Start version 1, the frame turn (section 4.0). Every journey created at start version 1 takes one seeded frame: a turn of
 // k × 45° (k = 0..7), plain or mirrored, 16 frames in all (hash of `${seed}:start-frame:v1`). Every fixed direction the game
@@ -122,5 +122,28 @@ export function ensureProgression(save) {
   return p;
 }
 export const progressionMode = (save) => (save?.progression?.mode === 1 ? 1 : 0);
+// Phase 3, the core kit (docs/progression-design.md revision 3, sections 3.1-3.9 and 7 row 3; Tim, 2026-11-20). Exploration's own
+// gates, as data. They hold only on a journey in Exploration that reads progression table `table` or later (exploring): a
+// journey created from now on (startJourney), one switched to Exploration (switchProgression), or an Exploration journey from
+// before this table, which first keeps everything today's rules had open (progression.ts adoptExploration). Classic never reads
+// them. An id in save.progression.kept passes its gate for good, in either mode.
+//   gates       ability row id (progression.ts) -> { level } (the Wayfarer's level) or { tier } (the Aperture band index): the
+//               three later starter spells by level (Cinder Dart and Aegis are held from the start), and awakening at Sela's
+//               forge and the hatchling's mother at the Beast Hotel from Infinite II (band 12).
+//   aerialStep  Aerial Step is a discipline of its own: learned for `cost` constellation points once Aperture reaches `aperture`,
+//               with no prerequisite (constellation.ts learnAerialStep). Its Motion capstone slot (the save id `aerial-step`)
+//               is Long Quickening (`cap`), which has no secondary form; Rift Step keeps its gate (Aperture 18).
+//   latticeFree the field passives that are the core kit's, free once the Transit Lattice opens (one each for the Warden, the
+//               Gunner and the Spellblade). Every other Lattice pick stays open as today until its own route is built.
+export const EXPLORATION = Object.freeze({
+  table: 2,
+  gates: Object.freeze({
+    "spell:ember-ring": Object.freeze({ level: 3 }), "spell:fire-burst": Object.freeze({ level: 6 }), "spell:grave-sun": Object.freeze({ level: 10 }),
+    "awakened:awakening": Object.freeze({ tier: 12 }), "companion:hatchling": Object.freeze({ tier: 12 }),
+  }),
+  aerialStep: Object.freeze({ aperture: 6, cost: 1, cap: Object.freeze({ name: "Long Quickening", text: "Quickening lasts 50% longer." }) }),
+  latticeFree: Object.freeze(["field:sanctum", "field:charged-air", "field:spellblade"]),
+});
+export const exploring = (save) => progressionMode(save) === 1 && Number(save?.progression?.table) >= EXPLORATION.table;
 export const modeInfo = (mode) => PROGRESSION_MODES[mode === 1 ? 1 : 0];
 export const progressionKept = (save, id) => Array.isArray(save?.progression?.kept) && save.progression.kept.includes(id);
