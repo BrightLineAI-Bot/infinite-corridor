@@ -105,7 +105,7 @@ import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND,
 import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
-import { persistentMount, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
+import { persistentMount, indoorMount, TRICERATOPS_INDOOR, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
 import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.ts";
 import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.ts";
 import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.ts";
@@ -7965,7 +7965,9 @@ export class Game {
   mountLeap(now) { return !!this.mountRide() && now < (this.jumpUntil || 0); } // airborne on a mount: chasms and water pass under
   mountBlock(m = ridingMount(this.save)) {
     const p = this.player;
-    if (this.area !== "overworld" && !(isBeastHotelId(this.save.session.activeDungeonId) && persistentMount(m))) return "Mounts cannot be ridden in here: call one in the open world.";
+    if (this.area !== "overworld" && !(isBeastHotelId(this.save.session.activeDungeonId) && persistentMount(m))) { // indoors: the persistent Triceratops where there is room (TRICERATOPS_INDOOR)
+      if (!indoorMount(m)) return "Mounts cannot be ridden in here: call one in the open world.";
+      if (!this.mountRoomy()) return TRICERATOPS_INDOOR.cramped; }
     if (!(p.hp > 0)) return "You cannot ride now.";
     if (aboard(this.save)) return "Step ashore first: a mount cannot ride in a skiff.";
     if (this.swimming) return "Get out of the water first.";
@@ -7974,6 +7976,19 @@ export class Game {
     if (this.standingDeck()) return "Climb down from the roof first: there is no room for a mount up here."; // roof decks: mounts never use them
     if (footprintInsideStructure(this.map, mapWidth(this.map, this.area), p.x, p.y)) return "There is no room for a mount indoors.";
     return null;
+  }
+  // Whether the floor round the Wayfarer's footing has room for the Triceratops (TRICERATOPS_INDOOR). Judged once per footing tile
+  // (cached by map and tile), so riding costs nothing per frame until she steps into a new tile.
+  mountRoomy() {
+    const p = this.player, M = this.map, W = mapWidth(M, this.area), H = M?.tiles ? M.tiles.length / W : 0, tx = Math.floor(p.x + .5), ty = Math.floor(p.y + .72), c = this._roomy;
+    if (c && c.map === M && c.tx === tx && c.ty === ty) return c.ok; // (each area load builds a new map)
+    const R = TRICERATOPS_INDOOR, r = Math.ceil(R.radius); let n = 0, open = 0, ok = true;
+    for (let dy = -r; dy <= r && ok; dy++) for (let dx = -r; dx <= r; dx++) { const d = Math.hypot(dx, dy); if (d > R.radius) continue;
+      const x = tx + dx, y = ty + dy, t = x >= 0 && y >= 0 && x < W && y < H ? M.tiles[y * W + x] : null;
+      const floor = !!t && !t.blocked && !t.perch && !t.doorway && !LETHAL_KINDS.has(t.kind) && !footprintHazard(M, W, x - .5, y - .72) && !(t.encSides?.length || t.wallSides?.length);
+      n++; if (floor) open++; else if (d <= R.body) { ok = false; break; } }
+    ok = ok && n > 0 && open / n >= R.minOpen;
+    this._roomy = { map: M, tx, ty, ok }; return ok;
   }
   summonMount(id = null) {
     const m = id ? mountById(this.save, id) : defaultMount(this.save);
@@ -7990,7 +8005,7 @@ export class Game {
     return { ok: true, message: (this.message = message || `You climb down from ${mountName(m).replace(/^The /, "the ")}, and it is gone back to your stable. ${mountLifeText(m)} left.`) };
   }
   // Act with nothing near in the open world: get down, or call the mount ridden last.
-  mountCallable() { return (this.area === "overworld" || isBeastHotelId(this.save.session.activeDungeonId)) && ensureMounts(this.save).stable.length > 0; }
+  mountCallable() { const q = ensureMounts(this.save); return (this.area === "overworld" || isBeastHotelId(this.save.session.activeDungeonId)) ? q.stable.length > 0 : !!ridingMount(this.save) || q.stable.some((m) => indoorMount(m) && !m.recovery); } // indoors: the Triceratops (TRICERATOPS_INDOOR)
   // The hatchling (hatchling.ts): with his baby or young form chosen the hold calls him out or sends him back (anywhere); with the big
   // form it calls the normal Triceratops he grew into. Without him, as before.
   hatchlingCallable() { const h = this.save.mounts?.hatchling; return !!h?.owned && h.form !== "big"; }
@@ -8000,7 +8015,9 @@ export class Game {
     if (!this.mountCallable()) return null;
     const h = this.save.mounts?.hatchling, big = h?.owned && h.form === "big" && !ridingMount(this.save) ? this.save.mounts.stable.find(m => m.beast === "triceratops" && m.variant === "normal") : null;
     if (big) return this.summonMount(big.id);
-    return ridingMount(this.save) ? this.dismount() : this.summonMount();
+    if (ridingMount(this.save)) return this.dismount();
+    if (this.area !== "overworld" && !isBeastHotelId(this.save.session.activeDungeonId)) { const q = ensureMounts(this.save).stable, t = q.find((m) => indoorMount(m) && !m.recovery && m.variant === "normal") || q.find((m) => indoorMount(m) && !m.recovery); if (t) return this.summonMount(t.id); } // indoors only she comes
+    return this.summonMount();
   }
   // Tim, 2026-11-18: hold Act (an Act press with nothing near) for MOUNT_RIDE.callHold seconds to call the mount or get down. While it
   // fills, the message says so (and mountHoldProgress fills the Act button); letting go first cancels and the tap reads as before mounts.
@@ -8027,7 +8044,7 @@ export class Game {
       if (result?.defeated) { this._mountHp = null; this.message = result.admitted ? `${mountName(m)} needs the Beast Hotel at ${homeName(this.save)}.` : `${mountName(m)} falls (${m.defeats}/${TRICERATOPS_RIDE.defeats}) and returns to your stable.`; return; }
     }
     if (!(p.hp > 0)) { this.dismount(`You fall from ${who}. It waits in your stable.`); return; }
-    const why = this.mountBlock(); if (why) { this.dismount(`You get down from ${who} first; it waits in your stable.`); return; }
+    const why = this.mountBlock(); if (why) { this.dismount(why === TRICERATOPS_INDOOR.cramped ? TRICERATOPS_INDOOR.climbDown : `You get down from ${who} first; it waits in your stable.`); return; }
     if (!persistentMount(m) && this._mountHp != null && this._mountHp - p.hp >= MOUNT_RIDE.knockoff * (this.save.maxHp || p.maxHp || 100)) { this.dismount(`The blow throws you from ${who}! It is gone back to your stable.`); return; }
     this._mountHp = p.hp;
     const spent = tickRide(this.save, dt); if (spent) { this._mountHp = null; this.message = spent; }
@@ -8036,7 +8053,9 @@ export class Game {
   mountArea() {
     noteBeastRecoveryTransition(this.save, this.beastRecoveryLocation());
     const m = ridingMount(this.save); if (!m) return;
-    if (this.area !== "overworld" && !(isBeastHotelId(this.save.session.activeDungeonId) && persistentMount(m))) { this.dismount(`${mountName(m)} cannot follow you in there: it waits in your stable.`); return; }
+    if (this.area !== "overworld" && !(isBeastHotelId(this.save.session.activeDungeonId) && persistentMount(m))) { // the Triceratops may come in where there is room (TRICERATOPS_INDOOR)
+      if (!indoorMount(m)) { this.dismount(`${mountName(m)} cannot follow you in there: it waits in your stable.`); return; }
+      if (!this.mountRoomy()) { this.dismount(TRICERATOPS_INDOOR.climbDown); return; } }
     const spent = noteRideSection(this.save, `${this.rx},${this.ry}`); if (spent) { this._mountHp = null; this.message = spent; }
   }
   beastRecoveryLocation() { return this.area === "overworld" ? `world:${this.rx},${this.ry}` : this.areaStateId(); }
