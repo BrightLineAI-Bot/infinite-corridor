@@ -12,6 +12,7 @@
 //   { v: 1, drops: [{ id, area, x, y }] (severed tails lying where they fell, at most `drops`; `area` is the game's
 //     areaStateId), placed: null | { id, area, x, y, hp, maxHp, left } (the bait on the ground; `left` in seconds) }.
 // A placed bait keeps its remaining time on exact resume. It belongs to the area it was laid in: leaving the area ends it.
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { STEGO_ART } from "./wild-stego-render.ts";
 
 export const STEGO_BAIT = Object.freeze({
@@ -129,7 +130,7 @@ export function biteStegoBait(save, amount) {
 }
 // Whether a creature can be lured to the bait at all (the boss rule: STEGO_BAIT.ignore).
 export function stegoBaitLures(e) {
-  if (!e || e.dead || e.isPlayer || e.kind === "npc") return false;
+  if (!e || e.dead || e.isPlayer || unharmablePerson(e)) return false;
   for (const k of STEGO_BAIT.ignore) if (e[k]) return false;
   if (STEGO_BAIT.ignoreKinds.includes(e.kind)) return false;
   if (e.boss && !STEGO_BAIT.bossBeasts.some((k) => e[k])) return false; // dungeon bosses and guardians, and every other `boss`

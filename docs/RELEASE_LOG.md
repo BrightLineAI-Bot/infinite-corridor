@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1039 (this merge); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1040 (this merge, #711); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1040 | Claude | claude/townsfolk-unkillable / #711 | Townsfolk cannot be harmed: the harm/kill system removed; old saves restore residents and wardens | Merged (#711); preview follows. |
 | 1039 | Claude | claude/triceratops-proportions | Triceratops proportions (Standard View): adult midsection +12%, lower back, longer hind legs; baby redrawn (frill grown from the skull, lower back, legs showing); drawing only | In flight. |
 | 1038 | Claude | claude/progression-phase-3 / #709 | Progression phase 3: the Exploration core kit (spells by level, Aerial Step at Aperture 6 with Long Quickening, awakening and the hatchling at Infinite II; Classic unchanged) | Merged (#709); preview follows. |
 | 1037 | Claude | claude/baby-haunch | Baby Triceratops haunches: Standard View haunch/shoulder masses .78 so its legs show; drawing only | In flight. |

@@ -1,3 +1,4 @@
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { stampAttackVisual } from "./action-motion.ts";
 import { hashSeed } from "./random.ts";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
@@ -558,7 +559,7 @@ export function beamsTouching(x, y, body, pts, n, tether) {
   return k;
 }
 const unit = (x, y, fx = 1, fy = 0) => { const m = Math.hypot(x, y); return m > 1e-3 ? { x: x / m, y: y / m } : { x: fx, y: fy }; };
-const live = (e) => e && !e.dead && !e.untargetable && !e.hidden && e.kind !== "npc";
+const live = (e) => e && !e.dead && !e.untargetable && !e.hidden && !unharmablePerson(e);
 
 // The runtime state (game.orrery), never saved: { halo: { n, angle, idle, where, pts }, charge: { held, action, dir, pulse },
 // pulse (the halo's contact clock) }. `pts` holds the orb places, reused every frame.
