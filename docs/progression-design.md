@@ -1,8 +1,9 @@
 # Progression by exploration: a proposal
 
-**Status: revision 2, 2026-11-20. Nothing here is built.**
+**Status: revision 3, 2026-11-20. Nothing here is built.**
 
-- Revision 1 (2026-11-19) went to Tim. He took every recommendation in its open questions and added eleven notes (2026-11-20). This revision folds them in; what changed is listed at the end of this file.
+- Revision 1 (2026-11-19) went to Tim. He took every recommendation in its open questions and added eleven notes (2026-11-20), which revision 2 folded in.
+- Tim then answered revision 2's four open questions (2026-11-20); this revision folds those in. What changed in each revision is listed at the end of this file.
 - No acquisition changes until the build phases (section 7) start.
 
 Sources: Tim's direction of 2026-11-19 and 2026-11-20 (`docs/AGENT_CONTEXT.md`; `docs/narrative-bible.md` section 8; field guide "Content stages"), `docs/stage-4-inventory.md`, and the current `src/`.
@@ -20,12 +21,12 @@ Sources: Tim's direction of 2026-11-19 and 2026-11-20 (`docs/AGENT_CONTEXT.md`; 
 
 - **A starting choice.** You pick a primary weapon and a tool from a screen that says what each scales with and how it plays. Aegis is yours from minute one, so parry builds work at once.
 - **A core kit from levelling and the Arcanum alone**, enough to play the whole game with any archetype:
-  - Aerial Step almost at once, and Rift Step soon after (traversal that makes the world breathable, and that Close View navigation needs);
+  - Aerial Step almost at once (traversal that makes the cramped world breathable), and Rift Step at its usual gate (Aperture 18), which Close View navigation needs; the two combine;
   - the general disciplines and the constellation modifiers and capstones;
-  - a short-cooldown starter spell (Cinder Dart, 2.5 s);
-  - an armoury pick every few levels.
-- **The wild things out in the world**: weapon arts, tool forms, most secondary forms, the strangest spells and passives, the hatchling, the Orrery. They come from quests, milestones, threads, the bottoms of dungeons, and late Divine Viscera. Each has a place, a person, a deed or a story behind it.
-- **A random world.** Every new journey gets a random seed. The starting town is always Ember Refuge, but nothing else about the start is fixed: no "always go north-west".
+  - a short-cooldown starter spell (Cinder Dart, 2.5 s).
+- **Weapons are never gated** (Tim, 2026-11-20). Primaries and tools keep dropping from enemies and loot at random, as now; each is a play style to pick up, refine, or swap. "All the power comes from the passives, the abilities and the player's skill."
+- **The wild things out in the world**: weapon arts, tool forms, most secondary forms, the strangest spells and passives, the hatchling. They come from quests, milestones, threads, the bottoms of dungeons, and late Divine Viscera. Each has a place, a person, a deed or a story behind it.
+- **A random world.** Every new journey gets a random seed, and **every fixed direction is turned per seed** (4.0). The starting town is always Ember Refuge; nothing else about the start is fixed: no "always go north-west".
 
 **The routes:**
 
@@ -255,8 +256,9 @@ That last line is the gap this proposal closes.
 - health, stamina and stat points, as now;
 - Aperture opening the disciplines;
 - constellation points buying modifiers and **capstones**;
-- the spells shown in advance by level;
-- the **armoury**: one weapon or tool of your choice at levels 4, 8, 12, 16, 20 and 24 (section 4.1).
+- the spells shown in advance by level.
+
+Weapons are not on this route or any other: they are never gated (section 3.7).
 
 The Arcanum's "Level-ups ahead" line names what is next. Section 2.5 shows that every archetype is viable on this route alone.
 
@@ -301,7 +303,7 @@ Distances are straight-line from Ember Refuge, as the Arcana homes and far realm
 | **R2 Middle** | 19-50 | Middle threads; Great Keeps, castles, labyrinths; most quests |
 | **R3 Far** | 50-150 | "A desert at least 50 out"; the Reckoning Fields, the Magma Rivers, the Rimeglaciers; far threads |
 | **R4 Deep band** | 150-1,000 | Late quests; the Second Surveyor, the Sleeper |
-| **R5 Beyond** | 1,000+ | Far realms, domains, civilisations, the far threads, Viscera. **Four of the 45 world abilities live only here.** |
+| **R5 Beyond** | 1,000+ | Far realms, domains, civilisations, the far threads, Viscera. **Four of the 44 world abilities live only here.** |
 | **Sea** | Open sea, isles, dive sites, shipwrecks | |
 | **Sky** | Great trees, skyways, Sky Stairs, Skylands, Cloud Hold, Upwells | |
 | **Under** | The Deep, chasms, canyons, Starfields | |
@@ -327,15 +329,15 @@ Power gates still apply: a quest needing tier 13 opens at tier 13. Its place is 
 
 ### 2.5 Guarantees: builds come together
 
-**G1, the levelling core.** Each archetype reaches a legitimate, complete build from levelling and the Arcanum alone. Exploration adds the second half: the arts, forms, secondary forms and strange passives. The archetypes are loose and defined by data, not classes.
+**G1, the levelling core.** Each archetype reaches a legitimate, complete build from levelling and the Arcanum alone. Its weapon is whatever suits the style: the start pick, or any drop, since weapons are never gated. **The power is in the passives, skills and spells**, so the table lists only those. Exploration adds the second half: the arts, forms, secondary forms and strange passives. The archetypes are loose and defined by data, not classes.
 
-| Archetype | Start choice | By levelling and the Arcanum alone (v1) | What exploration adds on top |
+| Archetype | Typical weapons (start pick or any drop) | Power by levelling and the Arcanum alone (v1) | What exploration adds on top |
 |---|---|---|---|
-| Brawler (Might) | Iron Fists or Verge Cleaver; Hammerfall or Great Sweep | Ember Form, Force Channel, Ember Skin, Colossus, Resonant Force, Aegis; Shadow Boxing at Infinite III; the armoury | Ki Blast, Lava Slash, Corridor Golem, Mirage of Blades, Kindling |
-| Blade (Finesse) | Fourfold Daggers or Cinder Pike; Needle Caster | Quickening, Aerial Step, Rift Step, Light Feet, Slipstream, Fold, Long Step | Blade Stream, Cinder Javelin, Tempo, Shatterpoint, Afterimage |
+| Brawler (Might) | Iron Fists or Verge Cleaver; Hammerfall or Great Sweep | Ember Form, Force Channel, Ember Skin, Colossus, Resonant Force, Aegis; Shadow Boxing and Imbue Weapon at Infinite III | Ki Blast, Lava Slash, Corridor Golem, Mirage of Blades, Kindling |
+| Blade (Finesse) | Fourfold Daggers or Cinder Pike; Needle Caster | Quickening, Aerial Step, Rift Step, Light Feet, Slipstream, Fold, Long Step, Aegis; Shadow Boxing at Infinite III | Blade Stream, Cinder Javelin, Tempo, Shatterpoint, Afterimage |
 | Spellblade (Focus melee) | Salvage Blade; Spark Coil or Lumen Spindle | Cinder Dart, Ember Form, Ember Skin, Overflow; Imbue Weapon at Infinite III; Spellblade (free in the Lattice) | Transpose, Arcane Edge, Spell Runes |
 | Caster | Quandrix Staff; Spark Coil or Lumen Spindle | Cinder Dart (2.5 s), Ember Ring (level 3), Fire Burst (6), Grave Sun (10), Overflow, Amplifier; Orbit Volley at Infinite III | Mage's Hand, Echoing Cast, Glyph Mine, Wellspring Ground, Gravity Well, Essence Walk |
-| Gunner (tools) | Any primary; Spark Coil, Needle Caster or Rift Bombard | +6 turns them into the Carbine or Blunderbuss; Force Channel; Charged Air (free in the Lattice) | Rapid Reload, Continuous Assault, Arc Wave, Cluster Shell, Sunburst Ricochet, the Orrery |
+| Gunner (tools) | Any primary; Spark Coil, Needle Caster, Rift Bombard or the Aether Orrery (+6 makes the Carbine or Blunderbuss) | Force Channel, Overflow, Amplifier, Quickening, Aegis; Charged Air (free in the Lattice) | Rapid Reload, Continuous Assault, Arc Wave, Cluster Shell, Sunburst Ricochet |
 | Warden (guard) | Any | **Aegis from the start**, Veil Guard, Thorned Veil, Sanctuary, Mirror Veil; Stillpoint at Infinite III; Sanctum (free in the Lattice) | Power Aegis, Long Veil, Stillwater |
 | Beastcaller (Echo and companion) | Any | Echoes (first kills), Force Channel and Amplifier, beast mounts (pens) | The hatchling (Infinite II), Harvest, more Echoes |
 
@@ -353,6 +355,8 @@ Power gates still apply: a quest needing tier 13 opens at tier 13. Its place is 
 - it is saved and never moves;
 - it relaxes to "any section that far out, in that sector" if the search budget runs out;
 - it uses only crossings not yet entered.
+
+**The table was re-checked with no gated weapons (Tim, 2026-11-20).** Every "power" cell is passives, skills and spells from route (a), none of which depends on owning a particular weapon. Gunner is the one archetype whose power partly rides on gear: the +6 transformations need a Spark Coil or Needle Caster, and either can be the start pick. A Gunner who starts with something else still has Force Channel, Overflow and Charged Air working on any tool.
 
 **G5, the power match.** Nothing in R3 or beyond is ever needed for a G1 core.
 
@@ -372,7 +376,7 @@ Power gates still apply: a quest needing tier 13 opens at tier 13. Its place is 
 
 Calibrated on Tim's real journey: about **1,300 sections uncovered in 40+ hours** (about 32 new sections an hour), heading past 1,000 sections out.
 
-**The world pool under v1:** 45 abilities that are earned out in the world.
+**The world pool under v1:** 44 abilities that are earned out in the world.
 
 | Group | Count |
 |---|---|
@@ -381,29 +385,29 @@ Calibrated on Tim's real journey: about **1,300 sections uncovered in 40+ hours*
 | Secondary forms | 11 |
 | Lattice passives | 5 |
 | Arts and forms | 13 |
-| The Orrery, the hatchling, the two Arcana passives | 4 |
+| The hatchling, the two Arcana passives | 3 |
 | Viscera forms | 4 |
 
 Echoes (37) are counted apart, since they come from first kills.
 
 **Expected cadence** for a player exploring at about Tim's pace. These are targets for the simulation (G6) and Tim's playtests, not promises.
 
-| Played | New sections | Core kit (route a) | World abilities found (of 45) | Echoes (of 37) |
+| Played | New sections | Core kit (route a) | World abilities found (of 44) | Echoes (of 37) |
 |---|---|---|---|---|
 | 1 h | ~30 | Start choice, Aegis, Cinder Dart, Ember Form or Quickening, Aerial Step | 0-1 | 1-2 |
-| 5 h | ~160 | + Rift Step, Veil Guard, Force Channel, modifiers, Ember Ring, Fire Burst, first armoury pick | 1-3 (a near thread, a first quest) | 4-6 |
+| 5 h | ~160 | + Rift Step, Veil Guard, Force Channel (Aperture 18), modifiers, Ember Ring, Fire Burst | 1-3 (a near thread, a first quest) | 4-6 |
 | 10 h | ~330 | + first capstones, Grave Sun | 3-5 | 6-9 |
 | 20 h | ~650 | + Infinite II: the hatchling's quest, awakening at Sela's | 7-10 | 10-14 |
 | 40 h | ~1,300 | + Infinite III: its spells, the Lattice with 3 free passives | **12-16** (about a third) | 15-20 |
 | 80 h | ~2,500 | Late capstones | 24-30 | 24-28 |
-| 150 h+ | 5,000+ | | 37-45: the far realms' 4, the last threads, Viscera forms | 33+ |
+| 150 h+ | 5,000+ | | 36-44: the far realms' 4, the last threads, Viscera forms | 33+ |
 
 **Expected by route at 40 hours** (about 14 in all):
 
 | Route | Expected | Of |
 |---|---|---|
 | b, quests | 5 | 10 |
-| c, milestones | 3 | 11 |
+| c, milestones | 3 | 10 |
 | d, threads | 3 | 12 |
 | R, reliquaries | 3: the first horde, Pentagon, seed realm or vault, and about 1 in 10 of some 15 other dungeon ends | 8 |
 | V | 0 | 4 |
@@ -454,7 +458,7 @@ Under Classic (v0), every row keeps its "Today" route from section 1. The quests
 | Ember Form | a | Aperture 6, at Sela's lens | D |
 | Quickening | a | Aperture 6 | D |
 | **Aerial Step** | a | **Aperture 6, for one point, with no prerequisite.** In v1 it is a discipline of its own rather than the Motion capstone; its capstone slot in Motion goes to **Long Quickening**, promoted. Walk on air from the first hour. | D |
-| **Rift Step** | a | **Aperture 12** (today 18): soon after Aerial Step. The two combine: step, then hold the air. | D |
+| Rift Step | a | Aperture 18, as today (Tim, 2026-11-20). With Aerial Step it combines: step, then hold the air. | D |
 | Veil Guard, Force Channel | a | Aperture 18 | D |
 
 Aperture 6 usually comes from the first signal sites and buried memories near the Refuge: the first hour.
@@ -567,15 +571,18 @@ The work of awakening (cap, Resonance, dust) stays as it is. Sela's line when th
 
 Items already awakened keep it, in both modes. Classic (v0) is unchanged.
 
-### 3.7 Weapons, tools, armour, charm
+### 3.7 Weapons, tools, armour, charm: never gated
+
+Tim (2026-11-20): every weapon is a play style the player can pick up, refine, and swap if they don't like it. All the power comes from the passives, the abilities and the player's skill. In both modes, then, no primary or tool is ever behind a quest, milestone, level or tier.
 
 | Ability | Route | Where / what | Seen |
 |---|---|---|---|
 | **One primary, one tool** | S | Chosen at the start (section 4.0) | D |
-| **Armoury picks** | a | Levels 4, 8, 12, 16, 20 and 24: Sela's armoury offers any primary or tool from the start list you do not own. This replaces the fixed level gifts (Cinder Pike at 4, Needle Caster at 8, Daggers at 12, Staff at 16) in v1. | D |
-| Blunderbuss; Carbine | a | +6 on the Needle Caster or Spark Coil, as today | D |
-| Verge Cleaver, Lumen Spindle, Rift Bombard and the rest, armour, charm | F | Loot, as today | X |
-| Aether Orrery | c + F | Sky. Reach three Sky Stair summits at night: the stars there have orbits you can borrow. Also loot, as today. | D |
+| Every primary and tool | F | Dropping from enemies and loot at random, as now. Today's level gifts (Cinder Pike at 4, Needle Caster at 8, Fourfold Daggers at 12, Quandrix Staff at 16; `game.ts:957`) stay as they are: a sure copy, not a gate. | X |
+| Iron Fists, Hammerfall, Great Sweep | F | **New in v1:** they join the loot pool from the start, each on its own seeded stream (as the Quandrix Staff's `loot.stream` does), so no other roll moves. Today they never drop and only arrive as the tier-13 gift (`game.ts:988`), which is a gate. The gift stays as a sure copy. | X |
+| Aether Orrery | F | Already loot (`items.ts:201` `ORRERY_LOOT`), plus the tier-13 gift (`game.ts:1004`). Unchanged; it leaves revision 2's milestone route. | X |
+| Blunderbuss; Carbine | Upgrade | +6 on the Needle Caster or Spark Coil, as today. A transformation, not a gate. | D |
+| Armour, charm | F | Loot, as today | X |
 
 ### 3.8 Echoes, glyphs, run perks
 
@@ -597,12 +604,12 @@ These stay as they are: **F**, a first kill, a drop or a Margin Warden.
 
 ### 3.10 Route totals (v1)
 
-The world pool is 45 abilities:
+The world pool is 44 abilities:
 
 | Route | Count |
 |---|---|
 | b, quests | 10 |
-| c, milestones | 11 |
+| c, milestones | 10 |
 | d, threads | 12 (with Bell Toll and Lamplighter's Light) |
 | R, the Reliquary | 8 |
 | V, Viscera | 4 |
@@ -614,7 +621,9 @@ The world pool is 45 abilities:
 - 8 spells, including Aegis and Cinder Dart;
 - 5 modifiers and 10 capstones;
 - 3 free Lattice passives;
-- the start choice, 6 armoury picks and the two +6 transformations.
+- the start choice.
+
+Weapons are outside the count: never gated, always loot.
 
 **Unchanged (F and forge):** Echoes, glyphs, marginalia, loot, mounts, awakened moves.
 
@@ -630,17 +639,27 @@ The world pool is 45 abilities:
 
 *Today:*
 - The very first journey on a device starts from `freshSave()`, whose seed is always `CINDER-VERGE-47` (`types.ts:37`, used by `persistence.ts:285`). Only a journey made in the creator gets a fresh `CORRIDOR-<time>` seed.
-- Around the Refuge, these are fixed for every seed:
-  - the hamlets **Glasshaven at (4,-2) and Coilmarket at (-5,3)** (`world.ts:142`);
-  - the **Arcana homes' compass sectors** (the Bells always south-west, the Surveyor's line always north-east, and so on; `lore.ts:165-190`).
+- Several things are set in one fixed direction for every seed. Each takes the turn below:
+
+| Fixed direction today | Where in code | After the turn |
+|---|---|---|
+| The hamlets **Glasshaven (4,-2)** and **Coilmarket (-5,3)** | `world.ts:142` `SETTLEMENTS` | Same distance, turned bearing |
+| The **Arcana homes**' compass sectors (the Bells south-west, the Surveyor north-east, the Lamplighter south, and the rest) | `lore.ts:165-190` `ARCANA_REGIONS` | Every sector turned together. Their journal words ("south-west of the Refuge") read from the turned sector. |
+| The **Readings' compass quarters** (each book's voice in the north, south, east or west quarter of the middle and far bands), and with them each Reading's **Torn Page** and fragments | `lore.ts:37` `readingAt` | The quarters turned: a book's country lies in a different direction on every journey |
+| **The Far Sleep's edge**: a diamond, \|rx\|+\|ry\| > 35, with its far corners on the four compass axes | `landscape.ts:2307` `farSleepSection` | The diamond turns with the frame. Under a 45° turn its corners point at the diagonals. Its distances are unchanged: nearest about 25 sections straight-line, farthest 35. |
+| **The Surveyor's statue line**: on the Far Sleep's edge, along the last link's bearing; with no link bearing, a seeded diagonal | `surveyor.ts:91` `surveyorStatueSection` | Follows the turned chain home and the turned edge. The fallback diagonal is turned too. |
+| **The Viewport's first hunt**, "The Ashen Meridian", always at (5,-2), "five sections east and two north" | `foundry.ts:13` | Turned target; the summary's directions read from it |
+
+Already seeded and **not** fixed, so left alone: the Viewport's other hunts (seeded signs), the hatchling's rescue site, the Second Wayfarer's trail, the Refuge's farm and quarry (`refuge-lands.ts`), section exits, landscape regions, and the far realms (straight-line cells).
 
 *Proposed:*
 - The first journey gets a random seed too.
-- Journeys created from now on record a **start version 1**. One seeded turn (a multiple of 45°, sometimes mirrored) is applied to everything directional around the start: the two hamlets' offsets (same distance, new bearing) and every Arcana home's sector. The bells and the chain stay opposite each other, the near threads stay near, and only the compass turns.
-- Text that names a direction reads it from the turned home, as `arcanaHint` already builds its words from data.
-- Under the bible's rule ("a changed home is a new region version") this is **region version 2**, given only to journeys created at start version 1. Existing journeys keep their fixed homes and hamlets.
-- The Refuge stays at (0,0) and stays the starting town. The Cairn Keeper still stands at its cairn. Nothing else is a fixed starter block: the rest of the map is made by how you explore.
-- The Proving Ground keeps its fixed laboratory seed.
+- Journeys created from now on record a **start version 1**, and with it **one frame turn per journey**: a seeded multiple of 45°, sometimes mirrored (16 frames in all).
+  - Every directional lookup in the table above turns the section's coordinates into the journey's frame first, then asks the same question it asks today. One rule, so the stories keep their relationships to each other: the bells and the chain stay opposite, the Readings keep their bands, the statue stays on the Far Sleep's edge along the chain.
+  - Text that names a direction reads it from the turned data, as `arcanaHint` already builds its words.
+- **Versioning.** The bible's rule ("a changed home is a new region version") makes this **region version 2**, and the Far Sleep's turned edge a new landscape and lore pin. Both are given only to journeys created at start version 1, whose whole world is new ground, so nothing explored ever changes. Existing journeys keep every fixed direction exactly as it is.
+- **What stays.** The Refuge stays at (0,0) and stays the starting town. The Cairn Keeper still stands at its cairn. Nothing else is a fixed starter block: the rest of the map is made by how you explore.
+- The Proving Ground keeps its fixed laboratory seed and no turn.
 
 **The starting choice (both modes, new journeys).** After the name and seed, the journey creator shows two rows of cards, **Choose your weapon** and **Choose your tool**. Each card gives the name, what it scales with, its play style in one line, and a small "good with".
 
@@ -649,7 +668,7 @@ The world pool is 45 abilities:
 | Salvage Blade | Focus | A short blade that grows with your magic. For spellblades. |
 | Cinder Pike | Finesse | A long thrust. Keep them at the end of your reach. |
 | Verge Cleaver | Might | A wide, heavy arc. Crowds. |
-| Iron Fists | Might | A combo on a beat, charged punches, a perfect-timing ball. Brawlers. |
+| Iron Fists | Might | A combo on a beat, charged punches, a perfect-timing ball. Brawlers. (Today only a tier-13 gift; on the cards from now.) |
 | Fourfold Daggers | Finesse | Paired cuts crossing in an X. Bosses, not crowds. |
 | Quandrix Staff | Focus | Slow spectral hands that strike again and again, at range. Casters. |
 
@@ -664,7 +683,7 @@ The world pool is 45 abilities:
 
 Scaling is from `items.ts` `WEAPON_SCALING` and `TOOL_SCALING`. The cards read it, so they follow any change.
 
-A default pair is preselected (Salvage Blade and Spark Coil, today's kit), so "Start" works at once. The choice is the item's identity only; the stats are the starting tier. Under Classic (v0) the choice is offered too (it only adds), and the rest of the start is as today.
+Hammerfall and Great Sweep, today tier-13 gifts, are on the tool cards from now too. The Aether Orrery is not offered at the start: it stays a find. A default pair is preselected (Salvage Blade and Spark Coil, today's kit), so "Start" works at once. Any card can be swapped later for any drop. The choice is the item's identity only; the stats are the starting tier. Under Classic (v0) the choice is offered too (it only adds), and the rest of the start is as today.
 
 ### 4.1 The first hour (Exploration)
 
@@ -684,7 +703,7 @@ A default pair is preselected (Salvage Blade and Spark Coil, today's kit), so "S
    - a guaranteed near thread piece, with "something waits at the end";
    - the chance (1 in 10) of a reliquary if it is a Deep floor.
 5. **Back in town, the first rumour** comes from a villager or Glasshaven/Coilmarket resident (wherever they now lie): the first hinted lead. That makes two leads (G2).
-6. **Level 3: Ember Ring. Level 4: the first armoury pick.** The level-up line shows "Level-ups ahead".
+6. **Level 3: Ember Ring; level 4: today's sure Cinder Pike.** The level-up line shows "Level-ups ahead". Drops keep bringing other weapons to try.
 
 ### 4.2 The words the game uses
 
@@ -845,7 +864,8 @@ A new page in the Reciter's Tome, **"What the Corridor Taught You"**. Each group
 
 **Also on the page:**
 
-- **Level-ups ahead**: spells and armoury picks by level; disciplines by Aperture.
+- **Level-ups ahead**: spells by level; disciplines by Aperture.
+- **Pace** (Tim, 2026-11-20; see section 7): the journey's own numbers, for every player.
 - **Kits**: a row per archetype, showing core pieces owned and the world additions known.
 
 **Under Classic (v0)** the compendium works the same, with two differences:
@@ -912,8 +932,8 @@ Smallest shippable first. Each phase is one release or a few, previewed for Tim,
 | Phase | What ships | Gameplay change | Main risks | Tests |
 |---|---|---|---|---|
 | **1. The spine** | `src/progression.ts`: every ability's row (mode-0 route, mode-1 route, tier, pool, visibility, hint, how-to), pure. The compendium page showing today's routes. | None: read-only | The table drifting from the code | Coverage: every id in `SPELLS`, `APERTURE_SKILLS`, `BRANCHES`, `ALT_PASSIVES`, `FIELD_PASSIVES`, `TOOL_FORMS`, `ECHOES`, `GLYPHS`, `MARGINALIA`, `MOUNT_IDS` and `MILESTONE_GEAR` has a row |
-| **2. Modes, random starts, start choice** | `save.progression`; the Options toggle (v0/v1) with switch rules; the creator's mode, weapon and tool cards; random seed for the first journey; start version 1 (the turned hamlets and Arcana homes, region version 2) | New journeys only; existing ones are v0 and unchanged | A hamlet turned onto water or a blocked section (fall back to the next bearing); text naming the old directions | Migration (no record → v0; unknown fields kept); a switch keeps everything (`kept`); v1 → v0 unlocks by today's gates; the turn is deterministic per seed; existing seeds' hamlets and homes are unchanged; fixtures from real old saves |
-| **3. The core kit (v1)** | Aegis at the start; Aerial Step at Aperture 6 and Long Quickening as the Motion capstone; Rift Step at 12; spells by level (3, 6, 10); armoury picks; 3 free Lattice passives; awakening and the hatchling at Infinite II | v1 only | Aerial Step's save id (`aerial-step` kept for the slot); an old v1 test fixture | Each archetype's G1 core is reachable by levelling alone (scripted); v0 gates are byte-for-byte as today; exact resume |
+| **2. Modes, random starts, start choice** | `save.progression`; the Options toggle (v0/v1) with switch rules; the creator's mode, weapon and tool cards; random seed for the first journey; start version 1 (the frame turn for every fixed direction in 4.0: hamlets, Arcana homes, Reading quarters, the Far Sleep's edge, the statue line, the first Viewport hunt; region version 2) | New journeys only; existing ones are v0 and unchanged | A hamlet turned onto water or a blocked section (fall back to the next bearing); text naming the old directions; the Far Sleep's turned edge in the dream pass (`landscape.ts`) | Migration (no record → v0; unknown fields kept); a switch keeps everything (`kept`); v1 → v0 unlocks by today's gates; the turn is deterministic per seed; every fixed direction turns together (the bells opposite the chain; the statue on the edge); existing seeds' hamlets, homes, quarters and edge are unchanged; fixtures from real old saves |
+| **3. The core kit (v1)** | Aegis at the start; Aerial Step at Aperture 6 and Long Quickening as the Motion capstone; spells by level (3, 6, 10); 3 free Lattice passives; the Iron Fists, Hammerfall and Great Sweep on their own loot streams; awakening and the hatchling at Infinite II | v1 only | Aerial Step's save id (`aerial-step` kept for the slot); an old v1 test fixture | Each archetype's G1 core is reachable by levelling alone (scripted); the new loot streams leave every other roll unchanged; v0 gates are byte-for-byte as today; exact resume |
 | **4. Leads, hints, how-to** | Journal "Leads"; rumours from existing speakers; the lead floor; first-journey lines for Vela, Oren, Sela, Hollis and Maud; Maud's errand pointing at the nearest crossing; first-use hints with their budget; how-to pages; Options → Hints | Text and guidance | Hint spam; a rumour line replacing a needed line | `save.hints.seen` migration; hints suppressed in fights; queue cap and gap; lead floor over a simulated walk |
 | **5. Training yard** | "Try it" from a how-to page into a Proving Ground preset (owned abilities only); later the town sparring post | None to production | The page switch feeling heavy | The existing isolation tests; the preset lends only owned abilities; Exit resumes exactly |
 | **6. Milestones, Reliquary, pity** | Counters and thresholds; the reliquary object and its pool; the first-horde, Pentagon, seed-realm and vault certainties; horde rumours from Infinite II; the 200-section strong lead | v1 gating begins for c and R | Counter cost (integers only); a reliquary in a pinned crossing (laid over, never generated) | Pool determinism; certain finds fire once; chance rolls are seeded; pity gives a lead, never an ability; a v0 journey gets consolations |
@@ -922,9 +942,11 @@ Smallest shippable first. Each phase is one release or a few, previewed for Tim,
 
 **Watching difficulty.** No numbers change in this plan; creature health and damage stay as they are.
 
-- *Why it matters:* Tim has already lowered player damage by about 10-20%. Under v1 the start is stronger than today (a chosen weapon, Aegis, Aerial Step, an armoury). From Infinite III on, though, a v1 character holds fewer Lattice picks, forms and arts than a v0 one, so it is **weaker for longer in the mid and late game**.
+- *Why it matters:* Tim has already lowered player damage by about 10-20%. Under v1 the start is stronger than today (a chosen weapon, Aegis, Aerial Step, the brawler gear dropping from the start). From Infinite III on, though, a v1 character holds fewer Lattice picks, forms and arts than a v0 one, so it is **weaker for longer in the mid and late game**.
 - *How to watch it,* with nothing sent anywhere:
-  1. **Options → System, "Pace"**: hours played, new sections, abilities earned by route, Echoes, and deaths per hour, read from the save.
+  1. **The Pace line, in the Journal, for every player** (Tim, 2026-11-20). It shows hours played, new sections, abilities earned by route, Echoes, and deaths per hour, read from the save.
+     - The Journal over Options, because it is about the journey, not a setting, and players already go there to see how a journey is going.
+     - It sits at the top of the compendium page and does nothing else.
   2. **A Proving Ground "v1 view"** of a real journey: a copy of Tim's save, read under v1 rules, lists what he would and would not hold at his hours and sections, against the cadence table (2.7).
   3. **Checkpoints** in Tim's own v1 playtest at 2, 10, 20 and 40 hours. Things to note: time to fell the first world beast, the first Listener attempt, and deaths per hour against his v0 numbers.
 - *Levers, all data:* the free Lattice passives, the Reliquary chance, milestone thresholds, the pity interval, and moving one more piece into an archetype's core.
@@ -933,12 +955,14 @@ Smallest shippable first. Each phase is one release or a few, previewed for Tim,
 
 ## 8. Open questions for Tim
 
-Tim took every recommendation of revision 1. These are the few decisions revision 2 raised:
+None. Tim answered revision 2's four questions on 2026-11-20:
 
-1. **Rift Step at Aperture 12** (today 18), to land "soon after" Aerial Step at 6. Or keep 18?
-2. **The armoury** replaces the fixed level gifts in v1 (a free pick at 4, 8, 12, 16, 20 and 24). Is that the right cadence? Should the Iron Fists, Hammerfall and Great Sweep be on the start cards from level 1, as proposed?
-3. **The start turn** rotates the hamlets and every Arcana home together. Should it also turn the Far Sleep's edge and the Surveyor's statue line (bigger, later-game landmarks), or leave those fixed?
-4. **The Pace line** in Options → System: visible to every player, or only while Proving Ground access is on?
+- Rift Step stays at Aperture 18.
+- Weapons are never gated, and there are no armoury picks.
+- Every fixed direction turns per seed.
+- The Pace line is shown to every player, in the Journal.
+
+The next decision is approval to start Phase 1.
 
 ---
 
@@ -946,7 +970,7 @@ Tim took every recommendation of revision 1. These are the few decisions revisio
 
 - **Modes**: Classic (v0) and Exploration (v1), chosen per journey and switchable in Options, with defaults and switch rules (section 6).
 - **The start**: a weapon and tool choice screen; Aegis from the start; random seeds for every new journey; the hamlets and Arcana homes turned per seed (4.0).
-- **The core kit by levelling alone**: Aerial Step at Aperture 6; Rift Step at 12; Cinder Dart as the short-cooldown starter; spells by level; armoury picks; capstones by points; 3 free Lattice passives; a G1 table per archetype (2.5, 3).
+- **The core kit by levelling alone** (Rift Step and the armoury picks were withdrawn in revision 3): Aerial Step at Aperture 6; Rift Step at 12; Cinder Dart as the short-cooldown starter; spells by level; armoury picks; capstones by points; 3 free Lattice passives; a G1 table per archetype (2.5, 3).
 - **Secondary forms** are now mostly found in the world (11), with 4 for Viscera.
 - **Awakening at Infinite II**, with the analysis (3.6). **The hatchling at Infinite II.**
 - **Pity is now a lead, never an ability**, after 200 sections. A cadence table calibrated on Tim's 40 hours and 1,300 sections (2.7).
@@ -955,3 +979,16 @@ Tim took every recommendation of revision 1. These are the few decisions revisio
 - **Onboarding**: the Refuge's people point to Maud; Maud's errand is plain and points the compass (4.1).
 - **Watching difficulty** without changing numbers (section 7). Build phases reordered: modes, starts and the core kit come early.
 - **Open questions** cut to the four that remain.
+
+## What changed in revision 3 (2026-11-20)
+
+- **Rift Step** stays at Aperture 18, as today; the Aerial Step plan is unchanged (0, 3.1, 7).
+- **Weapons are never gated** in either mode (3.7):
+  - the armoury cadence is removed everywhere;
+  - today's level gifts stay as a sure copy;
+  - the Iron Fists, Hammerfall and Great Sweep join the loot pool on their own seeded streams;
+  - the Orrery, already loot, leaves the world pool, which is now 44.
+- **The archetype table** is re-checked so its power column is only passives, skills and spells (2.5).
+- **Random turns for every fixed direction**, listed with their code (4.0): the hamlets, the Arcana homes, the Readings' quarters (and their Torn Pages), the Far Sleep's edge, the Surveyor's statue line, and the Viewport's first hunt. One 45° frame turn per journey, for new journeys only.
+- **The Pace line** is in the Journal, for every player (5, 7).
+- **Section 8** is empty.
