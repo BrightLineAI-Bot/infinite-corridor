@@ -47,13 +47,13 @@ export const TRI_ART = Object.freeze({
 // half widths at the joint, mid upper bone, knee or elbow, mid lower bone and ankle; foot: h (height), toe (ahead of the ankle), heel
 // (behind it), nail (radius); nails: how many show.
 export const TRI_LEGS = Object.freeze({
-  cycle: .448, duty: .62, lift: .09, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12,
+  cycle: .42, duty: .62, lift: .1, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12,
   phase: Object.freeze({ nearHind: 0, nearFore: .25, farHind: .5, farFore: .75 }),
   far: Object.freeze({ jointHind: .05, jointFore: .045, jointUp: .03, footHind: .06, footFore: .05, up: .03 }),
   hind: Object.freeze({ upper: .27, lower: .25, x: .03, top: .06, nails: 3,
-    w: Object.freeze([[.17, .15], [.16, .13], [.1, .095], [.085, .08], [.076, .07]].map(Object.freeze)), foot: Object.freeze({ h: .065, toe: .135, heel: .08, nail: .022 }) }),
+    w: Object.freeze([[.17, .15], [.16, .13], [.1, .095], [.085, .078], [.07, .066]].map(Object.freeze)), foot: Object.freeze({ h: .078, toe: .14, heel: .09, nail: .03 }) }),
   fore: Object.freeze({ upper: .24, lower: .22, x: .02, top: .05, nails: 3,
-    w: Object.freeze([[.12, .12], [.11, .115], [.08, .095], [.072, .066], [.064, .058]].map(Object.freeze)), foot: Object.freeze({ h: .058, toe: .115, heel: .07, nail: .02 }) }),
+    w: Object.freeze([[.12, .12], [.11, .115], [.078, .1], [.07, .064], [.06, .056]].map(Object.freeze)), foot: Object.freeze({ h: .068, toe: .12, heel: .075, nail: .026 }) }),
 });
 // The face's outline in head units before the squat muzzle (drawHead's H; Tim, 2026-11-19: "the tip of the beak is kind of hanging
 // off; it's not connected"): the skull, the upper beak (a path: [x, y] a point, [cx, cy, x, y] a curve) whose hook curls down at the
@@ -244,7 +244,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
     // the foot in its own frame at the ankle (x forward, y up), turned by its tilt
     const ft = S.foot, fh = ft.h * legK, toe = ft.toe * legK, heel = ft.heel * legK, cf = Math.cos(fa), sf = Math.sin(fa);
     const FT = LF, put = (j, lx, ly) => { FT[j * 2] = ax + lx * cf - ly * sf; FT[j * 2 + 1] = ay + lx * sf + ly * cf; };
-    put(0, toe * .55, -fh * .12); put(1, toe, -fh * .45); put(2, toe * 1.02, -fh); put(3, toe * .8, -fh); put(4, -heel * .8, -fh); put(5, -heel * 1.05, -fh); put(6, -heel, -fh * .45);
+    put(0, toe * .7, -fh * .02); put(1, toe, -fh * .5); put(2, toe * 1.04, -fh); put(3, toe * .8, -fh); put(4, -heel * .75, -fh); put(5, -heel * 1.08, -fh); put(6, -heel, -fh * .4);
     const path = (close) => { ctx.beginPath(); if (close) mv(LO[0], LO[1]); else mv(LO[4], LO[5]); // the outline starts below the haunch
       for (let j = 1; j < 4; j++) qc(LO[j * 4], LO[j * 4 + 1], (LO[j * 4] + LO[j * 4 + 4]) / 2, (LO[j * 4 + 1] + LO[j * 4 + 5]) / 2);
       ln(LO[16], LO[17]); qc(FT[0], FT[1], FT[2], FT[3]); qc(FT[4], FT[5], FT[6], FT[7]); ln(FT[8], FT[9]); qc(FT[10], FT[11], FT[12], FT[13]); qc((FT[12] + LO[18]) / 2 - u2x * fh * .1, (FT[13] + LO[19]) / 2 - u2y * fh * .1, LO[18], LO[19]);
@@ -266,7 +266,13 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
     path(false); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
     // blunt pale toenails along the foot's front
     ctx.fillStyle = near ? A.toe : A.hornBase; const r = ft.nail * legK;
-    for (let c = 0; c < S.nails; c++) { const lx = toe * (.98 - c * .3), ly = -fh + r * .9, nx = ax + lx * cf - ly * sf, ny = ay + lx * sf + ly * cf; ctx.beginPath(); ctx.ellipse(nx, -ny, r, r * .95, -fa, Math.PI, TAU); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle = A.outline; ctx.lineWidth = lw * .6;
+    for (let c = 0; c < S.nails; c++) { const lx = toe * (.9 - c * .27), ly = -fh + r * .15, nx = ax + lx * cf - ly * sf, ny = ay + lx * sf + ly * cf; ctx.beginPath(); ctx.ellipse(nx, -ny, r * (1 - c * .1), r * (1.05 - c * .1), -fa, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    // the creases: a skin fold over the knee (or behind the elbow), two wrinkles round the ankle
+    if (near) { ctx.strokeStyle = A.shade; ctx.lineWidth = lw * .8; ctx.globalAlpha = .7; ctx.beginPath();
+      const kw = W[2][hind ? 0 : 1] * wk * (hind ? 1 : -1), kcx = kx2 + nkx * kw * .55, kcy = ky2 + nky * kw * .55; mv(kcx - u1x * kw * .5, kcy - u1y * kw * .5); qc(kcx - nkx * kw * .25, kcy - nky * kw * .25, kcx + u2x * kw * .5, kcy + u2y * kw * .5);
+      for (let c = 0; c < 2; c++) { const f = .55 + c * .22, px = kx2 + (ax - kx2) * (.72 + c * .12), py = ky2 + (ay - ky2) * (.72 + c * .12), wf = W[4][0] * wk * f, wb = W[4][1] * wk * f; mv(px - u2y * wf, py + u2x * wf); qc(px - u2x * .015, py - u2y * .015, px + u2y * wb * .6, py - u2x * wb * .6); }
+      ctx.stroke(); ctx.globalAlpha = 1; }
   };
   drawLeg(true, false); drawLeg(false, false);
 
