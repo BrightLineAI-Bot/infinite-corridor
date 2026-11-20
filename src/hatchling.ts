@@ -67,14 +67,22 @@ export const HATCHLING = f({
     // first weights (beam 1.6, gatling .28, charge .8, whirl .6, stomp .5, bite .7) x .0838 (release 1042's .26 against a dummy
     // measured about .29 of her damage in those fights). His hits carry their fractions (game.ts hatchHit), so they never round up.
     dpsShare: .1,
+    // Tim, 2026-11-20: stronger against one tough foe than against a crowd ("single-target boss damage"). `elite` / `boss`: his hits on
+    // a move aimed at an elite (affixes) / a boss or world beast deal this many times their share (an elite pins him in melee, so it
+    // needs more than a world beast he can also shoot at); `spread`: a hit that catches several foes divides its damage by (foes
+    // caught) to this power (game.ts hatchHit; a beam counts its whole line), so an area move adds up to about one target's worth;
+    // `prefer`: he picks an elite, boss or world beast in reach over a nearer common foe. The shares below moved weight from the
+    // area moves to the bite and the charge (release 1048's beam x.7, gatling x.6, charge x3, whirl x.6, stomp x.8, bite x1.5).
+    // Measured (tests/hatchling-young-damage.test.ts, 6 seeds): early pack .087, mid pack .081, single elite .139, world beast .143.
+    focus: f({ elite: 2, boss: 1.5, spread: 1, prefer: true }),
     // Moves, in his order of preference. range: [min, max] tiles to the foe; cd: seconds; share: of the Wayfarer's melee power per hit.
     moves: f({
-      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: .1341, length: 7, step: .7, radius: .55 }),
-      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .0235, radius: .45 }),
-      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .067, radius: .9, stun: .3 }),
-      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .0503, radius: 1.7 }),
-      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .0419, radius: .8 }),
-      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .0587, radius: .6 }),
+      beam: f({ range: f([2.5, 7]), cd: 9, charge: .9, share: .0939, length: 7, step: .7, radius: .55 }),
+      gatling: f({ range: f([2, 6]), cd: 6, shots: 6, gap: .12, share: .0141, radius: .45 }),
+      charge: f({ range: f([2.2, 5]), cd: 7, speed: 7, time: .55, share: .201, radius: .9, stun: .3 }),
+      whirl: f({ range: f([0, 1.8]), cd: 5, pulses: 2, gap: .25, share: .0302, radius: 1.7 }),
+      stomp: f({ range: f([0, 1.4]), cd: 3.2, hits: 2, gap: .22, share: .0335, radius: .8 }),
+      bite: f({ range: f([0, 1.3]), cd: 1.8, share: .0881, radius: .6 }),
     }),
   }),
   // Bounds: live companion effects (they share the Wayfarer's effects list) and drawn-only visuals.
@@ -204,6 +212,10 @@ export function rescueGuidance(h) {
 }
 
 // ---------------------------------------------------------------- the young form's choice of move
+// A foe he focuses on (HATCHLING.young.focus): an elite (its affixes), a boss or a world beast.
+export const hatchTough = (e) => !!e && !!(e.boss || e.eliteId || e.worldBeast || e.affixes?.length);
+// His damage multiplier on a move aimed at `e`: HATCHLING.young.focus.boss on a boss or world beast, .elite on an elite, else 1.
+export const hatchFocus = (e) => !e ? 1 : e.boss || e.worldBeast ? HATCHLING.young.focus.boss : e.eliteId || e.affixes?.length ? HATCHLING.young.focus.elite : 1;
 // The move he makes at `d` tiles from his foe: the first in his order whose range holds and whose cooldown is spent; ties of the
 // near moves (bite, stomp, whirl) are broken by a hash of his sequence so the fight does not read as a loop. Null: walk closer.
 export function pickMove(out, d, seed = "") {

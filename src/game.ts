@@ -177,7 +177,7 @@ import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensur
 import { questingBeastFor, questingBeastHoldNote, questingBeastWindow, questingBeastLeaves, questingBeastLost, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.ts";
 import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.ts";
 import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.ts";
-import { HATCHLING, hatchlingBonus, feedHatchling, tickBuffs, clearBuffs, grantBuff, nextBuffKind, chooseRescueSite, guardKind, guardId, pickMove, moveTime, formUnlocked } from "./hatchling.ts"; // the Triceratops hatchling
+import { HATCHLING, hatchlingBonus, feedHatchling, tickBuffs, clearBuffs, grantBuff, nextBuffKind, chooseRescueSite, guardKind, guardId, pickMove, moveTime, formUnlocked, hatchTough, hatchFocus } from "./hatchling.ts"; // the Triceratops hatchling
 const HATCH_SPOTS = Object.freeze([[-1, 0], [-1, .6], [-1, -.6], [0, 1], [0, -1], [1, 0], [-1.6, 0], [0, 1.6]]); // where the hatchling comes out beside the Wayfarer (tiles; mirrored to her facing)
 import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.ts";
 import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.ts";
@@ -8201,7 +8201,7 @@ export class Game {
   }
   // His foe: alive, hostile and targetable (never a townsperson, a grazer or a passing beast).
   hatchFoeOk(e) { return !!e && !e.dead && e.hp > 0 && !e.untargetable && !e.hidden && !unharmablePerson(e) && !e.ambient && !e.passiveBehavior && !e.astralAllyOf && !e.friendly && !e.retreating && !e.passingBeast && !e.fleeTo && !(e.skirmishId && !e.skirmishProvoked); }
-  hatchFoe(x, y, range) { let best = null, d0 = range; for (const e of this.enemies) { if (!this.hatchFoeOk(e)) continue; const d = Math.hypot(e.x + .5 - x, e.y + .45 - y); if (d <= d0) { d0 = d; best = e; } } return best; }
+  hatchFoe(x, y, range, tough = false) { let best = null, d0 = range; for (const e of this.enemies) { if (!this.hatchFoeOk(e) || tough && !hatchTough(e)) continue; const d = Math.hypot(e.x + .5 - x, e.y + .45 - y); if (d <= d0) { d0 = d; best = e; } } return best; }
   hatchVisual(v) { const list = (this.hatchVisuals ||= []); if (list.length >= HATCHLING.maxVisuals) list.shift(); v.total = v.life; list.push(v); }
   // His blows share the Wayfarer's effects list (updateEffects: kills, experience and the damage scale as hers); at most
   // HATCHLING.maxEffects of his shots are live at once. `hits` is shared by a shot's circles, so one beam strikes each foe once.
@@ -8211,10 +8211,14 @@ export class Game {
     const id = opt.shot || `hatch-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, h = this.save.mounts.hatchling, o = h?.form === "young" ? h.out : null;
     // the young's hits carry their fractions on (out.carry), so his small shares land as their true share however low her power is
     // (a hit never rounds up to a whole point); the baby's nip keeps its floor of one
+    // the young's hit is split among the foes it catches (HATCHLING.young.focus.spread; a beam counts its whole line, opt.caught)
+    if (o) { const n = opt.caught ?? this.hatchCaught([{ x, y }], radius); if (n > 1) share /= n ** HATCHLING.young.focus.spread; }
     let damage; if (o) { const v = this.meleePower() * share + (Number(o.carry) || 0); damage = Math.floor(v); o.carry = v - damage; } else damage = Math.max(1, Math.round(this.meleePower() * share));
     this.effects.push({ id: `${id}:${x.toFixed(2)},${y.toFixed(2)}`, kind: "hatch-hit", hatch: true, hatchShot: id, x, y, life: .12, radius, pulse: 99, untilPulse: 0, damage, pulseIndex: 0, hits: opt.hits || {}, ...(opt.stun ? { stun: opt.stun } : {}) });
     return id;
   }
+  // The foes his circles at `pts` (each of `radius`) catch, each counted once (updateEffects' reach: a foe's body widens it).
+  hatchCaught(pts, radius) { let n = 0; for (const e of this.enemies) { if (!this.hatchFoeOk(e)) continue; const pad = radius + Math.max(0, enemyBodyRadius(e) - .38); for (const q of pts) if (Math.hypot(e.x + .5 - q.x, e.y + .45 - q.y) <= pad) { n++; break; } } return n; }
   hatchMove(o, dx, dy) { const M = this.map, W = mapWidth(M, this.area); const moved = moveAxis(o, dx, dy, M, W); if (Math.abs(dx) > .001) o.face = dx < 0 ? -1 : 1; return moved; }
   hatchWalkTo(o, tx, ty, speed, dt, stop = .2) {
     const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy); if (d <= stop) { o.moving = 0; return true; }
@@ -8258,7 +8262,9 @@ export class Game {
     const Y = HATCHLING.young, p = this.player, cx = () => o.x + .5, cy = () => o.y + .45;
     if (o.act) { this.runHatchAct(o, dt); return; }
     let foe = o.target ? this.enemies.find((e) => e.id === o.target) : null;
-    if (!this.hatchFoeOk(foe) || Math.hypot(foe.x - p.x, foe.y - p.y) > Y.aggro * 1.5) foe = this.hatchFoe(p.x + .5, p.y + .45, Y.aggro);
+    if (!this.hatchFoeOk(foe) || Math.hypot(foe.x - p.x, foe.y - p.y) > Y.aggro * 1.5) foe = null;
+    if (Y.focus.prefer && !hatchTough(foe)) foe = this.hatchFoe(p.x + .5, p.y + .45, Y.aggro, true) || foe; // the toughest foe in reach first
+    if (!foe) foe = this.hatchFoe(p.x + .5, p.y + .45, Y.aggro);
     o.target = foe?.id || null;
     if (!foe) { this.hatchFollow(o, F, dt, now, Y.orbit); return; }
     const fx = foe.x + .5, fy = foe.y + .45, d = Math.hypot(fx - cx(), fy - cy()), kind = pickMove(o, d, this.save.seed);
@@ -8271,16 +8277,18 @@ export class Game {
   runHatchAct(o, dt) {
     const a = o.act, M = HATCHLING.young.moves[a.kind], total = moveTime(a.kind), cx = o.x + .5, cy = o.y + .45; a.left -= dt; const t = total - a.left;
     const foe = this.enemies.find((e) => e.id === a.target), alive = this.hatchFoeOk(foe);
+    const share = M.share * (alive ? hatchFocus(foe) : 1); // focused on an elite, a boss or a world beast (HATCHLING.young.focus)
     if (a.kind === "beam" && a.n === 0 && t >= M.charge) { // three beams focused at the horn, then one blast along the aim, stopped by walls
-      a.n = 1; const W = mapWidth(this.map, this.area), shot = `hatch-beam-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, hits = {}; let ex = cx, ey = cy;
-      for (let s = M.step; s <= M.length; s += M.step) { const x = cx + a.x * s, y = cy + a.y * s; if (!projectileTileOpen(this.map, W, x, y)) break; this.hatchHit(x, y, M.radius, M.share, { shot, hits }); ex = x; ey = y; }
+      a.n = 1; const W = mapWidth(this.map, this.area), shot = `hatch-beam-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, hits = {}, pts = []; let ex = cx, ey = cy;
+      for (let s = M.step; s <= M.length; s += M.step) { const x = cx + a.x * s, y = cy + a.y * s; if (!projectileTileOpen(this.map, W, x, y)) break; pts.push({ x, y }); }
+      const caught = this.hatchCaught(pts, M.radius); for (const q of pts) { this.hatchHit(q.x, q.y, M.radius, share, { shot, hits, caught }); ex = q.x; ey = q.y; }
       this.hatchVisual({ kind: "beam", x: o.x + .5, y: o.y + .82, x2: ex, y2: ey, sc: HATCHLING.forms.young.scale, life: .3 });
-    } else if (a.kind === "gatling") { while (a.n < M.shots && t >= a.n * M.gap) { a.n++; const tx = alive ? foe.x + .5 : cx + a.x * 3, ty = alive ? foe.y + .45 : cy + a.y * 3; this.hatchHit(tx, ty, M.radius, M.share); this.hatchVisual({ kind: "bolt", n: a.n, x: o.x + .5, y: o.y + .82, x2: tx, y2: ty, sc: HATCHLING.forms.young.scale, life: .16 }); } }
+    } else if (a.kind === "gatling") { while (a.n < M.shots && t >= a.n * M.gap) { a.n++; const tx = alive ? foe.x + .5 : cx + a.x * 3, ty = alive ? foe.y + .45 : cy + a.y * 3; this.hatchHit(tx, ty, M.radius, share); this.hatchVisual({ kind: "bolt", n: a.n, x: o.x + .5, y: o.y + .82, x2: tx, y2: ty, sc: HATCHLING.forms.young.scale, life: .16 }); } }
     else if (a.kind === "charge") { if (a.left > 0) this.hatchMove(o, a.x * M.speed * dt, a.y * M.speed * dt); }
-    else if (a.kind === "whirl") { while (a.n < M.pulses && t >= a.n * M.gap) { a.n++; this.hatchHit(cx, cy, M.radius, M.share); this.hatchVisual({ kind: "whirl", x: cx, y: cy, r: M.radius, life: .3 }); } }
-    else if (a.kind === "stomp") { while (a.n < M.hits && t >= a.n * M.gap + .08) { a.n++; this.hatchHit(cx + a.x * .7, cy + a.y * .7, M.radius, M.share); this.hatchVisual({ kind: "stomp", x: cx + a.x * .7, y: cy + a.y * .7, r: M.radius, life: .3 }); } }
-    else if (a.kind === "bite" && a.n === 0 && t >= .15) { a.n = 1; this.hatchHit(alive ? foe.x + .5 : cx + a.x * .8, alive ? foe.y + .45 : cy + a.y * .8, M.radius, M.share); }
-    if (a.left <= 0) { if (a.kind === "charge") { this.hatchHit(o.x + .5 + a.x * .5, o.y + .45 + a.y * .5, M.radius, M.share, { stun: M.stun }); this.hatchVisual({ kind: "stomp", x: o.x + .5 + a.x * .5, y: o.y + .45 + a.y * .5, r: M.radius, life: .3 }); } o.act = null; }
+    else if (a.kind === "whirl") { while (a.n < M.pulses && t >= a.n * M.gap) { a.n++; this.hatchHit(cx, cy, M.radius, share); this.hatchVisual({ kind: "whirl", x: cx, y: cy, r: M.radius, life: .3 }); } }
+    else if (a.kind === "stomp") { while (a.n < M.hits && t >= a.n * M.gap + .08) { a.n++; this.hatchHit(cx + a.x * .7, cy + a.y * .7, M.radius, share); this.hatchVisual({ kind: "stomp", x: cx + a.x * .7, y: cy + a.y * .7, r: M.radius, life: .3 }); } }
+    else if (a.kind === "bite" && a.n === 0 && t >= .15) { a.n = 1; this.hatchHit(alive ? foe.x + .5 : cx + a.x * .8, alive ? foe.y + .45 : cy + a.y * .8, M.radius, share); }
+    if (a.left <= 0) { if (a.kind === "charge") { this.hatchHit(o.x + .5 + a.x * .5, o.y + .45 + a.y * .5, M.radius, share, { stun: M.stun }); this.hatchVisual({ kind: "stomp", x: o.x + .5 + a.x * .5, y: o.y + .45 + a.y * .5, r: M.radius, life: .3 }); } o.act = null; }
   }
   // Release 678: the Stalker (stalker.ts). Ground it may stand on: open, not lethal, never inside a building, shelter or town.
   stalkerBarred(x, y) {
