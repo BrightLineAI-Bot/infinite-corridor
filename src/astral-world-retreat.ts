@@ -3,7 +3,7 @@
 import { generateRegion, dungeonId } from './world.ts';
 import { applyLandscape, applyDream, DREAM_VERSION, LANDSCAPE_VERSION, COHERENCE, bridgeLanes } from './landscape.ts';
 import { OPEN_SEA_VERSION } from './open-sea.ts';
-import { applyHamlet, hamletSection, legacyMouthHamlet, HAMLET_VERSION } from './settlements.ts';
+import { applyHamlet, hamletSection, legacyMouthHamlet, HAMLET_VERSION, oldTownAt } from './settlements.ts';
 import { applyTrails, addTravelers, addReciter, addWanderer, wandererArrive, addElder } from './travelers.ts';
 import { addSkirmish } from './skirmishes.ts';
 import { ensureBoatState } from './boats.ts';
@@ -91,7 +91,7 @@ function previewSurfaceSites(map,save,rx,ry,options) {
     if(destination?.kind==='temporary-arena'&&open.length){const at=open[hashSeed(`${hunt.id}:target`)%open.length],instance=ensureHuntInstance(save,hunt.id);map.objects.push({id:`instance-gate:${hunt.id}`,kind:instance?.completed?'huntScar':'huntInstance',x:at.x,y:at.y,instanceId:instance?.id});}
   }
   for(const q of Object.values(save.viewport?.contracts||{}))if(q.kind==='trial'&&q.status==='completed'&&q.target?.rx===rx&&q.target?.ry===ry){const instance=ensureHuntInstance(save,q.id);if(instance?.scar&&open.length&&!map.objects.some(o=>o.instanceId===instance.id)){const at=open[hashSeed(`${q.id}:target`)%open.length];map.objects.push({id:`instance-scar:${q.id}`,kind:'huntScar',x:at.x,y:at.y,instanceId:instance.id});}}
-  if(rx===-5&&ry===3)map.objects.push({id:'knife-choir-portal',kind:'elitePortal',x:20,y:16});
+  if(oldTownAt(save.seed,rx,ry)==='-5,3')map.objects.push({id:'knife-choir-portal',kind:'elitePortal',x:20,y:16});
 }
 function previewSurfaceOccupants(map,save,rx,ry) {
   // Skirmish presence suppresses native road walkers and dig spots. Its isolated

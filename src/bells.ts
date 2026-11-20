@@ -9,7 +9,7 @@
 // always holds the same bell; one already rung hangs silent. Rung bells are remembered in save.lore.bells (the bells rung,
 // as a string of digits; additive, normalised here). All writing is original to the game. Pure rules: no DOM.
 import { hashSeed } from "./random.ts";
-import { READING_BANDS, arcanaRate, regionVersionOf } from "./lore.ts";
+import { READING_BANDS, arcanaRate, regionVersionOf, regionFrame } from "./lore.ts";
 
 // Release 577 (Tim: "they shouldn't just be trapped in specific dungeons... if I don't get the bell in one dungeon... it should
 // just go to another dungeon... randomly... until I get them... unless there's a way to... note in this square... where the
@@ -39,7 +39,7 @@ const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 export function bellIn(seed, dungeonId, rung = "", region = 0) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return 0;
   const rx = Number(m[1]), ry = Number(m[2]), depth = Math.abs(rx) + Math.abs(ry); if (depth < BELLS.minDepth) return 0;
-  const h = hashSeed(`${seed}:seven-bells:v1:${dungeonId}`); if ((h % 10000) / 10000 >= (region >= 1 ? arcanaRate("bells", rx, ry) : BELLS.chance)) return 0;
+  const h = hashSeed(`${seed}:seven-bells:v1:${dungeonId}`); if ((h % 10000) / 10000 >= (region >= 1 ? arcanaRate("bells", rx, ry, regionFrame(seed, region)) : BELLS.chance)) return 0;
   const left = Array.from({ length: BELLS.count }, (_, i) => i + 1).filter((n) => !rung.includes(String(n)));
   return left.length ? left[(h >>> 9) % left.length] : 1 + ((h >>> 9) % BELLS.count);
 }

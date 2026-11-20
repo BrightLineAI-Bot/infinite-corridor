@@ -8,7 +8,8 @@
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
 import { hashSeed } from "./random.ts";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.ts";
+import { IDENTITY_FRAME, saveFrame } from "./journey-start.ts";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.ts";
 import { BELLS, bellsRung } from "./bells.ts";
 import { SURVEYOR, surveyorFound } from "./surveyor.ts";
 import { TORN_PAGES, pagesFound } from "./torn-pages.ts";
@@ -316,10 +317,11 @@ export function threadIn(seed, dungeonId, version = 0, region = 0) {
   if (roll(`${seed}:threads:v1:${dungeonId}`) >= THREAD_RULES.chance) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : laterThreadIn(seed, dungeonId, rx, ry);
   const here = FIRST_THREADS.filter((id) => inBand(THREADS[id].band, rx, ry)); if (!here.length) return version >= 1 ? sharedThreadIn(seed, dungeonId, rx, ry, version, r) : null;
   const h = hashSeed(`${seed}:threads:which:v1:${dungeonId}`);
-  return r >= 1 ? weightedPick(here, h, (id) => homeWeight(id, rx, ry)) : here[h % here.length];
+  return r >= 1 ? weightedPick(here, h, (id) => homeWeight(id, rx, ry, regionFrame(seed, r))) : here[h % here.length];
 }
 // Region version 1: a thread whose home (lore.ts ARCANA_REGIONS.sets) holds this section weighs `homeWeight`; any other, 1.
-export const homeWeight = (id, rx, ry) => inArcanaHome(id, rx, ry) ? ARCANA_REGIONS.homeWeight : 1;
+// Region version 2 (a start-1 journey's crossings) asks with the journey's frame (`frame`, lore.ts regionFrame).
+export const homeWeight = (id, rx, ry, frame = IDENTITY_FRAME) => inArcanaHome(id, rx, ry, frame) ? ARCANA_REGIONS.homeWeight : 1;
 function weightedPick(list, h, weigh) { let k = h % list.reduce((n, id) => n + weigh(id), 0); for (const id of list) { k -= weigh(id); if (k < 0) return id; } return null; }
 // The story budget (STORY_BUDGET): the later threads sharing slots in a section at story version `version`, in THREAD_ORDER.
 export const sharedThreads = (version, rx, ry) => THREAD_ORDER.filter((id) => Object.entries(THREADS[id].shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))));
@@ -341,7 +343,7 @@ function sharedThreadIn(seed, dungeonId, rx, ry, version, region = 0) {
   if (roll(`${seed}:threads:shared:v1:${dungeonId}`) >= sharedRate(rx, ry, version)) return null;
   const here = sharedThreads(version, rx, ry); if (!here.length) return null;
   const h = hashSeed(`${seed}:threads:shared:which:v1:${dungeonId}`);
-  if (region >= 1) return weightedPick(here, h, (id) => threadWeight(id, version) * homeWeight(id, rx, ry)); // region version 1: home threads weigh more
+  if (region >= 1) return weightedPick(here, h, (id) => threadWeight(id, version) * homeWeight(id, rx, ry, regionFrame(seed, region))); // region version 1: home threads weigh more
   if (version < 2) return here[h % here.length]; // version 1: an even share, exactly as release 773 chose
   let k = h % here.reduce((n, id) => n + threadWeight(id, version), 0);
   for (const id of here) { k -= threadWeight(id, version); if (k < 0) return id; }
@@ -431,8 +433,8 @@ export const ARCANA_SETS = {
 export function arcanaWhere(save, id, live = ARCANA_REGIONS.live) {
   if (id === "pages") { const found = new Set(pagesFound(save)), left = READING_ORDER.filter((r) => !found.has(r)); if (!left.length) return null;
     const known = left.filter((r) => readingKnown(save, r)), unheard = left.length - known.length;
-    return [...known.map((r) => `${READINGS[r].name} (${readingRegionHint(r)})`), ...(unheard ? [`${unheard} in Readings not yet heard`] : [])].join("; "); }
-  if (live && ARCANA_REGIONS.sets[id]) return arcanaHint(id);
+    return [...known.map((r) => `${READINGS[r].name} (${readingRegionHint(r, saveFrame(save))})`), ...(unheard ? [`${unheard} in Readings not yet heard`] : [])].join("; "); }
+  if (live && ARCANA_REGIONS.sets[id]) return arcanaHint(id, saveFrame(save));
   return THREADS[id] ? null : ARCANA_SETS[id]?.where || null;
 }
 export function arcanaProgress(save, live = ARCANA_REGIONS.live) {

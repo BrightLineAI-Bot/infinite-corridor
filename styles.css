@@ -1200,3 +1200,6 @@ body.reduce-motion .left-controls .oculus-button.holding::after, body.reduce-mot
 .compass-menu-empty { margin: 10px 4px; font: .9rem/1.35 sans-serif; color: #c8bda8; }
 .compass-menu-clear { display: block; width: 100%; min-height: 44px; margin: 8px 0 0; border: 1px dashed #80745f; border-radius: 9px; background: none; color: #c8bda8; font: .85rem sans-serif; }
 body.proving-ground .compass-menu-panel { top: calc(env(safe-area-inset-top) + 64px); }
+
+/* Progression Phase 2: the journey creator's mode, weapon and tool cards (main.ts startCardGroup) */
+.start-choice{border:1px solid #74654e55;border-radius:6px;margin:10px 0;padding:6px 8px}.start-choice legend{padding:0 4px;font-weight:bold}.start-cards{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.start-card{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid #665f50;border-radius:6px;cursor:pointer}.start-card input{margin-top:3px;flex:none}.start-card small{display:block;opacity:.85;margin-top:2px}.start-card:has(input:checked){border-color:#d8bd83;background:#d8bd8318}.journey-progression{margin-bottom:12px}

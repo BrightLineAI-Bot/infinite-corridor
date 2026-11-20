@@ -63,7 +63,9 @@ export const SPELLS={'cinder-dart':{id:'cinder-dart',name:'Cinder Dart',cooldown
  'essence-walk':{id:'essence-walk',name:'Essence Walk',cooldown:20,lifetime:8,radius:0,pulse:99,damage:0,maxRange:0,unlockTier:13,brawler:true,essence:true,text:'For 8 s your spells need not wait: a spell still recovering casts anyway for stamina, more the longer its cooldown, and its cooldown carries on as it was. A ready spell casts as usual. Aegis costs 40; spend your stamina down with it and it is locked for its whole cooldown.'},
  'orbit-volley':{id:'orbit-volley',name:'Orbit Volley',cooldown:9,lifetime:.3,radius:1.1,pulse:99,damage:14,maxRange:7,unlockTier:13,text:'Press to gather orbs round you; press again to launch them as one ball at your target, stronger the longer they gathered. Launch while they glow gold for a perfect volley (240%) that leaves a vortex. Left alone, they go by themselves.'}};
 // Release 365: whether a spell is open to the Wayfarer (the Infinite III spells need that band of the Aperture).
-export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier)}
+// Progression Phase 2: a spell the journey keeps for good (save.progression.kept, journey-start.ts: Exploration's Aegis from the
+// start, or one kept across a mode switch) is open whatever the band.
+export function spellOpen(save,id){const sp=SPELLS[id];return !!sp&&(!sp.unlockTier||APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture||0))>=sp.unlockTier||(Array.isArray(save?.progression?.kept)&&save.progression.kept.includes(`spell:${id}`)))}
 export const UPGRADE_CAPS={common:3,rare:4,epic:5,relic:6};
 // Release 395: a masterworked item (the town smith) goes one rank past its tier's cap.
 // Release 457 (Tim: "after Infinite 4, after you've played the second gate, you should be able to upgrade your weapons to

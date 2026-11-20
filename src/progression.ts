@@ -1,5 +1,7 @@
 // The progression table (docs/progression-design.md, revision 3; Phase 1, "the spine"). Pure data and pure reads: nothing
-// here grants, gates, removes or saves anything, and nothing in the game reads it to decide what the Wayfarer may do.
+// in the table grants, gates, removes or saves anything, and nothing in the game reads it to decide what the Wayfarer may do.
+// Phase 2 (at the end of this file) adds the two things that write: a new journey's start (startJourney: the mode, the start
+// version, the chosen weapon and tool, Exploration's Aegis) and the mode switch (switchProgression), both on save.progression.
 //
 // One row per player ability in the design's inventory (section 1): disciplines, spells, Constellation nodes and their
 // secondary forms, Lattice field passives, the Arcana passives, weapon arts and tool forms, awakened moves, weapons, tools,
@@ -23,7 +25,10 @@
 // What each one does is read from the game's own tables (doesText), so the how-to never drifts from the game.
 //
 // The compendium (compendium()) and the Pace line (pace()) read the save as it is; nothing new is saved.
-import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS } from "./items.ts";
+import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.ts";
+import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame } from "./journey-start.ts";
+import { viewportContracts } from "./foundry.ts";
+import { ensureSlots, PRESETS } from "./spell-slots.ts";
 import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.ts";
 import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.ts";
 import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.ts";
@@ -439,7 +444,7 @@ export const COMPENDIUM = Object.freeze({
 const AHEAD_GROUPS = Object.freeze(["disciplines", "spells"]);
 // The model the Journal draws. Unknown rows are never named: a group shows only how many it holds.
 export function compendium(save) {
-  const states = ownershipV0(save), groups = [];
+  const states = ownership(save), groups = [];
   for (const g of GROUPS) {
     const rows = ROWS.filter((r) => r.group === g.id), entries = [];
     for (const r of rows) {
@@ -457,5 +462,87 @@ export function compendium(save) {
     if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name] });
   }
   const p = pace(save, states);
-  return { title: COMPENDIUM.title, intro: COMPENDIUM.intro, before: COMPENDIUM.before, pace: p, paceText: paceText(p), ahead, groups };
+  return { title: COMPENDIUM.title, intro: COMPENDIUM.intro, before: COMPENDIUM.before, mode: modeInfo(progressionMode(save)), pace: p, paceText: paceText(p), ahead, groups };
 }
+
+// ================================================================ Phase 2: modes, the start choice (design sections 4.0 and 6)
+// The mode is save.progression.mode (journey-start.ts): 0 Classic, 1 Exploration. In this phase Exploration gates nothing new:
+// both modes read today's rules (stateV0), and an ability in save.progression.kept is held in either mode for good.
+export const progressionState = (save, row) => (row && progressionKept(save, row.id) ? "owned" : stateV0(save, row));
+export const ownership = (save) => Object.fromEntries(ROWS.map((r) => [r.id, progressionState(save, r)]));
+
+// ---------------------------------------------------------------- switching (design section 6)
+// Allowed any time out of combat; asks for confirmation (main.ts) and says plainly what it does. Never takes anything away.
+//   Classic -> Exploration: everything owned, learned or open by today's rules at that moment goes into `kept` (those a mode
+//     could ever gate: rows whose Exploration route is not "found", an upgrade or the forge and market) and stays yours.
+//   Exploration -> Classic: today's rules apply at once (in this phase Exploration has closed nothing, so nothing waits to open);
+//     what was kept stays kept.
+export const SWITCH_TEXT = Object.freeze({
+  keep: "Abilities you have stay yours in either mode.",
+  toExploration: "Switch to Exploration? Everything you hold or could take now under Classic rules is kept for good; what you have not opened yet follows Exploration from now on.",
+  toClassic: "Switch to Classic? Today's rules apply at once: whatever their levels and Aperture would give you opens now. Nothing is taken away.",
+  fighting: "Not while you are fighting. Switch once the fight is over.",
+  same: (name) => `This journey is already ${name}.`,
+  done: (name, n) => `Progression is now ${name}.${n ? ` ${n} abilit${n === 1 ? "y is" : "ies are"} kept for good.` : ""}`,
+});
+const NEVER_GATED = Object.freeze(["F", "U", "W"]);
+export const switchKeeps = (save) => ROWS.filter((r) => !NEVER_GATED.includes(r.v1.route) && ["owned", "open"].includes(stateV0(save, r))).map((r) => r.id);
+export function switchText(save, to) { return `${to === 1 ? SWITCH_TEXT.toExploration : SWITCH_TEXT.toClassic} ${SWITCH_TEXT.keep}`; }
+export function switchProgression(save, to, { fighting = false } = {}) {
+  const p = ensureProgression(save), from = p.mode, mode = to === 1 ? 1 : 0, info = modeInfo(mode);
+  if (from === mode) return { ok: false, message: SWITCH_TEXT.same(info.name) };
+  if (fighting) return { ok: false, message: SWITCH_TEXT.fighting };
+  let added = 0;
+  if (mode === 1) { const have = new Set(p.kept); for (const id of switchKeeps(save)) if (!have.has(id)) { have.add(id); added++; } p.kept = [...have].slice(0, PROGRESSION_RECORD.keptMax); }
+  p.log = [...p.log, { from, to: mode, playSeconds: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), section: `${save.session?.rx ?? 0},${save.session?.ry ?? 0}` }].slice(-PROGRESSION_RECORD.logMax);
+  p.mode = mode;
+  return { ok: true, from, to: mode, added, message: SWITCH_TEXT.done(info.name, added) };
+}
+
+// ---------------------------------------------------------------- the journey creator (design section 4.0)
+// Two rows of cards, "Choose your weapon" and "Choose your tool". Weapons are never gated (Tim, 2026-11-20): the choice sets only
+// the starting kit, at the starting tier; drops continue as now. The Aether Orrery stays a find. A default pair is chosen
+// (today's kit), so Start works at once. Exploration also holds Aegis from the start, in slot B.
+export const START_KIT = Object.freeze({
+  weapons: Object.freeze(["salvage-blade", "cinder-pike", "verge-cleaver", "iron-fists", "fourfold-daggers", "quandrix-staff"]),
+  tools: Object.freeze(["spark-coil", "needle-caster", "lumen-spindle", "rift-bombard", "hammerfall", "great-sweep"]),
+  defaults: Object.freeze({ weapon: "salvage-blade", tool: "spark-coil", mode: PROGRESSION_RECORD.newMode }),
+  // the item each card gives: today's starter keeps its own id; any other is the game's profile id for it (items.ts)
+  ids: Object.freeze({ "salvage-blade": "salvage-blade", "spark-coil": "spark-coil" }),
+  property: Object.freeze({ "salvage-blade": "steady", "cinder-pike": "reach", "verge-cleaver": "impact", "iron-fists": "brawler", "fourfold-daggers": FOURFOLD_DAGGERS.property, "quandrix-staff": QUANDRIX_STAFF.property,
+    "spark-coil": "focus", "needle-caster": "quick", "lumen-spindle": "focus", "rift-bombard": "blast", hammerfall: "brawler", "great-sweep": "brawler" }),
+  aegis: Object.freeze({ id: "spell:aegis", slot: "b", modes: Object.freeze([1]) }),
+});
+const goodWith = (row) => row.archetypes.map((a) => ARCHETYPES[a]).filter(Boolean);
+// The cards, read from the game's data: the name and play style from the gear rows above, what it scales with from items.ts.
+export function startCards(kind) {
+  const keys = kind === "tool" ? START_KIT.tools : START_KIT.weapons;
+  return keys.map((key) => { const row = ROW_BY_ID[`gear:${key}`], stat = (kind === "tool" ? TOOL_SCALING : WEAPON_SCALING)[key];
+    return { key, name: row.name, scales: SCALING_LABELS[stat] || "", style: String(row.hint || "").replace(/^[^:]*:\s*/, "").replace(/^./, (c) => c.toUpperCase()), goodWith: goodWith(row), does: doesText(row) }; });
+}
+export const startChoice = (kind, key) => ((kind === "tool" ? START_KIT.tools : START_KIT.weapons).includes(key) ? key : START_KIT.defaults[kind === "tool" ? "tool" : "weapon"]);
+function startItem(save, slot, key) {
+  const base = save.equipment?.[slot] || {}, prefix = slot === "primary" ? "primary-" : "secondary-";
+  return { ...base, id: START_KIT.ids[key] || `${prefix}${key}`, name: ROW_BY_ID[`gear:${key}`].name, slot, property: START_KIT.property[key] || base.property, upgradeRank: 0 };
+}
+// Sets a new journey's start: the mode, start version 1 (the frame turn), the table version, the chosen weapon and tool, and in
+// Exploration Aegis held and set in slot B. The seed must already be set (the frame and the first hunt read it). Returns the save.
+export function startJourney(save, options = {}) {
+  const p = ensureProgression(save), mode = options.mode === 0 ? 0 : options.mode === 1 ? 1 : START_KIT.defaults.mode;
+  const weapon = startChoice("weapon", options.weapon), tool = startChoice("tool", options.tool);
+  Object.assign(p, { mode, start: START_FRAME.version, table: PROGRESSION_TABLE_VERSION, kit: { weapon, tool } });
+  save.equipment ||= {};
+  if (weapon !== START_KIT.defaults.weapon) save.equipment.primary = startItem(save, "primary", weapon);
+  if (tool !== START_KIT.defaults.tool) save.equipment.secondary = startItem(save, "secondary", tool);
+  const A = START_KIT.aegis;
+  if (A.modes.includes(mode)) {
+    if (!p.kept.includes(A.id)) p.kept = [...p.kept, A.id];
+    const ms = save.magicSkills; ensureSlots(save);
+    if (!Object.values(ms.slots).includes(A.id)) { ms.slots[A.slot] = A.id; for (let i = 0; i < PRESETS; i++) if (ms.presets?.[i] && !Object.values(ms.presets[i]).includes(A.id)) ms.presets[i][A.slot] = A.id; }
+  }
+  // The Viewport's first hunt, turned with the frame (the other hunts are seeded already and left as they are).
+  const direct = viewportContracts(save.seed, saveFrame(save))[0], held = save.viewport?.contracts?.[direct.id];
+  if (held && held.status === "available") Object.assign(held, { target: { ...direct.target }, summary: direct.summary });
+  return save;
+}
+export { PROGRESSION_MODES };
