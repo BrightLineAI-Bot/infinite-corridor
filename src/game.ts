@@ -155,7 +155,9 @@ import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
-import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet } from "./settlements.ts";
+import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
+import { useJourneyFrame, saveStart, saveFrame } from "./journey-start.ts";
+import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
 import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.ts";
@@ -372,7 +374,7 @@ export function pinDungeonLayout(save, id) {
   if (history.storyVersion === undefined) history.storyVersion = storyVersionFor(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined);
   // Arcana regions (lore.ts ARCANA_REGIONS): the same rule; while the regions are not live nothing is written, so a crossing
   // entered before they go live is seen-before when they do, and keeps the old placements.
-  if (history.regionVersion === undefined) { const v = regionVersionFor(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined); if (v) history.regionVersion = v; }
+  if (history.regionVersion === undefined) { const v = regionVersionFor(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined, undefined, saveStart(save)); if (v) history.regionVersion = v; } // a start-1 journey's crossings pin region version 2 (the homes turned)
   // The Wayfarer's dread (lore.ts WAYFARER_DREAD): only crossings never generated, visited or pinned before; others are left unwritten.
   if (history.wayfarerDreadVersion === undefined && !(visited() || history.layoutVersion !== undefined || history.generatorVersion !== undefined)) history.wayfarerDreadVersion = WAYFARER_DREAD.version;
   if (history.gatePredatorSpawnThreshold == null) history.gatePredatorSpawnThreshold = visited() || history.layoutVersion !== undefined ? GATE_REVENANT.legacySpawnPerThousand : GATE_REVENANT.spawnPerThousand;
@@ -3034,6 +3036,7 @@ export function jumpLift(g, now) {
 export class Game {
   constructor(save, now = 0) {
     this.save = save;
+    useJourneyFrame(save); // the journey's frame (journey-start.ts): the identity on every journey not created at start version 1
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
@@ -3726,9 +3729,9 @@ export class Game {
       if (cells.length && !vital.some((p) => near(before, p) && !near(after, p))) for (const i of cells) this.map.tiles[i] = { ...this.map.tiles[i], kind: "dungeonWater", blocked: true, waterDepth: "shallow" };
     }
     const eliteState=ensureEliteState(this.save),eliteDefeated=eliteState.defeated;
-    if(area==='overworld'&&this.rx===5&&this.ry===-2&&!eliteDefeated.vesperwing){const direct=this.save.viewport?.contracts?.['viewport-direct-vesperwing'];this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true,viewportHuntId:direct&&['accepted','target-located'].includes(direct.status)?direct.id:null});}
-    if(area==='overworld'&&this.rx===-7&&this.ry===4&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
-    if(area==='overworld'&&this.rx===-5&&this.ry===3){this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
+    const meridian=ashenMeridianSection(this.save);/* (5,-2), or where a start-1 journey's frame turns it (foundry.ts) */if(area==='overworld'&&this.rx===meridian.rx&&this.ry===meridian.ry&&!eliteDefeated.vesperwing){const direct=this.save.viewport?.contracts?.['viewport-direct-vesperwing'];this.map.enemySpawns.push({kind:'vesperwing',x:23,y:16,boss:true,elite:true,viewportHuntId:direct&&['accepted','target-located'].includes(direct.status)?direct.id:null});}
+    const mire=fixedPlaceSection(this.save.seed,'mireApostle',saveFrame(this.save));/* (-7,4), or turned on a start-1 journey (settlements.ts) */if(area==='overworld'&&this.rx===mire.rx&&this.ry===mire.ry&&!eliteDefeated.mireApostle)this.map.enemySpawns.push({kind:'mireApostle',x:22,y:22,boss:true,elite:true});
+    if(area==='overworld'&&oldTownAt(this.save.seed,this.rx,this.ry)==='-5,3'){/* in Coilmarket, wherever it stands */this.map.objects.push({id:'knife-choir-portal',kind:'elitePortal',name:'Cantor Threshold',x:20,y:16,state:eliteState.contracts.knifeChoir.state==='available'?'ready':'sealed',actions:['inspect','enter'],landmark:true});}
     if(area==='dungeon'&&String(this.areaId()).startsWith('elite-portal:')){this.map.enemySpawns=this.map.enemySpawns.filter(e=>e.kind!=='hollowMarshal');if(!eliteDefeated.knifeChoir)this.map.enemySpawns.push({kind:'knifeChoir',x:16,y:18,boss:true,elite:true});}
     else if(area==='dungeon'&&this.map.recipe==='cistern') {
       if(history.cisternGuardianChoice===undefined) {
@@ -5639,7 +5642,7 @@ export class Game {
     // Release 361 (Tim: "I like the mouth being open as a random dungeon... it just gives you another dungeon each time"): a quiet
     // Mouth, and every old one, still opens a run; the Listener waits only at the current Mouth once it has moved.
     if(o.kind==='listeningStone')return{ok:true,message:this.message=o.lore}; // release 373
-    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor") || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
+    if (o.cairnKeeper && (!action || action === "speak")) { const r = speakCairnKeeper(this.save, o, arcanaHint("surveyor", saveFrame(this.save)) || "out past the black stone"); this.message = `${o.name}: ${r.message}`; if (r.started) { journalOnce(this.save, "arcana:cairn-keeper", `${o.name}, the Cairn Keeper at Ember Refuge: the first crossing you enter holds the first link of Abel Corwin's chain.`, "The Cairn Keeper"); setCompassChoice(this.save, { follow: { kind: "quest", id: "errand" } }); /* 2026-11-19 (Tim): the errand taken, the compass follows its waymarks */ } this.sync(); return r; } // 2026-11-11
     if (o.cook && (!action || action === "speak")) { if (o.talkKey) { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } this.kitchenRequested = o.id; return { ok: true, kitchen: true, message: (this.message = `${o.name}${o.role ? ` (${o.role})` : ""}: “${o.line || "Sit down and eat."}”`) }; } // release 447: Act at a cook opens the kitchen
     if(o.kind==='townSmith'){this.smithyRequested=o.id;/* release 441: Act opens the forge (main.ts polls this, as for shops) */}if(o.kind==='townSmith')return{ok:true,smithy:true,message:this.message=`${o.name}: “Bring me what you carry. I can break it down, reforge it, cut it a socket, or make it a masterwork, as the Listeners fall.”`}; // release 395
     if(o.kind==='listenerDais'){ // release 375: to the Listening Hall
@@ -10763,7 +10766,7 @@ export class Game {
   // Is a Great Castle on this corner for this journey? Its four sections must be new ground (none explored before castles).
   castleHere(X, Y) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
-    const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); }; // no castle where a town, a hamlet or the open sea stands
+    const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry, seed) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); }; // no castle where a town, a hamlet or the open sea stands
     const inPent = (rx, ry) => { const c = pentagonCentre(rx, ry); return !!c && this.pentagonHere(c.cx, c.cy); }; // a Pentagon's sections hold no castle
     const fresh = this.coherentGround([0, 1, 2, 3].map((q) => quarterSection(X, Y, q))); // WG-04: on ground all new, a far domain's arena holds no castle
     return castleAt(seed, X, Y, sectionExits, (rx, ry) => settled(rx, ry) || inPent(rx, ry) || (fresh && this.domainCentreAt(rx, ry)), (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !!a && !a.castleVersion; });
@@ -10805,7 +10808,7 @@ export class Game {
     if (!atlas[`${this.rx},${this.ry}`]?.sigilVersion) { const d = (x, y) => Math.abs(x - this.rx) + Math.abs(y - this.ry), E = PENTAGON.every;
       for (let cy = Math.floor((this.ry - W.pentagon) / E) * E; cy <= this.ry + W.pentagon; cy += E) for (let cx = Math.floor((this.rx - W.pentagon) / E) * E; cx <= this.rx + W.pentagon; cx += E) {
         if (atlas[`${cx},${cy}`] || d(cx, cy) > W.pentagon || d(cx, cy) <= 1) continue; if (this.pentagonHere(cx, cy)) out.push({ rx: cx, ry: cy, name: PENTAGON.name, d: d(cx, cy) }); } }
-    const memo = this.settleMemo(), settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
+    const memo = this.settleMemo(), settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry, seed) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
     for (let r = 2; r <= W.labyrinth; r++) for (let oy = -r; oy <= r; oy++) for (const ox of [r - Math.abs(oy), Math.abs(oy) - r]) { const rx = this.rx + ox, ry = this.ry + oy; if (atlas[`${rx},${ry}`] || !labyrinthHere(seed, rx, ry, null)) continue;
       const c = pentagonCentre(rx, ry); if (c && this.pentagonHere(c.cx, c.cy)) continue; const k = castleCorner(rx, ry); if (k && this.castleHere(k.X, k.Y)) continue; if (settled(rx, ry)) continue; out.push({ rx, ry, name: "a labyrinth", d: r }); }
     return out.sort((a, b) => a.d - b.d)[0] || null;
@@ -10814,7 +10817,7 @@ export class Game {
   // The full test (pentagonHere), remembered per centre section (bounded; a new game starts afresh). The cheap exclusions over a
   // Pentagon's nine sections (a town, a hamlet) run first, in pentagonCandidate, so the costly open-sea test is asked rarely.
   pentagonReal(cx, cy) { const memo = (this._pentReal ||= new Map()), k = `${cx},${cy}`; if (memo.has(k)) return memo.get(k); if (memo.size >= PENTAGON_FINDING.memo) memo.clear(); const v = this.pentagonHere(cx, cy); memo.set(k, v); return v; }
-  pentagonCheap() { const seed = this.save.seed; return (rx, ry) => regionSettled(rx, ry) || hamletSection(seed, rx, ry); }
+  pentagonCheap() { const seed = this.save.seed; return (rx, ry) => regionSettled(rx, ry, seed) || hamletSection(seed, rx, ry); }
   pentagonBase(cx, cy) { const V = this.pentagonVersion(cx, cy); return `pentagon:${this.save.seed}:${cx}:${cy}${V >= 2 ? `:v${V}` : ""}`; }
   // Is the Pentagon at (cx, cy) complete (its finale won, or its Regent fallen before the Stillworks)? Reads the history; never makes one.
   pentagonDone(cx, cy) { const base = this.pentagonBase(cx, cy), H = this.save.consequences?.dungeons?.[`${base}:f1`]; return !!H && (!!H.pentComplete || pentagonCompleted(H) || pentagonFellEarly(this.save, base)); }
@@ -10949,7 +10952,7 @@ export class Game {
   pentagonVersion(cx, cy) { return recoverPentagonVersion(this.save, cx, cy); }
   pentagonHere(cx, cy) {
     const atlas = this.save.atlas || {}, seed = this.save.seed, gen = this.save.worldGeneration, memo = this.settleMemo();
-    const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
+    const settled = (rx, ry) => { const k = `${rx},${ry}`; if (!memo.has(k)) memo.set(k, regionSettled(rx, ry, seed) || hamletSection(seed, rx, ry) || openSeaSection(seed, rx, ry)); return memo.get(k); };
     const cells = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ rx: cx + dx, ry: cy + dy });
     const fresh = this.coherentGround(cells); // WG-04: on ground all new, a far domain's arena holds no Pentagon (one begun before stays whole)
     return pentagonAt(seed, cx, cy, (rx, ry) => { const a = atlas[`${rx},${ry}`]; return !settled(rx, ry) && !(a && !a.pentVersion) && !(fresh && this.domainCentreAt(rx, ry)); });

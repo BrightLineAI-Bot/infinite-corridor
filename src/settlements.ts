@@ -3,7 +3,8 @@
 // nominated sections that have a flat, dry patch of ground grow a hamlet there. A section explored before release 109
 // keeps no hamlet (its atlas entry carries no hamletVersion), so existing journeys only find hamlets in new ground.
 import { hashSeed, rng, pick, byHash } from "./random.ts";
-import { LETHAL_KINDS } from "./landscape.ts";
+import { LETHAL_KINDS, openSeaSection } from "./landscape.ts";
+import { frameFor, placeTurned, turnSection } from "./journey-start.ts";
 import { relayCoordinate } from "./relay-network.ts";
 
 // Version 1 (release 111) built plain huts; version 2 (release 112) builds from the world's own shelter families and
@@ -53,6 +54,47 @@ export function hamletRoll(seed, rx, ry) {
   const n = Math.floor(r() * HAMLET.cell * HAMLET.cell), hx = bx * HAMLET.cell + (n % HAMLET.cell), hy = by * HAMLET.cell + Math.floor(n / HAMLET.cell);
   return hx === rx && hy === ry;
 }
+// The two old towns (world.ts SETTLEMENTS: Glasshaven at 4,-2 and Coilmarket at -5,3, keyed as there). On a journey created at
+// start version 1 they stand where its frame turns them (journey-start.ts), at the same distance from the Refuge; a turned
+// section that is the other town's, open sea, a hamlet's or beside the Refuge falls back to the next bearing. Every other
+// journey keeps them exactly where they were. A map from the section each stands in ("rx,ry") to its key in SETTLEMENTS.
+export const OLD_TOWNS = Object.freeze([Object.freeze([4, -2]), Object.freeze([-5, 3])]);
+export const OLD_TOWN_RULES = Object.freeze({ minDepth: 2 });
+const OLD_TOWN_HOME = new Map(OLD_TOWNS.map(([x, y]) => [`${x},${y}`, `${x},${y}`])), townMemo = new Map();
+export function oldTownSections(seed, frame = frameFor(seed)) {
+  if (!frame || frame.identity) return OLD_TOWN_HOME;
+  const key = `${seed}:${frame.index}`; let m = townMemo.get(key); if (m) return m;
+  m = new Map();
+  for (const [cx, cy] of OLD_TOWNS) {
+    const at = placeTurned(frame, cx, cy, (rx, ry) => Math.abs(rx) + Math.abs(ry) >= OLD_TOWN_RULES.minDepth && !m.has(`${rx},${ry}`) && !hamletSection(seed, rx, ry) && !openSeaSection(seed, rx, ry));
+    m.set(`${at.rx},${at.ry}`, `${cx},${cy}`);
+  }
+  if (townMemo.size >= 16) townMemo.clear();
+  townMemo.set(key, m); return m;
+}
+// Other fixed places of the old world (the Mire Apostle's section, -7,4; game.ts loadArea): on a start-1 journey turned by the
+// same frame, at the same distance, falling back to the next bearing off open sea, a hamlet, an old town or the Refuge's ring
+// (and, with every bearing refused, up to FIXED_PLACE_RULES.nearer sections nearer).
+export const FIXED_PLACES = Object.freeze({ mireApostle: Object.freeze([-7, 4]) });
+export const FIXED_PLACE_RULES = Object.freeze({ nearer: 3 });
+const placeMemo = new Map();
+export function fixedPlaceSection(seed, id, frame = frameFor(seed)) {
+  const at = FIXED_PLACES[id]; if (!at) return null;
+  const [cx, cy] = at; if (!frame || frame.identity) return { rx: cx, ry: cy };
+  const key = `${seed}:${frame.index}:${id}`; let r = placeMemo.get(key) || null; if (r) return r;
+  const towns = oldTownSections(seed, frame), ok = (rx, ry) => Math.abs(rx) + Math.abs(ry) >= OLD_TOWN_RULES.minDepth && !towns.has(`${rx},${ry}`) && !hamletSection(seed, rx, ry) && !openSeaSection(seed, rx, ry);
+  // every bearing at its own distance first; with all of them refused (open sea all round), one section nearer at a time
+  // (FIXED_PLACE_RULES.nearer at most: inside OPEN_SEA.minDepth no section is open sea)
+  const d = Math.hypot(cx, cy);
+  for (let k = 0; k <= FIXED_PLACE_RULES.nearer && !r; k++) { const f = (d - k) / d, at = placeTurned(frame, cx * f, cy * f, ok); if (ok(at.rx, at.ry)) r = at; }
+  r ||= turnSection(frame, cx, cy);
+  if (placeMemo.size >= 64) placeMemo.clear();
+  placeMemo.set(key, r); return r;
+}
+// The old town standing in (rx, ry) on this seed's journey (its SETTLEMENTS key), or null.
+export const oldTownAt = (seed, rx, ry, frame = frameFor(seed)) => oldTownSections(seed, frame).get(`${rx},${ry}`) || null;
+// Where an old town (by its SETTLEMENTS key) stands on this seed's journey: { rx, ry }.
+export function oldTownSection(seed, key, frame = frameFor(seed)) { for (const [at, k] of oldTownSections(seed, frame)) if (k === key) { const [rx, ry] = at.split(",").map(Number); return { rx, ry }; } return null; }
 export function hamletIdentity(seed, rx, ry) {
   const r = rng(`${seed}:hamlet:v1:identity:${rx}:${ry}`), kind = weighted(r, KIND_WEIGHTS);
   return { id: `hamlet-${rx}-${ry}`, kind, name: pick(r, NAME_HEAD) + pick(r, NAME_TAIL) };

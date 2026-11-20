@@ -8,6 +8,7 @@
 // chosen per margin, never per crossing; the notes are original writing for the game. Pure rules: no DOM.
 import { hashSeed } from "./random.ts";
 import { READINGS, readingAt, readingLines, bookPieces, creditPiece, ensureLore } from "./lore.ts";
+import { frameFor } from "./journey-start.ts";
 import { RECITATIONS } from "./recitations.ts";
 
 export const MARGINS = { chance: .2, minFromEntry: 5, maxPassage: 220 };
@@ -88,7 +89,7 @@ const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
 // Which margin a crossing holds: { readingId, index } or null. Only ordinary crossings; any distance.
 export function marginIn(seed, dungeonId) {
   const m = ORDINARY.exec(String(dungeonId || "")); if (!m) return null;
-  const readingId = readingAt(Number(m[1]), Number(m[2])), count = READINGS[readingId]?.pieces?.margin || 0; if (!count) return null;
+  const readingId = readingAt(Number(m[1]), Number(m[2]), frameFor(seed)), count = READINGS[readingId]?.pieces?.margin || 0; if (!count) return null;
   const h = hashSeed(`${seed}:margins:v1:${dungeonId}`);
   return (h % 10000) / 10000 < MARGINS.chance ? { readingId, index: (h >>> 11) % count } : null;
 }

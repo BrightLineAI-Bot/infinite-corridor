@@ -1,5 +1,6 @@
 import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.ts";
 import { ensureProductionTriceratops } from "./beast-mounts.ts";
+import { startJourney } from "./progression.ts";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -286,7 +287,9 @@ export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLeg
   // Release 735: when the database could not be read and there is no healthy mirror, the journey may still be there: the
   // slot is blocked (nothing is written) instead of a fresh Wayfarer being saved over it; a reload tries again.
   if(dbFailed&&!choices.length){writeBlocked.set(activeSlot,"This journey could not be read from storage just now. Nothing has been changed: reload the game to try again.");return freshSave()}
-  const chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||freshSave();
+  // Progression Phase 2: an empty slot (the first journey on a device) starts a new journey: a random seed, start version 1 and
+  // Exploration, with today's kit (it was always CINDER-VERGE-47 before).
+  const chosen=choices.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0]||namedFresh();
   // Release 555: a journey read from the database already has its areas stored there, so the first autosave need not write
   // them all again: each loaded area is its own stored copy until the game replaces it.
   if(chosen===fromDb.save&&assembled.has(stored)){primeStoredAreas(slotKey(activeSlot),chosen);primeJournal(slotKey(activeSlot),stored,chosen)}
@@ -317,9 +320,13 @@ export async function commitNewJourneyTransition({activeSlot,targetSlot,targetEm
 // slot that fails then is listed damaged (startFailed). Its size is the main record plus the stored areas' sizes.
 export function journeyListing(main,slot=1){if(!Array.isArray(main?.session?.[AREA_SPLIT]))return journeyMetadata(main,slot);const unsupported=unsupportedVersion(main),missing=!main.seed||!main.position||!Number.isFinite(Number(main.level)),error=unsupported||(missing?"Required journey fields are missing":null),sizes=main.session[AREA_SIZES];let bytes=0;try{bytes=JSON.stringify({...main,session:{...main.session,[AREA_SPLIT]:null,[AREA_SIZES]:null}}).length}catch{}if(sizes&&typeof sizes==="object")for(const n of Object.values(sizes))bytes+=Number(n)||0;return{slot,health:error?"damaged":"healthy",empty:false,error,name:String(main.name||`Journey ${slot}`),seed:String(main.seed||"unknown"),level:Number(main.level)||1,location:main.position?.area==="dungeon"?"Dungeon":`${main.position?.rx||0}, ${main.position?.ry||0}`,updatedAt:Number(main.updatedAt)||0,explored:Object.keys(main.explored||{}).length,playSeconds:Math.max(0,Number(main.playSeconds)||0),bytes}}
 export async function listJourneySlots(){try{await migrateLegacy()}catch{}const out=[];for(let slot=1;slot<=SLOT_COUNT;slot++){let raw=null;try{raw=await readMain(slotKey(slot))}catch{}if(!raw)raw=mirrorRead(slot);const meta=journeyListing(raw,slot);if(startFailed.has(slot)&&!meta.empty)Object.assign(meta,{health:"damaged",error:startFailed.get(slot)});/* release 734 (S4) */out.push(meta)}return out}
-function namedFresh(name,seed){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(seed||`CORRIDOR-${Date.now().toString(36).toUpperCase()}`).slice(0,64);return save}
+// A random seed for a new journey: the time and a random tail, so two journeys made together still differ.
+export function randomSeed(){let tail="";try{const a=new Uint32Array(2);crypto.getRandomValues(a);tail=a[0].toString(36)+a[1].toString(36)}catch{tail=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)}return`CORRIDOR-${Date.now().toString(36)}${tail.slice(0,6)}`.toUpperCase().slice(0,64)}
+// A new journey (progression.ts startJourney): its name, its seed (typed, or random), and the creator's choices: the mode
+// (Exploration unless Classic is chosen), the weapon and the tool. Every new journey is created at start version 1.
+export function namedFresh(name,seed,choices={}){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(String(seed||"").trim()||randomSeed()).slice(0,64);return startJourney(save,{mode:choices.mode,weapon:choices.weapon,tool:choices.tool})}
 async function snapshotRecovery(slot,raw,checked=false){if(!raw||!checked&&validateJourney(raw).health!=="healthy")return;const previous=await read(`recovery:${slot}:1`);if(previous)await write(`recovery:${slot}:2`,previous);await write(`recovery:${slot}:1`,raw)}
-export async function createJourney(slot,options={}){const current=await readJourney(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed);replaced(slot);await writeJourney(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
+export async function createJourney(slot,options={}){const current=await readJourney(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed,options);replaced(slot);await writeJourney(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
 export async function renameJourney(slot,name){const raw=await readJourney(slotKey(slot)),valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error("Only a healthy journey can be renamed.");valid.save.name=String(name||valid.save.name).slice(0,40);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
 export async function duplicateJourney(from,to){const source=await readJourney(slotKey(from)),target=await readJourney(slotKey(to)),valid=validateJourney(source);if(valid.health!=="healthy")throw new Error("Source journey is not healthy.");if(target)throw new Error("Destination slot is occupied.");const copy=ensureProductionTriceratops(structuredClone(valid.save));copy.name=`${copy.name} Copy`.slice(0,40);copy.updatedAt=Date.now();await writeJourney(slotKey(to),copy);mirrorWrite(to,copy);return journeyMetadata(copy,to)}
 export async function deleteJourney(slot){const raw=await readJourney(slotKey(slot));await snapshotRecovery(slot,raw);replaced(slot);await removeJourney(slotKey(slot));try{localStorage.removeItem(mirrorKey(slot))}catch{}}

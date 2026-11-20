@@ -220,8 +220,9 @@ test('nothing is saved: the save keeps its shape before and after, fresh and mig
   for (const s of [freshSave(), richSave(), migrateSave(JSON.parse(JSON.stringify(richSave())))]) {
     const before = JSON.stringify(s); compendium(s); ownershipV0(s); pace(s); assert.equal(JSON.stringify(s), before);
   }
-  const f = freshSave(); assert.ok(!('progression' in f) && !('compendium' in f) && !('hints' in f));
-  const m = migrateSave(JSON.parse(JSON.stringify(f))); assert.ok(!('progression' in m) && !('compendium' in m) && !('hints' in m));
+  // Phase 2 adds save.progression (journey-start.ts): a fresh or migrated save without a choice is Classic at start version 0.
+  const f = freshSave(); assert.ok(!('compendium' in f) && !('hints' in f)); assert.deepEqual([f.progression.mode, f.progression.start, f.progression.kept], [0, 0, []]);
+  const m = migrateSave(JSON.parse(JSON.stringify(f))); assert.ok(!('compendium' in m) && !('hints' in m)); assert.deepEqual(m.progression, f.progression);
 });
 
 test('wired: the Tome opens the compendium, and the module is built and precached', () => {
@@ -231,7 +232,10 @@ test('wired: the Tome opens the compendium, and the module is built and precache
   assert.match(main, /uiButton\("What the Corridor Taught You",\(\)=>openJournal\("taught"\)\)/);
   for (const f of ['sw.js', 'proving-ground/sw.js']) assert.match(readFileSync(f, 'utf8'), /src\/progression\.js\?v=\d+/, f);
   assert.match(readFileSync('scripts/build.mjs', 'utf8'), /'progression'/);
-  assert.doesNotMatch(readFileSync('src/progression.ts', 'utf8'), /save\.[a-zA-Z]+\s*=[^=]|localStorage|indexedDB/, 'pure: writes nothing');
+  // Phase 2's start and mode switch (after its marker) write save.progression and the new journey's kit; the table above it writes nothing.
+  const table = readFileSync('src/progression.ts', 'utf8').split('// ================================================================ Phase 2')[0];
+  assert.doesNotMatch(table, /save\.[a-zA-Z]+\s*=[^=]|localStorage|indexedDB/, 'pure: writes nothing');
+  assert.doesNotMatch(readFileSync('src/progression.ts', 'utf8'), /localStorage|indexedDB/);
 });
 
 test('the Journal page draws from the model without throwing, fresh and rich (DOM stub)', () => {

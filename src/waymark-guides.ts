@@ -19,7 +19,7 @@
 // Cost: a handful of hashes and memoised cheap tests per cell, nine cells per kind per section entered; nothing per frame.
 import { hashSeed } from "./random.ts";
 import { openSeaQuick } from "./landscape.ts";
-import { hamletSection } from "./settlements.ts";
+import { hamletSection, oldTownAt } from "./settlements.ts";
 import { pentagonCentre, pentagonAt } from "./pentagon.ts";
 import { FAR_DOMAINS, farDomainCentre, farDomainAt } from "./far-realms.ts";
 import { WORLD_BEASTS, WORLD_BEAST_IDS, beastUnlocked, beastRoamsAt } from "./world-beasts.ts";
@@ -45,12 +45,13 @@ export const WAYMARK_GUIDES = {
 export const GUIDE_KINDS = Object.keys(WAYMARK_GUIDES.kinds);
 export const GUIDE_SIGNALS = Object.fromEntries(GUIDE_KINDS.map((k) => [WAYMARK_GUIDES.kinds[k].signal, k]));
 
-const settledAt = new Set(["4,-2", "-5,3"]); // world.ts SETTLEMENTS (the two old towns); not imported, so world.ts may import this module
+// world.ts SETTLEMENTS (the two old towns), where this journey's frame puts them (settlements.ts oldTownAt; not world.ts, so
+// world.ts may import this module).
 const domainNear = (seed, rx, ry) => Object.keys(FAR_DOMAINS).some((id) => { const c = farDomainCentre(seed, id); return Math.abs(c.rx - rx) + Math.abs(c.ry - ry) <= WAYMARK_GUIDES.domainClear; });
 // May (rx, ry) host a destination of `kind`? Cheap tests only (the kinds' bands never meet, so no section hosts two).
 export function guideHostable(seed, kind, rx, ry) {
   const K = WAYMARK_GUIDES.kinds[kind];
-  if (Math.abs(rx) + Math.abs(ry) < K.minDepth || settledAt.has(`${rx},${ry}`) || pentagonCentre(rx, ry)) return false;
+  if (Math.abs(rx) + Math.abs(ry) < K.minDepth || oldTownAt(seed, rx, ry) || pentagonCentre(rx, ry)) return false;
   return !hamletSection(seed, rx, ry) && !domainNear(seed, rx, ry) && !openSeaQuick(seed, rx, ry, WAYMARK_GUIDES.seaMargin, WAYMARK_GUIDES.seaVersion);
 }
 const floorDiv = (a, n) => Math.floor(a / n);

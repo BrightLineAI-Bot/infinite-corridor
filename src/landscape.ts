@@ -13,6 +13,7 @@
 import { farCivAt } from "./far-realms.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { placeDock } from "./boats.ts";
+import { activeFrame, frameFor, toFrame } from "./journey-start.ts";
 import { growTrees, TREES_V14, TREES_V18 } from "./trees.ts";
 import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.ts";
 import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.ts";
@@ -278,7 +279,7 @@ export function regionAt(seed, sx, sy, version = 4) {
   const W = REGIONS.warp, S = REGIONS.warpScale, wx = sx + (valueNoise(`${seed}:region:warp:x`, sx / S, sy / S) - .5) * 2 * W, wy = sy + (valueNoise(`${seed}:region:warp:y`, sx / S, sy / S) - .5) * 2 * W;
   const C = REGIONS.cell, cx = Math.floor(wx / C), cy = Math.floor(wy / C); let best = null, bd = Infinity, second = Infinity;
   for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const q = regionSite(seed, cx + i, cy + j), d = Math.hypot(wx - q.x, wy - q.y) - q.w; if (d < bd) { second = bd; bd = d; best = q; } else if (d < second) second = d; }
-  let type = best.type; if (type === "dream" && Math.abs(sx) + Math.abs(sy) <= FAR_SLEEP_DEPTH + 1) type = "wild";
+  let type = best.type; if (type === "dream" && farSleepDepth(sx, sy, frameFor(seed)) <= FAR_SLEEP_DEPTH + 1) type = "wild";
   if (version >= 5 && type === "wild") type = wildRegionType(seed, best.id, version);
   if (version >= 10) type = v10RegionType(seed, best.id, type); // release 625
   if (version >= 11) type = v11RegionType(seed, best.id, type); // release 629
@@ -2294,19 +2295,25 @@ export const DREAM_BY_VERSION = { 1: {}, 2: { voidAbove: .82, terraces: [.62, .8
 // broad noise lets it (`broken`), so the dream runs along the seams of the world in broken veins.
 export const DREAM_SEAMS = { minDepth: 24, width: .6, scale: 4, broken: .42 };
 export function dreamSeam(seed, rx, ry) {
-  if (Math.abs(rx) + Math.abs(ry) <= DREAM_SEAMS.minDepth) return false;
+  if (farSleepDepth(rx, ry, frameFor(seed)) <= DREAM_SEAMS.minDepth) return false;
   return sectionRegion(seed, rx, ry).gap < DREAM_SEAMS.width && valueNoise(`${seed}:dream:seam`, rx / DREAM_SEAMS.scale, ry / DREAM_SEAMS.scale) > DREAM_SEAMS.broken;
 }
 // Release 573: on ground laid out at landscape version 5 (`land`), a forest or frostland keeps its own ground: only a seam dreams there.
 export function dreamsHere(seed, rx, ry, version, land = 4) { if (version < 3) return true; if (version < 4) return dreamPocket(seed, rx, ry); const t = sectionRegion(seed, rx, ry, land).type; return t === "dream" || dreamSeam(seed, rx, ry) || (t === "wild" && dreamPocket(seed, rx, ry)); }
 export function dreamPocket(seed, rx, ry) {
-  const depth = Math.abs(rx) + Math.abs(ry), P = DREAM_POCKETS; if (depth <= FAR_SLEEP_DEPTH) return false;
+  const depth = farSleepDepth(rx, ry, frameFor(seed)), P = DREAM_POCKETS; if (depth <= FAR_SLEEP_DEPTH) return false;
   const w = Math.min(P.scatterMax, (depth - FAR_SLEEP_DEPTH) / P.scatterOver), roll = (hashSeed(`${seed}:dream:pocket:${rx}:${ry}`) % 10007) / 10007;
   return (1 - w) * valueNoise(`${seed}:dream:pocket`, rx / P.scale, ry / P.scale) + w * roll > P.above;
 }
-export function farSleepSection(rx, ry) { return Math.abs(rx) + Math.abs(ry) > FAR_SLEEP_DEPTH; }
+// Progression Phase 2 (the Far Sleep's edge, version 2: journey-start.ts START_FRAME.farSleepEdge): on a journey created at start
+// version 1 the edge's diamond turns with the journey's frame: the section is turned into the frame, then measured as always
+// (|x| + |y|). Under a 45° turn its corners point at the diagonals; no distance changes (nearest about 25 sections straight-line,
+// farthest 35). Every other journey keeps the fixed diamond (the identity frame). The dream regions' guard, the pockets and the
+// seams measure the same way. `frame` defaults to the journey in play (or to the seed's, where a seed is given).
+export const farSleepDepth = (rx, ry, frame = activeFrame()) => { const [x, y] = toFrame(frame, rx, ry); return Math.abs(x) + Math.abs(y); };
+export function farSleepSection(rx, ry, frame = activeFrame()) { return farSleepDepth(rx, ry, frame) > FAR_SLEEP_DEPTH; }
 export function applyDream(map, seed, rx, ry, version = DREAM_VERSION) {
-  if (!version || !map || map.settlement || (version < 4 && !farSleepSection(rx, ry)) || map.tiles?.length !== 1024 || !dreamsHere(seed, rx, ry, version, map.landscape?.version || 4)) return map; // 569: seams may dream a little nearer (DREAM_SEAMS.minDepth)
+  if (!version || !map || map.settlement || (version < 4 && !farSleepSection(rx, ry, frameFor(seed))) || map.tiles?.length !== 1024 || !dreamsHere(seed, rx, ry, version, map.landscape?.version || 4)) return map; // 569: seams may dream a little nearer (DREAM_SEAMS.minDepth)
   const mask = protectedMask(map, { border: true }), D = { ...DREAM, ...(DREAM_BY_VERSION[version] || {}) }, sea = !!map.openSea; // at sea only the islands dream
   if (sea) {
     for (const t of map.tiles) if (t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !t.blocked && !t.structure && !t.buildingId && !t.environment && t.kind !== "bridge" && t.kind !== "dock" && t.kind !== "shallows" && !Number.isInteger(t.ruin))
