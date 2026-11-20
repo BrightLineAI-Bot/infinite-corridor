@@ -1,29 +1,29 @@
 // High-fidelity drawing for the Dungeon Monster Pack: layered gradients, rim light, animated
 // limbs and emissive details, plus every pack telegraph and ground effect. Pure canvas calls;
 // no images, so it scales cleanly with the device pixel ratio.
-import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r1031-b358b5a5ce4c"; // seed realms
-import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple, attackLimbs } from "./adventure-creature-render.js?v=r1031-b358b5a5ce4c"; // adventure creatures
-import { DUELIST_BODIES } from "./duelist-render.js?v=r1031-b358b5a5ce4c"; // the Gaunt (duelists.ts)
-import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
-import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r1031-b358b5a5ce4c";
+import { SEED_REALM_BODIES } from "./seed-realm-render.js?v=r1033-a2f1d1a7ea50"; // seed realms
+import { ADVENTURE_BODIES, ADVENTURE_EFFECT_KINDS, drawAdventureEffect, drawSinkmawDimple, attackLimbs } from "./adventure-creature-render.js?v=r1033-a2f1d1a7ea50"; // adventure creatures
+import { DUELIST_BODIES } from "./duelist-render.js?v=r1033-a2f1d1a7ea50"; // the Gaunt (duelists.ts)
+import { MONSTER_PACK, isPackKind, BLOB, WORM, CRYSTAL, VOID, TURTLE, DANGER, effectFootprint, bodyHitFootprint } from "./monster-pack.js?v=r1033-a2f1d1a7ea50";
+import { MORPH_FORM, beamAngle } from "./listener-morph.js?v=r1033-a2f1d1a7ea50";
 
-import { drawAstralWorm } from "./astral-worm-render.js?v=r1031-b358b5a5ce4c"; // release 719: the Ink Wastes' kin
-import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r1031-b358b5a5ce4c";
+import { drawAstralWorm } from "./astral-worm-render.js?v=r1033-a2f1d1a7ea50"; // release 719: the Ink Wastes' kin
+import { drawAstralMorph, drawAstralHazards, drawAstralSaddle, drawAstralInkBlobs, drawAstralBeam, drawAstralBoarding, astralBoardingRiderAlpha } from "./astral-worm-render.js?v=r1033-a2f1d1a7ea50";
 
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r1031-b358b5a5ce4c";
-import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r1031-b358b5a5ce4c";
-import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r1031-b358b5a5ce4c";
-import { drawWildStego } from "./wild-stego-render.js?v=r1031-b358b5a5ce4c"; // the Wild Stegosaurus (Tim, 2026-11-12)
-import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks, drawApatoCoilOver } from "./apato-render.js?v=r1031-b358b5a5ce4c"; // the Earth Apatosaurus (Tim, 2026-11-18)
-import { drawTriceratopsBody } from "./triceratops-render.js?v=r1031-b358b5a5ce4c"; // the Triceratops (2026-11-18)
-import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r1031-b358b5a5ce4c";
-import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r1031-b358b5a5ce4c";
-import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r1031-b358b5a5ce4c";
-import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r1031-b358b5a5ce4c";
-import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r1031-b358b5a5ce4c";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r1033-a2f1d1a7ea50";
+import { drawLightningGiant, drawGiantCloud, drawGiantEffect, GIANT_EFFECT_KINDS } from "./lightning-giant-render.js?v=r1033-a2f1d1a7ea50";
+import { drawBriarStag, drawStagEffect, STAG_EFFECT_KINDS } from "./briar-stag-render.js?v=r1033-a2f1d1a7ea50";
+import { drawWildStego } from "./wild-stego-render.js?v=r1033-a2f1d1a7ea50"; // the Wild Stegosaurus (Tim, 2026-11-12)
+import { drawEarthApato, drawApatoClone, drawApatoGround, drawApatoMarks, drawApatoCoilOver } from "./apato-render.js?v=r1033-a2f1d1a7ea50"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { drawTriceratopsBody } from "./triceratops-render.js?v=r1033-a2f1d1a7ea50"; // the Triceratops (2026-11-18)
+import { drawSpino, drawSpinoMarks } from "./spino-render.js?v=r1033-a2f1d1a7ea50";
+import { drawAshenMoth, drawMothEffect, MOTH_EFFECT_KINDS, drawMothChrysalis } from "./ashen-moth-render.js?v=r1033-a2f1d1a7ea50";
+import { drawCrimsonTyrant, drawDragonEffect, DRAGON_EFFECT_KINDS } from "./crimson-dragon-render.js?v=r1033-a2f1d1a7ea50";
+import { drawDoomChaser, drawDoomEffect, DOOM_EFFECT_KINDS } from "./doom-chaser-render.js?v=r1033-a2f1d1a7ea50";
+import { ASTRAL, astralBeamAnchors } from "./astral-worm.js?v=r1033-a2f1d1a7ea50";
 
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1031-b358b5a5ce4c";
-import { ACTION_MOTION } from "./action-motion.js?v=r1031-b358b5a5ce4c"; // the ordinary strike's length, for the core bestiary's Standard View motion
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1033-a2f1d1a7ea50";
+import { ACTION_MOTION } from "./action-motion.js?v=r1033-a2f1d1a7ea50"; // the ordinary strike's length, for the core bestiary's Standard View motion
 
 const TAU = Math.PI * 2;
 

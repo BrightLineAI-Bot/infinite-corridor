@@ -13,7 +13,7 @@
 //
 // Pure data and rules. game.ts runs the companion (tickHatchling), main.ts the Pack row and the Atlas, renderer and Close View draw him.
 // State: save.mounts.hatchling (additive at schema 14; normalised by ensureHatchling, which beast-mounts.ts ensureMounts calls).
-import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
 
 const f = Object.freeze;
 export const HATCHLING = f({

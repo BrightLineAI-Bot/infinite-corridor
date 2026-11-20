@@ -7,9 +7,9 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { rng } from "./random.js?v=r1031-b358b5a5ce4c";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1031-b358b5a5ce4c";
-import { ENCUMBERED } from "./hit-cast-passives.js?v=r1031-b358b5a5ce4c"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
+import { rng } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1033-a2f1d1a7ea50";
+import { ENCUMBERED } from "./hit-cast-passives.js?v=r1033-a2f1d1a7ea50"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;

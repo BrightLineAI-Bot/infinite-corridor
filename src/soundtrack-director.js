@@ -11,9 +11,9 @@
 // - A world beast or boss in the fight switches to its own theme (BOSS_THEMES, by bossKey), or the shared boss track.
 // - The dino duel (DUEL): while the Spinosaurus and the Wild Stegosaurus fight near the Wayfarer, the score is hushed (`hush`)
 //   and battle-sfx.ts carries the fight; no boss theme starts until it is over.
-import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r1031-b358b5a5ce4c";
-import { apertureTier } from "./world.js?v=r1031-b358b5a5ce4c";
-import { seededRandom } from "./soundtrack.js?v=r1031-b358b5a5ce4c";
+import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.js?v=r1033-a2f1d1a7ea50";
+import { apertureTier } from "./world.js?v=r1033-a2f1d1a7ea50";
+import { seededRandom } from "./soundtrack.js?v=r1033-a2f1d1a7ea50";
 
 export const DIRECTOR = {
   engagedRange: 14, nearRange: 8, bossRange: 22,

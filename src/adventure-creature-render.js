@@ -2,7 +2,7 @@
 // and drawn size into a small canvas (at t = 0) and stamped every frame, lifted by its hop (`hopLift`) over a plain ground shadow, so a
 // screen of them costs a few drawImage calls; the cache is bounded (`max`). Without a DOM canvas (tests) a body is painted directly.
 // Their effects (pots, smoke, darts, glass) are plain paths, no gradients. Reduced motion holds the bob and the flicker still.
-import { ATTACK_MODULES } from "./monster-pack.js?v=r1031-b358b5a5ce4c";
+import { ATTACK_MODULES } from "./monster-pack.js?v=r1033-a2f1d1a7ea50";
 const TAU = Math.PI * 2;
 export const ADVENTURE_SPRITE = Object.freeze({
   box: Object.freeze({ galleryLurker: [2.2, 2, 1.5], censerWarden: [2, 2.6, 2.15], vinehookLeaper: [2.3, 2.1, 1.6], thornspitterBloom: [2, 2.1, 1.65], sinkmaw: [2.6, 1.8, 1.25], cinderKite: [2.8, 1.6, 1.05],

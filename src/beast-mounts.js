@@ -5,9 +5,9 @@
 // Tim's decisions (2026-11-04): a catch pays nothing (no marks, materials, spoils, XP or reward flags; its hunt still ends as a
 // fall does); the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight can never be caught.
 // Data and save rules only; game.ts calls in, renderer.ts draws.
-import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
-import { trapChance } from "./building.js?v=r1031-b358b5a5ce4c";
-import { ensureHatchling } from "./hatchling.js?v=r1031-b358b5a5ce4c";
+import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
+import { trapChance } from "./building.js?v=r1033-a2f1d1a7ea50";
+import { ensureHatchling } from "./hatchling.js?v=r1033-a2f1d1a7ea50";
 
 // One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale as a
 // mount, its real size as met in the world (Tim, 2026-11-04: "so you can be riding a pretty huge beast"; the pack form's scale x the
@@ -33,9 +33,11 @@ export const MOUNT_IDS = Object.keys(MOUNT_BEASTS);
 // 2.7), the seat on the top of the back. `tack: "barrel"` draws the saddle's girth round the barrel (beast-mounts-render.ts) down to
 // `belly` (tiles above the feet at the saddle). Presentation only: his contact, reach and attacks (TRICERATOPS_ATTACKS) never read
 // the scale; the seat is also where hostile hits find the rider (riderLiftOf), which follows the drawing by design (release 748).
-// seatX (2026-11-19, Tim: "the rider should be positioned behind the frill"): the saddle over the hips, clear of the frill through
-// every ridden move (was -.28). Standard view; Close View seats the rider at its card's middle (beast-mounts-render.ts).
-MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.6, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
+// seatX (2026-11-19, Tim: "mid-back, just behind / almost between the shoulder blades ... I just don't want him to clip into the
+// frill"): the saddle just behind the shoulder mass, two thirds of the way from the haunch (was -.6, over the hips), the ridden frill
+// smaller and tipped clear of him (triceratops-render.ts TRI_ART.riddenFrill). Standard view; Close View seats the rider over the
+// skinned body's saddle (close-view-beast-triceratops.ts TRICERATOPS_RIG.seatF, close-view.ts riddenSeatOnCard).
+MOUNT_BEASTS.triceratops = { name: "The Triceratops", pen: 4, scale: 2.1, seat: 1.86, seatX: -.02, saddle: "strap", tack: "barrel", belly: .78, speed: 1.65, jump: 1.5 };
 export const PERSISTENT_MOUNT_IDS = ["triceratops"];
 // Dedicated attacks reuse accepted Dodge and Jump; the rider retains ordinary Attack and spells.
 export const TRICERATOPS_ATTACKS = {

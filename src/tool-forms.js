@@ -1,5 +1,5 @@
-import { stampAttackVisual } from "./action-motion.js?v=r1031-b358b5a5ce4c";
-import { hashSeed } from "./random.js?v=r1031-b358b5a5ce4c";
+import { stampAttackVisual } from "./action-motion.js?v=r1033-a2f1d1a7ea50";
+import { hashSeed } from "./random.js?v=r1033-a2f1d1a7ea50";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
