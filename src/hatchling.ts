@@ -16,6 +16,9 @@
 import { hashSeed } from "./random.ts";
 
 const f = Object.freeze;
+// The young form's presence (Tim, 2026-11-20): while he is out (summoned and alive; not the baby, not the ridden big form) the Wayfarer
+// deals `damage` more (a fraction, applied as the meal fields attackDamage and spellDamage: every attack and spell).
+const YOUNG_AURA = f({ damage: .10 });
 export const HATCHLING = f({
   version: 1,
   // The rescue. `band`: Chebyshev sections from the hometown the site may be in; `loads`: at most this many sections previewed for
@@ -39,7 +42,7 @@ export const HATCHLING = f({
   // Wayfarer in both views, the young about the Stalker's cat form; presentation only).
   forms: f({
     baby: f({ name: "Baby", scale: .74, closeViewScale: 1.2, speed: 3.1, rideable: false, text: "support: light buffs, heals and a chill" }),
-    young: f({ name: "Young", scale: 1, closeViewScale: 1.2, speed: 3.6, rideable: false, text: "damage: horn beams, gatling horns, tail whirl, bite and charge" }),
+    young: f({ name: "Young", scale: 1, closeViewScale: 1.2, speed: 3.6, rideable: false, text: `damage: horn beams, gatling horns, tail whirl, bite and charge; +${Math.round(YOUNG_AURA.damage * 100)}% damage while he's out` }),
     big: f({ name: "Big", scale: 2.1, speed: 0, rideable: true, text: "rideable" }),
   }),
   formIds: f(["baby", "young", "big"]),
@@ -58,6 +61,7 @@ export const HATCHLING = f({
     nip: f({ every: 1.6, range: 1.3, share: .05, radius: .55 }), // barely any damage: a share of the Wayfarer's melee power
   }),
   young: f({
+    aura: YOUNG_AURA, // +10% damage while he is out (hatchlingBonus)
     aggro: 6.5, // he picks fights with foes this near the Wayfarer
     orbit: f({ radius: 1.9, rate: .55 }), // walking with and round the Wayfarer when there is no fight
     // Moves, in his order of preference. range: [min, max] tiles to the foe; cd: seconds; share: of the Wayfarer's melee power per hit.
@@ -163,11 +167,17 @@ export function tickBuffs(h, dt) {
   for (const k of HATCH_BUFF_IDS) if (b[k] > 0) { b[k] = Math.max(0, b[k] - dt); if (!(b[k] > 0)) delete b[k]; }
 }
 export function clearBuffs(h) { if (h?.buffs) for (const k of HATCH_BUFF_IDS) delete h.buffs[k]; }
-// The summed bonus of the buffs in effect (meal fields), or null with none. Allocates only while a buff is up.
+// The young form's presence as meal fields (one frozen object: no allocation while it is the only bonus).
+const AURA_BONUS = f({ attackDamage: YOUNG_AURA.damage, spellDamage: YOUNG_AURA.damage });
+// Whether the young form is out (summoned and alive: a fall or a dismissal clears `out`; the big form is never out).
+export const youngOut = (h) => !!h?.owned && h.form === "young" && !!h.out;
+// The summed bonus of the buffs in effect and the young form's presence (meal fields), or null with neither. Allocates only while a
+// buff is up.
 export function hatchlingBonus(save) {
-  const b = save?.mounts?.hatchling?.buffs; if (!b) return null;
+  const h = save?.mounts?.hatchling, b = h?.buffs, aura = youngOut(h); if (!b && !aura) return null;
   let out = null;
-  for (const k of HATCH_BUFF_IDS) if (b[k] > 0) { out ||= {}; for (const [f2, v] of Object.entries(HATCHLING.buffs.kinds[k].bonus)) out[f2] = (out[f2] || 0) + v; }
+  if (b) for (const k of HATCH_BUFF_IDS) if (b[k] > 0) { out ||= {}; for (const [f2, v] of Object.entries(HATCHLING.buffs.kinds[k].bonus)) out[f2] = (out[f2] || 0) + v; }
+  if (aura) { if (!out) return AURA_BONUS; for (const [f2, v] of Object.entries(AURA_BONUS)) out[f2] = (out[f2] || 0) + v; }
   return out;
 }
 
