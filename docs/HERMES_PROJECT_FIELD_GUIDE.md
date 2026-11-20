@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1045 — Young Triceratops: the lion
+
+Tim (2026-11-20): the young should have a lion's body with a Triceratops head (a proud chest and strong forelegs, the head resting above the chest rather than slung forward) and a frill like a lion's mane; and his damage should be about 10% of the Wayfarer's over a real fight (enemy movement and attacks, his own cadence), not against a dummy.
+
+**CODE:** TRI_FORMS.young (foreLeg, stance, nod) and TRI_SHAPE.young set the Standard View lion carriage; TRI_ART.youngFrill is the mane (fill, knobFill, rays, center), drawn by frillShelf. Close View: TRICERATOPS_RIG.formBody.young (pitch and foreLeg read in sampleTriceratops; mane builds the collar mesh). HATCH_ART.tips / focus (beam pose) and gatlingTips (rear pose) are pinned by tests/hatchling-young-tips.test.ts. The young's move shares are the original weights x 0.0838, measured by the realistic fight harness in tests/hatchling-young-damage.test.ts (early pack .093, mid pack .137, elite .065, world-beast .106; average .100). game.ts hatchHit carries the young's damage fraction in out.carry so small shares land at their true size.
+
+**BOUNDARY:** Drawing only for the posture and mane: no hitbox, range or origin change in game logic, and only the young form. The damage change touches only the young's move shares and his rounding; the baby, the ridden adult and wild herds are unchanged. out.carry is an additive save field at schema 14. Young Close View triangles 2580/1434/618 within 3218/1694/668.
+
 ## Release 1044 — progression phase 6: milestones, the Reliquary, pity
 
 Tim approved Phase 6 on 2026-11-20 (`docs/progression-design.md` revision 3, section 7 row 6, with sections 2.2 routes c and R, 2.5 G3, 2.7, 3 and 6). Built on Phase 4's branch. Exploration's gating begins for routes c and R; no release number is taken yet.
