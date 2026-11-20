@@ -94,12 +94,12 @@ import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, c
 import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.ts";
 import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHitStop, holdFoe, foeHeld } from "./hitstop-actors.ts"; // per-actor hit-stop (Tim, 2026-11-19)
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
-import { generateItem, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
+import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
-import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges } from "./constellation.ts";
+import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
 import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
@@ -156,7 +156,8 @@ import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, b
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
-import { useJourneyFrame, saveStart, saveFrame } from "./journey-start.ts";
+import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.ts";
+import { adoptExploration } from "./progression.ts"; // progression Phase 3: an Exploration journey from before its table keeps what it had
 import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -982,6 +983,10 @@ export function grantMilestoneGear(save) {
   }
   return awarded;
 }
+// Progression Phase 3 (journey-start.ts EXPLORATION.gates["companion:hatchling"]): in Exploration the hatchling's mother comes to the
+// Beast Hotel when the Infinite II band opens; under Classic, as before, she is always there. A rescue begun or done, or the
+// hatchling kept across a mode switch, keeps her there.
+export const hatchMamaHere = (save) => { const h = save?.mounts?.hatchling; return !!h && (h.owned === true || (h.quest?.state && h.quest.state !== "none") || explorationGateOpen(save, "companion:hatchling")); };
 // Release 489/493: the brawler gear, given once each when the Wayfarer reaches Infinite III (where the brawler spells opened):
 // the Iron Fists (a weapon), Hammerfall and Great Sweep (tools). An Iron Fists pair from release 489 (then a tool) becomes
 // the weapon it is now: moved out of the Tool slot into the pack.
@@ -3037,6 +3042,7 @@ export class Game {
   constructor(save, now = 0) {
     this.save = save;
     useJourneyFrame(save); // the journey's frame (journey-start.ts): the identity on every journey not created at start version 1
+    adoptExploration(save); // progression Phase 3: nothing unless an Exploration journey reads an older table (progression.ts)
     this.performanceStats={totalDungeonEncounterRecords:0,activeEnemies:0,dormantEnemies:0,activeProjectiles:0,activeHazardsAndEffects:0,pathfindingWork:0,encounterActivations:0,peakActiveEnemies:0,updateBudgetViolations:0,ambientTicks:0};
     ensureEliteState(save);
     ensureCorridorSystems(save);
@@ -8057,13 +8063,13 @@ export class Game {
     this.save.session.activeDungeonId = door.dungeonId; this.save.session.activeDungeonLevelId = null;
     const h = dungeonHistory(this.save, door.dungeonId); h.visits++; h.visitOpen = true;
     this.loadArea("dungeon"); this.player.x = this.map.entry.x; this.player.y = this.map.entry.y - 1; this.settleArrival(); this.sync();
-    return { ok: true, message: (this.message = this.save.mounts?.hatchling?.owned ? "Beast Hotel: visit your companion's bed. Early recovery offers a fight; retrieval is free." : "Beast Hotel: a sick mother Triceratops lies in the straw. Speak to her.") };
+    return { ok: true, message: (this.message = this.save.mounts?.hatchling?.owned ? "Beast Hotel: visit your companion's bed. Early recovery offers a fight; retrieval is free." : hatchMamaHere(this.save) ? "Beast Hotel: a sick mother Triceratops lies in the straw. Speak to her." : "Beast Hotel: beds of clean straw for your recovering companions.") };
   }
   refreshBeastHotel() {
     if (!this.map.beastHotel) return;
     const mounts = ensureMounts(this.save).stable.filter(m => persistentMount(m) && m.recovery);
     this.map.objects = this.map.objects.filter(o => o.kind === "exit");
-    { const h = this.save.mounts.hatchling, Q = HATCHLING.quest; this.map.objects.push({ id: "hatch-mama", kind: "hatchMama", name: Q.names.mama, x: 18, y: 14, state: h.owned ? "well" : "sick", actions: ["talk"] }); } // the hatchling's mother
+    if (hatchMamaHere(this.save)) { const h = this.save.mounts.hatchling, Q = HATCHLING.quest; this.map.objects.push({ id: "hatch-mama", kind: "hatchMama", name: Q.names.mama, x: 18, y: 14, state: h.owned ? "well" : "sick", actions: ["talk"] }); } // the hatchling's mother (in Exploration, from Infinite II: hatchMamaHere)
     this.enemies = this.enemies.filter(e => e.beastHotelOpponent && mounts.some(m => m.id === e.beastHotelOpponent && !m.recovery.encounterComplete));
     for (let i = 0; i < mounts.length; i++) {
       const m = mounts[i], r = m.recovery, healthy = r.progress >= TRICERATOPS_RIDE.recoveryTransitions;
@@ -8095,6 +8101,7 @@ export class Game {
   hatchMamaTalk(o) {
     const h = ensureMounts(this.save).hatchling, q = h.quest, Q = HATCHLING.quest, M = Q.messages;
     if (h.owned) return { ok: true, message: (this.message = M.thanks) };
+    if (!hatchMamaHere(this.save)) return { ok: false, message: (this.message = "The straw is empty.") }; // progression Phase 3: not before Infinite II in Exploration
     if (q.state === "active") return { ok: true, message: (this.message = `${M.already} (${q.rx},${q.ry} on your Atlas.)`) };
     const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
     Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
@@ -10057,6 +10064,7 @@ export class Game {
     if(!spellId&&this.save.magicSkills?.selected&&skillRank(this.save,this.save.magicSkills.selected)>0)return this.activateApertureSkill(this.save.magicSkills.selected);
     if (spellId && SPELLS[spellId]) this.save.equippedSpell = spellId; // the readied spell is the glyph host
     const spell = SPELLS[this.save.equippedSpell] || SPELLS["ember-ring"], cds = (this.save.magicSkills ||= {}).cooldowns ||= {}, key = `spell:${spell.id}`, remaining = spellId ? cds[key] || 0 : this.spellCooldownRemaining; // slots use per-spell cooldowns; the legacy call keeps its single one
+    if (exploring(this.save) && !spellOpen(this.save, spell.id)) { this.message = `${spell.name} is not yours yet.`; return false; } // progression Phase 3: Exploration's level gates (Classic never reaches this)
     if (remaining > 0 && this.essenceCostFor(spell.id) != null && !this.followUpPress(spell)) return this.essenceCast(spell, cds, key, spellId, remaining); // Essence Walk (2026-11-05)
     if (remaining > 0 && this.essenceLocked(spell.id) && (this.lastUpdateNow || 0) < (this.essenceUntil || 0)) { this.message = `${spell.name} is locked: your stamina ran out. It recovers in ${Math.ceil(remaining)}s.`; return false; }
     if (spell.id === "shadow-clone") return this.castShadowClone(spell, cds, key); // release 365
@@ -12071,7 +12079,7 @@ export class Game {
       edgeArm(this, CASTABLES[`skill:${id}`]?.attr || null); } // Arcane Edge (Tim, 2026-11-19): a skill used arms it with its own element, and nothing else of the on-cast passives. Rift Step answers true only for a step taken (arming its aim returns false), so it arms once a step
     return result;
   }
-  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&altOn(this.save,'aerial-step')){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */if(id==='quickening'&&altChosen(this.save,'quickening')){this.message=`Quickening is set to its secondary form, ${ALT_PASSIVES.quickening.name} (Arcanum).`;return false}/* 2026-11-15: Quickened Stride, mirroring Long Quickening */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}const aerial=id==='aerial-step',charges=aerial?aerialChargesNow(this.save):0;if(aerial&&(this.aerialCasts||0)>=skill.airCasts){this.message=AERIAL.capped;return false}/* AERIAL: twice at most between touches of the ground */if(aerial?charges<1:(state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */const cd=this.skillCooldown(id);if(aerial){state.aerialCharges=charges-1;if(!((state.cooldowns[id]||0)>0))state.cooldowns[id]=cd;/* a charge already coming back keeps its clock */this.aerialCast()}else state.cooldowns[id]=cd;if(aerial)state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
+  activateApertureSkillEffect(id=this.save.magicSkills?.selected){if(this.cursed('spells'))return false;/* release 737: NO SPELLS (Aperture skills too) */if(id==='rift-step'){const now=this.lastUpdateNow||0,target=this._riftTarget;this._riftTarget=null;if(!target&&this._riftArm)return this.armRiftAim(now);/* RIFT_AIM.hold: a held button arms the aim, in either view */if(!target)this.riftAim=null;/* a tap steps (and drops an armed aim) */const ok=target?riftStepTo(this,now,target):riftStep(this,now);if(ok)this.riftFlashAt=now;return ok}/* release 519: a brief gold flash on the button */if(id==='aerial-step'&&aerialStepBlocked(this.save)){this.message=`Aerial Step is set to its secondary form, ${ALT_PASSIVES['aerial-step'].name} (Arcanum).`;return false}/* release 359 */if(id==='quickening'&&altChosen(this.save,'quickening')){this.message=`Quickening is set to its secondary form, ${ALT_PASSIVES.quickening.name} (Arcanum).`;return false}/* 2026-11-15: Quickened Stride, mirroring Long Quickening */const skill=APERTURE_SKILLS[id],rank=skillRank(this.save,id),state=this.save.magicSkills;if(!skill||!rank){this.message='That Aperture skill has not been learned.';return false}const aerial=id==='aerial-step',charges=aerial?aerialChargesNow(this.save):0;if(aerial&&(this.aerialCasts||0)>=skill.airCasts){this.message=AERIAL.capped;return false}/* AERIAL: twice at most between touches of the ground */if(aerial?charges<1:(state.cooldowns[id]||0)>0){this.message=`${skill.name} recovers in ${Math.ceil(state.cooldowns[id])}s.`;return false}state.active={id,rank,remaining:(skill.duration+Math.max(0,rank-1))*skillDurationScale(this.save,id)*(1+armorGlyphBonus(this.save).spellDuration)*skillGlyphMods(this.save,id).duration};state.active.duration=state.active.remaining;/* release 313: the button's buff bar */const cd=this.skillCooldown(id);if(aerial){state.aerialCharges=charges-1;if(!((state.cooldowns[id]||0)>0))state.cooldowns[id]=cd;/* a charge already coming back keeps its clock */this.aerialCast()}else state.cooldowns[id]=cd;if(aerial)state.lastSafe={x:this.player.x,y:this.player.y,area:this.area,areaId:this.areaId()};this.message=`${skill.name} answers for ${state.active.remaining}s.`;this.sync();return true}
   skillCooldown(id){const skill=APERTURE_SKILLS[id];return skill.cooldown*(1-pairingMods(this.save).cooldown)*(1-armorGlyphBonus(this.save).spellCooldown)*skillGlyphMods(this.save,id).cooldown}
   allocate(s) {
     if (!this.save.statPoints || !Object.hasOwn(this.save.stats, s))

@@ -44,7 +44,7 @@ import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
 import { compendium } from "./progression.ts"; // the progression table and its compendium (docs/progression-design.md, Phase 1)
 import { startCards, START_KIT, PROGRESSION_MODES, switchProgression, switchText } from "./progression.ts"; // Phase 2: the creator's cards and the mode switch
-import { modeInfo, progressionMode } from "./journey-start.ts";
+import { modeInfo, progressionMode, EXPLORATION } from "./journey-start.ts";
 import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
@@ -185,7 +185,7 @@ import {
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
 import { STATS, freshSave, setCompassChoice } from "./types.ts";
-import { SPELLS, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
+import { SPELLS, explorationGateOpen, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
 import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
 import { GLYPHS, GLYPH_IDS, RESONANCES, TRIADS, socketGlyph, craftGlyph, describeHost, glyphDustCost, DUST_PER_GLYPH, SPELL_SOCKETS, LAYOUT_HOSTS, saveGlyphLayout, applyGlyphLayout } from "./glyphs.ts";
@@ -232,7 +232,7 @@ const MOUNT_CONTROL_ICONS = {
 const UTILITY_TOOL_ICONS = { build: () => UTILITY_ICONS.build, robot: () => ITEM_ICONS.submersible, drone: () => UTILITY_ICONS.drone };
 let slotOfAction = null; // built on first use (updateHud), not at module load
 import { reloadPips, powerAegisLeft } from "./hit-cast-passives.ts"; // Rapid Reload's pips (Tim, 2026-11-19)
-import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups } from "./constellation.ts";
+import { BRANCHES, BRANCH_IDS, NODE_EFFECTS, POINT_EVERY, pointsEarned, pointsFree, hasNode, branchCaps, learnRank, learnMod, learnExtra, chooseCap, respec, respecCost, awakenCheck, awaken, awakenedText, AWAKEN_COST, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, altChosen, toggleAlt, passiveForm, PASSIVE_KEYS, toggleLatticePassive, latticePassiveGroups, learnAerialStep, capstoneOf, aerialDiscipline } from "./constellation.ts";
 import { homeName, homeKey, homeCandidate, setHome, townAt } from "./hometowns.ts";
 import { DUNGEON_TRAPS } from "./dungeon-traps.ts";
 import { FIELD_KEYS, TOOL_FORM_KEYS, fieldForm } from "./lattice-fields.ts";
@@ -2334,7 +2334,7 @@ function openPack(tab) {
     row.append(title, text, use); body.append(row);
     { // The Triceratops hatchling (hatchling.ts; Tim, 2026-11-19): his growth and which form a hold of Act calls.
       const h = ensureMounts(save).hatchling, hr = document.createElement("div"), ht = document.createElement("strong"), hp = document.createElement("p"); hr.className = "item consumable stable";
-      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her."; hr.append(ht, hp); }
+      if (!h.owned) { ht.textContent = "Triceratops hatchling"; hp.textContent = h.quest.state === "active" ? `${HATCHLING.quest.names.quest}: the pen is at ${h.quest.rx}, ${h.quest.ry} (marked on your Atlas). Drive off the pack and free him.` : explorationGateOpen(save, "companion:hatchling") ? "A sick mother Triceratops at your hometown's Beast Hotel needs help. Speak to her." : `In Exploration a mother Triceratops comes to your hometown's Beast Hotel at the ${APERTURE_BANDS[EXPLORATION.gates["companion:hatchling"].tier].name} band of the Aperture.`; hr.append(ht, hp); }
       else { const g2 = growthProgress(h), F = HATCHLING.forms[h.form]; ht.textContent = `Your Triceratops · ${F.name} form${h.out ? " · out" : ""}`;
         hp.textContent = `${g2.next ? `Growing: ${g2.have}/${g2.need} toward his ${HATCHLING.forms[g2.next].name.toLowerCase()} form (he grows from ${Math.round(HATCHLING.growth.share * 100)}% of the experience you earn from fights while he is out).` : "Fully grown."} Hold Act to call the chosen form, or send him to rest.`;
         hr.append(ht, hp); const line = document.createElement("div"); line.className = "stable-mount";
@@ -3230,7 +3230,7 @@ function arcanumFooter(){const f=el('footer','arc-foot');f.append(uiButton('Sphe
 // Release 157: element badges and Active/Passive tags so it is clear what each entry is and what it touches.
 function elemBadge(attr){const a=ATTRIBUTES[attr],b=el('span','arc-elem',`${a.icon} ${a.name}`);b.style.setProperty('--elem',a.color);return b}
 function kindTag(text,active){return el('span',`arc-kind ${active?'active':'passive'}`,text)}
-function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind;return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
+function nodeKind(n,skill){if(n.id==='active')return n.alt?[`Passive · changes how ${APERTURE_SKILLS[ALT_PASSIVES[n.ref]?.affects]?.name||skill.name} works`,false]:['Active · cast it from slot A, B, C or D',true];const k=n.kind||(n.alt?ALT_PASSIVES[n.ref]?.kind:NODE_EFFECTS[n.ref||n.id]?.kind);/* n.kind: Exploration's Long Quickening capstone and Aerial Step discipline (progression Phase 3) */return k==='cast'?['Active · a new ability for slot A, B, C or D',true]:k==='always'?['Passive · always on',false]:k==='changes'?[`Passive · changes how ${skill.name} works`,false]:[`Passive · works while ${skill.name}'s buff is running`,false]}
 // Constellation: each branch is a path of glowing nodes — the active (with rank pips), its modifier, then two capstones.
 function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.perception?.aperture||0,free=pointsFree(save);
  arcanumShell('constellation',`Spells & Constellation`,`${free} point${free===1?'':'s'} free · Aperture ${value} (${apertureBand(value).name}), one point per ${POINT_EVERY}${save.constellation.bonus?`, ${save.constellation.bonus} kept from before`:''}. Ranks and modifiers cost 1, capstones 2; a mastered branch can take both. Tap an entry to read it.${atShrine?' This shrine can reset everything.':' Respec at a shrine.'}`);
@@ -3269,7 +3269,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   {const boosts=[`Focus ${save.stats?.Focus||1}: +${wayfarerDamage(characterStats(save).magicBonus)} spell damage`],pr=activePairing(save);if(pr&&(pr.mods.spellDamage||pr.mods.cooldown))boosts.push(`Pairing ${pr.name}: ${pr.text}`);
    for(const bid of BRANCH_IDS){const b=BRANCHES[bid];for(const node of[b.mod,...b.caps]){const fx=NODE_EFFECTS[node.id];if(fx?.spells)boosts.push(`${node.name} (${b.name}, ${hasNode(save,node.id)?'learned':'not learned'}): ${fx.spells} Only while ${APERTURE_SKILLS[b.active].name} is active.`)}}
    const list=el('ul','arc-boosts');for(const t of boosts)list.append(el('li','',t));detail.append(el('small','arc-hint','What affects your spells:'),list,el('small','arc-hint','Other constellation entries change their own discipline, not your spells.'))}
-  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`)); // release 365
+  if(spellOpen(save,show.id))detail.append(...slotButtons(`spell:${show.id}`,()=>{arcanumFocus={branch:'spells',node:show.id}}));else detail.append(el('small','arc-why',show.unlockTier?`Opens at the ${APERTURE_BANDS[show.unlockTier].name} band of the Aperture.`:`Opens at level ${EXPLORATION.gates[`spell:${show.id}`]?.level} (Exploration).`)); // release 365; progression Phase 3: Exploration's spells by level
   card.append(head,path,detail);sky.append(card)}
  for(const bid of BRANCH_IDS){const b=BRANCHES[bid],skill=APERTURE_SKILLS[b.active],rank=skillRank(save,skill.id),modOn=!!save.constellation.mods[b.mod.id],caps=branchCaps(save,bid),mastered=rank>=skill.maxRank,open=value>=skill.threshold;
   const card=el('section','arc-branch'+(open?'':' sealed'));card.dataset.branch=bid;
@@ -3277,8 +3277,9 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
   const path=el('div','arc-path'),detail=el('div','arc-detail');
   const nodes=[{id:'active',...(ALT_PASSIVES[skill.id]?.discipline?{ref:skill.id}:{}),name:skill.name,text:skill.description,state:rank>=skill.maxRank?'owned':rank>0?'partial':open?'ready':'locked',pips:[rank,skill.maxRank],cost:1,can:open&&rank<skill.maxRank,act:()=>learnRank(save,bid),verb:`Learn rank ${rank+1}`},
    {id:'mod',ref:b.mod.id,name:b.mod.name,text:b.mod.text,state:modOn?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!modOn,act:()=>learnMod(save,bid),verb:'Learn'},
-   ...b.caps.map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'})),
-   ...(b.extras||[]).map(x=>{const own=!!save.constellation.mods[x.id];return{id:x.id,ref:x.id,extra:true,name:x.name,text:x.text,state:own?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!own,act:()=>learnExtra(save,bid,x.id),verb:'Learn'}})]; // Tim 2026-11-19: the branch's on-cast / on-hit node (hit-cast-passives.ts)
+   ...b.caps.map(c=>capstoneOf(save,c)).map(c=>({id:c.id,ref:c.id,cap:true,name:c.name,text:c.text,...(c.kind?{kind:c.kind,lq:true,ref:null}:{}),/* Exploration's Long Quickening: no secondary form to show or swap */state:caps.includes(c.id)?'owned':modOn&&mastered?'ready':'locked',cost:2,can:modOn&&mastered&&!caps.includes(c.id),act:()=>chooseCap(save,bid,c.id),verb:'Crown with'})),
+   ...(b.extras||[]).map(x=>{const own=!!save.constellation.mods[x.id];return{id:x.id,ref:x.id,extra:true,name:x.name,text:x.text,state:own?'owned':rank>0?'ready':'locked',cost:1,can:rank>0&&!own,act:()=>learnExtra(save,bid,x.id),verb:'Learn'}}), // Tim 2026-11-19: the branch's on-cast / on-hit node (hit-cast-passives.ts)
+   ...(bid==='motion'&&aerialDiscipline(save)?[(()=>{const A=APERTURE_SKILLS['aerial-step'],own=skillRank(save,'aerial-step')>0,ok=value>=EXPLORATION.aerialStep.aperture;return{id:'aerial',extra:true,aerial:true,kind:'cast',name:A.name,text:A.description,state:own?'owned':ok?'ready':'locked',cost:EXPLORATION.aerialStep.cost,can:ok&&!own,act:()=>learnAerialStep(save),verb:'Learn'}})()]:[])]; // progression Phase 3: in Exploration Aerial Step is a discipline of its own (Aperture 6, no prerequisite)
   // Release 359: a passive whose secondary form is chosen shows that form (name, text and kind).
   for(const n of nodes)if(n.ref&&altChosen(save,n.ref)){const A=ALT_PASSIVES[n.ref];Object.assign(n,{primaryName:n.name,primaryText:n.text,name:`${A.name} ⇄`,text:A.text,alt:true})}
   const focus=arcanumFocus?.branch===bid?nodes.find(n=>n.id===arcanumFocus.node):null;
@@ -3296,9 +3297,9 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;const value=save.pe
    if(!open||!learned){swap.disabled=true;swap.title=!open?`Opens at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`:'Learn it first.'}box.append(swap);if(!open)box.append(el('small','arc-why',`Secondary forms open at the ${APERTURE_BANDS[ALT_UNLOCK_TIER].name} band of the Aperture.`));detail.append(box)}
   if(show.can){const go=uiButton(`${show.verb} · ${show.cost} pt${show.cost>1?'s':''}`,()=>{const r=show.act();game.message=r.message;persist();arcanumFocus={branch:bid,node:show.id};openSkills(atShrine)});go.className='arc-go';detail.append(go)}
   // A learned discipline (or Aerial Step, a castable capstone) can go in slot A or B.
-  const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.id==='aerial-step'&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
+  const castId=show.id==='active'&&rank>0&&!show.alt?skill.id:show.aerial&&show.state==='owned'?'aerial-step':show.id==='aerial-step'&&!show.lq&&caps.includes('aerial-step')&&!show.alt?'aerial-step':null;
   if(castId)detail.append(...slotButtons(`skill:${castId}`,()=>{arcanumFocus={branch:bid,node:show.id}}));
-  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.id==='mod'||show.extra?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
+  if(!show.can&&show.state==='locked')detail.append(el('small','arc-why',show.cap?(modOn?`Master ${skill.name} (${skill.maxRank} ranks) first.`:`Take ${b.mod.name} and master ${skill.name} first.`):show.aerial?`Opens at Aperture ${EXPLORATION.aerialStep.aperture}.`:show.id==='mod'||show.extra?`Learn ${skill.name} first.`:`Opens at Aperture ${skill.threshold}.`));
   card.append(head,path,detail);sky.append(card)}
  body.append(sky);
  const seen=Object.keys(PAIRINGS).filter(k=>save.magicSkills.pairingsSeen?.[k]);body.append(el('h3','',`Pairings · ${seen.length} of ${Object.keys(PAIRINGS).length} found`));

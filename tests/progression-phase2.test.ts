@@ -124,7 +124,7 @@ test('switching: v0 -> v1 keeps everything open by today\'s rules; v1 -> v0 take
   for (const id of ['spell:shadow-clone', 'spell:aegis', 'skill:ember-form']) assert.ok(s.progression.kept.includes(id), id);
   assert.deepEqual(s.progression.kept.slice().sort(), switchKeeps(s).slice().sort());
   assert.deepEqual(s.progression.log, [{ from: 0, to: 1, playSeconds: 3600, section: '0,0' }]);
-  assert.deepEqual(owned(s), before, 'nothing lost going to Exploration');
+  assert.deepEqual(before.filter((id) => !owned(s).includes(id)), [], 'nothing lost going to Exploration'); // Phase 3: Exploration also opens its own (Aerial Step at Aperture 6; awakening and the hatchling shown open)
   s.perception.aperture = 0; // even if the band were lost, what was kept stays
   assert.ok(spellOpen(s, 'shadow-clone'));
   const r0 = switchProgression(s, 0); assert.ok(r0.ok); assert.equal(s.progression.mode, 0);
