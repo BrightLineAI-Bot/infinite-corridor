@@ -38,24 +38,6 @@ The static production PWA is written to `dist/`. Serve that directory from an HT
 
 For Test Bot candidate inspection, run `npm run start:proving-ground:fixture` and open `http://127.0.0.1:5174/proving-ground/`. This builds and serves the production-backed scratch laboratory on a fixed loopback port without network access or dependencies. It does not publish a preview or promote production. Stop with Ctrl+C.
 
-### Private tailnet deployment
-
-This host serves the validated production build at `https://orvar.tailc5115c.ts.net:10444/`.
-
-The route is tailnet-only (Tailscale Serve, never Funnel) and proxies to loopback `127.0.0.1:18882`. After `npm run build`, install or reconcile the limited-user startup task and route with:
-
-```powershell
-pwsh -NoProfile -File scripts\install-private-pwa.ps1
-```
-
-Roll back the route and startup task with:
-
-```powershell
-pwsh -NoProfile -File scripts\uninstall-private-pwa.ps1
-```
-
-Existing browser and Android saves remain client-local and are not deleted by route rollback.
-
 ## Install on Android and verify offline play
 
 1. Build the project and host the contents of `dist/` on an HTTPS URL reachable by the phone.

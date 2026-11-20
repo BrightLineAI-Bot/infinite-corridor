@@ -4,7 +4,7 @@ Status: completed local implementation included in the single combined release 2
 
 ## Owner source and approved decisions
 
-The exact source is preserved in `astral-worm-source-transcript.md`, with acceptance mapping in `astral-worm-design.md`. S4–S6 approve the fourth visual pass, confirm nearest reachable Wayglass retreat, add any-form Walker riding with separate unchanged HP and simultaneous pierce/splash damage, and approve normal world-beast bounty with no new Echo, rewardless mirages/allied Walker, and corresponding formal regressions. Cross-franchise references are motion/mood only; all geometry is original native Canvas code. Astral Worm has no boat, underwater form or water-elemental attack.
+The exact source is preserved in the owner's source transcript (not kept in the public repository), with acceptance mapping in `astral-worm-design.md`. S4–S6 approve the fourth visual pass, confirm nearest reachable Wayglass retreat, add any-form Walker riding with separate unchanged HP and simultaneous pierce/splash damage, and approve normal world-beast bounty with no new Echo, rewardless mirages/allied Walker, and corresponding formal regressions. Cross-franchise references are motion/mood only; all geometry is original native Canvas code. Astral Worm has no boat, underwater form or water-elemental attack.
 
 ## Source map
 

@@ -1,6 +1,6 @@
 # Void Walker implementation checkpoint — 2026-10-21
 
-This is a **local work-in-progress**, not a release approval. Read [the owner design record](void-walker-design.md) and [verbatim transcript](void-walker-source-transcript.md) first. This companion records current code, evidence, and deviations so a later Claude/Anthropic reviewer can challenge the implementation rather than infer intent from it.
+This is a **local work-in-progress**, not a release approval. Read [the owner design record](void-walker-design.md) and verbatim transcript (not kept in the public repository) first. This companion records current code, evidence, and deviations so a later Claude/Anthropic reviewer can challenge the implementation rather than infer intent from it.
 
 ## Candidate and boundaries
 

@@ -1,6 +1,6 @@
 # Gate Revenant upgrade: requirements, read-only audit and next-release plan
 
-Status: design staged only; no implementation, test changes, commit, PR or publication. Owner source: `gate-revenant-source-transcript.md`. Audit 2026-10-21 against HEAD a91cc8c54c088fc7430798c23b7e908722b6d1a1 plus uncommitted r251 ocean work. File hashes are in `audit-source-sha256.txt`; the HEAD alone does not identify the working source. Base implementation on the eventual reviewed r251 commit, not this historical HEAD.
+Status: design staged only; no implementation, test changes, commit, PR or publication. Owner source: the owner's source transcript (not kept in the public repository). Audit 2026-10-21 against HEAD a91cc8c54c088fc7430798c23b7e908722b6d1a1 plus uncommitted r251 ocean work. File hashes are in `audit-source-sha256.txt`; the HEAD alone does not identify the working source. Base implementation on the eventual reviewed r251 commit, not this historical HEAD.
 
 ## Normalized owner requirements
 
