@@ -1505,6 +1505,21 @@ export function drawSecondFootprints(ctx, o, s, now) {
   if (!read) { const a = .18 + .14 * Math.sin(now / 700 + o.x); ctx.fillStyle = `rgba(255,226,170,${a})`; ctx.beginPath(); ctx.arc(cx + s * .3, cy, s * .32, 0, 7); ctx.fill(); }
   ctx.restore();
 }
+// Progression Phase 6 (world-finds.ts): a reliquary laid at the bottom of a place: a small dark casket bound in old brass, a pale
+// light leaking from under its lid while it waits; opened, the lid stands back and the light is gone. Nothing allocated per frame
+// beyond the one glow gradient while it waits.
+export function drawReliquary(ctx, o, s, now) {
+  const cx = (o.x + .5) * s, cy = (o.y + .6) * s, open = o.state === "used";
+  ctx.save();
+  if (!open) { const k = .6 + .4 * Math.sin(now / 520), g = ctx.createRadialGradient(cx, cy - s * .05, 0, cx, cy - s * .05, s * .75); g.addColorStop(0, `rgba(214,236,255,${.38 * k})`); g.addColorStop(1, "rgba(214,236,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy - s * .05, s * .75, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + s * .2, s * .3, s * .07, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#1c1814"; ctx.lineWidth = Math.max(1, s * .03);
+  ctx.fillStyle = "#3a2e3a"; ctx.fillRect(cx - s * .24, cy - s * .08, s * .48, s * .26); ctx.strokeRect(cx - s * .24, cy - s * .08, s * .48, s * .26); // the casket
+  ctx.fillStyle = "#b08a4a"; ctx.fillRect(cx - s * .24, cy + s * .02, s * .48, s * .04); ctx.fillRect(cx - s * .03, cy - s * .08, s * .06, s * .26); // its brass bands
+  if (open) { ctx.fillStyle = "#4a3c4a"; ctx.beginPath(); ctx.moveTo(cx - s * .24, cy - s * .08); ctx.lineTo(cx - s * .2, cy - s * .32); ctx.lineTo(cx + s * .28, cy - s * .32); ctx.lineTo(cx + s * .24, cy - s * .08); ctx.closePath(); ctx.fill(); ctx.stroke(); } // the lid stood back
+  else { ctx.fillStyle = "#4a3c4a"; ctx.beginPath(); ctx.moveTo(cx - s * .26, cy - s * .08); ctx.quadraticCurveTo(cx, cy - s * .3, cx + s * .26, cy - s * .08); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = "rgba(225,240,255,.85)"; ctx.fillRect(cx - s * .2, cy - s * .1, s * .4, s * .025); } // the lid, and the light under it
+  ctx.restore();
+}
 export function drawSecondTrace(ctx, o, s, now) {
   const cx = (o.x + .5) * s, cy = (o.y + .62) * s, read = o.state === "read";
   ctx.save();
@@ -3155,6 +3170,7 @@ export function render(ctx, g, w, h, now) {
           } else if (o.kind === "surveyorStatue") { drawSurveyorStatue(ctx, o, s, now); // release 551
           } else if (o.kind === "secondFootprints") { drawSecondFootprints(ctx, o, s, now); // the Second Wayfarer
           } else if (o.kind === "secondTrace") { drawSecondTrace(ctx, o, s, now);
+          } else if (o.kind === "reliquary") { const L = o.elev ? groundLift(o.x, o.y) * s : 0; if (L) { ctx.save(); ctx.translate(0, -L); } drawReliquary(ctx, o, s, now); if (L) ctx.restore(); // progression Phase 6
           } else if (o.kind === "marginNote") { drawMarginNote(ctx, o, s, now);
           } else if (o.kind === "townKeeper") { actor(ctx, o.x, o.y, s, "npc", "down", 0, "idle"); ctx.strokeStyle = "#c9a6ff"; ctx.lineWidth = Math.max(1.5, s * .05); ctx.beginPath(); ctx.arc((o.x + .5) * s, (o.y - .15) * s, s * .14, 0, 7); ctx.stroke(); // release 441: a keeper with an Aperture lens
           } else if (o.kind === "skiff") {
