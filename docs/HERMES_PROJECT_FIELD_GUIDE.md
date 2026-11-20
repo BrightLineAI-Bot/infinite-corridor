@@ -14,6 +14,14 @@ Tim approved the progression plan (`docs/progression-design.md`, revision 3) on 
 
 **BOUNDARY:** Mode 0 only: nothing reads the table to gate, grant or remove anything, and the v1 columns are data for later phases. No save field is added (schema 14 shape unchanged, fresh and migrated); the page writes nothing and is drawn only when opened. An ability never found is not named, only counted in its group's dots; a rumoured Echo shows its name and source, not what it does. Abilities held before this release read "Before the Corridor kept count"; there is no per-gain record. Aerial Step's Motion capstone (`aerial-step`) is the discipline row `skill:aerial-step` (ROW_ALIASES). Not built: modes, hints on screen, leads, the training yard (Phases 2-8).
 
+## Release 1034 — Triceratops legs in Standard View
+
+Tim (2026-11-20): in Standard View the Triceratops's feet came away from its legs when it moved, and the legs looked like pillars; Close View was fine.
+
+**CODE:** src/triceratops-render.ts TRI_LEGS holds the Standard View legs' gait (cycle .48 scaled by the square root of the form's leg length, duty .62, lift .1, a four-beat walk order) and shape (bone lengths, outline widths, foot and nail sizes). legPose places each ankle: a planted foot moves back exactly as fast as the body moves on, then lifts and swings forward; it folds toward the joint when he tucks or rears; the knee or elbow comes from a two-bone solve (a lower bone may stretch up to 12%, then the foot lifts still attached). drawLeg and legOutline draw leg and foot as one path from inside the haunch round the sole, with preallocated buffers. TRI_LEG_PROBE exposes each drawn leg to tests/triceratops-std-legs.test.ts (4). The old TRI_ART thigh/shin/upperArm/foreArm/foot/stride fields are gone.
+
+**BOUNDARY:** Drawing only: the gait phase comes from distance travelled as before, with a per-form cycle; a charging wild Triceratops now steps instead of gliding. No combat, timing or save change; Close View, the face and beak, the ridden seat and frill and the markings are unchanged.
+
 ## Release 1033 — first-hour fixes
 
 Tim wants the first hour solid before a public launch; a new-player audit found the bugs below.
