@@ -10,9 +10,9 @@
 // - Holding (holdInJaws): a beast held in the other's jaws is drawn in them: the Spinosaurus by its tail in the stego's beak (the
 //   tail heave), the stego by its belly in the Spinosaurus's jaws (the belly lift). Never below its own ground (`ground`).
 // Bounded: two bodies, at most 40 capsules each, a few passes; no allocation per frame.
-import { boneLocalToWorld } from "./close-view-beast-rig.js?v=r1048-85a8d476db24";
-import { spinoJawPoint, spinoHoldPoint } from "./close-view-beast-spino.js?v=r1048-85a8d476db24";
-import { stegoJawPoint, stegoHoldPoint } from "./close-view-beast-stego.js?v=r1048-85a8d476db24";
+import { boneLocalToWorld } from "./close-view-beast-rig.js?v=r1049-ca0dae0906fa";
+import { spinoJawPoint, spinoHoldPoint } from "./close-view-beast-spino.js?v=r1049-ca0dae0906fa";
+import { stegoJawPoint, stegoHoldPoint } from "./close-view-beast-stego.js?v=r1049-ca0dae0906fa";
 
 export const DUEL_STAGE = Object.freeze({ margin: .1, maxSep: 3.5, ease: 5, passes: 10, ground: .02, holdIn: .12, holdOver: 1.2 }); // holdIn: s a seized (or let go) body takes to come to (or leave) the jaws, lifted up to `holdOver` tiles on the way
 // The parts a move strikes with (left out of the spacing while that move is on, so the blow reaches the other body).

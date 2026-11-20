@@ -1,5 +1,5 @@
-import { rng, hashSeed } from "./random.js?v=r1048-85a8d476db24";
-import { MAX_LEVEL, interiorTerrain, interiorTileLevel } from "./landscape.js?v=r1048-85a8d476db24";
+import { rng, hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
+import { MAX_LEVEL, interiorTerrain, interiorTileLevel } from "./landscape.js?v=r1049-ca0dae0906fa";
 
 // Proving Ground candidates only. The production adoption constants remain 4 / 9.
 // Original implementation of a room-region / connector graph; no upstream code is ported.

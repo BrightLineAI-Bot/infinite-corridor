@@ -1,5 +1,5 @@
-import { DOMAIN_ATLAS } from "./domain-looks.js?v=r1048-85a8d476db24";
-import { bizarroTint } from "./strange.js?v=r1048-85a8d476db24"; // the bizarro pockets: the Atlas shows them as off as they look
+import { DOMAIN_ATLAS } from "./domain-looks.js?v=r1049-ca0dae0906fa";
+import { bizarroTint } from "./strange.js?v=r1049-ca0dae0906fa"; // the bizarro pockets: the Atlas shows them as off as they look
 // Atlas colours (release 559; Tim, 2026-10-29: "the colors on the atlas. When you zoom out, they don't correspond to the
 // tiles that you actually visited... I want to see the world that I actually am exploring not like some fake picture...
 // those places will actually look like what they actually look like").

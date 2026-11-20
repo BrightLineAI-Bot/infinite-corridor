@@ -1,14 +1,14 @@
 // Phase 6's leads (docs/progression-design.md revision 3: 2.5 G3 and 2.7), for leads.ts: the nearest Revenant horde crossing not yet
 // entered (the horde rumour, from Infinite II), and the strong lead pity gives after a long dry spell. Pure; no section is built,
 // and nothing here reads the progression table (leads.ts is imported early: atlas-view.ts).
-import { hashSeed, rng } from "./random.js?v=r1048-85a8d476db24";
-import { exploring, ensureFeats } from "./journey-start.js?v=r1048-85a8d476db24";
-import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, earnedWorld, worldWithheld, featCount, milestoneLine, reliquaryRoll } from "./world-routes.js?v=r1048-85a8d476db24";
-import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1048-85a8d476db24";
-import { HORDE } from "./revenant-horde.js?v=r1048-85a8d476db24";
-import { ladderRoll } from "./dungeon-ladder.js?v=r1048-85a8d476db24";
-import { shaftHere, deepIdFor, deepKey } from "./the-deep.js?v=r1048-85a8d476db24";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1048-85a8d476db24";
+import { hashSeed, rng } from "./random.js?v=r1049-ca0dae0906fa";
+import { exploring, ensureFeats } from "./journey-start.js?v=r1049-ca0dae0906fa";
+import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, earnedWorld, worldWithheld, featCount, milestoneLine, reliquaryRoll } from "./world-routes.js?v=r1049-ca0dae0906fa";
+import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1049-ca0dae0906fa";
+import { HORDE } from "./revenant-horde.js?v=r1049-ca0dae0906fa";
+import { ladderRoll } from "./dungeon-ladder.js?v=r1049-ca0dae0906fa";
+import { shaftHere, deepIdFor, deepKey } from "./the-deep.js?v=r1049-ca0dae0906fa";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1049-ca0dae0906fa";
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
 const exploredCount = (save) => Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;

@@ -7,11 +7,11 @@
 // least FIELD.minLife s: Ember Ring, Grave Sun, Gravity Well, Stillpoint, the perfect Orbit Volley's vortex) and you are in
 // it while your centre is inside its radius. "A spell running" is any of your spells still in play: a field or a burst,
 // Aegis, Shadow Boxing, your Shadow Clone, or Orbit Volley's gathering orbs. Pure data and rules; game.ts applies them.
-import { latticePassives } from "./transit-lattice.js?v=r1048-85a8d476db24";
-import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r1048-85a8d476db24";
-import { QUANDRIX } from "./quandrix-staff.js?v=r1048-85a8d476db24";
-import { WEAPON_ARTS } from "./weapon-arts.js?v=r1048-85a8d476db24";
-import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD, POWER_AEGIS } from "./hit-cast-passives.js?v=r1048-85a8d476db24"; // Tim's on-hit and charge passives (2026-11-19)
+import { latticePassives } from "./transit-lattice.js?v=r1049-ca0dae0906fa";
+import { SUNBURST, CONTINUOUS_ASSAULT } from "./tool-forms.js?v=r1049-ca0dae0906fa";
+import { QUANDRIX } from "./quandrix-staff.js?v=r1049-ca0dae0906fa";
+import { WEAPON_ARTS } from "./weapon-arts.js?v=r1049-ca0dae0906fa";
+import { PASSIVE_TEXT, TEMPO, SHATTERPOINT, RAPID_RELOAD, POWER_AEGIS } from "./hit-cast-passives.js?v=r1049-ca0dae0906fa"; // Tim's on-hit and charge passives (2026-11-19)
 
 export const FIELD = { minLife: 1 };
 export const FIELD_PASSIVES = {

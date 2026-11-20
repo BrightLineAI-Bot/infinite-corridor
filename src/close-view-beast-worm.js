@@ -13,7 +13,7 @@
 // underside, dark at the root and pale at the tips) that writhe on a travelling wave and snap out along the lanes.
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, writeSkin, meshBuilder, clamp01, smooth, span, kick, wobble, easeOut,
-} from "./close-view-beast-rig.js?v=r1048-85a8d476db24";
+} from "./close-view-beast-rig.js?v=r1049-ca0dae0906fa";
 
 const SEGS = 10, TENTS = 6, TB = ['tent', 'tentB', 'tentC', 'tentD'];
 export const WORM_RIG = Object.freeze({

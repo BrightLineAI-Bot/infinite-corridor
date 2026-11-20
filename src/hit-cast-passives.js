@@ -11,9 +11,9 @@
 // 2026-11-19), never a burn's tick, a proc (glyphWorld) or an Echo's copy; one attack counts once per foe (`gapMs`, as echoes.ts ON_HIT_ECHOES.perFoeGapMs). Extra damage these passives add
 // goes straight to health and is never a hit itself, so nothing chains. Per-foe marks are runtime only (a non-enumerable symbol on
 // the foe, never saved); the Game's own state is one object (`game._hcp`), so a hit allocates nothing.
-import { unharmablePerson } from "./townsfolk.js?v=r1048-85a8d476db24"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { latticePassives } from "./transit-lattice.js?v=r1048-85a8d476db24";
-import { freezeRow } from "./great-sweep.js?v=r1048-85a8d476db24"; // Encumbered's calm-down: the freeze's own `calm` (SWEEP_FREEZE)
+import { unharmablePerson } from "./townsfolk.js?v=r1049-ca0dae0906fa"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { latticePassives } from "./transit-lattice.js?v=r1049-ca0dae0906fa";
+import { freezeRow } from "./great-sweep.js?v=r1049-ca0dae0906fa"; // Encumbered's calm-down: the freeze's own `calm` (SWEEP_FREEZE)
 
 // Tempo: every `hits`th hit on one foe within `windowMs` opens a window of `vulnMs` in which it takes `vuln` more from every source
 // of the Wayfarer's damage (hits, procs and Echoes through glyphWorld, burns, the Echo bursts). One window a foe at a time; hits

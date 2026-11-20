@@ -28,7 +28,7 @@
 // non-enumerable `e.bhv` (as `bhv.tac`) and is re-derived after a load; all choices are ordered by position and stable ids (no
 // Math.random). Per frame: O(active creatures), a bounded rank within each role (TACTICS.rankCap), a lane check per ranged
 // creature every TACTICS.roles.ranged.laneEvery s, and no allocation after the board is made.
-import { behaviourProfile, holdsToken, BEHAVIOUR } from "./enemy-behaviour.js?v=r1048-85a8d476db24";
+import { behaviourProfile, holdsToken, BEHAVIOUR } from "./enemy-behaviour.js?v=r1049-ca0dae0906fa";
 
 export const TACTICS_VERSION = 2;
 const DEG = Math.PI / 180;
