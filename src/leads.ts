@@ -18,6 +18,8 @@ import { nearestWonders, WONDERS, compassWords } from "./wonders.ts";
 import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.ts";
 import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.ts";
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
+import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
+import { nearestHorde, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -94,10 +96,17 @@ export const RUMOURS = Object.freeze({
     line: (where) => `There's a lamplighter's round ${where}. Walk it to its end and the dark gives a little, they say.` }),
   bells: Object.freeze({ modes: [0, 1], set: "bells", passive: "passive:bell-toll", title: "The cracked bells",
     line: (where) => `Cracked bells hang in the crossings ${where}. Ring them all and something waits at the end.` }),
+  // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
+  // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
+  horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
+    open: (save) => !save?.feats?.reliquary?.firsts?.horde && RELIQUARY.pool.some((id) => worldWithheld(save, id)),
+    line: (h) => `A crossing ${h.d} section${h.d === 1 ? "" : "s"} off is thick with Gate Revenants, they say. Whoever breaks a horde finds something at the bottom.` }),
+  // Phase 6 (G3): the strong lead after a long dry spell (world-finds.ts pityLead); told by rumourTurn, never chosen by nextRumour.
+  pity: Object.freeze({ modes: [1], title: "A strong lead", open: () => false, line: () => "" }),
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
     line: (w, rx, ry) => `People speak of ${WONDERS.kinds[w.kind].name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.` }),
 });
-export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "lamplighter", "bells", "wonder"]);
+export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "wonder"]);
 // The people whose idle words may become a rumour (by object id; the hamlets' folk and the Listener towns' cooks by kind, in
 // game.ts). Hollis is not one: his talk points the way to the Refuge's farm and quarry (refuge-lands.ts), which a rumour must not hide.
 export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "keeper-sela", "cairn-keeper", "vendor-iona", "resident-tarn", "vendor-mora", "resident-esh"]);
@@ -106,6 +115,8 @@ export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "kee
 export function rumourLive(save, r) {
   if (!r || typeof r.kind !== "string") return false;
   if (r.kind === "wonder") return Number.isInteger(r.rx) && Number.isInteger(r.ry) && !save?.atlas?.[`${r.rx},${r.ry}`];
+  if (r.kind === "pity") return exploring(save) && pityLive(save, r);
+  if (r.kind === "horde") return RUMOURS.horde.open(save) && !((Number(save?.consequences?.dungeons?.[r.dungeon]?.visits) || 0) > 0);
   const K = RUMOURS[r.kind]; if (!K) return false;
   if (K.passive) return !arcanaHas(save, K.passive);
   return K.open(save);
@@ -145,6 +156,7 @@ export function nextRumour(save, rx = 0, ry = 0) {
       return { id: `wonder:${w.rx},${w.ry}`, kind, text: K.line(w, rx, ry), rx: w.rx, ry: w.ry, name: WONDERS.kinds[w.kind].atlas };
     }
     if (live.some((r) => r.kind === kind)) continue;
+    if (kind === "horde") { if (!K.open(save)) continue; const h = nearestHorde(save, rx, ry); if (!h) continue; return { id: `horde:${h.rx},${h.ry}`, kind, text: K.line(h), rx: h.rx, ry: h.ry, dungeon: h.dungeon, name: K.title }; }
     if (K.set) { if (arcanaHas(save, K.passive)) continue; const e = homeEdge(save, K.set); return { id: `arcana:${K.set}`, kind, text: K.line(arcanaHint(K.set, saveFrame(save))), rx: e.rx, ry: e.ry, name: K.title }; }
     if (K.open(save)) return { id: kind, kind, text: K.line(), name: K.title };
   }
@@ -158,7 +170,10 @@ export function recordRumour(save, rumour, by = "", at = Number(save?.playSecond
 }
 // The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand. Returns
 // { text, rumour, first } or null (the idle line stands).
+// Phase 6 (G3): once the dry spell has run its course, the next person who tells rumours gives the strong lead, floor or not.
 export function rumourTurn(save, by, rx = 0, ry = 0) {
+  const strong = pityLead(save, rx, ry);
+  if (strong) { const out = recordRumour(save, strong, by); return { text: strong.text, strong: true, ...out }; }
   if (!needsRumour(save)) return null;
   const r = nextRumour(save, rx, ry); if (!r) return null;
   const out = recordRumour(save, r, by); return { text: r.text, ...out };
