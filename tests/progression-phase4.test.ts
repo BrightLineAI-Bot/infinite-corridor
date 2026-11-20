@@ -190,7 +190,7 @@ test('first-journey lines (Exploration): Vela, Oren, Sela and Hollis send a new 
   const o = h.map.objects.find((q) => q.id === 'warden-oren'); Object.assign(h.player, { x: o.x, y: o.y + .6 }); h.interact('speak', o.id);
   assert.doesNotMatch(h.message, /Maud/); assert.match(h.message, /lamplighter's round/, 'the lead floor: an idle line became a rumour');
   rumourTurn(c, 'keeper-sela'); assert.ok(leadCount(c) >= LEADS.floor); h.interact('speak', o.id);
-  assert.equal(h.message, 'Oren: “One loss leaves a scar. Lose all three of us and nothing keeps the creatures out.”');
+  assert.equal(h.message, 'Oren: “Walls, wardens and a lit beacon. Between the three of us, nothing gets in.”');
   assert.equal(firstJourneyLine(c, 'warden-oren'), null);
   // once Maud's errand is taken they say their usual words
   const t = v1Save('P4-TAKEN'); t.arcana = { starter: 'set' }; assert.equal(firstJourneyLine(t, 'warden-oren'), null);
