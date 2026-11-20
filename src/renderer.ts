@@ -206,7 +206,7 @@ function folkCapture(ctx,o,s,g,now){
     const cx=(o.x+.5)*s,head=(o.y+.82-top)*s;
     if(mount){const f=o.facing||"down",step=o.state==="walking"?Math.floor(now/180):0;if(o.folkGiant){ctx.save();ctx.translate(cx,(o.y+1)*s);ctx.scale(giant,giant);ctx.translate(-cx,-(o.y+1)*s);}actor(ctx,o.x,o.y+.05,s,o.mount,f,step,o.state==="walking"?"walk":"idle");if(o.folkGiant)ctx.restore();}
     if(o.wanderer){const q=g.save.wanderer?.quest;ctx.fillStyle=!q||q.done?"#f0d58a":"#9cc8b5";ctx.font=`bold ${Math.max(10,s*.32)}px monospace`;ctx.textAlign="center";ctx.fillText(!q||q.done?"!":"…",cx,head-s*.12);ctx.textAlign="start";}
-    else if(mark){const n=o.kind==='npc'?g.save.consequences?.npcs?.[o.id]:null;ctx.fillStyle=n?.disposition==="hostile"?"#d9977a":"#9cc8b5";ctx.beginPath();ctx.arc(cx,head-s*.12,Math.max(2,s*.08),0,7);ctx.fill();}
+    else if(mark){ctx.fillStyle="#9cc8b5";/* Tim 2026-11-20: never hostile */ctx.beginPath();ctx.arc(cx,head-s*.12,Math.max(2,s*.08),0,7);ctx.fill();}
   }};
 }
 export function drawNativeTravelerDetails(ctx,o,s,now,quiet=false){
@@ -3095,16 +3095,11 @@ export function render(ctx, g, w, h, now) {
           else if (o.kind === "villager" && o.folkGiant) { ctx.save(); ctx.translate((o.x + .5) * s, (o.y + 1) * s); ctx.scale(FAR_FOLK.scale, FAR_FOLK.scale); ctx.translate(-(o.x + .5) * s, -(o.y + 1) * s); actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.restore(); } // release 720: the Tall Country
           else if (o.kind === "villager") { actor(ctx, o.x, o.y, s, o.guard ? "militia" : "villager", "down", 0, "idle"); ctx.fillStyle = "#9cc8b5"; ctx.beginPath(); ctx.arc((o.x + 0.5) * s, o.y * s - 6, 3, 0, 7); ctx.fill(); }
           else if (o.kind === "npc") {
-            const n = g.save.consequences.npcs[o.id],
-              cx = (o.x + 0.5) * s,
+            const cx = (o.x + 0.5) * s,
               cy = o.y * s;
-            if (n?.status === "dead") {
-              ctx.fillStyle = "#67574f";
-              ctx.fillRect(cx - s * 0.3, cy + s * 0.55, s * 0.6, s * 0.16);
-            } else {
+            { // Tim (2026-11-20): townsfolk cannot be harmed, so a resident is never drawn dead or hostile
               actor(ctx, o.x, o.y, s, o.kind, "down", 0, "idle");
-              ctx.fillStyle =
-                n?.disposition === "hostile" ? "#d9977a" : "#9cc8b5";
+              ctx.fillStyle = "#9cc8b5";
               ctx.beginPath();
               ctx.arc(cx, cy - 6, 3, 0, 7);
               ctx.fill();
@@ -3113,7 +3108,7 @@ export function render(ctx, g, w, h, now) {
             ctx.font = "10px monospace";
             ctx.fillStyle = "#e2d5ba";
             ctx.fillText(
-              o.name + (n?.status === "dead" ? " †" : ""),
+              o.name,
               cx,
               cy - 15,
             );

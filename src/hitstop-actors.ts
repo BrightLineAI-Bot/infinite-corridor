@@ -23,6 +23,7 @@
 // dt), saved with the journey's runtime as ms remaining (playerRuntime.hitStop, additive) so a reload mid-stop resumes the same
 // remainder, never longer. A struck foe's is `e.hitStop` (ms left), counted down by dt and saved with the area's foes the way
 // hitStun is. Pausing simply stops the update calls, so a pause or the app in the background holds both exactly.
+import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 export const HITSTOP_ACTORS = Object.freeze({
   version: 1,
   swing: Object.freeze({ maxMs: 110, reducedScale: 1 }),
@@ -82,7 +83,7 @@ export function tickHitStop(state, dtMs, H = HITSTOP_ACTORS) {
 // guarding (staggerGuard: it was just stagger-locked and shrugs blows off, monster-pack.ts) or one that is never staggered
 // (staggerImmune) does not pause: no weapon chains its stops into a lock.
 export function holdFoe(e, ms, H = HITSTOP_ACTORS) {
-  if (!e || e.dead || e.kind === 'npc' || !(ms > 0) || e.staggerGuard > 0 || e.staggerImmune) return false;
+  if (!e || e.dead || unharmablePerson(e) || !(ms > 0) || e.staggerGuard > 0 || e.staggerImmune) return false;
   e.hitStop = Math.min(H.foeMaxMs, Math.max(Number(e.hitStop) || 0, ms)); return true;
 }
 // Whether a foe is held this update (and its stop counted down by `dtMs`). A stored value is clamped (bounded on load).
