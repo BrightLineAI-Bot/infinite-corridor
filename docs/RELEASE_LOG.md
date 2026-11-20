@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1046 (this merge, #717); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1047 (this merge, #718); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1047 | Claude | claude/daily-region-1120 / #718 | The Oasis Ergs: a far sand sea with dunes, wadis, oasis pools, palms and sinking sand (landscape 28) | Merged (#718); preview follows. |
 | 1046 | Claude | claude/progression-phase-7 / #717 | Progression phase 7: Hollis's Essence Walk quest and thread-ending rewards (Exploration withholds 11 quest/thread abilities; Classic gains them as extra routes) | Merged (#717); preview follows. |
 | 1045 | Claude | claude/young-lion-pose | Young Triceratops: lion carriage and mane-like frill (both views); his damage retuned to ~10% of the Wayfarer's over real fights; out.carry additive | In flight. |
 | 1044 | Claude | claude/progression-phase-6 / #715 | Progression phase 6: milestones, the Reliquary and pity leads (Exploration withholds the 18 milestone/reliquary abilities; Classic gains them as extra routes) | Merged (#715); preview follows. |
