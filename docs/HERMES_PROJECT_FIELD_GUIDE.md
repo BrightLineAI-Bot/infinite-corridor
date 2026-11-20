@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — townsfolk cannot be harmed
+## Release 1040 — townsfolk cannot be harmed
 
 Tim (2026-11-20): early in development the game said you could kill townspeople and other non-hostile people, with consequences; he was wrong about that, and the whole system is removed. Townsfolk, traders, quest-givers, travellers, elders, Ilse, the Cairn Keeper, Sela and every other non-hostile person cannot be killed or harmed by the player, consistently, by every damage source; they do not flinch or aggro, and the consequences (hostility, reputation, closed shops, a fallen Refuge, dead-resident states, death journal text) are gone.
 
