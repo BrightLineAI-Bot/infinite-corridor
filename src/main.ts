@@ -42,6 +42,7 @@ import { drawPackPortrait } from "./monster-render.ts";
 import { landscapeAtlasColor } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
+import { compendium } from "./progression.ts"; // the progression table and its compendium (docs/progression-design.md, Phase 1)
 import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKnown, takeCompletedReading, inArcanaHome, ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
@@ -1570,10 +1571,29 @@ function renderArcana(out){
   const glimpses=GLIMPSE_ORDER.filter((id)=>glimpseAllowed(id,settings.familySafe)),seen=witnessedGlimpses(save).filter((id)=>glimpses.includes(id));
   const g=document.createElement("article"),gh=document.createElement("h4"),gp=document.createElement("p");g.className="item arcana-card";gh.textContent="Glimpses";gp.className="options-note";gp.textContent=`${seen.length} of ${glimpses.length} seen · through other eyes, anywhere in the Corridor. The Reciter's Tome replays them.`;g.append(gh,gp);out.append(g);
 }
+// The compendium (docs/progression-design.md section 5; Phase 1): a page of the Reciter's Tome, "What the Corridor Taught You".
+// The Pace line sits at its top for every player. It reads the save (progression.ts compendium) and writes nothing; an ability
+// not yet found is never named, only counted in its group's dots. Each known one opens to its hint, how-to and where it came from.
+function renderTaught(out){
+  const c=compendium(save),line=(cls,text)=>{const p=document.createElement("p");p.className=cls;p.textContent=text;return p};
+  out.append(uiButton("← The Reciter's Tome",()=>openJournal("tome")));
+  const h=document.createElement("h3");h.textContent=c.title;out.append(h);
+  const pace=line("options-note compendium-pace","");const b=document.createElement("strong");b.textContent="Pace. ";pace.append(b,c.paceText);out.append(pace);
+  out.append(line("options-note",c.intro),line("options-note",c.before));
+  if(c.ahead.length){const a=document.createElement("article"),ah=document.createElement("h4");a.className="item arcana-card";ah.textContent="Level-ups ahead";a.append(ah);for(const q of c.ahead)a.append(line("options-note",`${q.label}: ${q.names.join(", ")}`));out.append(a)}
+  for(const g of c.groups){
+    const card=document.createElement("article"),gh=document.createElement("h4"),dots=line("compendium-dots",Array.from({length:g.total},(_,i)=>i<g.entries.length?"●":"○").join(" "));card.className="item arcana-card";gh.textContent=g.title;
+    const more=g.entries.length-g.owned;dots.setAttribute("aria-label",`${g.entries.length} of ${g.total} known`);card.append(gh,line("options-note",`${g.owned} of ${g.total} yours${more?` · ${more} more known`:""}`),dots);
+    for(const e of g.entries){const d=document.createElement("details"),sum=document.createElement("summary");sum.textContent=`${e.name} · ${e.label}`;d.append(sum);if(e.hint)d.append(line("options-note",e.hint));
+      for(const[label,text]of[["How to",e.controls],["What it does",e.does],["How it came",e.obtained]])if(text){const p=line("",""),k=document.createElement("strong");k.textContent=`${label}. `;p.append(k,text);d.append(p)}
+      card.append(d)}
+    out.append(card)}
+}
 function renderTome(out){
   ensureReciters(save);const rerender=()=>openJournal("tome");
   const h=document.createElement("h3"),intro=document.createElement("p"),status=document.createElement("p");h.textContent="The Reciter's Tome";
   intro.className="options-note";intro.textContent="The books you have heard in the Corridor. Reciters you have met appear under their book; choose how each one recites, or send them back to the first line.";status.className="options-note";out.append(h,intro,status);
+  out.append(uiButton("What the Corridor Taught You",()=>openJournal("taught"))); // the compendium and the Pace line (renderTaught)
   // Release 191: what the Corridor remembers, one entry per Reading with its fragments found. Only Readings already
   // heard are listed, and nothing hints at how many others there are (Tim, 2026-10-19).
   ensureLore(save);const books=document.createElement("section"),bth=document.createElement("h3"),bnote=document.createElement("p");books.className="library-book lore-books";bth.textContent="What the Corridor Remembers";bnote.className="options-note";bnote.textContent="Every region holds the residue of lives that are gone. Its fragments are passages heard from travellers and reciters, things glimpsed, and words found in crossings.";books.append(bth,bnote);
@@ -2496,11 +2516,12 @@ function openJournal(mode = "chronicle") {
   const out = $("#journalBody");
   out.replaceChildren();
   const nav=document.createElement("div");nav.className="codex-tabs";
-  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode)b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
+  for(const [id,label] of [["chronicle","Chronicle"],["quests","Active quests"],["dungeons","Deep expeditions"],["creatures","Creatures"],["places","People & Places"],["features","Encountered features"],["rules","Symbols & controls"],["glossary","Glossary"],["arcana","Arcana"],["tome","Reciter's Tome"],["gate","The Far Gate"]]){const b=uiButton(label,()=>openJournal(id));if(id===mode||id==="tome"&&mode==="taught")b.setAttribute('aria-current','page');nav.append(b)} // release 287: the open tab is marked (gold)
   out.append(nav);
   if(mode!=="chronicle"){
     if(mode==="quests"){renderQuests(out);if(!journal.open)journal.showModal();return;}
     if(mode==="tome"){renderTome(out);if(!journal.open)journal.showModal();return;}
+    if(mode==="taught"){renderTaught(out);if(!journal.open)journal.showModal();return;}
     if(mode==="arcana"){renderArcana(out);if(!journal.open)journal.showModal();return;}
     if(mode==="gate"){renderFarGate(out);if(!journal.open)journal.showModal();return;}
     if(mode==="dungeons"){
