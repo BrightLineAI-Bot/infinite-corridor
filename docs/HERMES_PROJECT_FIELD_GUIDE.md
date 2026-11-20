@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — progression phase 1: the table and the compendium
+## Release 1035 — progression phase 1: the table and the compendium
 
 Tim approved the progression plan (`docs/progression-design.md`, revision 3) on 2026-11-20. Phase 1 is the spine: the table of every ability and a compendium that reads it. No gameplay change.
 
