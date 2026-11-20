@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — progression phase 8: far, sea, sky and strange quests; Divine Viscera; the guardian roster
+## Release 1048 — progression phase 8: far, sea, sky and strange quests; Divine Viscera; the guardian roster
 
 Tim approved Phase 8 on 2026-11-20 (`docs/progression-design.md` revision 3, section 7 row 8, with sections 2.2 routes b and V, 2.3, 2.4, 2.5 G2/G4/G6, 2.7 and 3). Built on Phase 7's branch (Release 1046, PR #717). No release number is taken.
 
