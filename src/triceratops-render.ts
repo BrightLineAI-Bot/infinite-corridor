@@ -22,7 +22,7 @@ export const TRI_ART = Object.freeze({
   toe: "#fff3cf", pad: "#6b4a14", tongue: "#ff8ba0", mouth: "#7a2a1c",
   // shape: the spine from the tail tip (0) to the base of the skull (1)
   spine: 26, length: 1.42, hipAt: .42, shoulderAt: .73, hip: .6, crouchDrop: .14, headScale: 1.48,
-  thigh: .27, shin: .24, upperArm: .22, foreArm: .2, foot: .05, stride: .14, settle: 6, ease: 10, strikeEase: 18,
+  stride: .14, settle: 6, ease: 10, strikeEase: 18,
   landMs: 380, lean: .12, tailBounce: .08, quietBounce: .05,
   // the face's squat beak (Tim, 2026-11-19: "its beak portion is still too long; it needs to be a little bit more squat"): in front of
   // `from` (head units, just ahead of the brow horns' roots) the snout is drawn `k` as long and, toward the beak, up to `deep` as deep
@@ -35,6 +35,25 @@ export const TRI_ART = Object.freeze({
   // (close-view-beast-triceratops.ts TRICERATOPS_RIG.riddenFrill).
   riddenFrill: Object.freeze({ size: .85, fwd: .04, pull: 1, tilt: .3, follow: 1.4, recoil: 3 }),
   whirlSpin: 34, whirl: Object.freeze({ bands: 3, steps: 30, turns: 2.2, front: .78, back: -.55, radius: .46, tip: .04, width: .035 }), // the drill's whirlwind (back: tiles past the tail tip)
+});
+// The standard view's legs (Tim, 2026-11-20: "The feet detach from the legs when he moves and walks, and the legs look like pillars
+// instead of real Triceratops legs"): jointed legs, each drawn as one shape from the joint to the foot, driven by one pose per leg.
+// cycle: body units travelled per gait cycle (x the form's leg); duty: the share of it a foot stays planted (it moves back exactly as
+// fast as the body moves on, so it never slides); lift: the swinging foot's height (x leg); toeDrop / tuckToes: the toes hanging as
+// the foot lifts or the legs fold (radians); soft: the share of its full length a leg reaches before the lower bone stretches (up to
+// `stretch`); phase: each foot's place in the cycle (a four-beat walk: near hind, near fore, far hind, far fore); far: where the far
+// legs sit. hind / fore (body units; x leg for the bones, x the form's leg and leg thickness for the foot, x legW for the widths):
+// upper / lower bone, x: the foot's rest place ahead of the joint, top: how far the shape starts inside the body, w: [front, back]
+// half widths at the joint, mid upper bone, knee or elbow, mid lower bone and ankle; foot: h (height), toe (ahead of the ankle), heel
+// (behind it), nail (radius); nails: how many show.
+export const TRI_LEGS = Object.freeze({
+  cycle: .448, duty: .62, lift: .09, toeDrop: .5, tuckToes: .7, soft: .95, stretch: 1.12,
+  phase: Object.freeze({ nearHind: 0, nearFore: .25, farHind: .5, farFore: .75 }),
+  far: Object.freeze({ jointHind: .05, jointFore: .045, jointUp: .03, footHind: .06, footFore: .05, up: .03 }),
+  hind: Object.freeze({ upper: .27, lower: .25, x: .03, top: .06, nails: 3,
+    w: Object.freeze([[.17, .15], [.16, .13], [.1, .095], [.085, .08], [.076, .07]].map(Object.freeze)), foot: Object.freeze({ h: .065, toe: .135, heel: .08, nail: .022 }) }),
+  fore: Object.freeze({ upper: .24, lower: .22, x: .02, top: .05, nails: 3,
+    w: Object.freeze([[.12, .12], [.11, .115], [.08, .095], [.072, .066], [.064, .058]].map(Object.freeze)), foot: Object.freeze({ h: .058, toe: .115, heel: .07, nail: .02 }) }),
 });
 // The face's outline in head units before the squat muzzle (drawHead's H; Tim, 2026-11-19: "the tip of the beak is kind of hanging
 // off; it's not connected"): the skull, the upper beak (a path: [x, y] a point, [cx, cy, x, y] a curve) whose hook curls down at the
@@ -137,7 +156,7 @@ function memo(e, now) {
   return m;
 }
 const N = TRI_ART.spine, PX = new Float64Array(N + 1), PY = new Float64Array(N + 1), PZ = new Float64Array(N + 1), NX = new Float64Array(N + 1), NY = new Float64Array(N + 1), DT = new Float64Array(N + 1), VT = new Float64Array(N + 1);
-const LEG = new Float64Array(14), LEGW = new Float64Array(7), OV = new Float64Array(TRI_KEYS.length);
+const LP = new Float64Array(9), LC = new Float64Array(20), LO = new Float64Array(20), LF = new Float64Array(14), OV = new Float64Array(TRI_KEYS.length);
 const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
 export function drawTriceratopsBody(ctx, q, now = 0) {
@@ -146,7 +165,8 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // movement: a gait phase from the distance travelled (the leap's lift taken back out of the ridden mount's drawn y)
   const x = Number(e.x) || 0, y = (Number(e.y) || 0) + air, dt = M.at == null ? 0 : Math.min(.1, Math.max(0, (now - M.at) / 1000)), moved = M.x == null ? 0 : Math.hypot(x - M.x, y - M.y);
   M.at = now; M.x = x; M.y = y;
-  if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (2 * A.stride * 1.6 * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
+  const LG = TRI_LEGS, cyc = LG.cycle * FM.leg, legK = (FM.leg + FM.legW) / 2; // the gait's cycle in body units (a tile is max(.6, scale) body units)
+  if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (cyc * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
   if (dt > 0) M.airV = (air - M.air) / dt;
   if (M.air > .05 && air <= .05) M.landAt = now; M.air = air;
@@ -158,6 +178,7 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // the ridden horn attack's body, straight from the accepted horn pose (no easing: locked to the gameplay clock)
   triceratopsHornOverlay(e.mountView ? e.mountHornPose : null, OV); for (let i = 0; i < TRI_KEYS.length; i++) V[TRI_KEYS[i]] = E[TRI_KEYS[i]] + OV[i];
   const moving = /^(idle|walk)$/.test(poseName) ? M.moving : 0, ph = M.phase, pitch = V.pitch;
+  const gait = dead || e.resting ? 0 : M.moving * Math.max(0, 1 - V.tuck - V.frontLift); // the legs step whenever he travels (the charge runs), never while folded
   const bounce = triceratopsTailBounces(e) ? (reduce ? A.quietBounce : Math.sin(t * 20) * A.tailBounce) : 0;
   const wobble = reduce ? 0 : .02 * Math.sin(t * 1.3);
 
@@ -186,48 +207,66 @@ export function drawTriceratopsBody(ctx, q, now = 0) {
   // the ground shadow (a leap draws it smaller and lighter: the body is already lifted by the renderer)
   if (!e.noShadow) { const sh = Math.max(.45, 1 - air * .25), gy = air / Math.max(.6, Number(e.scale) || 1); ctx.fillStyle = `rgba(4,4,6,${(.42 * sh).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(-.04, gy, .8 * sh, .15 * sh, 0, 0, TAU); ctx.fill(); }
 
-  // ---------------------------------------------------------------- legs
-  const legAt = (hind, near) => { // hip/shoulder joint, foot target, bone lengths
-    const i = hind ? ih : is, jx = PX[i] - NX[i] * VT[i] * .3 + (near ? 0 : (hind ? .05 : .045)), jy = PY[i] - NY[i] * VT[i] * .3 + (near ? 0 : .03);
-    const l1 = (hind ? A.thigh : A.upperArm) * FM.leg, l2 = (hind ? A.shin : A.foreArm) * FM.leg;
-    const off = (hind ? 0 : Math.PI) + (near ? 0 : Math.PI * .5), swing = Math.sin(ph + off) * moving, up = Math.max(0, Math.cos(ph + off)) * moving;
-    let fx = (hind ? PX[ih] + .03 : PX[is] + .02) + (near ? 0 : (hind ? .06 : .05)) + swing * A.stride, fy = A.foot + up * .08 + (near ? 0 : .03);
-    const rot = (bx, by) => [jx + bx * cp - by * sp, jy + bx * sp + by * cp], blend = (tx, ty, w) => { fx += (tx - fx) * w; fy += (ty - fy) * w; };
+  // ---------------------------------------------------------------- legs (TRI_LEGS)
+  // Each leg is one pose: the hip (or shoulder) joint, the ankle placed by the gait, the knee (or elbow) found from the two bones, and
+  // the foot hung from the ankle. The outline is drawn as one shape from the joint down the front, round the foot and back up, so the
+  // foot can never part from the leg.
+  const legPose = (hind, near) => { // into LP: joint, knee, ankle (x, y), the foot's tilt, the bone lengths
+    const S = hind ? LG.hind : LG.fore, i = hind ? ih : is, F = LG.far;
+    const jx = PX[i] - NX[i] * VT[i] * .3 + (near ? 0 : (hind ? F.jointHind : F.jointFore)), jy = PY[i] - NY[i] * VT[i] * .3 + (near ? 0 : F.jointUp);
+    const l1 = S.upper * FM.leg; let l2 = S.lower * FM.leg;
+    // the gait: planted for `duty` of the cycle (moving back exactly as fast as the body moves on: no sliding), then lifted and swung forward
+    const p = ((ph / TAU + LG.phase[(near ? "near" : "far") + (hind ? "Hind" : "Fore")]) % 1 + 1) % 1, D = LG.duty;
+    let xr, sw = 0; if (p < D) xr = cyc * (D / 2 - p); else { const s = (p - D) / (1 - D); xr = cyc * (-D / 2 + D * smooth(s)); sw = Math.sin(Math.PI * s); }
+    let fx = PX[i] + S.x + (near ? 0 : (hind ? F.footHind : F.footFore)) + xr * gait, fy = (near ? 0 : F.up) + S.foot.h * legK + LG.lift * FM.leg * sw * gait, fa = -LG.toeDrop * sw * gait;
+    // folded (the leap, the drill, lying down) and the forefeet raised (the rear): the ankle drawn in toward the joint, the toes hanging
     const reach = (l1 + l2) * .9;
-    if (V.tuck > .01) { const [tx, ty] = rot(hind ? .1 : -.06, -reach * .6); blend(tx, ty, V.tuck); }
-    if (!hind && V.frontLift > .01) { const [tx, ty] = rot(.14, -reach * .55); blend(tx, ty, V.frontLift); }
-    return { jx, jy, fx, fy, l1, l2 };
-  };
-  const limb = (pts, widths, tone, light) => { // a solid tapering limb through the points with a lit front edge
-    const n = pts.length / 2, side = [];
-    for (let i = 0; i < n; i++) { const xx = pts[i * 2], yy = pts[i * 2 + 1], a = Math.max(0, i - 1), c = Math.min(n - 1, i + 1), dx = pts[c * 2] - pts[a * 2], dy = pts[c * 2 + 1] - pts[a * 2 + 1], l = Math.hypot(dx, dy) || 1, w = widths[i] / 2; side.push([xx - dy / l * w, yy + dx / l * w, xx + dy / l * w, yy - dx / l * w]); }
-    ctx.beginPath(); mv(side[0][0], side[0][1]); for (let i = 1; i < n; i++) qc(side[i - 1][0], side[i - 1][1], (side[i - 1][0] + side[i][0]) / 2, (side[i - 1][1] + side[i][1]) / 2); ln(side[n - 1][0], side[n - 1][1]);
-    ln(side[n - 1][2], side[n - 1][3]); for (let i = n - 2; i >= 0; i--) qc(side[i + 1][2], side[i + 1][3], (side[i + 1][2] + side[i][2]) / 2, (side[i + 1][3] + side[i][3]) / 2); ln(side[0][2], side[0][3]); ctx.closePath();
-    const g = ctx.createLinearGradient(side[1][2], -side[1][3], side[1][0], -side[1][1]); g.addColorStop(0, light); g.addColorStop(.55, tone); g.addColorStop(1, A.shade);
-    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; // the outline down both sides and round the foot end, never across the top where it meets the body
-    ctx.beginPath(); mv(side[1][0], side[1][1]); for (let i = 2; i < n; i++) ln(side[i][0], side[i][1]); ln(side[n - 1][2], side[n - 1][3]); for (let i = n - 2; i >= 1; i--) ln(side[i][2], side[i][3]); ctx.stroke(); };
+    if (V.tuck > .01) { const bx = hind ? .1 : -.06, by = -reach * .6, w = Math.min(1, V.tuck); fx += (jx + bx * cp - by * sp - fx) * w; fy += (jy + bx * sp + by * cp - fy) * w; fa -= LG.tuckToes * w; }
+    if (!hind && V.frontLift > .01) { const bx = .14, by = -reach * .55, w = Math.min(1, V.frontLift); fx += (jx + bx * cp - by * sp - fx) * w; fy += (jy + bx * sp + by * cp - fy) * w; fa -= LG.tuckToes * w; }
+    // two-bone reach: a lower bone that cannot quite reach stretches a little (the knee stays soft); beyond that the foot leaves the ground with the leg
+    const dx = fx - jx, dy = fy - jy, raw = Math.hypot(dx, dy) || 1e-3, ux = dx / raw, uy = dy / raw;
+    if (raw > (l1 + l2) * LG.soft) l2 = Math.min(l2 * LG.stretch, raw / LG.soft - l1);
+    const d = Math.max(Math.abs(l1 - l2) + 1e-3, Math.min(raw, (l1 + l2) * .999)), a = (l1 * l1 + d * d - l2 * l2) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), bend = hind ? 1 : -1; // the knee forward, the elbow back
+    LP[0] = jx; LP[1] = jy; LP[2] = jx + ux * a - uy * h * bend; LP[3] = jy + uy * a + ux * h * bend; LP[4] = jx + ux * d; LP[5] = jy + uy * d; LP[6] = fa; LP[7] = l1; LP[8] = l2;
+    return LP; };
   const drawLeg = (hind, near) => {
-    const { jx, jy, fx, fy, l1, l2 } = legAt(hind, near), dx = fx - jx, dy = fy - jy, raw = Math.hypot(dx, dy) || 1e-3, d = Math.min(l1 + l2 - 1e-4, Math.max(1e-3, raw)), ux = dx / raw, uy = dy / raw;
-    const a = (l1 * l1 + d * d - l2 * l2) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), bend = hind ? 1 : -1;
-    const kx2 = jx + ux * a - uy * h * bend, ky2 = jy + uy * a + ux * h * bend, ex = jx + ux * d, ey = jy + uy * d;
-    const tone = near ? A.body : A.bodyDark, light = near ? A.bodyLight : A.body;
-    // pillar legs: a heavy thigh (or upper arm) bulging into the body, a thick straight shin down to the foot
-    // the haunch or shoulder: a solid rounded mass where the leg meets the body, outlined only along its lower front
-    if (near) { const hr = (hind ? .19 : .14) * FM.legW, cx2 = jx + (hind ? .0 : .01), cy2 = jy - (hind ? .04 : .03), g = ctx.createLinearGradient(cx2, -(cy2 + hr), cx2, -(cy2 - hr)); g.addColorStop(0, light); g.addColorStop(1, tone);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.fill();
-      // the markings (Tim, 2026-11-18): darker bands of his own yellow curving across the haunch or the shoulder
-      ctx.save(); ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .8;
-      for (let i = 0; i < 3; i++) { const bx = cx2 - hr * .75 + i * hr * .62, w = hr * .2; ctx.beginPath(); ctx.moveTo(bx, -cy2 - hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35, -cy2, bx + hr * .05, -cy2 + hr * 1.3); ctx.lineTo(bx + hr * .05 + w, -cy2 + hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35 + w, -cy2, bx + w, -cy2 - hr * 1.3); ctx.closePath(); ctx.fill(); }
-      ctx.restore();
+    const S = hind ? LG.hind : LG.fore, P = legPose(hind, near), jx = P[0], jy = P[1], kx2 = P[2], ky2 = P[3], ax = P[4], ay = P[5], fa = P[6];
+    const tone = near ? A.body : A.bodyDark, light = near ? A.bodyLight : A.body, W = S.w, wk = FM.legW;
+    // the bones' directions and their front normals (+x side for a leg hanging down); the knee's normal halfway between
+    let u1x = kx2 - jx, u1y = ky2 - jy, l = Math.hypot(u1x, u1y) || 1; u1x /= l; u1y /= l;
+    let u2x = ax - kx2, u2y = ay - ky2; l = Math.hypot(u2x, u2y) || 1; u2x /= l; u2y /= l;
+    let nkx = -u1y - u2y, nky = u1x + u2x; l = Math.hypot(nkx, nky) || 1; nkx /= l; nky /= l;
+    const top = S.top * legK; // the leg's top starts inside the body
+    const C = LC; C[0] = jx - u1x * top; C[1] = jy - u1y * top; C[2] = -u1y; C[3] = u1x; C[4] = (jx + kx2) / 2; C[5] = (jy + ky2) / 2; C[6] = -u1y; C[7] = u1x;
+    C[8] = kx2; C[9] = ky2; C[10] = nkx; C[11] = nky; C[12] = (kx2 + ax) / 2; C[13] = (ky2 + ay) / 2; C[14] = -u2y; C[15] = u2x; C[16] = ax; C[17] = ay; C[18] = -u2y; C[19] = u2x;
+    for (let j = 0; j < 5; j++) { const x0 = C[j * 4], y0 = C[j * 4 + 1], nx = C[j * 4 + 2], ny = C[j * 4 + 3], f = W[j][0] * wk, b = W[j][1] * wk;
+      LO[j * 4] = x0 + nx * f; LO[j * 4 + 1] = y0 + ny * f; LO[j * 4 + 2] = x0 - nx * b; LO[j * 4 + 3] = y0 - ny * b; }
+    // the foot in its own frame at the ankle (x forward, y up), turned by its tilt
+    const ft = S.foot, fh = ft.h * legK, toe = ft.toe * legK, heel = ft.heel * legK, cf = Math.cos(fa), sf = Math.sin(fa);
+    const FT = LF, put = (j, lx, ly) => { FT[j * 2] = ax + lx * cf - ly * sf; FT[j * 2 + 1] = ay + lx * sf + ly * cf; };
+    put(0, toe * .55, -fh * .12); put(1, toe, -fh * .45); put(2, toe * 1.02, -fh); put(3, toe * .8, -fh); put(4, -heel * .8, -fh); put(5, -heel * 1.05, -fh); put(6, -heel, -fh * .45);
+    const path = (close) => { ctx.beginPath(); if (close) mv(LO[0], LO[1]); else mv(LO[4], LO[5]); // the outline starts below the haunch
+      for (let j = 1; j < 4; j++) qc(LO[j * 4], LO[j * 4 + 1], (LO[j * 4] + LO[j * 4 + 4]) / 2, (LO[j * 4 + 1] + LO[j * 4 + 5]) / 2);
+      ln(LO[16], LO[17]); qc(FT[0], FT[1], FT[2], FT[3]); qc(FT[4], FT[5], FT[6], FT[7]); ln(FT[8], FT[9]); qc(FT[10], FT[11], FT[12], FT[13]); qc((FT[12] + LO[18]) / 2 - u2x * fh * .1, (FT[13] + LO[19]) / 2 - u2y * fh * .1, LO[18], LO[19]);
+      for (let j = 3; j > 0; j--) qc(LO[j * 4 + 2], LO[j * 4 + 3], (LO[j * 4 + 2] + LO[j * 4 - 2]) / 2, (LO[j * 4 + 3] + LO[j * 4 - 1]) / 2);
+      if (close) { qc(C[0] - u1x * top, C[1] - u1y * top, LO[0], LO[1]); ctx.closePath(); } }; // a round top, inside the haunch
+    // the haunch or shoulder: a solid rounded muscle where the leg meets the body, outlined only along its lower front, the thigh (or
+    // upper arm) growing out of it; the markings (Tim, 2026-11-18), darker bands of his own yellow, curve across both
+    const hr = (hind ? .19 : .14) * FM.legW, cx2 = jx + (hind ? .0 : .01), cy2 = jy - (hind ? .04 : .03);
+    if (near) { const g2 = ctx.createLinearGradient(cx2, -(cy2 + hr), cx2, -(cy2 - hr)); g2.addColorStop(0, light); g2.addColorStop(1, tone);
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.fill();
       ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, .15, 1.9); ctx.stroke(); }
-    // pillar legs: thick all the way down to a broad foot
-    { const cx3 = 2 * kx2 - (jx + ex) / 2, cy3 = 2 * ky2 - (jy + ey) / 2, W = hind ? [.27, .24, .21, .19, .18, .185, .2] : [.21, .195, .175, .16, .155, .16, .17]; // a smooth column through the knee
-      for (let i = 0; i < 7; i++) { const f = i / 6, g1 = (1 - f) * (1 - f), g2 = 2 * f * (1 - f), g3 = f * f; LEG[i * 2] = g1 * jx + g2 * cx3 + g3 * ex; LEG[i * 2 + 1] = g1 * jy + g2 * cy3 + g3 * (ey + .01); LEGW[i] = W[i] * FM.legW; }
-      limb(LEG, LEGW, tone, light); }
-    // the foot: a broad round pad, three blunt pale toenails at its front
-    ctx.fillStyle = near ? A.bodyDark : A.shade; ctx.beginPath(); ctx.moveTo(ex - (hind ? .11 : .095), 0); ctx.quadraticCurveTo(ex - .1, -.07, ex, -.075); ctx.quadraticCurveTo(ex + .1, -.07, ex + (hind ? .12 : .105), 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
-    ctx.fillStyle = near ? A.toe : A.hornBase; for (let c = 0; c < 3; c++) { const tx = ex + .02 + c * .035; ctx.beginPath(); ctx.ellipse(tx, -.018, .02, .02, 0, Math.PI, TAU); ctx.lineTo(tx + .02, 0); ctx.lineTo(tx - .02, 0); ctx.fill(); }
-    return { ex, ey };
+    const g = ctx.createLinearGradient(LO[4], -LO[5], LO[6], -LO[7]); g.addColorStop(0, light); g.addColorStop(.5, tone); g.addColorStop(1, near ? A.bodyDark : A.shade);
+    path(true); ctx.fillStyle = g; ctx.fill();
+    if (near) { ctx.save(); ctx.beginPath(); ctx.ellipse(cx2, -cy2, hr, hr * 1.25, 0, 0, TAU); ctx.clip(); ctx.fillStyle = A.mark; ctx.globalAlpha = .8;
+      for (let i = 0; i < 3; i++) { const bx = cx2 - hr * .75 + i * hr * .62, w = hr * .2; ctx.beginPath(); ctx.moveTo(bx, -cy2 - hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35, -cy2, bx + hr * .05, -cy2 + hr * 1.3); ctx.lineTo(bx + hr * .05 + w, -cy2 + hr * 1.3); ctx.quadraticCurveTo(bx + hr * .35 + w, -cy2, bx + w, -cy2 - hr * 1.3); ctx.closePath(); ctx.fill(); }
+      ctx.restore(); }
+    // the foot's darker pad, and the outline down both sides and round the foot (never across the top, inside the body)
+    ctx.fillStyle = near ? A.bodyDark : A.shade; ctx.globalAlpha = .55; ctx.beginPath(); mv(LO[16], LO[17]); qc(FT[0], FT[1], FT[2], FT[3]); qc(FT[4], FT[5], FT[6], FT[7]); ln(FT[8], FT[9]); qc(FT[10], FT[11], FT[12], FT[13]); ln(LO[18], LO[19]); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    path(false); ctx.strokeStyle = A.outline; ctx.lineWidth = lw; ctx.stroke();
+    // blunt pale toenails along the foot's front
+    ctx.fillStyle = near ? A.toe : A.hornBase; const r = ft.nail * legK;
+    for (let c = 0; c < S.nails; c++) { const lx = toe * (.98 - c * .3), ly = -fh + r * .9, nx = ax + lx * cf - ly * sf, ny = ay + lx * sf + ly * cf; ctx.beginPath(); ctx.ellipse(nx, -ny, r, r * .95, -fa, Math.PI, TAU); ctx.closePath(); ctx.fill(); }
   };
   drawLeg(true, false); drawLeg(false, false);
 
