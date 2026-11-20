@@ -14,6 +14,14 @@ Tim approved Phase 3 on 2026-11-20 (`docs/progression-design.md` revision 3, sec
 
 **BOUNDARY:** Classic reads exactly today's rules: SPELLS, APERTURE_SKILLS, BRANCHES and ALT_PASSIVES are byte for byte (tests/progression-phase3.test.ts pins their hash), loot rolls are byte for byte (pinned hashes of 400 generated items and 40 Game drops on CINDER-VERGE-47, identical in Exploration), and a Classic `ownership` equals `ownershipV0`. Exploration withholds, against Classic: Ember Ring, Fire Burst and Grave Sun before levels 3, 6 and 10; awakening and the hatchling's mother before Infinite II. Nothing else is withheld: quests, milestones, threads, reliquaries and Viscera are later phases, so every Lattice pick, secondary form, weapon art and tool form stays open by today's rules. Exploration adds: Aegis from the start (Phase 2), Aerial Step at Aperture 6, Long Quickening as a capstone beside it. Kept ids pass every gate for good; a switch to Exploration keeps everything Classic has open; a switch to Classic takes nothing; Release 1036's Exploration journeys keep everything on their first load. The one existing test line changed is Phase 2's "nothing lost going to Exploration", now a subset check, since Exploration also opens Aerial Step. Save changes are additive at schema 14 (`constellation.aerial`; `progression.table` 2).
 
+## Release 1037 — Baby Triceratops haunches
+
+Tim (2026-11-20), after release 1034's jointed Standard View legs: shrink the baby's haunches a little so its legs show; the stride is fine.
+
+**CODE:** TRI_FORMS.baby gains `haunch: .78`; drawLeg's haunch/shoulder radius is `(hind ? .19 : .14) * FM.legW * (FM.haunch ?? 1)` in src/triceratops-render.ts.
+
+**BOUNDARY:** Drawing only, Standard View baby only: every other form has no haunch factor (1), so the adult, young, ridden and Silly Goose are unchanged; the leg attachment tests still hold. No save change.
+
 ## Release 1036 — progression phase 2: modes, random starts, the start choice
 
 Tim approved the plan (`docs/progression-design.md`, revision 3) on 2026-11-20; this is section 7's row 2, with sections 4.0 and 6. Gameplay changes only on journeys created from now on.
