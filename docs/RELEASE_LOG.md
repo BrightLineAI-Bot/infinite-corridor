@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1034 (this merge); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1035 (this merge, #706); production serves `r1033-a2f1d1a7ea50`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1035 | Claude | claude/progression-phase-1 / #706 | Progression phase 1: the ability table (src/progression.ts) and the Journal page What the Corridor Taught You, with the Pace line; no gameplay change | Merged (#706); preview follows. |
 | 1034 | Claude | claude/triceratops-std-legs | Triceratops legs in Standard View: jointed legs, feet attached and planted in every form and move; drawing only, no save change | In flight. |
 | 1033 | Claude | claude/first-hour-fixes / #704 | First-hour fixes: errand link reachable in every crossing; dormant world boss hidden; crossing death restores section; exact resume keeps extra foes and the Stalker | Merged (#704); preview follows. |
 | 1032 | Claude | claude/triceratops-seat | Triceratops seat: rider mid-back just behind the shoulders in both views; ridden frill .85 size and tipped forward; no save change | In flight. |
