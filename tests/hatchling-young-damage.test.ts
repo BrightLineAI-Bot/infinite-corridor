@@ -1,6 +1,7 @@
 // The young Triceratops's damage (Tim, 2026-11-20): no buff to the Wayfarer; instead his own moves (beam, gatling, charge, whirl,
 // stomp, bite) deal about as much as a +10% damage buff would, over the course of a REAL fight: about HATCHLING.young.dpsShare (10%) of
-// the damage the Wayfarer deals in the same fight. Measured here with the real game update (Game.update: the foes' own AI moving,
+// the damage the Wayfarer deals in the same fight; since Tim's 2026-11-20 follow-up, less against packs (about .08) and more
+// against one elite or world beast (about .14). Measured here with the real game update (Game.update: the foes' own AI moving,
 // keeping range and attacking, his approach, cooldowns, misses and target switching) and a Wayfarer who walks to the nearest foe,
 // presses her primary attack every .45 to .8 s once in reach and dodges away every few seconds, in four typical encounters: an
 // early pack, a mid-game pack (ranged foes among them), a single affixed elite and a world-beast segment, over several seeds.
@@ -9,7 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, regionalScale } from "../src/game.ts";
 import { freshSave } from "../src/types.ts";
-import { HATCHLING, hatchlingBonus } from "../src/hatchling.ts";
+import { HATCHLING, hatchlingBonus, hatchFocus } from "../src/hatchling.ts";
 import { createCombatant, wayfarerDamage } from "../src/combat.ts";
 import { regionalThreat } from "../src/world.ts";
 import { rollAffixes } from "../src/affixes.ts";
@@ -56,15 +57,41 @@ function fight(enc: any, seed: string, seconds = 45) {
   return his / Math.max(1, total - his);
 }
 
-test("over real fights he deals about a tenth of the Wayfarer's damage: each encounter .06 to .14, on average .085 to .115", () => {
+// Tim, 2026-11-20: "more powerful versus single targets than groups ... some single-target boss damage" (HATCHLING.young.focus).
+const TARGETS: Record<string, [number, number]> = { "early pack": [.065, .095], "mid-game pack": [.065, .095], "affixed elite": [.12, .16], "world beast": [.12, .16] };
+test("over real fights he is best against one tough foe: packs about .08 of the Wayfarer's damage, an elite and a world beast about .14", () => {
   assert.equal(HATCHLING.young.dpsShare, .1);
-  const means: number[] = [];
+  const means: Record<string, number> = {};
   for (const [name, enc] of Object.entries(ENCOUNTERS)) {
-    const r = ["YOUNG-FIGHT-A", "YOUNG-FIGHT-B", "YOUNG-FIGHT-C"].map((seed) => fight(enc, seed)), m = r.reduce((a, b) => a + b) / r.length; means.push(m);
-    assert.ok(m >= .06 && m <= .14, `${name}: ${m.toFixed(3)} (${r.map((v) => v.toFixed(3)).join(", ")})`);
+    const r = ["YOUNG-FIGHT-A", "YOUNG-FIGHT-B", "YOUNG-FIGHT-C"].map((seed) => fight(enc, seed)), m = r.reduce((a, b) => a + b) / r.length; means[name] = m;
+    const [lo, hi] = TARGETS[name]; assert.ok(m >= lo && m <= hi, `${name}: ${m.toFixed(3)} (${r.map((v) => v.toFixed(3)).join(", ")}), want ${lo} to ${hi}`);
   }
-  const avg = means.reduce((a, b) => a + b) / means.length;
-  assert.ok(avg >= .085 && avg <= .115, `average ${avg.toFixed(3)} (${means.map((v) => v.toFixed(3)).join(", ")})`);
+  const packs = Math.max(means["early pack"], means["mid-game pack"]), all = Object.values(means).map((v) => v.toFixed(3)).join(", ");
+  assert.ok(means["affixed elite"] > packs && means["world beast"] > packs, `single targets above both packs: ${all}`);
+  const avg = Object.values(means).reduce((a, b) => a + b) / 4; assert.ok(avg >= .09 && avg <= .13, `average ${avg.toFixed(3)} (${all})`);
+});
+
+test("his hit is split among the foes it catches; a move aimed at an elite or a boss is focused", () => {
+  const save = freshSave(); save.seed = "YOUNG-SPLIT";
+  const g: any = new Game(save, 0); g.map = flat(); g.builds = []; g.projectiles = []; g.effects = [];
+  const h = save.mounts.hatchling; Object.assign(h, { owned: true, xp: HATCHLING.growth.big, form: "young" }); h.quest.state = "rescued"; h.buffs = {}; g.toggleHatchling();
+  const foe = (id: string, x: number, y: number) => { const e: any = createCombatant("rootBrute", x, y); e.id = id; e.hp = e.maxHp = 1e6; return e; };
+  const power = g.meleePower(), share = .5, at = (n: number) => { g.enemies = Array.from({ length: n }, (_, i) => foe(`f${i}`, 10 + i * .2, 10)); g.effects = []; h.out.carry = 0; g.hatchHit(10.7, 10.45, 1.2, share); return g.effects[0].damage; };
+  assert.equal(at(1), Math.floor(power * share)); assert.equal(at(3), Math.floor(power * share / 3 ** HATCHLING.young.focus.spread));
+  assert.equal(hatchFocus(null), 1); assert.equal(hatchFocus(foe("plain", 0, 0)), 1);
+  assert.equal(hatchFocus({ affixes: ["a"] }), HATCHLING.young.focus.elite); assert.equal(hatchFocus({ boss: true }), HATCHLING.young.focus.boss); assert.equal(hatchFocus({ worldBeast: "voidWalker" }), HATCHLING.young.focus.boss);
+  assert.ok(HATCHLING.young.focus.elite > 1 && HATCHLING.young.focus.boss > 1);
+});
+
+test("he picks the elite in reach over a nearer common foe", () => {
+  const save = freshSave(); save.seed = "YOUNG-PREFER";
+  const g: any = new Game(save, 0); g.map = flat(); g.builds = []; g.projectiles = []; g.effects = [];
+  Object.assign(g.player, { x: 15, y: 16 });
+  const h = save.mounts.hatchling; Object.assign(h, { owned: true, xp: HATCHLING.growth.big, form: "young" }); h.quest.state = "rescued"; h.buffs = {}; g.toggleHatchling();
+  const near: any = createCombatant("ashenHound", 17, 16); near.id = "near"; const elite: any = createCombatant("rootBrute", 20, 16); elite.id = "elite"; elite.affixes = rollAffixes("YOUNG-PREFER:e", 2);
+  g.enemies = [near, elite]; h.out.act = null; h.out.target = "near";
+  g.tickHatchYoung(h, h.out, HATCHLING.forms.young, 1 / 30, 1000);
+  assert.equal(h.out.target, "elite");
 });
 
 test("his hits carry their fractions: small shares land as their true share at low power, never rounded up", () => {
