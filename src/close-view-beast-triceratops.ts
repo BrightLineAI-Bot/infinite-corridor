@@ -36,13 +36,14 @@ export const TRICERATOPS_RIG = Object.freeze({
   // colours, a rounded swelling (a juvenile crest, no plate) in place of the frill; pitch: the trunk carried nose up about the hips (radians:
   // high shoulders over lower hips), foreLeg (the forelegs' bones x as long), mane: the frill as a mane-like collar (`size` of the adult's, `tall` x as tall,
   // wrapped `wrap` radians further round each side of the head and neck, opening forward as a cone `cone` deep (head units), its sides swept back `wrapBack` further along the neck, its rim scalloped into tufts
-  // `tuft` deep; TRI_ART.youngFrill's colours).
+  // `tuft` deep; TRI_ART.youngFrill's colours), and foreWide: the forelegs' width seen from the front (x their foreW; their depth in profile
+  // stays), their shoulder masses drawn in toward the chest with it (Tim, 2026-11-21: the young's chest "too wide; he looks fat ... from the front").
   // young (Tim, 2026-11-20: "the body of a lion with the head of a Triceratops"): a lion's carriage: high shoulders over a deep raised
   // chest, the back sloping down to lower hips, a tucked waist, strong haunches, long straight forelegs, the head carried up over the chest
   // on a short thick neck, a long thick tail carried low, and a mane-like frill. baby: a small crest swept back along the skull.
   formBody: Object.freeze({
-    young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.08, 1.06], [-.12, .86, .82], [-.02, .84, .8], [.1, .98, 1.08], [.2, 1.08, 1.2], [.3, 1.1, 1.18], [.38, 1.02, 1.04], [.51, .96, .96]].map(Object.freeze)),
-      tail: 1.3, pitch: .33, foreLeg: 1.3, neck: Object.freeze([-.12, -.2, .22]), crouch: .03, foreW: 1.3, thigh: 1.12, muscle: 1, frillTilt: 1.1, frillShift: Object.freeze([.16, -.08]),
+    young: Object.freeze({ body: Object.freeze([[-1.2, 1.3, 1.3], [-.78, 1.22, 1.2], [-.55, 1.1, 1.08], [-.32, 1.08, 1.06], [-.12, .86, .82], [-.02, .84, .8], [.1, .88, 1.08], [.2, .95, 1.2], [.3, .96, 1.18], [.38, .9, 1.04], [.51, .88, .96]].map(Object.freeze)), /* (2026-11-21: the chest narrower from the front, as deep) */
+      tail: 1.3, pitch: .33, foreLeg: 1.3, foreWide: .76, neck: Object.freeze([-.12, -.2, .22]), crouch: .03, foreW: 1.3, thigh: 1.12, muscle: 1, frillTilt: 1.1, frillShift: Object.freeze([.16, -.08]),
       mane: Object.freeze({ size: 1, tall: .85, wrap: .75, cone: .05, wrapBack: .3, tuft: .08 }) }),
     baby: Object.freeze({ crest: Object.freeze({ at: Object.freeze([-.05, .15]), radius: Object.freeze([.085, .09, .04]), F: Object.freeze([-.9, 0, .44]) }) }),
   }), // the hatchling's baby form carries his big head higher (body units over the head bone)
@@ -56,6 +57,13 @@ export const TRICERATOPS_RIG = Object.freeze({
   riddenFrill: Object.freeze({ size: .85, sweep: .45, tilt: .45, follow: 1.5, recoil: 3.2, fwd: .13, down: .04 }),
   // budget (triangles per tier, measured: never above the Spinosaurus's hide body at any tier)
   budget: Object.freeze({ full: 3218, balanced: 1694, low: 668 }),
+  // The smooth hide (Tim, 2026-11-21: "the only ones that look super blocky or junky. They need to be smoothed out"): the sides round
+  // each part, exactly, per tier [full, balanced, low] (the rig's own tier scaling is not applied on top), rounder where it shows most
+  // (the hide, the head, the legs), and `seam`: where a leg grows out of the hip or shoulder mass its skin takes the hide's shading and
+  // colour, fully at the hide's surface (`from`, in hide radii) and fading out `span` beyond it (`k`: how much of the hide's normal).
+  sides: Object.freeze({ hide: Object.freeze([18, 10, 6]), skull: Object.freeze([16, 9, 5]), leg: Object.freeze([12, 8, 6]), jaw: Object.freeze([9, 7, 5]), mane: Object.freeze([19, 13, 9]), frill: Object.freeze([13, 9, 6]) }),
+  legThin: Object.freeze([5, 7]), // the leg rows (HIND and FORE) the balanced mesh leaves out: straight runs mid-bone, so its rings can be rounder
+  seam: Object.freeze({ from: 1, span: .6, k: .9, tone: .85 }),
 });
 const G0 = TRICERATOPS_RIG, A = TRI_ART, K = TRI_KEYS.length, KI = Object.freeze(Object.fromEntries(TRI_KEYS.map((k, i) => [k, i])));
 const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(TRI_POSES).map(([n, p]) => [n, Float64Array.from(TRI_KEYS, (k) => p[k] || 0)])));
@@ -79,7 +87,7 @@ function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= 
 // `radius` round the body tapering to a point behind the tail (the drill bit), `width` wide; translucent (emit channel 3, alpha
 // `alpha`). Built only into the ridden Silly Goose's full and balanced meshes, as the mesh's optional section: drawn only while drilling.
 const WHIRL = Object.freeze({ at: Object.freeze([-.3, .58]), front: .75, back: -1.55, radius: .5, tip: .05, turns: 2.2, width: .07, alpha: .55,
-  bands: Object.freeze({ full: 3, balanced: 2 }), cols: Object.freeze({ full: 26, balanced: 12 }) });
+  bands: Object.freeze({ full: 3, balanced: 2 }), cols: Object.freeze({ full: 22, balanced: 10 }) });
 // The beak (Tim, 2026-11-19: "the tip of the beak is kind of hanging off; it's not connected"), head units [f, u, half width, half
 // height] before the squat muzzle (TRI_ART.muzzle) and a form's shorter snout are applied, so it moves back and deepens with the face.
 // upper: the skull's last sections, one skin that turns down at the front into the hook and closes to its point (no separate piece);
@@ -135,9 +143,9 @@ const at = (bone, p) => { const i = BI[bone] * 3, w = TRICERATOPS_SKELETON.bindW
 // The markings (Tim, 2026-11-18): darker-yellow bands across the haunch and the shoulder masses, in the hide's own vertex colours
 // (no triangles of their own). `band(f)`: 0..1, how strongly a section at f carries a band.
 const MARKS = Object.freeze({ haunch: Object.freeze([-.5, -.12]), shoulder: Object.freeze([.02, .26]) });
-function markAt(f) {
-  for (const [a, b] of [MARKS.haunch, MARKS.shoulder]) if (f >= a && f <= b) return 1;
-  return 0;
+function markAt(f) { // soft-edged (a band fades in over its first and last .06), so no ring ends it in a hard step
+  let m = 0; for (const [a, b] of [MARKS.haunch, MARKS.shoulder]) m = Math.max(m, smooth((f - a + .03) / .06) * smooth((b - f + .03) / .06));
+  return m;
 }
 function buildTriceratopsMesh(tier, saddle, form = null) {
   const FM = TRI_FORMS[form] || TRI_FORM_ADULT, FB0 = G0.formBody[form] || null, sc = (v, c, k) => k === 1 ? v : c + (v - c) * k; // the hatchling forms (triceratops-render.ts TRI_FORMS)
@@ -145,17 +153,24 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   const C = palette(), d = TIER_DETAIL[tier], full = tier === 'full', low = tier === 'low', B = meshBuilder(TRICERATOPS_SKELETON, d);
   // The hide: one loft from the tail tip to the neck, the back lighter, a pale belly, warm bands across the back and darker-yellow
   // markings over the haunches and shoulders (on the flanks, where the leg masses meet the body).
-  const tone = (i, k, st) => {
-    const f = BODY[i][0]; let c = lerpHex(C.body, C.light, .2 + Math.max(0, st) * .55);
+  // (2026-11-21 smoothing: every term is a smooth function of where the point lies, f along the trunk and st round it, so the colour
+  // runs evenly over the triangles: no every-other-ring or every-third-side steps, which drew zig-zag facets)
+  const toneAt = (f, st, odd) => {
+    let c = lerpHex(C.body, C.light, .2 + Math.max(0, st) * .55);
     if (st < -.3) c = lerpHex(c, C.belly, Math.min(1, (-.3 - st) * 2));
-    if (st > .55 && i % 2 === 1 && f > -.9 && f < .3) c = lerpHex(c, C.stripe, .45);
-    if (st > -.4 && st < .65 && markAt(f)) c = lerpHex(c, C.mark, k % 3 === 0 ? .35 : 1); // banded: dark stripes along the mass, every third ring lighter
+    if (odd && f > -.9 && f < .3) c = lerpHex(c, C.stripe, .45 * smooth((st - .45) / .25)); // warm bands across the back, fading down the sides
+    const mk = markAt(f) * smooth((st + .5) / .2) * smooth((.72 - st) / .2); // the markings over the flanks, fading toward the back and the belly
+    if (mk > 0) c = lerpHex(c, C.mark, .8 * mk);
     return c;
   };
-  const hide = BODY.map((r, i) => [r, i]).filter(([, i]) => !low || i % 2 === 0 || i === 1 || i === BODY.length - 1);
+  const tone = (i, k, st) => toneAt(BODY[i][0], st, i % 2 === 1);
+  const SD = (part) => { const n = G0.sides[part][full ? 0 : low ? 2 : 1]; return { seg: n, minSeg: n }; }; // exact sides (TRICERATOPS_RIG.sides)
+  // the tail closes to a point (no tiny ring and cap); balanced drops two tail sections (a smooth cone needs fewer) for rounder rings
+  const hide = BODY.map((r, i) => [r, i]).filter(([, i]) => low ? i % 2 === 0 || i === BODY.length - 1 : !(tier === 'balanced' && (i === 1 || i === 3)));
   const TF = TAIL_ROOT, TK = FM.length * (FB0?.tail ?? 1), tl = (f) => TK === 1 || f >= TF ? f : TF + (f - TF) * TK; // a short form's tail drawn in toward the hips (the adult's exactly at 1)
   const prof = (f, c) => { const T = FB0?.body; if (!T) return 1; if (f <= T[0][0]) return T[0][c]; for (let i = 1; i < T.length; i++) if (f <= T[i][0]) { const a = T[i - 1], b = T[i], t = (f - a[0]) / (b[0] - a[0]); return a[c] + (b[c] - a[c]) * t; } return T[T.length - 1][c]; };
-  B.color(C.body).loft({ seg: low ? 8 : full ? 16 : 12, sections: hide.map(([[f, u, rx, rz, a, b, w]]) => ({ at: [tl(f), 0, u], rx: rx * FM.girth * prof(f, 1), rz: rz * FM.girth * prof(f, 2), bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
+  B.color(C.body).loft({ ...SD('hide'), sections: hide.map(([[f, u, rx, rz, a, b, w]], j) => ({ at: [tl(f), 0, u], rx: j === 0 ? 0 : rx * FM.girth * prof(f, 1), rz: j === 0 ? 0 : rz * FM.girth * prof(f, 2), bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
+  const hideAt = (f) => { const [u, rx, rz] = sectionAt(f); return [u, rx * FM.girth * prof(f, 1), rz * FM.girth * prof(f, 2)]; }; // (the trunk, where tl(f) = f)
   // ---- the head (bone-local, the standard view's head scaled by its headScale; f forward, u up)
   const HS = HS0 * FM.head, HL = G0.formHeadLift[form] || 0, sk = FM.snout, sn = (f) => sk === 1 || f <= .12 ? f : .12 + (f - .12) * sk; // the face in front of the eye shortened (the baby's round face; exact for the adult)
   // the squat muzzle (TRI_ART.muzzle, as the standard view): in front of its `from` the face drawn shorter and, toward the beak, deeper
@@ -170,11 +185,13 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   // to a hooked parrot beak; a dark cheek line runs back from the beak; it ends in the beak's dark keratin, all one skin.
   const SKULL = [[-.09, 0, .085, .115], [-.02, .01, .125, .15], [.05, .02, .12, .15], [.12, .02, .09, .135], [.19, .005, .07, .115], [.26, -.015, .056, .095], ...BEAK.upper];
   const skull = low ? SKULL.filter((_, i) => i % 2 === 0 || i === SKULL.length - 1) : SKULL, beakF = .3; // (low keeps the hook's point)
-  B.color(C.body).loft({ seg: low ? 7 : full ? 14 : 10, sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS * dp(f), bones: ['head', 'head', 0] })),
-    tone: (i, k, st) => { const f = skull[i][0]; if (f >= beakF) return st > .2 ? C.beakLight : C.beak; if (st < -.2 && st > -.55 && f > .02) return lerpHex(C.dark, C.beak, .35); return st > .3 ? C.light : st < -.5 ? C.dark : C.body; } });
+  B.color(C.body).loft({ ...SD('skull'), sections: skull.map(([f, u, rx, rz]) => ({ at: HW([f, 0, u]), rx: rx * HS, rz: rz * HS * dp(f), bones: ['head', 'head', 0] })),
+    tone: (i, k, st) => { const f = skull[i][0]; if (f >= beakF) return st > .2 ? C.beakLight : C.beak; // (the beak's keratin exactly its own colours)
+      let c = st > 0 ? lerpHex(C.body, C.light, smooth((st - .1) / .4)) : lerpHex(C.body, C.dark, smooth((-st - .3) / .4)); // lighter over the brow, darker under the jaw line
+      const line = f > .02 ? smooth((st + .6) / .15) * smooth((-.15 - st) / .15) * smooth((f - .02) / .08) : 0; return line > 0 ? lerpHex(c, lerpHex(C.dark, C.beak, .35), line) : c; } }); // the dark cheek line back from the beak
   // the brow horns: each grows out of a swelling of the brow, thick at the base, curving forward and up to a fine tip (one lofted skin)
   for (const s of [-1, 1]) {
-    if (!low) B.color(C.body).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });
+    if (!low) B.color(lerpHex(C.body, C.light, .5)).ellipsoid({ at: hb([.115, s * .07, .115]), radius: [.06 * HS, .045 * HS, .04 * HS], rings: 3, seg: 7, F: [.9, 0, .45] });
     const bk = FM.brow, pts = [[.105, s * .066, .1], [.15, s * .074, .16], [.22, s * .08, .23], [.29, s * .085, .28], [.38, s * .088, .315], [.45, s * .088, .33]].map(([x, y, z]) => [sc(x, .105, bk), y, sc(z, .1, bk)]), rad = [.05, .042, .034, .025, .014, .002].map((r, i) => bk < 1 ? r * (1 - (1 - bk) * i / 6) + (i === 5 ? .012 * (1 - bk) : 0) : r * (bk > 1 ? 1 + (bk - 1) * .5 : 1)); // a short form's tip stays rounded (a nub)
     const use = low ? [0, 2, 4, 5] : [0, 1, 2, 3, 4, 5], hseg = low ? 4 : full ? 8 : 6;
     if (CH && s === CH_S) brokenHorn(B, C, CH, pts.map(HWb), rad.map((r) => r * HS), low, hseg);
@@ -184,8 +201,8 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
     // the eyes: big and bright, a dark pupil looking forward
     const ek = FM.eye;
     const big = ek > 1.3 && !low; // the baby's big round eyes: rounder, with a glint
-    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS * ek, .02 * HS * (ek === 1 ? 1 : .5 + .5 * ek), .032 * HS * ek], rings: big ? 4 : low ? 2 : 3, seg: big ? 10 : low ? 5 : 7 });
-    B.color(C.pupil).ellipsoid({ at: hb([.115, s * (ek === 1 ? .11 : .1 + .01 * ek), .05]), radius: [.018 * HS * ek, .009 * HS * ek, .02 * HS * ek], rings: big ? 3 : 2, seg: big ? 8 : low ? 4 : 5 });
+    B.color(C.eye).ellipsoid({ at: hb([.1, s * .095, .05]), radius: [.036 * HS * ek, .02 * HS * (ek === 1 ? 1 : .5 + .5 * ek), .032 * HS * ek], rings: low ? 2 : 4, seg: big ? 10 : low ? 5 : 9 }); // (round, not a diamond, where it shows)
+    B.color(C.pupil).ellipsoid({ at: hb([.115, s * (ek === 1 ? .11 : .1 + .01 * ek), .05]), radius: [.018 * HS * ek, .009 * HS * ek, .02 * HS * ek], rings: big || full ? 3 : 2, seg: big ? 8 : low ? 4 : full ? 6 : 5 });
     if (big) B.color(0xffffff).ellipsoid({ at: hb([.125, s * (.112 + .01 * ek), .065]), radius: [.006 * HS * ek, .004 * HS * ek, .007 * HS * ek], rings: 2, seg: 4 });
     if (FM.cheek > 0 && !low) B.color(0xf2a49a).ellipsoid({ at: hb([.17, s * .085, -.03]), radius: [.04 * HS, .012 * HS, .025 * HS], rings: 2, seg: 5 }); // the baby's pink cheeks
   }
@@ -193,17 +210,17 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   { const nk = FM.nose; B.loft({ seg: low ? 4 : 6, caps: false, sections: [[.255, .055, .04], [.28, .1, .03], [.305, .15, .016], [.32, .18, .002]].map(([f, u, r], i) => ({ at: HW([sc(f, .255, nk), 0, sc(u, .055, nk)]), rx: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, rz: (r + (nk < 1 && i === 3 ? .01 : 0)) * HS, bones: ['head', 'head', 0] })), tone: (i) => lerpHex(C.hornBase, C.horn, i / 3) }); }
   // the lower jaw (opens with the pose), its beak tip dark; the ridden Silly Goose's tongue
   { const J = TRICERATOPS_SKELETON.bindWorld, j = BI.jaw * 3; B.bone('jaw');
-    B.color(C.dark).loft({ seg: low ? 5 : 8, sections: BEAK.jaw.map(([f, u, rx, rz]) => ({ at: [J[j] + (sn(mz(f + .06)) - .06) * HS + JF, 0, J[j + 2] + (MZ.mid + .07 + (u - .07 - MZ.mid) * dp(f + .06)) * HS + JZ], rx: rx * HS, rz: rz * HS * dp(f + .06), bones: ['jaw', 'jaw', 0] })),
+    B.color(C.dark).loft({ ...SD('jaw'), caps: false, sections: BEAK.jaw.map(([f, u, rx, rz]) => ({ at: [J[j] + (sn(mz(f + .06)) - .06) * HS + JF, 0, J[j + 2] + (MZ.mid + .07 + (u - .07 - MZ.mid) * dp(f + .06)) * HS + JZ], rx: rx * HS, rz: rz * HS * dp(f + .06), bones: ['jaw', 'jaw', 0] })),
       tone: (i, k, st) => i >= 3 ? C.beak : st > .3 ? 0x7a2a1c : C.dark }); // the lower beak (its dark tip) under the hook
     if (saddle === "silly" && !low) B.color(C.tongue).ellipsoid({ at: [.28 * HS, 0, .012 * HS], radius: [.07 * HS, .022 * HS, .01 * HS], F: [1, 0, -.3], rings: 2, seg: low ? 4 : 6 }); } // poking out under the hook
   // ---- the frill: a broad shield rising up and back off the skull, its front face orange, a pale rim with knobs
   // a juvenile crest (FB0.crest: the baby): no plate, a smooth rounded swelling carrying the skull's top line back and a little up, in his
   // own hide (TRICERATOPS_RIG.formBody.baby.crest: [f, u] on the head, its radii [back, across, up] and its lean back), then no frill
-  if (FB0?.crest) { const K = FB0.crest; B.bone('head').color(lerpHex(C.body, C.dark, .2)).ellipsoid({ at: hb([K.at[0], 0, K.at[1]]), radius: K.radius.map((r) => r * HS), F: K.F, rings: low ? 2 : 4, seg: low ? 6 : 10 }); }
+  if (FB0?.crest) { const K = FB0.crest; B.bone('head').color(lerpHex(C.body, C.light, .3)).ellipsoid({ at: hb([K.at[0], 0, K.at[1]]), radius: K.radius.map((r) => r * HS), F: K.F, rings: low ? 2 : 5, seg: low ? 6 : 12 }); } // (the skull top's tone, so it swells out of it)
   B.bone('frill');
   // A dish, not a flat plate: rows run out from the skull to the rim, columns round the fan; its sides sweep back, so it reads broad
   // from the side as well as the front. Its face is orange with two dark spots, its rim pale, its back the hide's yellow.
-  if (!FB0?.crest) { const MN = FB0?.mane, MA = MN ? A.youngFrill : null, FK = MN ? MN.size : FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK * (MN ? MN.tall : 1), rows = low ? 3 : full ? 5 : 4, cols = MN ? (low ? 9 : full ? 19 : 13) : low ? 6 : full ? 12 : 9, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
+  if (!FB0?.crest) { const MN = FB0?.mane, MA = MN ? A.youngFrill : null, FK = MN ? MN.size : FM.frill * (saddle ? G0.riddenFrill.size : 1), SW = saddle ? G0.riddenFrill.sweep : 1, R = .32 * HS * FK, Hh = .38 * HS * FK * (MN ? MN.tall : 1), rows = low ? 3 : full ? 5 : 4, cols = SD(MN ? 'mane' : 'frill').seg, Fw = [.78, 0, .62], Up = [-.62, 0, .78];
     // the mane (formBody.mane): wrapped further round the sides, its rim scalloped into tufts (every other column out, the ones between in)
     const a0 = MN ? -.12 - MN.wrap : -.12, aSpan = Math.PI + .24 + (MN ? 2 * MN.wrap : 0), angle = (c) => a0 + aSpan * c / (cols - 1);
     const grid = [], ring = [], rimAt = (a, r) => { const x = Math.cos(a) * R * r, y = (Math.sin(a) * Hh + .03 * HS) * r, back = MN ? -r * (MN.cone + MN.wrapBack * Math.cos(a) ** 2) * HS : (-((x / R) ** 2) * .2 * HS * r - r * r * .03 * HS) * SW; // the mane: an even collar opening forward
@@ -226,17 +243,24 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
     [-hf - G.tibia * .5, .1, .1, 'm', 'm', 0, 1], [-ht, .095, .095, 'm', 'l', .5, 1], [-ht - G.hindCannon * .6, .095, .095, 'l', 'l', 0, 1], [-hl + .01, .105, .1, 'l', 'l', 0, 1]];
   const FORE = [[.12, .085, .1, 'p', 'p', 0, .5], [.04, .13, .14, 'p', 't', .4, .85], [-.04, .13, .135, 't', 't', 0, 1], [-af * .6, .11, .115, 't', 't', 0, 1], [-af, .095, .1, 't', 'm', .5, 1],
     [-af - G.radius * .5, .087, .09, 'm', 'm', 0, 1], [-at2, .082, .085, 'm', 'l', .5, 1], [-at2 - G.foreCannon * .6, .082, .084, 'l', 'l', 0, 1], [-al + .01, .092, .088, 'l', 'l', 0, 1]];
+  const seams = []; // the legs' triangles (their tops take the hide's shading where they grow out of it: TRICERATOPS_RIG.seam)
   for (const L of LEGS) {
     const W = TRICERATOPS_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], parent = L.hind ? 'pelvis' : 'chest';
     const name = (c) => c === 'p' ? parent : c === 't' ? L.top : c === 'm' ? L.mid : L.low, src = L.hind ? HIND : FORE;
-    const rows = src.filter((_, i) => !low || i % 2 === 0 || i === src.length - 1);
-    const wk = L.hind ? 1 : FB0?.foreW ?? 1, mu = FB0?.muscle || 0; // a form's heavier forelegs and thighs, and its muscle markings
-    B.color(C.body).loft({ seg: low ? 6 : full ? 10 : 8, up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w, inset], i) => { const lw = (a === 'p' ? FM.legW : FM.legW / FM.leg) * wk * (L.hind && i < (low ? 2 : 4) ? FB0?.thigh ?? 1 : 1); return { at: [x, y * inset, z + u], rx: rx * lw, rz: rz * lw, bones: [name(a), name(b), w] }; }),
-      tone: (i, k, st) => { if (i >= rows.length - 1) return C.dark; const c = lerpHex(C.body, C.dark, Math.max(0, -st) * .3 + i * .025), u = rows[i][0];
-        return mu && (L.hind ? u < .1 && u > -G.femur - .02 && st < -.25 : u < -.04 && u > -G.humerus - G.radius * .8 && st > .25) ? lerpHex(c, C.mark, .75 * mu) : c; } }); // the thigh's back, the forearm's front
+    const rows = src.filter((_, i) => low ? i % 2 === 0 || i === src.length - 1 : full || !G0.legThin.includes(i)); // (balanced: the straight mid-bone rows out, for rounder rings)
+    const wk = L.hind ? 1 : FB0?.foreW ?? 1, ww = L.hind ? 1 : FB0?.foreWide ?? 1, mu = FB0?.muscle || 0; // a form's heavier forelegs and thighs (ww: the forelegs' width from the front), and its muscle markings
+    // (no caps: the top ring lies deep in the hip or shoulder mass, and the foot end closes to a point inside the pad)
+    const secs = rows.map(([u, rx, rz, a, b, w, inset], i) => { const lw = (a === 'p' ? FM.legW : FM.legW / FM.leg) * wk * (L.hind && i < (low ? 2 : 4) ? FB0?.thigh ?? 1 : 1); return { at: [x, y * inset * (a === 'p' ? ww : 1), z + u], rx: rx * lw * ww, rz: rz * lw, bones: [name(a), name(b), w] }; });
+    const end = secs[secs.length - 1]; secs.push({ at: [end.at[0], end.at[1], z - (L.hind ? hl : al) - .02], rx: 0, rz: 0, bones: end.bones });
+    const t0 = B.triangles, n = rows.length;
+    B.color(C.body).loft({ ...SD('leg'), caps: false, up: [1, 0, 0], sections: secs,
+      tone: (i, k, st) => { if (i >= n - 1) return C.dark; const u = rows[Math.min(i, n - 1)][0], c = lerpHex(lerpHex(C.body, C.light, .2), C.dark, Math.max(0, -st) * .2 + .32 * (i / (n - 1)) ** 1.5); // the hide's flank colour, darker toward the foot and down the back
+        const m = !mu ? 0 : L.hind ? smooth((.1 - u) / .06) * smooth((u + G.femur + .02) / .06) * smooth((-.15 - st) / .2) : smooth((-.04 - u) / .06) * smooth((u + G.humerus + G.radius * .8) / .06) * smooth((st - .15) / .2);
+        return m > 0 ? lerpHex(c, C.mark, .75 * mu * m) : c; } }); // the thigh's back, the forearm's front
+    seams.push([t0, B.triangles]);
     const pk = FM.leg === 1 ? 1 : FM.legW / FM.leg * .85; // a short form's round feet, as broad as its legs (the foot bone carries the legs' scale)
     B.bone(L.foot).color(C.pad).ellipsoid({ at: [.01 * pk, 0, -.005], radius: [.11 * pk, .1 * pk, .04 * pk], rings: low ? 2 : 3, seg: low ? 6 : 9 });
-    if (!low) for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.toe).ellipsoid({ at: [.085 * pk, s * .045 * pk, -.008], radius: [.026 * pk, .02 * pk, .024 * pk], rings: 2, seg: 4 }); }
+    if (!low) for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.toe).lathe({ at: [.07 * pk, s * .045 * pk, -.008], F: [1, s * .2, -.35], rings: [[0, .022 * pk], [.045 * pk, 0]], seg: full ? 4 : 3, minSeg: 3, caps: false }); } // blunt pale nails (hard-edged on purpose)
   }
   // ---- the saddle (ridden meshes): a blanket draped over the back, a girth round the barrel, a leather seat with cantle and pommel
   if (saddle) {
@@ -245,12 +269,14 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
     // the blanket: a grid over the hide's upper half, a little proud of it, from behind to in front of the seat
     const cols = low ? 3 : 5, rowsN = low ? 3 : 5, grid = [], rowBones = [];
     for (let r = 0; r < rowsN; r++) { const f = SEAT_F - .17 + .34 * r / (rowsN - 1), [u, rx, rz] = sectionAt(f), row = [];
-      for (let c = 0; c < cols; c++) { const a = Math.PI * (.08 + .84 * c / (cols - 1)); row.push([f, Math.cos(a) * (rx + .014), u + Math.sin(a) * (rz + .014)]); }
+      const lift = 1 / Math.cos(Math.PI * .42 / (cols - 1)); // its flat panels' middles clear the rounder hide too (each corner set out by the chord's sag)
+      for (let c = 0; c < cols; c++) { const a = Math.PI * (.08 + .84 * c / (cols - 1)); row.push([f, Math.cos(a) * (rx + .014) * lift, u + Math.sin(a) * (rz + .014) * lift]); }
       grid.push(row); rowBones.push(['spine', 'spine', 0]); }
     B.sheet({ grid, rowBones, tone: (r, c) => c === 0 || c === cols - 1 ? trim : silly && (r + c) % 2 ? lerpHex(cloth, trim, .45) : cloth });
     B.bone('saddle');
     // the girth: a band right round the barrel under the seat
-    B.color(C.leather).loft({ seg: low ? 8 : 14, caps: false, up: [0, 0, 1], sections: [-.05, .05].map((df) => ({ at: [SEAT_F + .04 + df, 0, u0], rx: rx0 + .018, rz: rz0 + .018, bones: ['spine', 'spine', 0] })), tone: (i, k, st) => st > .2 ? C.leather : C.leatherDark });
+    const gs = full ? 14 : SD('hide').seg, gl = 1 / Math.cos(Math.PI / gs); // (as many sides as the hide's, or more, set out by their sag: the hide never shows through it)
+    B.color(C.leather).loft({ seg: gs, minSeg: gs, caps: false, up: [0, 0, 1], sections: [-.05, .05].map((df) => ({ at: [SEAT_F + .04 + df, 0, u0], rx: (rx0 + .018) * gl, rz: (rz0 + .018) * gl, bones: ['spine', 'spine', 0] })), tone: (i, k, st) => st > .2 ? C.leather : C.leatherDark });
     B.color(C.brass).box({ at: [.04, rx0 * .87 + .022, -rz0 * .5], size: [.05, .008, .04], bevel: 0 });
     // the seat, its high cantle behind and pommel in front
     B.color(C.leather).ellipsoid({ at: [0, 0, .025], radius: [.13, .1, .03], rings: low ? 2 : 3, seg: low ? 6 : 8 });
@@ -274,7 +300,18 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
       B.color(0xf6ecd2, 3).sheet({ grid, rowBones: [['whirl', 'whirl', 0], ['whirl', 'whirl', 0]], tone: (r, c) => lerpHex(0xfff8e4, 0xd9c49a, c / (cols - 1)) });
     }
   }
-  return B.done();
+  const M = B.done();
+  // The seams (TRICERATOPS_RIG.seam): where a leg's skin comes out of the hide (its distance from the trunk's axis in the hide's own radii,
+  // e: 1 on the hide's surface) it takes the hide's normal and colour there, fading back to its own over `span`, so the thigh and the
+  // shoulder mass grow out of the body as one smooth skin instead of a ring of facets standing on it. Bind space, once per mesh.
+  const SM = G0.seam, done = new Uint8Array(M.vertexCount), N = M.normals, PP = M.positions, CC = M.colors;
+  for (const [t0, t1] of seams) for (let j = t0 * 3; j < t1 * 3; j++) { const v = M.indices[j]; if (done[v]) continue; done[v] = 1;
+    const f = PP[v * 3], [u, rx, rz] = hideAt(f), dy = PP[v * 3 + 1] / rx, dz = (PP[v * 3 + 2] - u) / rz, e = Math.hypot(dy, dz), w = 1 - smooth((e - SM.from) / SM.span);
+    if (w <= 0 || e < 1e-6) continue;
+    const nb = [0, dy / rx, dz / rz], nl = Math.hypot(...nb), k = w * SM.k;
+    const n = [0, 1, 2].map((q) => N[v * 3 + q] * (1 - k) + nb[q] / nl * k), l = Math.hypot(...n) || 1; for (let q = 0; q < 3; q++) N[v * 3 + q] = n[q] / l;
+    const c = toneAt(f, Math.max(-.3, dz / e), false), kt = w * SM.tone; CC[v * 3] += (((c >> 16) & 255) / 255 - CC[v * 3]) * kt; CC[v * 3 + 1] += (((c >> 8) & 255) / 255 - CC[v * 3 + 1]) * kt; CC[v * 3 + 2] += ((c & 255) / 255 - CC[v * 3 + 2]) * kt; }
+  return M;
 }
 // A brow horn broken off CH.at of its length (TRI_ART.chippedHorn): its sections (model space: pts, radii) cut there by length, the stump
 // one skin to the break, then a jagged rim (alternate points standing proud along the horn by CH.jag) and the break's pale core, a
