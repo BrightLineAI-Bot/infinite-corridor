@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1049 (this merge); production serves `r1048-85a8d476db24`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1050 (this merge); production serves `r1049-ca0dae0906fa`. The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1050 | Claude | claude/triceratops-smooth | Smoother Triceratops (Close View): rounder hide, head and legs, legs grown out of the body, smooth colouring; young's chest narrower from the front; presentation only | In flight. |
 | 1049 | Claude | claude/young-single-target | Young Triceratops single-target focus: elite/boss ~.14 of the Wayfarer's damage, packs ~.08; area hits split, tough foes preferred; balance only, no save change | In flight. |
 | 1048 | Claude | claude/progression-phase-8 / #719 | Progression phase 8: far, sea, sky and strange quests; the Divine Viscera shelf; the guardian roster (Exploration withholds the full designed set) | Merged (#719); preview follows. |
 | 1047 | Claude | claude/daily-region-1120 / #718 | The Oasis Ergs: a far sand sea with dunes, wadis, oasis pools, palms and sinking sand (landscape 28) | Merged (#718); preview follows. |

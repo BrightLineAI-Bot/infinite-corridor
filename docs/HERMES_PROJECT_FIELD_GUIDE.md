@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1050 — Smoother Triceratops
+
+Tim (2026-11-21): the Triceratops models were the only ones that looked blocky or junky in Close View, and the young's chest was too wide from the front.
+
+**CODE:** close-view-beast-triceratops.ts: TRICERATOPS_RIG.sides gives exact side counts per tier (hide 18/10/6, skull 16/9/5, leg 12/8/6, jaw 9/7/5, frill 13/9/6), bypassing the rig's tier scaling; seam blends each leg vertex's normal and colour toward the hide's by its distance from the hide, once per mesh after B.done(); legThin lists the leg rows balanced leaves out; neckEnd closes the hide's front to a point; the hide's tones are a continuous toneAt(f, st) with soft markAt edges and bellyAt keeping the pale belly under the barrel only. Eyes and pupils have more rings; toes are small pale nails; the jaw and legs drop their caps inside the body. formBody.young has narrower chest widths (depth kept) and foreWide .76. The saddle blanket and girth are pushed out by the hide's chord sag; the Silly Goose's drill whirlwind uses fewer columns to fit the budget.
+
+**BOUNDARY:** Presentation only, Close View only: no gameplay, Standard View, pose, bone, horn tip, seat or beam-tip changes. Triangles stay within TRICERATOPS_RIG.budget and the Spinosaurus's counts at every tier. The shared beast rig and the other beasts are unchanged.
+
 ## Release 1049 — Young Triceratops: single-target focus
 
 Tim (2026-11-20): the young should be more powerful against single targets than groups, with some single-target boss damage; his upright rear and height stay as they are.
