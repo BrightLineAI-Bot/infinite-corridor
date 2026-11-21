@@ -6,6 +6,12 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1053 — The Washing at Sallowby
+
+**CODE:** `src/threads.ts` raises `STORY_BUDGET` to version 6 (`byVersion[6]` = 0.12) and adds `THREADS.washing` (`shared: { 6: ["middle","far"] }`, six bundles from Nell Ashby, the washerwoman at Sallowby), `THREAD_GIFTS` (40 marks once), `THREAD_TRAILS`, `ensureThreadTrails` and `settleThreadGifts`. The new `src/thread-trails.ts` finds the nearest unentered crossing that will hold the next bundle (hashed search within 40 sections, answer saved in `save.lore.trails`, re-searched only after a read or an empty entry) and falls back to the home's nearest edge. `lore.ts` gives the thread a south-east home 12–30 out that turns with the journey's frame; `types.ts` accepts the compass follow id `thread:<id>`; `atlas-view.ts` points the compass at it; `game.ts` sets the follow on the first read (as the Second Wayfarer's footprints do) and pays the gift in `settleArcana`; `leads.ts` adds a washing rumour and counts the thread in the quest leads; `renderer.ts` draws the bundle relic.
+
+**BOUNDARY:** Saves stay additive at schema 14 (`save.lore.trails` and `save.lore.threadGifts` are normalised in `freshSave`/`migrateSave`; unknown ids kept). Crossings pinned at story versions 0–5 roll exactly as before; version 6 puts pieces in the same crossings and only re-splits shared slots, so story density is unchanged (0.120 measured at versions 5 and 6). No ability reward, no new verb, no generator change.
+
 ## Release 1052 — existing unpaid destination recovery
 
 Saved unpaid horde and pity rumours must not continue pointing at an entrance that cannot exist. Their original receipts and the player's explicit compass selection stay intact, while invalid destinations leave the active Journal list.
