@@ -4,7 +4,7 @@
 import { hashSeed, rng } from "./random.ts";
 import { exploring, ensureFeats } from "./journey-start.ts";
 import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, earnedWorld, worldWithheld, featCount, milestoneLine, reliquaryRoll } from "./world-routes.ts";
-import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.ts";
+import { dungeonId, dungeonDescriptor, regionSettled, CROSSING_ROLLS } from "./world.ts";
 import { HORDE } from "./revenant-horde.ts";
 import { ladderRoll } from "./dungeon-ladder.ts";
 import { shaftHere, deepIdFor, deepKey } from "./the-deep.ts";
@@ -12,7 +12,7 @@ import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { farDomainAt } from "./far-realms.ts";
 import { rollMireCrypt } from "./underlands.ts";
-import { annexRecord } from "./deep-annex.ts";
+import { annexRecord, DEEP_ANNEX } from "./deep-annex.ts";
 import { WONDERS } from "./wonders.ts";
 
 // game.ts installs the pure physical probe after its module loads. Early/standalone callers cannot promise an unverified site.
@@ -45,7 +45,7 @@ const tierOf = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.a
 // ---------------------------------------------------------------- horde crossings (2.7) and the Deep's shafts
 // An ordinary landmark crossing at a section whose Revenant horde roll holds at `tier` (world.ts addDungeonLandmark's own draws,
 // revenant-horde.ts rollHorde's own hash and the dungeon ladder), not yet entered. Only surviving candidates need a cached terrain probe.
-function hordeAt(save, x, y, tier) {
+function hordeAt(save, x, y, tier, knownEntrance = false) {
   const seed = save?.seed, gen = Number(save?.worldGeneration ?? 1);
   if (gen === 0) return null;
   const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r();
@@ -60,6 +60,9 @@ function hordeAt(save, x, y, tier) {
     const mireRung = h?.ladder ? ladderRoll(seed, id, "poisonCrypt", h.ladder.tier) : ladderRoll(seed, id, "poisonCrypt", tier);
     if (!annex && rollMireCrypt(seed, id, h?.layoutPool ?? 5) && mireRung !== null) return null;
   }
+  // An exact snapshotted entrance on pinned ground already survived that section's historical overlays. Do not discard it
+  // merely because the conservative new-ground probe would avoid a possible architectural footprint in the same section.
+  if (knownEntrance && !replacedSection(save, x, y)) return { rx: x, ry: y, dungeon: id };
   if (inhabited(save, x, y)) return null;
   return physical(save, x, y, "horde", id) ? { rx: x, ry: y, dungeon: id } : null;
 }
@@ -84,6 +87,41 @@ export function nearestShaft(save, rx, ry, radius = PITY.radius) {
       return physical(save, x, y, "shaft") ? { rx: x, ry: y, floor: f, shaft: id } : null;
     return null;
   });
+}
+
+// Saved unpaid leads are rechecked at their own section, never by a ring scan during Journal reads. Actual atlas/snapshot
+// evidence keeps a valid previously seen place offered; new ground uses the same bounded physical memo as fresh rumours.
+const leadCoordinates = (r) => Number.isInteger(r?.rx) && Number.isInteger(r?.ry);
+const replacedSection = (save, x, y) => !!farDomainAt(save, x, y, !!save?.atlas?.[`${x},${y}`])
+  || (save?.hometowns?.towns || []).some((t) => t.rx === x && t.ry === y)
+  || !!save?.ascendancy?.[`${x},${y}`]?.risen;
+const sectionObjects = (save, x, y) => save?.session?.areas?.[`overworld:${x}:${y}:g${save?.worldGeneration ?? 1}`]?.objects;
+export function hordeLeadLive(save, r) {
+  if (!leadCoordinates(r) || typeof r.dungeon !== "string") return false;
+  const { rx: x, ry: y } = r, prefix = `dungeon:${save?.seed}:g${save?.worldGeneration ?? 1}:${x}:${y}:`;
+  if (!r.dungeon.startsWith(prefix)) return false;
+  const objectId = r.dungeon.slice(prefix.length), atlas = save?.atlas?.[`${x},${y}`];
+  const name = dungeonDescriptor(r.dungeon).name;
+  const namedSite = Array.isArray(atlas?.sites) && atlas.sites.some((s) => s?.kind === "dungeon" && (s.name === name || s.name === DEEP_ANNEX.name || s.name?.startsWith?.(`${name} · `)));
+  if (Array.isArray(atlas?.sites) && !namedSite) return false; // a final site list overrides an older entrance snapshot
+  const known = !!atlas && objectId.startsWith(`dungeon-g${save?.worldGeneration ?? 1}-${x}-${y}-`)
+    && Object.prototype.hasOwnProperty.call(sectionObjects(save, x, y) || {}, objectId)
+    && (!Array.isArray(atlas.sites) || namedSite);
+  return hordeAt(save, x, y, Math.max(0, tierOf(save)), known)?.dungeon === r.dungeon;
+}
+export function deepLeadLive(save, r) {
+  if (!leadCoordinates(r) || r.shaft !== deepIdFor(save?.seed, r.rx, r.ry) || !Number.isInteger(r.floor) || r.floor < 1) return false;
+  const { rx: x, ry: y } = r, key = `${x},${y}`;
+  if (!shaftHere(save?.seed, x, y) || !reliquaryRoll(save?.seed, "deep", `${r.shaft}:f${r.floor}`) || replacedSection(save, x, y)) return false;
+  const atlas = save?.atlas?.[key];
+  if (atlas) {
+    if (!atlas.deepVersion) return false;
+    // Atlas sites reflect the final architecture pass. A complete site list without a shaft overrides an older snapshot.
+    if (Array.isArray(atlas.sites)) return atlas.sites.some((s) => s?.kind === "deepShaft");
+    return Object.prototype.hasOwnProperty.call(sectionObjects(save, x, y) || {}, `deep-shaft-${x}-${y}`);
+  }
+  if (save?.explored?.[key] || inhabited(save, x, y)) return false;
+  return physical(save, x, y, "shaft");
 }
 
 // ---------------------------------------------------------------- pity (G3): a lead, never an ability
@@ -116,8 +154,8 @@ export function pityLead(save, rx = 0, ry = 0) {
 }
 // Whether a strong lead still points at something to do.
 export function pityLive(save, r) {
-  if (r?.target === "horde") return !save?.feats?.reliquary?.firsts?.horde && !((Number(save?.consequences?.dungeons?.[r.dungeon]?.visits) || 0) > 0);
-  if (r?.target === "deep") { const best = Number(save?.theDeep?.shafts?.[deepKey(r.shaft)]?.best) || 0; return best < (Number(r.floor) || 1) && RELIQUARY.pool.some((id) => worldWithheld(save, id)); }
+  if (r?.target === "horde") return !save?.feats?.reliquary?.firsts?.horde && hordeLeadLive(save, r);
+  if (r?.target === "deep") { const best = Number(save?.theDeep?.shafts?.[deepKey(r.shaft)]?.best) || 0; return best < (Number(r.floor) || 1) && RELIQUARY.pool.some((id) => worldWithheld(save, id)) && deepLeadLive(save, r); }
   if (r?.target === "milestone") { const m = MILESTONES.find((q) => q.key === r.milestone); return !!m && !earnedWorld(save, m.ability); }
   return false;
 }

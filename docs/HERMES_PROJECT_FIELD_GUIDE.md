@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1052 — existing unpaid destination recovery
+
+Saved unpaid horde and pity rumours must not continue pointing at an entrance that cannot exist. Their original receipts and the player's explicit compass selection stay intact, while invalid destinations leave the active Journal list.
+
+**CODE:** `world-leads.ts` validates an explicit saved horde or Deep Shaft against its canonical identity and cached physical evidence rather than starting a neighboring ring search. Actual seen shaft sites and exact known entrance objects remain valid. `leads.ts` applies this liveness check to saved unpaid rumours; a normal due pity request can replace an invalid source through the corrected finder. Regression coverage includes migrated old false locations, actual valid pinned sites, cache purity and bounded repeated reads, unchanged selected compass and unchanged paid, quest and thread clues.
+
+**BOUNDARY:** Schema 14, explored terrain, generator pins, raw receipts, opaque fields, rewards and currency remain unchanged. No automatic compass retargeting, terrain-cache mutation or bonus hint cadence. Retiring an unverified rumour does not delete its record or its actual world content. Desktop tests do not certify phone performance. This completes the remaining saved unpaid portion of the r1051 false-lead repair.
+
 ## Release 1051 — progression reliability
 
 Destroyed quest areas no longer consume the remaining drop quota, unfinished early quests do not prevent later eligible quests from opening, and existing hints avoid promising unavailable destinations or a different reward. Tim's exploration preference remains: no automatic highlights of newly reachable routes; useful quest directions stay with the selected objective and its relevant tab.
