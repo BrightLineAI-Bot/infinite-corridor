@@ -12,7 +12,7 @@
 // - Adds: as its health falls past each `adds.at` share it calls `adds.size` of the area's creatures round itself (never more
 //   than `adds.cap` of its own alive). They are summons: no rewards, and they go when it falls.
 // Runtime only: `kitRole`, `kitMoves`, `kitClock`, `kitCalls` on the creature, additive.
-import { hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
+import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
 
 // World-boss pacing (Tim, 2026-11-18: "maybe the monsters overall attack too quickly, so we need to slow them down — give their
 // attacks more wind-up"): the roaming world beasts, the Questing Beast and the big-room beasts wind up `windup` times longer than

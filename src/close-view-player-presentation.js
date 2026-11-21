@@ -1,6 +1,6 @@
 // Pure player form facts and read-only selection. No mesh, Game or renderer dependencies.
-import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.js?v=r1049-ca0dae0906fa';
-import { PRIMARY_SWINGS, swingStep, sampleSwing } from './melee-swing.js?v=r1049-ca0dae0906fa';
+import { TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS } from './action-motion.js?v=r1050-2ea30cdbc905';
+import { PRIMARY_SWINGS, swingStep, sampleSwing } from './melee-swing.js?v=r1050-2ea30cdbc905';
 const RIGHT_HAND = Object.freeze({ grip: 'leftSocket', free: 'rightSocket' });
 const LEFT_HAND = Object.freeze({ grip: 'rightSocket', free: 'leftSocket' });
 // Close View held gear, presentation only (Tim, 2026-11-11: every sword in the left hand,

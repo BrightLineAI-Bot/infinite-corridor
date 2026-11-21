@@ -17,9 +17,9 @@
 // in a hand that does not know what letters are (Tim, 2026-11-19): who wrote it is never said. All writing is original to the game. Pure rules: no DOM.
 // Save: save.lore.second = { begun: dungeonId, trail: [{ rx, ry }], found: n, passed: [i], spot?: { i, x, y } } (additive, created when the
 // trail begins; normalised by ensureSecondWayfarer, unknown fields kept).
-import { hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
-import { regionVersionOf } from "./lore.js?v=r1049-ca0dae0906fa";
-import { threadIn, storyVersionOf } from "./threads.js?v=r1049-ca0dae0906fa";
+import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { regionVersionOf } from "./lore.js?v=r1050-2ea30cdbc905";
+import { threadIn, storyVersionOf } from "./threads.js?v=r1050-2ea30cdbc905";
 
 export const SECOND_WAYFARER = {
   storyVersion: 5,       // crossings pinned at this story version or later may hold the footprints (threads.ts STORY_BUDGET)

@@ -8,11 +8,11 @@
 // the gear in hand). Nothing here opens storage or names a production key. Only what the Wayfarer already owns is offered or
 // lent (Tim, 2026-11-20: it must not become a free preview of quest rewards): an id that is not owned is refused.
 // Later (4A.4 option (ii), not built yet): a sparring post in Ember Refuge and each Listener town.
-import { ROW_BY_ID, ROW_ALIASES, progressionState } from "./progression.js?v=r1049-ca0dae0906fa";
-import { CASTABLES, ensureSlots, setSlot, SLOTS, slotLabel } from "./spell-slots.js?v=r1049-ca0dae0906fa";
-import { ECHOES, NOTCHES, ensureEchoState, notchesUsed, toggleEcho, activeEchoes } from "./echoes.js?v=r1049-ca0dae0906fa";
-import { weaponKey, toolKey } from "./items.js?v=r1049-ca0dae0906fa";
-import { equipInventoryItem } from "./game.js?v=r1049-ca0dae0906fa";
+import { ROW_BY_ID, ROW_ALIASES, progressionState } from "./progression.js?v=r1050-2ea30cdbc905";
+import { CASTABLES, ensureSlots, setSlot, SLOTS, slotLabel } from "./spell-slots.js?v=r1050-2ea30cdbc905";
+import { ECHOES, NOTCHES, ensureEchoState, notchesUsed, toggleEcho, activeEchoes } from "./echoes.js?v=r1050-2ea30cdbc905";
+import { weaponKey, toolKey } from "./items.js?v=r1050-2ea30cdbc905";
+import { equipInventoryItem } from "./game.js?v=r1050-2ea30cdbc905";
 
 // What the yard holds for each kind of ability. Data, so the setups can be tuned without touching the logic.
 //   dummies  practice dummies: still, harmless and durable (game.ts passiveBehavior "practice"), `hp` each

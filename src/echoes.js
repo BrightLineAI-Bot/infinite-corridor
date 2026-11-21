@@ -7,10 +7,10 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { unharmablePerson } from "./townsfolk.js?v=r1049-ca0dae0906fa"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { rng } from "./random.js?v=r1049-ca0dae0906fa";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1049-ca0dae0906fa";
-import { ENCUMBERED } from "./hit-cast-passives.js?v=r1049-ca0dae0906fa"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
+import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { rng } from "./random.js?v=r1050-2ea30cdbc905";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
+import { ENCUMBERED } from "./hit-cast-passives.js?v=r1050-2ea30cdbc905"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;

@@ -25,28 +25,28 @@
 // What each one does is read from the game's own tables (doesText), so the how-to never drifts from the game.
 //
 // The compendium (compendium()) and the Pace line (pace()) read the save as it is; nothing new is saved.
-import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, spellOpenClassic, explorationGateOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.js?v=r1049-ca0dae0906fa";
-import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame, EXPLORATION, exploring } from "./journey-start.js?v=r1049-ca0dae0906fa";
-import { freshViewportState } from "./foundry.js?v=r1049-ca0dae0906fa";
-import { ensureSlots, PRESETS } from "./spell-slots.js?v=r1049-ca0dae0906fa";
-import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.js?v=r1049-ca0dae0906fa";
-import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.js?v=r1049-ca0dae0906fa";
-import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1049-ca0dae0906fa";
-import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1049-ca0dae0906fa";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1049-ca0dae0906fa";
-import { ECHOES, MINION_ECHOES } from "./echoes.js?v=r1049-ca0dae0906fa";
-import { MONSTER_PACK } from "./monster-pack.js?v=r1049-ca0dae0906fa";
-import { GLYPHS, RESONANCES, TRIADS } from "./glyphs.js?v=r1049-ca0dae0906fa";
-import { PAIRINGS } from "./spell-slots.js?v=r1049-ca0dae0906fa";
-import { TESSERACTS, tesseractClass } from "./tesseracts.js?v=r1049-ca0dae0906fa";
-import { MARGINALIA } from "./marginalia.js?v=r1049-ca0dae0906fa";
-import { POTIONS } from "./potions.js?v=r1049-ca0dae0906fa";
-import { INGREDIENTS } from "./meals.js?v=r1049-ca0dae0906fa";
-import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1049-ca0dae0906fa";
-import { ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1049-ca0dae0906fa";
-import { SEEDS } from "./skylands.js?v=r1049-ca0dae0906fa";
-import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.js?v=r1049-ca0dae0906fa"; // Phase 6
-import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.js?v=r1049-ca0dae0906fa"; // Phase 7; Phase 8
+import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, spellOpenClassic, explorationGateOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.js?v=r1050-2ea30cdbc905";
+import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame, EXPLORATION, exploring } from "./journey-start.js?v=r1050-2ea30cdbc905";
+import { freshViewportState } from "./foundry.js?v=r1050-2ea30cdbc905";
+import { ensureSlots, PRESETS } from "./spell-slots.js?v=r1050-2ea30cdbc905";
+import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.js?v=r1050-2ea30cdbc905";
+import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.js?v=r1050-2ea30cdbc905";
+import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
+import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1050-2ea30cdbc905";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1050-2ea30cdbc905";
+import { ECHOES, MINION_ECHOES } from "./echoes.js?v=r1050-2ea30cdbc905";
+import { MONSTER_PACK } from "./monster-pack.js?v=r1050-2ea30cdbc905";
+import { GLYPHS, RESONANCES, TRIADS } from "./glyphs.js?v=r1050-2ea30cdbc905";
+import { PAIRINGS } from "./spell-slots.js?v=r1050-2ea30cdbc905";
+import { TESSERACTS, tesseractClass } from "./tesseracts.js?v=r1050-2ea30cdbc905";
+import { MARGINALIA } from "./marginalia.js?v=r1050-2ea30cdbc905";
+import { POTIONS } from "./potions.js?v=r1050-2ea30cdbc905";
+import { INGREDIENTS } from "./meals.js?v=r1050-2ea30cdbc905";
+import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1050-2ea30cdbc905";
+import { ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1050-2ea30cdbc905";
+import { SEEDS } from "./skylands.js?v=r1050-2ea30cdbc905";
+import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.js?v=r1050-2ea30cdbc905"; // Phase 6
+import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.js?v=r1050-2ea30cdbc905"; // Phase 7; Phase 8
 
 export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({

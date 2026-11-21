@@ -2,16 +2,16 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1049-ca0dae0906fa";
-import { nearestCrossing } from "./leads.js?v=r1049-ca0dae0906fa"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
-import { exploring } from "./journey-start.js?v=r1049-ca0dae0906fa";
-import { questOfFollow } from "./quests.js?v=r1049-ca0dae0906fa"; import { questTarget } from "./quest-places.js?v=r1049-ca0dae0906fa"; // progression Phase 7: a followed quest
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1049-ca0dae0906fa";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1049-ca0dae0906fa";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1049-ca0dae0906fa";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1049-ca0dae0906fa";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r1049-ca0dae0906fa";
-import { TALL_TOWERS } from "./tall-towers.js?v=r1049-ca0dae0906fa";
+import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1050-2ea30cdbc905";
+import { nearestCrossing } from "./leads.js?v=r1050-2ea30cdbc905"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
+import { exploring } from "./journey-start.js?v=r1050-2ea30cdbc905";
+import { questOfFollow } from "./quests.js?v=r1050-2ea30cdbc905"; import { questTarget } from "./quest-places.js?v=r1050-2ea30cdbc905"; // progression Phase 7: a followed quest
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1050-2ea30cdbc905";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1050-2ea30cdbc905";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1050-2ea30cdbc905";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1050-2ea30cdbc905";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r1050-2ea30cdbc905";
+import { TALL_TOWERS } from "./tall-towers.js?v=r1050-2ea30cdbc905";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };

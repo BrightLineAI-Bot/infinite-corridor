@@ -22,8 +22,8 @@
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
   createGait, stepGait, meshBuilder, clamp01, smooth, mix, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1049-ca0dae0906fa";
-import { FOLK_BODIES, FOLK_BODY_CLASSES } from "./close-view-folk-body.js?v=r1049-ca0dae0906fa";
+} from "./close-view-beast-rig.js?v=r1050-2ea30cdbc905";
+import { FOLK_BODIES, FOLK_BODY_CLASSES } from "./close-view-folk-body.js?v=r1050-2ea30cdbc905";
 
 // ------------------------------------------------------------------------------------------------ the slot
 export const FOLK_SLOT = Object.freeze({

@@ -36,7 +36,7 @@
 //   is allocated per frame. Everything runs on frame time (dt), so pause and background stop it exactly. A reload drops the
 //   drifting hands; the held or let-go hand is saved (playerRuntime.quandrixHold, `release.record`, savedQuandrixHold) and
 //   resumes as let go (the button is up after a reload), on its charge clock, with the foes it holds, and bursts on time.
-import { unharmablePerson } from "./townsfolk.js?v=r1049-ca0dae0906fa"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
 // combat.ts enemyBodyRadius, restated so this module stays a leaf (lattice-fields.ts reads its numbers).
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38);
 

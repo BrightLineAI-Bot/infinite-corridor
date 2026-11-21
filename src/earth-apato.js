@@ -18,9 +18,9 @@
 //   e.apatoLash { on, n, xs, ys } (the true neck's path, from its shoulders, index 0, to its head, index n, in tiles);
 //   e.apatoBeam { on, x, y, ax, ay, len, width } (from the head, along ax, ay); e.apatoWrap { on, who, phase, t, x, y } (the mark);
 //   e.apatoStep (0..3, the foot that last came down in the stomp chase) and e.apatoStepLift (0..1, the next foot rising); e.apatoFx (the pools) and e.apatoSaplings ([{ x, y, grow }]).
-import { hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
-import { doseCreature, tickCreatureVenom } from "./apato-poison.js?v=r1049-ca0dae0906fa";
-import { stegoRoomGround, stegoRoomSquare } from "./wild-stego.js?v=r1049-ca0dae0906fa";
+import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { doseCreature, tickCreatureVenom } from "./apato-poison.js?v=r1050-2ea30cdbc905";
+import { stegoRoomGround, stegoRoomSquare } from "./wild-stego.js?v=r1050-2ea30cdbc905";
 
 const TAU = Math.PI * 2;
 export const APATO = {

@@ -7,9 +7,9 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { unharmablePerson } from "./townsfolk.js?v=r1049-ca0dae0906fa"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1049-ca0dae0906fa";
+import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1050-2ea30cdbc905";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];

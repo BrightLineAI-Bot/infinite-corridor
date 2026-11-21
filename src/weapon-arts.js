@@ -29,10 +29,10 @@
 // Transpose's seal: standing in it, all the Wayfarer's magic damage (MAGIC_DAMAGE_SOURCES: spells, Imbue, dodge bursts, the
 // Carbine and every magic tool, the Quandrix Staff) deals `spellDamage` more and she takes `damageTaken` more from every blow
 // (game.ts armorGlyphBonus reads transposeBonus; quandrixPower adds transposeMagic).
-import { unharmablePerson } from "./townsfolk.js?v=r1049-ca0dae0906fa"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { latticePassives } from "./transit-lattice.js?v=r1049-ca0dae0906fa";
-import { weaponKey } from "./items.js?v=r1049-ca0dae0906fa";
-import { QUANDRIX } from "./quandrix-staff.js?v=r1049-ca0dae0906fa";
+import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { latticePassives } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
+import { weaponKey } from "./items.js?v=r1050-2ea30cdbc905";
+import { QUANDRIX } from "./quandrix-staff.js?v=r1050-2ea30cdbc905";
 
 const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38); // combat.ts enemyBodyRadius, restated (a leaf)
 

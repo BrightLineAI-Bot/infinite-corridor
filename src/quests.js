@@ -37,8 +37,8 @@
 // Blade Stream's lamps to the Heart of any Pentagon (always Tomb-built: "Lamps for the Heart: forty"). Four abilities exist only
 // past 1,000 sections: Ember Mend and Wellspring (quests that open once the Wayfarer has stood 1,000 sections out), Mage's Hand
 // and Continuous Assault (far threads, Phase 7). At most QUEST_LIMIT.open directed quests are open at once (G2); the rest wait.
-import { hashSeed } from "./random.js?v=r1049-ca0dae0906fa";
-import { exploring, progressionKept } from "./journey-start.js?v=r1049-ca0dae0906fa";
+import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { exploring, progressionKept } from "./journey-start.js?v=r1050-2ea30cdbc905";
 
 export const STORY = Object.freeze({
   table: 5, // the progression table that withholds every b, d and V ability (journey-start.ts EXPLORATION.table); Phase 7's was 4
