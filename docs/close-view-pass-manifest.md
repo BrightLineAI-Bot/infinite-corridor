@@ -9,6 +9,8 @@ Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855
 
 Tim authorized the progression reliability fixes and the remaining polish backlog in chat. The current release path first repairs uncollectable quest tokens in destroyed areas, false destination promises, and the quest admission limit. Review the exact release against live and complete CI, Preview and hosted checks before Publish.
 
+Checkpoint: r1051 merged through PR #723 with all 5,641 tests, build and rehearsal passing; the exact merge is `95b36e5bc3ad19cb827743c0dcaf39b06f82a227`. Its Preview is building and production remains r1050. Fresh committed review found one remaining pre-existing scope gap: saved unpaid horde/pity rumours can retain impossible destinations. A focused follow-up is repairing that before publication, preserving valid known sites, receipts and the player's explicit compass selection. Do not mark the reliability pass published until its final candidate completes hosted acceptance and Publish verification.
+
 The following work is queued after that reliability pass.
 
 - Explain new rewards in one place, including what changed in the build, whether the reward can be used now, any remaining requirement and the next useful quest step. Make delayed Lattice rewards and the Listener/Aperture ceiling understandable before players spend time pursuing them.

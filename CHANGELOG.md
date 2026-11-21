@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 1052: Existing unpaid horde and pity rumours stop offering impossible saved destinations. Explicit saved targets are checked through bounded, cached physical verification, while actual known entrances remain available. Original records, compass selection and pity cadence stay intact; no automatic replacement waypoint or reward is granted.
 - Release 1051: Recover quest drops left in destroyed seed realms and collapsed canyon craters without granting progress or losing collected items. Eligible quests no longer wait behind three unfinished quests. Existing hints verify physical destinations and replace invalid cached leads. Paid Reliquary rumours name only the next possible reward; old and new purchases show truthful source clues without stale coordinates or guaranteed reward order, preserving the original purchase and selected compass point. No automatic path highlights are added.
 - Release 1050: Close View Triceratops smoothed: every form (wild, ridden, Silly Goose, baby, young) has a rounder hide, head and legs, legs that grow out of the body as one skin, and even colouring with no faceted patches; the young is about a sixth narrower across the chest and shoulders from the front, as deep and proud in profile.
 - Release 1049: Young Triceratops: now strongest against a single elite, boss or world beast (about 14% of your damage) and weaker against packs (about 8%): his hits split across the foes they catch, he focuses elites and bosses, and his bite and charge hit harder while his area attacks hit softer.

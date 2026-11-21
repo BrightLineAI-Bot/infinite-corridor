@@ -19,7 +19,7 @@ import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } f
 import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.ts";
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
-import { nearestHorde, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
+import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
 import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.ts"; // Phase 7: quests count as leads; Phase 8: a bought rumour
 
 export const LEADS = Object.freeze({
@@ -119,7 +119,7 @@ export function rumourLive(save, r) {
   if (!r || typeof r.kind !== "string") return false;
   if (r.kind === "wonder") return Number.isInteger(r.rx) && Number.isInteger(r.ry) && !save?.atlas?.[`${r.rx},${r.ry}`];
   if (r.kind === "pity") return exploring(save) && pityLive(save, r);
-  if (r.kind === "horde") return RUMOURS.horde.open(save) && !((Number(save?.consequences?.dungeons?.[r.dungeon]?.visits) || 0) > 0);
+  if (r.kind === "horde") return RUMOURS.horde.open(save) && hordeLeadLive(save, r);
   if (r.kind === "viscera") return typeof r.ability === "string" && !!boughtRumour(save, r.ability) && (!exploring(save) || storyWithheld(save, r.ability) || worldWithheld(save, r.ability)); // Phase 8: a rumour bought with Divine Viscera, until it is found
   const K = RUMOURS[r.kind]; if (!K) return false;
   if (K.passive) return !arcanaHas(save, K.passive);

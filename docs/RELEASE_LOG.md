@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1050; production serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1051; production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1051 | Codex | codex/progression-recovery | Lost quest-token recovery, physically verified leads and removal of the three-quest admission cap; progression polish and navigation preference recorded | In preparation from freshly fetched r1050; CI, full review, Preview and hosted acceptance pending. |
+| 1052 | Codex | codex/legacy-physical-lead-recovery | Retire impossible saved unpaid horde/pity destinations while preserving valid known shafts and explicit compass selection | In merge preparation from freshly fetched r1051; focused checks pass, exact CI/Preview/review/hosted acceptance pending. Intended final publication includes r1051. |
+| 1051 | Codex | codex/progression-recovery / #723 | Lost quest-token recovery, physically verified leads and removal of the three-quest admission cap; progression polish and navigation preference recorded | Merged as 95b36e5bc3ad19cb827743c0dcaf39b06f82a227, tree 360f4e34b10ca79b5d693f116444393ae5ea5830. Exact-head CI 44865628161 passed 5,641 tests, build and rehearsal. Preview 44867343060 building; not published. Fresh Astra committed review found no introduced blocker; remaining legacy unpaid destinations are being repaired separately before publication. |
 | 1050 | Claude | claude/triceratops-smooth | Smoother Triceratops (Close View): rounder hide, head and legs, legs grown out of the body, smooth colouring; young's chest narrower from the front; presentation only | Published as r1050-2ea30cdbc905; run 44858081445 succeeded. |
 | 1049 | Claude | claude/young-single-target | Young Triceratops single-target focus: elite/boss ~.14 of the Wayfarer's damage, packs ~.08; area hits split, tough foes preferred; balance only, no save change | In flight. |
 | 1048 | Claude | claude/progression-phase-8 / #719 | Progression phase 8: far, sea, sky and strange quests; the Divine Viscera shelf; the guardian roster (Exploration withholds the full designed set) | Merged (#719); preview follows. |
