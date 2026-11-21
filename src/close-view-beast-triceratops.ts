@@ -65,6 +65,9 @@ export const TRICERATOPS_RIG = Object.freeze({
   neckEnd: .05, // the hide's front closes to a point this far ahead of its last section (inside the head)
   legThin: Object.freeze([5, 7]), // the leg rows (HIND and FORE) the balanced mesh leaves out: straight runs mid-bone, so its rings can be rounder
   seam: Object.freeze({ from: 1, span: .6, k: .9, tone: .85 }),
+  // the pale belly (Coordinator/Tim 2026-11-21: seen from the front between the forelegs it read as a ghostly smudge, the tail's underside
+  // as a pale spike): full under the barrel (`mid`, f), fading over `fade` to `chest` of it under the chest and `tail` of it under the tail
+  belly: Object.freeze({ mid: Object.freeze([-.45, -.12]), fade: .15, chest: .2, tail: .25 }),
 });
 const G0 = TRICERATOPS_RIG, A = TRI_ART, K = TRI_KEYS.length, KI = Object.freeze(Object.fromEntries(TRI_KEYS.map((k, i) => [k, i])));
 const POSE_VEC = Object.freeze(Object.fromEntries(Object.entries(TRI_POSES).map(([n, p]) => [n, Float64Array.from(TRI_KEYS, (k) => p[k] || 0)])));
@@ -156,9 +159,10 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   // markings over the haunches and shoulders (on the flanks, where the leg masses meet the body).
   // (2026-11-21 smoothing: every term is a smooth function of where the point lies, f along the trunk and st round it, so the colour
   // runs evenly over the triangles: no every-other-ring or every-third-side steps, which drew zig-zag facets)
+  const BL = G0.belly, bellyAt = (f) => { const m = smooth((f - BL.mid[0] + BL.fade) / BL.fade) * smooth((BL.mid[1] - f + BL.fade) / BL.fade); return f > BL.mid[1] ? BL.chest + (1 - BL.chest) * m : BL.tail + (1 - BL.tail) * m; };
   const toneAt = (f, st, odd) => {
     let c = lerpHex(C.body, C.light, .2 + Math.max(0, st) * .55);
-    if (st < -.3) c = lerpHex(c, C.belly, Math.min(1, (-.3 - st) * 2));
+    if (st < -.3) c = lerpHex(c, C.belly, Math.min(1, (-.3 - st) * 2) * bellyAt(f));
     if (odd && f > -.9 && f < .3) c = lerpHex(c, C.stripe, .45 * smooth((st - .45) / .25)); // warm bands across the back, fading down the sides
     const mk = markAt(f) * smooth((st + .5) / .2) * smooth((.72 - st) / .2); // the markings over the flanks, fading toward the back and the belly
     if (mk > 0) c = lerpHex(c, C.mark, .8 * mk);
