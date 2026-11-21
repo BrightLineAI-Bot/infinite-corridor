@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Release 1053: The Washing at Sallowby, a six-bundle thread of the middle and far crossings (story version 6, sharing the existing 0.12 story budget; crossings entered before keep what they offered). Reading its first bundle sets the compass to follow it to the crossing holding the next; its end leaves 40 marks.
 - Release 1052: Existing unpaid horde and pity rumours stop offering impossible saved destinations. Explicit saved targets are checked through bounded, cached physical verification, while actual known entrances remain available. Original records, compass selection and pity cadence stay intact; no automatic replacement waypoint or reward is granted.
 - Release 1051: Recover quest drops left in destroyed seed realms and collapsed canyon craters without granting progress or losing collected items. Eligible quests no longer wait behind three unfinished quests. Existing hints verify physical destinations and replace invalid cached leads. Paid Reliquary rumours name only the next possible reward; old and new purchases show truthful source clues without stale coordinates or guaranteed reward order, preserving the original purchase and selected compass point. No automatic path highlights are added.
 - Release 1050: Close View Triceratops smoothed: every form (wild, ridden, Silly Goose, baby, young) has a rounder hide, head and legs, legs that grow out of the body as one skin, and even colouring with no faceted patches; the young is about a sixth narrower across the chest and shoulders from the front, as deep and proud in profile.
