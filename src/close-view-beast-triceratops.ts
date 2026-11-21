@@ -62,6 +62,7 @@ export const TRICERATOPS_RIG = Object.freeze({
   // (the hide, the head, the legs), and `seam`: where a leg grows out of the hip or shoulder mass its skin takes the hide's shading and
   // colour, fully at the hide's surface (`from`, in hide radii) and fading out `span` beyond it (`k`: how much of the hide's normal).
   sides: Object.freeze({ hide: Object.freeze([18, 10, 6]), skull: Object.freeze([16, 9, 5]), leg: Object.freeze([12, 8, 6]), jaw: Object.freeze([9, 7, 5]), mane: Object.freeze([19, 13, 9]), frill: Object.freeze([13, 9, 6]) }),
+  neckEnd: .05, // the hide's front closes to a point this far ahead of its last section (inside the head)
   legThin: Object.freeze([5, 7]), // the leg rows (HIND and FORE) the balanced mesh leaves out: straight runs mid-bone, so its rings can be rounder
   seam: Object.freeze({ from: 1, span: .6, k: .9, tone: .85 }),
 });
@@ -169,7 +170,10 @@ function buildTriceratopsMesh(tier, saddle, form = null) {
   const hide = BODY.map((r, i) => [r, i]).filter(([, i]) => low ? i % 2 === 0 || i === BODY.length - 1 : !(tier === 'balanced' && (i === 1 || i === 3)));
   const TF = TAIL_ROOT, TK = FM.length * (FB0?.tail ?? 1), tl = (f) => TK === 1 || f >= TF ? f : TF + (f - TF) * TK; // a short form's tail drawn in toward the hips (the adult's exactly at 1)
   const prof = (f, c) => { const T = FB0?.body; if (!T) return 1; if (f <= T[0][0]) return T[0][c]; for (let i = 1; i < T.length; i++) if (f <= T[i][0]) { const a = T[i - 1], b = T[i], t = (f - a[0]) / (b[0] - a[0]); return a[c] + (b[c] - a[c]) * t; } return T[T.length - 1][c]; };
-  B.color(C.body).loft({ ...SD('hide'), sections: hide.map(([[f, u, rx, rz, a, b, w]], j) => ({ at: [tl(f), 0, u], rx: j === 0 ? 0 : rx * FM.girth * prof(f, 1), rz: j === 0 ? 0 : rz * FM.girth * prof(f, 2), bones: [a, b ?? a, w || 0] })), tone: (i, k, st) => tone(hide[i][1], k, st) });
+  // (both ends close to a point: the tail's tip, and the neck's front rounded off inside the head, no flat cap to catch the light)
+  const nose = BODY[BODY.length - 1], hs = hide.map(([[f, u, rx, rz, a, b, w]], j) => ({ at: [tl(f), 0, u], rx: j === 0 ? 0 : rx * FM.girth * prof(f, 1), rz: j === 0 ? 0 : rz * FM.girth * prof(f, 2), bones: [a, b ?? a, w || 0] }));
+  hs.push({ at: [nose[0] + G0.neckEnd, 0, nose[1]], rx: 0, rz: 0, bones: [nose[4], nose[4], 0] });
+  B.color(C.body).loft({ ...SD('hide'), caps: false, sections: hs, tone: (i, k, st) => tone(hide[Math.min(i, hide.length - 1)][1], k, st) });
   const hideAt = (f) => { const [u, rx, rz] = sectionAt(f); return [u, rx * FM.girth * prof(f, 1), rz * FM.girth * prof(f, 2)]; }; // (the trunk, where tl(f) = f)
   // ---- the head (bone-local, the standard view's head scaled by its headScale; f forward, u up)
   const HS = HS0 * FM.head, HL = G0.formHeadLift[form] || 0, sk = FM.snout, sn = (f) => sk === 1 || f <= .12 ? f : .12 + (f - .12) * sk; // the face in front of the eye shortened (the baby's round face; exact for the adult)
