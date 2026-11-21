@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { EXPLORATION, exploring, ensureQuests, QUEST_RECORD, useJourneyFrame } from '../src/journey-start.ts';
 import { startJourney, switchProgression, ownership, stateV0, compendium, adoptExploration, howToPage, hintFor, PROGRESSION_ROWS, ROW_BY_ID } from '../src/progression.ts';
-import { STORY, QUESTS, QUEST_IDS, QUEST_LIMIT, THREAD_REWARDS, seededThreads, STORY_WITHHELD, STORY_ROUTE_OF, STORY_LATER, STORY_OWN, PHASE7_STORY, STORY_SINCE, MOVED, VISCERA_SHOP, VISCERA_IDS, storyWithheld, questOpen, questStep, questDue, stepPlace, stepCount, openQuestCount, farthest, boughtRumour } from '../src/quests.ts';
+import { STORY, QUESTS, QUEST_IDS, THREAD_REWARDS, seededThreads, STORY_WITHHELD, STORY_ROUTE_OF, STORY_LATER, STORY_OWN, PHASE7_STORY, STORY_SINCE, MOVED, VISCERA_SHOP, VISCERA_IDS, storyWithheld, questOpen, questStep, questDue, stepPlace, stepCount, openQuestCount, farthest, boughtRumour } from '../src/quests.ts';
 import { QUEST_PLACES, openQuest, questPlace, questEvent, questToken, questSpeak, questLay, questArrive, questLeads, questTarget, farCentre, canyonAt, wreckAt, skywayAt, revenantAt, pentagonPlaceAt } from '../src/quest-places.ts';
 import { WORLD_WITHHELD, worldWithheld, earnedWorld, MILESTONES, RELIQUARY } from '../src/world-routes.ts';
 import { grantWorld, visceraShop, buyVisceraForm, buyVisceraRumour, visceraSells } from '../src/world-finds.ts';
@@ -122,12 +122,15 @@ test('search bounds: each kind searches its own bounded window once, far steps o
   assert.equal(p.miss, true); const next = stepPlace(s, 'arc-wave', 'wrecks'); assert.notDeepEqual([next.rx, next.ry], [p.rx, p.ry]); assert.ok(!next.miss);
 });
 
-test('G2: at most three directed quests open at once; the next opens when one is done; far quests wait for 1,000 sections', () => {
+test('eligible quests open without an admission cap; an old journey with three unfinished quests receives the fourth on the ordinary offer path', () => {
   const s = rich(v1Save('LIMIT8')); s.explored['1001,0'] = true; const g = new Game(s, 0);
-  assert.equal(openQuestCount(s), QUEST_LIMIT.open); assert.equal(QUEST_LIMIT.open, 3);
-  const first = QUEST_IDS.filter((id) => questOpen(s, id)); assert.deepEqual(first, QUEST_IDS.slice(0, 3));
-  grantWorld(s, QUESTS[first[0]].ability, 'b', first[0]); s.quests.open[first[0]].state = 'done'; g.loadArea('overworld', false);
-  assert.equal(openQuestCount(s), 3); assert.ok(questOpen(s, QUEST_IDS[3]));
+  assert.equal(openQuestCount(s), QUEST_IDS.length); assert.ok(QUEST_IDS.every((id) => questOpen(s, id)));
+  const old = only(rich(v1Save('OLD-LIMIT8')), ...QUEST_IDS.slice(0, 4));
+  for (const id of QUEST_IDS.slice(0, 3)) openQuest(old, id);
+  assert.equal(openQuestCount(old), 3); assert.equal(questOpen(old, QUEST_IDS[3]), false);
+  const ordinary = new Game(old, 0);
+  assert.equal(openQuestCount(old), 4); assert.ok(questOpen(old, QUEST_IDS[3]));
+  assert.ok((ordinary.questNotices || []).some((q) => q.title === 'A QUEST' && q.detail.includes(QUESTS[QUEST_IDS[3]].title)));
   const near = rich(v1Save('FAR-GATE')); only(near, 'ember-mend', 'wellspring'); assert.equal(farthest(near), 0);
   assert.equal(questDue(near, 'ember-mend', 13), false, 'not before 1,000 sections');
   near.explored['-700,-800'] = true; assert.ok(farthest(near) >= 1000); assert.ok(questDue(near, 'ember-mend', 13) && questDue(near, 'wellspring', 13));
@@ -349,7 +352,7 @@ test('G6 on the ground: each place pointed at holds what it promised within a fe
 // ---------------------------------------------------------------- the cadence (design 2.7) as a simulation
 // A model of a player exploring at Tim's pace (about 32 new sections an hour, about 1,000 sections out by 40 hours), run over
 // seeded journeys with every route now live. What is read from the game: the quests' gates (band, 1,000 sections), their places'
-// distances (resolved for each journey), the limit of three open, the milestone thresholds, the Reliquary's certain finds and
+// distances (resolved for each journey), the milestone thresholds, the Reliquary's certain finds and
 // chance, the thread carriers' bands, the Viscera prices. What is assumed (MODEL, below; Tim's playtests replace it): the band
 // reached by each hour, how often each deed happens, how long a quest takes once its place is reached, how long a thread takes,
 // and Viscera income past 1,000 sections.
@@ -370,14 +373,14 @@ function cadence(seed) {
   const bandAt = (h) => { const B = MODEL.bands; for (let i = 1; i < B.length; i++) if (h <= B[i][0]) return Math.floor(B[i - 1][1] + (B[i][1] - B[i - 1][1]) * (h - B[i - 1][0]) / (B[i][0] - B[i - 1][0])); return B.at(-1)[1]; };
   const hourOfBand = (t) => { for (let h = 0; h <= 400; h += .25) if (bandAt(h) >= t) return h; return Infinity; };
   const got = []; // [hour, route]
-  // quests: place distances from the journey's own resolution; at most three open
+  // quests: place distances from the journey's own resolution; eligible quests may proceed concurrently
   const s = rich(v1Save(seed)); s.explored['1000,1'] = true; for (const id of QUEST_IDS) openQuest(s, id);
   const due = QUEST_IDS.map((id) => { const Q = QUESTS[id], p = Q.steps.map((q) => (q.place ? stepPlace(s, id, q.key) : null)).find(Boolean), d = p && !p.relaxed ? Math.hypot(p.rx, p.ry) : 20;
     const gate = Math.max(hourOfBand(Q.gate.tier), Q.gate.far ? Q.gate.far / MODEL.outPerHour : 0); return { id, gate, work: (Q.gate.far ? 0 : 2 * d / MODEL.travel) + MODEL.task[id] * (.6 + .8 * r(`task:${id}`)) }; });
   const open = []; let h = 0; const pending = due.slice().sort((a, b) => a.gate - b.gate);
   while (pending.length || open.length) {
-    while (open.length < QUEST_LIMIT.open && pending.length && pending[0].gate <= h) { const q = pending.shift(); open.push({ ...q, end: h + q.work }); }
-    open.sort((a, b) => a.end - b.end); const next = Math.min(open[0]?.end ?? Infinity, pending[0] && open.length < QUEST_LIMIT.open ? Math.max(h, pending[0].gate) : Infinity);
+    while (pending.length && pending[0].gate <= h) { const q = pending.shift(); open.push({ ...q, end: h + q.work }); }
+    open.sort((a, b) => a.end - b.end); const next = Math.min(open[0]?.end ?? Infinity, pending[0] ? Math.max(h, pending[0].gate) : Infinity);
     if (!Number.isFinite(next)) break; h = next; while (open.length && open[0].end <= h) { open.shift(); got.push([h, 'b']); }
   }
   // milestones

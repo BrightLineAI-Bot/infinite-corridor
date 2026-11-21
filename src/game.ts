@@ -161,6 +161,7 @@ import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.ts"; // prog
 import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
 import { farCivAt } from "./far-realms.ts"; import { rosterGuardianKind, GUARDIAN_ROSTER } from "./monster-pack.ts"; // progression Phase 8: the Storm Halls' ground; the guardian roster
 import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.ts"; // progression Phase 6: milestones, the Reliquary and pity
+import { setWorldLeadProbe } from "./world-leads.ts"; // candidate-only physical verification
 import { ashenMeridianSection } from "./foundry.ts";
 import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.ts"; // and the bizarro pockets
 import { creditFind } from "./digging.ts"; // seed realms: a cache's find
@@ -1781,6 +1782,13 @@ export function clearSectionTerrainCache() { terrainCache.clear(); terrainCache.
 export function sectionTerrain(seed, rx, ry, generation, steps) {
   const key = JSON.stringify([seed, rx, ry, generation, steps]), kept = terrainCache.get(key);
   if (kept) { terrainCache.delete(key); terrainCache.set(key, kept); terrainCache.hits = (terrainCache.hits || 0) + 1; return structuredClone(kept); }
+  const map = buildSectionTerrain(seed, rx, ry, generation, steps);
+  terrainCache.set(key, structuredClone(map)); terrainCache.misses = (terrainCache.misses || 0) + 1;
+  while (terrainCache.size > SECTION_TERRAIN.keep) terrainCache.delete(terrainCache.keys().next().value);
+  return map;
+}
+// The same terrain passes without touching the arrival cache; lead probes own only their scratch map.
+function buildSectionTerrain(seed, rx, ry, generation, steps) {
   const map = generateRegion(seed, rx, ry, generation, steps.heartlandShack ? { heartlandShack: steps.heartlandShack } : null); // heartland shacks (world.ts HEARTLAND_SHACK): new ground beside the Refuge only
   applyLandscape(map, seed, rx, ry, steps.landscape);
   if (steps.dream) applyDream(map, seed, rx, ry, steps.dream);
@@ -1788,10 +1796,57 @@ export function sectionTerrain(seed, rx, ry, generation, steps) {
   if (steps.hamlet) applyHamlet(map, seed, rx, ry, ...steps.hamlet);
   if (steps.trails) applyTrails(map, seed, rx, ry);
   if (steps.bridgeLanes) bridgeLanes(map); // world coherence (WG-01): the lanes' bridges
-  terrainCache.set(key, structuredClone(map)); terrainCache.misses = (terrainCache.misses || 0) + 1;
-  while (terrainCache.size > SECTION_TERRAIN.keep) terrainCache.delete(terrainCache.keys().next().value);
   return map;
 }
+// Shared with placeDeepShaft: the historical placement order and footprint rules remain identical.
+export function deepShaftSpot(map) {
+  const w = mapWidth(map, "overworld"); let at = null;
+  for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = map.tiles[y * w + x];
+    if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.landscape?.startsWith?.("sea") && footprintOpen(map, w, x, y) && !map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+  return at;
+}
+// Only shortlisted hash candidates reach this probe. Scratch state cannot grant or open anything in the journey.
+export function worldLeadPhysical(save, rx, ry, kind, dungeon) {
+  const scratch = structuredClone(save), seen = scratch.atlas?.[`${rx},${ry}`], generation = scratch.worldGeneration ?? 1;
+  const ctx = Object.assign(Object.create(Game.prototype), { save: scratch, rx, ry, area: "overworld" }), steps = ctx.sectionTerrainSteps(rx, ry);
+  // Later arrival overlays can remove a crossing/shaft or bury its footing. A lead deliberately skips the whole potential
+  // architectural section, even when its eventual footprint might spare the site. Canonical predicates and atlas pins keep
+  // this conservative filter in step with arrival without constructing buildings or rewriting any generated layout.
+  const enabled = (pin, current) => seen ? seen[pin] : current;
+  const pc = pentagonCentre(rx, ry), cc = castleCorner(rx, ry);
+  if (enabled("pentVersion", PENTAGON.version) && pc && ctx.pentagonHere(pc.cx, pc.cy)) return false;
+  if (enabled("castleVersion", CASTLES.version) && cc && ctx.castleHere(cc.X, cc.Y)) return false;
+  const lv = seen ? seen.landscapeVersion || 0 : LANDSCAPE_VERSION, region = lv >= 5 ? sectionRegion(scratch.seed, rx, ry, lv) : null;
+  if (enabled("arcVersion", 0) && lv >= 5 && arcologyHere(scratch.seed, rx, ry, region)) return false;
+  if (enabled("keepVersion", 0) && keepHere(scratch.seed, rx, ry)) return false;
+  if (enabled("labVersion", LABYRINTHS.version) && labyrinthHere(scratch.seed, rx, ry, region)) return false;
+  if (enabled("compoundVersion", COMPOUNDS.version) && compoundHere(scratch.seed, rx, ry, region)) return false;
+  const bv = enabled("buildingVersion", BUILDINGS.version);
+  if (bv && (bv >= 2 ? buildingHereV2 : buildingHere)(scratch.seed, rx, ry, region)) return false;
+  if (enabled("towerVersion", TALL_TOWERS.version) && towerHere(scratch.seed, rx, ry)) return false;
+  // A completed Rite may replace its section with a grown tree on arrival. Skip possible sapling sites as well.
+  if (enabled("ascendVersion", ASCENDANCY.version) && saplingHere(scratch.seed, rx, ry)) return false;
+  const map = buildSectionTerrain(scratch.seed, rx, ry, generation, steps); ctx.map = map;
+  if (map.settlement || map.hamlet || farDomainAt(scratch, rx, ry, !!seen)) return false;
+  // Mutable hunt sites have additional arrival overlays: do not promise a new physical site through them.
+  if (Object.values(scratch.viewport?.contracts || {}).some((q) => q.target?.rx === rx && q.target?.ry === ry && !["archived", "completed"].includes(q.status)) || domainSectionAt(scratch, rx, ry)) return false;
+  if (kind === "horde") return map.objects.some((o) => o.kind === "dungeon" && (o.dungeonId || dungeonId(scratch.seed, generation, rx, ry, o.id)) === dungeon);
+  if (seen || scratch.explored?.[`${rx},${ry}`] || scratch.session?.areas?.[`overworld:${rx}:${ry}:g${generation}`]) return false;
+  Game.prototype.placeMooredSkiff.call(ctx); Game.prototype.placeSpareSkiff.call(ctx);
+  const dive = diveSite(map, scratch.seed, rx, ry); if (dive) map.objects.push(dive);
+  placeWatcherOverworld(map, mapWidth(map, "overworld"), scratch.seed, rx, ry, guideHost(scratch.seed, "shrine", rx, ry));
+  addCairnKeeper(map, rx, ry);
+  plantRefugeLands(map, rx, ry, Game.prototype.refugeLandsWhere.call(ctx));
+  const site = storySiteFor(scratch, rx, ry); if (site && !map.objects.some((o) => o.id === site.id)) { const t = map.tiles[site.y * 32 + site.x]; if (!t?.blocked && !t?.structure) map.objects.push(site); }
+  const remembered = scratch.checkpoints?.[`${rx},${ry}`];
+  if (remembered && !remembered.crown && !map.objects.some((o) => o.kind === "checkpoint")) {
+    const x = Math.max(1, Math.min(30, Number.isFinite(remembered.x) ? remembered.x : 16)), y = Math.max(1, Math.min(30, Number.isFinite(remembered.y) ? remembered.y : 16));
+    map.tiles[y * 32 + x] = { ...map.tiles[y * 32 + x], x, y, kind: map.dominant, blocked: false }; map.objects.push({ kind: "checkpoint", x, y });
+  }
+  placeDungeonIndoors(map, scratch.seed, rx, ry);
+  return !!deepShaftSpot(map);
+}
+setWorldLeadProbe(worldLeadPhysical);
 export const terrainCached = (seed, rx, ry, generation, steps) => terrainCache.has(JSON.stringify([seed, rx, ry, generation, steps]));
 // The terrain steps a Walker preview (walkerCrossingMap) runs for a section.
 export function walkerTerrainSteps(save, rx, ry) {
@@ -11483,9 +11538,7 @@ export class Game {
   // Release 677 (the-deep.ts): a Deep Shaft in a section first seen from now on; it offers floor 1 and each checkpoint reached.
   placeDeepShaft() {
     if (this.map.objects.some((o) => o.kind === "deepShaft")) return null;
-    const w = mapWidth(this.map, "overworld"), rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)); let at = null;
-    for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
-      if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.landscape?.startsWith?.("sea") && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+    const rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)), at = deepShaftSpot(this.map);
     if (!at) return null;
     const o = { id: `deep-shaft-${this.rx}-${this.ry}`, kind: "deepShaft", name: THE_DEEP.name, x: at.x, y: at.y, state: "open", actions: startFloors(rec).map((f) => `descend:${f}`), lore: THE_DEEP.messages.shaft, landmark: true };
     this.map.objects.push(o); if (!this.message) this.message = THE_DEEP.messages.shaft; return o;

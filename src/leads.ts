@@ -20,7 +20,7 @@ import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./j
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
 import { nearestHorde, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen, boughtRumour, storyWithheld } from "./quests.ts"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.ts"; // Phase 7: quests count as leads; Phase 8: a bought rumour
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -125,7 +125,7 @@ export function rumourLive(save, r) {
   if (K.passive) return !arcanaHas(save, K.passive);
   return K.open(save);
 }
-export const liveRumours = (save) => (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).filter((r) => rumourLive(save, r));
+export const liveRumours = (save) => (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).filter((r) => rumourLive(save, r)).map(paidRumourView);
 // Quests in progress the player can act on now (the Journal's Leads lists them first, main.ts activeQuests).
 export function questLeadCount(save) {
   let n = 0;

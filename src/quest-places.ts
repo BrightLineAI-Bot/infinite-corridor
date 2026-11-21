@@ -261,6 +261,7 @@ function meets(save, id, step, ev) {
 // (at most as many as are still needed); any other step is done. Returns { done, lay }: the quests now complete, and the tokens to
 // lay in the area now ({ id, kind: "questToken", ... } objects).
 export function questEvent(save, ev = {}) {
+  recoverLostQuestTokens(save);
   const done = [], lay = [];
   for (const id of QUEST_IDS) {
     if (!questOpen(save, id)) continue;
@@ -298,6 +299,7 @@ export function questToken(save, tokenId, at = null) {
 // What a quest lays in an area as it loads (`areaId`): the tokens left there, and the metronome on a Skyland climbed from its
 // step's place (`skyland`: the stair's section). (`x`, `y`): where to lay a new one (game.ts finds open floor near the Wayfarer.)
 export function questLay(save, { areaId = "", skyland = null, x = 0, y = 0 } = {}) {
+  recoverLostQuestTokens(save);
   const out = [];
   for (const id of QUEST_IDS) {
     if (!questOpen(save, id)) continue; const q = questState(save, id), step = questStep(save, id);
@@ -306,6 +308,26 @@ export function questLay(save, { areaId = "", skyland = null, x = 0, y = 0 } = {
     if (step?.lay === "skyland" && skyland && Number.isInteger(skyland.rx) && Math.hypot(skyland.rx, skyland.ry) >= (Number(step.far) || 0)) out.push({ ...tokenObject(id, step, { id: `${id}:${step.key}`, x, y }), at: { rx: skyland.rx, ry: skyland.ry } });
   }
   return out;
+}
+
+// Forget only tokens whose floor is gone for good. Seed realms cease to exist when their session ends, and a sealed canyon
+// cannot be entered again; every other dungeon history remains revisitable and keeps its tokens. Counts already collected are
+// deliberately untouched, so recovery can only make room for replacement drops and can never grant quest progress itself.
+export function recoverLostQuestTokens(save) {
+  let removed = 0;
+  const activeRealm = save?.session?.seedRealm?.id;
+  for (const id of QUEST_IDS) {
+    if (!questOpen(save, id)) continue;
+    const q = questState(save, id), step = questStep(save, id); if (!step || !Array.isArray(q.tokens)) continue;
+    q.tokens = q.tokens.filter((t) => {
+      if (t?.step !== step.key) return true;
+      const area = String(t.area || ""), realmGone = area.startsWith("seedrealm:") && area !== activeRealm;
+      const canyonGone = !!save?.consequences?.dungeons?.[area]?.canyon?.sealed;
+      if (!realmGone && !canyonGone) return true;
+      removed++; return false;
+    });
+  }
+  return removed;
 }
 
 // ---------------------------------------------------------------- the Journal and the compass

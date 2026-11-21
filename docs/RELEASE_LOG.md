@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1050 (this merge); production serves `r1049-ca0dae0906fa`. The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1050; production serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1050 | Claude | claude/triceratops-smooth | Smoother Triceratops (Close View): rounder hide, head and legs, legs grown out of the body, smooth colouring; young's chest narrower from the front; presentation only | In flight. |
+| 1051 | Codex | codex/progression-recovery | Lost quest-token recovery, physically verified leads and removal of the three-quest admission cap; progression polish and navigation preference recorded | In preparation from freshly fetched r1050; CI, full review, Preview and hosted acceptance pending. |
+| 1050 | Claude | claude/triceratops-smooth | Smoother Triceratops (Close View): rounder hide, head and legs, legs grown out of the body, smooth colouring; young's chest narrower from the front; presentation only | Published as r1050-2ea30cdbc905; run 44858081445 succeeded. |
 | 1049 | Claude | claude/young-single-target | Young Triceratops single-target focus: elite/boss ~.14 of the Wayfarer's damage, packs ~.08; area hits split, tough foes preferred; balance only, no save change | In flight. |
 | 1048 | Claude | claude/progression-phase-8 / #719 | Progression phase 8: far, sea, sky and strange quests; the Divine Viscera shelf; the guardian roster (Exploration withholds the full designed set) | Merged (#719); preview follows. |
 | 1047 | Claude | claude/daily-region-1120 / #718 | The Oasis Ergs: a far sand sea with dunes, wadis, oasis pools, palms and sinking sand (landscape 28) | Merged (#718); preview follows. |
@@ -407,6 +408,7 @@ Main is at r1050 (this merge); production serves `r1049-ca0dae0906fa`. The next 
 
 | Release | Candidate | Published | Notes |
 |---|---|---|---|
+| 1050 | r1050-2ea30cdbc905 | 2026-11-20 (ET) | Prior session's Publish run 44858081445 succeeded (2026-11-21 02:50 UTC); current gh-pages release identity names commit 2ea30cdbc905c14a7611a149037f3b2f97e03cba and tree aac699a1de5e57bc307977a648d3d3258b57b160. Review and gameplay acceptance are not independently re-certified by this log correction. |
 | 984 | r984-93a51644afcb | 2026-11-17 | Astra review (975→984): no blockers. Exact CI and Preview passed. In-app visual check verified Pentagon Heart Standard View and Close View creature combat. Publish run 44133760575 succeeded; gh-pages identity and Options → System confirmed the live candidate. |
 | 975 | r975-6689d7c92177 | 2026-11-15 | Includes r973 (dark boss themes) and r974 (dino duel). Fable review (972→975): no blockers; full npm test 4851/4851. Publish run 43699675820; gh-pages release-identity and the in-game string name the candidate. Non-blocking notes passed to the other session (duel rockfall collateral, duel grab placement, stale feint, legacy hit rate, legacy aggro LOS, menace duck). |
 | 972 | r972-cede9b9fcf20 | 2026-11-15 | Includes r963–r971. Fable review r962→r971 found one blocker (Arc Wave pending press dropped on resume), fixed in r972; delta review r971→r972: no blockers. Publish run 43667381434. |

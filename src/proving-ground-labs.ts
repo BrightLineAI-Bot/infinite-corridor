@@ -38,6 +38,9 @@ import { foundryCandidate, admittedFoundrySpawn, validateFoundryCandidate } from
 import { AFFIXES, SHAMAN } from "./affixes.ts";
 import { addDungeonReciter, addDungeonElder } from "./travelers.ts";
 import { validActions } from "./interactions.ts";
+import { openQuest } from "./quest-places.ts";
+import { questState, stepCount } from "./quests.ts";
+import { ensureSeeds } from "./skylands.ts";
 
 export const DEFAULT_PROVING_SEED = "CINDER-VERGE-47";
 
@@ -191,7 +194,7 @@ const ENVIRONMENTS=[...SHELTERS.filter(q=>q.id.endsWith("district")),...ARENA_FA
 const HUNTS=["empty-viewport","tracking-hunt","located-hunt","completed-hunt","failed-hunt","elite-attributes","projectile-patterns","aggro-pursuit","guardian-boss","foundry-review","temporary-arena","persistent-arena"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const INVENTORY=["comparison-arrows","mixed-comparison","empty-slot","weapon-upgrade","armor-upgrade","upgraded-equipment","insufficient-currency","insufficient-spheres","all-slots","tier-affixes","sorting-salvage","salvage-upgraded","ordinary-vendor","vela-stock","dungeon-broker","sold-stock","full-pack","progression-scaling"].map(id=>({id,label:id.replaceAll("-"," ").replace(/^./,c=>c.toUpperCase())}));
 const MAGIC=[...Object.keys(APERTURE_SKILLS).flatMap(id=>Array.from({length:APERTURE_SKILLS[id].maxRank},(_,i)=>({id:`${id}-rank-${i+1}`,label:`${APERTURE_SKILLS[id].name} rank ${i+1}`}))),...['enlargement-wall','enlargement-reversion','speed-buff','extended-leap','aerial-water','aerial-pit','invalid-landing','buff-expiration','active-buff-save','band-dormant','band-stirring','band-open','band-resonant'].map(id=>({id,label:id.replaceAll('-',' ').replace(/^./,c=>c.toUpperCase())}))];
-const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-baseline","projectile-stress"],recovery:["natural-lantern-leap-reload","active-rest-point","active-wayglass","overworld-death","dungeon-death","serialized","legacy-migration","corrupted-state"],scenes:["idle","exceptional-arrival","deep-resolution","relay-transformation","aperture-ritual","interrupted"],records:["dense-atlas","all-symbols","navigation-symbols","death-marker","dungeon-map","journal-features","bestiary-groups","elite-vocabulary","creature-image","place-records"]};
+const SIMPLE={performance:["overworld-baseline","overworld-stress","dungeon-baseline","projectile-stress"],recovery:["natural-lantern-leap-reload","quest-token-recovery","active-rest-point","active-wayglass","overworld-death","dungeon-death","serialized","legacy-migration","corrupted-state"],scenes:["idle","exceptional-arrival","deep-resolution","relay-transformation","aperture-ritual","interrupted"],records:["dense-atlas","all-symbols","navigation-symbols","death-marker","dungeon-map","journal-features","bestiary-groups","elite-vocabulary","creature-image","place-records"]};
 
 export function scenariosForLab(lab) {
   if (lab === "test-tile") return [{ id: "standard", label: "Standard test tile" }];
@@ -1135,11 +1138,46 @@ export function restoreNaturalLanternRecoveryFixture(save, before, now = 0) {
   return fixture;
 }
 
+function questTokenRecoveryDiagnostics(fixture) {
+  const { save, game } = fixture, q = questState(save, "glyph-mine"), tokens = q?.tokens || [], realmId = save.session?.seedRealm?.id || null;
+  const collected = stepCount(save, "glyph-mine", "wraiths"), need = 5;
+  return { quest: "glyph-mine", questCount: collected, tokenQuota: { need, lying: tokens.length, remaining: Math.max(0, need - collected - tokens.length) },
+    orphanCount: tokens.filter((t) => String(t.area || "").startsWith("seedrealm:") && t.area !== realmId).length, realmId,
+    replacementTokens: game.map?.objects?.filter((o) => o.kind === "questToken" && o.quest === "glyph-mine").length || 0,
+    compassUnchanged: JSON.stringify(save.guidance || null) === fixture.questTokenRecovery.compassBefore };
+}
+
+function questTokenRecoveryFixture(seed, now) {
+  const save = scratchSave(seed), compassBefore = JSON.stringify(save.guidance || null); openQuest(save, "glyph-mine"); ensureSeeds(save).pumice = 2;
+  const game = new Game(save, now); game.installSystems(); game.loadArea("overworld", false);
+  const shrine = () => ({ id: `proving:quest-token-shrine:${ensureSeeds(save).used.pumice}`, kind: "watcherTomb", name: "Watcher's Shrine", x: game.player.x, y: game.player.y, state: "sealed", actions: ["touch"], where: "field" });
+  let tomb = shrine(); game.map.objects.push(tomb);
+  if (!game.enterSeedRealm(tomb, "pumice").ok) throw new Error("The recovery lab could not enter its first Pumice realm.");
+  const endedRealmId = game.areaId(); game.enemies = [];
+  for (let i = 0; i < 5; i++) {
+    const wraith = game.createEnemyFromSpawn({ id: `proving:lost-vein-wraith:${i}`, kind: "veinWraith", x: game.player.x + 1, y: game.player.y }, "dungeon");
+    game.enemies.push(wraith); wraith.hp = 0; wraith.dead = true; game.defeatEnemy(wraith);
+  }
+  const orphanBefore = questState(save, "glyph-mine").tokens.length;
+  game.leaveSeedRealm();
+  tomb = shrine(); game.map.objects.push(tomb);
+  if (!game.enterSeedRealm(tomb, "pumice").ok) throw new Error("The recovery lab could not enter its replacement Pumice realm.");
+  const spot = game.map.tiles.find((t) => !t.blocked && !t.environment && Math.hypot(t.x - game.player.x, t.y - game.player.y) >= 2 && Math.hypot(t.x - game.player.x, t.y - game.player.y) <= 4) || { x: game.player.x + 2, y: game.player.y };
+  const wraith = game.createEnemyFromSpawn({ id: "proving:replacement-vein-wraith", kind: "veinWraith", x: spot.x, y: spot.y }, "dungeon");
+  Object.assign(wraith, { hp: 1, maxHp: 1, damage: 0, cooldown: 99, passiveBehavior: "practice", aggro: false }); game.enemies = [wraith];
+  const fixture = { lab: "recovery", scenario: "quest-token-recovery", label: "Quest token recovery · Hollow Husk", seed, variant: 0, save, game, production: true,
+    primary: { x: game.player.x, y: game.player.y }, questTokenRecovery: { endedRealmId, orphanBefore, compassBefore },
+    diagnostics: {}, developerHint: "The previous Hollow Husk ended with five sigils uncollected; its orphan records are repaired. Defeat the nearby harmless Vein Wraith, then Act on the replacement Vein Sigil." };
+  fixture.diagnostics.questTokenRecovery = { endedRealmId, orphanBefore, ...questTokenRecoveryDiagnostics(fixture) };
+  return fixture;
+}
+
 function stateFixture(lab,scenario,seed,variant,now){const {save,game}=gameForOverworld(seed,0,0,now),diagnostics={state:scenario,scratch:true};if(lab==="hunts"){if(scenario!=="empty-viewport"){save.viewport.activeHuntId="lab-hunt";save.viewport.contracts["lab-hunt"]={id:"lab-hunt",title:"Diagnostic Hunt",status:scenario.includes("completed")?"completed":scenario.includes("failed")?"failed":scenario.includes("located")?"target-located":"tracking",target:{rx:3,ry:-2}}}Object.assign(diagnostics,{viewport:save.viewport,creatures:Object.keys(CREATURE_FORMS),elites:Object.keys(ELITE_DEFINITIONS)})}if(lab==="inventory"){save.inventory=Array.from({length:scenario==="full-pack"?60:12},(_,i)=>generateItem(`${seed}:lab-item:${scenario}:${i}`,1+i));const candidate=save.inventory[0];if(scenario==='empty-slot')save.equipment[candidate.slot]=null;if(scenario.includes('upgrade')){save.materials.weaponSphere=20;save.materials.armorSphere=20;const slot=scenario.startsWith('armor')?'armor':'primary';diagnostics.upgrade=upgradeEquipment(save,slot)}if(scenario==='insufficient-spheres')diagnostics.upgrade=upgradeEquipment(save,'primary');Object.assign(diagnostics,{comparison:compareItemStats(candidate,save.equipment[candidate.slot]),tiers:ITEM_TIERS,inventoryCount:save.inventory.length,equipment:save.equipment,currency:save.currency})}if(lab==="magic"){let value=36;const bandScenario=scenario.match(/^band-(.+)$/);if(bandScenario)value=APERTURE_BANDS.find(b=>b.id===bandScenario[1])?.threshold||0;save.perception.aperture=value;save.apertureBand=apertureBand(value).id;const skill=Object.values(APERTURE_SKILLS).find(q=>scenario.startsWith(q.id));if(skill){const rank=Number(scenario.match(/rank-(\d+)/)?.[1]||1);for(let i=0;i<rank;i++)learnApertureSkill(save,skill.id);save.magicSkills.selected=skill.id}if(scenario.startsWith('aerial-')){save.magicSkills.learned['aerial-step']=1;save.magicSkills.selected='aerial-step';game.activateApertureSkill('aerial-step')}Object.assign(diagnostics,{aperture:value,band:save.apertureBand,skill:save.magicSkills.selected,rank:save.magicSkills.selected?save.magicSkills.learned[save.magicSkills.selected]:0,active:save.magicSkills.active,cooldowns:save.magicSkills.cooldowns,skills:Object.keys(APERTURE_SKILLS)})}if(lab==="performance"){diagnostics.workload={enemySpawns:game.map.enemySpawns.length,objects:game.map.objects.length,tiles:game.map.tiles.length,preset:scenario}}if(lab==="recovery"){if(scenario.includes("death"))save.lastDeath={schema:1,sequence:1,areaKind:scenario.startsWith("dungeon")?"dungeon":"overworld",rx:0,ry:0,x:16,y:16,label:"Diagnostic death",valid:true};if(scenario==="serialized")diagnostics.roundTrip=roundTripScratch(save).version;if(scenario==="legacy-migration")diagnostics.migrated=migrateSave({version:9,seed,checkpoints:save.checkpoints}).version;if(scenario==="corrupted-state")diagnostics.recovered=migrateSave({version:13,seed,manualWaypoint:{rx:"bad"},checkpoints:null}).version}if(lab==="scenes"){save.scenes.pending=scenario==="idle"?[]:[{id:scenario,variant:variant%3,status:scenario==="interrupted"?"interrupted":"queued"}];diagnostics.scenes=save.scenes}if(lab==="records"){save.lastDeath={schema:1,sequence:1,areaKind:"overworld",rx:0,ry:0,x:18,y:18,label:"Diagnostic death",valid:true};save.codex.features[scenario]={encountered:1,name:scenario};Object.assign(diagnostics,{atlasSymbols:["checkpoint","shrine","ruinMarker","dungeon","lastDeath"],codex:save.codex})}game.sync();return{lab,scenario,label:scenario.replaceAll("-"," "),seed,variant,save,game,production:true,diagnostics}}
 
 export function createLabFixture({lab="shelters",scenario="",seed=DEFAULT_PROVING_SEED,variant=0,sizeProfile="standard",revealMode="normal",environment="dungeon-hollow",now=0}={}) {
   const cleanSeed=String(seed||DEFAULT_PROVING_SEED).slice(0,80),cleanVariant=Math.max(0,Math.min(999,Number(variant)||0));
   if(lab===RECOVERY_CONTEXT.lab&&scenario===RECOVERY_CONTEXT.scenario)return naturalLanternRecoveryFixture(now);
+  if(lab==="recovery"&&scenario==="quest-token-recovery")return questTokenRecoveryFixture(cleanSeed,now);
   if(lab==="shelters")return shelterFixture(scenario,cleanSeed,now);
   if(lab==="test-tile")return testTileFixture(now);
   if(lab==="close-view")return closeViewFixture(scenario,cleanSeed,now);
@@ -1166,6 +1204,7 @@ export function labReport(fixture) {
   if (fixture.crawl) fixture.diagnostics.crawl = { ...fixture.crawl, active: map === fixture.crawlMap };
   if (fixture.roomPadding) fixture.diagnostics.roomPadding = { ...fixture.roomPadding, active: map === fixture.roomPaddingMap };
   if(fixture.recoveryContext)fixture.diagnostics.recovery=naturalLanternRecoveryWitness(game);
+  if(fixture.questTokenRecovery)fixture.diagnostics.questTokenRecovery={...fixture.diagnostics.questTokenRecovery,...questTokenRecoveryDiagnostics(fixture)};
   if (fixture.adoptionSpec) fixture.diagnostics.routingAdoption=routingAdoptionReceipt(fixture);
   if(fixture.diagnostics?.routing) fixture.diagnostics.routing.floor={id:map.id,grammar:map.building?.routing?.grammar||null,rooms:map.building?.routing?.nodes?.length||0,optional:map.building?.optionalRoute||map.building?.optionalRoutes||null,appearance:map.building?.appearance||map.greatBuilding?.appearance||null};
   if (fixture.buildPractice) {
