@@ -1,5 +1,13 @@
 # Infinite Corridor Field Guide
 
+## Release 1051 — progression reliability
+
+Destroyed quest areas no longer consume the remaining drop quota, unfinished early quests do not prevent later eligible quests from opening, and existing hints avoid promising unavailable destinations or a different reward. Tim's exploration preference remains: no automatic highlights of newly reachable routes; useful quest directions stay with the selected objective and its relevant tab.
+
+**CODE:** `quest-places.ts` recovers current-step tokens from ended seed realms and sealed canyon craters on normal quest events and area loading; collected counts and token sequence numbers remain intact. `quests.ts` removes the admission cap while retaining each quest's gates and one explicitly selected compass objective. `world-leads.ts` rescans invalid cached candidates, respects pinned crossing rules and verifies shortlisted destinations through a bounded scratch physical probe in `game.ts`; `world-finds.ts` offers a paid Reliquary rumour only for the next possible pool reward. Regression coverage includes real destruction, replacement and collection, migrated exact resume, old three-quest journeys, actual destination arrival, pinned history, cache purity and rumour truth.
+
+**BOUNDARY:** Schema 14, collected progress, unknown save fields and revisitable tokens remain intact. No terrain generator or saved layout changes; lead verification operates on scratch state and does not change the journey or arrival terrain cache. No new map overlays, automatic compass selection, reward grants or production/Proving Ground storage changes. Desktop and automated evidence do not establish physical-phone performance. This section supersedes the historical three-quest cap described under release 1048.
+
 ## Current release policy
 
 **Superseded 2026-10-18:** previews and publishing now run on GitHub Actions (`.github/workflows/preview.yml` and `publish.yml`); Tim's PC, Hermes and the Discord cards are retired. The current rule is in `AGENTS.md` (Publishing) and `docs/github-actions-release.md`. The text below is historical.

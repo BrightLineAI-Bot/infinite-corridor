@@ -1,5 +1,5 @@
 // Phase 6's leads (docs/progression-design.md revision 3: 2.5 G3 and 2.7), for leads.ts: the nearest Revenant horde crossing not yet
-// entered (the horde rumour, from Infinite II), and the strong lead pity gives after a long dry spell. Pure; no section is built,
+// entered (the horde rumour, from Infinite II), and the strong lead pity gives after a long dry spell. Hashes shortlist candidates,
 // and nothing here reads the progression table (leads.ts is imported early: atlas-view.ts).
 import { hashSeed, rng } from "./random.ts";
 import { exploring, ensureFeats } from "./journey-start.ts";
@@ -9,6 +9,34 @@ import { HORDE } from "./revenant-horde.ts";
 import { ladderRoll } from "./dungeon-ladder.ts";
 import { shaftHere, deepIdFor, deepKey } from "./the-deep.ts";
 import { APERTURE_BANDS, apertureBand } from "./items.ts";
+import { hamletSection, legacyMouthHamlet } from "./settlements.ts";
+import { farDomainAt } from "./far-realms.ts";
+import { rollMireCrypt } from "./underlands.ts";
+import { annexRecord } from "./deep-annex.ts";
+import { WONDERS } from "./wonders.ts";
+
+// game.ts installs the pure physical probe after its module loads. Early/standalone callers cannot promise an unverified site.
+let worldLeadProbe = null;
+export function setWorldLeadProbe(probe) { worldLeadProbe = typeof probe === "function" ? probe : null; memo.clear(); physicalMemo.clear(); }
+const physicalMemo = new Map();
+function physical(save, x, y, kind, dungeon = null) {
+  if (!worldLeadProbe) return false;
+  // A castle tests its four quarters and their neighboring Pentagon footprints. These pins can enable/disable an overlay.
+  const neighbors = [];
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+    const a = save?.atlas?.[`${x + dx},${y + dy}`]; neighbors.push(a ? [a.pentVersion, a.castleVersion, a.coherenceVersion] : null);
+  }
+  const k = `${x},${y}`, key = JSON.stringify([save?.seed, save?.worldGeneration ?? 1, x, y, kind, dungeon, save?.atlas?.[k],
+    save?.checkpoints?.[k], save?.hometowns, save?.farQuests, save?.boat, save?.story, save?.viewport, save?.progression?.start,
+    save?.session?.areas?.[`overworld:${x}:${y}:g${save?.worldGeneration ?? 1}`], save?.digging, neighbors]);
+  if (physicalMemo.has(key)) return physicalMemo.get(key);
+  const ok = worldLeadProbe(save, x, y, kind, dungeon) === true;
+  if (physicalMemo.size >= 128) physicalMemo.delete(physicalMemo.keys().next().value);
+  physicalMemo.set(key, ok); return ok;
+}
+const inhabited = (save, x, y) => (x === 0 && y === 0) || regionSettled(x, y, save?.seed)
+  || hamletSection(save?.seed, x, y) || legacyMouthHamlet(save, x, y)
+  || (save?.hometowns?.towns || []).some((t) => t.rx === x && t.ry === y) || farDomainAt(save, x, y, !!save?.atlas?.[`${x},${y}`]);
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
 const exploredCount = (save) => Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;
@@ -16,15 +44,24 @@ const tierOf = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.a
 
 // ---------------------------------------------------------------- horde crossings (2.7) and the Deep's shafts
 // An ordinary landmark crossing at a section whose Revenant horde roll holds at `tier` (world.ts addDungeonLandmark's own draws,
-// revenant-horde.ts rollHorde's own hash and the dungeon ladder), not yet entered. A few hashes; no section built.
+// revenant-horde.ts rollHorde's own hash and the dungeon ladder), not yet entered. Only surviving candidates need a cached terrain probe.
 function hordeAt(save, x, y, tier) {
-  const seed = save?.seed, gen = Number(save?.worldGeneration) || 1;
-  if ((x === 0 && y === 0) || regionSettled(x, y, seed)) return null;
-  const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r(); // its spot
+  const seed = save?.seed, gen = Number(save?.worldGeneration ?? 1);
+  if (gen === 0) return null;
+  const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r();
   const id = dungeonId(seed, gen, x, y, `dungeon-g${gen}-${x}-${y}-${Math.floor(r() * 1e6)}`);
-  if (hashSeed(`${seed}:revenant-horde:v${HORDE.version}:${id}`) % 1000 >= HORDE.perThousand || ladderRoll(seed, id, "horde", tier) === null) return null;
-  const h = save?.consequences?.dungeons?.[id]; if (h && ((Number(h.visits) || 0) > 0 || h.horde === null || h.mire)) return null;
-  return { rx: x, ry: y, dungeon: id };
+  const h = save?.consequences?.dungeons?.[id], fresh = h?.generatorVersion === undefined && !save?.session?.areas?.[id];
+  if ((Number(h?.visits) || 0) > 0 || h?.mire || (h?.horde !== undefined && !h.horde)) return null;
+  const rung = h?.ladder ? ladderRoll(seed, id, "horde", h.ladder.tier) : fresh ? ladderRoll(seed, id, "horde", tier) : undefined;
+  if (!h?.horde && (hashSeed(`${seed}:revenant-horde:v${HORDE.version}:${id}`) % 1000 >= HORDE.perThousand || rung === null)) return null;
+  if (fresh && h?.mire === undefined) {
+    const starfield = (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < WONDERS.chasmChance;
+    const annex = h?.deepAnnex === undefined ? annexRecord(seed, id, starfield) : h.deepAnnex;
+    const mireRung = h?.ladder ? ladderRoll(seed, id, "poisonCrypt", h.ladder.tier) : ladderRoll(seed, id, "poisonCrypt", tier);
+    if (!annex && rollMireCrypt(seed, id, h?.layoutPool ?? 5) && mireRung !== null) return null;
+  }
+  if (inhabited(save, x, y)) return null;
+  return physical(save, x, y, "horde", id) ? { rx: x, ry: y, dungeon: id } : null;
 }
 const ringScan = (rx, ry, radius, at) => { for (let d = 0; d <= radius; d++) for (let i = 0; i < Math.max(1, 8 * d); i++) {
   const side = Math.floor(i / Math.max(1, 2 * d)), k = i % Math.max(1, 2 * d), x = rx + (d ? [-d + k, d, d - k, -d][side] : 0), y = ry + (d ? [-d, -d + k, d, d - k][side] : 0);
@@ -32,15 +69,21 @@ const ringScan = (rx, ry, radius, at) => { for (let d = 0; d <= radius; d++) for
 const memo = new Map();
 export function nearestHorde(save, rx, ry, radius = HORDE_RUMOUR.radius) {
   const tier = Math.max(0, tierOf(save)), key = `h:${save?.seed}:${save?.worldGeneration}:${rx}:${ry}:${radius}:${tier}`;
-  if (memo.has(key)) { const q = memo.get(key); return q && !hordeAt(save, q.rx, q.ry, tier) ? null : q; }
+  if (memo.has(key)) { const q = memo.get(key); if (q && hordeAt(save, q.rx, q.ry, tier)) return q; }
   const q = ringScan(rx, ry, radius, (x, y) => hordeAt(save, x, y, tier)); if (memo.size > 64) memo.clear(); memo.set(key, q); return q;
 }
 // The nearest Deep Shaft on ground not yet explored (the-deep.ts shaftHere: on new ground the hash decides), and the first of its
 // floors whose seeded roll holds a reliquary (RELIQUARY.chance.deep), within `radius` sections.
 export function nearestShaft(save, rx, ry, radius = PITY.radius) {
-  const seed = save?.seed, q = ringScan(rx, ry, radius, (x, y) => !save?.atlas?.[`${x},${y}`] && shaftHere(seed, x, y) ? { rx: x, ry: y } : null); if (!q) return null;
-  const id = deepIdFor(seed, q.rx, q.ry); for (let f = 1; f <= PITY.floors; f++) if (reliquaryRoll(seed, "deep", `${id}:f${f}`)) return { ...q, floor: f, shaft: id };
-  return null;
+  const seed = save?.seed;
+  return ringScan(rx, ry, radius, (x, y) => {
+    const key = `${x},${y}`;
+    if (save?.atlas?.[key] || save?.explored?.[key] || !shaftHere(seed, x, y) || inhabited(save, x, y)) return null;
+    const id = deepIdFor(seed, x, y);
+    for (let f = 1; f <= PITY.floors; f++) if (reliquaryRoll(seed, "deep", `${id}:f${f}`))
+      return physical(save, x, y, "shaft") ? { rx: x, ry: y, floor: f, shaft: id } : null;
+    return null;
+  });
 }
 
 // ---------------------------------------------------------------- pity (G3): a lead, never an ability

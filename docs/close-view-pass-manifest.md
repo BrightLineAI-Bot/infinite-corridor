@@ -1,8 +1,27 @@
 # Close View development and publication manifest
 
-Updated: 2026-11-09. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission.
+Updated: 2026-11-20. This is the work record for the owner's Close View notes and subsequent independent refinement passes. Deployment authority remains the current conversation and `AGENTS.md`; this file does not grant publishing permission. Older checkpoints below are historical; `docs/RELEASE_LOG.md` records the latest verified live identity.
 
 Verified live on 2026-11-09: r860-7df1ae3e3e1b, commit 7df1ae3e3e1b7f8ce79e44855cbef6623a7fab26, tree ebf51648774c496840596c9ce8aa70c525894ce2. Astra found no blockers from r857. Publish 42713761172 succeeded. Pages and Options → System matched. Journey storage showed 250 KB and recent errors were empty.
+
+
+## Progression reliability and polish — 2026-11-20
+
+Tim authorized the progression reliability fixes and the remaining polish backlog in chat. The current release path first repairs uncollectable quest tokens in destroyed areas, false destination promises, and the quest admission limit. Review the exact release against live and complete CI, Preview and hosted checks before Publish.
+
+The following work is queued after that reliability pass.
+
+- Explain new rewards in one place, including what changed in the build, whether the reward can be used now, any remaining requirement and the next useful quest step. Make delayed Lattice rewards and the Listener/Aperture ceiling understandable before players spend time pursuing them.
+- Preserve missed ability guidance in an optional recent-discoveries list and keep the existing owned-ability Training Yard accessible. Offer practical explanations through the player's chosen menus.
+- Reduce repetitive inventory comparison and salvage work. Assess build compatibility and saved equipment configurations before adding more menus.
+- Replace the long-term cadence model's assumed power bands and concurrent quest timers with measured rewards and one shared activity budget. Report target deviations. Record fresh Exploration and experienced Classic journeys at 1, 5, 10 and 20 active hours, including ignored quests, weapon changes, backtracking and missed loot.
+- Measure time to kill, deaths, healing used and meaningful progress per session across distance bands before changing difficulty or reward speed. Reconcile surplus constellation points with the intended early-tree progression and evaluate the existing Aether Orrery exception to ungated weapons.
+- Verify every ability-bearing thread has enough reachable carriers across all entrance types. Extend recovery guidance to unfinished story routes and review paid rumour wording against actual rewards.
+- Keep source documentation aligned with the eight implemented progression phases.
+
+### Owner navigation preference
+
+Tim clarified on 2026-11-20 that discovery should remain immersive. Do not add unsolicited overlays, route highlights, or notifications announcing previously inaccessible paths after an ability unlock. Tutorials may explain the ability itself. Directions useful to an active quest belong in its appropriate quest/Journal/compass tab and follow the player's selected objective. The route-highlighting suggestion in the earlier assessment is withdrawn.
 
 ## Current checkpoint — 2026-11-10
 
