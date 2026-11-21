@@ -1,16 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { freshSave } from '../src/types.ts';
-import { startJourney } from '../src/progression.ts';
+import { freshSave, migrateSave } from '../src/types.ts';
+import { startJourney, compendium, ROW_BY_ID } from '../src/progression.ts';
 import { useJourneyFrame } from '../src/journey-start.ts';
 import { nearestShaft, nearestHorde, setWorldLeadProbe } from '../src/world-leads.ts';
 import { Game, worldLeadPhysical, generatePinnedDungeon, sectionTerrainCacheStats } from '../src/game.ts';
 import { generateRegion, dungeonId } from '../src/world.ts';
 import { shaftHere } from '../src/the-deep.ts';
 import { APERTURE_BANDS } from '../src/items.ts';
-import { RELIQUARY, WORLD_WITHHELD } from '../src/world-routes.ts';
-import { STORY_WITHHELD } from '../src/quests.ts';
+import { RELIQUARY, WORLD_WITHHELD, reliquaryOrder } from '../src/world-routes.ts';
+import { STORY_WITHHELD, paidRumourView, boughtRumour } from '../src/quests.ts';
+import { liveRumours, rumourLeads } from '../src/leads.ts';
+import { compassGuidance } from '../src/atlas-view.ts';
 import { buyVisceraRumour, nextFromPool } from '../src/world-finds.ts';
 import { rollHorde } from '../src/revenant-horde.ts';
 import { ladderRoll } from '../src/dungeon-ladder.ts';
@@ -128,7 +130,53 @@ test('paid rumours can name only the reward the next reliquary will actually giv
   s.refinement.unlocked = true; s.skylands.viscera = 30;
   s.progression.kept.push(...WORLD_WITHHELD.filter((id) => !RELIQUARY.pool.includes(id)), ...STORY_WITHHELD);
   const expected = nextFromPool(s), q = buyVisceraRumour(s); assert.equal(q.ok, true); assert.equal(q.rumour.ability, expected);
+  assert.equal(s.leads.rumours.at(-1).source, 'reliquary', 'new purchases keep explicit source provenance');
+  assert.equal(q.rumour.source, 'reliquary'); assert.equal(q.rumour.rx, undefined); assert.equal(q.rumour.ry, undefined);
+  assert.match(q.message, /among reliquary rewards; it may take more than one reliquary/);
+  assert.equal(migrateSave(JSON.parse(JSON.stringify(s))).leads.rumours.at(-1).source, 'reliquary');
   const money = s.skylands.viscera, again = buyVisceraRumour(s);
   assert.equal(again.ok, false, 'later pool rewards cannot be sold as the reward at the next site');
   assert.equal(s.skylands.viscera, money);
+});
+
+test('legacy paid shaft and horde rumours become truthful read-only views across Journal and compendium', () => {
+  for (const [seed, rx, ry, where] of [
+    ['AUDIT-H-6', 6, 6, 'at the bottom of something: floor 2 of a Deep Shaft'],
+    ['AUDIT-H-16', 15, -14, 'at the bottom of something: a horde crossing 15 sections off'],
+  ]) {
+    let s = startJourney(save(seed), {}); s.progression.start = 0; useJourneyFrame(s);
+    const ability = reliquaryOrder(seed)[1], name = ROW_BY_ID[ability].name;
+    assert.notEqual(ability, nextFromPool(s), 'the legacy purchase names a later pool reward');
+    const record = { id: `viscera:${ability}`, kind: 'viscera', ability, title: name, name, where,
+      text: `For the Viscera, a rumour: ${name}, ${where}.`, by: 'viscera', at: 90, rx, ry, future: { preserved: true } };
+    s.leads.rumours = [record]; s.skylands.viscera = 7;
+    s.guidance = { ...s.guidance, pin: { rx, ry, name }, follow: null, pick: null, future: 'kept' };
+    s = migrateSave(JSON.parse(JSON.stringify(s))); useJourneyFrame(s);
+    const before = structuredClone({ record: s.leads.rumours[0], money: s.skylands.viscera, feats: s.feats,
+      progression: s.progression, guidance: s.guidance, atlas: s.atlas, consequences: s.consequences });
+    let probes = 0; setWorldLeadProbe(() => { probes++; throw new Error('UI reads must not generate physical candidates'); });
+    try {
+      for (let i = 0; i < 3; i++) {
+        const bought = boughtRumour(s, ability), live = liveRumours(s)[0], row = rumourLeads(s)[0];
+        assert.match(bought.where, /among reliquary rewards; it may take more than one reliquary/);
+        assert.equal(live.id, record.id); assert.equal(live.ability, ability); assert.equal(live.at, 90); assert.deepEqual(live.future, record.future);
+        assert.equal(live.rx, undefined); assert.equal(live.ry, undefined); assert.equal(row.at, undefined);
+        assert.match(row.detail, /among reliquary rewards/); assert.doesNotMatch(row.detail, /Deep Shaft|horde crossing/);
+        const entry = compendium(s).groups.flatMap((g) => g.entries).find((e) => e.id === ability);
+        assert.equal(entry.state, 'rumoured'); assert.match(entry.label, /Rumoured: among reliquary rewards/);
+      }
+      assert.equal(probes, 0);
+    } finally { setWorldLeadProbe(worldLeadPhysical); }
+    assert.deepEqual({ record: s.leads.rumours[0], money: s.skylands.viscera, feats: s.feats,
+      progression: s.progression, guidance: s.guidance, atlas: s.atlas, consequences: s.consequences }, before);
+    assert.deepEqual(compassGuidance(s, { pin: s.guidance.pin }), { area: 'overworld', rx, ry, kind: 'guidance', name }, 'the player-selected compass pin stays selected');
+  }
+});
+
+test('paid quest and milestone source clues keep their original read-time view', () => {
+  for (const where of ['a milestone: dives cleared, 10', 'Hollis Dray at the Refuge will have work for you once you reach a deeper band of the Aperture']) {
+    const r = { id: 'viscera:test', kind: 'viscera', ability: 'test', text: `A clue: ${where}`, where, rx: 0, ry: 0, future: true };
+    assert.equal(paidRumourView(r), r);
+    const s = save('UNCHANGED-PAID'); s.leads.rumours = [r]; assert.deepEqual(boughtRumour(s, 'test'), { where });
+  }
 });

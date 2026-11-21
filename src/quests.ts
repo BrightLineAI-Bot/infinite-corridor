@@ -224,11 +224,22 @@ export const STORY_SEEN = Object.freeze(Object.fromEntries([...QUEST_IDS.map((id
 export const PHASE7_STORY = Object.freeze(["spell:essence-walk", ...Object.values(THREAD_REWARDS).map((r) => r.ability), ...SEEDED_IDS]);
 export const STORY_SINCE = Object.freeze(Object.fromEntries(STORY_WITHHELD.map((id) => [id, PHASE7_STORY.includes(id) ? STORY.phase7Table : STORY.table])));
 
+// A bought generic Reliquary rumour names a reward, not a guaranteed item at a particular site. Older purchases have no
+// source field: their generated `where` uses this fixed prefix. Keep the paid record intact and project truthful words only;
+// no terrain lookup, currency change, reward, or compass change belongs in a UI read. Quest/thread/milestone rumours retain
+// their own sources. New purchases record source explicitly so future wording changes do not affect identification.
+export function paidRumourView(r) {
+  if (r?.kind !== "viscera" || !(r.source === "reliquary" || (typeof r.where === "string" && /^at the bottom of something(?:$|:)/.test(r.where)))) return r;
+  const { rx: _rx, ry: _ry, ...view } = r;
+  const where = "among reliquary rewards; it may take more than one reliquary to find it";
+  return { ...view, where, text: `For the Viscera, a rumour: ${r.title || r.name || "an undiscovered ability"}, ${where}.` };
+}
 // Phase 8: a rumour bought with Divine Viscera (world-finds.ts buyVisceraRumour) about `id`, still unfound, or null: { where }.
 export function boughtRumour(save, id) {
   if (earned(save, id) || progressionKept(save, id)) return null;
   const r = (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).find((q) => q?.kind === "viscera" && q.ability === id);
-  return r ? { where: typeof r.where === "string" && r.where ? r.where : "somewhere out there" } : null;
+  const view = paidRumourView(r);
+  return view ? { where: typeof view.where === "string" && view.where ? view.where : "somewhere out there" } : null;
 }
 const earned = (save, id) => !!save?.feats?.earned && Object.prototype.hasOwnProperty.call(save.feats.earned, id);
 // Shut on this journey: Exploration (table 5 on), a b, d or V ability, neither kept nor earned.

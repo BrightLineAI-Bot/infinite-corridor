@@ -6,7 +6,7 @@
 import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD, ensureLeads, LEAD_RECORD } from "./journey-start.ts";
 import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue, WORLD_WITHHELD, MILESTONES } from "./world-routes.ts";
 import { ROW_BY_ID, stateV0, ownership, progressionState } from "./progression.ts";
-import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour } from "./quests.ts"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
+import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour, paidRumourView } from "./quests.ts"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
 import { nearestHorde, nearestShaft } from "./world-leads.ts";
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
@@ -188,7 +188,8 @@ export function buyVisceraRumour(save, rx = 0, ry = 0) {
   const list = unknownAbilities(save).map((row, i) => { const w = rumourWhere(save, row, rx, ry); return { row, w, i, d: Number.isInteger(w.rx) ? Math.hypot(w.rx - rx, w.ry - ry) : Infinity }; }).sort((a, b) => a.d - b.d || a.i - b.i);
   const pick = list[0]; if (!pick) return { ok: false, message: VISCERA_WORDS.none };
   pay(save, price); const L = ensureLeads(save), text = VISCERA_WORDS.rumour(pick.row, pick.w.where);
-  const r = { id: `viscera:${pick.row.id}`, kind: "viscera", ability: pick.row.id, title: pick.row.name, text, where: pick.w.where, by: "viscera", at: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), ...(Number.isInteger(pick.w.rx) ? { rx: pick.w.rx, ry: pick.w.ry, name: pick.row.name } : {}) };
+  const r = { id: `viscera:${pick.row.id}`, kind: "viscera", ability: pick.row.id, title: pick.row.name, text, where: pick.w.where, by: "viscera", at: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), ...(RELIQUARY.pool.includes(pick.row.id) ? { source: "reliquary" } : {}), ...(Number.isInteger(pick.w.rx) ? { rx: pick.w.rx, ry: pick.w.ry, name: pick.row.name } : {}) };
   L.rumours = [...L.rumours.filter((q) => q.id !== r.id), r].slice(-LEAD_RECORD.rumourMax);
-  return { ok: true, message: text, rumour: r };
+  const view = paidRumourView(r);
+  return { ok: true, message: view.text, rumour: view };
 }
