@@ -3,6 +3,7 @@
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
 import { secondWayfarerTarget } from "./second-wayfarer.ts";
+import { trailOfFollow, trailTarget } from "./thread-trails.ts"; // 2026-11-21: a followed thread (the Washing at Sallowby)
 import { nearestCrossing } from "./leads.ts"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
 import { exploring } from "./journey-start.ts";
 import { questOfFollow } from "./quests.ts"; import { questTarget } from "./quest-places.ts"; // progression Phase 7: a followed quest
@@ -233,6 +234,7 @@ export function compassFollowTarget(save, f, { area = "overworld", cues = [], re
   if (f.kind === "far") { const q = save?.farQuests?.[f.id]; return q?.status === "open" && ok(q) ? at(q.rx, q.ry, f.name || "Far quest") : null; }
   if (f.kind === "rescue") return ok(rescue) ? { ...rescue } : null;
   if (f.kind === "quest" && questOfFollow(f.id)) return questTarget(save, questOfFollow(f.id)); // progression Phase 7: the step's place (the giver's section, a Starfield crossing)
+  if (f.kind === "quest" && trailOfFollow(f.id)) return trailTarget(save, trailOfFollow(f.id), area === "overworld" ? here : null); // a followed thread: the crossing that holds its next piece
   if (f.kind === "quest") return f.id === "second" ? secondWayfarerTarget(save) : f.id === "errand" && here && area === "overworld" && compassQuest(save) === "errand" && exploring(save) ? nearestCrossing(save, here.rx | 0, here.ry | 0, here.objects) || cue(f.id) : cue(f.id); // the Second Wayfarer: the next sighting, and its trace once laid
   if (f.kind === "marker") {
     if (f.id === "waypoint") { const w = save?.manualWaypoint; return ok(w) && (w.area == null || w.area === "overworld") ? at(w.rx, w.ry, String(w.label || COMPASS_MENU.waypointName)) : null; }

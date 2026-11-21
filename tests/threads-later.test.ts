@@ -6,7 +6,7 @@ import { hashSeed } from '../src/random.ts';
 import { THREADS, THREAD_ORDER, THREAD_RULES, threadIn, inBand } from '../src/threads.ts';
 
 const seed = 'LATER1', ids = []; for (let x = -60; x <= 60; x += 1) for (let y = -60; y <= 60; y += 3) ids.push([x, y, `dungeon:${seed}:g1:${x}:${y}:room`]);
-const FIRST = THREAD_ORDER.filter((id) => !THREADS[id].wave);
+const FIRST = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (story version 6 adds a middle-band thread with no wave, in the shared roll)
 const before = (id, x, y) => { if (Math.abs(x) + Math.abs(y) < THREAD_RULES.minDepth || (hashSeed(`${seed}:threads:v1:${id}`) % 10000) / 10000 >= THREAD_RULES.chance) return null; const here = FIRST.filter((t) => inBand(THREADS[t].band, x, y)); return here.length ? here[hashSeed(`${seed}:threads:which:v1:${id}`) % here.length] : null; };
 
 test('every crossing that held one of the first ten threads still holds the same one', () => {

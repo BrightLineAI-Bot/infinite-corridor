@@ -15,7 +15,7 @@ const roll = (key) => (hashSeed(key) % 10000) / 10000;
 const wave3 = (seed, id) => {
   const m = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/.exec(id); if (!m) return null; const x = Number(m[1]), y = Number(m[2]);
   if (Math.abs(x) + Math.abs(y) < THREAD_RULES.minDepth) return null;
-  const pick = (wave, key) => { const all = THREAD_ORDER.filter((t) => THREADS[t].wave === wave && inBand(THREADS[t].band, x, y)); if (!all.length) return null;
+  const pick = (wave, key) => { const all = THREAD_ORDER.filter((t) => THREADS[t].wave === wave && (wave !== undefined || !THREADS[t].shared) && inBand(THREADS[t].band, x, y)); if (!all.length) return null;
     const first = Math.min(...all.map((t) => THREADS[t].layer || 0)), here = all.filter((t) => (THREADS[t].layer || 0) === first); return here[hashSeed(key) % here.length]; };
   if (roll(`${seed}:threads:v1:${id}`) < THREAD_RULES.chance) return pick(undefined, `${seed}:threads:which:v1:${id}`);
   if (roll(`${seed}:threads:later:v1:${id}`) < THREAD_RULES.later) { const t = pick(2, `${seed}:threads:later:which:v1:${id}`); if (t) return t; }

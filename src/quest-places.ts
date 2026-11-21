@@ -77,7 +77,8 @@ const seen = (save, x, y) => !!save?.atlas?.[`${x},${y}`] || !!save?.explored?.[
 // it, so every far place is): its crossings that may be Sleeper's Halls are passed over (revenantAt).
 const solid = (save, x, y) => !(x === 0 && y === 0) && !regionSettled(x, y, save?.seed) && !hamletSection(save?.seed, x, y);
 // An ordinary landmark crossing at (x, y) (world.ts addDungeonLandmark's own draws), its id, or null; never a possible Poison Crypt.
-function crossingAt(save, x, y) {
+// Exported for thread-trails.ts (2026-11-21: the crossing that holds a followed thread's next piece).
+export function crossingAt(save, x, y) {
   const seed = save?.seed, gen = Number(save?.worldGeneration) || 1;
   const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r();
   const id = dungeonId(seed, gen, x, y, `dungeon-g${gen}-${x}-${y}-${Math.floor(r() * 1e6)}`);

@@ -19,7 +19,7 @@ const pinned = (s, id, v = V) => { s.consequences.dungeons[id] = { discovered: t
 const findFootprints = (seed, from = 12, to = 40) => { for (let d = from; d <= to; d++) for (const [s, id] of ring(d, 400, `f${seed}`)) { const sid = id.replace(/SECOND\d/g, seed); if (secondFootprintsIn(seed, sid, V, 1)) return sid; } return null; };
 
 test('story version 5 is the gate: crossings first entered from now pin to it, and every thread roll is exactly version 4\'s', () => {
-  assert.equal(STORY_BUDGET.version, V); assert.equal(STORY_BUDGET.byVersion[5], .12); assert.equal(storyVersionFor(false), V); assert.equal(storyVersionFor(true), 0);
+  assert.ok(STORY_BUDGET.version >= V); assert.equal(STORY_BUDGET.byVersion[5], .12); assert.equal(storyVersionFor(false), STORY_BUDGET.version); assert.equal(storyVersionFor(true), 0); // story version 6 (2026-11-21) comes after it
   let n = 0, held = 0;
   for (const d of [3, 6, 12, 18, 25, 36, 70, 150, 700, 1000, 1500, 3000]) for (const [seed, id] of ring(d, 4000, 'v')) for (const r of [0, 1]) { n++; const t = threadIn(seed, id, 5, r); if (t) held++; assert.equal(t, threadIn(seed, id, 4, r), id); }
   assert.ok(n >= 90000, `${n} crossings`); assert.ok(held > n * .08, 'the budget still places pieces');
@@ -114,7 +114,7 @@ test('the compass follows the trail once it is taken up, and only then', () => {
 test('in the game: footprints read through Act begin the trail and point the compass; the sighting and the last trace write the Journal', () => {
   const seed = 'GAMESECOND', id = findFootprints(seed), [, , , x, y] = id.split(':'), s = freshSave(); s.seed = seed;
   s.session.activeDungeonId = id; s.session.dungeonReturn = { rx: Number(x), ry: Number(y), x: 16, y: 16 };
-  const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[id].storyVersion, V, 'a new crossing pins to version 5');
+  const g = new Game(s, 0); g.loadArea('dungeon', false); assert.equal(s.consequences.dungeons[id].storyVersion, STORY_BUDGET.version, 'a new crossing pins to the current version (5 or later)');
   const o = g.map.objects.find((q) => q.kind === 'secondFootprints'); assert.ok(o, 'laid in the crossing'); g.enemies = []; Object.assign(g.player, { x: o.x, y: o.y });
   const r = g.interact('read', o.id); assert.ok(r.ok && r.begun, g.message); assert.deepEqual(s.guidance.follow, { kind: 'quest', id: 'second' }, 'taking it up chooses it');
   assert.ok(s.narrative.journal.some((j) => j.recordId === 'second-wayfarer:footprints')); assert.ok(g.questNotices.some((q) => q.title === 'SOMEONE AHEAD'));

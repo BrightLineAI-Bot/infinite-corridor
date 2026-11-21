@@ -52,7 +52,11 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // Story version 5 (2026-11-19): no thread changes and the budget stays 0.12; it marks the crossings first entered from then on, the
 // only ones that may hold the Second Wayfarer's footprints (second-wayfarer.ts SECOND_WAYFARER.storyVersion), where no thread
 // piece lies. Every roll here reads a version through `>=` or "the latest entry at or before", so version 5 rolls exactly as 4.
-export const STORY_BUDGET = { version: 5, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12 }, firstTenGivesWay: 4 };
+// Story version 6 (2026-11-21, the daily narrative pass): the Washing at Sallowby joins the shared roll of the middle and far bands
+// (`shared: { 6: ["middle", "far"] }`), splitting the slots of crossings first entered from then on and adding none; the budget
+// stays 0.12. Crossings pinned at version 0 to 5 roll exactly as before; at version 6 every crossing holds a piece exactly where
+// version 5 would, and only the shared slots of those two bands are re-split.
+export const STORY_BUDGET = { version: 6, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12, 6: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
@@ -239,6 +243,22 @@ export const THREADS = {
     ],
     ending: "In a year the iron did not come, the toolmaker of the middle country went on making handles, and the handles went on working: a spade with no blade that dug, a hammer with no head that hooped a barrel sound, a scythe that mowed for ten years after its blade was gone. You close your hand on the last stave. It is already worn to your grip, as if you had carried it for years, and for a moment you know exactly what it is for. Then you do not, and it is still in your hand.",
   },
+  // Story version 6 (2026-11-21, the daily narrative pass; docs/narrative-bible.md section 1, "the river and its eddies" and "density,
+  // not matter"; section 6 item 5). A washerwoman of Sallowby whose thin water takes out any stain, and with it whatever the stain
+  // kept. Never a wave: it shares the middle and far bands' slots from story version 6 (crossings first entered from then on; the
+  // far band too, so that enough crossings hold it to read it through), and its home (lore.ts ARCANA_REGIONS) is south-east, 12 to 30 out. Listed before the far threads; no older pool holds it, so none
+  // changes order. Once begun, the compass may follow it to the crossing that holds the next bundle (thread-trails.ts); its end
+  // leaves a little money on the post (THREAD_GIFTS), no ability.
+  washing: { title: "The Washing at Sallowby", band: "middle", relic: "bundle", colour: "#d9d2c2", shared: { 6: ["middle", "far"] },
+    pieces: [
+      "A bundle of washing in a clean sheet, tied with tape, lying where nothing has ever been washed. It is still damp. The slip pinned to it is in a round, careful hand: \"Sallowby, below the stepping-stones. One smock, the miller's girl's, grass on both knees. The water at the steps runs thin this year and takes out anything. Came out white. One farthing. N. Ashby.\"",
+      "A second bundle, the same tape, the same knot. The slip: \"One shirt, Tam Rudd's, blood at the cuff from the night the barn went up. Came out white. When he came for it he thanked me, and asked what barn. I said I must have heard it wrong.\"",
+      "A third bundle, the sheet wet through. \"What comes out goes down to the eddy under the alders and turns there, every colour Sallowby ever spilled on itself, slow as a spoon in a pot. I can pick out the miller's girl's grass. At dusk something comes down to the eddy and drinks. I hear it lap. I have not looked, and I do not mean to.\"",
+      "A fourth bundle: a man's coat of good wool, folded with more care than the rest. \"Ada Fenn brought me her husband's coat to wash the smell of him out, because she could not sleep for it. It came out clean. In the morning she was at my door, asking me to put him back. She cannot find his face. There is no washing a thing back in. I take in no more grief.\"",
+      "A fifth bundle, tied in a hurry. Inside, unwashed, an apron stiff with forty years: jam, lamp-black, a grandchild's fever, a mother's last medicine. \"Mine. I hung it on the line to look at, and in the morning it was gone, peg and all, the line still swinging. The thing at the eddy has stopped drinking. At dusk it stands in the shallows now, and faces the line.\"",
+      "The last bundle is only a sheet folded square, the tape tied over nothing. \"Left on the post in the night, a farthing on top: one cloak, green going grey, bronze at the clasp. I washed it twice and nothing came out. There was nothing on it to come out. While I worked, the thing at the eddy came up and stood at my shoulder, looking at it. Then it went back down, and did not drink.\"",
+    ],
+    ending: "At Sallowby, below the stepping-stones, the water ran thin enough to take out any stain, and Nell Ashby took in washing there. What came out went down to the eddy under the alders, and whatever the stain had kept went with it: a barn on fire, a fall in the lane, a husband's face. She took in no more grief after that, and never washed her own apron, and whatever came down at dusk to drink from the eddy she never looked at. The bundles that went off her bank in the night fetched up a long way downstream, in places she never walked, still damp. On a post by a ford a cloak hangs folded, a farthing on it. Nothing in the eddy is the colour of it." },
   // The far threads (story version 2, 2026-11-05; Tim: "Yes, you should write them for out past 1000"). Written for the far realms
   // (far-realms.ts): the Giants' Reach and the Tall Country, the great mushrooms, the Ink Wastes. Never a wave: they share the
   // budget's slots past FAR_REALMS.start (band `beyond`, straight-line), at `weight` 2 against the deep band's shared threads (3
@@ -299,6 +319,12 @@ export const THREADS = {
     ],
     ending: "A tinker who had mended anything for thirty-one years, until nobody brought him anything, walked out until he heard something broken and found the Storm Halls, where the machines are people and nobody ever made them. He mended their coils and their knees, and sat with the ones who came to the bench with nothing wrong, because being gone over with a lamp is a kind of mending too. Nobody out there says where he went. They kept the bench. They mend each other at it now, under the name of his shop, and when the thunder stops all at once, it is because every head has turned toward the stool." },
 };
+// What a thread's ending leaves beside its words, when it carries no ability (2026-11-21): a little of a currency the game
+// already has, once, on every journey (one finished before included), recorded in save.lore.threadGifts ({ threadId: true };
+// additive, normalised by thread-trails.ts ensureThreadTrails). `marks` is save.currency.
+export const THREAD_GIFTS = Object.freeze({
+  washing: Object.freeze({ marks: 40, label: "40 marks, left on the post by the steps" }),
+});
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (release 627): what a crossing offered then, it still offers
 const ORDINARY = /^dungeon:.*:g\d+:(-?\d+):(-?\d+):[^:]+$/;
@@ -472,3 +498,36 @@ export function settleArcanaUnlocks(save, grant = () => {}) {
 }
 // The passive a set earns, or null (for the Arcana cards: "Completing it opens ...").
 export const arcanaUnlockFrom = (from) => Object.entries(ARCANA_UNLOCKS).find(([, u]) => u.from === from)?.[0] || null;
+// Threads the compass can follow once begun (thread-trails.ts): `radius` sections searched round the last piece's crossing for
+// the one holding the next (Chebyshev rings, once per piece); `notice` the banner on taking it up; `unit` and `lead` the Journal's words.
+export const THREAD_TRAILS = Object.freeze({
+  washing: Object.freeze({ radius: 40, notice: "DOWNSTREAM", unit: "bundles", lead: "Nell Ashby's washing, carried downstream" }),
+});
+const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+// Normalises save.lore.trails (thread-trails.ts) and save.lore.threadGifts when present, in place (types.ts freshSave and
+// migrateSave). Each is created on first use; unknown ids are kept as they were.
+export function ensureThreadTrails(save) {
+  if (!save || typeof save !== "object" || !plainObject(save.lore)) return save;
+  const lore = save.lore;
+  if (lore.trails !== undefined) {
+    const out = {};
+    for (const [id, t] of Object.entries(plainObject(lore.trails) ? lore.trails : {})) {
+      if (!THREAD_TRAILS[id]) { out[id] = t; continue; } // unknown to this build: kept as it was
+      if (!plainObject(t)) continue;
+      const n = Math.max(0, Math.floor(Number(t.n)) || 0);
+      if (t.none === true) out[id] = { ...t, n, none: true };
+      else if (Number.isInteger(t.rx) && Number.isInteger(t.ry) && typeof t.dungeon === "string" && ORDINARY.test(t.dungeon)) { const { none: _n, ...rest } = t; out[id] = { ...rest, n }; }
+    }
+    lore.trails = out;
+  }
+  if (lore.threadGifts !== undefined) lore.threadGifts = Object.fromEntries(Object.entries(plainObject(lore.threadGifts) ? lore.threadGifts : {}).filter(([, v]) => v === true));
+  return save;
+}
+// Pays every finished thread's gift (THREAD_GIFTS) not yet paid, once each: `grant(id, gift)` announces it. Returns the ids paid.
+export function settleThreadGifts(save, grant = () => {}) {
+  const out = [];
+  for (const [id, g] of Object.entries(THREAD_GIFTS)) { if (!THREADS[id] || threadFound(save, id).length < THREADS[id].pieces.length || save?.lore?.threadGifts?.[id] === true) continue;
+    const lore = (save.lore ||= {}); lore.threadGifts = { ...(lore.threadGifts && typeof lore.threadGifts === "object" && !Array.isArray(lore.threadGifts) ? lore.threadGifts : {}), [id]: true };
+    if (g.marks) save.currency = (Number(save.currency) || 0) + g.marks; grant(id, g); out.push(id); }
+  return out;
+}

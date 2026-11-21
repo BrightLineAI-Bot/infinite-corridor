@@ -21,6 +21,7 @@ import { APERTURE_BANDS, apertureBand } from "./items.ts";
 import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.ts"; // Phase 6: the horde rumour (2.7)
 import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.ts"; // Phase 6: the strong lead (G3)
 import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.ts"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { threadFound } from "./threads.ts"; import { TRAIL_IDS, trailBegun } from "./thread-trails.ts"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -97,6 +98,10 @@ export const RUMOURS = Object.freeze({
     line: (where) => `There's a lamplighter's round ${where}. Walk it to its end and the dark gives a little, they say.` }),
   bells: Object.freeze({ modes: [0, 1], set: "bells", passive: "passive:bell-toll", title: "The cracked bells",
     line: (where) => `Cracked bells hang in the crossings ${where}. Ring them all and something waits at the end.` }),
+  // 2026-11-21 (story version 6): the Washing at Sallowby, told by name and home until its first bundle is found (then it is a quest).
+  washing: Object.freeze({ modes: [0, 1], set: "washing", title: "Washing in the crossings",
+    open: (save) => !threadFound(save, "washing").length,
+    line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
   horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
@@ -109,7 +114,7 @@ export const RUMOURS = Object.freeze({
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
     line: (w, rx, ry) => `People speak of ${WONDERS.kinds[w.kind].name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.` }),
 });
-export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "wonder"]);
+export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "wonder"]);
 // The people whose idle words may become a rumour (by object id; the hamlets' folk and the Listener towns' cooks by kind, in
 // game.ts). Hollis is not one: his talk points the way to the Refuge's farm and quarry (refuge-lands.ts), which a rumour must not hide.
 export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "keeper-sela", "cairn-keeper", "vendor-iona", "resident-tarn", "vendor-mora", "resident-esh"]);
@@ -137,6 +142,7 @@ export function questLeadCount(save) {
   if (save?.narrative?.facts?.["leads.active"] && !save.narrative.facts["leads.complete"]) n++;
   if (save?.relayNetwork?.coordinate) n++;
   { const s = save?.lore?.second; if (s && Array.isArray(s.trail) && (s.found || 0) < s.trail.length) n++; }
+  for (const id of TRAIL_IDS) if (trailBegun(save, id)) n++; // 2026-11-21: a followed thread begun and not finished
   for (const id of QUEST_IDS) if (questOpen(save, id)) n++; // Phase 7
   return n;
 }
@@ -162,7 +168,7 @@ export function nextRumour(save, rx = 0, ry = 0) {
     }
     if (live.some((r) => r.kind === kind)) continue;
     if (kind === "horde") { if (!K.open(save)) continue; const h = nearestHorde(save, rx, ry); if (!h) continue; return { id: `horde:${h.rx},${h.ry}`, kind, text: K.line(h), rx: h.rx, ry: h.ry, dungeon: h.dungeon, name: K.title }; }
-    if (K.set) { if (arcanaHas(save, K.passive)) continue; const e = homeEdge(save, K.set); return { id: `arcana:${K.set}`, kind, text: K.line(arcanaHint(K.set, saveFrame(save))), rx: e.rx, ry: e.ry, name: K.title }; }
+    if (K.set) { if (K.passive ? arcanaHas(save, K.passive) : !K.open(save)) continue; const e = homeEdge(save, K.set); return { id: `arcana:${K.set}`, kind, text: K.line(arcanaHint(K.set, saveFrame(save))), rx: e.rx, ry: e.ry, name: K.title }; }
     if (K.open(save)) return { id: kind, kind, text: K.line(), name: K.title };
   }
   return null;

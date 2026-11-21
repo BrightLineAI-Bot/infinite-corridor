@@ -189,6 +189,7 @@ export const ARCANA_REGIONS = {
     wellDigger: { toward: "n", from: 36, to: 80 },
     weaver: { toward: "w", from: 36, to: 80 },
     mirror: { toward: "e", from: 36, to: 80 },
+    washing: { toward: "se", from: 12, to: 30 }, // the Washing at Sallowby (story version 6, 2026-11-21): between the Fevered Stairs and the Clear Country
   },
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).

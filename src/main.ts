@@ -265,6 +265,7 @@ import { warmWayfindingSignals } from "./world.ts";
 import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
 import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
+import { trailLeads } from "./thread-trails.ts"; // 2026-11-21: a thread the compass can follow once begun (the Washing at Sallowby)
 import { SECOND_WAYFARER, SECOND_SIGHTINGS, SECOND_ENDING, SECOND_FOOTPRINTS, secondBegun, secondFound, secondNext, secondTraceText } from "./second-wayfarer.ts"; // the Second Wayfarer
 import { ILSE_MEETINGS, ilseMet } from "./ilse.ts"; // the Journal's Arcana tab
 import { WORLD_BEASTS, retreatsUnderWay } from "./world-beasts.ts"; // release 605
@@ -837,6 +838,7 @@ function activeQuests(){
   // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
   // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
   { const at=secondNext(save);if(at)add(SECOND_WAYFARER.title,`Someone dressed as you, a section ahead. Go where they marked: ${secondFound(save)} of ${SECOND_WAYFARER.sightings} found.`,at,{kind:"quest",id:"second"}); } // the Second Wayfarer's trail: the compass follows it once taken up
+  for(const t of trailLeads(save))add(t.title,t.detail,t.at,t.follow); // 2026-11-21: a followed thread (thread-trails.ts): the crossing holding its next piece
   if(save.arcana?.starter==="set"&&!(save.lore?.surveyor?.links||[]).length)add("The Cairn Keeper's errand","Go into any crossing: the first link of Abel Corwin's chain lies in the first one you enter.",null,{kind:"quest",id:"errand"}); // 2026-11-11: the first quest
   const echo=save.story?.arcs?.cartographersEcho;if(echo?.site&&!echo.completed)add("The Unwritten Meridian","The cartographer's echo waits here.",echo.site);
   if(save.narrative?.facts?.["leads.active"]&&!save.narrative.facts["leads.complete"])add("Relay leads","Follow the wayfinding marks toward the buried crossings.",null,{kind:"quest",id:"leads"});
