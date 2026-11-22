@@ -29,7 +29,7 @@ let found = null;
 const sections = () => found ||= (() => { const out = []; for (const seed of [SEED, 'AUDIT-A']) for (let x = 40; x < 400 && out.length < (seed === SEED ? 30 : 42); x += 3) for (let y = 40; y < 400 && out.length < (seed === SEED ? 30 : 42); y += 5) { const r = sectionRegion(seed, x, y, 28); if (r.type !== 'oasis' || r.hold < .5) continue; const m = make(x, y, 28, {}, seed); if (m.oasis) out.push({ seed, x, y, m }); } return out; })();
 
 test('version 28 turns some far deserts, Salt Marshes and Savannas into oasis ergs, about 1-4% of far sections; every other region, the heartland and the near world keep their version 27 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 28); assert.deepEqual(Object.keys(REGIONS_V28.chance), ['desert', 'salt', 'savanna']); assert.equal(REGIONS_V28.minRing, 44); assert.equal(REGIONS_V28.to, 'oasis');
+  assert.equal(LANDSCAPE_VERSION, 29); assert.deepEqual(Object.keys(REGIONS_V28.chance), ['desert', 'salt', 'savanna']); assert.equal(REGIONS_V28.minRing, 44); assert.equal(REGIONS_V28.to, 'oasis');
   assert.ok(REGIONS_V28.minRing > REGIONS.heartland + REGIONS.fadeIn);
   for (const seed of [SEED, 'LUNA25', 'AUDIT-A']) {
     const seen = new Set(); let far = 0, oasis = 0, from = 0, turned = 0;
@@ -162,7 +162,7 @@ test('deterministic: two fresh generations and two fresh game loads match; a ham
   for (const { seed, x, y, m } of sections().slice(0, 8)) assert.equal(fp(make(x, y, 28, {}, seed)), fp(m), `${x},${y}`);
   const { x, y } = sections()[1], load = () => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return { g, s }; };
   const one = load(), two = load(); assert.equal(JSON.stringify(one.g.map.tiles), JSON.stringify(two.g.map.tiles)); assert.deepEqual(one.g.map.objects.map((o) => o.id), two.g.map.objects.map((o) => o.id));
-  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 28); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'oasis'));
+  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 29); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'oasis'));
   assert.equal(one.s.schemaVersion ?? 14, 14);
   const h = make(x, y, 28, { hamlet: true }); assert.ok(h.tiles.some((t) => t.landscape === 'oasis')); assert.ok(h.tiles.filter((t) => t.landscape === 'oasis').every((t) => !t.elev && !t.blocked && t.kind !== 'sinkSand'));
   assert.ok(!h.objects.some((o) => String(o.id).startsWith('oasis-')));
@@ -205,7 +205,7 @@ test('older ground regenerates byte for byte: sections fingerprinted on main (3b
 test('in the game: ground first seen at version 27 keeps its version 27 ground; new ground pins 28', () => {
   const { x, y } = sections()[0], s = freshSave(); s.seed = SEED; s.atlas = { [`${x},${y}`]: { landscapeVersion: 27 } }; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
   assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 27); assert.ok(!g.map.tiles.some((t) => t.landscape === 'oasis'), 'no oasis erg on version 27 ground');
-  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 28); assert.ok(h.map.tiles.some((q) => q.landscape === 'oasis'));
+  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 29); assert.ok(h.map.tiles.some((q) => q.landscape === 'oasis'));
 });
 
 test('Close View: a desert sky; the dunes read as sand, the reeds as grass, the pools as water; palms stand up as trees', () => {

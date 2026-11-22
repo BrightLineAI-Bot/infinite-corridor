@@ -104,11 +104,16 @@ export const OUTDOOR = f({
     magma: f({ zenith: [40, 22, 24], horizon: [214, 92, 46], haze: [150, 66, 40], ridge: [30, 20, 20], ridgeH: .085, rough: 1,
       sun: [255, 150, 90], sunAz: 210, sunEl: 18, sunK: .5, ambient: [.58, .4, .36], clouds: .66, grade: [1.06, .97, .92, 1.04],
       crown: [60, 44, 34], bark: [44, 30, 24], frost: 0 }),
+    // the Cloudfells (landscape 29): a clear high sky over a sea of cloud, the horizon and the haze nearly white (the cloud the
+    // fells stand out of), a pale low sun, and a long blue-grey far line of other fells' tops
+    fells: f({ zenith: [74, 120, 182], horizon: [226, 232, 236], haze: [218, 224, 228], ridge: [118, 134, 148], ridgeH: .05, rough: .55,
+      sun: [255, 246, 226], sunAz: 215, sunEl: 30, sunK: .6, ambient: [.54, .58, .64], clouds: .25, grade: [.99, 1, 1.02, 1],
+      crown: [58, 86, 58], bark: [74, 62, 50], frost: 0 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", oasis: "desert", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", oasis: "desert", fells: "fells", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -166,6 +171,7 @@ export const OUTDOOR = f({
     f({ test: /^ribTusk$/, h: 2.3, jitter: .5, mat: 0, inset: .22, taper: .8 }), // the Marrowworks: a rib's tip standing as a bone tusk
     f({ test: /^marrowConduit$/, h: .7, jitter: .05, mat: 1, inset: .1, taper: 0 }), // and its segmented conduits
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
+    f({ test: /^graniteTor$/, h: 1.5, jitter: .5, perLevel: .1, mat: 0, inset: .08, taper: .35 }), // the Cloudfells: a stack of weathered granite slabs on a top
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),
     f({ test: /^towerStone$/, h: .4, jitter: 0, mat: 1, inset: .04, taper: .03 }), // tall towers (tall-towers.ts): each tile's `towerH` (the tower's drawn height) is added
