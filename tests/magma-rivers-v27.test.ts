@@ -29,7 +29,7 @@ let found = null;
 const sections = () => found ||= (() => { const out = []; for (const seed of [SEED, 'AUDIT-A']) for (let x = 40; x < 400 && out.length < (seed === SEED ? 30 : 42); x += 3) for (let y = 40; y < 400 && out.length < (seed === SEED ? 30 : 42); y += 5) { const r = sectionRegion(seed, x, y, 27); if (r.type !== 'magma' || r.hold < .5) continue; const m = make(x, y, 27, {}, seed); if (m.magmaRivers) out.push({ seed, x, y, m }); } return out; })();
 
 test('version 27 turns some far Firelands, Emberlands and Ashfields regions into magma rivers, about 1-4% of far sections; every other region, the heartland and the near world keep their version 26 type', () => {
-  assert.equal(LANDSCAPE_VERSION, 28); assert.deepEqual(Object.keys(REGIONS_V27.chance), ['volcanic', 'emberlands', 'ashfields']); assert.equal(REGIONS_V27.minRing, 52); assert.equal(REGIONS_V27.to, 'magma');
+  assert.equal(LANDSCAPE_VERSION, 29); assert.deepEqual(Object.keys(REGIONS_V27.chance), ['volcanic', 'emberlands', 'ashfields']); assert.equal(REGIONS_V27.minRing, 52); assert.equal(REGIONS_V27.to, 'magma');
   assert.ok(REGIONS_V27.minRing > REGIONS.heartland + REGIONS.fadeIn);
   for (const seed of [SEED, 'LUNA25', 'AUDIT-A']) {
     const seen = new Set(); let far = 0, magma = 0, from = 0, turned = 0;
@@ -166,7 +166,7 @@ test('deterministic: two fresh generations and two fresh game loads match; a ham
   for (const { seed, x, y, m } of sections().slice(0, 8)) assert.equal(fp(make(x, y, 27, {}, seed)), fp(m), `${x},${y}`);
   const { x, y } = sections()[1], load = () => { const s = freshSave(); s.seed = SEED; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld'); return { g, s }; };
   const one = load(), two = load(); assert.equal(JSON.stringify(one.g.map.tiles), JSON.stringify(two.g.map.tiles)); assert.deepEqual(one.g.map.objects.map((o) => o.id), two.g.map.objects.map((o) => o.id));
-  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 28); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'magma'));
+  assert.equal(one.s.atlas[`${x},${y}`].landscapeVersion, 29); assert.ok(one.g.map.tiles.some((t) => t.landscape === 'magma'));
   assert.equal(one.s.schemaVersion ?? 14, 14);
   const h = make(x, y, 27, { hamlet: true }); assert.ok(h.tiles.some((t) => t.landscape === 'magma')); assert.ok(h.tiles.filter((t) => t.landscape === 'magma').every((t) => !t.elev && !t.blocked && !t.magma));
   assert.ok(!h.objects.some((o) => String(o.id).startsWith('magma-')));
@@ -189,7 +189,7 @@ test('older ground regenerates byte for byte: sections fingerprinted on main (4e
 test('in the game: ground first seen at version 26 keeps its version 26 ground; new ground pins 27', () => {
   const { x, y } = sections()[0], s = freshSave(); s.seed = SEED; s.atlas = { [`${x},${y}`]: { landscapeVersion: 26 } }; const g = new Game(s, 0); g.rx = x; g.ry = y; g.loadArea('overworld');
   assert.equal(s.atlas[`${x},${y}`].landscapeVersion, 26); assert.ok(!g.map.tiles.some((t) => t.landscape === 'magma'), 'no magma rivers on version 26 ground');
-  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 28); assert.ok(h.map.tiles.some((q) => q.landscape === 'magma'));
+  const t = freshSave(); t.seed = SEED; const h = new Game(t, 0); h.rx = x; h.ry = y; h.loadArea('overworld'); assert.equal(t.atlas[`${x},${y}`].landscapeVersion, 29); assert.ok(h.map.tiles.some((q) => q.landscape === 'magma'));
 });
 
 test('Close View: a sky lit red from below; the ground reads as rock, ash and sulphur; fumaroles stand up as low solids', () => {

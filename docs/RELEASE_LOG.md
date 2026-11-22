@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1053 (this merge, #725); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1054 (this merge, #726); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1054 | Claude | claude/daily-region-1122 / #726 | The Cloudfells: a far region of granite fells above a cloud sea (landscape 29) | Merged (#726); preview follows. |
 | 1053 | Claude | claude/narrative-1121 / #725 | The Washing at Sallowby: a six-bundle thread (story version 6) the compass can follow; 40 marks at its end | Merged (#725); preview follows. |
 | 1052 | Codex | codex/legacy-physical-lead-recovery | Retire impossible saved unpaid horde/pity destinations while preserving valid known shafts and explicit compass selection | In merge preparation from freshly fetched r1051; focused checks pass, exact CI/Preview/review/hosted acceptance pending. Intended final publication includes r1051. |
 | 1051 | Codex | codex/progression-recovery / #723 | Lost quest-token recovery, physically verified leads and removal of the three-quest admission cap; progression polish and navigation preference recorded | Merged as 95b36e5bc3ad19cb827743c0dcaf39b06f82a227, tree 360f4e34b10ca79b5d693f116444393ae5ea5830. Exact-head CI 44865628161 passed 5,641 tests, build and rehearsal. Preview 44867343060 building; not published. Fresh Astra committed review found no introduced blocker; remaining legacy unpaid destinations are being repaired separately before publication. |
