@@ -45,6 +45,7 @@ import { INGREDIENTS } from "./meals.ts";
 import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
 import { SEEDS } from "./skylands.ts";
+import { tierCap } from "./stages.ts"; // the Listener named where its rewards are (Paths, part 1)
 import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.ts"; // Phase 6
 import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.ts"; // Phase 7; Phase 8
 
@@ -463,7 +464,7 @@ export function compendium(save) {
   for (const r of ROWS) {
     const gt = v1 ? gateV1(r) : r.v0.gate; if (!gt || states[r.id] !== "locked" || !(AHEAD_GROUPS.includes(r.group) || (v1 && AHEAD_V1.includes(r.id)))) continue;
     const label = gt.level != null ? (level < gt.level ? `Level ${gt.level}` : null) : gt.aperture != null ? (ap < gt.aperture ? `Aperture ${gt.aperture}` : null) : gt.tier != null && tier < gt.tier ? `${APERTURE_BANDS[gt.tier]?.name || `tier ${gt.tier}`}${gt.listeners ? " and a Listener felled" : ""}` : null;
-    if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name] });
+    if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name], ...(gt.tier != null && !gt.listeners && gt.tier > tierCap(save) ? { note: "once a Listener falls" } : {}) }); // Paths part 1: the Aperture holds below it until then
   }
   const p = pace(save, states, v1);
   return { title: COMPENDIUM.title, intro: COMPENDIUM.intro, before: COMPENDIUM.before, mode: modeInfo(progressionMode(save)), pace: p, paceText: paceText(p), ahead, groups };
