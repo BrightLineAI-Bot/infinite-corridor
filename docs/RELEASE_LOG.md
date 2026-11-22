@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1056 (this merge, #PRNUM); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1056 (this merge, #728); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1056 | Claude | claude/great-tree-fix / #PRNUM | Great trees: the crown only by the climb, real falls and glides, no crown death loop | Merged (#PRNUM); preview follows. |
+| 1056 | Claude | claude/great-tree-fix / #728 | Great trees: the crown only by the climb, real falls and glides, no crown death loop | Merged (#728); preview follows. |
 | 1055 | Claude | claude/sim20h-fixes / #727 | Fixes from a 20-hour playthrough: sea-lane reload loop, kill ledger (smaller saves), pack resume, hatchling guards, quest-giver lines, wonder-lead cap, a way out when stranded, potion compendium | Merged (#727); preview follows. |
 | 1054 | Claude | claude/daily-region-1122 / #726 | The Cloudfells: a far region of granite fells above a cloud sea (landscape 29) | Merged (#726); preview follows. |
 | 1053 | Claude | claude/narrative-1121 / #725 | The Washing at Sallowby: a six-bundle thread (story version 6) the compass can follow; 40 marks at its end | Merged (#725); preview follows. |
